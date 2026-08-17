@@ -1271,6 +1271,14 @@
       }
     }
 
+    // Cancel any pending autosave. After this clear the debounced timer would
+    // fire ~1s later against a null session: the localStorage write is guarded
+    // by the restoredSession null-check, but the updateSessionStatus("saving"/
+    // "saved") calls are not, so a dead timer would still flip the aria-live
+    // status region with nothing saved. Cancelling here stops that.
+    clearTimeout(this.autoSaveTimer);
+    this.autoSaveTimer = null;
+
     // Clear stored session
     if (this.restoredSession?.sessionKey) {
       try {

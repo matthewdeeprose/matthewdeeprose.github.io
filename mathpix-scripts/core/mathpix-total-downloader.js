@@ -859,9 +859,16 @@ Upcoming phases:
    * @private
    */
   static ENDPOINT_REGION_MAP = {
-    // EU Endpoints
+    // EU Endpoints.
+    // NOTE: this table is matched by exact hostname first, then by a loose
+    // subdomain fallback in extractGeographicRegion(). "eu.api.mathpix.com"
+    // MUST have an exact entry here — without one it falls through to the
+    // fallback, matches "api" from "api.mathpix.com", and reports EU-processed
+    // documents as "Global endpoint (USA)" in the metadata users download.
+    "eu.api.mathpix.com":
+      "European Union (Frankfurt / Falkenstein) - EU-resident processing",
     "eu-central-1.api.mathpix.com":
-      "European Union (Frankfurt) - Privacy-first processing",
+      "European Union (Frankfurt) - legacy regional host, re-routed to US infrastructure by Mathpix in August 2026",
     "eu-west-1.api.mathpix.com": "European Union (Ireland)",
     "eu-north-1.api.mathpix.com": "European Union (Stockholm)",
 
@@ -1937,6 +1944,7 @@ Upcoming phases:
     }
 
     // Binary formats (pass-through as Blobs) - use descriptive filenames when available
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const binaryFormats = {
       docx: {
         filename: baseFilename ? `${baseFilename}.docx` : "document.docx",
@@ -1947,6 +1955,11 @@ Upcoming phases:
         filename: baseFilename ? `${baseFilename}.pptx` : "presentation.pptx",
         format:
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      },
+      xlsx: {
+        filename: baseFilename ? `${baseFilename}.xlsx` : "workbook.xlsx",
+        format:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       },
       pdf: {
         filename: baseFilename
@@ -3153,7 +3166,7 @@ ${fileList}
       app_id: "test_app_id_12345", // Will be removed by sanitization
       app_key: "test_app_key_secret", // Will be removed by sanitization
       timestamp: new Date().toISOString(),
-      endpoint: "https://eu-central-1.api.mathpix.com/v3",
+      endpoint: "https://eu.api.mathpix.com/v3",
     };
 
     switch (apiType) {
@@ -3216,7 +3229,7 @@ ${fileList}
 
     return {
       request: {
-        endpoint: `https://eu-central-1.api.mathpix.com/v3/${apiType}`,
+        endpoint: `https://eu.api.mathpix.com/v3/${apiType}`,
         method: "POST",
         timestamp: new Date().toISOString(),
       },
@@ -4380,13 +4393,16 @@ ${fileList}
               // overwritten by OpenRouter credentials during the session)
               const appId = aiController?.apiClient?.appId;
               const appKey = aiController?.apiClient?.apiKey;
+              // Results are only queryable from the region that processed them,
+              // so the live endpoint travels with the credentials.
+              const apiBase = aiController?.apiClient?.apiBase;
 
-              if (pdfId && appId && appKey) {
-                logInfo(`Using mmd.zip strategy (pdf_id: ${pdfId})`);
+              if (pdfId && appId && appKey && apiBase) {
+                logInfo(`Using mmd.zip strategy (pdf_id: ${pdfId})`, { apiBase });
                 imageDownloadResult = await imageDownloader.downloadFromMmdZip(
                   imageRegistry,
                   pdfId,
-                  { appId, appKey },
+                  { appId, appKey, apiBase },
                   docBaseName,
                 );
               } else {
@@ -4398,6 +4414,7 @@ ${fileList}
                   pdfId: !!pdfId,
                   appId: !!appId,
                   appKey: !!appKey,
+                  apiBase: !!apiBase,
                 });
                 imageDownloadResult = await imageDownloader.downloadAll(
                   imageRegistry,

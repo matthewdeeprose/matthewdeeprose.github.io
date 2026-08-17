@@ -267,23 +267,33 @@ class MathPixConvertAPIClient {
       }
       // Copy so we don't mutate the shared config object
       this.config = Object.assign({}, MATHPIX_CONFIG.CONVERT);
+    }
 
-      // Resolve regional endpoint: read stored preference, fall back to default
-      var endpointKey =
-        localStorage.getItem(MATHPIX_CONFIG.ENDPOINT_PREFERENCE_KEY) ||
-        MATHPIX_CONFIG.DEFAULT_ENDPOINT;
-      var endpointConfig =
-        MATHPIX_CONFIG.ENDPOINTS[endpointKey] ||
-        MATHPIX_CONFIG.ENDPOINTS[MATHPIX_CONFIG.DEFAULT_ENDPOINT];
+    // Resolve the regional endpoint on EVERY call, deliberately outside the
+    // memo above. This client is a process-lifetime singleton, so memoising the
+    // region pinned it for the whole session: a user who switched region after
+    // their first conversion kept sending documents to the previous region
+    // until they reloaded. That is a data-residency problem, not just a stale
+    // URL. The static parts of CONVERT stay memoised; only the endpoint is
+    // recomputed, and it is a string concat off an in-memory lookup.
+    const endpointKey =
+      localStorage.getItem(MATHPIX_CONFIG.ENDPOINT_PREFERENCE_KEY) ||
+      MATHPIX_CONFIG.DEFAULT_ENDPOINT;
+    const endpointConfig =
+      MATHPIX_CONFIG.ENDPOINTS[endpointKey] ||
+      MATHPIX_CONFIG.ENDPOINTS[MATHPIX_CONFIG.DEFAULT_ENDPOINT];
 
-      if (endpointConfig && endpointConfig.baseUrl) {
-        this.config.ENDPOINT = endpointConfig.baseUrl.trim() + "/converter";
+    if (endpointConfig && endpointConfig.baseUrl) {
+      const resolved = endpointConfig.baseUrl.trim() + "/converter";
+      if (resolved !== this.config.ENDPOINT) {
         logDebug("Convert endpoint resolved from region", {
           region: endpointKey,
-          endpoint: this.config.ENDPOINT,
+          endpoint: resolved,
         });
       }
+      this.config.ENDPOINT = resolved;
     }
+
     return this.config;
   }
 

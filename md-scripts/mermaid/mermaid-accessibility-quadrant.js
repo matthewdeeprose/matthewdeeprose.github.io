@@ -424,33 +424,63 @@
         }
       });
 
-      // Build the HTML description
+      // The two tiers are built SIDE BY SIDE from the same raw fields.
+      //
+      // The plain tier used to be derived as htmlDescription.replace(/<[^>]*>/g, ""),
+      // which could not tell the author's markup from the generator's own spans:
+      // an author's <b> was silently deleted, and a lone '<' paired with the '>'
+      // closing a generator span and truncated the sentence. Building it from the
+      // raw fields removes the derivation entirely.
+      //
+      // Diagram-source text is escaped once, on the HTML side only, where it
+      // enters an HTML string. The plain side keeps the raw values: it feeds the
+      // SVG aria-label and the textContent fallback, neither of which parses
+      // HTML, so entities there would be announced literally.
       let htmlDescription = `A quadrant chart`;
+      let plainTextDescription = `A quadrant chart`;
 
       if (chart.title) {
-        htmlDescription += ` titled "<span class="diagram-title">${chart.title}</span>"`;
+        htmlDescription += ` titled "<span class="diagram-title">${Common.escapeHtml(
+          chart.title
+        )}</span>"`;
+        plainTextDescription += ` titled "${chart.title}"`;
       }
 
       // Add a simple explanation of what a quadrant chart is
 
       htmlDescription += `. This chart compares `;
+      plainTextDescription += `. This chart compares `;
 
       // Add axis information with ranges
       if (chart.axes.x.left && chart.axes.x.right) {
-        htmlDescription += `<span class="axis x-axis">${chart.axes.x.left} to ${chart.axes.x.right}</span> on the x-axis (horizontal)`;
+        htmlDescription += `<span class="axis x-axis">${Common.escapeHtml(
+          chart.axes.x.left
+        )} to ${Common.escapeHtml(
+          chart.axes.x.right
+        )}</span> on the x-axis (horizontal)`;
+        plainTextDescription += `${chart.axes.x.left} to ${chart.axes.x.right} on the x-axis (horizontal)`;
       } else {
         htmlDescription += `values on the x-axis (horizontal)`;
+        plainTextDescription += `values on the x-axis (horizontal)`;
       }
 
       htmlDescription += ` and `;
+      plainTextDescription += ` and `;
 
       if (chart.axes.y.bottom && chart.axes.y.top) {
-        htmlDescription += `<span class="axis y-axis">${chart.axes.y.bottom} to ${chart.axes.y.top}</span> on the y-axis (vertical)`;
+        htmlDescription += `<span class="axis y-axis">${Common.escapeHtml(
+          chart.axes.y.bottom
+        )} to ${Common.escapeHtml(
+          chart.axes.y.top
+        )}</span> on the y-axis (vertical)`;
+        plainTextDescription += `${chart.axes.y.bottom} to ${chart.axes.y.top} on the y-axis (vertical)`;
       } else {
         htmlDescription += `values on the y-axis (vertical)`;
+        plainTextDescription += `values on the y-axis (vertical)`;
       }
 
-      // Add point information with proper grammar
+      // Add point information with proper grammar. A count string carries no
+      // diagram-source text, so it is safe unescaped on both sides.
       const pointCount = chart.points.length;
       if (pointCount > 0) {
         const pointsText =
@@ -464,12 +494,11 @@
             : `${pointCount} data ${pointCount === 1 ? "point" : "points"}`;
 
         htmlDescription += `. The chart contains <span class="diagram-point-count">${pointsText}</span>`;
+        plainTextDescription += `. The chart contains ${pointsText}`;
       }
 
       htmlDescription += `.`;
-
-      // Generate plain text version by removing HTML tags
-      const plainTextDescription = htmlDescription.replace(/<[^>]*>/g, "");
+      plainTextDescription += `.`;
 
       return {
         html: htmlDescription,
@@ -496,104 +525,6 @@
   function shortDescriptionWrapper(svgElement, code) {
     const descriptions = generateShortDescription(svgElement, code);
     return descriptions.text;
-  }
-
-  /**
-   * Generate readable coordinate description from raw values with improved boundary detection
-   * @param {number[]} coordinates - Array containing [x, y] coordinates (0-1 range)
-   * @param {Object} axes - The axes information with labels
-   * @returns {string} Human-readable description of the position
-   */
-  function describeCoordinates(coordinates, axes) {
-    const [x, y] = coordinates;
-    let description = "";
-
-    // Check for exact boundary positions
-    const xBoundary = isBoundaryPosition(x);
-    const yBoundary = isBoundaryPosition(y);
-
-    // Handle special cases
-    if (xBoundary.isCenter && yBoundary.isCenter) {
-      return "exactly at the centre of the chart";
-    }
-
-    if (xBoundary.isMin && yBoundary.isMin) {
-      return "at the bottom-left corner";
-    }
-
-    if (xBoundary.isMax && yBoundary.isMax) {
-      return "at the top-right corner";
-    }
-
-    if (xBoundary.isMin && yBoundary.isMax) {
-      return "at the top-left corner";
-    }
-
-    if (xBoundary.isMax && yBoundary.isMin) {
-      return "at the bottom-right corner";
-    }
-
-    // Describe X position
-    if (x < 0.5) {
-      description += axes.x.left ? `low ${axes.x.left}` : "low x-value";
-    } else {
-      description += axes.x.right ? `high ${axes.x.right}` : "high x-value";
-    }
-
-    description += " and ";
-
-    // Describe Y position
-    if (y < 0.5) {
-      description += axes.y.bottom ? `low ${axes.y.bottom}` : "low y-value";
-    } else {
-      description += axes.y.top ? `high ${axes.y.top}` : "high y-value";
-    }
-
-    return description;
-  }
-  /**
-   * Get quadrant description based on its position and label
-   * @param {Object} quadrant - The quadrant object with position and label
-   * @param {Object} axes - The axes information with labels
-   * @returns {string} Description of the quadrant
-   */
-  function describeQuadrant(quadrant, axes) {
-    let description = "";
-
-    // Describe by position
-    switch (quadrant.position) {
-      case "top-right":
-        description = "top-right quadrant (high x, high y)";
-        if (axes.x.right && axes.y.top) {
-          description += `: high ${axes.x.right}, high ${axes.y.top}`;
-        }
-        break;
-      case "top-left":
-        description = "top-left quadrant (low x, high y)";
-        if (axes.x.left && axes.y.top) {
-          description += `: high ${axes.x.left}, high ${axes.y.top}`;
-        }
-        break;
-      case "bottom-left":
-        description = "bottom-left quadrant (low x, low y)";
-        if (axes.x.left && axes.y.bottom) {
-          description += `: high ${axes.x.left}, high ${axes.y.bottom}`;
-        }
-        break;
-      case "bottom-right":
-        description = "bottom-right quadrant (high x, low y)";
-        if (axes.x.right && axes.y.bottom) {
-          description += `: high ${axes.x.right}, high ${axes.y.bottom}`;
-        }
-        break;
-    }
-
-    // Add label if available
-    if (quadrant.label) {
-      description += `, labeled "${quadrant.label}"`;
-    }
-
-    return description;
   }
 
   /**
@@ -674,7 +605,7 @@
 
       // Introduction section - explain what a quadrant chart is
       description += `<section class="introduction-section" role="region" aria-labelledby="quadrant-introduction-heading">
-      <h3 id="quadrant-introduction-heading">What is a Quadrant Chart?</h3>
+      <h4 id="quadrant-introduction-heading">What is a Quadrant Chart?</h4>
       <p>A quadrant chart divides information into four sections (quadrants) based on two different measures. 
       Each section represents a different combination of high or low values for these measures. 
       Items are placed in the chart based on their values for each measure.</p>
@@ -682,23 +613,33 @@
 
       // Overview Section with improved explanation of coordinates
       description += `<section class="overview-section" role="region" aria-labelledby="quadrant-overview-heading">
-      <h3 id="quadrant-overview-heading">Chart overview</h3>
-      <p>This quadrant chart is titled "${chart.title}" and shows data points based on two measurements:</p>
+      <h4 id="quadrant-overview-heading">Chart overview</h4>
+      <p>This quadrant chart is titled "${Common.escapeHtml(
+        chart.title
+      )}" and shows data points based on two measurements:</p>
       
-      <h4>How the axes work</h4>
+      <h5>How the axes work</h5>
       <p>Each axis uses values from 0 to 1, where:</p>
       <ul>
         <li><strong>Horizontal axis (x-axis):</strong> 
           <ul>
-            <li>Values from 0 to 0.5 represent "${chart.axes.x.left}" (left side).</li>
-            <li>Values from 0.5 to 1 represent "${chart.axes.x.right}" (right side).</li>
+            <li>Values from 0 to 0.5 represent "${Common.escapeHtml(
+              chart.axes.x.left
+            )}" (left side).</li>
+            <li>Values from 0.5 to 1 represent "${Common.escapeHtml(
+              chart.axes.x.right
+            )}" (right side).</li>
             <li>The higher the number, the further right on the chart.</li>
           </ul>
         </li>
         <li><strong>Vertical axis (y-axis):</strong>
           <ul>
-            <li>Values from 0 to 0.5 represent "${chart.axes.y.bottom}" (bottom half).</li>
-            <li>Values from 0.5 to 1 represent "${chart.axes.y.top}" (top half).</li>
+            <li>Values from 0 to 0.5 represent "${Common.escapeHtml(
+              chart.axes.y.bottom
+            )}" (bottom half).</li>
+            <li>Values from 0.5 to 1 represent "${Common.escapeHtml(
+              chart.axes.y.top
+            )}" (top half).</li>
             <li>The higher the number, the higher up on the chart.</li>
           </ul>
         </li>
@@ -709,7 +650,7 @@
 
       // Quadrant Framework Section - with clearer explanations
       description += `<section class="framework-section" role="region" aria-labelledby="quadrant-framework-heading">
-      <h3 id="quadrant-framework-heading">The four quadrants</h3>
+      <h4 id="quadrant-framework-heading">The four quadrants</h4>
       <p>The chart is divided into four sections, each with its own meaning:</p>
       <ul>`;
 
@@ -733,9 +674,9 @@
             position = quadrant.position;
         }
 
-        description += `<li>Quadrant ${quadrant.id} (${position}): "${
+        description += `<li>Quadrant ${quadrant.id} (${position}): "${Common.escapeHtml(
           quadrant.label || "Unlabelled"
-        }".</li>`;
+        )}".</li>`;
       });
 
       description += `</ul>
@@ -743,7 +684,7 @@
 
       // Point Distribution Section
       description += `<section class="distribution-section" role="region" aria-labelledby="quadrant-distribution-heading">
-      <h3 id="quadrant-distribution-heading">How points are distributed</h3>`;
+      <h4 id="quadrant-distribution-heading">How points are distributed</h4>`;
 
       if (totalPoints > 0) {
         // Count center points separately
@@ -836,7 +777,7 @@
       // Data Points Section with Improved Coordinate Descriptions
       if (totalPoints > 0) {
         description += `<section class="points-section" role="region" aria-labelledby="quadrant-points-heading">
-        <h3 id="quadrant-points-heading">Individual data points</h3>
+        <h4 id="quadrant-points-heading">Individual data points</h4>
         <p>These are the specific data points on the chart:</p>
         <ul>`;
 
@@ -849,9 +790,9 @@
               Math.abs(point.coordinates[1] - 0.5) < 0.02)
           ) {
             // Description for center point
-            let pointDescription = `<li><strong>${
+            let pointDescription = `<li><strong>${Common.escapeHtml(
               point.name
-            }</strong>: Located at the center of the chart (where all quadrants meet) with coordinates [${point.coordinates[0].toFixed(
+            )}</strong>: Located at the center of the chart (where all quadrants meet) with coordinates [${point.coordinates[0].toFixed(
               2
             )}, ${point.coordinates[1].toFixed(2)}].<br>`;
             pointDescription +=
@@ -875,45 +816,71 @@
           const yVal = point.coordinates[1];
 
           // Start with name and quadrant
-          let pointDescription = `<li><strong>${
+          let pointDescription = `<li><strong>${Common.escapeHtml(
             point.name
-          }</strong>: Located in the ${quadrantInfo.position} quadrant ("${
+          )}</strong>: Located in the ${
+            quadrantInfo.position
+          } quadrant ("${Common.escapeHtml(
             quadrantInfo.label || "Unlabelled"
-          }") with coordinates [${xVal.toFixed(2)}, ${yVal.toFixed(2)}].<br>`;
+          )}") with coordinates [${xVal.toFixed(2)}, ${yVal.toFixed(2)}].<br>`;
 
           // Add detailed position description
           pointDescription += "This means: ";
 
           // X-axis description with more detail
           if (xVal < 0.25) {
-            pointDescription += `very low ${chart.axes.x.left}`;
+            pointDescription += `very low ${Common.escapeHtml(
+              chart.axes.x.left
+            )}`;
           } else if (xVal < 0.4) {
-            pointDescription += `low ${chart.axes.x.left}`;
+            pointDescription += `low ${Common.escapeHtml(
+              chart.axes.x.left
+            )}`;
           } else if (xVal < 0.5) {
-            pointDescription += `moderately low ${chart.axes.x.left}`;
+            pointDescription += `moderately low ${Common.escapeHtml(
+              chart.axes.x.left
+            )}`;
           } else if (xVal < 0.6) {
-            pointDescription += `moderately high ${chart.axes.x.right}`;
+            pointDescription += `moderately high ${Common.escapeHtml(
+              chart.axes.x.right
+            )}`;
           } else if (xVal < 0.75) {
-            pointDescription += `high ${chart.axes.x.right}`;
+            pointDescription += `high ${Common.escapeHtml(
+              chart.axes.x.right
+            )}`;
           } else {
-            pointDescription += `very high ${chart.axes.x.right}`;
+            pointDescription += `very high ${Common.escapeHtml(
+              chart.axes.x.right
+            )}`;
           }
 
           pointDescription += " and ";
 
           // Y-axis description with more detail
           if (yVal < 0.25) {
-            pointDescription += `very low ${chart.axes.y.bottom}`;
+            pointDescription += `very low ${Common.escapeHtml(
+              chart.axes.y.bottom
+            )}`;
           } else if (yVal < 0.4) {
-            pointDescription += `low ${chart.axes.y.bottom}`;
+            pointDescription += `low ${Common.escapeHtml(
+              chart.axes.y.bottom
+            )}`;
           } else if (yVal < 0.5) {
-            pointDescription += `moderately low ${chart.axes.y.bottom}`;
+            pointDescription += `moderately low ${Common.escapeHtml(
+              chart.axes.y.bottom
+            )}`;
           } else if (yVal < 0.6) {
-            pointDescription += `moderately high ${chart.axes.y.top}`;
+            pointDescription += `moderately high ${Common.escapeHtml(
+              chart.axes.y.top
+            )}`;
           } else if (yVal < 0.75) {
-            pointDescription += `high ${chart.axes.y.top}`;
+            pointDescription += `high ${Common.escapeHtml(
+              chart.axes.y.top
+            )}`;
           } else {
-            pointDescription += `very high ${chart.axes.y.top}`;
+            pointDescription += `very high ${Common.escapeHtml(
+              chart.axes.y.top
+            )}`;
           }
 
           pointDescription += `.`;
@@ -928,7 +895,7 @@
       // Data Points Table Section
       if (totalPoints > 0) {
         description += `<section class="points-table-section" role="region" aria-labelledby="quadrant-points-table-heading">
-        <h4 id="quadrant-points-table-heading">Data points table</h4>`;
+        <h5 id="quadrant-points-table-heading">Data points table</h5>`;
 
         // Create table elements
         const { titleElement, tableWrapper } = createQuadrantDataTable(
@@ -946,7 +913,7 @@
 
       // Visual Representation Note - with clearer explanation
       description += `<section class="visual-note-section" role="region" aria-labelledby="quadrant-visual-heading">
-      <h3 id="quadrant-visual-heading">How to read this chart</h3>
+      <h4 id="quadrant-visual-heading">How to read this chart</h4>
       <p>The chart is divided into four equal sections by two crossing lines:
       <ul>
         <li>A vertical line in the middle divides left from right.</li>
@@ -955,12 +922,12 @@
       </p>
       <p>Points are placed according to their values:
       <ul>
-        <li>Points further to the right have higher x-axis values (${
+        <li>Points further to the right have higher x-axis values (${Common.escapeHtml(
           chart.axes.x.right || "high x-values"
-        }).</li>
-        <li>Points higher up on the chart have higher y-axis values (${
+        )}).</li>
+        <li>Points higher up on the chart have higher y-axis values (${Common.escapeHtml(
           chart.axes.y.top || "high y-values"
-        }).</li>
+        )}).</li>
       </ul>
       </p>
     `;
@@ -1106,21 +1073,11 @@
     },
   });
 
-  // Set up detection for quadrant charts
-  if (window.MermaidDiagramDetection) {
-    // Ensure quadrant charts are correctly detected
-    const originalDetectDiagramType =
-      window.MermaidDiagramDetection.detectDiagramType;
-
-    window.MermaidDiagramDetection.detectDiagramType = function (code) {
-      if (code && code.trim().startsWith("quadrantChart")) {
-        return "quadrantChart";
-      }
-
-      // Fall back to original detection function
-      return originalDetectDiagramType(code);
-    };
-  }
+  // Detection is NOT set up here. This module used to monkey-patch
+  // window.MermaidDiagramDetection.detectDiagramType with a quadrantChart
+  // special case, which gave detection two owners and meant load order decided
+  // the answer. Detection now belongs solely to mermaid-diagram-detection.js,
+  // which asks Mermaid's own detector and already resolves quadrant charts.
 
   logInfo(
     "[Mermaid Accessibility] Quadrant chart module loaded and registered"

@@ -56,6 +56,7 @@ const MermaidAccessibilityPieChart = (function () {
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Generate a short description for a pie chart
@@ -83,8 +84,14 @@ const MermaidAccessibilityPieChart = (function () {
 
     logDebug("Processed " + segments.length + " segments");
 
+    // Diagram-source text is escaped once, here, where it enters an HTML
+    // string. The PLAIN tier below deliberately keeps the raw values: it feeds
+    // the SVG aria-label and the textContent fallback, neither of which parses
+    // HTML, so entities there would be read out literally.
+    const safeTitle = Common.escapeHtml(title);
+
     // Basic description - HTML version
-    let htmlDescription = `A pie chart titled "<span class="diagram-title">${title}</span>" showing the distribution of ${
+    let htmlDescription = `A pie chart titled "<span class="diagram-title">${safeTitle}</span>" showing the distribution of ${
       segments.length || "multiple"
     } categories.`;
 
@@ -114,9 +121,9 @@ const MermaidAccessibilityPieChart = (function () {
       }
 
       // HTML version
-      htmlDescription += ` <span class="diagram-segment">${
+      htmlDescription += ` <span class="diagram-segment">${Common.escapeHtml(
         largestSegment.name
-      }</span> is the largest segment at <span class="diagram-percentage">${percentage}%</span>${
+      )}</span> is the largest segment at <span class="diagram-percentage">${percentage}%</span>${
         proportion
           ? `, representing <span class="diagram-proportion">${proportion}</span> of the total`
           : ""
@@ -236,12 +243,18 @@ const MermaidAccessibilityPieChart = (function () {
     // 1. Chart Construction Section
     description += `<section class="mermaid-section chart-construction">
           <h4 class="mermaid-details-heading">Chart Construction</h4>
-          <p>This pie chart titled "<span class="diagram-title">${title}</span>" shows the distribution of categories.</p>`;
+          <p>This pie chart titled "<span class="diagram-title">${Common.escapeHtml(
+            title
+          )}</span>" shows the distribution of categories.</p>`;
 
     if (segments.length > 0) {
       description += `<p>The chart shows <span class="diagram-count">${segments.length}</span> categories:</p><ul class="diagram-segment-list">`;
       segments.forEach((segment) => {
-        description += `<li><span class="diagram-segment">${segment.name.toLowerCase()}</span></li>`;
+        // Escaped AFTER the lower-casing transform: escaping first would turn
+        // the entity names themselves into lower case (&LT; is not &lt;).
+        description += `<li><span class="diagram-segment">${Common.escapeHtml(
+          segment.name.toLowerCase()
+        )}</span></li>`;
       });
       description += `</ul>`;
     } else {
@@ -280,9 +293,9 @@ const MermaidAccessibilityPieChart = (function () {
         proportion = "over a quarter";
       }
 
-      description += `<li class="diagram-insight diagram-insight-primary"><strong><span class="diagram-segment">${
+      description += `<li class="diagram-insight diagram-insight-primary"><strong><span class="diagram-segment">${Common.escapeHtml(
         largestSegment.name
-      }</span> is the largest segment at <span class="diagram-percentage">${largestPercentage}%</span>${
+      )}</span> is the largest segment at <span class="diagram-percentage">${largestPercentage}%</span>${
         proportion
           ? `, representing <span class="diagram-proportion">${proportion}</span> of the total`
           : ""
@@ -302,9 +315,9 @@ const MermaidAccessibilityPieChart = (function () {
       const largestPercentage = ((largestSegment.value / total) * 100).toFixed(
         1
       );
-      description += `<li class="diagram-insight diagram-insight-largest">Largest segment: <span class="diagram-segment">${
+      description += `<li class="diagram-insight diagram-insight-largest">Largest segment: <span class="diagram-segment">${Common.escapeHtml(
         largestSegment.name
-      }</span> (<span class="diagram-value">${largestSegment.value.toFixed(
+      )}</span> (<span class="diagram-value">${largestSegment.value.toFixed(
         1
       )}</span>, <span class="diagram-percentage">${largestPercentage}%</span>)</li>`;
 
@@ -312,9 +325,9 @@ const MermaidAccessibilityPieChart = (function () {
         (smallestSegment.value / total) *
         100
       ).toFixed(1);
-      description += `<li class="diagram-insight diagram-insight-smallest">Smallest segment: <span class="diagram-segment">${
+      description += `<li class="diagram-insight diagram-insight-smallest">Smallest segment: <span class="diagram-segment">${Common.escapeHtml(
         smallestSegment.name
-      }</span> (<span class="diagram-value">${smallestSegment.value.toFixed(
+      )}</span> (<span class="diagram-value">${smallestSegment.value.toFixed(
         1
       )}</span>, <span class="diagram-percentage">${smallestPercentage}%</span>)</li>`;
     }
@@ -329,9 +342,9 @@ const MermaidAccessibilityPieChart = (function () {
     // Add all segments with values and percentages
     segments.forEach((segment) => {
       const percentage = ((segment.value / total) * 100).toFixed(1);
-      description += `<li class="diagram-data-item"><span class="diagram-segment">${
+      description += `<li class="diagram-data-item"><span class="diagram-segment">${Common.escapeHtml(
         segment.name
-      }</span>: <span class="diagram-value">${segment.value.toFixed(
+      )}</span>: <span class="diagram-value">${segment.value.toFixed(
         1
       )}</span> (<span class="diagram-percentage">${percentage}%</span>)</li>`;
     });
@@ -385,7 +398,7 @@ const MermaidAccessibilityPieChart = (function () {
       <p>`;
 
     if (isSkewed) {
-      patternSection += `This chart shows a <span class="diagram-pattern diagram-pattern-skewed">skewed distribution</span> where <span class="diagram-segment">${segments[0].name}</span> 
+      patternSection += `This chart shows a <span class="diagram-pattern diagram-pattern-skewed">skewed distribution</span> where <span class="diagram-segment">${Common.escapeHtml(segments[0].name)}</span> 
         at <span class="diagram-percentage">${topSegmentPercentage}%</span> is significantly larger than the average segment size 
         of <span class="diagram-percentage">${avgPercentage}%</span>.`;
     } else {

@@ -764,6 +764,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     pdfOptionsContainer.style.display = "block";
 
     // Initialize default processing options FIRST (will be overridden by HTML checkbox states)
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     this.currentProcessingOptions = {
       page_range: "all",
       formats: [
@@ -773,6 +774,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
         "tex.zip",
         "docx",
         "pptx",
+        "xlsx",
         "pdf",
         "mmd.zip",
         "md.zip",
@@ -3696,6 +3698,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // Format mapping: checkbox ID suffix -> API feature name
     // Maps all PDF format checkboxes to their required API features
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const formatFeatureMap = {
       // Basic formats (require only 'pdf' feature - available on all endpoints)
       mmd: "pdf", // Markdown Math Document
@@ -3711,6 +3714,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       latexpdf: "latex_pdf", // PDF with LaTeX rendering - ONLY this requires latex_pdf
       docx: "docx", // Microsoft Word
       pptx: "docx", // Microsoft PowerPoint (uses same feature gate as DOCX)
+      xlsx: "docx", // Microsoft Excel (uses same feature gate as DOCX)
     };
 
     // Display names for aria-label generation. Compound format keys
@@ -3718,11 +3722,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // toUpperCase alone produces unreadable strings like "HTMLZIP" /
     // "LATEXPDF" — bad for screen-reader announcements. Falls back to
     // format.toUpperCase() for simple format names.
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const FORMAT_DISPLAY_NAMES = {
       htmlzip: "HTML ZIP",
       mmdzip: "MMD ZIP",
       mdzip: "MD ZIP",
       latexpdf: "LaTeX PDF",
+      xlsx: "Excel",
     };
     const displayNameFor = (fmt) =>
       FORMAT_DISPLAY_NAMES[fmt] || fmt.toUpperCase();
@@ -3904,11 +3910,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
     }
 
     // Format mapping: API format name -> feature name for availability check
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const formatFeatureMap = {
       mmd: "pdf",
       html: "pdf",
       latex: "latex_pdf",
       docx: "docx",
+      xlsx: "docx", // SuperNet-200: Excel shares the DOCX feature gate
     };
 
     const unavailableFormats = [];

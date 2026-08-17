@@ -103,6 +103,10 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
         run: { font: FONT, size: 26, bold: true, color: HEADING_COLOUR },
         paragraph: { spacing: { before: 200, after: 120 } },
       },
+      heading3: {
+        run: { font: FONT, size: 23, bold: true, color: HEADING_COLOUR },
+        paragraph: { spacing: { before: 160, after: 120 } },
+      },
     },
   };
 
@@ -317,8 +321,46 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
   }
 
   /**
+   * Builds one paragraph per dt/dd pair for a definition list: a bold "label: "
+   * run followed by the dd's inline runs (text, links, etc.). Mirrors the
+   * plain-text `dl` handling in the controller's serialiseToText.
+   * @param {Element} dlEl - dl element
+   * @param {Array} out - Accumulator of docx.Paragraph
+   */
+  function collectDefinitionList(dlEl, out) {
+    let currentLabel = null;
+    dlEl.childNodes.forEach(function (child) {
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+      const tag = child.tagName.toLowerCase();
+      if (tag === "dt") {
+        currentLabel = child;
+        return;
+      }
+      if (tag !== "dd") return;
+
+      const runs = [];
+      if (currentLabel) {
+        const labelText = (currentLabel.textContent || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (labelText) {
+          runs.push(
+            new window.docx.TextRun({ text: labelText + ": ", bold: true }),
+          );
+        }
+      }
+      pushInline(child, runs, {});
+      if (runs.length === 0) {
+        runs.push(new window.docx.TextRun(""));
+      }
+      out.push(new window.docx.Paragraph({ children: runs }));
+    });
+  }
+
+  /**
    * Walks a fragment node, appending docx.Paragraph objects to `out`.
-   * h3 -> Heading 1, h4 -> Heading 2, p -> normal, ul/ol -> bullets.
+   * h3 -> Heading 1, h4 -> Heading 2, h5 -> Heading 3, p -> normal, ul/ol -> bullets,
+   * dl -> label/value paragraphs, [data-export-text] -> a fallback link/line.
    * @param {Node} node - Node to walk
    * @param {Array} out - Accumulator of docx.Paragraph
    */
@@ -328,6 +370,48 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
       if (shouldSkip(child)) return;
 
       const tag = child.tagName.toLowerCase();
+
+      // Export-text fallback: represent an embed (e.g. a video) as one
+      // paragraph - a hyperlink when data-export-href is present, else a plain
+      // line. Do NOT descend (mirrors serialiseToText's data-export-text).
+      if (child.hasAttribute("data-export-text")) {
+        const exportText = (child.getAttribute("data-export-text") || "")
+          .replace(/\s+/g, " ")
+          .trim();
+        const exportHref = child.getAttribute("data-export-href");
+        if (exportText) {
+          if (exportHref && exportHref.trim()) {
+            out.push(
+              new window.docx.Paragraph({
+                children: [
+                  new window.docx.ExternalHyperlink({
+                    link: exportHref.trim(),
+                    children: [
+                      new window.docx.TextRun({
+                        text: exportText,
+                        style: "Hyperlink",
+                        color: LINK_COLOUR,
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            );
+          } else {
+            out.push(
+              new window.docx.Paragraph({
+                children: [new window.docx.TextRun(exportText)],
+              }),
+            );
+          }
+        }
+        return;
+      }
+
+      if (tag === "dl") {
+        collectDefinitionList(child, out);
+        return;
+      }
 
       if (tag === "h3") {
         out.push(
@@ -349,7 +433,17 @@ const ALLY_STATEMENT_PREVIEW_DOCX = (function () {
         return;
       }
 
-      if (tag === "h1" || tag === "h2" || tag === "h5" || tag === "h6") {
+      if (tag === "h5") {
+        out.push(
+          new window.docx.Paragraph({
+            heading: window.docx.HeadingLevel.HEADING_3,
+            children: inlineRuns(child),
+          }),
+        );
+        return;
+      }
+
+      if (tag === "h1" || tag === "h2" || tag === "h6") {
         // Fallback for any other heading level - treat as Heading 2
         out.push(
           new window.docx.Paragraph({

@@ -122,6 +122,7 @@ function logDebug(message, ...args) {
  * @property {string} [results.md] - Markdown content
  * @property {Blob} [results.docx] - DOCX blob
  * @property {Blob} [results.pptx] - PPTX blob
+ * @property {Blob} [results.xlsx] - XLSX blob
  * @property {Blob} [results.pdf] - Rendered PDF blob
  * @property {Object} results.archives - Nested ZIP archives as Blobs
  *
@@ -168,11 +169,13 @@ const DIRECTORIES = {
  * MIME type mappings for file extensions
  * @constant {Object}
  */
+// FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
 const MIME_TYPES = {
   // Documents
   pdf: "application/pdf",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   // Images
   png: "image/png",
   jpg: "image/jpeg",
@@ -353,12 +356,14 @@ class MathPixZIPParser {
         type: null,
         isPDF: false,
       },
+      // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
       results: {
         mmd: null,
         html: null,
         md: null,
         docx: null,
         pptx: null,
+        xlsx: null,
         pdf: null,
         archives: {},
       },
@@ -498,12 +503,14 @@ class MathPixZIPParser {
   async extractResults(zip) {
     logDebug("Extracting results...");
 
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const results = {
       mmd: null,
       html: null,
       md: null,
       docx: null,
       pptx: null,
+      xlsx: null,
       pdf: null,
       archives: {},
     };
@@ -534,6 +541,11 @@ class MathPixZIPParser {
         } else if (filename.endsWith(".pptx")) {
           results.pptx = await zip.files[filePath].async("blob");
           logDebug("Extracted PPTX blob");
+        } else if (filename.endsWith(".xlsx")) {
+          // Must precede the .zip catch-all below - an xlsx IS a zip container,
+          // but it is a result format, not a nested archive.
+          results.xlsx = await zip.files[filePath].async("blob");
+          logDebug("Extracted XLSX blob");
         } else if (filename.endsWith(".pdf") && !filename.includes("latex")) {
           // Rendered PDF (not source)
           results.pdf = await zip.files[filePath].async("blob");
@@ -1159,6 +1171,7 @@ window.testZIPParseLive = async function (file) {
     console.log(`    MD: ${result.results.md ? "Present" : "Not found"}`);
     console.log(`    DOCX: ${result.results.docx ? "Present" : "Not found"}`);
     console.log(`    PPTX: ${result.results.pptx ? "Present" : "Not found"}`);
+    console.log(`    XLSX: ${result.results.xlsx ? "Present" : "Not found"}`);
     console.log(`    PDF: ${result.results.pdf ? "Present" : "Not found"}`);
     console.log(
       `    Archives: ${

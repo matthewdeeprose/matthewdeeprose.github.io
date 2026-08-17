@@ -120,6 +120,36 @@
   // Rough chars-per-token divisor for the runtime text estimate (English ≈ 4).
   const CHARS_PER_TOKEN = 4;
 
+  // The stages during which the model is actually producing text, so the progress
+  // bar pulses and the screen-reader keep-alive below runs. Hoisted to one frozen
+  // list because showProgress() and updateProgressTime() must agree on it: if they
+  // drift, the bar pulses while the announcement is silent, or the reverse.
+  const GENERATING_STAGES = Object.freeze([
+    "GENERATING",
+    "REASONING",
+    "GENERATING_LOCAL",
+    "GENERATING_QWEN",
+    "GENERATING_LFM2VL",
+  ]);
+
+  // How often to tell a screen-reader user that a generation is still running.
+  //
+  // #imgdesc-output is deliberately NOT a live region (see tools.html): it is
+  // rewritten on every streamed chunk, so announcing it re-read the ENTIRE
+  // accumulated description each time — measured on a real run as ~25 re-reads of
+  // a growing document, ending around 400 words per chunk. That is unusable, and
+  // it buried the completion message.
+  //
+  // Silence alone is not right either: a reasoning model can think for minutes,
+  // and with the output region quiet there is nothing to distinguish "still
+  // working" from "dead". So a short keep-alive — long enough not to become
+  // chatter in its own right, short enough to reassure.
+  //
+  // 10s, Matthew's call after hearing the first pass. Note the practical effect
+  // on testing: at 20s a typical 8-11s cloud generation finished before the
+  // first ping was ever due, so the keep-alive went unheard through two listens.
+  const GENERATING_ANNOUNCE_INTERVAL_S = 10;
+
   // ============================================================================
   // PROGRESS STAGES (moved from core — only used by generate methods)
   // ============================================================================
@@ -227,6 +257,43 @@
       weight: 5,
     },
   };
+
+  // ============================================================================
+  // FAILURE WORDING (F2-14)
+  // ============================================================================
+
+  // Plain-language wording for the statuses worth naming. Anything absent falls
+  // through to today's exact wording, so an unmapped status still says what it
+  // has always said.
+  const ERROR_TEXT_BY_STATUS = Object.freeze({
+    401: "Your sign-in has expired. Sign in again, then try again.",
+    // Deliberately does NOT suggest signing in again. A 403 is a permissions
+    // decision, not an expired credential — signing in again cannot change it,
+    // and sending someone round that loop is worse than saying nothing.
+    403: "Your account is not permitted to use this service.",
+    503: "The service could not check your sign-in just now. Please try again shortly.",
+  });
+
+  /**
+   * Choose the sentence for one generation failure.
+   *
+   * The provider attaches the HTTP status to the Error it throws and nothing
+   * between there and the outer catch reshapes the object, so the status is
+   * readable here — it was simply never read.
+   *
+   * @param {Error|{message: string}} error
+   * @returns {string} the sentence for the visible status, the toast and the
+   *   announcement alike — all three are fed from this one value.
+   */
+  function composeGenerationErrorText(error) {
+    const status = error ? error.status : undefined;
+    // typeof FIRST: the map is keyed by number but property access stringifies,
+    // so a string "401" would match without this test.
+    if (typeof status === "number" && ERROR_TEXT_BY_STATUS[status]) {
+      return ERROR_TEXT_BY_STATUS[status];
+    }
+    return "Generation failed: " + (error && error.message ? error.message : error);
+  }
 
   // ============================================================================
   // METHODS (mixed into ImageDescriberController)
@@ -1210,6 +1277,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       const embedConfig = {
         containerId: "imgdesc-verification-output",
+
+        // Same reason as the main output embed: streamed content into a live
+        // region re-reads the whole thing per token. This container also sits
+        // inside a closed <details>, so it was announcing only in the state
+        // where the user had opened the disclosure and could read it anyway.
+        announceContainer: false,
         model: verifyModel,
         temperature: 0.2, // Lower temperature for accuracy checking
         max_tokens: 2000, // Verification needs fewer tokens
@@ -1622,14 +1695,18 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       // Toggle pulsing animation during generation stages (post-14F)
       if (this.elements.progressFill) {
-        const isGenerating =
-          stage === "GENERATING" ||
-          stage === "REASONING" ||
-          stage === "GENERATING_LOCAL" ||
-          stage === "GENERATING_QWEN" ||
-          stage === "GENERATING_LFM2VL";
-        this.elements.progressFill.classList.toggle("generating", isGenerating);
+        this.elements.progressFill.classList.toggle(
+          "generating",
+          GENERATING_STAGES.indexOf(stage) !== -1,
+        );
       }
+
+      // Restart the screen-reader keep-alive clock on every stage change.
+      // Elapsed accumulates across stages, so the marker must be set to NOW —
+      // resetting it to 0 makes the first "Still generating" ping fire early
+      // (time spent in earlier stages already exceeds the interval). With this,
+      // the first ping lands one full interval after entering a generating stage.
+      this._lastGeneratingAnnounceS = this.getElapsedSeconds();
 
       // Update progress bar
       const percentage = this.calculateProgressPercentage(stage);
@@ -1816,6 +1893,33 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       const elapsed = Math.floor((Date.now() - this.progressStartTime) / 1000);
       this.elements.progressTime.textContent = `${elapsed}s`;
+
+      this._announceStillGenerating(elapsed);
+    },
+
+    /**
+     * Screen-reader keep-alive during generation.
+     *
+     * The elapsed counter above is visible-only: #imgdesc-progress-time is not a
+     * live region, and making it one would speak every single second. This says
+     * the same thing at a usable cadence.
+     *
+     * Only runs while the model is producing text. The earlier stages
+     * (validating, compressing, analysing) are fast and already announced, so a
+     * keep-alive there would be noise.
+     *
+     * @param {number} elapsed - Elapsed seconds, as counted for the visible timer
+     */
+    _announceStillGenerating(elapsed) {
+      if (GENERATING_STAGES.indexOf(this.currentStage) === -1) return;
+
+      const last = this._lastGeneratingAnnounceS || 0;
+      if (elapsed - last < GENERATING_ANNOUNCE_INTERVAL_S) return;
+
+      this._lastGeneratingAnnounceS = elapsed;
+      this.announceStatus(
+        `Still generating. ${this.formatElapsedTime(elapsed)} elapsed.`,
+      );
     },
 
     /**
@@ -1943,7 +2047,51 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       }
 
       // Announce to screen reader
-      this.announceStatus("Generation cancelled");
+      // No announceStatus here: notifyInfo above carries the same words, and the
+      // notification container is aria-live="polite".
+
+      // Hiding the progress area removed the Cancel button focus was sitting
+      // on — a second focus drop (SC 2.4.3). Cancel does NOT restore the
+      // config layout, so the Generate button is usually still hidden; fall
+      // through to the first focusable of the ready-state controls.
+      const active = document.activeElement;
+      if (
+        !active ||
+        active === document.body ||
+        active === this.elements.cancelBtn
+      ) {
+        const target = [
+          this.elements.generateBtn,
+          this.elements.regenerateBtn,
+          this.elements.newImageBtn,
+        ].find((el) => el && !el.disabled && el.offsetParent !== null);
+        if (target) target.focus();
+      }
+    },
+
+    /**
+     * Move focus onto the Cancel button after the switch to the output UI.
+     *
+     * showOutputUI() hides the generate area, so a keyboard user's focus on
+     * the Generate button silently drops to <body> (SC 2.4.3). Cancel is the
+     * only actionable control while generating, so it takes focus — guarded
+     * on where focus actually was, so a user focused elsewhere is not moved.
+     *
+     * Must run AFTER showOutputUI(): the Cancel button's ancestor
+     * #imgdesc-output-section is display:none before that call, and focus()
+     * on a hidden element is a silent no-op.
+     */
+    _focusCancelAfterOutputSwitch() {
+      const active = document.activeElement;
+      const focusDropped =
+        !active ||
+        active === document.body ||
+        active === this.elements.generateBtn ||
+        active === this.elements.generateLocalBtn;
+
+      if (focusDropped && this.elements.cancelBtn) {
+        this.elements.cancelBtn.focus();
+      }
     },
 
     // ========================================================================
@@ -2178,6 +2326,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
         // Switch to output UI (Phase 2B.2)
         this.showOutputUI();
+        this._focusCancelAfterOutputSwitch();
 
         // Build prompts
         const systemPrompt = this.buildSystemPrompt();
@@ -2216,9 +2365,18 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             "Generation stopped: selected model cannot process images",
             "error",
           );
-          this.announceStatus(
-            "Selected model cannot process images. Choose a vision-capable model.",
-          );
+          // No announceStatus here. showError() above already raises a toast, and
+          // the notification container is aria-live="polite", so this said the
+          // same thing again — measured on a real NVDA listen 3 August 2026 as
+          // THREE utterances for one event.
+          //
+          // Worth recording why the gate did not catch it: the two wordings
+          // differed only in punctuation ("images — choose" against
+          // "images. Choose"), so neither string contained the other and the
+          // duplicate detector — which matches by equality or containment — saw
+          // two legitimate messages. This is the "duplicates that reword" blind
+          // spot named in the a11y skill reference, and it is the first live
+          // example of it. A human listen remains the only thing that finds it.
           return; // finally{} resets isGenerating / abortController / buttons
         }
 
@@ -2436,8 +2594,24 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         }
 
         logError("Generation failed:", error);
-        this.showError(`Generation failed: ${error.message}`);
-        this.showStatus("Generation failed", "error");
+        // ONE sentence, THREE surfaces. showError writes the visible status
+        // (#imgdesc-status) and raises the toast, and the toast is what speaks —
+        // it announces on the assertive channel through accessibilityHelpers.
+        //
+        // The separate showStatus("Generation failed", "error") that used to sit
+        // on the next line has been REMOVED, and must not come back as a tidy-up.
+        // It ran after showError and overwrote the visible text, so a sighted
+        // user read four words while the toast and its announcement carried the
+        // raw provider string — the HTTP code and the JSON body. The person who
+        // most needs plain language was getting the rawest version of it.
+        //
+        // Nothing is added here to announce. #imgdesc-status is deliberately not
+        // a live region (see the comment above it in tools.html: it measured
+        // notRendered because its container is display:none until there is
+        // output), and a second announcement beside the toast's would speak the
+        // same failure twice — the defect Chat's stage 13 spent three commits
+        // removing.
+        this.showError(composeGenerationErrorText(error));
       } finally {
         this.isGenerating = false;
         this.abortController = null;
@@ -2531,6 +2705,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Switch to output UI (reuse existing layout switching)
         this.showOutputUI();
         this.showOutputSection();
+        this._focusCancelAfterOutputSwitch();
 
         // Clear previous output
         if (this.elements.output) {
@@ -2792,6 +2967,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Switch to output UI
         this.showOutputUI();
         this.showOutputSection();
+        this._focusCancelAfterOutputSwitch();
 
         // Clear previous output
         if (this.elements.output) {
@@ -3057,6 +3233,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Switch to output UI
         this.showOutputUI();
         this.showOutputSection();
+        this._focusCancelAfterOutputSwitch();
 
         // Clear previous output
         if (this.elements.output) {
@@ -3348,6 +3525,14 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       // Build configuration object
       const embedConfig = {
         containerId: "imgdesc-output",
+
+        // The embed makes its container an aria-live region with
+        // aria-atomic="true" unless told otherwise, and it does so AT RUNTIME —
+        // which is why setting aria-live="off" in tools.html alone did nothing.
+        // Streamed output rewrites the container per token, so the region
+        // re-read the entire growing description each time. Completion is
+        // announced by announceStatus() and progress by the 20s keep-alive.
+        announceContainer: false,
         model: selectedModel,
         temperature: cfg.temperature,
         max_tokens: cfg.maxTokens,

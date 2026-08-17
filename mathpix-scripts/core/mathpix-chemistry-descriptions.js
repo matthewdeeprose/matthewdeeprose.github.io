@@ -199,6 +199,9 @@
   function generateShortDescription() {
     return MathpixChemistryProse.internals.helpers.generateShortDescription.apply(null, arguments);
   }
+  function generateChemistryCaption() {
+    return MathpixChemistryProse.internals.helpers.generateChemistryCaption.apply(null, arguments);
+  }
   function generateShortDescriptionForAria() {
     return MathpixChemistryProse.internals.helpers.generateShortDescriptionForAria.apply(null, arguments);
   }
@@ -211,6 +214,7 @@
   utils.generateStructuralDescription = generateStructuralDescription;
   utils.generateStructuralDescriptionForAria = generateStructuralDescriptionForAria;
   utils.generateShortDescription = generateShortDescription;
+  utils.generateChemistryCaption = generateChemistryCaption;
   utils.generateShortDescriptionForAria = generateShortDescriptionForAria;
 
   // Phase 14-1d Step 5: Table 1 retired. The 9 entries (numberWord,

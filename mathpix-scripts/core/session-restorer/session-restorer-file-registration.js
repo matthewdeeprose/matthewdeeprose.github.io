@@ -130,6 +130,15 @@
 
     // Clear preview debounce
     clearTimeout(this.previewDebounce);
+
+    // Cancel any pending autosave. A save debounced by an edit within the last
+    // second would otherwise fire ~1s after this teardown against a null
+    // session: the localStorage write is guarded by the restoredSession
+    // null-check, but the updateSessionStatus("saving"/"saved") calls are not,
+    // so a dead timer would still flip the aria-live status region with nothing
+    // saved. Cancelling here stops that.
+    clearTimeout(this.autoSaveTimer);
+    this.autoSaveTimer = null;
   };
 
   // =========================================================================

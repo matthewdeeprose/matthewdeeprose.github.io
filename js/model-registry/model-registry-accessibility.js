@@ -201,17 +201,10 @@ export class ModelRegistryAccessibility {
     this.announceStatus(`Selected model: ${modelName}`, "polite");
   }
 
-  /**
-   * Announce a model registration
-   * @param {string} modelId - ID of the registered model
-   * @param {Object} model - Model configuration
-   */
-  announceModelRegistration(modelId, model) {
-    this.announceStatus(
-      `Model registered: ${model.name} from ${model.provider}`,
-      "polite"
-    );
-  }
+  // NOTE: there was an announceModelRegistration() here. It was removed rather
+  // than left unwired: registering a model is a module-evaluation data event
+  // with no user-initiated cause, and announcing it put 365 live regions on the
+  // page at load. See the MODEL_REGISTERED listener in model-registry-core.js.
 
   /**
    * Announce a model status change

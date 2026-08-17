@@ -75,7 +75,17 @@ const MathPixContextAI = (function () {
   /** Hidden, aria-hidden container the embed renders into (never displayed). */
   const EMBED_CONTAINER_ID = "mathpix-context-ai-embed-container";
 
-  /** PDF-capable default model for the context round-trip. */
+  /**
+   * Default model id for the context round-trip. KEPT — it has a load-bearing
+   * reader in _resolveModel(): when a provider tags PDF as a per-model
+   * capability (Foundry), THIS id is the preferred pick if itself ["pdf"]-
+   * eligible, else the first eligible model. When a provider does NOT tag PDF
+   * per model (OpenRouter reads PDFs at the engine level), THIS id is the
+   * fallback anchor — resolved only when it appears in that provider's
+   * unfiltered eligible list, so it can never be borrowed across providers. Also
+   * the documented last-resort fallback id in initEmbed and the cost preview
+   * when no model has been resolved for the run.
+   */
   const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
   /** Approximate characters per token, for the max_tokens scaling below. */
@@ -84,7 +94,13 @@ const MathPixContextAI = (function () {
   /** Floor for the response budget — the labelled-block reply is small. */
   const MAX_TOKENS_FLOOR = 1024;
 
-  /** Output cap for the default model (claude-haiku-4.5). */
+  /**
+   * Conservative, generic output budget — deliberately NOT tied to a specific
+   * model. It clamps the response budget in initEmbed regardless of which model
+   * _resolveModel() picks. Follow-up: derive the true per-model output cap from
+   * the selected model's registry metadata in the alt-text adapter phase. Left
+   * generic here as a conscious, documented leave, not a silent mismatch.
+   */
   const DEFAULT_MODEL_MAX_OUTPUT = 8192;
 
   /**
@@ -353,11 +369,113 @@ const MathPixContextAI = (function () {
   // ---------------------------------------------------------------------------
 
   /**
+   * Resolve ONE model for this run from the global provider switch (S2F-D8: no
+   * picker UI). Reads ProviderSwitcher.getActive(), asks EmbedModelSelector for
+   * the PDF-capable eligible models of that provider, and returns a single
+   * choice — the documented preferred id when eligible, else the first eligible
+   * model — mirroring the reference default-pick in
+   * image-describer-controller-model.js. The Context tab attaches a PDF, so the
+   * capability filter is ["pdf"], not ["vision"].
+   *
+   * Returns null (a clear sentinel) when the selector is unavailable or the
+   * active provider serves no PDF-capable model, so the caller can refuse
+   * cleanly rather than send to a model that cannot read the attachment.
+   *
+   * @returns {{id: string, model: Object, providerId: string}|null}
+   */
+  function _resolveModel() {
+    const providerId =
+      window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+        ? window.ProviderSwitcher.getActive()
+        : "openrouter";
+
+    if (
+      !window.EmbedModelSelector ||
+      typeof window.EmbedModelSelector.getEligibleModels !== "function"
+    ) {
+      logWarn(
+        "_resolveModel: EmbedModelSelector unavailable; cannot resolve a PDF-capable model."
+      );
+      return null;
+    }
+
+    let pdfEligible = [];
+    try {
+      pdfEligible = window.EmbedModelSelector.getEligibleModels({
+        providerId,
+        capabilities: ["pdf"],
+      });
+    } catch (error) {
+      logWarn("_resolveModel: getEligibleModels(['pdf']) threw:", error);
+      pdfEligible = [];
+    }
+
+    if (Array.isArray(pdfEligible) && pdfEligible.length > 0) {
+      // Foundry-first path: the provider tags PDF as a per-model capability.
+      // Default-pick: prefer the documented default id when it is itself
+      // eligible, otherwise the first eligible model (registry order).
+      const preferred = pdfEligible.find(
+        (model) => model && model.id === DEFAULT_MODEL
+      );
+      const chosen = preferred || pdfEligible[0];
+      logInfo("Context model resolved via ['pdf'] capability gate", {
+        providerId,
+        model: chosen.id,
+        eligibleCount: pdfEligible.length,
+      });
+      return { id: chosen.id, model: chosen, providerId };
+    }
+
+    // Fallback path (FF.1 plan correction): OpenRouter — the default provider —
+    // expresses PDF support at the engine / file-upload level (native,
+    // mistral-ocr), NOT as a per-model capability token, so NO OpenRouter model
+    // passes a ["pdf"] filter. To keep the default provider working, fall back
+    // to the documented DEFAULT_MODEL — but ONLY when DEFAULT_MODEL genuinely
+    // belongs to the ACTIVE provider (its id appears in that provider's
+    // UNFILTERED eligible list). This provider-membership gate is load-bearing:
+    // it stops an OpenRouter model id ever being resolved for Foundry, which —
+    // with an empty ["pdf"] list — correctly refuses rather than borrowing Haiku.
+    //
+    // Follow-up (roadmap, not this parcel): reconcile how the two providers
+    // express PDF capability so a single gate serves both without this fallback.
+    let unfiltered = [];
+    try {
+      unfiltered = window.EmbedModelSelector.getEligibleModels({
+        providerId,
+        capabilities: [],
+      });
+    } catch (error) {
+      logWarn("_resolveModel: getEligibleModels([]) fallback threw:", error);
+      unfiltered = [];
+    }
+
+    const fallbackModel =
+      Array.isArray(unfiltered) &&
+      unfiltered.find((model) => model && model.id === DEFAULT_MODEL);
+
+    if (fallbackModel) {
+      logInfo(
+        "Context model resolved via DEFAULT_MODEL fallback (provider has no ['pdf']-tagged model)",
+        { providerId, model: fallbackModel.id }
+      );
+      return { id: fallbackModel.id, model: fallbackModel, providerId };
+    }
+
+    logWarn(
+      `_resolveModel: no ['pdf'] model and no DEFAULT_MODEL fallback for provider '${providerId}'.`
+    );
+    return null;
+  }
+
+  /**
    * Create the hidden OpenRouter Embed instance for one context round-trip.
    *
    * Mirrors MathPixAIEnhancer.initialiseEmbed(): a single off-screen,
-   * aria-hidden container (we never display its output), the PDF-capable default
-   * model, the context system prompt drawn from buildPrompt() so the system and
+   * aria-hidden container (we never display its output), the provider-resolved
+   * PDF-capable model (this._resolvedModel from _resolveModel(), with an
+   * options.model override), the context system prompt drawn from buildPrompt()
+   * so the system and
    * user halves can never drift, temperature 0.3, and a max_tokens scaled from
    * the source length but clamped between a sensible floor and the model cap.
    *
@@ -384,7 +502,14 @@ const MathPixContextAI = (function () {
       document.body.appendChild(container);
     }
 
-    const model = options.model || DEFAULT_MODEL;
+    // One id drives the whole run: an explicit options.model override first,
+    // then the model _resolveModel() stored for this run (this._resolvedModel),
+    // then the documented last-resort fallback. The cost preview reads the SAME
+    // source, so the sent id and the estimated id cannot diverge.
+    const model =
+      options.model ||
+      (this._resolvedModel && this._resolvedModel.id) ||
+      DEFAULT_MODEL;
     const modelCap = options.modelMaxOutput || DEFAULT_MODEL_MAX_OUTPUT;
 
     // Single source of truth: the same buildPrompt() that produces the user
@@ -411,7 +536,12 @@ const MathPixContextAI = (function () {
       enableLogging: true,
     });
 
-    logInfo("Context embed initialised", { model, maxTokens, mmdLength });
+    logInfo("Context embed initialised", {
+      provider: this._resolvedModel && this._resolvedModel.providerId,
+      model,
+      maxTokens,
+      mmdLength,
+    });
 
     return this.embed;
   }
@@ -853,6 +983,13 @@ const MathPixContextAI = (function () {
     const el = this.elements && this.elements.cost;
     if (!el) return;
 
+    // The SAME id the send path used — never DEFAULT_MODEL directly — so the
+    // estimate always names and prices the model actually sent (send-id ===
+    // estimate-id). Falls back to the documented default only when no model was
+    // resolved for the run (e.g. a direct call outside handleAnalyseClick).
+    const resolvedId =
+      (this._resolvedModel && this._resolvedModel.id) || DEFAULT_MODEL;
+
     const inputTokens = Math.ceil(
       (typeof mmd === "string" ? mmd.length : 0) / CHARS_PER_TOKEN
     );
@@ -872,7 +1009,7 @@ const MathPixContextAI = (function () {
         registryModel =
           window.modelRegistry
             .getAllModels()
-            .find((model) => model && model.id === DEFAULT_MODEL) || null;
+            .find((model) => model && model.id === resolvedId) || null;
       }
     } catch (error) {
       logWarn("Cost preview: registry lookup failed:", error);
@@ -894,7 +1031,7 @@ const MathPixContextAI = (function () {
     } else {
       el.textContent =
         `About ${inputTokens.toLocaleString()} input tokens. ` +
-        `Cost estimate unavailable for ${DEFAULT_MODEL}.`;
+        `Cost estimate unavailable for ${resolvedId}.`;
     }
   }
 
@@ -1000,6 +1137,23 @@ const MathPixContextAI = (function () {
       this._announce("There is no document text to analyse yet.");
       return;
     }
+
+    // Resolve ONE model for this run from the global provider switch (S2F-D8).
+    // The Context tab always attaches a PDF, so a provider that serves no
+    // PDF-capable model cannot run auto-fill — refuse cleanly before any embed
+    // is built or any request is sent. Same guard shape as the ones above.
+    const resolved = this._resolveModel();
+    if (!resolved) {
+      logWarn(
+        "Context auto-fill refused: active provider has no PDF-capable model."
+      );
+      this._announce(
+        "This provider cannot read PDF files. Choose a different provider to run context auto-fill."
+      );
+      this.refreshAvailability();
+      return;
+    }
+    this._resolvedModel = resolved;
 
     const schema =
       (window.MathPixContextManager &&
@@ -1121,6 +1275,7 @@ const MathPixContextAI = (function () {
     // Transport (P2). `embed` is the live instance, set by initEmbed(); exposed
     // so it can be inspected and, under test, replaced with a stub.
     embed: null,
+    _resolveModel,
     initEmbed,
     attachPDF,
     readFileAsBase64,
@@ -1131,6 +1286,7 @@ const MathPixContextAI = (function () {
     provider: null,
     elements: null,
     _snapshot: null,
+    _resolvedModel: null,
     _busy: false,
     _progressTimer: null,
     init,

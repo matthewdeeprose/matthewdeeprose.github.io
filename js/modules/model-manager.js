@@ -126,8 +126,8 @@ export class ModelManager {
     a11y.addKeyboardSupport(
       modelSelect,
       {
-        Enter: () => this.updateModelInfo(modelSelect.value),
-        Space: () => this.updateModelInfo(modelSelect.value),
+        Enter: () => this.updateModelInfo(modelSelect.value, "user_selection"),
+        Space: () => this.updateModelInfo(modelSelect.value, "user_selection"),
         ArrowUp: () => this.handleModelNavigation("prev"),
         ArrowDown: () => this.handleModelNavigation("next"),
       },
@@ -160,7 +160,7 @@ export class ModelManager {
     );
 
     modelSelect.selectedIndex = newIndex;
-    this.updateModelInfo(options[newIndex].value);
+    this.updateModelInfo(options[newIndex].value, "user_selection");
   }
 
   // This function handles notifications when the AI model changes automatically
@@ -223,8 +223,15 @@ export class ModelManager {
     });
   }
 
-  // Updates the display to show information about the currently selected model
-  updateModelInfo(model, changeType = "user_selection", changeReason = null) {
+  // Updates the display to show information about the currently selected model.
+  //
+  // changeType defaults to "programmatic" — the SILENT branch — deliberately.
+  // It used to default to "user_selection", the one value that announces, so
+  // populateModelSelect()'s initial call below said "Selected model: X" on every
+  // page load while claiming the user had chosen it. A caller that announces by
+  // default makes every future caller announce unless it remembers not to; the
+  // four genuinely user-initiated paths now say so explicitly.
+  updateModelInfo(model, changeType = "programmatic", changeReason = null) {
     this.logDebug("Updating model info:", {
       model,
       changeType,
@@ -410,7 +417,7 @@ export class ModelManager {
 
       modelSelect.addEventListener("change", () => {
         this.logDebug(`Model selection changed to: ${modelSelect.value}`);
-        this.updateModelInfo(modelSelect.value);
+        this.updateModelInfo(modelSelect.value, "user_selection");
       });
 
       return;
@@ -475,10 +482,12 @@ export class ModelManager {
     // Set up change event listener
     modelSelect.addEventListener("change", () => {
       this.logDebug(`Model selection changed to: ${modelSelect.value}`);
-      this.updateModelInfo(modelSelect.value);
+      this.updateModelInfo(modelSelect.value, "user_selection");
     });
 
-    // Show initial model information
+    // Show initial model information. Deliberately bare: this runs at page load,
+    // so it must take the silent "programmatic" default. A screen-reader user
+    // arriving on the page has not chosen anything yet.
     this.updateModelInfo(modelSelect.value);
   }
 

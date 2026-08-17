@@ -546,6 +546,58 @@
         this.startPersistenceSession(parseResult.source.filename);
       }
 
+      // Describe-on-load: fire the chemistry describe in the background now the
+      // registry and chemistry data have settled, so the working MMD carries
+      // prose from load rather than raw <smiles>. shouldPush reads
+      // hasUnsavedChanges, so a person editing during the describe is never
+      // overwritten — the push is skipped and the registry prose is left for
+      // the next propagation. The method persists its own push, so no autosave
+      // is needed here. Fire-and-forget: never awaited, and the .catch swallows
+      // any background failure so it cannot break restore.
+      //
+      // Delayed, chemistry-gated announcement: a screen reader only hears about
+      // the describe when it runs long enough to notice. When chemistry is
+      // present we arm a timer; if the describe is still running after the delay
+      // we politely announce that generation has started, and on settle we
+      // announce it is ready. A describe that finishes before the delay elapses
+      // stays silent — the timer is cleared and nothing was announced. The ready
+      // announcement is further gated on a real push (result.pushed), so the skip
+      // path — the person is editing and shouldPush returned false — stays silent
+      // because the document they are reading did not change. The visible status
+      // pill follows the same delayed schedule as the announcement — it is shown
+      // only if the describe is still running after the delay — and hides on
+      // settle either way, since it only ever claimed "generating".
+      if (typeof this.describeChemistryIntoWorkingMMD === "function") {
+        const DESCRIBE_ANNOUNCE_DELAY_MS = 700;
+        const hasChemistry =
+          (window.getMathPixController?.()?.resultRenderer?._chemistryData || [])
+            .length > 0;
+        let announcedStart = false;
+        let announceTimer = null;
+        if (hasChemistry) {
+          announceTimer = setTimeout(() => {
+            announcedStart = true;
+            this._announceChemistryDescribe("Generating chemistry descriptions");
+            this._setChemistryDescribeStatusVisible(true);
+          }, DESCRIBE_ANNOUNCE_DELAY_MS);
+        }
+        this.describeChemistryIntoWorkingMMD({
+          shouldPush: () => this.hasUnsavedChanges === false,
+        })
+          .then((result) => {
+            if (announceTimer) clearTimeout(announceTimer);
+            this._setChemistryDescribeStatusVisible(false);
+            if (announcedStart && result && result.pushed)
+              this._announceChemistryDescribe("Chemistry descriptions ready");
+            if (result && result.graphOnly > 0) this._schedulePubChemUpgrade();
+          })
+          .catch((chemErr) => {
+            if (announceTimer) clearTimeout(announceTimer);
+            this._setChemistryDescribeStatusVisible(false);
+            logError("describe-on-load failed", chemErr);
+          });
+      }
+
       // Show Switch Version button if there are multiple versions available
       // (even without localStorage sessions, user may want to switch between ZIP versions)
       if (hasMultipleZipVersions || hasLocalStorageSessions) {
@@ -569,6 +621,76 @@
         "error",
       );
     }
+  };
+
+  /**
+   * Write a message to the dedicated chemistry describe-on-load polite announce
+   * region. A set-then-clear, enhancement-safe announcer: it resolves the region
+   * by id (no elements entry needed), no-ops when the region is absent so it can
+   * never break restore, and clears itself after a short delay so the region does
+   * not linger with stale prose. Mirrors _announceConvertSize's shape.
+   * @param {string} message - the polite announcement to voice, in British English
+   * @private
+   */
+  proto._announceChemistryDescribe = function (message) {
+    const region = document.getElementById("resume-chemistry-describe-announce");
+    if (!region || !message) return;
+    region.textContent = message;
+    clearTimeout(this._chemistryDescribeAnnounceTimer);
+    this._chemistryDescribeAnnounceTimer = setTimeout(() => {
+      region.textContent = "";
+    }, 3000);
+  };
+
+  /**
+   * Toggle the visible describe-on-load status pill. Enhancement-safe: it
+   * resolves the element by id and no-ops when it is absent, so it can never
+   * break restore. This is the visible hint only — the screen-reader path is
+   * the separate sr-only announce region driven by _announceChemistryDescribe.
+   * @param {boolean} visible - true to show the pill, false to hide it
+   * @private
+   */
+  proto._setChemistryDescribeStatusVisible = function (visible) {
+    const el = document.getElementById("resume-chemistry-describe-status");
+    if (!el) return;
+    el.hidden = !visible;
+  };
+
+  /**
+   * After a graph-only first describe, poll _chemistryData for PubChem settling
+   * and re-describe once if new resolved names arrived. The first describe on
+   * load can land before PubChem resolves, producing a graph-only description;
+   * this waits (bounded by the try cap) for the identifiers to settle, then
+   * re-describes a single time so the working MMD picks up the resolved names.
+   * The re-describe's push is guarded by the same shouldPush predicate as the
+   * first describe, so it never overwrites an unsaved edit.
+   * @private
+   */
+  proto._schedulePubChemUpgrade = function () {
+    const dataOf = () =>
+      window.getMathPixController?.()?.resultRenderer?._chemistryData || [];
+    const namesResolved = () =>
+      dataOf().filter((i) => i && i._resolvedName).length;
+    const startNames = namesResolved();
+    const POLL_INTERVAL_MS = 1500;
+    const POLL_MAX_TRIES = 10;
+    let tries = 0;
+    clearInterval(this._pubchemUpgradePoll);
+    this._pubchemUpgradePoll = setInterval(() => {
+      tries += 1;
+      const data = dataOf();
+      const allSettled =
+        data.length > 0 && data.every((i) => i && i._pubchemResolved);
+      if (!allSettled && tries < POLL_MAX_TRIES) return;
+      clearInterval(this._pubchemUpgradePoll);
+      if (namesResolved() > startNames) {
+        this.describeChemistryIntoWorkingMMD({
+          shouldPush: () => this.hasUnsavedChanges === false,
+        }).catch((err) =>
+          logError("describe-on-load PubChem upgrade failed", err),
+        );
+      }
+    }, POLL_INTERVAL_MS);
   };
 
   /**

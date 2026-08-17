@@ -69,6 +69,15 @@ const MusicParseNote = (function () {
     return textOf(noteEl, "lyric text");
   }
 
+  // Raw printed accidental text from a note's <accidental> ("natural", "sharp",
+  // "flat", "natural-sharp", ...), or null when absent. <accidental> is a direct
+  // child of <note>, so querySelector("accidental") does not collide with the
+  // <accidental-mark> that can appear inside <ornaments>: a type selector matches
+  // the exact tag name, and "accidental" never matches "accidental-mark".
+  function accidentalOf(noteEl) {
+    return textOf(noteEl, "accidental");
+  }
+
   // Augmentation-dot count from a note's <dot/> children, as an integer (1 for a
   // single dot, 2 for a double dot), or null when the note carries no dot. A
   // <dot/> only ever appears as a direct child of <note>, so a plain count is
@@ -121,25 +130,47 @@ const MusicParseNote = (function () {
   // Extract a single note model from a <note> element. A note is a rest when it
   // contains a <rest>; then step/octave/alter are null. Both rests and pitched
   // notes carry duration and type. A pitched note also carries alter: the
-  // semitone alteration from <alter>, null when unmarked, 0 for an explicit
-  // natural, 1 for a sharp, -1 for a flat, and 2 or -2 for a double sharp or
-  // double flat. chord is true when the note carries a <chord/> child, marking it
-  // as the second or later note of a chord (it sounds with the note before it);
-  // the first note of a chord, and every melody note, has chord false. A <chord/>
-  // only ever appears as a direct child of <note>, so querySelector is safe here.
-  // dynamic is always null here: the dynamic is attached by the orchestrator from
-  // a sibling <direction>, which only the document-level walk can see. staff is
-  // the note's <staff> number as a string ("1", "2"), or null when the score has
-  // a single staff and tags no note; the grouping into hands happens later.
+  // semitone alteration, null when unmarked, 0 for an explicit natural (whether
+  // written as <alter>0</alter> or as a printed <accidental>natural</accidental>
+  // with no <alter>), 1 for a sharp, -1 for a flat, and 2 or -2 for a double
+  // sharp or double flat. It also carries accidental: the raw printed accidental
+  // text from <accidental> ("natural", "sharp", ...), or null when none is
+  // printed. accidental is captured only for faithfulness and has NO consumer
+  // yet; the naming layer reads alter, not accidental, so the two must not be
+  // wired against each other later without a deliberate decision. chord is true
+  // when the note carries a <chord/> child, marking it as the second or later
+  // note of a chord (it sounds with the note before it); the first note of a
+  // chord, and every melody note, has chord false. A <chord/> only ever appears
+  // as a direct child of <note>, so querySelector is safe here. dynamic is always
+  // null here: the dynamic is attached by the orchestrator from a sibling
+  // <direction>, which only the document-level walk can see. staff is the note's
+  // <staff> number as a string ("1", "2"), or null when the score has a single
+  // staff and tags no note; the grouping into hands happens later. voice is the
+  // note's <voice> as a raw string ("1", "5"), or null when the note carries no
+  // <voice>; it is an opaque per-part identifier, not a position, and is read
+  // unconditionally (rests carry a <voice> too), never renumbered.
   function extractNote(noteEl) {
     const isRest = !!noteEl.querySelector("rest");
     const pitch = noteEl.querySelector("pitch");
+
+    // MusicXML writes a printed natural as <accidental>natural</accidental> with
+    // NO <alter>, because the pitch is unaltered, so reading <alter> alone leaves
+    // alter null and the naming layer never says "natural". Treating that case as
+    // alter 0 lets MusicNames, which already maps 0 to "natural", voice it. NEVER
+    // overwrite a non-null alter, so a contradictory file that prints a natural
+    // over <alter>1</alter> keeps 1. A diatonic note with no printed accidental
+    // keeps alter null and stays bare.
+    const accidental = isRest ? null : accidentalOf(noteEl);
+    const rawAlter = isRest ? null : intOf(pitch, "alter");
+    const alter = rawAlter === null && accidental === "natural" ? 0 : rawAlter;
+
     return {
       rest: isRest,
       chord: !!noteEl.querySelector("chord"),
       step: isRest ? null : textOf(pitch, "step"),
       octave: isRest ? null : intOf(pitch, "octave"),
-      alter: isRest ? null : intOf(pitch, "alter"),
+      alter: alter,
+      accidental: accidental,
       duration: intOf(noteEl, "duration"),
       type: textOf(noteEl, "type"),
       tie: tieOf(noteEl),
@@ -150,6 +181,13 @@ const MusicParseNote = (function () {
       articulations: articulationsOf(noteEl),
       ornaments: ornamentsOf(noteEl),
       staff: textOf(noteEl, "staff"),
+      // A MusicXML voice id is an opaque per-part identifier, not a position:
+      // the Satie uses voices 1 and 2 on the treble staff and 5 and 6 on the
+      // bass staff, so any reader-facing numbering is a later rendering
+      // decision, not a parsing one. Kept as a raw string (or null), read
+      // unconditionally exactly as staff is, because a rest carries a <voice>
+      // in MusicXML too and the Satie relies on it.
+      voice: textOf(noteEl, "voice"),
       dynamic: null,
     };
   }
@@ -235,6 +273,33 @@ const MusicParseNote = (function () {
       "<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>" +
         "<type>quarter</type><staff>2</staff></note>"
     );
+    const printedNatural = noteFrom(
+      "<note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration>" +
+        "<type>quarter</type><accidental>natural</accidental></note>"
+    );
+    const naturalWithAlterZero = noteFrom(
+      "<note><pitch><step>B</step><alter>0</alter><octave>4</octave></pitch>" +
+        "<duration>1</duration><type>quarter</type><accidental>natural</accidental></note>"
+    );
+    const printedSharp = noteFrom(
+      "<note><pitch><step>C</step><alter>1</alter><octave>4</octave></pitch>" +
+        "<duration>1</duration><type>quarter</type><accidental>sharp</accidental></note>"
+    );
+    const contradictoryNatural = noteFrom(
+      "<note><pitch><step>C</step><alter>1</alter><octave>4</octave></pitch>" +
+        "<duration>1</duration><type>quarter</type><accidental>natural</accidental></note>"
+    );
+    const voiceOne = noteFrom(
+      "<note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration>" +
+        "<type>quarter</type><voice>1</voice></note>"
+    );
+    const voiceFive = noteFrom(
+      "<note><pitch><step>C</step><octave>3</octave></pitch><duration>1</duration>" +
+        "<type>quarter</type><voice>5</voice></note>"
+    );
+    const restWithVoice = noteFrom(
+      "<note><rest/><duration>1</duration><type>quarter</type><voice>1</voice></note>"
+    );
 
     const nC4 = extractNote(plainC4);
     const nRest = extractNote(rest);
@@ -254,6 +319,13 @@ const MusicParseNote = (function () {
     const nMordent = extractNote(mordent);
     const nTurn = extractNote(turn);
     const nStaffTwo = extractNote(onStaffTwo);
+    const nPrintedNatural = extractNote(printedNatural);
+    const nNaturalWithAlterZero = extractNote(naturalWithAlterZero);
+    const nPrintedSharp = extractNote(printedSharp);
+    const nContradictoryNatural = extractNote(contradictoryNatural);
+    const nVoiceOne = extractNote(voiceOne);
+    const nVoiceFive = extractNote(voiceFive);
+    const nRestWithVoice = extractNote(restWithVoice);
 
     const results = {
       hasExtractNote: typeof extractNote === "function",
@@ -332,6 +404,18 @@ const MusicParseNote = (function () {
         nC4.ornaments === null,
       staffReadsTwo: nStaffTwo.staff === "2",
       plainNoteStaffNull: nC4.staff === null,
+      printedNaturalAlterZero: nPrintedNatural.alter === 0,
+      printedNaturalAccidentalCaptured: nPrintedNatural.accidental === "natural",
+      explicitAlterZeroStillZero:
+        nNaturalWithAlterZero.alter === 0 && nNaturalWithAlterZero.accidental === "natural",
+      printedSharpKeepsAlterOne: nPrintedSharp.alter === 1 && nPrintedSharp.accidental === "sharp",
+      contradictoryNaturalKeepsAlter: nContradictoryNatural.alter === 1,
+      diatonicStaysBare: nC4.alter === null && nC4.accidental === null,
+      restAccidentalNull: nRest.alter === null && nRest.accidental === null,
+      voiceReadsOne: nVoiceOne.voice === "1",
+      voiceReadsFive: nVoiceFive.voice === "5",
+      restCarriesVoice: nRestWithVoice.voice === "1",
+      plainNoteVoiceNull: nC4.voice === null,
     };
 
     console.table(results);

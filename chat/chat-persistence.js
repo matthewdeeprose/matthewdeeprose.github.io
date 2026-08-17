@@ -84,6 +84,108 @@
     if (state) S = state;
   }
 
+  // ── Byte-free serialisation (Unified Chat attachments, checkpoint 1) ────────
+
+  /**
+   * Derive a byte-free image or PDF reference from a live content array, as a
+   * fallback when a turn carries no `attachment` reference (e.g. legacy turns).
+   * mimeType and an approximate size come from the data URL; the filename is not
+   * recoverable from image bytes (a generic name is used), but a PDF file part
+   * carries its own filename. Image detection takes priority; the PDF branch is
+   * the fallback.
+   */
+  function deriveReferenceFromContent(content) {
+    const imgPart = content.find(function (p) {
+      return p && p.type === "image_url";
+    });
+    if (!imgPart) {
+      // PDF fallback (robustness — mirrors the image branch): a turn carrying a
+      // { type:"file" } part but no `attachment` reference. Filename comes from the
+      // file part; mimeType is fixed; size approximated from the base64 length with
+      // the same *3/4 maths as the image branch.
+      const filePart = content.find(function (p) {
+        return p && p.type === "file";
+      });
+      if (!filePart) return null;
+      const fileData =
+        filePart.file && typeof filePart.file.file_data === "string"
+          ? filePart.file.file_data
+          : "";
+      const fm =
+        typeof fileData === "string"
+          ? fileData.match(/^data:([^;]+);base64,(.*)$/)
+          : null;
+      const pdfSize = fm ? Math.floor((fm[2].length * 3) / 4) : 0;
+      return {
+        kind: "pdf",
+        filename:
+          (filePart.file && filePart.file.filename) || "Attached document",
+        mimeType: "application/pdf",
+        size: pdfSize,
+      };
+    }
+    const raw =
+      imgPart.image_url && typeof imgPart.image_url === "object"
+        ? imgPart.image_url.url
+        : typeof imgPart.image_url === "string"
+          ? imgPart.image_url
+          : "";
+    let mimeType = "image/*";
+    let size = 0;
+    const m = typeof raw === "string" ? raw.match(/^data:([^;]+);base64,(.*)$/) : null;
+    if (m) {
+      mimeType = m[1];
+      size = Math.floor((m[2].length * 3) / 4); // approx decoded byte length
+    }
+    return { kind: "image", filename: "Attached image", mimeType: mimeType, size: size };
+  }
+
+  /**
+   * Map the live thread to a BYTE-FREE form for storage: any array-content (image
+   * or PDF) turn has its byte-carrying part (the image_url or file base64) replaced
+   * by the turn's byte-free reference (filename/type/size), or a derived one. Text
+   * parts are kept; every other turn passes through untouched. This removes the
+   * base64 from the session so a normal image or PDF thread no longer overruns
+   * SESSION_MAX_BYTES and gets silently dropped. On restore the reference chip
+   * renders from the { kind:"image"|"pdf", … } part.
+   */
+  function toByteFreeMessages(messages) {
+    return messages.map(function (m) {
+      if (!m || !Array.isArray(m.content)) return m;
+      const hasAttachment = m.content.some(function (p) {
+        return (
+          p &&
+          (p.type === "image_url" ||
+            p.kind === "image" ||
+            p.type === "file" ||
+            p.kind === "pdf")
+        );
+      });
+      if (!hasAttachment) return m; // text-only array (unusual) — leave as-is
+      const ref = m.attachment || deriveReferenceFromContent(m.content);
+      const textParts = m.content.filter(function (p) {
+        return typeof p === "string" || (p && p.type === "text");
+      });
+      // Preserve an already-byte-free reference part if one is present (re-save
+      // of a restored image or PDF turn), otherwise use the resolved ref.
+      const existingRef = m.content.find(function (p) {
+        return p && (p.kind === "image" || p.kind === "pdf");
+      });
+      const attachmentEl = existingRef || ref;
+      const newContent = attachmentEl
+        ? [attachmentEl].concat(textParts)
+        : textParts;
+      // Rebuild the turn WITHOUT the base64 and without the separate `attachment`
+      // field (the reference now lives in content). Keep every other field.
+      const clean = {};
+      for (const k in m) {
+        if (k !== "content" && k !== "attachment") clean[k] = m[k];
+      }
+      clean.content = newContent;
+      return clean;
+    });
+  }
+
   // ── Session persistence ───────────────────────────────────────────────────
 
   /**
@@ -92,9 +194,12 @@
    * assistant turns, model/providerId) and the current model id. No
    * systemPrompt/temperature/maxTokens: Chat caches no such elements, so writing
    * them would only add inert fields.
+   *
+   * Image turns are serialised BYTE-FREE via toByteFreeMessages — the base64 never
+   * reaches sessionStorage, so a normal image thread no longer trips the size cap.
    */
   function saveSession() {
-    const messages = S.messages;
+    const messages = toByteFreeMessages(S.messages);
     try {
       const data = {
         messages: messages,
@@ -214,6 +319,17 @@
    */
   function performClear() {
     const els = S.els;
+    // Stop Chat's own read-aloud before the thread is torn down. The helper is
+    // guarded on Chat owning the current speaker, so clearing here never cuts off
+    // Local Chat or any other tool mid-sentence. performClear is the single clear
+    // choke point, so this one call also covers the restore banner's Start-fresh
+    // discard.
+    if (
+      window.ChatMessages &&
+      typeof window.ChatMessages.stopReadAloudIfActive === "function"
+    ) {
+      window.ChatMessages.stopReadAloudIfActive();
+    }
     clearSession();
     S.messages = [];
     if (els.messageList) els.messageList.innerHTML = "";
@@ -267,6 +383,10 @@
     freshBtn.addEventListener("click", function () {
       dismissRestoreBanner();
       performClear();
+      // Starter prompts: the banner clear skips updateConversationUI, so show the welcome here (watch-item).
+      if (window.ChatChips && typeof window.ChatChips.syncToConversationState === "function") {
+        window.ChatChips.syncToConversationState();
+      }
       S.announceToScreenReader("New conversation started.");
     });
 
@@ -306,6 +426,9 @@
     showRestoreBanner: showRestoreBanner,
     dismissRestoreBanner: dismissRestoreBanner,
     attach: attach,
+    // Testability seams (no behaviour change) — used by the structural probe.
+    _toByteFreeMessages: toByteFreeMessages,
+    _deriveReferenceFromContent: deriveReferenceFromContent,
   };
 
   logInfo("Persistence module loaded");

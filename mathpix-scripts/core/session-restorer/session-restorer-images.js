@@ -848,9 +848,41 @@
    * Return the memoised encoded dataURI for `key`, or encode `blob` once and
    * cache it. The encoder's throw propagates so the caller's existing
    * fallback path runs unchanged and no fallback is memoised.
+   *
+   * ⚠️ **The memo key is `key` ALONE — `allowedEncoders` is not part of it.**
+   * On a hit the cached dataURI is returned whatever encoder list the caller
+   * asked for, so the FIRST call for a given key decides the codec for every
+   * later call. Measured 27 July 2026, not inferred: `_encodeCached(k, blob,
+   * ["jpeg"])` then `_encodeCached(k, blob, ["png"])` returns the JPEG both
+   * times, on a blob where the two encoders demonstrably differ.
+   *
+   * **This is currently harmless, for exactly one reason:** `pickEncoders`
+   * has only ONE possible return value while `ENABLE_WEBP_EMBEDDING` is
+   * `false` — measured across `undefined`, `[]` and every convert format, it
+   * returns `["png","jpeg"]` every time. With no second encoder set in play,
+   * a key collision cannot change an outcome.
+   *
+   * **It stops being harmless the moment `ENABLE_WEBP_EMBEDDING` flips to
+   * `true`,** where `pickEncoders` returns two distinct sets: `["png","jpeg"]`
+   * for docx/pptx and `["png","jpeg","webp"]` for html/pdf/md/zips. Then, in
+   * one session:
+   *
+   *   convert to `html`  -> image encoded as WebP, memoised under entry.id
+   *   convert to `docx`  -> memo HIT -> **docx receives a WebP dataURI**
+   *
+   * — which is precisely what FORMATS_SUPPORTING_WEBP exists to prevent. The
+   * fix when that day comes is to include the encoder set in the key (e.g.
+   * `${key}|${allowedEncoders.join(",")}`), not to drop the memo. See the
+   * matching warning on ENABLE_WEBP_EMBEDDING in mathpix-config.js.
+   *
+   * A caller that needs a codec rule of its own must NOT share this memo —
+   * see `_createScormImageResolver` in session-restorer-scorm-export.js,
+   * which keeps its own local map for that reason.
+   *
    * @param {string} key - stable identity (registry id or CDN URL)
    * @param {Blob} blob - source bytes to encode on a miss
-   * @param {Array<string>} allowedEncoders - from pickEncoders
+   * @param {Array<string>} allowedEncoders - from pickEncoders. Honoured on a
+   *   MISS only; ignored on a hit (see the warning above).
    * @returns {Promise<string>} encoded dataURI
    */
   proto._encodeCached = async function (key, blob, allowedEncoders) {
@@ -2003,6 +2035,12 @@
     );
 
     if (!confirmed) return;
+
+    // Cancel any pending autosave first: a save debounced by an edit within the
+    // last second would otherwise fire after this clear and re-write the very
+    // session we are about to remove, silently undoing the clear.
+    clearTimeout(this.autoSaveTimer);
+    this.autoSaveTimer = null;
 
     // Find ALL matching localStorage sessions (no filtering — remove everything for this ZIP)
     const uploadedBaseName = sourceFilename.replace(/\.[^/.]+$/, "");

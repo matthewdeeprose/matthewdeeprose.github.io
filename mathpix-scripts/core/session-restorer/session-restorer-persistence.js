@@ -599,6 +599,7 @@
         if (!convertUI.getCompletedDownloadsWithFilenames) {
           convertUI.getCompletedDownloadsWithFilenames = () => {
             const results = [];
+            // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
             const formatInfo = {
               docx: { label: "Word Document", extension: ".docx" },
               pdf: { label: "PDF (HTML Rendering)", extension: ".pdf" },
@@ -619,6 +620,7 @@
                 label: "HTML Archive (ZIP)",
                 extension: ".html.zip",
               },
+              xlsx: { label: "Excel (XLSX)", extension: ".xlsx" },
             };
 
             convertUI.completedDownloads.forEach((blob, format) => {
@@ -721,6 +723,87 @@
       this.restoredSession?.results?.mmd ||
       ""
     );
+  };
+
+  /**
+   * Regenerate the MMD from the current registry state and push it to
+   * the editor + the persistence undo stack.
+   *
+   * Lifted from MathPixImageManagerUI._writeMMDFromRegistry so the
+   * registry→working-MMD propagation lives on the restorer and can be
+   * reached without the Image Manager UI being constructed (a later
+   * convert-path parcel depends on this). The UI method now delegates here.
+   *
+   * Three sinks per the Phase B discovery + the Option (b) decision:
+   *   1. loadMMDContent — updates the textarea, preview, display layer.
+   *   2. restoredSession.currentMMD — source-of-truth assignment.
+   *   3. MathPixMMDPersistence.saveContent — pushes previous content to
+   *      the editor's undo stack so Ctrl-Z in the textarea reverts the
+   *      save (Q4 §197 "Ctrl-Z is the power-user fallback").
+   *
+   * applyRegistryToMMD is synchronous (Phase B2) — no await needed.
+   *
+   * @param {Object} registry - MathPixImageRegistry instance.
+   * @returns {{ mmd: string, captions: Object, altText: Object, appendix: Object }}
+   * @throws Re-throws any error from applyRegistryToMMD / loadMMDContent
+   *   for the caller's catch path.
+   */
+  proto.writeMMDFromRegistry = function (registry) {
+    const I = window.MathPixAltTextIntegrator;
+    if (!I || typeof I.applyRegistryToMMD !== "function") {
+      throw new Error(
+        "writeMMDFromRegistry: MathPixAltTextIntegrator.applyRegistryToMMD unavailable",
+      );
+    }
+    const session = this.restoredSession;
+    const currentMmd = session?.currentMMD || "";
+    const originalMmd = session?.originalMMD || currentMmd;
+
+    // Discovery 18 — pass the session-restorer's CDN→blob URL map so
+    // the alt-text serialiser's findImage URL-regex fallback can match
+    // images by blob URL on restored sessions (where the MMD has been
+    // rewritten to blob URLs but registry entries still hold CDN URLs).
+    const imageBlobUrlMap = this.imageBlobUrlMap || null;
+    const result = I.applyRegistryToMMD(
+      currentMmd,
+      registry,
+      imageBlobUrlMap,
+    );
+    const newMmd = result?.mmd;
+    if (typeof newMmd !== "string") {
+      throw new Error(
+        "writeMMDFromRegistry: applyRegistryToMMD returned no MMD string",
+      );
+    }
+
+    if (typeof this.loadMMDContent === "function") {
+      this.loadMMDContent(newMmd, originalMmd);
+    }
+
+    // Persist to the resume-session store so an Image Manager alt edit survives a
+    // refresh-then-reload-ZIP, recovered by applyRecoveredSession — the same store
+    // and code path an MMD-editor edit reaches via scheduleAutoSave. Called before
+    // session.currentMMD is reassigned so the resume undo stack captures the
+    // pre-edit content, identical to an editor edit. saveContentToStorage is
+    // self-sufficient: it derives its own key and normalises blob URLs.
+    if (typeof this.saveContentToStorage === "function") {
+      this.saveContentToStorage(newMmd);
+    }
+    if (session) session.currentMMD = newMmd;
+
+    const persistence = window.getMathPixMMDPersistence?.();
+    if (persistence && typeof persistence.saveContent === "function") {
+      persistence.saveContent(newMmd);
+    } else {
+      logDebug(
+        "writeMMDFromRegistry: persistence module not available; Ctrl-Z in editor will not revert",
+      );
+    }
+
+    logInfo(
+      `writeMMDFromRegistry: captions=${result.captions?.transformations ?? 0} altText=${result.altText?.transformations ?? 0} appendix=${result.appendix?.transformations ?? 0}`,
+    );
+    return result;
   };
 
   /**

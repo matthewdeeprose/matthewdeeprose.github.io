@@ -102,8 +102,116 @@ window.MermaidDiagramDetection = (function () {
       )}..."`
     );
 
+    // PREFERRED: ask Mermaid itself. Falls back to the keyword scan below when
+    // the library is absent or refuses the input.
+    const fromMermaid = detectViaMermaid(cleanCode);
+    if (fromMermaid) {
+      return fromMermaid;
+    }
+
     // Run detection with more detailed logging
     return detectDiagramTypeFromCleanCode(cleanCode);
+  }
+
+  /**
+   * Map a Mermaid diagram type to the generator key this project registers.
+   *
+   * Two naming traps live in here, both measured on Mermaid 11.6.0 rather than
+   * assumed: `flowchart TD` reports "flowchart-v2" while `graph TB` reports
+   * "flowchart", and bare `stateDiagram` reports "state" while `stateDiagram-v2`
+   * reports "stateDiagram". Each pair must collapse to a single key.
+   *
+   * Anything absent from this map has no generator, so it resolves to an
+   * `unsupported:` key and the core produces an honest "no description
+   * available" instead of describing it as a flowchart.
+   */
+  const MERMAID_TYPE_TO_KEY = Object.freeze({
+    flowchart: "flowchart",
+    "flowchart-v2": "flowchart",
+    "flowchart-elk": "flowchart",
+    sequence: "sequenceDiagram",
+    state: "stateDiagram",
+    stateDiagram: "stateDiagram",
+    "stateDiagram-v2": "stateDiagram",
+    journey: "userJourney",
+    gantt: "gantt",
+    pie: "pieChart",
+    quadrantChart: "quadrantChart",
+    mindmap: "mindmap",
+    timeline: "timeline",
+    architecture: "architecture-beta",
+    er: "entityRelationshipDiagram",
+    // Both class spellings are live: `classDiagram` reports "class" and
+    // `classDiagram-v2` reports "classDiagram" (class stage 0 § M1) — the
+    // same counter-intuitive shape as the state pair above. One entry alone
+    // would leave the other spelling on the unsupported fallback.
+    class: "classDiagram",
+    classDiagram: "classDiagram",
+    // Git graph has a single live name: detectType returns "gitGraph" for
+    // every opener — plain, orientation forms, frontmatter, directives (git
+    // graph stage 0 § M1). No -v2-style pair exists, so one entry suffices.
+    gitGraph: "gitGraph",
+    // Sankey has a single live name: detectType returns "sankey" for
+    // sankey-beta and throws UnknownDiagramError on bare "sankey" (sankey
+    // stage 0 § S1). One entry suffices, and unlike ER, class and git graph
+    // there is no scan-key coincidence to check — the legacy keyword scan's
+    // sankey branch cannot match a real sankey diagram at all.
+    sankey: "sankey",
+  });
+
+  /** Prefix marking a diagram type we can detect but cannot describe. */
+  const UNSUPPORTED_PREFIX = "unsupported:";
+
+  /**
+   * Detect the diagram type using Mermaid's own detector.
+   *
+   * Measured 1 August 2026: `mermaid.detectType` is synchronous, resolves all 22
+   * Mermaid 11.6.0 diagram types, and throws a catchable UnknownDiagramError on
+   * input it cannot type. It is also immune to the body-line misrouting that the
+   * keyword scan below suffers from, because it reads the opening declaration
+   * rather than scanning every line.
+   *
+   * @param {string} cleanCode - Mermaid source, init directives already stripped
+   * @returns {string|null} A generator key, an `unsupported:` key, or null to
+   *                        signal "fall back to the keyword scan"
+   */
+  function detectViaMermaid(cleanCode) {
+    if (!window.mermaid || typeof window.mermaid.detectType !== "function") {
+      logDebug(
+        "[Mermaid Accessibility] mermaid.detectType unavailable, using keyword scan"
+      );
+      return null;
+    }
+
+    let mermaidType;
+    try {
+      mermaidType = window.mermaid.detectType(cleanCode);
+    } catch (error) {
+      // UnknownDiagramError for unrecognised input, TypeError for null. Either
+      // way the keyword scan is the more forgiving second opinion.
+      logDebug(
+        `[Mermaid Accessibility] mermaid.detectType rejected the input (${error.name}), using keyword scan`
+      );
+      return null;
+    }
+
+    if (!mermaidType) {
+      return null;
+    }
+
+    const key = MERMAID_TYPE_TO_KEY[mermaidType];
+    if (key) {
+      logDebug(
+        `[Mermaid Accessibility] mermaid.detectType reported "${mermaidType}" -> "${key}"`
+      );
+      return key;
+    }
+
+    const unsupported = `${UNSUPPORTED_PREFIX}${mermaidType}`;
+    logInfo(
+      `[Mermaid Accessibility] No generator for Mermaid type "${mermaidType}" -> "${unsupported}"`
+    );
+    return unsupported;
   }
 
   /**

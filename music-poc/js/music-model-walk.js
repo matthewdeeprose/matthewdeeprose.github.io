@@ -56,7 +56,12 @@ const MusicModelWalk = (function () {
   // augmentation dots ("dotted crotchet"), the raw type if unmapped, or null when
   // the type is missing. It also surfaces the spoken symbol fields — tuplet,
   // articulations and ornaments — each null when the symbol is absent, so a plain
-  // note describes exactly as before.
+  // note describes exactly as before, and the dynamic shaping the parser read,
+  // carried raw.
+  //
+  // This return literal is an EXPLICIT whitelist, not a spread: a new note field
+  // must be named here as well, or it is silently dropped for every renderer with
+  // no throw and no failing row.
   function describeNote(note) {
     const n = note || {};
     const isRest = n.rest === true;
@@ -75,7 +80,25 @@ const MusicModelWalk = (function () {
     const tuplet = names.tupletName(n.timeModification);
     const articulations = n.articulations ? n.articulations.map(names.articulationName) : null;
     const ornaments = n.ornaments ? n.ornaments.map(names.ornamentName) : null;
-    return { isRest: isRest, pitch: pitch, value: value, dynamic: dynamic, lyric: lyric, tie: tie, slur: slur, tuplet: tuplet, articulations: articulations, ornaments: ornaments };
+    // Dynamic shaping, carried RAW and unmapped: null when the note holds no
+    // endpoint, otherwise the parser's own { starts, stops } object, where each
+    // array holds wedge types ("crescendo", "diminuendo") in document order. Two
+    // INDEPENDENT endpoint lists rather than a paired span, so a note can carry
+    // two endings — both real hairpin files nest a diminuendo inside a crescendo
+    // and close the pair at one point, the Satie at bar 8 and the Joplin at bar 68.
+    //
+    // NOT passed through names: unlike a dynamic code, the MusicXML type values
+    // are already the spoken words, and MusicNames holds only closed-set lookups
+    // that would return null for anything it had not been taught. Carried in the
+    // sentinel-ternary idiom tie and slur use, so an absent field reads null and
+    // never undefined, and the object is passed by REFERENCE rather than copied.
+    //
+    // Read per note exactly as dynamic is, so a chord follows the same rule with
+    // no chord logic here: phraseOf reads its head note's descriptor for every
+    // field but pitch. Stage 59 decides what a reader HEARS and may deliberately
+    // voice fewer endings than this descriptor holds.
+    const shaping = n.shaping === undefined ? null : n.shaping;
+    return { isRest: isRest, pitch: pitch, value: value, dynamic: dynamic, lyric: lyric, tie: tie, slur: slur, tuplet: tuplet, articulations: articulations, ornaments: ornaments, shaping: shaping };
   }
 
   // Diatonic step letters mapped to their index within an octave, for ordering
@@ -214,6 +237,160 @@ const MusicModelWalk = (function () {
     return groups;
   }
 
+  // groupByVoice(notes): pure; NEVER throws. Splits a bar's flat note list into
+  // one sequence per voice, as an array of { voice, notes } in first-appearance
+  // order. The SINGLE definition of a voice. A single-voice bar (every note's
+  // voice null) yields one group, so the note list reads exactly as today; a bar
+  // that returns to voice 1 after voice 2 yields two groups, not three. Like
+  // groupByStaff it groups by reference, never copying or mutating, and a
+  // non-array argument yields []. The note list runs groupByStaff first, then
+  // groupByVoice within each hand, then groupNotes within each voice, so chords
+  // still group inside a voice inside a hand. The voice id is the raw MusicXML
+  // value; any reader-facing numbering belongs to the renderer, because the
+  // Satie's bass staff uses voices 5 and 6.
+  function groupByVoice(notes) {
+    if (!Array.isArray(notes)) return [];
+    const groups = [];
+    for (const note of notes) {
+      const n = note || {};
+      const voice = n.voice === undefined ? null : n.voice;
+      let group = null;
+      for (let g = 0; g < groups.length; g++) {
+        if (groups[g].voice === voice) {
+          group = groups[g];
+          break;
+        }
+      }
+      if (!group) {
+        group = { voice: voice, notes: [] };
+        groups.push(group);
+      }
+      group.notes.push(n);
+    }
+    return groups;
+  }
+
+  // keyboardPairs(model): pure; NEVER throws; never mutates the model. The SINGLE
+  // definition of a cross-part keyboard pair — a grand staff written as TWO parts
+  // rather than as two staves of one part. A brace is the notation convention for
+  // a keyboard staff group, so the brace is the signal here rather than a clef
+  // heuristic: pairing "one treble part with one bass part" would wrongly marry a
+  // flute to a bassoon. A group qualifies only when its symbol is exactly "brace",
+  // it names exactly two ids, both resolve to DIFFERENT parts of model.parts, and
+  // NEITHER part already uses more than one staff — a part whose notes carry
+  // staves 1 and 2 is a grand staff in its own right, so the pair is not a
+  // cross-part one. A braced group of three parts, such as an organ with a pedal
+  // stave, does NOT qualify and reads exactly as it does today; nor does a bracket,
+  // which is an ensemble grouping. A part belongs to at most one pair, so a later
+  // group reusing a claimed part is skipped and warned about. Returns an array of
+  // { groupNumber, partIds, partIndices, name }: partIndices are the two 0-based
+  // indices into model.parts sorted ascending, and partIds correspond to them
+  // position by position. name prefers the group's name, then the first named
+  // member part, then the joined ids ("Parts P1 and P2") — it never invents an
+  // instrument name, because the file did not say "Piano". This is the first
+  // part-aware function in this module; everything above it walks notes.
+  function keyboardPairs(model) {
+    if (!model || typeof model !== "object") return [];
+    if (!Array.isArray(model.parts)) return [];
+    if (!Array.isArray(model.partGroups)) return [];
+    const parts = model.parts;
+    const groups = model.partGroups;
+
+    // Resolve a part id to its 0-based index in model.parts, or -1. A missing id
+    // never resolves, so two absent ids cannot silently match each other.
+    function indexOfPartId(id) {
+      if (id === null || id === undefined || id === "") return -1;
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i] && parts[i].id === id) return i;
+      }
+      return -1;
+    }
+
+    // How many DISTINCT staff values a part's notes carry, undefined read as null.
+    // 0 or 1 means the part sits on a single stave; 2 or more means it is already
+    // a grand staff and cannot be half of a cross-part pair.
+    function distinctStaffCount(part) {
+      const p = part || {};
+      const measures = Array.isArray(p.measures) ? p.measures : [];
+      const seen = [];
+      for (const measure of measures) {
+        const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
+        for (const note of notes) {
+          const n = note || {};
+          const staff = n.staff === undefined ? null : n.staff;
+          if (seen.indexOf(staff) === -1) seen.push(staff);
+        }
+      }
+      return seen.length;
+    }
+
+    // Label a part for the joined-id name: its id, or its 1-based position when
+    // the id is missing, so the fallback always reads as something.
+    function partLabel(index) {
+      const part = parts[index] || {};
+      if (typeof part.id === "string" && part.id.length > 0) return part.id;
+      return String(index + 1);
+    }
+
+    const claimed = [];
+    const pairs = [];
+    for (const group of groups) {
+      const g = group && typeof group === "object" ? group : {};
+      if (g.symbol !== "brace") {
+        logDebug("keyboardPairs: skipping a group whose symbol is not a brace");
+        continue;
+      }
+      const ids = Array.isArray(g.partIds) ? g.partIds : [];
+      if (ids.length !== 2) {
+        logDebug("keyboardPairs: skipping a braced group of " + ids.length + " part(s); a pair needs exactly two");
+        continue;
+      }
+      const firstIndex = indexOfPartId(ids[0]);
+      const secondIndex = indexOfPartId(ids[1]);
+      if (firstIndex === -1 || secondIndex === -1) {
+        logWarn("keyboardPairs: a braced group names a part id absent from the parts list; skipping it");
+        continue;
+      }
+      if (firstIndex === secondIndex) {
+        logDebug("keyboardPairs: skipping a braced group that names the same part twice");
+        continue;
+      }
+      if (distinctStaffCount(parts[firstIndex]) > 1 || distinctStaffCount(parts[secondIndex]) > 1) {
+        logDebug("keyboardPairs: skipping a braced group whose member already uses more than one staff");
+        continue;
+      }
+
+      // Indices ascending, ids kept in step with them, so the two arrays always
+      // correspond position by position whatever order the part-list declared.
+      const partIndices = firstIndex < secondIndex ? [firstIndex, secondIndex] : [secondIndex, firstIndex];
+      if (claimed.indexOf(partIndices[0]) !== -1 || claimed.indexOf(partIndices[1]) !== -1) {
+        logWarn("keyboardPairs: a braced group reuses a part already claimed by an earlier pair; skipping it");
+        continue;
+      }
+      claimed.push(partIndices[0]);
+      claimed.push(partIndices[1]);
+      const partIds = [parts[partIndices[0]].id, parts[partIndices[1]].id];
+
+      // Name fallback chain: the group's own name, then the first named member
+      // part, then the joined ids. Never an invented instrument.
+      let memberName = null;
+      for (const index of partIndices) {
+        const part = parts[index] || {};
+        if (typeof part.name === "string" && part.name.length > 0) {
+          memberName = part.name;
+          break;
+        }
+      }
+      const groupName = typeof g.name === "string" && g.name.length > 0 ? g.name : null;
+      const name = groupName || memberName || ("Parts " + partLabel(partIndices[0]) + " and " + partLabel(partIndices[1]));
+
+      pairs.push({ groupNumber: g.number, partIds: partIds, partIndices: partIndices, name: name });
+    }
+
+    if (pairs.length > 0) logInfo("Found " + pairs.length + " cross-part keyboard pair(s)");
+    return pairs;
+  }
+
   // Compare two describeNote results field by field (not via JSON.stringify).
   function sameDescription(a, b) {
     return !!a && !!b && a.isRest === b.isRest && a.pitch === b.pitch && a.value === b.value;
@@ -336,6 +513,194 @@ const MusicModelWalk = (function () {
       { rest: false, step: "D", octave: 5, type: "quarter", chord: true, staff: "1" },
       { rest: false, step: "C", octave: 3, type: "quarter", chord: false, staff: "2" },
     ];
+    // Voice grouping fixtures: a single-voice note array, a Satie-shaped bar
+    // (voice "1" rest, note, chord member, then two voice "2" notes) and an
+    // interleaved-voice array, so groupByVoice is asserted to split by voice,
+    // merge a returning voice, and compose with groupNotes.
+    const singleVoiceNotes = [
+      { rest: false, step: "C", octave: 4, type: "quarter", chord: false, voice: null },
+      { rest: false, step: "D", octave: 4, type: "quarter", chord: false, voice: null },
+    ];
+    const satieBarNotes = [
+      { rest: true, step: null, octave: null, type: "quarter", chord: false, voice: "1" },
+      { rest: false, step: "C", octave: 4, type: "quarter", chord: false, voice: "1" },
+      { rest: false, step: "E", octave: 4, type: "quarter", chord: true, voice: "1" },
+      { rest: false, step: "C", octave: 3, type: "quarter", chord: false, voice: "2" },
+      { rest: false, step: "D", octave: 3, type: "quarter", chord: false, voice: "2" },
+    ];
+    const interleavedVoiceNotes = [
+      { rest: false, step: "C", octave: 4, type: "quarter", chord: false, voice: "1" },
+      { rest: false, step: "C", octave: 3, type: "quarter", chord: false, voice: "2" },
+      { rest: false, step: "D", octave: 4, type: "quarter", chord: false, voice: "1" },
+    ];
+
+    // Stage 50 keyboard-pair fixtures: hand-built models carrying partGroups, in
+    // the shape MusicParse.parse() now returns, so keyboardPairs is asserted as
+    // the single definition of a cross-part keyboard pair. The staff values on a
+    // part's notes are what decide whether that part is already a grand staff in
+    // its own right; kpUnnamedP1/P2 carry no staff at all, which is the Joplin
+    // case, and no name either, which drives the joined-id fallback.
+    const kpPartP1 = { id: "P1", name: "Right hand", measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 5, duration: 2, type: "quarter", staff: "1" },
+    ] }] };
+    const kpPartP2 = { id: "P2", name: "Left hand", measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 3, duration: 2, type: "quarter", staff: "1" },
+    ] }] };
+    const kpPartP3 = { id: "P3", name: "Pedal", measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 2, duration: 2, type: "quarter", staff: "1" },
+    ] }] };
+    const kpPartP4 = { id: "P4", name: "Manual", measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", staff: "1" },
+    ] }] };
+    const kpTwoStaffP1 = { id: "P1", name: "Piano", measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 5, duration: 2, type: "quarter", staff: "1" },
+      { rest: false, step: "C", octave: 3, duration: 2, type: "quarter", staff: "2" },
+    ] }] };
+    const kpUnnamedP1 = { id: "P1", name: null, measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 4, duration: 2, type: "quarter" },
+    ] }] };
+    const kpUnnamedP2 = { id: "P2", name: null, measures: [{ number: "1", notes: [
+      { rest: false, step: "C", octave: 3, duration: 2, type: "quarter" },
+    ] }] };
+
+    const KP_BRACED_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] }],
+    };
+    const KP_NAMED_GROUP_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: "Piano", partIds: ["P1", "P2"] }],
+    };
+    const KP_UNNAMED_MODEL = {
+      parts: [kpUnnamedP1, kpUnnamedP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] }],
+    };
+    const KP_BRACKET_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "bracket", name: "Choir", partIds: ["P1", "P2"] }],
+    };
+    const KP_NULL_SYMBOL_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: null, name: null, partIds: ["P1", "P2"] }],
+    };
+    const KP_THREE_PART_MODEL = {
+      parts: [kpPartP1, kpPartP2, kpPartP3],
+      partGroups: [{ number: "1", symbol: "brace", name: "Organ", partIds: ["P1", "P2", "P3"] }],
+    };
+    const KP_ONE_PART_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1"] }],
+    };
+    const KP_TWO_STAFF_MODEL = {
+      parts: [kpTwoStaffP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] }],
+    };
+    const KP_UNKNOWN_ID_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P9"] }],
+    };
+    const KP_SAME_ID_MODEL = {
+      parts: [kpPartP1, kpPartP2],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P1"] }],
+    };
+    const KP_SHARED_PART_MODEL = {
+      parts: [kpPartP1, kpPartP2, kpPartP3],
+      partGroups: [
+        { number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] },
+        { number: "2", symbol: "brace", name: null, partIds: ["P2", "P3"] },
+      ],
+    };
+    const KP_TWO_PAIRS_MODEL = {
+      parts: [kpPartP1, kpPartP2, kpPartP3, kpPartP4],
+      partGroups: [
+        { number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] },
+        { number: "2", symbol: "brace", name: null, partIds: ["P3", "P4"] },
+      ],
+    };
+    const KP_MALFORMED_MODEL = {
+      parts: [kpPartP1, kpPartP2, null],
+      partGroups: [
+        null,
+        "brace",
+        42,
+        { number: "1", symbol: "brace", name: null, partIds: null },
+        { number: "2", symbol: "brace", name: 7, partIds: ["P1", null] },
+        { number: "3", symbol: "brace" },
+        { number: "4", symbol: "brace", name: null, partIds: [null, undefined] },
+      ],
+    };
+    const KP_NO_PARTS_MODEL = {
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1", "P2"] }],
+    };
+    const KP_EMPTY_GROUPS_MODEL = { parts: [kpPartP1, kpPartP2], partGroups: [] };
+
+    // Stage 58 shaping fixtures, in the shape MusicParse now emits: shaping is
+    // null, or { starts, stops } with each entry a wedge type in document order.
+    // A note carrying a start; a note carrying TWO stops (the Satie bar 8 and
+    // Joplin bar 68 shape, inner wedge first); a note carrying one of each; and a
+    // note carrying shaping ALONGSIDE the existing fields, so the carry can be
+    // proven not to disturb them.
+    const shapingStartNote = { rest: false, step: "C", octave: 4, duration: 1, type: "quarter", shaping: { starts: ["crescendo"], stops: [] } };
+    const shapingTwoStopsNote = { rest: false, step: "D", octave: 4, duration: 1, type: "quarter", shaping: { starts: [], stops: ["diminuendo", "crescendo"] } };
+    const shapingOneEachNote = { rest: false, step: "E", octave: 4, duration: 1, type: "quarter", shaping: { starts: ["diminuendo"], stops: ["crescendo"] } };
+    const shapingWithExtrasNote = {
+      rest: false, step: "F", octave: 4, duration: 1, type: "quarter",
+      dynamic: "f", lyric: "la", tie: { start: true, stop: false }, slur: { start: true, stop: false },
+      shaping: { starts: ["crescendo"], stops: [] },
+    };
+    const dShapingStart = describeNote(shapingStartNote);
+    const dShapingTwoStops = describeNote(shapingTwoStopsNote);
+    const dShapingOneEach = describeNote(shapingOneEachNote);
+    const dShapingWithExtras = describeNote(shapingWithExtrasNote);
+
+    // A chord whose HEAD carries both a dynamic and shaping, and whose members
+    // carry neither, so shaping is proven to be read from the same note dynamic is
+    // read from. groupNotes supplies the head; describeNote itself never inspects
+    // the chord flag.
+    const shapingChordNotes = [
+      { rest: false, step: "C", octave: 4, type: "quarter", chord: false, dynamic: "f", shaping: { starts: ["crescendo"], stops: [] } },
+      { rest: false, step: "E", octave: 4, type: "quarter", chord: true },
+      { rest: false, step: "G", octave: 4, type: "quarter", chord: true },
+    ];
+
+    // A model whose every note carries shaping in some form — a start, two stops,
+    // and a plain note with none — so the descriptor's key presence can be
+    // asserted across a whole walk rather than on one note.
+    const SHAPING_MODEL = {
+      parts: [
+        { id: "P1", name: "X", measures: [
+          { number: "1", notes: [shapingStartNote, shapingTwoStopsNote] },
+          { number: "2", notes: [{ rest: false, step: "G", octave: 4, duration: 4, type: "whole", shaping: null }] },
+        ] },
+      ],
+    };
+
+    // Every descriptor built from a model, so shaping's key presence and its
+    // strictly-null neutral value can be asserted over a whole walk. Uses
+    // hasOwnProperty rather than a truthiness test, so a descriptor that
+    // legitimately reads null still counts as carrying the key.
+    function everyDescriptorOwnsShaping(candidate) {
+      const parts = candidate && Array.isArray(candidate.parts) ? candidate.parts : [];
+      let seen = 0;
+      for (const part of parts) {
+        for (const measure of part.measures) {
+          for (const note of measure.notes) {
+            const d = describeNote(note);
+            seen += 1;
+            if (!Object.prototype.hasOwnProperty.call(d, "shaping")) return false;
+            if (d.shaping === undefined) return false;
+          }
+        }
+      }
+      return seen > 0;
+    }
+
+    // A model that carries partGroups AND a bar with chords, staves and voices, so
+    // the existing grouping seams are asserted untouched by the new field.
+    const KP_REGRESSION_MODEL = {
+      parts: [{ id: "P1", name: "Piano", measures: [{ number: "1", notes: pianoChordStaff1 }] }],
+      partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1"] }],
+    };
 
     const results = {
       hasDescribeNote: typeof describeNote === "function",
@@ -485,13 +850,200 @@ const MusicModelWalk = (function () {
           staff1Events.length === 1 && staff1Events[0].length === 3 &&
           staff2Events.length === 1 && staff2Events[0].length === 1;
       })(),
+      hasGroupByVoice: typeof groupByVoice === "function",
+      groupByVoiceSingleOneGroup: (function () {
+        const g = groupByVoice(singleVoiceNotes);
+        return g.length === 1 && g[0].voice === null && g[0].notes.length === 2;
+      })(),
+      groupByVoiceTwoVoices: (function () {
+        const g = groupByVoice(satieBarNotes);
+        return g.length === 2 && g[0].voice === "1" && g[1].voice === "2" &&
+          g[0].notes.length === 3 && g[1].notes.length === 2;
+      })(),
+      groupByVoicePreservesOrder: (function () {
+        const g = groupByVoice(satieBarNotes);
+        return g[0].voice === "1" && g[1].voice === "2" &&
+          g[0].notes[0].rest === true && g[0].notes[1].step === "C" &&
+          g[1].notes[0].step === "C" && g[1].notes[0].octave === 3 &&
+          g[1].notes[1].step === "D";
+      })(),
+      groupByVoiceInterleavedIdsMerge: (function () {
+        const g = groupByVoice(interleavedVoiceNotes);
+        return g.length === 2 && g[0].voice === "1" && g[0].notes.length === 2 &&
+          g[0].notes[0].step === "C" && g[0].notes[1].step === "D";
+      })(),
+      groupByVoiceUndefinedIsNull: (function () {
+        const g = groupByVoice([{ rest: false, step: "C", octave: 4, type: "quarter", chord: false }]);
+        return g.length === 1 && g[0].voice === null;
+      })(),
+      groupByVoiceEmptyArray: groupByVoice([]).length === 0,
+      groupByVoiceNonArray: groupByVoice(null).length === 0 && groupByVoice(undefined).length === 0,
+      groupByVoiceComposesWithGroupNotes: (function () {
+        const g = groupByVoice(satieBarNotes);
+        const voice1Events = groupNotes(g[0].notes);
+        return voice1Events.length === 2 && voice1Events[1].length === 2 &&
+          voice1Events[1][0].step === "C" && voice1Events[1][1].step === "E";
+      })(),
+      hasKeyboardPairs: typeof keyboardPairs === "function",
+      keyboardPairsReturnsArray: Array.isArray(keyboardPairs(KP_BRACED_MODEL)),
+      keyboardPairsNullModel: keyboardPairs(null).length === 0,
+      keyboardPairsNoPartsArray: keyboardPairs(KP_NO_PARTS_MODEL).length === 0,
+      keyboardPairsNoPartGroups: keyboardPairs(MODEL).length === 0,
+      keyboardPairsEmptyGroups: keyboardPairs(KP_EMPTY_GROUPS_MODEL).length === 0,
+      bracedTwoPartsOnePair: keyboardPairs(KP_BRACED_MODEL).length === 1,
+      pairIndicesAreZeroAndOne: (function () {
+        const p = keyboardPairs(KP_BRACED_MODEL);
+        return p.length === 1 && p[0].partIndices.join(",") === "0,1";
+      })(),
+      pairIdsMatchIndices: (function () {
+        const p = keyboardPairs(KP_BRACED_MODEL);
+        return p.length === 1 && p[0].partIds.join(",") === "P1,P2";
+      })(),
+      pairGroupNumberCarried: (function () {
+        const p = keyboardPairs(KP_BRACED_MODEL);
+        return p.length === 1 && p[0].groupNumber === "1";
+      })(),
+      nameFromGroupName: (function () {
+        const p = keyboardPairs(KP_NAMED_GROUP_MODEL);
+        return p.length === 1 && p[0].name === "Piano";
+      })(),
+      nameFromFirstNamedPart: (function () {
+        const p = keyboardPairs(KP_BRACED_MODEL);
+        return p.length === 1 && p[0].name === "Right hand";
+      })(),
+      nameFromJoinedIds: (function () {
+        const p = keyboardPairs(KP_UNNAMED_MODEL);
+        return p.length === 1 && p[0].name === "Parts P1 and P2";
+      })(),
+      nameNeverInventsInstrument: (function () {
+        const p = keyboardPairs(KP_UNNAMED_MODEL);
+        return p.length === 1 && /piano|organ|keyboard|harpsichord/i.test(p[0].name) === false;
+      })(),
+      bracketSymbolNoPair: keyboardPairs(KP_BRACKET_MODEL).length === 0,
+      nullSymbolNoPair: keyboardPairs(KP_NULL_SYMBOL_MODEL).length === 0,
+      threePartBraceNoPair: keyboardPairs(KP_THREE_PART_MODEL).length === 0,
+      onePartBraceNoPair: keyboardPairs(KP_ONE_PART_MODEL).length === 0,
+      twoStaffMemberNoPair: keyboardPairs(KP_TWO_STAFF_MODEL).length === 0,
+      singleStaffValueStillPairs: (function () {
+        const p = keyboardPairs(KP_BRACED_MODEL);
+        return p.length === 1 && p[0].partIndices.join(",") === "0,1";
+      })(),
+      nullStaffNotesStillPair: (function () {
+        const p = keyboardPairs(KP_UNNAMED_MODEL);
+        return p.length === 1 && p[0].partIds.join(",") === "P1,P2";
+      })(),
+      unknownPartIdNoPair: keyboardPairs(KP_UNKNOWN_ID_MODEL).length === 0,
+      sameIdTwiceNoPair: keyboardPairs(KP_SAME_ID_MODEL).length === 0,
+      partNeverInTwoPairs: (function () {
+        const p = keyboardPairs(KP_SHARED_PART_MODEL);
+        return p.length === 1 && p[0].partIds.join(",") === "P1,P2";
+      })(),
+      twoSeparatePairsBothReturned: (function () {
+        const p = keyboardPairs(KP_TWO_PAIRS_MODEL);
+        return p.length === 2 && p[0].partIndices.join(",") === "0,1" &&
+          p[1].partIndices.join(",") === "2,3" && p[1].partIds.join(",") === "P3,P4";
+      })(),
+      malformedGroupsNeverThrow: (function () {
+        let threw = false;
+        let out = null;
+        try {
+          out = keyboardPairs(KP_MALFORMED_MODEL);
+        } catch (e) {
+          threw = true;
+        }
+        return threw === false && Array.isArray(out) && out.length === 0;
+      })(),
+      doesNotMutateModel: (function () {
+        const before = JSON.stringify(KP_TWO_PAIRS_MODEL);
+        keyboardPairs(KP_TWO_PAIRS_MODEL);
+        return JSON.stringify(KP_TWO_PAIRS_MODEL) === before;
+      })(),
+      // Regression: the existing grouping seams are untouched by a model that
+      // carries partGroups.
+      groupNotesUnaffectedByGroups: (function () {
+        const g = groupNotes(KP_REGRESSION_MODEL.parts[0].measures[0].notes);
+        return g.length === 2 && g[0].length === 3 && g[1].length === 1;
+      })(),
+      groupByStaffUnaffectedByGroups: (function () {
+        const g = groupByStaff(KP_REGRESSION_MODEL.parts[0].measures[0].notes);
+        return g.length === 2 && g[0].staff === "1" && g[1].staff === "2" &&
+          g[0].notes.length === 3 && g[1].notes.length === 1;
+      })(),
+      groupByVoiceUnaffectedByGroups: (function () {
+        const g = groupByVoice(KP_REGRESSION_MODEL.parts[0].measures[0].notes);
+        return g.length === 1 && g[0].voice === null && g[0].notes.length === 4;
+      })(),
+      // Dynamic shaping carried through the descriptor whitelist (Stage 58). The
+      // field arrives RAW: two endpoint lists, unmapped, by reference. Nothing
+      // voices it until Stage 59.
+      describeSurfacesShapingStart: (function () {
+        const s = dShapingStart.shaping;
+        return !!s && Array.isArray(s.starts) && s.starts.length === 1 &&
+          s.starts[0] === "crescendo" && Array.isArray(s.stops) && s.stops.length === 0;
+      })(),
+      describeSurfacesTwoStopsInOrder: (function () {
+        const s = dShapingTwoStops.shaping;
+        return !!s && s.stops.length === 2 && s.stops.join(",") === "diminuendo,crescendo";
+      })(),
+      describeSurfacesOneOfEachIntact: (function () {
+        const s = dShapingOneEach.shaping;
+        return !!s && s.starts.length === 1 && s.starts[0] === "diminuendo" &&
+          s.stops.length === 1 && s.stops[0] === "crescendo";
+      })(),
+      describePlainShapingStrictlyNull: dPlain.shaping === null && dRich.shaping === null,
+      // Carried RAW: not mapped, not flattened to a string, not coerced to a
+      // boolean, and the SAME object the note holds rather than a copy.
+      describeShapingCarriedRawByReference:
+        dShapingStart.shaping === shapingStartNote.shaping &&
+        typeof dShapingStart.shaping === "object",
+      // A chord reads shaping from the same note it reads dynamic from: the head.
+      // A member contributes nothing, exactly as it contributes no dynamic.
+      describeChordShapingFromSameNoteAsDynamic: (function () {
+        const g = groupNotes(shapingChordNotes);
+        if (g.length !== 1 || g[0].length !== 3) return false;
+        const dHead = describeNote(g[0][0]);
+        return dHead.dynamic === "forte" && !!dHead.shaping &&
+          dHead.shaping.starts.join(",") === "crescendo";
+      })(),
+      describeChordMemberContributesNoShaping: (function () {
+        const g = groupNotes(shapingChordNotes);
+        const dMemberOne = describeNote(g[0][1]);
+        const dMemberTwo = describeNote(g[0][2]);
+        return dMemberOne.shaping === null && dMemberOne.dynamic === null &&
+          dMemberTwo.shaping === null && dMemberTwo.dynamic === null;
+      })(),
+      // The existing descriptor fields are untouched on a note that also carries
+      // shaping, so the widened whitelist dropped nothing.
+      describeExistingFieldsUnaffectedByShaping:
+        dShapingWithExtras.pitch === "F4" &&
+        dShapingWithExtras.value === "crotchet" &&
+        dShapingWithExtras.isRest === false &&
+        dShapingWithExtras.dynamic === "forte" &&
+        dShapingWithExtras.lyric === "la" &&
+        !!dShapingWithExtras.tie && dShapingWithExtras.tie.start === true &&
+        !!dShapingWithExtras.slur && dShapingWithExtras.slur.start === true &&
+        dShapingWithExtras.tuplet === null &&
+        dShapingWithExtras.articulations === null &&
+        dShapingWithExtras.ornaments === null,
+      // The key is present on EVERY descriptor, shaped or not, in every model.
+      describeShapingKeyOnEveryDescriptor: everyDescriptorOwnsShaping(SHAPING_MODEL),
+      simpleModelEveryDescriptorShapingNull: (function () {
+        if (!everyDescriptorOwnsShaping(MODEL)) return false;
+        return MODEL.parts.every(function (part) {
+          return part.measures.every(function (measure) {
+            return measure.notes.every(function (note) {
+              return describeNote(note).shaping === null;
+            });
+          });
+        });
+      })(),
     };
 
     console.table(results);
     return results;
   }
 
-  return { describeNote, pitchLabel, pitchRange, noteValueCounts, hasLyrics, groupNotes, groupByStaff, selfTest };
+  return { describeNote, pitchLabel, pitchRange, noteValueCounts, hasLyrics, groupNotes, groupByStaff, groupByVoice, keyboardPairs, selfTest };
 })();
 
 window.MusicModelWalk = MusicModelWalk;

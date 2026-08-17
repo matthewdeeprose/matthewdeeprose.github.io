@@ -47,7 +47,10 @@ const MusicMidi = (function () {
   // click — the testable seam. "audio/midi" is the standard MIME type for a .mid
   // file.
   function buildBlob(model) {
-    return new Blob([midi.buildMidi(model)], { type: "audio/midi" });
+    // The model's tempo is quarter notes per minute; pass it so the saved file
+    // reflects the score. buildMidi falls back to its default when the score
+    // carries no tempo, so a null here is safe.
+    return new Blob([midi.buildMidi(model, model ? model.tempo : null)], { type: "audio/midi" });
   }
 
   // Build a "Download MIDI" button into mountEl that downloads the model as a
@@ -155,6 +158,23 @@ const MusicMidi = (function () {
     const span = button ? button.querySelector('span[data-icon="download"]') : null;
     const bytes = window.MusicMidiBuild ? window.MusicMidiBuild.buildMidi(MODEL) : new Uint8Array();
 
+    // Tempo reaches the bytes (Stage 5.5b): using the same buildMidi call shape as
+    // buildBlob, a model carrying a tempo must encode THAT tempo in the FF 51 03
+    // meta (microseconds per quarter = 60000000 / bpm), not the fixed default 90.
+    const TEMPO_MODEL = Object.assign({}, MODEL, { tempo: 120 });
+    const tempoBytes = window.MusicMidiBuild
+      ? window.MusicMidiBuild.buildMidi(TEMPO_MODEL, TEMPO_MODEL ? TEMPO_MODEL.tempo : null)
+      : new Uint8Array();
+    const readTempoMicros = function (b) {
+      for (let i = 0; i + 5 < b.length; i++) {
+        if (b[i] === 0xff && b[i + 1] === 0x51 && b[i + 2] === 0x03) {
+          return (b[i + 3] << 16) | (b[i + 4] << 8) | b[i + 5];
+        }
+      }
+      return null;
+    };
+    const savedTempoMicros = readTempoMicros(tempoBytes);
+
     const results = {
       hasRender: typeof render === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -174,6 +194,9 @@ const MusicMidi = (function () {
       filenameStripsLastExtOnly: toMidiFilename("a.b.xml") === "a.b.mid",
       filenameDefaults: toMidiFilename("") === "music.mid" && toMidiFilename(null) === "music.mid",
       guardNoMount: render(MODEL, "x.musicxml", null) === false,
+      tempoReachesBytes:
+        savedTempoMicros === Math.round(60000000 / 120) &&
+        savedTempoMicros !== Math.round(60000000 / 90),
     };
 
     temp.remove();

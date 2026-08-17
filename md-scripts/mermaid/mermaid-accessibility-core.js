@@ -102,26 +102,6 @@ window.MermaidAccessibility = (function () {
     retrySchedule: [100, 300, 1000, 3000], // Exponential backoff schedule in ms
     maxRetryAttempts: 4,
     retryTimeout: 10000, // Maximum time to wait for SVG (10 seconds)
-    // Description templates
-    descriptionTemplates: {
-      flowchart: "Flowchart showing {title}.",
-      sequenceDiagram: "Sequence diagram showing interaction between {actors}.",
-      classDiagram: "Class diagram showing relationships between classes.",
-      stateDiagram: "State diagram showing possible states and transitions.",
-      entityRelationshipDiagram:
-        "Entity relationship diagram showing database structure.",
-      userJourney:
-        "User journey showing steps a user takes to accomplish a task.",
-      gantt: "Gantt chart showing project timeline and tasks.",
-      pieChart: "Pie chart showing distribution of {title}.",
-      mindmap: "Mind map showing hierarchical relationships for {title}.",
-      timeline: "Timeline showing events in chronological order.",
-      gitGraph: "Git graph showing commit history and branching strategy.",
-      sankey:
-        "Sankey diagram showing flow between nodes, with width representing quantity.",
-      quadrantChart:
-        "Quadrant chart showing items plotted across two dimensions.",
-    },
   };
 
   // Store for retry attempts and timers
@@ -874,12 +854,20 @@ window.MermaidAccessibility = (function () {
 
   /**
    * Get descriptions for a diagram
+   *
+   * Async since the stage 1 flowchart-rewrite work: generator calls are
+   * awaited, so a generator may return either a plain value (all ten
+   * current registrations — an await on a plain value is a no-op) or a
+   * Promise (the adapter-backed generators from stage 2 onwards). A
+   * rejecting promise lands in the same catch as a synchronous throw and
+   * routes to the generation-failed fallback.
+   *
    * @param {HTMLElement} svgElement - The SVG element of the diagram
    * @param {string} code - The original mermaid code
    * @param {string} diagramType - The type of diagram
-   * @returns {Object} Object containing short and long descriptions
+   * @returns {Promise<Object>} Promise resolving to an object containing short and long descriptions
    */
-  function getDiagramDescriptions(svgElement, code, diagramType) {
+  async function getDiagramDescriptions(svgElement, code, diagramType) {
     // Check if custom descriptions are provided in the directive
     const customDescriptions = Utils
       ? Utils.parseAccessibilityDirectives(code)
@@ -899,7 +887,7 @@ window.MermaidAccessibility = (function () {
 
         // Generate short description
         if (typeof generator.generateShort === "function") {
-          descriptions.short = generator.generateShort(
+          descriptions.short = await generator.generateShort(
             svgElement,
             code,
             diagramType
@@ -908,7 +896,7 @@ window.MermaidAccessibility = (function () {
 
         // Generate short HTML description if available
         if (typeof generator.generateShortHTML === "function") {
-          descriptions.shortHTML = generator.generateShortHTML(
+          descriptions.shortHTML = await generator.generateShortHTML(
             svgElement,
             code,
             diagramType
@@ -917,7 +905,7 @@ window.MermaidAccessibility = (function () {
 
         // Generate detailed description
         if (typeof generator.generateDetailed === "function") {
-          descriptions.detailed = generator.generateDetailed(
+          descriptions.detailed = await generator.generateDetailed(
             svgElement,
             code,
             diagramType
@@ -931,109 +919,199 @@ window.MermaidAccessibility = (function () {
       }
     }
 
-    // Use custom title if provided
+    // Use custom title if provided.
+    //
+    // Deliberately NOT escaped. Every sink this value reaches is a text sink —
+    // the figcaption's textContent branch, the panel's short-description
+    // textContent branches, and the SVG aria-label, which is an attribute and
+    // is never parsed as HTML. Escaping here would double-encode all of them,
+    // putting literal "&lt;" into a caption and into what a screen reader
+    // announces. See docs/mermaid-xss-census-2026-08-13.md § 2a.
+    // The flag beside it RECORDS THAT IT IS AUTHOR TEXT, for the same reason
+    // the description's flag below does: descriptions.short is polymorphic —
+    // it carries either a module's generated plain tier or the raw author
+    // string assigned here — and no sink downstream can tell the two apart
+    // from the string alone. The figcaption and the panel's short description
+    // both choose a generated HTML tier over it by default, so without the
+    // flag the author's own title loses on both surfaces. Provenance travels
+    // explicitly, set at the one site that knows it, and each sink acts on the
+    // flag rather than on a guess. Register item 30.
     if (customDescriptions.title) {
       descriptions.short = customDescriptions.title;
+      descriptions.shortIsAuthorText = true;
     }
 
-    // Use custom description if provided
+    // Use custom description if provided, and RECORD THAT IT IS AUTHOR TEXT.
+    //
+    // This field is polymorphic: it carries either a module's generated HTML,
+    // which the modules have already escaped at their own interpolation sites,
+    // or the raw author string assigned here. Both land on the same innerHTML
+    // sink in DOMUtils.createDescriptionContainer, and the sink cannot tell
+    // them apart from the string alone — inferring provenance from its shape
+    // is exactly what let author markup through. So provenance travels
+    // explicitly, set at the one site that knows it, and the sink escapes on
+    // the flag rather than on a guess. Register item 31.
     if (customDescriptions.description) {
       descriptions.detailed = customDescriptions.description;
+      descriptions.detailedIsAuthorText = true;
     }
 
-    // Fallback to default short description
+    // HONEST FALLBACK.
+    //
+    // Reached when no generator produced output: either the diagram type has no
+    // module, or a generator threw and the catch above left the field null.
+    //
+    // The previous behaviour capitalised the type key and appended " diagram",
+    // yielding strings like "ClassDiagram diagram", and reached for a template
+    // that could leak an unsubstituted placeholder ("Flowchart showing {title}.")
+    // straight into a screen reader. Both told the reader something false about
+    // a diagram nobody had actually described. Saying plainly that no
+    // description exists is more use than a confident wrong one.
+    //
+    // Author-supplied accTitle / accDescr are applied ABOVE this point, so an
+    // author's own description still wins.
+    // Two different silences, two different messages. "We do not support this
+    // diagram type" and "we support it but generation failed" are not the same
+    // statement, and telling a reader the first when the second is true is the
+    // same class of error this fallback exists to remove.
+    const generatorExists = !!descriptionGenerators[diagramType];
+
     if (!descriptions.short) {
-      descriptions.short = `${
-        diagramType.charAt(0).toUpperCase() + diagramType.slice(1)
-      } diagram`;
+      descriptions.short = generatorExists
+        ? buildGenerationFailedShort(diagramType)
+        : buildUnsupportedShort(diagramType);
     }
 
-    // Fallback to default detailed description if still null
     if (!descriptions.detailed) {
-      const template =
-        config.descriptionTemplates[diagramType] ||
-        `${diagramType} diagram showing relationships and flow.`;
-      descriptions.detailed = template;
+      descriptions.detailed = generatorExists
+        ? buildGenerationFailedDetailed(diagramType)
+        : buildUnsupportedDetailed(diagramType);
     }
 
     return descriptions;
   }
 
   /**
-   * Generate a short description for a diagram (fallback method)
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @param {string} diagramType - The type of diagram
-   * @returns {string} A short description
+   * Plain-English noun phrases, article included, for diagram types that have no
+   * description generator. The article travels with the phrase so that "an
+   * entity relationship diagram" cannot come out as "a entity relationship
+   * diagram" — the leading word is not derivable from the key.
+   *
+   * Keys cover both the `unsupported:<mermaidType>` form produced by Mermaid's
+   * own detector and the legacy keys the keyword-scan fallback still returns.
    */
-  function generateShortDescription(svgElement, code, diagramType) {
-    // If we have a registered generator for this diagram type, use it
-    if (
-      descriptionGenerators[diagramType] &&
-      typeof descriptionGenerators[diagramType].generateShort === "function"
-    ) {
-      return descriptionGenerators[diagramType].generateShort(
-        svgElement,
-        code,
-        diagramType
-      );
-    }
+  const UNSUPPORTED_HUMAN_NAMES = Object.freeze({
+    "unsupported:requirement": "a requirement diagram",
+    "unsupported:c4": "a C4 architecture diagram",
+    "unsupported:xychart": "an XY chart",
+    "unsupported:block": "a block diagram",
+    "unsupported:packet": "a packet diagram",
+    "unsupported:kanban": "a Kanban board",
+    "unsupported:radar": "a radar chart",
+    "unsupported:info": "a Mermaid information panel",
+    // Legacy keys from the keyword-scan fallback path.
+    classDiagram: "a class diagram",
+    entityRelationshipDiagram: "an entity relationship diagram",
+    gitGraph: "a Git graph",
+    sankey: "a Sankey diagram",
+    // Types that DO have a generator. Reached only when that generator failed,
+    // so the message can still name the diagram accurately.
+    flowchart: "a flowchart",
+    sequenceDiagram: "a sequence diagram",
+    stateDiagram: "a state diagram",
+    "stateDiagram-v2": "a state diagram",
+    userJourney: "a user journey diagram",
+    gantt: "a Gantt chart",
+    pieChart: "a pie chart",
+    quadrantChart: "a quadrant chart",
+    mindmap: "a mindmap",
+    timeline: "a timeline",
+    "architecture-beta": "an architecture diagram",
+  });
 
-    // Extract title from SVG or use default
-    let title =
-      Utils && typeof Utils.extractTitleFromSVG === "function"
-        ? Utils.extractTitleFromSVG(svgElement)
-        : `${
-            diagramType.charAt(0).toUpperCase() + diagramType.slice(1)
-          } Diagram`;
+  /** Last-resort phrase when the type is genuinely unknown to us. */
+  const UNKNOWN_DIAGRAM_PHRASE = "a diagram";
 
-    // Use template based on diagram type
-    let template =
-      config.descriptionTemplates[diagramType] || `${diagramType} diagram`;
-
-    // Basic fallback implementation for actors in sequence diagrams
-    let actors = "";
-    if (diagramType === "sequenceDiagram") {
-      const actorElements = svgElement.querySelectorAll(".actor");
-      if (actorElements.length > 0) {
-        const actorNames = Array.from(actorElements)
-          .slice(0, config.maxActors || 5)
-          .map((el) => el.textContent.trim());
-
-        actors = actorNames.join(", ");
-
-        if (actorElements.length > (config.maxActors || 5)) {
-          actors += ", and others";
-        }
-      }
-    }
-
-    // Replace placeholders with actual content
-    return template.replace("{title}", title).replace("{actors}", actors);
+  /**
+   * Resolve a diagram type key to its plain-English noun phrase.
+   * @param {string} diagramType
+   * @returns {string} e.g. "a class diagram"
+   */
+  function describeDiagramTypeInWords(diagramType) {
+    return UNSUPPORTED_HUMAN_NAMES[diagramType] || UNKNOWN_DIAGRAM_PHRASE;
   }
 
   /**
-   * Generate a detailed description for a diagram (fallback method)
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @param {string} diagramType - The type of diagram
-   * @returns {string} A detailed HTML description
+   * Short description for a type we cannot describe. Plain text, no markup.
+   * @param {string} diagramType
+   * @returns {string}
    */
-  function generateDetailedDescription(svgElement, code, diagramType) {
-    // If we have a registered generator for this diagram type, use it
-    if (
-      descriptionGenerators[diagramType] &&
-      typeof descriptionGenerators[diagramType].generateDetailed === "function"
-    ) {
-      return descriptionGenerators[diagramType].generateDetailed(
-        svgElement,
-        code,
-        diagramType
-      );
-    }
+  function buildUnsupportedShort(diagramType) {
+    const phrase = describeDiagramTypeInWords(diagramType);
+    const sentence = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+    return `${sentence}. No generated description is available for this diagram type.`;
+  }
 
-    // Fallback to simple description
-    return `<p>This is a ${diagramType} diagram.</p><p>For more specific details, please add an "accDescr" directive to your Mermaid code.</p>`;
+  /**
+   * Detailed description for a type we cannot describe.
+   *
+   * Deliberately makes NO claim about the diagram's content — not the number of
+   * nodes, not the shapes, nothing. It states the limitation and points the
+   * author at the directives that let them fix it themselves.
+   *
+   * @param {string} diagramType
+   * @returns {string} HTML fragment
+   */
+  function buildUnsupportedDetailed(diagramType) {
+    const phrase = describeDiagramTypeInWords(diagramType);
+    return (
+      `<section class="mermaid-section unsupported-diagram">` +
+      `<h4 class="mermaid-details-heading">Description not available</h4>` +
+      `<p>This is ${phrase}. Automatic description does not support this diagram type yet, ` +
+      `so no account of its contents can be given here.</p>` +
+      `<p>The author of this diagram can supply their own description in the diagram source ` +
+      `using the <code>accTitle</code> and <code>accDescr</code> directives, which replace ` +
+      `this message.</p>` +
+      `</section>`
+    );
+  }
+
+  /**
+   * Short description for a SUPPORTED type whose generator produced nothing.
+   *
+   * Distinct from the unsupported message on purpose: this diagram type IS
+   * described elsewhere in the application, so claiming otherwise would send the
+   * reader looking for a limitation that does not exist. The error itself is
+   * already logged above.
+   *
+   * @param {string} diagramType
+   * @returns {string}
+   */
+  function buildGenerationFailedShort(diagramType) {
+    const phrase = describeDiagramTypeInWords(diagramType);
+    const sentence = phrase.charAt(0).toUpperCase() + phrase.slice(1);
+    return `${sentence}. A description could not be generated for this diagram.`;
+  }
+
+  /**
+   * Detailed description for a SUPPORTED type whose generator produced nothing.
+   * Makes no claim about the diagram's content.
+   *
+   * @param {string} diagramType
+   * @returns {string} HTML fragment
+   */
+  function buildGenerationFailedDetailed(diagramType) {
+    const phrase = describeDiagramTypeInWords(diagramType);
+    return (
+      `<section class="mermaid-section unsupported-diagram">` +
+      `<h4 class="mermaid-details-heading">Description not available</h4>` +
+      `<p>This is ${phrase}. A description could not be generated for it on this occasion, ` +
+      `so no account of its contents can be given here.</p>` +
+      `<p>The author of this diagram can supply their own description in the diagram source ` +
+      `using the <code>accTitle</code> and <code>accDescr</code> directives, which replace ` +
+      `this message.</p>` +
+      `</section>`
+    );
   }
 
   /**
@@ -1093,8 +1171,23 @@ window.MermaidAccessibility = (function () {
     let svgElement = mermaidDiv.querySelector("svg");
 
     if (!svgElement) {
+      // Register item 25 diagnostic. The measurement session found that
+      // MermaidControls.addControlsToContainer synchronously wipes the SVG -
+      // its theme setup ends in applyTheme, whose first act is
+      // `mermaidDiv.textContent = newCode`, the SVG returning only when that
+      // function's own asynchronous re-render resolves. During the window this
+      // node is the same node, still connected, with non-empty innerHTML, so
+      // every conventional staleness check reads healthy. The one token that
+      // separates that window from any other cause of a miss is the
+      // `%%{init:` directive applyTheme prefixes to the source, which nothing
+      // else on the page writes. Both readings are taken synchronously at the
+      // instant of the miss; the text itself is deliberately never logged.
+      // See docs/mermaid-item25-firstlook-2026-08-12.md.
+      const directivePresent = mermaidDiv.textContent
+        .trim()
+        .startsWith("%%{init");
       logInfo(
-        `[Mermaid Accessibility] No SVG found initially for diagram ${diagramId}, starting retry sequence`
+        `[Mermaid Accessibility] No SVG found initially for diagram ${diagramId}, starting retry sequence (directivePresent: ${directivePresent}, innerHTML length: ${mermaidDiv.innerHTML.length})`
       );
 
       // Try to wait for SVG with retry logic
@@ -1156,7 +1249,7 @@ window.MermaidAccessibility = (function () {
     }
 
     // Get descriptions (either custom or generated)
-    const descriptions = getDiagramDescriptions(
+    const descriptions = await getDiagramDescriptions(
       svgElement,
       diagramCode,
       diagramType
@@ -1181,39 +1274,28 @@ window.MermaidAccessibility = (function () {
       const figcaption = document.createElement("figcaption");
       figcaption.className = "mermaid-figcaption";
 
-      // Use HTML version if available
+      // Use HTML version if available.
+      // The tier text is used verbatim on both branches: each module owns its
+      // own number style (via Common.narrationNumber), and overview totals are
+      // always digits. Rewriting numbers here made the figcaption disagree with
+      // the SVG aria-label, which is fed the same tier untransformed (item 27).
+      //
+      // An author's own accTitle ALWAYS takes the text branch, whatever the
+      // module generated. Two reasons, and the second is why the flag is read
+      // here rather than the strings compared: an author title changes
+      // descriptions.short, which GUARANTEES it differs from shortHTML, so the
+      // author's own text was what forced the generated branch to be taken and
+      // then discarded — the defect. And the author's string must reach only
+      // text and attribute sinks, so that it needs no escaping and cannot be
+      // double-encoded into what a reader sees. Register item 30.
       if (
         descriptions.shortHTML &&
-        descriptions.shortHTML !== descriptions.short
+        descriptions.shortHTML !== descriptions.short &&
+        descriptions.shortIsAuthorText !== true
       ) {
-        // Ensure numbers are properly formatted
-        const tempDiv = document.createElement("div");
-        tempDiv.innerHTML = descriptions.shortHTML;
-
-        // Format text nodes within the HTML
-        const walker = document.createTreeWalker(
-          tempDiv,
-          NodeFilter.SHOW_TEXT,
-          null,
-          false
-        );
-
-        while (walker.nextNode()) {
-          const node = walker.currentNode;
-          if (node.textContent.trim()) {
-            node.textContent =
-              Utils && typeof Utils.formatNumbersInText === "function"
-                ? Utils.formatNumbersInText(node.textContent)
-                : node.textContent;
-          }
-        }
-
-        figcaption.innerHTML = tempDiv.innerHTML;
+        figcaption.innerHTML = descriptions.shortHTML;
       } else {
-        figcaption.textContent =
-          Utils && typeof Utils.formatNumbersInText === "function"
-            ? Utils.formatNumbersInText(descriptions.short)
-            : descriptions.short;
+        figcaption.textContent = descriptions.short;
       }
 
       // Add sr-only class if captions should be hidden by default
@@ -1242,6 +1324,8 @@ window.MermaidAccessibility = (function () {
       typeof Utils.DOMUtils === "object" &&
       typeof Utils.DOMUtils.createDescriptionToggleButton === "function"
     ) {
+      // The provenance flag cannot ride on descriptions.detailed — that is a
+      // string — so it is passed alongside it. Absent means generator output.
       const descriptionToggleButton =
         Utils.DOMUtils.createDescriptionToggleButton(
           container,
@@ -1249,7 +1333,9 @@ window.MermaidAccessibility = (function () {
           diagramCode,
           diagramId,
           descriptions.detailed,
-          descriptions.short
+          descriptions.short,
+          descriptions.detailedIsAuthorText === true,
+          descriptions.shortIsAuthorText === true
         );
       controlsContainer.appendChild(descriptionToggleButton);
     }
@@ -1627,8 +1713,6 @@ window.MermaidAccessibility = (function () {
     initializeAllControls: initializeAllControls,
     registerDescriptionGenerator: registerDescriptionGenerator,
     getDiagramDescriptions: getDiagramDescriptions,
-    generateShortDescription: generateShortDescription,
-    generateDetailedDescription: generateDetailedDescription,
     descriptionGenerators: descriptionGenerators,
     config: config,
     retryStore: retryStore,

@@ -77,6 +77,10 @@
   const LS_PROXY_URL_KEY = "foundryProxyUrl";
   const LS_USER_TOKEN_KEY = "foundry-user-token";
 
+  // The EntraAuth scope name this provider authenticates against. Matches the
+  // "foundry" key in SCOPES in auth/entra-auth.js.
+  const ENTRA_SCOPE_NAME = "foundry";
+
   // Built-in last-resort proxy URL. Matches the project's deployed Worker
   // (see image-describer/image-describer-controller-generate.js where the
   // same URL was historically the only fallback). Hits this when neither
@@ -154,6 +158,55 @@
   }
 
   /**
+   * Read the Entra cached access token for the Foundry scope, or null.
+   *
+   * THE typeof CHECK BELOW IS NOT BELT-AND-BRACES — IT IS LOAD-BEARING, AND IT
+   * MUST STAY even though getCachedToken is synchronous today. readProviderConfig
+   * is synchronous because endpoint() is, and endpoint()'s four call sites
+   * destructure { url, headers } without awaiting. If this ever returned a
+   * promise — a refactor of entra-auth.js, a different auth module wired to the
+   * same global — nothing downstream would catch it: a promise is truthy, so it
+   * passes the `if (userToken)` guard, logs hasUserToken: true, and fetch()
+   * stringifies it onto the wire as the literal "[object Promise]". The request
+   * then fails at the Worker with nothing at the call site to explain it. A
+   * typeof test costs nothing and is the only thing standing between that
+   * refactor and a silent production failure.
+   *
+   * Every guard failure falls through to the legacy path silently — an absent
+   * EntraAuth is the ordinary case on a page that never wired sign-in, not an
+   * error worth logging on every request.
+   *
+   * @returns {string|null} a non-empty trimmed token, or null. Never a Promise.
+   * @private
+   */
+  function readEntraToken() {
+    const auth = window.EntraAuth;
+    if (!auth) return null;
+    if (typeof auth.getCachedToken !== "function") return null;
+
+    const token = auth.getCachedToken(ENTRA_SCOPE_NAME);
+    if (typeof token !== "string") return null;
+
+    const trimmed = token.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+
+  /**
+   * Whether EntraAuth is present and reports a signed-in account.
+   *
+   * Guarded exactly like readEntraToken: the global may be absent, and a stub
+   * or partial implementation may not carry the method.
+   *
+   * @returns {boolean}
+   * @private
+   */
+  function isEntraSignedIn() {
+    const auth = window.EntraAuth;
+    if (!auth || typeof auth.isSignedIn !== "function") return false;
+    return auth.isSignedIn() === true;
+  }
+
+  /**
    * Resolve the proxy URL + optional user token for the next request.
    *
    * Precedence (Task 3.2c — providerConfig-wins decision):
@@ -161,14 +214,19 @@
    *      and non-empty (explicit caller intent always wins; preserves
    *      test isolation and backwards compatibility with Image Describer's
    *      Stage 2 wiring).
-   *   2. localStorage.getItem('foundryProxyUrl' / 'foundry-user-token')
+   *   2. USER TOKEN ONLY (F2-10b): the Entra cached token, read synchronously
+   *      via window.EntraAuth.getCachedToken. A live institutional sign-in
+   *      beats the legacy shared token below.
+   *   3. localStorage.getItem('foundryProxyUrl' / 'foundry-user-token')
    *      written by the Set Up tool (Task 3.2b). Read fresh on every call —
    *      no in-memory cache, so a user changing the URL in Set Up takes
    *      effect on the next request from any NEW OpenRouterEmbed instance
-   *      without a page reload.
-   *   3. Hardcoded DEFAULT_PROXY_URL fallback (proxy URL only — there is
-   *      no default user token; if neither providerConfig nor localStorage
-   *      supplies one, the request omits the x-user-token header).
+   *      without a page reload. This is also the ROLLBACK PATH: with no
+   *      EntraAuth on the page, nobody signed in, or an empty token cache,
+   *      behaviour is identical to the pre-F2-10b build.
+   *   4. Hardcoded DEFAULT_PROXY_URL fallback (proxy URL only — there is
+   *      no default user token; if none of the above supplies one, the
+   *      request omits the x-user-token header).
    *
    * No longer throws: the hardcoded default guarantees a usable proxy URL
    * in all paths. Pre-3.2c callers that relied on the throw-on-missing
@@ -202,17 +260,42 @@
     // Normalise: strip trailing slash so PROXY_PATH concatenation is clean.
     proxyUrl = proxyUrl.replace(/\/+$/, "");
 
-    // User token precedence: providerConfig → localStorage → null
+    // User token precedence: providerConfig → Entra cached token → localStorage.
+    // A live institutional sign-in beats a stale shared token, but an explicit
+    // providerConfig value still wins, because a caller passing one means it.
     let userToken = null;
+    let userTokenSource = null;
     if (cfg && typeof cfg.userToken === "string" && cfg.userToken.trim()) {
       userToken = cfg.userToken.trim();
+      userTokenSource = "providerConfig";
     } else {
-      userToken = readLocalStorageString(LS_USER_TOKEN_KEY);
+      const entraToken = readEntraToken();
+      if (entraToken) {
+        userToken = entraToken;
+        userTokenSource = "entra";
+      } else {
+        userToken = readLocalStorageString(LS_USER_TOKEN_KEY);
+        userTokenSource = userToken ? "localStorage" : null;
+      }
+    }
+
+    // Signed in, but nothing to send. The request goes out unauthenticated and
+    // the Worker answers 401 — which, without this line, looks like a server
+    // fault rather than a client-side cache miss. Named here so the diagnosis
+    // lands at the call site instead of in the Worker's logs.
+    if (!userToken && isEntraSignedIn()) {
+      logWarn(
+        "Signed in to Entra but no token is cached, so this request will go " +
+          "out unauthenticated and the proxy will reject it. Likely causes: a " +
+          "page load where priming failed, or a token that expired without " +
+          "being renewed.",
+      );
     }
 
     logDebug("Foundry provider config resolved", {
       proxyUrlSource,
       hasUserToken: !!userToken,
+      userTokenSource,
     });
 
     return { proxyUrl, userToken, source: proxyUrlSource };
@@ -501,6 +584,12 @@
       }
       if (typeof options.top_p === "number" && !isReasoning) {
         body.top_p = options.top_p;
+      }
+      if (typeof options.frequency_penalty === "number" && !isReasoning) {
+        body.frequency_penalty = options.frequency_penalty;
+      }
+      if (typeof options.presence_penalty === "number" && !isReasoning) {
+        body.presence_penalty = options.presence_penalty;
       }
 
       // Single DEBUG log per drop, only when something was actually dropped.

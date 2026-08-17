@@ -375,15 +375,22 @@ textarea {
 .dps-roletable th[scope="row"] {
   font-weight: 600;
   text-align: left;
-  white-space: nowrap;
 }
 
+/* A control that cannot shrink below its own minimum overflows a fixed
+   cell and paints on the column beside it - which is what the Lock
+   checkbox was doing to Cap (mm), 21 px per row, on every row. Both
+   controls are told to fit the cell instead. */
 .dps-roletable select {
-  min-width: 7rem;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dps-roletable input[type="number"] {
-  width: 5rem;
+  width: 100%;
+  max-width: 5rem;
+  box-sizing: border-box;
 }
 
 .dps-roletable .dps-cyclebtn {
@@ -391,10 +398,18 @@ textarea {
   font-size: 0.85rem;
 }
 
+/* Wraps rather than overflowing. `nowrap` on a flex row does not clip and
+   does not scroll: the last item simply paints outside the cell, and at
+   the rail's width Lock landed on top of the Cap (mm) input. Each item
+   keeps its own text unbroken; the ROW is what is allowed to wrap. */
 .dps-rolecell-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.2rem;
   align-items: center;
+}
+
+.dps-rolecell-actions > * {
   white-space: nowrap;
 }
 
@@ -796,6 +811,27 @@ button[aria-pressed="true"] {
   max-width: none;
 }
 
+/* --- The Detail view ------------------------------------------------
+   These sections used to be 799 px wide because the rail was 799 px
+   wide - a measure nobody chose. At full page width a hint runs the
+   whole 1,900 px and a select stretches with it, so the measure is
+   stated here rather than inherited from a column that has gone. The
+   role table keeps the full width: it is the one thing that earns it. */
+#dpsView-detail {
+  padding: 0.75rem 1rem 2rem;
+}
+
+#dpsView-detail p,
+#dpsView-detail .dps-hint {
+  max-width: 80ch;
+}
+
+#dpsView-detail .dps-field > select,
+#dpsView-detail .dps-field > input,
+#dpsView-detail textarea {
+  max-width: 32rem;
+}
+
 /* --- Readouts (magnifiable for projection) ------------------------ */
 .dps-readout {
   font-variant-numeric: tabular-nums;
@@ -855,6 +891,70 @@ th {
    background of anything below the fold. */
 .dps-scroll {
   overflow-x: auto;
+}
+
+/* Collapsed cards. The first screen is for a stakeholder deciding whether
+   they agree; the measurement depth is still one click away and still in
+   the heading outline, because a summary keeps its h2. */
+.dps-collapsible > summary {
+  cursor: pointer;
+  list-style-position: outside;
+}
+
+.dps-collapsible > summary > h2 {
+  display: inline;
+}
+
+.dps-collapsible > summary:focus-visible {
+  outline: 0.2rem solid var(--ui-accent);
+  outline-offset: 0.15rem;
+}
+
+/* The roles table COLLAPSES rather than growing a sideways scrollbar.
+   A horizontal scrollbar inside a scrolling column is two axes of hidden
+   content in one place, and at 1080p it was the widest thing on the page.
+
+   Iteration 13: `table-layout: fixed` alone divided the width into six
+   EQUAL columns, which is the wrong answer for this content - Role and
+   Colour hold the widest things and were given the same room as Gate.
+   The widths below are the repair, and they are stated here rather than
+   in a <colgroup> so the table's builder stays untouched. */
+#dpsRoleControls {
+  overflow-x: visible;
+}
+
+#dpsRoleControls table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+#dpsRoleControls td,
+#dpsRoleControls th {
+  overflow-wrap: anywhere;
+}
+
+#dpsRoleControls thead th:nth-child(1) {
+  width: 15%;
+}
+
+#dpsRoleControls thead th:nth-child(2) {
+  width: 24%;
+}
+
+#dpsRoleControls thead th:nth-child(3) {
+  width: 11%;
+}
+
+#dpsRoleControls thead th:nth-child(4) {
+  width: 13%;
+}
+
+#dpsRoleControls thead th:nth-child(5) {
+  width: 13%;
+}
+
+#dpsRoleControls thead th:nth-child(6) {
+  width: 24%;
 }
 
 .dps-swatch {

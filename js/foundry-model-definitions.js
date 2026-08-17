@@ -358,7 +358,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this Foundry deployment (Task 2.6 smoke test, re-confirmed 31 May 2026). An earlier project note claimed this deployment rejected images; that claim was falsified on re-verification — vision works correctly.",
   }),
 
-  // ── gpt-4o-mini (vision-capable, low-cost multimodal; PDF deliberately omitted — transmits but reads blind on this deployment, an Azure per-deployment quirk; sibling gpt-4o reads) ──
+  // ── gpt-4o-mini (vision-capable, low-cost multimodal; PDF deliberately omitted — transmits but reads blind on this deployment, an Azure per-deployment quirk; sibling gpt-4o behaves the same, verified 14 July 2026) ──
   createFoundryModel({
     deploymentName: "gpt-4o-mini",
     displayName: "GPT-4o Mini",
@@ -960,7 +960,7 @@ const FOUNDRY_MODELS = [
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
   }),
 
-  // ── gpt-4o (vision verified 6 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
+  // ── gpt-4o (vision verified 6 June 2026; PDF deliberately omitted — transmits but reads blind on this deployment, an Azure per-deployment quirk, verified 14 July 2026; the earlier "PDF verified 23 June 2026" claim is superseded) ──
   // Empirically (Phase A batch 2): serves 200 and ACCEPTS temperature/top_p →
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   // No openai/gpt-4o sibling registered in js/model-definitions.js → fallbackTo
@@ -969,7 +969,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-4o",
     displayName: "GPT-4o",
     description:
-      "OpenAI's GPT-4o model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "OpenAI's GPT-4o model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry. PDF is transmitted to this deployment but read blind (an Azure per-deployment quirk, verified 14 July 2026), so the pdf capability token is omitted.",
     // provisional, pending Foundry invoice reconciliation — no in-repo sibling exists
     costs: { input: 2.5, output: 10.0 },
     capabilities: [
@@ -980,7 +980,6 @@ const FOUNDRY_MODELS = [
       "tool_calling",
       "vision",
       "multilingual",
-      "pdf",
     ],
     maxContext: 128000,
     fallbackTo: null,
@@ -2224,6 +2223,8 @@ const FOUNDRY_MODELS = [
     supportedParams: [
       "temperature",
       "top_p",
+      "frequency_penalty",
+      "presence_penalty",
       "seed",
       "max_tokens",
       "response_format",

@@ -123,7 +123,11 @@ const ALLY_UI_MANAGER = (function () {
     "ally-client-id",
     "ally-api-token",
     "ally-toggle-token",
+    "ally-worker-url",
+    "ally-worker-url-error",
     "ally-save-credentials",
+    "ally-save-credentials-btn",
+    "ally-clear-credentials-btn",
     "ally-test-connection",
 
     // Query section
@@ -648,6 +652,12 @@ const ALLY_UI_MANAGER = (function () {
         region: elements["ally-region-select"]?.value || "EU",
         clientId: elements["ally-client-id"]?.value?.trim() || "",
         token: elements["ally-api-token"]?.value?.trim() || "",
+        // undefined (not "") when the field is absent from the DOM, so callers
+        // can tell "no such field here" from "the user cleared it" and never
+        // wipe a value configured in the other form.
+        workerUrl: elements["ally-worker-url"]
+          ? elements["ally-worker-url"].value.trim()
+          : undefined,
         saveCredentials: elements["ally-save-credentials"]?.checked || false,
         endpoint:
           document.querySelector('input[name="ally-endpoint"]:checked')
@@ -668,16 +678,29 @@ const ALLY_UI_MANAGER = (function () {
     setFormValues: function (values) {
       if (!values) return;
 
-      if (values.region && elements["ally-region-select"]) {
+      // Every branch here tests for PRESENCE of the property, not truthiness.
+      // An empty string is a meaningful instruction — it is how a clear in the
+      // Set Up page propagates through credentials:changed — whereas an absent
+      // property means "this caller has nothing to say about that field, leave
+      // it alone". A truthiness test cannot tell the two apart, and silently
+      // turns a clear into a no-op.
+      if (typeof values.region === "string" && elements["ally-region-select"]) {
         elements["ally-region-select"].value = values.region;
       }
 
-      if (values.clientId && elements["ally-client-id"]) {
+      if (typeof values.clientId === "string" && elements["ally-client-id"]) {
         elements["ally-client-id"].value = values.clientId;
       }
 
-      if (values.token && elements["ally-api-token"]) {
+      if (typeof values.token === "string" && elements["ally-api-token"]) {
         elements["ally-api-token"].value = values.token;
+      }
+
+      if (
+        typeof values.workerUrl === "string" &&
+        elements["ally-worker-url"]
+      ) {
+        elements["ally-worker-url"].value = values.workerUrl;
       }
 
       if (

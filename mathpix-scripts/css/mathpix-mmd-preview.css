@@ -194,6 +194,16 @@
   overflow: auto;
 }
 
+/* Wrap toggle — when enabled, long lines wrap instead of scrolling horizontally.
+   Targets pre AND code because the Prism a11y theme sets white-space on both, so
+   overriding only the pre would leave the code element on white-space: pre. */
+.mmd-code-container.mmd-wrap-enabled pre[class*="language-"],
+.mmd-code-container.mmd-wrap-enabled pre[class*="language-"] code[class*="language-"] {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere; /* SMILES / URLs have no spaces — allow mid-token breaks */
+  word-break: break-word;
+}
+
 /* --------------------------------------------------------------------------
    Preview Container
    -------------------------------------------------------------------------- */
@@ -1156,7 +1166,8 @@ a#resume-mmd-preview-skip.mmd-skip-link:focus {
   display: none;
 }
 
-.mmd-split-pdf-toggle input[type="checkbox"] {
+.mmd-split-pdf-toggle input[type="checkbox"],
+.mmd-wrap-toggle input[type="checkbox"] {
   margin: 0;
   cursor: pointer;
 }
@@ -1212,7 +1223,8 @@ a#resume-mmd-preview-skip.mmd-skip-link:focus {
    LAYOUT & STRUCTURE
    =========================================== */
 
-.mmd-split-pdf-toggle {
+.mmd-split-pdf-toggle,
+.mmd-wrap-toggle {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;

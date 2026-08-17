@@ -765,11 +765,14 @@ window.testErrorHandlingIntegration = async () => {
   }
 
   // Test 3: Accessibility Integration
+  //
+  // Probes window.accessibilityHelpers. This used to test window.a11y and
+  // window.accessibility — neither is EVER assigned in production, so it reported
+  // "Missing" unconditionally and nobody read it as a defect. Those are the same two
+  // names the error handler itself resolved, which is why every error announcement in
+  // the app was dead code until 1256ebc.
   console.log("♿ Testing Accessibility integration...");
-  if (
-    window.a11y?.announceStatus ||
-    window.accessibility?.announceToScreenReader
-  ) {
+  if (typeof window.accessibilityHelpers?.announce === "function") {
     integrationTests.push({ name: "Accessibility", status: "✅ Available" });
   } else {
     integrationTests.push({ name: "Accessibility", status: "❌ Missing" });
@@ -1021,10 +1024,9 @@ window.checkErrorHandlingHealth = () => {
       modals: !!(
         window.UniversalModal?.confirm && window.UniversalModal?.create
       ),
-      accessibility: !!(
-        window.a11y?.announceStatus ||
-        window.accessibility?.announceToScreenReader
-      ),
+      // See the note at "Test 3: Accessibility Integration" — window.a11y and
+      // window.accessibility are never assigned; this is the real announcer.
+      accessibility: typeof window.accessibilityHelpers?.announce === "function",
       requestManager: !!window.uiController?.requestProcessor,
       fileHandler: !!window.fileHandler,
     },

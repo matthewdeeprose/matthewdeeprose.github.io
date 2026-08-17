@@ -489,13 +489,10 @@ class MathPixController {
       endpoint: currentEndpoint,
     });
 
-    // Update UI Manager feature availability display
-    if (this.uiManager && this.uiManager.updateFeatureAvailability) {
-      this.uiManager.updateFeatureAvailability(currentEndpoint);
-      logDebug("UI Manager feature availability updated");
-    }
-
-    // Update PDF Handler format availability
+    // Update PDF Handler format availability. This is the only consumer: the
+    // UI Manager previously had an updateFeatureAvailability() of its own, but
+    // it addressed an element id ("format-latex-pdf") that has never existed in
+    // tools.html, so the whole method was unreachable and has been removed.
     if (this.pdfHandler && this.pdfHandler.updateFormatAvailability) {
       this.pdfHandler.updateFormatAvailability();
       logDebug("PDF Handler format availability updated");
@@ -503,10 +500,7 @@ class MathPixController {
 
     logInfo("Feature availability update completed", {
       endpoint: currentEndpoint,
-      updatedComponents: [
-        this.uiManager ? "UIManager" : null,
-        this.pdfHandler ? "PDFHandler" : null,
-      ].filter(Boolean),
+      updatedComponents: [this.pdfHandler ? "PDFHandler" : null].filter(Boolean),
     });
   }
 
@@ -921,6 +915,7 @@ class MathPixController {
       response.processingMetadata ||
       response.docx ||
       response.pptx ||
+      response.xlsx ||
       response["mmd.zip"] ||
       response["md.zip"] ||
       response["html.zip"]

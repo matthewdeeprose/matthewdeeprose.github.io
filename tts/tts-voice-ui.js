@@ -71,6 +71,26 @@ window.TTSVoiceUI = (function () {
     return parseFloat(val).toFixed(1);
   }
 
+  // Spoken form of the "×" in the visible value. A bare slider value announces as
+  // "1", which carries no unit; aria-valuetext supplies the unit instead.
+  var RATE_VALUETEXT_SUFFIX = ' times';
+
+  /**
+   * Write the rate to both the visible value and the slider's aria-valuetext.
+   * The two must move together — the visible × is not spoken, so aria-valuetext
+   * is the only place a screen-reader user hears the unit.
+   */
+  function setRateDisplay(val) {
+    var formatted = formatRate(val);
+    if (els.rateValue) els.rateValue.textContent = formatted;
+    if (els.rateSlider) {
+      els.rateSlider.setAttribute(
+        'aria-valuetext',
+        formatted + RATE_VALUETEXT_SUFFIX
+      );
+    }
+  }
+
   // ── Supertonic availability ────────────────────────────────────
 
   function getSupertonicState() {
@@ -227,7 +247,7 @@ window.TTSVoiceUI = (function () {
   function onRateInput() {
     if (!els.rateSlider || !els.rateValue) return;
     var val = parseFloat(els.rateSlider.value);
-    els.rateValue.textContent = formatRate(val);
+    setRateDisplay(val);
     window.TTSController.setRate(val);
   }
 
@@ -349,8 +369,8 @@ window.TTSVoiceUI = (function () {
 
     // Rate slider
     var rate = window.TTSController.getRate();
-    if (els.rateSlider)  els.rateSlider.value      = rate;
-    if (els.rateValue)   els.rateValue.textContent  = formatRate(rate);
+    if (els.rateSlider) els.rateSlider.value = rate;
+    setRateDisplay(rate);
 
     // Supertonic availability
     updateSupertonicAvailability();

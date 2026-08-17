@@ -74,8 +74,8 @@ class MathPixPrivacyManager {
       requireConfirmation: true, // Always ask for consent
       rememberChoice: false, // Always ask for maximum privacy
       alwaysConsentSession: false, // Session-only auto-consent for testing
-      processingLocation: "EU (Frankfurt)", // Hard-coded EU processing only
-      processingEndpoint: "eu-central-1.api.mathpix.com", // EU-specific endpoint
+      processingLocation: "EU (Frankfurt / Falkenstein)", // when the EU endpoint is selected
+      processingEndpoint: "eu.api.mathpix.com", // EU-resident endpoint
       dataLocality: "European Union", // All processing within EU
       secureTransmission: true, // HTTPS only
       noDataImprovement: true, // improve_mathpix: false
@@ -344,13 +344,15 @@ Our integration is configured for maximum privacy protection with guaranteed EU 
   - Data encrypted during transmission
   - No unencrypted data transfer
 
-🇪🇺 EU-GUARANTEED PROCESSING LOCATION:
-- Hard-coded EU-specific endpoint: eu-central-1.api.mathpix.com
-- All processing occurs in Frankfurt, Germany data centres
-- Your data NEVER leaves the European Union during processing
-- No automatic server selection - EU processing guaranteed
+🇪🇺 EU PROCESSING LOCATION (while the European Union endpoint is selected):
+- EU-resident endpoint: ${this.privacySettings.processingEndpoint}
+- Processing runs in EU data centres (${this.privacySettings.processingLocation})
+- Uploaded documents, results and derivatives stay in the European Union
 - Full data sovereignty within EU jurisdiction
-- Zero cross-border data transfers outside EU
+- No cross-border transfer of your document data outside the EU
+- The server region is selectable, and the European Union endpoint is the
+  default. Check "MathPix Server Location" to confirm which region is in use:
+  choosing United States or Asia Pacific processes your data outside the EU.
 
 📋 WHAT IS PROCESSED:
 - Mathematical expressions, equations, and formulas

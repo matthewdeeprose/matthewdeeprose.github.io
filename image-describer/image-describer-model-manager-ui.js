@@ -208,6 +208,10 @@
   /**
    * Refresh all model item elements with current state.
    */
+  // Until the first full refresh has run, state changes are INITIALISATION, not
+  // news. See announceState() below.
+  var hasSettledInitialStates = false;
+
   function refreshAllModels() {
     if (!window.ImageDescriberModelManager) return;
 
@@ -215,6 +219,30 @@
     for (var i = 0; i < models.length; i++) {
       updateModelUI(models[i].key, models[i].state);
     }
+    hasSettledInitialStates = true;
+  }
+
+  /**
+   * Announce a model's new state, naming the model.
+   *
+   * The card's status wrapper used to carry aria-live, which announced the bare
+   * label — "Cached", with nothing to say which of a dozen models it described —
+   * and did so once per card on load. The markup is no longer live; this is the
+   * channel, it names the model, and it stays silent until the initial states have
+   * settled.
+   *
+   * @param {HTMLElement} item the model card
+   * @param {string} modelKey
+   * @param {string} label human-readable state label
+   */
+  function announceState(item, modelKey, label) {
+    if (!hasSettledInitialStates) return;
+    var announcer = window.accessibilityHelpers;
+    if (!announcer || typeof announcer.announce !== "function") return;
+
+    var nameEl = item.querySelector(".imgdesc-mm-model-name");
+    var displayName = nameEl ? nameEl.textContent.trim() : modelKey;
+    announcer.announce(displayName + ": " + label);
   }
 
   /**
@@ -238,10 +266,18 @@
         if (typeof window.refreshIcons === "function") window.refreshIcons(statusIcon);
       }
 
-      // Update state text
+      // Update state text, only when it actually changes. The status wrapper was a
+      // live region until 2 August 2026, so an unconditional rewrite announced the
+      // label again even when nothing had changed — and the label alone ("Cached")
+      // never said which model it meant. Both are fixed: the markup is no longer
+      // live, and announceState() names the model.
       var stateText = item.querySelector(".imgdesc-mm-state-text");
       if (stateText) {
-        stateText.textContent = STATE_LABELS[state] || state;
+        var label = STATE_LABELS[state] || state;
+        if (stateText.textContent !== label) {
+          stateText.textContent = label;
+          announceState(item, modelKey, label);
+        }
       }
 
       // Update action buttons
@@ -272,12 +308,22 @@
       return;
     }
 
+    // SC 2.4.6 / 2.4.4: every card renders the same words — "Download", "Load",
+    // "Remove", "Unload", "Retry", "Cancel" — so out of context a screen-reader
+    // or voice-input user cannot tell which model a button acts on. Curried here
+    // rather than threaded through all eight call sites below, so no state can be
+    // left with a missing or stale suffix.
+    var modelName = (model && model.name) || "";
+    function actionButton(label, iconName, onclickStr) {
+      return makeButton(label, iconName, onclickStr, modelName);
+    }
+
     var buttons = [];
 
     switch (state) {
       case "not-downloaded":
         buttons.push(
-          makeButton(
+          actionButton(
             "Download",
             "download",
             "imgdescMMDownload('" + modelKey + "')",
@@ -287,7 +333,7 @@
 
       case "downloading":
         buttons.push(
-          makeButton(
+          actionButton(
             "Cancel",
             "close",
             "imgdescMMCancelDownload('" + modelKey + "')",
@@ -297,10 +343,10 @@
 
       case "cached":
         buttons.push(
-          makeButton("Load", "upload", "imgdescMMLoad('" + modelKey + "')"),
+          actionButton("Load", "upload", "imgdescMMLoad('" + modelKey + "')"),
         );
         buttons.push(
-          makeButton("Remove", "trash", "imgdescMMRemove('" + modelKey + "')"),
+          actionButton("Remove", "trash", "imgdescMMRemove('" + modelKey + "')"),
         );
         break;
 
@@ -310,13 +356,13 @@
 
       case "loaded":
         buttons.push(
-          makeButton("Unload", "close", "imgdescMMUnload('" + modelKey + "')"),
+          actionButton("Unload", "close", "imgdescMMUnload('" + modelKey + "')"),
         );
         break;
 
       case "download-error":
         buttons.push(
-          makeButton(
+          actionButton(
             "Retry",
             "refresh",
             "imgdescMMDownload('" + modelKey + "')",
@@ -326,10 +372,10 @@
 
       case "load-error":
         buttons.push(
-          makeButton("Retry", "refresh", "imgdescMMLoad('" + modelKey + "')"),
+          actionButton("Retry", "refresh", "imgdescMMLoad('" + modelKey + "')"),
         );
         buttons.push(
-          makeButton("Remove", "trash", "imgdescMMRemove('" + modelKey + "')"),
+          actionButton("Remove", "trash", "imgdescMMRemove('" + modelKey + "')"),
         );
         break;
     }
@@ -344,7 +390,7 @@
    * @param {string} onclickStr
    * @returns {string}
    */
-  function makeButton(label, iconName, onclickStr) {
+  function makeButton(label, iconName, onclickStr, modelName) {
     var iconHtml = "";
     if (typeof window.getIcon === "function") {
       iconHtml =
@@ -353,12 +399,39 @@
       iconHtml =
         '<span aria-hidden="true" data-icon="' + iconName + '"></span> ';
     }
+    // Name the object the button acts on, without changing anything visible.
+    //
+    // The standing rule is never to put a name-extending visually-hidden span
+    // inside a control whose content is rebuilt at runtime, because the next
+    // innerHTML write destroys it. That rule is about spans added to STATIC
+    // markup. This is the safe case: the span is emitted BY the template that
+    // does the rebuilding (actionsEl.innerHTML = buttons.join("")), so every
+    // re-render recreates it in whatever the new state is. Do not "fix" this
+    // back to an aria-label — that would suppress the visible label and fail
+    // SC 2.5.3, which is what this button was corrected away from.
+    // The separator is a NON-BREAKING space (U+00A0), and it must stay one.
+    //
+    // .visually-hidden is position:absolute, so the span is its own layout box and
+    // CSS strips an ordinary leading space at a box start. Chrome's accessible NAME
+    // does not apply that rule, so the tree reads "Download — FastVLM 0.5B" while
+    // the rendered text is "Download\n— FastVLM 0.5B" — and NVDA's browse mode
+    // renders the laid-out text, giving "Load— FastVLM 0.5B" to a real user.
+    //
+    // Measured 31 July 2026, same page, same CSS: an ordinary space is collapsed
+    // whether written inside or outside the span (identical innerText, which is why
+    // moving it in cf39ce2 changed nothing); U+00A0 survives. Do not "tidy" it back
+    // to a normal space or an &nbsp;-free template — the read regresses silently and
+    // no check in this repo catches it, because every one of them inspects the NAME.
+    var suffixHtml = modelName
+      ? '<span class="visually-hidden">\u00A0— ' + modelName + "</span>"
+      : "";
     return (
       '<button class="imgdesc-mm-action-btn" onclick="' +
       onclickStr +
       '">' +
       iconHtml +
       label +
+      suffixHtml +
       "</button>"
     );
   }

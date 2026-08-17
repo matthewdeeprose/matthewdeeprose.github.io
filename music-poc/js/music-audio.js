@@ -4,11 +4,13 @@
 // The effects-and-DOM half of Stage 5: it consumes the pure schedule from
 // MusicAudioSchedule and plays it through the Web Audio API, and it builds the
 // Play and Stop controls into a mount element. Unlike the pure schedule file it
-// owns a little state (the model, a reused AudioContext, the live oscillators
-// and highlight timers) and it touches the DOM. It mirrors the renderers:
-// SYNCHRONOUS render that logs and returns false on bad input, and it never
-// throws. A registered onNote callback fires per scheduled entry so Stage 8
-// (play-along highlighting) can subscribe. Exposed as window.MusicAudio.
+// owns a little state (the model, a reused AudioContext, the live oscillators,
+// the played schedule and the audio-clock instant playback began at) and it
+// touches the DOM. It mirrors the renderers: SYNCHRONOUS render that logs and
+// returns false on bad input, and it never throws. Play-along reads the audio
+// clock via getElapsed/getSchedule, started and stopped by the onPlaybackStart
+// and onPlaybackStop lifecycle hooks; onNote is retained as an inert
+// registration and no longer fires. Exposed as window.MusicAudio.
 
 const MusicAudio = (function () {
   "use strict";
@@ -44,9 +46,15 @@ const MusicAudio = (function () {
     model: null,
     ctx: null,
     oscillators: [],
-    timeouts: [],
     onNoteCallback: null,
+    onPlaybackStartCallback: null,
+    onPlaybackStopCallback: null,
     playing: false,
+    // The single audio-clock instant playback began at, and the schedule being
+    // played. Play-along reads these to drive its highlight from the audio clock
+    // instead of a wall-clock timer.
+    playbackStart: 0,
+    entries: [],
   };
 
   // Build the Play and Stop controls into mountEl, wired to play()/stop(), and
@@ -122,11 +130,21 @@ const MusicAudio = (function () {
     }
     const ctx = state.ctx;
 
-    const entries = schedule.buildSchedule(state.model);
+    // The model's tempo is quarter notes per minute, normalised from the printed
+    // metronome mark where the score has one; buildSchedule falls back to its
+    // default when the score carries no tempo, so passing null here is safe.
+    const entries = schedule.buildSchedule(state.model, state.model ? state.model.tempo : null);
     if (!entries.length) {
       logDebug("Nothing to play: schedule is empty");
       return;
     }
+
+    // Capture a single audio-clock instant for this play(). Every entry is
+    // scheduled relative to it, and getElapsed reads against it, so the sound and
+    // play-along's highlight share one clock and cannot drift apart.
+    const startTime = ctx.currentTime;
+    state.playbackStart = startTime;
+    state.entries = entries;
 
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i];
@@ -137,7 +155,7 @@ const MusicAudio = (function () {
       // same comfortable level as a single note rather than summing louder.
       const freqs = entryFrequencies(entry);
       if (!entry.isRest && freqs.length) {
-        const t0 = ctx.currentTime + entry.startSeconds;
+        const t0 = startTime + entry.startSeconds;
         const t1 = t0 + entry.durationSeconds;
         // Clamp the envelope so very short notes keep their ramps in order: the
         // release never starts before the attack has finished.
@@ -163,25 +181,17 @@ const MusicAudio = (function () {
           state.oscillators.push(osc);
         }
       }
-
-      // Highlight hook for EVERY entry (rests included): a wall-clock timeout
-      // relative to this play() call, good enough for the PoC. One callback per
-      // entry keeps play-along one-to-one with the note list.
-      const index = i;
-      const timeoutId = setTimeout(function () {
-        if (typeof state.onNoteCallback === "function") {
-          state.onNoteCallback(index);
-        }
-      }, entry.startSeconds * 1000);
-      state.timeouts.push(timeoutId);
     }
 
     state.playing = true;
+    // Tell any subscriber that playback has begun, so play-along can start its
+    // audio-clock frame loop from a known instant.
+    notifyPlaybackStart();
     logInfo("Playing " + entries.length + " scheduled entr" + (entries.length === 1 ? "y" : "ies"));
   }
 
-  // Stop all in-flight playback: silence the oscillators and cancel the
-  // highlight timers. Keeps the AudioContext open for replay. NEVER throws.
+  // Stop all in-flight playback: silence the oscillators. Keeps the AudioContext
+  // open for replay. NEVER throws.
   function stop() {
     for (const osc of state.oscillators) {
       // Stopping an already-finished oscillator throws, so guard each call.
@@ -198,24 +208,84 @@ const MusicAudio = (function () {
     }
     state.oscillators = [];
 
-    for (const id of state.timeouts) {
-      clearTimeout(id);
-    }
-    state.timeouts = [];
+    // Drop the played schedule so getSchedule reads empty once idle.
+    state.entries = [];
 
     state.playing = false;
+    // Tell any subscriber that playback has ended, so play-along can stop its
+    // audio-clock frame loop and clear the highlight.
+    notifyPlaybackStop();
     logDebug("Stopped playback");
   }
 
-  // Register (or clear) the highlight listener fired per scheduled entry. Pass a
-  // function to subscribe, or null to clear. This is the hook Stage 8
-  // (play-along) will use.
+  // Retained as an inert registration: play-along now reads the audio clock via
+  // getElapsed/getSchedule rather than being pushed per-entry, so this callback
+  // is registered but NEVER fired. Kept so current subscribers still register
+  // without error until play-along is rewritten. Pass a function to subscribe,
+  // or null to clear.
   function onNote(callback) {
     if (typeof callback === "function") {
       state.onNoteCallback = callback;
     } else if (callback === null) {
       state.onNoteCallback = null;
     }
+  }
+
+  // Register (or clear) the playback-started listener. Pass a function to
+  // subscribe, or null to clear. Fired once from play() when playback begins.
+  function onPlaybackStart(callback) {
+    if (typeof callback === "function") {
+      state.onPlaybackStartCallback = callback;
+    } else if (callback === null) {
+      state.onPlaybackStartCallback = null;
+    }
+  }
+
+  // Register (or clear) the playback-stopped listener. Pass a function to
+  // subscribe, or null to clear. Fired once from stop() when playback ends.
+  function onPlaybackStop(callback) {
+    if (typeof callback === "function") {
+      state.onPlaybackStopCallback = callback;
+    } else if (callback === null) {
+      state.onPlaybackStopCallback = null;
+    }
+  }
+
+  // Notify the playback-started subscriber, if one is registered. Wrapped so a
+  // throwing subscriber can never break playback. NEVER throws.
+  function notifyPlaybackStart() {
+    if (typeof state.onPlaybackStartCallback === "function") {
+      try {
+        state.onPlaybackStartCallback();
+      } catch (err) {
+        logDebug("onPlaybackStart subscriber threw; ignored", err);
+      }
+    }
+  }
+
+  // Notify the playback-stopped subscriber, if one is registered. Wrapped so a
+  // throwing subscriber can never break the stop path. NEVER throws.
+  function notifyPlaybackStop() {
+    if (typeof state.onPlaybackStopCallback === "function") {
+      try {
+        state.onPlaybackStopCallback();
+      } catch (err) {
+        logDebug("onPlaybackStop subscriber threw; ignored", err);
+      }
+    }
+  }
+
+  // getElapsed(): the seconds since playback began, read from the audio clock, or
+  // null when idle. Play-along's frame loop reads this to place its highlight.
+  function getElapsed() {
+    return state.playing && state.ctx ? state.ctx.currentTime - state.playbackStart : null;
+  }
+
+  // getSchedule(): the schedule entries currently being played while playing,
+  // else an empty array. Returns the live entries array; play-along only reads
+  // it.
+  function getSchedule() {
+    return state.playing ? state.entries : [];
   }
 
   // Self-test: synchronous and self-contained. It MUST NOT call play(), so no
@@ -272,12 +342,53 @@ const MusicAudio = (function () {
       logDebug("onNote threw during selfTest", err);
     }
 
+    // The lifecycle registrations must accept a function and null without
+    // throwing, mirroring onNote. play() is never called, so these only test the
+    // registration surface, not firing.
+    let onPlaybackStartAcceptsFunctionAndNull = true;
+    try {
+      onPlaybackStart(function () {});
+      onPlaybackStart(null);
+    } catch (err) {
+      onPlaybackStartAcceptsFunctionAndNull = false;
+      logDebug("onPlaybackStart threw during selfTest", err);
+    }
+    let onPlaybackStopAcceptsFunctionAndNull = true;
+    try {
+      onPlaybackStop(function () {});
+      onPlaybackStop(null);
+    } catch (err) {
+      onPlaybackStopAcceptsFunctionAndNull = false;
+      logDebug("onPlaybackStop threw during selfTest", err);
+    }
+
+    // Stage 5.5a guard proof WITHOUT calling play(): play() now delegates to
+    // schedule.buildSchedule(state.model, state.model ? state.model.tempo : null).
+    // Exercise that exact guarded call shape against the pure buildSchedule seam
+    // with a null model — the guard must yield a null tempo (never touching
+    // .tempo) and a valid array, so play()'s no-model path cannot throw.
+    let tempoGuardSafe = true;
+    let tempoGuardReturnsArray = false;
+    try {
+      const nullModel = null;
+      const guardedTempo = nullModel ? nullModel.tempo : null;
+      const out = schedule.buildSchedule(nullModel, guardedTempo);
+      tempoGuardReturnsArray = Array.isArray(out);
+    } catch (err) {
+      tempoGuardSafe = false;
+      logDebug("tempo guard call shape threw during selfTest", err);
+    }
+
     const results = {
       hasRender: typeof render === "function",
       hasPlay: typeof play === "function",
       hasStop: typeof stop === "function",
       hasOnNote: typeof onNote === "function",
       hasSelfTest: typeof selfTest === "function",
+      hasGetElapsed: typeof getElapsed === "function",
+      hasGetSchedule: typeof getSchedule === "function",
+      hasOnPlaybackStart: typeof onPlaybackStart === "function",
+      hasOnPlaybackStop: typeof onPlaybackStop === "function",
       renderReturnsTrue: renderReturnsTrue,
       buildsTwoButtons: buttons.length === 2,
       buttonsAreTypeButton: buttons.length === 2 && buttons[0].type === "button" && buttons[1].type === "button",
@@ -286,7 +397,16 @@ const MusicAudio = (function () {
       noTitleAttribute: buttons.length === 2 && !buttons[0].hasAttribute("title") && !buttons[1].hasAttribute("title"),
       audioContextConstructs: audioContextConstructs,
       onNoteAcceptsFunction: onNoteAcceptsFunction,
+      onPlaybackStartAcceptsFunctionAndNull: onPlaybackStartAcceptsFunctionAndNull,
+      onPlaybackStopAcceptsFunctionAndNull: onPlaybackStopAcceptsFunctionAndNull,
+      // Idle-state reads: play() is never called in selfTest, so getElapsed must
+      // report null and getSchedule an empty array.
+      getElapsedNullWhenIdle: getElapsed() === null,
+      getScheduleEmptyWhenIdle: Array.isArray(getSchedule()) && getSchedule().length === 0,
       guardNoMount: render(MODEL, null) === false,
+      // play stays exposed, and its new no-model tempo guard is safe (proven via
+      // the pure buildSchedule seam above, not by calling play()).
+      playExposedAndTempoGuardSafe: typeof play === "function" && tempoGuardSafe && tempoGuardReturnsArray,
       hasEntryFrequencies: typeof entryFrequencies === "function",
       entryFreqsChord: (function () {
         const f = entryFrequencies({ isRest: false, frequency: 261.63, frequencies: [261.63, 329.63, 392.0] });
@@ -315,7 +435,7 @@ const MusicAudio = (function () {
     return results;
   }
 
-  return { render, play, stop, onNote, selfTest };
+  return { render, play, stop, onNote, onPlaybackStart, onPlaybackStop, getElapsed, getSchedule, selfTest };
 })();
 
 window.MusicAudio = MusicAudio;

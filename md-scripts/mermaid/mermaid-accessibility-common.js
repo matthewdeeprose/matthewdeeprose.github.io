@@ -232,85 +232,6 @@ window.MermaidAccessibilityCommon = (function () {
   }
 
   /**
-   * Generate a standard overview section for any diagram
-   * @param {string} diagramType - The diagram type (e.g., 'flowchart', 'gantt')
-   * @param {string} title - The diagram title
-   * @param {Object} stats - Statistics about the diagram
-   * @returns {string} HTML section element
-   */
-  function createOverviewSection(diagramType, title, stats) {
-    logDebug(`Creating overview section for ${diagramType} diagram`);
-
-    let content = `<p>This ${diagramType} diagram`;
-
-    if (title) {
-      content += ` titled "<span class="diagram-title">${title}</span>"`;
-      logDebug("Added title to overview");
-    }
-
-    // Add statistics if available with fixed singular/plural handling
-    if (stats) {
-      logDebug("Adding statistics to overview:", stats);
-
-      if (stats.elementCount) {
-        content += ` contains <span class="diagram-count">${stats.elementCount}</span>`;
-        content += ` ${
-          stats.elementCount === 1
-            ? stats.elementName?.replace(/s$/, "") || "element"
-            : stats.elementName || "elements"
-        }`;
-      }
-
-      if (stats.groupCount) {
-        content += ` organised into <span class="diagram-count">${stats.groupCount}</span>`;
-        content += ` ${
-          stats.groupCount === 1
-            ? stats.groupName?.replace(/s$/, "") || "group"
-            : stats.groupName || "groups"
-        }`;
-      }
-    }
-
-    content += `.`;
-
-    return createSection(
-      "overview",
-      diagramType,
-      `${capitalize(diagramType)} Overview`,
-      content
-    );
-  }
-
-  /**
-   * Create a data list section for details
-   * @param {string} diagramType - The diagram type
-   * @param {string} title - The section title
-   * @param {Array} items - Array of items to list
-   * @param {Function} itemFormatter - Function to format each item as HTML
-   * @returns {string} HTML section
-   */
-  function createDataListSection(diagramType, title, items, itemFormatter) {
-    logDebug(
-      `Creating data list section for ${diagramType} with ${
-        items?.length || 0
-      } items`
-    );
-
-    let content = `<ul class="${diagramType}-list">`;
-
-    items.forEach((item, index) => {
-      logDebug(`Formatting item ${index + 1}`);
-      content += `<li class="${diagramType}-item">
-          ${itemFormatter(item, index)}
-        </li>`;
-    });
-
-    content += `</ul>`;
-
-    return createSection("data", diagramType, title, content);
-  }
-
-  /**
    * Create a standard insights section
    * @param {string} diagramType - The diagram type
    * @param {Array} insights - Array of insight text/objects
@@ -338,52 +259,6 @@ window.MermaidAccessibilityCommon = (function () {
 
     logDebug(`Created insights section with ${insights.length} insights`);
     return createSection("insights", diagramType, "Key Insights", content);
-  }
-
-  /**
-   * Generate a diagram description using a standard template
-   * @param {string} diagramType - The diagram type
-   * @param {Object} options - Configuration options
-   * @returns {string} Complete HTML description
-   */
-  function generateStandardDescription(diagramType, options) {
-    logInfo(`Generating standard description for ${diagramType} diagram`);
-
-    const { title, stats, sections, insights, visualNotes } = options;
-
-    let description = `<div class="${diagramType}-description">`;
-
-    // 1. Overview section
-    description += createOverviewSection(diagramType, title, stats);
-
-    // 2. Custom sections
-    if (sections && sections.length > 0) {
-      logDebug(`Adding ${sections.length} custom sections`);
-      sections.forEach((section) => {
-        description += section;
-      });
-    }
-
-    // 3. Insights section if provided
-    if (insights && insights.length > 0) {
-      description += createInsightsSection(diagramType, insights);
-    }
-
-    // 4. Visual notes section if provided
-    if (visualNotes) {
-      logDebug("Adding visual notes section");
-      description += createSection(
-        "visual-notes",
-        diagramType,
-        "Visual Representation",
-        `<p>${visualNotes}</p>`
-      );
-    }
-
-    description += `</div>`;
-
-    logInfo("Standard description generated successfully");
-    return description;
   }
 
   /**
@@ -483,6 +358,73 @@ window.MermaidAccessibilityCommon = (function () {
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
+  // Numbers policy (docs/mermaid-flowchart-narration-spec.md): narration
+  // counts and step references are words for one to nine, digits from 10.
+  const NARRATION_NUMBER_WORDS = Object.freeze([
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+  ]);
+
+  /**
+   * A number as narration: a word for one to nine, digits from 10.
+   * @param {number} value - The number to express
+   * @returns {string} The narration form
+   */
+  function narrationNumber(value) {
+    logDebug("Narration number for:", value);
+    return value >= 0 && value <= 9
+      ? NARRATION_NUMBER_WORDS[value]
+      : String(value);
+  }
+
+  // pluraliseName was deleted here on 12 August 2026, with its last two
+  // callers (register item 26). Author names are never inflected: the plural
+  // now attaches to a noun the generator owns — "records" in the ER module,
+  // "instances" in the class module — so no transform touches author text.
+
+  /**
+   * A full stop after a label, unless the label already ends a sentence
+   * ("Is it raining?" must not become "Is it raining?.").
+   * @param {string} label - The label just rendered
+   * @returns {string} "." or ""
+   */
+  function labelFullStop(label) {
+    return /[.!?]$/.test(label) ? "" : ".";
+  }
+
+  /**
+   * Escape the characters that are significant in HTML, so diagram-source text
+   * can be interpolated into a description without being parsed as markup.
+   *
+   * The ampersand must be replaced FIRST, or the entities introduced by the
+   * later replacements would themselves be re-escaped.
+   *
+   * Apply this to DIAGRAM-SOURCE TEXT at the interpolation site — a node
+   * label, a title, an entity or participant name, a note body. Never apply
+   * it to a whole generator-output string: those mix diagram text with the
+   * span, strong and heading markup the modules write themselves, and
+   * escaping the lot would turn that furniture into visible angle brackets.
+   *
+   * @param {string} text - The diagram-source text to escape
+   * @returns {string} The text with HTML-significant characters replaced
+   */
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   /**
    * Handle errors gracefully with fallback descriptions
    * @param {Error} error - The error object
@@ -545,13 +487,13 @@ window.MermaidAccessibilityCommon = (function () {
     formatList,
     cleanNodeText,
     createSection,
-    createOverviewSection,
-    createDataListSection,
     createInsightsSection,
-    generateStandardDescription,
     parseDiagramTitle,
     countDiagramElements,
     capitalize,
+    narrationNumber,
+    labelFullStop,
+    escapeHtml,
     handleParsingError,
     plainLanguageTerms,
     formatCountNoun,

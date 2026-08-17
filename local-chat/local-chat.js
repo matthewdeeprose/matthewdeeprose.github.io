@@ -288,6 +288,13 @@
     if (els.clearBtn) els.clearBtn.disabled = !hasMessages;
     if (els.newChatBtn) els.newChatBtn.disabled = !hasMessages;
     if (els.downloadBtn) els.downloadBtn.disabled = !hasMessages;
+    // Empty-log tab stop: a role="log" region only earns a tab stop when it has
+    // content to scroll. Keep it focusable when populated so keyboard users can
+    // arrow-scroll it; drop the tab stop when empty so it is not a dead stop.
+    if (els.messageList) {
+      if (hasMessages) els.messageList.setAttribute("tabindex", "0");
+      else els.messageList.removeAttribute("tabindex");
+    }
   }
 
   // ── Update all UI helper (called by persistence module) ────────────────

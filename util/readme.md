@@ -53,6 +53,9 @@ trace.snapshot("after-save", () => ({
 // ... click through your workflow; F5 is fine, capture auto-resumes ...
 trace.export(); // download the timeline as JSON
 trace.stop(); // restore everything it patched
+trace.selfTest(); // prove the reload-boundary flush still works (run, reload, run again)
+trace.resumeKey(); // which mathpix-resume-session key this trace belongs to
+trace.resumeKeyTest(); // prove the resume-key resolver: newest wins, loadedFromKey preferred
 ```
 
 Inspect the live timeline at any point with `trace.log`.
@@ -71,6 +74,6 @@ The `trace.config` object tunes truncation and depth (`maxString`, `snapshotMaxS
 
 The tracer is the prototype for a proper, documented capture tool that will seed automated tests across the alt-text roadmap and beyond. These lessons are recorded so a future build does not relearn them:
 
-- **Match resume keys by filename and newest timestamp, not first match.** A snapshot that reads `localStorage` for a `mathpix-resume-session-*` key with a first-match selector can land on a stale sibling from an earlier run and report the wrong state. Recovery matches by filename base-name and sorts newest-first; a capture helper must do the same to read the live key.
+- **Binding a trace to its resume key is solved by matching on filename and newest timestamp, not first match.** Every autosave writes a *new* `mathpix-resume-session` key, so one source file owns a growing family of timestamped keys; the newest is the live one, and a first-match selector lands on a stale sibling and reports the wrong state. `trace.resumeKey()` resolves the key by filename base-name and newest timestamp, and prefers `loadedFromKey` — the key the app actually recovered from — when it is set, since on the recovered path that is ground truth. It deliberately does **not** copy the app's content-differs gate: that gate compares against live page state rather than the stored key set, so it is a property of the running page and folding it in would make the resolver fragile. `trace.resumeKeyTest()` guards the resolver.
 - **Snapshot timing matters.** A snapshot taken immediately after a save reads the synchronous store correctly, but a snapshot taken mid-edit captures a half-typed field. Snapshot at settled checkpoints, and instrument the methods you care about (for example the recovery method) so their absence from a trace is not mistaken for them not running.
-- **Capture-to-test convention (to be written).** The path from a capture to a permanent floor row: record a workflow once, identify the snapshot that proves the behaviour, and lift it into the owning floor suite as an assertion. This convention will be filled in when the roadmap tracer is built.
+- **The capture-to-test convention, demonstrated.** The shape is four steps: record the behaviour with a real capture; neutralise the path that could let the test pass by accident; prove the genuine mechanism across the boundary that actually matters; then clean up so no residue is left behind. `trace.selfTest()` is the worked example — it arms itself by dropping a probe marker and cancelling the debounced write, so only the synchronous flush can carry that marker across a reload, and after the reload it confirms the marker survived. The test therefore proves the flush, not how fast the reload happened. The same arm-then-check shape suits any behaviour that must survive a reload or session boundary, so future guards can follow it rather than reinvent it.

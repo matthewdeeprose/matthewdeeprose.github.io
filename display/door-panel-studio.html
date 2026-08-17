@@ -14,8 +14,10 @@
         <div class="dps-headerbar">
           <h1>Door Panel Studio</h1>
           <p>
-            A working model of the lecture-theatre door panel. Every figure is
-            computed in the browser; nothing is copied from a document.
+            This is a working model of the door panel outside a lecture
+            theatre. Change anything, and the page measures it again. Every
+            number here is worked out in your browser. Nothing is copied from a
+            document.
           </p>
           <div class="dps-headeractions">
             <button type="button" id="dpsPresent" aria-pressed="false">
@@ -35,14 +37,14 @@
         ></div>
 
         <p class="dps-forced-note dps-note">
-          <strong>Forced colours are active.</strong> The colour-vision
-          simulations are switched off in this mode on purpose. Your operating
-          system has replaced the page's colours with its own, so a simulation
-          drawn over them would describe colours nobody is looking at.
+          <strong>Your system is using its own colours.</strong> We have turned
+          the colour-blindness views off while it does. Your computer has
+          replaced our colours, so those views would show you colours nobody
+          can see on this screen.
         </p>
         <p id="dpsChromaWarning" class="dps-note" hidden>
-          <strong>chroma.js did not load.</strong> Every measurement on this
-          page depends on it. Check the network connection and reload.
+          <strong>A file we need did not load.</strong> Every measurement on
+          this page uses it. Check your connection and load the page again.
         </p>
 
         <p class="dps-legend" id="dpsLegend">
@@ -65,6 +67,17 @@
             aria-controls="dpsView-configure"
           >
             Configure
+          </button>
+          <button
+            type="button"
+            class="dps-tab"
+            id="dpsTab-detail"
+            role="tab"
+            aria-selected="false"
+            tabindex="-1"
+            aria-controls="dpsView-detail"
+          >
+            Detail
           </button>
           <button
             type="button"
@@ -98,8 +111,9 @@
             >Open the evidence report</a
           >
           <span class="dps-hint">
-            — findings, line budget, the separation sweep, every palette colour
-            on both backgrounds, and the export, on a separate page.
+            A separate page with the full working: what needs fixing, how much
+            room the text needs, how far apart the colours are, every brand
+            colour on both backgrounds, and the settings to copy out.
           </span>
         </p>
       </header>
@@ -183,7 +197,7 @@
                has no way to tell it from the first. Naming it by WHERE it sits
                is what distinguishes them; they still drive one state. -->
           <fieldset class="dps-statusradios">
-            <legend>Status shown - switch it here, under the panel</legend>
+            <legend>Try a different status</legend>
             <div id="dpsStatusChoiceBelow"></div>
           </fieldset>
 
@@ -192,7 +206,7 @@
                simulation select used to live in the rail beside the colour
                controls, which put it a scroll away from its own effect. -->
           <div class="dps-field dps-demofield">
-            <label for="dpsSimulation">Colour vision simulation</label>
+            <label for="dpsSimulation">See it with colour blindness</label>
             <select id="dpsSimulation"></select>
             <p class="dps-hint" id="dpsSimulationDescription"></p>
           </div>
@@ -213,6 +227,28 @@
              CONTROL COLUMN
              ============================================================ -->
         <div class="dps-rail" tabindex="0" role="region" aria-label="Controls, scrollable">
+          <!-- FIRST CARD, and it is the whole pitch: pick a scheme, see the
+               numbers change. Everything measurement-deep now sits behind a
+               closed <details> further down, or in the Checks tab. -->
+          <section class="dps-card" aria-labelledby="dpsSchemeHeading">
+            <h2 id="dpsSchemeHeading">Pick a colour scheme</h2>
+            <p class="dps-hint">
+              Two schemes we recommend, and both work. Pick one and watch every
+              number on this page work itself out again. You can also set your
+              own colours further down.
+            </p>
+            <!-- The radios need a fieldset of their own. Moving them out of
+                 the badge card left them ungrouped, and IBM caught it:
+                 "Radio input and others with the name dpsScheme are not
+                 grouped together". A radio group without a group name gives a
+                 screen-reader user three choices and no question. -->
+            <fieldset class="dps-schemefields">
+              <legend class="dps-visually-hidden">Colour scheme</legend>
+              <div id="dpsSchemeChoice"></div>
+            </fieldset>
+            <div id="dpsSchemeReadout" class="dps-readout"></div>
+          </section>
+
           <section
             class="dps-card"
             aria-labelledby="dpsFitHeading"
@@ -220,14 +256,14 @@
           >
             <h2 id="dpsFitHeading">Does it fit?</h2>
             <p class="dps-hint">
-              Measured by rendering each string at its own size and reading the
-              box back, never by assuming an average character width.
+              We draw each line of text at its real size and measure the box it
+              fills. We never guess from an average letter width.
             </p>
             <div id="dpsFitReport"></div>
           </section>
 
           <section class="dps-card" aria-labelledby="dpsFrameHeading">
-            <h2 id="dpsFrameHeading">Frame</h2>
+            <h2 id="dpsFrameHeading">Frame size and overlays</h2>
             <div class="dps-field">
               <label for="dpsFrameHeight"
                 >Frame height on this screen (CSS pixels)</label
@@ -293,8 +329,8 @@
           <section class="dps-card" aria-labelledby="dpsContentHeading">
             <h2 id="dpsContentHeading">Content</h2>
             <p class="dps-hint">
-              The wording is a size decision. Type a shorter status and watch
-              the fitting report and the budget move.
+              The words you choose are a size decision. Type a shorter status
+              word and watch the numbers above move.
             </p>
             <div id="dpsContentControls"></div>
             <div class="dps-buttonrow">
@@ -305,11 +341,10 @@
           </section>
 
           <section class="dps-card" aria-labelledby="dpsBadgeHeading">
-            <h2 id="dpsBadgeHeading">Badge</h2>
+            <h2 id="dpsBadgeHeading">Badge size, style and border</h2>
             <p class="dps-hint">
-              The badge's size has nothing to do with contrast — no colour
-              choice changes it. Three things do: the cap height, the padding
-              below, and the length of the wording.
+              Colour does not change how big the badge is. Three things do:
+              the letter height, the padding below, and how long the word is.
             </p>
             <div class="dps-field-row">
               <div class="dps-field">
@@ -338,10 +373,11 @@
             <fieldset>
               <legend>Style</legend>
               <p class="dps-hint">
-                Filled puts a block of colour behind the word. Outlined puts a
-                ring and the word in the status colour on the page background —
-                which changes both the saturated area and the gate the colour
-                answers to, because an outlined badge's colour is text.
+                Filled puts a block of colour behind the word. Outlined draws a
+                ring, and the word takes the status colour on the page. That
+                changes two things: how much of the panel is strong colour, and
+                the test the colour has to pass. An outlined badge is text, so
+                it takes the test text takes.
               </p>
               <div id="dpsBadgeStyle"></div>
               <div id="dpsBadgeStyleReadout" class="dps-readout"></div>
@@ -350,10 +386,10 @@
             <fieldset>
               <legend>Saturated area</legend>
               <p class="dps-hint">
-                The one property a contrast ratio cannot see. Reported, not
-                judged: neither the guidance nor WCAG states a limit on how
-                much of a panel may be a high-chroma colour, so there is no
-                threshold here and no verdict.
+                How much of the panel is strong colour. A contrast score cannot
+                see this at all. <strong>We report it. We do not judge it.</strong>
+                Neither the guidance nor WCAG sets a limit here, so there is
+                nothing to pass or fail.
               </p>
               <div id="dpsBadgeAreaReadout" class="dps-readout"></div>
             </fieldset>
@@ -366,16 +402,10 @@
             <fieldset>
               <legend>Border</legend>
               <p class="dps-hint">
-                A border draws the badge's boundary, so the fill no longer has
-                to carry 3:1 against the page on its own. Off by default, so
-                the figures stay comparable.
+                A border draws the edge of the badge. The fill then does not
+                have to stand out from the page on its own. On automatic, only
+                a fill that needs a border gets one.
               </p>
-              <fieldset>
-                <legend>Colour scheme</legend>
-                <div id="dpsSchemeChoice"></div>
-                <div id="dpsSchemeReadout" class="dps-readout"></div>
-              </fieldset>
-
               <div class="dps-field">
                 <label for="dpsBadgeBorder">Badge border</label>
                 <select id="dpsBadgeBorder"></select>
@@ -398,246 +428,266 @@
             </fieldset>
           </section>
 
-          <section class="dps-card" aria-labelledby="dpsColourHeading">
-            <h2 id="dpsColourHeading">Roles</h2>
-            <p class="dps-hint">
-              One row per role: a role's colour and its size are one decision.
-              Colours that cannot meet a role's gate stay in the list,
-              disabled, with the measured reason — that reason is the teaching.
-            </p>
-            <div class="dps-buttonrow">
-              <button type="button" id="dpsPresetPanelRecommended">
-                Show the recommended panel
-              </button>
-              <button type="button" id="dpsPresetPanelAsBuilt">
-                Show the as-built panel
-              </button>
-            </div>
-            <p class="dps-hint">
-              The page opens on the recommended panel. The as-built one — the
-              colleague's colours, sizes, padding and wording — is one click
-              away, and every gallery card scores a variation of the same
-              thing. The buttons below change one dimension at a time.
-            </p>
-            <div class="dps-buttonrow">
-              <button type="button" id="dpsPresetColoursAsBuilt">
-                As-built colours
-              </button>
-              <button type="button" id="dpsPresetColoursGuidance">
-                Best available colours
-              </button>
-              <button type="button" id="dpsPresetSizeAsBuilt">
-                As-built sizes
-              </button>
-              <button type="button" id="dpsPresetSizeGuidance">
-                Guidance sizes
-              </button>
-              <button type="button" id="dpsPresetSizeBestFit">
-                Best fit in budget
-              </button>
-            </div>
-
-            <fieldset id="dpsApproach">
-              <legend>What must be readable as you approach?</legend>
-              <p class="dps-hint">
-                600 mm is not the decision — <em>everything</em> here must be
-                readable at 600 mm, and that is the floor. The decision is what
-                must <em>also</em> be readable from about 1,400 mm, because
-                only one or two things can be. Choosing one promotes it and
-                demotes whatever held the approach range before.
-              </p>
-              <div class="dps-field">
-                <label for="dpsApproachRole">Give the approach range to</label>
-                <select id="dpsApproachRole"></select>
-              </div>
-              <div id="dpsApproachReadout" class="dps-readout"></div>
-            </fieldset>
-
-            <fieldset id="dpsFillGate">
-              <legend>Badge fill gate</legend>
-              <p class="dps-hint">
-                Badge fills only. The logo, divider and footer bar keep the
-                Lc 45 non-text floor whichever setting is chosen.
-              </p>
-              <div id="dpsFillGateChoice"></div>
-              <div id="dpsFillGateReadout" class="dps-readout"></div>
-            </fieldset>
-
-            <fieldset id="dpsChroma">
-              <legend>Chroma ceiling</legend>
-              <p class="dps-hint">
-                The solver maximises separation, and maximising separation
-                <em>selects for extreme colours</em> — that is not a side
-                effect, it is what the objective does, and it is why the
-                recommendation is a saturated orange beside a saturated green.
-                So softer tones cannot be a preference applied afterwards. This
-                shrinks the candidate pool <em>before</em> the solver runs, and
-                the table below is what that costs.
-              </p>
-              <div class="dps-field">
-                <input type="checkbox" id="dpsChromaOn" />
-                <label for="dpsChromaOn" style="display: inline"
-                  >Limit how saturated a status colour may be</label
-                >
-              </div>
-              <div class="dps-field">
-                <label for="dpsChromaCeiling"
-                  >Ceiling, in LCH chroma <span id="dpsChromaValue"></span
-                ></label>
-                <input
-                  type="range"
-                  id="dpsChromaCeiling"
-                  min="10"
-                  max="130"
-                  step="5"
-                />
-              </div>
-              <div id="dpsChromaReadout" class="dps-readout"></div>
-            </fieldset>
-
-            <fieldset>
-              <legend>Design for</legend>
-              <p class="dps-hint">
-                The panel always shows the status in words, so nobody has to
-                read the colour to read the panel. These switches record a
-                consideration, not a rule: whatever you tick, every mode below
-                is still measured and still shown. Ticking one only tells the
-                colour chooser which audiences it must keep the statuses apart
-                for.
-              </p>
-              <div class="dps-field">
-                <input type="checkbox" id="dpsDesignForCvd" />
-                <label for="dpsDesignForCvd" style="display: inline"
-                  >Colour blindness (protanopia, deuteranopia,
-                  tritanopia)</label
-                >
-              </div>
-              <div class="dps-field">
-                <input type="checkbox" id="dpsDesignForGrey" />
-                <label for="dpsDesignForGrey" style="display: inline"
-                  >Greyscale (colour removed entirely - photocopies, e-ink,
-                  monochrome screens)</label
-                >
-              </div>
-              <div id="dpsDesignForReadout" class="dps-readout"></div>
-            </fieldset>
-
-            <div id="dpsRoleControls"></div>
-          </section>
-
-          <section class="dps-card" aria-labelledby="dpsCapHeading">
-            <h2 id="dpsCapHeading">What cap height means</h2>
-            <div class="dps-capexplain">
-              <div class="dps-capdiagram" id="dpsCapDiagram" aria-hidden="true">
-                <div class="dps-capdiagram__em">
-                  <span class="dps-capdiagram__letter">H</span>
-                  <span class="dps-capdiagram__capband"></span>
-                </div>
-                <p class="dps-capdiagram__key">
-                  <span class="dps-capdiagram__swatch dps-capdiagram__swatch--em"
-                  ></span>
-                  font size
-                  <span
-                    class="dps-capdiagram__swatch dps-capdiagram__swatch--cap"
-                  ></span>
-                  cap height
-                </p>
-              </div>
-              <div>
-                <p>
-                  Cap height is the height of a capital letter: what you would
-                  measure with a ruler held against the glass. Font size is
-                  larger, because it includes room above and below for accents
-                  and descenders.
-                </p>
-                <p id="dpsCapSentence"></p>
-              </div>
-            </div>
-          </section>
-
-          <section class="dps-card" aria-labelledby="dpsGeometryHeading">
-            <h2 id="dpsGeometryHeading">Geometry</h2>
-            <div class="dps-field-row">
-              <div class="dps-field">
-                <label for="dpsPanelWpx">Panel width (px)</label>
-                <input type="number" id="dpsPanelWpx" min="1" step="1" />
-              </div>
-              <div class="dps-field">
-                <label for="dpsPanelHpx">Panel height (px)</label>
-                <input type="number" id="dpsPanelHpx" min="1" step="1" />
-              </div>
-              <div class="dps-field">
-                <label for="dpsPanelWmm">Active width (mm)</label>
-                <input type="number" id="dpsPanelWmm" min="1" step="0.1" />
-              </div>
-              <div class="dps-field">
-                <label for="dpsPanelHmm">Active height (mm)</label>
-                <input type="number" id="dpsPanelHmm" min="1" step="0.1" />
-              </div>
-              <div class="dps-field">
-                <label for="dpsDistance">Viewing distance (mm)</label>
-                <input type="number" id="dpsDistance" min="1" step="10" />
-              </div>
-              <div class="dps-field">
-                <label for="dpsCapRatio">Cap height ratio (of font size)</label>
-                <input
-                  type="number"
-                  id="dpsCapRatio"
-                  min="0.1"
-                  max="1"
-                  step="0.001"
-                />
-              </div>
-              <div class="dps-field">
-                <label for="dpsLineSpacing"
-                  >Rendered line spacing</label
-                >
-                <input
-                  type="number"
-                  id="dpsLineSpacing"
-                  min="1"
-                  max="3"
-                  step="0.05"
-                />
-              </div>
-              <div class="dps-field">
-                <label for="dpsPaddingMm">Vertical padding (mm)</label>
-                <input type="number" id="dpsPaddingMm" min="0" step="0.5" />
-              </div>
-            </div>
-            <div class="dps-buttonrow">
-              <button type="button" class="dps-secondary" id="dpsCapInter">
-                Inter (0.727)
-              </button>
-              <button type="button" class="dps-secondary" id="dpsCapRuleOfThumb">
-                Rule of thumb (0.70)
-              </button>
-            </div>
-            <div id="dpsGeometryReadout" class="dps-readout"></div>
-          </section>
-
-          <section class="dps-card" aria-labelledby="dpsPaletteHeading">
-            <h2 id="dpsPaletteHeading">Palette</h2>
-            <div class="dps-field">
-              <label for="dpsPaletteInput"
-                >Palette (one colour per line, <code>name #hex</code>)</label
-              >
-              <textarea id="dpsPaletteInput" rows="5" spellcheck="false"
-              ></textarea>
-              <p class="dps-hint">
-                The built-in list is 45 University of Southampton brand
-                colours. Replacing it recomputes every figure on the page.
-              </p>
-            </div>
-            <div class="dps-buttonrow">
-              <button type="button" id="dpsPaletteApply">Apply palette</button>
-              <button type="button" class="dps-secondary" id="dpsPaletteReset">
-                Restore the 45 brand colours
-              </button>
-            </div>
-            <p class="dps-readout" id="dpsPaletteStatus"></p>
-          </section>
         </div>
+      </div>
+
+      <!-- ==============================================================
+           DETAIL VIEW. The deep control surface: the four sections a
+           stakeholder never needs on the first screen, and the four
+           that hold the densest controls. Checks stays the PROOF
+           surface; this is where the choosing happens.
+           ============================================================== -->
+      <div
+        class="dps-view dps-scrollview"
+        id="dpsView-detail"
+        role="tabpanel"
+        aria-labelledby="dpsTab-detail"
+        tabindex="0"
+        hidden
+      >
+        <p class="dps-hint">
+          These controls change the panel on the Configure tab. Switch back
+          to see what a change did.
+        </p>
+        <section class="dps-card" aria-labelledby="dpsColourHeading">
+          <h2 id="dpsColourHeading">Every part, its colour and its size</h2>
+          <p class="dps-hint">
+            One row for each part of the panel. Its colour and its size are
+            one decision, so they sit together. Colours that will not work
+            for a part stay in the list, switched off, with the reason we
+            measured. The reason is the useful bit.
+          </p>
+          <div class="dps-buttonrow">
+            <button type="button" id="dpsPresetPanelRecommended">
+              Show the recommended panel
+            </button>
+            <button type="button" id="dpsPresetPanelAsBuilt">
+              Show the as-built panel
+            </button>
+          </div>
+          <p class="dps-hint">
+            The page opens on the panel we recommend. The one that exists
+            today is one click away, with its own colours, sizes, padding and
+            wording. The buttons below change one thing at a time.
+          </p>
+          <div class="dps-buttonrow">
+            <button type="button" id="dpsPresetColoursAsBuilt">
+              As-built colours
+            </button>
+            <button type="button" id="dpsPresetColoursGuidance">
+              Best available colours
+            </button>
+            <button type="button" id="dpsPresetSizeAsBuilt">
+              As-built sizes
+            </button>
+            <button type="button" id="dpsPresetSizeGuidance">
+              Guidance sizes
+            </button>
+            <button type="button" id="dpsPresetSizeBestFit">
+              Best fit in budget
+            </button>
+          </div>
+
+          <fieldset id="dpsApproach">
+            <legend>What must you be able to read as you walk up?</legend>
+            <p class="dps-hint">
+              <em>Everything</em> on this panel must be readable from 600 mm
+              away. That is the floor, and it is not the decision. The
+              decision is what must <em>also</em> be readable from about
+              1,400 mm, because only one or two things can be that big. Pick
+              one, and whatever held that job before steps down.
+            </p>
+            <div class="dps-field">
+              <label for="dpsApproachRole">Give the approach range to</label>
+              <select id="dpsApproachRole"></select>
+            </div>
+            <div id="dpsApproachReadout" class="dps-readout"></div>
+          </fieldset>
+
+          <fieldset id="dpsFillGate">
+            <legend>How strict should the badge colour test be?</legend>
+            <p class="dps-hint">
+              This changes the test for badge fills only. The logo, the line
+              and the footer bar keep their Lc 45 floor whichever you pick.
+            </p>
+            <div id="dpsFillGateChoice"></div>
+            <div id="dpsFillGateReadout" class="dps-readout"></div>
+          </fieldset>
+
+          <fieldset id="dpsChroma">
+            <legend>Limit on how strong a status colour can be</legend>
+            <p class="dps-hint">
+              When the page picks colours for you, it picks the ones that
+              look <em>most different</em> from each other. Those are usually
+              the strongest colours in the palette. That is what the job asks
+              for, so a wish for softer colours cannot be added afterwards.
+              This limit cuts the list of colours <em>before</em> the page
+              picks, and the table below shows what that costs you. Chroma is
+              how strong a colour is: 0 is grey, and the highest here is
+              about 99.
+            </p>
+            <div class="dps-field">
+              <input type="checkbox" id="dpsChromaOn" />
+              <label for="dpsChromaOn" style="display: inline"
+                >Limit how strong a status colour can be</label
+              >
+            </div>
+            <div class="dps-field">
+              <label for="dpsChromaCeiling"
+                >Limit, in chroma <span id="dpsChromaValue"></span
+              ></label>
+              <input
+                type="range"
+                id="dpsChromaCeiling"
+                min="10"
+                max="130"
+                step="5"
+              />
+            </div>
+            <div id="dpsChromaReadout" class="dps-readout"></div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Who are we choosing colours for?</legend>
+            <p class="dps-hint">
+              The panel always shows the status in words, so nobody has to
+              read the colour to read the panel. <strong>These switches
+              record a choice we made. They are not a rule.</strong> Whatever
+              you tick, we still measure every view and still show you every
+              number. Ticking one only tells the colour chooser which readers
+              it must keep the three statuses apart for.
+            </p>
+            <div class="dps-field">
+              <input type="checkbox" id="dpsDesignForCvd" />
+              <label for="dpsDesignForCvd" style="display: inline"
+                >Colour-blind readers, who see some colours as much alike</label
+              >
+            </div>
+            <div class="dps-field">
+              <input type="checkbox" id="dpsDesignForGrey" />
+              <label for="dpsDesignForGrey" style="display: inline"
+                >Greyscale, with no colour at all: photocopies, e-ink and
+                black-and-white screens</label
+              >
+            </div>
+            <div id="dpsDesignForReadout" class="dps-readout"></div>
+          </fieldset>
+
+          <div id="dpsRoleControls"></div>
+        </section>
+
+        <details class="dps-card dps-collapsible" aria-labelledby="dpsCapHeading">
+          <summary><h2 id="dpsCapHeading">What letter height means</h2></summary>
+          <div class="dps-capexplain">
+            <div class="dps-capdiagram" id="dpsCapDiagram" aria-hidden="true">
+              <div class="dps-capdiagram__em">
+                <span class="dps-capdiagram__letter">H</span>
+                <span class="dps-capdiagram__capband"></span>
+              </div>
+              <p class="dps-capdiagram__key">
+                <span class="dps-capdiagram__swatch dps-capdiagram__swatch--em"
+                ></span>
+                font size
+                <span
+                  class="dps-capdiagram__swatch dps-capdiagram__swatch--cap"
+                ></span>
+                cap height
+              </p>
+            </div>
+            <div>
+              <p>
+                Cap height is the height of a capital letter. It is what you
+                would measure with a ruler held against the glass. Font size
+                is bigger than that, because it leaves room above and below
+                for accents and for letters that hang down.
+              </p>
+              <p id="dpsCapSentence"></p>
+            </div>
+          </div>
+        </details>
+
+        <section class="dps-card" aria-labelledby="dpsGeometryHeading">
+          <h2 id="dpsGeometryHeading">Panel size and viewing distance</h2>
+          <div class="dps-field-row">
+            <div class="dps-field">
+              <label for="dpsPanelWpx">Panel width (px)</label>
+              <input type="number" id="dpsPanelWpx" min="1" step="1" />
+            </div>
+            <div class="dps-field">
+              <label for="dpsPanelHpx">Panel height (px)</label>
+              <input type="number" id="dpsPanelHpx" min="1" step="1" />
+            </div>
+            <div class="dps-field">
+              <label for="dpsPanelWmm">Active width (mm)</label>
+              <input type="number" id="dpsPanelWmm" min="1" step="0.1" />
+            </div>
+            <div class="dps-field">
+              <label for="dpsPanelHmm">Active height (mm)</label>
+              <input type="number" id="dpsPanelHmm" min="1" step="0.1" />
+            </div>
+            <div class="dps-field">
+              <label for="dpsDistance">How far away you stand (mm)</label>
+              <input type="number" id="dpsDistance" min="1" step="10" />
+            </div>
+            <div class="dps-field">
+              <label for="dpsCapRatio">Letter height as a share of font size</label>
+              <input
+                type="number"
+                id="dpsCapRatio"
+                min="0.1"
+                max="1"
+                step="0.001"
+              />
+            </div>
+            <div class="dps-field">
+              <label for="dpsLineSpacing"
+                >Rendered line spacing</label
+              >
+              <input
+                type="number"
+                id="dpsLineSpacing"
+                min="1"
+                max="3"
+                step="0.05"
+              />
+            </div>
+            <div class="dps-field">
+              <label for="dpsPaddingMm">Vertical padding (mm)</label>
+              <input type="number" id="dpsPaddingMm" min="0" step="0.5" />
+            </div>
+          </div>
+          <div class="dps-buttonrow">
+            <button type="button" class="dps-secondary" id="dpsCapInter">
+              Inter (0.727)
+            </button>
+            <button type="button" class="dps-secondary" id="dpsCapRuleOfThumb">
+              Rule of thumb (0.70)
+            </button>
+          </div>
+          <div id="dpsGeometryReadout" class="dps-readout"></div>
+        </section>
+
+        <section class="dps-card" aria-labelledby="dpsPaletteHeading">
+          <h2 id="dpsPaletteHeading">Colours to choose from</h2>
+          <div class="dps-field">
+            <label for="dpsPaletteInput"
+              >Palette (one colour per line, <code>name #hex</code>)</label
+            >
+            <textarea id="dpsPaletteInput" rows="5" spellcheck="false"
+            ></textarea>
+            <p class="dps-hint">
+              The list holds 45 University of Southampton brand colours.
+              Swap it, and we work out every number on this page again.
+            </p>
+          </div>
+          <div class="dps-buttonrow">
+            <button type="button" id="dpsPaletteApply">Apply palette</button>
+            <button type="button" class="dps-secondary" id="dpsPaletteReset">
+              Restore the 45 brand colours
+            </button>
+          </div>
+          <p class="dps-readout" id="dpsPaletteStatus"></p>
+        </section>
       </div>
 
       <!-- ==============================================================
@@ -654,11 +704,12 @@
       <section class="dps-card" aria-labelledby="dpsGalleryHeading">
         <h2 id="dpsGalleryHeading">Ten panels, ranked</h2>
         <p class="dps-hint">
-          Colour sets from the solver crossed with three size schemes, each
-          scored by the same findings engine as the main preview and shown
-          worst-shortfall-last. The commentary under each frame is composed
-          from that configuration's own findings, so it cannot drift from its
-          numbers. Choose one to load it into the preview.
+          Each card is a real panel. We take colour sets the page picked and
+          try them at three different sizes. Every card is scored the same way
+          as the main preview, and the best come first. The note under each
+          card is written from that card's own numbers, so the words cannot
+          say one thing while the numbers say another. Pick a card to load it
+          into the preview.
         </p>
         <div class="dps-buttonrow">
           <button type="button" id="dpsRunGallery">Build the gallery</button>
@@ -667,17 +718,18 @@
       </section>
 
       <section class="dps-card" aria-labelledby="dpsEnumerationHeading">
-        <h2 id="dpsEnumerationHeading">Every set, exhaustively</h2>
+        <h2 id="dpsEnumerationHeading">Every possible set</h2>
         <p class="dps-hint">
-          The ten cards above are curated. This is the whole space the tool
-          owns — badge style × chroma ceiling × set size — with each cell
-          stating its pool, its gate, the best separation that pool can hold
-          and the mode that binds it. A cell that yields no set says why, as a
-          result rather than a blank, and the counts are printed so a silent
-          cap cannot hide between them. The enumeration cross-checks itself
-          against the recorded baselines <em>by set membership</em>: two
-          different trios can share a ΔE, and only the names settle whether the
-          pool has moved.
+          We chose the ten cards above. This table is every option the page
+          can offer: each badge style, at each colour-strength limit, for each
+          number of statuses. Every row says which colours were allowed, which
+          test they had to pass, how far apart the best set is, and which
+          reader it is hardest for. <strong>A row with no answer says why,
+          instead of sitting blank</strong>, and we print both counts so a
+          quiet gap cannot hide between them. The table checks itself against
+          figures we wrote down earlier, <em>by the names of the colours</em>.
+          Two different sets can score the same, so only the names tell us
+          whether anything really moved.
         </p>
         <div class="dps-buttonrow">
           <button type="button" id="dpsRunEnumeration">
@@ -709,12 +761,12 @@
       <section class="dps-card" aria-labelledby="dpsVerifyHeading">
         <h2 id="dpsVerifyHeading">Verification</h2>
         <p class="dps-hint">
-          A wrong colour-vision matrix still looks like a plausible simulation.
-          The cross-check runs the same swatches through this page&rsquo;s arithmetic
-          and through the browser&rsquo;s own SVG filters, and compares them. The
-          canaries then check the geometry against hand arithmetic, the solver
-          in both directions, and what the page actually RENDERS against what
-          the model says it should.
+          A colour-blindness view drawn with the wrong numbers still looks
+          believable. So we work the same colours out twice, once with our own
+          arithmetic and once with the browser's, and compare. The checks then
+          test the sizes against sums done by hand, test the colour chooser
+          both ways round, and compare what the page <strong>actually
+          draws</strong> against what the model says it should.
         </p>
         <div class="dps-buttonrow">
           <button type="button" id="dpsRunVerify">
@@ -731,6 +783,29 @@
           role="region"
           aria-label="Verification output, scrollable"
         ></div>
+      </section>
+
+      <section class="dps-card" aria-labelledby="dpsGateLimitHeading">
+        <h2 id="dpsGateLimitHeading">What the accessibility check cannot see</h2>
+        <p>
+          Two tools check this page for accessibility problems every time we
+          change it. Both read the page as it arrives. A tab that is not the
+          one showing is hidden, and a hidden tab is invisible to them, so
+          they check the first tab and nothing else.
+        </p>
+        <p>
+          That is not a small gap. When we moved four sections to the Detail
+          tab, the number of things the tools asked us to check by hand fell
+          from 119 to 34. Nothing got better. The tools simply stopped
+          looking.
+        </p>
+        <p>
+          So we run them twice. Once on the page as you get it, which is the
+          test we have to pass. Then again with every tab and every
+          drop-down forced open, which is the test that tells us what the
+          first one missed. Both runs are written up in the same report, and
+          neither is allowed to stand for the other.
+        </p>
       </section>
       </div>
     </div>

@@ -280,50 +280,6 @@ window.MermaidAccessibilityUtils = (function () {
     return result;
   }
 
-  /**
-   * Helper function to format text nodes within an HTML element
-   * This should be called separately from formatNumbersInText
-   * @param {HTMLElement} element - The element containing text nodes to format
-   */
-  function formatTextNodesInElement(element) {
-    if (!element) return;
-
-    // Walk the DOM and format text nodes
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false
-    );
-
-    const skipClassPatterns = [
-      /diagram-value/, // Skip formatting values like "44.3"
-      /diagram-percentage/, // Skip formatting percentages like "44.3%"
-      /version/,
-      /code/,
-      /technical/,
-    ];
-
-    const skipTagNames = ["CODE", "PRE", "SCRIPT", "STYLE", "KBD"];
-
-    let node;
-    while ((node = walker.nextNode())) {
-      // Skip empty text nodes
-      if (!node.textContent.trim()) continue;
-
-      // Skip formatting content of code blocks and other technical elements
-      const parent = node.parentNode;
-      if (skipTagNames.includes(parent.nodeName)) continue;
-
-      // Skip classes we don't want to format
-      const parentClass = parent.className || "";
-      if (skipClassPatterns.some((pattern) => pattern.test(parentClass)))
-        continue;
-
-      // Format the text content
-      node.textContent = formatNumbersInText(node.textContent);
-    }
-  }
   // Date utility functions
   const DateUtils = {
     /**
@@ -572,6 +528,18 @@ window.MermaidAccessibilityUtils = (function () {
      * @param {string|number} diagramId - Unique identifier for the diagram
      * @param {string} detailedDescription - The detailed description HTML
      * @param {string} shortDesc - Short description text
+     * @param {boolean} [detailedIsAuthorText=false] - True when
+     *   detailedDescription is the author's own accDescr rather than generated
+     *   HTML. The detailed sink below is an innerHTML sink and cannot tell the
+     *   two apart from the string, so provenance is passed rather than
+     *   inferred. Defaults false, so any caller that does not supply it gets
+     *   the pre-existing generator behaviour. Register item 31.
+     * @param {boolean} [shortIsAuthorText=false] - True when shortDesc is the
+     *   author's own accTitle rather than a generated short tier. It routes the
+     *   short description to its textContent sink and skips the generator call
+     *   entirely; see the branch below. Defaults false, so any caller that does
+     *   not supply it gets the pre-existing generator behaviour.
+     *   Register item 30.
      * @returns {HTMLElement} The created description container
      */
     createDescriptionContainer: function (
@@ -579,7 +547,9 @@ window.MermaidAccessibilityUtils = (function () {
       diagramCode,
       diagramId,
       detailedDescription,
-      shortDesc
+      shortDesc,
+      detailedIsAuthorText,
+      shortIsAuthorText
     ) {
       // Reference to the current object/module for self-reference
       const self = this;
@@ -621,8 +591,25 @@ window.MermaidAccessibilityUtils = (function () {
             window.MermaidDiagramDetection.detectDiagramType(diagramCode);
         }
 
-        // Check if we can get an HTML version of the short description
-        if (
+        // Author-supplied accTitle wins on this surface, and reaches ONLY a
+        // text sink.
+        //
+        // The generator is not called at all on this branch — not called and
+        // its result discarded, but never called — so the author's string has
+        // no route to an innerHTML sink here. That is what makes escaping
+        // unnecessary rather than merely omitted: accTitle lands only on
+        // textContent and attribute sinks, where escaping would double-encode
+        // what a screen reader announces and what a reader sees. Provenance is
+        // passed rather than inferred, for the same reason as the detailed
+        // sink below: this code cannot tell an author's string from a
+        // generated one by looking at it. Register item 30.
+        if (shortIsAuthorText) {
+          logDebug(
+            "[Mermaid Accessibility] Using author accTitle for the short description"
+          );
+          shortDescElem.textContent = shortDesc;
+        } else if (
+          // Check if we can get an HTML version of the short description
           window.MermaidAccessibility &&
           window.MermaidAccessibility.descriptionGenerators &&
           window.MermaidAccessibility.descriptionGenerators[diagramType] &&
@@ -633,41 +620,46 @@ window.MermaidAccessibilityUtils = (function () {
           logDebug(
             `[Mermaid Accessibility] Using HTML description for ${diagramType}`
           );
-          const shortDescHTML =
+          const shortDescHTMLResult =
             window.MermaidAccessibility.descriptionGenerators[
               diagramType
             ].generateShortHTML(svgElement, diagramCode);
 
-          // Ensure numbers are properly formatted in HTML content
-          const tempDiv = document.createElement("div");
-          tempDiv.innerHTML = shortDescHTML;
-          // Apply number formatting to text nodes
-          const walker = document.createTreeWalker(
-            tempDiv,
-            NodeFilter.SHOW_TEXT,
-            null,
-            false
-          );
+          // Apply the HTML verbatim. Each module owns its own number style
+          // (via Common.narrationNumber) and overview totals are always
+          // digits, so rewriting numbers here made this panel disagree with
+          // the figcaption and the SVG aria-label (item 27).
+          const applyShortHTML = function (shortDescHTML) {
+            shortDescElem.innerHTML = shortDescHTML;
+          };
 
-          while (walker.nextNode()) {
-            const node = walker.currentNode;
-            if (node.textContent.trim()) {
-              // Use the parent object's formatNumbersInText function
-              node.textContent =
-                window.MermaidAccessibilityUtils.formatNumbersInText(
-                  node.textContent
-                );
-            }
+          // Since stage 2 of the flowchart rewrite, generateShortHTML may be
+          // async (the flowchart module awaits the parse adapter). A plain
+          // string keeps the fully synchronous path below; a thenable fills
+          // the paragraph when it settles - the container is still hidden at
+          // this point, so nothing user-visible arrives late. Without this
+          // branch a promise-returning generator painted the literal text
+          // "[object Promise]" (measured 2 August 2026).
+          if (
+            shortDescHTMLResult &&
+            typeof shortDescHTMLResult.then === "function"
+          ) {
+            shortDescHTMLResult.then(applyShortHTML).catch(function (error) {
+              logError(
+                "[Mermaid Accessibility] Async short description failed:",
+                error
+              );
+              shortDescElem.textContent = shortDesc;
+            });
+          } else {
+            applyShortHTML(shortDescHTMLResult);
           }
-
-          shortDescElem.innerHTML = tempDiv.innerHTML;
         } else {
-          // Fallback to text content with proper number formatting
+          // Fallback to the plain tier, verbatim
           logDebug(
             `[Mermaid Accessibility] Using plain text description for ${diagramType}`
           );
-          shortDescElem.textContent =
-            window.MermaidAccessibilityUtils.formatNumbersInText(shortDesc);
+          shortDescElem.textContent = shortDesc;
         }
       } catch (error) {
         // Error fallback
@@ -675,8 +667,7 @@ window.MermaidAccessibilityUtils = (function () {
           "[Mermaid Accessibility] Error accessing description generator:",
           error
         );
-        shortDescElem.textContent =
-          window.MermaidAccessibilityUtils.formatNumbersInText(shortDesc);
+        shortDescElem.textContent = shortDesc;
       }
 
       shortDescSection.appendChild(shortDescElem);
@@ -695,8 +686,34 @@ window.MermaidAccessibilityUtils = (function () {
       // Create the detailed description section that will hold the HTML content
       const detailContentElem = document.createElement("div");
       detailContentElem.className = "mermaid-detailed-description";
-      // If detailedDescription looks like HTML, use innerHTML, otherwise use textContent
-      if (
+      // Three branches, and every one of them writes innerHTML — there is no
+      // textContent path here, whatever an earlier comment on these lines
+      // claimed. What differs is where the string came from:
+      //
+      //   1. author text (accDescr)  — escaped here, once, on the way in
+      //   2. generator HTML          — the module's own markup, already
+      //                                escaped at its interpolation sites,
+      //                                so it is written through untouched
+      //   3. generator plain text    — no markup, so number formatting applies
+      //
+      // Only the caller knows which of the three it is holding; see the
+      // detailedIsAuthorText parameter above. Register item 31.
+      if (detailedIsAuthorText) {
+        // Author-supplied text reaching an innerHTML sink: escape exactly
+        // once, here, at the point it enters the HTML string.
+        //
+        // Resolved off window at call time rather than cached at module
+        // scope: this file loads BEFORE mermaid-accessibility-common.js, so a
+        // module-scope const would capture undefined.
+        //
+        // formatNumbersInText is deliberately NOT applied. It is a no-op on
+        // markup-bearing text anyway, and on markup-free text it rewrites
+        // numbers — which must not happen to an author's own words.
+        detailContentElem.innerHTML =
+          "<p>" +
+          window.MermaidAccessibilityCommon.escapeHtml(detailedDescription) +
+          "</p>";
+      } else if (
         detailedDescription.trim().startsWith("<") &&
         (detailedDescription.includes("<ul>") ||
           detailedDescription.includes("<ol>") ||
@@ -754,6 +771,12 @@ window.MermaidAccessibilityUtils = (function () {
      * @param {string|number} diagramId - Unique identifier for the diagram
      * @param {string} detailedDescription - Detailed description HTML
      * @param {string} shortDescription - Short description text
+     * @param {boolean} [detailedIsAuthorText=false] - Forwarded verbatim to
+     *   createDescriptionContainer; see its parameter documentation. This
+     *   function only carries the flag. Register item 31.
+     * @param {boolean} [shortIsAuthorText=false] - Forwarded verbatim to
+     *   createDescriptionContainer; see its parameter documentation. This
+     *   function only carries the flag. Register item 30.
      * @returns {HTMLElement} The created button
      */
     createDescriptionToggleButton: function (
@@ -762,7 +785,9 @@ window.MermaidAccessibilityUtils = (function () {
       diagramCode,
       diagramId,
       detailedDescription,
-      shortDescription
+      shortDescription,
+      detailedIsAuthorText,
+      shortIsAuthorText
     ) {
       // Button configuration
       const showText = "Show Description";
@@ -786,7 +811,9 @@ window.MermaidAccessibilityUtils = (function () {
         diagramCode,
         diagramId,
         detailedDescription,
-        shortDescription
+        shortDescription,
+        detailedIsAuthorText === true,
+        shortIsAuthorText === true
       );
       // Find the figure element that wraps the container
       let figureElement = container.parentElement;
@@ -1429,7 +1456,6 @@ window.MermaidAccessibilityUtils = (function () {
     extractTitleFromSVG: extractTitleFromSVG,
     parseAccessibilityDirectives: parseAccessibilityDirectives,
     formatNumbersInText: formatNumbersInText,
-    formatTextNodesInElement: formatTextNodesInElement,
     DateUtils: DateUtils,
     DOMUtils: DOMUtils,
   };

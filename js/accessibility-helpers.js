@@ -31,8 +31,45 @@
  * @since 2025-01-20
  */
 
+// Maximum entries kept in the visible status history before the oldest are trimmed.
+const MAX_STATUS_HISTORY = 50;
+
+/**
+ * Speak a status message through the shared announcer.
+ *
+ * The announcer is resolved HERE, at announce time, rather than being captured
+ * once — accessibility-announcer.js is a plain script and this is a deferred ES
+ * module, so the ordering happens to work today, but a cached reference would
+ * fail silently the moment load order shifted. That is exactly the bug class this
+ * function used to embody.
+ *
+ * @param {string} message
+ * @param {string} type caller-supplied urgency: "assertive", "polite" or "info"
+ */
+function speak(message, type) {
+  const announcer = window.accessibilityHelpers;
+  if (!announcer || typeof announcer.announce !== "function") return;
+
+  // Anything not explicitly assertive stays polite — interrupting is opt-in.
+  announcer.announce(message, type === "assertive" ? "assertive" : "polite");
+}
+
 export const a11y = {
   announceStatus(message, type = "info") {
+    // Announce FIRST, and unconditionally. This used to return early when
+    // #statusList was absent, so a page without the visible history announced
+    // nothing at all; and the announcement itself was a hand-rolled region whose
+    // textContent was set BEFORE it was appended, which gives the live-region
+    // monitor no mutation to react to. Both are now the announcer's job — it owns
+    // a top-level region that is exposed from every mode, whereas #statusList
+    // lives inside #openrouter-app and is aria-hidden until that tool is chosen.
+    //
+    // The timestamp is deliberately NOT spoken: it is a column in the visible log,
+    // and "Error occurred at 14:32:05" on every status is noise in the ear.
+    speak(message, type);
+
+    // The visible status history is a separate, sighted-user feature. It is
+    // populated when present and simply skipped when it is not.
     const statusList = document.getElementById("statusList");
     if (!statusList) return;
 
@@ -45,9 +82,14 @@ export const a11y = {
     messageSpan.className = "status-text";
     messageSpan.textContent = message;
 
-    // Create timestamp
+    // Create timestamp. Hidden from assistive technology: it is a column for
+    // sighted scanning, and #statusList is a role="log" region, so every entry was
+    // being read with its clock time appended and no separator — a listener on
+    // 2 August 2026 heard "Short, concise responses09:00:47". Announcing the time
+    // after every status is noise even when it is separated properly.
     const timeSpan = document.createElement("span");
     timeSpan.className = "status-time";
+    timeSpan.setAttribute("aria-hidden", "true");
     const now = new Date();
     timeSpan.textContent = now.toLocaleTimeString();
 
@@ -60,25 +102,12 @@ export const a11y = {
 
     // Scroll to bottom
     const container = statusList.parentElement;
-    container.scrollTop = container.scrollHeight;
+    if (container) container.scrollTop = container.scrollHeight;
 
-    // Keep only last 50 messages
-    while (statusList.children.length > 50) {
+    // Keep only the most recent entries
+    while (statusList.children.length > MAX_STATUS_HISTORY) {
       statusList.removeChild(statusList.firstChild);
     }
-
-    // Announce to screen readers
-    const liveRegion = document.createElement("div");
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
-    liveRegion.className = "sr-only";
-    liveRegion.textContent = `${message} at ${timeSpan.textContent}`;
-    document.body.appendChild(liveRegion);
-
-    // Remove live region after announcement
-    setTimeout(() => {
-      document.body.removeChild(liveRegion);
-    }, 1000);
   },
 
   focusElement(elementId) {

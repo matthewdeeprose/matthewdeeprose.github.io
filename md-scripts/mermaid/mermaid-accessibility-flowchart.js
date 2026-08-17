@@ -100,76 +100,64 @@ const FlowchartModule = (function () {
     return;
   }
 
-  // Configuration for debugging (deprecated - use logging levels instead)
-  const DEBUG = false; // Toggle for verbose logging
+  // Shared prose layer (loads before every diagram module — knowledge base
+  // § 2): narrationNumber, labelFullStop, formatList, capitalize.
+  const Common = window.MermaidAccessibilityCommon;
 
-  /**
-   * Enhanced logging function that respects debug mode (legacy support)
-   * @param {string} context - The context for the log
-   * @param {any} data - The data to log
-   */
-  function debugLog(context, data) {
-    if (!DEBUG) return;
-    logDebug(context, data);
-  }
+  // Direction phrases for the short description. The adapter has already
+  // collapsed the TD synonym to TB, so only these four keys can arrive.
+  const DIRECTION_PHRASES = Object.freeze({
+    TB: "top to bottom",
+    BT: "bottom to top",
+    LR: "left to right",
+    RL: "right to left",
+  });
 
-  // Utility function aliases
-  const Utils = window.MermaidAccessibilityUtils;
+  // A flowchart where more than this share of nodes are decision diamonds
+  // is described as a "decision flowchart". Same threshold as the retired
+  // source-text heuristic in mermaid-diagram-detection.js (isDecisionDiagram),
+  // now measured against the parsed graph's real shapes.
+  const DECISION_NODE_RATIO = 0.3;
 
   /**
    * Generate a short description for a flowchart
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
+   *
+   * Async since stage 2 of the flowchart rewrite: the values come from the
+   * parse adapter's normalised graph, not from the SVG or a source-text
+   * scan. A parse rejection is deliberately NOT caught here — the core's
+   * catch turns it into the generation-failed fallback. Accepted interim
+   * behaviour: while the detailed tier is still on the old path, a parse
+   * rejection forfeits the whole description including a detailed that
+   * might have been produced; this is by design until stage 3, and
+   * unreachable in practice for a diagram that has already rendered.
+   *
+   * @param {HTMLElement} svgElement - Unused since stage 2; kept for interface stability
    * @param {string} code - The original mermaid code
-   * @returns {Object} An object with HTML and plain text versions of the description
+   * @returns {Promise<Object>} Resolves to an object with HTML and plain text versions of the description
    */
-  function generateShortDescription(svgElement, code) {
+  async function generateShortDescription(svgElement, code) {
     logInfo("generateShortDescription", "Generating short description");
 
-    // Extract title if available
-    let title = Utils.extractTitleFromSVG(svgElement);
-    logDebug("Title", title || "No title found");
-
-    // Try to get orientation for more specific description
-    let orientation = "";
-    if (
-      window.MermaidDiagramDetection &&
-      typeof window.MermaidDiagramDetection.detectOrientation === "function"
-    ) {
-      const detectedOrientation =
-        window.MermaidDiagramDetection.detectOrientation(code);
-      logDebug("Detected Orientation", detectedOrientation || "None detected");
-
-      if (detectedOrientation) {
-        switch (detectedOrientation) {
-          case "TB":
-            orientation = "top to bottom";
-            break;
-          case "BT":
-            orientation = "bottom to top";
-            break;
-          case "LR":
-            orientation = "left to right";
-            break;
-          case "RL":
-            orientation = "right to left";
-            break;
-        }
-      }
+    const graph = await window.MermaidParseAdapter.parse(code);
+    if (window.MermaidParseAdapter.isHealthy() === false) {
+      throw new Error(
+        "Parse adapter failed its self-check; refusing to narrate an unverified graph"
+      );
     }
 
-    // Is this a decision-heavy flowchart?
-    let isDecision = false;
-    if (
-      window.MermaidDiagramDetection &&
-      typeof window.MermaidDiagramDetection.isDecisionDiagram === "function"
-    ) {
-      isDecision = window.MermaidDiagramDetection.isDecisionDiagram(code);
-      logDebug("Is Decision Diagram", isDecision);
-    }
+    const orientation = DIRECTION_PHRASES[graph.direction] || "";
+    logDebug("Orientation", orientation || "None");
 
-    // Count nodes for size description
-    const nodeCount = countNodes(svgElement, code);
+    const nodeCount = graph.nodes.length;
     logDebug("Node Count", nodeCount);
+
+    // Is this a decision-heavy flowchart? Judged on real diamond shapes.
+    const diamondCount = graph.nodes.filter(
+      (node) => node.shape === "diamond"
+    ).length;
+    const isDecision =
+      nodeCount > 0 && diamondCount / nodeCount > DECISION_NODE_RATIO;
+    logDebug("Is Decision Diagram", isDecision);
 
     let complexityDesc = "";
 
@@ -190,19 +178,20 @@ const FlowchartModule = (function () {
       plainTextDescription = `A ${complexityDesc}decision flowchart`;
     }
 
+    // No title branch: measured 2 August 2026 (stage 2, step 0), a
+    // frontmatter title does not surface through the adapter's
+    // getDiagramTitle-backed field on the pinned Mermaid build
+    // (graph.title came back empty), so there is nothing reliable to say.
+
     if (orientation) {
       htmlDescription += ` flowing ${orientation}`;
       plainTextDescription += ` flowing ${orientation}`;
     }
 
-    if (title) {
-      htmlDescription += ` showing <span class="diagram-title">${title}</span>`;
-      plainTextDescription += ` showing ${title}`;
-    }
-
     if (nodeCount > 0) {
-      htmlDescription += ` with <span class="diagram-count">${nodeCount}</span> steps`;
-      plainTextDescription += ` with ${nodeCount} steps`;
+      const stepNoun = nodeCount === 1 ? "step" : "steps";
+      htmlDescription += ` with <span class="diagram-count">${nodeCount}</span> ${stepNoun}`;
+      plainTextDescription += ` with ${nodeCount} ${stepNoun}`;
     }
 
     htmlDescription += ".";
@@ -218,1070 +207,479 @@ const FlowchartModule = (function () {
 
   /**
    * Wrapper for the short description generator to maintain backwards compatibility
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
+   * @param {HTMLElement} svgElement - Unused since stage 2; kept for interface stability
    * @param {string} code - The original mermaid code
-   * @returns {string} The plain text description for backwards compatibility
+   * @returns {Promise<string>} Resolves to the plain text description
    */
-  function shortDescriptionWrapper(svgElement, code) {
-    const descriptions = generateShortDescription(svgElement, code);
+  async function shortDescriptionWrapper(svgElement, code) {
+    const descriptions = await generateShortDescription(svgElement, code);
 
     // Return text version for backwards compatibility
     return descriptions.text;
   }
 
-  /**
-   * Count the number of nodes in the flowchart
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {number} The number of nodes
-   */
-  function countNodes(svgElement, code) {
-    logDebug("countNodes", "Counting flowchart nodes");
 
-    // First try to count from the SVG (most reliable if rendered)
-    const nodes = svgElement.querySelectorAll(".node");
-    if (nodes.length > 0) {
-      logDebug("Node Count from SVG", nodes.length);
-      return nodes.length;
-    }
+  // ---------------------------------------------------------------------
+  // Stage 3: the detailed tier on the parse adapter — traversal + narration
+  // ---------------------------------------------------------------------
 
-    // Fallback to code analysis
-    // This regex looks for node definitions in the code
-    const nodeMatches = code.match(/\s*[A-Za-z0-9_-]+\s*(\[|\(|\{)/g);
-    const count = nodeMatches ? nodeMatches.length : 0;
-    logDebug("Node Count from Code", count);
-    return count;
-  }
+  // Edge kinds that impose order, start to end (stage 0 M2). Open links
+  // (arrow_open) connect two steps without direction: they count for
+  // connectivity and the "also linked to" narration, never for numbering.
+  const ORDERING_EDGE_KINDS = Object.freeze([
+    "arrow_point",
+    "arrow_circle",
+    "arrow_cross",
+    "double_arrow_point",
+  ]);
+
+  // Numbers policy (approved in design): step references and descriptive
+  // counts are words for one to nine and digits from 10; the overview's
+  // step total is always digits. Implemented by Common.narrationNumber;
+  // Oxford-comma joining, label full stops and capitalisation also come
+  // from the shared prose layer since the helper promotion (register
+  // item: shared narration helpers).
 
   /**
-   * Clean node text to remove Mermaid formatting characters
-   * @param {string} text - The node text with formatting
-   * @returns {string} Cleaned text
+   * Traverse the normalised graph: weakly-connected components over ALL
+   * edges, then a Kahn topological numbering per component over ordering
+   * edges only, tie-broken by source first-mention order. When cycles
+   * block the queue the earliest-mention unnumbered node is forced, and
+   * any ordering edge whose target is numbered at or before its source is
+   * a cycle edge ("go back to").
+   *
+   * @param {Object} graph - The parse adapter's normalised graph
+   * @returns {Object} The traversal model the renderer consumes
    */
-  function cleanNodeText(text) {
-    if (!text) return "";
+  function buildFlowchartTraversal(graph) {
+    const mention = new Map();
+    const nodeById = new Map();
+    graph.nodes.forEach((node, index) => {
+      mention.set(node.id, index);
+      nodeById.set(node.id, node);
+    });
 
-    // Remove Mermaid formatting characters for different node types
-    const cleaned = text
-      .replace(/^\[\[|\]\]$/g, "") // Remove [[ and ]] (subprocess)
-      .replace(/^\[\/?|\/?\]$/g, "") // Remove [, /, and ] (process and I/O nodes)
-      .replace(/^\(\[|\]\)$/g, "") // Remove ([ and ]) (start/end nodes)
-      .replace(/^\{|\}$/g, ""); // Remove { and } (decision nodes)
+    const isOrdering = (edge) =>
+      ORDERING_EDGE_KINDS.includes(edge.kind) && edge.from !== edge.to;
 
-    logDebug("Cleaned Node Text", `"${text}" -> "${cleaned}"`);
-    return cleaned;
-  }
+    // Per-node edge lists, all in graph.edges (source) order.
+    const orderingOut = new Map(graph.nodes.map((n) => [n.id, []]));
+    const selfLoops = new Map(graph.nodes.map((n) => [n.id, []]));
+    const openFrom = new Map(graph.nodes.map((n) => [n.id, []]));
+    const touched = new Set();
+    const neighbours = new Map(graph.nodes.map((n) => [n.id, new Set()]));
 
-  /**
-   * Find logical start nodes for a flowchart, especially when dealing with cycles
-   * @param {Object} graph - The flowchart graph object
-   * @param {Set} hasIncoming - Set of nodes with incoming connections
-   */
-  function findLogicalStartNodes(graph, hasIncoming) {
-    logDebug(
-      "findLogicalStartNodes",
-      "Finding logical start nodes for flowchart"
-    );
-
-    // Clear any existing start nodes
-    graph.startNodes.clear();
-
-    // First try to find nodes that explicitly match logical start criteria
-    let potentialStartNodes = [];
-
-    // Look for node A as the highest priority
-    if (graph.nodes.has("A")) {
-      logDebug("Found Primary Start Node", "A");
-      potentialStartNodes.push({ node: "A", priority: 1 });
-    }
-
-    // Find nodes without incoming connections as second priority
-    for (const [nodeId] of graph.nodes) {
-      if (!hasIncoming.has(nodeId)) {
-        // If this is node A, we already added it
-        if (nodeId === "A") continue;
-
-        // If the node ID starts with A (like A1), give it higher priority
-        const priority = nodeId.startsWith("A") ? 2 : 3;
-        potentialStartNodes.push({ node: nodeId, priority: priority });
-        logDebug("No Incoming Node", nodeId);
+    for (const edge of graph.edges) {
+      touched.add(edge.from);
+      touched.add(edge.to);
+      if (edge.from === edge.to) {
+        selfLoops.get(edge.from).push(edge);
+        continue;
+      }
+      neighbours.get(edge.from).add(edge.to);
+      neighbours.get(edge.to).add(edge.from);
+      if (isOrdering(edge)) {
+        orderingOut.get(edge.from).push(edge);
+      } else if (edge.kind === "arrow_open") {
+        openFrom.get(edge.from).push(edge);
       }
     }
 
-    // Sort by priority (lower is better)
-    potentialStartNodes.sort((a, b) => a.priority - b.priority);
+    // Isolated nodes: no incident edges at all. Excluded from the steps
+    // list and declared in a paragraph after it.
+    const isolated = graph.nodes
+      .filter((node) => !touched.has(node.id))
+      .map((node) => node.id);
+    const isolatedSet = new Set(isolated);
 
-    // If we found any start nodes, use them
-    if (potentialStartNodes.length > 0) {
-      // First add node A if it exists to ensure it's the primary start
-      const aNode = potentialStartNodes.find((n) => n.node === "A");
-      if (aNode) {
-        graph.startNodes.add(aNode.node);
-        logDebug("Added Primary Start Node", aNode.node);
+    // In-degree and out-degree over ordering edges, self-loops ignored.
+    const inDegree = new Map(graph.nodes.map((n) => [n.id, 0]));
+    const outDegree = new Map(graph.nodes.map((n) => [n.id, 0]));
+    for (const edges of orderingOut.values()) {
+      for (const edge of edges) {
+        inDegree.set(edge.to, inDegree.get(edge.to) + 1);
+        outDegree.set(edge.from, outDegree.get(edge.from) + 1);
       }
+    }
 
-      // Then add other start nodes
-      for (const { node } of potentialStartNodes) {
-        if (node !== "A") {
-          graph.startNodes.add(node);
-          logDebug("Added Start Node", node);
+    // Weakly-connected components among non-isolated nodes, over all edges.
+    const componentOf = new Map();
+    const components = [];
+    for (const node of graph.nodes) {
+      if (isolatedSet.has(node.id) || componentOf.has(node.id)) continue;
+      const members = [];
+      const queue = [node.id];
+      componentOf.set(node.id, components.length);
+      while (queue.length) {
+        const id = queue.shift();
+        members.push(id);
+        for (const next of neighbours.get(id)) {
+          if (!componentOf.has(next) && !isolatedSet.has(next)) {
+            componentOf.set(next, components.length);
+            queue.push(next);
+          }
+        }
+      }
+      components.push({ members, stepIds: [] });
+    }
+
+    // Order components by their start's first mention (earliest member
+    // where no start node exists — the loop case).
+    for (const component of components) {
+      const starts = component.members.filter((id) => inDegree.get(id) === 0);
+      const pool = starts.length ? starts : component.members;
+      component.startMention = Math.min(...pool.map((id) => mention.get(id)));
+    }
+    components.sort((a, b) => a.startMention - b.startMention);
+
+    // Kahn numbering, continuous across components.
+    const numberOf = new Map();
+    const stepsInOrder = [];
+    let counter = 0;
+    for (const component of components) {
+      const remaining = new Set(component.members);
+      const localIn = new Map(
+        component.members.map((id) => [id, inDegree.get(id)])
+      );
+      while (remaining.size) {
+        let candidates = [...remaining].filter((id) => localIn.get(id) === 0);
+        if (candidates.length === 0) {
+          // A cycle blocks the queue: force the earliest-mention node.
+          candidates = [...remaining];
+        }
+        candidates.sort((a, b) => mention.get(a) - mention.get(b));
+        const id = candidates[0];
+        remaining.delete(id);
+        counter += 1;
+        numberOf.set(id, counter);
+        stepsInOrder.push(id);
+        component.stepIds.push(id);
+        for (const edge of orderingOut.get(id)) {
+          if (remaining.has(edge.to)) {
+            localIn.set(edge.to, localIn.get(edge.to) - 1);
+          }
         }
       }
     }
-    // If we couldn't find any start nodes, try to find a logical starting point
-    else {
-      // Look for a node with "start", "begin", or "appointment" in its text
-      for (const [nodeId, node] of graph.nodes) {
-        if (
-          node.text.toLowerCase().includes("start") ||
-          node.text.toLowerCase().includes("begin") ||
-          node.text.toLowerCase().includes("appointment")
-        ) {
-          graph.startNodes.add(nodeId);
-          logDebug("Using Logical Start Node (by text)", nodeId);
-          break;
-        }
-      }
 
-      // If still no start nodes, use node A or first alphabetically
-      if (graph.startNodes.size === 0) {
-        if (graph.nodes.has("A")) {
-          graph.startNodes.add("A");
-          logDebug("Fallback to Node A", "A");
-        } else {
-          // Sort node IDs alphabetically and take the first one
-          const firstNode = [...graph.nodes.keys()].sort()[0];
-          graph.startNodes.add(firstNode);
-          logDebug("Fallback to First Alphabetical Node", firstNode);
+    // Cycle edges: ordering edges pointing at an already-numbered node.
+    const cycleEdges = new Set();
+    for (const edges of orderingOut.values()) {
+      for (const edge of edges) {
+        if (numberOf.get(edge.to) <= numberOf.get(edge.from)) {
+          cycleEdges.add(edge);
         }
       }
     }
 
-    logDebug("Final Start Nodes", [...graph.startNodes]);
+    // Start points exclude cycle edges (stage 3.1 amendment A): a
+    // back-edge does not stop a node being where reading begins, but it
+    // does mean the process continues from that node — so end points keep
+    // counting cycle edges. Every edge into a component's first-numbered
+    // node is a cycle edge by construction, so each component contributes
+    // at least one start point.
+    const nonCycleInDegree = new Map(graph.nodes.map((n) => [n.id, 0]));
+    for (const edges of orderingOut.values()) {
+      for (const edge of edges) {
+        if (cycleEdges.has(edge)) continue;
+        nonCycleInDegree.set(edge.to, nonCycleInDegree.get(edge.to) + 1);
+      }
+    }
+
+    const nonIsolated = graph.nodes.filter((n) => !isolatedSet.has(n.id));
+    return {
+      nodeById,
+      orderingOut,
+      selfLoops,
+      openFrom,
+      isolated,
+      components,
+      numberOf,
+      stepsInOrder,
+      cycleEdges,
+      startCount: nonIsolated.filter((n) => nonCycleInDegree.get(n.id) === 0)
+        .length,
+      endCount: nonIsolated.filter((n) => outDegree.get(n.id) === 0).length,
+      diamondCount: graph.nodes.filter((n) => n.shape === "diamond").length,
+    };
   }
 
   /**
-   * Parse complete flowchart structure from mermaid code
-   * @param {string} code - The mermaid diagram code
-   * @returns {Object} Complete graph with nodes, connections and metadata
+   * Render one step's list item from the traversal model.
+   * @param {string} id - The node id
+   * @param {Object} t - The traversal model
+   * @returns {string} An <li> fragment
    */
-  function parseFullFlowchart(code) {
-    logInfo("parseFullFlowchart", "Starting to parse flowchart");
-    logDebug(
-      "Code Input",
-      code.substring(0, 200) + (code.length > 200 ? "..." : "")
-    );
+  function renderStepItem(id, t) {
+    const node = t.nodeById.get(id);
+    const label = node.label;
 
-    const graph = {
-      nodes: new Map(),
-      startNodes: new Set(),
+    // Diagram-source text is escaped once, here, where it enters an HTML
+    // string. Everything downstream of this point is generator-authored
+    // markup and must never be escaped. labelFullStop still reads the RAW
+    // label: it is a text-level test for trailing sentence punctuation.
+    const safeLabel = Common.escapeHtml(label);
+
+    const out = t.orderingOut.get(id);
+    const loops = t.selfLoops.get(id);
+    const opens = t.openFrom.get(id);
+    const isDiamond = node.shape === "diamond";
+
+    // A labelled self-loop is narrated as a nested item, so it forces the
+    // nested form too.
+    const nestedForm =
+      isDiamond ||
+      out.length >= 2 ||
+      out.some((edge) => edge.label) ||
+      loops.some((edge) => edge.label);
+
+    // The reference phrase for one ordering edge, lowercase.
+    const referencePhrase = (edge) => {
+      const word = Common.narrationNumber(t.numberOf.get(edge.to));
+      if (edge.kind === "double_arrow_point") {
+        return `connects both ways with step ${word}`;
+      }
+      return t.cycleEdges.has(edge)
+        ? `go back to step ${word}`
+        : `go to step ${word}`;
     };
 
-    const lines = code
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line);
+    let main;
+    const nestedItems = [];
 
-    logDebug("Parsed Lines", `${lines.length} lines found`);
-
-    // Step 1: Extract node definitions
-    logDebug("Node Extraction", "Starting to extract nodes");
-    const nodeRegex =
-      /\s*([A-Za-z0-9_-]+)(?:\[\[([^\]]+)\]\]|\[\/?([^\/\]]+)\/?\]|\(\[([^\]]+)\]\)|\{([^}]+)\})/g;
-
-    let nodeCount = 0;
-    let decisionNodeCount = 0;
-
-    for (const line of lines) {
-      for (const match of line.matchAll(nodeRegex)) {
-        nodeCount++;
-        const id = match[1];
-
-        // Get text from any of the possible bracket groups
-        const text = match[2] || match[3] || match[4] || match[5] || id;
-
-        // Clean the text to remove formatting characters
-        const cleanedText = cleanNodeText(text);
-
-        // Determine if this is a decision node (has {} syntax or contains a question mark)
-        const isDecision = line.includes(`${id}{`) || cleanedText.includes("?");
-        if (isDecision) decisionNodeCount++;
-
-        graph.nodes.set(id, {
-          id,
-          text: cleanedText,
-          isDecision,
-          outEdges: [],
-        });
-
-        logDebug(
-          "Node Found",
-          `ID: ${id}, Text: "${cleanedText}", Decision: ${isDecision}`
+    if (nestedForm) {
+      main = isDiamond
+        ? `Decision: <span class="diagram-decision">${safeLabel}</span>${Common.labelFullStop(label)}`
+        : `<span class="diagram-action">${safeLabel}</span>${Common.labelFullStop(label)}`;
+      for (const edge of out) {
+        nestedItems.push(
+          edge.label
+            ? `<li>If ${Common.escapeHtml(edge.label)}, ${referencePhrase(edge)}.</li>`
+            : `<li>${Common.capitalize(referencePhrase(edge))}.</li>`
         );
       }
-    }
-
-    logInfo(
-      "Node Summary",
-      `Found ${nodeCount} nodes (${decisionNodeCount} decision nodes)`
-    );
-
-    // Step 2: Extract connections
-    logDebug("Connection Extraction", "Starting to extract connections");
-
-    // Track nodes with incoming connections
-    const hasIncoming = new Set();
-    let connectionCount = 0;
-
-    // Process connections from various syntax types
-    for (const line of lines) {
-      // Pattern 1: Labeled connections with pipe syntax: A -->|Yes| B
-      const labeledPipeConnMatch = line.match(
-        /\s*([A-Za-z0-9_-]+)\s*(?:-->|==>|-\.->)\|([^|]+)\|\s*([A-Za-z0-9_-]+)/
-      );
-      if (labeledPipeConnMatch) {
-        const sourceId = labeledPipeConnMatch[1];
-        const label = labeledPipeConnMatch[2].trim();
-        const targetId = labeledPipeConnMatch[3];
-
-        if (processConnection(sourceId, targetId, label, graph, hasIncoming)) {
-          connectionCount++;
-          logDebug(
-            "Labeled Pipe Connection",
-            `${sourceId} --[${label}]--> ${targetId}`
+      for (const edge of loops) {
+        if (edge.label) {
+          nestedItems.push(
+            `<li>If ${Common.escapeHtml(edge.label)}, this step repeats.</li>`
           );
         }
-        continue;
       }
-
-      // Pattern 2: Text label connections: A -- Yes --> B
-      const textLabelConnMatch = line.match(
-        /\s*([A-Za-z0-9_-]+)\s*--\s*([^-]+?)\s*-->\s*([A-Za-z0-9_-]+)/
-      );
-      if (textLabelConnMatch) {
-        const sourceId = textLabelConnMatch[1];
-        const label = textLabelConnMatch[2].trim();
-        const targetId = textLabelConnMatch[3];
-
-        if (processConnection(sourceId, targetId, label, graph, hasIncoming)) {
-          connectionCount++;
-          logDebug(
-            "Text Labeled Connection",
-            `${sourceId} --[${label}]--> ${targetId}`
-          );
-        }
-        continue;
+    } else if (out.length === 1) {
+      const edge = out[0];
+      const word = Common.narrationNumber(t.numberOf.get(edge.to));
+      let sentence;
+      if (edge.kind === "double_arrow_point") {
+        sentence = `Connects both ways with step ${word}.`;
+      } else if (t.cycleEdges.has(edge)) {
+        sentence = `Go back to step ${word}.`;
+      } else {
+        sentence = `Proceed to step ${word}.`;
       }
-
-      // Pattern 3: Standard connections: A --> B
-      const standardConnMatch = line.match(
-        /\s*([A-Za-z0-9_-]+)\s*(?:-->|==>|-\.->)\s*([A-Za-z0-9_-]+)/
-      );
-      if (standardConnMatch) {
-        const sourceId = standardConnMatch[1];
-        const targetId = standardConnMatch[2];
-
-        // Skip if this is part of a labeled connection we've already processed
-        if (
-          line.includes(`${sourceId} -->|`) &&
-          line.includes(`| ${targetId}`)
-        ) {
-          logDebug("Skipping Already Processed", `${sourceId} --> ${targetId}`);
-          continue;
-        }
-        if (
-          line.includes(`${sourceId} --`) &&
-          line.includes(`--> ${targetId}`)
-        ) {
-          logDebug("Skipping Labeled Edge", `${sourceId} --> ${targetId}`);
-          continue;
-        }
-
-        if (processConnection(sourceId, targetId, "", graph, hasIncoming)) {
-          connectionCount++;
-          logDebug("Standard Connection", `${sourceId} --> ${targetId}`);
-        }
-      }
+      main = `<span class="diagram-action">${safeLabel}</span>${Common.labelFullStop(label)} ${sentence}`;
+    } else {
+      main = `<span class="diagram-node">${safeLabel}</span>${Common.labelFullStop(label)} This is the end of the process.`;
     }
 
-    logInfo("Connection Summary", `Found ${connectionCount} connections`);
-
-    // Step 3: Identify potential decision nodes based on outgoing edges
-    // Some decision nodes might not be explicitly marked with {} but have multiple outgoing edges
-    for (const [nodeId, node] of graph.nodes.entries()) {
-      if (!node.isDecision && node.outEdges.length > 1) {
-        const allLabeled = node.outEdges.every((edge) => edge.label);
-
-        // If all outgoing edges have labels, this is likely a decision node
-        if (allLabeled) {
-          logDebug(
-            "Decision Node Detection",
-            `Node ${nodeId} reclassified as decision node based on labeled outgoing edges`
-          );
-          node.isDecision = true;
-        }
-      }
+    // Appended sentences: unlabelled self-loops, then open links (narrated
+    // on the edge's start-side step only).
+    let appendix = "";
+    if (loops.some((edge) => !edge.label)) {
+      appendix += " This step can repeat itself.";
+    }
+    for (const edge of opens) {
+      const other = t.nodeById.get(edge.to);
+      appendix += ` It is also linked to ${Common.escapeHtml(other.label)}.`;
     }
 
-    // Step 4: Find the logical starting point
-    findLogicalStartNodes(graph, hasIncoming);
-
-    logInfo("Graph Structure Finalised", "Final graph structure:");
-    logDebug("Node Count", graph.nodes.size);
-    logDebug("Start Nodes", [...graph.startNodes]);
-
-    // Log a sample of nodes with their connections
-    let sampleNodes = [];
-    let i = 0;
-    for (const [id, node] of graph.nodes) {
-      if (i++ < 5) {
-        // Log first 5 nodes as sample
-        sampleNodes.push({
-          id: node.id,
-          text: node.text,
-          isDecision: node.isDecision,
-          outEdges: node.outEdges,
-        });
-      }
+    // Newlines between elements keep text-content extraction readable:
+    // without them, block and list boundaries concatenate with no space.
+    if (nestedItems.length) {
+      return `<li>${main}${appendix}\n<ul class="decision-paths">\n${nestedItems.join("\n")}\n</ul>\n</li>`;
     }
-    logDebug("Sample Nodes", sampleNodes);
-
-    return graph;
+    return `<li>${main}${appendix}</li>`;
   }
 
   /**
-   * Helper function to process a connection between nodes
-   * @param {string} sourceId - Source node ID
-   * @param {string} targetId - Target node ID
-   * @param {string} label - Connection label
-   * @param {Object} graph - The graph object
-   * @param {Set} hasIncoming - Set to track nodes with incoming connections
-   * @returns {boolean} True if connection was processed
-   */
-  function processConnection(sourceId, targetId, label, graph, hasIncoming) {
-    // Skip invalid IDs to prevent treating edge labels as nodes
-    if (
-      sourceId === "Yes" ||
-      sourceId === "No" ||
-      targetId === "Yes" ||
-      targetId === "No"
-    ) {
-      logWarn(
-        "Invalid Node ID",
-        `Skipping edge label as node: ${sourceId} -> ${targetId}`
-      );
-      return false;
-    }
-
-    // Skip if either node ID is empty
-    if (!sourceId.trim() || !targetId.trim()) {
-      return false;
-    }
-
-    // Create nodes if they don't exist
-    if (!graph.nodes.has(sourceId)) {
-      graph.nodes.set(sourceId, {
-        id: sourceId,
-        text: sourceId,
-        isDecision: false,
-        outEdges: [],
-      });
-      logDebug("Created Missing Source Node", sourceId);
-    }
-
-    if (!graph.nodes.has(targetId)) {
-      graph.nodes.set(targetId, {
-        id: targetId,
-        text: targetId,
-        isDecision: false,
-        outEdges: [],
-      });
-      logDebug("Created Missing Target Node", targetId);
-    }
-
-    // Add the edge to the source node
-    const sourceNode = graph.nodes.get(sourceId);
-    sourceNode.outEdges.push({ targetId, label });
-
-    // Mark that the target has an incoming connection
-    hasIncoming.add(targetId);
-
-    return true;
-  }
-
-  /**
-   * Determine logical order of nodes for the description
-   * @param {Object} graph - Complete flowchart graph structure
-   * @returns {Object} Ordered nodes and map of node IDs to step numbers
-   */
-  function determineNodeOrder(graph) {
-    logDebug("determineNodeOrder", "Determining node order");
-
-    const orderedNodes = [];
-    const nodeToStep = new Map();
-    const visited = new Set();
-
-    // Prioritize node A as the starting point if present
-    let startNodesList = [...graph.startNodes];
-
-    // Re-sort start nodes to ensure A comes first
-    startNodesList.sort((a, b) => {
-      if (a === "A") return -1;
-      if (b === "A") return 1;
-      return a.localeCompare(b);
-    });
-
-    logDebug("Prioritised Start Nodes", startNodesList);
-
-    // Start traversal from prioritized start nodes
-    const queue = [...startNodesList];
-
-    // Keep track of missing edges for cycle detection
-    const processedEdges = new Set();
-
-    let iterations = 0;
-    while (queue.length > 0 && iterations < 1000) {
-      // Prevent infinite loops
-      iterations++;
-      const nodeId = queue.shift();
-
-      if (visited.has(nodeId)) {
-        logDebug("Skip Node", `Node ${nodeId} already visited`);
-        continue;
-      }
-
-      const node = graph.nodes.get(nodeId);
-      if (!node) {
-        logWarn("Missing Node", `Node ${nodeId} not found in graph`);
-        continue;
-      }
-
-      // Add node to the ordered list and mark as visited
-      visited.add(nodeId);
-      orderedNodes.push(node);
-      logDebug(
-        "Add to Order",
-        `Added node ${nodeId} (${node.text}) to position ${orderedNodes.length}`
-      );
-
-      // Process outgoing edges
-      if (node.outEdges.length > 0) {
-        logDebug(
-          "Node Edges",
-          `Node ${nodeId} has ${node.outEdges.length} edges`
-        );
-
-        // Sort edges to ensure consistent ordering
-        const sortedEdges = [...node.outEdges];
-        sortedEdges.sort((a, b) => {
-          // Prioritise edges by label: Empty, then No, then Yes, then others alphabetically
-          if (a.label === "" && b.label !== "") return -1;
-          if (a.label !== "" && b.label === "") return 1;
-          if (a.label === "No" && b.label !== "No") return -1;
-          if (a.label !== "No" && b.label === "No") return 1;
-          if (a.label === "Yes" && b.label !== "Yes") return -1;
-          if (a.label !== "Yes" && b.label === "Yes") return 1;
-          return a.targetId.localeCompare(b.targetId);
-        });
-
-        // Add each target to the queue if not visited
-        sortedEdges.forEach((edge) => {
-          const edgeSignature = `${nodeId}->${edge.targetId}`;
-          processedEdges.add(edgeSignature);
-
-          logDebug(
-            "Edge",
-            `${nodeId} -> ${edge.targetId}${
-              edge.label ? ` (${edge.label})` : ""
-            }`
-          );
-
-          if (!visited.has(edge.targetId)) {
-            queue.push(edge.targetId);
-            logDebug("Queue Add", `Added ${edge.targetId} to queue`);
-          } else {
-            logDebug("Skip Edge", `${edge.targetId} already visited`);
-          }
-        });
-      }
-    }
-
-    // Check for nodes that weren't visited (disconnected parts of the graph)
-    const unvisitedNodes = [...graph.nodes.keys()].filter(
-      (id) => !visited.has(id)
-    );
-    if (unvisitedNodes.length > 0) {
-      logWarn(
-        "Graph Completeness",
-        `Found ${unvisitedNodes.length} unvisited nodes`
-      );
-
-      // Add them to the end of the ordered list
-      unvisitedNodes.forEach((nodeId) => {
-        const node = graph.nodes.get(nodeId);
-        if (node) {
-          orderedNodes.push(node);
-          visited.add(nodeId);
-          logDebug(
-            "Add Unvisited",
-            `Added unvisited node ${nodeId} to position ${orderedNodes.length}`
-          );
-        }
-      });
-    }
-
-    // Assign step numbers to all nodes
-    orderedNodes.forEach((node, index) => {
-      nodeToStep.set(node.id, index + 1);
-    });
-
-    logInfo("Node Order Complete", `${orderedNodes.length} nodes ordered`);
-
-    // Log the first few ordered nodes for verification
-    logDebug(
-      "Ordered Nodes Sample",
-      orderedNodes.slice(0, 5).map((n) => ({
-        id: n.id,
-        text: n.text,
-        isDecision: n.isDecision,
-        step: nodeToStep.get(n.id),
-      }))
-    );
-
-    return { orderedNodes, nodeToStep };
-  }
-
-  /**
-   * Check if a string is a valid node ID (not a label or keyword)
-   * @param {string} id - The ID to check
-   * @returns {boolean} True if it's a valid node ID
-   */
-  function isValidNodeId(id) {
-    const invalidIds = ["Yes", "No", "Otherwise", "true", "false"];
-    return !invalidIds.includes(id);
-  }
-
-  /**
-   * Build a complete map of all connections between nodes
-   * @param {Object} graph - The graph object
+   * Generate a detailed description for a flowchart
+   *
+   * Async since stage 3 of the flowchart rewrite: the narration is built
+   * from the parse adapter's normalised graph — order by flow, never by
+   * alphabet — to contract clauses D1 to D6. A parse rejection or a failed
+   * adapter self-check propagates; the core's catch produces the honest
+   * generation-failed statement (pinned by fault-pie/generator-throws).
+   * Never catch and narrate anyway.
+   *
+   * @param {HTMLElement} svgElement - Unused since stage 3; kept for interface stability
    * @param {string} code - The original mermaid code
-   * @returns {Map} Map of node IDs to arrays of their connections
+   * @returns {Promise<string>} Resolves to the detailed HTML fragment
    */
-  function buildCompleteConnectionMap(graph, code) {
-    const connectionMap = new Map();
-
-    // First add existing connections from our graph
-    for (const [nodeId, node] of graph.nodes) {
-      connectionMap.set(nodeId, [...(node.outEdges || [])]);
-    }
-
-    // Extract all connections from the original code
-    const lines = code.split("\n");
-
-    // Process all connection types from the mermaid code
-    for (const line of lines) {
-      // Skip non-connection lines
-      if (!line.includes("-->") && !line.includes("--")) continue;
-
-      // Log the line we're processing for debugging
-      logDebug("Processing Line", line.trim());
-
-      // Improved regex for standard connections with better handling of brackets
-      // This handles various formats like:
-      // A --> B
-      // A[Label] --> B[Label]
-      // A([Label]) --> B([Label])
-      // A{Label} --> B{Label}
-      // A((Label)) --> B((Label))
-      const standardMatch = line.match(
-        /\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\}|\(\([^\)]*\)\)|\[\{[^\}]*\}\])?\s*-->\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\}|\(\([^\)]*\)\)|\[\{[^\}]*\}\])?/
-      );
-
-      // Make sure this isn't a labeled connection (which we handle separately)
-      const isLabeledConnection =
-        line.includes("--|") || line.includes("-- ") || line.includes("-->|");
-
-      if (standardMatch && !isLabeledConnection) {
-        const sourceId = standardMatch[1];
-        const targetId = standardMatch[2];
-
-        logDebug("Found Standard Connection", `${sourceId} --> ${targetId}`);
-
-        // Skip invalid node IDs
-        if (!isValidNodeId(sourceId) || !isValidNodeId(targetId)) {
-          logWarn(
-            "Invalid Node",
-            `Skipping invalid node ID: ${sourceId} or ${targetId}`
-          );
-          continue;
-        }
-
-        // Ensure the nodes exist in our graph
-        if (graph.nodes.has(sourceId) && graph.nodes.has(targetId)) {
-          if (!connectionMap.has(sourceId)) {
-            connectionMap.set(sourceId, []);
-          }
-
-          // Add if not already present
-          if (
-            !connectionMap
-              .get(sourceId)
-              .some((conn) => conn.targetId === targetId)
-          ) {
-            connectionMap.get(sourceId).push({ targetId, label: "" });
-            logDebug(
-              "Added Standard Connection",
-              `${sourceId} --> ${targetId}`
-            );
-          }
-        } else {
-          logWarn(
-            "Missing Node",
-            `Source: ${sourceId} (exists: ${graph.nodes.has(
-              sourceId
-            )}) or Target: ${targetId} (exists: ${graph.nodes.has(targetId)})`
-          );
-        }
-      }
-
-      // Also handle labeled connections more specifically
-      if (isLabeledConnection) {
-        // Handle "A -- Yes --> B" format
-        const textLabelMatch = line.match(
-          /\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\})?\s*--\s*([^-]+?)\s*-->\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\})?/
-        );
-
-        if (textLabelMatch) {
-          const sourceId = textLabelMatch[1];
-          const label = textLabelMatch[2].trim();
-          const targetId = textLabelMatch[3];
-
-          logDebug(
-            "Found Text Label Connection",
-            `${sourceId} --[${label}]--> ${targetId}`
-          );
-
-          if (
-            isValidNodeId(sourceId) &&
-            isValidNodeId(targetId) &&
-            graph.nodes.has(sourceId) &&
-            graph.nodes.has(targetId)
-          ) {
-            if (!connectionMap.has(sourceId)) {
-              connectionMap.set(sourceId, []);
-            }
-
-            if (
-              !connectionMap
-                .get(sourceId)
-                .some((conn) => conn.targetId === targetId)
-            ) {
-              connectionMap.get(sourceId).push({ targetId, label });
-              logDebug(
-                "Added Labelled Connection",
-                `${sourceId} --[${label}]--> ${targetId}`
-              );
-            }
-          }
-        }
-
-        // Handle "A -->|Yes| B" format
-        const pipeConnMatch = line.match(
-          /\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\})?\s*(?:-->|==>|-\.->)\|([^|]+)\|\s*([A-Za-z0-9_-]+)(?:\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\})?/
-        );
-
-        if (pipeConnMatch) {
-          const sourceId = pipeConnMatch[1];
-          const label = pipeConnMatch[2].trim();
-          const targetId = pipeConnMatch[3];
-
-          logDebug(
-            "Found Pipe Label Connection",
-            `${sourceId} -->|${label}| ${targetId}`
-          );
-
-          if (
-            isValidNodeId(sourceId) &&
-            isValidNodeId(targetId) &&
-            graph.nodes.has(sourceId) &&
-            graph.nodes.has(targetId)
-          ) {
-            if (!connectionMap.has(sourceId)) {
-              connectionMap.set(sourceId, []);
-            }
-
-            if (
-              !connectionMap
-                .get(sourceId)
-                .some((conn) => conn.targetId === targetId)
-            ) {
-              connectionMap.get(sourceId).push({ targetId, label });
-              logDebug(
-                "Added Pipe Labelled Connection",
-                `${sourceId} -->|${label}| ${targetId}`
-              );
-            }
-          }
-        }
-      }
-    }
-
-    return connectionMap;
-  }
-
-  function generateDetailedDescription(svgElement, code) {
+  async function generateDetailedDescription(svgElement, code) {
     logInfo("generateDetailedDescription", "Generating flowchart description");
 
-    // Add a local formatList utility function if the Common module's isn't available
-    const formatList = function (items) {
-      if (!items || items.length === 0) return "";
-      if (items.length === 1) return items[0];
-      if (items.length === 2) return `${items[0]} and ${items[1]}`;
+    const graph = await window.MermaidParseAdapter.parse(code);
+    if (window.MermaidParseAdapter.isHealthy() === false) {
+      throw new Error(
+        "Parse adapter failed its self-check; refusing to narrate an unverified graph"
+      );
+    }
 
-      // For 3 or more items, use Oxford comma
-      const lastItem = items[items.length - 1];
-      const otherItems = items.slice(0, -1);
-      return `${otherItems.join(", ")}, and ${lastItem}`;
-    };
+    const t = buildFlowchartTraversal(graph);
+    // The step total counts ALL nodes, isolated ones included (stage 3.1
+    // amendment B); the overview then says how many are unconnected.
+    const totalSteps = graph.nodes.length;
 
-    // Try to use the Common module's formatList if available
-    const formatStepsList =
-      window.MermaidAccessibilityCommon &&
-      typeof window.MermaidAccessibilityCommon.formatList === "function"
-        ? window.MermaidAccessibilityCommon.formatList
-        : formatList;
+    // --- Overview -------------------------------------------------------
+    const sentences = [];
 
-    // Parse the flowchart structure from the code
-    const graph = parseFullFlowchart(code);
+    const directionPhrase = DIRECTION_PHRASES[graph.direction] || "";
+    let flowSentence = directionPhrase
+      ? `This flowchart flows from ${directionPhrase} through ${totalSteps} step${totalSteps === 1 ? "" : "s"}`
+      : `This flowchart flows through ${totalSteps} step${totalSteps === 1 ? "" : "s"}`;
+    if (t.diamondCount > 0) {
+      flowSentence += `, including ${Common.narrationNumber(t.diamondCount)} decision point${t.diamondCount === 1 ? "" : "s"}`;
+    }
+    if (t.isolated.length > 0) {
+      flowSentence +=
+        t.isolated.length === 1
+          ? `, one of which is not connected to the others`
+          : `, ${Common.narrationNumber(t.isolated.length)} of which are not connected to the others`;
+    }
+    sentences.push(`${flowSentence}.`);
 
-    // Get ordered nodes and step numbers
-    const { orderedNodes, nodeToStep } = determineNodeOrder(graph);
+    const startWord = Common.narrationNumber(t.startCount);
+    const endWord = Common.narrationNumber(t.endCount);
+    if (t.startCount > 0 && t.endCount > 0) {
+      sentences.push(
+        `It has ${startWord} start point${t.startCount === 1 ? "" : "s"} and ${endWord} end point${t.endCount === 1 ? "" : "s"}.`
+      );
+    } else if (t.startCount > 0) {
+      // The loop sentence below carries the loop information alone
+      // (stage 3.1 amendment C), so no "; the flow forms a loop" tail here.
+      sentences.push(
+        `It has ${startWord} start point${t.startCount === 1 ? "" : "s"} and no distinct end point.`
+      );
+    }
+    // A zero start count is unreachable (stage 3.1 amendment A): every
+    // edge into a component's first-numbered node is a cycle edge, so
+    // each component contributes at least one start point. A diagram with
+    // no numbered steps at all simply skips this sentence.
 
-    logInfo(
-      "Description Generation",
-      `Building description for ${orderedNodes.length} nodes`
-    );
+    if (t.components.length > 1) {
+      sentences.push(
+        `The diagram contains ${Common.narrationNumber(t.components.length)} separate flows.`
+      );
+    }
 
-    // Build a complete map of connections for every node
-    const fullConnections = buildCompleteConnectionMap(graph, code);
+    if (graph.subgraphs.length > 0) {
+      sentences.push(
+        `The steps are organised into ${Common.narrationNumber(graph.subgraphs.length)} group${graph.subgraphs.length === 1 ? "" : "s"}, described below.`
+      );
+    }
 
-    // Log some statistics about the nodes
-    const decisionNodes = orderedNodes.filter((n) => n.isDecision).length;
-    const terminalNodes = orderedNodes.filter((n) => {
-      // Improved terminal node detection
-      const connections = fullConnections.get(n.id) || [];
+    const cycleList = [...t.cycleEdges];
+    if (cycleList.length === 1) {
+      const edge = cycleList[0];
+      sentences.push(
+        `The flow contains a loop: step ${Common.narrationNumber(t.numberOf.get(edge.from))} can return to step ${Common.narrationNumber(t.numberOf.get(edge.to))}.`
+      );
+    } else if (cycleList.length > 1) {
+      sentences.push(`The flow contains loops, noted in the steps below.`);
+    }
 
-      // Enhanced check for connections in code
-      const hasConnectionsInCode = (function () {
-        // Check for various connection patterns
-        const patterns = [
-          // Standard connection patterns (with or without spaces)
-          new RegExp(`${n.id}\\s*-->`, "i"),
-          new RegExp(`${n.id}\\[.*?\\]\\s*-->`, "i"),
-          new RegExp(`${n.id}\\(.*?\\)\\s*-->`, "i"),
-          new RegExp(`${n.id}\\{.*?\\}\\s*-->`, "i"),
+    // --- Assembly ---------------------------------------------------------
+    const parts = [];
+    parts.push(`<section class="mermaid-section">`);
+    parts.push(`<h4 class="mermaid-details-heading">Overview</h4>`);
+    parts.push(`<p>${sentences.join(" ")}</p>`);
+    parts.push(`<h4 class="mermaid-details-heading">Steps</h4>`);
 
-          // Label connection patterns
-          new RegExp(`${n.id}\\s*--\\s+.*?\\s*-->`, "i"),
-          new RegExp(`${n.id}\\[.*?\\]\\s*--\\s+.*?\\s*-->`, "i"),
+    if (t.components.length > 1) {
+      t.components.forEach((component, index) => {
+        parts.push(
+          `<h5 class="flow-heading">Flow ${Common.narrationNumber(index + 1)}</h5>`
+        );
+        parts.push(
+          `<ol class="flowchart-steps" start="${t.numberOf.get(component.stepIds[0])}">`
+        );
+        for (const id of component.stepIds) {
+          parts.push(renderStepItem(id, t));
+        }
+        parts.push(`</ol>`);
+      });
+    } else {
+      parts.push(`<ol class="flowchart-steps">`);
+      for (const id of t.stepsInOrder) {
+        parts.push(renderStepItem(id, t));
+      }
+      parts.push(`</ol>`);
+    }
 
-          // Pipe label connection patterns
-          new RegExp(`${n.id}\\s*-->\\|`, "i"),
-          new RegExp(`${n.id}\\[.*?\\]\\s*-->\\|`, "i"),
-        ];
+    if (t.isolated.length > 0) {
+      // Each label is escaped BEFORE the list is formatted — formatList
+      // inserts its own commas and "and", which must not be escaped.
+      const labels = t.isolated.map((id) =>
+        Common.escapeHtml(t.nodeById.get(id).label)
+      );
+      const countWord = Common.capitalize(Common.narrationNumber(t.isolated.length));
+      const noun = t.isolated.length === 1 ? "step" : "steps";
+      const verb = t.isolated.length === 1 ? "is" : "are";
+      parts.push(
+        `<p>${countWord} ${noun}, ${Common.formatList(labels)}, ${verb} not connected to the others.</p>`
+      );
+    }
 
-        // Check each pattern against the code
-        return patterns.some((pattern) => pattern.test(code));
-      })();
-
-      return connections.length === 0 && !hasConnectionsInCode;
-    }).length;
-
-    logDebug(
-      "Node Statistics",
-      `Decision nodes: ${decisionNodes}, Terminal nodes: ${terminalNodes}`
-    );
-
-    // Build the HTML description
-    let description = "<ol class='flowchart-steps'>";
-
-    // Generate the description with proper step numbers
-    for (let i = 0; i < orderedNodes.length; i++) {
-      const node = orderedNodes[i];
-      const stepNumber = i + 1;
-
-      if (node.isDecision) {
-        // Decision node with multiple paths
-        description += `<li><span class="diagram-decision">${node.text}</span>`;
-
-        const connections = fullConnections.get(node.id) || [];
-        if (connections.length > 0) {
-          description += "\n<ul class='decision-paths'>";
-
-          // Sort connections by label: 'Yes' first, then 'No', then others alphabetically
-          connections.sort((a, b) => {
-            if (a.label === "Yes" && b.label !== "Yes") return -1;
-            if (a.label !== "Yes" && b.label === "Yes") return 1;
-            if (a.label === "No" && b.label !== "No") return -1;
-            if (a.label !== "No" && b.label === "No") return 1;
-            return a.label.localeCompare(b.label);
+    if (graph.subgraphs.length > 0) {
+      parts.push(`<h4 class="mermaid-details-heading">Groups</h4>`);
+      parts.push(`<ul>`);
+      for (const sub of graph.subgraphs) {
+        const title = Common.escapeHtml(sub.title || sub.id);
+        const stepWords = sub.nodeIds
+          .map((id) => t.numberOf.get(id))
+          .filter((n) => typeof n === "number")
+          .sort((a, b) => a - b)
+          .map(Common.narrationNumber);
+        const stepsPhrase =
+          stepWords.length === 1
+            ? `step ${stepWords[0]}`
+            : `steps ${Common.formatList(stepWords)}`;
+        if (sub.childSubgraphIds.length > 0) {
+          // Escaped per title, before formatList joins them, for the same
+          // reason as the isolated-step list above.
+          const childTitles = sub.childSubgraphIds.map((childId) => {
+            const child = graph.subgraphs.find((s) => s.id === childId);
+            return Common.escapeHtml(
+              child ? child.title || child.id : childId
+            );
           });
-
-          for (const connection of connections) {
-            const targetStep = nodeToStep.get(connection.targetId);
-            if (targetStep) {
-              const condition = connection.label || "Otherwise";
-              const targetStepText = formatStepNumber(targetStep);
-
-              description += `<li>If ${condition}, go to step ${targetStepText}.</li>`;
-
-              logDebug(
-                "Decision Path",
-                `If ${condition}, go to step ${targetStepText}`
-              );
-            }
-          }
-
-          description += "</ul>";
-        }
-
-        description += "</li>";
-      } else {
-        // Check if this is a terminal node - a node with no outgoing connections
-        const connections = fullConnections.get(node.id) || [];
-
-        // Enhanced check for connections in code
-        const hasConnectionsInCode = (function () {
-          // Check for various connection patterns
-          const patterns = [
-            // Standard connection patterns (with or without spaces)
-            new RegExp(`${node.id}\\s*-->`, "i"),
-            new RegExp(`${node.id}\\[.*?\\]\\s*-->`, "i"),
-            new RegExp(`${node.id}\\(.*?\\)\\s*-->`, "i"),
-            new RegExp(`${node.id}\\{.*?\\}\\s*-->`, "i"),
-
-            // Label connection patterns
-            new RegExp(`${node.id}\\s*--\\s+.*?\\s*-->`, "i"),
-            new RegExp(`${node.id}\\[.*?\\]\\s*--\\s+.*?\\s*-->`, "i"),
-
-            // Pipe label connection patterns
-            new RegExp(`${node.id}\\s*-->\\|`, "i"),
-            new RegExp(`${node.id}\\[.*?\\]\\s*-->\\|`, "i"),
-          ];
-
-          // Additional debug to help troubleshoot
-          if (node.id === "D") {
-            patterns.forEach((pattern) => {
-              logDebug(
-                "Pattern Test for D",
-                `Pattern: ${pattern.toString()}, Result: ${pattern.test(code)}`
-              );
-            });
-
-            // Extract the relevant part of the code that might contain D's connection
-            const relevantCode = code
-              .split("\n")
-              .filter((line) => line.includes(node.id))
-              .join("\n");
-            logDebug("Relevant Code for D", relevantCode);
-          }
-
-          // Check each pattern against the code
-          return patterns.some((pattern) => pattern.test(code));
-        })();
-
-        const isTerminal = connections.length === 0 && !hasConnectionsInCode;
-
-        if (isTerminal) {
-          // Terminal node (no outgoing edges)
-          description += `<li class="terminal-node"><span class="diagram-node">${node.text}</span></li>`;
-          logDebug("Terminal Node", `${node.text} (end of path)`);
-        } else if (connections.length === 1) {
-          // Single outgoing edge - show destination
-          const targetStep = nodeToStep.get(connections[0].targetId);
-          if (targetStep) {
-            const targetStepText = formatStepNumber(targetStep);
-
-            description += `<li><span class="diagram-action">${node.text}</span>. Proceed to step ${targetStepText}.</li>`;
-
-            logDebug(
-              "Action Node (Single Path)",
-              `${node.text} -> step ${targetStepText}`
-            );
-          } else {
-            // In case target step isn't found, show as a regular node
-            description += `<li><span class="diagram-node">${node.text}</span></li>`;
-            logWarn(
-              "Missing Target",
-              `${node.text} -> ${connections[0].targetId} (not found)`
-            );
-          }
-        } else if (connections.length > 1) {
-          // Multiple outgoing edges without being a decision node
-          const validTargetSteps = connections
-            .map((conn) => nodeToStep.get(conn.targetId))
-            .filter((step) => !!step);
-
-          if (validTargetSteps.length > 0) {
-            const uniqueTargetSteps = [...new Set(validTargetSteps)].sort(
-              (a, b) => a - b
-            );
-
-            // Format step numbers as words
-            const formattedSteps = uniqueTargetSteps.map((step) =>
-              formatStepNumber(step)
-            );
-
-            // Use our formatStepsList function that's guaranteed to be available
-            const stepsText = formatStepsList(formattedSteps);
-
-            description += `<li><span class="diagram-action">${node.text}</span>. Proceed to steps ${stepsText}.</li>`;
-
-            logDebug(
-              "Action Node (Multiple Paths)",
-              `${node.text} -> steps ${stepsText}`
-            );
-          } else {
-            // In case no valid target steps are found but the code shows connections
-            description += `<li><span class="diagram-node">${node.text}</span></li>`;
-            logWarn("No Valid Targets", `${node.text} (no valid targets)`);
-          }
-        } else if (hasConnectionsInCode) {
-          // Node has connections in original code but they weren't detected in our graph
-          // Let's try to infer the target node from the code
-          const potentialTargets = findPotentialTargetsInCode(code, node.id);
-
-          if (potentialTargets.length > 0) {
-            const targetSteps = potentialTargets
-              .map((targetId) => nodeToStep.get(targetId))
-              .filter((step) => !!step);
-
-            if (targetSteps.length > 0) {
-              const targetStep = targetSteps[0]; // Use the first target found
-              const targetStepText = formatStepNumber(targetStep);
-
-              description += `<li><span class="diagram-action">${node.text}</span> then to step ${targetStepText}</li>`;
-              logDebug(
-                "Inferred Connection",
-                `${node.text} -> step ${targetStepText}`
-              );
-            } else {
-              // Fallback - just show as action node
-              description += `<li><span class="diagram-action">${node.text}</span></li>`;
-              logDebug(
-                "Action Node (Inferred)",
-                `${node.text} (no target steps found)`
-              );
-            }
-          } else {
-            description += `<li><span class="diagram-action">${node.text}</span></li>`;
-            logDebug(
-              "Hidden Connections",
-              `${node.text} (has connections in code, none detected in graph)`
-            );
-          }
+          const groupPhrase =
+            childTitles.length === 1
+              ? `the group ${childTitles[0]}`
+              : `the groups ${Common.formatList(childTitles)}`;
+          parts.push(
+            `<li>${title} contains ${groupPhrase}${stepWords.length ? ` and ${stepsPhrase}` : ""}.</li>`
+          );
         } else {
-          // Fallback for any other node
-          description += `<li><span class="diagram-node">${node.text}</span></li>`;
-          logDebug("Fallback Node", `${node.text}`);
+          parts.push(`<li>${title} contains ${stepsPhrase}.</li>`);
         }
       }
+      parts.push(`</ul>`);
     }
 
-    description += "</ol>";
-
-    logInfo(
-      "Description Complete",
-      `Generated description of length ${description.length}`
-    );
-
-    return description;
+    parts.push(`</section>`);
+    // Newline-joined for the same text-extraction reason as the list items.
+    return parts.join("\n");
   }
 
-  /**
-   * Try to find potential target nodes from a node in the original code
-   * @param {string} code - The mermaid code
-   * @param {string} nodeId - The source node ID
-   * @returns {string[]} Array of potential target node IDs
-   */
-  function findPotentialTargetsInCode(code, nodeId) {
-    const potentialTargets = [];
-
-    // Different patterns to find connections
-    const patterns = [
-      // Basic pattern: nodeId --> targetId
-      new RegExp(`${nodeId}\\s*-->\\s*([A-Za-z0-9_-]+)`, "g"),
-
-      // With brackets: nodeId[Label] --> targetId[Label]
-      new RegExp(`${nodeId}\\[.*?\\]\\s*-->\\s*([A-Za-z0-9_-]+)(?:\\[|$)`, "g"),
-
-      // With labeled arrows: nodeId -- Label --> targetId
-      new RegExp(
-        `${nodeId}(?:\\[.*?\\])?\\s*--\\s+.*?\\s*-->\\s*([A-Za-z0-9_-]+)`,
-        "g"
-      ),
-
-      // With pipe labels: nodeId -->|Label| targetId
-      new RegExp(
-        `${nodeId}(?:\\[.*?\\])?\\s*-->\\|.*?\\|\\s*([A-Za-z0-9_-]+)`,
-        "g"
-      ),
-    ];
-
-    // Extract all matches from each pattern
-    patterns.forEach((pattern) => {
-      let match;
-      const codeToSearch = code.replace(/\n/g, " "); // Replace newlines for multiline matching
-
-      while ((match = pattern.exec(codeToSearch)) !== null) {
-        if (match[1] && !potentialTargets.includes(match[1])) {
-          potentialTargets.push(match[1]);
-        }
-      }
-    });
-
-    logDebug(
-      "Potential Targets",
-      `For node ${nodeId}: ${potentialTargets.join(", ")}`
-    );
-    return potentialTargets;
-  }
-
-  /**
-   * Format step numbers according to British English guidelines:
-   * - Numbers 0-9 as words
-   * - Numbers 10+ as numerals
-   * @param {number} step - The step number
-   * @returns {string} Formatted step number
-   */
-  function formatStepNumber(step) {
-    const numberWords = [
-      "zero",
-      "one",
-      "two",
-      "three",
-      "four",
-      "five",
-      "six",
-      "seven",
-      "eight",
-      "nine",
-    ];
-
-    if (step >= 0 && step <= 9) {
-      return numberWords[step];
-    }
-
-    return step.toString();
-  }
 
   // Register with the core module
   window.MermaidAccessibility.registerDescriptionGenerator("flowchart", {
     generateShort: shortDescriptionWrapper,
     generateDetailed: generateDetailedDescription,
     // Add a new property for HTML-formatted short description
-    generateShortHTML: function (svgElement, code) {
-      return generateShortDescription(svgElement, code).html;
+    generateShortHTML: async function (svgElement, code) {
+      const descriptions = await generateShortDescription(svgElement, code);
+      return descriptions.html;
     },
     // Add a flag to help with CSS class application
     diagramType: "flowchart",

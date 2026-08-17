@@ -281,6 +281,12 @@ export class MaxTokensParameter extends ParameterBase {
    */
   updateAllControls(value) {
     const validValue = this.validateValue(value);
+    // Captured before this.value is reassigned below, so the announcement at the
+    // end can tell a real change from a no-op. This method calls
+    // announceValueChange() DIRECTLY, bypassing the guard in ParameterBase.setValue
+    // — which is why "Maximum Response Length set to 1024. Short, concise responses"
+    // still reached the announcer five times on load after that guard was added.
+    const previousValue = this.value;
 
     // Update numeric input
     if (this.elements.control) {
@@ -306,8 +312,12 @@ export class MaxTokensParameter extends ParameterBase {
       this.updateCostEstimate(validValue);
     }
 
-    // Announce change
-    this.announceValueChange(validValue);
+    // Announce a real change only, and never the initial set — same rule as
+    // ParameterBase.setValue().
+    const isInitialSet = previousValue === undefined || previousValue === null;
+    if (!isInitialSet && previousValue !== this.value) {
+      this.announceValueChange(validValue);
+    }
   }
 
   /**

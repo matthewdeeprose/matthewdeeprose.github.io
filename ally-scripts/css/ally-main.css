@@ -251,6 +251,7 @@
 
 .ally-form-group input[type="text"],
 .ally-form-group input[type="password"],
+.ally-form-group input[type="url"],
 .ally-form-group select {
   width: 90%;
   padding: 0.5rem 1rem;
@@ -260,6 +261,13 @@
   transition:
     border-color 0.2s,
     box-shadow 0.2s;
+}
+
+/* main.css gives input[type="text"] a global height of 2.5rem, which url inputs
+   are not part of. Match it here — scoped to the Ally form rather than widening
+   that global rule — so the worker-URL field lines up with Client ID. */
+.ally-form-group input[type="url"] {
+  height: 2.5rem;
 }
 
 .ally-form-group input:focus,
@@ -457,6 +465,7 @@
 @media (pointer: coarse) {
   .ally-form-group input[type="text"],
   .ally-form-group input[type="password"],
+  .ally-form-group input[type="url"],
   .ally-form-group select {
     min-height: 44px;
   }
@@ -753,14 +762,27 @@
   z-index: 100;
   margin-top: 0.25rem;
   border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
 }
 
+/* The list scrolls, not the popup, so the "Show more" footer stays pinned
+   below it rather than scrolling out of view */
 .ally-course-search-listbox {
   list-style: none;
   margin: 0;
   padding: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Show more footer - Structure */
+.ally-course-search-more-container {
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.ally-course-search-more {
+  width: 100%;
+  justify-content: center;
 }
 
 .ally-course-search-option {
@@ -847,7 +869,7 @@
   .ally-course-search-fieldset {
     padding: 0.75rem;
   }
-  .ally-course-search-results {
+  .ally-course-search-listbox {
     max-height: 250px;
   }
 }
@@ -863,6 +885,9 @@
   .ally-course-search-clear {
     width: 44px;
     height: 44px;
+  }
+  .ally-course-search-more {
+    min-height: 44px;
   }
 }
 
@@ -2717,29 +2742,22 @@ p.ally-chart-description {
 
 .ally-sp-results-container {
   margin-top: 1.5rem;
+  max-width: 64rem;
+  margin-inline: auto;
+  line-height: 1.6;
 }
 
 /* ========================================================================
    Introduction Section
+   ------------------------------------------------------------------------
+   The intro renders as an .ally-sp-info-style box ("Accessibility data" h4 +
+   magnifyingGlassChart icon; "Introduction" h5 sub-heading; body/list/freshness
+   warning in the content column). It carries BOTH `.ally-sp-intro` and
+   `.ally-sp-info`, so the box chrome, --sp-gutter model, header/icon, body
+   indent, and the ≤600px icon-hide all come from the shared .ally-sp-info rules
+   below. The old plain-text .ally-sp-intro p/ul/li rules are superseded by
+   .ally-sp-info-body p/ul; no intro-specific overrides are needed.
    ======================================================================== */
-
-.ally-sp-intro {
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.ally-sp-intro p {
-  margin-bottom: 1rem;
-}
-
-.ally-sp-intro ul {
-  margin-left: 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.ally-sp-intro li {
-  margin-bottom: 0.25rem;
-}
 
 /* ========================================================================
    Data Freshness Warning
@@ -2781,7 +2799,7 @@ p.ally-chart-description {
 .ally-sp-warning-header {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--sp-gutter-gap);
   margin-bottom: 1rem;
 }
 
@@ -2792,17 +2810,23 @@ p.ally-chart-description {
 
 /* Larger icons to match prototype emoticons */
 .ally-sp-warning-icon .icon {
-  width: 2rem;
-  height: 2rem;
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
 }
 
-.ally-sp-warning h3 {
+/* The warning title is h3 by default, or h4 when the layout leads with a title
+   section (§4). Reset the margin at either level so it sits beside the icon. */
+.ally-sp-warning h3,
+.ally-sp-warning h4 {
   margin: 0;
   line-height: 1.3;
 }
 
+/* Indent the summary and the disclosure so their text aligns under the heading,
+   leaving the icon in the shared left gutter (see --sp-gutter). */
 .ally-sp-warning > p {
   margin: 1rem 0;
+  margin-left: var(--sp-gutter);
   line-height: 1.6;
 }
 
@@ -2813,6 +2837,8 @@ p.ally-chart-description {
 .ally-sp-disclosure-wrapper {
   display: flex;
   flex-direction: column;
+  /* Align with the indented summary text; the icon stays in the gutter. */
+  margin-left: var(--sp-gutter);
 }
 
 .ally-sp-disclosure-button {
@@ -2920,30 +2946,40 @@ span.ally-sp-disclosure-text {
   margin: 1.5rem 0;
 }
 
+/* Header, icon and body follow the shared --sp-gutter model (see the
+   .ally-sp-info / .ally-sp-warning block below) so the success box reads as the
+   same component family: icon centred beside the heading in the left gutter,
+   body text indented to align under the heading. */
 .ally-sp-success-header {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  align-items: center;
+  gap: var(--sp-gutter-gap);
+  margin-bottom: 0.75rem;
 }
 
 .ally-sp-success-icon {
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.ally-sp-success-icon .icon {
-  width: 2rem;
-  height: 2rem;
+.ally-sp-success-icon .icon,
+.ally-sp-success-icon svg {
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
+  flex-shrink: 0;
 }
 
-.ally-sp-success h3 {
+/* The success title is h3 by default, or h4 when nested under a title section. */
+.ally-sp-success h3,
+.ally-sp-success h4 {
   margin: 0;
   line-height: 1.3;
 }
 
-.ally-sp-success p {
+.ally-sp-success > p {
   line-height: 1.6;
-  margin: 0;
+  margin: 0.75rem 0;
+  margin-left: var(--sp-gutter);
 }
 
 /* ========================================================================
@@ -3067,6 +3103,463 @@ span.ally-sp-disclosure-text {
 }
 
 /* ========================================================================
+   Authored Section Types (Stage 5) — info / linkButtons / courseInfo /
+   group / video. Structure only; all colour lives in light.css / dark.css
+   beside the .ally-sp-warning / .ally-sp-success colour blocks.
+   ======================================================================== */
+
+/* Shared box chrome for the boxed authored types (mirrors warning/success;
+   the border colour is supplied by the theme layer). */
+.ally-sp-info,
+.ally-sp-linkbuttons,
+.ally-sp-courseinfo {
+  border-radius: 4px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+}
+
+.ally-sp-info h3,
+.ally-sp-linkbuttons h3,
+.ally-sp-courseinfo h3 {
+  margin: 0;
+  line-height: 1.3;
+}
+
+/* --- info --------------------------------------------------------------- */
+
+/* Query container so a media-split info body (.ally-sp-info-body--media) can
+   collapse on the CARD's own width, not the viewport — the card sits in a
+   max-width:80vw column, where a viewport query mis-measures (mirrors the
+   .ally-sp-courseinfo container). Harmless for non-media info boxes. */
+.ally-sp-info {
+  container: ally-sp-info-card / inline-size;
+}
+
+/* Left gutter reserved for the header / sub-heading icons. The body content is
+   indented by this width so its text aligns under the heading text, and both
+   icons share one left edge (the sub-heading is pulled back out of the indent).
+   Shared by the info box, the warning (issue) cards and the success box.
+
+   Two knobs — change EITHER on its own and the gutter stays in step:
+     --sp-icon-size   sizes the decorative gutter icon
+     --sp-gutter-gap  spaces the icon from the heading / body text
+   --sp-gutter is DERIVED from the two via calc(); never edit it directly.
+
+   ORDERING: this definition MUST stay earlier in the file than the
+   @media (max-width: 600px) rule that overrides --sp-gutter to 0px (custom
+   properties resolve by source order). Do not move it below that block, or the
+   narrow-viewport gutter collapse inverts and breaks. */
+.ally-sp-info,
+.ally-sp-warning,
+.ally-sp-success,
+.ally-sp-group {
+  --sp-icon-size: 2.5rem;
+  /* Roomier gutter on wider viewports, fluidly. Hold the 0.75rem floor until the
+     content column reaches its 64rem max-width (.ally-sp-results-container) and
+     stops shrinking, then ramp to 2.5rem at 120rem (1920px) and cap. This widens
+     the icon-to-heading gap AND the derived body indent together (see --sp-gutter),
+     so alignment holds at every width. Slope 0.03125 = 1.75rem / 56rem. The floor
+     and cap are single numbers — tune to taste. (The <=600px block below overrides
+     the derived --sp-gutter to 0px independently; this clamp does not fight it.) */
+  --sp-gutter-gap: clamp(
+    0.75rem,
+    calc(0.75rem + (100vw - 64rem) * 0.03125),
+    2.5rem
+  );
+  --sp-gutter: calc(var(--sp-icon-size) + var(--sp-gutter-gap));
+}
+
+.ally-sp-info-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-gutter-gap);
+  margin-bottom: 0.75rem;
+}
+
+/* The info-header holds exactly one heading — h3 by default, or a lower level
+   (h4) when the box is nested under a title. Reset the margin at whichever level
+   so the heading sits beside the icon rather than being pushed down by its
+   default heading margin. */
+.ally-sp-info-header h3,
+.ally-sp-info-header h4,
+.ally-sp-info-header h5,
+.ally-sp-info-header h6 {
+  margin: 0;
+}
+
+.ally-sp-info-icon {
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ally-sp-info-icon .icon,
+.ally-sp-info-icon svg {
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
+  flex-shrink: 0;
+}
+
+/* Icon'd body sub-heading (e.g. "Telling us about a disability") — its icon sits
+   in the same left gutter as the main header icon, so the whole sub-heading is
+   pulled back out of the body indent by the gutter width; icon + gap then re-aligns
+   its text with the indented body text. */
+.ally-sp-info-subheading {
+  display: flex;
+  /* nowrap: a global heading rule sets flex-wrap:wrap, which would push the text
+     onto its own flex line below the icon if the sub-heading ever wraps. */
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--sp-gutter-gap);
+  margin-left: calc(-1 * var(--sp-gutter));
+}
+
+.ally-sp-info-subicon .icon,
+.ally-sp-info-subicon svg {
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
+  flex-shrink: 0;
+}
+
+.ally-sp-info-body {
+  display: block;
+  line-height: 1.6;
+  /* Indent the body so its text aligns under the heading text, leaving the
+     icons in the shared left gutter (--sp-gutter). */
+  margin-left: var(--sp-gutter);
+}
+
+.ally-sp-info-body p {
+  margin: 0.75rem 0;
+}
+
+/* Bulleted and numbered lists share spacing; the marker (bullet / number) sits
+   in the list's default padding. margin: 0.75rem 0 keeps margin-left at 0. */
+.ally-sp-info-body ul,
+.ally-sp-info-body ol {
+  margin: 0.75rem 0;
+}
+
+/* Rich-text container for the module-lead message (card 6, Stage D): a
+   block-level {html} <div> holding Markdown-rendered headings, lists and bold.
+   Its paragraphs and lists inherit the .ally-sp-info-body p/ul/ol spacing
+   above; only the flush top/bottom margins are container-specific so the block
+   sits snugly in the card. */
+.ally-sp-info-richtext > :first-child {
+  margin-top: 0;
+}
+
+.ally-sp-info-richtext > :last-child {
+  margin-bottom: 0;
+}
+
+/* Message headings are rendered as <div role="heading" aria-level="N"> (not
+   native hN) so sub-headings nest under the card's own <h5> without exceeding
+   the native <h6> ceiling. They carry no default heading styling, so size and
+   weight are set here. Per-depth sizes make a #/##/### hierarchy visually
+   distinct as well as semantically correct (depth 1 largest, decreasing). */
+.ally-sp-md-heading {
+  display: block;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.ally-sp-md-heading-1 {
+  font-size: 1.25rem;
+}
+
+.ally-sp-md-heading-2 {
+  font-size: 1.1rem;
+}
+
+.ally-sp-md-heading-3 {
+  font-size: 1rem;
+}
+
+/* Depths 4-6 share the base body size; still bold and spaced, distinguished by
+   position rather than further shrinking below the surrounding text. */
+.ally-sp-md-heading-4,
+.ally-sp-md-heading-5,
+.ally-sp-md-heading-6 {
+  font-size: 1rem;
+}
+
+/* Definition list (glossary) inside an info box: stacked — bold term on its
+   own line, definition indented below. Structure only; dt/dd inherit the info
+   box text colour (no colour rules in light.css/dark.css). */
+.ally-sp-info-dl {
+  margin: 0.75rem 0;
+}
+
+.ally-sp-info-dl dt {
+  font-weight: 600;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.ally-sp-info-dl dt:first-child {
+  margin-top: 0;
+}
+
+.ally-sp-info-dl dd {
+  margin: 0 0 0 1.5rem;
+  line-height: 1.6;
+}
+
+.ally-sp-info-col > :first-child {
+  margin-top: 0;
+}
+
+.ally-sp-info-body--two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Collapse to one column on the CARD's own width, not the viewport — the card
+   sits in a max-width:80vw column nested in the group panel, so a viewport query
+   mis-measures (a wide viewport can still leave a narrow, cramped card). This is
+   the same container-query approach as the .ally-sp-info-body--media split and
+   .ally-sp-courseinfo (§8). The 42rem card-width threshold collapses at a 1024px
+   viewport (and below) in the Southampton statement layout — the card is ~41.7rem
+   wide there. .ally-sp-info is the `ally-sp-info-card` query container.
+   DOM order = reading order (WCAG 1.3.2 / 3.2). */
+@container ally-sp-info-card (max-width: 42rem) {
+  .ally-sp-info-body--two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Media split (e.g. text | video): equal columns side by side, collapsing to a
+   single column on the CARD's own width via the .ally-sp-info container query
+   (not the viewport). DOM order = reading order, so the text precedes the video
+   when stacked. */
+.ally-sp-info-body--media {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+@container ally-sp-info-card (max-width: 40rem) {
+  .ally-sp-info-body--media {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ally-sp-info-links {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.ally-sp-info-links li {
+  margin-bottom: 0.5rem;
+}
+
+/* Small inline icons that precede a link label (info / courseInfo). */
+.ally-sp-info-link-icon,
+.ally-sp-courseinfo-icon {
+  display: inline-flex;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.ally-sp-info-link-icon .icon,
+.ally-sp-info-link-icon svg {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: middle;
+}
+
+.ally-sp-courseinfo-icon .icon {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+/* --- linkButtons -------------------------------------------------------- */
+
+.ally-sp-linkbutton-grid {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.ally-sp-linkbutton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 3px solid currentcolor;
+  /* Gutter width for the card body: the heading icon (1.75rem, see
+     .ally-sp-linkbutton-card-icon svg) plus the heading flex gap (0.5rem, see
+     .ally-sp-linkbutton-card-heading). Derived from those same values so they
+     stay in sync. Used to indent the body under the heading TEXT. */
+  --sp-card-gutter: calc(1.75rem + 0.5rem);
+}
+
+.ally-sp-linkbutton-card :is(h3, h4, h5, h6) {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ally-sp-linkbutton-card p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Align the body paragraph under the heading text (past the icon), matching the
+   info/warning/group sections' gutter. Scoped to cards that actually carry an
+   icon'd heading so an icon-less card's body stays flush. The link button keeps
+   its own centring (align-self:center) and is deliberately not indented. */
+.ally-sp-linkbutton-card:has(.ally-sp-linkbutton-card-heading) p {
+  margin-left: var(--sp-card-gutter);
+}
+
+/* A real <a> styled to LOOK like a button (it navigates). Min target size
+   44px comfortably exceeds the 24x24 px floor (WCAG 2.5.8). Border width is
+   reserved here so the theme's hover/focus colours never shift layout. */
+.ally-sp-linkbutton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: center;
+  min-height: 44px;
+  padding: 0.6rem 1.1rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ally-sp-linkbutton-icon {
+  display: inline-flex;
+}
+
+.ally-sp-linkbutton-icon .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+/* --- courseInfo --------------------------------------------------------- */
+
+.ally-sp-courseinfo-list {
+  margin: 1rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+}
+
+/* The VALUE carries the emphasis, not the label: a reader scanning the card is
+   looking for the data, and the term beside it is already predictable. */
+.ally-sp-courseinfo-list dt {
+  margin: 0;
+  font-weight: 400;
+}
+
+.ally-sp-courseinfo-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* --- group (a boxed panel wrapping its child cards) --------------------- */
+
+/* Boxed panel: same chrome as the other authored boxes (padding / radius here;
+   border + tint background in the theme layer). The child info boxes render as
+   contrasting-fill cards ON this panel (mirrors the linkButtons panel/card
+   relationship — see the theme layer), so the part reads as one cohesive box. */
+.ally-sp-group {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border-radius: 4px;
+  /* Carry the part-heading gutter down to the child cards (their own --sp-gutter is
+     repurposed for their internal alignment below). */
+  --sp-group-gutter: var(--sp-gutter);
+}
+
+.ally-sp-group > h3 {
+  margin: 0 0 1rem;
+  line-height: 1.3;
+}
+
+/* Part heading with a decorative icon (e.g. handHeart on "How your module was
+   created…"). Matches the info box header exactly — same icon size (--sp-icon-size)
+   and icon-to-text gap (--sp-gutter-gap), vertically centred — so the presentation
+   is identical to the other sections' header icons. The vars are defined on
+   .ally-sp-group alongside .ally-sp-info/.ally-sp-warning above; the heading may be
+   <h4> under a title-first layout, so target it by class rather than tag. */
+.ally-sp-group-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-gutter-gap);
+  margin: 0 0 1rem;
+}
+
+.ally-sp-group-header > :is(h1, h2, h3, h4, h5, h6) {
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ally-sp-group-icon {
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ally-sp-group-icon .icon,
+.ally-sp-group-icon svg {
+  width: var(--sp-icon-size);
+  height: var(--sp-icon-size);
+  flex-shrink: 0;
+}
+
+/* Consistent gutter for the whole part: the part-heading icon sits in the gutter,
+   and everything else — the part heading text AND the child cards' text — lines up
+   in one text column. Two pieces:
+   1) Indent each child card by the group's gutter MINUS the card's own left padding
+      (1.25rem), so the card TEXT (not the box edge) lands on the text column, level
+      with the part heading text. --sp-group-gutter carries the group gutter down
+      past the children's own repurposed --sp-gutter. (>= ~52-20px at desktop, so
+      always positive; the narrow-viewport block below zeroes it when the icon hides.)
+   2) Collapse each icon-less card's INTERNAL gutter to 0 so its body sits flush under
+      its own heading rather than being indented past a phantom icon. :not(:has())
+      leaves a card that later gains a header icon with its normal internal gutter. */
+.ally-sp-group > .ally-sp-info {
+  margin-left: calc(var(--sp-group-gutter) - 1.25rem);
+  /* Body flush under the card heading (both on the text column). A header icon, if
+     present, is lifted into the group gutter by the rule below rather than sitting
+     inline in the card. */
+  --sp-gutter: 0px;
+}
+
+/* Optional per-subsection icon: a child card WITH a header icon pulls its header
+   left by the group gutter, so the icon lands in the group's gutter — vertically in
+   line with the part-heading icon, overflowing onto the panel to the left of the
+   card — and the heading text realigns onto the text column (icon width + gap ==
+   the group gutter). Mirrors the .ally-sp-info-subheading pull-back. Add an icon to
+   a child by setting `icon:` on its spec, exactly as on any info box. */
+.ally-sp-group
+  > .ally-sp-info:has(> .ally-sp-info-header > .ally-sp-info-icon)
+  > .ally-sp-info-header {
+  margin-left: calc(-1 * var(--sp-group-gutter));
+}
+
+/* --- video (the 16:9 .videoWrapper is styled globally in main.css) ------ */
+
+.ally-sp-video {
+  margin: 1.5rem 0;
+}
+
+.ally-sp-video h3 {
+  margin: 0 0 0.5rem;
+  line-height: 1.3;
+}
+
+.ally-sp-video-caption {
+  margin: 0 0 0.75rem;
+  line-height: 1.6;
+}
+
+/* ========================================================================
    Responsive Design
    ======================================================================== */
 
@@ -3082,19 +3575,36 @@ span.ally-sp-disclosure-text {
     font-size: 1.25rem;
   }
 
-  .ally-sp-warning-icon .icon,
-  .ally-sp-success-icon .icon,
-  .ally-sp-error-icon .icon {
-    width: 1.5rem;
-    height: 1.5rem;
+  /* Narrow viewport: hide the decorative header / sub-heading icons and collapse
+     the shared left gutter so the text reclaims the full width. */
+  .ally-sp-info,
+  .ally-sp-warning,
+  .ally-sp-success {
+    --sp-gutter: 0px;
+  }
+
+  .ally-sp-info-icon,
+  .ally-sp-info-subicon,
+  .ally-sp-warning-icon,
+  .ally-sp-success-icon,
+  .ally-sp-error-icon,
+  .ally-sp-group-icon {
+    display: none;
+  }
+
+  /* Icon hidden → no gutter, so the child cards drop their text-column indent and
+     reclaim the full width (mirrors the --sp-gutter:0 collapse above); any
+     per-subsection icon pull-back is reset since the icon is hidden too. */
+  .ally-sp-group > .ally-sp-info {
+    margin-left: 0;
+  }
+
+  .ally-sp-group > .ally-sp-info > .ally-sp-info-header {
+    margin-left: 0;
   }
 
   .ally-sp-disclosure-button {
     padding: 0.75rem 0;
-  }
-
-  .ally-sp-intro h3 {
-    font-size: 1.25rem;
   }
 }
 
@@ -3408,7 +3918,6 @@ span.ally-sp-disclosure-text {
   border-radius: 0.25rem;
   cursor: pointer;
   font-size: 0.85rem;
-  color: inherit;
 }
 
 .ally-cache-refresh-btn:focus {
@@ -3469,4 +3978,758 @@ span.ally-sp-disclosure-text {
   .ally-cache-banner {
     display: none !important;
   }
+}
+
+/* ========================================================================
+   Statement Preview - New Authored Section Types (STRUCTURAL ONLY)
+   Layout/spacing only; no colour. Colours are added later in the theme
+   stylesheets (light.css / dark.css), matching the existing warning/success
+   sections which get their palette from those files.
+   ======================================================================== */
+
+/* --- Button-styled link cards (ally-sp-linkbuttons) ---------------------- */
+.ally-sp-linkbuttons {
+  margin: 1.5rem 0;
+  /* Query container so the two-column grid collapses on the CARD's own width,
+     not the viewport — the section sits in a max-width:80vw column where a
+     viewport query leaves the cards cramped (mirrors .ally-sp-info / courseInfo). */
+  container: ally-sp-linkbuttons-card / inline-size;
+}
+
+.ally-sp-linkbutton-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.ally-sp-linkbutton-grid--two-col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* Collapse to one column once the section is too narrow for two comfortable
+   cards (container width, not viewport). Tuned to ~46rem so 2-col cards stay
+   >= ~360px — below that the longest card heading wraps to a cramped 4 lines. */
+@container ally-sp-linkbuttons-card (max-width: 46rem) {
+  .ally-sp-linkbutton-grid--two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ally-sp-linkbutton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.ally-sp-linkbutton-card :is(h3, h4, h5, h6) {
+  margin: 0;
+}
+
+/* Card heading with a decorative icon beside the text (the icon carries no
+   accessible name). flex-wrap MUST stay nowrap: a global heading rule sets
+   flex-wrap:wrap, which otherwise pushes the wide text item onto its own flex
+   line BELOW the icon once the heading wraps to two lines. align-items:flex-start
+   keeps the icon beside the FIRST line for both one- and multi-line headings. */
+.ally-sp-linkbutton-card-heading {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ally-sp-linkbutton-card-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  /* Centre the icon vertically on the FIRST line of the heading text. The
+     heading keeps align-items:flex-start (so a two-line heading still sits the
+     icon beside line one), so we size the icon box to exactly one line-height
+     (1.3em, matching the heading's line-height) and centre the taller SVG
+     within it — the icon then lines up with the text's optical centre rather
+     than sitting slightly high. */
+  align-items: center;
+  height: 1.3em;
+}
+
+.ally-sp-linkbutton-card-icon svg,
+.ally-sp-linkbutton-card-icon .icon {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.ally-sp-linkbutton-card p {
+  margin: 0;
+  flex: 1;
+}
+
+/* Real <a> styled to look like a button - NOT a <button>/role=button.
+   Structural only: padding, comfortable target size, and a border whose
+   colour is inherited (currentColor) until the theme sets one. */
+.ally-sp-linkbutton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  align-self: center;
+  /* Guaranteed minimum breathing space above the button ONLY where the card is
+     cramped. Because the description <p> has flex:1 (it grows to fill the card),
+     a roomy card absorbs this margin into slightly-reduced paragraph growth — so
+     its visible text-to-button gap is unchanged. A card whose text nearly fills
+     the paragraph can't shrink further, so the margin becomes real added space
+     (and the grid keeps every card the same height). Adds space only when needed. */
+  margin-top: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.ally-sp-linkbutton:hover {
+  text-decoration: underline;
+}
+
+.ally-sp-linkbutton-icon .icon,
+.ally-sp-linkbutton-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Touch targets */
+@media (pointer: coarse) {
+  .ally-sp-linkbutton {
+    min-height: 44px;
+  }
+}
+
+/* High contrast: strengthen the button-link border */
+@media (prefers-contrast: high) {
+  .ally-sp-linkbutton {
+    border-width: 2px;
+  }
+}
+
+/* --- Course information (ally-sp-courseinfo) ----------------------------- */
+.ally-sp-courseinfo {
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+  /* Query container: the header's two-column groups, its decorative graphic and
+     its definition lists collapse on the CARD's own width, not the viewport
+     (the card sits in a max-width:80vw column, so viewport breakpoints leave it
+     cramped). See the @container rules below. */
+  container: ally-sp-card / inline-size;
+}
+
+.ally-sp-courseinfo > h3 {
+  margin-top: 0;
+}
+
+.ally-sp-courseinfo-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+}
+
+/* Emphasis on the value, not the label — see the courseInfo list block above. */
+.ally-sp-courseinfo-list dt {
+  font-weight: 400;
+}
+
+.ally-sp-courseinfo-list dd {
+  margin: 0;
+  font-weight: 600;
+  /* Grid items default to min-width:auto, which stops the 1fr value column
+     shrinking below its content's min-content width. A long mailto link (plus
+     the inline mail icon) then can't fit beside its label and spills onto the
+     next line. min-width:0 lets the column shrink so the value wraps WITHIN it,
+     staying to the right of the label like the plain-text values do. */
+  min-width: 0;
+}
+
+/* Let a long value (e.g. an email address) break inside its column rather than
+   forcing a wrap beneath the icon. */
+.ally-sp-courseinfo-list dd a {
+  overflow-wrap: anywhere;
+}
+
+.ally-sp-courseinfo-icon .icon,
+.ally-sp-courseinfo-icon svg {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: middle;
+  margin-right: 0.35rem;
+}
+
+/* Stack the label/value list when its OWN container is narrow — the group in
+   the grouped (statement-header) layout, or the card in the flat layout (an
+   unnamed @container matches the nearest container ancestor). */
+@container (max-width: 22rem) {
+  .ally-sp-courseinfo-list {
+    grid-template-columns: 1fr;
+    gap: 0.1rem 0;
+  }
+  .ally-sp-courseinfo-list dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Grouped course information (statement header): labelled sub-blocks, each an
+   <h4> + its own <dl> + optional prose notes. Two or more groups sit
+   side-by-side, collapsing to one column when the card is narrow. */
+.ally-sp-courseinfo-body--two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Each group is itself a query container so its <dl> can respond to the group's
+   width (not the whole card) — a two-up group is only half the card wide. */
+.ally-sp-courseinfo-group {
+  container-type: inline-size;
+}
+
+.ally-sp-courseinfo-group > h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.ally-sp-courseinfo-note {
+  margin: 0.75rem 0 0;
+}
+
+/* A group carrying a decorative graphic: text content in column 1, the graphic
+   in column 2 spanning all rows (no wrapper element needed). */
+.ally-sp-courseinfo-group--has-graphic {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  column-gap: 1rem;
+  align-items: center;
+}
+
+.ally-sp-courseinfo-group--has-graphic > :not(.ally-sp-courseinfo-graphic) {
+  grid-column: 1;
+}
+
+.ally-sp-courseinfo-graphic {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.ally-sp-courseinfo-graphic .icon,
+.ally-sp-courseinfo-graphic svg {
+  width: 4rem;
+  height: 4rem;
+}
+
+/* Fill-in placeholder for fields the Ally API can't provide (colour set per
+   theme). */
+
+/* Collapse the two-up groups to a single column when the card is narrow. */
+@container ally-sp-card (max-width: 40rem) {
+  .ally-sp-courseinfo-body--two-col {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* The decorative graphic only earns its space at full card width; below that,
+   hide it and let the group flow as a normal block. */
+@container ally-sp-card (max-width: 48rem) {
+  .ally-sp-courseinfo-group--has-graphic {
+    display: block;
+  }
+  .ally-sp-courseinfo-graphic {
+    display: none;
+  }
+}
+
+/* --- Master-settings switch (ally-sp-settings) --------------------------- */
+.ally-sp-settings {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.ally-sp-settings legend {
+  padding: 0 0.5rem;
+  font-weight: 600;
+}
+
+.ally-sp-settings-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  margin-top: 0.5rem;
+}
+
+.ally-sp-settings-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+
+  /* Panel sits inside `article.standard` (main.css: 1.25rem / line-height 1.5),
+     so the label text is ~20px on a 30px line. Size the control from that rather
+     than leaving it at the UA default ~13px. Declared here so the coarse-pointer
+     bump and the export-cell offset below can both read it. */
+  --ally-sp-control-size: 1em;
+  line-height: 1.5;
+}
+
+/* `font: inherit` is load-bearing: an input does not inherit the page font, so
+   without it the `em` sizing would resolve against the UA's ~13px control font
+   instead of the 20px label. Zeroing the UA margin lets the flex `gap` own the
+   spacing. */
+.ally-sp-settings-option input[type="checkbox"],
+.ally-sp-settings-option input[type="radio"] {
+  font: inherit;
+  flex: 0 0 auto;
+  inline-size: var(--ally-sp-control-size);
+  block-size: var(--ally-sp-control-size);
+  margin: 0;
+}
+
+/* Nested "Show" group inside the settings fieldset — a lighter sub-group, not a
+   second heavy box. No border/padding of its own so it reads as part of the
+   parent fieldset; the legend carries the grouping. */
+.ally-sp-settings-subgroup {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+/* Even rhythm between the sibling sub-groups (Show / Exports). */
+.ally-sp-settings-subgroup + .ally-sp-settings-subgroup {
+  margin-top: 1.25rem;
+}
+
+/* Plain bold sub-label: de-pill the inherited bordered-legend house style (a
+   themed `legend {}` rule adds a border + inverted background), so it reads as a
+   heading within the panel, subordinate to the top pill legend. Its themed text
+   colour is set in light.css / dark.css. */
+.ally-sp-settings-subgroup legend {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+/* Touch: floor the control at 24px, but drive it through the same variable so the
+   export-cell offset below stays in step with the larger box. */
+@media (pointer: coarse) {
+  .ally-sp-settings-option {
+    --ally-sp-control-size: max(1em, 24px);
+  }
+}
+
+/* Exports sub-group: lay its toggles out as a two-column grid so each checkbox's
+   help text sits directly beneath it (rather than both help paragraphs stacking
+   below the whole group). The compound selector overrides the base
+   `.ally-sp-settings-options` flex display regardless of source order. Each cell
+   stacks its checkbox above its own help text; DOM order is checkbox -> help ->
+   checkbox -> help, so reading and focus order match what is seen. Collapses to a
+   single column when the container is narrow (SC 1.4.10 reflow). */
+.ally-sp-settings-options.ally-sp-exports-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(12rem, 1fr));
+  gap: 0.75rem 1.5rem;
+  align-items: start;
+}
+
+.ally-sp-export-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+/* Top-align the checkbox to the first line of its label so the two columns'
+   checkboxes line up even when one label wraps in the narrower grid column
+   (the base rule centres it, which drifts when the labels differ in height). */
+.ally-sp-export-cell .ally-sp-settings-option {
+  align-items: flex-start;
+}
+
+/* flex-start pins the control to the top of a 30px line box. Push it down by half
+   the leftover so it centres on the FIRST line — the columns still line up when
+   one label wraps, but the control now reads as paired with its text. max()
+   guards the coarse-pointer case where the control can exceed the line. */
+.ally-sp-export-cell .ally-sp-settings-option input[type="checkbox"] {
+  margin-block-start: max(0px, calc((1.5em - var(--ally-sp-control-size)) / 2));
+}
+
+/* The help text is paired with its checkbox by the cell now, so drop its default
+   top margin — the cell gap provides the spacing. */
+.ally-sp-export-cell .ally-help-text {
+  margin-top: 0;
+}
+
+@media (max-width: 40rem) {
+  .ally-sp-settings-options.ally-sp-exports-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Video box (ally-sp-video) ------------------------------------------- */
+.ally-sp-video {
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+
+.ally-sp-video > h3 {
+  margin-top: 0;
+}
+
+.ally-sp-video-caption {
+  margin: 0 0 0.75rem 0;
+}
+
+/* Constrain the lazy embed: the shared lite-yt-embed.css sets max-width:100%,
+   which would let it fill the whole column. Cap it for this use-case. */
+.ally-sp-video .videoWrapper {
+  max-width: 40rem;
+}
+
+/* Reduced motion: quieten the embed's own hover/reveal transitions. */
+@media (prefers-reduced-motion: reduce) {
+  .ally-sp-video lite-youtube::before,
+  .ally-sp-video lite-youtube > .lty-playbtn {
+    transition: none;
+  }
+}
+
+/* ========================================================================
+   Inclusion questionnaire wizard (ally-inclusion-questions.js)
+   Fullscreen modal. Two-column layout (question left, video right) when there
+   is room, stacking on narrow viewports. Colours/background inherit the
+   Universal Modal so the wizard themes correctly in light and dark;
+   `.ally-iq-modal-wrapper` is the dialog hook class.
+   ======================================================================== */
+
+/* Centre and cap the content within the fullscreen modal body. */
+.ally-iq-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  max-width: 74rem;
+  margin: 0 auto;
+}
+
+.ally-iq-progress {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Step navigator: clickable numbered dots showing answered/current state.
+   Wraps on narrow viewports. Colours inherit the modal (currentColor) so it
+   themes in light and dark. */
+.ally-iq-steps-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+.ally-iq-steps-item {
+  display: flex;
+}
+.ally-iq-step-dot {
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border-radius: 50%;
+  border: 0.125rem solid color-mix(in srgb, currentColor 35%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ally-iq-step-dot:hover {
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+}
+/* Answered: filled tint + solid border (also carries a check glyph). */
+.ally-iq-step-dot.is-answered {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+/* Current: a prominent ring, independent of answered state. */
+.ally-iq-step-dot.is-current {
+  border-color: currentColor;
+  box-shadow: 0 0 0 0.2rem color-mix(in srgb, currentColor 28%, transparent);
+  font-weight: 700;
+}
+.ally-iq-step-dot:focus-visible {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.2rem;
+}
+.ally-iq-step-dot-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ally-iq-step-dot-inner svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.ally-iq-step {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.ally-iq-step-title {
+  margin: 0;
+  font-size: 1.4rem;
+}
+/* Programmatic focus target (tabindex="-1") — focused on each step change so
+   screen readers announce the question, but not keyboard-reachable, so the
+   focus box is suppressed to avoid a stray outline around every heading. */
+.ally-iq-step-title:focus {
+  outline: none;
+}
+
+/* One column by default; two columns (question | video) once there is room. */
+.ally-iq-grid {
+  display: grid;
+  gap: 2rem;
+  align-items: start;
+}
+@media (min-width: 62rem) {
+  .ally-iq-grid--with-video {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.ally-iq-col-question,
+.ally-iq-col-video {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* On wide screens keep the video beside the question as the reader scrolls. */
+@media (min-width: 62rem) {
+  .ally-iq-grid--with-video .ally-iq-col-video {
+    position: sticky;
+    top: 0;
+  }
+}
+
+/* --- Question presentation --- */
+.ally-iq-question {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ally-iq-prompt {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  padding-left: 1rem;
+  border-left: 0.25rem solid currentColor;
+}
+
+.ally-iq-points {
+  margin: 0;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.ally-iq-points li {
+  line-height: 1.45;
+}
+
+.ally-iq-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+.ally-iq-answer-hint {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Yes/No as large, card-style selectable options (native radios inside labels;
+   the container is a labelled radiogroup so the question is the group name). */
+.ally-iq-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.ally-iq-option {
+  flex: 1 1 8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3rem;
+  padding: 0.85rem 1.25rem;
+  border: 0.125rem solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+.ally-iq-option:hover {
+  border-color: color-mix(in srgb, currentColor 60%, transparent);
+}
+.ally-iq-option:has(input:checked) {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  font-weight: 600;
+}
+.ally-iq-option:focus-within {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.15rem;
+}
+.ally-iq-radio {
+  width: 1.15rem;
+  height: 1.15rem;
+  min-width: 1.15rem;
+}
+
+/* --- Free-text (message) step --- */
+.ally-iq-label {
+  font-weight: 600;
+}
+.ally-iq-help {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.ally-iq-textarea {
+  width: 100%;
+  min-height: 12rem;
+  font: inherit;
+  padding: 0.6rem;
+  border: 0.0625rem solid;
+  border-radius: 0.25rem;
+  resize: vertical;
+}
+.ally-iq-textarea:focus-visible {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.15rem;
+}
+
+/* --- Contact (module lead details) step --- */
+.ally-iq-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-width: 30rem;
+}
+.ally-iq-input {
+  width: 100%;
+  min-height: 2.75rem; /* comfortable text-input target */
+  font: inherit;
+  padding: 0.6rem;
+  border: 0.0625rem solid;
+  border-radius: 0.25rem;
+}
+.ally-iq-input:focus-visible {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.15rem;
+}
+
+/* --- Video column --- */
+.ally-iq-video-label {
+  margin: 0;
+  font-weight: 600;
+}
+/* Responsive 16:9 embed (padding-bottom technique matching the supplied code). */
+.ally-iq-video {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%;
+  overflow: hidden;
+}
+@supports (aspect-ratio: 16 / 9) {
+  .ally-iq-video {
+    height: auto;
+    padding-bottom: 0;
+    aspect-ratio: 16 / 9;
+  }
+}
+.ally-iq-video-frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0.0625rem solid #464646;
+  box-sizing: border-box;
+}
+
+/* "Read more" link under the video. A standalone link (not inside a sentence),
+   so it must meet the 24x24 target size of SC 2.5.8 in its own right. */
+.ally-iq-video-readmore {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: start; /* don't stretch across the column */
+  min-height: 1.5rem;
+  padding: 0.125rem 0;
+}
+.ally-iq-video-readmore:focus-visible {
+  outline: 0.2rem solid currentColor;
+  outline-offset: 0.15rem;
+}
+/* Optical centring. Flex centres the icon on the text's cap-to-baseline band,
+   but the link's underline sits 0.2em BELOW the baseline, putting visual mass
+   low down so a correctly-centred icon still reads as raised. Nudge it down by
+   roughly half that gap. transform, so layout and target size are unaffected. */
+.ally-iq-video-readmore-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  transform: translateY(0.125em);
+}
+.ally-iq-video-readmore-icon svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* --- Navigation --- */
+.ally-iq-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 0.0625rem solid color-mix(in srgb, currentColor 20%, transparent);
+}
+/* Left group holds Close + Back; the primary action sits on the right. */
+.ally-iq-nav-left {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.ally-iq-nav .ally-iq-back[disabled] {
+  visibility: hidden;
 }

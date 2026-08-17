@@ -4,8 +4,9 @@
 // A PURE PER-MEASURE READER: it takes one <measure> element from a parsed
 // MusicXML document and returns a plain object describing the structural marks
 // that measure carries — barline repeats, voltas (first- and second-time
-// endings), and the clef and key declared in the measure's own <attributes>. It
-// reads the measure's direct children only, never the page DOM, holds no
+// endings), the clef and key declared in the measure's own <attributes>, and the
+// rehearsal mark printed on a <direction>. It reads the measure's direct
+// children only, never the page DOM, holds no
 // cross-measure state, and never throws. Deciding whether a clef or key is a
 // CHANGE needs the running value, so that decision belongs to the orchestrator
 // (music-parse.js); this reader only reports what the measure declares. Exposed
@@ -39,6 +40,16 @@ const MusicParseStructure = (function () {
     return Number.isNaN(n) ? null : n;
   }
 
+  // Text of one already-located element, with every internal run of whitespace
+  // collapsed to a single space and the ends trimmed, or null when the element is
+  // absent or holds nothing but whitespace. This tidies only the FILE'S own line
+  // breaks and indentation; it never alters the characters an engraver typed.
+  function tidyTextOf(el) {
+    if (!el) return null;
+    const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+    return text.length ? text : null;
+  }
+
   // readStructure(measureEl): pure. Returns the structural marks this measure
   // declares, every field neutral (false or null) when the mark is absent. It
   // never decides whether a clef or key is a change; the orchestrator does that
@@ -51,8 +62,13 @@ const MusicParseStructure = (function () {
       endingStop: null,
       clef: null,
       key: null,
+      rehearsal: null,
     };
     if (!measureEl || !measureEl.children) return structure;
+
+    // Usable rehearsal marks seen in this measure, so a duplicate warns ONCE
+    // after the walk rather than once per extra mark.
+    let rehearsalCount = 0;
 
     const children = measureEl.children;
     for (let i = 0; i < children.length; i++) {
@@ -88,15 +104,42 @@ const MusicParseStructure = (function () {
         }
         const fifths = intOf(child, "key fifths");
         if (fifths !== null) structure.key = { fifths: fifths };
+      } else if (child.tagName === "direction") {
+        // Rehearsal marks, shaped
+        // <direction><direction-type><rehearsal>A</rehearsal></direction-type>.
+        // The text is kept VERBATIM rather than mapped to spoken words, because a
+        // rehearsal mark is an OPEN set — "A", "B.1", "Coda", "D.S. al Fine" —
+        // unlike a clef sign or an ending number, which are closed lookups the
+        // naming layer can safely table-map. A lookup here would return nothing
+        // for every mark the table had not anticipated, silently dropping it.
+        // Placement and every other attribute are ignored.
+        const rehearsalEls = child.querySelectorAll("rehearsal");
+        for (let r = 0; r < rehearsalEls.length; r++) {
+          const mark = tidyTextOf(rehearsalEls[r]);
+          if (mark === null) continue;
+          rehearsalCount++;
+          if (structure.rehearsal === null) structure.rehearsal = mark;
+        }
       }
+    }
+
+    // A measure should carry at most one rehearsal mark. Where a file prints more
+    // than one, the first wins and the rest are ignored — announcing several on a
+    // single bar heading would be worse than losing the duplicates.
+    if (rehearsalCount > 1) {
+      logWarn(
+        "Measure carried " + rehearsalCount + " rehearsal marks; reading only the first ('" +
+        structure.rehearsal + "')"
+      );
     }
     return structure;
   }
 
   // Self-test: synchronous and self-contained. Parses a small inline score with
   // DOMParser, reads each measure with readStructure, and asserts the marks,
-  // including a plain bar and a null input that must both read neutral.
-  // console.table()s and returns the results object.
+  // including a plain bar and a null input that must both read neutral. A second
+  // fixture covers the rehearsal mark on its own, so the first fixture's bar
+  // indices never shift. console.table()s and returns the results object.
   function selfTest() {
     const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 <score-partwise version="4.0">
@@ -145,6 +188,88 @@ const MusicParseStructure = (function () {
     const s6 = readStructure(measures[5]);
     const sNull = readStructure(null);
 
+    // Rehearsal-mark fixture, kept separate from SAMPLE so the six bars above
+    // keep their indices and their rows stay exactly as they were. Bar by bar:
+    // a plain mark, a dotted composite, a mark broken across lines by the file's
+    // own indentation, a direction with no rehearsal child, no direction at all,
+    // an empty and a whitespace-only mark, two marks, and a mark sharing its bar
+    // with a forward repeat and an ending start.
+    const REHEARSAL_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <direction placement="above">
+        <direction-type>
+          <rehearsal>A</rehearsal>
+          </direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="2">
+      <direction placement="above">
+        <direction-type>
+          <rehearsal>B.1</rehearsal>
+          </direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="3">
+      <direction placement="above">
+        <direction-type>
+          <rehearsal>D.S.
+            al  Fine</rehearsal>
+          </direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="4">
+      <direction placement="below">
+        <direction-type><dynamics><f/></dynamics></direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="5">
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="6">
+      <direction placement="above">
+        <direction-type><rehearsal></rehearsal></direction-type>
+        </direction>
+      <direction placement="above">
+        <direction-type><rehearsal>   </rehearsal></direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="7">
+      <direction placement="above">
+        <direction-type><rehearsal>C</rehearsal></direction-type>
+        </direction>
+      <direction placement="above">
+        <direction-type><rehearsal>D</rehearsal></direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="8">
+      <barline location="left"><repeat direction="forward"/><ending number="1" type="start"/></barline>
+      <direction placement="above">
+        <direction-type><rehearsal>E</rehearsal></direction-type>
+        </direction>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const rehearsalDoc = new DOMParser().parseFromString(REHEARSAL_SAMPLE, "application/xml");
+    const rehearsalMeasures = rehearsalDoc.querySelectorAll("measure");
+    const r1 = readStructure(rehearsalMeasures[0]);
+    const r2 = readStructure(rehearsalMeasures[1]);
+    const r3 = readStructure(rehearsalMeasures[2]);
+    const r4 = readStructure(rehearsalMeasures[3]);
+    const r5 = readStructure(rehearsalMeasures[4]);
+    const r6 = readStructure(rehearsalMeasures[5]);
+    const r7 = readStructure(rehearsalMeasures[6]);
+    const r8 = readStructure(rehearsalMeasures[7]);
+
     const results = {
       hasReadStructure: typeof readStructure === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -184,6 +309,21 @@ const MusicParseStructure = (function () {
         sNull.repeatForward === false && sNull.repeatBackward === false &&
         sNull.endingStart === null && sNull.endingStop === null &&
         sNull.clef === null && sNull.key === null,
+
+      rehearsalReadsMarkText: r1.rehearsal === "A",
+      rehearsalDottedCompositeVerbatim: r2.rehearsal === "B.1",
+      rehearsalCollapsesInternalWhitespace: r3.rehearsal === "D.S. al Fine",
+      rehearsalNullWhenDirectionCarriesNoMark: r4.rehearsal === null,
+      rehearsalNullWhenNoDirection: r5.rehearsal === null,
+      rehearsalNullWhenEmptyOrWhitespace: r6.rehearsal === null,
+      rehearsalFirstMarkWinsWhenTwo: r7.rehearsal === "C",
+      rehearsalNullOnNullInput: sNull.rehearsal === null,
+      rehearsalReadAlongsideStructuralMarks: r8.rehearsal === "E",
+      rehearsalLeavesRepeatForwardIntact: r8.repeatForward === true,
+      rehearsalLeavesEndingStartIntact: r8.endingStart === "1",
+      rehearsalNullOnBarsWithoutDirections:
+        s1.rehearsal === null && s2.rehearsal === null && s3.rehearsal === null &&
+        s4.rehearsal === null && s5.rehearsal === null && s6.rehearsal === null,
     };
 
     console.table(results);

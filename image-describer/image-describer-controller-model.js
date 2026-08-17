@@ -731,15 +731,16 @@
         }
       }
 
-      // Update cost estimate (Stage 3)
+      // Update cost estimate (Stage 3). This writes #imgdesc-cost-estimate, which is
+      // role="status" aria-live="polite" — so the new cost is ALREADY announced here.
       this.updateCostEstimate();
 
-      // Announce to screen readers (Stage 6)
-      if (selectedOption && selectedValue) {
-        const modelName = selectedOption.textContent || selectedValue;
-        const costText = this.elements.costEstimate?.textContent || "";
-        this.announceModelSelection(modelName, costText);
-      }
+      // Deliberately no separate announcement of the model change. Between them, the
+      // <select> (which a reader voices on change) and the live region above already
+      // say the model name and the new cost. 1256ebc briefly added a third utterance,
+      // "Model changed to X. Estimated cost: …", built by reading that same live
+      // region's textContent back — so the cost was spoken twice and the whole change
+      // three times.
 
       // Save preference if checkbox is checked (Stage 4)
       if (this.elements.rememberModel?.checked) {
@@ -1431,32 +1432,13 @@
     // ACCESSIBILITY & POLISH (Stage 6)
     // ========================================================================
 
-    /**
-     * Announce model selection to screen readers (Stage 6)
-     * Uses window.a11y?.announceStatus if available, graceful degradation otherwise
-     * @param {string} modelName - Name of selected model
-     * @param {string} costEstimate - Cost estimate text
-     */
-    announceModelSelection(modelName, costEstimate) {
-      // Build announcement message
-      const message = `Model changed to ${modelName}. ${costEstimate}`;
-
-      // Try to use a11y helper if available
-      if (window.a11y?.announceStatus) {
-        try {
-          window.a11y.announceStatus(message);
-          logDebug("Announced model selection via a11y helper:", message);
-          return;
-        } catch (error) {
-          logWarn("a11y.announceStatus failed, using fallback:", error);
-        }
-      }
-
-      // Fallback: Update the cost estimate element's aria-live region
-      // (This should already be set up with role="status" and aria-live="polite")
-      // The update in updateCostEstimate() will trigger the announcement
-      logDebug("Model selection announced via aria-live region:", message);
-    },
+    // announceModelSelection() was removed here rather than left orphaned. It built
+    // "Model changed to X. <cost>" by reading #imgdesc-cost-estimate back out — a
+    // region that had just announced that very text itself — so it could only ever
+    // repeat what the reader had already said. Its own fallback comment described
+    // the live region as the mechanism, which is the tell: the announcement was the
+    // fallback's duplicate, not its complement. Same treatment as the orphaned
+    // announceModelRegistration in e860a6f.
 
     /**
      * Enhance keyboard navigation for model selector (Stage 6)

@@ -59,6 +59,7 @@
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
   const DateUtils = Utils.DateUtils;
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Generate a short description for a Gantt chart
@@ -89,8 +90,14 @@
       });
     });
 
+    // Diagram-source text is escaped once, here, where it enters an HTML
+    // string. The PLAIN tier below deliberately keeps the raw title: it feeds
+    // the SVG aria-label and the textContent fallback, neither of which parses
+    // HTML, so entities there would be read out literally.
+    const safeTitle = Common.escapeHtml(title);
+
     // Build a concise description - HTML version
-    let htmlDescription = `A Gantt chart titled "<span class="diagram-title">${title}</span>" showing `;
+    let htmlDescription = `A Gantt chart titled "<span class="diagram-title">${safeTitle}</span>" showing `;
 
     if (sections.length > 0) {
       htmlDescription += `<span class="diagram-section-count">${sections.length}</span> project `;
@@ -1045,10 +1052,14 @@
 
     // Overview section
     description += `<div class="gantt-overview">
-        <p class="gantt-title">This Gantt chart titled "${title}" shows a project timeline with ${
-      sections.length
-    } ${sections.length === 1 ? "section" : "sections"}.</p>
-        <p class="gantt-date-format">Dates are displayed in ${dateFormat} format.</p>`;
+        <p class="gantt-title">This Gantt chart titled "${Common.escapeHtml(
+          title
+        )}" shows a project timeline with ${sections.length} ${
+      sections.length === 1 ? "section" : "sections"
+    }.</p>
+        <p class="gantt-date-format">Dates are displayed in ${Common.escapeHtml(
+          dateFormat
+        )} format.</p>`;
 
     // Project duration
     if (projectStart && projectEnd && projectDuration) {
@@ -1125,7 +1136,9 @@
     updatedSections.forEach((section) => {
       description += `<li class="gantt-section">
             <div class="gantt-section-header">
-                <strong class="gantt-section-name">${section.name}</strong>`;
+                <strong class="gantt-section-name">${Common.escapeHtml(
+                  section.name
+                )}</strong>`;
 
       if (section.startDate && section.endDate) {
         const sectionDuration = DateUtils.differenceInDays(
@@ -1156,7 +1169,9 @@
           description += `<li class="${taskClass}">`;
 
           // Task name with status
-          let taskDescription = `<span class="gantt-task-name">${task.name}</span>`;
+          let taskDescription = `<span class="gantt-task-name">${Common.escapeHtml(
+            task.name
+          )}</span>`;
 
           // Add status text
           let statusText = "";
@@ -1175,7 +1190,9 @@
             )}</span>`;
 
             if (task.dependsOnTaskName) {
-              taskDescription += ` after the completion of <span class="gantt-task-dependency">${task.dependsOnTaskName}</span>`;
+              taskDescription += ` after the completion of <span class="gantt-task-dependency">${Common.escapeHtml(
+                task.dependsOnTaskName
+              )}</span>`;
             }
           }
 
@@ -1194,7 +1211,9 @@
 
           // Add "until" relationship if present
           if (task.untilTaskName) {
-            taskDescription += `, running until <span class="gantt-task-until">${task.untilTaskName}</span> begins`;
+            taskDescription += `, running until <span class="gantt-task-until">${Common.escapeHtml(
+              task.untilTaskName
+            )}</span> begins`;
           }
           // Add end date if available
           else if (task.endDate && !task.isMilestone) {
@@ -1228,14 +1247,18 @@
             <ul class="gantt-milestone-list">`;
 
       milestones.forEach((milestone) => {
-        let milestoneDesc = `<span class="gantt-milestone-name">${milestone.name}</span>`;
+        let milestoneDesc = `<span class="gantt-milestone-name">${Common.escapeHtml(
+          milestone.name
+        )}</span>`;
         if (milestone.startDate) {
           milestoneDesc += ` <span class="gantt-milestone-date">(${DateUtils.formatDate(
             milestone.startDate
           )})</span>`;
 
           if (milestone.dependsOnTaskName) {
-            milestoneDesc += ` after completion of ${milestone.dependsOnTaskName}`;
+            milestoneDesc += ` after completion of ${Common.escapeHtml(
+              milestone.dependsOnTaskName
+            )}`;
           }
         }
         description += `<li class="gantt-milestone-item">${milestoneDesc}</li>`;
@@ -1256,7 +1279,11 @@
             <ul class="gantt-parallel-list">`;
 
       parallelWork.forEach((parallel) => {
-        const taskNames = parallel.tasks.map((t) => t.name).join(" and ");
+        // Each name is escaped BEFORE the join — the " and " the join inserts
+        // is generator furniture and must not be escaped.
+        const taskNames = parallel.tasks
+          .map((t) => Common.escapeHtml(t.name))
+          .join(" and ");
         description += `<li class="gantt-parallel-item">On <span class="gantt-parallel-date">${parallel.date}</span>, <span class="gantt-parallel-tasks">${taskNames}</span> begin simultaneously`;
 
         // Add resource insight if available
@@ -1281,9 +1308,13 @@
         const task = findTaskById(updatedSections, taskId);
         if (task) {
           description += `<li class="gantt-critical-path-item">
-                    <span class="gantt-critical-task-name">${task.name}</span>`;
+                    <span class="gantt-critical-task-name">${Common.escapeHtml(
+                      task.name
+                    )}</span>`;
           if (task.duration && !task.isMilestone) {
-            description += ` <span class="gantt-critical-task-duration">(${task.duration})</span>`;
+            description += ` <span class="gantt-critical-task-duration">(${Common.escapeHtml(
+              task.duration
+            )})</span>`;
           }
           description += `</li>`;
         }
@@ -1316,12 +1347,12 @@
 
       phaseTransitions.forEach((transition) => {
         description += `<li class="gantt-transition-item">
-                Transition from <span class="gantt-from-phase">${
+                Transition from <span class="gantt-from-phase">${Common.escapeHtml(
                   transition.fromPhase
-                }</span> to 
-                <span class="gantt-to-phase">${
+                )}</span> to 
+                <span class="gantt-to-phase">${Common.escapeHtml(
                   transition.toPhase
-                }</span> occurs on 
+                )}</span> occurs on 
                 <span class="gantt-transition-date">${DateUtils.formatDate(
                   transition.date
                 )}</span>
@@ -1374,8 +1405,15 @@
 
         if (dependentTasks.length > 0) {
           dependentTasks.forEach((depTask) => {
+            // Risk strings are interpolated into an <li> by the caller, so the
+            // task names are escaped HERE, where they enter the string — not at
+            // the consumption site, which would escape the whole sentence.
             risks.push(
-              `Tight dependency: "${task.name}" directly transitions to "${depTask.name}" on the same day with no buffer`
+              `Tight dependency: "${Common.escapeHtml(
+                task.name
+              )}" directly transitions to "${Common.escapeHtml(
+                depTask.name
+              )}" on the same day with no buffer`
             );
           });
         }
@@ -1391,7 +1429,11 @@
 
     longTasks.forEach((task) => {
       risks.push(
-        `Long-duration task: "${task.name}" has a ${task.duration} duration, which may be difficult to estimate accurately`
+        `Long-duration task: "${Common.escapeHtml(
+          task.name
+        )}" has a ${Common.escapeHtml(
+          task.duration
+        )} duration, which may be difficult to estimate accurately`
       );
     });
 
@@ -1400,7 +1442,11 @@
 
     untilTasks.forEach((task) => {
       risks.push(
-        `Flexible end date: "${task.name}" runs until "${task.untilTaskName}" begins, which creates uncertainty in scheduling`
+        `Flexible end date: "${Common.escapeHtml(
+          task.name
+        )}" runs until "${Common.escapeHtml(
+          task.untilTaskName
+        )}" begins, which creates uncertainty in scheduling`
       );
     });
 

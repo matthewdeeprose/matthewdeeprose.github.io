@@ -105,11 +105,42 @@
 
   // localStorage credential keys, by provider id. Read-only — this module
   // never writes these. The Set Up tool owns writes.
+  //
+  // For the two Foundry ids the stored value is an OVERRIDE, not a
+  // prerequisite: see PROVIDERS_WITH_WORKING_DEFAULT below. Absence of the key
+  // does not mean the provider is unusable.
   const CREDENTIAL_KEYS = {
     openrouter: "openrouter_api_key",
     "azure-openai": "foundryProxyUrl",
     "azure-responses": "foundryProxyUrl",
   };
+
+  // Provider ids whose adapter carries a working built-in default, so they
+  // reach a live service with nothing stored in localStorage at all. These are
+  // available unconditionally.
+  //
+  // Why this exists — it reads like a bug without the measurement behind it:
+  //
+  //   - Both Foundry adapters (providers/azure-openai-v1.js and
+  //     providers/azure-openai-responses.js) fall back to a hardcoded
+  //     production proxy URL when `foundryProxyUrl` is absent, so a person who
+  //     has never opened the Foundry card still reaches the live Worker.
+  //   - Measured after F2-18a armed production: with no stored key, 34 Foundry
+  //     models were listed, were selectable, and a send returned 401 from the
+  //     production Worker — proof the request arrived, not that it was blocked.
+  //   - The Worker holds the Azure credential server-side, so there is nothing
+  //     for a person to configure. The proxy URL field is an OVERRIDE for
+  //     pointing at something else, not a prerequisite.
+  //   - Reporting these two as unavailable told colleagues a working tool was
+  //     unavailable. That is the defect this corrects.
+  //
+  // Deliberately NOT the URL itself, and deliberately not imported. This module
+  // should know only THAT a default exists, never what it is — the providers own
+  // the URL, and duplicating it here would create two things to keep in step.
+  const PROVIDERS_WITH_WORKING_DEFAULT = Object.freeze([
+    "azure-openai",
+    "azure-responses",
+  ]);
 
   // Tracks the currently-attached `storage` event listener so a second IIFE
   // execution (script tag duplicated, console paste during development) can
@@ -333,21 +364,24 @@
      * Get the list of known providers with their current status.
      *
      * Reads credential state from localStorage on every call (cheap; status
-     * can change between calls if user edits credentials in another tab).
+     * can change between calls if user edits credentials in another tab). A
+     * provider with a working built-in default reports true without any read.
      *
-     * In Stage 3a, the `available` field is computed identically to
-     * `configured` (credentials present). Later stages may refine `available`
-     * to additionally check EmbedProviderRegistry presence — the two-field
-     * shape exists for that future divergence.
+     * Both fields come from isAvailable(), so both mean "usable now" rather
+     * than "a credential is stored". Later stages may refine `available` to
+     * additionally check EmbedProviderRegistry presence — the two-field shape
+     * exists for that future divergence.
      *
      * @returns {Array<{id: string, label: string, configured: boolean, available: boolean}>}
      *
      * @example
      * ProviderSwitcher.getKnown()
      * // → [
-     * //     { id: 'openrouter',   label: 'OpenRouter',         configured: true,  available: true  },
-     * //     { id: 'azure-openai', label: 'Microsoft Foundry',  configured: false, available: false },
+     * //     { id: 'openrouter',   label: 'OpenRouter',         configured: true, available: true },
+     * //     { id: 'azure-openai', label: 'Microsoft Foundry',  configured: true, available: true },
      * //   ]
+     * // azure-openai is true even with nothing stored — its adapter has a
+     * // working default proxy. openrouter still needs its API key.
      */
     getKnown() {
       return KNOWN_PROVIDERS.map(({ id, label }) => {
@@ -357,24 +391,32 @@
     }
 
     /**
-     * Check whether a provider is usable — i.e. it's a known provider AND its
-     * credentials are present in localStorage.
+     * Check whether a provider is usable — i.e. it's a known provider that can
+     * reach a live service right now, either because its adapter carries a
+     * working built-in default or because its credentials are in localStorage.
      *
      * Returns false for unknown ids without warning (silent — this method is
      * called frequently from getKnown()'s map). Returns false when
-     * localStorage is broken (we can't read credentials; treat as unavailable).
+     * localStorage is broken (we can't read credentials; treat as unavailable)
+     * — except for the defaulted providers, which need no credential to work
+     * and so are unaffected by storage being unreadable.
      *
      * @param {string} id - Provider id
      * @returns {boolean}
      *
      * @example
      * ProviderSwitcher.isAvailable('openrouter')    // → true if api key set
-     * ProviderSwitcher.isAvailable('azure-openai')  // → true if foundryProxyUrl set
+     * ProviderSwitcher.isAvailable('azure-openai')  // → always true (built-in default proxy)
      * ProviderSwitcher.isAvailable('nonsense')      // → false (silent)
      */
     isAvailable(id) {
       if (typeof id !== "string") return false;
       if (!KNOWN_PROVIDERS.some((p) => p.id === id)) return false;
+
+      // A working built-in default means there is nothing to configure, so the
+      // stored key is irrelevant here. Checked after the membership test above
+      // so an unknown id still returns false.
+      if (PROVIDERS_WITH_WORKING_DEFAULT.includes(id)) return true;
 
       const credentialKey = CREDENTIAL_KEYS[id];
       if (!credentialKey) return false;

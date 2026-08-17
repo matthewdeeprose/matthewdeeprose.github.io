@@ -710,6 +710,7 @@ class MathPixPDFProcessor extends MathPixBaseModule {
             }
 
             // Get requested conversion formats with proper mapping
+            // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
             const FORMAT_MAPPING = {
               mmd: "mmd",
               html: "html",

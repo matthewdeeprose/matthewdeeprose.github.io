@@ -108,6 +108,8 @@
         temperature: options.temperature,
         max_tokens: options.max_tokens,
         top_p: options.top_p,
+        frequency_penalty: options.frequency_penalty,
+        presence_penalty: options.presence_penalty,
       };
 
       // Reasoning parameter (mirrors core.js lines 811–827).

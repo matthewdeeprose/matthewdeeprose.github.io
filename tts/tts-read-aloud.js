@@ -108,15 +108,19 @@ var TTSReadAloud = (function () {
     var label = format.toUpperCase();
     var other = format === 'mp3' ? 'WAV' : 'MP3';
 
-    // Update main button label
+    // Update main button label.
+    //
+    // SC 2.5.3: the label span is the ONLY name source — no aria-label. Both of
+    // these buttons carry a visible label that this module swaps through several
+    // states, and a name written alongside it drifted out of step in two ways:
+    // the wording differed in the states it did update ("Save as MP3 (requires
+    // natural voice)" named "Save as MP3 — requires natural voice engine"), and
+    // the progress states below (Generating…, Encoding MP3 45%…) change the
+    // visible text and never touched the name at all, leaving it stale. No
+    // static or per-state aria-label can satisfy 2.5.3 across those states, so
+    // the content names the button and the two cannot diverge.
     if (els.saveAudioLabel) {
       els.saveAudioLabel.textContent = 'Save as ' + label;
-    }
-    if (els.saveAudioButton) {
-      els.saveAudioButton.setAttribute(
-        'aria-label',
-        'Save description as ' + label + ' audio file'
-      );
     }
 
     // Update dropdown segment
@@ -156,9 +160,10 @@ var TTSReadAloud = (function () {
 
     switch (state) {
       case STATES.LOADING:
+        // No aria-label in any state below: the visible label span names the
+        // button, so the two stay in step by construction. See refreshFormatToggle().
         els.label.textContent = 'Preparing…';
         if (icon) icon.setAttribute('data-icon', 'hourglass');
-        els.button.setAttribute('aria-label', 'Preparing description, please wait');
         els.button.disabled = true;
         announce('Preparing description');
         logDebug('State → loading');
@@ -167,7 +172,6 @@ var TTSReadAloud = (function () {
       case STATES.SPEAKING:
         els.label.textContent = 'Stop';
         if (icon) icon.setAttribute('data-icon', 'close');
-        els.button.setAttribute('aria-label', 'Stop reading');
         els.button.disabled = false;
         showEngineBadge();
         announce('Reading description aloud');
@@ -177,7 +181,6 @@ var TTSReadAloud = (function () {
       case STATES.PAUSED:
         els.label.textContent = 'Resume';
         if (icon) icon.setAttribute('data-icon', 'message');
-        els.button.setAttribute('aria-label', 'Resume reading');
         els.button.disabled = false;
         logDebug('State → paused');
         break;
@@ -186,7 +189,6 @@ var TTSReadAloud = (function () {
       default:
         els.label.textContent = 'Read Aloud';
         if (icon) icon.setAttribute('data-icon', 'message');
-        els.button.setAttribute('aria-label', 'Read description aloud');
         hideEngineBadge();
         if (currentState !== STATES.IDLE) {
           announce('Finished reading');
@@ -405,10 +407,8 @@ var TTSReadAloud = (function () {
     // Update label to nudge users when on webspeech
     if (!isNeural) {
       els.saveAudioLabel.textContent = 'Save as ' + format + ' (requires natural voice)';
-      els.saveAudioButton.setAttribute('aria-label', 'Save as ' + format + ' — requires natural voice engine');
     } else if (!modelReady) {
       els.saveAudioLabel.textContent = 'Save as ' + format + ' (model loading\u2026)';
-      els.saveAudioButton.setAttribute('aria-label', 'Save as ' + format + ' — model is loading');
     } else {
       refreshFormatToggle();
     }

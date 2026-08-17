@@ -23,18 +23,34 @@
       <form id="reg-form" novalidate onsubmit="return demoSubmit(event);">
         <!-- FIX (a): a real <label> whose "for" matches the input id, so the box
              has a proper accessible name. -->
-        <div class="field">
-          <label class="field-label" for="full-name">Full name *</label>
-          <input type="text" id="full-name" name="full-name" />
+        <div class="field" id="name-field">
+          <!-- FIX (f): the visible "*" is decorative (aria-hidden) and the
+               required state is conveyed natively with the required attribute,
+               so a screen reader announces "Full name, required" — no asterisk
+               noise. Semantic-HTML-first: native required, not aria-required. -->
+          <label class="field-label" for="full-name">Full name <span aria-hidden="true">*</span></label>
+          <input type="text" id="full-name" name="full-name" required />
+          <!-- Error message (icon + text, not colour alone). Tied to the input
+               with aria-describedby only while invalid; hidden until submit. -->
+          <p class="field-error" id="full-name-error" hidden>
+            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="9" fill="currentColor" />
+              <rect x="9" y="4.5" width="2" height="7" fill="#ffffff" />
+              <rect x="9" y="13.5" width="2" height="2" fill="#ffffff" />
+            </svg>
+            <span>Enter your full name.</span>
+          </p>
         </div>
 
         <div class="field" id="email-field">
           <div class="label-row">
-            <label class="field-label" for="email">Email address *</label>
+            <label class="field-label" for="email">Email address <span aria-hidden="true">*</span></label>
             <!-- FIX (b): the help control is a native <button> with a clear
                  accessible name (aria-label); the "?" glyph is decorative
                  (aria-hidden). It is keyboard-operable and exposes its state
-                 with aria-expanded / aria-controls. -->
+                 with aria-expanded / aria-controls.
+                 It also ANNOUNCES what it reveals: see the populate-not-reveal
+                 note on #email-help below, and the same reasoning on #confirm. -->
             <button
               type="button"
               class="help-toggle"
@@ -47,16 +63,32 @@
               <span aria-hidden="true">?</span>
             </button>
           </div>
-          <input type="email" id="email" name="email" />
-          <p class="help-text" id="email-help" hidden>
-            We use your email only to send your booking confirmation.
-          </p>
+          <input type="email" id="email" name="email" required />
+          <!-- The help region is ALWAYS in the DOM and never hidden, but EMPTY
+               when collapsed; demoToggleHelp writes its text on expand. A
+               screen reader does not announce text that is merely un-hidden, so
+               a disclosure built that way says only "expanded" and leaves the
+               user to go hunting for what appeared. Populating an already-
+               watched empty role="status" region IS a genuine content change,
+               so the help sentence is announced the moment it is revealed. The
+               empty box is collapsed by CSS (.help-text:empty), never
+               display:none, so the region stays in the accessibility tree.
+               While it is open it is also tied to the input with
+               aria-describedby, so the help is repeated on focus rather than
+               being a one-shot. Keep the <p> free of whitespace — :empty does
+               not match an element containing a whitespace text node. -->
+          <p class="help-text" id="email-help" role="status"></p>
+          <!-- The sentence lives in the HTML (not in a JS string), but in a
+               <template> so the live region can start genuinely empty with no
+               flash of text before the script runs. -->
+          <template id="email-help-text">We use your email only to send your booking confirmation.</template>
           <!-- FIX (d): the validation error meets contrast (~7.7:1), carries a
-               decorative icon AND text (not colour alone), is tied to the field
-               with aria-describedby, and the field is marked aria-invalid. On
-               submit, focus moves here so a screen-reader user learns what went
-               wrong. Hidden until submit. -->
-          <p class="field-error" id="email-error" tabindex="-1" hidden>
+               decorative icon AND text (not colour alone). On submit, focus
+               moves to the INPUT itself (not here) and this message is tied to
+               it via aria-describedby with the field marked aria-invalid, so the
+               reader announces the label, "invalid", and this text together.
+               Hidden until submit. -->
+          <p class="field-error" id="email-error" hidden>
             <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 20 20">
               <circle cx="10" cy="10" r="9" fill="currentColor" />
               <rect x="9" y="4.5" width="2" height="7" fill="#ffffff" />
@@ -68,20 +100,34 @@
 
         <!-- FIX (c): the grouped choice is a real <fieldset> with a <legend>, so
              the group's purpose is conveyed; every option keeps its own label. -->
-        <fieldset class="choice">
-          <legend>Preferred campus *</legend>
+        <fieldset class="choice" id="campus-field">
+          <!-- FIX (f): the asterisk is decorative (aria-hidden); the radio group
+               is required natively (required on each radio means the group must
+               have a selection), so the requirement is exposed to assistive
+               technology rather than implied by a bare "*". -->
+          <legend>Preferred campus <span aria-hidden="true">*</span></legend>
           <div class="option">
-            <input type="radio" id="c-highfield" name="campus" value="highfield" />
+            <input type="radio" id="c-highfield" name="campus" value="highfield" required />
             <label for="c-highfield">Highfield</label>
           </div>
           <div class="option">
-            <input type="radio" id="c-avenue" name="campus" value="avenue" />
+            <input type="radio" id="c-avenue" name="campus" value="avenue" required />
             <label for="c-avenue">Avenue</label>
           </div>
           <div class="option">
-            <input type="radio" id="c-boldrewood" name="campus" value="boldrewood" />
+            <input type="radio" id="c-boldrewood" name="campus" value="boldrewood" required />
             <label for="c-boldrewood">Boldrewood</label>
           </div>
+          <!-- Group-level error. While invalid it is tied to each radio with
+               aria-describedby, so focusing any option announces it. -->
+          <p class="field-error" id="campus-error" hidden>
+            <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 20 20">
+              <circle cx="10" cy="10" r="9" fill="currentColor" />
+              <rect x="9" y="4.5" width="2" height="7" fill="#ffffff" />
+              <rect x="9" y="13.5" width="2" height="2" fill="#ffffff" />
+            </svg>
+            <span>Choose a preferred campus.</span>
+          </p>
         </fieldset>
 
         <div class="field">
@@ -96,9 +142,14 @@
              announced as a button. -->
         <button type="submit" class="submit-btn">Register</button>
 
-        <p class="confirmation" id="confirm" role="status" hidden>
-          Thank you — your registration has been received.
-        </p>
+        <!-- Success confirmation. This role="status" live region is ALWAYS in
+             the DOM and never hidden, but EMPTY on load; demoSubmit writes its
+             text on success. Populating an already-watched empty live region is
+             a genuine content change, so it is announced — unlike unhiding
+             pre-existing text, which a screen reader does not announce. The
+             empty box is collapsed by CSS (.confirmation:empty), never
+             display:none, so the region stays in the accessibility tree. -->
+        <p class="confirmation" id="confirm" role="status"></p>
       </form>
 
       <!-- Real page content for the audience: the contrast in experience.
@@ -120,8 +171,16 @@
             called “Preferred campus”, so you always know what you are choosing.
           </li>
           <li>
-            If your email is wrong, focus moves to the error, which is read out,
-            tied to the field, and meets contrast — you learn what to fix.
+            <strong>Required</strong> fields still show a “*” for sighted users,
+            but the requirement is conveyed natively, so a screen reader
+            announces each as “required” — and the “*” itself is hidden from the
+            reader, so there is no “asterisk” noise.
+          </li>
+          <li>
+            If you miss a required field or mistype your email, submission is
+            blocked and focus moves to the first field that needs attention — its
+            label, “invalid” state and error message are announced together, so
+            you fix it in place.
           </li>
           <li>
             The <strong>Register</strong> button is a real button — reachable and
@@ -162,44 +221,165 @@
           if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
         }
 
-        // Help toggle — a real button: flip aria-expanded and show/hide the help.
+        // aria-describedby is a SPACE-SEPARATED ID LIST, and two things can now
+        // describe the email field — the help text while it is open, and the
+        // error message while the field is invalid. So add and remove single
+        // ids rather than overwriting the whole attribute.
+        function demoDescribedByIds(el) {
+          return (el.getAttribute("aria-describedby") || "")
+            .split(/\s+/)
+            .filter(Boolean);
+        }
+        function demoAddDescribedBy(el, id) {
+          const ids = demoDescribedByIds(el);
+          if (!ids.includes(id)) ids.push(id);
+          el.setAttribute("aria-describedby", ids.join(" "));
+        }
+        // When the last id goes, drop the attribute entirely rather than
+        // leaving an empty one, so the field is announced clean.
+        function demoRemoveDescribedBy(el, id) {
+          const ids = demoDescribedByIds(el).filter(function (x) {
+            return x !== id;
+          });
+          if (ids.length) el.setAttribute("aria-describedby", ids.join(" "));
+          else el.removeAttribute("aria-describedby");
+        }
+
+        // Help toggle — a real button. It flips aria-expanded and POPULATES (or
+        // empties) the role="status" help region rather than un-hiding it, so
+        // the revealed sentence is actually announced; see the comment on
+        // #email-help. While open, the help also describes the input, so a user
+        // arriving at the field afterwards hears it again.
         window.demoToggleHelp = function (btn) {
           const help = document.getElementById("email-help");
-          if (!help) return;
-          const open = help.hidden; // about to open if currently hidden
-          help.hidden = !open;
+          const source = document.getElementById("email-help-text");
+          const email = document.getElementById("email");
+          if (!help || !source) return;
+
+          // The button's own state is the single source of truth.
+          const open = btn.getAttribute("aria-expanded") !== "true";
+          help.textContent = open ? source.content.textContent.trim() : "";
           btn.setAttribute("aria-expanded", String(open));
+
+          if (open) demoAddDescribedBy(email, help.id);
+          else demoRemoveDescribedBy(email, help.id);
           logDebug("help toggled; expanded =", open);
         };
 
-        // Inert submit. On an invalid email: mark the field invalid, tie the
-        // error to it, and MOVE FOCUS to the error so it is announced. On
-        // success: show a polite confirmation (role="status"). No data is sent.
+        // Mark one field's control(s) invalid and tie its error message to them
+        // (aria-describedby), so a screen reader announces the field's label,
+        // its "invalid" state, and the error text together.
+        function demoMarkInvalid(f) {
+          f.wrapper.classList.add("field--invalid");
+          f.error.hidden = false;
+          f.inputs.forEach(function (input) {
+            input.setAttribute("aria-invalid", "true");
+            demoAddDescribedBy(input, f.error.id);
+          });
+        }
+
+        // Clear a field's invalid state: drop the red border, hide the error,
+        // set aria-invalid back to "false", and DETACH the error association
+        // (remove that id from aria-describedby — any open help text stays
+        // attached) so a screen reader returning to the field hears it clean.
+        // Shared by live clearing and by re-submit.
+        function demoClearField(f) {
+          f.wrapper.classList.remove("field--invalid");
+          f.error.hidden = true;
+          f.inputs.forEach(function (input) {
+            input.setAttribute("aria-invalid", "false");
+            demoRemoveDescribedBy(input, f.error.id);
+          });
+        }
+
+        // The required fields, in READING ORDER. Built ONCE (this script runs at
+        // the end of <body>, so the DOM is ready) and shared by both the live
+        // clearing and the submit-time validation. Each entry knows how to test
+        // itself, which control(s) carry the invalid state, and its error.
+        const campusRadios = Array.prototype.slice.call(
+          document.getElementsByName("campus")
+        );
+        const demoFields = [
+          {
+            wrapper: document.getElementById("name-field"),
+            inputs: [document.getElementById("full-name")],
+            error: document.getElementById("full-name-error"),
+            isValid: function () {
+              return document.getElementById("full-name").value.trim() !== "";
+            },
+          },
+          {
+            wrapper: document.getElementById("email-field"),
+            inputs: [document.getElementById("email")],
+            error: document.getElementById("email-error"),
+            isValid: function () {
+              const value = document.getElementById("email").value.trim();
+              return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+            },
+          },
+          {
+            wrapper: document.getElementById("campus-field"),
+            inputs: campusRadios,
+            error: document.getElementById("campus-error"),
+            isValid: function () {
+              return campusRadios.some(function (r) { return r.checked; });
+            },
+          },
+        ];
+
+        // Live per-field clearing. As soon as a field that is CURRENTLY flagged
+        // invalid becomes valid, clear it — on input (typing), change (picking a
+        // radio), or blur. These handlers ONLY clear; they never ADD an error.
+        // Submission stays the single gate that raises errors, so the user is
+        // never nagged mid-typing for a field they have not finished.
+        demoFields.forEach(function (f) {
+          function demoMaybeClear() {
+            if (f.wrapper.classList.contains("field--invalid") && f.isValid()) {
+              demoClearField(f);
+              logDebug("live-cleared a corrected field");
+            }
+          }
+          f.inputs.forEach(function (input) {
+            input.addEventListener("input", demoMaybeClear);
+            input.addEventListener("change", demoMaybeClear);
+            input.addEventListener("blur", demoMaybeClear);
+          });
+        });
+
+        // Inert submit with FULL validation — the gate that RAISES errors. Every
+        // required field is checked in reading order (full name, email, preferred
+        // campus). Each invalid field is marked aria-invalid and tied to its
+        // error text; submission is blocked and focus moves to the FIRST invalid
+        // CONTROL (the input / first radio, not the message) so the reader
+        // announces that field's label, invalid state and error, and the user can
+        // fix it in place. On a fully valid submit a polite confirmation
+        // (role="status") is shown. Nothing is ever sent anywhere.
         window.demoSubmit = function (event) {
           event.preventDefault();
-          const field = document.getElementById("email-field");
-          const input = document.getElementById("email");
-          const error = document.getElementById("email-error");
           const confirmation = document.getElementById("confirm");
-          const value = (input.value || "").trim();
-          const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
-          if (!valid) {
-            field.classList.add("field--invalid");
-            input.setAttribute("aria-invalid", "true");
-            input.setAttribute("aria-describedby", "email-error");
-            error.hidden = false;
-            confirmation.hidden = true;
-            error.focus(); // focus the message so it is read out
-            logInfo("invalid email: error announced and tied to the field");
+          // Evaluate every field; remember the first invalid one (reading order).
+          let firstInvalid = null;
+          demoFields.forEach(function (f) {
+            if (f.isValid()) {
+              demoClearField(f);
+            } else {
+              demoMarkInvalid(f);
+              if (!firstInvalid) firstInvalid = f;
+            }
+          });
+
+          if (firstInvalid) {
+            confirmation.textContent = ""; // remove any prior confirmation text
+            firstInvalid.inputs[0].focus(); // the control itself, not the message
+            logInfo("submit blocked: focus moved to the first invalid field");
             return false;
           }
 
-          field.classList.remove("field--invalid");
-          input.removeAttribute("aria-invalid");
-          input.removeAttribute("aria-describedby");
-          error.hidden = true;
-          confirmation.hidden = false; // role="status" announces this politely
+          // Populate the (already-watched, empty) role="status" live region. A
+          // content change is a genuine update, so it is announced politely —
+          // unlike unhiding pre-existing text, which would not be.
+          confirmation.textContent = "Thank you — your registration has been received.";
           logInfo("inert submit accepted (no data sent anywhere)");
           return false;
         };

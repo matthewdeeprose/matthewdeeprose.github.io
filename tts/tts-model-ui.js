@@ -141,6 +141,10 @@
     /**
      * Refresh all TTS model cards with current state.
      */
+    // Until the first full refresh has run, state changes are INITIALISATION, not
+    // news. See announceState() below.
+    var hasSettledInitialStates = false;
+
     function refreshAll() {
         if (!window.TTSNeuralGateway) return;
 
@@ -148,6 +152,27 @@
         for (var i = 0; i < models.length; i++) {
             updateModelUI(models[i].key, models[i].state);
         }
+        hasSettledInitialStates = true;
+    }
+
+    /**
+     * Announce a model's new state, naming the model.
+     *
+     * The card's status wrapper used to carry aria-live, which announced the bare
+     * label on load with nothing to say which model it described. The markup is no
+     * longer live; this is the channel, and it waits for the initial states to settle.
+     *
+     * @param {HTMLElement} card
+     * @param {string} label human-readable state label
+     */
+    function announceState(card, label) {
+        if (!hasSettledInitialStates) return;
+        var announcer = window.accessibilityHelpers;
+        if (!announcer || typeof announcer.announce !== "function") return;
+
+        var nameEl = card ? card.querySelector(".imgdesc-mm-model-name") : null;
+        var displayName = nameEl ? nameEl.textContent.trim() : "Model";
+        announcer.announce(displayName + ": " + label);
     }
 
     /**
@@ -169,9 +194,16 @@
             if (typeof window.refreshIcons === "function") window.refreshIcons(cached.icon);
         }
 
-        // Update state text
+        // Update state text, only when it actually changes. The status wrapper was a
+        // live region until 2 August 2026, so an unconditional rewrite announced the
+        // label again even when nothing had changed — and a bare "Cached" never said
+        // which model it meant. announceState() names it.
         if (cached.stateText) {
-            cached.stateText.textContent = STATE_LABELS[state] || state;
+            var label = STATE_LABELS[state] || state;
+            if (cached.stateText.textContent !== label) {
+                cached.stateText.textContent = label;
+                announceState(cached.card, label);
+            }
         }
 
         // Update action buttons
@@ -196,27 +228,55 @@
     function renderActionButtons(cached, modelKey, state) {
         if (!cached.actions) return;
 
+        // SC 2.4.6 / 2.4.4: every card renders the same words — "Set Up", "Load",
+        // "Remove", "Unload", "Retry" — so out of context a screen-reader or
+        // voice-input user cannot tell which model a button acts on. Curried here
+        // rather than threaded through all six call sites below, so no state can be
+        // left with a missing or stale suffix.
+        //
+        // The registry walk follows this file's own precedent in
+        // removeCachedFiles(), and is guarded the same defensive way as the
+        // window.getIcon lookup in makeButton: a missing gateway degrades to the
+        // current behaviour (no suffix) rather than throwing.
+        var modelName = "";
+        try {
+            if (window.TTSNeuralGateway) {
+                var registered = window.TTSNeuralGateway.getRegisteredModels();
+                for (var m = 0; m < registered.length; m++) {
+                    if (registered[m].key === modelKey) {
+                        modelName = registered[m].name || "";
+                        break;
+                    }
+                }
+            }
+        } catch (err) {
+            logWarn("Could not resolve display name for " + modelKey, err.message || err);
+        }
+        function actionButton(label, iconName, onclickStr) {
+            return makeButton(label, iconName, onclickStr, modelName);
+        }
+
         var buttons = [];
 
         switch (state) {
             case "not-downloaded":
-                buttons.push(makeButton("Set Up", "download", "ttsMMDownload('" + modelKey + "')"));
+                buttons.push(actionButton("Set Up", "download", "ttsMMDownload('" + modelKey + "')"));
                 break;
             case "downloading":
                 // No cancel — gateway does not support cancellation
                 break;
             case "cached":
-                buttons.push(makeButton("Load", "upload", "ttsMMLoad('" + modelKey + "')"));
-                buttons.push(makeButton("Remove", "trash", "ttsMMRemove('" + modelKey + "')"));
+                buttons.push(actionButton("Load", "upload", "ttsMMLoad('" + modelKey + "')"));
+                buttons.push(actionButton("Remove", "trash", "ttsMMRemove('" + modelKey + "')"));
                 break;
             case "loading":
                 // No actions while loading
                 break;
             case "loaded":
-                buttons.push(makeButton("Unload", "close", "ttsMMUnload('" + modelKey + "')"));
+                buttons.push(actionButton("Unload", "close", "ttsMMUnload('" + modelKey + "')"));
                 break;
             case "error":
-                buttons.push(makeButton("Retry", "refresh", "ttsMMDownload('" + modelKey + "')"));
+                buttons.push(actionButton("Retry", "refresh", "ttsMMDownload('" + modelKey + "')"));
                 break;
         }
 
@@ -230,16 +290,30 @@
      * @param {string} onclickStr
      * @returns {string}
      */
-    function makeButton(label, iconName, onclickStr) {
+    function makeButton(label, iconName, onclickStr, modelName) {
         var iconHtml = "";
         if (typeof window.getIcon === "function") {
             iconHtml = '<span aria-hidden="true">' + window.getIcon(iconName) + "</span> ";
         } else {
             iconHtml = '<span aria-hidden="true" data-icon="' + iconName + '"></span> ';
         }
+        // Name the object the button acts on, without changing anything visible.
+        //
+        // The standing rule is never to put a name-extending visually-hidden span
+        // inside a control whose content is rebuilt at runtime, because the next
+        // innerHTML write destroys it. That rule is about spans added to STATIC
+        // markup. This is the safe case: the span is emitted BY the template that
+        // does the rebuilding (cached.actions.innerHTML = buttons.join("")), so
+        // every re-render recreates it in whatever the new state is.
+        // The separator is a NON-BREAKING space and must stay one — an ordinary
+        // space is collapsed by CSS because .visually-hidden is position:absolute.
+        // Full measurement in image-describer-model-manager-ui.js.
+        var suffixHtml = modelName
+            ? '<span class="visually-hidden">\u00A0— ' + modelName + "</span>"
+            : "";
         return (
             '<button class="imgdesc-mm-action-btn" onclick="' +
-            onclickStr + '">' + iconHtml + label + "</button>"
+            onclickStr + '">' + iconHtml + label + suffixHtml + "</button>"
         );
     }
 

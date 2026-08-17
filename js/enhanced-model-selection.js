@@ -1395,9 +1395,15 @@ const EnhancedModelSelection = (function () {
     });
 
     applyFilters();
-    announceFilterChange(
-      `Search updated: ${currentFilters.search || "cleared"}`
-    );
+
+    // Deliberately NOT announced per keystroke. "Search updated: o", then "…: op",
+    // then "…: ope" reads back the characters the user has just typed — which they
+    // already know — and #model-count announces the thing they actually want, the
+    // number of matches, from applyFilters() above. Measured 2 August 2026: typing
+    // four characters produced eleven utterances, of which four were this.
+    //
+    // The other filter controls DO still call announceFilterChange, and should:
+    // a provider or price change has no equivalent typed feedback.
   }
 
   function handleFreeOnlyChange(event) {
@@ -1686,7 +1692,20 @@ const EnhancedModelSelection = (function () {
   /**
    * Improved model info update system that works with multiple access methods
    */
-  function updateModelInfoDisplay(modelId) {
+  /**
+   * Refresh the model info panel for a model id.
+   *
+   * @param {string} modelId
+   * @param {string} [changeType] "user_selection" ONLY when the user picked this
+   *   model themselves. ModelManager.updateModelInfo() announces "Selected model: X"
+   *   for that value, and it is the DEFAULT there — so every caller here announced,
+   *   including page initialisation and the re-selection that happens while someone
+   *   is merely typing in the filter box. Measured 2 August 2026: filtering to
+   *   "anthropic" announced a selection the user had not made, twice per match,
+   *   because this function is also called twice on purpose (see the "backup
+   *   attempt" timeouts at its call sites).
+   */
+  function updateModelInfoDisplay(modelId, changeType = "programmatic") {
     if (!modelId) {
       logDebug("No model ID provided for info update");
       return;
@@ -1700,7 +1719,7 @@ const EnhancedModelSelection = (function () {
       typeof modelManagerRef.updateModelInfo === "function"
     ) {
       try {
-        modelManagerRef.updateModelInfo(modelId);
+        modelManagerRef.updateModelInfo(modelId, changeType);
         logDebug("Model info updated via direct ModelManager reference");
         return;
       } catch (error) {
@@ -1711,7 +1730,7 @@ const EnhancedModelSelection = (function () {
     // Strategy 2: Try via global uiController
     if (window.uiController?.modelManager?.updateModelInfo) {
       try {
-        window.uiController.modelManager.updateModelInfo(modelId);
+        window.uiController.modelManager.updateModelInfo(modelId, changeType);
         logDebug("Model info updated via global uiController");
         return;
       } catch (error) {
@@ -2165,20 +2184,27 @@ const EnhancedModelSelection = (function () {
     logDebug("Provider options populated", { providers });
   }
 
+  /**
+   * Announce a filter change through the shared announcer.
+   *
+   * This used to create a fresh aria-live div per call, append it to <body> and
+   * remove it 3s later — the same append-a-region-per-message pattern that shipped
+   * 365 announcements on every page load before e860a6f. It also set textContent
+   * BEFORE appendChild, which gives the live-region monitor no mutation to react to.
+   *
+   * The shared announcer owns one always-exposed region per politeness, dedupes an
+   * identical repeat inside its clear window, and clears itself — so routing here
+   * fixes the pattern and the ordering together.
+   *
+   * @param {string} message
+   */
   function announceFilterChange(message) {
-    const announcement = document.createElement("div");
-    announcement.setAttribute("aria-live", "polite");
-    announcement.setAttribute("role", "status");
-    announcement.className = "sr-only";
-    announcement.textContent = message;
-
-    document.body.appendChild(announcement);
-
-    setTimeout(() => {
-      if (document.body.contains(announcement)) {
-        document.body.removeChild(announcement);
-      }
-    }, 3000);
+    const announcer = window.accessibilityHelpers;
+    if (!announcer || typeof announcer.announce !== "function") {
+      logWarn("No shared announcer available; filter change not announced");
+      return;
+    }
+    announcer.announce(message);
   }
 
   // ============================================================================

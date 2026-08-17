@@ -517,12 +517,22 @@ export class DebugManager {
       const copyButton = document.createElement("button");
       copyButton.id = copyButtonId;
       copyButton.className = "copy-button";
-      copyButton.setAttribute(
-        "aria-label",
-        `Copy ${type} content to clipboard`
-      );
-      copyButton.setAttribute("title", `Copy ${type} content to clipboard`);
-      copyButton.innerHTML = '<span class="copy-icon">📋</span> Copy';
+      // SC 2.5.3: the visible word is "Copy", so no aria-label may replace it.
+      // The disambiguating wording moves INSIDE the button as visually-hidden
+      // text, which keeps the visible word contained in the accessible name and
+      // still tells a screen-reader user which of the three copy buttons this is.
+      // The title attribute is dropped outright — this project bans it (AGENTS.md).
+      //
+      // getIcon() is inlined rather than emitting a data-icon span: the
+      // auto-populator runs once at DOMContentLoaded, and this markup is injected
+      // long afterwards, so a data-icon span would never receive its SVG.
+      const clipboardIcon =
+        typeof window.getIcon === "function"
+          ? window.getIcon("clipboard")
+          : "";
+      copyButton.innerHTML =
+        clipboardIcon +
+        ` Copy <span class="visually-hidden">— the ${type} content, to the clipboard</span>`;
 
       // Add styling
       copyButton.style.cssText = `

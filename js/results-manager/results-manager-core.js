@@ -639,9 +639,41 @@ class ResultsManagerCore {
     // ✅ Stage 3A: Bridge coordination will be established on-demand only
     // (No longer establishing bridge reference during initialization to prevent queue messages)
 
+    // Mount the accessible "Export to SCORM/HTML" control beside the results.
+    this.mountScormExportControl();
+
     logInfo(
       "Core module fully initialised with deferred bridge coordination (Stage 3A)"
     );
+  }
+
+  /**
+   * Mount the shared, accessible "Export to SCORM/HTML" control beside the
+   * results region. Lazily imports the ESM control (dynamic import resolves
+   * relative to this module) so the export library only loads once results are
+   * shown. Content is the rendered results HTML. Idempotent.
+   * @private
+   */
+  mountScormExportControl() {
+    if (this._scormExportControl || !this.resultsContent) return;
+    import("../scorm-export/export-control.js")
+      .then(({ mountExportControl }) => {
+        if (this._scormExportControl || !this.resultsContent) return;
+        this._scormExportControl = mountExportControl({
+          container: this.resultsContent.parentNode || this.resultsContent,
+          getContent: () =>
+            this.resultsContent ? this.resultsContent.innerHTML : "",
+          format: "html",
+          getTitle: () => {
+            const heading = this.resultsHeading;
+            const text =
+              heading && heading.textContent ? heading.textContent.trim() : "";
+            return text && text.toLowerCase() !== "results" ? text : "AI response";
+          },
+          idPrefix: "results-scorm-export",
+        });
+      })
+      .catch((err) => logError("SCORM export control failed to load:", err));
   }
 
   /**

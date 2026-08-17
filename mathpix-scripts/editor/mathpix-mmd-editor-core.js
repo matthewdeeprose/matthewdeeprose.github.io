@@ -105,6 +105,16 @@ function logDebug(message, ...args) {
  * @constant {Object} EDITOR_CONFIG
  * @description Configuration for the MMD Editor module
  */
+
+/**
+ * @constant {boolean} ENABLE_MMD_SCORM_EXPORT
+ * @description Feature flag for the "Export to SCORM/HTML" control mounted beside
+ * the MMD preview. Disabled for now — the control is not wanted at this stage.
+ * Flip to true to re-enable (added in commit 8bfa4b3); mountScormExportControl()
+ * early-returns while this is false so no scorm-export-control div is inserted.
+ */
+const ENABLE_MMD_SCORM_EXPORT = false;
+
 // ============================================================================
 // SVG Icon Registry
 // ============================================================================
@@ -237,10 +247,50 @@ class MMDEditorCore {
     // Attach event listeners
     this.attachEventListeners();
 
+    // Mount the accessible "Export to SCORM/HTML" control beside the preview.
+    this.mountScormExportControl();
+
     this.isInitialised = true;
     logInfo("MMD Editor initialised successfully");
 
     return true;
+  }
+
+  /**
+   * Mount the shared, accessible "Export to SCORM/HTML" control beside the MMD
+   * preview. The control is lazily imported (dynamic import resolves relative to
+   * this ES module) so the export library only loads once the editor is used.
+   * Content is the MMD source (live textarea edits, else the loaded MMD), exported
+   * as Markdown so the library re-renders it via mathpix. Idempotent.
+   * @private
+   */
+  mountScormExportControl() {
+    // Feature-flagged off — not wanted at this stage (see ENABLE_MMD_SCORM_EXPORT).
+    if (!ENABLE_MMD_SCORM_EXPORT) return;
+    if (this._scormExportControl) return;
+    const anchor = this.elements.previewContent || this.elements.contentArea;
+    if (!anchor) return;
+    import("../../js/scorm-export/export-control.js")
+      .then(({ mountExportControl }) => {
+        if (this._scormExportControl) return;
+        const mmdSource = () => {
+          const ta = this.elements.textarea;
+          if (ta && ta.value && ta.value.trim()) return ta.value;
+          const code = this.elements.codeElement;
+          return code ? code.textContent || "" : "";
+        };
+        this._scormExportControl = mountExportControl({
+          container: anchor.parentNode || anchor,
+          getContent: mmdSource,
+          format: "markdown",
+          getTitle: () => {
+            const heading = (mmdSource().match(/^\s*#\s+(.+)$/m) || [])[1];
+            return (heading || "MathPix document").trim();
+          },
+          idPrefix: "mmd-scorm-export",
+        });
+      })
+      .catch((err) => logError("SCORM export control failed to load:", err));
   }
 
   /**

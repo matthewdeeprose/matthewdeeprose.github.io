@@ -469,10 +469,20 @@
         }
       }
 
-      // Fetch mmd.zip from API
-      const apiBase =
-        credentials.apiBase || "https://eu-central-1.api.mathpix.com/v3";
-      const zipUrl = `${apiBase}/pdf/${pdfId}.mmd.zip`;
+      // Fetch mmd.zip from API. The region must come from the caller: this is
+      // an authenticated request for document content, and a guessed hostname
+      // would send it to whichever region the guess named rather than the one
+      // that processed the job — a wrong result at best, and a data-residency
+      // breach at worst. Fall back to the public CDN rather than guess.
+      if (!credentials.apiBase) {
+        logError(
+          "downloadFromMmdZip() called without credentials.apiBase — cannot " +
+            "determine the processing region. Falling back to direct CDN download.",
+        );
+        return this.downloadAll(registry, baseName);
+      }
+
+      const zipUrl = `${credentials.apiBase}/pdf/${pdfId}.mmd.zip`;
 
       let zipBlob;
       try {
@@ -1260,6 +1270,16 @@
     }
     console.log("Credentials: ✅");
 
+    // The mmd.zip fetch is region-scoped — results are only queryable from the
+    // endpoint that processed them, so the live apiBase must travel with the
+    // credentials rather than being guessed downstream.
+    const apiBase = controller.apiClient?.apiBase;
+    if (!apiBase) {
+      console.error("❌ API base URL not resolved on API client.");
+      return;
+    }
+    console.log(`Endpoint: ${apiBase}`);
+
     // Build registry from current MMD
     const mmdEl = document.querySelector("#mathpix-pdf-content-mmd");
     const mmdContent = mmdEl?.textContent || mmdEl?.innerText;
@@ -1288,7 +1308,7 @@
     const result = await downloader.downloadFromMmdZip(
       registry,
       pdfId,
-      { appId, appKey },
+      { appId, appKey, apiBase },
       "test-document",
     );
 

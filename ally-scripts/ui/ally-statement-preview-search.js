@@ -69,7 +69,8 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
 
   const CONFIG = {
     MIN_SEARCH_LENGTH: 2,
-    MAX_RESULTS: 10,
+    INITIAL_RESULTS: 10, // Rows rendered on the first pass
+    RESULTS_INCREMENT: 10, // Rows revealed per "Show more" / Down arrow at the end
     DEBOUNCE_MS: 150,
     HIGHLIGHT_CLASS: "ally-search-highlight",
   };
@@ -86,7 +87,12 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
   let debounceTimer = null;
   let selectedCourse = null;
   let activeIndex = -1;
+
+  // Paging state: allResults is the full match set for the current query,
+  // currentResults only the rows actually rendered (keyboard indices align to it)
+  let allResults = [];
   let currentResults = [];
+  let currentQuery = "";
 
   // Callbacks for external integration
   let onSelectionChangeCallback = null;
@@ -101,6 +107,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     searchIcon: null,
     executeButton: null,
     executeHelp: null,
+    moreButton: null,
   };
 
   // ========================================================================
@@ -129,6 +136,10 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     );
     elements.executeButton = document.getElementById(ID_PREFIX + "execute");
     elements.executeHelp = document.getElementById(ID_PREFIX + "execute-help");
+
+    // Optional - the module pages results without it if the markup is absent
+    elements.moreButton = document.getElementById(ID_PREFIX + "search-more");
+
     const allFound =
       elements.searchInput && elements.resultsContainer && elements.resultsList;
 
@@ -156,7 +167,8 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
   /**
    * Searches courses by name or code
    * @param {string} query - Search query
-   * @returns {Array} Matching courses (limited to MAX_RESULTS)
+   * @returns {Array} All matching courses, sorted by relevance then term recency.
+   *   The result count is NOT capped here - showResults() pages the render.
    */
   function searchCourses(query) {
     if (!query || query.length < CONFIG.MIN_SEARCH_LENGTH) {
@@ -229,19 +241,16 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
 
     // Sort by relevance, then term recency, then code
     const sortedResults = sortResultsByTermRecency(results, query);
-    const limitedResults = sortedResults.slice(0, CONFIG.MAX_RESULTS);
 
     logDebug(
       "Found " +
-        results.length +
+        sortedResults.length +
         " courses for query: " +
         query +
-        ", returning " +
-        limitedResults.length +
-        " sorted by recency",
+        ", sorted by recency",
     );
 
-    return limitedResults;
+    return sortedResults;
   }
 
   /**
@@ -371,14 +380,151 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
   // ========================================================================
 
   /**
-   * Shows search results in the dropdown
-   * @param {Array} results - Search results
+   * Builds a single result option element
+   * @param {Object} course - Course result
+   * @param {number} index - Zero-based position within the full result set
+   * @returns {HTMLLIElement} The option element
+   */
+  function createResultOption(course, index) {
+    const li = document.createElement("li");
+    li.id = ID_PREFIX + "option-" + index;
+    li.className = "ally-course-search-option";
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", "false");
+
+    // Position within the FULL match set, not the rendered page, so a partially
+    // paged listbox announces "3 of 47" rather than "3 of 10"
+    li.setAttribute("aria-posinset", index + 1);
+    li.setAttribute("aria-setsize", allResults.length);
+    li.dataset.index = index;
+
+    // Create content with highlighting
+    const codeSpan = document.createElement("span");
+    codeSpan.className = "ally-course-code";
+    codeSpan.innerHTML = highlightMatch(course.code, currentQuery);
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "ally-course-name";
+    nameSpan.innerHTML = highlightMatch(course.name, currentQuery);
+
+    li.appendChild(codeSpan);
+    li.appendChild(document.createTextNode(" "));
+    li.appendChild(nameSpan);
+
+    // Add term name if available
+    if (course.termName) {
+      const termSpan = document.createElement("span");
+      termSpan.className = "ally-course-term";
+      termSpan.textContent = " (" + course.termName + ")";
+      li.appendChild(termSpan);
+    }
+
+    // Click handler
+    li.addEventListener("click", function () {
+      selectCourse(course);
+    });
+
+    return li;
+  }
+
+  /**
+   * Appends the next page of results to the listbox
+   *
+   * Appends rather than rebuilds so the scroll position survives and already-read
+   * rows are not re-announced.
+   *
+   * @param {number} count - Maximum number of rows to add
+   * @returns {number} Index of the first newly rendered row, or -1 if none added
+   */
+  function renderNextBatch(count) {
+    if (!elements.resultsList) return -1;
+
+    const startIndex = currentResults.length;
+    const batch = allResults.slice(startIndex, startIndex + count);
+
+    if (batch.length === 0) return -1;
+
+    batch.forEach(function (course, offset) {
+      const index = startIndex + offset;
+      elements.resultsList.appendChild(createResultOption(course, index));
+      currentResults.push(course);
+    });
+
+    return startIndex;
+  }
+
+  /**
+   * Updates the "Show more" footer button label and visibility
+   */
+  function updateMoreButton() {
+    if (!elements.moreButton) return;
+
+    const remaining = allResults.length - currentResults.length;
+
+    if (remaining <= 0) {
+      elements.moreButton.hidden = true;
+      elements.moreButton.textContent = "";
+      return;
+    }
+
+    const nextBatch = Math.min(CONFIG.RESULTS_INCREMENT, remaining);
+    elements.moreButton.textContent =
+      "Show " + nextBatch + " more (" + remaining + " remaining)";
+    elements.moreButton.hidden = false;
+  }
+
+  /**
+   * Reveals the next page of results
+   *
+   * Single entry point for both the footer button and Down arrow at the end of
+   * the rendered list.
+   *
+   * @param {Object} [options] - Reveal options
+   * @param {boolean} [options.focusFirstNew] - Move the active option to the
+   *   first newly revealed row (used by the keyboard path)
+   * @returns {boolean} True if more rows were revealed
+   */
+  function revealMoreResults(options) {
+    const settings = options || {};
+    const firstNewIndex = renderNextBatch(CONFIG.RESULTS_INCREMENT);
+
+    if (firstNewIndex === -1) return false;
+
+    updateMoreButton();
+
+    if (settings.focusFirstNew) {
+      setActiveOption(firstNewIndex);
+    }
+
+    updateStatus(
+      "Showing " +
+        currentResults.length +
+        " of " +
+        allResults.length +
+        " modules.",
+    );
+
+    logDebug(
+      "Revealed more results: " +
+        currentResults.length +
+        " of " +
+        allResults.length,
+    );
+
+    return true;
+  }
+
+  /**
+   * Shows search results in the dropdown, rendering the first page only
+   * @param {Array} results - Full search result set
    * @param {string} query - Original search query for highlighting
    */
   function showResults(results, query) {
     if (!elements.resultsList || !elements.resultsContainer) return;
 
-    currentResults = results;
+    allResults = results;
+    currentResults = [];
+    currentQuery = query;
     activeIndex = -1;
 
     // Clear existing results
@@ -386,47 +532,13 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
 
     if (results.length === 0) {
       elements.resultsContainer.hidden = true;
+      if (elements.moreButton) elements.moreButton.hidden = true;
       updateStatus("No courses found");
       return;
     }
 
-    // Build result items
-    results.forEach(function (course, index) {
-      const li = document.createElement("li");
-      li.id = ID_PREFIX + "option-" + index;
-      li.className = "ally-course-search-option";
-      li.setAttribute("role", "option");
-      li.setAttribute("aria-selected", "false");
-      li.dataset.index = index;
-
-      // Create content with highlighting
-      const codeSpan = document.createElement("span");
-      codeSpan.className = "ally-course-code";
-      codeSpan.innerHTML = highlightMatch(course.code, query);
-
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "ally-course-name";
-      nameSpan.innerHTML = highlightMatch(course.name, query);
-
-      li.appendChild(codeSpan);
-      li.appendChild(document.createTextNode(" "));
-      li.appendChild(nameSpan);
-
-      // Add term name if available
-      if (course.termName) {
-        const termSpan = document.createElement("span");
-        termSpan.className = "ally-course-term";
-        termSpan.textContent = " (" + course.termName + ")";
-        li.appendChild(termSpan);
-      }
-
-      // Click handler
-      li.addEventListener("click", function () {
-        selectCourse(course);
-      });
-
-      elements.resultsList.appendChild(li);
-    });
+    renderNextBatch(CONFIG.INITIAL_RESULTS);
+    updateMoreButton();
 
     // Show results and update ARIA
     elements.resultsContainer.hidden = false;
@@ -434,8 +546,16 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
       elements.searchInput.setAttribute("aria-expanded", "true");
     }
 
+    // Report the rendered count against the true total - reporting the rendered
+    // count alone would understate how many modules actually matched
+    const hasMore = currentResults.length < allResults.length;
     updateStatus(
-      results.length + " courses found. Use arrow keys to navigate.",
+      "Showing " +
+        currentResults.length +
+        " of " +
+        allResults.length +
+        " modules. Use arrow keys to navigate." +
+        (hasMore ? " More matches are available." : ""),
     );
   }
 
@@ -446,12 +566,17 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     if (elements.resultsContainer) {
       elements.resultsContainer.hidden = true;
     }
+    if (elements.moreButton) {
+      elements.moreButton.hidden = true;
+    }
     if (elements.searchInput) {
       elements.searchInput.setAttribute("aria-expanded", "false");
       elements.searchInput.removeAttribute("aria-activedescendant");
     }
     activeIndex = -1;
+    allResults = [];
     currentResults = [];
+    currentQuery = "";
   }
 
   /**
@@ -707,36 +832,28 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
         hideResults();
         break;
 
-      case "Tab":
-        hideResults();
-        break;
+      // Tab is deliberately not handled - letting focus move naturally is what
+      // makes the "Show more" footer button reachable. The container's focusout
+      // handler closes the dropdown once focus leaves it entirely.
     }
   }
 
   /**
-   * Navigates through results list
-   * @param {number} direction - 1 for down, -1 for up
+   * Makes the option at the given index the active one
+   *
+   * Shared by arrow-key navigation and the reveal-more path so both keep
+   * aria-activedescendant, aria-selected and scrolling consistent.
+   *
+   * @param {number} index - Index within currentResults
    */
-  function navigateResults(direction) {
-    if (!currentResults.length) return;
+  function setActiveOption(index) {
+    if (!elements.resultsList) return;
 
-    // Calculate new index
-    let newIndex = activeIndex + direction;
+    activeIndex = index;
 
-    // Wrap around
-    if (newIndex < 0) {
-      newIndex = currentResults.length - 1;
-    } else if (newIndex >= currentResults.length) {
-      newIndex = 0;
-    }
-
-    // Update active index
-    activeIndex = newIndex;
-
-    // Update visual state
     const options = elements.resultsList.querySelectorAll('[role="option"]');
-    options.forEach(function (option, index) {
-      if (index === activeIndex) {
+    options.forEach(function (option, optionIndex) {
+      if (optionIndex === activeIndex) {
         option.classList.add("ally-course-search-option-active");
         option.setAttribute("aria-selected", "true");
         option.scrollIntoView({ block: "nearest" });
@@ -750,6 +867,38 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
         option.setAttribute("aria-selected", "false");
       }
     });
+  }
+
+  /**
+   * Navigates through results list
+   * @param {number} direction - 1 for down, -1 for up
+   */
+  function navigateResults(direction) {
+    if (!currentResults.length) return;
+
+    // At the end of the rendered rows with more to come, reveal instead of
+    // wrapping - wrap-around resumes once everything is rendered
+    const atEnd = activeIndex === currentResults.length - 1;
+    if (
+      direction === 1 &&
+      atEnd &&
+      currentResults.length < allResults.length &&
+      revealMoreResults({ focusFirstNew: true })
+    ) {
+      return;
+    }
+
+    // Calculate new index
+    let newIndex = activeIndex + direction;
+
+    // Wrap around
+    if (newIndex < 0) {
+      newIndex = currentResults.length - 1;
+    } else if (newIndex >= currentResults.length) {
+      newIndex = 0;
+    }
+
+    setActiveOption(newIndex);
   }
 
   // ========================================================================
@@ -838,6 +987,55 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
       elements.clearButton.addEventListener("click", handleClear);
     }
 
+    // Pointer interaction inside the dropdown must not blur the input, or the
+    // focusout handler below would close the list mid-click
+    if (elements.resultsContainer) {
+      elements.resultsContainer.addEventListener("mousedown", function (event) {
+        event.preventDefault();
+      });
+    }
+
+    // "Show more" footer button - reveals the next page and keeps focus so it
+    // can be pressed repeatedly
+    if (elements.moreButton) {
+      elements.moreButton.addEventListener("click", function () {
+        const remaining = allResults.length - currentResults.length;
+        const isFinalBatch = remaining <= CONFIG.RESULTS_INCREMENT;
+
+        // The button hides itself on the final batch. Hand focus back FIRST -
+        // hiding a focused element drops focus to <body>, which would trip the
+        // focusout handler and close the whole dropdown.
+        if (isFinalBatch && elements.searchInput) {
+          elements.searchInput.focus();
+        }
+
+        revealMoreResults();
+      });
+
+      elements.moreButton.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          hideResults();
+          if (elements.searchInput) {
+            elements.searchInput.focus();
+          }
+        }
+      });
+    }
+
+    // Close when focus leaves the search container entirely (covers Tab and
+    // Shift+Tab, while allowing focus to reach the footer button)
+    const searchContainer = document.getElementById(
+      ID_PREFIX + "search-container",
+    );
+    if (searchContainer) {
+      searchContainer.addEventListener("focusout", function (event) {
+        if (!searchContainer.contains(event.relatedTarget)) {
+          hideResults();
+        }
+      });
+    }
+
     // Close on outside click
     document.addEventListener("click", function (event) {
       const container = document.getElementById(ID_PREFIX + "search-container");
@@ -873,7 +1071,9 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
       if (force) {
         initialised = false;
         activeIndex = -1;
+        allResults = [];
         currentResults = [];
+        currentQuery = "";
         logInfo("Forcing reinitialisation (preserving selected course)...");
       }
 
@@ -1014,6 +1214,8 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
         initialised: initialised,
         selectedCourse: selectedCourse,
         currentResultsCount: currentResults.length,
+        renderedCount: currentResults.length,
+        totalCount: allResults.length,
         activeIndex: activeIndex,
         elementsFound: {
           searchInput: !!elements.searchInput,
@@ -1022,6 +1224,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
           selectedDisplay: !!elements.selectedDisplay,
           clearButton: !!elements.clearButton,
           executeButton: !!elements.executeButton,
+          moreButton: !!elements.moreButton,
         },
       };
     },
@@ -1121,6 +1324,44 @@ window.testAllyStatementPreviewSearch = function () {
   } else {
     console.warn("ALLY_COURSES not available - skipping search tests");
   }
+
+  // Paging structure tests - the "Show more" footer must sit OUTSIDE the
+  // listbox, or the ARIA combobox pattern breaks (only options may be children)
+  const spListbox = document.getElementById("ally-sp-search-listbox");
+  const spMoreButton = document.getElementById("ally-sp-search-more");
+  const spResults = document.getElementById("ally-sp-search-results");
+
+  test("Show more button exists (ally-sp-search-more)", spMoreButton !== null);
+  test(
+    "Show more button is NOT inside the listbox",
+    spMoreButton !== null && spListbox !== null && !spListbox.contains(spMoreButton),
+  );
+  test(
+    "Show more button is inside the results container",
+    spMoreButton !== null && spResults !== null && spResults.contains(spMoreButton),
+  );
+  test(
+    "Show more button is a real button element",
+    spMoreButton !== null && spMoreButton.tagName === "BUTTON",
+  );
+
+  // The list must own the scroll, otherwise the footer scrolls out of view
+  if (spListbox) {
+    const listboxOverflow = window.getComputedStyle(spListbox).overflowY;
+    test(
+      "listbox owns the vertical scroll",
+      listboxOverflow === "auto" || listboxOverflow === "scroll",
+    );
+  }
+
+  // Paging state is reported for console inspection
+  const pagingInfo = ALLY_STATEMENT_PREVIEW_SEARCH.getDebugInfo();
+  test("debugInfo reports renderedCount", "renderedCount" in pagingInfo);
+  test("debugInfo reports totalCount", "totalCount" in pagingInfo);
+  test(
+    "renderedCount never exceeds totalCount",
+    pagingInfo.renderedCount <= pagingInfo.totalCount,
+  );
 
   // Debug info test
   const debugInfo = ALLY_STATEMENT_PREVIEW_SEARCH.getDebugInfo();

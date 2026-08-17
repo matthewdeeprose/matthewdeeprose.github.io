@@ -6,13 +6,15 @@
  * `mathpixWipe()`. It is NOT wired into tools.html and is NOT a production
  * module — it is a testing aid, the same shape as the workflow tracer.
  *
- * It clears three independent storage families that the app keeps separate:
+ * It clears four independent storage families that the app keeps separate:
  *   1. The live editor draft        — the single "mathpix-mmd-session" key.
  *   2. The saved resume snapshots    — every "mathpix-resume-session-*" key.
  *   3. The Context-tab settings      — "mathpix-context-current" and
  *                                      "mathpix-context-current-source".
+ *   4. The registry survival mirror  — "mathpix-registry-current" (the quota-safe
+ *                                      provenance snapshot that survives a reload).
  *
- * By default it wipes all three and reports exactly what it removed. You can
+ * By default it wipes all four and reports exactly what it removed. You can
  * scope it to one or more families, do a dry run, or include EVERY mathpix-*
  * key for a total reset.
  *
@@ -71,7 +73,12 @@ const mathpixWipe = (function () {
   // descriptions. (Stage 9 mathpix-context-current + its companion source key.)
   const CONTEXT_KEYS = ["mathpix-context-current", "mathpix-context-current-source"];
 
-  const FAMILY_NAMES = ["draft", "resume", "context"];
+  // The registry reload-survival mirror: a quota-safe snapshot of the image
+  // registry (provenance *Source labels plus content) that survives a reload and
+  // re-hydrates on recovery. (mathpix-image-registry.js MIRROR_REGISTRY_KEY.)
+  const REGISTRY_KEYS = ["mathpix-registry-current"];
+
+  const FAMILY_NAMES = ["draft", "resume", "context", "registry"];
 
   // --- Helpers -------------------------------------------------------------
   function safeKeys() {
@@ -97,7 +104,7 @@ const mathpixWipe = (function () {
     const keys = safeKeys();
     if (keys === null) return null;
 
-    const buckets = { draft: [], resume: [], context: [], other: [] };
+    const buckets = { draft: [], resume: [], context: [], registry: [], other: [] };
 
     keys.forEach((key) => {
       if (key === DRAFT_KEY) {
@@ -106,6 +113,8 @@ const mathpixWipe = (function () {
         buckets.resume.push(key);
       } else if (CONTEXT_KEYS.indexOf(key) !== -1) {
         buckets.context.push(key);
+      } else if (REGISTRY_KEYS.indexOf(key) !== -1) {
+        buckets.registry.push(key);
       } else if (allMathpix && key.indexOf("mathpix") === 0) {
         // Only swept when the caller explicitly opts into allMathpix.
         buckets.other.push(key);

@@ -735,6 +735,100 @@
   }
 
   // ============================================================================
+  // PUBLIC: captureCaptionsIntoEmptyTitles
+  // ============================================================================
+
+  /**
+   * Capture each figure's `\caption{}` into its registry entry's `title` when
+   * that title is still empty, stamping the captured value with source
+   * "original". Reuses `findImage` + `detectFigureContext` so the
+   * caption-to-image association is identical to the rest of the serialiser.
+   *
+   * Only empty titles are filled, and a frozen source is never disturbed: an
+   * entry whose title already holds text, or whose `titleSource` is "user" or
+   * "ai-reviewed", is left untouched so a human-authored or human-approved
+   * caption is never overwritten.
+   *
+   * Intended to run before the chemistry description writer so a real OCR
+   * caption present in the MMD seeds the title ahead of any synthesised one.
+   *
+   * @param {string} mmd
+   * @param {Object} registry - MathPixImageRegistry instance (exposes getAllImages()).
+   * @returns {{ captured: number, skipped: number, examined: number }}
+   */
+  function captureCaptionsIntoEmptyTitles(mmd, registry) {
+    if (
+      typeof mmd !== "string" ||
+      mmd.length === 0 ||
+      !registry ||
+      typeof registry.getAllImages !== "function"
+    ) {
+      logWarn(
+        "captureCaptionsIntoEmptyTitles(): mmd must be a non-empty string and registry must expose getAllImages()",
+      );
+      return { captured: 0, skipped: 0, examined: 0 };
+    }
+
+    const lines = mmd.split("\n");
+    let captured = 0;
+    let skipped = 0;
+    let examined = 0;
+
+    for (const entry of registry.getAllImages()) {
+      examined++;
+      const title = typeof entry.title === "string" ? entry.title : "";
+
+      // Fill an empty title only, and never touch a frozen source.
+      if (
+        title !== "" ||
+        entry.titleSource === "user" ||
+        entry.titleSource === "ai-reviewed"
+      ) {
+        skipped++;
+        logDebug(
+          `captureCaptionsIntoEmptyTitles(): skipped entry ${entry.id || "?"} (title present or frozen source "${entry.titleSource}")`,
+        );
+        continue;
+      }
+
+      const loc = findImage(mmd, entry, null);
+      if (!loc.found) {
+        skipped++;
+        logDebug(
+          `captureCaptionsIntoEmptyTitles(): image not found for entry ${entry.id || "?"}`,
+        );
+        continue;
+      }
+
+      const ctx = detectFigureContext(lines, loc.lineIndex);
+      if (
+        ctx.inFigure &&
+        ctx.captionIndex !== null &&
+        typeof ctx.captionText === "string" &&
+        ctx.captionText !== ""
+      ) {
+        registry.updateTitle(entry.id, ctx.captionText, "original");
+        captured++;
+        logDebug(
+          `captureCaptionsIntoEmptyTitles(): captured caption for entry ${entry.id || "?"} → "${ctx.captionText}"`,
+        );
+      } else {
+        // No figure caption to capture — count as skipped so
+        // examined === captured + skipped holds.
+        skipped++;
+        logDebug(
+          `captureCaptionsIntoEmptyTitles(): no figure caption for entry ${entry.id || "?"}`,
+        );
+      }
+    }
+
+    logInfo(
+      `captureCaptionsIntoEmptyTitles(): captured=${captured} skipped=${skipped} examined=${examined}`,
+    );
+    return { captured, skipped, examined };
+  }
+
+  // ============================================================================
   // STAGE 2.A — APPENDIX CONSTANTS
   // ============================================================================
 
@@ -1217,6 +1311,7 @@
 
   window.MathPixAltTextMMDSerialiser = {
     parseCaptions,
+    captureCaptionsIntoEmptyTitles,
     writeAllCaptions,
     writeCaption,
     findImage,

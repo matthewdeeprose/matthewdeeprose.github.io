@@ -69,6 +69,20 @@ const UniversalModal = (function () {
 
       // Status positioning properties
       this.statusPositionHandlers = new Map();
+
+      // Background-close handlers, keyed by modalId. Separate from
+      // activeModals so that entry's shape is untouched, and modelled on
+      // statusPositionHandlers above: populated at registration, drained at
+      // close. Only modals with background close enabled ever appear here.
+      this.backgroundCloseHandlers = new Map();
+
+      // The elements each modal's own sweep made inert, keyed by modalId.
+      // Live element references, never ids — several swept elements (the
+      // toggletip live region among them) have no id. Modelled on the two Maps
+      // above: populated at open, drained at close. An entry is always written,
+      // even when the sweep added nothing, because its presence is what records
+      // that this modal is still open.
+      this.modalInertElements = new Map();
       this.resizeObserver = null;
       this.intersectionObserver = null;
     }
@@ -140,7 +154,13 @@ const UniversalModal = (function () {
       document.body.style.width = this.originalBodyWidth || "";
 
       if (this.originalScrollPosition !== null) {
-        window.scrollTo(0, this.originalScrollPosition);
+        // Restore the pre-open scroll position instantly. The global
+        // html { scroll-behavior: smooth } rule would otherwise animate this
+        // jump over ~400ms on every modal close; "instant" defeats that for
+        // this one call, matching the established pattern used elsewhere in the
+        // repo. Reduced-motion users are already served by the global
+        // scroll-behavior: auto override, so no separate guard is needed here.
+        window.scrollTo({ top: this.originalScrollPosition, left: 0, behavior: "instant" });
       }
 
       this.originalBodyOverflow = null;
@@ -285,6 +305,25 @@ const UniversalModal = (function () {
 
       this.statusPositionHandlers.delete(modalId);
       logDebug(`Status position handlers cleaned up for modal: ${modalId}`);
+    }
+
+    /**
+     * Remove this modal's background-close listener from `document`.
+     *
+     * The flag is deliberately NOT re-evaluated here: a modal that never
+     * registered one has no map entry, so this is a no-op for it. That keeps
+     * teardown correct even if the options object a caller passed is mutated
+     * between open and close.
+     *
+     * @param {string} modalId
+     */
+    cleanupBackgroundCloseHandler(modalId) {
+      const handler = this.backgroundCloseHandlers.get(modalId);
+      if (!handler) return;
+
+      document.removeEventListener("click", handler);
+      this.backgroundCloseHandlers.delete(modalId);
+      logDebug(`Background-close handler cleaned up for modal: ${modalId}`);
     }
 
     show(config) {
@@ -674,11 +713,38 @@ const UniversalModal = (function () {
     }
 
     addModalEventListeners(modal, modalId, options, resolve) {
-      modal.addEventListener("click", (e) => {
-        if (e.target === modal && options.allowBackgroundClose !== false) {
-          this.close(modalId, "background");
-        }
-      });
+      // Background-close listener, attached ONLY when background close is
+      // enabled. The guard is the exact expression the handler itself used to
+      // test, so wherever it is false the handler could never have acted and
+      // the listener was unreachable — removing it there changes no behaviour.
+      //
+      // Why it is worth not attaching: a screen-reader listen against this
+      // repo's probe fixture (a11y-fixtures/nvda-modal-probe.html, 27 July
+      // 2026) compared two dialogs identical but for this listener, and the
+      // state reported for the focused element inside them differed. That is
+      // the whole of what was measured; nothing here predicts what any given
+      // reader or version will say.
+      // It is registered on `document`, not on the dialog. A backdrop click
+      // still targets the dialog element, so the handler is unchanged and the
+      // stacked case still works — each open modal registers its own handler
+      // and each only answers to its own element. The cost is that a listener
+      // on `document` outlives the dialog, so it MUST be removed on close;
+      // cleanupBackgroundCloseHandler does that from finishClose, following the
+      // statusPositionHandlers pattern.
+      if (options.allowBackgroundClose !== false) {
+        const backgroundClickHandler = (e) => {
+          // Still required. Clicks on the modal's own content bubble up to the
+          // dialog element, so only a click whose target IS the dialog itself
+          // is a backdrop click.
+          if (e.target === modal) {
+            this.close(modalId, "background");
+          }
+        };
+
+        // Stored before attaching, so the handle always exists for teardown.
+        this.backgroundCloseHandlers.set(modalId, backgroundClickHandler);
+        document.addEventListener("click", backgroundClickHandler);
+      }
 
       modal.addEventListener("keydown", (e) => {
         if (e.key === "Tab") {
@@ -695,14 +761,26 @@ const UniversalModal = (function () {
       }
 
       modal.showModal();
-      this.makeBackgroundInert();
+      this.makeBackgroundInert(modalId);
 
       requestAnimationFrame(() => {
         this.setupStatusPositionHandlers(modal, modalId);
         this.updateStatusPosition(modalId);
 
-        const heading = modal.querySelector(".universal-modal-heading");
-        if (heading) heading.focus();
+        // Focus the dialog element itself rather than its <h1>. A listen
+        // against this repo's own probe fixture (a11y-fixtures/nvda-modal-
+        // probe.html, 28 July 2026) compared the two landing places: focusing
+        // the dialog produced two utterances of the name in one pass, against
+        // four across two passes when the heading was focused. That is the
+        // whole of what was measured, on one reader and one build; nothing
+        // here predicts what any other reader or version will say.
+        //
+        // The heading keeps tabindex="-1" and keeps supplying the dialog's
+        // aria-labelledby — neither is touched by this call. No tabindex is
+        // needed on the dialog: <dialog> reports tabIndex -1 with no attribute
+        // set (measured 28 July 2026), so it is already programmatically
+        // focusable, and adding one would put it in trapFocus's list.
+        if (typeof modal.focus === "function") modal.focus();
       });
 
       // Notify other components (like toggletips) that a modal has opened
@@ -736,6 +814,8 @@ const UniversalModal = (function () {
       const modal = modalData.element;
 
       this.cleanupStatusPositionHandlers(modalId);
+      this.cleanupBackgroundCloseHandler(modalId);
+      this.cleanupModalInert(modalId);
 
       modal.close();
       if (modal.parentNode) modal.parentNode.removeChild(modal);
@@ -746,16 +826,180 @@ const UniversalModal = (function () {
         ? Array.from(this.activeModals.values()).pop().element
         : null;
 
+      // RESOLVED ONCE, HERE, and used by both arms of the restore below.
+      // (Added 14 August 2026, parcel F-1.)
+      //
+      // Deliberately NOT re-read inside the branch after a focus() attempt: an
+      // attempt that moved focus into a different dialog would make a later
+      // read stale, and the whole point of attempt-and-verify is that the
+      // attempt has already happened by the time the branch decides anything.
+      //
+      // activeModalElement MEANS LAST-OPENED, not visual top and not
+      // next-in-order: it is Array.from(this.activeModals.values()).pop()
+      // .element over an insertion-ordered Map, so .pop() yields the most
+      // recently opened survivor. That is the right question for the top layer,
+      // which native <dialog> orders by showModal() call order. Note that this
+      // same file computes a DIFFERENT successor in cleanupModalInert — heirId,
+      // the OLDEST modal opened after the closing one — because inert custody
+      // is a different question. The two agree at stack depth two and can
+      // diverge at depth three or on an out-of-order close; the F-1 captures
+      // reached NEITHER, so the divergence is real but unmeasured here.
+      const remainingModal = this.hasActiveModal ? this.activeModalElement : null;
+
+      // Scroll prevention is still a whole-stack concern — it is a single set of
+      // <body> styles owned by the first modal to open, so it can only be undone
+      // once the stack empties. Inert is no longer restored here: cleanupModalInert
+      // above has already released exactly what this modal added, and the
+      // document-wide `[inert]` strip that used to live here destroyed inert set
+      // by owners outside UniversalModal (the MathPix fullscreen viewer sets its
+      // own, on its own captured list) as well as inert present in authored
+      // markup.
       if (!this.hasActiveModal) {
-        this.restoreBackground();
         this.restoreBackgroundScroll();
       }
 
-      if (
-        this.originalFocus &&
-        typeof this.originalFocus.focus === "function"
-      ) {
-        this.originalFocus.focus();
+      // Restore focus. Three tiers (10 July 2026), plus a SURVIVING-MODAL
+      // FALLBACK added 14 August 2026 (parcel F-1) that fires ONLY where a tier
+      // below it would otherwise land nothing:
+      //  1. The saved opener, if it still exists, is connected, and is not
+      //     <body> or the skip-link (a captured skip-link/body means the modal
+      //     was opened without a focused trigger — restoring there reproduces
+      //     the focus-at-top bug).
+      //  2. Otherwise the #main landmark, so focus lands at the start of the
+      //     main content rather than the page top. This covers the case where
+      //     the opener was removed before close (e.g. deleting every saved
+      //     session removes the button that opened the manager). #main is the
+      //     one always-present, always-visible, id-stable anchor on the page.
+      //     tabindex="-1" is set at runtime (native <main> is not focusable),
+      //     and { preventScroll: true } stops the focus yanking the viewport,
+      //     which would undo the instant scroll-restore above.
+      //  3. If neither is reachable, focus is left to the browser's native
+      //     <dialog> handling.
+      //
+      // WHY THE FALLBACK EXISTS, and what it does NOT do. It does NOT take
+      // focus away from the opener: tier 1 runs first and unchanged, and where
+      // tier 1 lands, nothing else happens. An earlier version of this parcel
+      // put the surviving dialog FIRST and was withdrawn, because on the
+      // measured journeys it moved focus off the control the person had just
+      // pressed and onto the dialog, losing their position in an eleven-item
+      // grid. That was a regression traded for an accident, which is a worse
+      // deal than the accident.
+      //
+      // WHAT IT DOES CLOSE, measured 14 August 2026 on the images-remain delete
+      // (Remove a card, then Yes). Without the fallback, refresh() rebuilds the
+      // grid, so the saved opener is DISCONNECTED, tier 1 is skipped, and tier 2
+      // aims at #main — which is inert while the manager is open — so nothing
+      // lands and focus sits on <body>, where removeChild left it. Focus was
+      // observed passing through <body> at +1419ms before the image manager's
+      // own g-9b landing recovered it at +1477ms. With the fallback there is no
+      // <body> window at all.
+      //   ⚠ LIMITS OF THAT MEASUREMENT, so it is not over-read: n=1 per
+      //   condition, the activeElement poll STARVED on the with-fallback arm
+      //   (first sample at +571ms), so only the SETTLED outcome is solid and
+      //   the timings are indicative. Both arms settled identically, on the
+      //   next card's alt button — the fallback did NOT disturb the g-9b
+      //   landing, which was measured and HEARD on 12 August 2026.
+      const opener = this.originalFocus;
+      const skipLink = document.getElementById("skipToContent");
+      const openerUsable =
+        opener &&
+        typeof opener.focus === "function" &&
+        opener.isConnected &&
+        opener !== document.body &&
+        opener !== skipLink;
+
+      // The surviving-modal fallback, defined once and used by both arms so the
+      // two cannot drift apart.
+      //
+      // ⚠ NAMED CONNECTION — READ THIS BEFORE CHANGING THE 300ms CLOSE IN
+      // mathpix-scripts/ui/components/mathpix-image-manager-ui.js.
+      //
+      // That file's MathPixImageManagerUI._returnFocus() focuses its captured
+      // trigger, #resume-manage-images-btn. It runs from the show() promise
+      // reaction — Modal.prototype.open attaches .then, and modalData.resolve
+      // below enqueues it — so it runs AFTER this entire synchronous body and
+      // therefore LANDS LAST AND WINS. Measured in the F-1 before capture at
+      // +1080ms against tier 1 at +1068ms, both aiming at the same element.
+      //
+      // Today that redundancy is harmless. It stops being harmless if the image
+      // manager itself ever closes while another modal REMAINS on the stack:
+      // this fallback would aim at the surviving dialog, and _returnFocus would
+      // then yank focus to #resume-manage-images-btn, which at that moment sits
+      // behind the top layer and is unreachable — a focus call that lands
+      // nowhere.
+      //
+      // AND IT WOULD BE SILENT. The identity check below would have already
+      // passed, because at that instant the fallback had genuinely landed;
+      // _returnFocus undoes it afterwards, outside anything this method can
+      // see. The failure would read clean from here.
+      //
+      // The ONLY thing preventing it today is the last-image path in that
+      // file's handleDelete(), which closes the manager via
+      // setTimeout(() => this.close(), 300) — and whose own comment records
+      // that the delay exists so the confirm has left the stack first. Shorten
+      // or remove that delay and this becomes reachable.
+      const focusSurvivingModal = () => {
+        if (typeof remainingModal.focus === "function") {
+          remainingModal.focus();
+        }
+
+        // Verified by IDENTITY, immediately, and never retried. Identity is
+        // DELIBERATE rather than a containment test: no opener reachable in
+        // this app can delegate focus to a descendant — there is no
+        // attachShadow and no delegatesFocus anywhere in the shipped tree, the
+        // one custom element carries no shadow root and no tabindex, a <label>
+        // is not focusable so it can never be the opener, and a native <dialog>
+        // focused by .focus() lands on itself. An opener that COULD delegate
+        // would need this test revisited.
+        //
+        // The two ways the call can fail share no attribute: an inert ancestor
+        // is readable from the DOM, a top-layer block is not, and
+        // closest("[inert]") passes the second one clean — measured 14 August
+        // 2026 on a control inside a lower dialog, which read insideInert false
+        // while being unreachable. Only comparing document.activeElement
+        // catches both. No retry and no onward fallback: the tiers below would
+        // put focus behind the very dialog that is still open.
+        if (document.activeElement !== remainingModal) {
+          logWarn(
+            `Modal ${modalId} closed with ${this.activeModals.size} modal(s) still open, ` +
+              `but focus did not land on the remaining modal (${
+                remainingModal.id || "no id"
+              }); document.activeElement is ${
+                document.activeElement
+                  ? document.activeElement.tagName.toLowerCase()
+                  : "null"
+              }`,
+          );
+        }
+      };
+
+      if (openerUsable) {
+        // ATTEMPT-AND-VERIFY. The attempt tests the real thing rather than a
+        // proxy for it, and a focus() call on a top-layer-blocked element was
+        // measured to be a complete no-op — focus does not move at all, so
+        // attempting costs nothing and cannot leave focus anywhere worse.
+        opener.focus();
+
+        // The ONLY new behaviour on this arm, and it is unreachable unless the
+        // attempt failed. Where tier 1 lands — every journey either F-1 capture
+        // could reach — nothing below runs and the outcome is byte-identical to
+        // the pre-parcel build.
+        if (remainingModal && document.activeElement !== opener) {
+          focusSurvivingModal();
+        }
+      } else if (remainingModal) {
+        // Tier 1 was skipped and tier 2 cannot land: #main is inert while any
+        // modal is open. Without this arm focus stays wherever removeChild left
+        // it, which is <body>.
+        focusSurvivingModal();
+      } else {
+        const main = document.getElementById("main");
+        if (main) {
+          if (!main.hasAttribute("tabindex")) {
+            main.setAttribute("tabindex", "-1");
+          }
+          main.focus({ preventScroll: true });
+        }
       }
 
       modalData.resolve(result);
@@ -783,18 +1027,97 @@ const UniversalModal = (function () {
       }
     }
 
-    makeBackgroundInert() {
+    /**
+     * Make the background inert for one modal, recording exactly which elements
+     * THIS modal changed.
+     *
+     * The selector is unchanged. What is new is the `hasAttribute` test: an
+     * element already carrying `inert` — because an outer modal swept it, or
+     * because an owner outside UniversalModal set it — is left alone and is NOT
+     * recorded, so this modal's close can never release somebody else's inert.
+     *
+     * The added-set is only derivable here. Once the sweep has run the attribute
+     * reads identically whoever set it, so nothing downstream can reconstruct
+     * it; that is why the record is taken inside the loop rather than by
+     * diffing the DOM either side of the call.
+     *
+     * @param {string} modalId - the modal whose sweep this is.
+     */
+    makeBackgroundInert(modalId) {
       const mainElements = document.querySelectorAll(
         "body > *:not(dialog):not(script):not(style)",
       );
+
+      const added = new Set();
       mainElements.forEach((element) => {
+        if (element.hasAttribute("inert")) return;
         element.setAttribute("inert", "");
+        added.add(element);
       });
+
+      // A second sweep under the same id would find its own first-sweep
+      // elements already inert and record an empty set, which on close would
+      // leave them inert forever. Merging keeps the record cumulative so that
+      // cannot happen. Unreachable through show() — modalId is minted from an
+      // incrementing counter — hence a warn rather than a silent merge.
+      const existing = this.modalInertElements.get(modalId);
+      if (existing) {
+        existing.forEach((element) => added.add(element));
+        logWarn(
+          `Modal ${modalId} swept the background twice; inert sets merged (${added.size} element(s))`,
+        );
+      }
+
+      this.modalInertElements.set(modalId, added);
+      logDebug(
+        `Modal ${modalId} made ${added.size} background element(s) inert`,
+      );
     }
 
-    restoreBackground() {
-      const inertElements = document.querySelectorAll("[inert]");
-      inertElements.forEach((element) => element.removeAttribute("inert"));
+    /**
+     * Release the `inert` this modal added, and drain its Map entry.
+     *
+     * Called UNCONDITIONALLY from finishClose beside the other two cleanups —
+     * not under `!hasActiveModal` — so a nested modal releases its own
+     * additions the moment it closes, rather than stranding them for the
+     * lifetime of the modal underneath it. Elements this modal did not change
+     * are never touched, so the outer modal's background stays inert and any
+     * inert set outside UniversalModal survives.
+     *
+     * One case is a hand-over rather than a release. Every element in this set
+     * was NOT inert before this modal's sweep, so no OLDER modal needs it — but
+     * a NEWER modal's sweep skipped it precisely because this modal had already
+     * set it, and that newer modal does need it. So when a modal opened after
+     * this one is still open, the set is handed to the oldest such modal
+     * instead of being freed. Without that, closing an outer modal before an
+     * inner one would free the page behind a modal that is still showing. In
+     * the ordinary last-opened-closes-first case there is no newer modal and
+     * the set is simply released.
+     *
+     * @param {string} modalId - the modal that is closing.
+     */
+    cleanupModalInert(modalId) {
+      const owned = this.modalInertElements.get(modalId);
+      if (!owned) return;
+
+      // Map iteration is insertion order, which is open order, so the next key
+      // after this one is the oldest modal opened after it.
+      const openOrder = Array.from(this.modalInertElements.keys());
+      const heirId = openOrder[openOrder.indexOf(modalId) + 1] || null;
+
+      this.modalInertElements.delete(modalId);
+
+      if (heirId) {
+        const heir = this.modalInertElements.get(heirId);
+        owned.forEach((element) => heir.add(element));
+        logDebug(
+          `Modal ${modalId} closed out of order; ${owned.size} inert element(s) handed to ${heirId}`,
+        );
+        return;
+      }
+
+      owned.forEach((element) => element.removeAttribute("inert"));
+      logDebug(`Modal ${modalId} released ${owned.size} inert element(s)`);
     }
 
     getCurrentModal() {
@@ -925,7 +1248,29 @@ const UniversalModal = (function () {
       return this;
     }
 
-    const modalId = modalManager.getCurrentModalId();
+    // ---------------------------------------------------------------------
+    // Close THIS modal, not merely the stack top.
+    // (Added 10 July 2026.) Modal.prototype.close() historically closed
+    // modalManager.getCurrentModalId() — the top of the stack — on the
+    // assumption that the instance calling close() was always the topmost
+    // modal. That breaks when a confirm/alert is opened OVER a modal and then
+    // dismissed: on the default animated path the child modal lingers on the
+    // stack for ~200ms (its finishClose is deferred by setTimeout), so a
+    // parent that calls close() during that window closes the already-closing
+    // child and leaves itself open. Observed in the session-manager and
+    // image-manager delete-to-empty flows.
+    //
+    // Fix: prefer this instance's own modal id (this.modal.id, stamped in
+    // createModal()); fall back to the stack top only when this.modal is
+    // absent (a never-opened instance — already filtered by the isOpen guard
+    // above, so the fallback is effectively unreachable in production and
+    // preserves the exact legacy behaviour if it ever is).
+    //
+    // To revert: replace the line below with
+    //   const modalId = modalManager.getCurrentModalId();
+    // and delete this comment. No other code changed for this fix.
+    // ---------------------------------------------------------------------
+    const modalId = this.modal?.id || modalManager.getCurrentModalId();
     if (modalId) {
       modalManager.close(modalId);
     }
@@ -1159,7 +1504,13 @@ const UniversalModal = (function () {
     const compliance = {
       hasRole: modal.getAttribute("role") === "dialog",
       hasAriaModal: modal.getAttribute("aria-modal") === "true",
-      hasTabIndex: modal.hasAttribute("tabindex") && modal.tabIndex === -1,
+      // Read the effective tabIndex, not the attribute. A <dialog> reports
+      // tabIndex === -1 natively with no attribute present, and UM-3 declined to
+      // add one because trapFocus's selector includes
+      // [tabindex]:not([tabindex="-1"]) — an attribute here would put the dialog
+      // itself into the focus cycle. Requiring the attribute made isCompliant
+      // unreachable for every modal this system creates.
+      hasTabIndex: modal.tabIndex === -1,
       hasLabel:
         modal.hasAttribute("aria-label") ||
         modal.hasAttribute("aria-labelledby"),

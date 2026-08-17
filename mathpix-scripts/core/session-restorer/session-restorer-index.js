@@ -14,7 +14,16 @@
   }
 
   // ── Method count validation ───────────────────────────────────────────────
-const EXPECTED_METHOD_COUNT = 202;
+  // Bumped 27 Jul 2026 from the OBSERVED console count, not by hand. It had been
+  // left at 202 while the prototype grew to 248, so the guard below (which only
+  // fires when actual < expected) had ~46 methods of slack — an entire mixin file
+  // could have failed to load and this would still have reported success. 251 =
+  // 248 + the browser-export methods. Re-observed 27 Jul after the export was
+  // folded into the Convert checkboxes: 254 (the separate control's
+  // mountScormExportControl and _scormExportGetContent went; _isBrowserOnlyFormat,
+  // _getBrowserFormatInfo, _toBrowserFormatBlob, _runBrowserConvertFormats and
+  // _runApiConvertFormats arrived).
+  const EXPECTED_METHOD_COUNT = 254;
   const actualCount = Object.getOwnPropertyNames(
     MathPixSessionRestorer.prototype,
   ).filter(

@@ -1018,18 +1018,35 @@ function accountForBody(surfaceEl) {
  *
  * The inversions partition them into disjoint families, which is what
  * makes them independent rather than eleven spellings of one
- * assertion. Measured 14 August 2026, at the default:
+ * assertion. Re-measured 14 August 2026 (iteration 14), each lever
+ * named exactly, because an inversion re-run with a DIFFERENT lever
+ * measures a different thing and reads as a change in the page:
  *
- *   - reintroducing border-box reddens exactly 4, 5, 6, 7
- *   - pinning the status word's font size reddens exactly 3 and 10
- *   - pinning the badge's padding reddens exactly 3 and 10
+ *   - `.dps-panel { box-sizing: border-box }`  reddens 4, 5, 6, 7
+ *   - `.dps-line { font-size: 16px }`          reddens 3 and 11
+ *   - `.dps-badge { padding: 6px 18px }`       reddens 3 and 10
  *
- * The two pins hit the SAME pair, and saying so matters: they are not
- * orthogonal to each other, because rows 3 and 10 are both about the
- * badge's box against its font size and either pin breaks that link.
- * What is orthogonal is the scale family {4,5,6,7} against the badge
- * family {3,10} - no inversion touches both. Rows 1, 2, 8, 9 and 11
- * are reddened by none of the three and carry their own inversions:
+ * The font family was recorded as {3, 10} and measures {3, 11}. Both
+ * halves of that difference have a measured cause, so the entry above
+ * is corrected rather than the canary:
+ *
+ *   - Row 10 leaves the font family whenever padY is 0, which the
+ *     shipped default now is. With no vertical padding the pill's
+ *     height net of its borders and the cap height are the same
+ *     multiple of the word's own font size, so their ratio cannot
+ *     move when that font is pinned. Set padY to 0.3 and the same
+ *     lever reddens 3, 10 AND 11 - measured, both ways, in one run.
+ *   - Row 11 is in the font family at every padY, because line pitch
+ *     is the pinned font's own line box against a cap height the
+ *     model still derives from the unpinned size. The older note that
+ *     row 11 is reddened by none of the three was wrong.
+ *
+ * So the two pins do NOT hit the same pair at the shipped default:
+ * the font pin takes {3, 11} and the padding pin {3, 10}, sharing only
+ * row 3. What stays orthogonal, and is the point of the exercise, is
+ * the scale family {4,5,6,7} against the badge-and-text family
+ * {3,10,11} - no inversion touches both. Rows 1, 2, 8 and 9 are
+ * reddened by none of the three and carry their own inversions:
  * 1 is self-inverting, 2 fails when nothing rendered, 8 reddens under
  * border-box at padY 0.3 (it closes in both states at padY 0, which is
  * why iteration 9 pinned it to the live frame height), and 9 would

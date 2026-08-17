@@ -997,6 +997,13 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         return;
       }
 
+      // SuperNet-200: Handle XLSX format specially (binary download-only)
+      if (format === "xlsx") {
+        this.populateXlsxContent(panelElement, !!content);
+        this.displayStates[format] = { populated: true, available: !!content };
+        return;
+      }
+
       // ✅ PHASE 1: Handle PDF formats (binary download-only)
       if (format === "pdf" || format === "latexpdf") {
         this.populatePdfContent(panelElement, format, !!content);
@@ -2022,6 +2029,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       mmd: { extension: ".md", mimeType: "text/markdown" },
       md: { extension: ".md", mimeType: "text/markdown" }, // Feature 3: Plain Markdown (same extension as MMD)
       html: { extension: ".html", mimeType: "text/html" },
+      // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
       pdf: {
         extension: ".pdf",
         mimeType: "application/pdf",
@@ -2041,6 +2049,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         mimeType:
           "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       }, // Phase 2: PowerPoint
+      xlsx: {
+        extension: ".xlsx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }, // SuperNet-200: Excel
     };
 
     const config = formatConfig[format];
@@ -2457,6 +2470,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     });
 
     // Map UI formats to result keys
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The formatMapping and formats list below move together.
     const formatMapping = {
       mmd: "mmd",
       md: "md", // Feature 3: Plain Markdown
@@ -2466,6 +2480,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       latex: "tex.zip", // LaTeX comes as ZIP file
       docx: "docx",
       pptx: "pptx", // Phase 2: PowerPoint
+      xlsx: "xlsx", // SuperNet-200: Excel
     };
 
     const formats = [
@@ -2477,6 +2492,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "latex",
       "docx",
       "pptx",
+      "xlsx",
     ];
     const formatPromises = formats.map(async (format) => {
       const resultKey = formatMapping[format];
@@ -2504,6 +2520,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
    * @note Format order matches visual tab order for proper keyboard navigation
    */
   cacheFormatElements() {
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const formats = [
       "mmd",
       "md",
@@ -2511,6 +2528,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "latex", // ✅ Moved before PDF formats to match visual order
       "docx",
       "pptx",
+      "xlsx", // SuperNet-200: Excel, beside the other Office binaries
       "pdf", // ✅ PDF (HTML) now after PowerPoint
       "latexpdf", // Hidden tab
       "mmdzip",
@@ -2603,6 +2621,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       latexpdf: "language-text", // Phase 1: PDF (binary format, no syntax highlighting)
       latex: "language-latex",
       pptx: "language-text", // Phase 2: PowerPoint (binary format, no syntax highlighting)
+      xlsx: "language-text", // SuperNet-200: Excel (binary format, no syntax highlighting)
     };
 
     return languageMap[format] || "language-text";
@@ -2786,6 +2805,74 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       panelElement.innerHTML = `
         <div class="mathpix-no-content">
           <p>PPTX format not available</p>
+          <p>This format was not requested or could not be generated during processing.</p>
+        </div>
+      `;
+    }
+  }
+
+  /**
+   * @method populateXlsxContent
+   * @description Populates XLSX format content (binary download-only)
+   * @param {HTMLElement} panelElement - Panel element to populate
+   * @param {boolean} available - Whether XLSX is available
+   * @returns {void}
+   * @private
+   * @since SuperNet-200
+   */
+  populateXlsxContent(panelElement, available) {
+    if (available) {
+      // Create content structure using DOM creation to preserve event context
+      const xlsxContent = document.createElement("div");
+      xlsxContent.className = "mathpix-xlsx-content";
+
+      // Create info section
+      const xlsxInfo = document.createElement("div");
+      xlsxInfo.className = "mathpix-xlsx-info";
+      xlsxInfo.innerHTML = `
+        <h3>Microsoft Excel Workbook</h3>
+        <p><strong>Binary Format:</strong> XLSX files cannot be previewed here. Click "Download XLSX" below to save the file to your device.</p>
+        <p class="format-description">Excel format carries the tabular content of the document as spreadsheet cells. Compatible with Microsoft Excel, Google Sheets, and other spreadsheet software.</p>
+      `;
+
+      // Create export actions container
+      const exportActions = document.createElement("div");
+      exportActions.className = "mathpix-export-actions";
+
+      // Create download button with proper event listener (preserves context)
+      const downloadButton = document.createElement("button");
+      downloadButton.className =
+        "mathpix-action-button mathpix-download-button";
+      downloadButton.innerHTML = `
+        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
+          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
+            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
+            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
+            <path d="m3.5 3.5h2v2h-2z"/>
+          </g>
+        </svg> Download XLSX
+      `;
+      downloadButton.setAttribute("aria-label", "Download XLSX file");
+
+      // Arrow function preserves 'this' context (same fix as the PPTX panel)
+      downloadButton.addEventListener("click", () => {
+        this.handleFormatExport("xlsx", "download");
+      });
+
+      // Assemble the structure
+      exportActions.appendChild(downloadButton);
+      xlsxContent.appendChild(xlsxInfo);
+      xlsxContent.appendChild(exportActions);
+
+      // Clear and populate panel
+      panelElement.innerHTML = "";
+      panelElement.appendChild(xlsxContent);
+
+      logDebug("XLSX content populated with proper event binding");
+    } else {
+      panelElement.innerHTML = `
+        <div class="mathpix-no-content">
+          <p>XLSX format not available</p>
           <p>This format was not requested or could not be generated during processing.</p>
         </div>
       `;
@@ -3169,6 +3256,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     });
 
     // Map UI formats to result keys for proper content checking
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The formatMapping and formats list below move together, and this pair is what un-hides a tab.
     const formatMapping = {
       mmd: "mmd",
       md: "md", // Feature 3: Plain Markdown
@@ -3178,6 +3266,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       latex: "tex.zip",
       docx: "docx",
       pptx: "pptx", // Phase 2: PowerPoint
+      xlsx: "xlsx", // SuperNet-200: Excel
       mmdzip: "mmd.zip", // Phase 2B: MMD Archive
       mdzip: "md.zip", // Phase 2B: MD Archive
       htmlzip: "html.zip", // Phase 2B: HTML Archive
@@ -3192,6 +3281,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "latex",
       "docx",
       "pptx",
+      "xlsx",
       "mmdzip",
       "mdzip",
       "htmlzip",

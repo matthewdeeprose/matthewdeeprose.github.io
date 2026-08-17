@@ -122,6 +122,17 @@ const ALLY_MAIN_CONTROLLER = (function () {
   const boundHandlers = {};
 
   /**
+   * Last known institutional sign-in state, so the entra:changed handler can
+   * act on a genuine FLIP and ignore everything else.
+   *
+   * Load-bearing: that event fires for several reasons — "renewal-failed"
+   * among them — with the signed-in state unchanged. Resyncing the form on one
+   * of those would discard whatever the colleague had typed into it.
+   * @type {boolean|null}
+   */
+  let lastKnownSignedIn = null;
+
+  /**
    * Current API status state
    * @type {string}
    */
@@ -150,6 +161,16 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * @type {boolean}
    */
   let isWarmingUp = false;
+
+  /**
+   * Flag to track whether the warm-up midpoint announcement has been made.
+   * The status card is silenced (aria-live="off" on #ally-api-status), so a
+   * two-to-three-minute warm-up would otherwise pass without a word. One
+   * announcement is made per warm-up, at the halfway mark; this flag is what
+   * keeps it to one, since the progress callback fires on every poll.
+   * @type {boolean}
+   */
+  let warmUpMidpointAnnounced = false;
 
   /**
    * Flag to track if Report Builder background refresh is in progress
@@ -187,35 +208,227 @@ const ALLY_MAIN_CONTROLLER = (function () {
         ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS,
       );
 
+      // Every field is set unconditionally, empty string included: this runs on
+      // credentials:changed as well as at startup, so an absent key means the
+      // value was CLEARED elsewhere (the Set Up page) and the form must follow.
+      // Setting only the truthy ones would leave a stale client ID and token on
+      // screen after a clear.
+      //
+      // That still holds for the token and the worker URL. It NO LONGER holds
+      // for the client ID: getEffectiveClientId() supplies the built-in default
+      // when nothing is stored, so for a signed-in colleague a clear now
+      // REPOPULATES the default rather than blanking the field. That is the
+      // intended behaviour — the default is what they should be using — but it
+      // is a real change from "a clear always empties this box".
       const values = {};
 
-      if (savedToken) {
-        values.token = savedToken;
-        logDebug("Loaded stored token");
+      values.token = savedToken || "";
+
+      // A stored client ID still wins; the default only fills a gap, and it is
+      // gated on the sign-in inside getEffectiveClientId().
+      values.clientId =
+        savedClientId ||
+        (typeof ALLY_CONFIG.getEffectiveClientId === "function"
+          ? ALLY_CONFIG.getEffectiveClientId()
+          : "");
+
+      // The region select has no empty option, so it falls back to the default
+      // rather than to "" — blanking a select is not a meaningful state.
+      values.region =
+        savedRegion && ALLY_CONFIG.isValidRegion(savedRegion)
+          ? savedRegion
+          : ALLY_CONFIG.DEFAULT_REGION || "EU";
+
+      values.saveCredentials = saveCredentials === "true";
+
+      logDebug(
+        "Loaded stored credentials, region: " +
+          values.region +
+          ", client ID: " +
+          (values.clientId ? "present" : "absent") +
+          ", token: " +
+          (values.token ? "present" : "absent"),
+      );
+
+      // The worker URL is stored independently of the "remember credentials"
+      // opt-in — it carries no secret and is the fallback that keeps the app
+      // working without a token, so it loads whether or not that box is ticked.
+      // Always set the key (even to "") so a cleared value syncs into the form.
+      const savedWorkerUrl = localStorage.getItem(
+        ALLY_CONFIG.STORAGE_KEYS.WORKER_URL,
+      );
+      values.workerUrl = ALLY_CONFIG.normaliseWorkerUrl(savedWorkerUrl);
+      if (values.workerUrl) {
+        logDebug("Loaded stored worker URL");
       }
 
-      if (savedClientId) {
-        values.clientId = savedClientId;
-        logDebug("Loaded stored client ID");
-      }
-
-      if (savedRegion && ALLY_CONFIG.isValidRegion(savedRegion)) {
-        values.region = savedRegion;
-        logDebug("Loaded stored region: " + savedRegion);
-      }
-
-      if (saveCredentials === "true") {
-        values.saveCredentials = true;
-      }
-
-      // Apply loaded values to form
-      if (Object.keys(values).length > 0) {
-        ALLY_UI_MANAGER.setFormValues(values);
-        logInfo("Restored saved credentials");
-      }
+      // Apply loaded values to form. No emptiness gate: `values` now always
+      // carries every field, and an all-empty set is itself a valid instruction
+      // (it is what a clear looks like).
+      ALLY_UI_MANAGER.setFormValues(values);
+      setWorkerUrlError("");
+      logInfo("Restored saved credentials");
     } catch (error) {
       logError("Failed to load stored credentials:", error);
     }
+  }
+
+  /**
+   * Persists (or removes) the proxy-worker URL, normalised to its base form.
+   *
+   * Deliberately separate from saveCredentials()' opt-in branch: the worker URL
+   * is not a credential, so it is written whether or not "remember credentials"
+   * is ticked, and it is not swept up by the clear path.
+   *
+   * @private
+   * @param {string} rawUrl - Raw value from the form (may be empty)
+   * @returns {string} The normalised URL that was stored ("" if removed)
+   */
+  /**
+   * Shows or hides the inline validation message on the worker-URL field.
+   * The message element is referenced from the input's aria-describedby
+   * alongside the help text, so a screen reader reads the error with the field.
+   * @private
+   * @param {string} message - Text to show; "" hides the message and the flag
+   */
+  function setWorkerUrlError(message) {
+    const input = ALLY_UI_MANAGER.getElement("ally-worker-url");
+    const errorEl = ALLY_UI_MANAGER.getElement("ally-worker-url-error");
+
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.hidden = !message;
+    }
+
+    if (!input) return;
+    if (message) {
+      input.setAttribute("aria-invalid", "true");
+    } else {
+      input.removeAttribute("aria-invalid");
+    }
+  }
+
+  /**
+   * Reports whether the worker-URL field holds text the normaliser rejects.
+   *
+   * A non-empty entry that will not normalise is a typo — most often a missing
+   * scheme — not a request to remove the worker, so callers must refuse it
+   * rather than let persistWorkerUrl() delete a URL that was working.
+   *
+   * @private
+   * @param {Object} formValues - Form values to inspect
+   * @returns {boolean} True if the field is populated but unusable
+   */
+  function workerUrlIsInvalid(formValues) {
+    const raw = formValues && formValues.workerUrl;
+    if (typeof raw !== "string" || !raw.trim()) return false;
+    return !ALLY_CONFIG.normaliseWorkerUrl(raw);
+  }
+
+  function persistWorkerUrl(rawUrl) {
+    // undefined means the form has no worker-URL field at all — leave whatever
+    // is stored alone rather than treating "absent" as "cleared".
+    if (typeof rawUrl !== "string") {
+      return ALLY_CONFIG.getWorkerUrl();
+    }
+
+    const normalised = ALLY_CONFIG.normaliseWorkerUrl(rawUrl);
+
+    if (normalised) {
+      localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.WORKER_URL, normalised);
+      logDebug("Worker URL saved");
+    } else {
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.WORKER_URL);
+      logDebug("Worker URL cleared");
+    }
+
+    return normalised;
+  }
+
+  /**
+   * Notifies Set Up and other listeners that Ally credentials changed
+   * (Phase SU-3). Emitted only on a user-initiated save/clear — never when
+   * merely LOADING stored values, which would bounce the sync back and forth.
+   * @private
+   * @param {string} action - "saved" or "cleared"
+   */
+  function emitCredentialsChanged(action) {
+    if (
+      window.EmbedEventEmitter &&
+      typeof window.EmbedEventEmitter.emit === "function"
+    ) {
+      window.EmbedEventEmitter.emit("credentials:changed", {
+        service: "ally",
+        action: action,
+      });
+    }
+  }
+
+  /**
+   * Reports whether the form supplies a usable TRANSPORT: an API token, a
+   * worker URL (from the form when the person has typed one, else from storage
+   * or the built-in default), or an institutional sign-in, which makes the
+   * built-in worker reachable without any configuration at all.
+   *
+   * The client ID is checked separately — it is required either way, because
+   * the worker reads it from the request payload and has no default.
+   *
+   * @private
+   * @param {Object} formValues - Form values to inspect
+   * @returns {boolean} True if a request could be issued
+   */
+  function formHasTransport(formValues) {
+    if (formValues && formValues.token) return true;
+
+    // A field the person has TYPED INTO governs; an empty one does not.
+    //
+    // An empty field means "I have not chosen one", not "there is none", and
+    // the built-in default is what answers that — standing rule 15, default
+    // rather than disable. This tested `typeof workerUrl === "string"`, and an
+    // empty string is still a string, so the hasUsableWorkerUrl() fallback
+    // below was unreachable on any page that carries the field at all. A
+    // signed-in colleague with an empty field was told they had no credentials
+    // while Set Up, which asks hasUsableWorkerUrl() directly, read Configured.
+    const typedWorkerUrl =
+      formValues && typeof formValues.workerUrl === "string"
+        ? formValues.workerUrl.trim()
+        : "";
+
+    if (typedWorkerUrl) {
+      return !!ALLY_CONFIG.normaliseWorkerUrl(typedWorkerUrl);
+    }
+
+    return (
+      typeof ALLY_CONFIG.hasUsableWorkerUrl === "function" &&
+      ALLY_CONFIG.hasUsableWorkerUrl()
+    );
+  }
+
+  /**
+   * Pushes the form's credentials onto the API client, choosing the transport:
+   * a token if there is one, otherwise the token-free worker mode.
+   *
+   * Persists the worker URL first, because the client resolves it from storage
+   * — so a URL typed but not yet saved would otherwise fail its own guard.
+   *
+   * @private
+   * @param {Object} formValues - Form values to apply
+   * @returns {boolean} True if credentials were applied
+   */
+  function applyCredentialsToClient(formValues) {
+    if (typeof ALLY_API_CLIENT === "undefined") return false;
+
+    persistWorkerUrl(formValues.workerUrl);
+
+    const applied = formValues.token
+      ? ALLY_API_CLIENT.setCredentials(formValues.token, formValues.clientId)
+      : ALLY_API_CLIENT.setWorkerCredentials(formValues.clientId);
+
+    if (applied) {
+      ALLY_API_CLIENT.setRegion(formValues.region);
+    }
+
+    return applied;
   }
 
   /**
@@ -230,6 +443,12 @@ const ALLY_MAIN_CONTROLLER = (function () {
     }
 
     try {
+      // The worker URL is persisted independently of the "remember credentials"
+      // opt-in, and SURVIVES an unchecked clear: it carries no secret, and it is
+      // the fallback that keeps the app working when no token is set. Normalise
+      // to the base form so /issues and /query can both be derived from it.
+      persistWorkerUrl(formValues.workerUrl);
+
       if (formValues.saveCredentials) {
         localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN, formValues.token);
         localStorage.setItem(
@@ -243,13 +462,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
         localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS, "true");
         logInfo("Credentials saved to localStorage");
 
-        // Notify Set Up and other listeners (Phase SU-3)
-        if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.emit === 'function') {
-          window.EmbedEventEmitter.emit('credentials:changed', {
-            service: 'ally',
-            action: 'saved'
-          });
-        }
+        emitCredentialsChanged("saved");
       } else {
         // Clear stored credentials if user unchecked the option
         localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN);
@@ -258,17 +471,158 @@ const ALLY_MAIN_CONTROLLER = (function () {
         localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS);
         logDebug("Credentials cleared from localStorage");
 
-        // Notify Set Up and other listeners (Phase SU-3)
-        if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.emit === 'function') {
-          window.EmbedEventEmitter.emit('credentials:changed', {
-            service: 'ally',
-            action: 'cleared'
-          });
-        }
+        emitCredentialsChanged("cleared");
       }
     } catch (error) {
       logError("Failed to save credentials:", error);
     }
+  }
+
+  /**
+   * Handles the Save credentials button.
+   *
+   * Until this existed, credentials persisted only as a side-effect of a
+   * successful Test Connection, a successful query, or toggling Remember —
+   * there was no way to commit a set the user was simply happy with, and
+   * nothing to emit credentials:changed so the Set Up page could follow.
+   *
+   * @private
+   */
+  function handleSaveCredentials() {
+    const formValues = ALLY_UI_MANAGER.getFormValues();
+
+    if (workerUrlIsInvalid(formValues)) {
+      setWorkerUrlError(
+        "Enter a full URL including https://, for example https://your-proxy.workers.dev",
+      );
+      ALLY_UI_MANAGER.announce(
+        "The proxy worker URL is not valid. Enter a full URL including https://.",
+      );
+      logWarn("Save rejected: worker URL could not be normalised");
+      return;
+    }
+    setWorkerUrlError("");
+
+    if (!formValues.clientId || !formHasTransport(formValues)) {
+      const message =
+        "Enter a Client ID, and either an API token or a proxy worker URL, before saving.";
+      showNotification(message, "warning");
+      logWarn("Save rejected: missing client ID or transport");
+      return;
+    }
+
+    // Saving is an explicit statement of intent, so it implies Remember —
+    // otherwise the button would write the worker URL and silently drop the
+    // credentials the user just asked to keep.
+    const saveCheckbox = ALLY_UI_MANAGER.getElement("ally-save-credentials");
+    if (saveCheckbox && !saveCheckbox.checked) {
+      saveCheckbox.checked = true;
+      formValues.saveCredentials = true;
+    }
+
+    saveCredentials(formValues);
+    applyCredentialsToClient(formValues);
+
+    const message = "Ally credentials saved for the " + formValues.region + " region.";
+    showNotification(message, "success");
+    logInfo("Credentials saved from the Save button");
+  }
+
+  /**
+   * Handles the Clear credentials button. Confirms first, because this deletes
+   * a token the user may not have stored anywhere else.
+   * @private
+   */
+  function handleClearCredentials() {
+    const message =
+      "Are you sure you want to clear your Ally credentials? The proxy worker URL will be removed as well.";
+
+    if (typeof window.safeConfirm === "function") {
+      window
+        .safeConfirm(message, "Clear Ally Credentials")
+        .then(function (confirmed) {
+          if (confirmed) performClearCredentials();
+        });
+      return;
+    }
+
+    // Fallback if the universal modal has not loaded
+    if (confirm(message)) performClearCredentials();
+  }
+
+  /**
+   * Removes the Ally credential keys AND the stored worker URL, and blanks
+   * their fields.
+   *
+   * The worker URL IS cleared, because a control labelled Clear should clear
+   * it — that is what people expect of it. This is only safe as of abcea04:
+   * before then an empty worker-URL field made formHasTransport() return false,
+   * so removing the URL would have left a signed-in colleague unable to use the
+   * tool. An empty field now falls through to the built-in default, so a
+   * signed-in colleague keeps a working transport after a clear.
+   *
+   * Set Up's clear does the same thing, and the two must change together — one
+   * of them alone rebuilds the asymmetry between the two surfaces.
+   *
+   * @private
+   */
+  function performClearCredentials() {
+    try {
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN);
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.CLIENT_ID);
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.REGION);
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS);
+      localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.WORKER_URL);
+    } catch (error) {
+      logError("Failed to clear credentials:", error);
+    }
+
+    // An empty string is a meaningful instruction to setFormValues, which
+    // tests for the PRESENCE of each property — omitting workerUrl would leave
+    // the field showing a URL that is no longer stored.
+    ALLY_UI_MANAGER.setFormValues({
+      region: ALLY_CONFIG.DEFAULT_REGION || "EU",
+      clientId: "",
+      token: "",
+      workerUrl: "",
+      saveCredentials: false,
+    });
+    setWorkerUrlError("");
+
+    setApiState("UNKNOWN", false);
+    emitCredentialsChanged("cleared");
+
+    // The clear removes what the PERSON stored, which is not the same as
+    // removing their access: a signed-in colleague keeps the built-in client ID
+    // and the built-in worker, so Ally still works for them. Read AFTER the
+    // removals above, so the sentence describes the post-clear state.
+    //
+    // hasInstitutionalSignIn() rather than hasUsableWorkerUrl() or a composite:
+    // Set Up gates the same sentence on isAllyConfigured(), and once an
+    // EXPLICIT clear has run that composite collapses to exactly this predicate
+    // — no stored client ID and no stored token survive, so its client-ID half
+    // reduces to getEffectiveClientId(), which is gated on the sign-in, and its
+    // transport half reduces to hasUsableWorkerUrl() with no stored URL left,
+    // which is also the sign-in. Naming the sign-in directly is what makes the
+    // two sentences mean the same thing rather than merely look alike, and it
+    // stays honest if a removal above throws: hasUsableWorkerUrl() would then
+    // read true off a surviving URL and credit the sign-in for it.
+    const signedIn =
+      typeof ALLY_CONFIG !== "undefined" &&
+      typeof ALLY_CONFIG.hasInstitutionalSignIn === "function" &&
+      ALLY_CONFIG.hasInstitutionalSignIn();
+
+    // Output once, through the shared notification path, which announces to
+    // the screen reader itself — so a second private-announcer write here
+    // would be heard twice. Still built before the call, because the sentence
+    // varies with the sign-in state.
+    let message =
+      "Ally credentials cleared. The proxy worker URL was removed as well.";
+    if (signedIn) {
+      message += " Ally still works with your University sign-in.";
+    }
+    showNotification(message, "info");
+    logInfo("Credentials cleared from the Clear button");
   }
 
   // ========================================================================
@@ -280,8 +634,11 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * @private
    * @param {string} newState - One of ALLY_CONFIG.API_STATES values
    * @param {boolean} [announce=true] - Whether to announce to screen readers
+   * @param {{label: string, hint: string}} [errorInfo] - For the ERROR state,
+   *   an optional context-specific label/hint (see apiErrorInfo). When omitted,
+   *   the ERROR state falls back to the generic "check your credentials" hint.
    */
-  function setApiState(newState, announce) {
+  function setApiState(newState, announce, errorInfo) {
     if (typeof announce === "undefined") {
       announce = true;
     }
@@ -300,11 +657,14 @@ const ALLY_MAIN_CONTROLLER = (function () {
     logDebug("API state changed: " + previousState + " → " + newState);
 
     // Update visual indicator
-    updateStatusIndicator(newState);
+    updateStatusIndicator(newState, errorInfo);
 
     // Announce to screen readers if state changed meaningfully
     if (announce && previousState !== newState) {
-      const message = getStatusMessage(newState);
+      const message =
+        newState === "ERROR" && errorInfo && errorInfo.label
+          ? errorInfo.label
+          : getStatusMessage(newState);
       ALLY_UI_MANAGER.announce("API status: " + message);
     }
 
@@ -345,8 +705,10 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * Updates the visual status indicator
    * @private
    * @param {string} state - The API state
+   * @param {{label: string, hint: string}} [errorInfo] - Optional ERROR-state
+   *   label/hint (see apiErrorInfo); overrides the generic label/credentials hint.
    */
-  function updateStatusIndicator(state) {
+  function updateStatusIndicator(state, errorInfo) {
     const dotEl = ALLY_UI_MANAGER.getElement("ally-api-status-dot");
     const textEl = ALLY_UI_MANAGER.getElement("ally-api-status-text");
     const progressContainer = ALLY_UI_MANAGER.getElement(
@@ -360,9 +722,12 @@ const ALLY_MAIN_CONTROLLER = (function () {
       dotEl.setAttribute("data-state", state);
     }
 
-    if (textEl) {
-      textEl.textContent = getStatusMessage(state);
-    }
+    setTextIfChanged(
+      textEl,
+      state === "ERROR" && errorInfo && errorInfo.label
+        ? errorInfo.label
+        : getStatusMessage(state),
+    );
 
     // Hide retry button for all non-ERROR states
     const retryBtn = ALLY_UI_MANAGER.getElement("ally-api-retry-btn");
@@ -375,8 +740,10 @@ const ALLY_MAIN_CONTROLLER = (function () {
       // Progress bar is shown/updated by updateWarmUpProgress()
       // Just ensure hint is visible with initial message
       if (hintEl && !hintEl.textContent) {
-        hintEl.textContent =
-          "The API needs to warm up before generating reports.";
+        setTextIfChanged(
+          hintEl,
+          "The API needs to warm up before generating reports.",
+        );
       }
     } else if (state === "READY") {
       // Show completed progress bar briefly, then hide
@@ -387,25 +754,28 @@ const ALLY_MAIN_CONTROLLER = (function () {
       if (progressFill) {
         progressFill.style.width = "100%";
       }
-      if (hintEl) {
-        hintEl.textContent = "API is ready. You can now generate reports.";
-      }
+      setTextIfChanged(hintEl, "API is ready. You can now generate reports.");
       // Hide progress bar after a moment
       setTimeout(function () {
         if (progressContainer && apiState === "READY") {
           progressContainer.hidden = true;
         }
-        if (hintEl && apiState === "READY") {
-          hintEl.textContent = "";
+        if (apiState === "READY") {
+          setTextIfChanged(hintEl, "");
         }
       }, 2000);
     } else if (state === "ERROR") {
       if (progressContainer) {
         progressContainer.hidden = true;
       }
-      if (hintEl) {
-        hintEl.textContent = "Please check your credentials and try again.";
-      }
+      setTextIfChanged(
+        hintEl,
+        (errorInfo && errorInfo.hint) ||
+          (ALLY_CONFIG &&
+            ALLY_CONFIG.MESSAGES &&
+            ALLY_CONFIG.MESSAGES.CREDENTIALS_HINT) ||
+          "Please check your credentials and try again.",
+      );
       // Show retry button
       const retryBtn = ALLY_UI_MANAGER.getElement("ally-api-retry-btn");
       if (retryBtn) {
@@ -415,16 +785,15 @@ const ALLY_MAIN_CONTROLLER = (function () {
       if (progressContainer) {
         progressContainer.hidden = true;
       }
-      if (hintEl) {
-        hintEl.textContent = "Configure your API credentials to get started.";
-      }
+      setTextIfChanged(
+        hintEl,
+        "Configure your API credentials to get started.",
+      );
     } else if (state === "IDLE") {
       if (progressContainer) {
         progressContainer.hidden = true;
       }
-      if (hintEl) {
-        hintEl.textContent = "";
-      }
+      setTextIfChanged(hintEl, "");
     }
   }
 
@@ -453,6 +822,143 @@ const ALLY_MAIN_CONTROLLER = (function () {
       default:
         return state;
     }
+  }
+
+  /**
+   * Writes text into an element only when the value would actually change.
+   *
+   * AGENTS.md's write-if-changed rule. An identical-value textContent
+   * assignment is NOT a no-op: measured 16 August 2026 on this card, it
+   * destroys the existing text node and inserts a new one, arriving as a
+   * childList mutation (added 1, removed 1) rather than a characterData one.
+   * Every such mutation is a chance for a live region to speak again, so the
+   * comparison has to happen before the assignment, not be relied on after it.
+   *
+   * @private
+   * @param {Element|null} el - Target element; a missing element is a no-op
+   * @param {string} text - The text to write
+   * @returns {boolean} True if the element was written to, false otherwise
+   */
+  function setTextIfChanged(el, text) {
+    if (!el) {
+      return false;
+    }
+
+    if (el.textContent === text) {
+      return false;
+    }
+
+    el.textContent = text;
+    return true;
+  }
+
+  /**
+   * Maps a classified API error to the ERROR-state status label and hint, so
+   * the indicator reflects the real cause. A genuine auth failure keeps the
+   * "check your credentials" hint; a server-side fault (502/503/504), an
+   * unreachable server, or a timeout makes clear the problem is not the user's
+   * credentials. Falls back to the credentials hint when the cause is unknown.
+   * @private
+   * @param {Object|null} error - Classified error (see ALLY_API_CLIENT.ERROR_TYPES)
+   * @returns {{label: string, hint: string}}
+   */
+  function apiErrorInfo(error) {
+    var M = (typeof ALLY_CONFIG !== "undefined" && ALLY_CONFIG.MESSAGES) || {};
+    var TYPES =
+      (typeof ALLY_API_CLIENT !== "undefined" && ALLY_API_CLIENT.ERROR_TYPES) ||
+      {};
+    var defaultInfo = {
+      label: M.STATUS_ERROR || "Connection error",
+      hint: M.CREDENTIALS_HINT || "Please check your credentials and try again.",
+    };
+    if (!error || !error.type) return defaultInfo;
+
+    // The status-aware sentences on the WORKER transport each need their own
+    // heading, and error.type cannot tell them apart: two are AUTH and two are
+    // SERVER. Match on the MESSAGE, by identity against the shared
+    // ALLY_CONFIG.MESSAGES constant the client built it from.
+    //
+    // Why message identity rather than the type or a transport field: it gives
+    // each sentence its own heading, needs nothing read out of a response body,
+    // and leaves every other error untouched BY CONSTRUCTION rather than by a
+    // guard. AUTH_ERROR is deliberately not a key here, so the direct-token
+    // path still falls through to defaultInfo exactly as before.
+    //
+    // This runs BEFORE the SERVER branch on purpose: the gate's 503 would
+    // otherwise be told that Ally returned it, and Ally never saw the request,
+    // and the 502 would be told "Ally service unavailable" when this tool's own
+    // Ally token may be the thing at fault. Display only — the ERROR_TYPE is
+    // untouched, so both stay retryable.
+    //
+    // Order mirrors the declaration order in ALLY_CONFIG.MESSAGES. Matching is
+    // by message identity, so order cannot affect correctness; it is kept so
+    // the two lists read as one.
+    const statusAwareHeadings = [
+      {
+        message: M.SIGN_IN_REQUIRED,
+        label: M.STATUS_SIGN_IN_REQUIRED,
+        fallbackLabel: "Sign-in required",
+      },
+      {
+        message: M.NOT_PERMITTED,
+        label: M.STATUS_NOT_PERMITTED,
+        fallbackLabel: "Account not permitted",
+      },
+      {
+        message: M.SIGN_IN_CHECK_UNAVAILABLE,
+        label: M.STATUS_SIGN_IN_CHECK_UNAVAILABLE,
+        fallbackLabel: "Sign-in check unavailable",
+      },
+      {
+        message: M.REPORTING_SERVICE_ERROR,
+        label: M.STATUS_REPORTING_SERVICE_ERROR,
+        fallbackLabel: "Reporting service error",
+      },
+    ];
+
+    const heading = statusAwareHeadings.find(function (entry) {
+      // Both halves must be present: an absent MESSAGES key must never match an
+      // error that happens to carry no message.
+      return Boolean(entry.message) && error.message === entry.message;
+    });
+
+    if (heading) {
+      return {
+        label: heading.label || heading.fallbackLabel,
+        hint: error.message,
+      };
+    }
+
+    if (error.type === TYPES.SERVER) {
+      var serverHint =
+        M.SERVER_ERROR_HINT ||
+        "This looks like a temporary problem at Ally's end, not your credentials. Please wait a few minutes and try again.";
+      if (error.status) {
+        serverHint = "Ally returned a " + error.status + " error. " + serverHint;
+      }
+      return {
+        label: M.STATUS_SERVER_ERROR || "Ally service unavailable",
+        hint: serverHint,
+      };
+    }
+    if (error.type === TYPES.NETWORK) {
+      return {
+        label: M.STATUS_ERROR || "Connection error",
+        hint:
+          M.NETWORK_HINT ||
+          "Could not reach the Ally service. Check your internet connection and try again.",
+      };
+    }
+    if (error.type === TYPES.TIMEOUT) {
+      return {
+        label: M.STATUS_SERVER_ERROR || "Ally service unavailable",
+        hint:
+          M.TIMEOUT_HINT ||
+          "The Ally service did not respond in time. It may be busy — please try again shortly.",
+      };
+    }
+    // AUTH, VALIDATION, UNKNOWN → the credentials hint is the safe default.
+    return defaultInfo;
   }
 
   /**
@@ -592,6 +1098,23 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * @param {number} startTime - Timestamp when warm-up started
    */
   function updateWarmUpProgress(attempt, maxAttempts, startTime) {
+    // The state is guaranteed WARMING only at the FIRST progress callback:
+    // performWarmUp sets it synchronously before awaiting the request, then
+    // never re-asserts it. Five concurrent paths can change it mid-poll, none
+    // of them guarded by isWarmingUp — handleTestConnection (WARMING, then
+    // READY or ERROR), a successful query (READY), a failed query (ERROR),
+    // resetApiStatus on a credentials clear (UNKNOWN), and the page-load
+    // warm-up settling (READY). Without this guard a late callback repaints
+    // stale "Preparing API" text over whichever state has since settled.
+    if (apiState !== "WARMING") {
+      logDebug(
+        "Ignoring warm-up progress callback - state is " +
+          apiState +
+          ", not WARMING",
+      );
+      return;
+    }
+
     const textEl = ALLY_UI_MANAGER.getElement("ally-api-status-text");
     const progressContainer = ALLY_UI_MANAGER.getElement(
       "ally-api-progress-container",
@@ -614,6 +1137,23 @@ const ALLY_MAIN_CONTROLLER = (function () {
       Math.round((elapsedSeconds / typicalDuration) * 100),
     );
 
+    // One midpoint announcement per warm-up. The card itself is silent now
+    // (aria-live="off"), so without this a two-to-three-minute wait passes
+    // without a word. formatDuration is the same helper the visible message
+    // uses, so what is spoken matches what is on screen. The second branch
+    // guards the past-typical case, where formatDuration(0) would otherwise
+    // announce "about 0 sec remaining".
+    if (!warmUpMidpointAnnounced && progressPercent >= 50) {
+      warmUpMidpointAnnounced = true;
+      ALLY_UI_MANAGER.announce(
+        estimatedRemaining > 0
+          ? "API status: still preparing, about " +
+              formatDuration(estimatedRemaining) +
+              " remaining."
+          : "API status: still preparing, taking longer than usual.",
+      );
+    }
+
     // Build progress message
     let message = "Preparing API";
 
@@ -625,9 +1165,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
     }
 
     // Update text
-    if (textEl) {
-      textEl.textContent = message;
-    }
+    setTextIfChanged(textEl, message);
 
     // Show and update progress bar
     if (progressContainer) {
@@ -646,12 +1184,14 @@ const ALLY_MAIN_CONTROLLER = (function () {
     // Update hint text
     if (hintEl) {
       if (attempt === 1) {
-        hintEl.textContent =
-          "The API needs to warm up before generating reports. This typically takes 2-3 minutes.";
+        setTextIfChanged(
+          hintEl,
+          "The API needs to warm up before generating reports. This typically takes 2-3 minutes.",
+        );
       } else if (estimatedRemaining <= 30 && estimatedRemaining > 0) {
-        hintEl.textContent = "Almost ready...";
+        setTextIfChanged(hintEl, "Almost ready...");
       } else if (estimatedRemaining === 0) {
-        hintEl.textContent = "Taking longer than usual. Please wait...";
+        setTextIfChanged(hintEl, "Taking longer than usual. Please wait...");
       }
     }
   }
@@ -671,6 +1211,20 @@ const ALLY_MAIN_CONTROLLER = (function () {
     startTime,
     progress,
   ) {
+    // Same guard, same reason, as updateWarmUpProgress: the state is
+    // guaranteed WARMING only at the first progress callback, and five
+    // concurrent paths can change it mid-poll — handleTestConnection, a
+    // successful query, a failed query, resetApiStatus, and the page-load
+    // warm-up settling. None of them is guarded by isWarmingUp.
+    if (apiState !== "WARMING") {
+      logDebug(
+        "Ignoring warm-up error callback - state is " +
+          apiState +
+          ", not WARMING",
+      );
+      return;
+    }
+
     const textEl = ALLY_UI_MANAGER.getElement("ally-api-status-text");
     const progressContainer = ALLY_UI_MANAGER.getElement(
       "ally-api-progress-container",
@@ -698,9 +1252,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
     message += " (attempt " + attempt + "/" + maxAttempts + ")";
 
     // Update text
-    if (textEl) {
-      textEl.textContent = message;
-    }
+    setTextIfChanged(textEl, message);
 
     // Show progress bar with error state
     if (progressContainer) {
@@ -719,14 +1271,16 @@ const ALLY_MAIN_CONTROLLER = (function () {
     // Update hint with error details
     if (hintEl) {
       const errorMsg = progress.lastError || "Unknown error";
-      hintEl.textContent =
+      setTextIfChanged(
+        hintEl,
         "Error: " +
-        errorMsg +
-        " (" +
-        errorCount +
-        " consecutive error" +
-        (errorCount > 1 ? "s" : "") +
-        "). Will keep trying...";
+          errorMsg +
+          " (" +
+          errorCount +
+          " consecutive error" +
+          (errorCount > 1 ? "s" : "") +
+          "). Will keep trying...",
+      );
     }
 
     // Update dot to show error state
@@ -890,14 +1444,15 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
     const formValues = ALLY_UI_MANAGER.getFormValues();
 
-    // Validate we have credentials
-    if (!formValues.clientId || !formValues.token) {
+    // Validate we have credentials: a client ID, plus a token OR a worker URL
+    if (!formValues.clientId || !formHasTransport(formValues)) {
       logDebug("Cannot warm up - credentials not configured");
       setApiState("UNKNOWN", false);
       return false;
     }
 
     isWarmingUp = true;
+    warmUpMidpointAnnounced = false;
     setApiState("WARMING");
 
     // Track start time for progress estimation
@@ -905,8 +1460,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
     try {
       if (typeof ALLY_API_CLIENT !== "undefined") {
-        ALLY_API_CLIENT.setCredentials(formValues.token, formValues.clientId);
-        ALLY_API_CLIENT.setRegion(formValues.region);
+        applyCredentialsToClient(formValues);
 
         const warmupLimit =
           typeof ALLY_CONFIG !== "undefined"
@@ -958,10 +1512,11 @@ const ALLY_MAIN_CONTROLLER = (function () {
       }
     } catch (error) {
       logError("API warm-up failed:", error);
-      setApiState("ERROR");
+      setApiState("ERROR", true, apiErrorInfo(error));
       return false;
     } finally {
       isWarmingUp = false;
+      warmUpMidpointAnnounced = false;
     }
   }
 
@@ -972,7 +1527,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
    */
   function hasCredentials() {
     const formValues = ALLY_UI_MANAGER.getFormValues();
-    return !!(formValues.clientId && formValues.token);
+    return !!formValues.clientId && formHasTransport(formValues);
   }
 
   // ========================================================================
@@ -1055,7 +1610,30 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * @returns {{valid: boolean, message: string}} Validation result
    */
   function validateCredentials(formValues) {
+    // Computed ONCE and read twice. The client-ID branch needs it now too:
+    // "no client ID" and "no transport at all" are different faults with
+    // different remedies, and only the PAIR identifies the signed-out
+    // colleague who has configured nothing.
+    const hasTransport = formHasTransport(formValues);
+
     if (!formValues.clientId) {
+      // Signed out with no route of their own: the sign-in is the fault, and
+      // the empty client ID is a SYMPTOM of it (see SIGN_IN_OR_CREDENTIALS in
+      // ally-config.js).
+      //
+      // With a token typed, or with their own worker URL, they have chosen a
+      // route and genuinely do need to supply the ID, so MISSING_CLIENT_ID
+      // stays correct for them below.
+      if (!hasTransport) {
+        return {
+          valid: false,
+          message:
+            ALLY_CONFIG?.MESSAGES?.SIGN_IN_OR_CREDENTIALS ||
+            "Sign in with your University account to use Ally Reporting. " +
+              "If you do not have one, enter your Client ID and API token instead.",
+        };
+      }
+
       return {
         valid: false,
         message:
@@ -1064,12 +1642,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
       };
     }
 
-    if (!formValues.token) {
+    // Either transport will do: an API token, or a proxy worker URL.
+    if (!hasTransport) {
       return {
         valid: false,
         message:
-          ALLY_CONFIG?.MESSAGES?.MISSING_TOKEN ||
-          "Please enter your API token.",
+          ALLY_CONFIG?.MESSAGES?.MISSING_CREDENTIALS ||
+          "Please enter your API token, or a proxy worker URL.",
       };
     }
 
@@ -1101,7 +1680,6 @@ const ALLY_MAIN_CONTROLLER = (function () {
     const validation = validateCredentials(formValues);
     if (!validation.valid) {
       showNotification(validation.message, "error");
-      ALLY_UI_MANAGER.announce(validation.message);
       setApiState("UNKNOWN", false);
       return false;
     }
@@ -1124,15 +1702,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
     try {
       // Set credentials on API client
       if (typeof ALLY_API_CLIENT !== "undefined") {
-        ALLY_API_CLIENT.setCredentials(formValues.token, formValues.clientId);
-        ALLY_API_CLIENT.setRegion(formValues.region);
+        applyCredentialsToClient(formValues);
 
         // Test the connection
         const success = await ALLY_API_CLIENT.testConnection();
 
         if (success) {
-          showNotification("Connection successful!", "success");
-          ALLY_UI_MANAGER.announce("Connection test successful");
+          showNotification("Connection test successful", "success");
 
           // Save credentials if opted in
           saveCredentials(formValues);
@@ -1145,12 +1721,16 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
           return true;
         } else {
-          showNotification(
-            "Connection failed. Please check your credentials.",
-            "error",
-          );
-          ALLY_UI_MANAGER.announce("Connection test failed");
-          setApiState("ERROR");
+          // testConnection returns a bare boolean; read the classified error it
+          // captured so a 502/503/504 or network fault is not mislabelled as a
+          // credentials problem.
+          const lastErr =
+            typeof ALLY_API_CLIENT.getLastError === "function"
+              ? ALLY_API_CLIENT.getLastError()
+              : null;
+          const info = apiErrorInfo(lastErr);
+          showNotification("Connection test failed. " + info.hint, "error");
+          setApiState("ERROR", true, info);
           return false;
         }
       } else {
@@ -1160,9 +1740,9 @@ const ALLY_MAIN_CONTROLLER = (function () {
       }
     } catch (error) {
       logError("Connection test error:", error);
-      showNotification("Connection error: " + error.message, "error");
-      ALLY_UI_MANAGER.announce("Connection test failed: " + error.message);
-      setApiState("ERROR");
+      const info = apiErrorInfo(error && error.type ? error : null);
+      showNotification("Connection test failed: " + error.message, "error");
+      setApiState("ERROR", true, info);
       return false;
     } finally {
       // Restore button state
@@ -1195,7 +1775,6 @@ const ALLY_MAIN_CONTROLLER = (function () {
     const validation = validateCredentials(formValues);
     if (!validation.valid) {
       showNotification(validation.message, "error");
-      ALLY_UI_MANAGER.announce(validation.message);
       return;
     }
 
@@ -1316,8 +1895,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
     try {
       // Set credentials on API client
       if (typeof ALLY_API_CLIENT !== "undefined") {
-        ALLY_API_CLIENT.setCredentials(formValues.token, formValues.clientId);
-        ALLY_API_CLIENT.setRegion(formValues.region);
+        applyCredentialsToClient(formValues);
 
         // Build filters object for API (key=operator:value format)
         // Values can be arrays to support range queries (e.g., overallScore >= 0.1 AND <= 0.7)
@@ -1469,11 +2047,8 @@ const ALLY_MAIN_CONTROLLER = (function () {
           const recordCount = Array.isArray(result.data)
             ? result.data.length
             : 0;
-          ALLY_UI_MANAGER.announce(
-            "Query complete. " + recordCount + " records returned.",
-          );
           showNotification(
-            "Query complete: " + recordCount + " records",
+            "Query complete. " + recordCount + " records returned.",
             "success",
           );
 
@@ -1499,7 +2074,6 @@ const ALLY_MAIN_CONTROLLER = (function () {
       if (queryState === "cancelling") {
         logInfo("Query cancelled by user");
         showNotification("Query cancelled", "info");
-        ALLY_UI_MANAGER.announce("Query cancelled");
         // Don't change API state on cancel
       } else {
         logError("Query execution error:", error);
@@ -1528,28 +2102,24 @@ const ALLY_MAIN_CONTROLLER = (function () {
             var fallbackCount = cachedFallback.data.data
               ? cachedFallback.data.data.length
               : 0;
-            ALLY_UI_MANAGER.announce(
+            showNotification(
               "API unavailable. Showing " +
                 fallbackCount +
                 " cached records from " +
                 ALLY_CACHE.formatAge(cachedFallback.timestamp) +
                 ".",
-            );
-            showNotification(
-              "Showing cached results due to API error",
               "warning",
             );
 
             // Set API state to ERROR
-            setApiState("ERROR");
+            setApiState("ERROR", true, apiErrorInfo(error));
             return; // Don't show error UI
           }
         }
 
         showNotification("Query failed: " + error.message, "error");
-        ALLY_UI_MANAGER.announce("Query failed: " + error.message);
         // Set API state to ERROR on failure
-        setApiState("ERROR");
+        setApiState("ERROR", true, apiErrorInfo(error));
       }
     } finally {
       // Reset state
@@ -1597,6 +2167,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
       region: formValues.region,
       clientId: formValues.clientId,
       token: formValues.token,
+      workerUrl: formValues.workerUrl,
       saveCredentials: formValues.saveCredentials,
     };
 
@@ -1619,7 +2190,6 @@ const ALLY_MAIN_CONTROLLER = (function () {
       ALLY_COURSE_SEARCH.clearSelection();
     }
 
-    ALLY_UI_MANAGER.announce("Filters cleared");
     showNotification("Filters cleared", "info");
   }
 
@@ -1843,6 +2413,24 @@ const ALLY_MAIN_CONTROLLER = (function () {
    * @private
    */
   function setupEventListeners() {
+    // Save credentials button
+    const saveBtn = ALLY_UI_MANAGER.getElement("ally-save-credentials-btn");
+    if (saveBtn) {
+      boundHandlers.saveCredentials = handleSaveCredentials;
+      saveBtn.addEventListener("click", boundHandlers.saveCredentials);
+      logDebug("Bound save credentials button handler");
+    }
+
+    // Clear credentials button
+    const clearCredsBtn = ALLY_UI_MANAGER.getElement(
+      "ally-clear-credentials-btn",
+    );
+    if (clearCredsBtn) {
+      boundHandlers.clearCredentials = handleClearCredentials;
+      clearCredsBtn.addEventListener("click", boundHandlers.clearCredentials);
+      logDebug("Bound clear credentials button handler");
+    }
+
     // Test Connection button
     const testBtn = ALLY_UI_MANAGER.getElement("ally-test-connection");
     if (testBtn) {
@@ -1900,10 +2488,12 @@ const ALLY_MAIN_CONTROLLER = (function () {
     // Monitor credential fields for changes to update status and CTA
     var clientIdInput = ALLY_UI_MANAGER.getElement("ally-client-id");
     var tokenInput = ALLY_UI_MANAGER.getElement("ally-api-token");
+    var workerUrlInput = ALLY_UI_MANAGER.getElement("ally-worker-url");
 
     var credentialChangeHandler = function () {
       var formValues = ALLY_UI_MANAGER.getFormValues();
-      var credentialsPresent = formValues.clientId && formValues.token;
+      var credentialsPresent =
+        formValues.clientId && formHasTransport(formValues);
 
       // If credentials are cleared, reset status to UNKNOWN
       if (!credentialsPresent) {
@@ -1925,7 +2515,74 @@ const ALLY_MAIN_CONTROLLER = (function () {
     if (tokenInput) {
       tokenInput.addEventListener("input", credentialChangeHandler);
     }
+
+    if (workerUrlInput) {
+      // A worker URL is a transport in its own right, so typing one must
+      // update the status/CTA exactly as typing a token does.
+      workerUrlInput.addEventListener("input", credentialChangeHandler);
+      // Persist on blur so the value survives without a Test Connection, and
+      // so Set Up picks it up through the credentials:changed round-trip.
+      workerUrlInput.addEventListener("change", function () {
+        var values = ALLY_UI_MANAGER.getFormValues();
+
+        // Refuse a populated-but-unusable entry rather than letting
+        // persistWorkerUrl() read it as "" and delete a URL that was working.
+        if (workerUrlIsInvalid(values)) {
+          setWorkerUrlError(
+            "Enter a full URL including https://, for example https://your-proxy.workers.dev",
+          );
+          logWarn("Worker URL not persisted: could not be normalised");
+          return;
+        }
+
+        setWorkerUrlError("");
+        persistWorkerUrl(values.workerUrl);
+        emitCredentialsChanged("saved");
+      });
+    }
     logDebug("Bound credential change handlers with CTA");
+
+    // Follow the institutional sign-in state. Signing in resolves a client ID
+    // that was not there a moment ago, so the form and the API status have to
+    // resync — the person did not touch a field, but their credentials changed.
+    //
+    // The event name is read from EntraAuth so a rename there cannot silently
+    // unbind this; the literal is only a fallback for the deferred-load window.
+    boundHandlers.signInChange = function (event) {
+      const detail = (event && event.detail) || {};
+      const signedIn = detail.isSignedIn === true;
+
+      // Act on a genuine FLIP only. This event also fires for "renewal-failed"
+      // and other reasons with the state unchanged, and resyncing on one of
+      // those would wipe whatever is currently typed into the form.
+      if (signedIn === lastKnownSignedIn) {
+        logDebug(
+          "Ignoring " +
+            (detail.reason || "unknown") +
+            " sign-in event — signed-in state unchanged",
+        );
+        return;
+      }
+
+      lastKnownSignedIn = signedIn;
+      logInfo(
+        "Institutional sign-in state changed to " +
+          signedIn +
+          " — resyncing credential form",
+      );
+
+      // Resync the form, then let the existing handler settle the API status
+      // and the Test Connection call-to-action. Both own their own messaging,
+      // so nothing is announced from here — a second announcement would double.
+      loadStoredCredentials();
+      credentialChangeHandler();
+    };
+
+    window.addEventListener(
+      (window.EntraAuth && window.EntraAuth.CHANGE_EVENT) || "entra:changed",
+      boundHandlers.signInChange,
+    );
+    logDebug("Bound institutional sign-in change handler");
 
     // Endpoint radio buttons - update filter builder when endpoint changes
     const endpointRadios = document.querySelectorAll(
@@ -2339,7 +2996,8 @@ const ALLY_MAIN_CONTROLLER = (function () {
       // Use timeout to allow browser autofill to complete
       setTimeout(function () {
         var formValues = ALLY_UI_MANAGER.getFormValues();
-        var credentialsMissing = !formValues.clientId || !formValues.token;
+        var credentialsMissing =
+          !formValues.clientId || !formHasTransport(formValues);
 
         if (credentialsMissing) {
           // Highlight and scroll to credentials section
@@ -2435,7 +3093,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
       // Check if page-load warm-up already completed
       if (pageLoadWarmUpComplete) {
         logInfo("Using page-load warm-up result - API already warm");
-        setApiState("READY", false);
+        setApiState("READY");
         pageLoadWarmUpComplete = false; // Reset flag
         return true;
       }
@@ -2505,7 +3163,23 @@ const ALLY_MAIN_CONTROLLER = (function () {
       );
       const savedRegion = localStorage.getItem(ALLY_CONFIG.STORAGE_KEYS.REGION);
 
-      if (!savedToken || !savedClientId) {
+      // A stored token is no longer required — a client ID plus a usable worker
+      // is a complete set of credentials on the worker transport, whether that
+      // worker is usable because the user configured their own URL or because
+      // an institutional sign-in makes the built-in one reachable.
+      const hasWorker =
+        typeof ALLY_CONFIG.hasUsableWorkerUrl === "function" &&
+        ALLY_CONFIG.hasUsableWorkerUrl();
+
+      // A STORED client ID wins; the built-in default only fills a gap, and
+      // getEffectiveClientId() gates that default on the sign-in itself.
+      const clientId =
+        savedClientId ||
+        (typeof ALLY_CONFIG.getEffectiveClientId === "function"
+          ? ALLY_CONFIG.getEffectiveClientId()
+          : "");
+
+      if (!clientId || (!savedToken && !hasWorker)) {
         logDebug("Page-load warm-up skipped - no stored credentials");
         return;
       }
@@ -2514,7 +3188,11 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
       // Set credentials on API client
       if (typeof ALLY_API_CLIENT !== "undefined") {
-        ALLY_API_CLIENT.setCredentials(savedToken, savedClientId);
+        if (savedToken) {
+          ALLY_API_CLIENT.setCredentials(savedToken, clientId);
+        } else {
+          ALLY_API_CLIENT.setWorkerCredentials(clientId);
+        }
         if (savedRegion && ALLY_CONFIG.isValidRegion(savedRegion)) {
           ALLY_API_CLIENT.setRegion(savedRegion);
         }
@@ -2528,7 +3206,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
               logInfo("Page-load warm-up completed successfully");
               // Set state to READY if module has been initialised
               if (initialised) {
-                setApiState("READY", false);
+                setApiState("READY");
               } else {
                 // Store flag so initialise() knows API is already warm
                 pageLoadWarmUpComplete = true;
@@ -2557,6 +3235,35 @@ const ALLY_MAIN_CONTROLLER = (function () {
     // DOM already loaded, run on next tick to not block
     setTimeout(attemptPageLoadWarmUp, 0);
   }
+
+  /**
+   * Guard so the sign-in warm-up retry runs at most once per page.
+   * @type {boolean}
+   */
+  let signInWarmUpAttempted = false;
+
+  // Retry the warm-up when sign-in ARRIVES, which is later than the scheduling
+  // above can see. auth/entra-auth.js is a DEFERRED script and its init()
+  // awaits handleRedirectPromise(), so at DOMContentLoaded isSignedIn() is
+  // still false even for a colleague who genuinely is signed in: the warm-up
+  // checks, finds nothing, and skips. Their first query would then pay the cold
+  // start (ALLY_CONFIG.POLLING.TYPICAL_WARMUP_SECONDS is 180), so widening the
+  // guard alone does not fix it — the attempt has to happen again afterwards.
+  //
+  // This sits at module load rather than in the bound handlers deliberately:
+  // those bind only when the Ally tool is first opened, by which point the
+  // normal init path has already warmed up and the gap has been paid.
+  window.addEventListener(
+    (window.EntraAuth && window.EntraAuth.CHANGE_EVENT) || "entra:changed",
+    function (event) {
+      const detail = (event && event.detail) || {};
+      if (detail.isSignedIn !== true || signInWarmUpAttempted) return;
+      signInWarmUpAttempted = true;
+      logInfo("Sign-in arrived after page load — retrying warm-up");
+      // attemptPageLoadWarmUp guards its own preconditions.
+      attemptPageLoadWarmUp();
+    },
+  );
 
   // Return the public API
   return publicAPI;

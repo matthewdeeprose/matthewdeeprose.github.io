@@ -637,6 +637,12 @@ class MathPixAPIClient {
 
         // Phase 3.2: Request line-level processing data
         include_line_data: true,
+
+        // SuperNet-200: opt in to document-structure output (nested lists with
+        // printed markers, headings as \section*). Required — the model returns
+        // flat text without it. Text API (v3/text) only; the strokes client
+        // builds its own body and must not receive this.
+        enable_document_layout: true,
       };
 
       logInfo("[MathPix API] Processing image with user preferences:", {
@@ -1480,6 +1486,7 @@ class MathPixAPIClient {
       MATHPIX_CONFIG.PDF_PROCESSING.DEFAULT_PDF_OPTIONS.formats;
 
     // Build conversion formats: MMD is default output, only add actual conversion formats
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const VALID_CONVERSION_FORMATS = [
       "md",
       "html",
@@ -1491,9 +1498,11 @@ class MathPixAPIClient {
       "mmd.zip",
       "md.zip",
       "html.zip",
-    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latex.pdf" | Phase 2: Added "pptx" | Phase 2b: Added archive formats
+      "xlsx",
+    ]; // Feature 3: Added "md" | Phase 1: Added "pdf", "latex.pdf" | Phase 2: Added "pptx" | Phase 2b: Added archive formats | SuperNet-200: Added "xlsx"
 
     // Map UI format names to API format names
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const UI_TO_API_FORMAT_MAPPING = {
       mmd: "mmd", // Default output, not a conversion format
       md: "md", // Feature 3: Plain Markdown (direct mapping)
@@ -1502,6 +1511,7 @@ class MathPixAPIClient {
       latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering) - UI "latexpdf" maps to API "latex.pdf"
       latex: "tex.zip", // UI uses "latex", API expects "tex.zip"
       docx: "docx", // Direct mapping
+      xlsx: "xlsx", // SuperNet-200: Excel (tabular content only) - direct mapping
     };
 
     requestedFormats.forEach((format) => {
@@ -1935,9 +1945,11 @@ class MathPixAPIClient {
         );
       }
       // Define binary formats - ✅ PHASE 1 FIXED: Added PDF formats | Phase 2: Added PPTX | Phase 2b: Added archive formats
+      // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
       const binaryFormats = [
         "docx",
         "pptx",
+        "xlsx",
         "pdf",
         "latex.pdf",
         "latexpdf",

@@ -2265,8 +2265,16 @@ const MathPixChemistryUtils = (function () {
   // Replaces the previously soft-coupled inline maps in
   // mathpix-chemistry-descriptions.js (`NAMED_AROMATIC_BY_TYPE`, label form)
   // and mathpix-chemistry-comprehensive.js (`namedAromatics`, phrase form).
-  // Both consumers now read via the helpers below; new entries (e.g.
-  // thiazole) land here only — neither consumer needs touching to extend.
+  // Both consumers read via the helpers below.
+  //
+  // Phase 17-5b (I-22a): this comment previously claimed new entries "land here
+  // only — neither consumer needs touching to extend". That is true of only two
+  // surfaces. MEASURED reach of a map entry: COMPREHENSIVE (via
+  // `getNamedAromaticPhrase`) and the IUPAC-syntax fallback label (via
+  // `getNamedAromaticLabel`). STANDARD and SHORT never consult this map — they
+  // interpolate `ring.type` directly, so they move with the classify ladder in
+  // mathpix-chemistry-classify.js, NOT with this map. A unit scoped as "add a
+  // map entry" therefore lands one tier of three and passes its own gates.
   const NAMED_AROMATIC_RINGS = {
     benzene:    { label: "benzene",    sizeWord: "six"  },
     pyridine:   { label: "pyridine",   sizeWord: "six"  },
@@ -2275,6 +2283,9 @@ const MathPixChemistryUtils = (function () {
     furan:      { label: "furan",      sizeWord: "five" },
     thiophene:  { label: "thiophene",  sizeWord: "five" },
     imidazole:  { label: "imidazole",  sizeWord: "five" },
+    thiazole:   { label: "thiazole",   sizeWord: "five" },
+    oxazole:    { label: "oxazole",    sizeWord: "five" },
+    pyrazole:   { label: "pyrazole",   sizeWord: "five" },
   };
 
   /**

@@ -1103,11 +1103,6 @@ section.ally-cache-entries {
   border: 1px solid currentcolor;
 }
 
-.ally-cache-refresh-btn {
-  border: 1px solid currentColor;
-  background: transparent;
-}
-
 .ally-cache-banner-update {
   border: 1px solid currentColor;
 }
@@ -1283,6 +1278,7 @@ section.ally-cache-entries {
 }
 .ally-form-group input[type="text"],
 .ally-form-group input[type="password"],
+.ally-form-group input[type="url"],
 .ally-form-group select {
   color: currentcolor;
   background: #fffff4;
@@ -1297,6 +1293,11 @@ section.ally-cache-entries {
 }
 .ally-help-text {
   color: #495057;
+}
+/* De-pilled settings sub-group label: normal dark text (not the inverted
+   legend-pill colour). */
+.ally-sp-settings-subgroup legend {
+  color: #00131d;
 }
 .score-excellent {
   color: #005051;
@@ -1382,6 +1383,9 @@ section.ally-cache-entries {
 }
 .ally-course-search-option[aria-selected="true"] {
   background: #e1e8ec;
+}
+.ally-course-search-more-container {
+  border-top: 1px solid currentcolor;
 }
 .ally-course-option-name {
   color: currentcolor;
@@ -1824,7 +1828,6 @@ input[type="number"].ally-course-search-input:focus-visible {
 
 .ally-sp-warning {
   border: 4px solid #00131d;
-  background-color: rgba(225, 232, 236, 0.3);
 }
 .ally-sp-disclosure-button {
   background: transparent;
@@ -1845,7 +1848,7 @@ input[type="number"].ally-course-search-input:focus-visible {
   color: #0b0c0c;
 }
 .ally-sp-success {
-  border: 4px solid #005051;
+  border: 4px solid #00131d;
 }
 .ally-sp-success-icon {
   color: #005051;
@@ -1860,7 +1863,7 @@ input[type="number"].ally-course-search-input:focus-visible {
   outline: 3px solid #fcbc00;
 }
 .ally-sp-error {
-  border: 4px solid #d5007f;
+  border: 4px solid #00131d;
   background-color: #fef7f6;
 }
 .ally-sp-error-icon {
@@ -1874,6 +1877,80 @@ input[type="number"].ally-course-search-input:focus-visible {
 }
 .ally-sp-breakdown-value-nonzero {
   color: #00131d;
+}
+
+/* Authored section types (Stage 5) — neutral "supporting content" chrome,
+   visually distinct from the semantic warning / success / error boxes. */
+.ally-sp-info,
+.ally-sp-linkbuttons,
+.ally-sp-courseinfo,
+.ally-sp-group {
+  border: 4px solid #00131d;
+}
+.ally-sp-info-icon,
+.ally-sp-info-subicon,
+.ally-sp-info-link-icon,
+.ally-sp-courseinfo-icon,
+.ally-sp-linkbutton-card-icon,
+.ally-sp-group-icon {
+  color: #005051;
+}
+/* Child info boxes inside a group render as white cards lifted off the group's
+   tinted panel (same relationship as the link-button cards below). Borderless so
+   the nested boxes don't double up; white fill keeps text >= 4.5:1. */
+.ally-sp-group .ally-sp-info {
+  border: 0;
+}
+/* Decorative profile-card graphic (statement header) — brand teal. */
+.ally-sp-courseinfo-graphic {
+  color: #005051;
+}
+.ally-sp-info a,
+.ally-sp-courseinfo a {
+  color: #005051;
+}
+.ally-sp-info a:hover,
+.ally-sp-courseinfo a:hover {
+  color: #8d3970;
+}
+.ally-sp-info a:focus-visible,
+.ally-sp-courseinfo a:focus-visible,
+.ally-sp-linkbuttons a:focus-visible {
+  outline: 3px solid #fcbc00;
+  background-color: #fcbc00;
+  color: #00131d;
+}
+/* Fill-in placeholder text (statement header) — muted slate, >= 4.5:1. */
+.ally-sp-placeholder {
+  color: #495961;
+}
+/* White cards on the section's tinted panel (matches the wireframe). Card text
+   inherits the page's near-black (>= 4.5:1 on white); the teal heading icon and
+   inline links (#005051) clear 4.5:1 on white too. */
+.ally-sp-linkbutton-card {
+  background-color: #fffff4;
+}
+/* Link-buttons: brand action fill (white on teal = 8.3:1). */
+.ally-sp-linkbutton {
+  background-color: #005051;
+  border-color: #005051;
+  color: #ffffff;
+}
+
+.ally-sp-intro,
+.ally-sp-warning,
+.ally-sp-success,
+.ally-sp-group,
+.ally-sp-info:not([data-sp-export="include"]),
+.ally-sp-info[data-sp-export="include"][data-sp-category="boilerplate"],
+.ally-sp-courseinfo,
+.ally-sp-linkbuttons {
+  background-color: rgba(225, 232, 236, 0.3);
+}
+.ally-sp-linkbutton:hover {
+  background-color: #00131d;
+  border-color: #00131d;
+  color: #ffffff;
 }
 
 /* ========================================
@@ -3763,6 +3840,17 @@ dialog {
   color: #495961;
 }
 
+/* AI-run status region colours — light theme (Parcel 6, step 2 of 3).
+   Shape lives in mathpix-image-manager.css; these set the inherited colour the
+   shape's currentColor bar, box, and 8% tint derive from. Scope matches the
+   shape rules: body.mathpix-manager-open. Success and error are told apart by
+   SHAPE too (bar vs box), so colour is not the only cue. */
+body.mathpix-manager-open .imgdesc-status-success:not(:empty) {
+  color: #2b4f50;
+}
+body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
+  color: #c1006f;
+}
 .universal-modal-button {
   outline: 0.2rem solid transparent;
   border: 0.2rem solid transparent;
@@ -5093,6 +5181,23 @@ select:hover {
   border: 0.2rem solid #00131d;
 }
 
+/* Chat's model select is styled as a light field rather than the dark pill above (see
+ * chat/chat.css). It needs an OPAQUE background because the browser paints the open
+ * drop-down list from this colour — a transparent one makes the list fall back to the
+ * UA's white while the inherited text colour stays, which is illegible in dark theme.
+ * This is the same colour .page-wrap paints, so the closed field looks unchanged. */
+#chat-model-select {
+  background-color: #fffff4;
+}
+
+/* Local Chat's model select has the same light-field treatment (local-chat.css sets
+ * background: inherit on .local-chat-model-bar select) and so needs the same opaque
+ * background, for the same drop-down reason. The id beats that class selector, so
+ * local-chat.css itself needs no change. */
+#local-chat-model-select {
+  background-color: #fffff4;
+}
+
 /* select */
 
 @media screen and (max-width: 33rem) {
@@ -5991,6 +6096,30 @@ pre.language-json {
   outline-offset: 2px;
 }
 
+/* Provenance pill colours (Image Manager edit view). State is also carried
+   by the pill's words, so colour is a scanning aid, not the sole signal
+   (WCAG 1.4.1). Text-on-fill and boundary contrast confirmed at AA for both
+   themes. The 1px currentColor border (set in mathpix-image-manager.css)
+   defines the amber pill's edge, whose fill-to-page contrast is low. */
+.mmd-image-manager-edit-form .field-provenance[data-provenance="user"] {
+  background-color: #005051;
+  color: #fffff4;
+}
+.mmd-image-manager-edit-form .field-provenance[data-provenance="ai-generated"],
+.mmd-image-manager-edit-form
+  .field-provenance[data-provenance="algo-generated"] {
+  background-color: #fcbc00;
+  color: #00131d;
+}
+.mmd-image-manager-edit-form .field-provenance[data-provenance="ai-reviewed"] {
+  background-color: #005c84;
+  color: #fffff4;
+}
+.mmd-image-manager-edit-form .field-provenance[data-provenance="ai-edited"] {
+  background-color: #8a3d2a;
+  color: #fffff4;
+}
+
 /* ============================================================
    Provider switch + mismatch notice (Stage 3a Task 3.5a)
    Styles for the global provider switch fieldset in the Set Up
@@ -6193,6 +6322,22 @@ pre.language-json {
 }
 
 .setup-status-error::before {
+  content: "⚠ ";
+  font-weight: bold;
+  margin-right: 0.25em;
+}
+
+/* Inline field validation message (shared by the Set Up and Ally credential
+ * forms — layout in setup-tool/setup-tool.css). Reuses the same
+ * Bootstrap-derived danger text colour as .setup-status-error above, but as
+ * plain text on the page background rather than in a filled panel. Carries the
+ * same leading ⚠ glyph so the error reads in monochrome (SC 1.4.1).
+ */
+.credential-field-error {
+  color: #721c24;
+}
+
+.credential-field-error::before {
   content: "⚠ ";
   font-weight: bold;
   margin-right: 0.25em;

@@ -1125,9 +1125,10 @@ export class FileHandler {
       analysis.recommendedEngine || "native"
     } engine recommended.`;
 
-    // Use existing accessibility helper if available
-    if (window.a11y && window.a11y.announceStatus) {
-      window.a11y.announceStatus(announcement, "polite");
+    // The shared announcer. Was guarded on window.a11y, which production never
+    // assigns, so this announcement was a no-op.
+    if (window.accessibilityHelpers?.announce) {
+      window.accessibilityHelpers.announce(announcement, "polite");
     }
   }
 
@@ -1667,9 +1668,10 @@ export class FileHandler {
       announcement += " (Recommended)";
     }
 
-    // Use existing accessibility helper if available
-    if (window.a11y && window.a11y.announceStatus) {
-      window.a11y.announceStatus(announcement, "polite");
+    // The shared announcer. Was guarded on window.a11y, which production never
+    // assigns, so this announcement was a no-op.
+    if (window.accessibilityHelpers?.announce) {
+      window.accessibilityHelpers.announce(announcement, "polite");
     }
 
     logInfo("Engine selection announced", { engine, announcement });

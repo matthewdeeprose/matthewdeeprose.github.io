@@ -938,7 +938,19 @@ class MathPixUIManager extends MathPixBaseModule {
           this.controller.initStrokesSystem
         ) {
           try {
-            await this.controller.initStrokesSystem();
+            // initStrokesSystem returns false (no throw) when the canvas
+            // element is missing - honour it, or draw mode opens with a null
+            // canvas and every size button raises an error toast.
+            const initialised = await this.controller.initStrokesSystem();
+
+            if (initialised === false) {
+              logError(
+                "Strokes system initialisation returned false - drawing canvas unavailable",
+              );
+              this.showNotification("Drawing canvas unavailable", "error");
+              return;
+            }
+
             logDebug(
               "Strokes system initialised on first draw mode activation",
             );
@@ -1114,6 +1126,36 @@ class MathPixUIManager extends MathPixBaseModule {
   }
 
   /**
+   * @method reportMissingStrokesCanvas
+   * @description
+   * Reports an attempted canvas operation made while `strokesCanvas` is null.
+   * Draw mode is the only mode in which such a press is user-visible, so only
+   * then does the user get a notification (which also announces via the shared
+   * live region). Outside draw mode the press came from a stale or hidden
+   * control and is logged only - an error toast there is noise the user cannot
+   * act on.
+   *
+   * @param {string} operation - Operation attempted, for the log line
+   * @returns {void}
+   * @private
+   * @since Phase B (canvas guard)
+   */
+  reportMissingStrokesCanvas(operation) {
+    // modeSwitcher can be undefined - it is created by initStrokesSystem()
+    const inDrawMode = this.controller.modeSwitcher?.isDrawMode() === true;
+
+    if (inDrawMode) {
+      this.showNotification("Canvas not initialised", "error");
+      logError(`Attempted ${operation} but canvas not initialised`);
+      return;
+    }
+
+    logWarn(
+      `Attempted ${operation} but canvas not initialised (draw mode not active - notification suppressed)`,
+    );
+  }
+
+  /**
    * @method attachCanvasSizeButtonListeners
    * @description
    * Attaches event listeners for canvas size control buttons (Small, Medium, Large, Extra Large).
@@ -1154,8 +1196,7 @@ class MathPixUIManager extends MathPixBaseModule {
         // Handle fit-to-width button (Phase 2B.1)
         if (button.id === "mathpix-fit-to-width-btn") {
           if (!this.controller.strokesCanvas) {
-            this.showNotification("Canvas not initialised", "error");
-            logError("Attempted fit-to-width but canvas not initialised");
+            this.reportMissingStrokesCanvas("fit-to-width");
             return;
           }
 
@@ -1183,8 +1224,7 @@ class MathPixUIManager extends MathPixBaseModule {
         // Handle fit-to-viewport button (Phase 2B.2)
         if (button.id === "mathpix-fit-to-viewport-btn") {
           if (!this.controller.strokesCanvas) {
-            this.showNotification("Canvas not initialised", "error");
-            logError("Attempted fit-to-viewport but canvas not initialised");
+            this.reportMissingStrokesCanvas("fit-to-viewport");
             return;
           }
 
@@ -1213,8 +1253,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
         // Handle preset size buttons (small, medium, large, xlarge)
         if (!this.controller.strokesCanvas) {
-          this.showNotification("Canvas not initialised", "error");
-          logError("Attempted resize but canvas not initialised");
+          this.reportMissingStrokesCanvas(`resize to ${size}`);
           return;
         }
 
@@ -1266,7 +1305,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
     const customHandler = async () => {
       if (!this.controller.strokesCanvas) {
-        this.showNotification("Canvas not initialised", "error");
+        this.reportMissingStrokesCanvas("custom size dialog");
         return;
       }
 
@@ -2348,30 +2387,18 @@ class MathPixUIManager extends MathPixBaseModule {
    * @since 2.0.0
    */
   applyEndpointChange(endpoint) {
-    // Switch endpoint in API client
-    const success = this.controller.apiClient.switchEndpoint(endpoint);
+    // Go through the CONTROLLER's switchEndpoint, not straight to the API
+    // client. The controller additionally re-points the strokes client at the
+    // new region; calling apiClient.switchEndpoint() directly left handwriting
+    // recognition posting to the previous region for the rest of the session,
+    // because strokesAPIClient.apiBase is otherwise only assigned once, at
+    // strokes init. The controller also fans out to
+    // pdfHandler.updateFormatAvailability(), so this no longer calls that
+    // itself — #mathpix-pdf-options is display:none-toggled rather than
+    // removed, so its checkboxes refresh whether or not the panel is open.
+    const success = this.controller.switchEndpoint(endpoint);
 
     if (success) {
-      // Update feature availability UI
-      this.updateFeatureAvailability(endpoint);
-
-      // PHASE 1 STEP 6 FIX: Update PDF format availability if PDF options are visible
-      const pdfOptions = document.getElementById("mathpix-pdf-options");
-      if (
-        pdfOptions &&
-        pdfOptions.style.display !== "none" &&
-        !pdfOptions.hidden
-      ) {
-        logDebug("PDF options visible - updating format availability");
-        if (
-          this.controller.pdfHandler &&
-          this.controller.pdfHandler.updateFormatAvailability
-        ) {
-          this.controller.pdfHandler.updateFormatAvailability();
-          logDebug("PDF format availability updated after endpoint change");
-        }
-      }
-
       // PHASE 1 STEP 6: Update status indicator
       this.updateStatusIndicator(endpoint);
 
@@ -2540,82 +2567,6 @@ class MathPixUIManager extends MathPixBaseModule {
     } else {
       onCancel();
     }
-  }
-
-  /**
-   * @method updateFeatureAvailability
-   * @description
-   * Updates UI to reflect feature availability for selected endpoint.
-   * Disables unavailable features with appropriate tooltips and ARIA labels.
-   *
-   * @param {string} endpoint - Current endpoint key
-   *
-   * @returns {void}
-   * @private
-   *
-   * @accessibility
-   * - Disabled state communicated via native disabled attribute
-   * - Tooltips explain why features are unavailable
-   * - ARIA labels provide screen reader context
-   * @since 2.0.0
-   */
-  updateFeatureAvailability(endpoint) {
-    const features = this.controller.apiClient.getEndpointFeatures();
-    const endpointConfig = this.controller.apiClient.getEndpointConfig();
-    const endpointName = endpointConfig.name;
-
-    logDebug("Updating feature availability UI", { endpoint, features });
-
-    // Map of format elements to their feature keys (PDF formats only)
-    const formatElements = {
-      "format-latex-pdf": "latex_pdf",
-    };
-
-    Object.entries(formatElements).forEach(([elementId, featureKey]) => {
-      const element = document.getElementById(elementId);
-      if (!element) return;
-
-      const available = features[featureKey];
-
-      // Use native disabled attribute
-      element.disabled = !available;
-
-      if (!available) {
-        // Uncheck disabled options
-        if (element.type === "checkbox") {
-          element.checked = false;
-        }
-
-        // Update ARIA label with explanation
-        const label = element.labels?.[0]?.textContent || featureKey;
-        element.setAttribute(
-          "aria-label",
-          `${label} (unavailable on ${endpointName} servers)`,
-        );
-
-        // Add title for tooltip
-        element.setAttribute(
-          "title",
-          `This format is not available on the ${endpointName} endpoint. ` +
-            `Switch to US endpoint for full feature support.`,
-        );
-
-        logDebug("Feature disabled in UI", { featureKey, endpoint });
-      } else {
-        // Remove explanatory attributes when available
-        element.removeAttribute("aria-label");
-        element.removeAttribute("title");
-
-        logDebug("Feature enabled in UI", { featureKey, endpoint });
-      }
-    });
-
-    logInfo("Feature availability UI updated", {
-      endpoint,
-      disabledFeatures: Object.entries(features)
-        .filter(([_, available]) => !available)
-        .map(([feature]) => feature),
-    });
   }
 
   /**

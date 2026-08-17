@@ -125,6 +125,42 @@ const MusicApp = (function () {
     });
   }
 
+  // Ensure a work-title is present in the copy of the MusicXML we hand to OSMD. This
+  // injects the derived title only into the OSMD copy, so the on-screen heading stops
+  // reading "Untitled Score"; the author's notation is not rewritten, and the export,
+  // PDF, and state copies keep the original bytes. Pure: returns the input unchanged
+  // on any problem (parse error, missing root, a title already present, or any thrown
+  // error), so a titled file passes through byte-for-byte with no reserialisation.
+  function withWorkTitle(xmlText, title) {
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+      // A malformed document surfaces a parsererror element; leave it to OSMD to complain.
+      if (doc.getElementsByTagName("parsererror").length) return xmlText;
+      const root = doc.querySelector("score-partwise");
+      if (!root) return xmlText;
+      // A non-empty work-title already satisfies the heading: pass through untouched
+      // so titled files are never reserialised.
+      const existingTitle = root.querySelector("work-title");
+      if (existingTitle && existingTitle.textContent && existingTitle.textContent.trim()) return xmlText;
+      // Otherwise ensure a work element (as the first element child) and its work-title,
+      // then set the derived title and serialise the amended copy.
+      let work = root.querySelector("work");
+      if (!work) {
+        work = doc.createElement("work");
+        root.insertBefore(work, root.firstElementChild);
+      }
+      let workTitle = work.querySelector("work-title");
+      if (!workTitle) {
+        workTitle = doc.createElement("work-title");
+        work.appendChild(workTitle);
+      }
+      workTitle.textContent = title;
+      return new XMLSerializer().serializeToString(doc);
+    } catch (e) {
+      return xmlText;
+    }
+  }
+
   // Render every output from one uploaded source. The visual score is handed the raw MusicXML (OSMD
   // parses it itself); every other output is driven by our own parsed model, parsed once here and shared.
   function renderOutputs(xmlText, filename) {
@@ -133,13 +169,21 @@ const MusicApp = (function () {
     // Clear the play-along cursor and note highlight before rendering the new/transposed score.
     playAlong.reset();
 
-    if (els.scoreMount) renderScore.render(xmlText, els.scoreMount);
-    else logWarn("Score mount #scoreMount not found; skipping the visual score");
+    // Parse our own model first so the derived work-title is available to inject into
+    // the OSMD-bound copy below. Every other output still reads the original xmlText.
+    const model = parser.parse(xmlText);
+
+    if (els.scoreMount) {
+      // Hand OSMD a copy carrying the derived title so its heading stops reading
+      // "Untitled Score". Only the OSMD argument changes; export, PDF, state, and every
+      // model-bound render keep the original bytes.
+      const osmdXml = (model && model.workTitle) ? withWorkTitle(xmlText, model.workTitle) : xmlText;
+      renderScore.render(osmdXml, els.scoreMount);
+    } else logWarn("Score mount #scoreMount not found; skipping the visual score");
 
     if (els.exportMount) renderExport.render(xmlText, filename, els.exportMount);
     else logWarn("Export mount #exportMount not found; skipping the download button");
 
-    const model = parser.parse(xmlText);
     if (!model) {
       logWarn("Could not parse the MusicXML; skipping the note list and summary");
       notify.error("Could not read the score structure");
@@ -423,6 +467,24 @@ const MusicApp = (function () {
     } else {
       results.mxlRoundTripsThroughLoader = false;
     }
+
+    // withWorkTitle injects the derived title only into the OSMD-bound copy. DOMParser
+    // is available in the browser selfTest, so exercise the helper directly: an untitled
+    // score gains a work-title carrying the supplied title; an already-titled score is
+    // returned byte-for-byte (no reserialisation); a movement-title-only score still
+    // gains a work-title; and a malformed string falls back to the original unchanged.
+    const wtUntitled = "<score-partwise><part-list/></score-partwise>";
+    const wtAdded = withWorkTitle(wtUntitled, "Injected Title");
+    results.withWorkTitleAddsTitle =
+      wtAdded !== wtUntitled && /<work-title>Injected Title<\/work-title>/.test(wtAdded);
+    const wtTitled = '<score-partwise><work><work-title>Kept Title</work-title></work><part-list/></score-partwise>';
+    results.withWorkTitleKeepsTitledUnchanged = withWorkTitle(wtTitled, "Ignored") === wtTitled;
+    const wtMovementOnly = '<score-partwise><movement-title>Movement</movement-title><part-list/></score-partwise>';
+    const wtMovementAdded = withWorkTitle(wtMovementOnly, "From Movement");
+    results.withWorkTitleMovementOnlyGainsTitle =
+      wtMovementAdded !== wtMovementOnly && /<work-title>From Movement<\/work-title>/.test(wtMovementAdded);
+    results.withWorkTitleMalformedUnchanged =
+      withWorkTitle("not xml at all", "Nope") === "not xml at all";
 
     console.table(results);
     return results;

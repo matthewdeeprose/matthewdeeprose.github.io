@@ -105,7 +105,9 @@ function logDebug(message, ...args) {
  * @namespace MATHPIX_CONFIG
  * @description Comprehensive configuration object for the MathPix OCR system
  *
- * @property {string} API_BASE - EU-specific API endpoint ensuring GDPR compliance
+ * @property {Object} ENDPOINTS - Regional API endpoints (US/EU/ASIA). There is
+ *   no flat API_BASE key: the base URL is per-region and resolved at runtime by
+ *   MathPixAPIClient.updateApiBase() from the selected endpoint.
  * @property {Object} DEFAULT_REQUEST - Default API request configuration with privacy settings
  * @property {Object} PRIVACY - Privacy and GDPR compliance configuration
  * @property {Object} USER_EXPERIENCE - User interface and workflow configuration
@@ -121,8 +123,8 @@ function logDebug(message, ...args) {
  * // Check if file type is supported
  * const isSupported = MATHPIX_CONFIG.SUPPORTED_TYPES.includes(file.type);
  *
- * // Use privacy-compliant API endpoint
- * const apiUrl = `${MATHPIX_CONFIG.API_BASE}/text`;
+ * // Resolve the API base for the selected region
+ * const apiUrl = `${MATHPIX_CONFIG.ENDPOINTS.EU.baseUrl}/text`;
  *
  * @readonly
  * @since 1.0.0
@@ -135,8 +137,9 @@ const MATHPIX_CONFIG = {
    *
    * Three endpoints available:
    * - US: Full feature support, best latency for Americas
-   * - EU: GDPR-compliant, some features limited (latex.pdf unavailable)
-   * - Asia: Best latency for APAC (currently shares US infrastructure)
+   * - EU: GDPR-compliant, fully EU-resident, full feature support as measured
+   *   on 5 August 2026 (see the latex_pdf note on the EU entry)
+   * - Asia: Best latency for APAC — hostname and features UNVERIFIED
    *
    * @property {Object} US - United States endpoint configuration
    * @property {Object} EU - European Union endpoint configuration
@@ -147,7 +150,7 @@ const MATHPIX_CONFIG = {
   ENDPOINTS: {
     US: {
       name: "United States",
-      baseUrl: " https://api.mathpix.com/v3",
+      baseUrl: "https://api.mathpix.com/v3",
       location: "US East 1 (N. Virginia)",
       features: {
         text: true, // Image/Draw OCR
@@ -165,14 +168,24 @@ const MATHPIX_CONFIG = {
       recommendedFor: ["americas", "default"],
     },
     EU: {
+      // Fully EU-resident deployment announced by Mathpix on 5 August 2026.
+      // This REPLACED eu-central-1.api.mathpix.com, which Mathpix re-routed to
+      // US infrastructure roughly a week later — so the old hostname would have
+      // gone on serving under a European name while processing in the US.
       name: "European Union",
-      baseUrl: "https://eu-central-1.api.mathpix.com/v3",
-      location: "EU Central 1 (Frankfurt)",
+      baseUrl: "https://eu.api.mathpix.com/v3",
+      location: "EU (Frankfurt / Falkenstein)",
       features: {
         text: true, // Image/Draw OCR
         strokes: true, // Handwriting recognition
         pdf: true, // PDF processing
-        latex_pdf: false, // ❌ NOT available (confirmed by support)
+        // Measured 5 August 2026 against eu.api.mathpix.com on BOTH surfaces
+        // that can produce one — /v3/converter and /v3/pdf conversion_formats —
+        // each returning a real %PDF against a US positive control. The former
+        // `false` here ("confirmed by support") was stale: the same probe also
+        // succeeded on the OLD eu-central-1 host, so the restriction had already
+        // lapsed before this migration rather than being lifted by it.
+        latex_pdf: true,
         html: true, // HTML export
         docx: true, // DOCX export
         tex_zip: true, // LaTeX zip export
@@ -184,6 +197,11 @@ const MATHPIX_CONFIG = {
       recommendedFor: ["eu", "uk", "gdpr"],
     },
     ASIA: {
+      // UNVERIFIED, and deliberately left alone. ap-southeast-1 is a regional
+      // hostname of exactly the shape Mathpix consolidated for the EU (their
+      // 5 August 2026 announcement named only the EU ones, but did not say the
+      // others were safe). Neither its reachability nor its feature matrix has
+      // been measured. Confirm with Mathpix support before relying on this.
       name: "Asia Pacific",
       baseUrl: "https://ap-southeast-1.api.mathpix.com/v3",
       location: "SE Asia (Singapore)",
@@ -191,7 +209,7 @@ const MATHPIX_CONFIG = {
         text: true,
         strokes: true,
         pdf: true,
-        latex_pdf: true, // Assumed available
+        latex_pdf: true, // Assumed available — NOT measured (see note above)
         html: true,
         docx: true,
         tex_zip: true,
@@ -332,8 +350,8 @@ const MATHPIX_CONFIG = {
     noDataImprovement: true,
     secureTransmission: true,
     gdprCompliant: true,
-    processingLocation: "EU (Frankfurt)",
-    processingEndpoint: "eu-central-1.api.mathpix.com",
+    processingLocation: "EU (Frankfurt / Falkenstein)",
+    processingEndpoint: "eu.api.mathpix.com",
     dataLocality: "European Union",
     maxRetentionHours: 24,
   },
@@ -416,6 +434,7 @@ const MATHPIX_CONFIG = {
     PDF_TIMEOUT: 5 * 60 * 1000, // 5 minute timeout for PDF processing
     STATUS_POLL_INTERVAL: 2000, // Poll every 2 seconds for status updates
     MAX_STATUS_POLLS: 150, // Maximum 150 polls (5 minutes at 2-second intervals)
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     SUPPORTED_PDF_FORMATS: ["mmd", "html", "tex.zip", "docx"],
     DEFAULT_PDF_OPTIONS: {
       page_range: null, // No page range = process all pages
@@ -463,7 +482,6 @@ const MATHPIX_CONFIG = {
     math_display_delimiters: ["$$", "$$"],
     rm_spaces: true,
     rm_fonts: true,
-    include_diagram_text: true, // Extract text labels from within diagrams
     // Phase 5A-1: Chemistry recognition for PDFs
     include_smiles: true,
     include_inchi: true,
@@ -1088,6 +1106,18 @@ const MATHPIX_CONFIG = {
        *
        * Flipping this alone does NOT bypass format safety — see
        * FORMATS_SUPPORTING_WEBP below.
+       *
+       * ⚠️ **Before flipping this, fix `_encodeCached`'s memo key**
+       * (session-restorer-images.js). That memo is keyed on the registry id
+       * ALONE, so the first encode of an image decides its codec for every
+       * later call in the session, whatever encoder list the caller passes.
+       * Harmless today only because `pickEncoders` has a single possible
+       * return while this flag is `false` (measured 27 July 2026: it returns
+       * `["png","jpeg"]` for every input). Set this to `true` and it returns
+       * two distinct sets — and a session that converts to `html` first and
+       * `docx` second will serve the memoised **WebP** dataURI to DOCX,
+       * defeating FORMATS_SUPPORTING_WEBP entirely. Fix: include the encoder
+       * set in the memo key.
        * @type {boolean}
        */
       ENABLE_WEBP_EMBEDDING: false,
@@ -1136,7 +1166,9 @@ const MATHPIX_CONFIG = {
      * 5 = HTML (web use)
      * 6 = Markdown (plain text)
      * 7 = PowerPoint (presentations)
+     * 11 = Excel (tabular content only)
      */
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     FORMATS: {
       docx: {
         label: "Word Document",
@@ -1219,6 +1251,16 @@ const MATHPIX_CONFIG = {
         mimeType: "application/zip",
         priority: 10,
         description: "HTML files in ZIP archive",
+      },
+      xlsx: {
+        label: "Excel (xlsx)",
+        extension: ".xlsx",
+        binary: true,
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        priority: 11,
+        description:
+          "Microsoft Excel format — tabular content only; each detected table becomes its own sheet",
       },
     },
 

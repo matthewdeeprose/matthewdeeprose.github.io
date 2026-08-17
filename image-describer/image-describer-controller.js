@@ -1071,7 +1071,9 @@
               await this.handleFileSelect(file);
 
               // Provide feedback
-              this.announceStatus("Image pasted from clipboard");
+              // No announceStatus here: the toast below carries the same words and
+              // the notification container is itself aria-live="polite", so an
+              // announcement as well would say it twice.
               if (window.notifySuccess) {
                 window.notifySuccess("Image pasted from clipboard");
               }
@@ -1202,11 +1204,32 @@
     },
 
     /**
-     * Announce status to screen readers
+     * Announce a status message to screen readers.
+     *
+     * This used to log and return — nothing else. Its comment claimed "the status
+     * element has aria-live, so updating it announces automatically", and the
+     * function updated nothing, so eleven call sites across three controller files
+     * announced nothing at all.
+     *
+     * The claim was also wrong about the element. #imgdesc-status lives inside
+     * #imgdesc-output-section, which is display:none until there is output, so it
+     * measured notRendered in the accessibility tree even with hidden=false — a
+     * channel that announced in some states and not others. It is no longer a live
+     * region; it is the VISIBLE status, and this is the audible one.
+     *
+     * The announcer is resolved HERE rather than cached, for the same reason as
+     * js/accessibility-helpers.js:49-55: accessibility-announcer.js is a plain
+     * script and load order must not be able to freeze a stale reference.
+     *
      * @param {string} message - Message to announce
      */
     announceStatus(message) {
-      // The status element has aria-live, so updating it announces automatically
+      const announcer = window.accessibilityHelpers;
+      if (!announcer || typeof announcer.announce !== "function") {
+        logWarn("No screen-reader announcer available; status not announced");
+        return;
+      }
+      announcer.announce(message);
       logDebug("Screen reader announcement:", message);
     },
 

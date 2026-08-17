@@ -43,6 +43,13 @@ const DISABLE_ALL_LOGGING = false;
 // stay quiet; enable quickly if the intermittent staleness bug recurs.
 const LOG_PASS_DIAGNOSTICS = false;
 
+// Code-wrap toggle for the MMD code view: persisted preference + default.
+// Wrapping is ON unless the user has explicitly turned it off, so a first-time
+// user (no stored value) gets readable wrapped code rather than sideways scroll.
+const WRAP_STORAGE_KEY = "mathpix-mmd-wrap";
+const WRAP_CLASS = "mmd-wrap-enabled";
+const DEFAULT_WRAP = true;
+
 /**
  * @function shouldLog
  * @description Determines if a message should be logged based on current logging configuration
@@ -104,6 +111,16 @@ function logDebug(message, ...args) {
     console.log("[MMD Preview]", message, ...args);
 }
 
+// Heading renormalisation (SuperNet-200 \section* fallout). MMD source decides
+// its own heading levels, so rendered previews routinely emit an <h2> inside a
+// pane that sits under an h3 or h4 - a broken outline for anyone navigating by
+// heading. These constants drive the shared renormalisation below.
+const HEADING_SELECTOR = "h1, h2, h3, h4, h5, h6";
+const MAX_HEADING_LEVEL = 6;
+// Used only when no preceding heading can be found; the convert pane's own
+// surrounding level, so rendered content starts at h4 as it does there.
+const FALLBACK_BASE_HEADING_LEVEL = 3;
+
 /**
  * @class MathPixMMDPreview
  * @description CDN Loader and Preview Renderer for MathPix Markdown
@@ -129,6 +146,146 @@ function logDebug(message, ...args) {
  * @since 4.0.0
  */
 class MathPixMMDPreview {
+  /**
+   * @method findBaseHeadingLevel
+   * @static
+   * @description
+   * Finds the level of the nearest heading preceding `container` in document
+   * order, by walking back through previous siblings and up through ancestors.
+   * That heading is the one a screen-reader user was last on before reaching
+   * the preview, so rendered content belongs one level below it.
+   *
+   * Headings that are not rendered are skipped when the container itself IS
+   * rendered - `tools.html` keeps five inactive modes in the DOM behind
+   * `display: none`, and their headings are not part of the outline the user
+   * is navigating. When the container is itself unrendered (rendered into a
+   * hidden panel ahead of being shown) that filter cannot distinguish
+   * anything, so structural order alone decides.
+   *
+   * @param {HTMLElement} container - Element the rendered content sits in
+   * @returns {number} Heading level 1-6 (FALLBACK_BASE_HEADING_LEVEL if none)
+   * @since Phase A (heading renormalisation)
+   */
+  static findBaseHeadingLevel(container) {
+    const requireRendered = container.getClientRects().length > 0;
+
+    const levelOf = (element) =>
+      parseInt(element.tagName.charAt(1), 10) || null;
+
+    const isUsable = (element) =>
+      !requireRendered || element.getClientRects().length > 0;
+
+    // Nearest heading inside a subtree, in reverse document order
+    const lastHeadingIn = (element) => {
+      if (element.matches(HEADING_SELECTOR)) {
+        return isUsable(element) ? element : null;
+      }
+
+      const headings = Array.from(element.querySelectorAll(HEADING_SELECTOR));
+      for (let i = headings.length - 1; i >= 0; i--) {
+        if (isUsable(headings[i])) return headings[i];
+      }
+
+      return null;
+    };
+
+    let node = container;
+    while (node && node !== document.body && node !== document.documentElement) {
+      let sibling = node.previousElementSibling;
+      while (sibling) {
+        const heading = lastHeadingIn(sibling);
+        if (heading) return levelOf(heading) || FALLBACK_BASE_HEADING_LEVEL;
+        sibling = sibling.previousElementSibling;
+      }
+      node = node.parentElement;
+    }
+
+    return FALLBACK_BASE_HEADING_LEVEL;
+  }
+
+  /**
+   * @method renormaliseHeadingLevels
+   * @static
+   * @description
+   * Renormalises the heading levels of rendered MMD so the preview slots into
+   * the surrounding page outline. The base level is derived per call (see
+   * findBaseHeadingLevel) rather than hard-coded, because the surfaces differ:
+   * the convert pane sits under an h3, the resume pane under an h4, the
+   * AI-enhancer preview under a modal h4.
+   *
+   * Distinct levels present in the content are rank-renormalised ascending
+   * from base + 1, so gaps collapse and the outline is contiguous - the same
+   * mapping semantics as the Image Describer's adjustHeadingLevels.
+   *
+   * Headings are rebuilt by MOVING child nodes, never by copying innerHTML: a
+   * heading can contain MathJax output, and re-parsing it as markup would
+   * destroy the mjx-container the reader depends on.
+   *
+   * @param {HTMLElement} container - Container holding freshly rendered HTML
+   * @returns {number} Number of headings whose level changed
+   * @since Phase A (heading renormalisation)
+   */
+  static renormaliseHeadingLevels(container) {
+    if (!container) {
+      logWarn("No container provided for heading renormalisation");
+      return 0;
+    }
+
+    const headings = Array.from(container.querySelectorAll(HEADING_SELECTOR));
+
+    if (headings.length === 0) {
+      logDebug("No headings in rendered content - nothing to renormalise");
+      return 0;
+    }
+
+    const baseLevel = MathPixMMDPreview.findBaseHeadingLevel(container);
+    const startLevel = Math.min(baseLevel + 1, MAX_HEADING_LEVEL);
+
+    // Distinct levels present, ascending - rank position decides the new level
+    const levelsUsed = [
+      ...new Set(headings.map((h) => parseInt(h.tagName.charAt(1), 10))),
+    ].sort((a, b) => a - b);
+
+    const levelMapping = {};
+    levelsUsed.forEach((originalLevel, rank) => {
+      levelMapping[originalLevel] = Math.min(startLevel + rank, MAX_HEADING_LEVEL);
+    });
+
+    let changed = 0;
+
+    headings.forEach((heading) => {
+      const originalLevel = parseInt(heading.tagName.charAt(1), 10);
+      const newLevel = levelMapping[originalLevel];
+
+      if (newLevel === originalLevel) return;
+
+      const replacement = document.createElement(`h${newLevel}`);
+
+      for (let i = 0; i < heading.attributes.length; i++) {
+        replacement.setAttribute(
+          heading.attributes[i].name,
+          heading.attributes[i].value,
+        );
+      }
+
+      // Move, do not copy - preserves MathJax nodes inside the heading
+      while (heading.firstChild) replacement.appendChild(heading.firstChild);
+
+      heading.replaceWith(replacement);
+      changed++;
+    });
+
+    logDebug("Heading levels renormalised for preview outline", {
+      baseLevel,
+      startLevel,
+      levelsUsed,
+      levelMapping,
+      changed,
+    });
+
+    return changed;
+  }
+
   /**
    * Create a new MathPixMMDPreview instance
    * @param {Object} config - Configuration object (MATHPIX_CONFIG.MMD_PREVIEW)
@@ -1320,6 +1477,10 @@ class MathPixMMDPreview {
       const html = this.renderToString(mmdContent);
       targetElement.innerHTML = html;
 
+      // Slot the content's headings into the surrounding page outline before
+      // MathJax reconciliation runs - the content is still plain HTML here.
+      MathPixMMDPreview.renormaliseHeadingLevels(targetElement);
+
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");
 
@@ -1452,8 +1613,52 @@ class MathPixMMDPreview {
   }
 
   /**
+   * Collect an element's text content, excluding any <pre>/<code> subtrees
+   *
+   * Code blocks legitimately contain LaTeX-looking text — SuperNet-200 emits
+   * \begin{lstlisting}[mathescape=true] pseudocode whose \(...\) is source, not
+   * math to render — so their text must not reach the unrendered-math heuristic.
+   *
+   * @param {HTMLElement} element - Element to read
+   * @returns {string} Text content with code-block text removed
+   * @private
+   */
+  getTextExcludingCodeBlocks(element) {
+    const EXCLUDED_TAGS = ["PRE", "CODE"];
+
+    // A root that is itself a code block contributes nothing
+    if (EXCLUDED_TAGS.includes(element.tagName)) return "";
+
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
+      {
+        acceptNode(node) {
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            // Reject skips the whole subtree; skip descends but reports nothing
+            return EXCLUDED_TAGS.includes(node.tagName)
+              ? NodeFilter.FILTER_REJECT
+              : NodeFilter.FILTER_SKIP;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        },
+      }
+    );
+
+    let text = "";
+    let node = walker.nextNode();
+    while (node) {
+      text += node.nodeValue;
+      node = walker.nextNode();
+    }
+
+    return text;
+  }
+
+  /**
    * Detect if there's unrendered LaTeX math in the content
    * Looks for common LaTeX delimiters that weren't processed
+   * Text inside <pre>/<code> is excluded — see getTextExcludingCodeBlocks()
    * @param {HTMLElement} element - Element to check
    * @returns {boolean} True if unrendered math detected
    * @private
@@ -1461,7 +1666,7 @@ class MathPixMMDPreview {
   detectUnrenderedMath(element) {
     if (!element) return false;
 
-    const textContent = element.textContent || "";
+    const textContent = this.getTextExcludingCodeBlocks(element);
 
     // Common LaTeX delimiters that should have been rendered
     const mathPatterns = [
@@ -1511,6 +1716,9 @@ class MathPixMMDPreview {
 
     // Subscribe to MathJax recovery events
     this.subscribeToMathJaxRecovery();
+
+    // Reconcile the code-wrap toggle with the persisted preference (default ON)
+    this._applyWrapPreference();
 
     this.domInitialised = true;
 
@@ -2055,6 +2263,60 @@ class MathPixMMDPreview {
   }
 
   /**
+   * Read the stored wrap preference (default ON when unset).
+   * @returns {boolean} Whether code wrapping should be enabled
+   * @private
+   */
+  _getWrapPreference() {
+    const stored = localStorage.getItem(WRAP_STORAGE_KEY);
+    // Anything except the explicit string "false" counts as ON, so a
+    // first-time user with no stored value gets the DEFAULT_WRAP behaviour.
+    if (stored === null) return DEFAULT_WRAP;
+    return stored !== "false";
+  }
+
+  /**
+   * Apply the persisted wrap preference to the code container and checkbox.
+   * Called during init so the runtime state matches the stored choice.
+   * @private
+   */
+  _applyWrapPreference() {
+    const enabled = this._getWrapPreference();
+    const codeContainer = this.elements?.codeContainer;
+    if (codeContainer) {
+      codeContainer.classList.toggle(WRAP_CLASS, enabled);
+    }
+
+    const checkbox = document.getElementById("mmd-wrap-checkbox");
+    if (checkbox) {
+      checkbox.checked = enabled;
+    }
+
+    logDebug("Wrap preference applied", { enabled });
+  }
+
+  /**
+   * Toggle code-line wrapping in the MMD code view, persist the choice, and
+   * announce it. Wrapping swaps horizontal scrolling for wrapped lines.
+   * @param {boolean} enabled - Whether to wrap long lines
+   */
+  toggleWrap(enabled) {
+    const codeContainer = this.elements?.codeContainer;
+    if (!codeContainer) {
+      logWarn("Code container not found for wrap toggle");
+      return;
+    }
+
+    codeContainer.classList.toggle(WRAP_CLASS, enabled);
+    localStorage.setItem(WRAP_STORAGE_KEY, enabled.toString());
+
+    logInfo("Code wrapping toggled", { enabled });
+
+    const announcement = enabled ? "Code wrapping enabled" : "Code wrapping disabled";
+    this.announceToScreenReader(announcement);
+  }
+
+  /**
    * Ensure preview content is rendered (lazy render on first view)
    * @private
    */
@@ -2441,6 +2703,19 @@ window.toggleSplitPDF = (show) => {
   if (!preview) return;
 
   preview.toggleSplitPDF(show);
+};
+
+/**
+ * Toggle code-line wrapping in the MMD code view
+ * @param {boolean} enabled - Whether to wrap long lines
+ * @global
+ */
+window.toggleMMDWrap = (enabled) => {
+  const preview = window.getMathPixMMDPreview?.();
+  if (!preview) return;
+
+  if (!preview.domInitialised) preview.init();
+  preview.toggleWrap(enabled);
 };
 
 /**

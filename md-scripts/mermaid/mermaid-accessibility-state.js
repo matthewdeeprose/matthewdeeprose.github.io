@@ -57,6 +57,11 @@
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
+  // Diagram-source text is escaped once, where it enters an HTML string. This
+  // module's ONLY short tier is plain text (there is no generateShortHTML): it
+  // feeds the figcaption and the SVG aria-label, neither of which parses HTML,
+  // so it is deliberately left raw.
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Generate a short description for a state diagram
@@ -92,19 +97,26 @@
     }`;
 
     if (parsedData.initialStates.length > 0) {
-      description += `, starting from ${
-        parsedData.initialStates.length === 1 ? "the" : ""
-      } ${formatStateList(parsedData.initialStates)} state${
-        parsedData.initialStates.length !== 1 ? "s" : ""
-      }`;
+      // Ledger entry 10, measured 13 August 2026: the article was a ternary
+      // that emitted "" on the plural arm, so two initial states read
+      // "starting from  Draft and Imported states" — a double space and no
+      // article at all. The article is invariant; only the noun takes the
+      // number. The singular arm's output is unchanged by this.
+      description += `, starting from the ${formatStateList(
+        parsedData.initialStates.map((s) => displayNameFor(parsedData, s))
+      )} state${parsedData.initialStates.length !== 1 ? "s" : ""}`;
     }
 
     if (parsedData.finalStates.length > 0) {
-      description += ` and ending at ${
-        parsedData.finalStates.length === 1 ? "the" : ""
-      } ${formatStateList(parsedData.finalStates)} state${
-        parsedData.finalStates.length !== 1 ? "s" : ""
-      }`;
+      // Ledger entry 10, same arc: the identical ternary sat here, so two
+      // final states would have read "and ending at  X and Y states". Fixed by
+      // extension of the initial clause's approved wording rather than by its
+      // own measurement — the defect is DEFENSIVE and unpinnable, because no
+      // corpus fixture has more than one final state (the position entry 3 was
+      // accepted in). The singular arm already carried "the" and is unchanged.
+      description += ` and ending at the ${formatStateList(
+        parsedData.finalStates.map((s) => displayNameFor(parsedData, s))
+      )} state${parsedData.finalStates.length !== 1 ? "s" : ""}`;
     }
 
     description += ".";
@@ -163,6 +175,180 @@
   }
 
   /**
+   * Resolve a state id to the name the author gave it.
+   *
+   * Transitions, initial states and final states all reference a state by its
+   * id, so this is the single seam at which a name enters a description string.
+   * It is applied BEFORE escaping, so the escaper sees the display name
+   * (transform then escape).
+   *
+   * A diagram that declares no alias has an empty map, so every call returns its
+   * argument unchanged and such a diagram's description cannot move.
+   *
+   * @param {Object} parsedData - Parsed diagram data
+   * @param {string} id - The state id as it appears in the parsed structure
+   * @returns {string} The declared display name, or the id when none exists
+   */
+  function displayNameFor(parsedData, id) {
+    const names = parsedData && parsedData.displayNames;
+    if (!names || !Object.prototype.hasOwnProperty.call(names, id)) return id;
+    return names[id];
+  }
+
+  // Arm (a) of transitionLabelPhrase: a label opening with one of these already
+  // reads as a clause, so it is spoken as the author wrote it.
+  const CONDITION_WORD_PATTERN = /^(?:if|when|after|on|once|upon)\b/i;
+
+  // Arm (c): a single capitalised word, the "Start" / "Submit" event-name shape.
+  const SINGLE_CAPITALISED_WORD_PATTERN = /^[A-Z][a-z]*$/;
+
+  /**
+   * Build the narration phrase for a transition label.
+   *
+   * Item 11 ledger entry 4 (docs/mermaid-outstanding.md; session report
+   * docs/mermaid-state-wording-2026-08-07.md): the four near-identical inline
+   * scaffolds this replaces DEFAULTED to " when the <label>", which assumes
+   * every label reads as a noun phrase and lower-cases its first character on
+   * the way. A label that is a proper noun or a clause of its own came out as
+   * prose like "…to the Archived state when the tom & Jerry.".
+   *
+   * The four arms are tried in order and the first match wins:
+   *   (a) opens with a condition word  -> spoken as-is, first character lowered
+   *   (b) two or more words, last ends in "s" (subject-plus-verb) -> "when the"
+   *   (c) a single capitalised word    -> "after <lowercased>"
+   *   (d) anything else                -> ", labelled \"<verbatim>\""
+   *
+   * The label is escaped exactly ONCE, here, inside the diagram-label span —
+   * call sites must not escape it again. The furniture (the span, the wording,
+   * the quotation marks in arm d) is generator-authored and never escaped.
+   * Lower-casing in arm (a) is safe by construction: the first word is one of
+   * the six function words above. Arm (d) never lower-cases, because that is
+   * where proper nouns live and mangling their case was part of the defect.
+   *
+   * @param {string} label - The transition label, already trimmed
+   * @returns {string} The phrase to append after the state name, "" if no label
+   */
+  function transitionLabelPhrase(label) {
+    if (!label) return "";
+
+    const inSpan = (text) =>
+      `<span class="diagram-label">${Common.escapeHtml(text)}</span>`;
+    const lowerFirst = label.charAt(0).toLowerCase() + label.slice(1);
+
+    // (a) The label is already a condition — do not wrap it in one.
+    if (CONDITION_WORD_PATTERN.test(label)) {
+      logDebug("[Mermaid Accessibility] Transition label arm (a):", label);
+      return ` ${inSpan(lowerFirst)}`;
+    }
+
+    // (b) Subject plus verb, such as "payment occurs". A lone "occurs" or a
+    // bare plural "errors" deliberately does NOT qualify — it is arm (d).
+    const words = label.split(/\s+/);
+    if (
+      words.length >= 2 &&
+      words[words.length - 1].toLowerCase().endsWith("s")
+    ) {
+      logDebug("[Mermaid Accessibility] Transition label arm (b):", label);
+      return ` when the ${inSpan(lowerFirst)}`;
+    }
+
+    // (c) A simple event name, such as "Start".
+    if (SINGLE_CAPITALISED_WORD_PATTERN.test(label)) {
+      logDebug("[Mermaid Accessibility] Transition label arm (c):", label);
+      return ` after ${inSpan(label.toLowerCase())}`;
+    }
+
+    // (d) Everything else is quoted verbatim rather than forced into a phrase.
+    logDebug("[Mermaid Accessibility] Transition label arm (d):", label);
+    return `, labelled "${inSpan(label)}"`;
+  }
+
+  /**
+   * Build the narration phrase for the label on a CYCLE edge.
+   *
+   * Item 11 ledger entry 7 (docs/mermaid-outstanding.md): `identifyCycles`
+   * narrated a single cycle as " via the <label> action" and lower-cased the
+   * WHOLE label on the way, so a proper-noun cycle label read "via the tom &
+   * jerry action". A second, latent defect sat beside it: the cycle map stored
+   * `transition.label || "a transition"`, which made the empty arm of the call
+   * site's ternary unreachable, so an UNLABELLED cycle read "via the a
+   * transition action" — measured before the fix, not inferred from the source.
+   *
+   * Three arms are tried in order and the first match wins:
+   *   (a) no label                    -> "" — the sentence carries no clause
+   *   (b) opens with a condition word -> spoken as-is, first character lowered
+   *   (c) anything else               -> ' via the "<verbatim>" transition'
+   *
+   * This mirrors entry 4's principle in `transitionLabelPhrase`: proper nouns
+   * live in an arm that quotes the label VERBATIM and never touches its case.
+   * Lower-casing in arm (b) is safe by construction — the first word is one of
+   * the six function words in CONDITION_WORD_PATTERN. The noun is "transition"
+   * rather than "action", deliberately: what is narrated is an edge, which is
+   * what this module calls it everywhere else.
+   *
+   * The label is escaped exactly ONCE, here, inside the diagram-label span —
+   * the call site must not escape it again. The quotation marks and the word
+   * "transition" are generator-authored furniture and sit OUTSIDE the span.
+   *
+   * @param {string} label - The cycle transition's label, "" when there is none
+   * @returns {string} The phrase to append after "the initial state", "" if none
+   */
+  function cycleLabelPhrase(label) {
+    // (a) An unlabelled cycle edge is narrated by the sentence alone.
+    if (!label) {
+      logDebug("[Mermaid Accessibility] Cycle label arm (a): no label");
+      return "";
+    }
+
+    const inSpan = (text) =>
+      `<span class="diagram-label">${Common.escapeHtml(text)}</span>`;
+
+    // (b) The label is already a condition — do not wrap it in one.
+    if (CONDITION_WORD_PATTERN.test(label)) {
+      logDebug("[Mermaid Accessibility] Cycle label arm (b):", label);
+      const lowerFirst = label.charAt(0).toLowerCase() + label.slice(1);
+      return ` ${inSpan(lowerFirst)}`;
+    }
+
+    // (c) Everything else is quoted verbatim rather than case-folded.
+    logDebug("[Mermaid Accessibility] Cycle label arm (c):", label);
+    return ` via the "${inSpan(label)}" transition`;
+  }
+
+  /**
+   * The narration phrase for the labelled edge OUT OF the initial marker into
+   * one state.
+   *
+   * Ledger entry 8, measured in docs/mermaid-ledger-grounding-2026-08-13.md
+   * Part A: the parser stores `[*]` edges under the `[*]` key exactly like any
+   * other source, and NOTHING in this module ever read that key — the per-state
+   * list returns early on `[*]`, the overview starts from the state after the
+   * marker, and every other site filters the marker out. So
+   * `[*] --> Draft : if ready` reached no description tier at all while the
+   * rendered canvas showed the label. The three sites that name an initial
+   * state now ask here for it.
+   *
+   * The phrase carries its own leading separator and is escaped exactly once,
+   * inside `transitionLabelPhrase` — call sites concatenate it directly, the
+   * same pattern the per-state transition list already uses. Do not escape it
+   * again.
+   *
+   * The TARGET direction (an edge INTO `[*]`) was measured NOT defective and is
+   * untouched: it is narrated by the per-state list and by the overview.
+   *
+   * @param {Object} parsedData - Parsed diagram data
+   * @param {string} state - The state id the initial edge points at
+   * @returns {string} The phrase, or "" when there is no such edge or no label
+   */
+  function initialEdgePhrase(parsedData, state) {
+    const transitions = parsedData && parsedData.stateTransitions;
+    const edges = (transitions && transitions["[*]"]) || [];
+    const edge = edges.find((candidate) => candidate.target === state);
+    if (!edge || !edge.label) return "";
+    return transitionLabelPhrase(edge.label.trim());
+  }
+
+  /**
    * Parse state diagram from mermaid code
    * @param {string} code - The mermaid diagram code
    * @returns {Object} Parsed diagram data
@@ -175,6 +361,10 @@
     const finalStates = [];
     const allStates = new Set();
     const compositeStates = {};
+    // id -> author-facing display name, populated only by `state "Name" as id`
+    // declarations. Stays empty for a diagram that declares no alias, which is
+    // what makes displayNameFor a no-op on such diagrams.
+    const displayNames = {};
 
     // Parse line by line
     const lines = code.split("\n");
@@ -205,15 +395,27 @@
         continue;
       }
 
-      // Handle state definitions with descriptions - state "Name" as Description
+      // Handle aliased state declarations - state "Display Name" as id
+      //
+      // The declaration NAMES an existing state; it is not a state of its own.
+      // The capture below must therefore span the whole quoted name and reach
+      // the id after `as`. The previous capture, /^state\s+("?[^"\s]+"?|\S+)/,
+      // stopped at the first space and added the fragment `"Tom` to the state
+      // list — one spurious state per alias declaration, narrated as a real one.
       if (trimmedLine.match(/^state\s+(?:"[^"]+"|'[^']+'|\S+)\s+as\s+/)) {
-        const match = trimmedLine.match(/^state\s+("?[^"\s]+"?|\S+)/);
+        const match = trimmedLine.match(
+          /^state\s+(?:"([^"]+)"|'([^']+)'|(\S+))\s+as\s+(\S+)/
+        );
         if (match) {
-          const stateName = cleanStateName(match[1]);
-          allStates.add(stateName);
+          const declaredName = match[1] || match[2] || match[3];
+          const stateId = match[4];
+          allStates.add(stateId);
+          displayNames[stateId] = cleanStateName(declaredName);
           logDebug(
-            "[Mermaid Accessibility] Found state with description:",
-            stateName
+            "[Mermaid Accessibility] Found aliased state:",
+            stateId,
+            "displayed as",
+            displayNames[stateId]
           );
         }
         continue;
@@ -334,6 +536,7 @@
       finalStates,
       allStates: Array.from(allStates),
       compositeStates,
+      displayNames,
     };
 
     logDebug(
@@ -410,12 +613,15 @@
       html += `        <dt>Initial State</dt>\n`;
       html += `        <dd>\n`;
 
+      // Ledger entry 8: each initial state carries the label of its own edge
+      // out of [*]. An unlabelled edge yields "" and leaves the sentence and
+      // the list items byte-identical to what they were before.
       if (parsedData.initialStates.length === 1) {
-        html += `          The process starts in the <strong><span class="diagram-state">${parsedData.initialStates[0]}</span></strong> state.\n`;
+        html += `          The process starts in the <strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, parsedData.initialStates[0]))}</span></strong> state${initialEdgePhrase(parsedData, parsedData.initialStates[0])}.\n`;
       } else {
         html += `          The process can start in any of these states:\n          <ul>\n`;
         parsedData.initialStates.forEach((state) => {
-          html += `            <li><strong><span class="diagram-state">${state}</span></strong></li>\n`;
+          html += `            <li><strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></strong>${initialEdgePhrase(parsedData, state)}</li>\n`;
         });
         html += `          </ul>\n`;
       }
@@ -456,7 +662,7 @@
         if (state === "[*]" || processedStates.has(state)) return;
         processedStates.add(state);
 
-        html += `        <dt><span class="diagram-state">${state}</span></dt>\n`;
+        html += `        <dt><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></dt>\n`;
         html += `        <dd>\n`;
 
         // Note if this is a composite state
@@ -468,47 +674,29 @@
         if (outgoingTransitions.length > 0) {
           html += `          <ul>\n`;
           outgoingTransitions.forEach((transition) => {
-            // Add semantic class for error transitions
+            // Add semantic class for error transitions. Ledger entry 5: the
+            // keyword test runs on the DISPLAY NAME the reader hears, not on
+            // the id — `state "Send failure" as sf` is classified by "Send
+            // failure". Only the tested string changed; the keyword set did not.
+            const targetName = displayNameFor(parsedData, transition.target);
             const isErrorTransition =
               transition.label &&
               (transition.label.toLowerCase().includes("error") ||
-                transition.target.toLowerCase().includes("error"));
+                targetName.toLowerCase().includes("error"));
 
             const transitionClass = isErrorTransition
               ? ' class="error-transition"'
               : "";
 
-            // Create more natural transition phrasing
-            let transitionPhrase = "";
-            if (transition.label) {
-              const label = transition.label.trim();
-
-              // Format transition label with proper capitalisation and grammar
-              if (label.toLowerCase().endsWith("s")) {
-                // For verbs ending in 's', like "occurs", use "when"
-                transitionPhrase = ` when the <span class="diagram-label">${
-                  label.charAt(0).toLowerCase() + label.slice(1)
-                }</span>`;
-              } else if (label.match(/^[A-Z][a-z]*$/)) {
-                // For simple event names like "Start", use different wording
-                transitionPhrase = ` after <span class="diagram-label">${label.toLowerCase()}</span>`;
-              } else if (label.match(/^(?:if|when|after).+$/i)) {
-                // If label already has a condition word, use as-is
-                transitionPhrase = ` <span class="diagram-label">${
-                  label.charAt(0).toLowerCase() + label.slice(1)
-                }</span>`;
-              } else {
-                // Default format for other labels
-                transitionPhrase = ` when the <span class="diagram-label">${
-                  label.charAt(0).toLowerCase() + label.slice(1)
-                }</span>`;
-              }
-            }
+            // Create more natural transition phrasing (ledger entry 4)
+            const transitionPhrase = transitionLabelPhrase(
+              transition.label ? transition.label.trim() : ""
+            );
 
             if (transition.target === "[*]") {
               html += `            <li${transitionClass}>Transitions to the <strong>final state</strong>${transitionPhrase}.</li>\n`;
             } else {
-              html += `            <li${transitionClass}>Transitions to the <strong><span class="diagram-state">${transition.target}</span></strong> state${transitionPhrase}.</li>\n`;
+              html += `            <li${transitionClass}>Transitions to the <strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, transition.target))}</span></strong> state${transitionPhrase}.</li>\n`;
             }
           });
           html += `          </ul>\n`;
@@ -526,7 +714,7 @@
       html += `        <dd>\n`;
       html += `          The process can end from these states:\n          <ul>\n`;
       parsedData.finalStates.forEach((state) => {
-        html += `            <li><strong><span class="diagram-state">${state}</span></strong></li>\n`;
+        html += `            <li><strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></strong></li>\n`;
       });
       html += `          </ul>\n`;
       html += `        </dd>\n`;
@@ -558,7 +746,11 @@
     if (parsedData.initialStates.length > 0) {
       // Find first state after initial
       const initialState = parsedData.initialStates[0];
-      overview += `This diagram shows a process that begins in the <span class="diagram-state">${initialState}</span> state`;
+      // Ledger entry 8: the opening gains the label of the FIRST branch's edge
+      // out of [*]. The overview continues to follow initialStates[0] only —
+      // that is a decision, not an oversight, so a second initial state is
+      // still spoken by the Initial State list above and not here.
+      overview += `This diagram shows a process that begins in the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, initialState))}</span> state${initialEdgePhrase(parsedData, initialState)}`;
 
       // Try to describe the first few transitions
       const outgoingFromInitial =
@@ -566,25 +758,12 @@
       if (outgoingFromInitial.length > 0) {
         const firstTransition = outgoingFromInitial[0];
 
-        // Format the transition label for better readability
-        let transitionPhrase = "";
-        if (firstTransition.label) {
-          const label = firstTransition.label.trim();
-          // Format based on the label type
-          if (label.toLowerCase().endsWith("s")) {
-            transitionPhrase = ` when the <span class="diagram-label">${
-              label.charAt(0).toLowerCase() + label.slice(1)
-            }</span>`;
-          } else if (label.match(/^[A-Z][a-z]*$/)) {
-            transitionPhrase = ` after <span class="diagram-label">${label.toLowerCase()}</span>`;
-          } else {
-            transitionPhrase = ` when the <span class="diagram-label">${
-              label.charAt(0).toLowerCase() + label.slice(1)
-            }</span>`;
-          }
-        }
+        // Format the transition label for better readability (ledger entry 4)
+        const transitionPhrase = transitionLabelPhrase(
+          firstTransition.label ? firstTransition.label.trim() : ""
+        );
 
-        overview += `, proceeds to the <span class="diagram-state">${firstTransition.target}</span> state${transitionPhrase}`;
+        overview += `, proceeds to the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, firstTransition.target))}</span> state${transitionPhrase}`;
 
         // Try to describe the next level of transitions
         const secondLevelTransitions =
@@ -592,27 +771,14 @@
         if (secondLevelTransitions.length > 0) {
           if (secondLevelTransitions.length === 1) {
             const stTransition = secondLevelTransitions[0];
-            let stPhrase = "";
-
-            if (stTransition.label) {
-              const label = stTransition.label.trim();
-              if (label.toLowerCase().endsWith("s")) {
-                stPhrase = ` when the <span class="diagram-label">${
-                  label.charAt(0).toLowerCase() + label.slice(1)
-                }</span>`;
-              } else if (label.match(/^[A-Z][a-z]*$/)) {
-                stPhrase = ` after <span class="diagram-label">${label.toLowerCase()}</span>`;
-              } else {
-                stPhrase = ` when the <span class="diagram-label">${
-                  label.charAt(0).toLowerCase() + label.slice(1)
-                }</span>`;
-              }
-            }
+            const stPhrase = transitionLabelPhrase(
+              stTransition.label ? stTransition.label.trim() : ""
+            );
 
             if (stTransition.target === "[*]") {
               overview += `, and then to completion${stPhrase}`;
             } else {
-              overview += `, and then to the <span class="diagram-state">${stTransition.target}</span> state${stPhrase}`;
+              overview += `, and then to the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, stTransition.target))}</span> state${stPhrase}`;
             }
           } else if (secondLevelTransitions.length === 2) {
             // Format for branches with two options
@@ -620,23 +786,11 @@
               let targetDesc =
                 transition.target === "[*]"
                   ? "completion"
-                  : `the <span class="diagram-state">${transition.target}</span> state`;
+                  : `the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, transition.target))}</span> state`;
 
-              let conditionPhrase = "";
-              if (transition.label) {
-                const label = transition.label.trim();
-                if (label.toLowerCase().endsWith("s")) {
-                  conditionPhrase = ` when the <span class="diagram-label">${
-                    label.charAt(0).toLowerCase() + label.slice(1)
-                  }</span>`;
-                } else if (label.match(/^[A-Z][a-z]*$/)) {
-                  conditionPhrase = ` after <span class="diagram-label">${label.toLowerCase()}</span>`;
-                } else {
-                  conditionPhrase = ` when the <span class="diagram-label">${
-                    label.charAt(0).toLowerCase() + label.slice(1)
-                  }</span>`;
-                }
-              }
+              const conditionPhrase = transitionLabelPhrase(
+                transition.label ? transition.label.trim() : ""
+              );
 
               return `${targetDesc}${conditionPhrase}`;
             });
@@ -654,11 +808,11 @@
     // Describe final states if they exist
     if (parsedData.finalStates.length > 0) {
       if (parsedData.finalStates.length === 1) {
-        overview += `. The process can end from the <span class="diagram-state">${parsedData.finalStates[0]}</span> state.`;
+        overview += `. The process can end from the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, parsedData.finalStates[0]))}</span> state.`;
       } else {
         const formattedStates = parsedData.finalStates
           .map(
-            (state) => `the <span class="diagram-state">${state}</span> state`
+            (state) => `the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span> state`
           )
           .join(" or ");
         overview += `. The process can end from ${formattedStates}.`;
@@ -718,11 +872,15 @@
           }
         }
 
+        // Ledger entry 5: the "error" test reads the display name, not the id.
+        // `path` and every lookup stay on ids.
         if (
           !path.includes(transition.target) &&
           (!transition.label ||
             !transition.label.toLowerCase().includes("error")) &&
-          !transition.target.toLowerCase().includes("error")
+          !displayNameFor(parsedData, transition.target)
+            .toLowerCase()
+            .includes("error")
         ) {
           // Prioritise transitions with "success" in the label
           const hasSuccess =
@@ -751,7 +909,10 @@
             (t) =>
               !path.includes(t.target) &&
               (!t.label || !t.label.toLowerCase().includes("error")) &&
-              !t.target.toLowerCase().includes("error")
+              // Ledger entry 5: display name, not id.
+              !displayNameFor(parsedData, t.target)
+                .toLowerCase()
+                .includes("error")
           ) ||
           transitions.find((t) => !path.includes(t.target)) ||
           transitions[0];
@@ -782,7 +943,7 @@
         if (state === "completion") {
           return "completion";
         } else {
-          return `<span class="diagram-state">${state}</span>`;
+          return `<span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span>`;
         }
       })
       .join(" → ");
@@ -813,9 +974,11 @@
 
         // Check if this transition creates a potential cycle to initial states
         if (parsedData.initialStates.includes(transition.target)) {
-          // Store the mechanism of the cycle
+          // Store the mechanism of the cycle. The RAW label is kept — the
+          // "a transition" filler this used to substitute made the unlabelled
+          // arm of cycleLabelPhrase unreachable (ledger entry 7).
           if (!cycleStates.has(state)) {
-            cycleStates.set(state, transition.label || "a transition");
+            cycleStates.set(state, transition.label || "");
           }
         }
       }
@@ -832,28 +995,41 @@
           "[Mermaid Accessibility] Found single cycle from state:",
           state
         );
-        return `The <span class="diagram-state">${state}</span> state can return to the initial state${
-          action
-            ? ` via the <span class="diagram-label">${action.toLowerCase()}</span> action`
-            : ""
-        }, allowing the process to restart.`;
+        return `The <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span> state can return to the initial state${cycleLabelPhrase(action)}, allowing the process to restart.`;
       } else if (stateList.length === 2) {
+        const firstState = stateList[0];
+        const secondState = stateList[1];
+        const firstPhrase = cycleLabelPhrase(cycleStates.get(firstState));
+        const secondPhrase = cycleLabelPhrase(cycleStates.get(secondState));
         logDebug(
           "[Mermaid Accessibility] Found cycles from two states:",
           stateList
         );
-        return `Both the <span class="diagram-state">${stateList[0]}</span> and <span class="diagram-state">${stateList[1]}</span> states can return to the initial state, creating cycles that allow the process to restart.`;
+
+        // Neither cycle is labelled — the merged sentence is unchanged
+        // (ledger entry 12: byte-identical preservation, deliberately).
+        if (!firstPhrase && !secondPhrase) {
+          return `Both the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, firstState))}</span> and <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, secondState))}</span> states can return to the initial state, creating cycles that allow the process to restart.`;
+        }
+
+        // At least one label to speak, so the states are narrated separately —
+        // a merged subject cannot carry a per-state clause. Each phrase is
+        // escaped once inside cycleLabelPhrase and must not be escaped again.
+        return `The <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, firstState))}</span> state can return to the initial state${firstPhrase}, and the <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, secondState))}</span> state can return to the initial state${secondPhrase}, creating cycles that allow the process to restart.`;
       } else {
         // Format a list of all states with cycles
         const lastState = stateList.pop();
         const stateListFormatted = stateList
-          .map((s) => `<span class="diagram-state">${s}</span>`)
+          .map(
+            (s) =>
+              `<span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, s))}</span>`
+          )
           .join(", ");
         logDebug(
           "[Mermaid Accessibility] Found cycles from multiple states:",
           stateList.length + 1
         );
-        return `Multiple states (${stateListFormatted}, and <span class="diagram-state">${lastState}</span>) can return to earlier states, creating cycles in the process flow.`;
+        return `Multiple states (${stateListFormatted}, and <span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, lastState))}</span>) can return to earlier states, creating cycles in the process flow.`;
       }
     }
 
@@ -896,20 +1072,24 @@
         continue; // Skip initial/final markers and already categorised states
       }
 
+      // Ledger entry 5: classify on the display name the reader hears, not on
+      // the internal id, so `state "Job Done" as jd` files under Completion
+      // rather than Operational. Only the tested STRING changed — the keyword
+      // sets are untouched, and the groups, the categorised Set and every
+      // downstream lookup still hold ids.
+      const stateName = displayNameFor(parsedData, state).toLowerCase();
+
       // Check if this is an error state
-      if (
-        state.toLowerCase().includes("error") ||
-        state.toLowerCase().includes("fail")
-      ) {
+      if (stateName.includes("error") || stateName.includes("fail")) {
         errorStates.push(state);
         categorisedStates.add(state);
       }
       // Check if this is a completion state
       else if (
-        state.toLowerCase().includes("complet") ||
-        state.toLowerCase().includes("done") ||
-        state.toLowerCase().includes("finish") ||
-        state.toLowerCase().includes("success")
+        stateName.includes("complet") ||
+        stateName.includes("done") ||
+        stateName.includes("finish") ||
+        stateName.includes("success")
       ) {
         completionStates.push(state);
         categorisedStates.add(state);

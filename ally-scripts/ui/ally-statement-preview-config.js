@@ -1,18 +1,27 @@
 /**
  * @fileoverview Ally Statement Preview Configuration - IIFE Module
  * @module AllyStatementPreviewConfig
- * @version 1.0.0
+ * @version 2.0.0
  * @since Phase 7B
  *
  * @description
- * Contains accessibility theme definitions, field mappings, and all
- * student-facing content for the Statement Preview feature.
+ * Thin adapter over the content library (`window.ALLY_SP_CONTENT`, published by
+ * `ally-statement-preview-content.js`, which MUST load first). All
+ * student-facing text now lives in the content library; this module derives its
+ * legacy public surface (THEMES, INTRO, SUCCESS, getTheme, getActiveThemes,
+ * getAllFields, getThemeForField, getTokens, getEnvironments, resolve*) from it,
+ * returning the same shapes existing consumers and tests expect.
  *
  * Key Features:
- * - Theme-to-API-field mappings for conditional display
+ * - Theme-to-API-field mappings for conditional display (derived from content)
  * - Complete disclosure content (What this means / Suggestions)
  * - Icon mappings for each theme
  * - Success/empty state messages
+ * - Master-settings environment / token resolution (projection, never mutation)
+ *
+ * The derived locals are token-bearing projections of the content library —
+ * literal `{token}` strings are preserved; resolution happens via the resolve
+ * helpers / applyTokensDeep at render time and never mutates the raw content.
  *
  * @example
  * const themes = ALLY_STATEMENT_PREVIEW_CONFIG.getActiveThemes(issueData);
@@ -58,255 +67,271 @@ const ALLY_STATEMENT_PREVIEW_CONFIG = (function () {
   }
 
   // ========================================================================
-  // Accessibility Theme Definitions
+  // Content library source (published by ally-statement-preview-content.js)
+  // ========================================================================
+
+  const CONTENT = window.ALLY_SP_CONTENT;
+  if (!CONTENT || !CONTENT.entries) {
+    logError(
+      "window.ALLY_SP_CONTENT is missing — ensure " +
+        "ally-statement-preview-content.js loads BEFORE this config module.",
+    );
+  }
+
+  const CONTENT_ENTRIES = (CONTENT && CONTENT.entries) || {};
+
+  // ========================================================================
+  // Derived locals — projections of the content library (never mutated)
+  // ========================================================================
+  //
+  // Each accessor below reads these locals, so deriving them from the content
+  // library re-points the entire public surface at the single source of truth
+  // while preserving the exact legacy shapes. Theme order follows the content
+  // library's entry insertion order (stable for non-numeric string keys).
+
+  /**
+   * Projects a `kind: "theme"` content entry into the legacy theme shape:
+   * { id (== legacyId), fields, icon, title, summary, [summaryExtra],
+   *   disclosureId, whatThisMeans, suggestions }. The content-library metadata
+   *   (content id / kind / legacyId) is dropped. Nested arrays are shared by
+   *   reference (as before) — resolve* deep-copies at render, so raw content is
+   *   never mutated.
+   * @param {Object} entry
+   * @returns {Object}
+   */
+  function projectTheme(entry) {
+    const theme = {
+      id: entry.legacyId,
+      fields: entry.fields,
+      icon: entry.icon,
+      title: entry.title,
+      summary: entry.summary,
+      disclosureId: entry.disclosureId,
+      whatThisMeans: entry.whatThisMeans,
+      suggestions: entry.suggestions,
+    };
+    if (Object.prototype.hasOwnProperty.call(entry, "summaryExtra")) {
+      theme.summaryExtra = entry.summaryExtra;
+    }
+    return theme;
+  }
+
+  /**
+   * Derives the ordered THEMES array from the content library's theme entries.
+   * @returns {Array}
+   */
+  const ACCESSIBILITY_THEMES = (function () {
+    const themes = [];
+    Object.keys(CONTENT_ENTRIES).forEach(function (key) {
+      const entry = CONTENT_ENTRIES[key];
+      if (entry && entry.kind === "theme") {
+        themes.push(projectTheme(entry));
+      }
+    });
+    return themes;
+  })();
+
+  /**
+   * Maps a theme's legacy id (e.g. "missing-alt") back to its stable content
+   * id (e.g. "theme:missing-alt"), so override lookup — which is keyed by
+   * content id — can find a projected legacy theme's overrides.
+   * @type {Object.<string,string>}
+   */
+  const themeContentIdByLegacy = (function () {
+    const map = {};
+    Object.keys(CONTENT_ENTRIES).forEach(function (key) {
+      const entry = CONTENT_ENTRIES[key];
+      if (entry && entry.kind === "theme" && typeof entry.legacyId === "string") {
+        map[entry.legacyId] = key;
+      }
+    });
+    return map;
+  })();
+
+  /**
+   * Introduction section content — projected to the legacy INTRO shape
+   * { heading, subHeading, paragraphs, bulletPoints }. `subHeading` is the
+   * "Introduction" h5 sub-heading inside the info-box restyle; it is optional
+   * (older content without it simply omits the sub-heading).
+   */
+  const INTRO_TEXT = (function () {
+    const e = CONTENT_ENTRIES.intro || {};
+    return {
+      heading: e.heading,
+      subHeading: e.subHeading,
+      paragraphs: e.paragraphs,
+      bulletPoints: e.bulletPoints,
+    };
+  })();
+
+  /**
+   * Success state content (shown when no issues found) — projected to the
+   * legacy SUCCESS shape { icon, title, message }.
+   */
+  const SUCCESS_STATE = (function () {
+    const e = CONTENT_ENTRIES.success || {};
+    return { icon: e.icon, title: e.title, message: e.message };
+  })();
+
+  /**
+   * Authored (static / config-driven) sections appended to every statement,
+   * rendered via the section registry (ALLY_STATEMENT_PREVIEW_SECTIONS). Each
+   * entry is a section spec (type: info | video | group | linkButtons |
+   * courseInfo) plus an optional `placement`:
+   *   - "before-issues" — rendered after the intro, before the warnings
+   *   - "after-issues"  — rendered after the warnings/success (default)
+   * Sourced from the content library (empty by default until authored).
+   * @type {Array}
+   */
+  const AUTHORED_SECTIONS = (CONTENT && CONTENT.authoredSections) || [];
+
+  // ========================================================================
+  // Master-settings environments (institution / VLE wording profiles)
   // ========================================================================
 
   /**
-   * Accessibility themes with field mappings and display content.
-   * Each theme defines:
-   * - id: Unique identifier
-   * - fields: Array of API field names to sum
-   * - icon: Icon name from SVG library
-   * - title: Display title (h3)
-   * - summary: Brief explanation paragraph
-   * - summaryExtra: Optional additional summary paragraph
-   * - disclosureId: Unique ID for aria-controls
-   * - whatThisMeans: Array of list items (strings or nested objects)
-   * - suggestions: Array of list items (strings or nested objects)
+   * Named profiles selectable by the master-settings switch. Each maps the
+   * content tokens ({vle}, {contentOwner}, {institution}, {institutionShort},
+   * {library}, {courseNoun}) embedded in the theme / intro / success / authored
+   * content to environment-appropriate wording. Sourced from the content
+   * library; the DEFAULT (soton-blackboard) profile reproduces the original
+   * hand-written wording.
+   * @type {Object.<string, {label: string, tokens: Object.<string,string>}>}
    */
-  const ACCESSIBILITY_THEMES = [
-    {
-      id: "missing-alt",
-      fields: [
-        "alternativeText2",
-        "htmlImageAlt2",
-        "htmlObjectAlt2",
-        "imageDescription2",
-      ],
-      icon: "missingAlt",
-      title: "Missing image descriptions",
-      summary:
-        "This module includes images without image descriptions, also known as alternative text. We write image descriptions so that those who do not see the image will not miss out on important content.",
-      disclosureId: "ally-sp-missing-alt-details",
-      whatThisMeans: [
-        "Images in Blackboard content can be given descriptions or marked as decorative if they have educational purpose.",
-        "Missing image descriptions prevent those using the audio alternative format or assistive technology - such as screen readers - from accessing the important information the image presents.",
-        "When decorative images are not marked as decorative, those who use alternative formats such as the audio format or who use screen readers may worry they missed important information.",
-      ],
-      suggestions: [
-        "Ask your module lead to provide descriptions for images that don't have them.",
-        {
-          text: "Try out different tools that may help you to get a description of the image:",
-          nested: [
-            'Automatic image description is available in <a href="https://support.google.com/chrome/answer/9311597?hl=en-GB&co=GENIE.Platform%3DDesktop">Chrome</a> and <a href="https://www.microsoft.com/en-us/edge/learning-center/how-to-turn-on-automatic-image-descriptions?form=MA13I2">Edge</a> but descriptions may be unreliable.',
-            '<a href="https://www.seeingai.com/">Seeing AI</a> is a mobile app that will describe images using your camera.',
-          ],
-        },
-      ],
-    },
-    {
-      id: "broken-links",
-      fields: ["htmlBrokenLink2"],
-      icon: "brokenLink",
-      title: "Broken links",
-      summary:
-        "This module includes web links that may not work. This means when you select a link within the module you may receive an error message.",
-      disclosureId: "ally-sp-broken-links-details",
-      whatThisMeans: [
-        {
-          text: "Broken links occur when:",
-          nested: [
-            "The content you're trying to open is no longer available.",
-            "You don't have permission to view the content to which the link takes you.",
-            "The link contains a typing or spelling error.",
-          ],
-        },
-      ],
-      suggestions: [
-        "Contact your module lead if you follow a link from your Blackboard module that doesn't appear to work. They can update the link so it works for everyone.",
-      ],
-    },
-    {
-      id: "colour-contrast",
-      fields: ["contrast2", "htmlColorContrast2"],
-      icon: "palette",
-      title: "Low colour contrast",
-      summary:
-        "This module includes content that may be hard to see due to low colour contrast. Colour contrast is about how much one colour stands out against another. For example, bright yellow text on a light blue background is hard to read.",
-      disclosureId: "ally-sp-contrast-details",
-      whatThisMeans: [
-        "Low colour contrast affects everyone, especially when screen glare from reflections makes viewing difficult.",
-        "Those with low vision or colour vision deficiency (colour-blindness) are more likely to find low contrast text difficult to read.",
-        "As we age it becomes harder to tell the difference between similar colours, making low contrast text harder to read.",
-        "If your laptop battery is low and your screen brightness is lowered, low colour contrast content is harder to read.",
-      ],
-      suggestions: [
-        "Try using the beeline reader or immersive reader alternative formats in Blackboard. These allow you to change the colour of the content.",
-        'Adobe Reader has a "Replace document colours" feature under accessibility within the preference menu. You can use this to adjust colours within a PDF file.',
-        "Your module lead may be able to identify an equivalent resource that is more digitally accessible.",
-      ],
-    },
-    {
-      id: "headings",
-      fields: [
-        "headingsSequential3",
-        "headingsPresence2",
-        "headingsStartAtOne3",
-        "htmlHeadingOrder3",
-        "htmlHeadingsPresence2",
-        "htmlEmptyHeading2",
-        "htmlHeadingsStart2",
-      ],
-      icon: "document",
-      title: "Heading structure",
-      summary:
-        "You may find some module content hard to navigate or skim read because it lacks proper headings or uses them inappropriately.",
-      disclosureId: "ally-sp-headings-details",
-      whatThisMeans: [
-        "While headings provide a visual overview of different sections of a document, their true value is that they also provide this information in ways we cannot see but computers can.",
-        'We can use the <a href="https://support.microsoft.com/en-gb/office/use-the-navigation-pane-in-word-394787be-bca7-459b-894e-3f8511515e55">navigation pane in Word</a> and <a href="https://helpx.adobe.com/uk/acrobat/using/navigating-pdf-pages.html">bookmarks in Adobe Reader</a> to move quickly between sections of a document. This also allows those who use screen readers and other assistive technologies to quickly navigate a document.',
-        "When headings haven't been added to a document, moving quickly between sections will be more difficult, particularly for those who rely on assistive technologies such as screen readers.",
-        "Incorrect or decorative use of headings can confuse assistive technology users who rely on properly structured headings to navigate the document.",
-        'If you use the audio <a href="https://help.blackboard.com/Ally/Ally_for_LMS/Student/Alternative_Formats">alternative format</a>, it will be harder to understand when one section of the content ends and the next one begins.',
-      ],
-      suggestions: [
-        'If the content was created within the university, ask the module lead to upload a version with a correct heading structure. <a href="https://alt-5f16d636b7ae3.blackboard.com/bbcswebdav/courses/ACCESS1001/Courseware_365_2023/index.html?one_hash=AB54572836B618CEAAFA4BBA44AF3028&f_hash=CC813A4C8FBDD78F1B680AB7CB5B82EA#/lessons/nNcjVunDR0mIhp-U6nTeahqb57sPvgp3">Adding headings to content</a> is fast and easy.',
-        {
-          text: "If the content was created outside of the university, you may find a newer, more accessible version of the content from the publisher's website.",
-          nested: [
-            "Your module lead or the library may be able to identify an equivalent resource that is more digitally accessible.",
-          ],
-        },
-      ],
-    },
-    {
-      id: "ocred",
-      fields: ["ocred2"],
-      icon: "ocr",
-      title: "Scanned and OCRed documents",
-      summary:
-        "This module includes documents scanned and processed with Optical Character Recognition (OCR) to make the text readable by your computer. This process allows you to search for words and copy and paste text from the document into another place. While this is an improvement over a scanned document, potential issues remain.",
-      disclosureId: "ally-sp-ocred-details",
-      whatThisMeans: [
-        'OCR may produce errors like incorrect or incomplete words and missing punctuation, which will especially impact listening to the text through <a href="https://help.blackboard.com/Ally/Ally_for_LMS/Student/Alternative_Formats">alternative formats</a> or screen readers.',
-        "These documents may not have headings. This makes it harder to navigate long documents, for example by using the bookmarks menu in Adobe Acrobat.",
-      ],
-      suggestions: [
-        "Be mindful of potential inaccuracies when using scanned and OCRed documents.",
-        "Your module lead may be able to identify an equivalent resource that is more digitally accessible.",
-      ],
-    },
-    {
-      id: "scanned",
-      fields: ["scanned1"],
-      icon: "camera",
-      title: "Scanned content",
-      summary:
-        "This module contains scanned content: a digital photocopy that you cannot interact with. Only sighted readers can access scanned material.",
-      disclosureId: "ally-sp-scanned-details",
-      whatThisMeans: [
-        "By its nature, scanned content can present a range of challenges because it is effectively just a photo of a document.",
-        'Tools that convert text to speech such as the audio <a href="https://help.blackboard.com/Ally/Ally_for_LMS/Student/Alternative_Formats">alternative format</a> and screen readers are unlikely to detect the text from this content.',
-        "When magnified or zoomed into, content may appear to be blurred.",
-        "You cannot search for words in a scanned document or copy and paste words from a scanned document into another document.",
-        "It is not possible to change fonts and colours for the benefit of dyslexic or visually impaired students.",
-        "Scanned documents will not have the extra information that can make content more accessible such as headings and alternative text.",
-      ],
-      suggestions: [
-        {
-          text: 'Blackboard provides an OCR (Optical Character Recognition) <a href="https://help.blackboard.com/Ally/Ally_for_LMS/Student/Alternative_Formats">alternative format</a> for scanned documents. This will attempt to:',
-          nested: [
-            "allow you to listen to it using text to speech.",
-            "allow you to copy and paste text from the document.",
-          ],
-        },
-        "Your module lead may be able to identify an equivalent resource that is more digitally accessible.",
-      ],
-    },
-    {
-      id: "seizure",
-      fields: ["imageSeizure1"],
-      icon: "warning",
-      title: "Animations that may trigger a seizure",
-      summary:
-        "This module includes content that may cause a seizure. GIFs and other rapid-movement or flickering media have the potential to trigger seizures or other harmful responses.",
-      disclosureId: "ally-sp-seizure-details",
-      whatThisMeans: [
-        "We disabled autoplay for these animations. A warning icon replaces the play button. Select it to start the animation.",
-        "These animations may trigger seizures, vertigo, nausea and imbalance, especially in people with photosensitive epilepsy or vestibular conditions.",
-      ],
-      suggestions: [
-        "If you encounter an animation with a warning symbol instead of a play button, ask your module lead for an alternative way to access the information that the animation presents.",
-      ],
-    },
-    {
-      id: "tables",
-      fields: ["tableHeaders2", "htmlEmptyTableHeader2", "htmlTdHasHeader2"],
-      icon: "table",
-      title: "Tables without heading information",
-      summary:
-        "When we look at a table visually, we tend to make row or column headings bold to make clear that the other cells in the table are related to those headings.",
-      summaryExtra:
-        "Besides this visual distinction we should also provide a way for computers to understand the table headings. When this is missing it can present the information in a way that is hard to understand for those who use text to speech or other assistive technology tools.",
-      disclosureId: "ally-sp-tables-details",
-      whatThisMeans: [
-        "Without table heading information, screen readers and Blackboard's alternative audio format will read each cell individually, making the table's content difficult to understand.",
-        "The larger the table, the more this issue impacts your ability to understand it, as you must rely on memory to mentally reconstruct the table.",
-      ],
-      suggestions: [
-        "If the content was created within the University of Southampton, your module lead or instructor may be able to update the tables and share this updated version in the Blackboard module.",
-        "If the resource was created externally, your module lead may be able to identify an equivalent resource that is more digitally accessible.",
-      ],
-    },
-    {
-      id: "tagged",
-      fields: ["tagged2"],
-      icon: "pdf",
-      title: "PDF files that lack a logical structure",
-      summary:
-        "This module contains PDF files that lack a logical structure affecting how they perform with assistive technologies. To better support assistive technologies, PDF files should have tags. PDF tags make it possible to identify content as headings, lists, tables, etc., and to include alternate text for images. Without tags, none of these accessibility features are possible.",
-      disclosureId: "ally-sp-tagged-details",
-      whatThisMeans: [
-        "This will primarily affect those who use assistive technologies, particularly screen readers. Without a clear structure, the text might not be read in the right order, and things like tables, images, and lists won't work as expected.",
-        'If you convert these PDFs into <a href="https://help.blackboard.com/Ally/Ally_for_LMS/Student/Alternative_Formats">alternative formats</a>, you may find that tables, images, and lists don\'t show up correctly.',
-      ],
-      suggestions: [
-        "Adobe Acrobat has an autotagging feature that will use AI to add tags. While it is not perfect the result may be beneficial while awaiting an improved version.",
-        'If the document was originally an office document created by someone within the University, your module lead can create a version with tags <a href="https://knowledgenow.soton.ac.uk/Articles/KB0082847">by following our knowledge base article</a>.',
-        "If the document was published externally, your module lead may be able to identify an equivalent resource that is more digitally accessible.",
-      ],
-    },
-  ];
+  const ENVIRONMENTS = (CONTENT && CONTENT.environments) || {};
 
-  // ========================================================================
-  // Introduction and Success State Content
-  // ========================================================================
+  const DEFAULT_ENVIRONMENT =
+    (CONTENT && CONTENT.defaultEnvironment) || "soton-blackboard";
 
   /**
-   * Introduction section content
+   * Returns the override partial for a content id under an environment, or
+   * undefined. Keyed by content id (theme content id, "intro", "success", or an
+   * authored section id).
+   * @param {string} envId
+   * @param {string} contentId
+   * @returns {Object|undefined}
    */
-  const INTRO_TEXT = {
-    heading: "Introduction",
-    paragraphs: [
-      "This section provides information about potential accessibility issues you may encounter in the module.",
-      "We'll explain:",
-    ],
-    bulletPoints: [
-      "what this means",
-      "the likely impact",
-      "what you can do about it",
-    ],
-  };
+  function getEnvOverride(envId, contentId) {
+    if (!envId || !contentId) return undefined;
+    const env = ENVIRONMENTS[envId];
+    if (!env || !env.overrides) return undefined;
+    return Object.prototype.hasOwnProperty.call(env.overrides, contentId)
+      ? env.overrides[contentId]
+      : undefined;
+  }
 
   /**
-   * Success state content (shown when no issues found)
+   * Validates every environment's override keys at load: each must name a known
+   * content id (a content-library entry or an authored section id). Unknown
+   * keys are warned about and otherwise ignored (they simply never apply — no
+   * crash). Runs once; purely diagnostic.
    */
-  const SUCCESS_STATE = {
-    icon: "checkCircle",
-    title: "No known accessibility issues",
-    message:
-      "Based on our automated checks, this module has no known accessibility issues. If you encounter any barriers, please contact your module lead.",
-  };
+  (function validateOverrides() {
+    const validIds = {};
+    Object.keys(CONTENT_ENTRIES).forEach(function (id) {
+      validIds[id] = true;
+    });
+    AUTHORED_SECTIONS.forEach(function (spec) {
+      if (spec && typeof spec.id === "string") validIds[spec.id] = true;
+    });
+    Object.keys(ENVIRONMENTS).forEach(function (envId) {
+      const overrides = ENVIRONMENTS[envId] && ENVIRONMENTS[envId].overrides;
+      if (!overrides) return;
+      Object.keys(overrides).forEach(function (key) {
+        if (!validIds[key]) {
+          logWarn(
+            "Environment '" +
+              envId +
+              "' has an override for unknown content id '" +
+              key +
+              "' — it will be ignored.",
+          );
+        }
+      });
+    });
+  })();
+
+  /**
+   * Substitutes {token} placeholders in a single string. Only known keys (those
+   * present in `tokens`) are replaced; an unknown {placeholder} is left intact
+   * and debug-logged, so a stray literal brace never silently vanishes.
+   * @param {string} str
+   * @param {Object.<string,string>} tokens
+   * @returns {string}
+   */
+  function applyTokens(str, tokens) {
+    if (typeof str !== "string" || !tokens) return str;
+    return str.replace(/\{(\w+)\}/g, function (match, key) {
+      if (Object.prototype.hasOwnProperty.call(tokens, key)) {
+        return tokens[key];
+      }
+      logDebug("Unknown token left intact: " + match);
+      return match;
+    });
+  }
+
+  /**
+   * Deep-applies token substitution to a value (string / array / plain object),
+   * returning a NEW structure (never mutates the source). Used to project the
+   * token-bearing raw content into resolved content at render time.
+   * @param {*} value
+   * @param {Object.<string,string>} tokens
+   * @returns {*}
+   */
+  function applyTokensDeep(value, tokens) {
+    if (typeof value === "string") return applyTokens(value, tokens);
+    if (Array.isArray(value)) {
+      return value.map(function (item) {
+        return applyTokensDeep(item, tokens);
+      });
+    }
+    if (value && typeof value === "object") {
+      const out = {};
+      for (const key in value) {
+        if (Object.prototype.hasOwnProperty.call(value, key)) {
+          out[key] = applyTokensDeep(value[key], tokens);
+        }
+      }
+      return out;
+    }
+    return value;
+  }
+
+  /**
+   * Deep-merges an override value over a base value, returning a NEW structure
+   * (never mutates either). Merge semantics (Stage 4):
+   *   - plain objects merge recursively (override keys win; base-only keys kept)
+   *   - arrays are replaced WHOLESALE by the override array (no per-index merge)
+   *   - primitives / strings: the override value wins
+   *   - `override === undefined` returns the base unchanged
+   * Applied to token-BEARING content, BEFORE token substitution, so an override
+   * may itself contain {tokens}.
+   * @param {*} base
+   * @param {*} override
+   * @returns {*}
+   */
+  function deepMerge(base, override) {
+    if (override === undefined) return base;
+    if (Array.isArray(base) || Array.isArray(override)) return override;
+    if (
+      base &&
+      typeof base === "object" &&
+      override &&
+      typeof override === "object"
+    ) {
+      const out = {};
+      for (const bk in base) {
+        if (Object.prototype.hasOwnProperty.call(base, bk)) out[bk] = base[bk];
+      }
+      for (const ok in override) {
+        if (Object.prototype.hasOwnProperty.call(override, ok)) {
+          out[ok] = deepMerge(base ? base[ok] : undefined, override[ok]);
+        }
+      }
+      return out;
+    }
+    return override;
+  }
 
   // ========================================================================
   // Helper Functions
@@ -345,6 +370,140 @@ const ALLY_STATEMENT_PREVIEW_CONFIG = (function () {
      * @type {Object}
      */
     SUCCESS: SUCCESS_STATE,
+
+    /**
+     * Authored static sections appended to every statement
+     * @type {Array}
+     */
+    AUTHORED_SECTIONS: AUTHORED_SECTIONS,
+
+    /**
+     * Returns the authored static sections (section specs). Currently the raw
+     * array; a later phase resolves master-settings tokens over a deep copy.
+     * @returns {Array}
+     */
+    getAuthoredSections: function () {
+      return AUTHORED_SECTIONS;
+    },
+
+    // --------------------------------------------------------------------
+    // Master-settings environment API (additive; raw THEMES/INTRO/SUCCESS
+    // above still expose token-bearing content, so existing consumers/tests
+    // are unaffected — resolution is a projection, not a mutation).
+    // --------------------------------------------------------------------
+
+    /**
+     * All environment profiles as an array of { id, label }.
+     * @returns {Array.<{id: string, label: string}>}
+     */
+    getEnvironments: function () {
+      return Object.keys(ENVIRONMENTS).map(function (id) {
+        return { id: id, label: ENVIRONMENTS[id].label };
+      });
+    },
+
+    /**
+     * A single environment profile by id, or null.
+     * @param {string} id
+     * @returns {{label: string, tokens: Object}|null}
+     */
+    getEnvironment: function (id) {
+      return ENVIRONMENTS[id] || null;
+    },
+
+    /**
+     * The default environment id.
+     * @returns {string}
+     */
+    getDefaultEnvironment: function () {
+      return DEFAULT_ENVIRONMENT;
+    },
+
+    /**
+     * The token map for an environment id (falls back to the default).
+     * @param {string} id
+     * @returns {Object.<string,string>}
+     */
+    getTokens: function (id) {
+      const env = ENVIRONMENTS[id] || ENVIRONMENTS[DEFAULT_ENVIRONMENT];
+      return env ? env.tokens : {};
+    },
+
+    /**
+     * The ordered layout for an environment id, or null when the environment
+     * declares no layout (the controller then uses its legacy placement path).
+     * Each entry is a content id string or an object `{ id, showWhen? }`. The
+     * `@issues` sentinel marks where the accessibility-issue block injects.
+     * Returns the raw array (not a copy) — the controller treats it read-only.
+     * @param {string} id
+     * @returns {Array.<(string|Object)>|null}
+     */
+    getLayout: function (id) {
+      const env = ENVIRONMENTS[id];
+      return env && Array.isArray(env.layout) ? env.layout : null;
+    },
+
+    /**
+     * Substitutes tokens in a single string (exposed for tests / reuse).
+     */
+    applyTokens: applyTokens,
+
+    /**
+     * Returns a deep copy of a theme with any environment override applied
+     * (Stage 4), then tokens resolved. Raw THEMES are unchanged. Passing no
+     * `envId` skips overrides (identical to the pre-Stage-4 behaviour).
+     * @param {Object} theme
+     * @param {Object} tokens
+     * @param {string} [envId]
+     * @returns {Object}
+     */
+    resolveTheme: function (theme, tokens, envId) {
+      const contentId = theme && themeContentIdByLegacy[theme.id];
+      const merged = deepMerge(theme, getEnvOverride(envId, contentId));
+      return applyTokensDeep(merged, tokens);
+    },
+
+    /**
+     * Returns a deep copy of the intro content with any override applied, then
+     * tokens resolved.
+     * @param {Object} tokens
+     * @param {string} [envId]
+     * @returns {Object}
+     */
+    resolveIntro: function (tokens, envId) {
+      const merged = deepMerge(INTRO_TEXT, getEnvOverride(envId, "intro"));
+      return applyTokensDeep(merged, tokens);
+    },
+
+    /**
+     * Returns a deep copy of the success content with any override applied, then
+     * tokens resolved.
+     * @param {Object} tokens
+     * @param {string} [envId]
+     * @returns {Object}
+     */
+    resolveSuccess: function (tokens, envId) {
+      const merged = deepMerge(SUCCESS_STATE, getEnvOverride(envId, "success"));
+      return applyTokensDeep(merged, tokens);
+    },
+
+    /**
+     * Returns a deep copy of an array of section specs with any per-id override
+     * applied, then tokens resolved. Each spec's override is keyed by `spec.id`.
+     * @param {Array} specs
+     * @param {Object} tokens
+     * @param {string} [envId]
+     * @returns {Array}
+     */
+    resolveSections: function (specs, tokens, envId) {
+      return (specs || []).map(function (spec) {
+        const merged =
+          spec && typeof spec.id === "string"
+            ? deepMerge(spec, getEnvOverride(envId, spec.id))
+            : spec;
+        return applyTokensDeep(merged, tokens);
+      });
+    },
 
     /**
      * Gets a theme by its ID

@@ -22,35 +22,36 @@ const MusicPdfMarkup = (function () {
   const log = globalThis.MusicLog || { logError() {}, logWarn() {}, logInfo() {}, logDebug() {} };
   const { logError, logWarn, logInfo, logDebug } = log;
 
-  // The pagination profiles, keyed by profile name. Standard is the engraving
-  // norm the 135-bar render validated (HANDOVER §14.4); the spike hand-picked
-  // systemEvery=5 and pageAtMeasures=[46, 91] for one fixture, but this module
-  // derives both from the bar count and the chosen profile instead, since it
-  // takes any uploaded score. barsPerPage is never stored — it is always derived
-  // as barsPerSystem * systemsPerPage in the resolver — so the two factors and
-  // the page size cannot drift apart.
+  // The pagination profiles, keyed by profile name. Each profile now carries only
+  // barsPerSystem: since Stage 31 switched Verovio to breaks:"line" it paginates
+  // pages itself and ignores encoded page breaks, so this module injects only
+  // SYSTEM breaks and no longer stores a systemsPerPage or derives a barsPerPage.
+  // Standard is the engraving norm the 135-bar render validated (HANDOVER §14.4);
+  // the spike hand-picked systemEvery=5 for one fixture, but this module derives
+  // systemEvery from barsPerSystem instead, since it takes any uploaded score.
   const PAGINATION_PROFILES = {
     // standard: the engraving norm the 135-bar render validated. Five bars to a
-    // system, nine systems to a page, so forty-five bars per page.
-    standard: { barsPerSystem: 5, systemsPerPage: 9 },
+    // system.
+    standard: { barsPerSystem: 5 },
     // large-print: a narrower Verovio page (set in the engraving profile in
-    // js/music-pdf.js) needs fewer bars per system. Two bars per system, four
-    // systems per page, so eight bars per page. Two not three, because three
-    // bars on a page this narrow over-compresses horizontally, which Verovio
-    // warns about below a 0.8 justification ratio. The profile name threads in
-    // from generate(model, xml, profile) in the orchestrator.
-    "large-print": { barsPerSystem: 2, systemsPerPage: 4 },
+    // js/music-pdf.js) needs fewer bars per system. Two bars per system — two not
+    // three, because three bars on a page this narrow over-compresses
+    // horizontally, which Verovio warns about below a 0.8 justification ratio. The
+    // profile name threads in from generate(model, xml, profile) in the
+    // orchestrator.
+    "large-print": { barsPerSystem: 2 },
   };
   const DEFAULT_PROFILE = "standard";
 
-  // resolvePagination(profile) → the { barsPerSystem, systemsPerPage } pair for a
-  // profile name, with the absent and unknown cases kept distinct:
+  // resolvePagination(profile) → the { barsPerSystem } object for a profile name,
+  // with the absent and unknown cases kept distinct:
   //   - profile undefined or empty: the documented default, standard, with NO
   //     warning (an absent profile is the supported "just give me standard" call).
   //   - profile an unknown string: warn that it is unknown and falling back, then
   //     return standard so the builder still produces a usable document.
-  // The caller derives barsPerPage as barsPerSystem * systemsPerPage; it is never
-  // stored on the profile.
+  // The caller reads barsPerSystem to space the system breaks; there is no
+  // page-size factor, because Verovio owns page breaks (breaks:"line") since
+  // Stage 31.
   function resolvePagination(profile) {
     if (!profile) {
       return PAGINATION_PROFILES[DEFAULT_PROFILE];
@@ -66,56 +67,58 @@ const MusicPdfMarkup = (function () {
     return found;
   }
 
-  // The page-break measure numbers for a score of barCount bars: every
-  // 1 + barsPerPage * k that is still within the score. A 135-bar score under the
-  // standard profile (barsPerPage 45) gives [46, 91] (k=3 would be 136, past the
-  // end), matching the spike; the page count is this list's length plus one, which
-  // equals ceil(barCount / barsPerPage). barsPerPage is passed in so the profile
-  // chooses it; this function is private and only withEncodedBreaks calls it, so
-  // taking it as a parameter is safe.
-  function pageBreakMeasures(barCount, barsPerPage) {
-    const breaks = [];
-    for (let k = 1; 1 + barsPerPage * k <= barCount; k++) {
-      breaks.push(1 + barsPerPage * k);
-    }
-    return breaks;
-  }
-
-  // withEncodedBreaks(xml, barCount, profile): inject MusicXML <print> breaks into
-  // a COPY of the score so Verovio lays it out to the validated norm,
-  // deterministically. The original string is never mutated — strings are
+  // withEncodedBreaks(xml, barCount, profile): inject MusicXML <print> SYSTEM
+  // breaks into a COPY of the score so Verovio lays each line out to the validated
+  // norm, deterministically. The original string is never mutated — strings are
   // immutable and replace returns a fresh copy — so the summary and the attachment
-  // keep the untouched author's notation. Injection mechanism lifted verbatim from
-  // the spike; only the two explicit arguments it took (systemEvery,
-  // pageAtMeasures) are replaced by values derived from the resolved profile. The
-  // profile threads in from generate(model, xml, profile) in the orchestrator; an
-  // absent profile resolves to standard, so a two-argument call still produces
-  // exactly today's standard output. A page boundary wins over a coincident system
-  // boundary (the early return), the spike's exact handling of a bar that is both.
-  //   - <print new-page="yes"/>   forces a NEW PAGE at that measure.
+  // keep the untouched author's notation. Injection mechanism lifted from the
+  // spike; the one explicit argument it took (systemEvery) is replaced by a value
+  // derived from the resolved profile. The profile threads in from
+  // generate(model, xml, profile) in the orchestrator; an absent profile resolves
+  // to standard, so a two-argument call still produces exactly today's standard
+  // output.
   //   - <print new-system="yes"/> forces a new system (line) at that measure.
-  // With breaks:"encoded" Verovio honours ONLY these, so no system overflows the
-  // page width and no staff is cut at a boundary.
+  // Since Stage 31 Verovio runs with breaks:"line": it paginates PAGES itself and
+  // ignores any encoded page break, so this module injects only system breaks and
+  // no longer computes page boundaries. barCount is retained in the signature for
+  // the caller's sake but is no longer read.
+  //
+  // Incoming <print> new-system and new-page breaks are STRIPPED FIRST, so the
+  // file's own breaks cannot collide with the profile's. A score that arrives
+  // already carrying hand-authored line/page breaks (Satie, Palestrina and the
+  // like commonly do) would otherwise force Verovio to honour both sets at once,
+  // fragmenting the profile's deterministic pagination. The strip removes only
+  // the break ATTRIBUTES (new-system, new-page) and any <print> those attributes
+  // left empty; a <print> carrying layout children (a system-layout, say) keeps
+  // them, losing only its break attribute. Because both new-system and new-page
+  // appear only on <print> in MusicXML, the attribute-level strip touches nothing
+  // else. The original string is still never mutated — the strip and the
+  // injection each return a fresh copy.
   function withEncodedBreaks(xml, barCount, profile) {
+    // barCount is retained for the caller's signature but no longer read: Verovio
+    // owns page breaks (breaks:"line") since Stage 31, so this module injects only
+    // system breaks and never computes a page boundary from the bar count.
     const pagination = resolvePagination(profile);
-    const barsPerPage = pagination.barsPerSystem * pagination.systemsPerPage;
-    const pageAtMeasures = pageBreakMeasures(barCount, barsPerPage);
     const systemEvery = pagination.barsPerSystem;
     const resolvedProfile =
       profile && PAGINATION_PROFILES[profile] ? profile : DEFAULT_PROFILE;
     logDebug("withEncodedBreaks", {
       barCount,
       profile: resolvedProfile,
-      pageAtMeasures,
       systemEvery,
     });
-    return String(xml).replace(
+    // Strip the file's own break directives before injecting the profile's:
+    // drop the break attributes, then any <print> they left empty. Pure string
+    // work on a fresh copy; the profile below then paginates from a clean slate.
+    const cleaned = String(xml)
+      .replace(/\s+new-system=(["'])[^"']*\1/g, "")
+      .replace(/\s+new-page=(["'])[^"']*\1/g, "")
+      .replace(/<print\s*\/>/g, "")
+      .replace(/<print>\s*<\/print>/g, "");
+    return cleaned.replace(
       /<measure\b[^>]*\bnumber="(\d+)"[^>]*>/g,
       function (openTag, num) {
         const n = parseInt(num, 10);
-        if (pageAtMeasures.indexOf(n) !== -1) {
-          return openTag + '<print new-page="yes"/>';
-        }
         if (n > 1 && (n - 1) % systemEvery === 0) {
           return openTag + '<print new-system="yes"/>';
         }
@@ -266,6 +269,42 @@ const MusicPdfMarkup = (function () {
       );
     }
 
+    // makeScoreWithPrints(n, systemBars, pageBars): the same n-measure score as
+    // makeScore, but carrying the file's OWN break directives — a
+    // <print new-page="yes"/> at the start of each measure in pageBars, else a
+    // <print new-system="yes"/> at the start of each measure in systemBars (page
+    // wins where a bar is in both). This is the shape an uploaded Satie or
+    // Palestrina score arrives in, and lets the strip be proven: after
+    // withEncodedBreaks the file's breaks must contribute nothing.
+    function makeScoreWithPrints(n, systemBars, pageBars) {
+      const sys = systemBars || [];
+      const pg = pageBars || [];
+      let measures = "";
+      for (let i = 1; i <= n; i++) {
+        let printEl = "";
+        if (pg.indexOf(i) !== -1) {
+          printEl = '<print new-page="yes"/>';
+        } else if (sys.indexOf(i) !== -1) {
+          printEl = '<print new-system="yes"/>';
+        }
+        measures +=
+          '<measure number="' +
+          i +
+          '">' +
+          printEl +
+          "<note><pitch><step>C</step><octave>4</octave></pitch>" +
+          "<duration>4</duration><type>quarter</type></note></measure>";
+      }
+      return (
+        '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<score-partwise version="4.0">' +
+        '<part-list><score-part id="P1"><part-name>Music</part-name></score-part></part-list>' +
+        '<part id="P1">' +
+        measures +
+        "</part></score-partwise>"
+      );
+    }
+
     // Count non-overlapping occurrences of needle in haystack.
     function countOf(haystack, needle) {
       if (!needle) return 0;
@@ -280,12 +319,6 @@ const MusicPdfMarkup = (function () {
 
     const score135 = makeScore(135);
     const broke135 = withEncodedBreaks(score135, 135);
-    const pb135 = countOf(broke135, 'new-page="yes"');
-
-    const broke45 = withEncodedBreaks(makeScore(45), 45);
-    const pb45 = countOf(broke45, 'new-page="yes"');
-    const broke46 = withEncodedBreaks(makeScore(46), 46);
-    const pb46 = countOf(broke46, 'new-page="yes"');
 
     const markup3 = buildMultiPageMarkup({
       title: "Test score",
@@ -314,13 +347,52 @@ const MusicPdfMarkup = (function () {
     const unknownBroke135 = withEncodedBreaks(score135, 135, "nonsense");
 
     const lpBroke8 = withEncodedBreaks(makeScore(8), 8, "large-print");
-    const lpBroke9 = withEncodedBreaks(makeScore(9), 9, "large-print");
-    const lpPb8 = countOf(lpBroke8, 'new-page="yes"');
-    const lpPb9 = countOf(lpBroke9, 'new-page="yes"');
 
     const score20 = makeScore(20);
     const lpBroke20 = withEncodedBreaks(score20, 20, "large-print");
     const stdBroke20 = withEncodedBreaks(score20, 20);
+
+    // Phase 4 (Stage 4.1 / 4.2a): strip the file's own <print> breaks before
+    // injecting the profile's, so an uploaded score's hand-authored breaks cannot
+    // collide with the deterministic pagination. A 135-bar Satie-like score
+    // carrying system breaks at 7, 13, 19, 30, 35, 40, 45 and a page break at 25
+    // must, once run through withEncodedBreaks, produce EXACTLY the SYSTEM-break
+    // count of the clean makeScore(135) — the file breaks contribute zero. (Page
+    // breaks are no longer injected at all since Stage 31: Verovio owns them.)
+    const satie135 = makeScoreWithPrints(
+      135,
+      [7, 13, 19, 30, 35, 40, 45],
+      [25]
+    );
+    const satieStd = withEncodedBreaks(satie135, 135);
+    const satieLp = withEncodedBreaks(satie135, 135, "large-print");
+
+    // Clean baseline for the system-break count (broke135 is the clean standard
+    // output).
+    const cleanStd135NewSystem = countOf(broke135, 'new-system="yes"');
+    const satieStdNewSystem = countOf(satieStd, 'new-system="yes"');
+
+    // A <print> carrying a system-layout child must survive the strip with its
+    // layout children intact and only its break attribute removed. Measure 1 is
+    // never a profile boundary, so nothing is injected there — any remaining
+    // new-system on this print would mean the strip missed it.
+    const layoutScore =
+      '<?xml version="1.0" encoding="UTF-8"?><score-partwise version="4.0">' +
+      '<part id="P1"><measure number="1">' +
+      '<print new-system="yes"><system-layout><system-distance>100</system-distance></system-layout></print>' +
+      "<note><pitch><step>C</step><octave>4</octave></pitch>" +
+      "<duration>4</duration><type>quarter</type></note></measure>" +
+      "</part></score-partwise>";
+    const layoutBroke = withEncodedBreaks(layoutScore, 1);
+
+    // No empty <print> may remain after the strip, in either profile's output.
+    function hasEmptyPrint(s) {
+      return (
+        countOf(s, "<print/>") > 0 ||
+        countOf(s, "<print />") > 0 ||
+        countOf(s, "<print></print>") > 0
+      );
+    }
 
     const results = {
       hasWithEncodedBreaks: typeof withEncodedBreaks === "function",
@@ -328,21 +400,13 @@ const MusicPdfMarkup = (function () {
       hasPdfMagicOk: typeof pdfMagicOk === "function",
       hasSelfTest: typeof selfTest === "function",
 
-      twoPageBreaksAt135: pb135 === 2,
-      pageBreakInMeasure46:
-        broke135.indexOf('<measure number="46"><print new-page="yes"/>') !== -1,
-      pageBreakInMeasure91:
-        broke135.indexOf('<measure number="91"><print new-page="yes"/>') !== -1,
-      threePagesAt135: pb135 + 1 === 3,
       systemBreakInMeasure6:
         broke135.indexOf('<measure number="6"><print new-system="yes"/>') !== -1,
 
-      noPageBreakAt45: pb45 === 0,
-      onePageAt45: pb45 + 1 === 1,
-      onePageBreakAt46: pb46 === 1,
-      twoPagesAt46: pb46 + 1 === 2,
-      pageBreakAt46Measure:
-        broke46.indexOf('<measure number="46"><print new-page="yes"/>') !== -1,
+      // Verovio owns page breaks (breaks:"line") since Stage 31, so
+      // withEncodedBreaks must inject NO new-page in either profile's output.
+      standardInjectsNoPageBreak: countOf(broke135, 'new-page="yes"') === 0,
+      largePrintInjectsNoPageBreak: countOf(lpBroke20, 'new-page="yes"') === 0,
 
       inputXmlUnchanged: score135 === makeScore(135),
 
@@ -367,14 +431,24 @@ const MusicPdfMarkup = (function () {
       // Stage 19: pagination profile and its fallback behaviour.
       absentMatchesStandard: broke135 === standardBroke135,
       unknownFallsBackToStandard: unknownBroke135 === broke135,
-      largePrintNoPageBreakAt8: lpPb8 === 0,
-      largePrintOnePageBreakAt9:
-        lpPb9 === 1 &&
-        lpBroke9.indexOf('<measure number="9"><print new-page="yes"/>') !== -1,
       largePrintSystemBreakAt3:
         lpBroke8.indexOf('<measure number="3"><print new-system="yes"/>') !== -1,
       largePrintDenserThanStandard:
         countOf(lpBroke20, "<print ") > countOf(stdBroke20, "<print "),
+
+      // Phase 4 (Stage 4.1 / 4.2a): the file's own <print> breaks are stripped
+      // before the profile's are injected, so they contribute zero.
+      satieStdSystemCountMatchesClean:
+        satieStdNewSystem === cleanStd135NewSystem,
+      satieBar7SystemBreakStripped:
+        satieStd.indexOf('<measure number="7"><print new-system="yes"/>') ===
+        -1,
+      satieNoEmptyPrintStandard: !hasEmptyPrint(satieStd),
+      satieNoEmptyPrintLargePrint: !hasEmptyPrint(satieLp),
+      layoutPrintChildSurvivesStrip:
+        layoutBroke.indexOf(
+          "<system-layout><system-distance>100</system-distance></system-layout>"
+        ) !== -1 && layoutBroke.indexOf('new-system="yes"') === -1,
     };
 
     if (typeof console !== "undefined" && typeof console.table === "function") {

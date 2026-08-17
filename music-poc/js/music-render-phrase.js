@@ -26,15 +26,52 @@ const MusicRenderPhrase = (function () {
 
   // Compose the comma-separated extras for one note from its descriptor, plus the
   // next note so a slur can name where it goes: tuplet, articulations, ornaments,
-  // then dynamic, tie, slur, lyric, in that order. The slur is named from its
-  // starting note only. Returns an array of strings (possibly empty). Shared by the
-  // single-note and chord paths so a chord reads the same extras from its head note.
+  // then dynamic, shaping, tie, slur, lyric, in that order. The slur is named from
+  // its starting note only. Returns an array of strings (possibly empty). Shared by
+  // the single-note and chord paths so a chord reads the same extras from its head
+  // note.
   function extrasOf(d, nextNote) {
     const extras = [];
     if (d.tuplet) extras.push(d.tuplet);
     if (d.articulations) for (const a of d.articulations) extras.push(a);
     if (d.ornaments) for (const o of d.ornaments) extras.push(o);
     if (d.dynamic) extras.push(d.dynamic);
+
+    // Dynamic shaping (Stage 59), sited immediately after the dynamic because it
+    // IS a dynamic instruction and belongs beside it, ahead of the connective
+    // marks. ONE clause per endpoint, exactly as articulations and ornaments push
+    // one entry each, and EVERY endpoint the descriptor holds is voiced rather
+    // than the outermost alone: a note can legitimately carry two endings, proved
+    // on the real Joplin at bar 68 and the real Satie at bar 8, where a diminuendo
+    // nested inside a crescendo closes the pair at one point. The parser spent an
+    // amendment to stop an ending being lost, so nothing is dropped here.
+    //
+    // STOPS read before STARTS: an ending belongs to the span arriving at this
+    // note and a beginning to the span leaving it, so "crescendo ends, diminuendo
+    // begins" is chronologically right. Within each list the descriptor's own
+    // order is preserved, which for stops is the inner hairpin first.
+    //
+    // The wording is composed here from the RAW MusicXML type, which is already
+    // the spoken word ("crescendo", "diminuendo"). music-names.js is deliberately
+    // not involved: it holds closed-set lookups that return null for anything
+    // unmapped, and nothing needs mapping.
+    //
+    // Read DEFENSIVELY. The three-key describeNote fallback at the top of this
+    // file is a degraded-mode placeholder that already omits seven of the eleven
+    // descriptor fields, so a descriptor from it carries shaping === undefined.
+    // Widening that stub was considered and DECLINED at Stage 59: this guard is
+    // what keeps a degraded render working. It therefore tolerates undefined,
+    // null, a non-object, and an object whose starts or stops is missing or is not
+    // an array, adding no clause and never throwing, and it skips any entry that
+    // is not a non-empty string.
+    const shaping = d.shaping;
+    if (shaping && typeof shaping === "object") {
+      const stops = Array.isArray(shaping.stops) ? shaping.stops : [];
+      for (const s of stops) if (typeof s === "string" && s) extras.push(s + " ends");
+      const starts = Array.isArray(shaping.starts) ? shaping.starts : [];
+      for (const s of starts) if (typeof s === "string" && s) extras.push(s + " begins");
+    }
+
     if (d.tie && d.tie.start && d.tie.stop) extras.push("tied");
     else if (d.tie && d.tie.start) extras.push("tied to the next note");
     else if (d.tie && d.tie.stop) extras.push("tied from the previous note");
@@ -159,6 +196,68 @@ const MusicRenderPhrase = (function () {
       { rest: false, chord: true, step: "G", octave: 4, type: "quarter" },
     ];
 
+    // Stage 59 shaping fixtures, in the shape MusicParse emits and MusicModelWalk
+    // carries: shaping is null, or { starts, stops } with each entry a raw wedge
+    // type in document order. One start; one stop; one of each (the stop must read
+    // first); two stops (the Satie bar 8 / Joplin bar 68 shape, inner hairpin
+    // first); a note carrying a dynamic, shaping, a tie and a slur together to pin
+    // the clause position; and a REST carrying shaping, which is the real Satie's
+    // bar 8 staff 1 event and reaches extrasOf because singleText composes extras
+    // for a rest exactly as it does for a pitched note.
+    const shapeStartC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: ["crescendo"], stops: [] } };
+    const shapeStopC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: [], stops: ["crescendo"] } };
+    const shapeOneEachC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: ["diminuendo"], stops: ["crescendo"] } };
+    const shapeTwoStopsC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: [], stops: ["diminuendo", "crescendo"] } };
+    const shapeWithDynTieSlurC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", dynamic: "f", shaping: { starts: ["crescendo"], stops: [] }, tie: { start: true, stop: false }, slur: { start: true, stop: false } };
+    const shapeRest = { rest: true, chord: false, step: null, octave: null, type: "quarter", shaping: { starts: ["diminuendo"], stops: ["crescendo"] } };
+
+    // Malformed shaping values, each of which must add NO clause and never throw.
+    // A string, a number, an object carrying neither array, an object whose starts
+    // is not an array, an object whose stops is not an array, an empty pair, and a
+    // pair whose entries are not non-empty strings.
+    const shapeStringC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: "crescendo" };
+    const shapeNumberC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: 7 };
+    const shapeNoArraysC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: {} };
+    const shapeStartsNotArrayC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: "crescendo", stops: [] } };
+    const shapeStopsNotArrayC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: [], stops: 3 } };
+    const shapeEmptyPairC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: [], stops: [] } };
+    const shapeBadEntriesC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: ["", null, 3], stops: [undefined, ""] } };
+
+    // A chord whose HEAD carries shaping and whose members carry none, and a chord
+    // whose head carries none while a MEMBER carries shaping — the second proves a
+    // member contributes nothing, exactly as it contributes no dynamic.
+    const triadShapingHead = [
+      { rest: false, chord: false, step: "C", octave: 4, type: "quarter", shaping: { starts: ["crescendo"], stops: [] } },
+      { rest: false, chord: true, step: "E", octave: 4, type: "quarter" },
+      { rest: false, chord: true, step: "G", octave: 4, type: "quarter" },
+    ];
+    const triadShapingMemberOnly = [
+      { rest: false, chord: false, step: "C", octave: 4, type: "quarter" },
+      { rest: false, chord: true, step: "E", octave: 4, type: "quarter", shaping: { starts: ["crescendo"], stops: [] } },
+      { rest: false, chord: true, step: "G", octave: 4, type: "quarter" },
+    ];
+
+    // The three-key describeNote fallback stub yields a descriptor whose shaping is
+    // undefined, but it is only reachable when MusicModelWalk is absent at load —
+    // which the self-test cannot arrange after the fact. So the degraded descriptor
+    // is staged by swapping walk.describeNote for the stub's exact three-key return
+    // and restoring it in a finally, self-restoring so a throw cannot leave the
+    // module patched. Under the stub the phrase is "" because there is no pitch and
+    // no value; the row proves the guard added no clause and did not throw on a
+    // missing shaping key. A second row re-measures afterwards to prove the swap
+    // was undone before any later row ran.
+    let stubDescriptorSafe = false;
+    const realDescribeNote = walk.describeNote;
+    try {
+      walk.describeNote = function () { return { isRest: false, pitch: null, value: null }; };
+      stubDescriptorSafe = phraseOf([shapeStartC4], null) === "";
+    } catch (e) {
+      stubDescriptorSafe = false;
+    } finally {
+      walk.describeNote = realDescribeNote;
+    }
+    const stubSwapRestored = walk.describeNote === realDescribeNote && phraseOf([melodyC4], null) === "C4 crotchet";
+
     const results = {
       hasPhraseOf: typeof phraseOf === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -182,6 +281,26 @@ const MusicRenderPhrase = (function () {
       tupletArticDynamicOrder: phraseOf([tupletArticDynG4], null) === "G4 quaver, triplet, staccato, forte",
       plainNoteUnchanged: phraseOf([melodyC4], null) === "C4 crotchet",
       chordReadsHeadArticulation: phraseOf(triadStaccatoHead, null) === "C4, E4 and G4 crotchet, staccato",
+      // Stage 59: dynamic shaping voiced, one clause per endpoint, stops first.
+      shapingStartVoiced: phraseOf([shapeStartC4], null) === "C4 crotchet, crescendo begins",
+      shapingStopVoiced: phraseOf([shapeStopC4], null) === "C4 crotchet, crescendo ends",
+      shapingStopReadsBeforeStart: phraseOf([shapeOneEachC4], null) === "C4 crotchet, crescendo ends, diminuendo begins",
+      shapingTwoStopsBothVoicedInOrder: phraseOf([shapeTwoStopsC4], null) === "C4 crotchet, diminuendo ends, crescendo ends",
+      shapingSitsAfterDynamicBeforeTie: phraseOf([shapeWithDynTieSlurC4], melodyD4) === "C4 crotchet, forte, crescendo begins, tied to the next note, slurred to D4",
+      shapingNullByteIdentical: phraseOf([melodyC4], melodyD4) === "C4 crotchet",
+      shapingRichExtrasByteIdentical: phraseOf([richC4], melodyD4) === "C4 crotchet, forte, slurred to D4, lyric 'la'",
+      shapingUndefinedFromStubNoClause: stubDescriptorSafe,
+      shapingStubSwapRestored: stubSwapRestored,
+      shapingStringNoClause: phraseOf([shapeStringC4], null) === "C4 crotchet",
+      shapingNumberNoClause: phraseOf([shapeNumberC4], null) === "C4 crotchet",
+      shapingNoArraysNoClause: phraseOf([shapeNoArraysC4], null) === "C4 crotchet",
+      shapingStartsNotArrayNoClause: phraseOf([shapeStartsNotArrayC4], null) === "C4 crotchet",
+      shapingStopsNotArrayNoClause: phraseOf([shapeStopsNotArrayC4], null) === "C4 crotchet",
+      shapingEmptyPairNoClause: phraseOf([shapeEmptyPairC4], null) === "C4 crotchet",
+      shapingNonStringEntriesSkipped: phraseOf([shapeBadEntriesC4], null) === "C4 crotchet",
+      shapingChordReadsHeadOnce: phraseOf(triadShapingHead, null) === "C4, E4 and G4 crotchet, crescendo begins",
+      shapingChordMemberContributesNone: phraseOf(triadShapingMemberOnly, null) === "C4, E4 and G4 crotchet",
+      shapingOnRestVoiced: phraseOf([shapeRest], null) === "rest crotchet, crescendo ends, diminuendo begins",
     };
 
     console.table(results);

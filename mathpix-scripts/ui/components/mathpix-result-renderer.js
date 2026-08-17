@@ -39,6 +39,9 @@ const ENABLE_RENDERED_OUTPUT_TTS = true;
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 import { LaTeXTransformer } from "../../core/mathpix-latex-transformer.js";
+// Heading renormalisation is shared with the MMD preview panes; the comparison
+// panel below renders its own HTML and never goes through MMDPreview.render().
+import MathPixMMDPreview from "./mathpix-mmd-preview.js";
 
 // =============================================================================
 // SVG ICON REGISTRY
@@ -3431,8 +3434,12 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
         // Show loading state (Phase 6E — E5: sync aria-label with visual state)
         describeBtn.disabled = true;
+        // SC 2.5.3: no aria-label here. The innerHTML below already swaps the
+        // VISIBLE text to "Generating…", so an aria-label saying anything else
+        // would name the button something the user cannot see — in this state and
+        // in the restored state below. Letting the content name the button keeps
+        // the two in step automatically; aria-busy carries the "please wait".
         describeBtn.setAttribute("aria-busy", "true");
-        describeBtn.setAttribute("aria-label", "Generating description, please wait");
         const iconHtml = typeof window.getIcon === "function"
           ? window.getIcon("hourglass")
           : '<span aria-hidden="true" data-icon="hourglass"></span>';
@@ -3544,7 +3551,6 @@ class MathPixResultRenderer extends MathPixBaseModule {
           // Restore button (Phase 6E — E5: restore aria-label)
           describeBtn.disabled = false;
           describeBtn.removeAttribute("aria-busy");
-          describeBtn.setAttribute("aria-label", "Generate accessible description of chemical structure");
           const sparkleHtml = typeof window.getIcon === "function"
             ? window.getIcon("aiSparkle")
             : '<span aria-hidden="true" data-icon="aiSparkle"></span>';
@@ -4329,6 +4335,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
       equation_number: "Equation number",
       page_info: "Page information",
       chemistry: "Chemistry structure", // Phase 4: Chemistry type
+      // SuperNet-200: types emitted once enable_document_layout is on
+      section_header: "Section heading",
+      list_item: "List item",
       unknown: "Unknown content",
     };
 
@@ -4350,6 +4359,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
         area: "Area chart",
         vertical: "Vertical text",
         big_capital_letter: "Large capital letter",
+        qr_code: "QR code",
       };
 
       return subtypeLabels[subtype] || `${baseLabel} (${subtype})`;
@@ -4999,6 +5009,9 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
       targetElement.innerHTML = html;
       targetElement.classList.add("mathjax-rendered", "phase6j-cdn-rendered");
+
+      // Same outline fix the preview panes get - this panel bypasses render()
+      MathPixMMDPreview.renormaliseHeadingLevels(targetElement);
 
       // Prevent MathJax from re-processing CDN-rendered content.
       // The CDN already produces MathML for screen readers; MathJax

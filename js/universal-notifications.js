@@ -194,7 +194,19 @@ const UniversalNotifications = (function () {
         // Use existing Graph Builder classes for styling
         this.container.className =
           "gb-toast-container universal-toast-container";
-        this.container.setAttribute("aria-live", "polite");
+        // NOT a live region — deliberately. Each toast carries its own
+        // role="status"/"alert" (see createToast). A live CONTAINER announced
+        // its own label whenever it emptied, and nested with the error toasts'
+        // role="alert" so those spoke twice. role + label stay so the area is
+        // still a navigable, named landmark.
+        //
+        // Kept in step with the markup container in tools.html. This path is a
+        // fallback: initContainer() reuses an existing #universal-toast-container
+        // or a legacy #gb-toast-container WITHOUT setting any ARIA, so on pages
+        // that ship the container in markup this function never runs. Both
+        // definitions have to agree or the behaviour depends on which page you
+        // are on — the mismatch that made an earlier fix a no-op.
+        this.container.setAttribute("role", "region");
         this.container.setAttribute("aria-label", "Application notifications");
 
         // Apply positioning styles
@@ -339,6 +351,10 @@ const UniversalNotifications = (function () {
         toast.classList.add("gb-toast-show");
       });
 
+      // Announce through the app's PERMANENT announcer region, not from the
+      // toast DOM at all. See _announceToast().
+      this._announceToast(message, type);
+
       // Set up auto-dismiss for non-persistent toasts
       if (!persistent && duration > 0) {
         this.setAutoDisMiss(toastId, duration);
@@ -349,6 +365,56 @@ const UniversalNotifications = (function () {
 
       logDebug(`Toast displayed: ${type} - ${message}`);
       return toastId;
+    }
+
+    /**
+     * Speak a notification through the app's shared announcer.
+     *
+     * WHY NOT FROM THE TOAST DOM
+     * --------------------------
+     * Three arrangements were tried and measured on NVDA, 3 August 2026:
+     *
+     *   1. container aria-live="polite"        toasts spoke, but EMPTYING the
+     *      (the original)                      container also spoke — every
+     *                                          dismiss said "Notifications",
+     *                                          and an error toast's role="alert"
+     *                                          nested inside it, so errors spoke
+     *                                          TWICE, app-wide.
+     *   2. + aria-relevant="additions"         no change; the attribute is not
+     *      (a8031f9)                           honoured in this combination.
+     *   3. role on each toast, container not   "Notifications" gone, but
+     *      live (40f4ef4, 9993069)             non-error toasts went SILENT,
+     *                                          even after latching the region
+     *                                          empty and adding content a frame
+     *                                          later.
+     *
+     * (3) was not a sequencing mistake. Probed while a toast was on screen, the
+     * toast read ignored=false, role=status, live=polite, visibility visible —
+     * a correctly exposed live region that NVDA still did not speak. A region
+     * created milliseconds before its content is not registered in time,
+     * whatever order the writes happen in.
+     *
+     * So the toast DOM is now purely visual, and the announcement goes through
+     * window.accessibilityHelpers — a region that exists from page load and has
+     * announced reliably throughout. Resolved at call time, never cached, per
+     * AGENTS.md § Announcements.
+     *
+     * One announcement per toast: the toast itself is silent, so this is the
+     * only utterance. Callers must still not add their own announce() beside a
+     * notify*() — that would be two.
+     *
+     * @param {string} message - The message text, without icon or close-button markup
+     * @param {string} type - success | error | warning | info
+     */
+    _announceToast(message, type) {
+      const announcer = window.accessibilityHelpers;
+      if (!announcer || typeof announcer.announce !== "function") {
+        logWarn("No screen-reader announcer available; toast not announced");
+        return;
+      }
+      // Errors interrupt; everything else waits its turn.
+      announcer.announce(message, type === "error" ? "assertive" : "polite");
+      logDebug(`Toast announced (${type}): ${message}`);
     }
 
     /**
@@ -367,13 +433,35 @@ const UniversalNotifications = (function () {
       toast.id = toastId;
       // Use existing Graph Builder classes
       toast.className = `gb-toast gb-toast-${type}`;
-      // Phase 7.3J: Only error toasts get role="alert" (assertive, standalone).
-      // Non-error toasts rely on the container's aria-live="polite" for announcement.
-      // Previously, both role="status" AND aria-live="polite" on each toast
-      // created nested live regions, causing NVDA to announce content twice.
-      if (type === "error") {
-        toast.setAttribute("role", "alert");
-      }
+      // EVERY toast is its own live region, and the CONTAINER is not one.
+      //
+      // Phase 7.3J previously gave role="alert" to error toasts only and left
+      // non-error toasts relying on the container's aria-live="polite". That
+      // was half a fix: it removed one nesting (role="status" AND aria-live on
+      // the same toast) but left another, because an error toast's role="alert"
+      // still sat INSIDE the polite container. Error toasts therefore announced
+      // twice, app-wide, in every mode.
+      //
+      // The container being live also meant that EMPTYING it announced: every
+      // auto-dismissing toast was followed by the container's own label and
+      // nothing else — heard on NVDA 3 August 2026 as "Notifications", "blank".
+      // aria-relevant="additions" was tried first (a8031f9) and NVDA announced
+      // the emptying anyway, so that attribute is not honoured here; it has been
+      // removed rather than left as a misleading no-op.
+      //
+      // Moving the liveness onto the toast fixes both: nothing nests, and the
+      // element that disappears IS the live region, so its removal is silent.
+      //
+      // Safe to set the role at creation, before the element is in the DOM.
+      // General advice says a live region should exist before its content
+      // changes, but the error path here has always done exactly this and error
+      // toasts demonstrably announce — measured repeatedly this session. The
+      // same construction is now used for both.
+      // NO live-region role. The toast is visual only; the announcement goes
+      // through the shared announcer in _announceToast(). Giving the toast a
+      // role here as well would speak every notification twice — which is the
+      // defect this whole sequence started from.
+
       toast.style.pointerEvents = "auto";
       toast.style.zIndex = "inherit"; // Inherit from container
 
@@ -566,45 +654,6 @@ const UniversalNotifications = (function () {
         toastsToRemove.forEach((toastId) => {
           this.dismiss(toastId);
         });
-      }
-    }
-
-    /**
-     * Announce toast to screen readers
-     * @deprecated No longer needed - toast element itself has aria-live attribute
-     * Kept for backward compatibility but not called by default
-     */
-    announceToast(message, type) {
-      const announcement = `${type === "error" ? "Error: " : ""}${message}`;
-
-      let announcer = document.getElementById("universal-toast-announcer");
-      if (!announcer && document.body) {
-        announcer = document.createElement("div");
-        announcer.id = "universal-toast-announcer";
-        announcer.setAttribute("aria-live", "assertive");
-        announcer.setAttribute("aria-atomic", "true");
-        announcer.className = "sr-only";
-        announcer.style.cssText = `
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        `;
-        document.body.appendChild(announcer);
-      }
-
-      if (announcer) {
-        announcer.textContent = announcement;
-
-        // Clear after announcement
-        setTimeout(() => {
-          announcer.textContent = "";
-        }, 1000);
       }
     }
 

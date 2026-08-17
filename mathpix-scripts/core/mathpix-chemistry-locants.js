@@ -100,9 +100,23 @@
     "pyridin-2(1H)-one":    { sixWalk: ["N1", "C2", "C3", "C4", "C5", "C6"] },
     pyrimidine: { sixWalk: ["N1", "C2", "N3", "C4", "C5", "C6"] }, // stub
     // Phase 12-3a (11-2e narrow): naphthalene + pyridine — labelling layers
-    // for the InChI-auxinfo path only. The legacy starting-atom + walk
-    // machinery is NOT extended for these (per "What to avoid"); resolution
-    // is via _buildLocantMapFromInchi when MATHPIX_CONFIG.RDKIT_LOCANTS=true.
+    // drafted for an InChI-auxinfo path. The legacy starting-atom + walk
+    // machinery is NOT extended for these (per "What to avoid").
+    //
+    // Phase 17-loc-rec (6 August 2026) — both entries are INERT, measured:
+    // _buildLocantMapFromInchi was never written (three occurrences in the
+    // tree, all comments) and MATHPIX_CONFIG.RDKIT_LOCANTS is undefined and
+    // never read, so nothing consumes either entry and no flag can activate
+    // them. Breadcrumb: phase17-5-investigation-findings.md § 7(b).
+    //
+    // They are RETAINED deliberately, not left pending deletion. Locants for
+    // monocyclic five-rings are deferred under the user ruling recorded in
+    // chemistry-phase17-plan.md § 12: the trigger is the first substituted
+    // heteroaromatic five-ring entering scope, at which point the design
+    // question returns to the user before anything is built. These tables
+    // are the labelling layer such a build would start from, and the InChI
+    // feeder they were drafted against (_extractInchiAtomMap and the LRU
+    // cache in mathpix-chemistry-utils.js) is real and complete.
     naphthalene: {
       peripheryWalk: ["C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8"],
       bridgeAtoms:   ["C4a", "C8a"],

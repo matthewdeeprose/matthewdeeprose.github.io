@@ -1,7 +1,7 @@
 <!-- before.html — the BROKEN demo form. -->
 <!--
   It looks like a normal, tidy registration form to a sighted user, but it seeds
-  six accessibility faults in its SEMANTICS (not its appearance). Each fault is
+  seven accessibility faults in its SEMANTICS (not its appearance). Each fault is
   marked with an HTML comment naming it and which tool catches it. The matching
   correct page is after.html. Nothing is sent anywhere; submit is inert.
 
@@ -30,6 +30,12 @@
       .choice-title {
         display: block;
         font-weight: 700;
+        /* Visual parity with after.html: a <p> carries a default UA top margin
+           that after's floated <legend> does not, which pushed this group
+           heading lower than the correct page's. Neutralise it so the two group
+           headings align pixel-identically (this group is the most load-bearing
+           for the "looks the same" premise). */
+        margin-top: 0;
         margin-bottom: 0.5rem;
       }
 
@@ -52,6 +58,16 @@
       </p>
 
       <form novalidate>
+        <!-- FAULT (f): required state is conveyed ONLY by a bare "*" in the
+             label text. The required inputs (Full name, Email, Preferred campus)
+             carry NO required attribute and NO aria-required, so the required
+             state is never exposed to assistive technology. Worse, the lone "*"
+             sits inside the accessible name, so a screen reader voices a
+             meaningless "asterisk" (e.g. "Email address asterisk") instead of
+             "Email address, required". This is primarily a screen-reader /
+             manual point — the static engines do NOT flag a missing required
+             state. after.html fixes it with the native required attribute plus
+             an aria-hidden asterisk. -->
         <!-- FAULT (a): the label's "for" points to an id that does not exist
              ("full-name-x" vs the input id "full-name"), so the label is NOT
              linked to the box. It looks identical to a real label, but the
@@ -145,6 +161,12 @@
             The <strong>campus</strong> options are read out as “Highfield,
             Avenue, Boldrewood” with no heading — you never hear that you are
             choosing a campus.
+          </li>
+          <li>
+            <strong>Required</strong> fields are shown only with a “*”. A screen
+            reader reads it as the word “asterisk” after the field name, and the
+            field is never actually announced as required — so you cannot tell
+            which fields you must fill in.
           </li>
           <li>
             If your email is wrong, the only sign is a red outline. A screen

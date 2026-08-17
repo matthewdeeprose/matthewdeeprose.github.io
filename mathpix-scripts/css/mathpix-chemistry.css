@@ -247,10 +247,19 @@
   gap: 0.2rem;
 }
 
-.chemistry-control-label {
+/* The label/value row. These three declarations used to sit on the label itself,
+   which is what pushed the value to the right-hand edge — but that only worked
+   while the value was INSIDE the label, and a label containing its own value makes
+   the slider's accessible name change on every keypress. The value now lives in a
+   sibling <output>, so the row moves up to this wrapper and the rendering is
+   unchanged. */
+.chemistry-control-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.chemistry-control-label {
   font-size: 0.8rem;
   font-weight: 500;
 }

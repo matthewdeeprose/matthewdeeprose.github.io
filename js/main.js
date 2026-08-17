@@ -536,9 +536,15 @@ async function checkCredits() {
       // Set ARIA label for accessibility
       creditsElement.setAttribute("aria-label", formattedCredits.ariaLabel);
 
-      // If credits are running low (below 20%), announce it to screen readers
+      // If credits are running low (below 20%), announce it to screen readers.
+      //
+      // Names the provider: this check is OpenRouter's balance, and a bare "Credits"
+      // on a page that also holds MathPix, Foundry and Ally credentials does not say
+      // whose. Polite rather than assertive — it fires during the credit check on
+      // load, and interrupting someone before they have reached the page content is
+      // not warranted by a threshold that has no deadline attached to it.
       if (!formattedCredits.isUnlimited && formattedCredits.percentage < 20) {
-        a11y.announceStatus("Warning: Credits are running low", "assertive");
+        a11y.announceStatus("OpenRouter credits are running low", "polite");
       }
 
       logDebug("🔍 [BRIDGE DEBUG] ✅ Credit check complete");

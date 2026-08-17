@@ -225,7 +225,18 @@ export class ParameterBase {
     }
 
     this.updateDescription(validValue);
-    this.announceValueChange(validValue);
+
+    // Announce only a REAL change, and never the initial set. This used to announce
+    // unconditionally — with the `previousValue !== validValue` test sitting three
+    // lines below, computed for logging and not applied here. Measured on a page
+    // load 2 August 2026: "Maximum Response Length set to 1024. Short, concise
+    // responses" reached the shared announcer FIVE times before the user had touched
+    // anything. The guard is in the base class, so it covers every parameter control
+    // rather than the one that happened to be noticed.
+    const isInitialSet = previousValue === undefined || previousValue === null;
+    if (!isInitialSet && previousValue !== validValue) {
+      this.announceValueChange(validValue);
+    }
 
     if (previousValue !== validValue) {
       logInfo("Parameter value changed:", {

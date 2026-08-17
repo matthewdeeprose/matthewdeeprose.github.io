@@ -58,15 +58,15 @@ const GraphBuilderEnhanced = (function () {
   }
 
   function announceToScreenReader(message) {
-    var el = document.createElement("div");
-    el.setAttribute("role", "status");
-    el.setAttribute("aria-live", "polite");
-    el.className = "sr-only";
-    el.textContent = message;
-    document.body.appendChild(el);
-    setTimeout(function () {
-      if (document.body.contains(el)) document.body.removeChild(el);
-    }, 1000);
+    // Delegate to the shared announcer (resolved at call time, never cached) —
+    // a per-message live region created in the same tick is not registered in
+    // time to be spoken. See AGENTS.md § Announcements.
+    var announcer = window.accessibilityHelpers;
+    if (!announcer || typeof announcer.announce !== "function") {
+      logWarn("No screen-reader announcer available; message not announced");
+      return;
+    }
+    announcer.announce(message, "polite");
   }
 
   // ─── DOM HELPERS ───
@@ -278,7 +278,6 @@ const GraphBuilderEnhanced = (function () {
       updateSmartSuggestions();
       syncDataRows();
       notify("success", "Column added successfully");
-      announceToScreenReader("Column added. Configure its name, type, and role.");
     }
   }
 
@@ -288,7 +287,6 @@ const GraphBuilderEnhanced = (function () {
       updateSmartSuggestions();
       syncDataRows();
       notify("success", "Column removed");
-      announceToScreenReader("Column removed.");
     }
   }
 

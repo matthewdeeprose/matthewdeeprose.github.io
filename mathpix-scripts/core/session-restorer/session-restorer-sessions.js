@@ -1743,9 +1743,17 @@ if (context.eagerDiff) {
           );
         }
         if (registryMirror) {
-          const hydrateResult = this.imageRegistry.hydrateFromMirror(registryMirror);
+          // DEC-1: setDiff.added carries the ids buildFromMMD just created (an
+          // array of id strings). Passing it lets the hydrate restore the
+          // decorative flag for those entries only — a created entry's false is
+          // a default nobody chose, whereas a matched entry's false may be a
+          // person deliberately unticking the box and is left alone.
+          const hydrateResult = this.imageRegistry.hydrateFromMirror(
+            registryMirror,
+            setDiff.added,
+          );
           logInfo(
-            `applyRecoveredSession: registry mirror hydrate matched=${hydrateResult.matched} applied=${hydrateResult.applied}`,
+            `applyRecoveredSession: registry mirror hydrate matched=${hydrateResult.matched} applied=${hydrateResult.applied} decorativeApplied=${hydrateResult.decorativeApplied}`,
           );
         } else {
           logDebug("applyRecoveredSession: no registry mirror to hydrate.");

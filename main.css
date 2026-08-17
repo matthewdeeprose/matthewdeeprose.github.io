@@ -846,9 +846,10 @@ mark {
   line-height: 1.5;
 }
 
-.download-icon {
-  font-size: 14px;
-}
+/* .download-icon removed 31 July 2026: its only three call sites were the
+   emoji "⬇️" spans on the debug-panel download buttons, which are now SVG icons
+   from the shared library. .copy-icon, on the equivalent copy buttons, never had
+   a rule in any stylesheet at all. */
 
 .panel-header h3 {
   margin: 0;
@@ -4071,7 +4072,8 @@ a:hover {
   outline-offset: 2px;
 }
 
-#toolSelection label.radio {
+/* The pill itself is now the <label>, so the text is a plain span inside it. */
+#toolSelection .tool-option-wrapper .radio {
   cursor: pointer;
   line-height: 24px;
   margin: 0;

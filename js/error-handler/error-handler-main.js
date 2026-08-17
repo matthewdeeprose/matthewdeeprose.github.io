@@ -52,10 +52,14 @@ export class ErrorHandlerMain {
     this.activeErrorHandling = new Map();
     this.userInteractionMode = "automatic"; // 'automatic', 'prompt', 'manual'
 
-    // Integration with existing systems
+    // Integration with existing systems.
+    //
+    // There is deliberately no accessibilitySystem field: the announcer is resolved
+    // at ANNOUNCE time by _announcer(). It used to be captured here during setup as
+    // `window.a11y || window.accessibility` — neither of which is ever assigned in
+    // production — so every error announcement in the app was silently dead.
     this.notificationSystem = null;
     this.modalSystem = null;
-    this.accessibilitySystem = null;
 
     // Performance tracking
     this.errorMetrics = {
@@ -98,8 +102,7 @@ export class ErrorHandlerMain {
       // Universal modal system
       this.modalSystem = window.UniversalModal;
 
-      // Accessibility system
-      this.accessibilitySystem = window.a11y || window.accessibility;
+      // Accessibility system: resolved per announcement, not here. See _announcer().
     }
 
     logDebug("ErrorHandlerMain: System integrations initialised");
@@ -354,6 +357,44 @@ export class ErrorHandlerMain {
   }
 
   /**
+   * Resolve the shared screen-reader announcer, at call time.
+   *
+   * Deliberately NOT cached on the instance. accessibility-announcer.js publishes
+   * window.accessibilityHelpers from a plain <script>, while this is a deferred ES
+   * module — the ordering works today, but a reference captured during setup would
+   * fail silently if that ever changed. A silently dead announcer is precisely what
+   * this replaced.
+   *
+   * @returns {Object|null} the announcer, or null when it is unavailable
+   * @private
+   */
+  _announcer() {
+    const helpers = window.accessibilityHelpers;
+    return helpers && typeof helpers.announce === "function" ? helpers : null;
+  }
+
+  /**
+   * Announce a message to screen readers, honouring the configured priority.
+   *
+   * @param {string} text message to announce
+   * @param {string} priority "assertive" for critical errors, otherwise polite
+   * @returns {boolean} whether the announcement was made
+   * @private
+   */
+  _announceToScreenReader(text, priority) {
+    if (!this.config.accessibilityAnnouncements || !text) return false;
+
+    const announcer = this._announcer();
+    if (!announcer) {
+      logWarn("ErrorHandlerMain: no screen-reader announcer available");
+      return false;
+    }
+
+    announcer.announce(text, priority === "assertive" ? "assertive" : "polite");
+    return true;
+  }
+
+  /**
    * Notify user about error with appropriate method
    * @param {Object} classification - Error classification
    * @param {Object} context - Error context
@@ -385,15 +426,11 @@ export class ErrorHandlerMain {
       );
 
       // Accessibility announcement
-      if (this.config.accessibilityAnnouncements && this.accessibilitySystem) {
-        const srText = userMessage.screenReaderText || userMessage.message;
-        const priority =
-          classification.priority === "critical" ? "assertive" : "polite";
-
-        if (this.accessibilitySystem.announceStatus) {
-          this.accessibilitySystem.announceStatus(srText, priority);
-        }
-      }
+      const srText = userMessage.screenReaderText || userMessage.message;
+      this._announceToScreenReader(
+        srText,
+        classification.priority === "critical" ? "assertive" : "polite"
+      );
 
       logDebug("ErrorHandlerMain: User notification sent:", {
         method: notificationMethod,
@@ -673,15 +710,10 @@ export class ErrorHandlerMain {
       }
 
       // Accessibility announcement
-      if (
-        this.config.accessibilityAnnouncements &&
-        this.accessibilitySystem?.announceStatus
-      ) {
-        this.accessibilitySystem.announceStatus(
-          `Recovery successful: ${successMessage}`,
-          "polite"
-        );
-      }
+      this._announceToScreenReader(
+        `Recovery successful: ${successMessage}`,
+        "polite"
+      );
     } catch (notificationError) {
       logWarn(
         "ErrorHandlerMain: Recovery success notification failed:",
@@ -907,7 +939,7 @@ export class ErrorHandlerMain {
       integrations: {
         notifications: !!this.notificationSystem,
         modals: !!this.modalSystem,
-        accessibility: !!this.accessibilitySystem,
+        accessibility: !!this._announcer(),
       },
       subsystems: {
         classification: !!errorClassification,

@@ -14,8 +14,12 @@
  * routine in a later pass.
  *
  * Provenance grounding: mathpix-scripts/docs/alt-text/pf4-provenance-contract.md
- *   — `ai-generated` is machine-owned and refreshable; `user`, `ai-reviewed`,
- *   and `original` are frozen against a machine refresh.
+ *   — machine-owned states (`ai-generated`, `algo-generated`, `original`) are
+ *   refreshable by this writer; the human-owned states named by the write
+ *   stage's runtime freeze floor are not, and any unrecognised source freezes.
+ *   The single decision point is isFrozenSource; see the freeze-floor block.
+ *   NOTE: `isRefreshable` below is a SEPARATE, older predicate that is dead in
+ *   the write path and disagrees with this on `original` — do not reach for it.
  *
  * @author Matthew Deeprose, University of Southampton
  */
@@ -167,6 +171,107 @@
   }
 
   // ==========================================================================
+  // Freeze floor (PF4) — ONE predicate, read from the write stage at RUNTIME
+  //
+  //   Every freeze decision in this file flows through isFrozenSource below.
+  //   Before this was centralised, three sites decided independently: this
+  //   file's classifyField hard-coded the floor's literals, and the
+  //   text-in-image and title gates each tested the source inline against a
+  //   NARROWER list that omitted "ai-edited" — so a person's correction to a
+  //   machine-written text-in-image field was silently replaced with raw
+  //   SMILES on the next chemistry refresh.
+  // ==========================================================================
+
+  /**
+   * FALLBACK ONLY — a literal copy of today's freeze floor.
+   *
+   * The PRIMARY source is the runtime read from the write stage (see
+   * _resolveFrozenSources). This copy exists solely so a missing or malformed
+   * export cannot leave the writer with no floor at all; it is correct as of
+   * today and will go stale the moment the real floor moves, which is why it is
+   * never consulted while the export is reachable.
+   */
+  const FROZEN_SOURCES_FALLBACK = Object.freeze([
+    "user",
+    "ai-reviewed",
+    "ai-edited",
+  ]);
+
+  /**
+   * This writer's OWN domain knowledge: the provenance states whose content is
+   * machine-owned, so this writer may regenerate them freely as the chemistry
+   * generator improves. Deliberately not derived from the write stage — the
+   * floor says what is protected, and this says what THIS writer considers its
+   * own to refresh. Anything in neither list is unrecognised and freezes
+   * (forward-safety).
+   */
+  const MACHINE_REFRESHABLE_SOURCES = Object.freeze([
+    "ai-generated",
+    "algo-generated",
+    "original",
+  ]);
+
+  /** Warn once per session, not once per call — this runs in a per-image loop. */
+  let _floorWarningIssued = false;
+
+  /**
+   * Resolve the freeze floor at CALL time from the write stage's export.
+   *
+   * Call-time rather than load-time by necessity: tools.html loads this file
+   * BEFORE alt-text-write-stage.js, so the global does not yet exist when this
+   * module is defined. It always exists by the time writeChemistryDescriptions
+   * can be reached, because that runs on a host gesture long after both tags
+   * have executed.
+   *
+   * @returns {string[]} The runtime floor, or the fallback copy.
+   */
+  function _resolveFrozenSources() {
+    const stage =
+      typeof window !== "undefined" ? window.MathPixAltTextWriteStage : null;
+    const floor = stage && stage.FROZEN_SOURCES;
+    if (Array.isArray(floor) && floor.length > 0) return floor;
+
+    if (!_floorWarningIssued) {
+      _floorWarningIssued = true;
+      logWarn(
+        "freeze floor unreachable at window.MathPixAltTextWriteStage.FROZEN_SOURCES — falling back to the local copy (correct as of today)",
+      );
+    }
+    return FROZEN_SOURCES_FALLBACK;
+  }
+
+  /**
+   * True when a field's provenance source forbids an automatic machine write.
+   *
+   * THE CONTRACT: the freeze floor is read from the write stage at runtime —
+   * nothing wider, nothing narrower — so a change there reaches this writer
+   * without a second edit. On top of that floor this writer applies its own
+   * forward-safe rule: a non-null source it does not recognise as
+   * machine-refreshable is frozen, so a provenance state added in the future
+   * defaults to protected rather than to overwritable.
+   *
+   * THE FALLBACK DIRECTION, and why it is that way round: if the export is
+   * unreachable the predicate degrades to the local copy of today's floor. That
+   * is deliberately correct-as-of-today rather than maximally cautious. Freezing
+   * everything would break the refresh workflow the chemistry generator exists
+   * to serve — machine content must keep improving — while freezing nothing
+   * would silently overwrite human work. So the fallback NEVER over-freezes the
+   * refresh workflow and NEVER under-freezes human work.
+   *
+   * @param {string|null|undefined} source - The field's `*Source` value.
+   * @returns {boolean} True when the field is frozen against a machine write.
+   */
+  function isFrozenSource(source) {
+    // A never-written field is not frozen — there is no decision to displace.
+    if (source === null || source === undefined) return false;
+
+    if (_resolveFrozenSources().includes(source)) return true;
+
+    // Forward-safety: unrecognised, non-null sources freeze.
+    return !MACHINE_REFRESHABLE_SOURCES.includes(source);
+  }
+
+  // ==========================================================================
   // Public: isRefreshable (PF4 freeze predicate)
   // ==========================================================================
 
@@ -174,15 +279,23 @@
    * Decide whether a machine write may overwrite a registry field carrying the
    * given provenance source. Per the PF4 contract, only machine-owned states
    * are refreshable: a never-written field (`null`/absent) and an
-   * `ai-generated` value. Human-touched states — `user` and `ai-reviewed` —
-   * and the imported `original` state are frozen and must not be refreshed by
-   * a machine.
+   * `ai-generated` value. Human-touched states and the imported `original`
+   * state are frozen and must not be refreshed by a machine.
+   *
+   * NOT THE WRITE PATH'S PREDICATE, and kept only for its existing callers.
+   * `isFrozenSource` is what every gate in this file consults; the two disagree
+   * about `original`, which this treats as frozen and the write path refreshes.
+   * Reaching for this one by name would silently re-narrow the freeze floor.
    *
    * @param {string|null|undefined} source - The field's `*Source` value.
    * @returns {boolean} True if a machine write may overwrite, false if frozen.
    */
   function isRefreshable(source) {
-    return source == null || source === "ai-generated";
+    return (
+      source == null ||
+      source === "ai-generated" ||
+      source === "algo-generated"
+    );
   }
 
   // ==========================================================================
@@ -434,13 +547,23 @@
    * Per-field refresh decision for the content-aware gate. Returns one of
    * "freeze" | "refresh" | "adopt".
    *
-   *   - "user" / "ai-reviewed"      → "freeze"  (human-owned; never machine-touch)
-   *   - "ai-generated" / "original" → "refresh" (machine-owned / source-imported
-   *                                   raw <smiles> — both safe to regenerate)
+   *   - anything isFrozenSource rejects → "freeze". That is the runtime freeze
+   *                                   floor (human-owned states, read from the
+   *                                   write stage) PLUS forward-safety: any
+   *                                   unrecognised non-null source freezes too.
+   *   - "ai-generated" / "algo-generated" / "original"
+   *                                 → "refresh" (machine-owned prose, this
+   *                                   writer's own algorithmic output, and
+   *                                   source-imported raw <smiles> — all three
+   *                                   safe to regenerate)
    *   - null / undefined            → unreliable (a fresh build OR a
    *                                   reset-after-reload). Fall back to the slot
    *                                   content: prose → "adopt" the human edit;
    *                                   raw <smiles> or empty → "refresh".
+   *
+   * The freeze list is deliberately NOT enumerated here — it is whatever the
+   * runtime floor says, and a copy in this doc block is exactly how the three
+   * decision sites drifted apart in the first place.
    *
    * For alt (isAlt true) a raw-<smiles> slot is NOT prose. For long (isAlt
    * false) any non-empty slot is prose — an appendix body is never a SMILES tag.
@@ -451,8 +574,13 @@
    * @returns {"freeze"|"refresh"|"adopt"}
    */
   function classifyField(source, slotContent, isAlt) {
-    if (source === "user" || source === "ai-reviewed") return "freeze";
-    if (source === "ai-generated" || source === "original") return "refresh";
+    if (isFrozenSource(source)) return "freeze";
+
+    // Everything non-null that survives the predicate is machine-refreshable —
+    // forward-safety already froze anything unrecognised, so no tail is needed.
+    if (source != null) return "refresh";
+
+    // null/undefined keep the content-check: adopt human prose, else refresh.
     const trimmed = typeof slotContent === "string" ? slotContent.trim() : "";
     const hasProse =
       trimmed !== "" && (isAlt ? !isRawSmilesSlot(slotContent) : true);
@@ -476,7 +604,7 @@
    * (a) the reliable source states and (b) the current WORKING-document slot
    * (`workingMmd`):
    *   - "freeze"  → leave the field untouched (a reliable human edit);
-   *   - "refresh" → (re)generate machine prose and stamp `ai-generated`;
+   *   - "refresh" → (re)generate machine prose and stamp `algo-generated`;
    *   - "adopt"   → copy the slot's human prose INTO the registry and stamp
    *                 `ai-reviewed`. Adopting (never leaving the field empty) is
    *                 what stops the forward writer — which has no empty-target
@@ -496,7 +624,7 @@
    *   - LONG: adopt the appendix slot prose (`ai-reviewed`), or refresh with the
    *     converted comprehensive Markdown (only when non-empty), or freeze;
    *   - TEXT-IN-IMAGE has no MMD home, so it is gated on source ALONE: written
-   *     as the SMILES (`ai-generated`) unless the source is `user`/`ai-reviewed`.
+   *     as the SMILES (`algo-generated`) unless the source is `user`/`ai-reviewed`.
    *
    * Pass-1 neutrality: when `workingMmd` is absent both slot maps are empty, so
    * a null-source field sees no prose and a chemistry slot classifies as
@@ -553,6 +681,7 @@
         altWritten: false,
         longWritten: false,
         textWritten: false,
+        titleWritten: false,
         altAdopted: false,
         longAdopted: false,
         graphOnly: false,
@@ -588,7 +717,7 @@
         res.altAdopted = true;
       } else if (altDecision === "refresh") {
         if (short) {
-          registry.updateAltText(img.id, short, "ai-generated");
+          registry.updateAltText(img.id, short, "algo-generated");
           res.altWritten = true;
           res.graphOnly = !pubchem;
         } else {
@@ -596,7 +725,7 @@
           registry.updateAltText(
             img.id,
             "Chemical structure diagram",
-            "ai-generated",
+            "algo-generated",
           );
           res.altWritten = true;
           res.fallback = true;
@@ -618,27 +747,42 @@
             html,
           );
         if (long) {
-          registry.updateLongDescription(img.id, long, "ai-generated");
+          registry.updateLongDescription(img.id, long, "algo-generated");
           res.longWritten = true;
         }
       } // "freeze", or "refresh" with no drawable structure → no write
 
       // ---- TEXT-IN-IMAGE (no MMD home → source gate only) ----
-      if (
-        img.textInImageSource === "user" ||
-        img.textInImageSource === "ai-reviewed"
-      ) {
-        // Human-owned verbatim text — leave it.
+      // Gated on the runtime freeze floor, via the shared predicate. This gate
+      // previously tested the source inline against a narrower list, so an
+      // "ai-edited" correction was replaced with raw SMILES here.
+      if (isFrozenSource(img.textInImageSource)) {
+        // Frozen by the floor (or by forward-safety) — leave it.
       } else {
-        registry.updateTextInImage(img.id, smiles, "ai-generated");
+        registry.updateTextInImage(img.id, smiles, "algo-generated");
         res.textWritten = true;
+      }
+
+      // ---- TITLE / CAPTION (C-P5: synthesise into an empty title only) ----
+      // Fills an empty caption from PubChem name and formula. Never overwrites an
+      // existing caption — a real caption from the source document, or a prior
+      // synthesis — and freezes any title the floor protects. Writes nothing when
+      // the helper returns null (no name and no formula). Needs no RDKit.
+      const titleFrozen = isFrozenSource(img.titleSource);
+      const titleEmpty = !(img.title && img.title.trim());
+      if (titleEmpty && !titleFrozen) {
+        const caption = utils.generateChemistryCaption(pubchem);
+        if (caption) {
+          registry.updateTitle(img.id, caption, "algo-generated");
+          res.titleWritten = true;
+        }
       }
 
       results.push(res);
     }
 
     const written = results.filter(
-      (r) => r.altWritten || r.longWritten || r.textWritten,
+      (r) => r.altWritten || r.longWritten || r.textWritten || r.titleWritten,
     ).length;
     const adopted = results.filter((r) => r.altAdopted || r.longAdopted).length;
     const fallbacks = results.filter((r) => r.fallback).length;
@@ -666,6 +810,8 @@
     internals: {
       comprehensiveHtmlToAppendixMarkdown,
       isRefreshable,
+      isFrozenSource,
+      classifyField,
       buildUrlToSmilesMap,
       extractWorkingAltByUrl,
       extractWorkingLongById,

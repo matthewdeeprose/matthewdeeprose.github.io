@@ -467,10 +467,15 @@ class BrowserDependencyTracker {
       <div id="dependency-report" role="region" aria-label="Dependency Analysis Report">
         <div class="dependency-header">
           <h3>Dependency Analysis</h3>
-          <button onclick="refreshDependencyAnalysis()" 
-                  class="refresh-button preset-buttons preset-button" 
-                  aria-label="Refresh dependency analysis">
-            ↻ Refresh
+          <button onclick="refreshDependencyAnalysis()"
+                  class="refresh-button preset-buttons preset-button">
+            ${
+              typeof window.getIcon === "function"
+                ? window.getIcon("refresh")
+                : ""
+            }
+            Refresh
+            <span class="visually-hidden">— the dependency analysis</span>
           </button>
         </div>
         

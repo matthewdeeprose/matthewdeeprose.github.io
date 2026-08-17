@@ -81,13 +81,17 @@ const MusicPdf = (function () {
   const DEFAULT_ENGRAVING_PROFILE = "standard";
 
   // Shared layout options, identical for every profile: page geometry stays full
-  // height with ONLY the encoded breaks honoured, the systems justified to fill
-  // the page, no running header or footer, and even 100-unit margins. The profile
-  // supplies page size and staff unit on top of this; scale is not included here
-  // or in any profile (retired — the width-fit cancels it).
+  // height, Verovio honours the encoded SYSTEM breaks but paginates the pages
+  // itself to the fixed page height (so no multi-staff system overflows or is
+  // clipped, whatever the staff count), the systems are justified to fill the
+  // page, no running header or footer, and even 100-unit margins. Under "line"
+  // Verovio ignores the encoded PAGE breaks, so those are retired from the markup
+  // in a separate stage. The profile supplies page size and staff unit on top of
+  // this; scale is not included here or in any profile (retired — the width-fit
+  // cancels it).
   const SHARED_ENGRAVING = {
     adjustPageHeight: false, // keep each page a full page height
-    breaks: "encoded", // use ONLY the <print> breaks already in the xml
+    breaks: "line", // honour encoded system breaks; Verovio paginates to page height (page breaks ignored)
     justifyVertically: true, // spread the systems to fill the page height
     // Measure numbers at the start of every system. mnumInterval is the
     // confirmed measure-number frequency option (Verovio 6.2.0 toolkit-options
@@ -311,7 +315,7 @@ const MusicPdf = (function () {
       unknownFallsBackToStandard:
         JSON.stringify(engravingOptionsFor("bogus")) === JSON.stringify(standardOpts),
       sharedOptionsPresent:
-        standardOpts.breaks === "encoded" && standardOpts.adjustPageHeight === false,
+        standardOpts.breaks === "line" && standardOpts.adjustPageHeight === false,
     };
 
     if (typeof console !== "undefined" && typeof console.table === "function") {

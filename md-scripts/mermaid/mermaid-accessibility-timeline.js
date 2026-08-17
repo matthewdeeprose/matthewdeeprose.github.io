@@ -46,6 +46,7 @@
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Generate a short description for a timeline
@@ -65,22 +66,36 @@
       ? timelineData.sections.length
       : 0;
 
+    // Diagram-source text is escaped once, here, where it enters an HTML
+    // string. The PLAIN tier below deliberately keeps the raw values: it feeds
+    // the SVG aria-label and the textContent fallback, neither of which parses
+    // HTML, so entities there would be read out literally.
+    const safeTitle = Common.escapeHtml(title);
+
     // Build the short description - HTML version
     let htmlDescription = `A timeline diagram`;
 
     if (title && title !== "Timeline") {
-      htmlDescription += ` titled "<span class="diagram-title">${title}</span>"`;
+      htmlDescription += ` titled "<span class="diagram-title">${safeTitle}</span>"`;
     }
 
     if (timeRange) {
-      htmlDescription += ` spanning from <span class="timeline-start">${timeRange.start}</span> to <span class="timeline-end">${timeRange.end}</span>`;
+      htmlDescription += ` spanning from <span class="timeline-start">${Common.escapeHtml(
+        timeRange.start
+      )}</span> to <span class="timeline-end">${Common.escapeHtml(
+        timeRange.end
+      )}</span>`;
     }
 
     if (sectionCount > 0) {
-      htmlDescription += ` organised into <span class="timeline-sections">${sectionCount}</span> sections`;
+      htmlDescription += ` organised into <span class="timeline-sections">${sectionCount}</span> section${
+        sectionCount !== 1 ? "s" : ""
+      }`;
     }
 
-    htmlDescription += ` with <span class="timeline-events">${eventCount}</span> events.`;
+    htmlDescription += ` with <span class="timeline-events">${eventCount}</span> event${
+      eventCount !== 1 ? "s" : ""
+    }.`;
 
     // Plain text version for screen readers
     let plainTextDescription = `A timeline diagram`;
@@ -94,10 +109,14 @@
     }
 
     if (sectionCount > 0) {
-      plainTextDescription += ` organised into ${sectionCount} sections`;
+      plainTextDescription += ` organised into ${sectionCount} section${
+        sectionCount !== 1 ? "s" : ""
+      }`;
     }
 
-    plainTextDescription += ` with ${eventCount} events.`;
+    plainTextDescription += ` with ${eventCount} event${
+      eventCount !== 1 ? "s" : ""
+    }.`;
 
     return {
       html: htmlDescription,
@@ -387,18 +406,28 @@
         <p>This is a timeline diagram`;
 
     if (title && title !== "Timeline") {
-      description += ` titled "<span class="diagram-title">${title}</span>"`;
+      description += ` titled "<span class="diagram-title">${Common.escapeHtml(
+        title
+      )}</span>"`;
     }
 
     if (timeRange) {
-      description += ` spanning from <span class="timeline-start">${timeRange.start}</span> to <span class="timeline-end">${timeRange.end}</span>`;
+      description += ` spanning from <span class="timeline-start">${Common.escapeHtml(
+        timeRange.start
+      )}</span> to <span class="timeline-end">${Common.escapeHtml(
+        timeRange.end
+      )}</span>`;
     }
 
     if (sectionCount > 0) {
-      description += ` organised into <span class="timeline-sections">${sectionCount}</span> sections`;
+      description += ` organised into <span class="timeline-sections">${sectionCount}</span> section${
+        sectionCount !== 1 ? "s" : ""
+      }`;
     }
 
-    description += ` with <span class="timeline-events">${eventCount}</span> total events.</p>
+    description += ` with <span class="timeline-events">${eventCount}</span> total event${
+      eventCount !== 1 ? "s" : ""
+    }.</p>
       </section>`;
 
     // Add structure section
@@ -406,7 +435,9 @@
         <h4 class="timeline-section-heading">Timeline Structure</h4>`;
 
     if (sectionCount > 0) {
-      description += `<p>The timeline is divided into the following sections:</p>
+      description += `<p>The timeline is divided into the following ${
+        sectionCount === 1 ? "section" : "sections"
+      }:</p>
         <ul class="timeline-sections-list">`;
 
       timelineData.sections.forEach((section) => {
@@ -416,8 +447,10 @@
         );
 
         description += `<li class="timeline-section-item">
-            <span class="timeline-section-name">${section.name}</span> 
-            (with ${sectionEventCount} events)
+            <span class="timeline-section-name">${Common.escapeHtml(section.name)}</span> 
+            (with ${sectionEventCount} event${
+          sectionEventCount !== 1 ? "s" : ""
+        })
           </li>`;
       });
 
@@ -437,16 +470,16 @@
       // Timeline with sections
       timelineData.sections.forEach((section) => {
         description += `<div class="timeline-section-container">
-            <h5 class="timeline-section-name">${section.name}</h5>
+            <h5 class="timeline-section-name">${Common.escapeHtml(section.name)}</h5>
             <ul class="timeline-events-list">`;
 
         section.events.forEach((timePeriod) => {
           description += `<li class="timeline-time-period">
-              <span class="timeline-time">${timePeriod.time}</span>:
+              <span class="timeline-time">${Common.escapeHtml(timePeriod.time)}</span>:
               <ul class="timeline-period-events">`;
 
           timePeriod.events.forEach((event) => {
-            description += `<li class="timeline-event">${event}</li>`;
+            description += `<li class="timeline-event">${Common.escapeHtml(event)}</li>`;
           });
 
           description += `</ul>
@@ -462,11 +495,11 @@
 
       timelineData.events.forEach((timePeriod) => {
         description += `<li class="timeline-time-period">
-            <span class="timeline-time">${timePeriod.time}</span>:
+            <span class="timeline-time">${Common.escapeHtml(timePeriod.time)}</span>:
             <ul class="timeline-period-events">`;
 
         timePeriod.events.forEach((event) => {
-          description += `<li class="timeline-event">${event}</li>`;
+          description += `<li class="timeline-event">${Common.escapeHtml(event)}</li>`;
         });
 
         description += `</ul>
@@ -481,9 +514,9 @@
     // Add chronological progression insight
     description += `<section class="timeline-section timeline-insights">
         <h4 class="timeline-section-heading">Chronological Progression</h4>
-        <p>The timeline progresses chronologically from ${
+        <p>The timeline progresses chronologically from ${Common.escapeHtml(
           timeRange?.start || "the beginning"
-        } to ${timeRange?.end || "the end"}, 
+        )} to ${Common.escapeHtml(timeRange?.end || "the end")}, 
         displaying how events develop over time.</p>
       </section>`;
 

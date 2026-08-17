@@ -12,18 +12,20 @@
  */
 
 :root {
-  --ink: #1a1a1a;            /* body text — ~16:1 on white          */
-  --ink-muted: #444444;      /* secondary text — ~9.7:1 on white     */
-  --field-border: #595959;   /* input borders — ~7:1 on white (>3:1) */
-  --brand: #005fcc;          /* primary — white text on it ~5.8:1    */
-  --brand-dark: #00439e;     /* hover                                */
-  --error: #b00020;          /* accessible error red — ~7.7:1        */
+  --ink: #1a1a1a; /* body text — ~16:1 on white          */
+  --ink-muted: #444444; /* secondary text — ~9.7:1 on white     */
+  --field-border: #595959; /* input borders — ~7:1 on white (>3:1) */
+  --brand: #005fcc; /* primary — white text on it ~5.8:1    */
+  --brand-dark: #00439e; /* hover                                */
+  --error: #b00020; /* accessible error red — ~7.7:1        */
   --page-bg: #eef1f5;
   --card-bg: #ffffff;
   --focus: #005fcc;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   font-family: Arial, Helvetica, sans-serif;
@@ -56,7 +58,9 @@ body {
 
 /* --- fields ------------------------------------------------------------- */
 
-.field { margin-bottom: 1.25rem; }
+.field {
+  margin-bottom: 1.25rem;
+}
 
 .field-label,
 .choice legend {
@@ -83,6 +87,7 @@ textarea {
   background-color: #ffffff;
   border: 1px solid var(--field-border);
   border-radius: 6px;
+  margin-top: 1rem;
 }
 
 /* overflow: hidden is deliberate. axe-core's colour-contrast check bails out
@@ -90,7 +95,11 @@ textarea {
  * which the pa11y axe runner then reports as a contrast ERROR — a false
  * positive (the computed contrast is ~16:1). Hiding overflow lets axe measure
  * it; resize:vertical is kept so users can still enlarge the box. */
-textarea { min-height: 6.5rem; resize: vertical; overflow: hidden; }
+textarea {
+  min-height: 6.5rem;
+  resize: vertical;
+  overflow: hidden;
+}
 
 /* Explicit placeholder colour with sufficient contrast (~7:1). Without this,
  * the browser default placeholder is low-contrast grey, and axe cannot measure
@@ -135,8 +144,13 @@ button:focus-visible,
   vertical-align: middle;
 }
 
-.label-row { display: flex; align-items: center; }
-.label-row .field-label { margin-bottom: 0; }
+.label-row {
+  display: flex;
+  align-items: center;
+}
+.label-row .field-label {
+  margin-bottom: 0;
+}
 
 .help-text {
   margin: 0.5rem 0 0;
@@ -146,7 +160,21 @@ button:focus-visible,
   border-radius: 4px;
   font-size: 0.95rem;
 }
-.help-text[hidden] { display: none; }
+/* after.html keeps its help region present but EMPTY when collapsed, then
+ * populates it on expand, so the change is announced (populate-not-reveal — the
+ * same reasoning as .confirmation below). When empty it must take no visible
+ * space yet stay in the accessibility tree, so collapse the box with :empty and
+ * NOT display:none. before.html still toggles the [hidden] attribute, so that
+ * rule stays for it. */
+.help-text:empty {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.help-text[hidden] {
+  display: none;
+}
 
 /* --- grouped choice ----------------------------------------------------- */
 .choice {
@@ -167,7 +195,9 @@ button:focus-visible,
   padding: 0;
   margin-bottom: 0.5rem;
 }
-.choice > .option:first-of-type { clear: both; }
+.choice > .option:first-of-type {
+  clear: both;
+}
 
 /* Options spaced so native radios clear the 24px target-size circle. */
 .option {
@@ -176,8 +206,13 @@ button:focus-visible,
   gap: 0.55rem;
   padding: 0.45rem 0;
 }
-.option input { width: 18px; height: 18px; }
-.option label { font-weight: 400; }
+.option input {
+  width: 18px;
+  height: 18px;
+}
+.option label {
+  font-weight: 400;
+}
 
 /* --- validation error --------------------------------------------------- */
 /* Accessible default (used as-is by AFTER): real contrast + room for an icon.
@@ -190,11 +225,25 @@ button:focus-visible,
   color: var(--error);
   font-weight: 700;
 }
-.field-error svg { flex: 0 0 auto; }
+.field-error svg {
+  flex: 0 0 auto;
+}
 /* .field-error is display:flex, which would override the hidden attribute's
  * UA display:none — restore it so the after page can toggle the error. */
-.field-error[hidden] { display: none; }
-.field--invalid input { border-color: var(--error); border-width: 2px; }
+.field-error[hidden] {
+  display: none;
+}
+.field--invalid input[type="text"],
+.field--invalid input[type="email"] {
+  border-color: var(--error);
+  border-width: 2px;
+}
+/* Invalid required radio group: redden the fieldset border. The icon+text error
+ * inside it is the non-colour cue, so this is never colour alone. */
+.choice.field--invalid {
+  border-color: var(--error);
+  border-width: 2px;
+}
 
 /* --- submit ------------------------------------------------------------- */
 /* Styled by CLASS so a real <button> (after) and a faux <div> (before) match. */
@@ -213,7 +262,10 @@ button:focus-visible,
   border-radius: 8px;
   cursor: pointer;
 }
-.submit-btn:hover { background-color: #00408c; border-color: #00408c; }
+.submit-btn:hover {
+  background-color: #00408c;
+  border-color: #00408c;
+}
 
 /* --- inert submit confirmation ------------------------------------------ */
 .confirmation {
@@ -226,7 +278,20 @@ button:focus-visible,
   color: #0b3d24;
   font-weight: 700;
 }
-.confirmation[hidden] { display: none; }
+/* after.html keeps its role="status" region present but EMPTY on load, then
+ * populates it on success. When empty it must take no visible space, yet stay
+ * in the accessibility tree (so the live region is watched) — so collapse the
+ * box with :empty, NOT display:none. before.html still uses the [hidden] rule
+ * below for its (deliberately non-announcing) confirmation. */
+.confirmation:empty {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.confirmation[hidden] {
+  display: none;
+}
 
 /* --- the plain-language aside (real page content for the audience) ------ */
 .demo-aside {
@@ -234,14 +299,30 @@ button:focus-visible,
   padding: 1rem 1.25rem;
   border-radius: 8px;
 }
-.demo-aside h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
-.demo-aside ul { margin: 0; padding-left: 1.2rem; }
-.demo-aside li { margin-bottom: 0.35rem; }
+.demo-aside h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+.demo-aside ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+.demo-aside li {
+  margin-bottom: 0.35rem;
+}
 
 /* Amber for "what goes wrong", green for "how it works" — set per page. */
-.demo-aside--warn { background-color: #fff4e5; border-left: 5px solid #b35900; }
-.demo-aside--good { background-color: #e9f7ef; border-left: 5px solid #0b6b3a; }
+.demo-aside--warn {
+  background-color: #fff4e5;
+  border-left: 5px solid #b35900;
+}
+.demo-aside--good {
+  background-color: #e9f7ef;
+  border-left: 5px solid #0b6b3a;
+}
 
 @media (prefers-reduced-motion: no-preference) {
-  .help-text { transition: none; } /* nothing animates; declared for intent */
+  .help-text {
+    transition: none;
+  } /* nothing animates; declared for intent */
 }

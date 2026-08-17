@@ -77,6 +77,15 @@
   const USER_LABEL = "You";
   const ASSISTANT_LABEL = "Assistant";
   const ATTRIB_SEP = " · "; // " · "
+  // The Object Replacement Character (U+FFFC), used as a collision-safe,
+  // null-free placeholder delimiter so git keeps this file as text.
+  const FENCE_SENTINEL = "\uFFFC";
+  // Privacy note \u2014 emitted (JSON + HTML only) when at least one turn embeds
+  // attachment bytes. Embedding the base64 also embeds the filename, so a
+  // recipient of the exported file receives both; this states that plainly.
+  // Text/markdown never embed bytes, so they carry no note.
+  const PRIVACY_NOTE =
+    "Embedded attachment bytes include the document and its filename; anyone you share this file with receives them.";
 
   // ── State handle ─────────────────────────────────────────────────────────
   // Captured once at load; chat/chat.js creates window.ChatState synchronously
@@ -135,10 +144,92 @@
   }
 
   /**
+   * Join the visible text of an array-content user turn into a single string,
+   * so the pure builders keep receiving a STRING body. Local to this module —
+   * it deliberately does NOT reach into ChatCore/ChatMessages. Bare strings and
+   * { type:"text", text } parts contribute; the attachment part is skipped.
+   * @param {Array} content an array-shaped turn content
+   * @returns {string}
+   */
+  function extractArrayText(content) {
+    const parts = [];
+    for (let i = 0; i < content.length; i++) {
+      const p = content[i];
+      if (typeof p === "string") parts.push(p);
+      else if (p && p.type === "text" && typeof p.text === "string")
+        parts.push(p.text);
+    }
+    return parts.join("");
+  }
+
+  /**
+   * Build an attachment descriptor for a raw user turn whose content is an
+   * array, or null when the turn carries no attachment. Metadata comes from
+   * turn.attachment (a LIVE turn) or the byte-free reference part in content (a
+   * RESTORED turn). Bytes come from the { type:"file" } part (file.file_data) or
+   * the { type:"image_url" } part (image_url.url) — present only on a live turn;
+   * a restored turn yields data = null, bytesIncluded = false.
+   * @param {Object} m a raw user turn (content is an array)
+   * @returns {Object|null} { kind, filename, mimeType, size, bytesIncluded, data }
+   */
+  function buildAttachmentDescriptor(m) {
+    const content = m.content;
+    if (!Array.isArray(content)) return null;
+
+    // Metadata: live turn's byte-free reference, else the restored reference part.
+    let metaSrc = null;
+    if (m.attachment && typeof m.attachment === "object") {
+      metaSrc = m.attachment;
+    } else {
+      metaSrc = content.find(function (p) {
+        return p && (p.kind === "image" || p.kind === "pdf");
+      });
+    }
+    if (!metaSrc) return null; // array content but no attachment — nothing to emit
+
+    // Bytes: a live turn carries them in the file / image_url part.
+    let data = null;
+    let bytesIncluded = false;
+    const filePart = content.find(function (p) {
+      return p && p.type === "file";
+    });
+    if (filePart && filePart.file && typeof filePart.file.file_data === "string") {
+      data = filePart.file.file_data;
+      bytesIncluded = true;
+    } else {
+      const imagePart = content.find(function (p) {
+        return p && p.type === "image_url";
+      });
+      const url =
+        imagePart && imagePart.image_url && typeof imagePart.image_url === "object"
+          ? imagePart.image_url.url
+          : imagePart && typeof imagePart.image_url === "string"
+          ? imagePart.image_url
+          : null;
+      if (typeof url === "string" && url) {
+        data = url;
+        bytesIncluded = true;
+      }
+    }
+
+    return {
+      kind: metaSrc.kind,
+      filename: metaSrc.filename,
+      mimeType: metaSrc.mimeType,
+      size: metaSrc.size,
+      bytesIncluded: bytesIncluded,
+      data: data,
+    };
+  }
+
+  /**
    * Resolve a raw S.messages array into export-ready turns. This is the ONLY
    * place per-turn labels are resolved from the live picker helpers. A user turn
    * carries { role, content }; an assistant turn additionally carries its stored
-   * model + providerId and the resolved modelName + providerLabel.
+   * model + providerId and the resolved modelName + providerLabel. A user turn
+   * whose content is an ARRAY (an attachment turn) is split into a STRING text
+   * body plus an `attachment` descriptor, so the builders keep receiving a
+   * string body and stay pure; the descriptor is attached ONLY when built.
    * @param {Array<Object>} messages the raw thread (S.messages shape)
    * @returns {Array<Object>} resolved export turns
    */
@@ -153,6 +244,12 @@
           modelName: resolveModelName(m.model),
           providerLabel: resolveProviderLabel(m.providerId),
         };
+      }
+      if (Array.isArray(m.content)) {
+        const resolved = { role: "user", content: extractArrayText(m.content) };
+        const descriptor = buildAttachmentDescriptor(m);
+        if (descriptor) resolved.attachment = descriptor;
+        return resolved;
       }
       return { role: "user", content: m.content };
     });
@@ -204,6 +301,69 @@
       .replace(/'/g, "&#39;");
   }
 
+  // ── Pure attachment helpers ─────────────────────────────────────────────
+
+  /**
+   * Human-readable file size (bytes → B / KB / MB). Pure. Mirrors the wording
+   * of chat-attach.js's formatFileSize, reimplemented locally so the pure
+   * builders reach into no other module.
+   * @param {number} bytes
+   * @returns {string}
+   */
+  function humanFileSize(bytes) {
+    const n = typeof bytes === "number" ? bytes : Number(bytes);
+    if (!n || n <= 0) return "0 KB";
+    const kb = n / 1024;
+    if (kb < 1024) return Math.round(kb) + " KB";
+    return (kb / 1024).toFixed(1) + " MB";
+  }
+
+  /**
+   * Render a resolved turn's attachment descriptor to safe HTML. Pure — depends
+   * only on escapeHTML/humanFileSize. The filename is ALWAYS escaped; the data
+   * URI (a controlled data: URI, base64 alphabet only) is embedded verbatim.
+   *   live image → <img> plus a caption line naming the file
+   *   live pdf   → a download anchor carrying the data URI + human size
+   *   restored   → a reference line, bytes not included (same-session only)
+   * @param {Object} att { kind, filename, mimeType, size, bytesIncluded, data }
+   * @returns {string} HTML fragment
+   */
+  function renderAttachmentHTML(att) {
+    const fn = escapeHTML(att.filename);
+    if (!att.bytesIncluded) {
+      return (
+        '<p class="attachment-ref">Attachment: ' +
+        fn +
+        " (" +
+        escapeHTML(att.kind) +
+        ") — not included (same-session only).</p>"
+      );
+    }
+    if (att.kind === "image") {
+      return (
+        '<img src="' +
+        att.data +
+        '" alt="' +
+        fn +
+        '" style="max-width:100%;height:auto">\n' +
+        '<p class="attachment-caption">' +
+        fn +
+        "</p>"
+      );
+    }
+    return (
+      '<p>a <a href="' +
+      att.data +
+      '" download="' +
+      fn +
+      '">' +
+      fn +
+      "</a> (" +
+      humanFileSize(att.size) +
+      ") — PDF attached.</p>"
+    );
+  }
+
   // ── Pure content renderer for HTML (semantic-but-not-full-render) ───────
 
   /**
@@ -237,7 +397,7 @@
           lang && lang.trim() ? ' class="language-' + lang.trim() + '"' : "";
         const idx = fences.length;
         fences.push("<pre><code" + langAttr + ">" + body + "</code></pre>");
-        return " CHATEXPORTFENCE" + idx + " ";
+        return FENCE_SENTINEL + "CHATEXPORTFENCE" + idx + FENCE_SENTINEL;
       },
     );
 
@@ -246,7 +406,7 @@
       .map(function (block) {
         const trimmed = block.trim();
         if (trimmed === "") return "";
-        const fenceMatch = trimmed.match(/^ CHATEXPORTFENCE(\d+) $/);
+        const fenceMatch = trimmed.match(new RegExp("^" + FENCE_SENTINEL + "CHATEXPORTFENCE(\\d+)" + FENCE_SENTINEL + "$"));
         if (fenceMatch) {
           return fences[parseInt(fenceMatch[1], 10)];
         }
@@ -289,6 +449,14 @@
       lines.push("");
       lines.push("**" + attributionLabel(m) + ":**");
       lines.push(m.content);
+      // Attachment reference only — markdown never embeds bytes. A restored turn
+      // (bytes gone) appends the not-included note.
+      if (m.attachment) {
+        let ref =
+          "> Attachment: " + m.attachment.filename + " (" + m.attachment.kind + ")";
+        if (!m.attachment.bytesIncluded) ref += " — not included";
+        lines.push(ref);
+      }
       lines.push("");
     });
     return lines.join("\n");
@@ -317,6 +485,14 @@
         .replace(/^#{1,6}\s+/gm, "")
         .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
       lines.push(text);
+      // Attachment reference only — plain text never embeds bytes. A restored
+      // turn (bytes gone) appends the not-included note.
+      if (m.attachment) {
+        let ref =
+          "Attachment: " + m.attachment.filename + " (" + m.attachment.kind + ")";
+        if (!m.attachment.bytesIncluded) ref += " — not included";
+        lines.push(ref);
+      }
       lines.push("");
     });
     return lines.join("\n");
@@ -333,6 +509,10 @@
    * @returns {string}
    */
   function buildHTML(exportMsgs, meta) {
+    // Privacy note appears only when at least one turn embeds attachment bytes.
+    const anyBytes = exportMsgs.some(function (m) {
+      return m.attachment && m.attachment.bytesIncluded;
+    });
     const css = [
       ":root{color-scheme:light}",
       "body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.5;max-width:48rem;margin:2rem auto;padding:0 1rem;color:#1a1a1a;background:#ffffff;}",
@@ -346,6 +526,9 @@
       "pre code{background:transparent;color:inherit;padding:0;}",
       "code{background:#e6e6e6;color:#1a1a1a;padding:0.1rem 0.3rem;border-radius:0.25rem;font-size:0.95em;}",
       "a{color:#0b4fa0;}",
+      ".privacy-note{color:#8a4b00;background:#fff4e5;border:1px solid #b35900;border-radius:0.4rem;padding:0.5rem 0.75rem;font-size:0.9rem;margin:0 0 2rem;}",
+      ".attachment-caption{color:#595959;font-size:0.9rem;margin-top:0.25rem;}",
+      ".attachment-ref{color:#595959;font-style:italic;}",
     ].join("\n");
 
     const parts = [
@@ -366,11 +549,18 @@
         " messages</p>",
     ];
 
+    // Privacy note (bytes embedded include the document + filename — see PRIVACY_NOTE).
+    if (anyBytes) {
+      parts.push('<p class="privacy-note">' + escapeHTML(PRIVACY_NOTE) + "</p>");
+    }
+
     exportMsgs.forEach(function (m) {
       const cls = m.role === "user" ? "msg-user" : "msg-assistant";
       parts.push('<section class="msg ' + cls + '">');
       parts.push("<h2>" + escapeHTML(attributionLabel(m)) + "</h2>");
       parts.push(renderContentHTML(m.content));
+      // Attachment block (image/pdf/reference) after the message body.
+      if (m.attachment) parts.push(renderAttachmentHTML(m.attachment));
       parts.push("</section>");
     });
 
@@ -381,14 +571,20 @@
 
   /**
    * JSON serialiser. An assistant message emits its full per-turn attribution;
-   * a user message emits only role/content. The per-message object is kept
-   * intentionally shallow so a later `attachments` field can be added without a
-   * schema break.
+   * a plain user message emits only role/content. A user turn carrying an
+   * attachment additionally emits `attachments: [ { kind, filename, mimeType,
+   * size, bytesIncluded } ]`, with `data` (the base64 data URI) present ONLY
+   * when bytesIncluded is true (a live turn). A top-level `privacyNote` appears
+   * only when at least one turn embeds bytes.
    * @param {Array<Object>} exportMsgs resolved turns
    * @param {Object} meta export meta (systemPrompt read by the wrapper)
    * @returns {string}
    */
   function buildJSON(exportMsgs, meta) {
+    // Privacy note appears only when at least one turn embeds attachment bytes.
+    const anyBytes = exportMsgs.some(function (m) {
+      return m.attachment && m.attachment.bytesIncluded;
+    });
     const data = {
       tool: "chat",
       exportedAt: meta.exportedAtISO,
@@ -396,7 +592,7 @@
       systemPrompt: meta.systemPrompt || "",
       messages: exportMsgs.map(function (m) {
         if (m.role === "assistant") {
-          // Shallow by design — leaves room for a future `attachments` field.
+          // Assistant turns never carry an attachment — shallow by design.
           return {
             role: m.role,
             content: m.content,
@@ -406,9 +602,26 @@
             providerLabel: m.providerLabel,
           };
         }
-        return { role: m.role, content: m.content };
+        // A plain (string-content) user turn stays exactly { role, content }.
+        const obj = { role: m.role, content: m.content };
+        if (m.attachment) {
+          const a = m.attachment;
+          const att = {
+            kind: a.kind,
+            filename: a.filename,
+            mimeType: a.mimeType,
+            size: a.size,
+            bytesIncluded: a.bytesIncluded,
+          };
+          // Emit the base64 `data` ONLY when bytes are actually embedded.
+          if (a.bytesIncluded) att.data = a.data;
+          obj.attachments = [att];
+        }
+        return obj;
       }),
     };
+    // Privacy note: embedded bytes include the document + filename; recipients get them.
+    if (anyBytes) data.privacyNote = PRIVACY_NOTE;
     return JSON.stringify(data, null, 2);
   }
 

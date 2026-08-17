@@ -37,6 +37,21 @@ const MusicExport = (function () {
     return new Blob([xmlText], { type: "application/vnd.recordare.musicxml+xml" });
   }
 
+  // Normalise a filename so it always ends ".musicxml". PRIVATE and pure.
+  // The exported bytes are always uncompressed MusicXML, so the extension is
+  // always ".musicxml", never the compressed ".mxl" (or any other extension):
+  //   - a name containing a dot has only the text after its LAST dot replaced,
+  //     so "Sicut_cervus.mxl" becomes "Sicut_cervus.musicxml" and
+  //     "score_v1.2.mxl" becomes "score_v1.2.musicxml" (base kept, dots and all);
+  //   - a name with no dot gains ".musicxml" appended;
+  //   - a name already ending ".musicxml" is returned unchanged (the last-dot
+  //     replacement rewrites "musicxml" with "musicxml", a no-op).
+  function musicxmlName(filename) {
+    const lastDot = filename.lastIndexOf(".");
+    if (lastDot === -1) return filename + ".musicxml";
+    return filename.slice(0, lastDot + 1) + "musicxml";
+  }
+
   // Build a "Download MusicXML" button into mountEl that downloads xmlText as
   // filename when clicked. Synchronous; returns true on success and false on any
   // failure; NEVER throws. NOTE: takes raw xmlText + filename, not a parsed model.
@@ -59,6 +74,11 @@ const MusicExport = (function () {
     // Clear any previous render from the mount before building afresh.
     mountEl.replaceChildren();
 
+      // Export invariant: buildBlob always emits uncompressed MusicXML bytes, so
+    // the download name must always end ".musicxml", never the compressed ".mxl".
+    // musicxmlName normalises the resolved name to honour that invariant.
+    const downloadName = musicxmlName(name);
+
     // Build the button with createElement only (no innerHTML in our code):
     // a <button> containing an aria-hidden icon span then the visible label.
     // The accessible name is exactly "Download MusicXML".
@@ -71,22 +91,23 @@ const MusicExport = (function () {
     button.appendChild(iconSpan);
     button.appendChild(document.createTextNode(" Download MusicXML"));
 
-    // Click handler closes over xmlText and name. Builds a Blob, downloads it via
-    // a throwaway anchor, then revokes the object URL synchronously (per plan).
+    // Click handler closes over xmlText and downloadName. Builds a Blob,
+    // downloads it via a throwaway anchor, then revokes the object URL
+    // synchronously (per plan).
     button.addEventListener("click", function () {
       const blob = buildBlob(xmlText);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = name;
+      anchor.download = downloadName;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
       // If any browser cancels the download, defer the revoke with
       // setTimeout(() => URL.revokeObjectURL(url), 0) instead of revoking here.
       URL.revokeObjectURL(url);
-      notify.success("Downloaded " + name);
-      logInfo("Downloaded " + name);
+      notify.success("Downloaded " + downloadName);
+      logInfo("Downloaded " + downloadName);
     });
 
     mountEl.appendChild(button);
@@ -127,6 +148,13 @@ const MusicExport = (function () {
       blobConstructed: (function () { const b = buildBlob(SAMPLE); return (b instanceof Blob) && b.size > 0; })(),
       handlesEmptyText: render("", "x.musicxml", document.createElement("div")) === false,
       handlesNoMount: render(SAMPLE, "x.musicxml", null) === false,
+      // Export invariant: every download name ends ".musicxml", never ".mxl".
+      mxlBecomesMusicxml: musicxmlName("Sicut_cervus.mxl") === "Sicut_cervus.musicxml",
+      xmlBecomesMusicxml: musicxmlName("score.xml") === "score.musicxml",
+      extensionlessGainsMusicxml: musicxmlName("score") === "score.musicxml",
+      dottedBaseKept: musicxmlName("score_v1.2.mxl") === "score_v1.2.musicxml",
+      alreadyMusicxmlUnchanged: musicxmlName("score.musicxml") === "score.musicxml",
+      defaultFallbackEndsMusicxml: musicxmlName("score.musicxml").endsWith(".musicxml"),
     };
 
     console.table(results);

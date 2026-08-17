@@ -58,6 +58,7 @@ const MermaidAccessibilityUserJourney = (function () {
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Format a list of actors with proper grammar
@@ -153,6 +154,14 @@ const MermaidAccessibilityUserJourney = (function () {
       `Total tasks counted: ${totalTasks} across ${journey.sections.length} sections`
     );
 
+    // Noun-only locals rather than Common.formatCountNoun: in the HTML form
+    // below a diagram-count span wraps the digit alone, so the digit and its
+    // noun are separated by markup and cannot be emitted as one string. Both
+    // short forms share these, which is what keeps the plain tier word-identical
+    // to the HTML tier apart from the markup.
+    const taskNoun = totalTasks === 1 ? "task" : "tasks";
+    const sectionNoun = journey.sections.length === 1 ? "section" : "sections";
+
     // Convert actors to array for easy handling
     const actors = Array.from(journey.actors);
     logDebug(`Actors involved: ${actors.join(", ")}`);
@@ -168,14 +177,16 @@ const MermaidAccessibilityUserJourney = (function () {
     logDebug(`Score description: ${scoreDescription}`);
 
     // Build HTML description
-    let htmlDescription = `A user journey diagram titled "<span class="diagram-title">${title}</span>"`;
-    htmlDescription += ` showing <span class="diagram-count">${totalTasks}</span> tasks`;
-    htmlDescription += ` across <span class="diagram-count">${journey.sections.length}</span> sections`;
+    let htmlDescription = `A user journey diagram titled "<span class="diagram-title">${Common.escapeHtml(
+      title
+    )}</span>"`;
+    htmlDescription += ` showing <span class="diagram-count">${totalTasks}</span> ${taskNoun}`;
+    htmlDescription += ` across <span class="diagram-count">${journey.sections.length}</span> ${sectionNoun}`;
 
     // Add actors if not too many
     if (actors.length > 0 && actors.length <= 5) {
       htmlDescription += ` involving <span class="diagram-actors">${formatActorsList(
-        actors
+        actors.map((a) => Common.escapeHtml(a))
       )}</span>`;
     } else if (actors.length > 5) {
       htmlDescription += ` involving <span class="diagram-actors">${actors.length} different actors</span>`;
@@ -189,8 +200,8 @@ const MermaidAccessibilityUserJourney = (function () {
 
     // Plain text version
     let plainTextDescription = `A user journey diagram titled "${title}"`;
-    plainTextDescription += ` showing ${totalTasks} tasks`;
-    plainTextDescription += ` across ${journey.sections.length} sections`;
+    plainTextDescription += ` showing ${totalTasks} ${taskNoun}`;
+    plainTextDescription += ` across ${journey.sections.length} ${sectionNoun}`;
 
     if (actors.length > 0 && actors.length <= 5) {
       plainTextDescription += ` involving ${formatActorsList(actors)}`;
@@ -338,7 +349,9 @@ const MermaidAccessibilityUserJourney = (function () {
         <p>This user journey diagram`;
 
     if (journey.title) {
-      description += ` titled "<span class="diagram-title">${journey.title}</span>"`;
+      description += ` titled "<span class="diagram-title">${Common.escapeHtml(
+        journey.title
+      )}</span>"`;
     }
 
     // Count total tasks
@@ -347,8 +360,13 @@ const MermaidAccessibilityUserJourney = (function () {
       totalTasks += section.tasks.length;
     });
 
-    description += ` shows the steps taken to complete a process with <span class="diagram-count">${totalTasks}</span> tasks`;
-    description += ` organised into <span class="diagram-count">${journey.sections.length}</span> sections.`;
+    // Same noun-only treatment as the short tiers: the diagram-count span wraps
+    // the digit alone, so the noun is chosen separately.
+    const taskNoun = totalTasks === 1 ? "task" : "tasks";
+    const sectionNoun = journey.sections.length === 1 ? "section" : "sections";
+
+    description += ` shows the steps taken to complete a process with <span class="diagram-count">${totalTasks}</span> ${taskNoun}`;
+    description += ` organised into <span class="diagram-count">${journey.sections.length}</span> ${sectionNoun}.`;
 
     // Score range description
     if (journey.minScore !== journey.maxScore) {
@@ -366,11 +384,13 @@ const MermaidAccessibilityUserJourney = (function () {
     if (actors.length > 0) {
       description += ` The journey involves `;
       if (actors.length === 1) {
-        description += `<span class="diagram-actor">${actors[0]}</span>`;
+        description += `<span class="diagram-actor">${Common.escapeHtml(
+          actors[0]
+        )}</span>`;
       } else {
         description += `<span class="diagram-actors">${actors.length}</span> actors: `;
         description += actors
-          .map((actor) => `<span class="diagram-actor">${actor}</span>`)
+          .map((actor) => `<span class="diagram-actor">${Common.escapeHtml(actor)}</span>`)
           .join(", ");
       }
       description += `.`;
@@ -392,15 +412,15 @@ const MermaidAccessibilityUserJourney = (function () {
       );
 
       description += `<div class="journey-section">
-          <h5 class="journey-section-name">Section ${sectionIndex + 1}: ${
-        section.name
-      }</h5>
+          <h5 class="journey-section-name">Section ${
+        sectionIndex + 1
+      }: ${Common.escapeHtml(section.name)}</h5>
           <ol class="journey-tasks">`;
 
       section.tasks.forEach((task) => {
         description += `<li class="journey-task">
             <div class="task-header">
-              <span class="task-name">${task.name}</span>
+              <span class="task-name">${Common.escapeHtml(task.name)}</span>
             </div>
             <ul class="task-details">
               <li class="task-detail">
@@ -412,7 +432,9 @@ const MermaidAccessibilityUserJourney = (function () {
               </li>
               <li class="task-detail">
                 <span class="detail-label">Actors:</span> 
-                <span class="actor-list">${formatActorsList(task.actors)}</span>
+                <span class="actor-list">${formatActorsList(
+                  task.actors.map((a) => Common.escapeHtml(a))
+                )}</span>
               </li>
             </ul>
           </li>`;
@@ -504,7 +526,12 @@ const MermaidAccessibilityUserJourney = (function () {
       } received the highest score (${journey.maxScore}): 
           <ul class="insight-details">
             ${highScoreTasks
-              .map((task) => `<li>"${task.name}" in ${task.section}</li>`)
+              .map(
+                (task) =>
+                  `<li>"${Common.escapeHtml(task.name)}" in ${Common.escapeHtml(
+                    task.section
+                  )}</li>`
+              )
               .join("")}
           </ul>
         </li>`;
@@ -523,7 +550,12 @@ const MermaidAccessibilityUserJourney = (function () {
       } received the lowest score (${journey.minScore}): 
           <ul class="insight-details">
             ${lowScoreTasks
-              .map((task) => `<li>"${task.name}" in ${task.section}</li>`)
+              .map(
+                (task) =>
+                  `<li>"${Common.escapeHtml(task.name)}" in ${Common.escapeHtml(
+                    task.section
+                  )}</li>`
+              )
               .join("")}
           </ul>
         </li>`;
@@ -545,7 +577,12 @@ const MermaidAccessibilityUserJourney = (function () {
       ).toFixed(0);
       analysis += `<li class="journey-insight key-participant">
           <strong class="insight-title">Key Participant:</strong> 
-          <span class="key-actor">"${mostActiveActor}"</span> is involved in ${maxFrequency} tasks (${actorTasks}% of the journey).
+          <span class="key-actor">"${Common.escapeHtml(
+            mostActiveActor
+          )}"</span> is involved in ${Common.formatCountNoun(
+        maxFrequency,
+        "task"
+      )} (${actorTasks}% of the journey).
         </li>`;
 
       logDebug(`Added key participant insight for ${mostActiveActor}`);
@@ -561,9 +598,9 @@ const MermaidAccessibilityUserJourney = (function () {
     if (sectionCounts.length > 0 && sectionCounts[0].count > 0) {
       analysis += `<li class="journey-insight complex-stage">
           <strong class="insight-title">Most Complex Stage:</strong> 
-          The "<span class="stage-name">${
+          The "<span class="stage-name">${Common.escapeHtml(
             sectionCounts[0].name
-          }</span>" section has the most steps with ${
+          )}</span>" section has the most steps with ${
         sectionCounts[0].count
       } task${sectionCounts[0].count !== 1 ? "s" : ""}.
         </li>`;

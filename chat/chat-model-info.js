@@ -165,9 +165,10 @@
     return p;
   }
 
-  // Append a "<strong>Label:</strong> value" paragraph. Label is a fixed string
-  // we control; value is model-supplied and so set via textContent on a span.
-  function appendLabelled(parent, label, value, className) {
+  // Append a full-width "<strong>Label:</strong> value" paragraph. Label is a fixed
+  // string we control; value is model-supplied and so set via textContent on a span.
+  // Used for lines that must stay full-width — the local render path and "Best for".
+  function appendLabelledParagraph(parent, label, value, className) {
     const p = document.createElement("p");
     if (className) p.className = className;
     const strong = document.createElement("strong");
@@ -179,6 +180,36 @@
     p.appendChild(span);
     parent.appendChild(p);
     return p;
+  }
+
+  // Append a short label-value pair as a <dt>/<dd> inside a
+  // <dl class="chat-model-info-pairs"> — the griddable structure P4 lays into
+  // columns on a wide panel. Consecutive appendLabelled() calls group into the SAME
+  // dl (found as the parent's last child); any intervening element (a paragraph or a
+  // full-width labelled line) starts a fresh dl for the pairs that follow, so the DOM
+  // reading order is preserved. The <dt> holds the fixed label text (colon kept, so
+  // the visible text matches the previous "<strong>Label:</strong>" rendering); the
+  // model-supplied value is set via textContent on the <dd>, and any className is
+  // applied to that <dd> so per-value hooks survive the structure change.
+  function appendLabelled(parent, label, value, className) {
+    let dl = parent.lastElementChild;
+    if (
+      !dl ||
+      dl.tagName !== "DL" ||
+      !dl.classList.contains("chat-model-info-pairs")
+    ) {
+      dl = document.createElement("dl");
+      dl.className = "chat-model-info-pairs";
+      parent.appendChild(dl);
+    }
+    const dt = document.createElement("dt");
+    dt.textContent = label + ":";
+    dl.appendChild(dt);
+    const dd = document.createElement("dd");
+    if (className) dd.className = className;
+    dd.textContent = value;
+    dl.appendChild(dd);
+    return dl;
   }
 
   // Build a <dl> of [label, value] pairs (label fixed, value via textContent).
@@ -198,16 +229,18 @@
     return dl;
   }
 
-  // Capabilities as a comma-joined text paragraph (tidied tokens). `tokens` is an
-  // array; falls back to nothing when empty.
-  function appendCapabilities(parent, tokens) {
+  // Capabilities as a comma-joined "Capabilities" label-value line (tidied tokens).
+  // `tokens` is an array; falls back to nothing when empty. `labeller` selects the
+  // renderer — the griddable appendLabelled by default (cloud), or
+  // appendLabelledParagraph for the local path so its output stays unchanged.
+  function appendCapabilities(parent, tokens, labeller) {
     const list = (tokens || [])
       .map(formatCapability)
       .filter(function (t) {
         return t !== "";
       });
     if (!list.length) return;
-    appendLabelled(parent, "Capabilities", list.join(", "));
+    (labeller || appendLabelled)(parent, "Capabilities", list.join(", "));
   }
 
   // Format a download size in MB the way Local Chat does (>= 1000 → GB).
@@ -232,13 +265,13 @@
     if (!modelDef || !modelDef.userInfo) {
       // Minimal core when the registry has no rich entry.
       logWarn("renderLocal: no registry userInfo for '" + shortKey + "'");
-      appendLabelled(
+      appendLabelledParagraph(
         body,
         "Context window",
         contextLabel(fullId),
         "chat-model-info-context",
       );
-      appendCapabilities(body, ["text"]);
+      appendCapabilities(body, ["text"], appendLabelledParagraph);
       return;
     }
 
@@ -260,11 +293,16 @@
     appendSpecsList(body, specs, "chat-model-info-specs");
 
     // Capabilities — locals are text-only in the unified list.
-    appendCapabilities(body, ["text"]);
+    appendCapabilities(body, ["text"], appendLabelledParagraph);
 
     // Best for (a STRING for locals)
     if (info.bestFor) {
-      appendLabelled(body, "Best for", info.bestFor, "chat-model-info-best-for");
+      appendLabelledParagraph(
+        body,
+        "Best for",
+        info.bestFor,
+        "chat-model-info-best-for",
+      );
     }
 
     // Benchmark table — ported from local-chat-chips.js (controlled content).
@@ -321,7 +359,8 @@
    * full model id (for the context-limit lookup).
    */
   function renderCloud(body, entry, id) {
-    // Common core: name, context window, capabilities.
+    // Common core: name, context window. (Capabilities moved into the prose row
+    // below as a bulleted card, so it no longer appears in the pairs grid.)
     if (entry.name) {
       appendLabelled(body, "Model", entry.name, "chat-model-info-name");
     }
@@ -331,22 +370,63 @@
       contextLabel(id),
       "chat-model-info-context",
     );
-    appendCapabilities(body, entry.capabilities);
+
+    // Description and "Best for" share a single prose wrapper so a grid can lay
+    // them out together. The two <p> elements keep their exact classes, text, and
+    // build logic — only their parent changes from the body to this container.
+    const prose = document.createElement("div");
+    prose.className = "chat-model-info-prose";
 
     // Description
     if (entry.description) {
-      appendParagraph(body, entry.description, "chat-model-info-description");
+      appendParagraph(prose, entry.description, "chat-model-info-description");
     }
 
-    // Best for — an ARRAY for cloud entries (under metadata).
+    // Best for — an ARRAY for cloud entries (under metadata). Its value can be a long
+    // list, so it stays full-width (a paragraph) rather than squeezed into a column.
     const bestFor = entry.metadata && entry.metadata.bestFor;
     if (Array.isArray(bestFor) && bestFor.length) {
-      appendLabelled(
-        body,
+      appendLabelledParagraph(
+        prose,
         "Best for",
         bestFor.join(", "),
         "chat-model-info-best-for",
       );
+    }
+
+    // Capabilities — a bulleted card, the third child of the prose row (after the
+    // description and Best-for paragraphs). Names are tidied via formatCapability and
+    // their registry order preserved; empty tokens are dropped.
+    const caps = (entry.capabilities || [])
+      .map(formatCapability)
+      .filter(function (t) {
+        return t !== "";
+      });
+    if (caps.length) {
+      const capsCard = document.createElement("div");
+      capsCard.className = "chat-model-info-capabilities";
+
+      const capsLabel = document.createElement("p");
+      capsLabel.className = "chat-model-info-caps-label";
+      const capsStrong = document.createElement("strong");
+      capsStrong.textContent = "Capabilities";
+      capsLabel.appendChild(capsStrong);
+      capsCard.appendChild(capsLabel);
+
+      const capsList = document.createElement("ul");
+      capsList.className = "chat-model-info-caps-list";
+      caps.forEach(function (name) {
+        const li = document.createElement("li");
+        li.textContent = name;
+        capsList.appendChild(li);
+      });
+      capsCard.appendChild(capsList);
+
+      prose.appendChild(capsCard);
+    }
+
+    if (prose.childNodes.length) {
+      body.appendChild(prose);
     }
 
     // Cost — per provider.
@@ -372,11 +452,10 @@
         appendLabelled(
           body,
           "Cost",
-          "$" +
-            entry.costs.input +
-            " / $" +
+          entry.costs.input +
+            " / " +
             entry.costs.output +
-            " per million tokens (input / output)",
+            " USD per million tokens (input / output)",
           "chat-model-info-cost",
         );
       }

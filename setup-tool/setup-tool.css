@@ -274,6 +274,29 @@
   opacity: 0.8;
 }
 
+/* Inline field validation message, shown beside the input it describes and
+ * referenced from its aria-describedby.
+ *
+ * Deliberately SHARED with the Ally Reporting config form rather than
+ * duplicated under an ally-* name: both are credential forms with the same
+ * need, and this mirrors the existing precedent where Set Up reuses the
+ * .imgdesc-mm-* model-card classes verbatim. Colours live in dark.css and
+ * light.css; the ⚠ glyph is added there too, so the error is distinguishable
+ * without relying on colour (SC 1.4.1).
+ *
+ * No opacity reduction, unlike .setup-help-text — an error must not be the
+ * faintest thing in the group.
+ */
+.credential-field-error {
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+
+.credential-field-error[hidden] {
+  display: none;
+}
+
 /* ------------------------------------------------------------
  * Select Inputs (Ally region)
  * ------------------------------------------------------------ */

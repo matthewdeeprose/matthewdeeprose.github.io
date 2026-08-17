@@ -82,7 +82,12 @@
   // ============================================================================
 
   /** Registry version for serialisation compatibility */
-  const REGISTRY_VERSION = "1.0";
+  const REGISTRY_VERSION = "1.1";
+
+  /** True for artefacts saved before the ai-generated/algo-generated split (version absent or "1.0"). */
+  function isPreSplitRegistryVersion(version) {
+    return version == null || version === "1.0";
+  }
 
   /** Valid image status values */
   const VALID_STATUSES = [
@@ -99,7 +104,9 @@
     "original",
     "user",
     "ai-generated",
+    "algo-generated",
     "ai-reviewed",
+    "ai-edited",
     null,
   ];
 
@@ -108,7 +115,9 @@
     "original",
     "user",
     "ai-generated",
+    "algo-generated",
     "ai-reviewed",
+    "ai-edited",
     null,
   ];
 
@@ -117,7 +126,9 @@
     "original",
     "user",
     "ai-generated",
+    "algo-generated",
     "ai-reviewed",
+    "ai-edited",
     null,
   ];
 
@@ -126,7 +137,9 @@
     "original",
     "user",
     "ai-generated",
+    "algo-generated",
     "ai-reviewed",
+    "ai-edited",
     null,
   ];
 
@@ -1032,7 +1045,10 @@
      *
      * @param {string} id - Image ID
      * @param {string} altText - New alt text
-     * @param {string|null} [source] - Alt text source: "original", "user", "ai-generated", "ai-reviewed"
+     * @param {string|null} [source] - Alt text source, per VALID_ALT_TEXT_SOURCES:
+     *   "original", "user", "ai-generated", "algo-generated", "ai-reviewed",
+     *   "ai-edited", or null. Omit to keep the existing source; anything else
+     *   falls back to "user" with a warning.
      * @returns {boolean} True if updated, false if image not found
      */
     updateAltText(id, altText, source) {
@@ -1074,7 +1090,10 @@
      *
      * @param {string} id - Image ID
      * @param {string} longDescription - New long description
-     * @param {string|null} [source] - Description source
+     * @param {string|null} [source] - Description source, per VALID_LONG_DESC_SOURCES:
+     *   "original", "user", "ai-generated", "algo-generated", "ai-reviewed",
+     *   "ai-edited", or null. Omit to keep the existing source; anything else
+     *   falls back to "user" with a warning.
      * @returns {boolean} True if updated, false if image not found
      */
     updateLongDescription(id, longDescription, source) {
@@ -1116,7 +1135,10 @@
      *
      * @param {string} id - Image ID
      * @param {string} title - New title text
-     * @param {string|null} [source] - Title source: "original", "user", "ai-generated", "ai-reviewed"
+     * @param {string|null} [source] - Title source, per VALID_TITLE_SOURCES:
+     *   "original", "user", "ai-generated", "algo-generated", "ai-reviewed",
+     *   "ai-edited", or null. Omit to keep the existing source; anything else
+     *   falls back to "user" with a warning.
      * @returns {boolean} True if updated, false if image not found
      */
     updateTitle(id, title, source) {
@@ -1178,6 +1200,7 @@
       this._metadata.lastUpdated = new Date().toISOString();
 
       logDebug(`Decorative flag updated for ${id}: ${entry.decorative}`);
+      this._scheduleMirrorWrite();
       return true;
     }
 
@@ -1187,7 +1210,10 @@
      *
      * @param {string} id - Image ID
      * @param {string} text - New text-in-image content
-     * @param {string|null} [source] - Source: "original", "user", "ai-generated", "ai-reviewed"
+     * @param {string|null} [source] - Source, per VALID_TEXT_IN_IMAGE_SOURCES:
+     *   "original", "user", "ai-generated", "algo-generated", "ai-reviewed",
+     *   "ai-edited", or null. Omit to keep the existing source; anything else
+     *   falls back to "user" with a warning.
      * @returns {boolean} True if updated, false if image not found
      */
     updateTextInImage(id, text, source) {
@@ -1637,8 +1663,17 @@
     }
 
     /**
-     * Debounced, never-throws write triggered by the source mutators, mirroring
-     * the context manager's scheduleMirrorWrite.
+     * Debounced, never-throws write triggered by the mutators that persist a
+     * person's own choices about a description — the four source setters, plus
+     * `updateDecorative` since DEC-2. Mirrors the context manager's
+     * scheduleMirrorWrite.
+     *
+     * This read "the source mutators" until DEC-2, which was accurate while the
+     * mirror existed only to carry provenance labels across a reload. DEC-1 then
+     * widened the READ side to restore `decorative` as well, and a restore can
+     * only give back what the mirror holds — so `decorative` schedules too,
+     * despite carrying no source label of its own. Mutators outside that set
+     * still do NOT schedule.
      *
      * @returns {void}
      */
@@ -1665,25 +1700,46 @@
      * ids from scratch reintroduces the line-shift cascade, so we reconcile by
      * URL exactly as buildFromMMD's Pass 2 does.
      *
-     * Only the four content/source pairs are restored — altText, longDescription,
+     * Four content/source pairs are restored — altText, longDescription,
      * title, textInImage — and only when the LIVE entry has no source for that
      * field yet (sourceField null/undefined) AND the mirror's source is a valid
      * member of that field's allow-list. A live entry that already carries a
-     * source for a field is never overwritten. The `decorative` flag and all
-     * other fields are deliberately left untouched.
+     * source for a field is never overwritten. All fields other than those four
+     * pairs and `decorative` are deliberately left untouched.
+     *
+     * DEC-1: `decorative` IS now restored, but ONLY for entries buildFromMMD
+     * has just CREATED, named by the optional `createdIds` argument. The rule is
+     * narrower than the four pairs above because the fill-only-null test cannot
+     * express a boolean: `decorative` defaults to `false` (createDefaultEntry)
+     * and every write site coerces with Boolean(), so it is NEVER null or
+     * undefined and `false` means both "never set" and "deliberately unticked".
+     * A CREATED entry's `false` is a default nobody chose, so the mirror may
+     * fill it. A MATCHED entry's `false` may be a person deliberately unticking
+     * the box, and is left alone — that refusal is the design, not a limitation.
+     * Restoring on matched entries would silently overturn that person's choice,
+     * which is the failure this narrowness exists to prevent.
      *
      * Fields are set DIRECTLY on the entry — this is restore bookkeeping, like
      * the syncXForRestore setters. It does NOT call the update* mutators, does
      * NOT flip `isModified`, and does NOT schedule a mirror write.
      *
-     * Never throws: malformed input yields `{ matched: 0, applied: 0 }`.
+     * Never throws: malformed input yields
+     * `{ matched: 0, applied: 0, decorativeApplied: 0 }`.
      *
      * @param {Object} mirror - Parsed mirror object (shape of toJSON() output)
-     * @returns {{matched: number, applied: number}} `matched` counts live
-     *   entries that found a mirror entry by URL; `applied` counts individual
-     *   field restorations performed across all matched entries.
+     * @param {Array<string>} [createdIds] - OPTIONAL. The ids buildFromMMD just
+     *   created, i.e. the `added` array of its set-diff return (an array of id
+     *   STRINGS). Omit it — as every caller before DEC-1 did — and no
+     *   `decorative` flag is restored at all; the method then behaves exactly as
+     *   it did before. Malformed values are ignored rather than throwing.
+     * @returns {{matched: number, applied: number, decorativeApplied: number}}
+     *   `matched` counts live entries that found a mirror entry by URL;
+     *   `applied` counts the four-pair field restorations, and deliberately does
+     *   NOT include decorative restores so an existing assertion on `applied`
+     *   keeps meaning what it meant; `decorativeApplied` counts decorative
+     *   restores separately.
      */
-    hydrateFromMirror(mirror) {
+    hydrateFromMirror(mirror, createdIds) {
       // Defensive guard — never throw on bad input.
       if (
         !mirror ||
@@ -1693,8 +1749,27 @@
         logWarn(
           "hydrateFromMirror(): mirror missing or malformed; nothing applied.",
         );
-        return { matched: 0, applied: 0 };
+        return { matched: 0, applied: 0, decorativeApplied: 0 };
       }
+
+      // DEC-1: the created-entry set. Built defensively from whatever arrives,
+      // so a malformed second argument degrades to "restore nothing" rather
+      // than throwing — the same never-throws contract the mirror guard above
+      // keeps. An EMPTY set is the backward-compatible state: omit the
+      // argument and every membership test below is false, so no decorative
+      // flag is restored and the method behaves exactly as it did pre-DEC-1.
+      const createdIdSet = new Set();
+      if (Array.isArray(createdIds)) {
+        for (const id of createdIds) {
+          if (typeof id === "string" && id.length > 0) createdIdSet.add(id);
+        }
+      }
+
+      // Version-gated migration: a pre-split mirror (version absent or "1.0")
+      // stored algorithmic provenance under the old "ai-generated" label. Remap
+      // it to "algo-generated" as each field is applied below.
+      const preSplit = isPreSplitRegistryVersion(mirror.version);
+      let migrated = 0;
 
       // Index mirror entries by originalUrl. Skip any entry without a non-empty
       // string URL; on duplicate URLs, last-wins is acceptable.
@@ -1717,18 +1792,36 @@
 
       let matched = 0;
       let applied = 0;
+      let decorativeApplied = 0;
 
       for (const entry of this._images.values()) {
         const mirrorEntry = mirrorByUrl.get(entry.originalUrl);
         if (!mirrorEntry) continue;
         matched++;
 
+        // DEC-1: decorative, for CREATED entries only. Deliberately kept apart
+        // from the fieldTriples loop below — it has no source companion, no
+        // allow-list, and no empty state, so it cannot use the fill-only-null
+        // test at all. Only a mirror value that is boolean-true restores; a
+        // mirror false is indistinguishable from a mirror that never set it,
+        // and leaving the live default alone is the same outcome either way.
+        // Counted into decorativeApplied, NEVER into applied, so the existing
+        // row asserting applied === 0 on a refusal keeps its meaning.
+        if (createdIdSet.has(entry.id) && Boolean(mirrorEntry.decorative)) {
+          entry.decorative = Boolean(mirrorEntry.decorative);
+          decorativeApplied++;
+        }
+
         for (const [contentField, sourceField, allowList] of fieldTriples) {
           const liveSource = entry[sourceField];
-          const mirrorSource = mirrorEntry[sourceField];
+          let mirrorSource = mirrorEntry[sourceField];
           // Apply only into an empty slot, and only a valid, non-null source.
           if (liveSource !== null && liveSource !== undefined) continue;
           if (mirrorSource === null || mirrorSource === undefined) continue;
+          if (preSplit && mirrorSource === "ai-generated") {
+            mirrorSource = "algo-generated"; // pre-split ai-generated was algorithmic
+            migrated++;
+          }
           if (!allowList.includes(mirrorSource)) continue;
 
           entry[contentField] =
@@ -1740,8 +1833,16 @@
         }
       }
 
-      logInfo(`hydrateFromMirror(): matched=${matched} applied=${applied}`);
-      return { matched, applied };
+      if (migrated > 0) {
+        logInfo(
+          `hydrateFromMirror(): migrated ${migrated} pre-split ai-generated field(s) to algo-generated.`,
+        );
+      }
+
+      logInfo(
+        `hydrateFromMirror(): matched=${matched} applied=${applied} decorativeApplied=${decorativeApplied}`,
+      );
+      return { matched, applied, decorativeApplied };
     }
 
     // ========================================================================
@@ -1792,12 +1893,23 @@
         return false;
       }
 
-      // Version check
-      if (data.version && data.version !== REGISTRY_VERSION) {
+      // Version check — a known pre-split version (absent or "1.0") is migrated
+      // silently below, so only a genuine unknown-version mismatch warns.
+      if (
+        data.version &&
+        data.version !== REGISTRY_VERSION &&
+        !isPreSplitRegistryVersion(data.version)
+      ) {
         logWarn(
           `fromJSON(): Version mismatch — got "${data.version}", expected "${REGISTRY_VERSION}". Attempting restore anyway.`,
         );
       }
+
+      // Version-gated migration: pre-split artefacts (version absent or "1.0")
+      // stored algorithmic provenance under the old "ai-generated" label. Remap
+      // the four provenance fields per entry below.
+      const preSplit = isPreSplitRegistryVersion(data.version);
+      let migrated = 0;
 
       // Restore metadata
       if (data.metadata && typeof data.metadata === "object") {
@@ -1864,8 +1976,29 @@
             typeof imgData.syntax === "string" ? imgData.syntax : null;
         }
 
+        // Version-gated provenance migration (pre-split artefacts only).
+        if (preSplit) {
+          for (const sourceField of [
+            "altTextSource",
+            "longDescriptionSource",
+            "titleSource",
+            "textInImageSource",
+          ]) {
+            if (entry[sourceField] === "ai-generated") {
+              entry[sourceField] = "algo-generated";
+              migrated++;
+            }
+          }
+        }
+
         this._images.set(entry.id, entry);
         restoredCount++;
+      }
+
+      if (migrated > 0) {
+        logInfo(
+          `fromJSON(): migrated ${migrated} pre-split ai-generated field(s) to algo-generated.`,
+        );
       }
 
       logInfo(`Registry restored from JSON: ${restoredCount} images`);
@@ -2750,7 +2883,7 @@ Some equations here.
       reg.setDocumentId("test-doc-001");
 
       const json = reg.toJSON();
-      assert("toJSON has version", json.version === "1.0");
+      assert("toJSON has version", json.version === "1.1");
       assert("toJSON has metadata", !!json.metadata);
       assert(
         "toJSON metadata has documentId",
@@ -2852,6 +2985,88 @@ Some equations here.
         ],
       });
       assert("fromJSON skips entries without ID", reg.getCount() === 2);
+    }
+
+    // ========================================================================
+    // GROUP 21b: SERIALISATION — fromJSON pre-split provenance migration
+    // ========================================================================
+    // Version-gated remap of the pre-split "ai-generated" provenance label to
+    // "algo-generated" (parcel 3b). Each case builds real serialised data via
+    // toJSON(), then overrides `version` to fixture the pre/post-split case.
+    console.log("\n--- 21b. Serialisation: fromJSON migration ---");
+
+    {
+      // pre-split "1.0": ai-generated altTextSource remaps to algo-generated
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const d = reg1.toJSON();
+      d.version = "1.0";
+      d.images[0].altTextSource = "ai-generated";
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(d);
+      const r = reg2.getImage(d.images[0].id);
+      assert(
+        "fromJSON migration: pre-split ai-generated → algo-generated",
+        r?.altTextSource === "algo-generated",
+        `Got ${r?.altTextSource}`,
+      );
+    }
+
+    {
+      // post-split "1.1" control: ai-generated is left untouched
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const d = reg1.toJSON();
+      d.version = "1.1";
+      d.images[0].altTextSource = "ai-generated";
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(d);
+      const r = reg2.getImage(d.images[0].id);
+      assert(
+        "fromJSON migration: post-split ai-generated untouched",
+        r?.altTextSource === "ai-generated",
+        `Got ${r?.altTextSource}`,
+      );
+    }
+
+    {
+      // all four provenance fields remap under a pre-split version
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const d = reg1.toJSON();
+      d.version = "1.0";
+      d.images[0].altTextSource = "ai-generated";
+      d.images[0].longDescriptionSource = "ai-generated";
+      d.images[0].titleSource = "ai-generated";
+      d.images[0].textInImageSource = "ai-generated";
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(d);
+      const r = reg2.getImage(d.images[0].id);
+      assert(
+        "fromJSON migration: all four pre-split fields → algo-generated",
+        r?.altTextSource === "algo-generated" &&
+          r?.longDescriptionSource === "algo-generated" &&
+          r?.titleSource === "algo-generated" &&
+          r?.textInImageSource === "algo-generated",
+        `Got ${r?.altTextSource}/${r?.longDescriptionSource}/${r?.titleSource}/${r?.textInImageSource}`,
+      );
+    }
+
+    {
+      // a non-ai-generated source is left untouched even pre-split
+      const reg1 = new MathPixImageRegistry();
+      reg1.buildFromMMD(mmd1);
+      const d = reg1.toJSON();
+      d.version = "1.0";
+      d.images[0].altTextSource = "user";
+      const reg2 = new MathPixImageRegistry();
+      reg2.fromJSON(d);
+      const r = reg2.getImage(d.images[0].id);
+      assert(
+        "fromJSON migration: pre-split non-ai-generated stays",
+        r?.altTextSource === "user",
+        `Got ${r?.altTextSource}`,
+      );
     }
 
     // ========================================================================
@@ -3013,7 +3228,7 @@ Some equations here.
       assert("Metadata: documentId set", meta.documentId === "my-document.pdf");
       assert("Metadata: createdAt set", !!meta.createdAt);
       assert("Metadata: lastUpdated set", !!meta.lastUpdated);
-      assert("Metadata: version correct", meta.version === "1.0");
+      assert("Metadata: version correct", meta.version === "1.1");
     }
 
     // ========================================================================
@@ -3691,6 +3906,236 @@ Some equations here.
         "Legacy fromJSON: textInImageSource defaults to null",
         img?.textInImageSource === null,
       );
+    }
+
+    // ========================================================================
+    // GROUP 43: ai-edited source acceptance (Phase 3 parcel 1)
+    // ========================================================================
+    console.log("\n--- 43. ai-edited source acceptance ---");
+
+    {
+      const regAE = new MathPixImageRegistry();
+      regAE.buildFromMMD("![](https://cdn.mathpix.com/ai-edited.png)");
+      const idAE = regAE.getAllImages()[0].id;
+
+      // Each setter accepts "ai-edited" verbatim (no coercion to "user")
+      assert(
+        "updateAltText accepts ai-edited verbatim (Phase 3 parcel 1)",
+        regAE.updateAltText(idAE, "alt", "ai-edited") === true &&
+          regAE.getImage(idAE)?.altTextSource === "ai-edited",
+      );
+      assert(
+        "updateLongDescription accepts ai-edited verbatim (Phase 3 parcel 1)",
+        regAE.updateLongDescription(idAE, "long desc", "ai-edited") === true &&
+          regAE.getImage(idAE)?.longDescriptionSource === "ai-edited",
+      );
+      assert(
+        "updateTitle accepts ai-edited verbatim (Phase 3 parcel 1)",
+        regAE.updateTitle(idAE, "title", "ai-edited") === true &&
+          regAE.getImage(idAE)?.titleSource === "ai-edited",
+      );
+      assert(
+        "updateTextInImage accepts ai-edited verbatim (Phase 3 parcel 1)",
+        regAE.updateTextInImage(idAE, "text", "ai-edited") === true &&
+          regAE.getImage(idAE)?.textInImageSource === "ai-edited",
+      );
+
+      // Omitting the source argument preserves the existing ai-edited source
+      regAE.updateAltText(idAE, "changed");
+      assert(
+        "updateAltText undefined source preserves ai-edited (Phase 3 parcel 1)",
+        regAE.getImage(idAE)?.altTextSource === "ai-edited",
+      );
+
+      regAE._cancelMirrorWrite();
+    }
+
+    // ========================================================================
+    // GROUP 44: algo-generated source acceptance (Phase 3 parcel 1b)
+    // ========================================================================
+    console.log("\n--- 44. algo-generated source acceptance ---");
+
+    {
+      const regAG = new MathPixImageRegistry();
+      regAG.buildFromMMD("![](https://cdn.mathpix.com/algo-generated.png)");
+      const idAG = regAG.getAllImages()[0].id;
+
+      // Each setter accepts "algo-generated" verbatim (no coercion to "user")
+      assert(
+        "updateAltText accepts algo-generated verbatim (Phase 3 parcel 1b)",
+        regAG.updateAltText(idAG, "alt", "algo-generated") === true &&
+          regAG.getImage(idAG)?.altTextSource === "algo-generated",
+      );
+      assert(
+        "updateLongDescription accepts algo-generated verbatim (Phase 3 parcel 1b)",
+        regAG.updateLongDescription(idAG, "long desc", "algo-generated") ===
+          true &&
+          regAG.getImage(idAG)?.longDescriptionSource === "algo-generated",
+      );
+      assert(
+        "updateTitle accepts algo-generated verbatim (Phase 3 parcel 1b)",
+        regAG.updateTitle(idAG, "title", "algo-generated") === true &&
+          regAG.getImage(idAG)?.titleSource === "algo-generated",
+      );
+      assert(
+        "updateTextInImage accepts algo-generated verbatim (Phase 3 parcel 1b)",
+        regAG.updateTextInImage(idAG, "text", "algo-generated") === true &&
+          regAG.getImage(idAG)?.textInImageSource === "algo-generated",
+      );
+
+      // Omitting the source argument preserves the existing algo-generated source
+      regAG.updateAltText(idAG, "changed");
+      assert(
+        "updateAltText undefined source preserves algo-generated (Phase 3 parcel 1b)",
+        regAG.getImage(idAG)?.altTextSource === "algo-generated",
+      );
+
+      regAG._cancelMirrorWrite();
+    }
+
+    // ========================================================================
+    // GROUP 45: includegraphics alt={...} is NOT read (PF4 M-1-GUARD)
+    // ========================================================================
+    console.log("\n--- 45. includegraphics alt={...} is not read ---");
+
+    {
+      // Two-sided on purpose. The LaTeX row below asserts a NULL, and a null is
+      // exactly what a broken assertion mechanism also produces — so the
+      // markdown companion proves the same assertion sees "original" when the
+      // detection branch really does stamp one. Without it, the LaTeX row would
+      // pass on a typo in the fixture string.
+      const LATEX_ALT_URL = "https://cdn.mathpix.com/cropped/latex-alt.jpg";
+      const MD_ALT_URL = "https://cdn.mathpix.com/cropped/md-alt.jpg";
+
+      const regLatexAlt = new MathPixImageRegistry();
+      regLatexAlt.buildFromMMD(
+        "\\includegraphics[alt={A described figure},max width=\\textwidth]{" +
+          LATEX_ALT_URL +
+          "}",
+      );
+      const latexImg = regLatexAlt.getAllImages()[0];
+      assert(
+        "includegraphics alt={...} is DELIBERATELY NOT read: altTextSource null and altText '' — DO NOT 'fix' this branch to pass real alt through, because detection would then stamp 'original', hydrateFromMirror refuses a populated slot, and an accepted ai-reviewed description would silently DOWNGRADE to original on re-entry (PF4 M-1)",
+        latexImg?.syntax === "includegraphics" &&
+          latexImg?.altTextSource === null &&
+          latexImg?.altText === "",
+        `Got syntax=${latexImg?.syntax} source=${latexImg?.altTextSource} alt="${latexImg?.altText}"`,
+      );
+
+      const regMdAlt = new MathPixImageRegistry();
+      regMdAlt.buildFromMMD("![A described figure](" + MD_ALT_URL + ")");
+      const mdImg = regMdAlt.getAllImages()[0];
+      assert(
+        "two-sided companion: a MARKDOWN reference with non-empty alt DOES stamp altTextSource 'original' — so the null above is the LaTeX branch, not a broken assertion",
+        mdImg?.syntax === "markdown" &&
+          mdImg?.altTextSource === "original" &&
+          mdImg?.altText === "A described figure",
+        `Got syntax=${mdImg?.syntax} source=${mdImg?.altTextSource} alt="${mdImg?.altText}"`,
+      );
+    }
+
+    // ------------------------------------------------------------------------
+    // MD-ALT-G: the MARKDOWN branch on a POPULATED registry.
+    //
+    // The pair above settles the stamp on a FRESH registry — LaTeX does not
+    // stamp, markdown does. These two rows ask the question that decides
+    // whether that stamp can ever cost a person the provenance they own: what
+    // happens when the entry ALREADY carries one and buildFromMMD reconciles
+    // over it. It turns entirely on which bucket the candidate lands in, so one
+    // row takes each bucket. Row A is the protection that holds today; Row B is
+    // the hole it does not cover.
+    // ------------------------------------------------------------------------
+    {
+      const PRESERVE_URL = "https://cdn.mathpix.com/cropped/g45-preserve.jpg";
+      const GAP_SEED_URL = "https://cdn.mathpix.com/cropped/g45-gap-seed.jpg";
+      const GAP_OTHER_URL = "https://cdn.mathpix.com/cropped/g45-gap-other.jpg";
+      const SEEDED_ALT = "Alt text a person wrote and owns.";
+      const CANDIDATE_ALT = "Alt text carried by the MMD reference.";
+
+      // --- ROW A: PRESERVATION on a MATCHED candidate (positive) -------------
+      //
+      // added === 0 is NOT the load-bearing clause: an empty registry satisfies
+      // it just as well, so a row asserting only that would pass while pointing
+      // at nothing. The size, the unchanged id and the two alt comparisons are
+      // what make this row unable to pass unless it really reconciled an entry.
+      const regPreserve = new MathPixImageRegistry();
+      regPreserve.buildFromMMD("![](" + PRESERVE_URL + ")");
+      const preserveId = regPreserve.getAllImages()[0].id;
+      regPreserve.updateAltText(preserveId, SEEDED_ALT, "user");
+
+      // Same URL, same line, DIFFERENT alt. Pass 1 matches on the exact id, so
+      // Phase 4 refreshes mmdReference, lineNumber and syntax and nothing else.
+      const preserveDiff = regPreserve.buildFromMMD(
+        "![" + CANDIDATE_ALT + "](" + PRESERVE_URL + ")",
+      );
+      const preserveAfter = regPreserve.getImage(preserveId);
+      assert(
+        "45-A PRESERVATION: a MATCHED markdown candidate does NOT overwrite existing provenance — added 0, one entry, id unchanged, altTextSource still 'user', altText still the seeded string and NOT the candidate string",
+        preserveDiff.added.length === 0 &&
+          regPreserve.getAllImages().length === 1 &&
+          preserveAfter?.id === preserveId &&
+          preserveAfter?.altTextSource === "user" &&
+          preserveAfter?.altText === SEEDED_ALT &&
+          preserveAfter?.altText !== CANDIDATE_ALT,
+        `Got added=${preserveDiff.added.length} size=${regPreserve.getAllImages().length} id=${preserveAfter?.id} source=${preserveAfter?.altTextSource} alt="${preserveAfter?.altText}"`,
+      );
+      regPreserve._cancelMirrorWrite();
+
+      // --- ROW B: THE GAP on an ADDED candidate (negative) -------------------
+      //
+      // READ THIS BEFORE TREATING A RED HERE AS A REGRESSION.
+      //
+      // THIS ROW DOCUMENTS AN EXPOSURE. IT DOES NOT APPROVE ONE. It asserts
+      // that _createEntryFromDetection (:795-797) stamps altTextSource
+      // "original" onto a markdown candidate landing in the ADDED bucket, on
+      // top of provenance a person owned. "original" is absent from
+      // FROZEN_SOURCES — which lives in ANOTHER FILE, at
+      // mathpix-scripts/ai-alt-text/alt-text-write-stage.js:178, and holds
+      // exactly ["user", "ai-reviewed", "ai-edited"] — so the freeze goes with
+      // it, and hydrateFromMirror then refuses the slot (:1761, apply only into
+      // an empty slot) because it is already populated. Nothing puts the
+      // person's label back. The file reference is spelt out because grepping
+      // FROZEN_SOURCES from inside THIS file finds only these comments, which
+      // reads as the constant not existing.
+      //
+      // IT IS EXPECTED TO REDDEN the day a FROZEN_SOURCES check is added to
+      // that branch, and THAT REDNESS IS THE POINT: it is the signal the gap has
+      // been closed, not a regression. When it reddens, DELETE this row and put
+      // one asserting the new refusal in its place. Do NOT repair it back to
+      // green, which would reinstate exactly the silence it exists to break.
+      //
+      // WHAT IS NOT CLAIMED. No reachable user route into this bucket has been
+      // found. MD-ALT-OBS drove the auto-restore route on the capacitors fixture
+      // three times and measured added 0 with every entry MATCHED, so this is a
+      // statement about the CODE, not about a defect anybody has met. The
+      // version-selector route is unmeasured.
+      //
+      // added.length === 1 is this row's pointing-at-nothing guard: a row aimed
+      // at an empty registry, or at a URL the registry already held, yields 0.
+      const regGap = new MathPixImageRegistry();
+      regGap.buildFromMMD("![](" + GAP_SEED_URL + ")");
+      const gapId = regGap.getAllImages()[0].id;
+      regGap.updateAltText(gapId, SEEDED_ALT, "user");
+      const gapBefore = regGap.getImage(gapId);
+
+      // A URL the registry does NOT hold: neither pass can bind it, so it falls
+      // to addedIds (:650-652) and detection stamps the fresh entry.
+      const gapDiff = regGap.buildFromMMD(
+        "![" + CANDIDATE_ALT + "](" + GAP_OTHER_URL + ")",
+      );
+      const gapNew =
+        gapDiff.added.length === 1 ? regGap.getImage(gapDiff.added[0]) : null;
+      assert(
+        "45-B THE GAP (DOCUMENTS AN EXPOSURE — EXPECTED TO REDDEN WHEN A FROZEN_SOURCES CHECK IS ADDED; READ THE COMMENT BEFORE CHANGING IT): an ADDED markdown candidate is stamped altTextSource 'original', NOT the 'user' the seeded entry held",
+        gapBefore?.altTextSource === "user" &&
+          gapDiff.added.length === 1 &&
+          gapNew?.originalUrl === GAP_OTHER_URL &&
+          gapNew?.altTextSource === "original" &&
+          gapNew?.altTextSource !== "user" &&
+          gapNew?.altText === CANDIDATE_ALT,
+        `Got seededSource=${gapBefore?.altTextSource} added=${gapDiff.added.length} url=${gapNew?.originalUrl} source=${gapNew?.altTextSource} alt="${gapNew?.altText}"`,
+      );
+      regGap._cancelMirrorWrite();
     }
 
     // ========================================================================
@@ -4633,6 +5078,11 @@ Some equations here.
     // ========================================================================
     // GROUP 41: buildFromMMD — Q2 preserve / refresh bucketing
     // (Stage 6 — non-destructive reconcile on a populated registry)
+    //
+    // SEE ALSO Group 45 (MD-ALT-G rows 45-A and 45-B), which take the same
+    // preserve-versus-add question specifically for altTextSource on a markdown
+    // reference. They live beside the includegraphics carve-out rather than here
+    // because their subject is that carve-out's missing markdown counterpart.
     // ========================================================================
     console.log("\n--- 41. buildFromMMD: Q2 preserve / refresh bucketing ---");
 

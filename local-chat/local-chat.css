@@ -147,7 +147,17 @@
   margin-top: 0.75rem;
 }
 
-.local-chat-param-group label {
+/* The label/value row. These declarations used to sit on the label itself, which is
+   what pushed the value to the right-hand edge — but that only worked while the value
+   was INSIDE the label, and a label containing its own value makes the slider's
+   accessible name change on every keypress. The value now lives in a sibling <output>,
+   so the row moves up to this wrapper and the rendering is unchanged.
+
+   font-size sits HERE rather than on the label: the value used to inherit 0.9em by
+   virtue of being inside the label, and as a sibling it would otherwise render two
+   pixels taller. Setting it on the row keeps label and value at the same size. Do not
+   also set it on the label — em compounds, and the label would land at 0.81em. */
+.local-chat-param-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;

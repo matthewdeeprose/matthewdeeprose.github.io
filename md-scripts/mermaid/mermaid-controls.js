@@ -2530,72 +2530,6 @@ window.MermaidControls = (function () {
   }
 
   /**
-   * Initialise controls using Intersection Observer for performance
-   * @param {HTMLElement} container - Container to observe (defaults to document)
-   */
-  function initWithLazyLoading(container = document) {
-    if (!container) {
-      Logger.warn("No container provided for lazy loading");
-      return;
-    }
-
-    Logger.info("Initialising with lazy loading");
-
-    // Find all Mermaid containers without controls
-    const mermaidContainers = Utils.findContainersWithoutControls(container);
-
-    if (mermaidContainers.length === 0) {
-      Logger.debug("No mermaid containers found requiring controls");
-      return;
-    }
-
-    // Log detection with diagram-specific information
-    DiagramLogger.logDiagramDetection(mermaidContainers, "lazy-loading");
-
-    // Create Intersection Observer
-    const observer = new MutationObserver(function (mutations) {
-      let newContainersFound = [];
-
-      // Process mutations to find new diagrams
-      mutations.forEach(function (mutation) {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach(function (node) {
-            if (node.nodeType === 1) {
-              // Element node
-              // Check if this is a mermaid container or contains one
-              if (
-                node.classList &&
-                node.classList.contains("mermaid-container") &&
-                !node.querySelector("." + config.controlsContainerClass)
-              ) {
-                newContainersFound.push(node);
-              } else {
-                // Check for mermaid containers inside this node
-                const containersWithoutControls =
-                  window.MermaidControls.utils.findContainersWithoutControls(
-                    node
-                  );
-                newContainersFound.push(...containersWithoutControls);
-              }
-            }
-          });
-        }
-      });
-
-      // Only initialise if new diagrams without controls were found
-      if (newContainersFound.length > 0) {
-        // Remove duplicates
-        const uniqueContainers = [...new Set(newContainersFound)];
-
-        DiagramLogger.logDiagramDetection(
-          uniqueContainers,
-          "mutation-observer"
-        );
-        window.MermaidControls.initWithLazyLoading(document);
-      }
-    });
-  }
-  /**
    * Copy Mermaid code to clipboard
    * @param {string} code - The Mermaid code to copy
    * @param {HTMLElement} button - The button that was clicked
@@ -3383,7 +3317,6 @@ window.MermaidControls = (function () {
   // Public API
   return {
     init: init,
-    initWithLazyLoading: initWithLazyLoading,
     addControlsToContainer: addControlsToContainer,
     announceToScreenReader: announceToScreenReader,
     applyDiagramSize: applyDiagramSize,
@@ -3454,61 +3387,6 @@ document.addEventListener("DOMContentLoaded", function () {
       svg.style.height = "auto";
       svg.style.maxHeight = "none";
     });
-    // Use lazy loading initialisation for better performance
-    window.MermaidControls.initWithLazyLoading();
-
-    // Also observe changes to handle dynamically added diagrams
-    const observer = new MutationObserver(function (mutations) {
-      let newDiagramsFound = false;
-
-      // Process mutations to find new diagrams
-      mutations.forEach(function (mutation) {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach(function (node) {
-            if (node.nodeType === 1) {
-              // Element node
-              // Check if this is a mermaid container or contains one
-              if (
-                node.classList &&
-                node.classList.contains("mermaid-container") &&
-                !node.querySelector(
-                  "." +
-                    window.MermaidControls.utils.getSavedPreference(
-                      "controlsContainerClass",
-                      "mermaid-controls"
-                    )
-                )
-              ) {
-                newDiagramsFound = true;
-              } else {
-                // Check for mermaid containers inside this node - using cross-browser compatible approach
-                const containersWithoutControls =
-                  window.MermaidControls.utils.findContainersWithoutControls(
-                    node
-                  );
-                if (containersWithoutControls.length > 0) {
-                  newDiagramsFound = true;
-                }
-              }
-            }
-          });
-        }
-      });
-
-      // Only initialise if new diagrams without controls were found
-      if (newDiagramsFound) {
-        window.MermaidControls.Logger.info(
-          "New diagrams detected, initialising controls"
-        );
-        window.MermaidControls.initWithLazyLoading(document);
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-
     // Log initialisation
     window.MermaidControls.Logger.info(
       "Mermaid Controls initialised successfully"

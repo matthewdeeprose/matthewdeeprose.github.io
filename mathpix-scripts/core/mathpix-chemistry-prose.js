@@ -123,6 +123,12 @@
   const _detectSubstitutionPattern = classifyHelpers.detectSubstitutionPattern;
   const _identifyPyrimidinePattern = classifyHelpers.identifyPyrimidinePattern;
   const _identifyPyridinonePattern = classifyHelpers.identifyPyridinonePattern;
+  // Phase 17 (KD-13): teaching-facing ring aromaticity — perceived aromatic AND
+  // < 2 exocyclic ring carbonyls. The description tiers consume this instead of
+  // the raw ring.aromatic so a taught-non-aromatic dione ring drops the
+  // "aromatic" claim; ring.aromatic and every classification gate keyed on it
+  // are left untouched.
+  const _isTaughtAromatic = classifyHelpers.isTaughtAromatic;
 
   // Phase 14-1d Step 5: classify.js helper consumed by Step 5 movers.
   // _assembleDescription + _assembleShortDescription use this for named-
@@ -134,6 +140,20 @@
   // the empty-string slot at index 0 to form a Set of bare alkyl bases for
   // _isAlkylShortName's substituent-recognition path.
   const ALKYL_BASE_SET = new Set(ALKYL_NAMES.slice(1));
+
+  // Phase 17 (KD-14): principal-characteristic-group seniority cascade, read
+  // live from classify.js's internals (the ranking source of truth per
+  // CLAUDE.md § 148 — NOT forked here). Consumed by the shared seniority
+  // comparator _orderGroupsBySeniority below. Fall back to an empty array if
+  // the classify export is older than this field, so the comparator's deferral
+  // guard degrades safely to "defer everything" (order untouched) rather than
+  // throwing.
+  const PCG_CASCADE = Array.isArray(classifyHelpers.pcgCascade)
+    ? classifyHelpers.pcgCascade
+    : [];
+  if (!Array.isArray(classifyHelpers.pcgCascade)) {
+    logWarn("classifyHelpers.pcgCascade not exposed — KD-14 seniority ordering will defer on every list (order untouched)");
+  }
 
   // Phase 14-1d: late-bound helpers reference. Pre-Step-5 this resolves to
   // descriptions.js's internals.helpers table (the 9 prose-tier entries that
@@ -370,8 +390,25 @@
   }
 
   /** Describe a single ring's topology (Phase 8C-CT-3a B7: append composition for named heteroatom rings). */
-  function _describeRingTopology(classifiedRing) {
+  function _describeRingTopology(classifiedRing, graphData, adjacency) {
     const sizeWord = SIZE_WORDS[classifiedRing.size] || String(classifiedRing.size);
+    // Phase 17 (KD-13): a taught-non-aromatic ring (perceived aromatic but
+    // carrying two ring carbonyls) that resolves to a systematic dione/lactam
+    // name is described by size + that name — no "aromatic" claim and no
+    // aromatic-parent noun. Falls through pyrimidine→pyridinone exactly as the
+    // STD/SHORT tiers do; the composition tail is unchanged. Otherwise the
+    // existing named-aromatic path below runs untouched.
+    if (!_isTaughtAromatic(classifiedRing, graphData, adjacency)) {
+      const systematic = _identifyPyrimidinePattern(classifiedRing, graphData, adjacency)
+        || _identifyPyridinonePattern(classifiedRing, graphData, adjacency);
+      if (systematic) {
+        let desc = "a " + sizeWord + "-membered ring (" + systematic + ")";
+        if (classifiedRing.heteroatoms.length > 0) {
+          desc += ", containing " + _ringComposition(classifiedRing);
+        }
+        return desc;
+      }
+    }
     // Phase 12-5c-3 (D3 = A): named-aromatic phrase from utils helper. Single
     // source in mathpix-chemistry-utils.js's `NAMED_AROMATIC_RINGS` map.
     const namedPhrase = utils.getNamedAromaticPhrase(classifiedRing.type);
@@ -400,7 +437,12 @@
   function _describeFusedRingSystem(rings, graphData, adjacency) {
     const parts = [];
     const namedSystem = _identifyFusedSystemName(rings, graphData, adjacency);
-    const sigOf = r => r.size + "|" + r.aromatic + "|" + r.heteroatoms.slice().sort().join(",");
+    // Phase 17 (KD-13): describe teaching-facing aromaticity, not RDKit's raw
+    // perception — a dione six-ring loses the "aromatic" prefix (and its "an"
+    // article) while a genuinely-aromatic fused ring keeps both. Grouping derives
+    // from the same predicate so the prefix and the signature agree.
+    const taughtAromatic = r => _isTaughtAromatic(r, graphData, adjacency);
+    const sigOf = r => r.size + "|" + taughtAromatic(r) + "|" + r.heteroatoms.slice().sort().join(",");
     const allIdentical = rings.every(r => sigOf(r) === sigOf(rings[0]));
 
     let sharingPhrase = " sharing edges";
@@ -415,13 +457,13 @@
     if (allIdentical) {
       const sample = rings[0];
       const sizeWord = SIZE_WORDS[sample.size] || String(sample.size);
-      const aromaticPrefix = sample.aromatic ? "aromatic " : "";
+      const aromaticPrefix = taughtAromatic(sample) ? "aromatic " : "";
       opening = "The structure is built on " + countWord + " fused " + aromaticPrefix + sizeWord + "-membered rings" + sharingPhrase;
     } else {
       const ringDescs = rings.map(r => {
         const sizeWord = SIZE_WORDS[r.size] || String(r.size);
-        const aromaticPrefix = r.aromatic ? "aromatic " : "";
-        return "a" + (r.aromatic ? "n " : " ") + aromaticPrefix + sizeWord + "-membered ring";
+        const aromaticPrefix = taughtAromatic(r) ? "aromatic " : "";
+        return "a" + (taughtAromatic(r) ? "n " : " ") + aromaticPrefix + sizeWord + "-membered ring";
       });
       if (rings.length === 2) {
         opening = "The structure is built on two fused rings" + sharingPhrase + ": " + ringDescs[0] + " and " + ringDescs[1];
@@ -444,7 +486,7 @@
       const group = bySig.get(s);
       const sample = group[0];
       const sizeWord = SIZE_WORDS[sample.size] || String(sample.size);
-      const aromaticPrefix = sample.aromatic ? "aromatic " : "";
+      const aromaticPrefix = taughtAromatic(sample) ? "aromatic " : "";
       const compDesc = _ringComposition(sample);
       let subject;
       if (group.length === rings.length && rings.length > 1) {
@@ -462,7 +504,10 @@
   /** Phase 8C-CT-3a B1: describe multiple rings joined by bonds (not fused). */
   function _describeJoinedRingSystem(rings, graphData, adjacency) {
     const parts = [];
-    const sigOf = r => r.size + "|" + r.aromatic + "|" + r.heteroatoms.slice().sort().join(",");
+    // Phase 17 (KD-13): teaching-facing aromaticity for the joined-ring prose,
+    // matching _describeFusedRingSystem — grouping and prefix share the predicate.
+    const taughtAromatic = r => _isTaughtAromatic(r, graphData, adjacency);
+    const sigOf = r => r.size + "|" + taughtAromatic(r) + "|" + r.heteroatoms.slice().sort().join(",");
     const allIdentical = rings.every(r => sigOf(r) === sigOf(rings[0]));
     const countWord = helpers.numberWord(rings.length);
 
@@ -500,10 +545,10 @@
     if (allIdentical) {
       const sample = rings[0];
       const sizeWord = SIZE_WORDS[sample.size] || String(sample.size);
-      const aromaticPrefix = sample.aromatic ? "aromatic " : "";
+      const aromaticPrefix = taughtAromatic(sample) ? "aromatic " : "";
       let ringDesc = countWord + " " + aromaticPrefix + sizeWord + "-membered rings";
       // Benzene special case
-      if (sample.size === 6 && sample.aromatic && sample.heteroatoms.length === 0) {
+      if (sample.size === 6 && taughtAromatic(sample) && sample.heteroatoms.length === 0) {
         ringDesc += " (benzenes)";
       }
       parts.push("The structure consists of " + ringDesc + " joined by " + bondPhrase + ".");
@@ -518,13 +563,13 @@
     } else {
       const ringDescs = rings.map(r => {
         const sizeWord = SIZE_WORDS[r.size] || String(r.size);
-        const aromaticPrefix = r.aromatic ? "aromatic " : "";
-        return "a" + (r.aromatic ? "n " : " ") + aromaticPrefix + sizeWord + "-membered ring";
+        const aromaticPrefix = taughtAromatic(r) ? "aromatic " : "";
+        return "a" + (taughtAromatic(r) ? "n " : " ") + aromaticPrefix + sizeWord + "-membered ring";
       });
       parts.push("The structure consists of " + helpers.formatList(ringDescs) + " joined by " + bondPhrase + ".");
       for (const r of rings) {
         const sizeWord = SIZE_WORDS[r.size] || String(r.size);
-        const aromaticPrefix = r.aromatic ? "aromatic " : "";
+        const aromaticPrefix = taughtAromatic(r) ? "aromatic " : "";
         parts.push("The " + aromaticPrefix + sizeWord + "-membered ring contains " + _ringComposition(r) + ".");
       }
     }
@@ -764,6 +809,48 @@
     return steps;
   }
 
+  /**
+   * Phase 17 (KD-15): the parenthetical implicit-hydrogen annotation for one
+   * walked atom, or "" when it carries none — so call sites append it
+   * unconditionally and the wording lives in exactly one place.
+   */
+  function _hydrogenAnnotation(step, adjacency) {
+    const implicitH = _implicitHydrogens(step.element, step.vertexId, adjacency);
+    if (implicitH === 0) return "";
+    const count = implicitH === 1 ? "one hydrogen" : helpers.numberWord(implicitH) + " hydrogens";
+    return " (bonded to " + count + ")";
+  }
+
+  /**
+   * Phase 17 (KD-23): dedicated COMPREHENSIVE walk for single-carbon
+   * scaffolds. The multi-carbon walker reads oddly for one carbon (the
+   * Phase 10-5 finding), and the previous single-carbon branch computed
+   * STANDARD's own expression over the same helpers, so COMP collapsed onto
+   * STD by construction on every group-bearing single-carbon fixture.
+   * Emits the walker-voice account instead: a structure sentence, one
+   * attachment sentence over the shared display-name helpers (group
+   * formulas stay byte-identical with STANDARD's), and an unconditional
+   * hydrogen sentence stating the measured implicit-hydrogen count —
+   * "no hydrogens" for a fully substituted carbon (chemistry-gate ruling:
+   * an explicit zero is content STANDARD never states, and asserting
+   * hydrogens that do not exist is the KD-24 falsehood class).
+   */
+  function _buildSingleCarbonWalk(groupLabels, graphData, adjacency) {
+    const sentences = ["The structure is a single carbon."];
+    if (groupLabels.length > 0) {
+      sentences.push("The carbon bears " + helpers.formatList(groupLabels) + ".");
+    }
+    const carbon = graphData.graph.vertices.find(v => _elem(v) === "C");
+    const hCount = carbon ? _implicitHydrogens("C", carbon.id, adjacency) : 0;
+    const hPhrase = hCount === 0
+      ? "no hydrogens"
+      : hCount === 1
+        ? "one hydrogen"
+        : helpers.numberWord(hCount) + " hydrogens";
+    sentences.push("The carbon carries " + hPhrase + ".");
+    return sentences;
+  }
+
   /** Convert walk steps into plain English prose. */
   function _describeBranch(steps, groupName, adjacency) {
     if (steps.length === 0) return "";
@@ -773,18 +860,21 @@
       const elemName = _elementName(step.element);
       const article = _aOrAnElement(elemName);
       const bondName = BOND_NAMES[step.bondType] || "single";
+      let sentence;
       if (i === 0 && steps.length === 1) {
-        let s = article.charAt(0).toUpperCase() + article.slice(1) + " " + elemName + " atom is attached to the ring";
-        const implicitH = _implicitHydrogens(step.element, step.vertexId, adjacency);
-        if (implicitH > 0) {
-          s += " (bonded to " + (implicitH === 1 ? "one hydrogen" : helpers.numberWord(implicitH) + " hydrogens") + ")";
-        }
-        sentences.push(s);
+        sentence = article.charAt(0).toUpperCase() + article.slice(1) + " " + elemName + " atom is attached to the ring";
       } else if (i === 0) {
-        sentences.push("From the ring, a " + bondName + " bond connects to " + article + " " + elemName + " atom");
+        sentence = "From the ring, a " + bondName + " bond connects to " + article + " " + elemName + " atom";
       } else {
-        sentences.push("From this " + _elementName(steps[i - 1].element) + ", a " + bondName + " bond connects to " + article + " " + elemName + " atom");
+        sentence = "From this " + _elementName(steps[i - 1].element) + ", a " + bondName + " bond connects to " + article + " " + elemName + " atom";
       }
+
+      // Phase 17 (KD-15): annotate every atom in the walk, not just a
+      // single-step branch's terminal one. The gap was positional, not
+      // elemental — a secondary amide's N–H and a methoxy CH₃ were both
+      // silently dropped purely because their branch ran to two steps.
+      // One annotation site per atom, so nothing is annotated twice.
+      sentences.push(sentence + _hydrogenAnnotation(step, adjacency));
     }
     let result = sentences.join(". ") + ".";
     if (groupName) result += " This forms " + groupName + ".";
@@ -806,10 +896,7 @@
       const bondName = BOND_NAMES[step.bondType] || "single";
       let desc = "a " + bondName + " bond connects to " + article + " " + subElem + " atom";
       if (subSteps.length === 1) {
-        const implicitH = _implicitHydrogens(step.element, step.vertexId, adjacency);
-        if (implicitH > 0) {
-          desc += " (bonded to " + (implicitH === 1 ? "one hydrogen" : helpers.numberWord(implicitH) + " hydrogens") + ")";
-        }
+        desc += _hydrogenAnnotation(step, adjacency);
       }
       subDescs.push(desc);
     }
@@ -1151,7 +1238,13 @@
       // positional openers ("From N3 of the ring") for the legacy element-
       // only form on xanthine / purine fused systems.
       const namedSystem = _identifyFusedSystemName(rings, _graphData, _adjacency);
-      const branchEntries = _walkAndDescribeBranches(sortedBranchPoints, groups, _graphData, _adjacency, allRingMembers, true, namedSystem, rings);
+      // Phase 17 (KD-14): reorder the branch walk by cascade seniority for
+      // in-cascade lists (naproxen: acid branch before methoxy branch) so COMP
+      // agrees with STD/SHORT. Each branch's locant is atom-derived, not
+      // walk-position-derived, so this changes only emission order. Defers on
+      // the xanthine class → geometry order (and its N1/N3/N7 walk) preserved.
+      const orderedBranchPoints = _orderBranchPointsBySeniority(sortedBranchPoints, groups, allRingMembers, _graphData, _adjacency);
+      const branchEntries = _walkAndDescribeBranches(orderedBranchPoints, groups, _graphData, _adjacency, allRingMembers, true, namedSystem, rings);
       const substitutedPos = new Set(branchPoints.map(b => b.attachmentVertexId));
       // Phase 11-2c: forward namedSystem + rings so the tail can substitute
       // per-atom locants ("N1, and C8") for the legacy bucket prose.
@@ -1178,7 +1271,13 @@
       // Phase 11-2b: joined non-fused rings (biphenyl etc.) have no locant
       // table key — pass null so mapAtomToLocant short-circuits and the
       // legacy element-only opener is preserved.
-      const branchEntries = _walkAndDescribeBranches(sortedSubstituentBranches, groups, _graphData, _adjacency, allRingMembers, true, null, rings);
+      // Phase 17 (KD-14): route through the shared seniority reorder for the
+      // same tier-consistency reason as the fused path. INERT on the current
+      // fixture set (no joined-ring substrate is pinned, so this is not gate-
+      // verified) — kept uniform to prevent a partial landing when a joined-
+      // ring fixture with an in-cascade substituent pair eventually arrives.
+      const orderedSubstituentBranches = _orderBranchPointsBySeniority(sortedSubstituentBranches, groups, allRingMembers, _graphData, _adjacency);
+      const branchEntries = _walkAndDescribeBranches(orderedSubstituentBranches, groups, _graphData, _adjacency, allRingMembers, true, null, rings);
       // Phase 10-2: ring-to-ring linkage atoms and exocyclic-substituent
       // attachments both count as "substituted" for tail purposes. Use the
       // full branchPoints (not the stripped list) so biphenyl's inter-ring
@@ -1309,7 +1408,7 @@
 
     if (scaffoldType === "aromatic-ring" || scaffoldType === "ring") {
       const ring = rings[0];
-      const ringDesc = _describeRingTopology(ring);
+      const ringDesc = _describeRingTopology(ring, _graphData, _adjacency);
       const ringMembers = new Set(ring.memberVertexIds);
 
       if (ring.heteroatoms.length === 0) {
@@ -1348,7 +1447,11 @@
                   ? _identifyPyridinonePattern(ring, _graphData, _adjacency)
                   : null))
           : null;
-        const branchEntries = _walkAndDescribeBranches(sorted, groups, _graphData, _adjacency, ringMembers, false, namedSystemSingle, [ring]);
+        // Phase 17 (KD-14): seniority-order the single-ring branch walk for
+        // tier-consistency with STD/SHORT. All current single-ring fixtures are
+        // out-of-cascade → the guard defers → geometry walk preserved.
+        const orderedSorted = _orderBranchPointsBySeniority(sorted, groups, ringMembers, _graphData, _adjacency);
+        const branchEntries = _walkAndDescribeBranches(orderedSorted, groups, _graphData, _adjacency, ringMembers, false, namedSystemSingle, [ring]);
         const substitutedPos = new Set(sorted.map(b => b.attachmentVertexId));
         // Phase 11-2c: forward namedSystemSingle + [ring] so single-ring
         // pyrimidines (uracil / thymine / cytosine) get locant-bearing tail
@@ -1375,7 +1478,10 @@
         groups.some(g => g.shortName === "amide" && g.shorthand === "–CONH₂") &&
         groups.some(g => g.shortName === "amine");
       if (isUreaMolecule) {
-        intro.push("The carbon is a urea linkage (H₂N–CO–NH₂).");
+        // Phase 17 (KD-23): route urea through the shared single-carbon walk
+        // with its chemistry-canonical urea-linkage label (Phase 9-3 wording).
+        // The previous hard-coded COMP literal was shorter than STANDARD.
+        intro.push(..._buildSingleCarbonWalk(["a urea linkage (H₂N–CO–NH₂)"], _graphData, _adjacency));
         return { singleParagraph: intro };
       }
 
@@ -1392,7 +1498,6 @@
           // (#12). Inline rather than via _groupDisplayName so guanidine /
           // urea's collapsed amine paths stay on "amine groups" (baseline).
           // Trigger: exactly one subtype-tagged amine in the group list.
-          let groupLabels;
           const singleSubtypeAmine = groups.length === 1
             && groups[0].shortName === "amine"
             && typeof groups[0].subtype === "number";
@@ -1400,13 +1505,21 @@
             const g = groups[0];
             const subWord = AMINE_SUBTYPE_NAMES[g.subtype] || "amine";
             const display = "a " + subWord + " group" + (g.shorthand ? " (" + g.shorthand + ")" : "");
-            groupLabels = [display];
+            intro.push("A single carbon bearing " + helpers.formatList([display]) + ".");
           } else {
-            groupLabels = helpers.collapseGroupList
-              ? helpers.collapseGroupList(groups)
-              : groups.map(g => helpers.groupDisplayName(g));
+            // Phase 17 (KD-14): seniority-order the single-carbon COMP group
+            // list to stay tier-consistent with the STD/SHORT single-carbon
+            // paths. All current single-carbon fixtures (urea, guanidine, …)
+            // are out-of-cascade → the guard defers → byte-identical.
+            // Phase 17 (KD-23): the group-bearing arm routes through the
+            // dedicated single-carbon walk — previously it computed STANDARD's
+            // own expression, so COMP collapsed onto STD by construction.
+            const orderedGroups = _orderGroupsBySeniority(groups);
+            const groupLabels = helpers.collapseGroupList
+              ? helpers.collapseGroupList(orderedGroups)
+              : orderedGroups.map(g => helpers.groupDisplayName(g));
+            intro.push(..._buildSingleCarbonWalk(groupLabels, _graphData, _adjacency));
           }
-          intro.push("A single carbon bearing " + helpers.formatList(groupLabels) + ".");
           // Phase 15-2c (LOCK 3): append H-count characterisation clause
           // for subtype-tagged amine. § 7.5 COMP for methylamine:
           //   "The nitrogen bears two implicit hydrogens, characteristic of
@@ -1439,7 +1552,21 @@
       const chainWord = helpers.numberWord(chain.length);
       intro.push("The structure is a " + chainWord + "-carbon chain.");
       if (chain.length >= 2 && chainOrder.length >= 2) {
-        intro.push("The first carbon is bonded to the second carbon by a single bond.");
+        // KD-5 fix (tail of 17-2): emit the actual bond order between the first
+        // two chain carbons via BOND_NAMES instead of hard-coding "single",
+        // mirroring the later chain-bond sentences (e.g. lines 775/806). A
+        // 1-alkene (C=CCC) / 1-alkyne (C#CCC) now reads "double"/"triple";
+        // a single first bond is unchanged.
+        const firstBondN = (_adjacency.get(chainOrder[0]) || []).find(
+          (n) => n.vertex.id === chainOrder[1]
+        );
+        const firstBondName =
+          (firstBondN && BOND_NAMES[firstBondN.edge.bondType]) || "single";
+        intro.push(
+          "The first carbon is bonded to the second carbon by a " +
+            firstBondName +
+            " bond."
+        );
       }
 
       // Phase 10-6 (G10): group functional groups by their chain attachment
@@ -1509,6 +1636,26 @@
             continue;
           }
         }
+        // Phase 17 (KD-14) tier-audit exemption: `bucket` holds only the groups
+        // sharing ONE chain carbon, so it is deliberately NOT routed through
+        // _orderGroupsBySeniority (which orders across the whole chain and would
+        // fight the positional walk). This is the documented exemption cited in
+        // CLAUDE.md's tier-consistency invariant. It is safe for the CURRENT
+        // fixture set, NOT unconditionally:
+        //   - Every in-scope bucket is single-group (cysteamine's thiol and
+        //     amine land on separate carbons → two single-group buckets), so
+        //     no bucket collapse ever orders ≥2 groups.
+        //   - Intra-bucket order is classifier order (_collapseGroupList emits
+        //     first-seen order), with no seniority sort; and the across-carbon
+        //     order is chain.principalFGAnchor's C1 anchor THEN positional —
+        //     i.e. NOT full cascade seniority beyond C1.
+        // Two latent shapes this exemption does not cover (no fixture exercises
+        // either today; both are out of KD-14's cysteamine+naproxen scope —
+        // recon § 2.2 R2): a ≥2-group bucket from a geminal in-cascade pair on
+        // one chain carbon, e.g. 1-aminoethan-1-ol CC(O)N (hydroxyl+amine on
+        // C1), and the positional tail beyond C1, e.g. serine (COMP amine@C2
+        // before hydroxyl@C3 though hydroxyl is senior). If a fixture of either
+        // shape lands, this site must be revisited alongside the R2 regime.
         const items = helpers.collapseGroupList
           ? helpers.collapseGroupList(bucket)
           : bucket.map(g => helpers.groupDisplayName(g));
@@ -1615,7 +1762,8 @@
 
   // =========================================================================
   // Standard-tier prose helpers (Step 5)
-  //   _aOrAn, _numberWord, _isAlkylShortName, _alkylArticle,
+  //   _aOrAn, _aOrAnWord, _aOrAnWordCapitalised,
+  //   _numberWord, _isAlkylShortName, _alkylArticle,
   //   _groupDisplayName, _shortGroupName, _formatList,
   //   _collapseGroupList, _collapseGroupListShort,
   //   _partitionAlkylGroups, _buildAlkylScaffoldClause,
@@ -1713,6 +1861,29 @@
   }
 
   /**
+   * Phase 17-5b (KD-29): indefinite article for a WORD, by first letter.
+   *
+   * The ring-noun sites hard-coded "A "/"a ", which read "A imidazole ring"
+   * once the classifier began naming vowel-initial rings. `_aOrAn` above is
+   * number-keyed and does not fit; `_aOrAnElement` carries the same first-letter
+   * rule but is contracted to element names, so this is its ring-noun sibling.
+   *
+   * @param {string} word - the noun the article precedes
+   * @returns {string} "a" or "an"
+   * @private
+   */
+  function _aOrAnWord(word) { return /^[aeiou]/i.test(word) ? "an" : "a"; }
+
+  /**
+   * Sentence-initial form of `_aOrAnWord`, derived from it so one rule governs.
+   *
+   * @param {string} word - the noun the article precedes
+   * @returns {string} "A" or "An"
+   * @private
+   */
+  function _aOrAnWordCapitalised(word) { return _aOrAnWord(word) === "an" ? "An" : "A"; }
+
+  /**
    * Convert a number (1–8) to its English word; 9+ returns the digit string.
    * @param {number} n
    * @returns {string}
@@ -1797,6 +1968,18 @@
       thiol: "a thiol group",
       sulphoxide: "a sulphoxide group",
       ether: "an ether group",
+      // Phase 17-4a: the five names 17-4b's catalogue rows will emit, landed
+      // ahead of the rows so no row ever emits through the article fallback.
+      // "an acid chloride" / "an anhydride" / "an azide" are the three the
+      // recon measured the fallback mis-articling as "a acid chloride" etc.
+      // Shorthands travel on the catalogue ROW (group.shorthand), not here,
+      // and are appended below — 17-4b supplies –COCl, –CO–O–CO–, –NO₂, =N₂
+      // and –N₃ respectively. INERT until those rows land.
+      "acid chloride": "an acid chloride group",
+      anhydride: "an anhydride group",
+      nitro: "a nitro group",
+      diazo: "a diazo group",
+      azide: "an azide group",
     };
     let baseName;
     if (group.shortName === "halogen") {
@@ -1809,7 +1992,16 @@
       // first letter (or prefix) rather than hardcoded mappings.
       baseName = _alkylArticle(group.shortName) + " " + group.shortName + " group";
     } else {
-      baseName = "a " + group.shortName + " group";
+      // Phase 17-4a: pick the article from the name's first letter rather than
+      // hardcoding "a", which mis-emitted "a ester"-shaped prose for any name
+      // with no map entry. Reuses _alkylArticle rather than adding a second
+      // mechanism — its rule is purely orthographic (vowel-initial, or a
+      // one-character prefix whose letter is pronounced as a vowel), with
+      // nothing alkyl-specific in it. Fixes the CLASS of defect, not the five
+      // instances. NO-OP OVER THE MEASURED CORPUS ONLY: every one of the 13
+      // out-of-cascade shortNames has a map entry, so nothing reaches here
+      // today — but a molecule outside the fixture set still could.
+      baseName = _alkylArticle(group.shortName) + " " + group.shortName + " group";
     }
     // Phase 8C-4: append shorthand formula when available
     if (group.shorthand) {
@@ -1860,6 +2052,19 @@
       thiol: "a thiol",
       sulphoxide: "a sulphoxide",
       ether: "an ether",
+      // Phase 17-4a: SHORT twins of the _groupDisplayName entries above, per
+      // the tier-consistency invariant (AGENTS.md § Description-engine tier
+      // consistency) — separate maps, both need the entry. Shorthand dropped
+      // per the SHORT convention. "nitro" and "diazo" keep the "group" suffix
+      // because they are ADJECTIVAL: the collapse pluralises by appending "s",
+      // so a bare label would emit the recon-measured "two nitros" / "two
+      // diazos" rather than "two nitro groups". Same reason hydroxyl and
+      // methoxy carry it. INERT until 17-4b's rows land.
+      "acid chloride": "an acid chloride",
+      anhydride: "an anhydride",
+      nitro: "a nitro group",
+      diazo: "a diazo group",
+      azide: "an azide",
     };
     if (group.shortName === "halogen") {
       return "a halogen" + (group.shorthand ? " (" + group.shorthand + ")" : "");
@@ -1871,7 +2076,9 @@
     if (_isAlkylShortName(group.shortName)) {
       return _alkylArticle(group.shortName) + " " + group.shortName + " group";
     }
-    return "a " + group.shortName;
+    // Phase 17-4a: SHORT twin of the _groupDisplayName article fallback — same
+    // reuse of _alkylArticle, same bound. No-op over the measured corpus only.
+    return _alkylArticle(group.shortName) + " " + group.shortName;
   }
 
   /**
@@ -1970,6 +2177,189 @@
       }
     }
     return out;
+  }
+
+  // =========================================================================
+  // Phase 17 (KD-14): shared functional-group seniority comparator.
+  //
+  // Normalises cross-tier group order to IUPAC principal-characteristic-group
+  // seniority (PCG_CASCADE, P-43.1, principal group first), so STD / SHORT /
+  // COMP agree on the order in which groups are listed. One ranking, reached by
+  // every ≥2-group emission site (chain + ring, all three tiers); COMP's chain
+  // walk is the sole documented exemption (already seniority-anchored via
+  // chain.principalFGAnchor). See CLAUDE.md "Description-engine tier-consistency
+  // invariant" and phase17-kd14-investigation-findings.md.
+  //
+  // Deferral guard: the cascade is deliberately narrowed to tier-1 coverage and
+  // omits ester/amide/lactam/urea/imine (classify.js:2412-2419). When a list
+  // contains a principal characteristic group OUTSIDE the cascade, ordering it
+  // would be a guess, so the comparator returns the list UNCHANGED — leaving
+  // aspirin (acid+ester), cytosine (urea+amine) and the xanthines
+  // (lactam+urea+N-methyl) exactly as they are today. That gap is a separate
+  // (deferred) KD, not this unit.
+  // =========================================================================
+
+  /**
+   * Is this shortName a PREFIX-ONLY group rather than a suffix-eligible
+   * principal characteristic group? Prefix substituents never trigger the
+   * deferral guard and always sort AFTER every principal group. The set is
+   * closed against the live classifier vocabulary (classify.js shortNames):
+   * alkyls via _isAlkylShortName, plus "halogen" and "methoxy" (the only
+   * alkoxy shortName the catalogue emits), plus "nitro", "diazo" and "azide".
+   *
+   * Phase 17-4a widened both the set and this description. The set holds
+   * prefix-only groups — those IUPAC never lets lead a name and which are
+   * never suffix-eligible — of which alkyls, alkoxy and halo are the carbon
+   * and halogen cases. Nitro, diazo and azide are the same kind of thing and
+   * belong here on that reading; the earlier "detachable carbon/halogen
+   * substituent" wording described the members that happened to be present,
+   * not the predicate. Landed INERT: no catalogue row emits the three new
+   * names yet (17-4b adds the rows).
+   * @param {string} shortName
+   * @returns {boolean}
+   * @private
+   */
+  function _isPrefixSubstituent(shortName) {
+    if (!shortName) return false;
+    return _isAlkylShortName(shortName)
+      || shortName === "halogen"
+      || shortName === "methoxy"
+      || shortName === "nitro"
+      || shortName === "diazo"
+      || shortName === "azide";
+  }
+
+  /**
+   * Should group ordering be deferred (left untouched) for this list? True iff
+   * any member is a principal characteristic group NOT in PCG_CASCADE — i.e.
+   * not a prefix substituent and not a rankable in-cascade principal. Deferring
+   * on the whole list (rather than sorting the known part) preserves the
+   * caller's existing order byte-for-byte, which is what keeps the out-of-
+   * cascade fixtures unchanged.
+   * @param {Object[]} groups
+   * @returns {boolean}
+   * @private
+   */
+  function _shouldDeferGroupOrder(groups) {
+    for (const g of groups || []) {
+      const sn = g && g.shortName;
+      if (_isPrefixSubstituent(sn)) continue;
+      if (PCG_CASCADE.indexOf(sn) >= 0) continue;
+      return true; // out-of-cascade principal group → defer
+    }
+    return false;
+  }
+
+  /**
+   * Seniority rank for a single group: its PCG_CASCADE index (0 = most senior)
+   * for an in-cascade principal, or a sentinel AFTER all principals for a
+   * prefix substituent. Only meaningful when _shouldDeferGroupOrder is false
+   * (i.e. no out-of-cascade principals remain), so an unranked non-prefix
+   * shortName cannot reach here in practice; it is sorted last defensively.
+   * @param {Object} group
+   * @returns {number}
+   * @private
+   */
+  function _seniorityRank(group) {
+    const sn = group && group.shortName;
+    const idx = PCG_CASCADE.indexOf(sn);
+    if (idx >= 0) return idx;
+    return PCG_CASCADE.length + 1; // prefixes + defensive tail after principals
+  }
+
+  /**
+   * Phase 17 (KD-14): order a functional-group list by cascade seniority.
+   * Principal groups first (PCG_CASCADE order), then prefix substituents;
+   * STABLE for equal rank so nothing else shifts. Returns the list UNCHANGED
+   * when the deferral guard fires or fewer than two groups are present. This is
+   * the group-list entry point; ring branch-walks use the sibling
+   * _orderBranchPointsBySeniority, which shares the same guard and rank.
+   * @param {Object[]} groups
+   * @returns {Object[]} a new array (or the input when unchanged/deferred)
+   * @private
+   */
+  function _orderGroupsBySeniority(groups) {
+    if (!Array.isArray(groups) || groups.length < 2) return groups;
+    if (_shouldDeferGroupOrder(groups)) {
+      logDebug("_orderGroupsBySeniority: deferring (out-of-cascade principal present)",
+        { order: groups.map(g => g && g.shortName) });
+      return groups;
+    }
+    const before = groups.map(g => g && g.shortName);
+    const ordered = groups
+      .map((g, i) => ({ g, i }))
+      .sort((a, b) => (_seniorityRank(a.g) - _seniorityRank(b.g)) || (a.i - b.i))
+      .map(x => x.g);
+    logDebug("_orderGroupsBySeniority", { before, after: ordered.map(g => g && g.shortName) });
+    return ordered;
+  }
+
+  /**
+   * Phase 17 (KD-14): resolve the functional group a ring branch leads to,
+   * mirroring _walkAndDescribeBranches's own `associatedGroup` computation
+   * (steps-first, then the last step's sub-neighbours) so the ordering key
+   * matches the group the walk will actually name. A fresh visited set seeded
+   * with ringMembers is used per branch — accurate for the independent-branch
+   * substrates this reorder ever runs on (the deferral guard blocks the
+   * shared-atom xanthine class). Ring-internal urea/lactam carbonyls map via
+   * the attachment atom, matching the walk's interception; those are
+   * out-of-cascade and never reach the sort anyway.
+   * @private
+   */
+  function _branchAssociatedGroup(bp, atomToGroup, ringMembers, graphData, adjacency) {
+    const atAttach = atomToGroup.get(bp.attachmentVertexId);
+    if (atAttach && (atAttach.shortName === "urea" || atAttach.shortName === "lactam")) {
+      return atAttach;
+    }
+    const visited = new Set(ringMembers);
+    const steps = _walkBranch(bp.branchRootId, bp.attachmentVertexId, graphData, adjacency, visited);
+    for (const s of steps) {
+      if (atomToGroup.has(s.vertexId)) return atomToGroup.get(s.vertexId);
+    }
+    const lastStep = steps[steps.length - 1];
+    if (lastStep) {
+      const subNeighbours = (adjacency.get(lastStep.vertexId) || []).filter(n => !visited.has(n.vertex.id));
+      for (const n of subNeighbours) {
+        if (atomToGroup.has(n.vertex.id)) return atomToGroup.get(n.vertex.id);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Phase 17 (KD-14): the COMP ring branch-walk sibling of
+   * _orderGroupsBySeniority. COMP describes ring substituents by walking
+   * branch points (geometry order), not a flat group list, so this adapter
+   * reorders the branch-point array by the seniority of each branch's
+   * associated group — reusing the SAME guard and rank (no forked ranking).
+   * Each branch's locant is derived from its own attachment atom, independent
+   * of walk position (see _walkAndDescribeBranches), so reordering changes only
+   * the order sentences are emitted. Deferral is decided on the FULL group
+   * list, so the out-of-cascade fixtures (caffeine, uracil, …) keep their
+   * geometry order untouched and only naproxen-shaped in-cascade lists reorder.
+   * @param {Object[]} branchPoints  entries with { branchRootId, attachmentVertexId }
+   * @param {Object[]} groups        the full functionalGroups list for the molecule
+   * @param {Set|Iterable} ringMembers  ring member vertex ids (walk boundary)
+   * @param {Object} graphData
+   * @param {Map} adjacency
+   * @returns {Object[]} a new array (or the input when unchanged/deferred)
+   * @private
+   */
+  function _orderBranchPointsBySeniority(branchPoints, groups, ringMembers, graphData, adjacency) {
+    if (!Array.isArray(branchPoints) || branchPoints.length < 2) return branchPoints;
+    if (_shouldDeferGroupOrder(groups)) return branchPoints;
+    const atomToGroup = new Map();
+    for (const g of groups || []) for (const a of (g.atoms || [])) atomToGroup.set(a, g);
+    const rankOfBp = (bp) => _seniorityRank(
+      _branchAssociatedGroup(bp, atomToGroup, ringMembers, graphData, adjacency)
+    );
+    const before = branchPoints.map(bp => bp.branchRootId);
+    const ordered = branchPoints
+      .map((bp, i) => ({ bp, i }))
+      .sort((a, b) => (rankOfBp(a.bp) - rankOfBp(b.bp)) || (a.i - b.i))
+      .map(x => x.bp);
+    logDebug("_orderBranchPointsBySeniority", { before, after: ordered.map(bp => bp.branchRootId) });
+    return ordered;
   }
 
   /**
@@ -2231,9 +2621,24 @@
         ? _identifyPyridinonePattern(ring, _graphData, _adjacency)
         : null;
       const namedRingPattern = pyrimidinePattern || pyridinonePattern;
-      const ringPhrase = namedRingPattern
-        ? ring.type + " ring (" + namedRingPattern + ")"
+      // Phase 17 (KD-13): a taught-non-aromatic dione ring is named by size, not
+      // by its aromatic-parent ring type — but only when the systematic
+      // parenthetical resolves to carry the ring's identity, so the noun is never
+      // left bare. Cytosine / 2-pyridone (one carbonyl, taught-aromatic) and
+      // barbituric acid (no pattern) keep ring.type.
+      const ringNoun = (namedRingPattern && !_isTaughtAromatic(ring, _graphData, _adjacency))
+        ? (SIZE_WORDS[ring.size] || String(ring.size)) + "-membered ring"
         : ring.type + " ring";
+      const ringPhrase = namedRingPattern
+        ? ringNoun + " (" + namedRingPattern + ")"
+        : ringNoun;
+
+      // Phase 17-5b (KD-29): the article before ringPhrase was hard-coded at all
+      // four pushes below ("A " once, "built on a " three times), so a
+      // vowel-initial ring noun read "A imidazole ring" / "built on a oxazole
+      // ring". Both forms now come from the phrase's own first letter.
+      const ringArticle = _aOrAnWord(ringPhrase);
+      const ringArticleCapitalised = _aOrAnWordCapitalised(ringPhrase);
 
       // Phase 9-4 (CT-4h): derive ring substituents from the shared
       // _enumerateRingBranchPoints primitive so position detection matches
@@ -2263,10 +2668,14 @@
         .filter(s => s != null);
 
       if (ringSubstituents.length === 0) {
-        parts.push(_aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. A " + ringPhrase + ".");
+        parts.push(
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. " +
+          ringArticleCapitalised + " " + ringPhrase + "."
+        );
       } else if (ringSubstituents.length === 1) {
         parts.push(
-          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on a " + ringPhrase +
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on " +
+          ringArticle + " " + ringPhrase +
           ". One substituent: " + _groupDisplayName(ringSubstituents[0]) + "."
         );
       } else if (ringSubstituents.length === 2 && ring.size === 6) {
@@ -2276,9 +2685,10 @@
         // Phase 10-6 (N6): collapse duplicates (e.g. disubstituted benzene
         // with two hydroxyls → "two hydroxyl groups (–OH)"); two-unique
         // cases fall through to the same display strings as before.
-        const groupNames = _collapseGroupList(ringSubstituents);
+        const groupNames = _collapseGroupList(_orderGroupsBySeniority(ringSubstituents));
         parts.push(
-          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on a " + ringPhrase +
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on " +
+          ringArticle + " " + ringPhrase +
           ". Two substituents" + posPhrase +
           ": " + _formatList(groupNames) + "."
         );
@@ -2286,10 +2696,11 @@
         // Phase 10-6 (N6): collapse duplicates so barbituric acid's three
         // ring-internal carbonyls read "two lactams (cyclic amide), and a
         // urea linkage." instead of "a lactam, a lactam, and a urea linkage."
-        const groupNames = _collapseGroupList(ringSubstituents);
+        const groupNames = _collapseGroupList(_orderGroupsBySeniority(ringSubstituents));
         const countWord = _numberWord(ringSubstituents.length);
         parts.push(
-          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on a " + ringPhrase +
+          _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule built on " +
+          ringArticle + " " + ringPhrase +
           ". " + countWord.charAt(0).toUpperCase() + countWord.slice(1) +
           " substituents: " + _formatList(groupNames) + "."
         );
@@ -2339,7 +2750,14 @@
       // motifs like lactams. Without this, caffeine would read "Functional
       // groups: a lactam, a urea linkage, and three N-methyl groups", which
       // mis-classifies methyls as functional groups.
-      const { alkylGroups, otherGroups } = _partitionAlkylGroups(sortedGroups);
+      // Phase 17 (KD-14): replace the ring-branch geometry order with cascade
+      // seniority for in-cascade lists (naproxen: acid > methoxy) so STD agrees
+      // with SHORT/COMP. Defers on out-of-cascade fixtures (caffeine,
+      // theobromine, theophylline, paraxanthine) → geometry order preserved
+      // byte-for-byte. Subsumes the recon's unwired-SHORT-arm "fourth fork" but
+      // corrects to seniority rather than matching a wrong geometry order.
+      const seniorityOrderedGroups = _orderGroupsBySeniority(sortedGroups);
+      const { alkylGroups, otherGroups } = _partitionAlkylGroups(seniorityOrderedGroups);
       const alkylClause = _buildAlkylScaffoldClause(alkylGroups);
 
       // Phase 10-4 (G3 + G4): if this is a recognised named fused system
@@ -2390,20 +2808,38 @@
           const isUreaMolecule = heavyAtomCount === 4 && groups.length === 2 &&
             groups.some(g => g.shortName === "amide" && g.shorthand === "–CONH₂") &&
             groups.some(g => g.shortName === "amine");
+          // Phase 17 (KD-23): this was the only arm in _assembleDescription
+          // emitting no atom count — and the five fixtures lacking it were
+          // exactly the five KD-23 collision fixtures. Prefix the same
+          // "N-atom molecule." opener the branched/unbranched arms below
+          // emit (user decision: uniform audible opening across all 30
+          // STANDARDs). Urea's STD == SHORT collision closes as a
+          // consequence, its SHORT untouched.
+          const atomCountOpener = _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. ";
           if (isUreaMolecule) {
-            parts.push("A single carbon bearing a urea linkage (H₂N–CO–NH₂).");
+            parts.push(atomCountOpener + "A single carbon bearing a urea linkage (H₂N–CO–NH₂).");
           } else if (groups.length === 0) {
-            parts.push("A single carbon atom.");
+            parts.push(atomCountOpener + "A single carbon atom.");
           } else {
-            parts.push("A single carbon bearing " + _formatList(_collapseGroupList(groups)) + ".");
+            parts.push(atomCountOpener + "A single carbon bearing " + _formatList(_collapseGroupList(_orderGroupsBySeniority(groups))) + ".");
           }
         } else if (chain.branched) {
+          // Phase 17 (KD-12): relocate the molecular heavy-atom count off the
+          // chain noun and onto "molecule", matching the ring and joined-rings
+          // arms above ("A N-atom molecule. <scaffold>."). Grafted onto the
+          // chain it read as though the chain itself carried N atoms,
+          // contradicting the carbon count in the same phrase. The chain noun
+          // phrase matches SHORT's existing wording.
           parts.push(
-            _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom, branched carbon chain with " + _numberWord(chain.length) +
-            " carbons in the longest path"
+            _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. A branched carbon chain with " +
+            _numberWord(chain.length) + " carbons in the longest path"
           );
         } else {
-          parts.push(_aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom, " + _numberWord(chain.length) + "-carbon chain");
+          // Phase 17 (KD-12): same relocation as the branched arm above.
+          parts.push(
+            _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom molecule. A " +
+            _numberWord(chain.length) + "-carbon chain"
+          );
         }
 
         // --- 4. Chain decorations ---
@@ -2417,7 +2853,11 @@
             // same-type" single-phrase path; the helper produces the same
             // collapsed strings and _formatList handles the single-item
             // case cleanly.
-            const displayItems = _collapseGroupList(groups);
+            // Phase 17 (KD-14): normalise group order to cascade seniority so
+            // STD agrees with COMP (which is already anchored) on inverting
+            // pairs like cysteamine (thiol > amine). Defers on out-of-cascade
+            // lists — see _orderGroupsBySeniority.
+            const displayItems = _collapseGroupList(_orderGroupsBySeniority(groups));
             // Phase 15-2b: emit "at C{N}" suffix when single hydroxyl group
             // + no stereo descriptors active (guard inside _chainLocantSuffix).
             const locantSuffix = groups.length === 1
@@ -2575,13 +3015,27 @@
       const pyrimidinePatternShort = _identifyPyrimidinePattern(ring, _graphData, _adjacency)
         || _identifyPyridinonePattern(ring, _graphData, _adjacency);
 
-      let scaffold;
-      if (!name && heavyAtomCount > 0) {
-        // No name — include atom count for context; capitalise if sentence start
-        scaffold = _aOrAn(heavyAtomCount) + " " + heavyAtomCount + "-atom " + ring.type + " ring";
+      // Phase 17 (KD-12): the unnamed path used to graft the molecular heavy-atom
+      // count onto the ring noun ("A 13-atom benzene ring"), which reads as though
+      // the ring itself held 13 atoms. Both paths now emit the scaffold noun the
+      // named path already produced; STD keeps the count on "molecule", where it
+      // is unambiguous.
+      // Phase 17 (KD-13): a taught-non-aromatic dione ring drops the aromatic-
+      // parent noun for its size, keeping the systematic parenthetical (appended
+      // below) so its identity is never lost. Conditional on the parenthetical
+      // resolving — a bare size noun is never emitted.
+      let ringNoun;
+      if (pyrimidinePatternShort && !_isTaughtAromatic(ring, _graphData, _adjacency)) {
+        ringNoun = "A " + (SIZE_WORDS[ring.size] || String(ring.size)) + "-membered ring";
       } else {
-        scaffold = (ring.type === "benzene" ? "A benzene" : "A " + ring.type) + " ring";
+        // Phase 17-5b (KD-29): article from the ring noun's first letter, so a
+        // vowel-initial type reads "An imidazole ring". The redundant benzene
+        // branch is an inert observation recorded on KD-29 and left as-is.
+        ringNoun = ring.type === "benzene"
+          ? "A benzene ring"
+          : _aOrAnWordCapitalised(ring.type) + " " + ring.type + " ring";
       }
+      let scaffold = ringNoun;
       if (pyrimidinePatternShort) scaffold += " (" + pyrimidinePatternShort + ")";
 
       if (ringSubstituents.length === 0) {
@@ -2591,7 +3045,11 @@
         // the short-tier sibling of _collapseGroupList so barbituric acid's
         // two lactams surface as "two lactams" rather than "a lactam, and
         // a lactam" — matching STD's already-collapsed behaviour.
-        const groupNames = _collapseGroupListShort(ringSubstituents);
+        // Phase 17 (KD-14): seniority-order the single-ring substituent list so
+        // SHORT stays tier-consistent with STD/COMP. All current single-ring
+        // fixtures are out-of-cascade (aspirin, cytosine, uracil, thymine,
+        // barbituric acid) → the guard defers → geometry order preserved.
+        const groupNames = _collapseGroupListShort(_orderGroupsBySeniority(ringSubstituents));
         let groupList;
         if (groupNames.length === 2) {
           groupList = groupNames[0] + " and " + groupNames[1];
@@ -2616,7 +3074,10 @@
       // rule preserves the xanthine SHORT byte-identity guarantee (caffeine /
       // theobromine / theophylline are alkyls-only fixtures); see (3b-2) = (c)
       // in prompt-phase12-3b.md.
-      const { alkylGroups, otherGroups } = _partitionAlkylGroups(groups);
+      // Phase 17 (KD-14): normalise to cascade seniority so SHORT fused-rings
+      // agrees with STD/COMP on in-cascade lists (naproxen already acid >
+      // methoxy here, so it stays put); defers on the xanthine class.
+      const { alkylGroups, otherGroups } = _partitionAlkylGroups(_orderGroupsBySeniority(groups));
       const alkylClause = _buildAlkylScaffoldClause(alkylGroups);
 
       let nonAlkylClause = "";
@@ -2683,7 +3144,8 @@
         } else if (groups.length === 0) {
           parts.push("A single carbon atom.");
         } else {
-          const groupNames = _collapseGroupListShort(groups);
+          // Phase 17 (KD-14): seniority-ordered to stay tier-consistent with STD/COMP.
+          const groupNames = _collapseGroupListShort(_orderGroupsBySeniority(groups));
           const groupList = groupNames.length === 2
             ? groupNames[0] + " and " + groupNames[1]
             : _formatList(groupNames);
@@ -2712,7 +3174,9 @@
           // guanidine's three amines surface as "three amines" rather than
           // "an amine, an amine, and an amine" — matching STD's already-
           // collapsed behaviour.
-          const groupNames = _collapseGroupListShort(groups);
+          // Phase 17 (KD-14): normalise to cascade seniority so SHORT agrees
+          // with STD/COMP on inverting pairs (cysteamine thiol > amine).
+          const groupNames = _collapseGroupListShort(_orderGroupsBySeniority(groups));
           let groupList;
           if (groupNames.length === 2) {
             groupList = groupNames[0] + " and " + groupNames[1];
@@ -2806,6 +3270,26 @@
     const analysis = analyseStructure(smiles);
     if (!analysis) return "";
     return _assembleDescription(analysis, pubchemData, { detail: "short" });
+  }
+
+  // Build a short "Name (formula)" caption from PubChem data only. Because it
+  // draws on PubChem alone — and not the parsed structure — a compound with no
+  // common name and a locant-heavy IUPAC name will show the raw IUPAC name here,
+  // whereas the prose opener can prefer a structural label because it also has
+  // the parsed structure to hand. Fallback rule intended: name and formula,
+  // else name alone, else formula alone, else null.
+  function generateChemistryCaption(pubchemData) {
+    const commonName = pubchemData?.commonNames?.[0];
+    const iupacName = pubchemData?.iupacName;
+    const name = commonName || iupacName || null;
+    const formula = pubchemData?.inchi ? utils.parseInChIFormula(pubchemData.inchi) : null;
+    const formulaUnicode = formula ? _formatFormulaUnicode(formula.raw) : null;
+    const capitalisedName = name ? _capitaliseOpener(name) : null;
+    if (capitalisedName && formulaUnicode) return capitalisedName + " (" + formulaUnicode + ")";
+    if (capitalisedName) return capitalisedName;
+    if (formulaUnicode) return formulaUnicode;
+    logDebug("generateChemistryCaption: no name and no formula — returning null");
+    return null;
   }
 
   /**
@@ -2996,6 +3480,7 @@
         generateStructuralDescription: generateStructuralDescription,
         generateStructuralDescriptionForAria: generateStructuralDescriptionForAria,
         generateShortDescription: generateShortDescription,
+        generateChemistryCaption: generateChemistryCaption,
         generateShortDescriptionForAria: generateShortDescriptionForAria,
         generateComprehensiveDescription: generateComprehensiveDescription,
         generateComprehensiveDescriptionForAria: generateComprehensiveDescriptionForAria,

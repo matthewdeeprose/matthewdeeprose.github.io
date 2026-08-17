@@ -171,12 +171,12 @@ export class SystemPromptParameter extends ParameterBase {
         <select id="preset-select" class="preset-select" aria-describedby="${this.id}-description">
           <option value="">-- Select a preset --</option>
         </select>
-        <button 
-          type="button" 
-          class="preset-button clear-prompt" 
-          aria-label="Clear system prompt"
+        <button
+          type="button"
+          class="preset-button clear-prompt"
           id="clear-system-prompt">
           Clear Prompt
+          <span class="visually-hidden">— clears the system prompt</span>
         </button>
       </div>`;
 

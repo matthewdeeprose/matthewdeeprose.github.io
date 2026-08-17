@@ -58,6 +58,16 @@
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
 
+  // Escaping helper. Applied to DIAGRAM-SOURCE text (titles, participant and
+  // actor names, aliases, message and note content, block conditions and
+  // labels, flow names) at the point it enters an HTML string — never to the
+  // module's own markup, and never twice on the same string.
+  //
+  // The PLAIN short tier is deliberately excluded: it is consumed as text, not
+  // as HTML, so escaping it would show entities to the reader. See the plain
+  // string built from line 167 onward, and formatList, which that tier shares.
+  const Common = window.MermaidAccessibilityCommon;
+
   /**
    * Generate a short description for a sequence diagram
    * @param {HTMLElement} svgElement - The SVG element of the diagram
@@ -130,7 +140,7 @@
 
     // Only add title if it comes from an explicit title declaration in the diagram
     if (sequence.title) {
-      htmlDescriptionRaw += `a <span class="diagram-title">${sequence.title}</span> process`;
+      htmlDescriptionRaw += `a <span class="diagram-title">${Common.escapeHtml(sequence.title)}</span> process`;
     } else {
       // Use a more generic description without potentially misleading title
       htmlDescriptionRaw += `a message exchange process`;
@@ -209,15 +219,14 @@
       }
     }
 
-    // Now apply number formatting to both text versions
-    let htmlDescription = Utils.formatNumbersInText(htmlDescriptionRaw);
-    let plainTextDescription = Utils.formatNumbersInText(
-      plainTextDescriptionRaw
-    );
-
+    // Both tiers are returned verbatim. The counts above are interpolated as
+    // digits deliberately - an overview total is always digits - and the module
+    // owns its own number style. Rewriting them here also made the two tiers
+    // disagree, because the transform was a no-op on the HTML tier whenever a
+    // title span was present (item 27).
     return {
-      html: htmlDescription,
-      text: plainTextDescription,
+      html: htmlDescriptionRaw,
+      text: plainTextDescriptionRaw,
     };
   }
   /**
@@ -1292,11 +1301,11 @@
 
     // Use title if available, otherwise try to infer one
     if (sequence.title) {
-      description += ` titled "<span class="diagram-title">${sequence.title}</span>"`;
+      description += ` titled "<span class="diagram-title">${Common.escapeHtml(sequence.title)}</span>"`;
     } else {
       const inferredTitle = inferTitleFromContent(sequence);
       if (inferredTitle) {
-        description += ` showing <span class="diagram-title">${inferredTitle}</span>`;
+        description += ` showing <span class="diagram-title">${Common.escapeHtml(inferredTitle)}</span>`;
       }
     }
 
@@ -1350,8 +1359,10 @@
         // Include participants in note description
         let participantsText = "";
         if (note.participants && note.participants.length > 0) {
-          const participantNames = note.participants.map(
-            (id) => sequence.aliasMap[id] || id
+          // Escaped per item, so both the formatParticipantsList join below and
+          // the single-name branches escape exactly once.
+          const participantNames = note.participants.map((id) =>
+            Common.escapeHtml(sequence.aliasMap[id] || id)
           );
 
           if (note.position === "over" && participantNames.length > 1) {
@@ -1370,7 +1381,7 @@
           }
         }
 
-        description += `<li class="note-item">${note.content}${participantsText}</li>`;
+        description += `<li class="note-item">${Common.escapeHtml(note.content)}${participantsText}</li>`;
       });
 
       description += `</ul></p>`;
@@ -1391,10 +1402,10 @@
         );
         let group = actorId ? sequence.participantGroups[actorId] : null;
 
-        description += `<li class="actor-item"><span class="actor-name">${actor}</span>`;
+        description += `<li class="actor-item"><span class="actor-name">${Common.escapeHtml(actor)}</span>`;
 
         if (group) {
-          description += ` <span class="actor-group">(in group ${group})</span>`;
+          description += ` <span class="actor-group">(in group ${Common.escapeHtml(group)})</span>`;
         }
 
         description += `</li>`;
@@ -1418,10 +1429,10 @@
           ? sequence.participantGroups[participantId]
           : null;
 
-        description += `<li class="participant-item"><span class="participant-name">${participant}</span>`;
+        description += `<li class="participant-item"><span class="participant-name">${Common.escapeHtml(participant)}</span>`;
 
         if (group) {
-          description += ` <span class="participant-group">(in group ${group})</span>`;
+          description += ` <span class="participant-group">(in group ${Common.escapeHtml(group)})</span>`;
         }
 
         description += `</li>`;
@@ -1436,12 +1447,13 @@
       <ul class="group-list">`;
 
       sequence.groups.forEach((group) => {
-        const memberDisplayNames = group.members.map(
-          (memberId) => sequence.aliasMap[memberId] || memberId
+        // Escaped per item, before the join below.
+        const memberDisplayNames = group.members.map((memberId) =>
+          Common.escapeHtml(sequence.aliasMap[memberId] || memberId)
         );
 
         description += `<li class="group-item">
-        <span class="group-name">${group.name}</span>
+        <span class="group-name">${Common.escapeHtml(group.name)}</span>
         <span class="group-members">contains ${memberDisplayNames.length} ${
           memberDisplayNames.length === 1 ? "participant" : "participants"
         }: ${memberDisplayNames.join(", ")}</span>
@@ -1457,7 +1469,7 @@
     if (logicalFlows.length > 0) {
       logicalFlows.forEach((flow, flowIndex) => {
         description += `<div class="logical-flow">
-  <h5 class="flow-heading" id="flow-${flowIndex + 1}">${flow.name}</h5>
+  <h5 class="flow-heading" id="flow-${flowIndex + 1}">${Common.escapeHtml(flow.name)}</h5>
   <p class="flow-description">${flow.description}</p>
   <ol class="message-list">`;
 
@@ -1698,20 +1710,20 @@
               description += `</span>
           <span class="message-sender ${
             sequence.actors.includes(correctedSender) ? "actor" : "participant"
-          }">${correctedSender}</span>
+          }">${Common.escapeHtml(correctedSender)}</span>
           <span class="message-type">${formatMessageType(message.type)}</span>
           <span class="message-receiver ${
             sequence.actors.includes(correctedReceiver)
               ? "actor"
               : "participant"
-          }">${correctedReceiver}</span>`;
+          }">${Common.escapeHtml(correctedReceiver)}</span>`;
 
               if (message.content) {
                 // Display content without duplicating the message number since we now show it in the step number
                 const contentWithoutNumber = message.messageNumber
                   ? message.content.replace(/^\d+\.\s*/, "") // Remove leading numbers like "1. "
                   : message.content;
-                description += `: <span class="message-content">${contentWithoutNumber}</span>`;
+                description += `: <span class="message-content">${Common.escapeHtml(contentWithoutNumber)}</span>`;
               }
 
               // Add comments associated with this message
@@ -1722,7 +1734,7 @@
                 <span class="comment-prefix">- </span>
                 <span class="comment-icon" aria-hidden="true">💬</span>
                 <span class="comment-label">Developer comment: </span>
-                <span class="comment-content">${comment.content}</span>
+                <span class="comment-content">${Common.escapeHtml(comment.content)}</span>
             </div>`;
                 });
               }
@@ -1741,7 +1753,7 @@
 
             description += `<li class="process-step lifecycle-step creation-step">
           <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">New ${entityType} <span class="${entityType}-name">${displayName}</span> is created</span>
+          <span class="lifecycle-event">New ${entityType} <span class="${entityType}-name">${Common.escapeHtml(displayName)}</span> is created</span>
           </li>`;
 
             index++;
@@ -1756,7 +1768,7 @@
 
             description += `<li class="process-step lifecycle-step destruction-step">
           <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${displayName}</span> is removed from the interaction</span>
+          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${Common.escapeHtml(displayName)}</span> is removed from the interaction</span>
           </li>`;
 
             index++;
@@ -1766,9 +1778,11 @@
             const note = event.data;
 
             // Format participant names with proper display
+            // Escaped per item, so both formatParticipantsList joins below and
+            // the single-name branches escape exactly once.
             const participantDisplayNames = note.participants.map((id) => {
               const displayName = getCorrectEntityName(id, false, sequence);
-              return displayName;
+              return Common.escapeHtml(displayName);
             });
 
             // Create a description based on the note position
@@ -1790,7 +1804,7 @@
             description += `<li class="process-step note-step">
             <span class="step-number">Step ${stepNumber}:</span>
             <span class="note-indicator">${noteDescription}:</span>
-            <span class="note-content">"${note.content}"</span>
+            <span class="note-content">"${Common.escapeHtml(note.content)}"</span>
           </li>`;
 
             index++;
@@ -1811,7 +1825,7 @@
 
             description += `<li class="process-step lifecycle-step ${activationEvent.type}-step">
           <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${participant}</span> is ${actionType}</span>
+          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${Common.escapeHtml(participant)}</span> is ${actionType}</span>
           </li>`;
 
             index++;
@@ -1837,7 +1851,7 @@
         <div class="message-comment standalone-comment">
             <span class="comment-icon" aria-hidden="true">💬</span>
             <span class="comment-label">Developer comment: </span>
-            <span class="comment-content">${event.data.content}</span>
+            <span class="comment-content">${Common.escapeHtml(event.data.content)}</span>
         </div>`;
           });
 
@@ -1873,12 +1887,12 @@
 <ol>`;
 
       logicalFlows.forEach((flow) => {
-        description += `<li><strong>${flow.name}</strong> - ${flow.description}</li>`;
+        description += `<li><strong>${Common.escapeHtml(flow.name)}</strong> - ${flow.description}</li>`;
       });
 
       description += `</ol>`;
     } else if (logicalFlows.length === 1) {
-      description += `<p>This sequence diagram depicts a single process: <strong>${logicalFlows[0].name}</strong>.</p>
+      description += `<p>This sequence diagram depicts a single process: <strong>${Common.escapeHtml(logicalFlows[0].name)}</strong>.</p>
 <p>${logicalFlows[0].description}</p>`;
     }
     // Add a summary of key paths through the system
@@ -1901,25 +1915,25 @@
       if (sequence.blocks && sequence.blocks.length > 0) {
         sequence.blocks.forEach((block) => {
           if (block.type === "alt") {
-            description += `<li class="condition-point"><strong>${
+            description += `<li class="condition-point"><strong>${Common.escapeHtml(
               block.condition || "Condition check"
-            }</strong> - Leading to different paths based on the outcome</li>`;
+            )}</strong> - Leading to different paths based on the outcome</li>`;
           } else if (block.type === "opt") {
-            description += `<li class="condition-point"><strong>${
+            description += `<li class="condition-point"><strong>${Common.escapeHtml(
               block.condition || "Optional step"
-            }</strong> - Only executed under specific conditions</li>`;
+            )}</strong> - Only executed under specific conditions</li>`;
           } else if (block.type === "critical") {
-            description += `<li class="condition-point"><strong>${
+            description += `<li class="condition-point"><strong>${Common.escapeHtml(
               block.label || "Critical action"
-            }</strong> - A critical action that must be performed with handling for possible circumstances</li>`;
+            )}</strong> - A critical action that must be performed with handling for possible circumstances</li>`;
 
             // List the options if present
             if (block.options && block.options.length > 0) {
               description += `<ul>`;
               block.options.forEach((option) => {
-                description += `<li><strong>${
+                description += `<li><strong>${Common.escapeHtml(
                   option.condition || "Alternative circumstance"
-                }</strong> - An alternative flow for the critical action</li>`;
+                )}</strong> - An alternative flow for the critical action</li>`;
               });
               description += `</ul>`;
             }
@@ -1942,9 +1956,9 @@
       if (sequence.blocks && sequence.blocks.length > 0) {
         sequence.blocks.forEach((block) => {
           if (block.type === "break") {
-            description += `<li class="condition-point"><strong>${
+            description += `<li class="condition-point"><strong>${Common.escapeHtml(
               block.condition || "Break condition"
-            }</strong> - When this condition occurs, execution stops at this point and subsequent messages are not processed</li>`;
+            )}</strong> - When this condition occurs, execution stops at this point and subsequent messages are not processed</li>`;
           }
         });
       }
@@ -2037,9 +2051,9 @@
           description += `<h6 class="comment-category">Diagram Structure</h6><ul class="comments-list structure-comments">`;
           commentCategories.structure.forEach((comment) => {
             description += `<li class="comment-item">
-          <span class="comment-content">${comment.content}</span>`;
+          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
             if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${comment.messageContent}")</span>`;
+              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
             }
             description += `</li>`;
           });
@@ -2050,9 +2064,9 @@
           description += `<h6 class="comment-category">Flow Control</h6><ul class="comments-list flow-comments">`;
           commentCategories.flow.forEach((comment) => {
             description += `<li class="comment-item">
-          <span class="comment-content">${comment.content}</span>`;
+          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
             if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${comment.messageContent}")</span>`;
+              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
             }
             description += `</li>`;
           });
@@ -2063,9 +2077,9 @@
           description += `<h6 class="comment-category">Participant Lifecycle</h6><ul class="comments-list functionality-comments">`;
           commentCategories.functionality.forEach((comment) => {
             description += `<li class="comment-item">
-          <span class="comment-content">${comment.content}</span>`;
+          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
             if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${comment.messageContent}")</span>`;
+              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
             }
             description += `</li>`;
           });
@@ -2076,9 +2090,9 @@
           description += `<h6 class="comment-category">Other Notes</h6><ul class="comments-list other-comments">`;
           commentCategories.other.forEach((comment) => {
             description += `<li class="comment-item">
-          <span class="comment-content">${comment.content}</span>`;
+          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
             if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${comment.messageContent}")</span>`;
+              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
             }
             description += `</li>`;
           });
@@ -2293,7 +2307,7 @@
       <div class="break-container">
         <div class="break-condition-header">
           <span class="break-icon" aria-hidden="true">⚠️</span>
-          <span>Exit Condition: ${block.condition || "Break condition"}</span>
+          <span>Exit Condition: ${Common.escapeHtml(block.condition || "Break condition")}</span>
         </div>
         <div class="break-explanation">If this condition occurs, the following action will execute and the sequence will terminate immediately:</div>
         <ol class="break-action-list">`;
@@ -2316,16 +2330,16 @@
           sequenceData.actors.includes(correctedSender)
             ? "actor"
             : "participant"
-        }">${correctedSender}</span>
+        }">${Common.escapeHtml(correctedSender)}</span>
         <span class="message-type">${formatMessageType(message.type)}</span>
         <span class="message-receiver ${
           sequenceData.actors.includes(correctedReceiver)
             ? "actor"
             : "participant"
-        }">${correctedReceiver}</span>`;
+        }">${Common.escapeHtml(correctedReceiver)}</span>`;
 
         if (message.content) {
-          html += `: <span class="message-content">${message.content}</span>`;
+          html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
         }
 
         html += `</li>`;
@@ -2340,21 +2354,24 @@
       let contextExplanation = "";
 
       if (block.type === "alt") {
-        contextExplanation = `<div class="conditional-context">This step branches based on ${
+        contextExplanation = `<div class="conditional-context">This step branches based on ${Common.escapeHtml(
           block.condition || "different conditions"
-        }.</div>`;
+        )}.</div>`;
       } else if (block.type === "opt") {
-        contextExplanation = `<div class="conditional-context">This step only executes when ${
+        contextExplanation = `<div class="conditional-context">This step only executes when ${Common.escapeHtml(
           block.condition || "the condition is met"
-        }.</div>`;
+        )}.</div>`;
       } else if (block.type === "loop") {
+        // "for " is module furniture and stays outside the escaping call.
         contextExplanation = `<div class="conditional-context">This step repeats ${
-          block.label ? "for " + block.label : "multiple times"
+          block.label
+            ? "for " + Common.escapeHtml(block.label)
+            : "multiple times"
         }.</div>`;
       } else if (block.type === "critical") {
-        contextExplanation = `<div class="conditional-context">This is a critical action that must be performed: ${
+        contextExplanation = `<div class="conditional-context">This is a critical action that must be performed: ${Common.escapeHtml(
           block.label || "Critical Action"
-        }.</div>`;
+        )}.</div>`;
       }
 
       html = `<li class="process-step conditional-step ${
@@ -2367,10 +2384,10 @@
         block.type === "alt"
           ? "Conditional paths"
           : block.type === "opt"
-          ? `Optional path: ${block.condition}`
+          ? `Optional path: ${Common.escapeHtml(block.condition)}`
           : block.type === "critical"
-          ? `Critical action: ${block.label}`
-          : `Loop: ${block.label || "Repeated sequence"}`
+          ? `Critical action: ${Common.escapeHtml(block.label)}`
+          : `Loop: ${Common.escapeHtml(block.label || "Repeated sequence")}`
       }</div>`;
 
       if (block.type === "alt") {
@@ -2380,9 +2397,9 @@
           const branchOutcome = determineBranchOutcome(branch);
 
           html += `<div class="branch">
-              <div class="branch-condition" id="branch-${stepNumber}-${index}-condition">${
+              <div class="branch-condition" id="branch-${stepNumber}-${index}-condition">${Common.escapeHtml(
             branch.condition || "Otherwise"
-          }:</div>
+          )}:</div>
               <div class="branch-outcome">${branchOutcome}</div>
               <ol class="branch-messages" aria-labelledby="branch-${stepNumber}-${index}-condition">`;
 
@@ -2407,7 +2424,7 @@
                   sequenceData.actors.includes(correctedSender)
                     ? "actor"
                     : "participant"
-                }">${correctedSender}</span>
+                }">${Common.escapeHtml(correctedSender)}</span>
                 <span class="message-type">${formatMessageType(
                   message.type
                 )}</span>
@@ -2415,10 +2432,10 @@
                   sequenceData.actors.includes(correctedReceiver)
                     ? "actor"
                     : "participant"
-                }">${correctedReceiver}</span>`;
+                }">${Common.escapeHtml(correctedReceiver)}</span>`;
 
             if (message.content) {
-              html += `: <span class="message-content">${message.content}</span>`;
+              html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
             }
 
             html += `</li>`;
@@ -2455,16 +2472,16 @@
             sequenceData.actors.includes(correctedSender)
               ? "actor"
               : "participant"
-          }">${correctedSender}</span>
+          }">${Common.escapeHtml(correctedSender)}</span>
           <span class="message-type">${formatMessageType(message.type)}</span>
           <span class="message-receiver ${
             sequenceData.actors.includes(correctedReceiver)
               ? "actor"
               : "participant"
-          }">${correctedReceiver}</span>`;
+          }">${Common.escapeHtml(correctedReceiver)}</span>`;
 
           if (message.content) {
-            html += `: <span class="message-content">${message.content}</span>`;
+            html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
           }
 
           html += `</li>`;
@@ -2493,7 +2510,7 @@
         <div class="branch-container">
           <div class="branch-title" id="step-${stepNumber}-context">${
       block.label && block.label !== "Parallel actions"
-        ? `Parallel actions: ${block.label}`
+        ? `Parallel actions: ${Common.escapeHtml(block.label)}`
         : "Parallel actions"
     }</div>`;
 
@@ -2501,7 +2518,9 @@
     block.branches.forEach((branch, index) => {
       html += `<div class="branch">
                 <div class="branch-condition" id="branch-${stepNumber}-${index}-condition">${
-        branch.label || `Parallel path ${index + 1}`
+        branch.label
+          ? Common.escapeHtml(branch.label)
+          : `Parallel path ${index + 1}`
       }:</div>
                 <ol class="branch-messages" aria-labelledby="branch-${stepNumber}-${index}-condition">`;
 
@@ -2526,7 +2545,7 @@
                       sequenceData.actors.includes(correctedSender)
                         ? "actor"
                         : "participant"
-                    }">${correctedSender}</span>
+                    }">${Common.escapeHtml(correctedSender)}</span>
                     <span class="message-type">${formatMessageType(
                       message.type
                     )}</span>
@@ -2534,10 +2553,10 @@
                       sequenceData.actors.includes(correctedReceiver)
                         ? "actor"
                         : "participant"
-                    }">${correctedReceiver}</span>`;
+                    }">${Common.escapeHtml(correctedReceiver)}</span>`;
 
         if (message.content) {
-          html += `: <span class="message-content">${message.content}</span>`;
+          html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
         }
 
         html += `</li>`;
@@ -2953,7 +2972,11 @@
       ? ""
       : " process";
 
-    description = `This flow illustrates the ${flowName.toLowerCase()}${processText}`;
+    // Transform first, escape second — escaping before toLowerCase would
+    // lower-case the entity itself and mangle it.
+    description = `This flow illustrates the ${Common.escapeHtml(
+      flowName.toLowerCase()
+    )}${processText}`;
 
     // Add information about participants
     const uniqueParticipantIds = [
@@ -2982,14 +3005,19 @@
       sequence.participants.includes(p)
     );
 
+    // Escaped per item before the join. formatList is shared with the PLAIN
+    // short tier, so it must stay neutral and the escaping belongs here.
+    const safeActors = actors.map((a) => Common.escapeHtml(a));
+    const safeSystems = systems.map((s) => Common.escapeHtml(s));
+
     if (actors.length > 0 && systems.length > 0) {
       description += ` involving ${formatList(
-        actors
-      )} interacting with ${formatList(systems)}`;
+        safeActors
+      )} interacting with ${formatList(safeSystems)}`;
     } else if (actors.length > 0) {
-      description += ` involving ${formatList(actors)}`;
+      description += ` involving ${formatList(safeActors)}`;
     } else if (systems.length > 0) {
-      description += ` involving ${formatList(systems)}`;
+      description += ` involving ${formatList(safeSystems)}`;
     }
 
     // Add information about message types

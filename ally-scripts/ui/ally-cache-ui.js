@@ -183,10 +183,13 @@ var ALLY_CACHE_UI = (function () {
     var text = count === 0 ? "No cache" : count + " cached";
 
     elements.statusText.textContent = text;
-    elements.statusBtn.setAttribute(
-      "aria-label",
-      "Cached data: " + count + " items",
-    );
+
+    // SC 2.5.3: no aria-label. It used to be rewritten here as
+    // "Cached data: N items", which never contained the visible "N cached" (or
+    // "No cache") in ANY state, so the button was named one thing and read as
+    // another however many entries there were. The visible text now names it,
+    // and the button's static visually-hidden suffix supplies the context that
+    // the count alone does not.
 
     logDebug("Status updated:", text);
   }

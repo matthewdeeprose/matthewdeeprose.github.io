@@ -32,15 +32,27 @@
   opacity: 0;
   pointer-events: none;
   transform: scale(0.95);
+  /* visibility, not opacity alone, is what removes the closed menu from the
+     accessibility tree. Delayed by the fade duration so the closing fade
+     finishes before the menu is pruned. */
+  visibility: hidden;
   transition:
     opacity 0.12s ease,
-    transform 0.12s ease;
+    transform 0.12s ease,
+    visibility 0s linear 0.12s;
 }
 
 .mathpix-context-menu[data-visible="true"] {
   opacity: 1;
   pointer-events: auto;
   transform: scale(1);
+  /* Applied with no delay on open, so the menu is exposed and paintable for
+     the whole of the opening fade. */
+  visibility: visible;
+  transition:
+    opacity 0.12s ease,
+    transform 0.12s ease,
+    visibility 0s linear 0s;
 }
 
 /* =============================================================================
@@ -145,7 +157,11 @@
    ============================================================================= */
 
 @media (prefers-reduced-motion: reduce) {
-  .mathpix-context-menu {
+  /* The open-state selector is listed explicitly: it now carries its own
+     transition, and at (0,2,0) it would otherwise outrank a bare
+     .mathpix-context-menu rule here and keep animating. */
+  .mathpix-context-menu,
+  .mathpix-context-menu[data-visible="true"] {
     transition: none;
   }
 

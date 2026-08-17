@@ -17,4 +17,1239 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* Let the select shrink inside the flex model bar (below) so the ellipsis
+   * guard actually engages rather than the bar overflowing its container. */
+  min-width: 0;
+}
+
+/* ── Search row + model bar layout ───────────────────────────────────────────
+ * The Chat tool reuses the shared .search-container / .search-input / .model-count
+ * classes but lays them out as responsive rows here. On a wide viewport the search
+ * input and its Clear button share one row (the input grows, the Clear button sits
+ * beside it) with the live result count inline to the right of the Clear button,
+ * wrapping onto its own line only when the row runs out of room. On a narrow
+ * viewport they stack via flex-wrap, with min-width:0 letting the
+ * input shrink so the panel reflows cleanly at 320px / 400% zoom. No media query is
+ * used and no transition is introduced (reduced-motion honoured by default). Colour
+ * and focus rings come from the shared theme sheets and are untouched. */
+.chat-model-filter.search-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* The search input grows to fill the row; the flex-basis gives it a sensible width
+ * before wrapping, and min-width:0 lets it shrink below that on a narrow row
+ * (overriding the shared .search-input width for the flex main-size). */
+.chat-model-filter.search-container .search-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+/* Clear button keeps its intrinsic width and sits beside the input on a wide row. */
+.chat-model-filter.search-container .reset-filters-btn {
+  flex: 0 0 auto;
+}
+
+/* The live result count sits inline on the search row, to the right of the Clear
+ * button when there is room, and wraps onto its own line only when the row runs out
+ * of space (flex-wrap). flex:0 1 auto keeps it content-sized rather than the old
+ * full-width band; min-width:0 lets it shrink so the row reflows cleanly. It stays a
+ * role="status" aria-live="polite" region, written by id, so the change is purely
+ * visual — the announcement is unaffected. */
+.chat-model-filter.search-container .model-count {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Model bar: the label + <select> + status line laid out as a flex row — aligned,
+ * with a gap. min-width:0 (here and on the select above) lets the select shrink so
+ * its ellipsis guard engages rather than the bar overflowing, which also removes the
+ * residual self-overflow the previously-unstyled bar had. flex-wrap lets the three
+ * items stack when the panel is narrow so it reflows cleanly at 320px / 400% zoom.
+ * No transition is introduced (reduced-motion honoured by default). */
+.chat-model-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* The select stays content-sized on a wide row but may shrink (with its min-width:0)
+ * so a long model name ellipsis-clips instead of stretching the bar. */
+.chat-model-bar #chat-model-select {
+  flex: 0 1 auto;
+}
+
+/* ── Search area: search row + model bar share the width ──────────────────────
+ * The search row (.chat-model-filter.search-container) and the model bar
+ * (.chat-model-bar) are wrapped in .chat-model-select-area (see tools.html). Lay the
+ * two out as a responsive grid so they sit side by side on a wide panel and stack to
+ * a single column when narrow, with NO media query. The reflow-safe idiom
+ * minmax(min(22rem, 100%), 1fr) lets a single column shrink below 22rem on a narrow
+ * panel — a plain minmax(22rem, 1fr) would overflow a 320px viewport — and auto-fit
+ * drops the layout to one column when two 22rem tracks no longer fit. min-width:0
+ * (here and on the two items) lets the tracks and their flex contents shrink so the
+ * panel reflows cleanly at 320px / 400% zoom. Each item keeps its own flex layout and
+ * the select keeps its ellipsis guard. No transition is introduced (reduced-motion
+ * honoured by default). */
+#chat-app .chat-model-select-area {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: 0.75rem 1rem;
+  align-items: start;
+  min-width: 0;
+}
+
+/* Both grid items may shrink below their content width so the tracks reflow cleanly. */
+#chat-app .chat-model-select-area > * {
+  min-width: 0;
+}
+
+/* ── Search + Model labels: a matched pair above their controls (round four, P4b) ──
+ * With the search field's label now visible (P4a), put each label on its OWN line at the
+ * top of its column so the two read as a balanced pair. Each label is made a full-width
+ * flex item in its flex row (.search-container and .chat-model-bar), which forces the
+ * control(s) to wrap onto the line below — the same "label above control" arrangement on
+ * both sides, and deterministic regardless of how wide the selected model name is. The
+ * two labels already share the house label style (16px / 500 weight / block), so only
+ * their PLACEMENT is aligned here; the 0.5rem row-gap on each container owns the
+ * label-to-control spacing. The select-area's two equal 1fr tracks (above) line the two
+ * labels up across the pair. No transition is introduced (reduced-motion honoured by
+ * default). */
+#chat-app .chat-model-filter.search-container > label[for="chat-model-search"],
+#chat-app .chat-model-bar > label[for="chat-model-select"] {
+  flex: 0 0 100%;
+}
+
+/* ── Max-tokens: number field + length presets ───────────────────────────────
+ * Chat-scoped additions to the shared .local-chat-param-group panel look (the
+ * range styling lives in local-chat/local-chat.css). The slider stays the single
+ * source of the value; the number field and presets are alternative inputs that
+ * write to it. The number field mirrors the house numeric-control look (2px
+ * currentColor border, 4px radius); the presets follow the small-button language
+ * and meet WCAG 2.2 target size at 44px. No transitions are introduced. */
+
+/* Round four (P3): the number entry and the length presets share ONE row when the card
+ * is wide enough, wrapping to stacked when the card is narrow. The slider stays a sibling
+ * below this row (full width, see the markup), so it always keeps its own line.
+ * align-items:center levels the 44px number field with the 44px preset buttons, and the
+ * row gap owns the spacing — so the children's stacked-layout top margins are neutralised
+ * here. No transition is introduced (reduced-motion honoured by default). */
+.chat-max-tokens-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+.chat-max-tokens-row .chat-max-tokens-entry,
+.chat-max-tokens-row .chat-max-tokens-presets {
+  margin-top: 0;
+}
+
+.chat-max-tokens-entry {
+  margin-top: 0.35rem;
+}
+
+.chat-max-tokens-entry input[type="number"] {
+  width: 6rem;
+  /* Round four (P3): 44px min-height keeps the WCAG target size and levels the field
+   * with the 44px preset buttons beside it on the shared row. */
+  min-height: 44px;
+  padding: 0.4rem 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums;
+}
+
+.chat-max-tokens-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* Small-button language matched to the tool's other buttons. Focus indication is
+ * deliberately left to the shared button:focus-visible style in light.css/dark.css
+ * (the yellow-green box-shadow ring), so these presets match every sibling button
+ * and stay consistent across themes rather than inventing a second ring. */
+.chat-token-preset {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+/* Windows High Contrast: keep the number-field border mapped to a system colour. */
+@media (forced-colors: active) {
+  .chat-max-tokens-entry input[type="number"] {
+    border-color: CanvasText;
+  }
+}
+
+/* ── Advanced model filters ("More filters" disclosure) ──────────────────────
+ * Chat-scoped layout for the free-only checkbox + reset panel beneath the model
+ * search bar. Colour, borders and focus rings come from the shared theme sheets
+ * (light.css / dark.css): the native <summary>, <input type="checkbox"> and
+ * <button> each inherit the house focus-visible indicator, which meets AA
+ * contrast in both themes. This file adds only the fieldset reset, the row
+ * layout and WCAG 2.2 target sizing. No transitions are introduced, so a
+ * reduced-motion preference is honoured by default. */
+
+.chat-model-filters {
+  margin: 0.5rem 0 1rem;
+}
+
+/* Disclosure control: a comfortable target (≥44px) while keeping the native
+ * marker (min-height on the default list-item box, not display:flex). Its
+ * focus ring comes from the shared global summary:focus-visible rule (a dotted
+ * outline present in both themes), matching every other disclosure in the app. */
+.chat-model-filters summary {
+  cursor: pointer;
+  font-weight: bold;
+  min-height: 44px;
+  padding: 0.5rem 0.25rem;
+  box-sizing: border-box;
+}
+
+/* Strip the fieldset's default border/margin and its intrinsic min-width so the
+ * panel reflows cleanly at 400% zoom. */
+.chat-model-filters-body {
+  border: 0;
+  margin: 0;
+  padding: 0.25rem 0.25rem 0;
+  min-width: 0;
+}
+
+/* Checkbox-and-label row: aligned, with a 44px target height. */
+.chat-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+/* The control itself meets the SC 2.5.8 minimum target (24×24 CSS px). */
+.chat-filter-row input[type="checkbox"] {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+.chat-filter-row label {
+  cursor: pointer;
+}
+
+/* Provider dropdown: the visible label sits before the native <select>, which
+ * mirrors the house numeric-control look (2px currentColor border, 4px radius) so
+ * it reads as one panel with the max-tokens field above. It inherits the tool's
+ * house input focus treatment (AA in both themes, from light.css / dark.css), so
+ * no bespoke focus ring is added here. Sized to the 44px preferred target and
+ * allowed to shrink so the panel reflows cleanly at 400% zoom. No transition is
+ * introduced, so a reduced-motion preference is honoured by default. */
+.chat-filter-row select {
+  min-height: 44px;
+  padding: 0.35rem 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Capabilities group: a nested fieldset inside the panel body so the four
+ * capability checkboxes read as one named set. Its default border, margin and
+ * intrinsic min-width are stripped (matching .chat-model-filters-body) so the
+ * group reflows cleanly at 400% zoom; the rows reuse .chat-filter-row and the
+ * native checkboxes inherit the house focus-visible indicator (AA in both
+ * themes), so no bespoke ring is added. No transition is introduced, so a
+ * reduced-motion preference is honoured by default. */
+.chat-filter-capabilities {
+  border: 0;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* The group name: a small heading in the panel's language, aligned flush with the
+ * rows below it rather than the browser's default inset legend. */
+.chat-filter-capabilities legend {
+  font-weight: bold;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+/* Price group: a nested fieldset mirroring .chat-filter-capabilities — its
+ * default border, margin and intrinsic min-width are stripped so it reflows
+ * cleanly at 400% zoom. The native <select> (price range) and checkbox (sort)
+ * reuse .chat-filter-row, so they keep the 44px targets and the house
+ * focus-visible indicator (AA in both themes) with no bespoke ring. No transition
+ * is introduced, so a reduced-motion preference is honoured by default. */
+.chat-filter-price {
+  border: 0;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  min-width: 0;
+}
+
+/* The group name: a small heading in the panel's language, flush-left like the
+ * capabilities legend rather than the browser's default inset legend. */
+.chat-filter-price legend {
+  font-weight: bold;
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+/* Helper text under the Price legend (explains the per-million-tokens unit and the
+ * Foundry-hidden behaviour). Kept at the inherited body text colour — NOT a
+ * bespoke grey — so its contrast is guaranteed AA in both themes; it is
+ * de-emphasised by SIZE alone, which does not affect contrast. */
+.chat-filter-hint {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+  color: inherit;
+}
+
+/* Empty-state notice, shown only when the [hidden] attribute is removed (chat.js
+ * toggles it). We deliberately set NO `display` here, so the base [hidden] rule
+ * (display:none) always wins when the attribute is present. A left accent makes
+ * it read as a clear notice; the text stays at the inherited body colour for
+ * guaranteed AA contrast, and the accent uses currentColor so it too meets
+ * contrast in both themes. No transition is introduced (reduced-motion honoured). */
+.chat-filter-empty {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid currentColor;
+  font-size: 0.9rem;
+  color: inherit;
+}
+
+/* Windows High Contrast: map the hint and empty-notice text (and the notice's
+ * accent border) to system colours, so they stay legible when the theme colours
+ * are overridden. */
+@media (forced-colors: active) {
+  .chat-filter-hint,
+  .chat-filter-empty {
+    color: CanvasText;
+  }
+  .chat-filter-empty {
+    border-left-color: CanvasText;
+  }
+}
+
+/* Reset button: the small-button language (matching .chat-token-preset), sized to
+ * the 44px preferred target and spaced clear of the checkbox row above so the two
+ * targets do not crowd. Colour, border, hover and focus come from the shared
+ * button rules in light.css / dark.css. */
+.chat-filter-reset {
+  margin: 0.75rem 0 0;
+  padding: 0.35rem 0.75rem;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* ── Filter cards ────────────────────────────────────────────────────────────
+ * The four filter groups (Pricing options, Cost range, Model capabilities, Model
+ * provider) are laid out as cards in a responsive grid. auto-fit + minmax lets
+ * them sit side by side on a wide panel and stack to a single column on a narrow
+ * one with NO media query. min-width: 0 lets the track (and its cards) shrink
+ * below content width so the panel reflows cleanly at 400% zoom / 320px. */
+.chat-filter-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Each card reads as a bordered panel. The border uses currentColor so it is
+ * guaranteed ≥3:1 against the background in both themes; radius matches the house
+ * 4px. The fieldset's default margin is reset and its intrinsic min-width removed
+ * so a card can shrink and the grid can reflow. The card's own <legend> is left to
+ * the global legend-chip style, which reads as the card title here — deliberately
+ * NOT restyled. No transition is introduced (reduced-motion honoured by default). */
+.chat-filter-card {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin: 0;
+  min-width: 0;
+}
+
+/* ── Dimmed (model-ignored) sampling controls ────────────────────────────────
+ * When the selected model ignores a sampling parameter, chat.js sets
+ * aria-disabled="true" on that slider (never the native disabled attribute, and
+ * never resetting its value). We dim the CONTROL only — reduced opacity plus
+ * pointer-events:none so it cannot be dragged by mouse — while its <label>, value
+ * <output> and description keep the inherited body colour at full AA contrast, so
+ * the control stays legible and explained. Focus is unaffected: the slider is
+ * still reachable by keyboard and its focus ring still shows. No transition is
+ * introduced (reduced-motion honoured by default). */
+#chat-temperature[aria-disabled="true"],
+#chat-top-p[aria-disabled="true"],
+#chat-frequency-penalty[aria-disabled="true"],
+#chat-presence-penalty[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Windows High Contrast: opacity is not a reliable disabled cue when system
+ * colours take over, so map the dimmed slider's accent to GrayText — the system
+ * colour for a disabled control — so the state stays perceivable. */
+@media (forced-colors: active) {
+  #chat-temperature[aria-disabled="true"],
+  #chat-top-p[aria-disabled="true"],
+  #chat-frequency-penalty[aria-disabled="true"],
+  #chat-presence-penalty[aria-disabled="true"] {
+    accent-color: GrayText;
+  }
+}
+
+/* ── Model information: label-value pairs grid ────────────────────────────────
+ * The short label-value lines emitted by chat-model-info.js (Model, Context window,
+ * Capabilities, Cost, and the Foundry Deployment/Region) render as a
+ * <dl class="chat-model-info-pairs"> of <dt>/<dd> pairs. Lay them into columns on a
+ * wide panel and collapse to a single column when narrow, with NO media query. The
+ * auto-repeat unit is a WHOLE label-value pair — minmax(6rem, max-content) for the
+ * <dt> label and minmax(8rem, 1fr) for the <dd> value — so each pair stays intact
+ * and never splits across a column boundary; auto-fit adds as many pair-columns as
+ * the panel width allows and drops to one when narrow. Both minima are fixed, so the
+ * repetition count is computable, and min-width:0 lets the value track shrink so the
+ * panel reflows cleanly at 320px / 400% zoom. Long-form lines (the description and
+ * "Best for") are <p> siblings OUTSIDE this dl and so stay full-width. No transition
+ * is introduced (reduced-motion honoured by default). */
+.chat-model-info-pairs {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(6rem, max-content) minmax(7rem, 1fr)
+  );
+  /* Round three (P4): the column gap between pairs was an oversized 1.5rem, which
+   * spread the short label-value pairs thin; tighten it to 1rem so more pairs pack
+   * onto a row, and drop the value floor from 8rem to 7rem so the auto-fit repetition
+   * can add another pair-column before wrapping. Both minima stay fixed so the
+   * repetition count is still computable and each whole pair stays intact. */
+  gap: 0.15rem 1rem;
+  margin: 0.5rem 0;
+  min-width: 0;
+  align-items: baseline;
+}
+
+/* Label reads as the pair's name; the model-supplied value keeps the body colour. */
+.chat-model-info-pairs dt {
+  font-weight: bold;
+  min-width: 0;
+}
+
+.chat-model-info-pairs dd {
+  margin: 0;
+  min-width: 0;
+}
+
+/* ── Model information: card the blocks ───────────────────────────────────────
+ * The model-info body (#chat-model-info-body) stacks several blocks emitted by
+ * chat-model-info.js: the short label-value pairs (.chat-model-info-pairs for a
+ * cloud model, .chat-model-info-specs for a local one), the prose
+ * (.chat-model-info-description for cloud / .chat-model-info-summary for local) and
+ * the "Best for" line (.chat-model-info-best-for). Give each its own card so the
+ * panel reads as a set of contained sections rather than full-width runs. The cards
+ * stay stacked and full-width — their lengths differ, so they are deliberately NOT
+ * gridded side by side; the body is normal block flow, so the DOM reading order is
+ * preserved when they stack. Card chrome only: a 1px currentColor border (guaranteed
+ * >=3:1 in both themes, matching the advanced-filter cards), the house 4px radius,
+ * padding, and a subtle neutral tint that darkens a light panel and lightens a dark
+ * one without disturbing the body text's AA contrast. The pairs grid and its contents
+ * are unchanged inside the card. JS is untouched. No transition is introduced
+ * (reduced-motion honoured by default). */
+#chat-app #chat-model-info-body .chat-model-info-pairs,
+#chat-app #chat-model-info-body .chat-model-info-specs,
+#chat-app #chat-model-info-body .chat-model-info-description,
+#chat-app #chat-model-info-body .chat-model-info-summary,
+#chat-app #chat-model-info-body .chat-model-info-best-for {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0.75rem;
+  background: rgba(128, 128, 128, 0.08);
+  margin: 0.5rem 0;
+}
+
+/* Windows High Contrast: the tint is dropped under forced-colors, so pin the card
+ * border to a system colour so the grouping stays perceivable. */
+@media (forced-colors: active) {
+  #chat-app #chat-model-info-body .chat-model-info-pairs,
+  #chat-app #chat-model-info-body .chat-model-info-specs,
+  #chat-app #chat-model-info-body .chat-model-info-description,
+  #chat-app #chat-model-info-body .chat-model-info-summary,
+  #chat-app #chat-model-info-body .chat-model-info-best-for {
+    border-color: CanvasText;
+  }
+}
+
+/* ── Parameters: control units grid ──────────────────────────────────────────
+ * The Chat tool reuses the shared .local-chat-parameters / .local-chat-param-group
+ * markup (also used by the Local Chat tool), so EVERY rule here is scoped under
+ * #chat-app to keep Local Chat untouched. Lay the control UNITS (whole
+ * .local-chat-param-group blocks — each keeping its label, value output, slider and
+ * description together) into a responsive grid on a wide panel, collapsing to one
+ * column when narrow with NO media query — the same auto-fit/minmax idiom as the
+ * filter cards, but with the track floor wrapped in min(18rem, 100%) so a single
+ * column can shrink below 18rem on a narrow panel (a plain minmax(18rem, 1fr) never
+ * shrinks below 18rem and would overflow a 320px viewport). That, with min-width:0 on
+ * the units, is what lets the panel reflow cleanly at 320px / 400% zoom. The grid is
+ * applied only when the disclosure is [open].
+ *
+ * Round three (P3): with the Max-tokens unit moved to the end of the Parameters order
+ * (it spans full width, below), the four SHORT units — temperature, top-p,
+ * frequency-penalty, presence-penalty — flow into a denser run. The 18rem floor is the
+ * tightest that still packs exactly THREE short units across at the 1280px reference
+ * (three on the first row, the fourth beneath) rather than spilling to four; a smaller
+ * floor would allow a fourth across and a larger one (the round-two 22rem) drops to two
+ * across sooner on mid-width panels. It still collapses to a single column at 320px.
+ * Only the arrangement changes — the
+ * controls themselves are not restyled, so the dimmed (aria-disabled) sampling state
+ * above still applies within the grid. No transition is introduced (reduced-motion
+ * honoured by default).
+ *
+ * Modern browsers wrap a <details>'s non-summary content in the ::details-content
+ * pseudo-element, so the units live inside that pseudo rather than as direct children
+ * of the <details>. Gridding the <details> would only grid [summary, ::details-content],
+ * so we grid the pseudo instead; the <summary> stays outside it and keeps its normal
+ * full-width disclosure layout. Older browsers without the pseudo grid the <details>
+ * directly, where <summary> is a grid item and so is spanned full-width. The pseudo is
+ * a grid CONTAINER only — it cannot be an ancestor in a selector for the real grid
+ * items — so the full-row spanning rules below target the real children by their real
+ * parent (.local-chat-parameters), which works in both branches. */
+@supports selector(::details-content) {
+  #chat-app .local-chat-parameters[open]::details-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    gap: 1rem;
+    /* Round four (P3): stretch so the short cards in a row match height. */
+    align-items: stretch;
+    min-width: 0;
+  }
+}
+
+@supports not selector(::details-content) {
+  #chat-app .local-chat-parameters[open] {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    gap: 1rem;
+    /* Round four (P3): stretch so the short cards in a row match height. */
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  /* <summary> is a direct grid item only in this fallback branch, so span it here. */
+  #chat-app .local-chat-parameters[open] > summary {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The sampling notice and the rich Max-tokens unit (its number field, length presets
+ * and slider need room) each take the full row so their contents are never cramped and
+ * the collapsed single-column reading order still follows the DOM. Targets the real
+ * children of the <details> — the grid items in both branches. */
+#chat-app .local-chat-parameters[open] > .chat-sampling-notice,
+#chat-app
+  .local-chat-parameters[open]
+  > .local-chat-param-group:has(#chat-max-tokens) {
+  grid-column: 1 / -1;
+}
+
+/* Each parameter unit reads as a card, matching the advanced-filter cards and the
+ * model-info cards: a 1px currentColor border (>=3:1 in both themes), the house 4px
+ * radius, padding, and the same subtle neutral tint that adapts to light and dark
+ * without disturbing the body text's AA contrast. box-sizing:border-box keeps the
+ * padding and border inside the grid track so a card never overflows at 320px / 400%
+ * zoom, and min-width:0 lets a unit shrink below its content so the grid reflows
+ * cleanly. Only the unit's container gets chrome — the controls inside (label, value
+ * output, slider, description, and the max-tokens number field + presets) are NOT
+ * restyled — so the aria-disabled dimmed sampling state (0.5 opacity on the slider)
+ * still reads correctly against the card. No transition is introduced (reduced-motion
+ * honoured by default). */
+#chat-app .local-chat-param-group {
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0.75rem;
+  background: rgba(128, 128, 128, 0.08);
+}
+
+/* Windows High Contrast: the tint drops under forced-colors, so pin the card border
+ * to a system colour so each unit stays visibly contained. */
+@media (forced-colors: active) {
+  #chat-app .local-chat-param-group {
+    border-color: CanvasText;
+  }
+}
+
+/* ── Model header: two light fields plus one dark action button ───────────────
+ * The three controls in the model header used to read as a mismatched trio. The model
+ * <select> came through as a dark themed pill (light text on #00131d / #231f20, square
+ * corners), while #chat-model-search is a native <input type="search"> that escapes the
+ * themed control treatment altogether — UA white background, an inset ~2px border, a
+ * ~30px height.
+ *
+ * They are now reconciled the other way round, matching the lighter "Local Chat"
+ * dropdown look: the select and the search box are both LIGHT fields that track the
+ * page, and the Clear button stays the single dark action control beside them. Both
+ * take their text colour by INHERITANCE rather than pinning per-theme values, so they
+ * follow whatever the page paints in either theme; both carry a 0.2rem border in
+ * currentcolor, a 0.25rem corner radius, and a min-height levelled to the select's 47px,
+ * with box-sizing:border-box keeping border and padding inside that height so each box
+ * lands at exactly 47px.
+ *
+ * The SELECT deliberately sets no background here. A <select> needs an OPAQUE background
+ * because the browser paints its drop-down list from that colour: an inherited (and so
+ * transparent) background made the open list fall back to the UA's white while the
+ * inherited light text stayed, leaving the options at about 1.2:1 in dark theme. The
+ * opaque per-theme value therefore lives with the other per-theme colour, in
+ * light.css / dark.css (#chat-model-select), which those sheets set to the same colour
+ * the page paints — so the field still looks identical, but the drop-down is legible.
+ * Nothing here may reintroduce a background for it.
+ *
+ * Everything is SCOPED to these ids — no other search input or select in the app changes
+ * — and the shared bare select{} / button{} rules are untouched. In dark theme the
+ * shared select{} border (0.2rem solid #e1e8ec !important, dark.css) deliberately still
+ * wins for the select, because it matches the search box's dark-theme border. The focus
+ * ring is left to the shared focus-visible treatment (not overridden here). No
+ * transition is introduced (reduced-motion honoured by default).
+ *
+ * NOTE: the select's ellipsis/size guard and its flex sizing live near the top of this
+ * file and are deliberately NOT touched here — this rule is colour and shape only. */
+#chat-app .chat-model-bar #chat-model-select {
+  color: inherit;
+  border: 0.2rem solid currentcolor;
+  border-radius: 0.25rem;
+}
+
+#chat-model-search {
+  box-sizing: border-box;
+  min-height: 47px;
+  padding: 0.4rem 0.75rem;
+  background: inherit;
+  color: inherit;
+  border: 0.2rem solid;
+  border-color: currentcolor;
+  border-radius: 0.25rem;
+}
+
+/* opacity:1 stops Firefox dimming the placeholder below AA. */
+#chat-model-search::placeholder {
+  opacity: 1;
+}
+
+/* The placeholder COLOUR is intentionally not set here. This file themes the header by
+ * inheritance — the fields take background/colour: inherit with currentcolor borders, so
+ * they track whatever the theme sheets paint rather than pinning per-scheme values — and
+ * a colour-preference media query here would reintroduce exactly the mechanism that
+ * treatment replaced. If a placeholder attribute is ever added to #chat-model-search,
+ * give it an AA-legible colour (at least 4.5:1 against the field background) from
+ * light.css / dark.css, or choose a theme-neutral value that clears AA in both themes —
+ * never a colour-preference media query in this file. The opacity:1 above stays
+ * regardless: it is the Firefox guard that stops the placeholder being dimmed below AA. */
+
+/* The Clear button is the header's one dark action control, so it keeps the shared
+ * button{} colour, border, hover and focus entirely. Only two things are nudged here,
+ * scoped to #chat-model-filter-clear: its min-height, because the shared button
+ * treatment leaves it at 39px beside the now-47px fields, and its corner radius, so its
+ * corner matches the two fields. box-sizing:border-box keeps it at exactly 47px. */
+#chat-model-filter-clear {
+  box-sizing: border-box;
+  min-height: 47px;
+  border-radius: 0.25rem;
+}
+
+/* Windows High Contrast: the themed field colours drop under forced-colors, so pin the
+ * search box to system colours so it stays a visible, legible field with its
+ * placeholder. */
+@media (forced-colors: active) {
+  #chat-model-search {
+    background-color: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+  }
+  #chat-model-search::placeholder {
+    color: CanvasText;
+  }
+}
+
+/* ── Model information: side-by-side cards, comfortable width, space between ───
+ * The model-info body stacks the short label-value pairs and the cost line as
+ * FULL-WIDTH rows, then the two long prose blocks — .chat-model-info-description (or
+ * .chat-model-info-summary for a local model) and the "Best for" line
+ * (.chat-model-info-best-for) — share ONE row as an equal-height pair. Round five
+ * (Option 3): this is a wrapping flex row, NOT the earlier auto-fit grid. The grid
+ * was abandoned because its full-width rows span every generated track (grid-column:
+ * 1 / -1), which stops auto-fit collapsing surplus tracks on a wide panel — the two
+ * prose cards then bunch into the first two tracks and leave a dead gap on the right.
+ * Flex sidesteps that: each prose card is flex: 1 1 min(24rem, 100%) so the pair grows
+ * to share the row, capped at a comfortable reading measure (max-width: min(46rem, 100%)
+ * — the reflow-safe floor idiom, so the cap never forces overflow at 320px / 400% zoom).
+ * justify-content:space-between then pushes the leftover width BETWEEN the two capped
+ * cards — one hugs the left, one the right, balanced rather than left-bunched — and does
+ * nothing while the cards are still growing (medium panels sit side by side, closer, the
+ * 1rem column gap holding as the minimum). Below ~24rem each card's flex-basis reaches
+ * 100%, so the pair wraps to a SINGLE column and stacks cleanly with no media query, DOM
+ * order preserved. align-items:stretch keeps the pair equal height; the 0.75rem/1rem gap
+ * owns the minimum spacing; the cards' vertical margin is dropped so the gap owns it. No
+ * transition is introduced (reduced-motion honoured by default). */
+#chat-app #chat-model-info #chat-model-info-body {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: stretch;
+  gap: 0.75rem 1rem;
+  min-width: 0;
+}
+
+/* Default: every block is its own full-width row (the short pairs/specs card and the
+ * cost line). Only the two prose cards below opt back into sharing a row. box-sizing
+ * is pinned to border-box so the cards' existing padding + 1px border sit INSIDE the
+ * flex basis (and the prose cards' max-width cap below): a content-box card would push
+ * its padding outside a 100% / capped basis and overflow the row. This matches how the
+ * previous grid stretched the cards — border and padding stayed inside the track — so
+ * the full-width rows render at the same width as before. */
+#chat-app #chat-model-info #chat-model-info-body > * {
+  box-sizing: border-box;
+  flex: 0 0 100%;
+  min-width: 0;
+}
+
+#chat-app #chat-model-info #chat-model-info-body > .chat-model-info-description,
+#chat-app #chat-model-info #chat-model-info-body > .chat-model-info-summary,
+#chat-app #chat-model-info #chat-model-info-body > .chat-model-info-best-for {
+  flex: 1 1 min(24rem, 100%);
+  max-width: min(46rem, 100%);
+  margin: 0;
+}
+/* ===== Chat wide-layout tuning — clean consolidated block ===== */
+
+/* Count: inline on the search row */
+#chat-model-count {
+  flex: 0 0 auto;
+  margin: 0;
+  min-width: 0;
+}
+.chat-model-filter.search-container #chat-model-search {
+  flex: 1 1 16rem;
+}
+.chat-model-filter.search-container,
+.chat-model-bar {
+  margin-bottom: 0;
+}
+
+/* Definition pairs: value bold, label quiet */
+.chat-model-info-pairs dt {
+  font-weight: normal;
+}
+.chat-model-info-pairs dd {
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Prose row: 3 up, then 2+1, then stacked */
+.chat-model-info-prose {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: 1rem;
+  align-items: stretch;
+  margin: 0.5rem 0;
+}
+
+.chat-model-info-description,
+.chat-model-info-best-for,
+.chat-model-info-capabilities {
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 0.6rem 0.75rem;
+  margin: 0;
+  background: rgba(127, 127, 127, 0.06);
+  box-sizing: border-box;
+  display: flex; /* make the card a column so it fills its track */
+  flex-direction: column;
+}
+
+/* Capabilities bullets */
+.chat-model-info-caps-label {
+  margin: 0 0 0.4rem;
+}
+.chat-model-info-caps-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.chat-model-info-caps-list li {
+  margin: 0.1rem 0;
+}
+
+/* Parameters: card each control unit */
+.local-chat-parameters .local-chat-param-group {
+  border: 1px solid;
+  border-radius: 4px;
+  padding: 0.75rem;
+  margin: 0;
+  min-width: 0;
+  background: rgba(127, 127, 127, 0.06);
+  box-sizing: border-box;
+}
+
+/* ── Developer information panel ─────────────────────────────────────────────
+ * The collapsed "Developer information" disclosure (#chat-dev-panel) mirrors the
+ * other Chat control panels: a bold >=44px summary whose focus ring comes from
+ * the shared global summary:focus-visible rule, and bordered cards using
+ * currentColor (guaranteed >=3:1 in both themes) rather than a theme-specific
+ * colour, so this stays self-contained in chat.css. The JSON blocks get a
+ * WORKING scroll cap on the ACTUAL scrollable element — the <pre> — and, because
+ * each <pre> is a focusable scroll container (tabindex="0") that no shared rule
+ * covers, an explicit currentColor focus outline. No transitions are introduced,
+ * so a reduced-motion preference is honoured by default. */
+
+#chat-app .chat-dev-panel {
+  margin: 0.5rem 0 1rem;
+}
+
+/* Disclosure control: match the model-filters summary — a comfortable >=44px
+ * target, bold, native marker kept. Its focus ring is inherited from the shared
+ * global summary:focus-visible rule, matching every other disclosure. */
+#chat-app .chat-dev-panel summary {
+  cursor: pointer;
+  font-weight: bold;
+  min-height: 44px;
+  padding: 0.5rem 0.25rem;
+  box-sizing: border-box;
+}
+
+/* Definition list: the finish-reason line and the two JSON blocks, stacked. */
+#chat-app .chat-dev-list {
+  margin: 0.5rem 0 0;
+}
+#chat-app .chat-dev-list dt {
+  font-weight: bold;
+  margin: 0.75rem 0 0.25rem;
+}
+#chat-app .chat-dev-list dd {
+  margin: 0 0 0.5rem;
+}
+
+/* The local-model request note reads as a caption above its JSON preview. */
+#chat-app .chat-dev-note {
+  margin: 0 0 0.4rem;
+  font-style: italic;
+}
+
+/* JSON blocks: a bordered card matching the model-info cards (1px currentColor
+ * border, house 4px radius, subtle neutral tint) with a WORKING scroll cap. The
+ * cap and overflow live on the <pre> — the actual block box that scrolls — NOT on
+ * a dd, so long JSON scrolls within ~300px instead of running the panel long.
+ * pre-wrap + overflow-wrap keep a long unbroken token (e.g. a data-URL marker)
+ * from forcing a horizontal scroll or overflow at 320px / 400% zoom. */
+#chat-app .chat-dev-panel pre {
+  max-height: 300px;
+  overflow: auto;
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.08);
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#chat-app .chat-dev-panel pre code {
+  /* The <pre> owns the card chrome; the <code> carries none of its own. */
+  background: none;
+  padding: 0;
+}
+
+/* Each <pre> is a focusable scroll container (tabindex="0"); no shared button or
+ * summary focus rule reaches it, so give it an explicit, theme-adaptive ring.
+ * currentColor guarantees >=3:1 against the card in both themes. */
+#chat-app .chat-dev-panel pre:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Copy buttons: the house small-button language and WCAG 2.2 target size
+ * (>=44px). Focus indication is left to the shared button:focus-visible style in
+ * light.css / dark.css, matching every sibling button rather than inventing a
+ * second ring. */
+#chat-app .chat-dev-copy {
+  margin: 0.5rem 0 0;
+  padding: 0.35rem 0.75rem;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* The app-wide code-copy enhancer (md-scripts/markdown-utils/markdown-code-copy.js)
+ * auto-injects a generic "Copy code to clipboard" button onto every language-json
+ * <pre><code>. Here it is redundant with our own chat-dev-copy buttons — which copy
+ * the stored FULL raw JSON (data-raw), not the possibly-truncated displayed text —
+ * so suppress it, keeping exactly the two spec'd copy affordances. This mirrors that
+ * enhancer's own opt-out for #mathpix-debug-panel / #mmd-code-container (panels with
+ * their own copy controls); a container-id skip clause there is the more idiomatic
+ * fix but lives in another file. */
+#chat-app .chat-dev-panel .code-copy-button {
+  display: none;
+}
+
+/* Windows High Contrast: the neutral tints drop under forced-colors, so pin the
+ * card border and the focus outline to system colours so the grouping and focus
+ * stay perceivable. */
+@media (forced-colors: active) {
+  #chat-app .chat-dev-panel pre {
+    border-color: CanvasText;
+  }
+  #chat-app .chat-dev-panel pre:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+/* ── Input bar: Send beside the message box ───────────────────────────────────
+ * .chat-input-bar shipped unstyled, so its children laid out as plain blocks and the
+ * global textarea rule (main.css — textarea { width: 100% }) stretched #chat-input
+ * across the whole row, which pushed #chat-send onto the line beneath it. Lay the bar
+ * out as a flex row instead — the same mechanism Local Chat's .local-chat-input-bar
+ * uses — so Send sits to the RIGHT of the box, with align-items:flex-end holding it on
+ * the bottom edge of the tall textarea rather than floating at the top.
+ *
+ * flex:1 gives the textarea the leftover width (it owns the flex main-size, so the
+ * global 100% no longer forces a full-width block) and min-width:0 lets it shrink
+ * BELOW its content width — without that, a flex item's automatic minimum size would
+ * hold the row wider than its container and force a horizontal scrollbar. Together
+ * they keep all three controls on ONE line down to a 320px viewport and at 400% zoom,
+ * so no flex-wrap is needed here.
+ *
+ * Deliberately NO height: the textarea's sizing stays with the shared textarea rules,
+ * so the box keeps exactly the height it already had. Deliberately no colour and no
+ * media query either — this block is layout only, so both themes and forced-colors are
+ * untouched. #chat-cancel keeps its [hidden] display:none, so it is not laid out as a
+ * flex item until something unhides it. */
+#chat-app .chat-input-bar {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+#chat-app .chat-input-bar textarea {
+  flex: 1;
+  min-width: 0;
+}
+
+#chat-app .chat-input-bar button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Keep the bottom of the input bar clear of the fixed back-to-top panel when it is
+ * scrolled into view. #panel (main.css) is position:fixed at the viewport's
+ * bottom-right with z-index 99, so once Send moved to the right of the message box it
+ * can land underneath that panel — most visibly at 400% zoom, where the viewport is
+ * short. scroll-margin-bottom reserves space below these controls for the browser's
+ * scroll-into-view, so tabbing to Send scrolls it clear of the panel instead of level
+ * with it.
+ *
+ * The value is measured, not guessed, and covers the WORST CASE of the panel's two
+ * responsive states: above 800px it shows both buttons at 90px tall sitting 40px off
+ * the viewport bottom (130px); at 800px and below it shows one button at 66px, 8px off
+ * the bottom (74px). 130 + an 8px breathing gap = 138px, which also clears the smaller
+ * state comfortably.
+ *
+ * This affects ONLY focus / scroll-into-view — scroll-margin is inert until a scroll
+ * happens, so the resting layout is unchanged and no jump is introduced when Send is
+ * already visible. Layout only: no colour, no media query. */
+#chat-app .chat-input-bar #chat-send,
+#chat-app .chat-input-bar #chat-input {
+  scroll-margin-bottom: 138px;
+}
+
+/* ── Input token counter (Half 1, Stage C) ────────────────────────────────────
+ * The visible draft token readout (#chat-input-counter) — a plain <div>, NOT a
+ * live region, so it is seen while typing but never announced. Mirrors Local
+ * Chat's .local-chat-input-counter treatment (font-size + padding); no colour is
+ * set, so the text inherits the themed body colour and stays AA-legible in both
+ * the light and dark sheets (the same colour ordinary panel text uses). The
+ * over-half warning is carried by FONT WEIGHT, not colour — a non-colour cue, so
+ * the warning state is distinguishable without relying on colour and survives
+ * Windows High Contrast unchanged. No animation / transition (reduced-motion
+ * honoured by default). */
+.chat-input-counter {
+  font-size: 0.8em;
+  padding: 0.15rem 0.5rem;
+}
+
+.chat-input-counter-warning {
+  font-weight: bold;
+}
+
+/* ── Response-size clamp (per-turn) ───────────────────────────────────────────
+ * Stage B styling for the per-turn visual height-clamp added in chat-messages.js
+ * (Stage A). The clamp is VISUAL ONLY — the whole reply stays in the DOM, so a
+ * screen reader reads it all regardless of the toggle state; these rules just cap
+ * the visible height, fade the cut edge, and style the toggle + the non-live
+ * notice to match Chat's other controls.
+ *
+ * Colour comes from currentColor / inherited body text (guaranteed AA / >=3:1 in
+ * both themes). The toggle is a real <button>, so its focus-visible ring is the
+ * shared button treatment in light.css / dark.css — no bespoke ring invented here.
+ * No expand animation is introduced (the show/hide is instant), so a reduced-motion
+ * preference is honoured by default; the guard at the end pins that even if a
+ * transition is added later. The clamp classes are Chat-specific (chat-response-*),
+ * so no #chat-app scoping is needed to keep Local Chat untouched. */
+
+/* Clamped body: cap the visible height and clip the overflow. The whole reply
+ * stays in the DOM below the cap. The cut edge is softened with a bottom fade
+ * mask — a mask-image (not a background gradient), so it is independent of the
+ * bubble's background colour and reads correctly in both themes without banding.
+ * The cap is a custom property so it can be tuned in one place. */
+.chat-response-clamped {
+  max-height: var(--chat-clamp-max, 22rem);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 3rem),
+    transparent
+  );
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+}
+
+/* Controls sit BELOW the clamped body, OUTSIDE it, so the toggle is always
+ * visible and never clipped by the clamp's overflow. Wraps cleanly at 320px /
+ * 400% zoom. No transition is introduced (reduced-motion honoured by default). */
+.chat-response-clamp-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Non-live notice: a quiet cue that the reply is clamped. It carries a NON-COLOUR
+ * cue — a leading currentColor accent border, like .chat-filter-empty — and stays
+ * at the inherited body colour for guaranteed AA contrast, de-emphasised by SIZE
+ * alone (which does not affect contrast). It is NOT a live region (set in
+ * chat-messages.js), so it is seen but never announced. */
+.chat-response-clamp-notice {
+  margin: 0;
+  padding: 0.1rem 0.5rem;
+  border-left: 3px solid currentColor;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+/* Toggle: the house small-button language (matching .chat-token-preset /
+ * .chat-filter-reset), sized to the WCAG 2.2 preferred target (>=44px). Colour,
+ * border, hover and the focus-visible ring come from the shared button{} rules
+ * (AA in both themes), so no bespoke ring is invented here. */
+.chat-response-clamp-toggle {
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  min-height: 44px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Windows High Contrast: the fade mask is dropped under forced-colors (the
+ * overflow clip still caps the height), so pin the notice text and its accent
+ * border to system colours so the cue stays perceivable. */
+@media (forced-colors: active) {
+  .chat-response-clamp-notice {
+    color: CanvasText;
+    border-left-color: CanvasText;
+  }
+}
+
+/* Reduced motion: the expand/collapse is an instant show/hide with no animation,
+ * so there is nothing to disable; this guard pins that intent and neutralises any
+ * transition should one ever be added to these elements. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-response-clamped,
+  .chat-response-clamp-controls,
+  .chat-response-clamp-notice,
+  .chat-response-clamp-toggle {
+    transition: none;
+  }
+}
+
+/* Chat image attachment drop target (Unified Chat attachments).
+ * The .chat-attach block (#chat-attach-dropzone) is the drag-and-drop target. A
+ * resting dashed currentColor border marks it as a drop area — currentColor is
+ * guaranteed >=3:1 against the panel in both themes. The drag-over state is
+ * signalled by a SHAPE change only — dashed→solid plus +1px width — never colour
+ * alone, so it satisfies SC 1.4.11 (non-text contrast). Drop is a pointer-only
+ * enhancement; the label-wrapped native file input stays the keyboard control. */
+.chat-attach {
+  border: 2px dashed currentColor;
+  border-radius: 4px;
+  padding: 0.75rem;
+  cursor: pointer; /* the whole box opens the picker — pointer-only, see chat-attach.js */
+  transition:
+    border-style 0.2s ease,
+    border-width 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.chat-attach.drag-over {
+  border-style: solid;
+  border-width: 3px;
+}
+
+/* Windows High Contrast: pin the drop-target border to a system colour so both
+ * the resting and drag-over cues stay perceivable under forced-colors. */
+@media (forced-colors: active) {
+  .chat-attach {
+    border-color: CanvasText;
+  }
+}
+
+/* Reduced motion: the dashed→solid / width change is an instant state swap, not
+ * an animation — neutralise the transition so nothing eases. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-attach {
+    transition: none;
+  }
+}
+
+/* ── Starter prompts: welcome region + chips ──────────────────────────────────
+ * Styling for the empty-conversation welcome shell (tools.html #chat-welcome)
+ * painted by chat/chat-chips.js: a region heading and a centred, wrapping row of
+ * starter-prompt chips. Every value below mirrors Local Chat's live styling in
+ * local-chat/local-chat.css so the two welcomes read as one system:
+ *
+ *   - the chip pill      → .local-chat-chip (l.629) + the background/colour
+ *                          override at l.18
+ *   - the chip row       → .local-chat-chip-bar (l.622)
+ *   - the centring/padding → .local-chat-welcome (l.577)
+ *   - the card border    → #local-chat-messages (l.30, l.188)
+ *
+ * The card border is borrowed deliberately. In Local Chat the welcome sits INSIDE
+ * the bordered message list, so its own rule carries no border; here #chat-welcome
+ * is a SIBLING of #chat-messages (both children of #chat-app), so there is no
+ * enclosing border to sit in and the literal mirror would look less like Local
+ * Chat, not more. Composing Local Chat's welcome centring with its message-list
+ * border reproduces the intended look with every value taken from real source.
+ *
+ * No colour, border colour or focus ring is hardcoded: the chips cancel the shared
+ * button{} fill and inherit the rest from light.css / dark.css, so they stay AA in
+ * both themes. chat-chips.js toggles the `hidden` ATTRIBUTE on #chat-welcome, so
+ * the layout `display` lives on :not([hidden]) — the base [hidden] rule
+ * (display:none) always wins when hidden. No transition or animation is introduced
+ * (reduced-motion honoured by default). */
+
+/* Region container: the borrowed card (border + radius from #local-chat-messages)
+ * and Local Chat's welcome padding/centring. NO display here, so the `hidden`
+ * attribute still hides the whole region. */
+#chat-welcome {
+  margin: 0.5rem 0 1rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  border: 1px solid currentcolor;
+  border-radius: 0.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Layout applies only while shown, so [hidden] keeps hiding the region. Mirrors
+ * .local-chat-welcome's centred column; the gap owns the heading → chips spacing. */
+#chat-welcome:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+/* Region heading: mirrors .local-chat-welcome-heading. Centred by the parent's
+ * text-align. No colour is set, so it inherits the themed body colour and stays AA
+ * in both themes. */
+.chat-welcome-heading {
+  margin: 0 0 0.25rem;
+  font-size: 1.3em;
+}
+
+/* Chip row: mirrors .local-chat-chip-bar — a centred, wrapping row. flex-direction
+ * is left at its default `row`, as Local Chat does. */
+.chat-welcome-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* Chip: an OUTLINED pill-shaped native <button>, mirroring .local-chat-chip. The
+ * outline look is a mechanism, not a palette — `background`/`color: inherit`
+ * cancels the shared button{} dark fill so the pill sits transparent on the panel
+ * background with the themed body colour as its text, while the 0.2rem border and
+ * the hover/focus-visible treatment still come from the shared button{} rules in
+ * light.css / dark.css. That keeps the chip AA in both themes with no hardcoded
+ * hex and NO bespoke focus ring — Local Chat adds none either, so both inherit the
+ * same shared button:focus-visible indicator.
+ *
+ * The remaining declarations are ours to keep: the flex gap owns the icon→label
+ * spacing (so the base button's margin-right is reset), box-sizing keeps the
+ * 0.2rem border and padding inside the 44px min-height so the target size holds,
+ * and min-width:0 lets a chip shrink so a long label wraps inside the pill rather
+ * than overflowing the row. No transition is introduced. */
+.chat-chip {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: inherit;
+  color: inherit;
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border-radius: 1.5rem;
+  font-size: 0.9em;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  cursor: pointer;
+}
+
+/* Mirrors .local-chat-chip:hover/:focus-visible. A no-op here as in Local Chat —
+ * neither chip sets a resting opacity — but kept so the two stay in step if one
+ * ever does. The visible hover and focus treatment is the shared button{} one. */
+.chat-chip:hover,
+.chat-chip:focus-visible {
+  opacity: 1;
+}
+
+/* Decorative icon span: sized to match the label text so the pair reads level. */
+.chat-chip [data-icon] {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.chat-chip [data-icon] svg {
+  width: 1em;
+  height: 1em;
+}
+
+/* Label: inherits the chip text; allowed to wrap (even a long unbroken token) so a
+ * long chip grows in height rather than breaking the wrapping row.
+ *
+ * text-align cancels the centre inherited from #chat-welcome's card centring, and
+ * only here: a wrapped label's lines then all start at the same left edge, just
+ * after the icon, instead of each line being centred against the others. A short
+ * single-line chip is unaffected (the label box is its text's width, so there is
+ * no free space for either value to distribute), and the row's justify-content
+ * still centres the chips themselves. */
+.chat-chip-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+#chat-model-search {
+  border-radius: 4px;
 }

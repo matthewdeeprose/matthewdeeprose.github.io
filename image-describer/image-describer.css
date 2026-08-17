@@ -3568,6 +3568,22 @@
   font-size: 0.85rem;
 }
 
+/* Holds a label and its live value on one line. .tts-field stacks its children,
+   so without this row the value would drop below the label when it is moved out
+   of the <label> to stop the control's accessible name tracking the value. */
+.tts-field-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+/* Matches .tts-field label, so pulling the value out of the <label> leaves the
+   rendered row pixel-identical to when the value was inside it. */
+.tts-field-header output {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .tts-field select,
 .tts-field input[type="range"] {
   width: 100%;

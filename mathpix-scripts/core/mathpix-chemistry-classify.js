@@ -20,7 +20,7 @@
  *
  * Tier-consistency: classify.js produces classification shape; prose.js
  *   consumes. Cleave is pure relocation; behaviour preservation gated by
- *   20-fixture migration harness. Byte-identical baseline = zero regression
+ *   22-fixture migration harness. Byte-identical baseline = zero regression
  *   in screen-reader output.
  *
  * Must load AFTER mathpix-chemistry-utils.js, BEFORE mathpix-chemistry-
@@ -112,11 +112,12 @@
   // =========================================================================
   // Phase 17-2a/2b: SMARTS functional-group catalogue.
   //
-  // DEAD CODE. The live classification path (analyseStructure →
-  // _detectFunctionalGroupsFromGraph) is UNCHANGED; runCatalogue (below) is
-  // reached only by the equivalence harness (window.testCatalogueEquivalence)
-  // until the consumption switchover lands in a later 17-2 sub-stage. The
-  // migration canary is therefore 20/0 by construction.
+  // LIVE CODE since the Phase 17-3b switchover. analyseStructure calls
+  // runCatalogue (below) as its functional-group detector; the legacy
+  // _detectFunctionalGroupsFromGraph is retained (never deleted) as both the
+  // one-line rollback anchor and the empty-result fallback that fires when
+  // RDKit is unavailable or the SMILES is invalid. The equivalence harness
+  // (window.testCatalogueEquivalence) still compares the two detectors.
   //
   // Batch 1 seeds the six Q2-class-(a) "pure-SMARTS, atoms-exact" passes from
   // phase17-2-investigation-findings.md § 3: carboxylic acid, aldehyde,
@@ -177,6 +178,45 @@
   // (2 =O vs 1 =O; mutually exclusive per S atom, so emission order only).
   const FUNCTIONAL_GROUPS = [
     { id: "acid",     smarts: "C(=O)[OH]",      name: "carboxylic acid", shortName: "acid",     shorthand: "–COOH" },
+    // --- batch 7 (Phase 17-4b): the two senior principals, class (a) —
+    //     pure-SMARTS, atoms-exact. Inserted immediately after `acid` at
+    //     positions 2 and 3, in PCG_CASCADE order (acid < anhydride < acid
+    //     chloride), which is IUPAC P-41 seniority.
+    //
+    //     ORDER IS LOAD-BEARING on both rows, and for different reasons:
+    //       • anhydride MUST sit above `ester` (row 6). The ester pattern
+    //         [#6](=O)[OX2][#6] matches a symmetric anhydride and claims its
+    //         bridging O first, so an anhydride row placed below ester can
+    //         never fire — the root cause recorded at KD-20, where acetic
+    //         anhydride was described as "an ester group (–OCOCH₃)".
+    //       • acid chloride MUST sit above `halogen` (row 16), which would
+    //         otherwise claim the chlorine on its own and leave the carbonyl
+    //         undescribed — KD-21, where acetyl chloride read "a halogen
+    //         (–Cl)" with no carbonyl at all.
+    //     Both rows claim their WHOLE motif (F3's ruling), so no atom is left
+    //     for a lower row to mislabel: anhydride claims [C,=O,O,C,=O] and acid
+    //     chloride claims [C,=O,Cl].
+    //
+    //     Neither pattern matches any of the 22 baseline fixtures (measured at
+    //     this unit's pre-flight, 22/22 no-match for both), so the insertion
+    //     disturbs no landed claim. Aspirin is the only baseline fixture the
+    //     `ester` row matches, and the anhydride pattern declines it.
+    //
+    //     PATTERN NARROWED FROM THE PROBED CANDIDATE (validated, not copied):
+    //     the recon probed acid chloride as [CX3](=O)[F,Cl,Br,I], which also
+    //     matches acyl fluorides, bromides and iodides. The shortName sealed at
+    //     17-4a is the specific string "acid chloride", so the broad form would
+    //     emit a FALSE claim on CC(=O)F ("an acid chloride group (–COCl)") —
+    //     the same shape of defect as KD-19's non-existent hydroxyl, introduced
+    //     while closing two others. Narrowed to [Cl] so the emitted name is
+    //     always true of the structure; the acyl fluoride/bromide/iodide cases
+    //     stay on the halogen row, which is less specific but not false (L46 —
+    //     a narrowing predicate fails closed). Also makes the fixed –COCl
+    //     shorthand correct by construction, as 17-4a's display-map comment
+    //     already anticipated.
+    { id: "anhydride",      smarts: "[CX3](=O)[OX2][CX3]=O", name: "anhydride",      shortName: "anhydride",      shorthand: "–CO–O–CO–" },
+    { id: "acid chloride",  smarts: "[CX3](=O)[Cl]",         name: "acid chloride",  shortName: "acid chloride",  shorthand: "–COCl" },
+    // --- end batch 7 ---
     // --- batch 2: S-cluster, class (b) — SMARTS + refine (DEAD CODE) ---
     {
       id: "sulphonyl",
@@ -507,9 +547,255 @@
       },
     },
     // --- end batch 4 ---
+    // --- batch 5 (Phase 17-2e): the N cluster, class (b) — SMARTS + refine
+    //     (DEAD CODE). amine then imine, inserted after the O-bridge rows in
+    //     legacy-emission order (legacy passes 9, 9.5). Placement is
+    //     correctness-free relative to the landed rows: the amide row (batch 3,
+    //     far ahead) already claims the amide N, so amide < amine auto-holds and
+    //     amine's !claimed guard skips it; amine ⊥ imine by construction
+    //     (amine's all-single-bond guard rejects imine's =N, so the two can
+    //     never claim the same N), making amine < imine legibility-only. The
+    //     landed thiol/nitrile/halogen rows are element-disjoint from N, so this
+    //     block may sit before them with no correctness effect. Each refine
+    //     reproduces its legacy pass byte-for-byte, re-deriving `atoms` from
+    //     adjacency in legacy order, so the record is byte-identical by
+    //     construction. amine supplies the subtype payload (subtype /
+    //     nSubstituents / nHydrogenCount) via the widened refine-push guards;
+    //     imine fits the existing refine-push shape.
+    {
+      id: "amine",
+      smarts: "[NX3;!$([NX3]=*);!$([NX3]#*)]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "9" (Phase 15-2c LOCK 3): a non-ring N whose every edge is a
+      // single bond (rules out nitrile # and imine = by construction), with
+      // heavy-degree 1..3. subtype = heavyDegree drives the shorthand glyph
+      // (1° –NH₂, 2° –NH–, 3° null) and the H-count: bracket.hcount when the
+      // translator supplied it, else (3 − heavyDegree). On any NX3-matched atom
+      // the two H-count sources agree by construction (X3 ⟹ heavy + H = 3), so
+      // the divergence a wrong `3 − heavyDegree` refine could introduce is not
+      // reachable through this SMARTS — the check is defence-in-depth (Phase
+      // 17-2e Gate-0 finding). Claim-subset [N]. attachmentVertexId supplied
+      // explicitly via _catalogueFindRingAttachment (= legacy findRingAttachment).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        const nVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "N" && !inRing(v) && !claimed.has(v.id));
+        if (!nVertex) return null;
+        const neighbours = adjacency.get(nVertex.id) || [];
+        // All neighbour edges must be single bonds — rules out nitrile/imine.
+        if (!neighbours.every((n) => n.edge.bondType === "-")) return null;
+        const heavyDegree = neighbours.length;
+        if (heavyDegree < 1 || heavyDegree > 3) return null;
+        const hcount = nVertex.value?.bracket?.hcount ?? (3 - heavyDegree);
+        const subtype = heavyDegree; // 1 | 2 | 3
+        const shorthandForSubtype =
+          subtype === 1 ? "–NH₂" : subtype === 2 ? "–NH–" : null;
+        const nSubstituents = neighbours.map((n) => n.vertex.id);
+        return {
+          name: "amine",
+          shortName: "amine",
+          shorthand: shorthandForSubtype,
+          atoms: [nVertex.id],
+          attachmentVertexId: _catalogueFindRingAttachment([nVertex.id], adjacency),
+          subtype,
+          nSubstituents,
+          nHydrogenCount: hcount,
+        };
+      },
+    },
+    // --- batch 8 (Phase 17-4c): the three prefix-only groups, class (a) —
+    //     pure-SMARTS, atoms-exact. Inserted IMMEDIATELY ABOVE `imine`, in the
+    //     order nitro < diazo < azide.
+    //
+    //     WHY ABOVE `imine`, and it is the only position that is not a bet:
+    //     diazo overlaps imine at the PATTERN level on diazomethane
+    //     (C=[N+]=[N-]). It does not bite today only because imine's refine
+    //     rejects the molecule — it requires the N's sole heavy neighbour to be
+    //     a carbon, and diazomethane's terminal N sees a nitrogen. THAT LAST
+    //     CLAIM IS READ FROM THE PREDICATE'S SOURCE (the imine refine's
+    //     `el(n0.vertex) !== "C"` guard, a few rows below), NOT probed — imine
+    //     was never run against diazomethane to watch it decline. Sitting above
+    //     imine resolves the overlap BY CONSTRUCTION rather than by depending on
+    //     a refine predicate continuing to behave as it does now.
+    //
+    //     None of the three collides with `amine` (row 14, directly above):
+    //     amine's pattern is [NX3;!$([NX3]=*);!$([NX3]#*)], which excludes any
+    //     nitrogen carrying a double or triple bond. Nitro's N is NX3 but
+    //     double-bonded to an oxygen; diazo's and azide's nitrogens are NX2/NX1.
+    //     Confirmed against the live amine row, not assumed.
+    //
+    //     ALL THREE CLAIM THEIR OWN HETEROATOMS AND NOTHING ELSE (fork F3, and
+    //     one ruling beyond it). The recon probed nitro and azide as recursive
+    //     SINGLE-ATOM queries, which claim the nitrogen and leave the oxygens
+    //     free for a lower row — and an unclaimed nitro oxygen is exactly the
+    //     atom the retained legacy detector reads as a hydroxyl (KD-19). A
+    //     single-atom row would have reintroduced the defect it was added to
+    //     remove. Widened so nitro claims [N, O, O] and azide claims [N, N, N].
+    //     Diazo goes the other way from the recon's candidate: it claims its two
+    //     nitrogens and NOT the carbon, which the pattern requires as
+    //     environment only ($(*=[#6])). Claiming a skeleton carbon removes it
+    //     from the chain descriptor — the defect shape recorded at KD-22 — and
+    //     minting a second instance of that while closing KD-19 is a poor trade.
+    //     Diazomethane's COMP is the named gate on it: the carbon must survive.
+    //
+    //     azide vs diazo is the pair to watch, since both motifs contain an
+    //     [N+]=[N-] fragment. BOTH directions were measured at this unit's
+    //     pre-flight, and both are recorded here because one negative would
+    //     leave the other half of the guarantee unevidenced: (a) the diazo
+    //     pattern does NOT match methyl azide (CN=[N+]=[N-]) — the cationic N
+    //     there is double-bonded to two nitrogens, never to a carbon, so
+    //     $(*=[#6]) declines it; (b) the azide pattern does NOT match
+    //     diazomethane (C=[N+]=[N-]) — [NX2]=[NX2+]=[NX1-] requires three
+    //     nitrogens and diazomethane has two. The two rows are therefore
+    //     disjoint on both molecules, on two measurements rather than one.
+    //     A seat widening EITHER pattern must re-test BOTH, not just the one
+    //     it is touching.
+    //
+    //     Measured over the full 27-fixture corpus at pre-flight: none of the
+    //     three matches any existing fixture, so the insertion disturbs no
+    //     landed claim and the only prose that moves is nitrobenzene's — which
+    //     had no fixture and was reaching the empty-catalogue legacy fallback.
+    //
+    //     PENTAVALENT NITRO IS COVERED, and the MECHANISM is probed, not
+    //     inferred from the match. RDKit normalises c1ccccc1N(=O)=O at
+    //     sanitisation, so [NX3+](=O)[O-] matches both writings (both giving
+    //     N + 2 O) and both yield byte-identical prose. Read back from RDKit's
+    //     own output for the pentavalent input: get_smiles() returns the
+    //     charge-separated O=[N+]([O-])c1ccccc1, the InChI is identical for the
+    //     two writings, and the formal charges are +1 on N / -1 on an O by two
+    //     independent readings (get_json chg fields and the molblock M CHG
+    //     block) — i.e. present BEFORE any match is attempted. The competing
+    //     explanation (a matcher lenient about charge terms) is refuted by
+    //     control: [O-] does NOT match ethanol's neutral oxygen and [N+0] does
+    //     NOT match this nitrogen, while the positive control [OX2H1] does
+    //     match CCO, so the probe was live. No second pattern needed.
+    { id: "nitro", smarts: "[NX3+](=O)[O-]",           name: "nitro", shortName: "nitro", shorthand: "–NO₂" },
+    { id: "diazo", smarts: "[NX2+;$(*=[#6])]=[NX1-]",  name: "diazo", shortName: "diazo", shorthand: "=N₂" },
+    { id: "azide", smarts: "[NX2]=[NX2+]=[NX1-]",      name: "azide", shortName: "azide", shorthand: "–N₃" },
+    // --- end batch 8 ---
+    {
+      id: "imine",
+      smarts: "[NX2;!R]=[CX3]",
+      name: null, shortName: null, shorthand: null,
+      // Legacy pass "9.5" (Phase 16-3, additive): the residual non-ring =N the
+      // amine pass rejects — a heavy-degree-1 N whose sole edge is a double bond
+      // to an sp² (CX3) carbon. Degree-1 is load-bearing (ring/heavier C=N is
+      // rejected). Strictly additive: the amine pass already claimed the
+      // single-bonded amine N's, so this re-claims nothing. Claim-subset [N].
+      // attachmentVertexId omitted → the generic _catalogueFindRingAttachment
+      // reproduces the legacy findRingAttachment([N]).
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const inRing = (v) => !!(v && v.value && v.value.rings && v.value.rings.length > 0);
+        const nVertex = matchAtoms
+          .map((id) => vertices.find((x) => x.id === id))
+          .find((v) => v && el(v) === "N" && !inRing(v) && !claimed.has(v.id));
+        if (!nVertex) return null;
+        const neighbours = adjacency.get(nVertex.id) || [];
+        if (neighbours.length !== 1) return null; // heavy-degree 1
+        const n0 = neighbours[0];
+        if (n0.edge.bondType !== "=" || el(n0.vertex) !== "C") return null;
+        // C-side CX3: the imine carbon is sp² with heavy-atom degree 3.
+        const cNeighbours = adjacency.get(n0.vertex.id) || [];
+        if (cNeighbours.length !== 3) return null;
+        return {
+          name: "imine",
+          shortName: "imine",
+          shorthand: "=N–",
+          atoms: [nVertex.id],
+        };
+      },
+    },
+    // --- end batch 5 ---
     { id: "thiol",    smarts: "[SX2H1]",        name: "thiol group",     shortName: "thiol",    shorthand: "–SH" },
     { id: "nitrile",  smarts: "[CX2]#[NX1]",    name: "nitrile",         shortName: "nitrile",  shorthand: "–CN" },
     { id: "halogen",  smarts: "[F,Cl,Br,I;X1]", name: "halogen",         shortName: "halogen",  shorthand: null },
+    // --- batch 6 (Phase 17-2f): the alkene/alkyne pair, class (b) — SMARTS +
+    //     refine (DEAD CODE). alkene then alkyne, appended after `halogen` in
+    //     legacy-emission order (legacy pass 12). This is the LAST SMARTS-portable
+    //     family — it closes the migrate-first port (17-2). Both rows are
+    //     atom-disjoint from every landed row by construction: the legacy pass
+    //     requires BOTH edge ends to be carbon, while every landed row that could
+    //     share a carbon anchors on a heteroatom or a C=O / C#N / C=N motif that
+    //     the C=C / C#C SMARTS never matches (findings § 4.1). So placement is
+    //     correctness-free (legibility only) and no landed row moves.
+    //
+    //     The one real constraint is the aromatic exclusion — the alkene row must
+    //     NOT claim a benzene ring's bonds. The uppercase (aliphatic) `C` in the
+    //     SMARTS already excludes aromatic ring bonds (SmilesDrawer's
+    //     isPartOfAromaticRing and RDKit's aromaticity model agree on every probed
+    //     fixture — findings § 4.2, exact on benzene/Naproxen/styrene); the refine
+    //     additionally re-checks the graph edge's isPartOfAromaticRing for
+    //     byte-exact legacy parity in any hypothetical model divergence.
+    //
+    //     Each refine re-derives `atoms` as the legacy [edge.sourceId,
+    //     edge.targetId] pair (NOT SMARTS-match order — the pattern is symmetric,
+    //     so match order is not guaranteed) and reproduces the legacy
+    //     skip-iff-BOTH-ends-claimed gate (`&&`, not the generic class-(a)
+    //     any-claimed skip; the distinction is unreachable in practice —
+    //     findings § 4.3 — but the refine reproduces it faithfully). Bond order is
+    //     expressed by the SMARTS itself (= vs #), so no bond-order-branching
+    //     refine. attachmentVertexId is omitted → the generic
+    //     _catalogueFindRingAttachment(atoms) reproduces the legacy
+    //     findRingAttachment([source, target]) value (byte-identical helper). No
+    //     new refine-push field (the record uses only name / shortName /
+    //     shorthand / atoms / attachmentVertexId — findings § 3.2). No
+    //     runCatalogue change.
+    {
+      id: "alkene",
+      smarts: "C=C",
+      name: null, shortName: null, shorthand: null,
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        // The two matched carbons (aliphatic `C` SMARTS → both ends carbon).
+        const cIds = matchAtoms.filter((id) => {
+          const v = vertices.find((x) => x.id === id);
+          return v && el(v) === "C";
+        });
+        if (cIds.length < 2) return null;
+        // Locate the graph edge between the two carbons (legacy iterates edges);
+        // the double bond IS the alkene edge. edge.sourceId/targetId give the
+        // legacy [source, target] atom order regardless of SMARTS-match order.
+        const nb = (adjacency.get(cIds[0]) || []).find(
+          (n) => n.vertex.id === cIds[1] && n.edge.bondType === "=",
+        );
+        if (!nb) return null;
+        const edge = nb.edge;
+        // (i) aromatic exclusion — defensive re-check of the legacy gate.
+        if (edge.isPartOfAromaticRing) return null;
+        // (iii) skip iff BOTH ends already claimed (&&, not ||).
+        if (claimed.has(edge.sourceId) && claimed.has(edge.targetId)) return null;
+        return { name: "alkene", shortName: "alkene", shorthand: "C=C", atoms: [edge.sourceId, edge.targetId] };
+      },
+    },
+    {
+      id: "alkyne",
+      smarts: "C#C",
+      name: null, shortName: null, shorthand: null,
+      refine: function (matchAtoms, ctx) {
+        const vertices = ctx.vertices, adjacency = ctx.adjacency, claimed = ctx.claimed;
+        const el = (v) => (v && v.value && v.value.element) || "";
+        const cIds = matchAtoms.filter((id) => {
+          const v = vertices.find((x) => x.id === id);
+          return v && el(v) === "C";
+        });
+        if (cIds.length < 2) return null;
+        const nb = (adjacency.get(cIds[0]) || []).find(
+          (n) => n.vertex.id === cIds[1] && n.edge.bondType === "#",
+        );
+        if (!nb) return null;
+        const edge = nb.edge;
+        if (edge.isPartOfAromaticRing) return null;
+        if (claimed.has(edge.sourceId) && claimed.has(edge.targetId)) return null;
+        return { name: "alkyne", shortName: "alkyne", shorthand: "C≡C", atoms: [edge.sourceId, edge.targetId] };
+      },
+    },
+    // --- end batch 6 ---
   ];
 
   // =========================================================================
@@ -538,6 +824,44 @@
       }
     }
     return adj;
+  }
+
+  /**
+   * Phase 17-5b: do a ring's two heteroatoms sit at adjacent ring positions?
+   *
+   * Distinguishes the 1,2- from the 1,3-isomer of a two-heteroatom five-ring,
+   * which the size/aromaticity/multiset predicates below cannot: pyrazole and
+   * imidazole share a heteroatom multiset and differ only in placement, as do
+   * isothiazole/thiazole and isoxazole/oxazole. Positions come from the ordered
+   * ring walk the classifier already retains, so no extra graph data is needed.
+   *
+   * Fail-soft: returns null rather than throwing whenever the question does not
+   * apply (missing data, or a heteroatom count other than two), so a caller
+   * matching on `=== true` / `=== false` falls through to its generic arm.
+   *
+   * @param {number[]} memberVertexIds - Ordered ring-traversal vertex ids
+   * @param {Object} graphData - { graph, rings } from _extractGraphFromDrawer
+   * @returns {boolean|null} true if adjacent (1,2), false if separated (1,3+),
+   *   null if the ring does not hold exactly two heteroatoms
+   * @private
+   */
+  function _areRingHeteroatomsAdjacent(memberVertexIds, graphData) {
+    if (!Array.isArray(memberVertexIds) || !graphData?.graph?.vertices) return null;
+
+    // Ring positions of the non-carbon members, in traversal order. Same
+    // element lookup as _classifyRing's heteroatom loop, which is unchanged.
+    const heteroIndices = [];
+    for (let i = 0; i < memberVertexIds.length; i++) {
+      const vertex = graphData.graph.vertices.find(v => v.id === memberVertexIds[i]);
+      const element = vertex?.value?.element;
+      if (element && element !== "C") heteroIndices.push(i);
+    }
+    if (heteroIndices.length !== 2) return null;
+
+    // Cyclic index distance, as _detectSubstitutionPattern computes it.
+    const raw = Math.abs(heteroIndices[1] - heteroIndices[0]);
+    const dist = Math.min(raw, memberVertexIds.length - raw);
+    return dist === 1;
   }
 
   /**
@@ -576,6 +900,11 @@
       aromatic = ringEdges.every(e => e.isPartOfAromaticRing === true);
     }
 
+    // Phase 17-5b: where the heteroatoms sit, for the two-heteroatom five-ring
+    // arms below. null unless the ring holds exactly two, so an arm testing
+    // `=== true` / `=== false` is skipped rather than matched on bad input.
+    const heteroAdjacent = _areRingHeteroatomsAdjacent(memberIds, graphData);
+
     // Classify ring type
     let type;
     if (size === 6 && aromatic && heteroatoms.length === 0) {
@@ -590,8 +919,34 @@
       type = "furan";
     } else if (size === 5 && aromatic && heteroatoms.length === 1 && heteroatoms[0] === "S") {
       type = "thiophene";
-    } else if (size === 5 && aromatic && heteroatoms.length === 2 && heteroatoms.every(h => h === "N")) {
+    // Phase 17-5b (KD-26): the two-heteroatom five-rings are distinguished by
+    // heteroatom PLACEMENT, not multiset — so each arm below tests adjacency.
+    // 1,2 → pyrazole; 1,3 → imidazole. The pre-17-5b predicate was
+    // adjacency-blind and named every two-N five-ring "imidazole", so pyrazole
+    // was confidently mis-named at all three tiers.
+    } else if (
+      size === 5 && aromatic && heteroatoms.length === 2 &&
+      heteroatoms.every(h => h === "N") && heteroAdjacent === true
+    ) {
+      type = "pyrazole";
+    } else if (
+      size === 5 && aromatic && heteroatoms.length === 2 &&
+      heteroatoms.every(h => h === "N") && heteroAdjacent === false
+    ) {
       type = "imidazole";
+    // The mixed-pair arms admit the 1,3-isomers ONLY. Their 1,2-siblings —
+    // isothiazole and isoxazole — deliberately match no arm and fall through to
+    // the generic size noun: vague-but-true prose beats a confident wrong name.
+    } else if (
+      size === 5 && aromatic && heteroatoms.length === 2 &&
+      heteroatoms.includes("N") && heteroatoms.includes("S") && heteroAdjacent === false
+    ) {
+      type = "thiazole";
+    } else if (
+      size === 5 && aromatic && heteroatoms.length === 2 &&
+      heteroatoms.includes("N") && heteroatoms.includes("O") && heteroAdjacent === false
+    ) {
+      type = "oxazole";
     } else if (size === 6 && !aromatic && heteroatoms.length === 0) {
       type = "cyclohexane";
     } else {
@@ -1368,89 +1723,131 @@
       }
     }
 
-    // 13 (Phase 10-3 — CT-4e-alkyl). Simple-alkyl ring substituents.
-    // Surfaces bare alkyl branches (methyl, ethyl, …) attached to ring atoms
-    // so the standard and short tiers can report substituent counts rather
-    // than silently dropping them — caffeine's three N-methyls and
-    // theobromine's two N-methyls never reached either tier before.
-    //
-    // Runs LAST so any atom already claimed by a specific functional group is
-    // never misclassified as a plain alkyl. Classification gates:
-    //   • branch root is NOT in `claimed` (so methyls inside an ester, amide,
-    //     etc. stay with those groups)
-    //   • attachment bond and every subsequent walk bond is a single bond
-    //     (rules out vinyl / allyl / alkynyl)
-    //   • every atom along the branch is carbon (rules out methoxy etc.)
-    //   • the branch has no sub-branches (rules out isopropyl / tert-butyl)
-    //   • length within ALKYL_NAMES range (methyl–octyl); longer chains stay
-    //     labelled generically by the comprehensive tier's existing walk
-    //
-    // The attachment atom's element drives the shortName: "methyl" on a ring
-    // carbon, "N-methyl" on a ring nitrogen, etc. This preserves the semantic
-    // signal a chemist would want ("three N-methyls" ≠ "three C-methyls")
-    // while still letting the downstream collapse logic count them together.
+    // 13 (Phase 10-3 — CT-4e-alkyl). Simple-alkyl ring substituents — runs LAST
+    // on the residual `claimed` Set. Phase 17-3a: extracted to the module-level
+    // _detectAlkylRingSubstituents so the SMARTS catalogue (runCatalogue) can
+    // invoke the same genuinely-not-SMARTS pass; the classification-gate
+    // documentation now lives in that helper's JSDoc. Same last position, same
+    // shared `claimed` Set the passes above populated.
+    groups.push(..._detectAlkylRingSubstituents(vertices, adjacency, claimed));
+
+    return groups;
+  }
+
+  /**
+   * Phase 17-3a: alkyl ring-substituent walker (legacy pass 13 / detector #18,
+   * class (c) — the one genuinely not-SMARTS pass). Extracted verbatim from
+   * _detectFunctionalGroupsFromGraph so both the legacy detector and the SMARTS
+   * catalogue (runCatalogue) invoke the same pass. Surfaces bare alkyl branches
+   * (methyl, ethyl, …) attached to ring atoms so the standard and short tiers
+   * can report substituent counts rather than silently dropping them —
+   * caffeine's three N-methyls and theobromine's two N-methyls never reached
+   * either tier before.
+   *
+   * Runs LAST so any atom already claimed by a specific functional group is
+   * never misclassified as a plain alkyl. Classification gates:
+   *   • branch root is NOT in `claimed` (so methyls inside an ester, amide,
+   *     etc. stay with those groups)
+   *   • attachment bond and every subsequent walk bond is a single bond
+   *     (rules out vinyl / allyl / alkynyl)
+   *   • every atom along the branch is carbon (rules out methoxy etc.)
+   *   • the branch has no sub-branches (rules out isopropyl / tert-butyl)
+   *   • length within ALKYL_NAMES range (methyl–octyl); longer chains stay
+   *     labelled generically by the comprehensive tier's existing walk
+   *
+   * The attachment atom's element drives the shortName: "methyl" on a ring
+   * carbon, "N-methyl" on a ring nitrogen, etc. This preserves the semantic
+   * signal a chemist would want ("three N-methyls" ≠ "three C-methyls") while
+   * still letting the downstream collapse logic count them together.
+   *
+   * DUAL EFFECT (preserved from the inline block): returns the walker records
+   * AND mutates the shared `claimed` Set passed in — it consumes `claimed`
+   * mid-walk (skip-if-claimed gates) and adds each chain atom before emitting.
+   * `atoms` is ROOT-FIRST walk order (chainAtoms.slice()), NOT sorted; this is
+   * load-bearing for the equivalence comparator's order-sensitive atoms check.
+   *
+   * NOTE: this is NOT _walkAlkylSubstituent (the Phase 15-2c LOCK-5 tier-1
+   * substituent prose namer) — a different, separately-consumed helper.
+   *
+   * @param {Array} vertices - graphData.graph.vertices
+   * @param {Map} adjacency - adjacency map from _buildAdjacencyMap()
+   * @param {Set<number>} claimed - shared claimed-atoms Set (consumed AND mutated)
+   * @returns {Object[]} walker records { name, shortName, shorthand, atoms, attachmentVertexId }
+   * @private
+   */
+  function _detectAlkylRingSubstituents(vertices, adjacency, claimed) {
+    const groups = [];
+
+    /** Check if a vertex is in any ring */
+    function inRing(v) {
+      return v.value?.rings?.length > 0;
+    }
+    /** Get element symbol for a vertex */
+    function elem(v) {
+      return v.value?.element || "";
+    }
+
     const ringMembers = new Set();
     for (const v of vertices) {
       if (inRing(v)) ringMembers.add(v.id);
     }
-    if (ringMembers.size > 0) {
-      const branchPoints = _enumerateRingBranchPoints(ringMembers, adjacency);
-      for (const bp of branchPoints) {
-        if (bp.bondType !== "-") continue;
-        if (claimed.has(bp.branchRootId)) continue;
+    if (ringMembers.size === 0) return groups;
 
-        const chainAtoms = [];
-        const walkSeen = new Set([bp.attachmentVertexId]);
-        let prevId = bp.attachmentVertexId;
-        let currentId = bp.branchRootId;
-        let currentBond = bp.bondType;
-        let valid = true;
+    const branchPoints = _enumerateRingBranchPoints(ringMembers, adjacency);
+    for (const bp of branchPoints) {
+      if (bp.bondType !== "-") continue;
+      if (claimed.has(bp.branchRootId)) continue;
 
-        while (valid) {
-          if (walkSeen.has(currentId) || ringMembers.has(currentId) || claimed.has(currentId)) {
-            valid = false; break;
-          }
-          walkSeen.add(currentId);
-          const cVertex = vertices.find(v => v.id === currentId);
-          if (!cVertex || elem(cVertex) !== "C" || currentBond !== "-") {
-            valid = false; break;
-          }
-          chainAtoms.push(currentId);
-          if (chainAtoms.length >= ALKYL_NAMES.length) { valid = false; break; }
+      const chainAtoms = [];
+      const walkSeen = new Set([bp.attachmentVertexId]);
+      let prevId = bp.attachmentVertexId;
+      let currentId = bp.branchRootId;
+      let currentBond = bp.bondType;
+      let valid = true;
 
-          const neighbours = adjacency.get(currentId) || [];
-          const onward = neighbours.filter(
-            n => n.vertex.id !== prevId && !walkSeen.has(n.vertex.id) && !ringMembers.has(n.vertex.id),
-          );
-          if (onward.length === 0) break; // terminal carbon — valid alkyl
-          if (onward.length > 1) { valid = false; break; } // sub-branch
-
-          prevId = currentId;
-          currentId = onward[0].vertex.id;
-          currentBond = onward[0].edge.bondType;
+      while (valid) {
+        if (walkSeen.has(currentId) || ringMembers.has(currentId) || claimed.has(currentId)) {
+          valid = false; break;
         }
+        walkSeen.add(currentId);
+        const cVertex = vertices.find(v => v.id === currentId);
+        if (!cVertex || elem(cVertex) !== "C" || currentBond !== "-") {
+          valid = false; break;
+        }
+        chainAtoms.push(currentId);
+        if (chainAtoms.length >= ALKYL_NAMES.length) { valid = false; break; }
 
-        if (!valid || chainAtoms.length === 0) continue;
-        const baseName = ALKYL_NAMES[chainAtoms.length];
-        if (!baseName) continue;
+        const neighbours = adjacency.get(currentId) || [];
+        const onward = neighbours.filter(
+          n => n.vertex.id !== prevId && !walkSeen.has(n.vertex.id) && !ringMembers.has(n.vertex.id),
+        );
+        if (onward.length === 0) break; // terminal carbon — valid alkyl
+        if (onward.length > 1) { valid = false; break; } // sub-branch
 
-        const attachVertex = vertices.find(v => v.id === bp.attachmentVertexId);
-        const attachElement = elem(attachVertex);
-        const shortName = attachElement && attachElement !== "C"
-          ? attachElement + "-" + baseName
-          : baseName;
-
-        chainAtoms.forEach(a => claimed.add(a));
-        groups.push({
-          name: shortName + " group",
-          shortName,
-          shorthand: ALKYL_SHORTHANDS[baseName] || null,
-          atoms: chainAtoms.slice(),
-          attachmentVertexId: bp.attachmentVertexId,
-        });
+        prevId = currentId;
+        currentId = onward[0].vertex.id;
+        currentBond = onward[0].edge.bondType;
       }
-    }
 
+      if (!valid || chainAtoms.length === 0) continue;
+      const baseName = ALKYL_NAMES[chainAtoms.length];
+      if (!baseName) continue;
+
+      const attachVertex = vertices.find(v => v.id === bp.attachmentVertexId);
+      const attachElement = elem(attachVertex);
+      const shortName = attachElement && attachElement !== "C"
+        ? attachElement + "-" + baseName
+        : baseName;
+
+      chainAtoms.forEach(a => claimed.add(a));
+      groups.push({
+        name: shortName + " group",
+        shortName,
+        shorthand: ALKYL_SHORTHANDS[baseName] || null,
+        atoms: chainAtoms.slice(),
+        attachmentVertexId: bp.attachmentVertexId,
+      });
+    }
     return groups;
   }
 
@@ -1482,16 +1879,17 @@
   }
 
   /**
-   * Phase 17-2a/2b: SMARTS-catalogue functional-group runner (DEAD CODE).
+   * Phase 17-2a/2b: SMARTS-catalogue functional-group runner (LIVE since 17-3b).
    *
    * Matches every FUNCTIONAL_GROUPS row against the molecule and reconstructs
    * the legacy group records they correspond to. Class-(a) rows (batch 1) are
    * pure-SMARTS, atoms-exact; class-(b) rows (batch 2: the S-cluster) carry a
    * `refine` hook that reproduces the legacy graph-predicate and returns the
-   * legacy record (or null to reject). NOT called from analyseStructure / the
-   * live path — only the equivalence harness (window.testCatalogueEquivalence)
-   * reaches it until the consumption switchover sub-stage. Result: the
-   * migration canary is 20/0 by construction.
+   * legacy record (or null to reject). Called from analyseStructure since the
+   * Phase 17-3b switchover — this is the live functional-group detector. The
+   * legacy _detectFunctionalGroupsFromGraph is retained (never deleted) as the
+   * one-line rollback anchor and the empty-result fallback; the equivalence
+   * harness (window.testCatalogueEquivalence) still compares the two.
    *
    * Q1 index alignment (findings § 2 / § 4): matchSmarts MUST run on the same
    * canonical SMILES the cached graph was extracted from, else the returned
@@ -1580,6 +1978,20 @@
                 : _catalogueFindRingAttachment(rec.atoms, adjacency),
           };
           if (rec.flanking !== undefined) emitted.flanking = rec.flanking;
+          // Phase 17-2e contract widening (additive — landed rows return none of
+          // these, so the guards leave their emitted record byte-identical). The
+          // amine (pass 9) subtype payload: `subtype` (1|2|3, never 0),
+          // `nSubstituents` (an array of neighbour vertex ids), and
+          // `nHydrogenCount`. The nHydrogenCount guard MUST be `!== undefined`
+          // (never a truthy check): a tertiary amine has a legitimate
+          // nHydrogenCount === 0 that a falsy guard would silently drop (L32
+          // valid-zero nuance). subtype/nSubstituents use the same guard for
+          // consistency. Key order (name…attachmentVertexId, subtype,
+          // nSubstituents, nHydrogenCount) matches the legacy amine record, so
+          // the runner's whole-object JSON.stringify cross-checks stay equal.
+          if (rec.subtype !== undefined) emitted.subtype = rec.subtype;
+          if (rec.nSubstituents !== undefined) emitted.nSubstituents = rec.nSubstituents;
+          if (rec.nHydrogenCount !== undefined) emitted.nHydrogenCount = rec.nHydrogenCount;
           groups.push(emitted);
           continue;
         }
@@ -1601,6 +2013,16 @@
         });
       }
     }
+
+    // Phase 17-3a: the final imperative step — the class-(c) alkyl ring-
+    // substituent walker, appended after the 18 SMARTS/refine rows against the
+    // fully-populated `claimed` Set (mirroring the legacy detector's last
+    // position). This makes the catalogue self-complete: runCatalogue now
+    // reproduces every legacy _detectFunctionalGroupsFromGraph output. Still
+    // dead code — analyseStructure consumes the legacy detector (the switchover
+    // is 17-3b).
+    groups.push(..._detectAlkylRingSubstituents(vertices, adjacency, claimed));
+
     return groups;
   }
 
@@ -1638,9 +2060,10 @@
 
   // =========================================================================
   // Named-system identifiers (Step 3)
-  //   _countExocyclicCarbonyls, _identifyFusedSystemName,
-  //   _identifyPyrimidinePattern, _identifyPyridinonePattern,
-  //   _selectNamedSystemLabel
+  //   _countExocyclicCarbonyls, _hasFusionAdjacentFiveRingNitrogen,
+  //   _classifySixRingNitrogenPosition, _identifyTricyclicSystemName,
+  //   _identifyFusedSystemName, _identifyPyrimidinePattern,
+  //   _identifyPyridinonePattern, _selectNamedSystemLabel
   // =========================================================================
 
   /**
@@ -1676,12 +2099,362 @@
   }
 
   /**
+   * Phase 17 (KD-13): teaching-facing ring aromaticity. Returns true when the
+   * ring is perceived aromatic AND carries fewer than two exocyclic ring
+   * carbonyls. This is a NARROWING of the perceived flag: it can only ever
+   * withhold the "aromatic" claim, never grant it — a ring RDKit does not
+   * perceive aromatic returns false here too.
+   *
+   * Basis (not conclusion): in the pyrimidine-2,4-/2,6-diones two ring carbons
+   * are carbonyl carbons contributing no pi-electron to a ring sextet, so the
+   * ring reads as a cyclic diamide (bis-lactam) whose nitrogen lone pairs
+   * delocalise into the adjacent carbonyls rather than around the ring — by
+   * standard undergraduate teaching, not aromatic. The two-carbonyl threshold
+   * is what makes the narrowing safe: the witnesses either side of it are
+   * cytosine and 2-pyridone (one ring carbonyl → still taught-aromatic) and
+   * uracil (two ring carbonyls → taught-non-aromatic).
+   *
+   * `ring.aromatic` (RDKit's perception) is deliberately NOT changed by this
+   * predicate; every classification gate keeps reading it. Only the description
+   * tiers consume this teaching-facing view. See the JSDoc correction on
+   * _identifyPyrimidinePattern below and KD-13 in the defects ledger.
+   *
+   * The input guards fail closed — a missing ring.memberVertexIds, graphData or
+   * adjacency returns false (claim withheld) rather than letting the carbonyl
+   * count default to zero and silently re-assert aromaticity, because a false
+   * aromatic claim is worse than a withheld one.
+   *
+   * @param {Object} ring - classified ring with memberVertexIds
+   * @param {Object} graphData - { graph, rings }
+   * @param {Map} adjacency - from _buildAdjacencyMap
+   * @returns {boolean} true when the ring is aromatic for teaching purposes
+   * @private
+   */
+  function _isTaughtAromatic(ring, graphData, adjacency) {
+    if (!ring || ring.aromatic !== true) return false;
+    if (!ring.memberVertexIds || !graphData || !adjacency) return false;
+    return _countExocyclicCarbonyls(ring, graphData, adjacency) < 2;
+  }
+
+  /**
+   * Phase 17-5c (KD-27): is the five-ring's nitrogen bonded to a fusion-edge
+   * atom? This is what separates indole from isoindole. The two are identical
+   * on every test the fused detector previously applied — two aromatic rings,
+   * sizes 5 and 6, exactly one nitrogen — and their perceived `memberVertexIds`
+   * are identical as well (measured: six-ring [0,8,7,3,2,1], five-ring
+   * [4,3,7,6,5], shared edge {3,7} for both), so the discriminator can only
+   * come from the graph.
+   *
+   * In indole the nitrogen is N1, directly bonded to the fusion-edge carbon
+   * C7a. In isoindole it is N2, flanked by two carbons and bonded to neither
+   * shared atom. Adjacent to a shared vertex → indole; otherwise not indole.
+   *
+   * Fail-soft by design: every unresolvable input returns false, so the caller
+   * withholds the name rather than emitting one on unverified position. A
+   * confident wrong molecule identity is a worse outcome for a blind reader
+   * than a generic-but-true description.
+   *
+   * A nitrogen sitting ON the fusion edge (indolizine's bridgehead) is excluded
+   * from selection, so it cannot satisfy the test as its own neighbour. That
+   * case does not reach here today — the caller's heteroatom concatenation
+   * double-counts a bridgehead atom, giving `heteros.length === 2` — but the
+   * exclusion is stated here rather than inherited, so indolizine's measured
+   * no-name outcome does not depend on a guard in a different expression.
+   *
+   * @param {Object[]} rings - the two classified fused rings (sizes 5 and 6)
+   * @param {Object} [graphData] - { graph, rings }
+   * @param {Map} [adjacency] - from _buildAdjacencyMap
+   * @returns {boolean} true only when the position is resolved AND adjacent
+   * @private
+   */
+  function _hasFusionAdjacentFiveRingNitrogen(rings, graphData, adjacency) {
+    if (!graphData?.graph?.vertices || !adjacency) return false;
+
+    const fiveRing = rings.find(r => r.size === 5);
+    const sixRing = rings.find(r => r.size === 6);
+    if (!fiveRing?.memberVertexIds || !sixRing?.memberVertexIds) return false;
+
+    // Shared edge by set-intersection of memberVertexIds — the idiom already
+    // used by _findBridgeIds in mathpix-chemistry-locants.js.
+    const sixSet = new Set(sixRing.memberVertexIds);
+    const sharedSet = new Set(fiveRing.memberVertexIds.filter(id => sixSet.has(id)));
+    if (sharedSet.size === 0) return false;
+
+    // The five-ring's nitrogen, excluding any that is itself a fusion-edge atom.
+    const nitrogenIds = fiveRing.memberVertexIds.filter(id => {
+      if (sharedSet.has(id)) return false;
+      const vertex = graphData.graph.vertices.find(v => v.id === id);
+      return (vertex?.value?.element || "") === "N";
+    });
+    if (nitrogenIds.length !== 1) return false;
+
+    const neighbours = adjacency.get(nitrogenIds[0]) || [];
+    return neighbours.some(n => sharedSet.has(n.vertex.id));
+  }
+
+  /**
+   * Phase 17-3a (KD-31): the positional classes a single ring nitrogen can
+   * occupy in an aromatic 6+6 fused system, named rather than left as bare
+   * strings so the dispatch below cannot turn a typo into a silent decline.
+   * UNRESOLVED is the fail-soft outcome, not a position.
+   */
+  const SIX_RING_NITROGEN_CLASS = Object.freeze({
+    UNRESOLVED: "unresolved",
+    BRIDGEHEAD: "bridgehead",
+    ADJACENT: "adjacent",
+    REMOTE: "remote",
+  });
+
+  /**
+   * Phase 17-3a (KD-31): where does the ring nitrogen of an aromatic 6+6 fused
+   * system sit, relative to the fusion edge? This is what separates quinoline
+   * from isoquinoline. The two are identical on every test the fused detector
+   * previously applied — two aromatic rings, both size 6, exactly one nitrogen —
+   * and their perceived `memberVertexIds` are identical as well (measured:
+   * [0,9,8,3,2,1] and [4,5,6,7,8,3], shared edge {8,3} for both), so the
+   * discriminator can only come from the graph.
+   *
+   * This is the SIX-ring sibling of _hasFusionAdjacentFiveRingNitrogen, not an
+   * extension of it: that helper selects `rings.find(r => r.size === 5)` and
+   * short-circuits when there is none, so calling it from a 6+6 arm would
+   * decline quinoline as well as isoquinoline. It is left untouched, and the
+   * general part of its shape — shared edge by set-intersection, exactly-one-
+   * nitrogen guard, neighbour test against the shared set, fail-soft posture —
+   * is mirrored here rather than parameterised, so sealed 17-5c behaviour stays
+   * off this unit's regression surface.
+   *
+   * Two differences from the five-ring helper are deliberate. Neither ring is
+   * privileged, because in a 6+6 system there is no smaller ring to search; and
+   * a nitrogen ON the fusion edge is CLASSIFIED (BRIDGEHEAD) rather than
+   * excluded from selection, because a bridgehead nitrogen means the system is
+   * neither isomer — a quinolizinium-type skeleton — and the caller must decline
+   * the name rather than pick one. That case does not reach here through the
+   * current caller: its heteroatom concatenation double-counts a bridgehead
+   * atom, giving `heteros.length === 2`, so the arm's own guard filters it out
+   * first. The class is stated here rather than inherited from that accident,
+   * so the refusal does not depend on a guard in a different expression.
+   *
+   * Fail-soft by design: every unresolvable input returns UNRESOLVED and the
+   * caller withholds the name, exactly as the five-ring helper's `false` does.
+   * A confident wrong molecule identity is a worse outcome for a blind reader
+   * than a generic-but-true description — which is the whole of KD-31.
+   *
+   * @param {Object[]} rings - the two classified fused rings (both size 6)
+   * @param {Object} [graphData] - { graph, rings }
+   * @param {Map} [adjacency] - from _buildAdjacencyMap
+   * @returns {string} one of SIX_RING_NITROGEN_CLASS
+   * @private
+   */
+  function _classifySixRingNitrogenPosition(rings, graphData, adjacency) {
+    if (!graphData?.graph?.vertices || !adjacency) return SIX_RING_NITROGEN_CLASS.UNRESOLVED;
+
+    const [ringA, ringB] = rings;
+    if (!ringA?.memberVertexIds || !ringB?.memberVertexIds) return SIX_RING_NITROGEN_CLASS.UNRESOLVED;
+
+    // Shared edge by set-intersection of memberVertexIds — the idiom already
+    // used by _findBridgeIds in mathpix-chemistry-locants.js.
+    const ringBSet = new Set(ringB.memberVertexIds);
+    const sharedSet = new Set(ringA.memberVertexIds.filter(id => ringBSet.has(id)));
+    if (sharedSet.size === 0) return SIX_RING_NITROGEN_CLASS.UNRESOLVED;
+
+    // The system's ring nitrogen, across both rings. De-duplicated, so a
+    // bridgehead atom counts once here however the caller counted it.
+    const memberIds = [...new Set([...ringA.memberVertexIds, ...ringB.memberVertexIds])];
+    const nitrogenIds = memberIds.filter(id => {
+      const vertex = graphData.graph.vertices.find(v => v.id === id);
+      return (vertex?.value?.element || "") === "N";
+    });
+    if (nitrogenIds.length !== 1) return SIX_RING_NITROGEN_CLASS.UNRESOLVED;
+
+    const nitrogenId = nitrogenIds[0];
+    if (sharedSet.has(nitrogenId)) return SIX_RING_NITROGEN_CLASS.BRIDGEHEAD;
+
+    const neighbours = adjacency.get(nitrogenId) || [];
+    const nitrogenClass = neighbours.some(n => sharedSet.has(n.vertex.id))
+      ? SIX_RING_NITROGEN_CLASS.ADJACENT
+      : SIX_RING_NITROGEN_CLASS.REMOTE;
+
+    logDebug("_classifySixRingNitrogenPosition: resolved", {
+      nitrogenId,
+      sharedIds: [...sharedSet],
+      nitrogenClass,
+    });
+
+    return nitrogenClass;
+  }
+
+  /**
+   * Phase 17-s3b: identify a named THREE-ring fused system — anthracene,
+   * phenanthrene or carbazole. A sibling of _identifyFusedSystemName, which
+   * hard-gated on exactly two rings and so left every tricyclic on the
+   * true-but-unspecific generic prose at all three tiers.
+   *
+   * Two design rulings shape this helper, and both are load-bearing.
+   *
+   * FIRST — anthracene and phenanthrene are told apart by BOND ADJACENCY, never
+   * by member-order index distance. They are identical on every other test this
+   * file can apply: three aromatic six-membered rings, no heteroatom, fourteen
+   * ring atoms. They differ only in whether the central ring's two fusion edges
+   * are contiguous (angular → phenanthrene) or separated by one CH on each side
+   * (linear → anthracene). The index gap between edge atoms in
+   * `memberVertexIds` would answer that too, and is deliberately NOT read: that
+   * intra-ring ordering is inherited from RDKit's
+   * `extensions.rdkitRepresentation.atomRings` with no stated contract — copied
+   * by `.slice()`, never walked, never sorted, and asserted cyclic only in our
+   * own comments. No measurement has ever contradicted it, so it is a latent
+   * dependency rather than a defect; but no NEW code should rest on it, so this
+   * helper reads only set intersections and the adjacency map.
+   *
+   * SECOND — carbazole is named here rather than through the sealed 5+6
+   * machinery. No call site anywhere constructs or passes a sub-pair of rings,
+   * so feeding _hasFusionAdjacentFiveRingNitrogen a two-ring slice would be new
+   * plumbing for no reach. That helper and _classifySixRingNitrogenPosition are
+   * neither edited nor called from here, which keeps sealed 17-5c and 17-3a
+   * behaviour off this unit's regression surface.
+   *
+   * Fail-soft by design: every unresolvable topology, census or position returns
+   * null and the caller falls through to the generic fused prose. A confident
+   * wrong molecule identity is the KD-26/27/31 class and the catastrophic
+   * failure for a blind reader — vaguer-and-true beats specific-and-wrong.
+   *
+   * @param {Object[]} rings - the three classified fused rings
+   * @param {Object} [graphData] - { graph, rings }
+   * @param {Map} [adjacency] - from _buildAdjacencyMap
+   * @returns {string|null} "anthracene" | "phenanthrene" | "carbazole" | null
+   * @private
+   */
+  function _identifyTricyclicSystemName(rings, graphData, adjacency) {
+    if (!Array.isArray(rings) || rings.length !== 3) return null;
+    if (!graphData?.graph?.vertices || !adjacency) return null;
+    if (!rings.every(r => Array.isArray(r?.memberVertexIds) && r.aromatic === true)) return null;
+
+    // Pairwise shared sets by set-intersection of memberVertexIds — the idiom
+    // already used by _findBridgeIds in mathpix-chemistry-locants.js, and by
+    // both sealed positional helpers above.
+    const RING_PAIRS = [[0, 1], [0, 2], [1, 2]];
+    const sharedSets = RING_PAIRS.map(([a, b]) => {
+      const bSet = new Set(rings[b].memberVertexIds);
+      return new Set(rings[a].memberVertexIds.filter(id => bSet.has(id)));
+    });
+
+    // Topology gate: exactly two pairs fused across exactly two atoms, and the
+    // third pair disjoint. A shared count of 1 (spiro), 3 or more (bridged),
+    // three fused pairs, or fewer than two fusions is not a chain of three
+    // edge-fused rings, and declines.
+    const fusedPairIndices = [];
+    let disjointPairCount = 0;
+    sharedSets.forEach((shared, i) => {
+      if (shared.size === 2) fusedPairIndices.push(i);
+      else if (shared.size === 0) disjointPairCount += 1;
+    });
+    if (fusedPairIndices.length !== 2 || disjointPairCount !== 1) return null;
+
+    // The central ring is the one present in BOTH fused pairs; its two fusion
+    // edges are those pairs' shared sets.
+    const [firstFusedPair, secondFusedPair] = fusedPairIndices.map(i => RING_PAIRS[i]);
+    const centralIndex = firstFusedPair.find(i => secondFusedPair.includes(i));
+    if (centralIndex === undefined) return null;
+
+    const edgeA = sharedSets[fusedPairIndices[0]];
+    const edgeB = sharedSets[fusedPairIndices[1]];
+    // Fusion edges sharing a vertex are an ortho- and peri-fused skeleton
+    // (acenaphthylene-type), not the three edge-separated rings named here.
+    if ([...edgeA].some(id => edgeB.has(id))) return null;
+
+    const centralRing = rings[centralIndex];
+    const outerRings = rings.filter((_, i) => i !== centralIndex);
+
+    // Heteroatom census over the DE-DUPLICATED member union — never a
+    // concatenation of the per-ring lists, which double-counts every fusion
+    // atom (the trap on the record at 17-3a). An unresolvable member vertex
+    // means the census cannot be trusted, so the helper declines rather than
+    // reading a missing vertex as carbon.
+    const memberIds = [...new Set(rings.flatMap(r => r.memberVertexIds))];
+    const memberElements = new Map();
+    for (const id of memberIds) {
+      const element = graphData.graph.vertices.find(v => v.id === id)?.value?.element || "";
+      if (element === "") return null;
+      memberElements.set(id, element);
+    }
+    const heteroIds = memberIds.filter(id => memberElements.get(id) !== "C");
+
+    // Arm 1 — the carbocyclic pair. Three six-rings, no heteroatom: the only
+    // remaining question is whether the two fusion edges are bonded to one
+    // another, read from the adjacency map rather than from member order.
+    if (heteroIds.length === 0 && rings.every(r => r.size === 6)) {
+      const edgesBonded = [...edgeA].some(id =>
+        (adjacency.get(id) || []).some(n => edgeB.has(n.vertex.id)),
+      );
+      const carbocyclicName = edgesBonded ? "phenanthrene" : "anthracene";
+
+      logDebug("_identifyTricyclicSystemName: resolved", {
+        centralIndex,
+        edgeA: [...edgeA],
+        edgeB: [...edgeB],
+        edgesBonded,
+        name: carbocyclicName,
+      });
+
+      return carbocyclicName;
+    }
+
+    // Arm 2 — carbazole. A five-membered central ring between two six-rings,
+    // one heteroatom in the whole system, and it is a nitrogen sitting in the
+    // central ring off both fusion edges. Any other placement declines: a
+    // bridgehead or outer-ring nitrogen is a different skeleton entirely.
+    if (
+      centralRing.size === 5 &&
+      outerRings.every(r => r.size === 6) &&
+      heteroIds.length === 1 &&
+      memberElements.get(heteroIds[0]) === "N"
+    ) {
+      const nitrogenId = heteroIds[0];
+      const nitrogenPlaced =
+        centralRing.memberVertexIds.includes(nitrogenId) &&
+        !edgeA.has(nitrogenId) &&
+        !edgeB.has(nitrogenId);
+      if (!nitrogenPlaced) return null;
+
+      logDebug("_identifyTricyclicSystemName: resolved", {
+        centralIndex,
+        nitrogenId,
+        edgeA: [...edgeA],
+        edgeB: [...edgeB],
+        name: "carbazole",
+      });
+
+      return "carbazole";
+    }
+
+    return null;
+  }
+
+  /**
    * Phase 10-4 (CT-4d-named): identify common named fused ring systems.
    * Returns the common name (e.g. "naphthalene", "indole", "quinoline",
-   * "purine", "xanthine") or null. Xanthine = purine + two exocyclic C=O on
-   * the six-ring (purine-2,6-dione), so `graphData` and `adjacency` are
-   * required for that refinement — without them the xanthine check is
-   * skipped and a purine skeleton still returns "purine".
+   * "isoquinoline", "purine", "xanthine") or null. Xanthine = purine + two
+   * exocyclic C=O on the six-ring (purine-2,6-dione), so `graphData` and
+   * `adjacency` are required for that refinement — without them the xanthine
+   * check is skipped and a purine skeleton still returns "purine".
+   *
+   * Phase 17-5c (KD-27): the indole arm now needs those two parameters as
+   * well, to test WHERE the five-ring nitrogen sits rather than only how many
+   * heteroatoms there are. Without them the arm cannot resolve the position
+   * and declines the name — see _hasFusionAdjacentFiveRingNitrogen. Every
+   * live caller passes both, so this is belt-and-braces rather than a
+   * behaviour change for any path in use.
+   *
+   * Phase 17-3a (KD-31): the 6+6 one-nitrogen arm now needs them for the same
+   * reason, one ring size up — see _classifySixRingNitrogenPosition. It gains a
+   * name rather than losing one: quinoline and isoquinoline are told apart by
+   * the nitrogen's position, so both are named, and a bridgehead nitrogen (a
+   * quinolizinium-type system, neither isomer) declines to the generic fused
+   * prose.
+   *
+   * Phase 17-s3b: three-ring systems are DELEGATED from the opening guard to
+   * _identifyTricyclicSystemName, which names anthracene, phenanthrene and
+   * carbazole. Two-ring behaviour below is byte-identical by construction, and
+   * 0, 1 and 4-or-more rings still return null exactly as before.
    *
    * Relocated from mathpix-chemistry-comprehensive.js so both the standard
    * tier (`_assembleDescription`) and the comprehensive tier can call it
@@ -1690,19 +2463,38 @@
    * "N-atom fused ring system" opener even when the name was known (G4).
    *
    * @param {Object[]} rings - classified rings
-   * @param {Object} [graphData] - enables xanthine refinement
-   * @param {Map} [adjacency] - enables xanthine refinement
+   * @param {Object} [graphData] - enables the xanthine refinement and the
+   *   indole position test
+   * @param {Map} [adjacency] - enables the xanthine refinement and the indole
+   *   position test
    * @returns {string|null}
    * @private
    */
   function _identifyFusedSystemName(rings, graphData, adjacency) {
-    if (!rings || rings.length !== 2) return null;
+    if (!rings) return null;
+    if (rings.length === 3) return _identifyTricyclicSystemName(rings, graphData, adjacency);
+    if (rings.length !== 2) return null;
     const sizes = rings.map(r => r.size).sort();
     const aromatic = rings.every(r => r.aromatic);
     const heteros = [...rings[0].heteroatoms, ...rings[1].heteroatoms].sort();
     if (aromatic && sizes[0] === 6 && sizes[1] === 6 && heteros.length === 0) return "naphthalene";
-    if (aromatic && sizes[0] === 5 && sizes[1] === 6 && heteros.length === 1 && heteros[0] === "N") return "indole";
-    if (aromatic && sizes[0] === 6 && sizes[1] === 6 && heteros.length === 1 && heteros[0] === "N") return "quinoline";
+    // Phase 17-5c (KD-27): the heteroatom count alone is not enough — isoindole
+    // satisfies every other test in this arm identically. Only a fusion-edge-
+    // adjacent five-ring nitrogen takes the name; anything else falls through
+    // to the unnamed fused path below.
+    if (aromatic && sizes[0] === 5 && sizes[1] === 6 && heteros.length === 1 && heteros[0] === "N" &&
+        _hasFusionAdjacentFiveRingNitrogen(rings, graphData, adjacency)) return "indole";
+    // Phase 17-3a (KD-31): the heteroatom count alone is not enough — isoquinoline
+    // satisfies every other test in this arm identically, down to the same
+    // memberVertexIds and the same shared edge. Only the nitrogen's position
+    // against the fusion edge separates them, so the arm dispatches on it, and
+    // only a RESOLVED position grants a name.
+    if (aromatic && sizes[0] === 6 && sizes[1] === 6 && heteros.length === 1 && heteros[0] === "N") {
+      const nitrogenClass = _classifySixRingNitrogenPosition(rings, graphData, adjacency);
+      if (nitrogenClass === SIX_RING_NITROGEN_CLASS.ADJACENT) return "quinoline";
+      if (nitrogenClass === SIX_RING_NITROGEN_CLASS.REMOTE) return "isoquinoline";
+      return null;
+    }
     if (aromatic && sizes[0] === 5 && sizes[1] === 6 && heteros.length === 4 && heteros.every(h => h === "N")) {
       if (graphData && adjacency) {
         const sixRing = rings.find(r => r.size === 6);
@@ -1724,6 +2516,21 @@
    * SmilesDrawer's `isPartOfAromaticRing` flag is already correct for these
    * skeletons (the retracted A2 analysis was wrong about aromaticity), so
    * this is strictly additive labelling — no changes to ring classification.
+   *
+   * Phase 17 (KD-13) correction — the aromaticity aside above no longer holds
+   * on its stated basis. It blessed SmilesDrawer's `isPartOfAromaticRing`
+   * flag, but the engine moved to the RDKit translator at Phase 12-2a, so that
+   * library no longer supplies the flag this pattern reads. RDKit's own default
+   * aromaticity model ALSO perceives these dione six-rings aromatic (verified
+   * per-fixture in phase17-kd13-investigation-findings.md § 1), which disagrees
+   * with standard teaching: a pyrimidine-2,4-/2,6-dione is a cyclic diamide and
+   * is taught non-aromatic. This gate nonetheless STILL reads `ring.aromatic`
+   * deliberately — the pattern labels ("pyrimidine-2,4-dione" etc.) are
+   * constitutionally correct regardless of aromaticity, and the locant tables
+   * key off those labels, so the perceived flag is the right precondition here.
+   * The teaching-facing aromaticity claim is carried separately by
+   * `_isTaughtAromatic` (above), which only the description tiers consume; the
+   * Phase 10-4 "strictly additive, no classification change" decision stands.
    *
    * Phase 11-2d (N-post10-5): the 1-carbonyl branch (cytosine) was renamed
    * from the non-IUPAC "pyrimidine-4-one" to the IUPAC-canonical
@@ -2174,7 +2981,15 @@
   // places thiols (chalcogen analogue of alcohols) just below alcohols/phenols and
   // above amines. Without it, thiol-bearing chains returned principalFGAnchor: null
   // and numbered in SMILES-atom order (propane-1-thiol mislocated to C3 not C1).
-  const PCG_CASCADE = ["acid", "nitrile", "aldehyde", "ketone", "hydroxyl", "thiol", "amine"];
+  // Phase 17-4a: anhydride and acid chloride inserted between acid and nitrile —
+  // IUPAC P-41 orders the families carboxylic acid > anhydride > ester > acid
+  // halide > amide > nitrile, so anhydride precedes acid chloride and both sit
+  // above nitrile. The ester and amide gaps that KD-16 records fall between and
+  // around them and change no pairwise ordering among the entries already
+  // present. Landed INERT: no catalogue row emits either name yet (17-4b adds
+  // the rows). Ranking reads this array only by relative index, so the insertion
+  // shifts absolute indices without changing any ordering decision.
+  const PCG_CASCADE = ["acid", "anhydride", "acid chloride", "nitrile", "aldehyde", "ketone", "hydroxyl", "thiol", "amine"];
 
   // Phase 15-2b: identify the chain-attachment carbon of the highest-priority
   // PCG group, per IUPAC P-14.5 lowest-locant rule. Returned anchor atom-id
@@ -2233,7 +3048,31 @@
     }
     const adjacency = _buildAdjacencyMap(graphData.graph);
     const rings = (graphData.rings || []).map(r => _classifyRing(r, graphData));
-    const groups = _detectFunctionalGroupsFromGraph(graphData, adjacency);
+    // Phase 17-3b (the switchover): the live path now calls the SMARTS/RDKit
+    // catalogue (runCatalogue) instead of the legacy graph-walk detector. The
+    // legacy _detectFunctionalGroupsFromGraph is retained (never deleted) as
+    // both the one-line rollback anchor and the fallback immediately below.
+    let groups = runCatalogue(smiles, graphData, adjacency);
+    // RDKit-unavailable / invalid-SMILES guard (findings Q3): runCatalogue
+    // early-returns [] when matchSmarts is unavailable or the SMILES is
+    // invalid, but the SmilesDrawer graph is cached independently of RDKit — so
+    // there is a window where a valid cached graph yields an empty catalogue
+    // result. In that window, fall back to the RDKit-free legacy detector so a
+    // student never receives a silently-emptied description. Fires ONLY on an
+    // empty catalogue result (genuine no-functional-group molecules or the
+    // failure window), so it adds no cost to the normal path. Catalogue empty
+    // AND legacy non-empty → use legacy; catalogue empty AND legacy empty →
+    // genuinely no groups, keep the empty result.
+    if (groups.length === 0) {
+      const legacyGroups = _detectFunctionalGroupsFromGraph(graphData, adjacency);
+      if (legacyGroups.length > 0) {
+        logWarn(
+          "analyseStructure: catalogue returned empty where legacy found groups — using legacy fallback (likely RDKit-unavailable)",
+          { smiles },
+        );
+        groups = legacyGroups;
+      }
+    }
     const chain = rings.length === 0 ? _analyseChainFromGraph(graphData, adjacency) : null;
 
     // Phase 15-2b: attach principal-FG anchor for IUPAC P-14.5 lowest-locant
@@ -2315,11 +3154,22 @@
         // path's namedSystemSingle fall-through and by auditPositionalLabels.
         identifyPyridinonePattern: _identifyPyridinonePattern,
         countExocyclicCarbonyls: _countExocyclicCarbonyls,
+        // Phase 17 (KD-13): teaching-facing ring aromaticity (perceived aromatic
+        // AND < 2 exocyclic ring carbonyls). Narrowing only — consumed by the
+        // prose tiers so a taught-non-aromatic dione ring drops the "aromatic"
+        // claim while `ring.aromatic` (and every gate keyed on it) is untouched.
+        isTaughtAromatic: _isTaughtAromatic,
         selectNamedSystemLabel: _selectNamedSystemLabel,
         analyseChainFromGraph: _analyseChainFromGraph,
         classifyScaffold: _classifyScaffold,
         // Phase 15-2b: principal-FG anchor primitive for chain-locant flow.
         findPrincipalFGAnchor: _findPrincipalFGAnchor,
+        // Phase 17 (KD-14): expose the principal-characteristic-group seniority
+        // cascade so the prose tier's shared seniority comparator
+        // (_orderGroupsBySeniority) ranks from the SAME source of truth the
+        // COMP chain-anchor already uses (_findPrincipalFGAnchor). Exposed, not
+        // forked, per CLAUDE.md § 148 (classify.js is the ranking authority).
+        pcgCascade: PCG_CASCADE,
         // Phase 15-2c (LOCK 5): acyclic central-heteroatom + bridged-acyclic
         // scaffold helpers + alkyl-substituent walker. Mirrors the
         // analyseChainFromGraph / classifyScaffold publishing pattern.

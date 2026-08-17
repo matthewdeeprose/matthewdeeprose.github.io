@@ -2672,36 +2672,55 @@ function paintFrame(derived) {
 
 const measurerElement = document.getElementById("dpsMeasurer");
 
+/**
+ * LAZY SEAM (iteration G2). On an engine-only load the studio's markup
+ * is absent, so the capture above and the surface capture at the top of
+ * this layer are both null - a consumer page (the Door Panel Guide)
+ * carries its own measurer and surface under its own ids. Resolved by
+ * CLASS at call time only when the load-time capture missed; on the
+ * studio's own page the captures win and nothing changes.
+ */
+function measurerNow() {
+  return measurerElement || document.querySelector(".dps-measurer");
+}
+
+function measureFontSourceNow() {
+  return surfaceElement || document.querySelector(".dps-surface");
+}
+
 function configureMeasurer(fontPx, lineHeight, uppercase, widthPx) {
-  measurerElement.style.fontFamily =
-    getComputedStyle(surfaceElement).fontFamily;
-  measurerElement.style.fontWeight = "700";
-  measurerElement.style.fontSize = fontPx + "px";
-  measurerElement.style.lineHeight = String(lineHeight);
-  measurerElement.style.textTransform = uppercase
+  const measurer = measurerNow();
+  measurer.style.fontFamily =
+    getComputedStyle(measureFontSourceNow()).fontFamily;
+  measurer.style.fontWeight = "700";
+  measurer.style.fontSize = fontPx + "px";
+  measurer.style.lineHeight = String(lineHeight);
+  measurer.style.textTransform = uppercase
     ? "uppercase"
     : "none";
   if (widthPx === null) {
-    measurerElement.style.whiteSpace = "pre";
-    measurerElement.style.width = "auto";
+    measurer.style.whiteSpace = "pre";
+    measurer.style.width = "auto";
   } else {
-    measurerElement.style.whiteSpace = "normal";
-    measurerElement.style.width = widthPx + "px";
+    measurer.style.whiteSpace = "normal";
+    measurer.style.width = widthPx + "px";
   }
 }
 
 /** Rendered width of a string on one unbroken line, in CSS pixels. */
 function measureWidth(text, fontPx, lineHeight, uppercase) {
   configureMeasurer(fontPx, lineHeight, uppercase, null);
-  measurerElement.textContent = text;
-  return measurerElement.getBoundingClientRect().width;
+  const measurer = measurerNow();
+  measurer.textContent = text;
+  return measurer.getBoundingClientRect().width;
 }
 
 /** Rendered height of a string wrapped into a box, in CSS pixels. */
 function measureHeight(text, fontPx, lineHeight, uppercase, widthPx) {
   configureMeasurer(fontPx, lineHeight, uppercase, widthPx);
-  measurerElement.textContent = text;
-  return measurerElement.getBoundingClientRect().height;
+  const measurer = measurerNow();
+  measurer.textContent = text;
+  return measurer.getBoundingClientRect().height;
 }
 
 /**
@@ -2946,7 +2965,7 @@ function measureFit(surfaceEl, derived) {
     bodyWidthPx
   );
 
-  measurerElement.textContent = "";
+  measurerNow().textContent = "";
   return {
     rows: rows,
     bodyWidthMm: bodyWidthMm,
@@ -4093,14 +4112,14 @@ function renderDesignForReadout(derived) {
   );
   host.innerHTML =
     "<p>Choosing for <strong>" + derived.bindingLabel +
-    "</strong>. The closest pair of statuses is " + pair.a.label +
-    " and " + pair.b.label + ", at delta E " +
-    Engine.round(pair.minDeltaE, 2) + " in " + pair.worstMode +
-    ".</p><p>In greyscale the closest pair anywhere in this set is delta E " +
-    Engine.round(greyWorst, 2) + " - " +
+    "</strong>. The two statuses hardest to tell apart are " + pair.a.label +
+    " and " + pair.b.label + ". They score " +
+    Engine.round(pair.minDeltaE, 2) + " apart for a " + pair.worstMode +
+    " reader. Higher is easier to tell apart.</p><p>With no colour at all, the closest pair here scores " +
+    Engine.round(greyWorst, 2) + ". " +
     (greyBound
-      ? "and greyscale is one of the modes the chooser was working to, so that figure helped pick these colours."
-      : "measured but not steering the choice, because the status word already tells anyone who cannot see the colour which status this is.") +
+      ? "Greyscale is one of the readers we chose for, so that number helped pick these colours."
+      : "<strong>We measure that, but it does not steer the choice</strong>, because the status word already tells anyone who cannot see the colour which status this is.") +
     "</p>";
 }
 
@@ -4449,28 +4468,28 @@ function statusBudgetNote(derived, fit) {
   const saturation = fit.saturation;
   const current = saturation ? saturation.current : null;
   return (
-    '<p class="dps-hint"><strong>Status wording: ' +
+    '<p class="dps-hint"><strong>The status word has room for ' +
     row.charactersFitting +
-    " characters at this cap height.</strong> " +
-    "That is a limit, not a preference - at " +
+    " letters.</strong> " +
+    "That is a limit, not a preference. At " +
     Engine.round(derived.byId["status-text"].capMm, 1) +
-    " mm of cap the badge has room for " +
+    " mm letter height the badge fits " +
     row.charactersFitting +
-    " characters on one line, and the wording currently uses " +
+    " letters on one line, and your word uses " +
     row.characters +
-    ". Wording is also what drives saturated area" +
+    ". The word you pick also decides how much of the panel is strong colour" +
     (current
-      ? ": at these settings “" +
+      ? ': "' +
         escapeHtml(current.label) +
-        "” covers " +
+        '" covers ' +
         Engine.round(current.share * 100, 1) +
-        "% of the panel, where “" +
+        '% of the panel here, where "' +
         escapeHtml(current.asBuiltLabel) +
-        "” would cover " +
+        '" would cover ' +
         Engine.round(current.asBuiltShare * 100, 1) +
-        "% — both measured on this panel, at this cap height, with this padding and style"
+        "%. We measured both on this panel, at this letter height, with this padding and style"
       : "") +
-    ". Shortening the word is the cheaper of the two levers that reduce it; the other is the outlined badge style, which changes the colour's area without changing the badge's box.</p>"
+    ". A shorter word is the cheaper of the two ways to bring that down. The other is the outlined badge, which shrinks the colour without shrinking the box.</p>"
   );
 }
 
@@ -6136,17 +6155,17 @@ function renderSchemeReadout(derived) {
     );
   }).join(" &middot; ");
   host.innerHTML =
-    "<table><caption>Closest pair per mode, this page against the reviewer's independent probe. Two implementations of one measurement; a gap past " +
+    "<table><caption>How far apart the closest two statuses are, for each kind of reader. We worked this out twice: once on this page, and once by hand when the scheme was chosen. Two separate sums. A gap bigger than " +
     SCHEME_PROBE_TOLERANCE +
-    " is a finding about one of them.</caption><thead><tr><th scope=\"col\">Mode</th><th scope=\"col\">This page</th><th scope=\"col\">Recorded probe</th><th scope=\"col\">Gap</th></tr></thead><tbody>" +
+    " would mean one of them is wrong.</caption><thead><tr><th scope=\"col\">Reader</th><th scope=\"col\">This page</th><th scope=\"col\">Worked out earlier</th><th scope=\"col\">Gap</th></tr></thead><tbody>" +
     rows + "</tbody></table>" +
     '<p class="dps-hint">' +
     (agrees
-      ? "<strong>The two agree</strong>, worst gap " + Engine.round(worst, 2) + "."
-      : "<strong>THEY DISAGREE</strong>, worst gap " + Engine.round(worst, 2) +
-        " &mdash; stop and find out which instrument is wrong.") +
-    " Word on fill, against a gate of " + wordGate.wcag + ":1 and Lc " +
-    wordGate.lc + ": " + words + ". Borders drawn: " + drawn + " of " +
+      ? "<strong>The two sums agree</strong>, biggest gap " + Engine.round(worst, 2) + "."
+      : "<strong>THE TWO SUMS DISAGREE</strong>, biggest gap " + Engine.round(worst, 2) +
+        " &mdash; stop, and find out which one is wrong.") +
+    " The word on each badge, against a test of " + wordGate.wcag + ":1 and Lc " +
+    wordGate.lc + ": " + words + ". Badges needing a border: " + drawn + " of " +
     Model.STATUSES.length + ".</p>";
 }
 
@@ -6564,9 +6583,65 @@ function wireVerification() {
 
 const VIEWS = Object.freeze([
   Object.freeze({ id: "configure", label: "Configure" }),
+  Object.freeze({ id: "detail", label: "Detail" }),
   Object.freeze({ id: "gallery", label: "Gallery" }),
   Object.freeze({ id: "checks", label: "Checks" }),
 ]);
+
+/**
+ * The view the page opens on, named rather than inferred. A tab set that
+ * starts on "whatever was selected last" is the mode-switcher trap: the
+ * state that persisted is not evidence about the state that should hold.
+ */
+const DEFAULT_VIEW = "configure";
+
+/**
+ * COVERAGE MODE - a diagnostic state for the audit engines, never a
+ * state a reader is given.
+ *
+ * Hiding a tab panel is what makes the tabs work, and it is also what
+ * stops IBM and axe from evaluating anything inside it: moving four
+ * sections to the Detail tab took the tool's potentials from 119 to 34
+ * without improving a single thing. A gate that cannot see three
+ * quarters of the page is a weaker gate than its zero suggests.
+ *
+ * So `?coverage=1` un-hides every panel and opens every disclosure, and
+ * the engines are run a second time against it. It is opt-in from the
+ * URL and touches nothing on a normal load - a coverage state that
+ * could be reached by accident would be a worse bug than the blind spot
+ * it exists to measure.
+ *
+ * What it does NOT cover, said here so the number is not read as more
+ * than it is: the gallery cards, the enumeration tables and the
+ * verification rows are built when their button is pressed, so in this
+ * state their panels hold their static markup only.
+ */
+const COVERAGE_PARAM = "coverage";
+
+function coverageRequested() {
+  try {
+    return new URLSearchParams(window.location.search).has(COVERAGE_PARAM);
+  } catch (error) {
+    logError("The coverage flag could not be read from the URL", error);
+    return false;
+  }
+}
+
+function applyCoverageState() {
+  VIEWS.forEach((view) => {
+    document.getElementById("dpsView-" + view.id).hidden = false;
+  });
+  Array.prototype.forEach.call(
+    document.querySelectorAll("details"),
+    (disclosure) => {
+      disclosure.open = true;
+    }
+  );
+  logInfo(
+    "Coverage mode: every view un-hidden and every disclosure opened. " +
+      "This is a diagnostic state, not the shipped one."
+  );
+}
 
 /**
  * Standard tabs. The panels are `hidden`, which keeps their content in
@@ -6574,7 +6649,9 @@ const VIEWS = Object.freeze([
  * why the live region lives in the always-rendered header instead of
  * inside a panel, where it would silently stop speaking.
  */
-function selectView(id, moveFocus) {
+function selectView(id, options) {
+  const settings = options || {};
+
   VIEWS.forEach((view) => {
     const tab = document.getElementById("dpsTab-" + view.id);
     const panel = document.getElementById("dpsView-" + view.id);
@@ -6585,12 +6662,16 @@ function selectView(id, moveFocus) {
   });
 
   state.view = id;
-  if (moveFocus) document.getElementById("dpsTab-" + id).focus();
+  if (settings.moveFocus) document.getElementById("dpsTab-" + id).focus();
 
   // The preview pane has no size while hidden, so it can only be
   // fitted once it is showing again.
   if (id === "configure") fitFrameToPane();
 
+  // Silent unless a caller asks, so the announcing paths declare
+  // themselves: the page setting its own opening view is not a change
+  // anybody made, and a tab set that reports itself on load is chatter.
+  if (!settings.announceChange) return;
   const chosen = VIEWS.filter((view) => view.id === id)[0];
   announce(chosen.label + " view.");
 }
@@ -6601,7 +6682,9 @@ function setupTabs() {
   );
 
   tabs.forEach((tab, index) => {
-    tab.addEventListener("click", () => selectView(VIEWS[index].id));
+    tab.addEventListener("click", () =>
+      selectView(VIEWS[index].id, { announceChange: true })
+    );
     tab.addEventListener("keydown", (event) => {
       let next = null;
       if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
@@ -6612,7 +6695,7 @@ function setupTabs() {
       if (event.key === "End") next = tabs.length - 1;
       if (next === null) return;
       event.preventDefault();
-      selectView(VIEWS[next].id, true);
+      selectView(VIEWS[next].id, { moveFocus: true, announceChange: true });
     });
   });
 }
@@ -6982,8 +7065,8 @@ function renderBadgeStyleReadout() {
     "</tbody></table>" +
     renderAutoBorderNote() +
     renderBorderDenyCase() +
-    '<p class="dps-hint">Each look\'s pool is the colours clearing <em>both</em> halves of its rule. That the outlined pool comes to the same size whichever half you count is a <strong>coincidence of this palette</strong>, not an equivalence between Lc 60 and 4.5:1 — the two measures disagree in general, and on another palette these would part.</p>' +
-    '<p class="dps-hint">Outlined cuts <em>saturated area</em>, not area. The badge\'s box is unchanged — same cap height, same padding — so the outlined style does nothing for how much vertical room the badge takes from the booking title. Those are separate problems and the same figure does not answer both.</p>';
+    '<p class="dps-hint">A colour joins a list only if it passes <em>both</em> halves of that look\'s test. The outlined list comes to the same size whichever half you count, and that is a <strong>fluke of these 45 colours</strong>. Lc 60 and 4.5:1 are not the same test. On another palette they would give different answers.</p>' +
+    '<p class="dps-hint">Outlined uses less <em>colour</em>, not less <em>room</em>. The badge box is the same size either way, at the same letter height and the same padding, so outlined frees no space for the booking title. Those are two problems, and one number cannot answer both.</p>';
 }
 
 /**
@@ -7122,7 +7205,7 @@ function renderBadgeAreaReadout(fit) {
         Engine.round(worst.share * 100, 1) +
         "% of the panel at chroma " +
         Engine.round(worst.chroma, 1) +
-        ". <strong>That is a measurement, not a verdict</strong> — no limit on saturated area is stated in the guidance or in WCAG, so there is nothing here to pass or fail. Two levers move it: shorter wording, and the outlined badge style" +
+        ". <strong>That is a measurement, not a verdict.</strong> Neither the guidance nor WCAG sets a limit on how much of a panel may be strong colour, so there is nothing here to pass or fail. Two things move it: a shorter word, and the outlined badge style" +
         (saturation.outlined ? ", which is showing now" : "") +
         ". Switching style on this same status moves it to " +
         Engine.round(worst.otherStyleShare * 100, 1) +
@@ -7193,6 +7276,20 @@ function refreshBadge(derived) {
 /* --- Boot ------------------------------------------------------ */
 
 function init() {
+  // ENGINE GUARD. A sibling page (the Door Panel Guide) loads this file
+  // for its exported engine and carries none of the studio's markup, so
+  // booting the studio UI there would dereference elements that do not
+  // exist. The panel frame is the studio's own root; its absence means
+  // this is an engine-only load, and everything on window.DoorPanelStudio
+  // stays available. This bail runs FIRST - even the chroma warning
+  // below writes to a studio element.
+  if (!document.getElementById("dpsPanel")) {
+    logInfo(
+      "Door Panel Studio markup absent - engine-only load, page boot skipped"
+    );
+    return;
+  }
+
   if (typeof chroma === "undefined") {
     document.getElementById("dpsChromaWarning").hidden = false;
     logError("chroma.js is absent - no measurement is possible");
@@ -7208,6 +7305,10 @@ function init() {
   buildContentControls();
   buildBadgeControls();
   setupTabs();
+  // Deterministic opening view, named rather than inherited from whatever
+  // the markup happened to say - the mode-switcher invariant.
+  selectView(DEFAULT_VIEW);
+  if (coverageRequested()) applyCoverageState();
   buildFillGateChoice();
   buildApproachControl();
   buildChromaControl();

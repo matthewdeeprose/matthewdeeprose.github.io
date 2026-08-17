@@ -132,6 +132,9 @@ const ALLY_API_CLIENT = (function () {
   /** @type {Object|null} Debug data from the last API transaction */
   let _debugData = null;
 
+  /** @type {Object|null} Classified error from the last failed testConnection */
+  let _lastError = null;
+
   // ========================================================================
   // Error Type Constants
   // ========================================================================
@@ -149,6 +152,24 @@ const ALLY_API_CLIENT = (function () {
     VALIDATION: "validation",
     UNKNOWN: "unknown",
   };
+
+  // ========================================================================
+  // Entra Token Constants (worker transport only)
+  // ========================================================================
+
+  /**
+   * Header the proxy Worker reads the caller's Entra access token from.
+   * @type {string}
+   */
+  const USER_TOKEN_HEADER = "x-user-token";
+
+  /**
+   * Scope key handed to EntraAuth. "foundry" rather than "ally" because the
+   * Worker's /query route validates Foundry.Access today; Ally.Access is
+   * registered on the app registration and remains unrequested.
+   * @type {string}
+   */
+  const ENTRA_SCOPE_NAME = "foundry";
 
   // ========================================================================
   // Private Helper Functions
@@ -173,6 +194,21 @@ const ALLY_API_CLIENT = (function () {
   }
 
   /**
+   * Reports whether the last request went over the WORKER transport.
+   *
+   * makeRequest() returns early under a truthy _token (direct GET to Ally), so
+   * the worker POST is reached only when no token is held. This is the same
+   * determination executeQuery() already makes for its debug panel, and it
+   * needs no response body: we distinguish failures by status code plus the
+   * transport we chose, never by a reason parsed out of what came back.
+   *
+   * @returns {boolean} True when the worker transport carried the request
+   */
+  function isWorkerTransport() {
+    return !_token;
+  }
+
+  /**
    * Classifies an error based on its properties
    * @param {Error|Response} error - The error or response to classify
    * @returns {Object} Structured error object
@@ -190,8 +226,25 @@ const ALLY_API_CLIENT = (function () {
       const status = error.status;
       const statusText = error.statusText || "";
 
-      // Authentication errors
+      // Authentication errors.
+      //
+      // On the WORKER transport these come from the Entra sign-in gate, and
+      // "check your API token" is simply wrong — the person has no token, and
+      // theirs is not what was rejected. 401 and 403 are different answers and
+      // get different sentences; 403 does not offer another sign-in, because
+      // the person is already signed in.
       if (status === 401 || status === 403) {
+        if (isWorkerTransport()) {
+          return createError(
+            ERROR_TYPES.AUTH,
+            status === 401
+              ? ALLY_CONFIG.MESSAGES.SIGN_IN_REQUIRED
+              : ALLY_CONFIG.MESSAGES.NOT_PERMITTED,
+            status,
+            { statusText: statusText, transport: "worker" },
+          );
+        }
+
         return createError(
           ERROR_TYPES.AUTH,
           ALLY_CONFIG.MESSAGES.AUTH_ERROR,
@@ -202,6 +255,23 @@ const ALLY_API_CLIENT = (function () {
 
       // Proxy/Gateway errors (502, 503, 504)
       if (status === 502) {
+        // On the worker transport a 502 is deliberately ambiguous, and the
+        // sentence has to be true either way. The Worker remaps an upstream 401
+        // or 403 on /query to 502 — because the Entra gate answers with those
+        // two statuses about the person's OWN credentials — so this arrives
+        // both when this tool's Ally token was rejected and when Ally itself
+        // failed. It stays ERROR_TYPES.SERVER, and so stays retryable: a
+        // genuine Ally outage should retry, and a rejected token costs only the
+        // existing consecutive-error cap before the poll gives up.
+        if (isWorkerTransport()) {
+          return createError(
+            ERROR_TYPES.SERVER,
+            ALLY_CONFIG.MESSAGES.REPORTING_SERVICE_ERROR,
+            status,
+            { statusText: statusText, transport: "worker" },
+          );
+        }
+
         return createError(
           ERROR_TYPES.SERVER,
           "API server unavailable (502 Bad Gateway). The service may be temporarily down.",
@@ -211,6 +281,19 @@ const ALLY_API_CLIENT = (function () {
       }
 
       if (status === 503) {
+        // On the worker transport a 503 is the Entra gate being unable to
+        // check the sign-in — a Microsoft-side outage, not the person's doing.
+        // It stays ERROR_TYPES.SERVER, and so stays retryable, because trying
+        // again is exactly the right response to "we could not check just now".
+        if (isWorkerTransport()) {
+          return createError(
+            ERROR_TYPES.SERVER,
+            ALLY_CONFIG.MESSAGES.SIGN_IN_CHECK_UNAVAILABLE,
+            status,
+            { statusText: statusText, transport: "worker" },
+          );
+        }
+
         return createError(
           ERROR_TYPES.SERVER,
           "API service unavailable (503). The service is temporarily overloaded or under maintenance.",
@@ -287,27 +370,37 @@ const ALLY_API_CLIENT = (function () {
   }
 
   /**
-   * Builds query string from options object
+   * Builds the ORDERED list of query parameters from an options object.
+   *
+   * Order and repetition both matter: Ally applies repeated params
+   * conjunctively (measured — overallScore=ge:0.65 AND le:0.55 returns 0 rows
+   * while each bound alone returns 5), so a range filter is two entries with
+   * the same name. This is why the shape is an array of pairs and never an
+   * object — an object would collapse them and silently change the query.
+   *
+   * Single source of truth for BOTH transports: buildQueryString() joins these
+   * for the direct-token GET, and the worker POST sends the same array as JSON.
+   *
    * @param {Object} options - Query options
-   * @returns {string} URL query string (without leading ?)
+   * @returns {Array<{name: string, value: string}>} Ordered parameter pairs
    */
-  function buildQueryString(options) {
-    const params = [];
+  function buildQueryPairs(options) {
+    const pairs = [];
 
     // Pagination
     if (options.limit !== undefined) {
-      params.push("limit=" + encodeURIComponent(options.limit));
+      pairs.push({ name: "limit", value: options.limit });
     }
     if (options.offset !== undefined) {
-      params.push("offset=" + encodeURIComponent(options.offset));
+      pairs.push({ name: "offset", value: options.offset });
     }
 
     // Sorting
     if (options.sort) {
-      params.push("sort=" + encodeURIComponent(options.sort));
+      pairs.push({ name: "sort", value: options.sort });
     }
     if (options.order) {
-      params.push("order=" + encodeURIComponent(options.order));
+      pairs.push({ name: "order", value: options.order });
     }
 
     // Filters
@@ -325,42 +418,172 @@ const ALLY_API_CLIENT = (function () {
         if (Array.isArray(value)) {
           value.forEach(function (v) {
             if (v !== undefined && v !== null && v !== "") {
-              params.push(
-                encodeURIComponent(key) + "=" + encodeURIComponent(v),
-              );
+              pairs.push({ name: key, value: v });
             }
           });
         } else {
           // Single value
-          params.push(
-            encodeURIComponent(key) + "=" + encodeURIComponent(value),
-          );
+          pairs.push({ name: key, value: value });
         }
       });
     }
 
-    return params.join("&");
+    return pairs;
   }
 
   /**
-   * Makes an authenticated API request
-   * @param {string} url - Full API URL
+   * Builds query string from options object
+   * @param {Object} options - Query options
+   * @returns {string} URL query string (without leading ?)
+   */
+  function buildQueryString(options) {
+    return buildQueryPairs(options)
+      .map(function (pair) {
+        return (
+          encodeURIComponent(pair.name) + "=" + encodeURIComponent(pair.value)
+        );
+      })
+      .join("&");
+  }
+
+  /**
+   * Resolves the caller's Entra access token for the WORKER transport, or null.
+   *
+   * window.EntraAuth is read HERE, inside the function body, never captured at
+   * module scope: auth/entra-auth.js is a deferred script, so a module-scope
+   * capture would be permanently undefined.
+   *
+   * ensureFresh() is awaited first, so the token is renewed at the send
+   * boundary the way chat-core.js does it. IT RESOLVES TO NULL ON FAILURE
+   * RATHER THAN THROWING, so the failure guard is a test of the returned value;
+   * a try/catch around it would be dead code. A failed refresh does not stop
+   * us — the cached token may still be usable, so we fall through and read it.
+   *
+   * The cached read is then type-checked. getCachedToken() is documented to be
+   * synchronous and never to return a promise, and that matters: an un-awaited
+   * promise is truthy, passes every truthiness guard, and reaches the wire as
+   * the literal string "[object Promise]" with no exception raised anywhere.
+   *
+   * @returns {Promise<string|null>} Non-empty access token, or null
+   */
+  async function resolveEntraToken() {
+    const auth = window.EntraAuth;
+    if (!auth) return null;
+
+    if (typeof auth.ensureFresh === "function") {
+      const refreshed = await auth.ensureFresh(ENTRA_SCOPE_NAME);
+      if (!refreshed) {
+        logWarn(
+          "Send-boundary token refresh returned nothing — falling back to " +
+            "whatever token is already cached, which may be absent or expired.",
+        );
+      }
+    }
+
+    if (typeof auth.getCachedToken !== "function") return null;
+
+    const token = auth.getCachedToken(ENTRA_SCOPE_NAME);
+    return typeof token === "string" && token.length > 0 ? token : null;
+  }
+
+  /**
+   * Makes one API request, choosing the transport from the credentials held.
+   *
+   * TOKEN WINS. With a token set this is the direct GET to Ally exactly as
+   * before — same URL, same headers. The worker is a FALLBACK for when no token
+   * is configured, not an override: it POSTs the logical request to the proxy
+   * worker's /query, which injects its own server-side token.
+   *
+   * Both transports resolve to the same upstream shape ({ data, metadata }),
+   * because the worker streams Ally's body back verbatim — so the caller's
+   * warm-up polling on metadata.status is unchanged either way.
+   *
+   * @param {Object} requestSpec - Logical request
+   * @param {string} requestSpec.endpointKey - Key from ALLY_CONFIG.ENDPOINTS
+   * @param {string} requestSpec.clientId - Ally client ID
+   * @param {string} requestSpec.region - Region key
+   * @param {string} requestSpec.url - Prebuilt direct URL (token transport)
+   * @param {Array<{name: string, value: string}>} requestSpec.params - Ordered pairs
    * @param {AbortSignal} signal - Abort signal for cancellation
    * @returns {Promise<Response>} Fetch response
    */
-  async function makeRequest(url, signal) {
-    logDebug("Making request to:", url);
+  async function makeRequest(requestSpec, signal) {
+    if (_token) {
+      logDebug("Making direct request to:", requestSpec.url);
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: "Bearer " + _token,
-        Accept: "application/json",
-      },
-      signal: signal,
-    });
+      return fetch(requestSpec.url, {
+        method: "GET",
+        headers: {
+          Authorization: "Bearer " + _token,
+          Accept: "application/json",
+        },
+        signal: signal,
+      });
+    }
 
-    return response;
+    const workerEndpoint = ALLY_CONFIG.getWorkerEndpointUrl("QUERY");
+    if (!workerEndpoint) {
+      throw createError(
+        ERROR_TYPES.VALIDATION,
+        ALLY_CONFIG.MESSAGES.MISSING_CREDENTIALS,
+        null,
+        { missingToken: true, missingWorkerUrl: true },
+      );
+    }
+
+    // The Worker's /query route validates an Entra token when it is armed.
+    // A missing token is NOT a failure here: production is unarmed and ignores
+    // the header entirely, so a signed-out colleague must still get their
+    // report. We default rather than disable — send the request without it.
+    const workerHeaders = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    };
+
+    const userToken = await resolveEntraToken();
+    if (userToken) {
+      workerHeaders[USER_TOKEN_HEADER] = userToken;
+    }
+
+    logDebug("Making worker request to:", workerEndpoint);
+    // Boolean only. Never log the token, any prefix of it, its length, or any
+    // claim carried inside it, at any level.
+    logDebug("Worker request Entra token attached:", Boolean(userToken));
+
+    try {
+      return await fetch(workerEndpoint, {
+        method: "POST",
+        headers: workerHeaders,
+        body: JSON.stringify({
+          endpoint: requestSpec.endpointKey,
+          clientId: requestSpec.clientId,
+          region: requestSpec.region,
+          params: requestSpec.params,
+        }),
+        signal: signal,
+      });
+    } catch (fetchError) {
+      // Cancellation is not a worker fault — let it through untouched.
+      if (fetchError.name === "AbortError") {
+        throw fetchError;
+      }
+
+      // A worker origin-rejection (403) carries no Access-Control-Allow-Origin
+      // header, so the browser surfaces it as an opaque network failure — the
+      // same TypeError an unreachable worker produces. We genuinely cannot tell
+      // the two apart here, so the message names both and asserts neither.
+      logWarn(
+        "Worker request failed (unreachable, or this origin is not on its " +
+          "allow-list):",
+        fetchError.message,
+      );
+      throw createError(
+        ERROR_TYPES.NETWORK,
+        ALLY_CONFIG.MESSAGES.WORKER_UNREACHABLE,
+        null,
+        { workerUrl: workerEndpoint, originalError: fetchError.message },
+      );
+    }
   }
 
   /**
@@ -408,15 +631,36 @@ const ALLY_API_CLIENT = (function () {
   async function executeQuery(endpointKey, options) {
     options = options || {};
 
-    // Validate credentials
-    if (!_token || !_clientId) {
+    // Validate credentials. The client ID is always required — the worker reads
+    // it from the request payload and has no default, so it replaces the TOKEN,
+    // not the client ID. Beyond that we need ONE transport: a token, or a
+    // worker request that will actually succeed.
+    //
+    // Three predicates, three different questions — pick by what the guard asks:
+    //   getWorkerUrl()            always resolves to the built-in default, so it
+    //                             can never answer a credential question at all.
+    //   hasConfiguredWorkerUrl()  "did the user supply their OWN worker URL" — a
+    //                             question about configuration.
+    //   hasUsableWorkerUrl()      "will a worker request succeed for this person
+    //                             right now" — which is what this guard is
+    //                             actually asking, and is true for a signed-in
+    //                             colleague who has configured nothing.
+    const hasWorker =
+      typeof ALLY_CONFIG.hasUsableWorkerUrl === "function" &&
+      ALLY_CONFIG.hasUsableWorkerUrl();
+
+    if (!_clientId || (!_token && !hasWorker)) {
       const error = createError(
         ERROR_TYPES.VALIDATION,
-        !_token
-          ? ALLY_CONFIG.MESSAGES.MISSING_TOKEN
-          : ALLY_CONFIG.MESSAGES.MISSING_CLIENT_ID,
+        !_clientId
+          ? ALLY_CONFIG.MESSAGES.MISSING_CLIENT_ID
+          : ALLY_CONFIG.MESSAGES.MISSING_CREDENTIALS,
         null,
-        { missingToken: !_token, missingClientId: !_clientId },
+        {
+          missingToken: !_token,
+          missingClientId: !_clientId,
+          missingWorkerUrl: !hasWorker,
+        },
       );
       if (options.onError) options.onError(error);
       throw error;
@@ -459,8 +703,22 @@ const ALLY_API_CLIENT = (function () {
       filters: options.filters,
     };
 
+    // One ordered pairs list feeds both transports: joined into the direct URL,
+    // or sent as JSON to the worker.
+    const queryPairs = buildQueryPairs(queryOptions);
     const queryString = buildQueryString(queryOptions);
     const fullUrl = queryString ? baseUrl + "?" + queryString : baseUrl;
+
+    // fullUrl is still built even on the worker transport — the debug panel
+    // shows it as the logical upstream request.
+    const requestSpec = {
+      endpointKey: endpointKey,
+      clientId: _clientId,
+      region: _region,
+      url: fullUrl,
+      params: queryPairs,
+    };
+    const usingWorker = !_token;
 
     // Create abort controller - use local variable to prevent race conditions
     // when multiple requests run concurrently
@@ -481,6 +739,11 @@ const ALLY_API_CLIENT = (function () {
         region: _region,
         url: fullUrl,
         options: queryOptions,
+        // Which transport actually carried this request, and where to.
+        transport: usingWorker ? "worker" : "direct",
+        workerUrl: usingWorker
+          ? ALLY_CONFIG.getWorkerEndpointUrl("QUERY")
+          : null,
         headers: {
           Authorization:
             "Bearer " +
@@ -567,7 +830,7 @@ const ALLY_API_CLIENT = (function () {
 
         // Make request with error handling for transient failures
         try {
-          const response = await makeRequest(fullUrl, getSignal());
+          const response = await makeRequest(requestSpec, getSignal());
           result = await parseResponse(response);
 
           // Successful response - reset error count
@@ -648,6 +911,25 @@ const ALLY_API_CLIENT = (function () {
             lastError.type === "cancelled"
           ) {
             throw pollError;
+          }
+
+          // A 401 or a 403 is a terminal answer, not a transient failure, so
+          // stop rather than counting it towards the consecutive-error budget.
+          // This applies to BOTH transports on purpose: an Entra gate that says
+          // "not signed in" or "not permitted" does not change its mind while
+          // we wait, and neither does Ally when it rejects an API token. A 503
+          // is deliberately NOT here — "we could not check just now" is the one
+          // case where trying again is right. Exits through the same branch as
+          // giving up, so the person sees one error treatment and onError still
+          // fires.
+          if (lastError.status === 401 || lastError.status === 403) {
+            logError(
+              "Terminal authentication failure (" +
+                lastError.status +
+                "), not retrying",
+            );
+            if (options.onError) options.onError(lastError);
+            throw lastError;
           }
 
           logWarn(
@@ -761,6 +1043,32 @@ const ALLY_API_CLIENT = (function () {
     },
 
     /**
+     * Sets credentials for the token-free WORKER transport: a client ID with no
+     * API token, so requests route through the configured proxy worker.
+     *
+     * Deliberately a separate method rather than an empty token passed to
+     * setCredentials() — that call still (correctly) rejects an empty token, and
+     * a boolean flag at the call site would not say which mode was intended.
+     *
+     * @param {string} clientId - Ally client ID
+     * @returns {boolean} True if the client ID was set successfully
+     *
+     * @example
+     * ALLY_API_CLIENT.setWorkerCredentials('577');
+     */
+    setWorkerCredentials: function (clientId) {
+      if (!clientId || typeof clientId !== "string") {
+        logError("Invalid clientId provided");
+        return false;
+      }
+
+      _token = null;
+      _clientId = clientId.trim();
+      logInfo("Worker-transport credentials set for client:", _clientId);
+      return true;
+    },
+
+    /**
      * Gets current credentials (token is masked for security)
      * @returns {Object} Current credentials object
      *
@@ -776,6 +1084,7 @@ const ALLY_API_CLIENT = (function () {
         tokenLength: _token ? _token.length : 0,
         clientId: _clientId,
         region: _region,
+        transport: _token ? "direct" : "worker",
       };
     },
 
@@ -792,21 +1101,36 @@ const ALLY_API_CLIENT = (function () {
     },
 
     /**
-     * Loads saved credentials from localStorage
-     * @returns {boolean} True if credentials were loaded successfully
+     * Resolves the USABLE credential set for this browser and loads it into
+     * module state. Despite the name it is no longer only about saved values:
+     * for a colleague with an institutional sign-in the resolved set may
+     * include the built-in client ID, which was never saved to localStorage.
+     * A stored client ID always wins over that default.
+     *
+     * The name is kept because it is public and called from other files;
+     * the honest description lives here rather than in a rename.
+     *
+     * @returns {boolean} True if a usable credential set was resolved
      *
      * @example
      * if (ALLY_API_CLIENT.loadSavedCredentials()) {
-     *   console.log('Credentials loaded from storage');
+     *   console.log('Credentials resolved');
      * }
      */
     loadSavedCredentials: function () {
       try {
-        // Check if saving is enabled
+        // Check if saving is enabled. An institutional sign-in is an
+        // alternative route past this gate: a colleague who has never pressed
+        // "Remember credentials" still has a usable set to resolve below, and
+        // returning early here would deny it to exactly the person this path
+        // exists to serve.
         const saveEnabled = localStorage.getItem(
           ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS,
         );
-        if (saveEnabled !== "true") {
+        const signedIn =
+          typeof ALLY_CONFIG.hasInstitutionalSignIn === "function" &&
+          ALLY_CONFIG.hasInstitutionalSignIn();
+        if (saveEnabled !== "true" && !signedIn) {
           logDebug("Credential saving not enabled");
           return false;
         }
@@ -819,13 +1143,33 @@ const ALLY_API_CLIENT = (function () {
           ALLY_CONFIG.STORAGE_KEYS.REGION,
         );
 
-        if (savedToken && savedClientId) {
-          _token = savedToken;
-          _clientId = savedClientId;
+        // A saved token is no longer required: a client ID plus a usable worker
+        // is a complete set of credentials on the worker transport — whether
+        // that worker is usable because the user configured their own URL, or
+        // because an institutional sign-in makes the built-in one reachable.
+        const hasWorker =
+          typeof ALLY_CONFIG.hasUsableWorkerUrl === "function" &&
+          ALLY_CONFIG.hasUsableWorkerUrl();
+
+        // A STORED client ID always wins; the built-in default only fills a gap,
+        // and getEffectiveClientId() gates that default on the sign-in itself.
+        const clientId =
+          savedClientId ||
+          (typeof ALLY_CONFIG.getEffectiveClientId === "function"
+            ? ALLY_CONFIG.getEffectiveClientId()
+            : "");
+
+        if (clientId && (savedToken || hasWorker)) {
+          _token = savedToken || null;
+          _clientId = clientId;
           if (savedRegion && ALLY_CONFIG.isValidRegion(savedRegion)) {
             _region = savedRegion;
           }
-          logInfo("Credentials loaded from localStorage");
+          logInfo(
+            "Credentials loaded from localStorage (" +
+              (savedToken ? "token" : "worker") +
+              " transport)",
+          );
           return true;
         }
 
@@ -849,7 +1193,9 @@ const ALLY_API_CLIENT = (function () {
     saveCredentials: function (enable) {
       try {
         if (enable) {
-          if (!_token || !_clientId) {
+          // On the worker transport there is no token to save — a client ID is
+          // a complete credential set, so don't refuse to save one.
+          if (!_clientId) {
             logWarn("Cannot save: no credentials set");
             return false;
           }
@@ -858,7 +1204,11 @@ const ALLY_API_CLIENT = (function () {
             ALLY_CONFIG.STORAGE_KEYS.SAVE_CREDENTIALS,
             "true",
           );
-          localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN, _token);
+          if (_token) {
+            localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN, _token);
+          } else {
+            localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN);
+          }
           localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.CLIENT_ID, _clientId);
           localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.REGION, _region);
           logInfo("Credentials saved to localStorage");
@@ -868,6 +1218,8 @@ const ALLY_API_CLIENT = (function () {
           localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN);
           localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.CLIENT_ID);
           localStorage.removeItem(ALLY_CONFIG.STORAGE_KEYS.REGION);
+          // WORKER_URL is deliberately NOT cleared here: it carries no secret,
+          // and it is the fallback that keeps the app working without a token.
           logInfo("Saved credentials cleared from localStorage");
           return true;
         }
@@ -878,8 +1230,10 @@ const ALLY_API_CLIENT = (function () {
     },
 
     /**
-     * Checks if credentials are currently set
-     * @returns {boolean} True if both token and clientId are set
+     * Checks whether the client can currently make a request: a client ID plus
+     * ONE transport — an API token, a configured proxy worker URL, or an
+     * institutional sign-in.
+     * @returns {boolean} True if a query could be issued now
      *
      * @example
      * if (ALLY_API_CLIENT.hasCredentials()) {
@@ -887,7 +1241,12 @@ const ALLY_API_CLIENT = (function () {
      * }
      */
     hasCredentials: function () {
-      return !!_token && !!_clientId;
+      if (!_clientId) return false;
+      if (_token) return true;
+      return (
+        typeof ALLY_CONFIG.hasUsableWorkerUrl === "function" &&
+        ALLY_CONFIG.hasUsableWorkerUrl()
+      );
     },
 
     // ======================================================================
@@ -992,6 +1351,7 @@ const ALLY_API_CLIENT = (function () {
      */
     testConnection: async function () {
       logInfo("Testing API connection...");
+      _lastError = null;
 
       try {
         // Attempt a minimal query
@@ -1007,9 +1367,30 @@ const ALLY_API_CLIENT = (function () {
         logInfo("Connection test result:", success ? "Success" : "Failed");
         return success;
       } catch (error) {
-        logError("Connection test failed:", error.message);
+        // Preserve the CLASSIFIED error so callers can distinguish a genuine
+        // auth failure from a server-side fault (502/503/504) or a network
+        // problem — testConnection itself only returns a boolean for
+        // backwards compatibility.
+        _lastError = error && error.type ? error : classifyError(error);
+        logError("Connection test failed:", _lastError.message);
         return false;
       }
+    },
+
+    /**
+     * Returns the classified error from the most recent failed testConnection
+     * (or null after a success / before any test). Lets the UI show a message
+     * that matches the real cause instead of always blaming credentials.
+     * @returns {Object|null} Structured error object (see ERROR_TYPES) or null
+     *
+     * @example
+     * if (!(await ALLY_API_CLIENT.testConnection())) {
+     *   const err = ALLY_API_CLIENT.getLastError();
+     *   if (err && err.type === ALLY_API_CLIENT.ERROR_TYPES.SERVER) { … }
+     * }
+     */
+    getLastError: function () {
+      return _lastError;
     },
 
     // ======================================================================

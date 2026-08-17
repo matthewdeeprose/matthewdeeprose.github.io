@@ -129,60 +129,93 @@ const MermaidAccessibilityArchitecture = (function () {
         (group) => !group.parentId
       );
 
-      // Build HTML description
+      // The two tiers are built SIDE BY SIDE from the same raw fields.
+      //
+      // The plain tier used to be derived as htmlDescription.replace(/<[^>]*>/g, ""),
+      // which could not tell the author's markup from the generator's own spans:
+      // an author's <b> was silently deleted, and a lone '<' paired with the '>'
+      // closing a generator span and truncated the sentence. Building it from the
+      // raw fields removes the derivation entirely.
+      //
+      // Diagram-source text is escaped once, on the HTML side only. The plain
+      // side keeps the raw values: it feeds the SVG aria-label and the
+      // textContent fallback, neither of which parses HTML, so entities there
+      // would be announced literally. Counts carry no diagram-source text and
+      // are safe unescaped on both sides.
       let htmlDescription = `An architecture diagram`;
+      let plainTextDescription = `An architecture diagram`;
 
       // Only include title if it's explicitly provided
       if (title) {
-        htmlDescription += ` titled "<span class="diagram-title">${title}</span>"`;
+        htmlDescription += ` titled "<span class="diagram-title">${Common.escapeHtml(
+          title
+        )}</span>"`;
+        plainTextDescription += ` titled "${title}"`;
       }
 
       // Add counts of key elements with proper singular/plural forms
       htmlDescription += ` containing <span class="diagram-count">${serviceCount}</span>`;
+      plainTextDescription += ` containing ${serviceCount}`;
 
       // Only include the spelled-out version, not the digit again
       if (serviceCount === 1) {
         htmlDescription += " service";
+        plainTextDescription += " service";
       } else {
         htmlDescription += " services";
+        plainTextDescription += " services";
       }
 
       if (groupCount > 0) {
         htmlDescription += ` organised into <span class="diagram-count">${groupCount}</span>`;
         htmlDescription += groupCount === 1 ? " group" : " groups";
+        plainTextDescription += ` organised into ${groupCount}`;
+        plainTextDescription += groupCount === 1 ? " group" : " groups";
       }
 
       if (edgeCount > 0) {
         htmlDescription += ` with <span class="diagram-count">${edgeCount}</span>`;
         htmlDescription += edgeCount === 1 ? " connection" : " connections";
+        plainTextDescription += ` with ${edgeCount}`;
+        plainTextDescription += edgeCount === 1 ? " connection" : " connections";
       }
 
       if (junctionCount > 0) {
         htmlDescription += ` and <span class="diagram-count">${junctionCount}</span>`;
         htmlDescription += junctionCount === 1 ? " junction" : " junctions";
+        plainTextDescription += ` and ${junctionCount}`;
+        plainTextDescription +=
+          junctionCount === 1 ? " junction" : " junctions";
       }
 
-      // Add main groups if there aren't too many
+      // Add main groups if there aren't too many. Group titles are escaped
+      // ITEM BY ITEM, before the join, so the separator stays generator markup.
       if (topLevelGroups.length > 0 && topLevelGroups.length <= 5) {
-        htmlDescription += `. The main ${
+        const mainGroupsLead = `. The main ${
           topLevelGroups.length === 1 ? "group is" : "groups are"
-        }: <span class="architecture-main-groups">`;
+        }: `;
+
+        htmlDescription += `${mainGroupsLead}<span class="architecture-main-groups">`;
+        plainTextDescription += mainGroupsLead;
 
         const groupNames = topLevelGroups
           .map(
             (group) =>
-              `<span class="architecture-group-name">${group.title}</span>`
+              `<span class="architecture-group-name">${Common.escapeHtml(
+                group.title
+              )}</span>`
           )
           .join(", ");
 
         htmlDescription += groupNames;
         htmlDescription += `</span>`;
+        plainTextDescription += topLevelGroups
+          .map((group) => group.title)
+          .join(", ");
       }
 
       htmlDescription += `.`;
-
-      // Plain text version (without HTML tags)
-      let plainTextDescription = htmlDescription.replace(/<[^>]*>/g, "");
+      plainTextDescription += `.`;
 
       logDebug("Short description generated successfully");
 
@@ -433,7 +466,9 @@ const MermaidAccessibilityArchitecture = (function () {
       let overviewContent = `<p>This architecture diagram`;
 
       if (title) {
-        overviewContent += ` titled "<span class="diagram-title">${title}</span>"`;
+        overviewContent += ` titled "<span class="diagram-title">${Common.escapeHtml(
+          title
+        )}</span>"`;
       }
 
       overviewContent += ` contains <span class="diagram-count">${stats.elementCount}</span>`;
@@ -553,11 +588,15 @@ const MermaidAccessibilityArchitecture = (function () {
     logDebug(`Rendering hierarchy for group: ${group.title}`);
 
     let html = `<li class="architecture-group">
-      <span class="architecture-group-name">${group.title}</span>`;
+      <span class="architecture-group-name">${Common.escapeHtml(
+        group.title
+      )}</span>`;
 
     // Add icon information if present
     if (group.icon) {
-      html += ` <span class="architecture-icon-info">(represented by ${group.icon} icon)</span>`;
+      html += ` <span class="architecture-icon-info">(represented by ${Common.escapeHtml(
+        group.icon
+      )} icon)</span>`;
     }
 
     // Get direct children
@@ -579,11 +618,15 @@ const MermaidAccessibilityArchitecture = (function () {
           const service = architecture.serviceMap.get(child.id);
           if (service) {
             html += `<li class="architecture-service">
-              <span class="architecture-service-name">${service.title}</span>`;
+              <span class="architecture-service-name">${Common.escapeHtml(
+              service.title
+            )}</span>`;
 
             // Add icon information if present
             if (service.icon) {
-              html += ` <span class="architecture-icon-info">(${service.icon} icon)</span>`;
+              html += ` <span class="architecture-icon-info">(${Common.escapeHtml(
+                service.icon
+              )} icon)</span>`;
             }
 
             html += `</li>`;
@@ -593,7 +636,9 @@ const MermaidAccessibilityArchitecture = (function () {
           const junction = architecture.junctionMap.get(child.id);
           if (junction) {
             html += `<li class="architecture-junction">
-              Junction point <span class="architecture-junction-id">${junction.id}</span>
+              Junction point <span class="architecture-junction-id">${Common.escapeHtml(
+                junction.id
+              )}</span>
             </li>`;
           }
         }
@@ -637,12 +682,14 @@ const MermaidAccessibilityArchitecture = (function () {
 
     architecture.services.forEach((service) => {
       content += `<li class="architecture-service-item">
-    <span class="architecture-service-name">${service.title}</span>`;
+    <span class="architecture-service-name">${Common.escapeHtml(
+      service.title
+    )}</span>`;
 
       // Add icon information
       if (service.icon) {
-        content += ` <span class="architecture-service-icon">(${getIconDescription(
-          service.icon
+        content += ` <span class="architecture-service-icon">(${Common.escapeHtml(
+          getIconDescription(service.icon)
         )})</span>`;
       }
 
@@ -650,7 +697,9 @@ const MermaidAccessibilityArchitecture = (function () {
       if (service.parentId) {
         const parentGroup = architecture.groupMap.get(service.parentId);
         if (parentGroup) {
-          content += ` in <span class="architecture-parent-group">${parentGroup.title}</span>`;
+          content += ` in <span class="architecture-parent-group">${Common.escapeHtml(
+            parentGroup.title
+          )}</span>`;
         }
       }
 
@@ -764,9 +813,9 @@ const MermaidAccessibilityArchitecture = (function () {
 
         if (junctionEdges.length > 0) {
           content += `<div class="architecture-junction-group">`;
-          content += `<h6>${index === 0 ? "Primary" : "Secondary"} Junction (${
+          content += `<h6>${index === 0 ? "Primary" : "Secondary"} Junction (${Common.escapeHtml(
             junction.id
-          })</h6>`;
+          )})</h6>`;
           content += `<p>This junction connects:</p>`;
           content += `<ul class="architecture-connections-list">`;
 
@@ -782,10 +831,12 @@ const MermaidAccessibilityArchitecture = (function () {
 
             if (service) {
               content += `<li class="architecture-connection">`;
-              content += `<span class="architecture-service-name">${service.title}</span>`;
+              content += `<span class="architecture-service-name">${Common.escapeHtml(
+                service.title
+              )}</span>`;
 
               if (service.icon) {
-                content += ` (${getIconDescription(service.icon)})`;
+                content += ` (${Common.escapeHtml(getIconDescription(service.icon))})`;
               }
 
               const direction = edge.isOutgoing
@@ -856,7 +907,9 @@ const MermaidAccessibilityArchitecture = (function () {
 
         if (sourceElement && targetElement) {
           content += `<li class="architecture-connection">`;
-          content += `<span class="architecture-source">${sourceElement.title}</span>`;
+          content += `<span class="architecture-source">${Common.escapeHtml(
+            sourceElement.title
+          )}</span>`;
 
           if (edge.hasLeftArrow && edge.hasRightArrow) {
             content += ` connects bidirectionally with `;
@@ -868,7 +921,9 @@ const MermaidAccessibilityArchitecture = (function () {
             content += ` connects with `;
           }
 
-          content += `<span class="architecture-target">${targetElement.title}</span>`;
+          content += `<span class="architecture-target">${Common.escapeHtml(
+            targetElement.title
+          )}</span>`;
           content += ` (from ${getDirectionDescription(
             edge.sourceSide
           )} to ${getDirectionDescription(edge.targetSide)})`;
@@ -982,8 +1037,8 @@ const MermaidAccessibilityArchitecture = (function () {
 
       if (mostCommonIcon && maxCount > 1) {
         insights.push(
-          `The most common service type is ${getIconDescription(
-            mostCommonIcon
+          `The most common service type is ${Common.escapeHtml(
+            getIconDescription(mostCommonIcon)
           )}, used for <span class="diagram-count">${maxCount}</span> ${
             maxCount === 1 ? "service" : "services"
           }.`

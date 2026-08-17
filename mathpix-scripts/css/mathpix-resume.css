@@ -214,6 +214,38 @@ body.resume-focus-mode .resume-storage-dashboard {
   font-size: 0.95rem;
 }
 
+/* Compact describe-on-load hint, now an absolute top-inset overlay anchored to
+   the content area's position: relative — so showing it causes no layout shift,
+   and it stays inside the content area's box so focus-mode overflow: hidden
+   cannot clip it. It uses the Canvas / CanvasText system colours, which follow
+   the theme automatically, so it needs no prefers-color-scheme or dark/light
+   variant. The spinner's currentColor border still rides the inherited colour. */
+.resume-chemistry-describe-status {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.25rem 0.6rem;
+  text-align: left;
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid CanvasText;
+  border-radius: 4px;
+}
+.resume-chemistry-describe-status .resume-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+.resume-chemistry-describe-status .resume-loading-text {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 /* ============================================================================
       EDIT SELECTION DIALOG
       ============================================================================ */

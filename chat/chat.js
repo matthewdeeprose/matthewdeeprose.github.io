@@ -105,6 +105,9 @@
   // The live re-resolve listeners (provider:changed / credentials:changed) are
   // wired exactly once, so re-entrant init/refresh does not double-bind them.
   let eventsWired = false;
+  // The provider dropdown's <option>s are appended from GROUP_ORDER exactly once,
+  // so a refresh does not duplicate them onto the static "All providers" option.
+  let providerOptionsBuilt = false;
 
   // The full unified model list, cached ONCE at build time so filtering runs in
   // memory without re-gating (re-running getAllEligibleModels) on each keystroke.
@@ -119,6 +122,23 @@
   // when the new signature matches, so returning to the tool does not re-announce
   // an unchanged status — only a real model or state change speaks.
   let lastStatusSignature = null;
+
+  // The four sampling controls the ignored-parameter notice covers, each as its
+  // wire param name, the visible label shown in the Parameters panel, and the
+  // element-id suffix of its slider (fed to S.elId so the id-prefix stays in one
+  // place). The id suffix differs from the param name for the hyphenated ids
+  // (top_p → top-p, frequency_penalty → frequency-penalty, presence_penalty →
+  // presence-penalty), so it is recorded here rather than derived.
+  const SAMPLING_CONTROLS = [
+    { param: "temperature", label: "Temperature", id: "temperature" },
+    { param: "top_p", label: "Top-P", id: "top-p" },
+    { param: "frequency_penalty", label: "Word Variety", id: "frequency-penalty" },
+    { param: "presence_penalty", label: "Phrase Variety", id: "presence-penalty" },
+  ];
+  // The last announced ignored-set, so the notice speaks only when the set changes.
+  let lastSamplingNoticeKey = null;
+  // The last announced blocked-attachment message, so it speaks only on change.
+  let lastAttachmentNoticeKey = null;
 
   // Hidden DOM node the embed attaches its ARIA live region to. The constructor
   // requires a real container; we never render into it at this stage.
@@ -145,6 +165,15 @@
     { providerId: "openrouter", label: "OpenRouter" },
     { providerId: "azure-openai", label: "Microsoft Foundry" },
   ];
+
+  // Whether each picker option shows the upstream vendor in parentheses after the
+  // model name (e.g. "Llama 3.3 70B Instruct (meta)"). Reproduces the old tool's
+  // provider-accurate option name so the vendor survives that tool's retirement.
+  // The routing provider stays conveyed by the optgroup heading; this adds the
+  // UPSTREAM vendor, which the heading does not carry. Local models carry no
+  // vendor and fall back to the bare name.
+  // CHANGE-HERE to show or hide the vendor suffix in picker options.
+  const SHOW_UPSTREAM_VENDOR_IN_OPTION = true;
 
   // ── Filter dials ────────────────────────────────────────────────────────
   // Each tweakable filter behaviour has exactly ONE home, named here so the
@@ -194,15 +223,124 @@
     return group ? group.label : "";
   }
 
-  // Single home for "what counts as a match". Case-insensitive; an empty term
-  // matches everything. Matches on the model NAME or on the model's provider
-  // GROUP LABEL (never the raw providerId).
+  // Build the visible text, and therefore the accessible name, for one picker
+  // option. Appends the upstream vendor (model.provider) in parentheses when the
+  // dial is on and the entry carries one; otherwise returns the bare model name.
+  // No aria-label is set on options: this text IS the accessible name a screen
+  // reader announces, and the optgroup heading already conveys the routing provider.
+  function formatOptionLabel(model) {
+    const name = model.name || model.id || "";
+    if (SHOW_UPSTREAM_VENDOR_IN_OPTION && model.provider) {
+      return name + " (" + model.provider + ")";
+    }
+    return name;
+  }
+
+  // Separators a user should not have to get exactly right when filtering: spaces,
+  // hyphens, underscores and dots. "gpt 5", "gpt-5" and "gpt5" should all find a
+  // model named "GPT-5 Nano", and "claude 35" should find "Claude 3.5 Haiku". We
+  // strip a run of any of these from the text before matching (hyphen last in the
+  // class so it is a literal, not a range).
+  const FILTER_SEPARATORS = /[\s._-]+/g;
+
+  // Lower-case and remove filter separators, so the substring test below ignores
+  // the difference between a spaced, hyphenated or run-together spelling.
+  function normaliseForFilter(text) {
+    return (text || "").toLowerCase().replace(FILTER_SEPARATORS, "");
+  }
+
+  // Single home for "what counts as a match". Case- AND separator-insensitive; an
+  // empty term — or one that is only separators — matches everything. Matches on
+  // the model NAME, the model's provider GROUP LABEL (never the raw providerId),
+  // or the UPSTREAM VENDOR shown in the option's "(vendor)" suffix (model.provider
+  // — e.g. "openai", "anthropic"), so a search for the vendor name finds its models
+  // even though the routing group label ("OpenRouter" / "Microsoft Foundry") differs.
+  // Every side is normalised through normaliseForFilter so the needle and each
+  // haystack are compared on the same footing.
   function modelMatchesFilter(model, term) {
-    const needle = (term || "").trim().toLowerCase();
+    const needle = normaliseForFilter(term);
     if (needle === "") return true;
-    const name = (model.name || "").toLowerCase();
-    const groupLabel = groupLabelForProviderId(model.providerId).toLowerCase();
-    return name.indexOf(needle) !== -1 || groupLabel.indexOf(needle) !== -1;
+    const name = normaliseForFilter(model.name);
+    const groupLabel = normaliseForFilter(
+      groupLabelForProviderId(model.providerId)
+    );
+    const vendor = normaliseForFilter(model.provider);
+    return (
+      name.indexOf(needle) !== -1 ||
+      groupLabel.indexOf(needle) !== -1 ||
+      vendor.indexOf(needle) !== -1
+    );
+  }
+
+  // Whether a model is free to run. Local models run in-browser and are always
+  // free; OpenRouter entries carry an accurate isFree boolean; every Foundry
+  // surface (azure-openai) is treated as never free — there are no free Foundry
+  // models and its cost/free data is a mirrored placeholder, so the checkbox must
+  // not surface a Foundry model as free.
+  function isFreeModel(model) {
+    if (model.providerId === "local") return true; // local runs in-browser, free
+    if (model.providerId === "openrouter") return model.isFree === true;
+    return false; // all Foundry surfaces: never free (mirrored placeholder data)
+  }
+
+  // Read the CURRENT filter state straight off the DOM controls, so those controls
+  // are the single source of truth (no cached term/flag to drift). term is the
+  // search value; freeOnly reflects the Show-only-free-models checkbox.
+  function getActiveFilterState() {
+    return {
+      term: (S.els.search && S.els.search.value) || "",
+      freeOnly: !!(S.els.filterFreeOnly && S.els.filterFreeOnly.checked),
+      provider: (S.els.filterProvider && S.els.filterProvider.value) || "all",
+      capabilities: (S.els.filterCapabilities || [])
+        .filter(function (cb) {
+          return cb.checked;
+        })
+        .map(function (cb) {
+          return cb.value;
+        }),
+      costRange: (S.els.filterCostRange && S.els.filterCostRange.value) || "",
+      sortByCost: !!(S.els.filterSortCost && S.els.filterSortCost.checked),
+    };
+  }
+
+  // Compose every active filter with AND: a model must match the search term AND,
+  // when free-only is on, be free AND, when a specific provider is chosen, belong
+  // to it. The single home for "does this model survive the current filters" — both
+  // the live picker filter and the refresh paths route through here so the
+  // composition can never diverge between them.
+  function modelMatchesAllFilters(model, state) {
+    if (!modelMatchesFilter(model, state.term)) return false;
+    if (state.freeOnly && !isFreeModel(model)) return false;
+    if (
+      state.provider &&
+      state.provider !== "all" &&
+      model.providerId !== state.provider
+    )
+      return false;
+    // Capability filters compose with AND through the selector's public
+    // normalisation gate, so the checkboxes read one normalised shape rather than
+    // each provider's raw fields. If the selector is somehow absent the capability
+    // filter is skipped rather than throwing (graceful degradation).
+    if (state.capabilities && state.capabilities.length) {
+      const selector = window.EmbedModelSelector;
+      if (
+        selector &&
+        typeof selector._modelHasCapabilities === "function" &&
+        !selector._modelHasCapabilities(model, state.capabilities)
+      ) {
+        return false;
+      }
+    }
+    // Price controls (Slice 4). Foundry is hidden whenever a price control is
+    // active — either a chosen band OR the cheapest-first sort — because its price
+    // data is a mirrored placeholder; no carve-out. sortByCost is NOT a match
+    // clause beyond this Foundry exclusion (the ordering itself lives in
+    // orderModels). The band, when set, is a real match clause on input price.
+    const costControlActive =
+      (state.costRange && state.costRange !== "") || state.sortByCost;
+    if (costControlActive && isFoundryModel(model)) return false;
+    if (state.costRange && !matchesCostBand(model, state.costRange)) return false;
+    return true;
   }
 
   // Single home for the spoken count phrasing.
@@ -210,6 +348,67 @@
     if (n === 0) return "No models match";
     if (n === 1) return "1 model matches";
     return n + " models match";
+  }
+
+  // ── Price helpers (Slice 4) ───────────────────────────────────────────────
+  // Filtering and sorting both key on the INPUT price (US dollars per million
+  // tokens). Cloud entries carry costs:{input,output}; local entries carry no
+  // costs at all and are treated as zero-cost (they run in-browser, free).
+
+  // The model's input price, or 0 when it carries no costs (local models).
+  function inputPrice(model) {
+    return model.costs && typeof model.costs.input === "number"
+      ? model.costs.input
+      : 0;
+  }
+
+  // Both Foundry surfaces are unified under providerId "azure-openai" by the
+  // selector, so this single test covers them. Foundry's price data is a mirrored
+  // placeholder pending the real Azure-price research, so Foundry is hidden
+  // whenever any price control is active (no carve-out).
+  function isFoundryModel(model) {
+    return model.providerId === "azure-openai";
+  }
+
+  // Whether a model's input price falls in the chosen plain band. An empty band
+  // is inert (matches everything). Bands: under $1, $1–$5, $5–$20, $20 or more.
+  function matchesCostBand(model, band) {
+    if (!band) return true;
+    const p = inputPrice(model);
+    if (band === "under-1") return p < 1;
+    if (band === "1-5") return p >= 1 && p <= 5;
+    if (band === "5-20") return p > 5 && p <= 20;
+    if (band === "20-plus") return p > 20;
+    return true;
+  }
+
+  // Order a list cheapest-first by input price when the sort is on, else leave it
+  // untouched. Sorts a COPY so the caller's list (and the cached allModels) is
+  // never mutated. The grouping in renderPickerOptions is preserved: it re-buckets
+  // by provider, so within each provider group the options read cheapest-first.
+  function orderModels(list, state) {
+    if (!state.sortByCost) return list;
+    return list.slice().sort(function (a, b) {
+      return inputPrice(a) - inputPrice(b);
+    });
+  }
+
+  // Single seam that composes the filters then applies the ordering, so every
+  // render site produces its list identically (filter → order).
+  function filterAndOrder(list, state) {
+    const filtered = list.filter(function (m) {
+      return modelMatchesAllFilters(m, state);
+    });
+    return orderModels(filtered, state);
+  }
+
+  // Single seam that renders a produced list and toggles the visible-only
+  // empty-state line: shown only when the list is empty. The line is aria-hidden
+  // (set in the markup), so it never double-announces over the #chat-model-count
+  // status region, which already speaks "No models match".
+  function renderFiltered(list) {
+    renderPickerOptions(list);
+    if (S.els.filterEmpty) S.els.filterEmpty.hidden = list.length > 0;
   }
 
   // ── Element caching ─────────────────────────────────────────────────────
@@ -222,6 +421,19 @@
     els.search = document.getElementById(S.elId("model-search"));
     els.count = document.getElementById(S.elId("model-count"));
     els.filterClear = document.getElementById(S.elId("model-filter-clear"));
+    els.filterFreeOnly = document.getElementById(S.elId("filter-free-only"));
+    els.filterReset = document.getElementById(S.elId("filter-reset"));
+    els.filterProvider = document.getElementById(S.elId("filter-provider"));
+    // The four capability checkboxes share a class rather than the elId prefix,
+    // so cache them as a plain array to iterate over in the compose/wire/reset paths.
+    els.filterCapabilities = Array.prototype.slice.call(
+      document.querySelectorAll(".chat-filter-capability"),
+    );
+    // Price controls (Slice 4): the range <select>, the cheapest-first sort
+    // checkbox, and the visible-only empty-state line shown when no model matches.
+    els.filterCostRange = document.getElementById(S.elId("filter-cost-range"));
+    els.filterSortCost = document.getElementById(S.elId("filter-sort-cost"));
+    els.filterEmpty = document.getElementById(S.elId("filter-empty"));
   }
 
   // ── Engine handle ─────────────────────────────────────────────────────────
@@ -336,6 +548,170 @@
       : null;
   }
 
+  // Format labels with an Oxford comma: "A", "A and B", "A, B, and C".
+  function formatIgnoredList(items) {
+    if (items.length === 1) return items[0];
+    if (items.length === 2) return items[0] + " and " + items[1];
+    return items.slice(0, -1).join(", ") + ", and " + items[items.length - 1];
+  }
+
+  // Which sampling params the model supports. Cloud models read the registry, which
+  // the OpenRouter wire path also reads, so notice and wire agree. Local models miss
+  // the registry, but the local text gateway accepts only temperature and top_p, so
+  // state that directly.
+  function supportedSamplingParams(modelId, providerId) {
+    if (providerId === "local") {
+      return ["temperature", "top_p"];
+    }
+    return (
+      (window.modelRegistry &&
+        window.modelRegistry.getSupportedParameters(modelId)) ||
+      []
+    );
+  }
+
+  // Update the ignored-sampling-parameter notice on model change. Shows and speaks
+  // which controls the model ignores. A cloud registry miss returns an empty list,
+  // which means "unknown", not "ignores everything", so the notice stays silent.
+  function updateSamplingNotice(modelId, providerId) {
+    const noticeEl = document.getElementById(S.elId("sampling-notice"));
+    if (!noticeEl) return;
+    const supported = supportedSamplingParams(modelId, providerId);
+    if (providerId !== "local" && supported.length === 0) {
+      noticeEl.hidden = true;
+      noticeEl.textContent = "";
+      lastSamplingNoticeKey = null;
+      return;
+    }
+    const ignored = SAMPLING_CONTROLS.filter(function (c) {
+      return supported.indexOf(c.param) === -1;
+    });
+    if (ignored.length === 0) {
+      noticeEl.hidden = true;
+      noticeEl.textContent = "";
+      lastSamplingNoticeKey = "";
+      return;
+    }
+    const labels = ignored.map(function (c) {
+      return c.label;
+    });
+    const text = "This model ignores " + formatIgnoredList(labels) + ".";
+    noticeEl.textContent = text;
+    noticeEl.hidden = false;
+    const key = labels.join("|");
+    if (key !== lastSamplingNoticeKey) {
+      if (typeof S.announceToScreenReader === "function") {
+        S.announceToScreenReader(text);
+      }
+      lastSamplingNoticeKey = key;
+    }
+  }
+
+  /**
+   * Blocked-attachment notice + send gate (Unified Chat attachments, checkpoint 1).
+   *
+   * When an image or a PDF is attached AND the selected model does NOT accept it,
+   * name the block in #chat-attachment-notice (role="status") and gate the Send
+   * button OFF until an image- or PDF-capable model is chosen or the attachment is
+   * removed. Otherwise stay SILENT and restore Send to its generation-appropriate
+   * state.
+   *
+   * The attachment is kept across the switch (never dropped). The message is spoken
+   * ONCE per change via S.announceToScreenReader (change-detected), mirroring
+   * updateSamplingNotice; the visible text is populated WHILE the element is hidden
+   * and then revealed (as the sampling notice is), so the role="status" live region
+   * does not add a second announcement. A held attachment and an in-flight
+   * generation are mutually exclusive (send clears the attachment), so gating the
+   * button here never fights chat-core's generation lock — the unblocked branch
+   * restores `disabled` to S.isGenerating.
+   *
+   * Called from reflectSelection (model change) and from chat-attach.js (attach /
+   * remove), so the gate tracks BOTH the model and the attachment.
+   */
+  function updateAttachmentNotice() {
+    const noticeEl = document.getElementById(S.elId("attachment-notice"));
+    const sendBtn = document.getElementById(S.elId("send"));
+    const attach = window.ChatAttach;
+    // Derive the held attachment's kind from its byte-free reference, then choose
+    // the acceptor by kind. The per-method typeof guards keep a load-order gap a
+    // safe no-op, exactly as the image-only gate did.
+    const held =
+      attach &&
+      typeof attach.hasAttachment === "function" &&
+      attach.hasAttachment() &&
+      typeof attach.buildReference === "function"
+        ? attach.buildReference() // byte-free { kind, filename, mimeType, size }
+        : null;
+    const kind = held ? held.kind : null;
+    const modelAccepts =
+      kind === "pdf"
+        ? typeof attach.modelAcceptsPDF === "function" &&
+          attach.modelAcceptsPDF(S.currentModel)
+        : kind === "image"
+          ? typeof attach.modelAcceptsImages === "function" &&
+            attach.modelAcceptsImages(S.currentModel)
+          : true; // no attachment → nothing to block
+    const blocked = !!held && !modelAccepts;
+
+    if (!blocked) {
+      if (noticeEl) {
+        noticeEl.hidden = true;
+        noticeEl.textContent = "";
+      }
+      lastAttachmentNoticeKey = null;
+      if (sendBtn) sendBtn.disabled = !!S.isGenerating;
+      return;
+    }
+
+    const entry = getModelEntry(S.currentModel);
+    const modelName = (entry && entry.name) || S.currentModel || "This model";
+    const text =
+      kind === "pdf"
+        ? modelName +
+          " cannot read PDFs. Choose a PDF-capable model, or remove the PDF, to send."
+        : modelName +
+          " cannot read images. Choose an image-capable model, or remove the image, to send.";
+    if (noticeEl) {
+      noticeEl.textContent = text; // populate while hidden…
+      noticeEl.hidden = false; // …then reveal (single announce via the call below)
+    }
+    if (sendBtn) sendBtn.disabled = true;
+    if (text !== lastAttachmentNoticeKey) {
+      if (typeof S.announceToScreenReader === "function") {
+        S.announceToScreenReader(text);
+      }
+      lastAttachmentNoticeKey = text;
+    }
+  }
+
+  // Dim the sampling sliders the selected model ignores, mirroring
+  // updateSamplingNotice's own supported/unknown logic so the dimmed set matches
+  // the notice text exactly. A cloud registry miss (empty supported list for a
+  // non-local model) is "unknown", not "ignores everything" — so nothing is
+  // dimmed and the notice stays silent, the same guard both share.
+  //
+  // For each of the four sampling sliders: if the model does NOT support that
+  // param, set aria-disabled="true" (never the native disabled attribute) and
+  // record data-preserved-value so the inert guard in chat-core.js can revert a
+  // keyboard nudge; if it IS supported, clear both attributes. The slider's value
+  // is read to preserve it but is NEVER written here.
+  function updateSamplingControlStates(modelId, providerId) {
+    const supported = supportedSamplingParams(modelId, providerId);
+    const unknown = providerId !== "local" && supported.length === 0;
+    SAMPLING_CONTROLS.forEach(function (control) {
+      const input = document.getElementById(S.elId(control.id));
+      if (!input) return;
+      const ignored = !unknown && supported.indexOf(control.param) === -1;
+      if (ignored) {
+        input.setAttribute("aria-disabled", "true");
+        input.setAttribute("data-preserved-value", input.value);
+      } else {
+        input.removeAttribute("aria-disabled");
+        input.removeAttribute("data-preserved-value");
+      }
+    });
+  }
+
   /**
    * Reflect the current selection into ChatState. Stores the FULL model id
    * (e.g. "local/…") — never a re-prefixed or bare key — then drives the status
@@ -352,6 +728,24 @@
     // first-open auto-pick, manual switch, and live re-resolve — all route here).
     // Guarded so module load order can never make this fatal.
     if (window.ChatModelInfo) window.ChatModelInfo.update();
+    const noticeEntry = window.Chat.getModelEntry(S.currentModel);
+    const noticeProviderId = noticeEntry ? noticeEntry.providerId : null;
+    updateSamplingNotice(S.currentModel, noticeProviderId);
+    // Dim the sliders this model ignores, from the same supported-params source
+    // the notice uses, so the dim set and the notice text can never diverge.
+    updateSamplingControlStates(S.currentModel, noticeProviderId);
+    // Re-evaluate the blocked-attachment notice + send gate for the new model
+    // (silent unless an image is attached to an image-incapable model).
+    updateAttachmentNotice();
+    // Recompute the draft token counter's percentage + over-half warning against
+    // the newly-selected model's context window (Stage B). Guarded — no-op if the
+    // core has not registered its refresh hook yet.
+    if (window.ChatCore && window.ChatCore._updateInputCounter)
+      window.ChatCore._updateInputCounter();
+    // Starter prompts: re-pick chips for the newly selected model's capabilities (no-op unless the welcome is shown).
+    if (window.ChatChips && typeof window.ChatChips.refresh === "function") {
+      window.ChatChips.refresh();
+    }
   }
 
   /**
@@ -365,7 +759,8 @@
    * so returning to the tool does not re-announce an unchanged status.
    *
    * This reads, but never writes, the selection: the committed
-   * ChatState.currentModel is still set only by reflectSelection() on a real pick.
+   * ChatState.currentModel is set only through reflectSelection() — on a real
+   * pick, and now also on the filter settle (commit-follows-display).
    */
   function updateModelStatus() {
     const els = S.els;
@@ -553,7 +948,7 @@
       models.forEach((model) => {
         const option = document.createElement("option");
         option.value = model.id; // FULL id verbatim (e.g. "local/…")
-        option.textContent = model.name;
+        option.textContent = formatOptionLabel(model);
         optgroup.appendChild(option);
       });
       select.appendChild(optgroup);
@@ -606,6 +1001,27 @@
   }
 
   /**
+   * Append one <option> per GROUP_ORDER entry to the provider dropdown, after the
+   * static "All providers" option in the HTML. GROUP_ORDER is the single source for
+   * both these options and the picker's optgroup headings, so the dropdown labels
+   * (On your device / OpenRouter / Microsoft Foundry) can never drift from them.
+   * Guarded so a refresh does not duplicate the options onto the static one.
+   */
+  function populateProviderOptions() {
+    if (providerOptionsBuilt) return;
+    const select = S.els.filterProvider;
+    if (!select) return; // panel not in the DOM yet — nothing to build
+    GROUP_ORDER.forEach((group) => {
+      const option = document.createElement("option");
+      option.value = group.providerId;
+      option.textContent = group.label;
+      select.appendChild(option);
+    });
+    providerOptionsBuilt = true;
+    logDebug("provider options built from GROUP_ORDER (" + GROUP_ORDER.length + ")");
+  }
+
+  /**
    * Populate the picker from the unified model list. Caches that list ONCE into
    * the module-local `allModels` so subsequent filtering runs in memory without
    * re-gating. Idempotent with respect to USER state — a rebuild (e.g. the
@@ -635,6 +1051,10 @@
       return;
     }
 
+    // Build the provider dropdown's options from GROUP_ORDER once, so its labels
+    // match the optgroup headings this picker renders below.
+    populateProviderOptions();
+
     // No capability filter in v1 — the unified list as-is. Cached once here.
     allModels = selector.getAllEligibleModels({ embed: embed });
 
@@ -642,15 +1062,13 @@
     // never depends on the new option order.
     const previousModel = S.currentModel;
 
-    // Respect any active filter — the search input value is the single source of
-    // truth for the current term. Non-empty → filtered subset; empty → full.
-    const term = (S.els.search && S.els.search.value) || "";
-    const rendered =
-      term.trim() === ""
-        ? allModels
-        : allModels.filter((m) => modelMatchesFilter(m, term));
+    // Respect any active filter — the DOM controls (search term AND free-only)
+    // are the single source of truth, read live so a refresh re-renders the same
+    // subset the live picker shows rather than the full list.
+    const state = getActiveFilterState();
+    const rendered = filterAndOrder(allModels, state);
 
-    renderPickerOptions(rendered);
+    renderFiltered(rendered);
 
     if (previousModel) {
       // Keep the user's choice. Restore the menu to it when still visible;
@@ -676,7 +1094,7 @@
 
     logDebug(
       "picker populated — term='" +
-        term.trim() +
+        state.term.trim() +
         "' rendered=" +
         rendered.length +
         " total=" +
@@ -729,17 +1147,21 @@
    * ChatState.currentModel is left UNCHANGED (the hidden option simply isn't in
    * the menu). This repopulation is programmatic and must NOT fire a user-style
    * change — it never writes ChatState.currentModel.
-   * @param {string} rawTerm the raw input value
+   *
+   * Takes NO argument: the active filter state (search term AND free-only) is read
+   * LIVE from the DOM controls via getActiveFilterState(), which are the single
+   * source of truth. Composition is done by modelMatchesAllFilters.
    */
-  function applyFilter(rawTerm) {
+  function applyFilter() {
     const select = S.els.select;
     if (!select) return;
 
-    const term = (rawTerm || "").trim();
-    const filtered = allModels.filter((m) => modelMatchesFilter(m, term));
+    const state = getActiveFilterState();
+    const filtered = filterAndOrder(allModels, state);
 
-    // Responsive: render the narrowed list at once.
-    renderPickerOptions(filtered);
+    // Responsive: render the narrowed (and, when sorting, ordered) list at once.
+    // renderFiltered also toggles the visible-only empty-state line.
+    renderFiltered(filtered);
 
     // Selection persistence — single dial.
     if (PRESERVE_SELECTION_ON_FILTER && S.currentModel) {
@@ -747,8 +1169,9 @@
       if (stillVisible) {
         select.value = S.currentModel; // re-select; does not fire 'change'
       }
-      // If hidden: leave ChatState.currentModel untouched — do NOT overwrite a
-      // user's choice just because its option is currently filtered away.
+      // If hidden: the menu falls to its first visible option. We do NOT commit
+      // here — the debounced settle below commits what the menu shows once typing
+      // pauses (commit-follows-display), so the send always matches the display.
     }
 
     // Debounce the spoken updates — the COUNT and the STATUS line — onto a single
@@ -760,10 +1183,31 @@
     const n = filtered.length;
     announceTimer = setTimeout(function () {
       if (count) count.textContent = filterCountMessage(n);
-      updateModelStatus(); // status follows the settled filtered menu
+      // Commit-follows-display: when the committed model was filtered off-screen,
+      // the menu falls to its first visible option (the preserve-selection guard
+      // above only re-selects a still-visible committed model). On settle, commit
+      // whatever the menu now shows so the send can never diverge from the display.
+      // reflectSelection is the ONE commit funnel; it also refreshes the status
+      // line, the Model information panel and the sampling/attachment notices once.
+      // Guarded twice: a zero-match filter (nothing shown) must not wipe the
+      // committed model, and an unchanged selection must not re-render needlessly.
+      const shown = select.options[select.selectedIndex] || null;
+      const shownId = (shown && shown.value) || null;
+      if (shownId && shownId !== S.currentModel) {
+        reflectSelection();
+      } else {
+        updateModelStatus(); // no commit change — settle the status line only
+      }
     }, FILTER_ANNOUNCE_DEBOUNCE_MS);
 
-    logDebug("filter applied — term='" + term + "' matches=" + filtered.length);
+    logDebug(
+      "filter applied — term='" +
+        state.term.trim() +
+        "' freeOnly=" +
+        state.freeOnly +
+        " matches=" +
+        filtered.length,
+    );
   }
 
   /**
@@ -774,10 +1218,16 @@
     const select = S.els.select;
     if (S.els.search) S.els.search.value = "";
 
-    renderPickerOptions(allModels);
+    // Correctness refinement (Slice 4): clearing the SEARCH must still honour the
+    // OTHER active filter controls (free-only, provider, capabilities, price) and
+    // the sort — so render the composed-and-ordered subset, not the raw full list.
+    // With no other filter active this composes to the full list exactly as before.
+    const state = getActiveFilterState();
+    const rendered = filterAndOrder(allModels, state);
+    renderFiltered(rendered);
 
     if (PRESERVE_SELECTION_ON_FILTER && select && S.currentModel) {
-      const stillVisible = allModels.some((m) => m.id === S.currentModel);
+      const stillVisible = rendered.some((m) => m.id === S.currentModel);
       if (stillVisible) select.value = S.currentModel;
     }
 
@@ -786,9 +1236,9 @@
       announceTimer = null;
     }
     if (S.els.count) {
-      // Announce the clear action itself, then the restored count.
+      // Announce the clear action itself, then the restored (composed) count.
       S.els.count.textContent =
-        FILTER_CLEARED_PREFIX + filterCountMessage(allModels.length);
+        FILTER_CLEARED_PREFIX + filterCountMessage(rendered.length);
     }
 
     // Reflect the restored menu's status. A committed selection drives the status
@@ -800,7 +1250,56 @@
       showConfigureNotice();
     }
 
-    logDebug("filter cleared — full list restored (" + allModels.length + ")");
+    logDebug(
+      "filter cleared — search emptied, other filters honoured (" +
+        rendered.length +
+        " of " +
+        allModels.length +
+        ")",
+    );
+  }
+
+  /**
+   * Reset every advanced filter to its default: empty the search input, untick
+   * the free-only checkbox, set the provider back to All providers, then re-apply.
+   * applyFilter() re-renders the full list (all filters now inert), restores the
+   * chosen selection, and schedules the
+   * debounced count. We then announce the reset AT ONCE through the same immediate
+   * clear-filter path #chat-model-filter-clear uses (reusing FILTER_CLEARED_PREFIX),
+   * so a reset speaks straight away rather than waiting on the debounce.
+   * ChatState.currentModel is committed by applyFilter's debounced settle
+   * (commit-follows-display), not here.
+   */
+  function resetFilters() {
+    if (S.els.search) S.els.search.value = "";
+    if (S.els.filterFreeOnly) S.els.filterFreeOnly.checked = false;
+    if (S.els.filterProvider) S.els.filterProvider.value = "all";
+    (S.els.filterCapabilities || []).forEach(function (cb) {
+      cb.checked = false;
+    });
+    if (S.els.filterCostRange) S.els.filterCostRange.value = "";
+    if (S.els.filterSortCost) S.els.filterSortCost.checked = false;
+    // Hide the empty-state line up front; applyFilter's renderFiltered re-derives
+    // its visibility from the now-unfiltered full list anyway.
+    if (S.els.filterEmpty) S.els.filterEmpty.hidden = true;
+
+    applyFilter();
+
+    // Speak the reset immediately (not on the debounce), reusing the clear-filter
+    // prefix. applyFilter() left a pending debounce timer — cancel it so the
+    // immediate announce is the one that lands.
+    if (announceTimer) {
+      clearTimeout(announceTimer);
+      announceTimer = null;
+    }
+    if (S.els.count) {
+      S.els.count.textContent =
+        FILTER_CLEARED_PREFIX + filterCountMessage(allModels.length);
+    }
+
+    logDebug(
+      "filters reset — search cleared, free-only off, provider all, full list restored",
+    );
   }
 
   /**
@@ -812,16 +1311,60 @@
     if (filterWired) return;
     const search = S.els.search;
     const clearBtn = S.els.filterClear;
-    if (!search && !clearBtn) return;
+    const freeOnly = S.els.filterFreeOnly;
+    const resetBtn = S.els.filterReset;
+    const provider = S.els.filterProvider;
+    const costRange = S.els.filterCostRange;
+    const sortCost = S.els.filterSortCost;
+    if (
+      !search &&
+      !clearBtn &&
+      !freeOnly &&
+      !resetBtn &&
+      !provider &&
+      !costRange &&
+      !sortCost
+    )
+      return;
 
     if (search) {
       search.addEventListener("input", function () {
-        applyFilter(search.value);
+        applyFilter();
       });
     }
     if (clearBtn) {
       clearBtn.addEventListener("click", function () {
         clearFilter();
+      });
+    }
+    if (freeOnly) {
+      freeOnly.addEventListener("change", function () {
+        applyFilter();
+      });
+    }
+    if (provider) {
+      provider.addEventListener("change", function () {
+        applyFilter();
+      });
+    }
+    (S.els.filterCapabilities || []).forEach(function (cb) {
+      cb.addEventListener("change", function () {
+        applyFilter();
+      });
+    });
+    if (costRange) {
+      costRange.addEventListener("change", function () {
+        applyFilter();
+      });
+    }
+    if (sortCost) {
+      sortCost.addEventListener("change", function () {
+        applyFilter();
+      });
+    }
+    if (resetBtn) {
+      resetBtn.addEventListener("click", function () {
+        resetFilters();
       });
     }
     filterWired = true;
@@ -868,12 +1411,10 @@
     if (!select) return;
 
     // Respect any active filter — the rendered subset is what the menu shows,
-    // matching populateModelPicker()'s first-load contract.
-    const term = (S.els.search && S.els.search.value) || "";
-    const rendered =
-      term.trim() === ""
-        ? allModels
-        : allModels.filter((m) => modelMatchesFilter(m, term));
+    // matching populateModelPicker()'s first-load contract. The DOM controls
+    // (search term AND free-only) are the single source of truth, read live.
+    const state = getActiveFilterState();
+    const rendered = filterAndOrder(allModels, state);
 
     applyOpeningModel(rendered);
     logDebug("live re-resolve — no user pick in force, opening model re-applied");
@@ -984,6 +1525,18 @@
     // Full unified entry by id, over the same cached/gated list — so the Model
     // information populator (chat-model-info.js) reads exactly what the picker shows.
     getModelEntry: getModelEntry,
+    // Re-evaluate the blocked-attachment notice + send gate. Called by chat-attach.js
+    // when the attachment changes, so the gate tracks attach/remove as well as model
+    // switches (which route through reflectSelection).
+    updateAttachmentNotice: updateAttachmentNotice,
+    // Test handles for the pure filter helpers (ChatFilterTests). Underscore-
+    // prefixed, matching the _embed / _dispatchSend convention — inspection only,
+    // never a production entry point.
+    _isFreeModel: isFreeModel,
+    _modelMatchesAllFilters: modelMatchesAllFilters,
+    _getActiveFilterState: getActiveFilterState,
+    _orderModels: orderModels,
+    _inputPrice: inputPrice,
   };
 
   window.Chat = Chat;

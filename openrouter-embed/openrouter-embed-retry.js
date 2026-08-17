@@ -164,12 +164,30 @@
         return false;
       }
 
+      // A mid-stream failure is marked _noRetry by core (openrouter-embed-core.js):
+      // re-sending after content has already streamed is out of scope for this
+      // retry loop, so honour the marker before any status or code check.
+      if (error._noRetry) return false;
+
+      // The HTTP status is at error.status for most providers, but the OpenRouter
+      // client (OpenRouterClientError, openrouter-client-utils.js) nests it at
+      // error.metadata.status. Read either, so a pre-stream 429/503 from OpenRouter
+      // is honoured and not only Foundry's top-level status.
+      let status = typeof error.status === "number" ? error.status : undefined;
+      if (
+        status === undefined &&
+        error.metadata &&
+        typeof error.metadata.status === "number"
+      ) {
+        status = error.metadata.status;
+      }
+
       // Check HTTP status
       if (
-        error.status &&
-        this._config.retryableStatuses.includes(error.status)
+        status &&
+        this._config.retryableStatuses.includes(status)
       ) {
-        logDebug(`Status ${error.status} is retryable`);
+        logDebug(`Status ${status} is retryable`);
         return true;
       }
 
@@ -192,10 +210,10 @@
       }
 
       // Check for specific non-retryable status codes (client errors)
-      if (error.status && error.status >= 400 && error.status < 500) {
+      if (status && status >= 400 && status < 500) {
         // Most 4xx errors should not be retried (except 408, 429 which are in retryableStatuses)
-        if (!this._config.retryableStatuses.includes(error.status)) {
-          logDebug(`Status ${error.status} is not retryable (client error)`);
+        if (!this._config.retryableStatuses.includes(status)) {
+          logDebug(`Status ${status} is not retryable (client error)`);
           return false;
         }
       }

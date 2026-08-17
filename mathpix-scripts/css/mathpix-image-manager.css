@@ -33,6 +33,10 @@
   .image-manager-close-btn:hover {
     border-color: black;
   }
+
+  .mmd-image-manager-edit-form .field-provenance {
+    border-width: 2px;
+  }
 }
 
 /* ============================================================================
@@ -400,7 +404,8 @@
 .mmd-image-manager-metadata-slot svg {
   width: 100%;
   height: 100%;
-  color: currentColor;
+  color: #231f20;
+  background: #fffff4;
 }
 
 /* Icon key row — sits above the toolbar and explains the cluster glyphs.
@@ -642,6 +647,157 @@
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+/* ================================================================
+   PARCEL 8e-2c — CONSISTENT PLACEMENT FOR THE ACCEPT CONTROLS,
+   AMENDED BY 8e-2d — LINE ONE HAS TO WRAP AS WELL
+   Visual only. No behaviour, no markup and no accessible name is
+   changed by anything in this block.
+
+   THE 8e-2c PROBLEM, OBSERVED RATHER THAN THEORISED. The flex rule
+   above wraps only when its contents overflow, so the break point
+   depended on how long each field's own label happened to be.
+   Measured at a 768px viewport before this block existed: caption
+   and alt text kept their button inline at x=330, while long
+   description and text in image dropped theirs to a second line at
+   x=0. Four fields disagreeing with each other on one screen, with
+   nothing in the markup to say why.
+
+   8e-2c FIXED THAT WITH A TWO-COLUMN GRID — AND THE GRID IS WHY
+   LINE ONE THEN FAILED SC 1.4.4. A grid track cannot wrap. Measured
+   11 August 2026 with `minmax(0, 1fr) auto` in place: the heading
+   track collapsed to 97.7px at 768px under 200% text zoom and to
+   0px at 320px, while the label kept its full intrinsic width and
+   painted straight out of the collapsed box, underneath the pill's
+   opaque background — 88.6px of overlap on long description at
+   320px plain, 190.2px on caption at 320px under 200% zoom. That is
+   neither truncation nor an ancestor clip: it is a collapsed track
+   with visible overflow. Separately, the pill was clipped 201.5px
+   by .universal-modal-container's overflow-x at 320px under zoom,
+   because a `white-space: nowrap` item on an `auto` track has the
+   whole string as its min-content and cannot shrink at all.
+
+   8e-2d THEREFORE RETURNS LINE ONE TO FLEX-WRAP. Only a wrapping
+   formatting context can drop the pill onto a line of its own with
+   no threshold, and a threshold would have to be correct at every
+   zoom level and font size — untested here, and not worth owning.
+
+   THE BUTTON'S OWN LINE SURVIVES, via a zero-height flex break
+   rather than via the button itself. 8e-2c rejected flex because
+   flex-basis: 100% on the BUTTON also makes it full-width — a 574px
+   button at 768px — and clamping that back with max-width does NOT
+   work: a flex item's hypothetical main size is already clamped by
+   min/max before line breaking, so the break never happens. Putting
+   the 100% basis on an empty ::after instead buys the break without
+   touching the button's box at all: it keeps its natural width and
+   its flush left edge, which is what 8e-2c was verified on.
+
+   ORDER IS SAFE HERE. The button takes order: 1 so it sorts after
+   the ::after, but it is already last in the DOM and still renders
+   last, so visual order and DOM order continue to agree — no
+   reading-order or focus-order divergence is introduced.
+
+   SCOPE. body.mathpix-manager-open, NOT .image-manager-modal-wrapper
+   — that wrapper is null at runtime (verified in the CSSOM on the
+   served page, 10 August 2026). The body class carries the extra
+   specificity (0,3,1) this needs to outrank the generic
+   `.field-label-row button` rule further down (0,2,1).
+
+   WHY NO minmax(0, 1fr) SURVIVES. It existed only to strip a grid
+   item's automatic minimum size, which was pushing the row wider
+   than the dialog. A flex item keeps its min-content floor, and
+   here that floor is exactly what stops the heading collapsing —
+   load-bearing now rather than a problem. The row cannot outgrow
+   the dialog either, because it wraps instead of growing.
+
+   Nothing here is animated, so the reduced-motion cascade trap does
+   not apply to this block.
+   ================================================================ */
+body.mathpix-manager-open .mmd-image-manager-edit-form .field-label-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  /* Heading left, pill hard right — the look 8e-2c reproduced with
+     `1fr auto`. A line holding only the button starts it at the left. */
+  justify-content: space-between;
+}
+
+/* The flex break. Empty, zero-height, and 100% of the line, so it
+   consumes whatever is left of the heading/pill line and the accept
+   button ordered after it always begins a new one. */
+body.mathpix-manager-open
+  .mmd-image-manager-edit-form
+  .field-label-row::after {
+  content: "";
+  flex-basis: 100%;
+  height: 0;
+  /* Cancel one of the two row gaps this empty line would otherwise
+     add, so the button sits the same 0.4rem below the heading row
+     that it did under the grid. */
+  margin-top: -0.4rem;
+}
+
+body.mathpix-manager-open
+  .mmd-image-manager-edit-form
+  .mmd-image-manager-accept-btn {
+  /* Sorts after the ::after break above. order alone breaks no line;
+     the 100% basis on the break is what does that. */
+  order: 1;
+  /* Never wider than the row; the label wraps instead of overflowing. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* `anywhere`, NOT `break-word`, and the difference is the whole point:
+   only `anywhere` also lowers the element's MIN-CONTENT contribution.
+   Measured 11 August 2026 at a 320px viewport under 200% text zoom, where
+   .mmd-image-manager-edit-body offers the form a 128px content box: the
+   accept button's label alone held the form's min-content at 253.4px,
+   putting its right edge 37.4px past .universal-modal-container's clip.
+   Attributed by disable-and-remeasure — hiding the pill or the heading
+   moved nothing, hiding the button dropped the form to 212.7px — so this
+   is aimed at the element actually responsible. With `anywhere` on both
+   text runs the form settles inside the clip edge and no state spills.
+   min-width: 0 above does NOT achieve this on its own: it removes the
+   automatic minimum, while the intrinsic contribution stays word-based.
+   Neither declaration changes anything at widths where the text fits. */
+/* Hyphenate the same two runs. `anywhere` breaks mid-word wherever it must,
+   so at 320px under 200% text zoom the accept label breaks as
+   "Mark long descrip / tion as review / ed" — three fragments a reader has
+   to reassemble, and the first of them reads as a typo. A soft hyphen at the
+   break point says the word continues on the next line. Needs a language to
+   hyphenate at all: tools.html declares lang="en-GB" on <html> (line 2), so
+   en-GB patterns apply and this is not a no-op. Only -webkit- is carried —
+   Safari required the prefix until Safari 17, and iOS 16.x is still in use;
+   Firefox has been unprefixed since 43 and -ms- would target an IE11/legacy
+   Edge this app already excludes by shipping ES6 modules. There is no
+   browserslist in this repo, so that is a stated target, not a derived one.
+   NOT purely typographic, and an earlier draft of this comment claimed it was.
+   Measured 11 August 2026: `auto` re-breaks wherever the run wraps AT ALL, not
+   only where `anywhere` was already forcing a mid-word break — at 320px/100%
+   the accept label went from three lines to two ("Mark long descrip- / tion as
+   reviewed"), because hyphenating packs the earlier line fuller. Widths where
+   the run does not wrap are genuinely untouched: 1280 and 768 measured
+   byte-identical, both being single-line. Every state measured stayed clear of
+   its neighbours, on its own line, at dx 0.0.
+   MEASUREMENT CAVEAT, because the obvious instrument lies here. Neither
+   agent-drivable Chromium (Playwright MCP's chromium-1223, chrome-devtools
+   MCP's HeadlessChrome 151) ships a hyphenation dictionary — a canary in four
+   languages showed `auto` and `manual` rendering identically — so `auto` is
+   INERT in those browsers and a run there will show no change at any width.
+   The figures above were taken by injecting U+00AD at the en-GB break points
+   and leaving this rule in force, which needs no dictionary; that is the
+   maximal-hyphen case and so an upper bound, not the exact `auto` output. */
+body.mathpix-manager-open .mmd-image-manager-edit-form .field-heading label,
+body.mathpix-manager-open
+  .mmd-image-manager-edit-form
+  .mmd-image-manager-accept-btn {
+  overflow-wrap: anywhere;
+  -webkit-hyphens: auto;
+  hyphens: auto;
 }
 
 .mmd-image-manager-edit-form .field-group input[type="text"],
@@ -694,6 +850,44 @@
   font-size: 0.8rem;
   opacity: 0.75;
   align-self: flex-end;
+}
+
+/* Provenance pill — heading-row layout (structure only; per-state colour
+   lives in light.css / dark.css, keyed on [data-provenance]).
+   The heading group and the pill share one flex row: heading at the start,
+   pill at the end when it fits, dropping to its own line below the heading
+   when it does not (flex-wrap). The 1px currentColor border defines the
+   pill boundary — this is what carries the edge for the light-theme amber
+   fill, whose fill-to-page contrast is too low to be seen on its own. */
+.mmd-image-manager-edit-form .field-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* 8e-2d removed `white-space: nowrap` from this rule. It made the pill's
+   min-content the entire string — 203.4px at a 16px root, 404.7px at 32px
+   — so the pill could not shrink and could not fit a 244px-wide dialog at
+   320px under 200% text zoom, where it was clipped 201.5px by
+   .universal-modal-container's overflow-x. Wrapping keeps every word
+   visible; truncating would have thrown away the only signal of where a
+   description came from. It also stays out of the way at normal widths:
+   the pill only ever wraps once it is alone on its own line and still too
+   wide, which first happens at 320px under 200% zoom. */
+.mmd-image-manager-edit-form .field-provenance {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.75em;
+  font-weight: 600;
+}
+
+/* "original" and null mean nothing happened — no visible pill. */
+.mmd-image-manager-edit-form .field-provenance[data-provenance=""],
+.mmd-image-manager-edit-form .field-provenance[data-provenance="original"] {
+  display: none;
 }
 
 /* Hint — distinct from .field-help so it reads as a conditional
@@ -753,6 +947,144 @@
   vertical-align: middle;
 }
 
+/* ================================================================
+   PARCEL 8c-ii — FIELD-SELECTION DIALOG
+   A sibling UniversalModal opened over the manager to choose which
+   descriptions the AI should (re)generate. _promptFieldSelection's
+   onOpen stamps .mmd-image-manager-fieldsel-modal onto the <dialog>;
+   its confirm/cancel buttons already carry .image-manager-btn, so
+   they inherit the manager's own filled button treatment. These
+   rules add only the row layout, the secondary state line, the
+   cancel-as-secondary variant, and the shared focus ring.
+
+   No new colour literals: colour comes from the modal's ambient
+   text colour via currentColor / inherit, with transparent fills
+   and opacity for secondary text — exactly the vocabulary the edit
+   form's own controls use (currentColor borders, transparent
+   backgrounds, 0.85 opacity help text, the 3px currentColor
+   focus ring shared by .image-manager-close-btn /
+   .image-manager-action-btn / the edit-view inputs). Rules are
+   scoped under the stamped dialog class so the cancel override wins
+   over the inherited .image-manager-btn fill.
+   ================================================================ */
+
+.mmd-image-manager-fieldsel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Intro — secondary emphasis, matching .field-help. */
+.mmd-image-manager-fieldsel-intro {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+/* Field rows — a plain list: no bullets, no default indent. */
+.mmd-image-manager-fieldsel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* One row — checkbox in the first column, spanning both rows so it
+   sits centred against the label + state stack; label on row 1, the
+   state line beneath it on row 2 (aligned under the label). */
+.mmd-image-manager-fieldsel-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+}
+
+.mmd-image-manager-fieldsel-row input[type="checkbox"] {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  align-self: center;
+  margin: 0;
+  /* Inherit the dialog's text colour so the currentColor focus ring below
+     is drawn in the modal's foreground colour (visible in both themes),
+     not the checkbox UA-default black. The accent-color for the tick is
+     inherited separately and is unaffected. */
+  color: inherit;
+}
+
+.mmd-image-manager-fieldsel-row label {
+  grid-column: 2;
+  grid-row: 1;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* State line — visually secondary to the label (smaller, dimmed) but
+   AA-readable; reuses .field-help's 0.85 opacity against the modal
+   surface. Sits under the label, in the label column. */
+.mmd-image-manager-fieldsel-state {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* Actions — confirm (primary) and cancel (secondary), right-aligned,
+   with a top separator matching the edit form footer. */
+.mmd-image-manager-fieldsel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid currentColor;
+  margin-top: 0.25rem;
+}
+
+/* Confirm keeps the inherited .image-manager-btn filled treatment as
+   the primary action; the min-width matches the edit-view Save button. */
+.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-confirm {
+  min-width: 6rem;
+}
+
+/* Cancel — secondary: the manager's own outline vocabulary
+   (transparent fill, currentColor border + text), so it reads as the
+   lesser action without introducing a second colour token. Scoped
+   under the dialog class to override the inherited filled treatment. */
+.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-cancel {
+  background: transparent;
+  border: 1px solid currentColor;
+  color: inherit;
+}
+
+/* Focus — the manager's shared 3px currentColor ring (cf.
+   .image-manager-close-btn / .image-manager-action-btn / the edit-form
+   inputs' base rule). currentColor resolves to the dialog's foreground
+   colour in both themes.
+
+   The !important is load-bearing and is KEPT: main.css (not the theme
+   sheets) carries a global `button:focus-visible { outline: none }`
+   reset, and without !important that reset strips the ring from Cancel.
+   The theme sheets do the opposite — light.css adds its own halo, an
+   !important outline and a fill inversion on focus.
+
+   Checkboxes and the transparent secondary Cancel sit on the modal
+   surface, so an OUTSET ring in the foreground colour is visible in
+   both themes. */
+.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-row input[type="checkbox"]:focus-visible,
+.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-cancel:focus-visible {
+  outline: 3px solid currentColor !important;
+  outline-offset: 2px;
+}
+
+/* The primary Confirm deliberately has NO local focus override. It relies
+   on the app's own global button:focus-visible treatment — the coloured
+   halo plus fill inversion that every other button in the app uses — which
+   is compliant unaided: measured roughly 7.3:1 in the light theme and
+   11.2:1 in the dark theme against the dialog surface. An earlier inset
+   box-shadow override was removed as unnecessary and less consistent than
+   the global halo. */
+
 /* ----------------------------------------------------------------
    STAGE 5 — RESPONSIVE
    ---------------------------------------------------------------- */
@@ -787,4 +1119,152 @@
    unaffected. */
 body.mathpix-manager-open .universal-toggletip {
   z-index: 200000 !important;
+}
+
+/* ============================================================================
+   AI-RUN STATUS REGION — POPULATED-STATE SHAPE (Parcel 6, step 1 of 3)
+   ============================================================================
+   The edit-view AI-run status element (#edit-alt-ai-status) carries the
+   imgdesc-status class; alt-text-progress.js::showStatus() adds a state class
+   of the form imgdesc-status-{type} (imgdesc-status-success /
+   imgdesc-status-error) alongside it when it shows a state.
+
+   This block sets SHAPE ONLY — no hex colours, no `color:` declarations.
+   Colour lands per theme in light.css / dark.css at steps 2 and 3, inherited
+   here through currentColor. Every visible treatment hangs on :not(:empty) so
+   the empty region stays boxless yet remains in the accessibility tree (never
+   display:none, and never scoped under .imgdesc-output-section, whose
+   :empty{display:none} drop-out would remove an empty region we must keep
+   watched). */
+
+/* AI-run status region — populated-state shape (colour comes from
+   light.css / dark.css via currentColor; this file sets shape only).
+   Empty region stays boxless and watched: treatments hang on :not(:empty).
+
+   Scope: body.mathpix-manager-open — the live class the manager modal adds to
+   <body> while open. The design-doc scope .image-manager-modal-wrapper is
+   assigned in code (mathpix-image-manager-ui.js passes it as the modal
+   className) but the legacy UniversalModal.Modal path does NOT forward that
+   className to the modal DOM, so it never appears at runtime; body.mathpix-
+   manager-open is used instead, matching this file's existing pattern (see the
+   toggletip z-index override above). */
+body.mathpix-manager-open .imgdesc-status:not(:empty) {
+  margin: 0 0 1rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.9375rem;
+}
+
+/* Success — LEFT-ACCENT BAR ONLY (WCAG 1.4.1 non-colour cue: shape, not hue).
+   Colour is inherited from currentColor, set per theme in light.css/dark.css. */
+body.mathpix-manager-open .imgdesc-status-success:not(:empty) {
+  border-left: 4px solid currentColor;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* Error — FULLY ENCLOSED BOX + thicker left edge: a distinct shape from success,
+   readable without colour. */
+body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
+  border: 1px solid currentColor;
+  border-left-width: 4px;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+/* Loading — the run's START line (parcel 8d-pre-fix). VISUALLY hidden, still
+   spoken. The progress block beside it already says "Generating description..."
+   on screen, so painting a second box saying "Generating AI description." is the
+   same information twice for anyone who can see it. The line exists for people
+   who CANNOT see the progress block, so it must stay in the accessibility tree.
+
+   Mirrors the canonical .visually-hidden utility (main.css:2073) declaration for
+   declaration — clip-rect, not display/visibility. NEVER use display: none,
+   visibility: hidden or the hidden attribute here: each removes the node from
+   the accessibility tree and the line stops being announced, which destroys the
+   very thing this rule exists to preserve. The declarations are carried here
+   rather than by adding a second class in alt-text-progress.js, so the status
+   element keeps its single imgdesc-status-{type} state class.
+
+   Success and error are untouched above and stay visible. */
+body.mathpix-manager-open .imgdesc-status-loading:not(:empty) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  /* NOT in the canonical utility, and needed only here. This element also
+     carries .imgdesc-status, which image-describer.css gives min-height:
+     1.25rem — that is 20px, and min-height beats height, so without this the
+     "1px" box measures 1 by 20. Attributed by window.auditCascadeRoot on
+     31 July 2026, not assumed. The box is absolutely positioned so it costs no
+     layout either way; this is about the mirror being complete rather than
+     approximately right. */
+  min-height: 0;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================================
+   AI-RUN PROGRESS BLOCK — LAYOUT + SPINNER (parcel 8d-pre)
+   ============================================================================
+   The progress block reuses the Image Describer's .imgdesc-progress family,
+   which reaches a body-level modal unchanged: every rule in that family is a
+   bare class selector and every colour it declares is currentColor (measured
+   30 July 2026 — 15.26:1 dark, 18.78:1 light for the stage label against the
+   modal panel). Only the two adjustments below are needed here.
+
+   SPINNER SOURCE: none. https://loading-ui.com/ was reviewed as instructed and
+   REJECTED on licence: the site advertises "Free and open source, forever" but
+   publishes no named licence, and the linked repository was not reachable to
+   read a LICENSE file (checked 30 July 2026). An unclear licence is a no, so
+   the ring below was written for this repo — CSS only, no JavaScript, no SVG,
+   no external stylesheet, no font dependency. It takes its colour from
+   currentColor, so it themes with the modal and needs no light/dark rule. */
+
+/* The shared .imgdesc-progress-info is justify-content: space-between with a
+   0.75rem top margin that assumed a progress bar above it. There is no bar
+   here, so drop the margin and let the stage label take the slack — that keeps
+   spinner and label reading as one unit with the timer right-aligned. */
+body.mathpix-manager-open .imgdesc-progress-info {
+  margin-top: 0;
+  gap: 0.5rem;
+}
+
+body.mathpix-manager-open .imgdesc-progress-stage {
+  flex: 1;
+}
+
+/* THE SPECIFICITY RULE — measured, not reasoned (30 July 2026, 8d-pre
+   grounding): a media query adds NO specificity, so a modal-scoped rule at
+   (0,3,1) was observed beating a bare (0,2,0) rule inside
+   @media (prefers-reduced-motion: reduce) and re-enabling an animation for a
+   user who asked for none. The override below therefore sits in the SAME file,
+   at the SAME specificity (0,2,0 — identical selector), and LATER in the file.
+   Do not declare this animation at one scope and cancel it at a barer one. */
+body.mathpix-manager-open .mmd-image-manager-ai-spinner {
+  display: inline-block;
+  width: 0.875rem;
+  height: 0.875rem;
+  flex: none;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: mmd-image-manager-ai-spin 0.8s linear infinite;
+}
+
+@keyframes mmd-image-manager-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Reduced motion: HIDE the spinner rather than freeze it — a stopped ring reads
+   as a hang, which is worse than no indicator at all. The stage label and the
+   elapsed timer carry all the meaning, so nothing is lost. Same specificity as
+   the rule above, later in the file. */
+@media (prefers-reduced-motion: reduce) {
+  body.mathpix-manager-open .mmd-image-manager-ai-spinner {
+    display: none;
+  }
 }

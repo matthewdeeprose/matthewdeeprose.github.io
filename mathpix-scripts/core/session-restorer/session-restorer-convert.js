@@ -213,7 +213,37 @@
         return;
       }
 
-      const selectedFormats = this.getSelectedConvertFormats();
+      // API formats only. Two reasons, both load-bearing:
+      //   1. pickEncoders does `selectedFormats.every(f => safeList.includes(f))`,
+      //      so an unrecognised browser-only value makes `allSafe` false and
+      //      silently drops WebP from the candidate encoders for the WHOLE
+      //      convert — a size regression, not a crash, and therefore easy to miss.
+      //   2. The readout is about the Convert API's 10 MB body limit, which the
+      //      browser-only formats are not subject to at all.
+      const allSelected = this.getSelectedConvertFormats();
+      const selectedFormats = allSelected.filter(
+        (f) => !this._isBrowserOnlyFormat?.(f),
+      );
+
+      // Nothing API-shaped selected: hide the readout rather than leave a stale
+      // "close to the 10 MB limit" on screen. #resume-convert-btn is
+      // aria-describedby this element, so a stale value would be announced as
+      // the button's description.
+      if (selectedFormats.length === 0) {
+        readoutEl.hidden = true;
+        readoutEl.textContent = "";
+        readoutEl.removeAttribute("data-band");
+        if (detailEl) {
+          detailEl.hidden = true;
+          detailEl.textContent = "";
+        }
+        // Null, not the previous band: _convertSizeTransition returns null on a
+        // null previous band, so re-ticking an API format later does not fire a
+        // spurious "back under the limit" announcement.
+        this._lastConvertSizeBand = null;
+        return;
+      }
+
       // One manifest build for the offline check; the breakdown rebuilds it,
       // but P3's encode cache makes the second build cheap.
       const manifest = await this.buildManifest(mmd, selectedFormats);
@@ -268,6 +298,128 @@
   };
 
   /**
+   * Convert-path describe-at-load host and reusable seam. Runs the chemistry
+   * registry writer to generate accessible descriptions into the registry,
+   * then propagates that prose into the working MMD via writeMMDFromRegistry —
+   * so a convert taken without ever opening the Image Manager ships prose
+   * rather than raw <smiles>. Mirrors the manager-open host in
+   * MathPixImageManagerUI._reconcileOnOpen, adapted to run on the restorer.
+   *
+   * A non-chemistry convert pays nothing: with no chemistry data the method
+   * returns early, before touching the registry or the MMD.
+   *
+   * Future work: a progress step will wrap this method's call site in
+   * handleConvert, and an "already current" skip check — avoiding regeneration
+   * when the working MMD already carries the prose — belongs at the top of
+   * this method.
+   *
+   * @param {Object} [options] - optional behaviour overrides
+   * @param {Function} [options.shouldPush] - predicate evaluated exactly once,
+   *   only when the chemistry writer wrote at least one field, immediately
+   *   before the editor push. Returning false suppresses only the push
+   *   (writeMMDFromRegistry): the chemistry writer still runs and the registry
+   *   update is retained for the next propagation. When omitted the push always
+   *   proceeds, preserving the convert host's existing behaviour.
+   * @returns {Promise<{ ran: boolean, total: number, wrote: number, graphOnly: number, pushed: boolean }>}
+   *   ran is false when the writer, registry, or chemistry data is absent.
+   *   graphOnly is the count of structures written without PubChem data, which
+   *   a later re-describe could upgrade once PubChem resolves.
+   *   pushed is true only when writeMMDFromRegistry was called.
+   */
+  proto.describeChemistryIntoWorkingMMD = async function (options = {}) {
+    const shouldPush = options.shouldPush;
+
+    const chemWriter = window.MathPixChemistryRegistryWriter;
+    if (
+      !chemWriter ||
+      typeof chemWriter.writeChemistryDescriptions !== "function"
+    ) {
+      return { ran: false, total: 0, wrote: 0, graphOnly: 0, pushed: false };
+    }
+
+    const registry = this.imageRegistry;
+    if (!registry) {
+      return { ran: false, total: 0, wrote: 0, graphOnly: 0, pushed: false };
+    }
+
+    const chemistryData =
+      window.getMathPixController?.()?.resultRenderer?._chemistryData || [];
+    if (chemistryData.length === 0) {
+      // Nothing to describe — a non-chemistry convert pays nothing.
+      return { ran: false, total: 0, wrote: 0, graphOnly: 0, pushed: false };
+    }
+
+    const workingMMD = this.getCurrentMMDContent() || "";
+    // CDN-form so the writer's alt-slot keys match img.originalUrl on
+    // recovered sessions (matches the manager-open host's cdnMMD).
+    const cdnMMD =
+      typeof this._translateBlobUrlsToCdnForMMD === "function"
+        ? this._translateBlobUrlsToCdnForMMD(workingMMD)
+        : workingMMD;
+    const pristineMmd =
+      this.restoredSession?.results?.mmd ||
+      this.restoredSession?.currentMMD ||
+      "";
+
+    // Chemistry phase 2, item A: capture any OCR figure caption into an empty
+    // registry title (stamped "original") before the chemistry writer runs, so
+    // a real caption present in the MMD seeds the title ahead of any
+    // synthesised one. CDN-form MMD, to match the writer's alt-slot keying.
+    if (
+      window.MathPixAltTextMMDSerialiser &&
+      typeof window.MathPixAltTextMMDSerialiser.captureCaptionsIntoEmptyTitles ===
+        "function"
+    ) {
+      window.MathPixAltTextMMDSerialiser.captureCaptionsIntoEmptyTitles(
+        cdnMMD,
+        registry,
+      );
+    }
+
+    const chemResult = await chemWriter.writeChemistryDescriptions({
+      registry,
+      pristineMmd,
+      workingMmd: cdnMMD,
+      chemistryData,
+    });
+    const chemWrote = Array.isArray(chemResult?.results)
+      ? chemResult.results.filter(
+          (r) => r.altWritten || r.longWritten || r.textWritten,
+        ).length
+      : 0;
+    const graphOnly = Array.isArray(chemResult?.results)
+      ? chemResult.results.filter((r) => r.graphOnly).length
+      : 0;
+
+    let pushed = false;
+    if (chemWrote > 0) {
+      // Evaluate the caller's predicate exactly once, only now that there is
+      // something to push, so an expensive check never runs for nothing.
+      const mayPush = typeof shouldPush !== "function" || shouldPush();
+      if (mayPush) {
+        // Propagate registry prose into the working MMD.
+        this.writeMMDFromRegistry(registry);
+        pushed = true;
+      } else {
+        logInfo(
+          "describeChemistryIntoWorkingMMD: editor push skipped because the editor changed during describe; registry prose retained for the next propagation",
+        );
+      }
+    }
+
+    logInfo(
+      `describeChemistryIntoWorkingMMD: generated for ${chemResult?.total ?? 0} image(s), ${chemWrote} wrote a field`,
+    );
+    return {
+      ran: true,
+      total: chemResult?.total ?? 0,
+      wrote: chemWrote,
+      graphOnly,
+      pushed,
+    };
+  };
+
+  /**
    * Handle convert button click
    * Follows the pattern from mathpix-convert-ui.js
    * @private
@@ -287,7 +439,37 @@
       return;
     }
 
-    let mmdContent = this.getCurrentMMDContent();
+    // Partition BEFORE any API-shaped work. The browser-only targets (SCORM,
+    // standalone HTML) are built in-page with no Convert API call and no credit,
+    // so every API guard below — the embedding pass, the 10 MB size gate, the
+    // client lookup, validateMMD — has to sit inside the API branch. Each of
+    // those used to `return` outright, which would silently abort a browser-only
+    // run for reasons that do not apply to it.
+    const browserFormats = selectedFormats.filter((f) =>
+      this._isBrowserOnlyFormat?.(f),
+    );
+    const apiFormats = selectedFormats.filter(
+      (f) => !this._isBrowserOnlyFormat?.(f),
+    );
+
+    // Item 1 / PF4 path 5: describe chemistry into the working MMD before the
+    // read, so a convert taken without opening the Image Manager ships prose,
+    // not raw <smiles>. Wrapped so a chemistry failure degrades to today's
+    // behaviour (convert proceeds with existing content) rather than blocking.
+    if (typeof this.describeChemistryIntoWorkingMMD === "function") {
+      try {
+        await this.describeChemistryIntoWorkingMMD();
+      } catch (chemErr) {
+        logError(
+          "Item 1 describe-at-load failed; converting with existing content",
+          chemErr,
+        );
+      }
+    }
+
+    // Canonical read, shared by both branches. No longer reassigned here — the
+    // API branch does its own image embedding on a local copy.
+    const mmdContent = this.getCurrentMMDContent();
     if (!mmdContent) {
       this.showNotification(
         "No MMD content available for conversion.",
@@ -296,18 +478,126 @@
       return;
     }
 
-    // F-M Phase 4 (was Phase 8F): bytes-first embedding for the convert
-    // API. getMMDForAPI now encodes live registry bytes as dataURIs for
-    // OCR replacements, chemistry RDKit renders, and user-added uploads;
-    // falls back to CDN URLs when no bytes are available. Async because
-    // canvas.toBlob() is callback-based — selectedFormats drive
-    // pickEncoders' WebP gate.
-    mmdContent = await this.getMMDForAPI(mmdContent, selectedFormats);
+    this.isConverting = true;
+    this.conversionResults = new Map();
 
-    // F-M Phase 4: pre-flight size guard. Embedding can push MMD size
-    // from ~6 KB to multi-MB; the Convert API enforces a 10 MB JSON
-    // body limit. Surface an actionable safeAlert rather than letting
-    // the API reject with a generic error.
+    // Update UI. Cancel aborts the API job only, so it is meaningless — and
+    // misleading — on a browser-only run.
+    this.updateConvertButtonState();
+    if (this.elements.convertCancelBtn)
+      this.elements.convertCancelBtn.hidden = apiFormats.length === 0;
+    this.hideConvertErrors();
+    this.hideConvertDownloads();
+    this.showConvertProgress(selectedFormats);
+
+    // One sink for both branches, rendered once after the finally so the
+    // role="alert" list announces a single time rather than twice.
+    const errorMessages = [];
+
+    try {
+      // Sequential, not Promise.all: the browser build does synchronous DOM
+      // parsing and N base64 encodes on the main thread, which would stall the
+      // API client's polling timers if run alongside them.
+      if (apiFormats.length > 0) {
+        await this._runApiConvertFormats(apiFormats, mmdContent, errorMessages);
+      }
+      if (browserFormats.length > 0) {
+        if (typeof this._runBrowserConvertFormats === "function") {
+          await this._runBrowserConvertFormats(browserFormats, errorMessages);
+        } else {
+          // The export mixin failed to load. Say so per format rather than
+          // leaving the rows spinning.
+          for (const format of browserFormats) {
+            this.updateConvertProgressItem(
+              format,
+              "error",
+              "Browser export is unavailable",
+            );
+            errorMessages.push(
+              `${this.getFormatInfo(format).label}: the browser export module is not loaded.`,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      // Both runners contain their own failures; this is a last resort only.
+      logError("Conversion failed:", error);
+      errorMessages.push(error.message);
+      this.showNotification(`Conversion failed: ${error.message}`, "error");
+    } finally {
+      this.isConverting = false;
+      this.activeConversionId = null;
+      this.updateConvertButtonState();
+      if (this.elements.convertCancelBtn)
+        this.elements.convertCancelBtn.hidden = true;
+      this.hideConvertProgress();
+    }
+
+    if (errorMessages.length > 0) {
+      this.showConvertErrors(errorMessages);
+    }
+
+    if (this.conversionResults.size > 0) {
+      this.showConvertDownloads();
+      // "ready to download", not "downloaded": nothing has been saved yet. The
+      // user's click on a download button is what writes the file, and that
+      // click is also what keeps the browser from discarding it.
+      this.showNotification(
+        `${this.conversionResults.size} format(s) ready to download.`,
+        "success",
+      );
+    }
+  };
+
+  /**
+   * Run the MathPix Convert API for the API-shaped formats only.
+   *
+   * Extracted from `handleConvert` so the browser-only formats can run
+   * independently. Every guard that used to `return` out of `handleConvert` now
+   * marks the API rows failed, records one message, and returns from HERE — so
+   * an API problem (payload too large, no client, invalid MMD) can no longer
+   * abort a browser-only export that is subject to none of those limits.
+   *
+   * Never rethrows.
+   *
+   * @param {string[]} apiFormats
+   * @param {string} rawMMD - canonical MMD, before image embedding
+   * @param {string[]} errorMessages - shared sink, rendered by the caller
+   * @returns {Promise<void>}
+   * @private
+   */
+  proto._runApiConvertFormats = async function (
+    apiFormats,
+    rawMMD,
+    errorMessages,
+  ) {
+    const failAll = (message) => {
+      for (const format of apiFormats) {
+        this.updateConvertProgressItem(format, "error", message);
+      }
+      errorMessages.push(message);
+    };
+
+    // F-M Phase 4 (was Phase 8F): bytes-first embedding for the convert API.
+    // getMMDForAPI encodes live registry bytes as dataURIs for OCR replacements,
+    // chemistry RDKit renders, and user-added uploads; falls back to CDN URLs
+    // when no bytes are available. Async because canvas.toBlob() is
+    // callback-based. Only the API formats are passed — a browser-only value
+    // reaching pickEncoders' `every()` gate would silently drop WebP from the
+    // candidate encoders for the whole convert.
+    let mmdContent;
+    try {
+      mmdContent = await this.getMMDForAPI(rawMMD, apiFormats);
+    } catch (error) {
+      logError("Convert: image embedding failed", error);
+      failAll(`Images could not be prepared for conversion: ${error.message}`);
+      return;
+    }
+
+    // F-M Phase 4: pre-flight size guard. Embedding can push MMD size from ~6 KB
+    // to multi-MB; the Convert API enforces a 10 MB JSON body limit. Surface an
+    // actionable safeAlert rather than letting the API reject with a generic
+    // error. This limit is API-only — it must never gate the browser formats.
     const maxBytes = this._getConvertSizeLimit();
     const embeddedSize = new Blob([mmdContent]).size;
     logDebug(
@@ -323,80 +613,62 @@
       } else {
         this.showNotification(message, "error");
       }
+      failAll(message);
       return;
     }
 
-    // Get the API client
     const client = window.getMathPixConvertClient?.();
     if (!client) {
-      this.showNotification(
-        "Convert API client not available. Please refresh the page.",
-        "error",
-      );
+      failAll("Convert API client not available. Please refresh the page.");
       return;
     }
 
-    // Validate MMD content
     const validation = client.validateMMD(mmdContent);
     if (!validation.valid) {
-      this.showNotification(validation.error, "error");
+      failAll(validation.error);
       return;
     }
 
-    // Start conversion
-    this.isConverting = true;
-    this.conversionResults = new Map();
-
-    // Update UI
-    this.updateConvertButtonState();
-    if (this.elements.convertCancelBtn)
-      this.elements.convertCancelBtn.hidden = false;
-    this.hideConvertErrors();
-    this.hideConvertDownloads();
-    this.showConvertProgress(selectedFormats);
-
-    logInfo("Starting conversion for formats:", selectedFormats);
+    logInfo("Starting API conversion for formats:", apiFormats);
 
     try {
-      const results = await client.convertAndDownload(
-        mmdContent,
-        selectedFormats,
-        {
-          onStart: (conversionId) => {
-            this.activeConversionId = conversionId;
-            logDebug("Conversion started:", conversionId);
-          },
-          onProgress: (status) => {
-            this.updateConvertProgress(status);
-          },
-          onFormatComplete: (format, blob) => {
-            logInfo(`Format complete: ${format} (${blob.size} bytes)`);
-            this.updateConvertProgressItem(format, "completed");
-            this.conversionResults.set(format, blob);
-          },
-          onComplete: (completionResult) => {
-            logInfo("Conversion workflow complete:", {
-              completed: completionResult.completed?.length || 0,
-              failed: completionResult.failed?.length || 0,
-            });
-
-            // Show any errors for failed formats
-            if (completionResult.failed && completionResult.failed.length > 0) {
-              const errorMessages = completionResult.failed.map((format) => {
-                const formatInfo = this.getFormatInfo(format);
-                const error = completionResult.errors?.[format];
-                return `${formatInfo.label}: ${error || "Unknown error"}`;
-              });
-              this.showConvertErrors(errorMessages);
-            }
-          },
-          onError: (error) => {
-            logWarn("Format error:", error.message);
-          },
+      const results = await client.convertAndDownload(mmdContent, apiFormats, {
+        onStart: (conversionId) => {
+          this.activeConversionId = conversionId;
+          logDebug("Conversion started:", conversionId);
         },
-      );
+        onProgress: (status) => {
+          this.updateConvertProgress(status);
+        },
+        onFormatComplete: (format, blob) => {
+          logInfo(`Format complete: ${format} (${blob.size} bytes)`);
+          this.updateConvertProgressItem(format, "completed");
+          this.conversionResults.set(format, blob);
+        },
+        onComplete: (completionResult) => {
+          logInfo("Conversion workflow complete:", {
+            completed: completionResult.completed?.length || 0,
+            failed: completionResult.failed?.length || 0,
+          });
 
-      // Store results from returned Map (backup in case callbacks didn't fire)
+          // Collect rather than render — the caller renders both branches'
+          // errors together, once.
+          if (completionResult.failed && completionResult.failed.length > 0) {
+            for (const format of completionResult.failed) {
+              const formatInfo = this.getFormatInfo(format);
+              const error = completionResult.errors?.[format];
+              errorMessages.push(
+                `${formatInfo.label}: ${error || "Unknown error"}`,
+              );
+            }
+          }
+        },
+        onError: (error) => {
+          logWarn("Format error:", error.message);
+        },
+      });
+
+      // Store results from the returned Map (backup in case callbacks didn't fire)
       if (results && results.size > 0) {
         results.forEach((blob, format) => {
           if (!this.conversionResults.has(format)) {
@@ -404,28 +676,12 @@
           }
         });
       }
-
-      // Show downloads if any succeeded
-      if (this.conversionResults.size > 0) {
-        this.showConvertDownloads();
-        this.showNotification(
-          `${this.conversionResults.size} format(s) converted successfully!`,
-          "success",
-        );
-      }
     } catch (error) {
-      logError("Conversion failed:", error);
-      this.showConvertError(error.message);
-      this.showNotification(`Conversion failed: ${error.message}`, "error");
-    } finally {
-      this.isConverting = false;
-      this.activeConversionId = null;
-      this.updateConvertButtonState();
-      if (this.elements.convertCancelBtn)
-        this.elements.convertCancelBtn.hidden = true;
-      this.hideConvertProgress();
+      logError("API conversion failed:", error);
+      failAll(error.message);
     }
   };
+
 
   /**
    * Cancel ongoing conversion
@@ -688,6 +944,7 @@
    * @private
    */
   proto.getFormatLabel = function (format) {
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const labels = {
       docx: "DOCX (Word)",
       pdf: "PDF (HTML Rendering)",
@@ -699,6 +956,7 @@
       "mmd.zip": "MMD Archive (ZIP)",
       "md.zip": "Markdown Archive (ZIP)",
       "html.zip": "HTML Archive (ZIP)",
+      xlsx: "Excel (XLSX)",
     };
     return labels[format] || format.toUpperCase();
   };
@@ -711,6 +969,13 @@
    * @private
    */
   proto.getFormatInfo = function (format) {
+    // Browser-only export targets first. Their records deliberately live in the
+    // export mixin rather than MATHPIX_CONFIG.CONVERT.FORMATS, because that
+    // object doubles as the Convert API's format whitelist. Optional-call so
+    // this file still works if the export mixin failed to load.
+    const browserInfo = this._getBrowserFormatInfo?.(format);
+    if (browserInfo) return browserInfo;
+
     // Try to get from config first
     if (
       typeof MATHPIX_CONFIG !== "undefined" &&
@@ -720,6 +985,7 @@
     }
 
     // Complete fallback defaults matching PDF mode
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const defaults = {
       docx: { label: "Word Document", extension: ".docx" },
       pdf: { label: "PDF (HTML Rendering)", extension: ".pdf" },
@@ -731,6 +997,7 @@
       "mmd.zip": { label: "MMD Archive (ZIP)", extension: ".mmd.zip" },
       "md.zip": { label: "Markdown Archive (ZIP)", extension: ".md.zip" },
       "html.zip": { label: "HTML Archive (ZIP)", extension: ".html.zip" },
+      xlsx: { label: "Excel (XLSX)", extension: ".xlsx" },
     };
 
     return (

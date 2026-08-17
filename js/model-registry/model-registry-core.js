@@ -70,10 +70,18 @@ export class ModelRegistryCore {
       accessibility.announceStatusChange(data.modelId, data.status);
     });
 
-    // Listen for model registrations
+    // Listen for model registrations.
+    //
+    // Deliberately NOT announced. The registry is populated by hundreds of
+    // top-level registerModel() calls in model-definitions.js and
+    // foundry-model-definitions.js at module-evaluation time, with no
+    // user-initiated cause. Announcing each one appended a separate live region
+    // to document.body in a single tick — measured at 365 on tools.html — and a
+    // screen reader read every one of them before reaching the page content.
+    // The count a user actually acts on is already announced elsewhere
+    // ("Local AI Models: N of M downloaded", tools.html).
     state.addEventListener(EVENT_TYPES.MODEL_REGISTERED, (data) => {
       logger.debug("Model registered", data);
-      accessibility.announceModelRegistration(data.id, data.model);
     });
   }
 

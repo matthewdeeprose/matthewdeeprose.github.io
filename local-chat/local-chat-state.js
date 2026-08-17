@@ -101,6 +101,33 @@
     return 1024;
   }
 
+  // Read the Top-P (nucleus sampling) value from the slider, falling back to 1.0
+  // (top-p off) when no slider is present. Local Chat has no Top-P control, so it
+  // receives this neutral default and its behaviour is unchanged.
+  function getTopP() {
+    if (this.els.topPSlider) {
+      return parseFloat(this.els.topPSlider.value);
+    }
+    return 1.0;
+  }
+
+  // Read the frequency and presence penalties from their sliders, falling back
+  // to 0 (penalty off) when no slider is present. Local Chat has no penalty
+  // controls, so it receives these neutral defaults and its behaviour is
+  // unchanged.
+  function getFrequencyPenalty() {
+    if (this.els.frequencyPenaltySlider) {
+      return parseFloat(this.els.frequencyPenaltySlider.value);
+    }
+    return 0;
+  }
+  function getPresencePenalty() {
+    if (this.els.presencePenaltySlider) {
+      return parseFloat(this.els.presencePenaltySlider.value);
+    }
+    return 0;
+  }
+
   function getTemperatureDescription(value) {
     const v = parseFloat(value);
     if (v <= 0.3) return "Very focused and consistent";
@@ -203,6 +230,12 @@
       getTemperature: getTemperature,
 
       getMaxTokens: getMaxTokens,
+
+      getTopP: getTopP,
+
+      getFrequencyPenalty: getFrequencyPenalty,
+
+      getPresencePenalty: getPresencePenalty,
 
       getTemperatureDescription: getTemperatureDescription,
 

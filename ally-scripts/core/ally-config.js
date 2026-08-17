@@ -189,7 +189,60 @@ const ALLY_CONFIG = (function () {
       CLIENT_ID: "ally-client-id",
       REGION: "ally-region",
       SAVE_CREDENTIALS: "ally-save-credentials",
+      STATEMENT_ENVIRONMENT: "ally-statement-environment",
+      // Phase 3: per-browser override for the statement-refresh feature flag.
+      // When present, its "true"/"false" value overrides STATEMENT_REFRESH_ENABLED.
+      STATEMENT_REFRESH_ENABLED: "ally-statement-refresh-enabled",
+      // Base URL of an Ally proxy Worker (no trailing /issues or /query — those
+      // are derived). Carries no credential, so unlike TOKEN/CLIENT_ID/REGION it
+      // deliberately SURVIVES an unchecked-"Remember credentials" clear: it is
+      // the fallback that keeps the app working without a token.
+      WORKER_URL: "ally-worker-url",
     },
+
+    /**
+     * Built-in default Ally proxy Worker, used when no WORKER_URL is configured.
+     * BASE url only — callers derive /issues and /query from it via
+     * getWorkerEndpointUrl(). The Worker holds a read-only Ally token as a
+     * server-side secret; see ally-issues-proxy/worker.js.
+     * @type {string}
+     */
+    DEFAULT_WORKER_URL: "https://ally-issues-proxy.matthewdeeprose.workers.dev",
+
+    /**
+     * Built-in default Ally client id, used when no CLIENT_ID is configured.
+     * NOT a secret: it already appears verbatim in the placeholder text of both
+     * Ally forms in tools.html, and it identifies an institution rather than
+     * authorising anything on its own. It is nonetheless supplied ONLY to a
+     * colleague with an institutional sign-in — read it through
+     * getEffectiveClientId(), which gates the default on that sign-in, rather
+     * than reading this property directly.
+     * @type {string}
+     */
+    DEFAULT_CLIENT_ID: "577",
+
+    /**
+     * Paths the proxy Worker exposes, appended to the base worker URL.
+     * POST /issues — the single-course export-refresh contract (load-bearing for
+     * already-distributed exports). POST /query — the general report query that
+     * backs the app when no API token is set.
+     * @type {Object.<string, string>}
+     */
+    WORKER_PATHS: {
+      ISSUES: "/issues",
+      QUERY: "/query",
+    },
+
+    /**
+     * Phase 3 feature flag — code default for the "Update accessibility data"
+     * live-refresh capability in exported statements. Read at EXPORT time, so
+     * flipping it changes only future exports; already-distributed files are
+     * unaffected. A GUI toggle persists a per-browser override in localStorage
+     * (STORAGE_KEYS.STATEMENT_REFRESH_ENABLED) which wins over this default;
+     * resolve the effective value via isStatementRefreshEnabled().
+     * @type {boolean}
+     */
+    STATEMENT_REFRESH_ENABLED: false,
 
     /**
      * API Status States for status indicator
@@ -243,10 +296,102 @@ const ALLY_CONFIG = (function () {
       POLLING: "Retrieving data ({attempts}/{maxAttempts})...",
       SUCCESS: "Query completed successfully!",
       AUTH_ERROR: "Authentication failed. Please check your API token.",
+      // The next three cover the Entra sign-in gate on the WORKER transport
+      // only. On the direct-token transport AUTH_ERROR above stays correct,
+      // because there the person's own API token really is the thing at fault.
+      //
+      // Each sentence is followed by the short heading that goes above it on
+      // the API status card. The PAIRING is load-bearing: apiErrorInfo() in
+      // ally-main-controller.js matches an error's message by identity against
+      // the sentence here, then uses the STATUS_ key beside it as the label.
+      // So a sentence and its heading must be edited together, and a sentence
+      // must never be duplicated under a second key — identity is the match.
+      //
+      // ADDING A PAIR HERE IS NOT SUFFICIENT ON ITS OWN. apiErrorInfo() does
+      // not iterate this object; it matches against a hard-coded array,
+      // statusAwareHeadings in ally-main-controller.js, and a sentence absent
+      // from that array falls straight through to the generic SERVER branch and
+      // is labelled "Ally service unavailable" — which names the wrong system
+      // whenever the fault is ours. A new pair here therefore needs a matching
+      // entry there, in the same order, or the sentence is computed correctly
+      // and discarded one function short of the screen.
+      //
+      // The fallback heading in apiErrorInfo() covers less than it looks like
+      // it does. It is reached only when a STATUS_ key here is missing. Remove
+      // a SENTENCE key instead and the client stops attaching that sentence at
+      // all, so nothing matches, the card falls back to the generic connection
+      // error, and the fallback heading is never reached. Neither key is
+      // optional; the fallback protects one of the pair, not the pairing.
+      SIGN_IN_REQUIRED:
+        "You are not signed in. Please sign in with your University account, " +
+        "then run the report again.",
+      // Heading for SIGN_IN_REQUIRED. "Connection error" is wrong here —
+      // nothing failed to connect.
+      STATUS_SIGN_IN_REQUIRED: "Sign-in required",
+      // The fact is flat, not hedged: the Worker has already decided, so only
+      // the cause is uncertain, and the uncertainty belongs on the remedy.
+      // Deliberately does NOT suggest signing in again — the person already is
+      // signed in, and repeating the sign-in cannot change the answer. Matches
+      // the choice made for Chat under F2.
+      NOT_PERMITTED:
+        "Your account cannot use this service. If you think that is wrong, " +
+        "please contact the service owner.",
+      // Heading for NOT_PERMITTED.
+      STATUS_NOT_PERMITTED: "Account not permitted",
+      // The Microsoft-outage case. Must not read as the person's fault, and
+      // must invite a retry, because waiting genuinely can fix this one.
+      SIGN_IN_CHECK_UNAVAILABLE:
+        "We could not check your sign-in just now. Please try again shortly.",
+      // Heading for SIGN_IN_CHECK_UNAVAILABLE. "Ally service unavailable" is
+      // wrong here — Ally never saw the request.
+      STATUS_SIGN_IN_CHECK_UNAVAILABLE: "Sign-in check unavailable",
+      // The worker-transport 502. Two causes arrive on this one status and the
+      // client cannot tell them apart, by design: the Worker remaps an upstream
+      // 401 or 403 on /query to 502 so a rejected ALLY_API_TOKEN cannot wear
+      // the same status the Entra gate uses for the person's own credentials —
+      // and a genuine Ally fault is a 502 in its own right. The sentence must
+      // therefore be true of both, name neither, and above all deny the one
+      // thing that is certainly not at fault: the person's sign-in. The remedy
+      // is escalation, not a retry, because no action of theirs can help.
+      REPORTING_SERVICE_ERROR:
+        "The reporting service returned an error this tool cannot resolve. " +
+        "Your sign-in is not the problem. If this continues, please contact " +
+        "the service owner.",
+      // Heading for REPORTING_SERVICE_ERROR. "Ally service unavailable" is
+      // wrong here — it names Ally when our own token may be the cause.
+      STATUS_REPORTING_SERVICE_ERROR: "Reporting service error",
       NETWORK_ERROR: "Network error. Please check your internet connection.",
       TIMEOUT: "Request timed out. Please try again.",
       MISSING_TOKEN: "Please enter your API token.",
       MISSING_CLIENT_ID: "Please enter your Client ID.",
+      // A signed-out colleague with no transport of their own has an empty
+      // client ID field BECAUSE they are signed out: getEffectiveClientId()
+      // gates DEFAULT_CLIENT_ID on hasInstitutionalSignIn(). MISSING_CLIENT_ID
+      // is therefore the wrong instruction for them — it sends them to the
+      // Institutional Report for an ID they were never issued. Deliberately
+      // NOT a reuse of SIGN_IN_REQUIRED: that sentence is matched by MESSAGE
+      // IDENTITY in apiErrorInfo's statusAwareHeadings array, and putting one
+      // string on both a gated error path and an ungated validation path is
+      // the exact collision that array's comment warns about. Its wording is
+      // also wrong here — it ends "then run the report again", and nothing
+      // has been run.
+      //
+      // Names both routes because both are real: signing in alone is a
+      // complete instruction under goal A, and a person without a University
+      // account can still use their own client ID and token.
+      SIGN_IN_OR_CREDENTIALS:
+        "Sign in with your University account to use Ally Reporting. If you " +
+        "do not have one, enter your Client ID and API token instead.",
+      // Shown when neither transport is available. The app needs a client ID and
+      // region, then EITHER an API token OR a proxy worker URL.
+      MISSING_CREDENTIALS:
+        "Please enter your API token, or a proxy worker URL.",
+      // A worker origin-rejection (403) carries no Access-Control-Allow-Origin
+      // header, so in a browser it is INDISTINGUISHABLE from an unreachable
+      // worker. This message must therefore cover both causes and claim neither.
+      WORKER_UNREACHABLE:
+        "Could not reach the proxy worker. Check the worker URL is correct, " +
+        "and that this site's address is on the worker's allow-list.",
       INVALID_REGION: "Invalid region specified.",
       LOADING_COURSES: "Loading course data...",
       COURSES_LOADED: "Course data loaded successfully.",
@@ -258,6 +403,18 @@ const ALLY_CONFIG = (function () {
       STATUS_READY: "Ready",
       STATUS_IDLE: "Idle – may need warm-up",
       STATUS_ERROR: "Connection error",
+      STATUS_SERVER_ERROR: "Ally service unavailable",
+      // Status hints — shown beneath the status indicator. The credentials hint
+      // is the default for genuine auth failures; the others make clear when the
+      // fault is at Ally's end (a 502/503/504 or an unreachable server) rather
+      // than a problem the user can fix by re-checking their token.
+      CREDENTIALS_HINT: "Please check your credentials and try again.",
+      SERVER_ERROR_HINT:
+        "This looks like a temporary problem at Ally's end, not your credentials. Please wait a few minutes and try again.",
+      NETWORK_HINT:
+        "Could not reach the Ally service. Check your internet connection and try again.",
+      TIMEOUT_HINT:
+        "The Ally service did not respond in time. It may be busy — please try again shortly.",
     },
 
     /**
@@ -639,6 +796,207 @@ const ALLY_CONFIG = (function () {
    */
   config.getStorageKey = function (keyName) {
     return config.STORAGE_KEYS[keyName] || null;
+  };
+
+  /**
+   * Resolves the effective state of the Phase 3 statement-refresh feature flag.
+   * A per-browser localStorage override (set by the GUI toggle) wins over the
+   * STATEMENT_REFRESH_ENABLED code default; only the exact strings "true"/"false"
+   * are honoured as an override, anything else (or an unreadable/partitioned
+   * store) falls back to the code default. The export path calls this to decide
+   * whether to bake the refresh island + embed into an export.
+   * @returns {boolean} True if statement refresh is enabled in this environment.
+   *
+   * @example
+   * if (ALLY_CONFIG.isStatementRefreshEnabled()) { // build the refresh island }
+   */
+  config.isStatementRefreshEnabled = function () {
+    try {
+      const override = window.localStorage.getItem(
+        config.STORAGE_KEYS.STATEMENT_REFRESH_ENABLED,
+      );
+      if (override === "true") return true;
+      if (override === "false") return false;
+    } catch (e) {
+      logWarn("Could not read statement-refresh override:", e.message);
+    }
+    return config.STATEMENT_REFRESH_ENABLED === true;
+  };
+
+  /**
+   * Normalises a pasted proxy-Worker URL down to its BASE form.
+   *
+   * Users may paste any of the forms the docs and exports show, so strip a
+   * trailing endpoint path and any trailing slashes. Only absolute http(s) URLs
+   * are accepted; anything else returns "" so a bad paste is never persisted.
+   *
+   * @param {string} url - Raw user input
+   * @returns {string} Normalised base URL, or "" if unusable
+   *
+   * @example
+   * ALLY_CONFIG.normaliseWorkerUrl("https://example.workers.dev/issues/");
+   * // Returns: 'https://example.workers.dev'
+   */
+  config.normaliseWorkerUrl = function (url) {
+    if (!url || typeof url !== "string") return "";
+
+    let trimmed = url.trim();
+    if (!trimmed) return "";
+
+    // Reject anything that is not an absolute http(s) URL before touching it.
+    let parsed;
+    try {
+      parsed = new URL(trimmed);
+    } catch (e) {
+      logWarn("Worker URL is not a valid absolute URL:", trimmed);
+      return "";
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      logWarn("Worker URL must be http or https, got:", parsed.protocol);
+      return "";
+    }
+
+    // Drop any query string or fragment — the base URL carries neither.
+    trimmed = parsed.origin + parsed.pathname;
+
+    // Strip trailing slashes, then a trailing endpoint path, then slashes again
+    // (so ".../issues/" and ".../issues" both reduce to the same base).
+    trimmed = trimmed.replace(/\/+$/, "");
+    Object.values(config.WORKER_PATHS).forEach(function (path) {
+      if (trimmed.toLowerCase().endsWith(path)) {
+        trimmed = trimmed.slice(0, -path.length);
+      }
+    });
+    trimmed = trimmed.replace(/\/+$/, "");
+
+    return trimmed;
+  };
+
+  /**
+   * Resolves the effective Ally proxy-Worker BASE url: a configured
+   * localStorage value wins over the DEFAULT_WORKER_URL code default. An
+   * unreadable or partitioned store falls back to the default rather than
+   * throwing. Never returns a trailing slash.
+   * @returns {string} Worker base URL
+   *
+   * @example
+   * const url = ALLY_CONFIG.getWorkerUrl(); // 'https://…workers.dev'
+   */
+  config.getWorkerUrl = function () {
+    try {
+      const stored = window.localStorage.getItem(config.STORAGE_KEYS.WORKER_URL);
+      const normalised = config.normaliseWorkerUrl(stored);
+      if (normalised) return normalised;
+    } catch (e) {
+      logWarn("Could not read configured worker URL:", e.message);
+    }
+    return config.DEFAULT_WORKER_URL;
+  };
+
+  /**
+   * Reports whether the user has configured their OWN worker URL, as distinct
+   * from falling back to DEFAULT_WORKER_URL. getWorkerUrl() always returns a
+   * usable URL, so callers that need to know whether the user actually supplied
+   * one — a credential guard, a status summary — must ask this instead.
+   * @returns {boolean} True if a valid worker URL is stored
+   */
+  config.hasConfiguredWorkerUrl = function () {
+    try {
+      const stored = window.localStorage.getItem(config.STORAGE_KEYS.WORKER_URL);
+      return !!config.normaliseWorkerUrl(stored);
+    } catch (e) {
+      logWarn("Could not read configured worker URL:", e.message);
+      return false;
+    }
+  };
+
+  /**
+   * Reports whether this browser has an institutional Entra sign-in available.
+   *
+   * LOAD-BEARING: every part of the window.EntraAuth read happens INSIDE this
+   * function body, deliberately. ally-config.js is a BLOCKING classic script at
+   * tools.html:23075 and auth/entra-auth.js is DEFERRED at tools.html:23126, so
+   * window.EntraAuth does not exist at the moment this module evaluates. A
+   * module-scope capture would be permanently undefined and this predicate
+   * would answer false forever. Do not hoist the lookup.
+   *
+   * @returns {boolean} True only when EntraAuth is present and reports signed in
+   */
+  config.hasInstitutionalSignIn = function () {
+    try {
+      const auth = window.EntraAuth;
+      if (!auth || typeof auth.isSignedIn !== "function") return false;
+      return auth.isSignedIn() === true;
+    } catch (e) {
+      logWarn("Could not read institutional sign-in state:", e.message);
+      return false;
+    }
+  };
+
+  /**
+   * Reports whether a worker request will succeed for this person right now.
+   *
+   * This is NOT hasConfiguredWorkerUrl() under another name, and neither
+   * replaces the other. hasConfiguredWorkerUrl() answers "did the user supply
+   * their OWN worker URL" — a question about configuration, deliberately
+   * falsifiable, and the right guard for a settings summary. This one answers
+   * "will a worker request succeed for this person right now", which is also
+   * true for a signed-in colleague who has configured nothing at all.
+   *
+   * @returns {boolean} True if a stored worker URL or an institutional sign-in
+   *   makes a worker request viable
+   */
+  config.hasUsableWorkerUrl = function () {
+    return config.hasConfiguredWorkerUrl() || config.hasInstitutionalSignIn();
+  };
+
+  /**
+   * Resolves the effective Ally client id: a stored CLIENT_ID wins, otherwise
+   * DEFAULT_CLIENT_ID — but only for a signed-in colleague. The default is
+   * GATED on institutional sign-in, so a signed-out caller with nothing stored
+   * gets an empty string rather than an id they were never given.
+   *
+   * Always returns a string; never null and never undefined. An unreadable or
+   * partitioned store falls through to the sign-in branch rather than throwing
+   * or short-circuiting to "".
+   *
+   * @returns {string} The client id, or "" when none applies
+   */
+  config.getEffectiveClientId = function () {
+    try {
+      const stored = window.localStorage.getItem(config.STORAGE_KEYS.CLIENT_ID);
+      const trimmed = typeof stored === "string" ? stored.trim() : "";
+      if (trimmed) return trimmed;
+    } catch (e) {
+      logWarn("Could not read configured client id:", e.message);
+    }
+    return config.hasInstitutionalSignIn() ? config.DEFAULT_CLIENT_ID : "";
+  };
+
+  /**
+   * Builds a full worker endpoint URL from the configured base.
+   * @param {string} pathKey - Key from WORKER_PATHS ('ISSUES' | 'QUERY')
+   * @param {string} [baseUrl] - Explicit base, defaults to getWorkerUrl()
+   * @returns {string|null} Full endpoint URL, or null for an unknown pathKey
+   *
+   * @example
+   * ALLY_CONFIG.getWorkerEndpointUrl('QUERY');
+   * // Returns: 'https://…workers.dev/query'
+   */
+  config.getWorkerEndpointUrl = function (pathKey, baseUrl) {
+    const path = config.WORKER_PATHS[pathKey];
+    if (!path) {
+      logError("Invalid worker path key:", pathKey);
+      return null;
+    }
+
+    const base =
+      baseUrl !== undefined && baseUrl !== null && baseUrl !== ""
+        ? config.normaliseWorkerUrl(baseUrl)
+        : config.getWorkerUrl();
+    if (!base) return null;
+
+    return base + path;
   };
 
   /**

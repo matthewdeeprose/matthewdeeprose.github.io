@@ -1,0 +1,322 @@
+/* ====================================================================
+   DOOR PANEL GUIDE - journey layout only.
+
+   The panel's own appearance, the focus treatment, the typography and
+   the form-control styling all come from door-panel-studio.css, which
+   loads first. This sheet lays out the guided journey around them:
+   the step strip, the pinned preview column, the line cards and the
+   fit meter. Nothing here touches a .dps-panel internal.
+   ==================================================================== */
+
+/* The guide scrolls as one ordinary page. The studio's shell locks
+   html and body to the viewport height with their own overflow for its
+   two-pane layout; the guide has a pinned column instead, so BOTH
+   locks come off. The body override matters twice over: an ancestor
+   with overflow other than visible becomes the pinning box for
+   position: sticky, and a body that never scrolls itself would pin the
+   preview to nothing - measured on this page as a column that simply
+   scrolled away (iteration G2). */
+html {
+  height: auto;
+  overflow: visible;
+}
+
+.dpg-page {
+  height: auto;
+  overflow: visible;
+}
+
+.dpg-header {
+  padding: 1rem 1.5rem 0.25rem;
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-surface);
+}
+
+.dpg-header > p {
+  max-width: 60ch;
+}
+
+/* --- The step strip ------------------------------------------------ */
+
+.dpg-steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.dpg-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.dpg-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 2px solid var(--ui-accent);
+  color: var(--ui-accent);
+  background: var(--ui-surface);
+  font-size: 0.9rem;
+}
+
+.dpg-step-now .dpg-step-number {
+  background: var(--ui-accent);
+  color: var(--ui-surface);
+}
+
+.dpg-step-later {
+  color: var(--ui-muted);
+  font-weight: 400;
+}
+
+.dpg-step-later .dpg-step-number {
+  border-color: var(--ui-muted);
+  color: var(--ui-muted);
+}
+
+.dpg-step-note {
+  font-size: 0.85rem;
+}
+
+.dpg-step-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--ui-accent);
+  text-decoration: none;
+}
+
+.dpg-step-link:hover {
+  text-decoration: underline;
+}
+
+/* --- The two-column layout ----------------------------------------
+   Preview pinned left, cards scrolling right. The preview column is
+   sized by its content (the true-scale panel); sticky only pins while
+   the column fits the viewport, which is exactly the studio's
+   pinned-column lesson, so the column is kept shorter than 1080p. */
+
+.dpg-layout {
+  display: grid;
+  grid-template-columns: auto minmax(20rem, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.dpg-preview {
+  position: sticky;
+  top: 0.75rem;
+}
+
+.dpg-preview > h2 {
+  margin-top: 0;
+}
+
+.dpg-cards {
+  max-width: 46rem;
+}
+
+/* Cards reuse .dps-card for the shared look; this adds rhythm only. */
+.dpg-card h3 {
+  margin-top: 0;
+}
+
+.dpg-include label {
+  font-weight: 600;
+}
+
+.dpg-distance {
+  margin: 0.5rem 0;
+}
+
+.dpg-radiorow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+
+.dpg-radiorow > div {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Keep each radio's hit area comfortable (target size). */
+.dpg-radiorow input[type="radio"] {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+.dpg-radiorow label {
+  font-weight: 400;
+  margin: 0;
+}
+
+.dps-field input[type="text"] {
+  width: 100%;
+  max-width: 26rem;
+  font-size: 1rem;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid var(--ui-muted);
+  border-radius: 0.2rem;
+  background: var(--ui-surface);
+  color: var(--ui-ink);
+}
+
+.dps-field input[type="checkbox"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+}
+
+.dpg-derived {
+  margin: 0.35rem 0 0;
+}
+
+/* --- The fit meter -------------------------------------------------
+   Decoration beside the sentence, never the message itself: the
+   verdict sentence carries every fact the bar shows, so the bar is
+   aria-hidden. Colours clear 3:1 against the white track anyway. */
+
+.dpg-meter {
+  width: 100%;
+  max-width: 30rem;
+  height: 1rem;
+  border: 1px solid var(--ui-muted);
+  border-radius: 0.5rem;
+  background: var(--ui-surface);
+  overflow: hidden;
+}
+
+.dpg-meter-fill {
+  height: 100%;
+  width: 0;
+  background: var(--ui-accent);
+}
+
+.dpg-meter-fill.dpg-meter-over {
+  background: var(--ui-fail);
+}
+
+.dpg-budget {
+  max-width: 34rem;
+  margin: 0.5rem 0 0;
+  font-weight: 600;
+}
+
+.dpg-budget.dpg-budget-over {
+  color: var(--ui-fail);
+}
+
+/* --- Step 2: the demo cluster, chips and ratings ------------------ */
+
+.dpg-panelfield {
+  margin: 0.75rem 0 0;
+  max-width: 30rem;
+}
+
+.dpg-checkrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}
+
+.dpg-checkrow input[type="checkbox"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  vertical-align: middle;
+  margin-right: 0.3rem;
+}
+
+.dpg-schemerow {
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* Colour chips: a real radio beside a labelled swatch. The name is the
+   accessible name; the swatch is the visual and stays decorative. */
+.dpg-chiprow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: 0.3rem 0.75rem;
+}
+
+.dpg-chiprow > div {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dpg-chiprow input[type="radio"] {
+  width: 1.4rem;
+  height: 1.4rem;
+  flex: none;
+}
+
+.dpg-chiprow label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 400;
+  margin: 0;
+}
+
+.dpg-swatch {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid var(--ui-muted);
+  border-radius: 0.2rem;
+  flex: none;
+}
+
+.dpg-ratings p {
+  margin: 0.3rem 0 0;
+  font-size: 0.9rem;
+  max-width: none;
+}
+
+/* --- Disclosures ---------------------------------------------------
+   Both disclosures hold prose and generated read-only tables only -
+   never form controls (the standing rule from studio iteration 12). */
+
+.dpg-learn,
+.dpg-checks {
+  margin: 0 0 1rem;
+  border: 1px solid var(--ui-line);
+  border-radius: 0.25rem;
+  background: var(--ui-note-bg);
+  padding: 0.5rem 0.75rem;
+}
+
+.dpg-learn summary,
+.dpg-checks summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.dpg-checks table {
+  margin-top: 0.5rem;
+}
+
+/* --- Narrow windows: stack, and stop pinning ---------------------- */
+
+@media (max-width: 87.5rem) {
+  .dpg-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dpg-preview {
+    position: static;
+  }
+}

@@ -3900,12 +3900,17 @@ export class StreamingManager {
         userMessage: errorMessage,
       });
 
-      // Try to use accessibility system for user notification
-      if (typeof window.announceToScreenReader === "function") {
-        window.announceToScreenReader(errorMessage, "assertive");
-      }
-
-      // Try to use universal notifications if available
+      // The dead branch that used to sit here tested window.announceToScreenReader,
+      // a global production never assigns (only ever set by a test file's mock), so
+      // it never ran — the eighth path of the kind 1256ebc repointed, missed because
+      // it used that name rather than window.a11y.
+      //
+      // It is removed rather than repointed: the toast below carries the SAME
+      // errorMessage and the notification container is aria-live="polite", so
+      // announcing as well would say it twice. The dead call asked for "assertive"
+      // and the toast is polite — accepted deliberately, because the toast is
+      // persistent and re-readable, and this message reports that the system has
+      // already adjusted itself rather than asking the user to act.
       if (typeof window.notifyWarning === "function") {
         window.notifyWarning(errorMessage, { persistent: true });
       }
@@ -4299,14 +4304,13 @@ export class StreamingManager {
         userMessage: userMessage,
       });
 
-      // ✅ Screen reader announcement for accessibility
-      if (typeof window.a11y?.announceStatus === "function") {
-        const priority = recoveryStage === "failure" ? "assertive" : "polite";
-        window.a11y.announceStatus(userMessage, priority);
-      } else if (typeof window.announceToScreenReader === "function") {
-        const priority = recoveryStage === "failure" ? "assertive" : "polite";
-        window.announceToScreenReader(userMessage, priority);
-      }
+      // NO separate screen-reader announcement here: every branch below shows a
+      // toast carrying this exact `userMessage`, and the toast is already a live
+      // region (the notification container has aria-live="polite", and notifyError
+      // adds role="alert" for the failure branch — so the assertive case is covered
+      // too). 1256ebc briefly added an announce() call alongside, which spoke every
+      // recovery message twice. If the toast system ever stops announcing, this is
+      // the comment that has to change with it.
 
       // ✅ IMPROVED: Visual notification with better UX
       switch (recoveryStage) {
@@ -5534,9 +5538,22 @@ export class StreamingManager {
                   );
 
                   // ✅ STEP 6: Accessibility announcement
-                  if (window.a11y?.announceStatus) {
-                    window.a11y.announceStatus(
-                      `Preference cleared. Modal updated to show original default option. You can now make a new choice and optionally save it.`
+                  //
+                  // This is NOT a duplicate of the toast above and must not be
+                  // deleted as one. The toast reports the EVENT ("Preference
+                  // cleared…"), which everyone gets; this reports the CONSEQUENCE —
+                  // that the modal itself has changed underneath them — which
+                  // sighted users can simply see. The leading "Preference cleared."
+                  // was removed because the toast already says it, and hearing it
+                  // twice was the actual defect.
+                  //
+                  // Open question, deliberately not asserted either way: a
+                  // body-level live region has been observed reading ignored with
+                  // reason activeModalDialog while a modal is open, so this may not
+                  // reach a reader here at all. Measure before relying on it.
+                  if (window.accessibilityHelpers?.announce) {
+                    window.accessibilityHelpers.announce(
+                      `The choice has been reset to the original default. You can now make a new selection and optionally save it.`
                     );
                   }
 
@@ -7177,40 +7194,11 @@ export class StreamingManager {
         );
       }
 
-      // ✅ FIXED: Graceful accessibility announcement (no warnings for optional systems)
-      let accessibilityAnnounced = false;
-
-      // Try primary accessibility system
-      if (window.a11y && typeof window.a11y.announceStatus === "function") {
-        window.a11y.announceStatus(
-          `Preference applied: ${userFeedbackMessage}`,
-          "polite"
-        );
-        accessibilityAnnounced = true;
-        logDebug(
-          "[PREFERENCE ANNOUNCEMENT] ♿ Accessibility announcement via a11y system"
-        );
-      }
-
-      // Try fallback accessibility system
-      else if (typeof window.announceToScreenReader === "function") {
-        window.announceToScreenReader(
-          `Preference applied: ${userFeedbackMessage}`,
-          "polite"
-        );
-        accessibilityAnnounced = true;
-        logDebug(
-          "[PREFERENCE ANNOUNCEMENT] ♿ Accessibility announcement via fallback system"
-        );
-      }
-
-      // ✅ FIXED: Only log debug info in test environments, not warnings
-      if (!accessibilityAnnounced) {
-        logDebug(
-          "[PREFERENCE ANNOUNCEMENT] ℹ️ Accessibility system not available - normal in test environments"
-        );
-        // Don't log this as a warning since it's expected in test environments
-      }
+      // NO separate screen-reader announcement. The toast above IS the announcement:
+      // the notification container carries aria-live="polite", so notifyInfo already
+      // speaks `userFeedbackMessage`. 1256ebc added an announce() of
+      // `Preference applied: ${userFeedbackMessage}` beside it, which meant the
+      // message was spoken, and then spoken again with a prefix.
 
       // ✅ Update streaming state with preference application info
       this.updateStreamingState("PREFERENCE_APPLIED", {
@@ -8249,22 +8237,18 @@ export class StreamingManager {
       const recoveryId = context.recoveryId || "unknown";
       const errorType = errorClassification?.type || "unknown";
 
-      const announcement = `Automatically applied your saved preference: ${appliedPreference}. Recovery proceeding with your preferred settings.`;
-
-      // ✅ ACCESSIBILITY: Announce with proper error handling
-      try {
-        if (window.accessibility?.announceToScreenReader) {
-          await window.accessibility.announceToScreenReader(
-            announcement,
-            "polite"
-          );
-        }
-      } catch (a11yError) {
-        logWarn(
-          "[USER COMMUNICATION] ⚠️ Accessibility announcement failed:",
-          a11yError.message
-        );
-      }
+      // No separate screen-reader announcement is built here any more. One was, and
+      // it went to window.accessibility.announceToScreenReader — a global production
+      // never assigns — so it never reached anyone. The toast below is the channel;
+      // the notification container carries aria-live="polite".
+      //
+      // Worth knowing if this is ever revisited: the removed text was "Automatically
+      // applied your saved preference: X. Recovery proceeding with your preferred
+      // settings.", where the toast says only "Applied preference: X". Nobody has
+      // ever heard the longer sentence. Delivering it would mean lengthening the
+      // TOAST, not adding a second channel — a visible wording change, deliberately
+      // not made here. The variable is gone rather than left assigned-and-unused,
+      // which is how the dead call looked alive for so long.
 
       // ✅ NOTIFICATIONS: Use notification system with error handling
       try {
@@ -8339,22 +8323,16 @@ export class StreamingManager {
       const appliedPreference =
         preferenceApplicationResult?.appliedPreference || null;
 
-      // ✅ BUILD ANNOUNCEMENT: Create contextual message
-      let announcement = "Recovery completed successfully.";
-
-      if (preferenceContributed && appliedPreference) {
-        announcement += ` Used your preferred ${appliedPreference} settings.`;
-      }
-
-      // ✅ ACCESSIBILITY & NOTIFICATIONS: With error handling
+      // ✅ NOTIFICATIONS: With error handling.
+      // As above: a contextual announcement was built here and sent to
+      // window.accessibility.announceToScreenReader, a global production never
+      // assigns, so it never ran. The toast is the channel.
+      // The removed text was "Recovery completed successfully." plus, when a
+      // preference contributed, " Used your preferred X settings." — against the
+      // toast's "Recovery completed". Left as-is rather than changing visible
+      // wording; preferenceContributed and appliedPreference above still feed the
+      // structured log below.
       try {
-        if (window.accessibility?.announceToScreenReader) {
-          await window.accessibility.announceToScreenReader(
-            announcement,
-            "polite"
-          );
-        }
-
         if (window.notifySuccess) {
           window.notifySuccess("Recovery completed", { duration: 3000 });
         }

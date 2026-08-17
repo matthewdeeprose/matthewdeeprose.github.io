@@ -63,6 +63,8 @@ const DEFAULT_CONFIG = {
   temperature: 0.7,
   max_tokens: 2000,
   top_p: 1.0,
+  frequency_penalty: 0,
+  presence_penalty: 0,
   showNotifications: true,
   enableLogging: true,
   logLevel: "WARN",
@@ -178,6 +180,11 @@ class OpenRouterEmbed {
    * @param {boolean} [config.showNotifications] - Show toast notifications
    * @param {boolean} [config.enableLogging] - Enable console logging
    * @param {string} [config.logLevel] - Log level (ERROR/WARN/INFO/DEBUG)
+   * @param {boolean} [config.announceContainer=true] - Make the output
+   *   container an aria-live region. Pass FALSE for streamed long-form output:
+   *   a live region re-reads its whole contents on every mutation, so streaming
+   *   into one makes a screen reader read the entire growing response on every
+   *   token. See _applyContainerLiveRegion().
    */
   constructor(config) {
     logInfo("Initialising OpenRouter Embed API...");
@@ -195,6 +202,8 @@ class OpenRouterEmbed {
     this.temperature = this.config.temperature;
     this.max_tokens = this.config.max_tokens;
     this.top_p = this.config.top_p;
+    this.frequency_penalty = this.config.frequency_penalty;
+    this.presence_penalty = this.config.presence_penalty;
     this.showNotifications = this.config.showNotifications;
     this.enableLogging = this.config.enableLogging;
 
@@ -212,9 +221,8 @@ class OpenRouterEmbed {
       );
     }
 
-    // Add ARIA live region for accessibility
-    this.container.setAttribute("aria-live", "polite");
-    this.container.setAttribute("aria-atomic", "true");
+    // Make the output container a live region, unless the host opts out.
+    this._applyContainerLiveRegion();
 
     // Component references
     this.client = window.openRouterClient;
@@ -236,6 +244,9 @@ class OpenRouterEmbed {
     // State management
     this.processing = false;
     this.lastResponse = null;
+    // Scrubbed snapshot of the most recent shaped wire request (no credential).
+    // Populated in buildOptions(); surfaced via getLastWireRequest().
+    this._lastWireRequest = null;
     this.lastError = null;
     this._executingQueuedRequest = false;
 
@@ -273,6 +284,8 @@ class OpenRouterEmbed {
     this.isStreaming = false;
     this.streamAbortController = null;
     this.streamBuffer = "";
+    this._streamErrorFinalised = false;
+    this._contentStreamed = false;
     this.currentStreamId = null;
     this.streamCancelled = false; // Track user-initiated cancellations
 
@@ -571,6 +584,25 @@ class OpenRouterEmbed {
         config.top_p > 1
       ) {
         throw new Error("top_p must be a number between 0 and 1");
+      }
+    }
+
+    if (config.frequency_penalty !== undefined) {
+      if (
+        typeof config.frequency_penalty !== "number" ||
+        config.frequency_penalty < -2 ||
+        config.frequency_penalty > 2
+      ) {
+        throw new Error("frequency_penalty must be a number between -2 and 2");
+      }
+    }
+    if (config.presence_penalty !== undefined) {
+      if (
+        typeof config.presence_penalty !== "number" ||
+        config.presence_penalty < -2 ||
+        config.presence_penalty > 2
+      ) {
+        throw new Error("presence_penalty must be a number between -2 and 2");
       }
     }
 
@@ -959,6 +991,8 @@ class OpenRouterEmbed {
       temperature: this.temperature,
       max_tokens: this.max_tokens,
       top_p: this.top_p,
+      frequency_penalty: this.frequency_penalty,
+      presence_penalty: this.presence_penalty,
     };
 
     // Reasoning configuration — pass through unchanged when enabled.
@@ -985,6 +1019,14 @@ class OpenRouterEmbed {
     // Delegate wire-format construction to the provider.
     const body = provider.buildRequest(messages, canonicalOptions);
 
+    // Capture a scrubbed snapshot of the shaped wire request for the Chat
+    // developer panel. We snapshot `body` here — before the providerConfig
+    // injection below — so the credential-bearing providerConfig can never
+    // reach the snapshot. `body` at this point carries messages, model and the
+    // sampling fields only; _scrubWireRequest deep-copies it and strips any
+    // credential-like key as belt-and-braces. We do NOT mutate `body` itself.
+    this._lastWireRequest = this._scrubWireRequest(body);
+
     // The existing client API takes (messages, options) separately. Strip
     // messages from the body so we return an options-only object compatible
     // with the existing call sites. (Task 1.3 may revisit this once registry
@@ -1004,6 +1046,133 @@ class OpenRouterEmbed {
     }
 
     return options;
+  }
+
+  /**
+   * Produce a scrubbed, display-safe deep copy of a shaped wire request body.
+   *
+   * The snapshot is intended for the Chat developer panel, so it must never
+   * carry a credential. As belt-and-braces (the captured `body` should already
+   * lack these) we strip any credential-like key at the top level and truncate
+   * long base64 / data-URL payloads and over-long plain text inside messages,
+   * mirroring the sanitiser in request-manager-response.js but adapted to this
+   * module's [OpenRouterEmbed] log sink and British spelling.
+   *
+   * @param {Object|null} body - The wire request body from provider.buildRequest().
+   * @returns {Object|null} A defensive deep copy with credentials removed and
+   *                        large payloads truncated, or null when `body` is falsy.
+   */
+  _scrubWireRequest(body) {
+    if (!body) return null;
+
+    // Keys that must never survive into a display snapshot.
+    const FORBIDDEN_KEYS = [
+      "providerConfig",
+      "headers",
+      "authorization",
+      "Authorization",
+      "userToken",
+      "x-user-token",
+      "api_key",
+      "apiKey",
+    ];
+    // A data-URL / base64 payload longer than this is replaced with a marker.
+    const BASE64_THRESHOLD = 200;
+    // A plain text field longer than this is truncated.
+    const TEXT_THRESHOLD = 500;
+
+    try {
+      const clone = JSON.parse(JSON.stringify(body));
+
+      // Belt-and-braces: drop any credential-like key at the top level.
+      for (const key of FORBIDDEN_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(clone, key)) {
+          delete clone[key];
+        }
+      }
+
+      // Replace an over-long data URL with a short, descriptive marker.
+      const truncateDataUrl = (url) => {
+        if (typeof url !== "string") return url;
+        if (url.startsWith("data:") && url.length > BASE64_THRESHOLD) {
+          const [header] = url.split(",");
+          const dataLength = url.length - header.length - 1;
+          return `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`;
+        }
+        return url;
+      };
+
+      if (Array.isArray(clone.messages)) {
+        clone.messages = clone.messages.map((msg) => {
+          if (!msg || typeof msg !== "object") return msg;
+
+          // Plain string content — truncate if it is unreasonably long.
+          if (typeof msg.content === "string") {
+            if (msg.content.length > TEXT_THRESHOLD) {
+              return {
+                ...msg,
+                content: `${msg.content.slice(0, TEXT_THRESHOLD)}… <TRUNCATED: ${msg.content.length.toLocaleString()} chars>`,
+              };
+            }
+            return msg;
+          }
+
+          // Structured multi-part content — scrub each part in turn.
+          if (Array.isArray(msg.content)) {
+            return {
+              ...msg,
+              content: msg.content.map((item) => {
+                if (!item || typeof item !== "object") return item;
+
+                // Inline image payloads.
+                if (item.type === "image_url" && item.image_url?.url) {
+                  return {
+                    ...item,
+                    image_url: {
+                      ...item.image_url,
+                      url: truncateDataUrl(item.image_url.url),
+                    },
+                  };
+                }
+
+                // Inline file payloads (e.g. PDF file_data).
+                if (item.type === "file" && item.file?.file_data) {
+                  return {
+                    ...item,
+                    file: {
+                      ...item.file,
+                      file_data: truncateDataUrl(item.file.file_data),
+                    },
+                  };
+                }
+
+                // Over-long text parts.
+                if (
+                  item.type === "text" &&
+                  typeof item.text === "string" &&
+                  item.text.length > TEXT_THRESHOLD
+                ) {
+                  return {
+                    ...item,
+                    text: `${item.text.slice(0, TEXT_THRESHOLD)}… <TRUNCATED: ${item.text.length.toLocaleString()} chars>`,
+                  };
+                }
+
+                return item;
+              }),
+            };
+          }
+
+          return msg;
+        });
+      }
+
+      return clone;
+    } catch (error) {
+      // Never let a snapshot failure interfere with the request itself.
+      logWarn("Failed to scrub wire request for display", error);
+      return null;
+    }
   }
 
   // ==========================================================================
@@ -1187,6 +1356,8 @@ class OpenRouterEmbed {
       this.isStreaming = true;
       this.processing = true;
       this.streamBuffer = "";
+      this._streamErrorFinalised = false;
+      this._contentStreamed = false;
       this.currentStreamId = this.generateStreamId();
       this.streamAbortController = new AbortController();
       this.streamCancelled = false; // Reset cancellation flag
@@ -1371,6 +1542,8 @@ class OpenRouterEmbed {
           model: this.model,
           temperature: this.temperature,
           max_tokens: this.max_tokens,
+          frequency_penalty: this.frequency_penalty,
+          presence_penalty: this.presence_penalty,
           reasoning: this._reasoningConfig?.enabled
             ? { ...this._reasoningConfig }
             : null,
@@ -1533,14 +1706,29 @@ class OpenRouterEmbed {
         // Foundry's adapter implements streamRequest; OpenRouter's does not
         // (its transport remains with window.openRouterClient). The function-
         // type check keeps the OpenRouter path bytewise unchanged.
-        if (typeof provider.streamRequest === "function") {
-          return provider.streamRequest(wireMessages, streamingOptions);
-        }
-        return this.client.sendStreamingRequest(
-          wireMessages,
-          streamingOptions,
-          true,
-        );
+        const transport =
+          typeof provider.streamRequest === "function"
+            ? provider.streamRequest(wireMessages, streamingOptions)
+            : this.client.sendStreamingRequest(
+                wireMessages,
+                streamingOptions,
+                true,
+              );
+        // Layer-1 retry rule: a failure that arrives AFTER content has streamed
+        // is mid-stream — re-sending after a partial reply is on screen is out of
+        // scope here, so mark it so isRetryable hard-blocks it. Pre-stream errors
+        // (streamBuffer still empty) are left retryable. Aborts are handled
+        // elsewhere and are never marked.
+        return transport.catch((error) => {
+          if (
+            error &&
+            error.name !== "AbortError" &&
+            this._contentStreamed
+          ) {
+            error._noRetry = true;
+          }
+          throw error;
+        });
       };
 
       // Determine if we should use retry
@@ -1572,9 +1760,11 @@ class OpenRouterEmbed {
           return;
         }
 
-        // Real errors get full handling
+        // Real errors: the retry loop (if any) is now exhausted, so finalise
+        // once. _finaliseStreamError is idempotent — if a mid-stream error already
+        // finalised via the onError callback, this is a no-op.
         logError("Client streaming error:", error);
-        this.handleStreamError(error);
+        this._finaliseStreamError(error);
       });
     });
   }
@@ -1741,8 +1931,24 @@ class OpenRouterEmbed {
     }
 
     // Focus management - set focus to container for keyboard navigation
-    // Only if container doesn't already have focusable elements
-    if (!this.container.querySelector("a, button, input, textarea, select")) {
+    // Only if container doesn't already have focusable elements.
+    //
+    // NEVER while streaming. This runs on EVERY content injection, so during a
+    // streamed response it repeatedly yanked focus to the container — and early
+    // in a stream that container is empty and unnamed, which a screen reader
+    // voices as "blank". Traced on 3 August 2026: focus landed on an empty
+    // div#imgdesc-output 3.5s into a generation, and NVDA said "blank" at
+    // exactly that point. Moving focus without a user action is also SC 3.2.1
+    // in its own right, quite apart from what it announces.
+    //
+    // The final, non-streaming injection still focuses, which is the case this
+    // was written for: content has finished arriving and a keyboard user wants
+    // to read it. By then the container has content, so it voices that content
+    // rather than nothing.
+    if (
+      !this.isStreaming &&
+      !this.container.querySelector("a, button, input, textarea, select")
+    ) {
       this.container.setAttribute("tabindex", "-1");
       this.container.focus();
     }
@@ -1782,6 +1988,13 @@ class OpenRouterEmbed {
 
     // Always accumulate in buffer
     this.streamBuffer += chunk;
+
+    // Latch: content has streamed this send. Unlike streamBuffer (which
+    // cleanupStreamingState empties on a terminal), this is reset ONLY at
+    // send-start, so a mid-stream failure that finalises-then-throws (Foundry:
+    // onError before throw) is still correctly classed mid-stream when
+    // transport.catch reads it. Load-bearing for the no-mid-stream-retry rule.
+    this._contentStreamed = true;
 
     const now = Date.now();
     const timeSinceLastRender = now - (this.lastRenderTime || 0);
@@ -1962,6 +2175,8 @@ class OpenRouterEmbed {
         model: this.model,
         temperature: this.temperature,
         max_tokens: this.max_tokens,
+        frequency_penalty: this.frequency_penalty,
+        presence_penalty: this.presence_penalty,
         reasoning: this._reasoningConfig?.enabled
           ? { ...this._reasoningConfig }
           : null,
@@ -1996,23 +2211,66 @@ class OpenRouterEmbed {
    * Handle streaming error
    * @private
    */
+  // Whether a stream error should be left for the retry loop instead of being
+  // finalised now: only a PRE-STREAM (no content yet) retryable error, and only
+  // when retry is enabled. On the final exhausted attempt this still returns
+  // true and stands aside; the promise-catch path then finalises directly.
+  _willRetryStreamStart(error) {
+    return (
+      !!this._retryHandler &&
+      !!this._retryConfig.enabled &&
+      !this._contentStreamed &&
+      this._retryHandler.isRetryable(error)
+    );
+  }
+
   handleStreamError(error, streamId = null) {
-    // Use passed streamId or fall back to current (for backwards compatibility)
-    const resolveStreamId = streamId || this.currentStreamId;
-    // Check if this is an expected cancellation (AbortError)
+    // Expected cancellation (AbortError): swallow, exactly as before.
     const isAbortError =
       error.name === "AbortError" ||
       error.message?.includes("aborted") ||
       error.message?.includes("BodyStreamBuffer was aborted");
-
-    // Only log as error if it's NOT an expected cancellation
     if (isAbortError) {
       logDebug("Stream aborted (expected cancellation in handleStreamError)", {
         errorName: error.name,
         message: error.message,
         alreadyCancelled: this.streamCancelled,
       });
-      // Don't process AbortErrors further - they're expected
+      return;
+    }
+
+    // If the retry loop will own this error, stand aside — do NOT post the error,
+    // announce, reject, or clean up. The loop retries; the terminal fires once
+    // from the promise-catch (via _finaliseStreamError) only if it exhausts.
+    if (this._willRetryStreamStart(error)) {
+      logDebug("Stream error deferred to retry loop (pre-stream, retryable)", {
+        errorName: error.name,
+        message: error.message,
+      });
+      return;
+    }
+
+    this._finaliseStreamError(error, streamId);
+  }
+
+  // The single, idempotent terminal handler: posts the error, announces, rejects
+  // the promise, and cleans up — exactly once per stream. Called by
+  // handleStreamError for non-retryable / mid-stream / retry-off errors, and by
+  // the promise-catch after the retry loop exhausts.
+  _finaliseStreamError(error, streamId = null) {
+    if (this._streamErrorFinalised) return;
+    this._streamErrorFinalised = true;
+    const resolveStreamId = streamId || this.currentStreamId;
+
+    // Abort guard retained for the promise-catch entry point.
+    const isAbortError =
+      error.name === "AbortError" ||
+      error.message?.includes("aborted") ||
+      error.message?.includes("BodyStreamBuffer was aborted");
+    if (isAbortError) {
+      logDebug("Stream aborted (expected cancellation in finalise)", {
+        errorName: error.name,
+      });
       return;
     }
 
@@ -2756,11 +3014,47 @@ class OpenRouterEmbed {
     this.containerId = containerId;
     this.container = newContainer;
 
-    // Add ARIA live region
-    this.container.setAttribute("aria-live", "polite");
-    this.container.setAttribute("aria-atomic", "true");
+    // Same opt-out as the constructor. Without this the setting silently
+    // reverted whenever a host swapped containers.
+    this._applyContainerLiveRegion();
 
     logInfo(`Container updated: ${oldContainerId} → ${containerId}`);
+  }
+
+  /**
+   * Apply (or deliberately withhold) the live-region attributes on the output
+   * container, honouring config.announceContainer.
+   *
+   * WHY THIS IS OPTIONAL, AND WHY IT MATTERS MORE THAN IT LOOKS
+   * ----------------------------------------------------------
+   * A live region announces its WHOLE contents on every mutation, and
+   * aria-atomic="true" guarantees it. Streamed output rewrites this container
+   * on every token, so for a long response the screen reader re-reads the
+   * entire accumulated text over and over — measured on a real NVDA listen of
+   * the Image Describer, 3 August 2026: about 25 re-reads of a growing
+   * document, ending around 400 words per pass, with the completion message
+   * buried behind all of it.
+   *
+   * The default stays TRUE so existing hosts (chat) are unchanged; this is a
+   * shared component and chat has its own owed screen-reader listen. Hosts that
+   * stream long-form content into the container should pass
+   * announceContainer: false and announce completion themselves.
+   */
+  _applyContainerLiveRegion() {
+    if (!this.container) return;
+
+    if (this.config && this.config.announceContainer === false) {
+      // Explicitly "off" rather than simply absent: the host's markup may
+      // already say aria-live="off", and an attribute left over from a previous
+      // container assignment must not survive.
+      this.container.setAttribute("aria-live", "off");
+      this.container.removeAttribute("aria-atomic");
+      logDebug("Container live region suppressed (announceContainer: false)");
+      return;
+    }
+
+    this.container.setAttribute("aria-live", "polite");
+    this.container.setAttribute("aria-atomic", "true");
   }
 
   // ==========================================================================
@@ -3028,6 +3322,20 @@ class OpenRouterEmbed {
   }
 
   /**
+   * Get the scrubbed snapshot of the last shaped wire request.
+   *
+   * Captured in buildOptions() before any providerConfig injection and passed
+   * through _scrubWireRequest(), so it carries model, messages and sampling
+   * fields but never a credential, providerConfig, headers or token. Intended
+   * for the Chat developer panel.
+   *
+   * @returns {Object|null} The scrubbed wire request, or null if none yet.
+   */
+  getLastWireRequest() {
+    return this._lastWireRequest || null;
+  }
+
+  /**
    * Get last error
    * @returns {Error|null}
    */
@@ -3047,6 +3355,8 @@ class OpenRouterEmbed {
       temperature: this.temperature,
       max_tokens: this.max_tokens,
       top_p: this.top_p,
+      frequency_penalty: this.frequency_penalty,
+      presence_penalty: this.presence_penalty,
       showNotifications: this.showNotifications,
       enableLogging: this.enableLogging,
       // Phase 3 additions

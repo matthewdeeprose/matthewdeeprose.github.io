@@ -59,6 +59,7 @@ const MermaidAccessibilityMindmap = (function () {
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
+  const Common = window.MermaidAccessibilityCommon;
 
   /**
    * Clean node text to remove Mermaid formatting characters
@@ -121,8 +122,14 @@ const MermaidAccessibilityMindmap = (function () {
     // Build the description - HTML version
     let htmlDescription = `A mindmap diagram`;
 
+    // Diagram-source text is escaped once, here, where it enters an HTML
+    // string. The PLAIN tier below deliberately keeps the raw values: it feeds
+    // the SVG aria-label and the textContent fallback, neither of which parses
+    // HTML, so entities there would be read out literally.
     // Add root node information
-    htmlDescription += ` with the central concept "<span class="diagram-root-node">${rootText}</span>"`;
+    htmlDescription += ` with the central concept "<span class="diagram-root-node">${Common.escapeHtml(
+      rootText
+    )}</span>"`;
 
     // Add statistics
     htmlDescription += ` containing <span class="diagram-node-count">${nodeCount}</span> concepts`;
@@ -132,10 +139,12 @@ const MermaidAccessibilityMindmap = (function () {
     if (rootNode && rootNode.children && rootNode.children.length > 0) {
       htmlDescription += `. The main branches are: <span class="diagram-main-branches">`;
 
+      // Each branch name is escaped BEFORE the join, so the separator's own
+      // markup stays furniture rather than being turned into entities.
       const mainBranches = rootNode.children
         .map((child) => {
           // Clean any shape markers from branch names
-          return cleanNodeText(child.text);
+          return Common.escapeHtml(cleanNodeText(child.text));
         })
         .join('</span>, <span class="diagram-branch-name">');
       htmlDescription += `<span class="diagram-branch-name">${mainBranches}</span>`;
@@ -709,9 +718,13 @@ const MermaidAccessibilityMindmap = (function () {
       node.iconType
     ) {
       const iconName = node.iconType.replace("fa fa-", "").replace(/-/g, " ");
-      html += `<span class="mindmap-node-text mindmap-level-${level}">Icon: ${iconName}</span>`;
+      html += `<span class="mindmap-node-text mindmap-level-${level}">Icon: ${Common.escapeHtml(
+        iconName
+      )}</span>`;
     } else {
-      html += `<span class="mindmap-node-text mindmap-level-${level}">${displayText}</span>`;
+      html += `<span class="mindmap-node-text mindmap-level-${level}">${Common.escapeHtml(
+        displayText
+      )}</span>`;
     }
 
     // Render children if any
@@ -760,8 +773,8 @@ const MermaidAccessibilityMindmap = (function () {
     description += `<section class="mindmap-section mindmap-overview">
       <h4 class="mindmap-section-heading">Mindmap Overview</h4>
       
- <p>This mindmap diagram is centred on the concept "<span class="mindmap-root-concept">${cleanNodeText(
-   rootNode.text
+ <p>This mindmap diagram is centred on the concept "<span class="mindmap-root-concept">${Common.escapeHtml(
+   cleanNodeText(rootNode.text)
  )}</span>" and contains ${nodeCount} total concepts organised into ${maxDepth} levels.</p>`;
     if (rootNode.children && rootNode.children.length > 0) {
       const mainTopics = rootNode.children.length;
@@ -772,8 +785,8 @@ const MermaidAccessibilityMindmap = (function () {
         let subTopics = 0;
         if (child.children) subTopics = child.children.length;
 
-        description += `<li><span class="mindmap-topic">${cleanNodeText(
-          child.text
+        description += `<li><span class="mindmap-topic">${Common.escapeHtml(
+          cleanNodeText(child.text)
         )}</span>`;
         if (subTopics > 0) {
           description += ` (contains ${subTopics} sub-topic${
@@ -857,7 +870,11 @@ const MermaidAccessibilityMindmap = (function () {
     if (branchBalanceInfo.isBalanced) {
       insights += `These branches are relatively balanced in terms of content distribution.`;
     } else {
-      insights += `The branches vary in size, with the "${branchBalanceInfo.largestBranch}" branch containing the most sub-topics (${branchBalanceInfo.largestSize}).`;
+      insights += `The branches vary in size, with the "${Common.escapeHtml(
+        branchBalanceInfo.largestBranch
+      )}" branch containing the most sub-topics (${
+        branchBalanceInfo.largestSize
+      }).`;
     }
     insights += `</li>`;
 
@@ -878,7 +895,9 @@ const MermaidAccessibilityMindmap = (function () {
               .replace("-", " ");
             text = `Icon: ${iconName}`;
           }
-          return text;
+          // Escaped per item, AFTER the transforms above, so the " → "
+          // separator inserted by the join stays furniture.
+          return Common.escapeHtml(text);
         })
         .join(" → ");
 

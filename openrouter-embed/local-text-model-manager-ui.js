@@ -146,6 +146,14 @@
     /**
      * Refresh all text model cards with current state.
      */
+    // Until the first full refresh has run, state changes are INITIALISATION, not
+    // news. The cards ship "Checking…" and settle to their real state on load; with
+    // aria-live on the status wrapper that spoke a bare "Not downloaded" or "Cached"
+    // once per card — thirteen utterances before the user reached the page, none of
+    // them naming which model they described. The markup is no longer a live region;
+    // announceState() below is the channel, and it stays quiet until this flips.
+    var hasSettledInitialStates = false;
+
     function refreshAll() {
         if (!window.LocalTextModelManager) return;
 
@@ -154,6 +162,36 @@
             updateModelUI(models[i].key, models[i].state);
         }
         refreshGPUStatus();
+        hasSettledInitialStates = true;
+    }
+
+    /**
+     * Announce a model's new state, naming the model.
+     *
+     * The status wrapper used to be aria-live, which announced the label alone —
+     * "Cached", with no way to tell which of a dozen models it referred to. Routing
+     * through the shared announcer costs nothing and lets the message say what it
+     * is actually about.
+     *
+     * @param {string} modelKey
+     * @param {string} label human-readable state label
+     */
+    function announceState(modelKey, label) {
+        if (!hasSettledInitialStates) return;
+        var announcer = window.accessibilityHelpers;
+        if (!announcer || typeof announcer.announce !== "function") return;
+
+        var displayName = modelKey;
+        if (window.LocalTextModelManager) {
+            var models = window.LocalTextModelManager.getRegisteredModels();
+            for (var i = 0; i < models.length; i++) {
+                if (models[i].key === modelKey) {
+                    displayName = models[i].displayName || modelKey;
+                    break;
+                }
+            }
+        }
+        announcer.announce(displayName + ": " + label);
     }
 
     /**
@@ -175,9 +213,15 @@
             if (typeof window.refreshIcons === "function") window.refreshIcons(cached.icon);
         }
 
-        // Update state text
+        // Update state text, only when it actually changes. Same reason as
+        // setListHTML() below: the card's status wrapper is a live region, so
+        // rewriting it with the label it already holds announces a second time.
         if (cached.stateText) {
-            cached.stateText.textContent = STATE_LABELS[state] || state;
+            var label = STATE_LABELS[state] || state;
+            if (cached.stateText.textContent !== label) {
+                cached.stateText.textContent = label;
+                announceState(modelKey, label);
+            }
         }
 
         // Update action buttons
@@ -202,31 +246,55 @@
     function renderActionButtons(cached, modelKey, state) {
         if (!cached.actions) return;
 
+        // SC 2.4.6 / 2.4.4: every card renders the same words — "Download",
+        // "Load", "Remove", "Unload", "Retry", "Cancel" — so out of context a
+        // screen-reader or voice-input user cannot tell which model a button acts
+        // on. Curried here rather than threaded through all eight call sites
+        // below, so no state can be left with a missing or stale suffix.
+        //
+        // Guarded the same defensive way as the window.getIcon lookup in
+        // makeButton: a missing registry degrades to the current behaviour
+        // (no suffix) rather than throwing. Note the nesting — there is no
+        // top-level `name` on a local-text model def.
+        var modelName = "";
+        try {
+            var registry = window.LocalTextModelRegistry;
+            var modelDef = registry && typeof registry.getModel === "function"
+                ? registry.getModel(modelKey)
+                : null;
+            modelName = (modelDef && modelDef.userInfo && modelDef.userInfo.displayName) || "";
+        } catch (err) {
+            logWarn("Could not resolve display name for " + modelKey, err.message || err);
+        }
+        function actionButton(label, iconName, onclickStr) {
+            return makeButton(label, iconName, onclickStr, modelName);
+        }
+
         var buttons = [];
 
         switch (state) {
             case "not-downloaded":
-                buttons.push(makeButton("Download", "download", "localTMDownload('" + modelKey + "')"));
+                buttons.push(actionButton("Download", "download", "localTMDownload('" + modelKey + "')"));
                 break;
             case "downloading":
-                buttons.push(makeButton("Cancel", "close", "localTMCancelDownload('" + modelKey + "')"));
+                buttons.push(actionButton("Cancel", "close", "localTMCancelDownload('" + modelKey + "')"));
                 break;
             case "cached":
-                buttons.push(makeButton("Load", "upload", "localTMLoad('" + modelKey + "')"));
-                buttons.push(makeButton("Remove", "trash", "localTMRemove('" + modelKey + "')"));
+                buttons.push(actionButton("Load", "upload", "localTMLoad('" + modelKey + "')"));
+                buttons.push(actionButton("Remove", "trash", "localTMRemove('" + modelKey + "')"));
                 break;
             case "loading":
                 // No actions while loading
                 break;
             case "loaded":
-                buttons.push(makeButton("Unload", "close", "localTMUnload('" + modelKey + "')"));
+                buttons.push(actionButton("Unload", "close", "localTMUnload('" + modelKey + "')"));
                 break;
             case "download-error":
-                buttons.push(makeButton("Retry", "refresh", "localTMDownload('" + modelKey + "')"));
+                buttons.push(actionButton("Retry", "refresh", "localTMDownload('" + modelKey + "')"));
                 break;
             case "load-error":
-                buttons.push(makeButton("Retry", "refresh", "localTMLoad('" + modelKey + "')"));
-                buttons.push(makeButton("Remove", "trash", "localTMRemove('" + modelKey + "')"));
+                buttons.push(actionButton("Retry", "refresh", "localTMLoad('" + modelKey + "')"));
+                buttons.push(actionButton("Remove", "trash", "localTMRemove('" + modelKey + "')"));
                 break;
         }
 
@@ -240,16 +308,30 @@
      * @param {string} onclickStr
      * @returns {string}
      */
-    function makeButton(label, iconName, onclickStr) {
+    function makeButton(label, iconName, onclickStr, modelName) {
         var iconHtml = "";
         if (typeof window.getIcon === "function") {
             iconHtml = '<span aria-hidden="true">' + window.getIcon(iconName) + "</span> ";
         } else {
             iconHtml = '<span aria-hidden="true" data-icon="' + iconName + '"></span> ';
         }
+        // Name the object the button acts on, without changing anything visible.
+        //
+        // The standing rule is never to put a name-extending visually-hidden span
+        // inside a control whose content is rebuilt at runtime, because the next
+        // innerHTML write destroys it. That rule is about spans added to STATIC
+        // markup. This is the safe case: the span is emitted BY the template that
+        // does the rebuilding (cached.actions.innerHTML = buttons.join("")), so
+        // every re-render recreates it in whatever the new state is.
+        // The separator is a NON-BREAKING space and must stay one — an ordinary
+        // space is collapsed by CSS because .visually-hidden is position:absolute.
+        // Full measurement in image-describer-model-manager-ui.js.
+        var suffixHtml = modelName
+            ? '<span class="visually-hidden">\u00A0— ' + modelName + "</span>"
+            : "";
         return (
             '<button class="imgdesc-mm-action-btn" onclick="' +
-            onclickStr + '">' + iconHtml + label + "</button>"
+            onclickStr + '">' + iconHtml + label + suffixHtml + "</button>"
         );
     }
 
@@ -460,7 +542,11 @@
         }
 
         if (loaded.length === 0) {
-            gpuEls.list.innerHTML = '<p class="setup-tm-gpu-empty">No models loaded in GPU memory</p>';
+            // Write-if-changed. #setup-tm-gpu-status is role="status" aria-live, so an
+            // unconditional assignment announces even when the markup is identical.
+            // Measured 2 August 2026: this exact string was written TWELVE times on one
+            // page load, and a human heard it repeated through NVDA.
+            setListHTML('<p class="setup-tm-gpu-empty">No models loaded in GPU memory</p>');
             return;
         }
 
@@ -478,11 +564,31 @@
                 '<span class="setup-tm-gpu-model-name">' + model.displayName + '</span>' +
                 '<span class="setup-tm-engine-badge" aria-hidden="true">' + engineLabel + '</span>' +
                 '<span class="setup-tm-gpu-size">' + model.estimatedMB + ' MB</span>' +
+                // Same SC 2.4.6 suffix as makeButton(), applied by hand because this
+                // GPU list builds its button inline rather than going through it.
+                // Emitted by the template that rebuilds the list, so it survives.
                 '<button class="imgdesc-mm-action-btn" onclick="localTMUnload(\'' + model.key + '\')">' +
-                iconHtml + 'Unload</button>' +
+                iconHtml + 'Unload' +
+                '<span class="visually-hidden">\u00A0— ' + model.displayName + '</span>' +
+                '</button>' +
                 '</div>';
         }
 
+        setListHTML(html);
+    }
+
+    /**
+     * Assign the GPU list markup only when it differs from what is already there.
+     *
+     * The container is a live region, so an identical re-assignment is a mutation
+     * the reader announces again — never useful, because the text has not changed.
+     * refreshGPUStatus() runs once per model state event, so at load that is a dozen
+     * identical writes.
+     *
+     * @param {string} html
+     */
+    function setListHTML(html) {
+        if (!gpuEls.list || gpuEls.list.innerHTML === html) return;
         gpuEls.list.innerHTML = html;
     }
 

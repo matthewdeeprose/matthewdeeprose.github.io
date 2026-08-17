@@ -122,8 +122,11 @@ const GraphBuilderNotifications = (function () {
       this.container = document.createElement("div");
       this.container.id = "gb-toast-container";
       this.container.className = "gb-toast-container";
-      this.container.setAttribute("aria-live", "polite");
-      this.container.setAttribute("aria-label", "Notifications");
+      // Deliberately NOT a live region. A live container announces its own
+      // emptying (heard on NVDA as "Notifications" after every dismiss) and
+      // nests an error toast's role="alert" inside it, so errors speak twice.
+      // The announcement goes through announceToast() instead — see the
+      // arrangement history in createToast() in js/universal-notifications.js.
 
       // Position at top-right of viewport
       this.container.style.cssText = `
@@ -205,11 +208,11 @@ const GraphBuilderNotifications = (function () {
       const toast = document.createElement("div");
       toast.id = toastId;
       toast.className = `gb-toast gb-toast-${type}`;
-      toast.setAttribute("role", type === "error" ? "alert" : "status");
-      toast.setAttribute(
-        "aria-live",
-        type === "error" ? "assertive" : "polite"
-      );
+      // NO live-region role on the toast. A per-toast role="status" was
+      // measured SILENT on NVDA (4 August 2026, Test D) — a live region
+      // created in the same tick as its content is not registered in time —
+      // and role="alert" made errors speak twice (Test E). The toast is
+      // visual only; the single announcement goes through announceToast().
 
       // Apply base classes (CSS will handle styling)
       toast.classList.add("gb-toast-base");
@@ -378,35 +381,20 @@ const GraphBuilderNotifications = (function () {
      * @param {string} type - Toast type
      */
     announceToast(message, type) {
-      const announcement = `${type === "error" ? "Error: " : ""}${message}`;
-
-      let announcer = document.getElementById("gb-toast-announcer");
-      if (!announcer) {
-        announcer = document.createElement("div");
-        announcer.id = "gb-toast-announcer";
-        announcer.setAttribute("aria-live", "assertive");
-        announcer.setAttribute("aria-atomic", "true");
-        announcer.className = "sr-only";
-        announcer.style.cssText = `
-          position: absolute;
-          width: 1px;
-          height: 1px;
-          padding: 0;
-          margin: -1px;
-          overflow: hidden;
-          clip: rect(0, 0, 0, 0);
-          white-space: nowrap;
-          border: 0;
-        `;
-        document.body.appendChild(announcer);
+      // Speak through the app's PERMANENT announcer (window.accessibilityHelpers,
+      // resolved at call time, never cached — AGENTS.md § Announcements), exactly
+      // as js/universal-notifications.js does. The previous self-made
+      // #gb-toast-announcer was created in the same tick as its first message,
+      // which screen readers do not register in time (its first toast was
+      // measured silent on NVDA, 4 August 2026), and it was assertive, so every
+      // later info toast interrupted whatever was being spoken.
+      const announcer = window.accessibilityHelpers;
+      if (!announcer || typeof announcer.announce !== "function") {
+        logWarn("No screen-reader announcer available; toast not announced");
+        return;
       }
-
-      announcer.textContent = announcement;
-
-      // Clear after announcement
-      setTimeout(() => {
-        announcer.textContent = "";
-      }, 1000);
+      // Errors interrupt; everything else waits its turn.
+      announcer.announce(message, type === "error" ? "assertive" : "polite");
     }
 
     /**

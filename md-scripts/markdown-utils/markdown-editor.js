@@ -89,6 +89,12 @@ const MarkdownEditor = (function () {
         ],
       },
     },
+    // DEAD AS MEASURED — this object is referenced nowhere in the repository
+    // (docs/mermaid-securitylevel-matrix-2026-08-08.md section 1.1: a repo-wide
+    // search for "mermaidConfig" returns exactly one hit, this declaration).
+    // The live Mermaid config is initializeMermaid() below. Left in place rather
+    // than deleted here because deletion belongs to register item 12's dead-code
+    // remit — delete it or wire it there, not in passing.
     mermaidConfig: {
       startOnLoad: false,
       theme: "default",
@@ -110,6 +116,49 @@ const MarkdownEditor = (function () {
 
   // Live editor instance
   let liveMarkdownEditor = null;
+
+  // SCORM/HTML export control (mounted beside the rendered output on init).
+  // This module is a classic IIFE, so it cannot statically import the ESM export
+  // control. We capture THIS script's own URL at parse time (document.currentScript
+  // is only valid during initial synchronous execution) and later resolve the
+  // sibling ES module relative to it — robust whether the app is served from the
+  // site root or a project subpath, and independent of the document base URL.
+  const MODULE_SCRIPT_URL =
+    (document.currentScript && document.currentScript.src) || "";
+  let scormExportControl = null;
+
+  // Derive a sensible package/document title from the first Markdown heading.
+  function deriveExportTitle() {
+    const source = elements.markdownInput ? elements.markdownInput.value : "";
+    const firstHeading = (source.match(/^\s*#\s+(.+)$/m) || [])[1];
+    return (firstHeading || "Markdown document").trim();
+  }
+
+  // Lazily import and mount the shared, accessible export control next to #output.
+  // Idempotent: a second call (e.g. re-init) is a no-op once mounted.
+  function mountScormExportControl() {
+    if (scormExportControl || !elements.output || !MODULE_SCRIPT_URL) return;
+    const controlUrl = new URL(
+      "../../js/scorm-export/export-control.js",
+      MODULE_SCRIPT_URL
+    ).href;
+    import(controlUrl)
+      .then(({ mountExportControl }) => {
+        // Guard against a race where initialize() ran twice before the import settled.
+        if (scormExportControl) return;
+        scormExportControl = mountExportControl({
+          container: elements.output.parentNode || elements.output,
+          getContent: () =>
+            elements.output ? elements.output.innerHTML : "",
+          format: "html",
+          getTitle: deriveExportTitle,
+          idPrefix: "md-scorm-export",
+        });
+      })
+      .catch((err) =>
+        Logger.error("SCORM export control failed to load:", err)
+      );
+  }
 
   // Notification utilities using UniversalNotifications
   const NotificationHandler = {
@@ -895,6 +944,29 @@ const MarkdownEditor = (function () {
     }
   }
 
+  /**
+   * Escape HTML entities so a string can be placed inside element content
+   * without being parsed as markup.
+   *
+   * The ampersand must be replaced first, or the entities introduced by the
+   * later replacements would themselves be re-escaped.
+   *
+   * This round-trips exactly: a div written with `&lt;b&gt;` reads back a
+   * textContent of `<b>`, so any consumer reading the element's textContent
+   * receives the identical source it would have received before escaping.
+   *
+   * @param {string} str - Raw text to escape
+   * @returns {string} The text with HTML-significant characters replaced
+   */
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   // Mermaid diagram rendering
   function renderMermaid(code) {
     try {
@@ -973,10 +1045,22 @@ const MarkdownEditor = (function () {
         }
       }, 0);
 
+      // The diagram source is placed in the div as a placeholder only — the
+      // render above is driven from the cleanCode variable, and every
+      // downstream consumer reads this element's textContent, never its
+      // innerHTML. Escaping it keeps that read identical while stopping the
+      // source being parsed as live markup on the way in.
+      const escapedCode = escapeHtml(cleanCode);
+      if (escapedCode !== cleanCode) {
+        Logger.debug(
+          `Escaped HTML-significant characters in diagram source for ${mermaidId}`
+        );
+      }
+
       return `<div class="mermaid-container" aria-label="Diagram" role="figure" data-diagram-code="${encodeURIComponent(
         cleanCode
       )}">
-              <div id="${mermaidId}" class="mermaid">${cleanCode}</div>
+              <div id="${mermaidId}" class="mermaid">${escapedCode}</div>
             </div>`;
     } catch (err) {
       NotificationHandler.showError("Invalid mermaid diagram", err);
@@ -1041,10 +1125,15 @@ const MarkdownEditor = (function () {
   // Initialize mermaid
   function initializeMermaid() {
     if (window.mermaid) {
+      // securityLevel "strict" matches what production actually runs. This call
+      // is dead in effect today — tools.html's later bare initialize resets the
+      // level regardless (docs/mermaid-securitylevel-matrix-2026-08-08.md
+      // section 1.3) — but it becomes live the moment load order changes, and
+      // the code should say one thing about the level rather than two.
       mermaid.initialize({
         startOnLoad: false,
         theme: "default",
-        securityLevel: "loose",
+        securityLevel: "strict",
       });
     }
   }
@@ -1601,6 +1690,9 @@ const MarkdownEditor = (function () {
 
       return false;
     }
+
+    // Mount the accessible "Export to SCORM/HTML" control beside the output.
+    mountScormExportControl();
 
     // Load saved content
     AutoSave.load();
