@@ -218,11 +218,63 @@ html {
   color: var(--ui-fail);
 }
 
+/* --- The importance list ------------------------------------------ */
+
+.dpg-orderlist {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  max-width: 30rem;
+}
+
+.dpg-orderlist li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--ui-line);
+  border-radius: 0.25rem;
+  background: var(--ui-note-bg);
+  padding: 0.3rem 0.5rem;
+  margin: 0 0 0.3rem;
+}
+
+.dpg-ordername {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+
+.dpg-ordernote {
+  font-weight: 400;
+  color: var(--ui-muted);
+  font-size: 0.85rem;
+}
+
+.dpg-orderlist button {
+  flex: none;
+  padding: 0.25rem 0.6rem;
+}
+
+.dpg-orderlist button[disabled] {
+  opacity: 0.45;
+}
+
 /* --- Step 2: the demo cluster, chips and ratings ------------------ */
 
 .dpg-panelfield {
   margin: 0.75rem 0 0;
   max-width: 30rem;
+}
+
+/* Two fieldsets side by side, so the pinned column stays short. */
+.dpg-demorow {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  gap: 0 1.5rem;
+}
+
+.dpg-seeitas .dpg-radiorow {
+  max-width: 34rem;
 }
 
 .dpg-checkrow {

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Door Panel Guide report</title>
+    <!-- The guide's evidence page: it renders the payload the guide
+         stored under its own localStorage key, and COMPUTES NOTHING -
+         the studio's evidence pattern, so two copies of a figure
+         cannot disagree. Self-contained on purpose: a printed or saved
+         copy needs no other file. -->
+    <style>
+      * {
+        transition: none;
+        animation: none;
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0 auto;
+        padding: 1.5rem;
+        max-width: 50rem;
+        background: #fafafa;
+        color: #111111;
+        font-family: "Segoe UI", system-ui, -apple-system,
+          "Helvetica Neue", Arial, sans-serif;
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      a {
+        color: #005c84;
+      }
+
+      :focus-visible {
+        outline: 3px solid #005c84;
+        outline-offset: 2px;
+      }
+
+      h1 {
+        font-size: 1.7rem;
+        line-height: 1.25;
+        margin: 0.5rem 0;
+      }
+
+      h2 {
+        font-size: 1.25rem;
+        margin: 1.25rem 0 0.5rem;
+      }
+
+      p {
+        margin: 0 0 0.6rem;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 0.5rem 0 1rem;
+      }
+
+      caption {
+        text-align: left;
+        font-weight: 600;
+        padding: 0 0 0.3rem;
+      }
+
+      th,
+      td {
+        border: 1px solid #9eb1bd;
+        padding: 0.35rem 0.5rem;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        background: #f5f5f5;
+      }
+
+      .rpt-swatch {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        border: 1px solid #495961;
+        border-radius: 0.2rem;
+        vertical-align: -0.15rem;
+      }
+
+      .rpt-status {
+        margin: 0 0 0.75rem;
+      }
+
+      .rpt-status > p:first-child {
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+      }
+
+      .rpt-quiet {
+        color: #495961;
+        font-size: 0.9rem;
+      }
+
+      .rpt-actions {
+        margin: 1rem 0;
+      }
+
+      button {
+        font: inherit;
+        padding: 0.4rem 0.9rem;
+        border: 1px solid #005c84;
+        border-radius: 0.25rem;
+        background: #005c84;
+        color: #ffffff;
+      }
+
+      @media print {
+        .rpt-actions,
+        .rpt-back {
+          display: none;
+        }
+
+        body {
+          background: #ffffff;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <p class="rpt-back">
+      <a href="door-panel-guide.html">Back to the Door Panel Guide</a>
+    </p>
+
+    <main>
+      <h1>Door panel design report</h1>
+
+      <div class="rpt-actions">
+        <button type="button" onclick="window.print()">
+          Print this report
+        </button>
+      </div>
+
+      <div id="rptBody">
+        <p>
+          There is nothing to show yet. Open the Door Panel Guide, make
+          your choices, and press "Open this as a printable report".
+        </p>
+      </div>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        // Logging configuration (inside IIFE scope)
+        const LOG_LEVELS = {
+          ERROR: 0,
+          WARN: 1,
+          INFO: 2,
+          DEBUG: 3,
+        };
+
+        const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+        const ENABLE_ALL_LOGGING = false;
+        const DISABLE_ALL_LOGGING = false;
+
+        function shouldLog(level) {
+          if (DISABLE_ALL_LOGGING) return false;
+          if (ENABLE_ALL_LOGGING) return true;
+          return level <= DEFAULT_LOG_LEVEL;
+        }
+
+        function logError(message, ...args) {
+          if (shouldLog(LOG_LEVELS.ERROR)) console.error(message, ...args);
+        }
+
+        function logWarn(message, ...args) {
+          if (shouldLog(LOG_LEVELS.WARN)) console.warn(message, ...args);
+        }
+
+        function logInfo(message, ...args) {
+          if (shouldLog(LOG_LEVELS.INFO)) console.log(message, ...args);
+        }
+
+        function logDebug(message, ...args) {
+          if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
+        }
+
+        // The guide's hand-off key. This page only ever READS it.
+        const REPORT_PAYLOAD_KEY = "dpg-report-payload";
+
+        function paragraph(host, text, quiet) {
+          const line = document.createElement("p");
+          if (quiet) line.className = "rpt-quiet";
+          line.textContent = text;
+          host.appendChild(line);
+        }
+
+        function heading(host, text) {
+          const h = document.createElement("h2");
+          h.textContent = text;
+          host.appendChild(h);
+        }
+
+        function buildTable(host, captionText, columns, rows) {
+          const table = document.createElement("table");
+          const caption = document.createElement("caption");
+          caption.textContent = captionText;
+          table.appendChild(caption);
+          const head = document.createElement("thead");
+          const headRow = document.createElement("tr");
+          columns.forEach((column) => {
+            const th = document.createElement("th");
+            th.scope = "col";
+            th.textContent = column;
+            headRow.appendChild(th);
+          });
+          head.appendChild(headRow);
+          table.appendChild(head);
+          const body = document.createElement("tbody");
+          rows.forEach((cells) => {
+            const tr = document.createElement("tr");
+            cells.forEach((text, index) => {
+              const cell = document.createElement(
+                index === 0 ? "th" : "td"
+              );
+              if (index === 0) cell.scope = "row";
+              cell.textContent = text;
+              tr.appendChild(cell);
+            });
+            body.appendChild(tr);
+          });
+          table.appendChild(body);
+          host.appendChild(table);
+        }
+
+        function render(payload) {
+          const host = document.getElementById("rptBody");
+          host.textContent = "";
+
+          paragraph(host, payload.intro);
+          paragraph(host, payload.panelSentence);
+
+          if (payload.order && payload.order.length) {
+            heading(host, "Order of importance");
+            paragraph(host, payload.orderIntro, true);
+            const orderList = document.createElement("ol");
+            payload.order.forEach((entry) => {
+              const item = document.createElement("li");
+              item.textContent =
+                entry.name +
+                " - " +
+                entry.sized +
+                (entry.shown ? "" : " (not shown on this panel)");
+              orderList.appendChild(item);
+            });
+            host.appendChild(orderList);
+          }
+
+          buildTable(
+            host,
+            "What the panel says",
+            ["Line", "Words", "Read from", "Letter size"],
+            payload.lines.map((line) =>
+              line.included
+                ? [line.name, line.content, line.readFrom, line.sizeSentence]
+                : [line.name, "Not shown on this panel", "-", "-"]
+            )
+          );
+
+          heading(host, "The colours, measured");
+          payload.statuses.forEach((status) => {
+            const block = document.createElement("div");
+            block.className = "rpt-status";
+            const name = document.createElement("p");
+            const swatch = document.createElement("span");
+            swatch.className = "rpt-swatch";
+            swatch.setAttribute("aria-hidden", "true");
+            swatch.style.background = status.hex;
+            name.appendChild(swatch);
+            name.appendChild(
+              document.createTextNode(
+                " " + status.wording + ": " + status.colourName
+              )
+            );
+            block.appendChild(name);
+            status.sentences.forEach((sentence) => {
+              paragraph(block, sentence, true);
+            });
+            host.appendChild(block);
+          });
+
+          heading(host, "Does it fit?");
+          paragraph(host, payload.fitSentence);
+          paragraph(host, payload.designForSentence);
+
+          heading(host, "Readability, for information");
+          buildTable(
+            host,
+            "Reading age per section of the guide",
+            ["Section", "Words", "Reading age"],
+            payload.readability.map((row) => [
+              row.section,
+              String(row.words),
+              String(row.readingAge),
+            ])
+          );
+          paragraph(host, payload.readabilityNote, true);
+
+          paragraph(host, payload.honesty);
+          logInfo("Report rendered from the stored payload");
+        }
+
+        let payload = null;
+        try {
+          const stored = window.localStorage.getItem(REPORT_PAYLOAD_KEY);
+          if (stored) payload = JSON.parse(stored);
+        } catch (error) {
+          logError("The stored report payload could not be read", error);
+        }
+
+        if (payload && payload.kind === "door-panel-guide-report") {
+          render(payload);
+        } else {
+          logInfo(
+            "No report payload found - the empty-state message stands"
+          );
+        }
+      })();
+    </script>
+  </body>
+</html>

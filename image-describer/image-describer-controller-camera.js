@@ -98,11 +98,10 @@
           onCapture: (file) => {
             this.showCapturedPreview(file);
           },
-          onStatusChange: (message) => {
-            if (this.elements.cameraStatusText) {
-              this.elements.cameraStatusText.textContent = message;
-            }
-          },
+          // No onStatusChange handler: the module's own updateStatus() already
+          // writes #imgdesc-camera-status via controls.statusElement below, so
+          // a handler here would write the same region a second time for the
+          // same event. Omitting the key leaves the module's guard false.
           onNotification: (message, type) => {
             if (type === "error") {
               if (window.notifyError) window.notifyError(message);
@@ -365,8 +364,9 @@
         // Enter standard pipeline with orientation-corrected image
         await this.handleFileSelect(finalFile);
 
-        // Announce and notify
-        this.announceCameraStatus("Photo ready for description");
+        // Notify only. The toast announces in its own right and carries the
+        // identical string, so a paired announceCameraStatus here would be a
+        // doubled event rather than a second audience.
         if (window.notifySuccess) {
           window.notifySuccess("Photo ready for description");
         }
@@ -458,13 +458,31 @@
     },
 
     /**
-     * Announce a message via the camera status aria-live region
+     * Announce a message via the camera status aria-live region.
+     *
+     * Writes #imgdesc-camera-status, the role="status" region the shared
+     * camera module also writes through its own updateStatus(). That role
+     * supplies an implicit aria-atomic="true", so the whole region is
+     * re-announced on any mutation — and replacing a text node with an
+     * identical string is still a mutation. The equality check is therefore
+     * load-bearing, not an optimisation: without it, repeating a message
+     * would speak it again.
+     *
      * @param {string} message - Message to announce
      */
     announceCameraStatus(message) {
-      if (this.elements.cameraStatusText) {
-        this.elements.cameraStatusText.textContent = message;
+      const statusEl = this.elements.cameraStatus;
+
+      if (!statusEl) {
+        logWarn("Cannot announce camera status - region not found");
+        return;
       }
+
+      if (statusEl.textContent === message) {
+        return;
+      }
+
+      statusEl.textContent = message;
     },
 
     /**

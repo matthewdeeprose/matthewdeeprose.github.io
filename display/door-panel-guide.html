@@ -55,9 +55,11 @@
               Colours</a
             >
           </li>
-          <li class="dpg-step dpg-step-later">
-            <span class="dpg-step-number" aria-hidden="true">3</span>
-            Result <span class="dpg-step-note">(not built yet)</span>
+          <li class="dpg-step dpg-step-now">
+            <a class="dpg-step-link" href="#dpg-step3"
+              ><span class="dpg-step-number" aria-hidden="true">3</span>
+              Result</a
+            >
           </li>
         </ol>
       </nav>
@@ -116,29 +118,24 @@
 
         <p class="dps-hint" id="dpgScaleNote">Measuring the window&hellip;</p>
 
-        <!-- The demo cluster: try each state under the thing it changes. -->
-        <fieldset class="dpg-distance dpg-panelfield">
-          <legend>Show the panel as</legend>
-          <div class="dpg-radiorow" id="dpgStateRadios"></div>
-        </fieldset>
+        <!-- The demo cluster: try each state under the thing it changes.
+             Laid out two-up and kept tight so the pinned column stays
+             shorter than a 1080p viewport - re-measured every time it
+             grows (the sticky lesson). -->
+        <!-- The demo cluster holds the two LOOK-controls; the Design
+             for switches are a measuring decision and live with the
+             other colour decisions in step 2 (Matthew, iteration G4). -->
+        <div class="dpg-demorow">
+          <fieldset class="dpg-distance dpg-panelfield">
+            <legend>Show the panel as</legend>
+            <div class="dpg-radiorow" id="dpgStateRadios"></div>
+          </fieldset>
 
-        <fieldset class="dpg-distance dpg-panelfield">
-          <legend>Design for</legend>
-          <div class="dpg-checkrow">
-            <div>
-              <input type="checkbox" id="dpgDesignCvd" checked />
-              <label for="dpgDesignCvd">Colour blindness</label>
-            </div>
-            <div>
-              <input type="checkbox" id="dpgDesignGrey" />
-              <label for="dpgDesignGrey">Greyscale</label>
-            </div>
-          </div>
-          <p class="dps-hint">
-            We measure both either way. A tick means the closest-pair
-            figure counts that way of seeing.
-          </p>
-        </fieldset>
+          <fieldset class="dpg-distance dpg-panelfield dpg-seeitas">
+            <legend>See it as</legend>
+            <div class="dpg-radiorow" id="dpgSimulationRadios"></div>
+          </fieldset>
+        </div>
 
         <h3>Panel space used</h3>
         <div class="dpg-meter" aria-hidden="true">
@@ -178,6 +175,24 @@
             sight loss are included.
           </p>
         </details>
+
+        <section class="dps-card dpg-card" aria-labelledby="dpgCardOrderH">
+          <h3 id="dpgCardOrderH">What matters most?</h3>
+          <p>
+            Put the most important thing at the top. It gets the biggest
+            letters. Everything else gets smaller letters down the list,
+            and the page keeps the panel fitting as you change your mind.
+            You can still fine-tune any line's size below.
+          </p>
+          <ol class="dpg-orderlist" id="dpgOrderList"></ol>
+          <button type="button" id="dpgOrderReset">
+            Use automatic sizes again
+          </button>
+          <p class="dps-hint">
+            This clears any sizes you picked yourself and sizes every
+            line from your order.
+          </p>
+        </section>
 
         <section class="dps-card dpg-card" aria-labelledby="dpgCardStatusH">
           <h3 id="dpgCardStatusH">Status word</h3>
@@ -320,6 +335,30 @@
           three kinds of colour blindness, and in greyscale.
         </p>
 
+        <section
+          class="dps-card dpg-card"
+          aria-labelledby="dpgCardDesignForH"
+        >
+          <h3 id="dpgCardDesignForH">Design for</h3>
+          <fieldset class="dpg-distance">
+            <legend>Design for</legend>
+            <div class="dpg-checkrow">
+              <div>
+                <input type="checkbox" id="dpgDesignCvd" checked />
+                <label for="dpgDesignCvd">Colour blindness</label>
+              </div>
+              <div>
+                <input type="checkbox" id="dpgDesignGrey" />
+                <label for="dpgDesignGrey">Greyscale</label>
+              </div>
+            </div>
+            <p class="dps-hint">
+              Both are always measured. A tick means the closest-pair
+              figure counts that way of seeing.
+            </p>
+          </fieldset>
+        </section>
+
         <section class="dps-card dpg-card" aria-labelledby="dpgCardSchemeH">
           <h3 id="dpgCardSchemeH">Start from a scheme</h3>
           <p>
@@ -334,6 +373,12 @@
 
         <section class="dps-card dpg-card" aria-labelledby="dpgCardFreeH">
           <h3 id="dpgCardFreeH">Free</h3>
+          <p>
+            These colours were tested with the status word at its
+            recommended size. If you set the status word nearer in step 1,
+            check the first rating line below - it says whether the word
+            still clears its gate.
+          </p>
           <fieldset class="dpg-distance">
             <legend>Pick a colour for Free</legend>
             <div class="dpg-chiprow" data-status-chips="free"></div>
@@ -343,6 +388,12 @@
 
         <section class="dps-card dpg-card" aria-labelledby="dpgCardSoonH">
           <h3 id="dpgCardSoonH">Starting soon</h3>
+          <p>
+            These colours were tested with the status word at its
+            recommended size. If you set the status word nearer in step 1,
+            check the first rating line below - it says whether the word
+            still clears its gate.
+          </p>
           <fieldset class="dpg-distance">
             <legend>Pick a colour for Starting soon</legend>
             <div class="dpg-chiprow" data-status-chips="soon"></div>
@@ -352,12 +403,40 @@
 
         <section class="dps-card dpg-card" aria-labelledby="dpgCardRunningH">
           <h3 id="dpgCardRunningH">In use</h3>
+          <p>
+            These colours were tested with the status word at its
+            recommended size. If you set the status word nearer in step 1,
+            check the first rating line below - it says whether the word
+            still clears its gate.
+          </p>
           <fieldset class="dpg-distance">
             <legend>Pick a colour for In use</legend>
             <div class="dpg-chiprow" data-status-chips="running"></div>
           </fieldset>
           <div class="dpg-ratings" id="dpgRatings-running"></div>
         </section>
+
+        <h2 id="dpg-step3">Step 3: your panel, measured</h2>
+        <p>
+          This is the record of everything you chose, with its
+          measurements. It updates as you change things in steps 1 and 2,
+          so you can go back and forth as often as you like.
+        </p>
+
+        <section class="dps-card dpg-card" aria-labelledby="dpgScorecardH">
+          <h3 id="dpgScorecardH">Scorecard</h3>
+          <div id="dpgScorecard"><p>Measuring&hellip;</p></div>
+        </section>
+
+        <p>
+          <a id="dpgReportLink" href="door-panel-guide-report.html"
+            >Open this as a printable report</a
+          >
+        </p>
+        <p class="dps-hint">
+          The report opens on its own page and prints cleanly. Use your
+          browser's back button to come back and change anything.
+        </p>
 
         <details class="dpg-checks" id="dpgChecksDisclosure">
           <summary>How this page checks its own sums</summary>
@@ -374,6 +453,7 @@
           <div id="dpgChecksReport">
             <p>The checks have not run yet.</p>
           </div>
+          <div id="dpgReadability"></div>
         </details>
       </main>
     </div>

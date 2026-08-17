@@ -114,6 +114,20 @@
     greyscale: "greyscale",
   });
 
+  // The "See it as" choices: the panel through each simulated way of
+  // seeing. The first is no simulation at all.
+  const SIMULATION_CHOICES = Object.freeze([
+    Object.freeze({ id: "none", label: "My own eyes - no simulation" }),
+    Object.freeze({ id: "protanopia", label: MODE_WORDS.protanopia }),
+    Object.freeze({ id: "deuteranopia", label: MODE_WORDS.deuteranopia }),
+    Object.freeze({ id: "tritanopia", label: MODE_WORDS.tritanopia }),
+    Object.freeze({ id: "greyscale", label: "Greyscale" }),
+  ]);
+
+  // The evidence-pattern hand-off: the guide's OWN key, so the studio's
+  // payload and this one can never collide.
+  const REPORT_PAYLOAD_KEY = "dpg-report-payload";
+
   /* ------------------------------------------------------------------
      Guide state: one distance per distance group, one include flag per
      toggleable line. The defaults reproduce the studio's recommended
@@ -138,6 +152,50 @@
     title: true,
   };
 
+  /* ------------------------------------------------------------------
+     IMPORTANCE ORDER AND AUTOMATIC BALANCING (iteration G5).
+
+     THE BALANCE RULE, deterministic: the rank template below is
+     assigned in rank order to the INCLUDED, UNPINNED items - excluded
+     items take no rung, pinned items keep their hand-picked value and
+     consume no rung. The default order reproduces DISTANCE_DEFAULTS
+     member for member (the anchor check), so the fit canary's ALLOW
+     state is unchanged by construction. Rebalancing is a PURE
+     re-derivation from (order, pins, includes, content): it always
+     starts from the template and then demotes to fit, so it has no
+     memory - shortening a title promotes everything straight back.
+     ------------------------------------------------------------------ */
+  const RANK_TEMPLATE = Object.freeze([1400, 1000, 700, 700, 600, 600]);
+
+  const ORDER_ITEMS = Object.freeze([
+    Object.freeze({ id: "status-text", label: "Status word" }),
+    Object.freeze({ id: "room", label: "Room name" }),
+    Object.freeze({ id: "times", label: "Times" }),
+    Object.freeze({ id: "title", label: "Booking title" }),
+    Object.freeze({ id: "code", label: "Course code" }),
+    Object.freeze({ id: "clock", label: "Clock and date" }),
+  ]);
+
+  const ORDINAL_WORDS = Object.freeze([
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+  ]);
+
+  let importanceOrder = ORDER_ITEMS.map((item) => item.id);
+
+  const pinned = {
+    "status-text": false,
+    room: false,
+    times: false,
+    title: false,
+    code: false,
+    clock: false,
+  };
+
   const el = {};
   let engineState = null;
   let frameHeightPx = 0;
@@ -145,6 +203,7 @@
   let announceEnabled = false;
   let lastAnnounced = "";
   let chipPool = [];
+  let lastPayload = null;
 
   /* ------------------------------------------------------------------
      Engine state. The studio fills its state inside init(), which the
@@ -518,6 +577,14 @@
   // writes) and fixed by giving each message stream its own memory.
   let lastBudgetSentence = "";
 
+  // While a rebalance settles, the budget sentence can pass through
+  // transient states (overflow, then fits again after a demotion) -
+  // one event, several would-be writes. Suspended, the sentence still
+  // updates on screen and lastBudgetSentence still tracks it; only the
+  // region write is held back, and runBalancedEvent speaks ONCE at the
+  // end.
+  let budgetAnnounceSuspended = false;
+
   function renderBudget(budget) {
     const sentence = budgetSentence(budget);
     el.budgetSentence.textContent = sentence;
@@ -526,7 +593,7 @@
     el.meterFill.classList.toggle("dpg-meter-over", !budget.ok);
     if (sentence !== lastBudgetSentence) {
       lastBudgetSentence = sentence;
-      announceVerdict(sentence);
+      if (!budgetAnnounceSuspended) announceVerdict(sentence);
     }
   }
 
@@ -547,6 +614,173 @@
   }
 
   /* ------------------------------------------------------------------
+     The balance machinery.
+     ------------------------------------------------------------------ */
+  function orderLabelFor(roleId) {
+    return ORDER_ITEMS.filter((item) => item.id === roleId)[0].label;
+  }
+
+  function itemIncludedInPanel(roleId) {
+    if (roleId === "status-text") return included.status;
+    if (roleId === "times" || roleId === "room") return included.timesroom;
+    if (roleId === "code") return included.code;
+    if (roleId === "title") return included.title;
+    return true; // the clock and date are always on
+  }
+
+  /** Template rungs, in rank order, to the included unpinned items. */
+  function computeTemplateAssignment() {
+    const assignment = {};
+    let rung = 0;
+    importanceOrder.forEach((roleId) => {
+      if (!itemIncludedInPanel(roleId)) return;
+      if (pinned[roleId]) return;
+      assignment[roleId] =
+        RANK_TEMPLATE[Math.min(rung, RANK_TEMPLATE.length - 1)];
+      rung += 1;
+    });
+    return assignment;
+  }
+
+  /**
+   * DEMOTE-TO-FIT. While the budget overflows, step the LOWEST-ranked
+   * automatic item down one rung and re-measure, working upward. The
+   * first automatic item - the holder of the 1400 rung - is never
+   * demoted: the most important thing keeping the biggest letters is
+   * the promise of the feature. Pinned items are never touched. If
+   * nothing automatic can step down any further, the ordinary overflow
+   * sentence and its levers take over unchanged.
+   */
+  function rebalance() {
+    const assignment = computeTemplateAssignment();
+    Object.keys(assignment).forEach((roleId) => {
+      chosenDistance[roleId] = assignment[roleId];
+    });
+    refresh();
+
+    const rungs = DISTANCE_CHOICES.map((choice) => choice.mm);
+    let guard = 0;
+    while (!lastBudget.fits && guard < 24) {
+      guard += 1;
+      const autoIds = importanceOrder.filter(
+        (roleId) => itemIncludedInPanel(roleId) && !pinned[roleId]
+      );
+      let stepped = false;
+      // From the bottom of the ranking upward, never index 0.
+      for (let i = autoIds.length - 1; i >= 1; i -= 1) {
+        const roleId = autoIds[i];
+        const index = rungs.indexOf(chosenDistance[roleId]);
+        if (index > 0) {
+          chosenDistance[roleId] = rungs[index - 1];
+          stepped = true;
+          break;
+        }
+      }
+      if (!stepped) break;
+      refresh();
+    }
+  }
+
+  /**
+   * One user event, one settled rebalance, AT MOST one region write.
+   * A move passes its own sentence; the verdict joins that same write
+   * only when the settle changed it. Eventless changes (radio pins,
+   * include toggles, typing, reset) speak only through the verdict,
+   * and only when it changed.
+   */
+  function runBalancedEvent(moveSentence) {
+    const beforeSentence = lastBudgetSentence;
+    budgetAnnounceSuspended = true;
+    try {
+      rebalance();
+    } finally {
+      budgetAnnounceSuspended = false;
+    }
+    const verdictChanged = lastBudgetSentence !== beforeSentence;
+    if (moveSentence) {
+      announceVerdict(
+        moveSentence + (verdictChanged ? " " + lastBudgetSentence : "")
+      );
+    } else if (verdictChanged) {
+      announceVerdict(lastBudgetSentence);
+    }
+  }
+
+  /* ------------------------------------------------------------------
+     The importance list UI. Rebuilt after every change; focus put back
+     on the same logical button, which travels with its item (or its
+     sibling when the item has just reached an end and that button is
+     now disabled - a disabled control cannot take focus).
+     ------------------------------------------------------------------ */
+  function moveItem(roleId, delta, direction) {
+    const from = importanceOrder.indexOf(roleId);
+    const to = from + delta;
+    if (to < 0 || to >= importanceOrder.length) return;
+    importanceOrder.splice(from, 1);
+    importanceOrder.splice(to, 0, roleId);
+    runBalancedEvent(
+      orderLabelFor(roleId) + " is now " + ORDINAL_WORDS[to] + "."
+    );
+    renderOrderList();
+    const wanted = document.getElementById(
+      "dpgOrder" + direction + "-" + roleId
+    );
+    const sibling = document.getElementById(
+      "dpgOrder" + (direction === "Up" ? "Down" : "Up") + "-" + roleId
+    );
+    if (wanted && !wanted.disabled) {
+      wanted.focus();
+    } else if (sibling && !sibling.disabled) {
+      sibling.focus();
+    }
+  }
+
+  function renderOrderList() {
+    el.orderList.textContent = "";
+    importanceOrder.forEach((roleId, index) => {
+      const item = document.createElement("li");
+
+      const name = document.createElement("span");
+      name.className = "dpg-ordername";
+      name.textContent = orderLabelFor(roleId);
+      if (!itemIncludedInPanel(roleId)) {
+        const note = document.createElement("span");
+        note.className = "dpg-ordernote";
+        note.textContent = " (not shown on this panel)";
+        name.appendChild(note);
+      }
+      item.appendChild(name);
+
+      [
+        { word: "Up", delta: -1, disabled: index === 0 },
+        {
+          word: "Down",
+          delta: 1,
+          disabled: index === importanceOrder.length - 1,
+        },
+      ].forEach((entry) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.id = "dpgOrder" + entry.word + "-" + roleId;
+        button.disabled = entry.disabled;
+        button.appendChild(
+          document.createTextNode("Move " + entry.word.toLowerCase())
+        );
+        const hidden = document.createElement("span");
+        hidden.className = "dps-visually-hidden";
+        hidden.textContent = ", " + orderLabelFor(roleId).toLowerCase();
+        button.appendChild(hidden);
+        button.addEventListener("click", () => {
+          moveItem(roleId, entry.delta, entry.word);
+        });
+        item.appendChild(button);
+      });
+
+      el.orderList.appendChild(item);
+    });
+  }
+
+  /* ------------------------------------------------------------------
      Derived-size sentences, one per distance group.
      ------------------------------------------------------------------ */
   function distanceWords(mm) {
@@ -557,6 +791,12 @@
 
   function roundedMm(value) {
     return Math.round(value * 10) / 10;
+  }
+
+  function sizingTailFor(roleId) {
+    return pinned[roleId]
+      ? " You chose this size yourself."
+      : " Sized automatically from your order.";
   }
 
   function derivedSentenceFor(roleId, derived) {
@@ -575,7 +815,8 @@
         roundedMm(cap) +
         " mm, readable from about " +
         distanceWords(S.Model.readingDistanceForCap(cap)) +
-        "."
+        "." +
+        sizingTailFor(roleId)
       );
     }
     return (
@@ -583,7 +824,8 @@
       roundedMm(cap) +
       " mm tall - readable from about " +
       distanceWords(chosenMm) +
-      "."
+      "." +
+      sizingTailFor(roleId)
     );
   }
 
@@ -968,6 +1210,616 @@
     );
   }
 
+  function buildSimulationRadios() {
+    SIMULATION_CHOICES.forEach((choice) => {
+      const wrap = document.createElement("div");
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "dpgSeeItAs";
+      input.id = "dpgSeeItAs-" + choice.id;
+      input.value = choice.id;
+      input.checked = engineState.simulation === choice.id;
+      input.addEventListener("change", () => {
+        if (!input.checked) return;
+        engineState.simulation = choice.id;
+        // A visual filter; the radio announces itself and no
+        // measurement changes, so nothing else speaks - the same
+        // arrangement as the state radios.
+        refresh();
+      });
+      const label = document.createElement("label");
+      label.setAttribute("for", input.id);
+      label.textContent = choice.label;
+      wrap.appendChild(input);
+      wrap.appendChild(label);
+      el.simulationRadios.appendChild(wrap);
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     STEP 3: THE SCORECARD AND ITS EXPORT.
+
+     ONE DERIVATION FEEDS EVERYTHING. buildReportPayload collects its
+     sentences from the very functions the live page renders with -
+     derivedSentenceFor for sizes, ratingSentences for colours,
+     budgetSentence for the fit - so the scorecard, the export and the
+     on-page ratings cannot disagree: they are the same strings from
+     the same derive() pass. The payload carries no timestamp, so the
+     same choices produce the same bytes on every build (the round-trip
+     stability the programme's evidence pattern asks for). The report
+     page renders the payload and computes nothing.
+     ------------------------------------------------------------------ */
+  function buildReportPayload(derived, budget, readability) {
+    const st = engineState;
+    const statusWordContent = S.Model.STATUSES.map((status) =>
+      wordingFor(status.id)
+    ).join(" / ");
+
+    const lines = [
+      {
+        name: "Status word",
+        included: included.status,
+        content: statusWordContent + " (changes with the room)",
+        readFrom: distanceWords(chosenDistance["status-text"]),
+        sizeSentence: derivedSentenceFor("status-text", derived),
+      },
+      {
+        name: "Times and room name",
+        included: included.timesroom,
+        content: st.content.times + " " + st.content.room,
+        readFrom:
+          distanceWords(chosenDistance.times) +
+          " (times), " +
+          distanceWords(chosenDistance.room) +
+          " (room name)",
+        sizeSentence:
+          "Times: " +
+          derivedSentenceFor("times", derived) +
+          " Room name: " +
+          derivedSentenceFor("room", derived),
+      },
+      {
+        name: "Course code",
+        included: included.code,
+        content: st.content.code,
+        readFrom: distanceWords(chosenDistance.code),
+        sizeSentence: derivedSentenceFor("code", derived),
+      },
+      {
+        name: "Booking title",
+        included: included.title,
+        content: st.content.title,
+        readFrom: distanceWords(chosenDistance.title),
+        sizeSentence: derivedSentenceFor("title", derived),
+      },
+      {
+        name: "Clock and date",
+        included: true,
+        content: st.content.clock + ", " + st.content.date,
+        readFrom: distanceWords(chosenDistance.clock),
+        sizeSentence: derivedSentenceFor("clock", derived),
+      },
+      {
+        name: "University logo",
+        included: true,
+        content: "The logo, at the size the panel was built with",
+        readFrom: "-",
+        sizeSentence: "A picture, not text - it has no reading distance.",
+      },
+    ];
+
+    return {
+      kind: "door-panel-guide-report",
+      title: "Door panel design report",
+      intro:
+        "Built with the Door Panel Guide. Every figure was measured in the browser at the moment the choices were made; this report renders those measurements and computes nothing.",
+      panelSentence:
+        "The panel is " +
+        st.geometry.panelWmm +
+        " by " +
+        st.geometry.panelHmm +
+        " mm. Letter sizes follow one rule: reading distance in millimetres, divided by 100.",
+      designForSentence:
+        "The closest-pair figures count " +
+        S.bindingSetLabel(st) +
+        ". Everything is measured in every way of seeing whatever is ticked.",
+      orderIntro:
+        "The lines in order of importance. The most important gets the biggest letters; sizes marked automatic were balanced from this order.",
+      order: importanceOrder.map((roleId) => ({
+        name: orderLabelFor(roleId),
+        shown: itemIncludedInPanel(roleId),
+        sized: pinned[roleId] ? "hand-picked" : "automatic",
+      })),
+      lines: lines,
+      statuses: S.Model.STATUSES.map((status) => ({
+        wording: wordingFor(status.id),
+        colourName: paletteNameFor(
+          st.colours["status-fill-" + status.id]
+        ),
+        hex: st.colours["status-fill-" + status.id],
+        sentences: ratingSentences(status.id, derived),
+      })),
+      fitSentence: budgetSentence(budget),
+      readability: readability || [],
+      readabilityNote: READABILITY_NOTE,
+      honesty:
+        "A clean set of figures here is not WCAG conformance. It is the set of measurements this guide makes, honestly reported.",
+    };
+  }
+
+  function renderScorecard(payload) {
+    const host = el.scorecard;
+    host.textContent = "";
+
+    const orderHeading = document.createElement("h4");
+    orderHeading.textContent = "Order of importance";
+    host.appendChild(orderHeading);
+    const orderIntro = document.createElement("p");
+    orderIntro.className = "dps-hint";
+    orderIntro.textContent = payload.orderIntro;
+    host.appendChild(orderIntro);
+    const orderList = document.createElement("ol");
+    payload.order.forEach((entry) => {
+      const item = document.createElement("li");
+      item.textContent =
+        entry.name +
+        " - " +
+        entry.sized +
+        (entry.shown ? "" : " (not shown on this panel)");
+      orderList.appendChild(item);
+    });
+    host.appendChild(orderList);
+
+    const table = document.createElement("table");
+    const caption = document.createElement("caption");
+    caption.textContent = "What the panel says";
+    table.appendChild(caption);
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    ["Line", "Words", "Read from", "Letter size"].forEach((text) => {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = text;
+      headRow.appendChild(th);
+    });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    const body = document.createElement("tbody");
+    payload.lines.forEach((line) => {
+      const row = document.createElement("tr");
+      const cells = line.included
+        ? [line.name, line.content, line.readFrom, line.sizeSentence]
+        : [line.name, "Not shown on this panel", "-", "-"];
+      cells.forEach((text, index) => {
+        const cell = document.createElement(index === 0 ? "th" : "td");
+        if (index === 0) cell.scope = "row";
+        cell.textContent = text;
+        row.appendChild(cell);
+      });
+      body.appendChild(row);
+    });
+    table.appendChild(body);
+    host.appendChild(table);
+
+    const coloursHeading = document.createElement("h4");
+    coloursHeading.textContent = "The colours, measured";
+    host.appendChild(coloursHeading);
+    payload.statuses.forEach((status) => {
+      const block = document.createElement("div");
+      const name = document.createElement("p");
+      const swatch = document.createElement("span");
+      swatch.className = "dpg-swatch";
+      swatch.setAttribute("aria-hidden", "true");
+      swatch.style.background = status.hex;
+      name.appendChild(swatch);
+      name.appendChild(
+        document.createTextNode(
+          " " + status.wording + ": " + status.colourName
+        )
+      );
+      name.style.fontWeight = "600";
+      block.appendChild(name);
+      status.sentences.forEach((sentence) => {
+        const line = document.createElement("p");
+        line.className = "dps-hint";
+        line.textContent = sentence;
+        block.appendChild(line);
+      });
+      host.appendChild(block);
+    });
+
+    const fitHeading = document.createElement("h4");
+    fitHeading.textContent = "Does it fit?";
+    host.appendChild(fitHeading);
+    [payload.fitSentence, payload.designForSentence, payload.honesty].forEach(
+      (text) => {
+        const line = document.createElement("p");
+        line.textContent = text;
+        host.appendChild(line);
+      }
+    );
+  }
+
+  function wireReportLink() {
+    el.reportLink.addEventListener("click", () => {
+      try {
+        window.localStorage.setItem(
+          REPORT_PAYLOAD_KEY,
+          JSON.stringify(lastPayload)
+        );
+      } catch (error) {
+        // The link still navigates; the report page says plainly that
+        // it has nothing to show.
+        logError("The report payload could not be stored", error);
+      }
+    });
+  }
+
+  /* ------------------------------------------------------------------
+     READABILITY - informational, instrument stated. The studio's
+     iteration 12 instrument: Flesch-Kincaid grade plus five for a
+     reading age, syllables counted as vowel groups, measured on the
+     section's own visible text. Control labels and figures are counted
+     with the prose, which pushes the number up; the note says so.
+     ------------------------------------------------------------------ */
+  const READABILITY_NOTE =
+    "Reading age is Flesch-Kincaid grade plus five, with syllables counted as vowel groups, measured on each section's visible text including its control labels and figures (which push the number up). A rough instrument, reported for information; Matthew's read is the real gate.";
+
+  function syllablesIn(word) {
+    const groups = word.toLowerCase().match(/[aeiouy]+/g);
+    return groups ? groups.length : 1;
+  }
+
+  function readingAgeOf(text) {
+    const words = (text.match(/[A-Za-z0-9']+/g) || []).filter(
+      (word) => /[a-z]/i.test(word)
+    );
+    const sentences = Math.max(
+      1,
+      (text.match(/[.!?]+(?=\s|$)/g) || []).length
+    );
+    if (!words.length) return null;
+    const syllables = words.reduce(
+      (total, word) => total + syllablesIn(word),
+      0
+    );
+    const grade =
+      0.39 * (words.length / sentences) +
+      11.8 * (syllables / words.length) -
+      15.59;
+    return {
+      words: words.length,
+      sentences: sentences,
+      readingAge: Math.round((grade + 5) * 10) / 10,
+    };
+  }
+
+  function sectionTextBetween(fromId, toId) {
+    const start = document.getElementById(fromId);
+    const end = toId ? document.getElementById(toId) : null;
+    const parts = [];
+    let node = start;
+    while (node && node !== end) {
+      // The checks disclosure is diagnostics, not the journey's prose.
+      if (!node.classList || !node.classList.contains("dpg-checks")) {
+        parts.push(node.innerText || "");
+      }
+      node = node.nextElementSibling;
+    }
+    return parts.join(" ");
+  }
+
+  function readabilityRows() {
+    const sections = [
+      { name: "Step 1 - lines", from: "dpg-step1", to: "dpg-step2" },
+      { name: "Step 2 - colours", from: "dpg-step2", to: "dpg-step3" },
+      { name: "Step 3 - result", from: "dpg-step3", to: null },
+    ];
+    return sections.map((section) => {
+      const measured = readingAgeOf(
+        sectionTextBetween(section.from, section.to)
+      );
+      return {
+        section: section.name,
+        words: measured ? measured.words : 0,
+        readingAge: measured ? measured.readingAge : null,
+      };
+    });
+  }
+
+  function renderReadability(rows) {
+    const host = el.readability;
+    host.textContent = "";
+    const table = document.createElement("table");
+    const caption = document.createElement("caption");
+    caption.textContent = "Readability, for information - nothing gates on it";
+    table.appendChild(caption);
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    ["Section", "Words", "Reading age"].forEach((text) => {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = text;
+      headRow.appendChild(th);
+    });
+    head.appendChild(headRow);
+    table.appendChild(head);
+    const body = document.createElement("tbody");
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      [row.section, String(row.words), String(row.readingAge)].forEach(
+        (text, index) => {
+          const cell = document.createElement(index === 0 ? "th" : "td");
+          if (index === 0) cell.scope = "row";
+          cell.textContent = text;
+          tr.appendChild(cell);
+        }
+      );
+      body.appendChild(tr);
+    });
+    table.appendChild(body);
+    host.appendChild(table);
+    const note = document.createElement("p");
+    note.className = "dps-hint";
+    note.textContent = READABILITY_NOTE;
+    host.appendChild(note);
+  }
+
+  /* ------------------------------------------------------------------
+     Report checks: the by-construction claims, asserted anyway.
+     ------------------------------------------------------------------ */
+  function runReportChecks() {
+    const rows = [];
+
+    // Two separate derivations must produce byte-identical payloads -
+    // the round-trip stability the evidence pattern asks for. The
+    // measured readability is passed in, the same as the live payload
+    // carries, so the comparison covers the whole object.
+    const first = JSON.stringify(
+      buildReportPayload(
+        S.derive(engineState),
+        lastBudget,
+        lastPayload.readability
+      )
+    );
+    const second = JSON.stringify(
+      buildReportPayload(
+        S.derive(engineState),
+        lastBudget,
+        lastPayload.readability
+      )
+    );
+    rows.push({
+      label:
+        "The report payload is byte-identical across two separate derivations (no timestamp, no drift)",
+      expected: first.length + " bytes, twice",
+      actual:
+        second.length +
+        " bytes, " +
+        (first === second ? "identical" : "DIFFERENT"),
+      agrees: first === second,
+    });
+
+    // The scorecard's colour sentences ARE step 2's rating lines.
+    let sentencesMatch = true;
+    S.Model.STATUSES.forEach((status, index) => {
+      const onCard = Array.prototype.map.call(
+        document.querySelectorAll(
+          "#dpgRatings-" + status.id + " p"
+        ),
+        (line) => line.textContent
+      );
+      const onScorecard = lastPayload.statuses[index].sentences;
+      if (onCard.join("|") !== onScorecard.join("|")) {
+        sentencesMatch = false;
+      }
+    });
+    rows.push({
+      label:
+        "The scorecard's colour sentences are step 2's rating lines, string for string (one derivation feeds both)",
+      expected: "identical",
+      actual: sentencesMatch ? "identical" : "DIFFERENT",
+      agrees: sentencesMatch,
+    });
+
+    rows.push({
+      label: "The scorecard's fit sentence is the meter's sentence",
+      expected: "identical",
+      actual:
+        lastPayload.fitSentence === el.budgetSentence.textContent
+          ? "identical"
+          : "DIFFERENT",
+      agrees: lastPayload.fitSentence === el.budgetSentence.textContent,
+    });
+
+    return rows;
+  }
+
+  /* ------------------------------------------------------------------
+     ORDER CHECKS - the balance rule's own DENY/ALLOW set, run on the
+     live page and put back exactly, like the fit canary.
+     ------------------------------------------------------------------ */
+  function runOrderChecks() {
+    const rows = [];
+    const savedOrder = importanceOrder.slice();
+    const savedPins = Object.assign({}, pinned);
+    const savedDistances = Object.assign({}, chosenDistance);
+    const savedIncluded = Object.assign({}, included);
+    const before = refresh();
+    const beforeSentence = budgetSentence(before.budget);
+    budgetAnnounceSuspended = true;
+
+    try {
+      // ALLOW, the anchor: default order, no pins, everything on -
+      // the template must reproduce DISTANCE_DEFAULTS member for
+      // member, which is what keeps the fit canary's ALLOW state
+      // unchanged by construction.
+      importanceOrder = ORDER_ITEMS.map((item) => item.id);
+      Object.keys(pinned).forEach((key) => {
+        pinned[key] = false;
+      });
+      Object.keys(included).forEach((key) => {
+        included[key] = true;
+      });
+      const anchor = computeTemplateAssignment();
+      const anchorKeys = Object.keys(DISTANCE_DEFAULTS);
+      const anchorMisses = anchorKeys.filter(
+        (key) => anchor[key] !== DISTANCE_DEFAULTS[key]
+      );
+      rows.push({
+        label:
+          "ANCHOR: the default order reproduces the distance defaults member for member",
+        expected: anchorKeys.length + " of " + anchorKeys.length + " match",
+        actual:
+          anchorKeys.length -
+          anchorMisses.length +
+          " of " +
+          anchorKeys.length +
+          " match" +
+          (anchorMisses.length ? " (missing: " + anchorMisses.join(", ") + ")" : ""),
+        agrees: anchorMisses.length === 0,
+      });
+
+      // ALLOW: one reorder moves the assignments as the template says.
+      importanceOrder = [
+        "title",
+        "status-text",
+        "room",
+        "times",
+        "code",
+        "clock",
+      ];
+      const reordered = computeTemplateAssignment();
+      const reorderExpected = {
+        title: 1400,
+        "status-text": 1000,
+        room: 700,
+        times: 700,
+        code: 600,
+        clock: 600,
+      };
+      const reorderMisses = Object.keys(reorderExpected).filter(
+        (key) => reordered[key] !== reorderExpected[key]
+      );
+      rows.push({
+        label:
+          "Reorder: booking title moved first takes 1400 and the rest shift down the template",
+        expected: "6 of 6 match",
+        actual:
+          6 - reorderMisses.length +
+          " of 6 match" +
+          (reorderMisses.length ? " (" + reorderMisses.join(", ") + ")" : ""),
+        agrees: reorderMisses.length === 0,
+      });
+
+      // DENY, the demote fixture: that title-first order overflows at
+      // the plain template (positive premise), and the settle demotes
+      // the LOWEST-ranked automatic item first while rank 1 holds
+      // 1400.
+      Object.keys(reordered).forEach((roleId) => {
+        chosenDistance[roleId] = reordered[roleId];
+      });
+      refresh();
+      const overflowedAtTemplate = !lastBudget.fits;
+      rebalance();
+      rows.push({
+        label:
+          "DENY premise: the title-first template overflows before the settle (a fixture that cannot go red proves nothing)",
+        expected: "overflows",
+        actual: overflowedAtTemplate ? "overflows" : "FITS",
+        agrees: overflowedAtTemplate,
+      });
+      rows.push({
+        label:
+          "Demote-to-fit: rank 1 (booking title) never leaves 1400 through the settle",
+        expected: "1400 mm",
+        actual: chosenDistance.title + " mm",
+        agrees: chosenDistance.title === 1400,
+      });
+      rows.push({
+        label:
+          "Demote-to-fit: the lowest-ranked automatic item that could step down (times) was demoted",
+        expected: "600 mm",
+        actual: chosenDistance.times + " mm",
+        agrees: chosenDistance.times === 600,
+      });
+
+      // Pin survival: a hand-picked size rides out a rebalance that
+      // moves its neighbours.
+      importanceOrder = ORDER_ITEMS.map((item) => item.id);
+      Object.keys(pinned).forEach((key) => {
+        pinned[key] = false;
+      });
+      pinned.code = true;
+      chosenDistance.code = 1000;
+      importanceOrder = [
+        "room",
+        "status-text",
+        "times",
+        "title",
+        "code",
+        "clock",
+      ];
+      rebalance();
+      rows.push({
+        label:
+          "Pin survival: the course code's hand-picked 1000 survives a rebalance that moved its neighbours",
+        expected: "1000 mm, still pinned",
+        actual:
+          chosenDistance.code +
+          " mm, " +
+          (pinned.code ? "still pinned" : "UNPINNED"),
+        agrees: chosenDistance.code === 1000 && pinned.code === true,
+      });
+
+      // Reset: pins cleared, the template restored. Run on the DEFAULT
+      // order, whose template fits without any demotion - on an
+      // overflowing order the balance rule legitimately demotes after
+      // the reset, and this row would be asserting a state the rule
+      // never promises (the first run of this check did exactly that,
+      // and read 3 misses against a correct settle).
+      importanceOrder = ORDER_ITEMS.map((item) => item.id);
+      Object.keys(pinned).forEach((key) => {
+        pinned[key] = false;
+      });
+      rebalance();
+      const afterReset = computeTemplateAssignment();
+      const resetMisses = Object.keys(afterReset).filter(
+        (key) => chosenDistance[key] !== afterReset[key]
+      );
+      const pinsLeft = Object.keys(pinned).filter((key) => pinned[key]);
+      rows.push({
+        label:
+          "Reset: clearing every pin returns every automatic item to its template rung",
+        expected: "0 pins, 0 template misses",
+        actual:
+          pinsLeft.length + " pins, " + resetMisses.length + " misses",
+        agrees: pinsLeft.length === 0 && resetMisses.length === 0,
+      });
+    } finally {
+      importanceOrder = savedOrder;
+      Object.keys(pinned).forEach((key) => {
+        pinned[key] = savedPins[key];
+      });
+      Object.keys(chosenDistance).forEach((key) => {
+        chosenDistance[key] = savedDistances[key];
+      });
+      Object.keys(included).forEach((key) => {
+        included[key] = savedIncluded[key];
+      });
+      const after = refresh();
+      renderOrderList();
+      budgetAnnounceSuspended = false;
+      rows.push({
+        label: "The order checks put the page back exactly as they found it",
+        expected: beforeSentence,
+        actual: budgetSentence(after.budget),
+        agrees: budgetSentence(after.budget) === beforeSentence,
+      });
+    }
+    return rows;
+  }
+
   function wireDesignFor() {
     el.designCvd.addEventListener("change", () => {
       engineState.designFor.colourBlindness = el.designCvd.checked;
@@ -1106,7 +1958,7 @@
     const derived = S.derive(engineState);
     S.paintPanel(el.panel, el.surface, derived, {
       frameHeightPx: frameHeightPx,
-      simulation: "none",
+      simulation: engineState.simulation,
     });
     el.badgeLine.hidden = !included.status;
     el.timesRoomLine.hidden = !included.timesroom;
@@ -1118,6 +1970,20 @@
     renderDerivedSentences(derived);
     renderRatings(derived);
     syncColourControls();
+    // The balance writes into the radios, so the two views can never
+    // disagree: whatever chosenDistance holds is what the radios show.
+    syncDistanceRadios();
+    // The scorecard and the export payload come from THIS derive pass,
+    // through the same sentence functions the blocks above rendered
+    // with - one derivation feeding everything. Readability is
+    // measured AFTER the scorecard renders, so it counts the page as
+    // it now stands: measured before, each payload counted the
+    // PREVIOUS refresh's scorecard, and the fit canary's restore pass
+    // shipped a payload that had counted the DENY-state scorecard -
+    // caught by the export's cross-reload byte-stability drive.
+    lastPayload = buildReportPayload(derived, lastBudget, null);
+    renderScorecard(lastPayload);
+    lastPayload.readability = readabilityRows();
     return { derived: derived, budget: lastBudget };
   }
 
@@ -1262,6 +2128,18 @@
      - the studio's controls-from-the-model pattern - so adding a rung
      is one data edit.
      ------------------------------------------------------------------ */
+  function syncDistanceRadios() {
+    Object.keys(chosenDistance).forEach((roleId) => {
+      const wanted = String(chosenDistance[roleId]);
+      Array.prototype.forEach.call(
+        document.querySelectorAll('input[name="dpgDist-' + roleId + '"]'),
+        (input) => {
+          input.checked = input.value === wanted;
+        }
+      );
+    });
+  }
+
   function buildDistanceRadios() {
     Array.prototype.forEach.call(
       document.querySelectorAll("[data-distance-group]"),
@@ -1277,8 +2155,11 @@
           input.checked = chosenDistance[roleId] === choice.mm;
           input.addEventListener("change", () => {
             if (!input.checked) return;
+            // A hand-picked size sticks: this group is pinned from now
+            // on and rebalancing works around it.
             chosenDistance[roleId] = choice.mm;
-            refresh();
+            pinned[roleId] = true;
+            runBalancedEvent(null);
           });
           const label = document.createElement("label");
           label.setAttribute("for", input.id);
@@ -1301,17 +2182,30 @@
     includes.forEach((entry) => {
       entry.input.addEventListener("change", () => {
         included[entry.key] = entry.input.checked;
-        refresh();
+        // Includes feed the balance (an excluded line frees its rung),
+        // and the list shows the not-shown note in place.
+        runBalancedEvent(null);
+        renderOrderList();
       });
     });
 
     [el.contentTimes, el.contentRoom, el.contentCode, el.contentTitle].forEach(
       (input) => {
         input.addEventListener("input", () => {
-          refresh();
+          // Content moves the fit, so it re-balances too - and because
+          // the balance always starts from the template, shortening a
+          // line promotes everything straight back.
+          runBalancedEvent(null);
         });
       }
     );
+
+    el.orderReset.addEventListener("click", () => {
+      Object.keys(pinned).forEach((key) => {
+        pinned[key] = false;
+      });
+      runBalancedEvent(null);
+    });
 
     window.addEventListener("resize", () => {
       fitFrame();
@@ -1392,8 +2286,17 @@
     el.designCvd = document.getElementById("dpgDesignCvd");
     el.designGrey = document.getElementById("dpgDesignGrey");
     el.poolCount = document.getElementById("dpgPoolCount");
+    el.simulationRadios = document.getElementById("dpgSimulationRadios");
+    el.scorecard = document.getElementById("dpgScorecard");
+    el.reportLink = document.getElementById("dpgReportLink");
+    el.readability = document.getElementById("dpgReadability");
+    el.orderList = document.getElementById("dpgOrderList");
+    el.orderReset = document.getElementById("dpgOrderReset");
 
     engineState = buildEngineState();
+    // The "See it as" filters must exist before any simulation is
+    // selected; the module builds them once, into this page's body.
+    window.ContrastCardsCVD.buildSVGFilters();
     // The distance choices must reach the caps BEFORE the pool is
     // built: the word's gate is chosen by its rendered cap height, and
     // the recorded 22-of-45 pool is measured at the recommended 14 mm
@@ -1405,16 +2308,26 @@
     buildDistanceRadios();
     buildStateRadios();
     buildSchemeRadios();
+    buildSimulationRadios();
     buildChips();
+    renderOrderList();
     wireDesignFor();
+    wireReportLink();
     wireControls();
     fitFrame();
     refresh();
 
     // The canary runs at load, before anyone has touched anything, so
     // its ALLOW state IS the state on screen and its restoration is
-    // provable against it. The colour checks follow in the same table.
-    renderChecksReport(runFitCanary().concat(runColourChecks()));
+    // provable against it. The colour and report checks follow in the
+    // same table; the readability table sits beside it, ungated.
+    renderChecksReport(
+      runFitCanary()
+        .concat(runColourChecks())
+        .concat(runReportChecks())
+        .concat(runOrderChecks())
+    );
+    renderReadability(readabilityRows());
 
     if (coverageRequested()) applyCoverageState();
 
@@ -1436,9 +2349,15 @@
     refresh: refresh,
     runFitCanary: runFitCanary,
     runColourChecks: runColourChecks,
+    runReportChecks: runReportChecks,
+    runOrderChecks: runOrderChecks,
     getState: () => engineState,
     getLastBudget: () => lastBudget,
     getChipPool: () => chipPool,
+    getLastPayload: () => lastPayload,
+    getImportanceOrder: () => importanceOrder.slice(),
+    getPinned: () => Object.assign({}, pinned),
+    readabilityRows: readabilityRows,
     chosenDistance: chosenDistance,
     included: included,
     DISTANCE_CHOICES: DISTANCE_CHOICES,
