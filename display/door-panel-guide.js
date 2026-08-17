@@ -892,6 +892,121 @@
   }
 
   /* ------------------------------------------------------------------
+     THE DIVIDER AND THE FOOTER BAR (iteration G6). Both are graphical
+     roles: no word sits on them, so gateFor's graphical test - 3:1 AND
+     Lc 45 against the page - is the whole question, and availabilityFor
+     over that same gate is the pool. The two share the page surface,
+     so one pool serves both.
+     ------------------------------------------------------------------ */
+  const FURNITURE_ITEMS = Object.freeze([
+    Object.freeze({ id: "divider", label: "Divider line" }),
+    Object.freeze({ id: "footer-bar", label: "Footer bar" }),
+  ]);
+
+  // The recorded filled pool (programme background: 26 of 45 clear the
+  // graphical gate against the page), and a colour that must be
+  // refused - University Blue is dark on the dark page.
+  const RECORDED_GRAPHICAL_POOL_COUNT = 26;
+  const DENY_GRAPHICAL_HEX = "#005c84";
+
+  let furniturePool = [];
+
+  function buildFurniturePool() {
+    const role = S.Model.roleById("divider");
+    return engineState.palette
+      .filter(
+        (colour) =>
+          S.availabilityFor(role, colour.hex, engineState).available
+      )
+      .map((colour) => ({ name: colour.name, hex: colour.hex }));
+  }
+
+  function furnitureLabelFor(roleId) {
+    return roleId === "divider" ? "The divider line" : "The footer bar";
+  }
+
+  function furnitureSentence(roleId, derived) {
+    const record = derived.byId[roleId];
+    const onPage = record.surfaces[0];
+    const gate = record.gate;
+    const passes = onPage.passesWcag && onPage.passesApca;
+    return (
+      furnitureLabelFor(roleId) +
+      " against the page: " +
+      onPage.wcag +
+      ":1, Lc " +
+      onPage.lc +
+      ". Its test is " +
+      gate.wcag +
+      ":1 and Lc " +
+      gate.lc +
+      " - " +
+      (passes ? "it clears it." : "it MISSES it.") +
+      " No word sits on it, so that is the whole test."
+    );
+  }
+
+  function renderFurnitureRatings(derived) {
+    FURNITURE_ITEMS.forEach((item) => {
+      const host = document.getElementById("dpgRating-" + item.id);
+      if (!host) return;
+      host.textContent = furnitureSentence(item.id, derived);
+    });
+  }
+
+  function buildFurnitureChips() {
+    Array.prototype.forEach.call(
+      document.querySelectorAll("[data-furniture-chips]"),
+      (host) => {
+        const roleId = host.getAttribute("data-furniture-chips");
+        furniturePool.forEach((colour) => {
+          const wrap = document.createElement("div");
+          const input = document.createElement("input");
+          input.type = "radio";
+          input.name = "dpgFChip-" + roleId;
+          input.id =
+            "dpgFChip-" + roleId + "-" + colour.hex.replace("#", "");
+          input.value = colour.hex;
+          input.addEventListener("change", () => {
+            if (!input.checked) return;
+            // A strip of colour cannot move the fit verdict, so this
+            // event has nothing to announce; the radio speaks for
+            // itself and the rating sentence updates in place.
+            engineState.colours[roleId] = colour.hex;
+            refresh();
+          });
+          const label = document.createElement("label");
+          label.setAttribute("for", input.id);
+          const swatch = document.createElement("span");
+          swatch.className = "dpg-swatch";
+          swatch.setAttribute("aria-hidden", "true");
+          swatch.style.background = colour.hex;
+          label.appendChild(swatch);
+          label.appendChild(document.createTextNode(colour.name));
+          wrap.appendChild(input);
+          wrap.appendChild(label);
+          host.appendChild(wrap);
+        });
+      }
+    );
+  }
+
+  function syncFurnitureChips() {
+    FURNITURE_ITEMS.forEach((item) => {
+      const hex = engineState.colours[item.id];
+      Array.prototype.forEach.call(
+        document.querySelectorAll(
+          'input[name="dpgFChip-' + item.id + '"]'
+        ),
+        (input) => {
+          input.checked =
+            input.value.toLowerCase() === String(hex).toLowerCase();
+        }
+      );
+    });
+  }
+
+  /* ------------------------------------------------------------------
      Ratings, from the derived object - the same reduction the studio
      paints from, so a figure here cannot drift from the panel.
      ------------------------------------------------------------------ */
@@ -1340,6 +1455,12 @@
         sentences: ratingSentences(status.id, derived),
       })),
       fitSentence: budgetSentence(budget),
+      furniture: FURNITURE_ITEMS.map((item) => ({
+        name: item.label,
+        colourName: paletteNameFor(st.colours[item.id]),
+        hex: st.colours[item.id],
+        sentence: furnitureSentence(item.id, derived),
+      })),
       readability: readability || [],
       readabilityNote: READABILITY_NOTE,
       honesty:
@@ -1425,6 +1546,29 @@
         line.textContent = sentence;
         block.appendChild(line);
       });
+      host.appendChild(block);
+    });
+
+    const furnitureHeading = document.createElement("h4");
+    furnitureHeading.textContent = "The divider and the footer bar";
+    host.appendChild(furnitureHeading);
+    payload.furniture.forEach((entry) => {
+      const block = document.createElement("div");
+      const name = document.createElement("p");
+      const swatch = document.createElement("span");
+      swatch.className = "dpg-swatch";
+      swatch.setAttribute("aria-hidden", "true");
+      swatch.style.background = entry.hex;
+      name.appendChild(swatch);
+      name.appendChild(
+        document.createTextNode(" " + entry.name + ": " + entry.colourName)
+      );
+      name.style.fontWeight = "600";
+      block.appendChild(name);
+      const line = document.createElement("p");
+      line.className = "dps-hint";
+      line.textContent = entry.sentence;
+      block.appendChild(line);
       host.appendChild(block);
     });
 
@@ -1820,6 +1964,80 @@
     return rows;
   }
 
+  /* ------------------------------------------------------------------
+     FURNITURE CHECKS - the graphical pool's own DENY/ALLOW set.
+     ------------------------------------------------------------------ */
+  function runFurnitureChecks() {
+    const rows = [];
+    const st = engineState;
+
+    rows.push({
+      label:
+        "The divider/footer pool matches the recorded graphical pool (3:1 and Lc 45 against the page)",
+      expected:
+        RECORDED_GRAPHICAL_POOL_COUNT + " of " + RECORDED_PALETTE_COUNT,
+      actual: furniturePool.length + " of " + st.palette.length,
+      agrees:
+        furniturePool.length === RECORDED_GRAPHICAL_POOL_COUNT &&
+        st.palette.length === RECORDED_PALETTE_COUNT,
+    });
+
+    const denyAdmitted = furniturePool.some(
+      (colour) => colour.hex.toLowerCase() === DENY_GRAPHICAL_HEX
+    );
+    rows.push({
+      label:
+        "DENY: University Blue is refused by the divider/footer pool - dark on the dark page",
+      expected: "refused",
+      actual: denyAdmitted ? "ADMITTED" : "refused",
+      agrees: !denyAdmitted,
+    });
+
+    const dividerDefault = S.Model.roleById("divider").defaultHex;
+    const footerDefault = S.Model.roleById("footer-bar").defaultHex;
+    const defaultsHeld =
+      st.colours.divider.toLowerCase() === dividerDefault.toLowerCase() &&
+      st.colours["footer-bar"].toLowerCase() ===
+        footerDefault.toLowerCase();
+    rows.push({
+      label:
+        "The default selection reproduces the as-built Digital Blue on both elements",
+      expected: dividerDefault + " twice",
+      actual: st.colours.divider + ", " + st.colours["footer-bar"],
+      agrees: defaultsHeld,
+    });
+
+    // The rating line's figures against the instruments themselves,
+    // recomputed directly - gap must be exactly zero.
+    const derived = S.derive(st);
+    let figureMisses = 0;
+    FURNITURE_ITEMS.forEach((item) => {
+      const record = derived.byId[item.id];
+      const direct = S.Engine.contrastPair(
+        st.colours[item.id],
+        st.colours["page-bg"]
+      );
+      const gate = S.gateFor(S.Model.roleById(item.id), 0, st);
+      if (
+        record.surfaces[0].wcag !== direct.wcag ||
+        record.surfaces[0].lc !== direct.lc ||
+        record.gate.wcag !== gate.wcag ||
+        record.gate.lc !== gate.lc
+      ) {
+        figureMisses += 1;
+      }
+    });
+    rows.push({
+      label:
+        "The rating figures are gateFor's and contrastPair's own output, gap 0.0 on both elements",
+      expected: "0 misses",
+      actual: figureMisses + " misses",
+      agrees: figureMisses === 0,
+    });
+
+    return rows;
+  }
+
   function wireDesignFor() {
     el.designCvd.addEventListener("change", () => {
       engineState.designFor.colourBlindness = el.designCvd.checked;
@@ -1969,7 +2187,9 @@
     renderBudget(lastBudget);
     renderDerivedSentences(derived);
     renderRatings(derived);
+    renderFurnitureRatings(derived);
     syncColourControls();
+    syncFurnitureChips();
     // The balance writes into the radios, so the two views can never
     // disagree: whatever chosenDistance holds is what the radios show.
     syncDistanceRadios();
@@ -2304,12 +2524,14 @@
     // pool checks caught exactly that ordering fault on first run.
     applyChoices(engineState);
     chipPool = buildChipPool();
+    furniturePool = buildFurniturePool();
     el.poolCount.textContent = String(chipPool.length);
     buildDistanceRadios();
     buildStateRadios();
     buildSchemeRadios();
     buildSimulationRadios();
     buildChips();
+    buildFurnitureChips();
     renderOrderList();
     wireDesignFor();
     wireReportLink();
@@ -2326,6 +2548,7 @@
         .concat(runColourChecks())
         .concat(runReportChecks())
         .concat(runOrderChecks())
+        .concat(runFurnitureChecks())
     );
     renderReadability(readabilityRows());
 
@@ -2351,6 +2574,8 @@
     runColourChecks: runColourChecks,
     runReportChecks: runReportChecks,
     runOrderChecks: runOrderChecks,
+    runFurnitureChecks: runFurnitureChecks,
+    getFurniturePool: () => furniturePool,
     getState: () => engineState,
     getLastBudget: () => lastBudget,
     getChipPool: () => chipPool,

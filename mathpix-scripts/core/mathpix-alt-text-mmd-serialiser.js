@@ -854,6 +854,18 @@
   const APPENDIX_HEADING_RE = /^(#{1,6})\s+\S/;
   const APPENDIX_FENCE_RE = /^(```|~~~)/;
 
+  // CTX-P1. The deepest level markdown has; every level computed in this module
+  // is capped at it. The existing Stage 2.A routines — buildAppendix BELOW this
+  // point — spell it literally and are deliberately left as they are, per the
+  // do-not-refactor-working-code rule; this const governs new code only.
+  const MAX_HEADING_LEVEL = 6;
+
+  // CTX-P1. Matches the leading hash run WITH its indentation captured, so a
+  // rewrite can replace the hashes and put the line's own whitespace back.
+  // Deliberately separate from APPENDIX_HEADING_RE, which tests a TRIMMED line
+  // and so cannot carry indentation.
+  const HEADING_HASHES_RE = /^(\s*)#{1,6}/;
+
   // ============================================================================
   // STAGE 2.A — HEADING-LEVEL DETECTION
   // ============================================================================
@@ -894,6 +906,127 @@
       }
     }
     return shallowest;
+  }
+
+  // ============================================================================
+  // CTX-P1 — ENTRY HEADING DEMOTION (rank compaction)
+  // ============================================================================
+
+  /**
+   * Normalise the ATX heading levels inside ONE appendix entry's text so none
+   * of them is shallower than the entry heading that owns it.
+   *
+   * A model asked for structured output emits headings at whatever depth it
+   * likes — typically `##`, because that is the level its own prompt uses. Left
+   * alone, such a heading lands at or above the appendix's own parent heading
+   * and reads in a heading outline as a SIBLING of the appendix rather than a
+   * child of the figure it describes, orphaning the content from its image.
+   * Emitted levels are therefore rewritten mechanically here rather than being
+   * requested from the model, which cannot know the level and would not apply
+   * it consistently if told.
+   *
+   * RANK COMPACTION, not a fixed shift. The distinct heading ranks present, in
+   * ascending order, map onto CONSECUTIVE levels starting at `entryLevel + 1`.
+   * Relative order is preserved; gaps are normalised away. So H1 and H4 in an
+   * entry whose heading is at level 3 become H4 and H5 — not H4 and H7, and not
+   * H4 and H6. This mirrors the image describer's shipped `adjustHeadingLevels`
+   * (`image-describer/image-describer-controller-ui.js`), with the base level
+   * computed from the appendix rather than hard-coded.
+   *
+   * Levels cap at 6. When the base is itself 6 every rank collapses onto 6,
+   * losing the relative depth: that is DOCUMENTED BEHAVIOUR and not an error —
+   * markdown has no seventh level, and a flat run of H6 headings is a better
+   * outcome than an invalid one.
+   *
+   * IDEMPOTENT BY CONSTRUCTION. Applying this to its own output changes
+   * nothing, because the output's distinct ranks are already consecutive from
+   * the base: rank i then sits at `base + i` and maps to `base + i`, itself.
+   * The cap does not break this — collapsed ranks are a single rank on the
+   * second pass and map to 6 again. This matters because `parseAppendix` reads
+   * the emitted text back into the registry, so a round trip can persist the
+   * demoted form, and a second write must not demote it twice.
+   *
+   * Fenced code blocks are skipped using the SAME discipline as
+   * `detectShallowestHeading` above, so a `# Comment` line inside a code sample
+   * is left exactly as the model wrote it. Setext headings and LaTeX
+   * `\section*{}` are out of scope, matching this module's stated heading rule.
+   *
+   * @param {string} text - One entry's long description.
+   * @param {number} entryLevel - The level of the entry's own heading (1-6).
+   * @returns {string} The text with heading levels normalised; the input
+   *   byte-identical when it carries no headings, or when either argument is
+   *   invalid.
+   */
+  function demoteEntryHeadings(text, entryLevel) {
+    if (typeof text !== "string") {
+      logWarn("demoteEntryHeadings(): text must be a string — returning input");
+      return text;
+    }
+    if (
+      typeof entryLevel !== "number" ||
+      !Number.isFinite(entryLevel) ||
+      entryLevel < 1 ||
+      entryLevel > 6
+    ) {
+      logWarn(
+        `demoteEntryHeadings(): entryLevel must be 1-6, got ${entryLevel} — returning input unchanged`,
+      );
+      return text;
+    }
+
+    const base = Math.min(MAX_HEADING_LEVEL, Math.floor(entryLevel) + 1);
+    const lines = text.split("\n");
+
+    // Pass one — collect the distinct ranks actually present, outside fences.
+    let inFence = false;
+    const ranks = [];
+    for (const raw of lines) {
+      const trimmed = raw.trim();
+      if (APPENDIX_FENCE_RE.test(trimmed)) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      const m = trimmed.match(APPENDIX_HEADING_RE);
+      if (m && !ranks.includes(m[1].length)) {
+        ranks.push(m[1].length);
+      }
+    }
+
+    // No headings — return the input itself, so the no-op case is provably
+    // byte-identical rather than a re-joined copy that happens to match.
+    if (ranks.length === 0) return text;
+
+    ranks.sort((a, b) => a - b);
+    const mapping = new Map();
+    ranks.forEach((level, index) =>
+      mapping.set(level, Math.min(MAX_HEADING_LEVEL, base + index)),
+    );
+
+    // Pass two — rewrite, re-walking the fences rather than trusting pass one's
+    // final state, and preserving each line's own leading whitespace.
+    inFence = false;
+    const out = lines.map((raw) => {
+      const trimmed = raw.trim();
+      if (APPENDIX_FENCE_RE.test(trimmed)) {
+        inFence = !inFence;
+        return raw;
+      }
+      if (inFence) return raw;
+      const m = trimmed.match(APPENDIX_HEADING_RE);
+      if (!m) return raw;
+      const to = mapping.get(m[1].length);
+      if (m[1].length === to) return raw;
+      return raw.replace(
+        HEADING_HASHES_RE,
+        (match, indent) => indent + "#".repeat(to),
+      );
+    });
+
+    logDebug(
+      `demoteEntryHeadings(): base=${base} ranks=${JSON.stringify(ranks)} mapping=${JSON.stringify([...mapping])}`,
+    );
+    return out.join("\n");
   }
 
   // ============================================================================
@@ -1089,7 +1222,10 @@
       out.push(`<!-- img-desc:${e.id} -->`);
       out.push(`${entryHashes} ${_entryHeadingText(e)}`);
       out.push("");
-      out.push(e.longDescription);
+      // CTX-P1. Demote the entry's own headings so none is shallower than the
+      // heading above it. Uses the level already computed for this appendix, so
+      // the transform and the heading it must sit under can never disagree.
+      out.push(demoteEntryHeadings(e.longDescription, entryLevel));
       if (i < entries.length - 1) out.push("");
     }
     return {
@@ -1321,6 +1457,8 @@
     unescapeAltFromLatex,
     // Stage 2.A
     detectShallowestHeading,
+    // CTX-P1 — pure, exported so it can be gated with no page and no registry.
+    demoteEntryHeadings,
     buildAppendix,
     writeAppendix,
     parseAppendix,

@@ -19098,6 +19098,8 @@ Science,91</pre
     <script src="mathpix-scripts/ai-alt-text/alt-text-write-stage.js?v=1.1"></script>
     <!-- Phase 2 Stage 2 (Parcel 5.1a): AI-description orchestrator — choreography only: progress → injected adapter → branch → parse → write → one aria-live line (window.MathPixAltTextOrchestrator) -->
     <script src="mathpix-scripts/ai-alt-text/alt-text-orchestrator.js?v=1.0"></script>
+    <!-- Phase 4 (Parcel CTX-P3): pure prompt builder — buildDescriptionPrompt({ context, mmd, entry, allEntries }) assembles context, position and MMD excerpt ahead of the four-section instruction; degrades byte-identically to it (window.MathPixAltTextPromptBuilder). Placed after the orchestrator for readability only: the orchestrator resolves its collaborators at CALL time, so there is no load-order dependency in either direction. -->
+    <script src="mathpix-scripts/ai-alt-text/alt-text-prompt-builder.js?v=1.0"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
     <script
       type="application/dev-test"

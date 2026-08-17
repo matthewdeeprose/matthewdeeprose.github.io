@@ -288,6 +288,28 @@
             host.appendChild(block);
           });
 
+          if (payload.furniture && payload.furniture.length) {
+            heading(host, "The divider and the footer bar");
+            payload.furniture.forEach((entry) => {
+              const block = document.createElement("div");
+              block.className = "rpt-status";
+              const name = document.createElement("p");
+              const swatch = document.createElement("span");
+              swatch.className = "rpt-swatch";
+              swatch.setAttribute("aria-hidden", "true");
+              swatch.style.background = entry.hex;
+              name.appendChild(swatch);
+              name.appendChild(
+                document.createTextNode(
+                  " " + entry.name + ": " + entry.colourName
+                )
+              );
+              block.appendChild(name);
+              paragraph(block, entry.sentence, true);
+              host.appendChild(block);
+            });
+          }
+
           heading(host, "Does it fit?");
           paragraph(host, payload.fitSentence);
           paragraph(host, payload.designForSentence);

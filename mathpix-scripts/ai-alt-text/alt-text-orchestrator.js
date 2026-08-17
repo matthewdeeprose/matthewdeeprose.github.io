@@ -235,22 +235,79 @@ const MathPixAltTextOrchestrator = (function () {
   const STATUS_FALLBACK = Object.freeze({ SUCCESS: "success", ERROR: "error" });
 
   /**
-   * The four-section instruction, mirroring buildQwenPrompt in
-   * image-describer-controller-generate.js so the parser round-trips against
-   * what the model is asked to emit (## 1. Title / ## 2. Alt Text /
-   * ## 3. Long Description / ## 4. Text Content, and the section-4
-   * "No text content." instruction).
+   * The four-section instruction sent to a cloud model.
+   *
+   * THE FOUR HEADERS ARE A PARSER CONTRACT, not prose. They mirror
+   * buildQwenPrompt in image-describer-controller-generate.js so the parser
+   * round-trips against what the model is asked to emit — `## 1. Title`,
+   * `## 2. Alt Text`, `## 3. Long Description`, `## 4. Text Content`, and the
+   * section-4 "No text content." sentinel (which the parser passes through
+   * literally — treating it as empty is the write stage's policy, not the
+   * parser's).
+   *
+   * WHAT BINDS IS THE NAME, NOT THE NUMBER. `alt-text-parser.js` matches a
+   * heading line at ANY level 1-6, strips an optional leading "N." with
+   * `(?:\d+\.?\s*)?`, then looks the normalised name up in `NAME_TO_FIELD`. So
+   * RENAMING or RE-WORDING any of the four silently routes that section's
+   * content to the wrong field or drops it, while RENUMBERING is tolerated by
+   * construction — `## 5. Title` still resolves to `title`, and so does a bare
+   * `## Title`. The numbers are kept anyway, for parity with buildQwenPrompt and
+   * because they help the model hold the order. Do not rename the four.
+   *
+   * THE GUIDANCE DELIBERATELY DIVERGES from buildQwenPrompt. That prompt targets
+   * a small local model, where terse instructions do better; this one targets a
+   * cloud model that can follow structural guidance, so sections 2 and 3 ask for
+   * screen-reader-first prose and for markdown structure where it aids
+   * comprehension. Most of it is adapted from the image describer's own prompt
+   * text (`image-describer/prompts/prompt-image-description.txt`), recorded as
+   * read B6 in
+   * `mathpix-scripts/docs/alt-text/context-aware-prompts-plan.md`. The banned
+   * "Image of" opener is NOT from that source — it came from the CTX-P2 dispatch,
+   * and the B-addendum in the plan document says so rather than implying a
+   * provenance it does not have.
+   *
+   * NO HEADING LEVEL IS SPECIFIED ANYWHERE HERE, on purpose. Levels are owned by
+   * `demoteEntryHeadings` in `mathpix-alt-text-mmd-serialiser.js`, which
+   * normalises whatever the model emits at serialise time by rank compaction. A
+   * level named here would go stale the moment the appendix level moved (plan
+   * decision A4).
+   *
+   * The reserved-name sentence in section 3 is a MEASURED mitigation, not
+   * politeness: a subheading whose name normalises to one of the four section
+   * names re-opens that field in the parser and misroutes everything after it.
+   * Inviting headings at all is what makes that reachable, so the invitation and
+   * the warning ship together (parcel CTX-P2 read 2, hazard probe).
+   *
+   * FORM: a single template literal whose lines start at COLUMN ZERO. Indenting
+   * it to match the surrounding code would inject leading whitespace into every
+   * line of the prompt. A suite row pins that no line begins with whitespace, so
+   * a well-meaning re-indent reddens instead of silently changing what the model
+   * is sent.
    */
-  const DESCRIPTION_PROMPT =
-    "Describe this image for accessibility using these sections:\n\n" +
-    "## 1. Title\n" +
-    "A brief descriptive title under 10 words.\n\n" +
-    "## 2. Alt Text\n" +
-    "One or two sentences: what the image shows, then its educational significance.\n\n" +
-    "## 3. Long Description\n" +
-    "Detailed description of the visual content and its educational purpose.\n\n" +
-    "## 4. Text Content\n" +
-    'List every word, number, and label visible in the image. If none, write "No text content."';
+  const DESCRIPTION_PROMPT = `Describe this image for accessibility using these sections:
+
+## 1. Title
+A brief descriptive title under 10 words.
+
+## 2. Alt Text
+One or two sentences, concise enough to serve as an HTML alt attribute: what the image shows, then why it matters educationally. It must stand alone when the image fails to load. Do not open with "Image of", "Picture of", "A photograph of" or any similar phrase — the reader already knows this is an image.
+
+## 3. Long Description
+Describe the visual content and its educational purpose in full. Write for someone listening to this description rather than looking at the image, and put the important information first.
+
+Use markdown structure wherever it aids comprehension, rather than as decoration:
+
+- a numbered list for steps, sequences, or anything the reader must take in order;
+- a bullet list for unordered groups of related points;
+- a markdown table where the content is genuinely tabular, so a screen-reader user can navigate it by row and column;
+- headings to separate the distinct parts of a longer description.
+
+Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
+
+Do not reuse "Title", "Alt Text", "Long Description" or "Text Content" as a heading inside this section.
+
+## 4. Text Content
+List every word, number, and label visible in the image. If none, write "No text content."`;
 
   // ---------------------------------------------------------------------------
   // Global reach helpers (reached at CALL time, guarded)
