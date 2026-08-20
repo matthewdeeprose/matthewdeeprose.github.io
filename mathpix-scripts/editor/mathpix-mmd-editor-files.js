@@ -275,8 +275,7 @@ class MMDEditorFiles {
 
     try {
       this.downloadAsFile(content, filename, FILES_CONFIG.MIME_TYPE);
-      this.showNotification(`Downloaded as ${filename}`, "success");
-      this.announceToScreenReader(`File downloaded as ${filename}`);
+      this.showNotification(`File downloaded as ${filename}`, "success");
       logInfo("Download successful", {
         filename,
         contentLength: content.length,
@@ -363,8 +362,7 @@ class MMDEditorFiles {
     try {
       const content = await this.readFileAsText(file);
       this.loadMMDContent(content, file.name);
-      this.showNotification(`Loaded ${file.name}`, "success");
-      this.announceToScreenReader(`File ${file.name} loaded successfully`);
+      this.showNotification(`File ${file.name} loaded`, "success");
       logInfo("File loaded successfully", {
         filename: file.name,
         contentLength: content.length,
@@ -475,6 +473,13 @@ class MMDEditorFiles {
     // Fallback to console
     const logMethod = type === "error" ? console.error : console.log;
     logMethod(`[MMD Files] ${message}`);
+
+    // SAFETY NET. With the universal notification module absent, nothing above
+    // spoke, so announce here — this restores the announcement net for EVERY
+    // caller of showNotification, not only the sites whose own announcer call
+    // was removed on 18 August 2026. It cannot double: each typeof branch above
+    // returns, so this tail runs only when none of them did.
+    this.announceToScreenReader(message);
   }
 
   /**

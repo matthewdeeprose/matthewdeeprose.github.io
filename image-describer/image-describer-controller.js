@@ -487,7 +487,6 @@
         cameraVideo: document.getElementById("imgdesc-camera-video"),
         cameraCaptured: document.getElementById("imgdesc-camera-captured"),
         cameraStatus: document.getElementById("imgdesc-camera-status"),
-        cameraStatusText: document.getElementById("imgdesc-camera-status-text"),
         cameraControls: document.getElementById("imgdesc-camera-controls"),
         cameraStartBtn: document.getElementById("imgdesc-camera-start"),
         cameraStartText: document.getElementById("imgdesc-camera-start-text"),

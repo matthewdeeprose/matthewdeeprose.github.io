@@ -57,7 +57,7 @@ const MusicModelWalk = (function () {
   // the type is missing. It also surfaces the spoken symbol fields — tuplet,
   // articulations and ornaments — each null when the symbol is absent, so a plain
   // note describes exactly as before, and the dynamic shaping the parser read,
-  // carried raw.
+  // carried raw, and the chord symbol's SPOKEN NAME.
   //
   // This return literal is an EXPLICIT whitelist, not a spread: a new note field
   // must be named here as well, or it is silently dropped for every renderer with
@@ -98,7 +98,24 @@ const MusicModelWalk = (function () {
     // field but pitch. Stage 59 decides what a reader HEARS and may deliberately
     // voice fewer endings than this descriptor holds.
     const shaping = n.shaping === undefined ? null : n.shaping;
-    return { isRest: isRest, pitch: pitch, value: value, dynamic: dynamic, lyric: lyric, tie: tie, slur: slur, tuplet: tuplet, articulations: articulations, ornaments: ornaments, shaping: shaping };
+    // Chord symbol, carried as the SPOKEN NAME. The DESCRIPTOR's harmony is a
+    // string — "C major", "F sharp minor over A sharp" — while the NOTE's harmony
+    // is the parser's raw record { rootStep, rootAlter, kind, bassStep, bassAlter }.
+    // The mapping from codes to words happens HERE, exactly as dynamic is mapped
+    // from "f" to "forte", because the renderer should receive words and not codes.
+    // null when the note carries no harmony, and null when the record is malformed:
+    // chordSymbolName returns null rather than throwing for anything it cannot name.
+    // It also suppresses a ZERO alter, so "natural" never appears in a chord name
+    // even though pitchLabel spells it for a pitch. Stage 64 voices this field;
+    // nothing reads it yet.
+    //
+    // Guarded twice, unlike the dynamic line above: once so an absent harmony never
+    // reaches the namer, and once on the function itself, because the module-scope
+    // names stub PREDATES chord naming and provides no chordSymbolName — an
+    // unguarded call would throw there rather than degrade to null.
+    const canNameChord = typeof names.chordSymbolName === "function";
+    const harmony = n.harmony === null || n.harmony === undefined || !canNameChord ? null : names.chordSymbolName(n.harmony);
+    return { isRest: isRest, pitch: pitch, value: value, dynamic: dynamic, lyric: lyric, tie: tie, slur: slur, tuplet: tuplet, articulations: articulations, ornaments: ornaments, shaping: shaping, harmony: harmony };
   }
 
   // Diatonic step letters mapped to their index within an octave, for ordering
@@ -695,6 +712,71 @@ const MusicModelWalk = (function () {
       return seen > 0;
     }
 
+    // Stage 63 harmony fixtures. The NOTE carries the parser's raw record; the
+    // DESCRIPTOR must carry the spoken name. A plain triad; an altered root with an
+    // altered bass; a kind MusicNames has no word for, which falls back to the
+    // hyphens-to-spaces spelling; and four malformed records, none of which may
+    // throw. harmonyWithExtrasNote carries a harmony ALONGSIDE every existing
+    // field, so the carry can be proven not to disturb them.
+    const harmonyPlainNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } };
+    const harmonyAlteredNote = { rest: false, step: "F", octave: 4, duration: 2, type: "quarter", harmony: { rootStep: "F", rootAlter: 1, kind: "minor", bassStep: "A", bassAlter: 1 } };
+    const harmonyUnmappedKindNote = { rest: false, step: "G", octave: 4, duration: 2, type: "quarter", harmony: { rootStep: "G", rootAlter: null, kind: "major-seventh", bassStep: null, bassAlter: null } };
+    const harmonyZeroAlterNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: { rootStep: "C", rootAlter: 0, kind: "major", bassStep: "G", bassAlter: 0 } };
+    const harmonyMalformedRecordNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: { rootStep: null, kind: null } };
+    const harmonyMalformedStringNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: "C major" };
+    const harmonyMalformedNumberNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: 7 };
+    const harmonyMalformedArrayNote = { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", harmony: ["C", "major"] };
+    const harmonyWithExtrasNote = {
+      rest: false, step: "F", octave: 4, duration: 1, type: "quarter",
+      dynamic: "f", lyric: "la", tie: { start: true, stop: false }, slur: { start: true, stop: false },
+      shaping: { starts: ["crescendo"], stops: [] },
+      harmony: { rootStep: "B", rootAlter: -1, kind: "major" },
+    };
+    const dHarmonyPlain = describeNote(harmonyPlainNote);
+    const dHarmonyAltered = describeNote(harmonyAlteredNote);
+    const dHarmonyWithExtras = describeNote(harmonyWithExtrasNote);
+
+    // A chord whose HEAD carries both a dynamic and a harmony, and whose members
+    // carry neither, so harmony is proven to be read from the same note dynamic is
+    // read from. groupNotes supplies the head; describeNote itself never inspects
+    // the chord flag.
+    const harmonyChordNotes = [
+      { rest: false, step: "C", octave: 4, type: "quarter", chord: false, dynamic: "f", harmony: { rootStep: "C", kind: "major" } },
+      { rest: false, step: "E", octave: 4, type: "quarter", chord: true },
+      { rest: false, step: "G", octave: 4, type: "quarter", chord: true },
+    ];
+
+    // A model whose notes carry harmony in some form — a plain triad, an altered
+    // slash chord, and a plain note with none — so the descriptor's key presence
+    // can be asserted across a whole walk rather than on one note.
+    const HARMONY_MODEL = {
+      parts: [
+        { id: "P1", name: "X", measures: [
+          { number: "1", notes: [harmonyPlainNote, harmonyAlteredNote] },
+          { number: "2", notes: [{ rest: false, step: "G", octave: 4, duration: 4, type: "whole", harmony: null }] },
+        ] },
+      ],
+    };
+
+    // Every descriptor built from a model owns a harmony key and never reads
+    // undefined. hasOwnProperty rather than a truthiness test, so a descriptor that
+    // legitimately reads null still counts as carrying the key.
+    function everyDescriptorOwnsHarmony(candidate) {
+      const parts = candidate && Array.isArray(candidate.parts) ? candidate.parts : [];
+      let seen = 0;
+      for (const part of parts) {
+        for (const measure of part.measures) {
+          for (const note of measure.notes) {
+            const d = describeNote(note);
+            seen += 1;
+            if (!Object.prototype.hasOwnProperty.call(d, "harmony")) return false;
+            if (d.harmony === undefined) return false;
+          }
+        }
+      }
+      return seen > 0;
+    }
+
     // A model that carries partGroups AND a bar with chords, staves and voices, so
     // the existing grouping seams are asserted untouched by the new field.
     const KP_REGRESSION_MODEL = {
@@ -1033,6 +1115,111 @@ const MusicModelWalk = (function () {
           return part.measures.every(function (measure) {
             return measure.notes.every(function (note) {
               return describeNote(note).shaping === null;
+            });
+          });
+        });
+      })(),
+      // Chord symbols carried through the descriptor whitelist as the SPOKEN NAME
+      // (Stage 63), mapped through MusicNames.chordSymbolName exactly as dynamic is
+      // mapped through dynamicName. Nothing voices it until Stage 64.
+      describeSurfacesHarmonyName: dHarmonyPlain.harmony === "C major",
+      describeSurfacesHarmonyAlteredRootAndBass: dHarmonyAltered.harmony === "F sharp minor over A sharp",
+      describeHarmonyUnmappedKindFallsBack: describeNote(harmonyUnmappedKindNote).harmony === "G major seventh",
+      // A zero alter is suppressed by the namer, so "natural" never reaches a chord
+      // name even though pitchLabel spells it for a pitch.
+      describeHarmonyZeroAlterUnspoken: (function () {
+        const h = describeNote(harmonyZeroAlterNote).harmony;
+        return h === "C major over G" && /natural/.test(h) === false;
+      })(),
+      describePlainHarmonyStrictlyNull: dPlain.harmony === null && dRich.harmony === null,
+      // A note with no harmony must not reach the namer at all: the guard short
+      // circuits before the call. Spied by swapping the namer on the shared names
+      // object and restoring it in a finally, so no later row sees the spy.
+      describePlainHarmonyNamerNotCalled: (function () {
+        if (typeof names.chordSymbolName !== "function") return describeNote(plainNote).harmony === null;
+        const realChordSymbolName = names.chordSymbolName;
+        let calls = 0;
+        let out = "unset";
+        try {
+          names.chordSymbolName = function (h) { calls += 1; return realChordSymbolName(h); };
+          out = describeNote(plainNote).harmony;
+        } catch (e) {
+          calls = -1;
+        } finally {
+          names.chordSymbolName = realChordSymbolName;
+        }
+        return calls === 0 && out === null && names.chordSymbolName === realChordSymbolName;
+      })(),
+      // A malformed record yields null and never throws, whatever shape it is.
+      describeMalformedHarmonyNullNoThrow: (function () {
+        let threw = false;
+        let record = "unset";
+        let str = "unset";
+        let num = "unset";
+        let arr = "unset";
+        try {
+          record = describeNote(harmonyMalformedRecordNote).harmony;
+          str = describeNote(harmonyMalformedStringNote).harmony;
+          num = describeNote(harmonyMalformedNumberNote).harmony;
+          arr = describeNote(harmonyMalformedArrayNote).harmony;
+        } catch (e) {
+          threw = true;
+        }
+        return threw === false && record === null && str === null && num === null && arr === null;
+      })(),
+      // The descriptor carries WORDS, not codes: a string, and not the raw record
+      // the note holds. This is the division that puts "forte" on the descriptor
+      // rather than "f", and it is what separates harmony from shaping.
+      describeHarmonyCarriedAsStringNotRawObject: (function () {
+        return typeof dHarmonyPlain.harmony === "string" &&
+          typeof harmonyPlainNote.harmony === "object" &&
+          dHarmonyPlain.harmony !== harmonyPlainNote.harmony;
+      })(),
+      // The whitelist is now twelve fields, named and ordered.
+      describeFieldCountNowTwelve: (function () {
+        const keys = Object.keys(dHarmonyWithExtras);
+        return keys.length === 12 &&
+          keys.join(",") === "isRest,pitch,value,dynamic,lyric,tie,slur,tuplet,articulations,ornaments,shaping,harmony";
+      })(),
+      // A chord reads harmony from the same note it reads dynamic from: the head.
+      // A member contributes nothing, exactly as it contributes no dynamic.
+      describeChordHarmonyFromSameNoteAsDynamic: (function () {
+        const g = groupNotes(harmonyChordNotes);
+        if (g.length !== 1 || g[0].length !== 3) return false;
+        const dHead = describeNote(g[0][0]);
+        return dHead.dynamic === "forte" && dHead.harmony === "C major";
+      })(),
+      describeChordMemberContributesNoHarmony: (function () {
+        const g = groupNotes(harmonyChordNotes);
+        const dMemberOne = describeNote(g[0][1]);
+        const dMemberTwo = describeNote(g[0][2]);
+        return dMemberOne.harmony === null && dMemberOne.dynamic === null &&
+          dMemberTwo.harmony === null && dMemberTwo.dynamic === null;
+      })(),
+      // The existing descriptor fields are untouched on a note that also carries a
+      // harmony, so the widened whitelist dropped nothing. shaping in particular
+      // stays RAW and by reference while harmony arrives named.
+      describeExistingFieldsUnaffectedByHarmony:
+        dHarmonyWithExtras.pitch === "F4" &&
+        dHarmonyWithExtras.value === "crotchet" &&
+        dHarmonyWithExtras.isRest === false &&
+        dHarmonyWithExtras.dynamic === "forte" &&
+        dHarmonyWithExtras.lyric === "la" &&
+        !!dHarmonyWithExtras.tie && dHarmonyWithExtras.tie.start === true &&
+        !!dHarmonyWithExtras.slur && dHarmonyWithExtras.slur.start === true &&
+        dHarmonyWithExtras.tuplet === null &&
+        dHarmonyWithExtras.articulations === null &&
+        dHarmonyWithExtras.ornaments === null &&
+        dHarmonyWithExtras.shaping === harmonyWithExtrasNote.shaping &&
+        dHarmonyWithExtras.harmony === "B flat major",
+      // The key is present on EVERY descriptor, harmonised or not, in every model.
+      describeHarmonyKeyOnEveryDescriptor: everyDescriptorOwnsHarmony(HARMONY_MODEL),
+      simpleModelEveryDescriptorHarmonyNull: (function () {
+        if (!everyDescriptorOwnsHarmony(MODEL)) return false;
+        return MODEL.parts.every(function (part) {
+          return part.measures.every(function (measure) {
+            return measure.notes.every(function (note) {
+              return describeNote(note).harmony === null;
             });
           });
         });

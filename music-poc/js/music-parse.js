@@ -24,11 +24,12 @@ const MusicParse = (function () {
   // The stub below is a SECOND independent copy of extractNote's default shape, so
   // it must stay in step with that shape key for key: a key present there but
   // missing here reads as undefined rather than null on every page where
-  // MusicParseNote failed to load. Both dynamic and shaping are listed for that
-  // reason even though the orchestrator assigns both on every note regardless.
+  // MusicParseNote failed to load. dynamic, shaping and harmony are all listed for
+  // that reason even though the orchestrator assigns all three on every note
+  // regardless.
   const noteLayer = window.MusicParseNote || {
     extractNote() {
-      return { rest: false, chord: false, step: null, octave: null, alter: null, duration: null, type: null, tie: null, slur: null, lyric: null, dynamic: null, shaping: null };
+      return { rest: false, chord: false, step: null, octave: null, alter: null, duration: null, type: null, tie: null, slur: null, lyric: null, dynamic: null, shaping: null, harmony: null };
     },
   };
 
@@ -227,6 +228,87 @@ const MusicParse = (function () {
     const wedge = directionEl.querySelector("wedge");
     if (!wedge) return null;
     return wedge.getAttribute("type");
+  }
+
+  // The TEXTUAL dynamic instruction inside a <direction> — an engraved "cresc."
+  // or "dim." rather than a printed hairpin — as "crescendo", "diminuendo", or
+  // null when the direction carries no recognised instruction. Scoped exactly as
+  // dynamicOf and wedgeOf scope their queries, so it reads
+  // direction > direction-type > words.
+  //
+  // The mapping lives HERE, in the parser, and nothing is added to music-names.js.
+  // This is parser-side normalisation of a raw file — an engraver's abbreviation
+  // turned into the same raw type a <wedge type="..."> already yields — and not
+  // naming for a reader. music-names is consumed by the model-walk and render
+  // layers, which sit ABOVE this one; music-parse.js depends on that module in no
+  // way today, and a parse-to-names dependency would invert the existing layering.
+  //
+  // Normalisation: lowercase, trim, collapse internal whitespace (a <words> text
+  // is routinely broken across lines), take the FIRST whitespace-separated token,
+  // then strip that token's trailing full stops. The strip is applied to the token
+  // rather than to the whole string so that a TRAILING qualifier — "cresc. poco a
+  // poco" — still matches on its first token.
+  function textualShapingOf(directionEl) {
+    // The two closed sets of engraved abbreviations this stage recognises.
+    // Anything outside them returns null, so an ordinary direction word
+    // ("Moderato", "con pedale", "Repeat 8va", a bar-1 title word) can never be
+    // read as shaping.
+    const CRESCENDO_WORDS = ["cresc", "crescendo"];
+    const DIMINUENDO_WORDS = ["dim", "dimin", "diminuendo", "decresc", "decrescendo"];
+    // First-token matching means a mark written with a LEADING qualifier, such as
+    // "poco a poco cresc.", is NOT matched: its first token is "poco". That is a
+    // known and deliberate limit — no file in the corpus writes one — and the
+    // cost of missing it is a reading that says nothing, never a wrong reading.
+    const wordsEl = directionEl.querySelector("words");
+    if (!wordsEl) return null;
+    const normalised = (wordsEl.textContent || "").toLowerCase().trim().replace(/\s+/g, " ");
+    if (!normalised.length) return null;
+    const token = normalised.split(" ")[0].replace(/\.+$/, "");
+    if (CRESCENDO_WORDS.indexOf(token) !== -1) return "crescendo";
+    if (DIMINUENDO_WORDS.indexOf(token) !== -1) return "diminuendo";
+    return null;
+  }
+
+  // The chord symbol inside a <harmony>, as an object of RAW MusicXML codes
+  //   { rootStep, rootAlter, kind, bassStep, bassAlter }
+  // or null when the element carries no usable root step or no kind. Scoped
+  // exactly as dynamicOf, wedgeOf and textualShapingOf scope their queries, so
+  // each read is a descendant lookup within the one <harmony> element it is given.
+  //
+  // RAW CODES ONLY. rootStep and bassStep are the bare MusicXML letters ("C",
+  // "F", "B"); rootAlter and bassAlter are the raw integers, which the corpus
+  // writes only as 1 or -1; kind is the raw MusicXML kind value ("major",
+  // "dominant", "diminished-seventh", and whatever else a file we have not seen
+  // may write). Nothing here is named, mapped or made speakable — the spoken name
+  // is built at Stage 62 in music-names.js from the kind ELEMENT TEXT, and Stage
+  // 64 voices it. Naming belongs there because music-names sits ABOVE this layer,
+  // exactly as the textualShapingOf comment above records for the same reason.
+  //
+  // The <kind> element's "text" attribute is DELIBERATELY NOT READ. It holds the
+  // engraver's display shorthand — the empty string for major, "mi", "7", "o",
+  // "o7" in the Joplin — which is glyph shorthand for printing on a stave rather
+  // than words a reader could hear, and for the commonest chord of all it is
+  // empty. The element's text content is the machine-readable value and is the
+  // only thing read here.
+  //
+  // rootAlter, bassStep and bassAlter are OPTIONAL and read null when absent,
+  // never undefined and never NaN: textOf returns null for an absent or empty
+  // element, and intOf returns null for an absent element and for a value that
+  // does not parse. rootStep and kind are NOT optional — a harmony missing either
+  // names no chord at all, so the whole read returns null rather than an object
+  // with holes in it, and a malformed <harmony> therefore costs a reader silence
+  // rather than a wrong symbol.
+  function harmonyOf(harmonyEl) {
+    const rootStep = textOf(harmonyEl, "root-step");
+    const kind = textOf(harmonyEl, "kind");
+    if (rootStep === null || kind === null) return null;
+    return {
+      rootStep: rootStep,
+      rootAlter: intOf(harmonyEl, "root-alter"),
+      kind: kind,
+      bassStep: textOf(harmonyEl, "bass-step"),
+      bassAlter: intOf(harmonyEl, "bass-alter"),
+    };
   }
 
   // A <direction>'s staff key: the text of its <staff> child, or "1" when the
@@ -451,6 +533,14 @@ const MusicParse = (function () {
         // it is emptied when a note consumes it. A wedge STOP needs no pending
         // variable: it attaches BACKWARD, to lastChordHead, held per part instead.
         let pendingWedges = [];
+        // Track the chord symbol from any <harmony> we pass so it attaches to the
+        // next note, exactly as pendingDynamic does, and reset per measure
+        // alongside it. SINGULAR, not a list like pendingWedges: two wedge starts
+        // before one note are both real and neither may displace the other, but a
+        // chord symbol replaced before it is ever heard is an engraving the model
+        // has no way to express, so the FIRST is kept and the later one warned
+        // about at the branch below.
+        let pendingHarmony = null;
         // note.onset is the note's position in divisions from the bar start. The
         // cursor advances by each non-chord note's duration and is moved by a
         // <backup> (rewind) and a <forward> (skip), so simultaneous voices and
@@ -514,6 +604,50 @@ const MusicParse = (function () {
                 }
               }
             }
+            // Textual dynamic shaping (Stage 60): an engraved "cresc." or "dim."
+            // read from the SAME direction. Read AFTER the wedge deliberately — if
+            // one direction somehow carried both, both would be pushed, which is
+            // correct and needs no special case.
+            //
+            // A match pushes onto the SAME pendingWedges list a wedge start uses,
+            // so it attaches forward to the next note by exactly the same route and
+            // reads through the Stage 59 clause with no renderer change. A textual
+            // instruction is NOT distinguished from a hairpin on the model, because
+            // it is the same instruction; a future feature wanting to say "marked
+            // cresc." would have to add the distinction then.
+            //
+            // It deliberately does NOT join openWedges. A textual mark has no
+            // printed ending, so it could never be popped, and joining the stack
+            // would fire the "part ended with N wedges still open" warning seven
+            // times on a clean Palestrina. The consequence, accepted: a file that
+            // printed cresc. and later closed it with a <wedge type="stop"> leaves
+            // that stop unmatched, which produces the existing "closes nothing that
+            // is open" warning and stamps no ending — a reading that is silent
+            // about the close rather than a wrong one.
+            const textualShaping = textualShapingOf(child);
+            if (textualShaping) pendingWedges.push(textualShaping);
+          } else if (child.tagName === "harmony") {
+            // Chord symbols (Stage 61). A <harmony> is a direct child of <measure>
+            // sitting between notes, exactly as a <direction> is, so it reaches a
+            // note by the same forward-attaching route.
+            const harmony = harmonyOf(child);
+            if (harmony) {
+              if (pendingHarmony === null) {
+                pendingHarmony = harmony;
+              } else {
+                // MEASURED UNREACHABLE ON THE WHOLE CORPUS. No <harmony> in the
+                // Joplin — the only real file that carries any — is followed by
+                // another <harmony> without a note between them, checked across
+                // all 72 adjacent pairs, and no other real file carries one at
+                // all. This branch therefore exists for a file we have not seen,
+                // and one warning is emitted rather than a silent discard so such
+                // a file announces itself the first time it is opened.
+                logWarn(
+                  "MusicParse: a second <harmony> in bar " + measureEl.getAttribute("number") +
+                    " arrives before any note has taken the first; keeping the earlier symbol and ignoring the later one"
+                );
+              }
+            }
           } else if (child.tagName === "backup") {
             cursor -= (intOf(child, "duration") || 0);
           } else if (child.tagName === "forward") {
@@ -552,6 +686,26 @@ const MusicParse = (function () {
             // specific. Stage 59 voices it; nothing reads it yet.
             note.shaping = pendingWedges.length === 0 ? null : { starts: pendingWedges, stops: [] };
             pendingWedges = [];
+            // note.harmony is the chord symbol IN FORCE FROM this note: an object
+            // { rootStep, rootAlter, kind, bassStep, bassAlter } of RAW MusicXML
+            // codes, or null when no chord symbol precedes the note in its bar.
+            // Assigned on EVERY note exactly as dynamic is, so the key is always
+            // present and the neutral value is null, never undefined.
+            //
+            // It is stamped on the NEXT NOTE rather than held at the position it
+            // was printed at because the model has no measure-position anchor: a
+            // measure holds a list of notes and nothing else that carries a
+            // position, so the pending mechanism pendingDynamic established is the
+            // only precedent this model has for a between-notes event acquiring
+            // one. The consequence, accepted and worth stating: a chord symbol
+            // printed after the last note of a bar reaches no note and is lost,
+            // which no file in the corpus does.
+            //
+            // The value is RAW and nothing reads it yet. Stage 62 adds the naming
+            // map in music-names, Stage 63 carries it through describeNote, and
+            // Stage 64 voices it; until then no reader hears anything at all.
+            note.harmony = pendingHarmony;
+            pendingHarmony = null;
             if (note.chord === true) {
               note.onset = lastOnset;
             } else {
@@ -1571,6 +1725,104 @@ const MusicParse = (function () {
     const wbo1 = wedgeBothModel ? wedgeBothModel.parts[0].measures[0].notes : [];
     const wbo2 = wedgeBothModel ? wedgeBothModel.parts[0].measures[1].notes : [];
 
+    // Textual dynamic instruction fixtures (Stage 60). The real Palestrina carries
+    // seven <words>cresc.</words> and ZERO wedges, while Satie and Joplin carry
+    // wedges and no dynamic words, so no real file exercises both halves — every
+    // mixed case below is a fixture built for that purpose.
+    function wordsDir(text) {
+      return '<direction placement="above"><direction-type><words>' + text + "</words></direction-type></direction>";
+    }
+    // Parse a one-bar part whose only direction is a <words> mark, and report the
+    // starts the following note received: a comma-joined list, or null when the
+    // note carries no shaping at all. One helper covers every matcher row below.
+    function textStartsOf(text) {
+      const m = parse(
+        wedgeScore('<measure number="1">' + WEDGE_ATTRS + wordsDir(text) + wedgeNote("C", 4, 4, "whole") + "</measure>")
+      );
+      const note = m ? m.parts[0].measures[0].notes[0] : null;
+      if (!note) return "(no note)";
+      return note.shaping === null ? null : note.shaping.starts.join(",");
+    }
+
+    // Capture the warnings a parse emits. MusicLog's logWarn writes through
+    // console.warn, so swapping console.warn for the length of the call sees every
+    // warning the parse raises and nothing else. Restored in a finally so a throw
+    // cannot leave the page instrumented; a row below re-checks the restore.
+    const consoleWarnBeforeCapture = console.warn;
+    function warningsDuringParse(xml) {
+      const captured = [];
+      const original = console.warn;
+      try {
+        console.warn = function () {
+          captured.push(Array.prototype.slice.call(arguments).join(" "));
+        };
+        parse(xml);
+      } finally {
+        console.warn = original;
+      }
+      return captured;
+    }
+
+    // A part whose ONLY shaping is textual, across two bars. Nothing joins the
+    // open-wedge stack, so the part must end with no warning of any kind — the
+    // clean-Palestrina case in miniature.
+    const TEXTUAL_ONLY_BARS =
+      '<measure number="1">' + WEDGE_ATTRS + wordsDir("cresc.") + wedgeNote("C", 4, 4, "whole") + "</measure>" +
+      '<measure number="2">' + wordsDir("dim.") + wedgeNote("D", 4, 4, "whole") + "</measure>";
+    const textualOnlyWarnings = warningsDuringParse(wedgeScore(TEXTUAL_ONLY_BARS));
+    const textualOnlyModel = parse(wedgeScore(TEXTUAL_ONLY_BARS));
+    const tob1 = textualOnlyModel ? textualOnlyModel.parts[0].measures[0].notes : [];
+    const tob2 = textualOnlyModel ? textualOnlyModel.parts[0].measures[1].notes : [];
+
+    // The documented consequence of staying off the stack: a wedge stop following a
+    // TEXTUAL start closes nothing, so it stamps no ending and raises the existing
+    // "closes nothing that is open" warning rather than producing a wrong reading.
+    const TEXT_THEN_STOP_BARS =
+      '<measure number="1">' + WEDGE_ATTRS + wordsDir("cresc.") +
+        wedgeNote("C", 4, 2, "half") + wedgeDir("stop") + wedgeNote("D", 4, 2, "half") + "</measure>";
+    const textThenStopWarnings = warningsDuringParse(wedgeScore(TEXT_THEN_STOP_BARS));
+    const textThenStopModel = parse(wedgeScore(TEXT_THEN_STOP_BARS));
+    const tts = textThenStopModel ? textThenStopModel.parts[0].measures[0].notes : [];
+
+    // A textual start and a HAIRPIN start in one part, with a single stop. Both
+    // starts must land, and the stop must pop the wedge — never the text — so E4
+    // ends the diminuendo and the part still closes with no warning.
+    const MIXED_BARS =
+      '<measure number="1">' + WEDGE_ATTRS + wordsDir("cresc.") + wedgeNote("C", 4, 2, "half") +
+        wedgeDir("diminuendo") + wedgeNote("D", 4, 2, "half") + "</measure>" +
+      '<measure number="2">' + wedgeNote("E", 4, 2, "half") + wedgeDir("stop") + wedgeNote("F", 4, 2, "half") + "</measure>";
+    const mixedWarnings = warningsDuringParse(wedgeScore(MIXED_BARS));
+    const mixedModel = parse(wedgeScore(MIXED_BARS));
+    const mx1 = mixedModel ? mixedModel.parts[0].measures[0].notes : [];
+    const mx2 = mixedModel ? mixedModel.parts[0].measures[1].notes : [];
+
+    // A textual mark sharing its bar with a <dynamics>, so the dynamic field can be
+    // proven undisturbed by the new read.
+    const textualWithDynamicModel = parse(
+      wedgeScore(
+        '<measure number="1">' + WEDGE_ATTRS +
+          '<direction placement="below"><direction-type><dynamics><mf/></dynamics></direction-type></direction>' +
+          wordsDir("cresc.") + wedgeNote("C", 4, 4, "whole") + "</measure>"
+      )
+    );
+    const twd = textualWithDynamicModel ? textualWithDynamicModel.parts[0].measures[0].notes : [];
+
+    // A plain fixture carrying no words and no wedges: shaping must stay null on
+    // every note, so the new read cannot manufacture shaping out of nothing.
+    const textualPlainModel = parse(
+      wedgeScore(
+        '<measure number="1">' + WEDGE_ATTRS + wedgeNote("C", 4, 2, "half") + wedgeNote("D", 4, 2, "half") + "</measure>" +
+          '<measure number="2">' + wedgeNote("E", 4, 4, "whole") + "</measure>"
+      )
+    );
+
+    // The title fallback chain on a file that ALSO carries a cresc. The bar-1
+    // direction word must still resolve as the title, and the cresc. must not
+    // displace it; a second fixture proves the chain's behaviour is unchanged even
+    // when the only words element IS the cresc.
+    const titleWithCresc = parse(titleScore("", wordsDir("Direction Word") + wordsDir("cresc.")));
+    const titleCrescOnly = parse(titleScore("", wordsDir("cresc.")));
+
     // True when EVERY note of every part owns a shaping key in its own right.
     // Uses hasOwnProperty rather than a truthiness or undefined test, so a note
     // that legitimately reads null still counts as carrying the key — which is the
@@ -1663,6 +1915,212 @@ const MusicParse = (function () {
         });
       });
     }
+
+    // Chord-symbol fixtures (Stage 61). HARMONY is identical in substance to
+    // sample/sample-harmony.musicxml — four bars of plain quarter notes, one
+    // chord symbol per bar except bar 2, which carries two with notes between
+    // them, and bar 3, which puts a <direction> between its harmony and the next
+    // note so a harmony and a dynamic are pending at once. Every <kind> keeps its
+    // text attribute, empty on the two majors exactly as the Joplin writes it, so
+    // the element-text reading is proved against both an empty and a non-empty
+    // attribute.
+    const HARMONY = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="3.1">
+  <work><work-title>Accessible Music PoC harmony sample</work-title></work>
+  <part-list>
+    <score-part id="P1"><part-name>Melody</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>1</divisions>
+        <key><fifths>0</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <harmony print-frame="no">
+        <root><root-step>C</root-step></root>
+        <kind text="">major</kind>
+      </harmony>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="2">
+      <harmony print-frame="no">
+        <root><root-step>F</root-step><root-alter>1</root-alter></root>
+        <kind text="7">dominant</kind>
+      </harmony>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <harmony print-frame="no">
+        <root><root-step>A</root-step></root>
+        <kind text="mi">minor</kind>
+      </harmony>
+      <note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="3">
+      <harmony print-frame="no">
+        <root><root-step>B</root-step><root-alter>-1</root-alter></root>
+        <kind text="">major</kind>
+        <bass><bass-step>D</bass-step></bass>
+      </harmony>
+      <direction placement="below">
+        <direction-type><dynamics><mf/></dynamics></direction-type>
+      </direction>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+    <measure number="4">
+      <harmony print-frame="no">
+        <root><root-step>D</root-step></root>
+        <kind text="mi7b5">half-diminished</kind>
+        <bass><bass-step>A</bass-step><bass-alter>-1</bass-alter></bass>
+      </harmony>
+      <note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>F</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const harmonyModel = parse(HARMONY);
+    const harmonyWarnings = warningsDuringParse(HARMONY);
+    const hb1 = harmonyModel ? harmonyModel.parts[0].measures[0].notes : [];
+    const hb2 = harmonyModel ? harmonyModel.parts[0].measures[1].notes : [];
+    const hb3 = harmonyModel ? harmonyModel.parts[0].measures[2].notes : [];
+    const hb4 = harmonyModel ? harmonyModel.parts[0].measures[3].notes : [];
+
+    // True when a note's harmony matches all five raw fields exactly. Compares
+    // every field on every call — including the ones expected null — so a field
+    // silently reading undefined can never pass by being left unasserted.
+    function harmonyIs(note, rootStep, rootAlter, kind, bassStep, bassAlter) {
+      if (!note || !note.harmony) return false;
+      const h = note.harmony;
+      return (
+        h.rootStep === rootStep && h.rootAlter === rootAlter && h.kind === kind &&
+        h.bassStep === bassStep && h.bassAlter === bassAlter
+      );
+    }
+
+    // A <harmony> element as a one-liner, in the Joplin's own child order, so the
+    // adjacency and malformed fixtures below stay readable. A null optional is
+    // omitted from the markup entirely rather than written empty.
+    function harmonyChord(rootStep, rootAlter, kind, kindText, bassStep, bassAlter) {
+      return (
+        '<harmony print-frame="no"><root><root-step>' + rootStep + "</root-step>" +
+        (rootAlter === null ? "" : "<root-alter>" + rootAlter + "</root-alter>") +
+        "</root>" +
+        '<kind text="' + kindText + '">' + kind + "</kind>" +
+        (bassStep === null
+          ? ""
+          : "<bass><bass-step>" + bassStep + "</bass-step>" +
+            (bassAlter === null ? "" : "<bass-alter>" + bassAlter + "</bass-alter>") +
+            "</bass>") +
+        "</harmony>"
+      );
+    }
+
+    // TWO harmonies with NO note between them — the case measured unreachable
+    // across all 72 adjacent pairs in the Joplin. The first must win, the second
+    // must be discarded, and exactly one warning must name the bar.
+    const HARMONY_TWO_IN_A_ROW =
+      '<measure number="1">' + WEDGE_ATTRS +
+      harmonyChord("C", null, "major", "", null, null) +
+      harmonyChord("G", null, "dominant", "7", null, null) +
+      wedgeNote("C", 4, 4, "whole") + "</measure>";
+    const harmonyTwoInARowModel = parse(wedgeScore(HARMONY_TWO_IN_A_ROW));
+    const harmonyTwoInARowWarnings = warningsDuringParse(wedgeScore(HARMONY_TWO_IN_A_ROW));
+    const htr = harmonyTwoInARowModel ? harmonyTwoInARowModel.parts[0].measures[0].notes : [];
+
+    // Malformed harmonies: no root and no kind at all, a root with no kind, and a
+    // kind with no root. Each must yield null on the following note, must not
+    // throw, and must not warn — a warning belongs to the adjacency case only.
+    const HARMONY_MALFORMED =
+      '<measure number="1">' + WEDGE_ATTRS +
+      '<harmony print-frame="no"></harmony>' + wedgeNote("C", 4, 4, "whole") + "</measure>" +
+      '<measure number="2">' +
+      '<harmony print-frame="no"><root><root-step>C</root-step></root></harmony>' +
+      wedgeNote("D", 4, 4, "whole") + "</measure>" +
+      '<measure number="3">' +
+      '<harmony print-frame="no"><kind text="">major</kind></harmony>' +
+      wedgeNote("E", 4, 4, "whole") + "</measure>";
+    const harmonyMalformedModel = parse(wedgeScore(HARMONY_MALFORMED));
+    const harmonyMalformedWarnings = warningsDuringParse(wedgeScore(HARMONY_MALFORMED));
+
+    // True when EVERY note of every part owns a harmony key in its own right.
+    // Uses hasOwnProperty rather than a truthiness or undefined test, so a note
+    // that legitimately reads null still counts as carrying the key — which is the
+    // whole point of the field being present on every note. Mirrors
+    // everyNoteOwnsShaping exactly.
+    function everyNoteOwnsHarmony(candidate) {
+      if (!candidate || !Array.isArray(candidate.parts) || candidate.parts.length === 0) return false;
+      let seen = 0;
+      const ok = candidate.parts.every(function (part) {
+        return part.measures.every(function (measure) {
+          return measure.notes.every(function (note) {
+            seen += 1;
+            return Object.prototype.hasOwnProperty.call(note, "harmony") && note.harmony !== undefined;
+          });
+        });
+      });
+      return ok && seen > 0;
+    }
+
+    // True when every note across these models reads harmony exactly null, for the
+    // harmony-free fixtures. Rests on everyNoteOwnsHarmony for key presence, so a
+    // model whose notes lack the key entirely cannot pass this by reading
+    // undefined. Counts nothing extra: everyNoteOwnsHarmony already refuses an
+    // empty model.
+    function everyNoteHarmonyNull(candidates) {
+      for (const candidate of candidates) {
+        if (!everyNoteOwnsHarmony(candidate)) return false;
+        const clean = candidate.parts.every(function (part) {
+          return part.measures.every(function (measure) {
+            return measure.notes.every(function (note) {
+              return note.harmony === null;
+            });
+          });
+        });
+        if (!clean) return false;
+      }
+      return candidates.length > 0;
+    }
+
+    // True when every non-null harmony carries EXACTLY the five agreed keys and no
+    // others, across the models given. Counts what it saw, so a list that carried
+    // no harmony at all cannot pass vacuously.
+    function harmonyShapeAlwaysFiveKeys(candidates) {
+      const EXPECTED = "bassAlter,bassStep,kind,rootAlter,rootStep";
+      let seen = 0;
+      for (const candidate of candidates) {
+        if (!candidate) return false;
+        for (const part of candidate.parts) {
+          for (const measure of part.measures) {
+            for (const note of measure.notes) {
+              if (note.harmony === null) continue;
+              seen += 1;
+              if (Object.keys(note.harmony).sort().join(",") !== EXPECTED) return false;
+            }
+          }
+        }
+      }
+      return seen > 0;
+    }
+
+    // Every fixture parsed in this self-test that carries NO <harmony> at all, so
+    // the null-throughout sweep runs across the whole existing corpus of fixtures
+    // rather than one convenient file.
+    const harmonyFreeModels = [
+      model, richModel, accModel, chordsModel, structModel, pianoModel,
+      restOnsetModel, backupOnsetModel, rehearsalModel, wedgeModel, wedgeChordModel,
+      wedgeCrossModel, wedgeStavesModel, textualOnlyModel, mixedModel,
+      textualWithDynamicModel, textualPlainModel,
+    ];
 
     const results = {
       hasParse: typeof parse === "function",
@@ -1969,6 +2427,200 @@ const MusicParse = (function () {
         !!woem[1] && woem[1].shaping === null,
       wedgeArraysAlwaysPresentWhenShapingNonNull: shapingArraysAlwaysPresent(wedgeModels),
       wedgeNoEmptyArrayPairAnywhere: noEmptyShapingPair(wedgeModels),
+      // Textual dynamic instruction (Stage 60). A recognised <words> mark pushes
+      // onto the SAME pending-starts list a wedge start uses, so it reaches the
+      // next note by the same route and reads through the Stage 59 clause with no
+      // renderer change. The matcher rows below all run through textStartsOf.
+      textualCrescAbbrevStartsOnNextNote: textStartsOf("cresc.") === "crescendo",
+      textualCrescendoFullWord: textStartsOf("crescendo") === "crescendo",
+      textualCrescNoFullStop: textStartsOf("cresc") === "crescendo",
+      textualDimAbbrev: textStartsOf("dim.") === "diminuendo",
+      textualDiminAbbrev: textStartsOf("dimin.") === "diminuendo",
+      textualDiminuendoFullWord: textStartsOf("diminuendo") === "diminuendo",
+      textualDecrescAbbrev: textStartsOf("decresc.") === "diminuendo",
+      textualDecrescendoFullWord: textStartsOf("decrescendo") === "diminuendo",
+      // A qualifier written AFTER the token still matches, because only the first
+      // token is tested and its trailing full stops are stripped.
+      textualTrailingQualifierMatches: textStartsOf("cresc. poco a poco") === "crescendo",
+      // Case and whitespace are normalised away, including a text broken across
+      // lines — the shape a real <words> element routinely takes.
+      textualUpperCaseMatches: textStartsOf("CRESC.") === "crescendo",
+      textualSurroundingWhitespaceMatches: textStartsOf(" cresc. ") === "crescendo",
+      textualBrokenAcrossLinesMatches: textStartsOf("cresc.\n   poco") === "crescendo",
+      textualInternalWhitespaceCollapsed: textStartsOf("  DIM.\n\t poco a poco ") === "diminuendo",
+      // The KNOWN LIMIT of first-token matching, asserted rather than left implicit:
+      // a LEADING qualifier is not matched. No fixture and no corpus file has one.
+      textualLeadingQualifierDoesNotMatch: textStartsOf("poco a poco cresc.") === null,
+      // Every non-dynamic words string the real corpus carries must NOT match.
+      textualCorpusModeratoNoMatch: textStartsOf("Moderato (      = 70 bpm)") === null,
+      textualCorpusRepeat8vaNoMatch: textStartsOf("Repeat 8va") === null,
+      textualCorpusLentEtDouloureuxNoMatch: textStartsOf("Lent et douloureux ") === null,
+      textualCorpusConPedaleNoMatch: textStartsOf("con pedale") === null,
+      textualCorpusPsalm42NoMatch: textStartsOf("Psalm 42") === null,
+      textualCorpusSicutCervusNoMatch: textStartsOf("Sicut cervus") === null,
+      textualCorpusComposerCreditNoMatch:
+        textStartsOf("Giovanni Pierluigi da Palestrina\n(1525-94)") === null,
+      // Satie carries six EMPTY <words> elements and Joplin one, so the empty read
+      // is a corpus case rather than a defensive one.
+      textualEmptyWordsNoMatch: textStartsOf("") === null,
+      // A textual instruction NEVER joins the open-wedge stack, so a part whose only
+      // shaping is textual ends with no warning at all — the clean-Palestrina case.
+      textualOnlyPartEmitsNoWarningAtAll: textualOnlyWarnings.length === 0,
+      textualOnlyPartNoStillOpenWarning:
+        textualOnlyWarnings.filter(function (w) { return w.indexOf("still open") !== -1; }).length === 0,
+      textualOnlyBothBarsStartOnNextNote:
+        !!tob1[0] && !!tob1[0].shaping && tob1[0].shaping.starts.join(",") === "crescendo" &&
+        tob1[0].shaping.stops.length === 0 &&
+        !!tob2[0] && !!tob2[0].shaping && tob2[0].shaping.starts.join(",") === "diminuendo" &&
+        tob2[0].shaping.stops.length === 0,
+      // The accepted consequence of staying off the stack: a wedge stop after a
+      // textual start closes nothing, stamps no ending, and warns as it always did.
+      textualStopAfterTextualStartStampsNoEnding:
+        tts.length === 2 && !!tts[0].shaping && tts[0].shaping.starts.join(",") === "crescendo" &&
+        tts[0].shaping.stops.length === 0 && tts[1].shaping === null,
+      textualStopAfterTextualStartWarnsClosesNothing:
+        textThenStopWarnings.filter(function (w) { return w.indexOf("closes nothing that is open") !== -1; }).length === 1,
+      textualStopAfterTextualStartNoStillOpenWarning:
+        textThenStopWarnings.filter(function (w) { return w.indexOf("still open") !== -1; }).length === 0,
+      // A textual start and a hairpin start in ONE part: both land, and the stop
+      // pops the WEDGE rather than the text, so neither interferes with the other.
+      textualAndWedgeStartsBothLandInOnePart:
+        !!mx1[0] && !!mx1[0].shaping && mx1[0].shaping.starts.join(",") === "crescendo" &&
+        !!mx1[1] && !!mx1[1].shaping && mx1[1].shaping.starts.join(",") === "diminuendo",
+      textualWedgeStopPopsTheWedgeNotTheText:
+        !!mx2[0] && mx2[0].step === "E" && !!mx2[0].shaping &&
+        mx2[0].shaping.stops.join(",") === "diminuendo" && mx2[0].shaping.starts.length === 0,
+      textualMixedPartLastNoteUnshaped: !!mx2[1] && mx2[1].step === "F" && mx2[1].shaping === null,
+      textualMixedPartEmitsNoWarningAtAll: mixedWarnings.length === 0,
+      // dynamicOf is undisturbed: a bar carrying both a <dynamics> and a cresc.
+      // yields both fields.
+      textualDynamicFieldUnaffected:
+        !!twd[0] && twd[0].dynamic === "mf" && !!twd[0].shaping &&
+        twd[0].shaping.starts.join(",") === "crescendo",
+      // No words and no wedges anywhere: shaping stays null on every note.
+      textualNoWordsNoWedgesShapingNullThroughout: everyNoteShapingNull(textualPlainModel),
+      textualShapingKeyOnEveryNote:
+        everyNoteOwnsShaping(textualOnlyModel) && everyNoteOwnsShaping(mixedModel),
+      textualNoEmptyArrayPairAnywhere:
+        noEmptyShapingPair([textualOnlyModel, textThenStopModel, mixedModel, textualWithDynamicModel, textualPlainModel]),
+      // The title fallback chain behaves identically. The six existing chain rows
+      // are re-asserted together here, then a file carrying BOTH a direction-word
+      // title and a cresc. must still resolve the title, with the cresc. losing.
+      textualTitleChainSixSourcesUnchanged:
+        !!titleWorkWins && titleWorkWins.workTitle === "Work Wins" &&
+        !!titleMovementOnly && titleMovementOnly.workTitle === "Only Movement" &&
+        !!titleCreditOnly && titleCreditOnly.workTitle === "Only Credit" &&
+        !!titleCreditTyped && titleCreditTyped.workTitle === "Typed Title" &&
+        !!titleDirection && titleDirection.workTitle === "Direction Word" &&
+        !!titleNone && titleNone.workTitle === null,
+      textualTitleDirectionWordStillResolvesBesideCresc:
+        !!titleWithCresc && titleWithCresc.workTitle === "Direction Word",
+      textualTitleChainStillReadsCrescWhenItIsTheOnlyWords:
+        !!titleCrescOnly && titleCrescOnly.workTitle === "cresc.",
+      // The warning-capture instrument put console.warn back as it found it.
+      textualWarnCaptureRestoredConsoleWarn: console.warn === consoleWarnBeforeCapture,
+      // Chord symbols (Stage 61). A <harmony> is a direct child of <measure> and
+      // attaches FORWARD to the next note, exactly as a <direction>'s dynamic
+      // does. Every value below is a RAW MusicXML code: nothing is named, mapped
+      // or voiced at this stage, so no reader hears any of it.
+      harmonyFixtureParses: !!harmonyModel && typeof harmonyModel === "object",
+      harmonyFixtureFourBarsSixteenNotes:
+        !!harmonyModel && harmonyModel.parts[0].measures.length === 4 &&
+        hb1.length === 4 && hb2.length === 4 && hb3.length === 4 && hb4.length === 4,
+      // Bar 1 — a plain root and kind: no root-alter, no bass. All five fields
+      // asserted, so the three that must read null are checked rather than assumed.
+      harmonyBar1PlainMajorOnFirstNote: harmonyIs(hb1[0], "C", null, "major", null, null),
+      // The <kind> text attribute here is the EMPTY string, so a parser reading the
+      // attribute instead of the element text would yield "" — which this row and
+      // the bar-1 row above would both catch.
+      harmonyBar1KindReadFromElementTextNotEmptyTextAttribute:
+        !!hb1[0] && !!hb1[0].harmony && hb1[0].harmony.kind === "major" && hb1[0].harmony.kind !== "",
+      harmonyBar1RemainingNotesNull:
+        hb1[1].harmony === null && hb1[2].harmony === null && hb1[3].harmony === null,
+      // Bar 2 — root-alter 1, and a kind whose text attribute is present and
+      // DIFFERENT from the element text, proving the element-text reading a second
+      // way round from bar 1's empty attribute.
+      harmonyBar2RootAlterOneOnFirstNote: harmonyIs(hb2[0], "F", 1, "dominant", null, null),
+      harmonyBar2KindReadFromElementTextNotNonEmptyTextAttribute:
+        !!hb2[0] && !!hb2[0].harmony && hb2[0].harmony.kind === "dominant" && hb2[0].harmony.kind !== "7",
+      // Two harmonies in one bar WITH notes between them — the only harmony
+      // adjacency the corpus exhibits. Each lands on its own note, and the notes
+      // between them carry nothing.
+      harmonyBar2SecondHarmonyLandsOnThirdNote: harmonyIs(hb2[2], "A", null, "minor", null, null),
+      harmonyBar2NotesBetweenAndAfterCarryNull:
+        hb2[1].harmony === null && hb2[3].harmony === null,
+      // Bar 3 — root-alter -1 with a bass that has a bass-step and NO bass-alter,
+      // so a present bass and an absent bass-alter are proved in one note.
+      harmonyBar3RootAlterMinusOneWithBassAndNoBassAlter:
+        harmonyIs(hb3[0], "B", -1, "major", "D", null),
+      // A <direction> sitting between the harmony and the next note — 38 of these
+      // in the Joplin. BOTH pending values must land on that one note.
+      harmonyBar3HarmonyAndDynamicBothLandOnSameNote:
+        !!hb3[0] && !!hb3[0].harmony && hb3[0].harmony.rootStep === "B" && hb3[0].dynamic === "mf",
+      harmonyBar3RemainingNotesCarryNeither:
+        hb3[1].harmony === null && hb3[1].dynamic === null &&
+        hb3[2].harmony === null && hb3[3].harmony === null,
+      // Bar 4 — bass-alter -1, no root-alter beside it, and a kind OUTSIDE the five
+      // the Joplin uses, carried through raw for a later stage's unmapped fallback.
+      harmonyBar4BassAlterMinusOneAndNoRootAlter:
+        harmonyIs(hb4[0], "D", null, "half-diminished", "A", -1),
+      harmonyBar4UnmappedKindCarriedThroughRaw:
+        !!hb4[0] && !!hb4[0].harmony && hb4[0].harmony.kind === "half-diminished" &&
+        ["major", "minor", "dominant", "diminished", "diminished-seventh"].indexOf(hb4[0].harmony.kind) === -1,
+      // Alters are NUMBERS, not the raw strings the file holds, and both signs the
+      // corpus writes are read. typeof is asserted explicitly because "1" === 1 is
+      // false but a string would still satisfy a naive truthiness check.
+      harmonyAltersAreNumbersOfBothSigns:
+        hb2[0].harmony.rootAlter === 1 && typeof hb2[0].harmony.rootAlter === "number" &&
+        hb3[0].harmony.rootAlter === -1 && typeof hb3[0].harmony.rootAlter === "number" &&
+        hb4[0].harmony.bassAlter === -1 && typeof hb4[0].harmony.bassAlter === "number",
+      // An ABSENT optional reads null, never undefined and never NaN. hasOwnProperty
+      // proves the key is there to be read at all, so an absent key cannot pass by
+      // reading undefined and comparing unequal to a number.
+      harmonyAbsentOptionalsAreNullNotUndefinedOrNaN:
+        Object.prototype.hasOwnProperty.call(hb1[0].harmony, "rootAlter") &&
+        hb1[0].harmony.rootAlter === null && hb1[0].harmony.bassStep === null &&
+        hb1[0].harmony.bassAlter === null &&
+        Object.prototype.hasOwnProperty.call(hb3[0].harmony, "bassAlter") &&
+        hb3[0].harmony.bassAlter === null &&
+        Object.prototype.hasOwnProperty.call(hb4[0].harmony, "rootAlter") &&
+        hb4[0].harmony.rootAlter === null,
+      harmonyFixtureEmitsNoWarningAtAll: harmonyWarnings.length === 0,
+      harmonyKeyPresentOnEveryNoteOfParsedModel: everyNoteOwnsHarmony(harmonyModel),
+      harmonyShapeIsAlwaysTheFiveAgreedKeys:
+        harmonyShapeAlwaysFiveKeys([harmonyModel, harmonyTwoInARowModel]),
+      // Two harmonies with NO note between them. Measured unreachable across all 72
+      // adjacent pairs in the Joplin, so these rows guard a file we have not seen.
+      harmonyTwoInARowFirstWins: harmonyIs(htr[0], "C", null, "major", null, null),
+      harmonyTwoInARowEmitsExactlyOneWarning: harmonyTwoInARowWarnings.length === 1,
+      harmonyTwoInARowWarningNamesBarAndSaysEarlierKept:
+        harmonyTwoInARowWarnings.length === 1 &&
+        harmonyTwoInARowWarnings[0].indexOf("bar 1") !== -1 &&
+        harmonyTwoInARowWarnings[0].indexOf("keeping the earlier symbol") !== -1,
+      // A malformed <harmony> yields null and never throws: an empty element, a
+      // root with no kind, and a kind with no root are all read as naming no chord.
+      harmonyMalformedParsesWithoutThrowing:
+        !!harmonyMalformedModel && harmonyMalformedModel.parts[0].measures.length === 3,
+      harmonyMalformedEmptyElementYieldsNull:
+        !!harmonyMalformedModel && harmonyMalformedModel.parts[0].measures[0].notes[0].harmony === null,
+      harmonyMalformedRootWithoutKindYieldsNull:
+        !!harmonyMalformedModel && harmonyMalformedModel.parts[0].measures[1].notes[0].harmony === null,
+      harmonyMalformedKindWithoutRootYieldsNull:
+        !!harmonyMalformedModel && harmonyMalformedModel.parts[0].measures[2].notes[0].harmony === null,
+      // A malformed harmony is silent: the one warning this stage adds belongs to
+      // the adjacency case alone, so a file full of empty harmonies says nothing.
+      harmonyMalformedEmitsNoWarning: harmonyMalformedWarnings.length === 0,
+      // Every fixture in this self-test that carries no <harmony> reads null on
+      // every note, so the new branch cannot manufacture a chord out of nothing.
+      harmonyNullThroughoutEveryHarmonyFreeFixture: everyNoteHarmonyNull(harmonyFreeModels),
+      // The existing per-note fields are undisturbed on a bar that carries a
+      // harmony: bar 3 holds a harmony AND a dynamic and still shapes nothing, and
+      // the rich fixture's dynamic, slur, tie and lyric reads are unchanged.
+      harmonyShapingFieldUnaffectedOnHarmonyBars:
+        hb1[0].shaping === null && hb3[0].shaping === null && hb4[0].shaping === null,
+      harmonyDynamicAndShapingUnaffectedOnRichFixture:
+        !!rC4 && rC4.dynamic === "f" && rC4.lyric === "la" && rC4.shaping === null &&
+        !!rG4 && rG4.dynamic === null && rG4.shaping === null,
     };
 
     console.table(results);

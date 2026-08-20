@@ -1176,8 +1176,13 @@
       : null;
     var format = getLocalChatExportFormat();
     var upper = format.toUpperCase();
+    // SC 2.5.3: the label span is the ONLY name source — no aria-label. The
+    // name written alongside it drifted out of step ("Save as MP3" visible,
+    // "Save bubble as MP3 audio file" announced), and the disabled-with-reason
+    // states below carried their reason in the name only. Letting the content
+    // name the button keeps the two in step by construction. The icon span is
+    // aria-hidden, so it contributes nothing.
     if (label) label.textContent = "Save as " + upper;
-    btn.setAttribute("aria-label", "Save bubble as " + upper + " audio file");
     if (formatLabel) formatLabel.textContent = upper;
     if (formatBtn) {
       formatBtn.setAttribute(
@@ -1198,8 +1203,8 @@
    *   2) "Empty bubble" (no text yet) — disabled. Local Chat bubbles can
    *      exist briefly with only a typing indicator.
    *
-   * Does not touch the in-flight visuals (Generating… / Encoding MP3 X%…)
-   * — those are the click handler's responsibility. The click handler
+   * Does not touch the exporting button's aria-busy or the shared progress
+   * surface — those are the click handler's responsibility. The click handler
    * calls this in its finally to restore the resting label.
    */
   function refreshLocalChatSaveAudioEnabled(bubble) {
@@ -1244,27 +1249,18 @@
     btn.disabled = !canExport;
     if (formatBtn) formatBtn.disabled = !canExport;
 
-    // Label nudges users to the action required (most-specific first).
+    // Label nudges users to the action required (most-specific first). The
+    // visible text carries the reason in parentheses and is the button's only
+    // name source, so the reason reaches a screen reader through the name
+    // itself — see the SC 2.5.3 note in refreshSaveButtonFormatLabels.
     if (!isNeural) {
       if (label)
         label.textContent = "Save as " + upper + " (requires natural voice)";
-      btn.setAttribute(
-        "aria-label",
-        "Save as " + upper + " — requires natural voice engine",
-      );
     } else if (!modelReady) {
       if (label) label.textContent = "Save as " + upper + " (model loading…)";
-      btn.setAttribute(
-        "aria-label",
-        "Save as " + upper + " — model is loading",
-      );
     } else if (someoneElseExporting) {
       if (label)
         label.textContent = "Save as " + upper + " (another export running)";
-      btn.setAttribute(
-        "aria-label",
-        "Save as " + upper + " — another export is in progress",
-      );
     } else {
       refreshSaveButtonFormatLabels(btn);
     }
@@ -1289,8 +1285,11 @@
    * Panel-level lock: if another bubble is mid-export, refuse and tell
    * the user. Otherwise run the prepared payload through exportMp3/Wav.
    *
-   * In-flight visuals (Generating… → Encoding MP3 X%…) are managed
-   * inline here; the resting-label restore is delegated to
+   * In-flight state is the hourglass icon, aria-busy on the button and the
+   * shared page-level progress bar; all three are managed inline here. The
+   * button's LABEL no longer changes during an export — it sits inside the
+   * message-list live region, so every change made a screen reader re-read
+   * the whole bubble. The resting-label restore is delegated to
    * refreshLocalChatSaveAudioEnabled(bubble) in the finally block.
    */
   function handleLocalChatSaveAudioClick(bubble, btn) {
@@ -1299,9 +1298,17 @@
       return;
     }
 
-    // Panel-level export lock — at most one export in flight.
-    if (activeExportingBtn && activeExportingBtn !== btn) {
-      if (typeof window.notifyWarning === "function") {
+    // Panel-level export lock — at most one export in flight. The exporting
+    // button now stays ENABLED (disabling it took focus off it and dropped the
+    // user on <body> for the whole export), so re-entry has to be refused
+    // here instead. A click on the button that is already exporting is a
+    // silent no-op; only a click on a DIFFERENT bubble's button warns, which
+    // is what the existing message describes.
+    if (activeExportingBtn) {
+      if (
+        activeExportingBtn !== btn &&
+        typeof window.notifyWarning === "function"
+      ) {
         window.notifyWarning(
           "Another audio export is already in progress. Please wait for it to finish.",
         );
@@ -1330,15 +1337,28 @@
       return;
     }
 
-    var label = btn.querySelector(".local-chat-save-audio-label");
     var icon = btn.querySelector("[data-icon]");
     var formatBtn = bubble.querySelector(".local-chat-save-audio-format");
 
-    // Claim the panel lock and lock the clicked button immediately.
+    // Claim the panel lock. Neither the clicked button NOR the format toggle
+    // is disabled — disabling a focused control moves focus to <body>, which is
+    // where the user was left for the whole export. Both stay enabled, keep
+    // their names, and carry aria-busy instead.
+    //
+    // Re-entry is refused by the lock instead of by the disabled flag: the main
+    // button by the activeExportingBtn check above, and the format toggle by
+    // the identical check in its own click handler (see addSaveAudioButton), so
+    // a mid-export format change still cannot relabel the running button.
+    //
+    // The finally's refreshAll* restores the resting disabled state from the
+    // canExport predicate, which reads text presence, isGenerating, the engine,
+    // the model state and OTHER bubbles' exports — never this bubble's own. It
+    // is orthogonal to the line removed here, and the exporting bubble is
+    // excluded from it outright while activeExportingBtn === btn.
     activeExportingBtn = btn;
-    btn.disabled = true;
-    if (formatBtn) formatBtn.disabled = true;
-    if (label) label.textContent = "Generating…";
+    btn.setAttribute("aria-busy", "true");
+    if (formatBtn) formatBtn.setAttribute("aria-busy", "true");
+    showExportProgress();
     if (icon) {
       icon.setAttribute("data-icon", "hourglass");
       if (typeof window.refreshIcons === "function") window.refreshIcons(icon);
@@ -1360,26 +1380,32 @@
         return exportFn.call(window.TTSController, result);
       })
       .then(function () {
-        if (typeof S.announceToScreenReader === "function") {
-          S.announceToScreenReader("Audio file saved.");
-        }
+        // One voice per event: the shared notification path announces in its
+        // own right, so the private announcer is the fallback for pages where
+        // the notification module is absent, never a second audience.
         if (typeof window.notifySuccess === "function") {
-          window.notifySuccess("Audio file saved successfully.");
+          window.notifySuccess("Audio file saved.");
+        } else if (typeof S.announceToScreenReader === "function") {
+          S.announceToScreenReader("Audio file saved.");
         }
       })
       .catch(function (err) {
         S.logError("Audio export failed", err);
         var msg = err && err.message ? err.message : "unknown error";
-        if (typeof S.announceToScreenReader === "function") {
-          S.announceToScreenReader("Audio export failed: " + msg);
-        }
+        // One voice per event; the announcer is the fallback, not a second
+        // audience. See the note on the save path above.
         if (typeof window.notifyWarning === "function") {
           window.notifyWarning("Audio export failed: " + msg);
+        } else if (typeof S.announceToScreenReader === "function") {
+          S.announceToScreenReader("Audio export failed: " + msg);
         }
       })
       .then(function () {
         // finally — always restore the panel lock, icon, and labels.
         activeExportingBtn = null;
+        btn.removeAttribute("aria-busy");
+        if (formatBtn) formatBtn.removeAttribute("aria-busy");
+        hideExportProgress();
         if (icon) {
           icon.setAttribute("data-icon", "download");
           if (typeof window.refreshIcons === "function")
@@ -1390,16 +1416,73 @@
       });
   }
 
-  // ── In-flight progress label updates (events) ──────────────────────
+  // ── In-flight progress: the SHARED page-level surface ───────────────
+
+  /**
+   * The audio-export progress bar is ONE page-level element declared in
+   * tools.html (#audio-export-progress), outside every tool <article> and
+   * outside any live region. See the comment on that markup for why.
+   *
+   * It used to be this button's own label, which sits inside
+   * #local-chat-messages (role="log", aria-live="polite"), so every counter
+   * tick made NVDA re-read the whole message bubble — fourteen whole-bubble
+   * reads for one save, measured 18 August 2026. Nothing here announces; the
+   * export's start and end sentences remain the only spoken output.
+   */
+  var EXPORT_PROGRESS_IDS = Object.freeze({
+    wrapper: "audio-export-progress",
+    bar: "audio-export-progress-bar",
+    fill: "audio-export-progress-fill",
+    text: "audio-export-progress-text",
+  });
+
+  /**
+   * Write one progress step. chunk/totalChunks of 0 clears the surface.
+   * @param {number} chunk — 1-based chunk index just started
+   * @param {number} totalChunks — total chunks in this export
+   */
+  function setExportProgress(chunk, totalChunks) {
+    var bar = document.getElementById(EXPORT_PROGRESS_IDS.bar);
+    var fill = document.getElementById(EXPORT_PROGRESS_IDS.fill);
+    var text = document.getElementById(EXPORT_PROGRESS_IDS.text);
+    var percent =
+      totalChunks > 0 ? Math.round((chunk / totalChunks) * 100) : 0;
+
+    if (bar) bar.setAttribute("aria-valuenow", String(percent));
+    if (fill) fill.style.width = percent + "%";
+    if (text) {
+      // The surface no longer sits on the control, so it names what it is
+      // doing rather than relying on the button for context.
+      text.textContent =
+        totalChunks > 0 ? "Saving audio, " + chunk + " of " + totalChunks : "";
+    }
+  }
+
+  function showExportProgress() {
+    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
+    if (!wrapper) return;
+    setExportProgress(0, 0);
+    wrapper.hidden = false;
+  }
+
+  function hideExportProgress() {
+    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
+    if (!wrapper) return;
+    wrapper.hidden = true;
+    setExportProgress(0, 0);
+  }
 
   /**
    * tts:exportProgress handler — only fires for the actively-exporting
    * bubble. Image Describer's identical listener fires globally; here we
    * filter on activeExportingBtn so we never react to Image Describer's
-   * exports. Updates the Save button's label only — Stage 4 deliberately
-   * does NOT use an inline progress bar (chat bubbles are short; the
-   * Image Describer reference does, but its pattern is over-spec for
-   * the per-bubble Local Chat case).
+   * exports.
+   *
+   * There is deliberately no tts:exportEncodeProgress companion. Its eleven
+   * writes share ONE macrotask, zero animation frames apart, so no
+   * intermediate encoding state was ever observable to anyone, sighted or
+   * otherwise (measured 18 August 2026). encodeMp3 still emits the event —
+   * it is shared with Image Describer — this consumer simply ignores it.
    */
   function onExportProgress(data) {
     if (!activeExportingBtn) return;
@@ -1409,23 +1492,7 @@
       typeof data.totalChunks !== "number"
     )
       return;
-    var label = activeExportingBtn.querySelector(
-      ".local-chat-save-audio-label",
-    );
-    if (label) {
-      label.textContent =
-        "Generating " + data.chunk + " of " + data.totalChunks + "…";
-    }
-  }
-
-  function onExportEncodeProgress(data) {
-    if (!activeExportingBtn) return;
-    if (!data || typeof data.percent !== "number") return;
-    var percent = Math.max(0, Math.min(100, Math.round(data.percent)));
-    var label = activeExportingBtn.querySelector(
-      ".local-chat-save-audio-label",
-    );
-    if (label) label.textContent = "Encoding MP3 " + percent + "%…";
+    setExportProgress(data.chunk, data.totalChunks);
   }
 
   // ── Engine badge (conversation-level) ──────────────────────────────
@@ -1552,8 +1619,9 @@
    *   - tts:start / tts:end / tts:error → engine badge (when a Local
    *     Chat bubble owns playback, i.e. activeBubbleBtn set).
    *   - tts:engineChanged / model:stateChange → recompute Save buttons.
-   *   - tts:exportProgress / tts:exportEncodeProgress → update the
-   *     actively-exporting bubble's label (filtered by activeExportingBtn).
+   *   - tts:exportProgress → update the shared page-level progress bar
+   *     (filtered by activeExportingBtn). tts:exportEncodeProgress is
+   *     deliberately NOT subscribed — see onExportProgress.
    *
    * Engine-badge wiring lives here rather than in wireReadAloudEvents
    * because it's conceptually a Stage 4 control (companion to Save audio)
@@ -1594,10 +1662,6 @@
     });
 
     window.EmbedEventEmitter.on("tts:exportProgress", onExportProgress);
-    window.EmbedEventEmitter.on(
-      "tts:exportEncodeProgress",
-      onExportEncodeProgress,
-    );
 
     S.logDebug("Save Audio TTS events wired");
   }

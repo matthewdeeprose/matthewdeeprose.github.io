@@ -95,6 +95,8 @@ const MathPixAltTextPromptBuilder = (function () {
    */
   const DESCRIPTION_PROMPT = `Describe this image for accessibility using these sections:
 
+Write all output in British English.
+
 ## 1. Title
 A brief descriptive title under 10 words.
 
@@ -112,6 +114,8 @@ Use markdown structure wherever it aids comprehension, rather than as decoration
 - headings to separate the distinct parts of a longer description.
 
 Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
+
+Write mathematical expressions as inline LaTeX between dollar signs, matching the notation used in the surrounding document. This applies to the long description only: the alt text stays plain prose, with no LaTeX and no markdown.
 
 Do not reuse "Title", "Alt Text", "Long Description" or "Text Content" as a heading inside this section.
 

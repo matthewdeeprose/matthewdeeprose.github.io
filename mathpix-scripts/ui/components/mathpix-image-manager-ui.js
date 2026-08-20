@@ -536,6 +536,93 @@ const MathPixImageManagerUI = (function () {
   const GENERATE_BLOCKED_STATUS_TYPE = "info";
 
   // ============================================================================
+  // PARCEL BG-P2 — BATCH GENERATION ("Describe All")
+  //
+  // A SIBLING UniversalModal opened over the manager, copying the
+  // _promptFieldSelection pattern exactly (plan decision A1): markup built in
+  // JS, buttons wired in onOpen, a resolve-once guard, and the distinctive
+  // class stamped onto the live dialog in onOpen because the shim does not
+  // forward `className`. It is never injected into the manager's own dialog DOM.
+  //
+  // THE ANNOUNCEMENT PIN (A10). EXACTLY TWO polite lines per batch — a start
+  // line and an outcome line — both through UniversalModal.showStatus while the
+  // batch dialog is stack top, so both land on the batch dialog's OWN
+  // div.universal-modal-status-text. Everything between them (per-image
+  // progress, the filename, elapsed time) is VISUAL-ONLY on non-live elements.
+  // The batch's progress controller is silent BY CONSTRUCTION for that reason:
+  // the orchestrator emits one showStatus or showError per run, so a speaking
+  // controller would put N lines into the spoken stream for one gesture.
+  // ============================================================================
+
+  const BATCH_DIALOG_TITLE = "Describe all images";
+  const BATCH_DIALOG_CLASS = "mmd-image-manager-batch";
+  const BATCH_DESCRIBE_ALL_BTN_ID = "image-manager-describe-all-btn";
+  const BATCH_DESCRIBE_ALL_LABEL = "Describe All";
+
+  // The three views (A3). Exactly one is visible at a time; the others carry
+  // the `hidden` property, so nothing in a non-current view is reachable.
+  const BATCH_START_VIEW_ID = "image-manager-batch-start";
+  const BATCH_RUNNING_VIEW_ID = "image-manager-batch-running";
+  const BATCH_COMPLETE_VIEW_ID = "image-manager-batch-complete";
+
+  const BATCH_CONFIRM_BTN_ID = "image-manager-batch-confirm-btn";
+  const BATCH_CANCEL_BTN_ID = "image-manager-batch-cancel-btn";
+  const BATCH_CLOSE_BTN_ID = "image-manager-batch-close-btn";
+
+  // VISUAL-ONLY progress elements. None carries aria-live or a live role, and
+  // none may ever gain one — that is the A10 pin, not a preference.
+  const BATCH_PROGRESS_COUNT_ID = "image-manager-batch-progress-count";
+  const BATCH_PROGRESS_STAGE_ID = "image-manager-batch-progress-stage";
+  const BATCH_PROGRESS_TIME_ID = "image-manager-batch-progress-time";
+  // F9-FIX removed the completion-view paragraph this id named. The
+  // constant is KEPT, and still exported, because the guard rows that
+  // assert the paragraph stays gone resolve the id through the module
+  // rather than restating the literal — so a rename moves those rows with
+  // it instead of leaving them asserting a stale element. Deleting it
+  // would make those rows pass vacuously; they carry a canary that
+  // reddens if it ever goes.
+  const BATCH_SUMMARY_ID = "image-manager-batch-summary";
+
+  const BATCH_CONFIRM_LABEL = "Start describing";
+  const BATCH_CANCEL_LABEL = "Cancel";
+  const BATCH_CLOSE_LABEL = "Close";
+
+  // The two spoken lines. The OUTCOME line is never composed here — it is the
+  // runner's own composed line, passed through verbatim, so the taxonomy lives
+  // in one place (plan decisions A8, A9).
+  const BATCH_START_LINE_SINGULAR = "Describing one image. Please wait.";
+  const BATCH_START_LINE_PLURAL =
+    "Describing {count} images. Please wait.";
+  const BATCH_START_COUNT_TOKEN = "{count}";
+  const BATCH_START_STATUS_TYPE = "info";
+  const BATCH_OUTCOME_STATUS_TYPE = "success";
+
+  // Visible-only strings for the three views.
+  const BATCH_NO_TARGETS_TEXT =
+    "Every image already has alt text, or is marked decorative. There is nothing to describe.";
+  const BATCH_START_INTRO_SINGULAR =
+    "One image has no alt text and is not decorative. It will be described using AI.";
+  const BATCH_START_INTRO_PLURAL =
+    "{count} images have no alt text and are not decorative. They will be described using AI.";
+  const BATCH_RUNNING_STAGE_TEXT = "Describing image {index} of {total}…";
+
+  // THE BLOCKED DIRECTION (A11, reverse). Mirrors the g-10 arrangement exactly:
+  // aria-disabled rather than the disabled property, the control never removed,
+  // the reason in the accessible name through a visually-hidden span, and the
+  // blocked press writing ONE line on ONE channel with no announcer beside it.
+  const DESCRIBE_ALL_BLOCKED_SUFFIX_ATTR = "data-describe-all-blocked";
+  const DESCRIBE_ALL_BLOCKED_SUFFIX_CLASS = "visually-hidden";
+  const DESCRIBE_ALL_BLOCKED_BY_RUN_SUFFIX = ", an image is generating";
+  const DESCRIBE_ALL_BLOCKED_BY_EDIT_SUFFIX = ", close the edit view first";
+  const DESCRIBE_ALL_BLOCKED_BY_RUN_LINE =
+    "An image is still generating. Wait for it to finish.";
+  // A2 is a LOCK, not a preference: a batch write into an open edit view leaves
+  // _valuesAtOpen stale, and a later Save then reverts the batch's work.
+  const DESCRIBE_ALL_BLOCKED_BY_EDIT_LINE =
+    "Close the edit view before describing all images.";
+  const DESCRIBE_ALL_BLOCKED_STATUS_TYPE = "info";
+
+  // ============================================================================
   // PARCEL 8c-ii — FIELD-SELECTION DIALOG (interactive Generate)
   // A SIBLING UniversalModal opened over the manager to choose which
   // descriptions the AI should (re)generate. All IDs live in the
@@ -1438,6 +1525,19 @@ const MathPixImageManagerUI = (function () {
               <span aria-hidden="true" data-icon="plus"></span>
               Add Image
             </button>
+            <!-- Parcel BG-P2 — Describe All. Visible text, never an icon-only
+                 control, so its accessible name comes from its contents; the
+                 blocked reason is appended there as a visually-hidden span,
+                 exactly as the edit view's Generate button does (g-10). -->
+            <button
+              type="button"
+              id="${BATCH_DESCRIBE_ALL_BTN_ID}"
+              class="image-manager-action-btn"
+              onclick="describeAllImages()"
+            >
+              <span aria-hidden="true" data-icon="aiSparkle"></span>
+              ${BATCH_DESCRIBE_ALL_LABEL}
+            </button>
             <!-- Parcel g-1 (5 August 2026): BOTH toolbar readouts are
                  permanently VISUAL. Neither carries aria-live, role="status"
                  or any other live semantics — the composed gesture lines
@@ -2071,6 +2171,9 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       // until step 8 below, and reading it here compared the incoming image
       // against the previous one (see the method's own note).
       this._refreshGenerateControl(imageId);
+      // BG-P2 — the Describe All control moves in step with Generate, so the
+      // two mutual-exclusion directions can never disagree about the state.
+      this._refreshDescribeAllControl();
 
       // 4. Populate <img> preview from _getImageSrc(). When null, hide
       // the <figure> so the body collapses cleanly rather than showing a
@@ -2262,6 +2365,12 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       // Clear stashed imageId — Chunk 4 will respect this when deciding
       // save scope.
       this._currentEditImageId = null;
+
+      // BG-P2 — the edit view was the A2 blocker, so recompute Describe All
+      // AFTER the id is cleared, never before: _isEditViewOpen reads that field
+      // and would still say open. Same reset-then-compute ordering rule as
+      // _refreshGenerateControl's own.
+      this._refreshDescribeAllControl();
 
       // Chunk 3b: reset reactivity state so a re-open starts clean.
       this._valuesAtOpen = null;
@@ -2976,6 +3085,690 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       logWarn(
         "_announceGenerateBlocked: no progress controller; wrote the blocked line directly",
       );
+    }
+
+    // ========================================================================
+    // PARCEL BG-P2 — BATCH GENERATION
+    // ========================================================================
+
+    /**
+     * Is the edit view currently open?
+     *
+     * Read from `_currentEditImageId` rather than from the section's `hidden`
+     * property, because that field is the one the save baseline hangs off — and
+     * the baseline is what A2 exists to protect. A DOM read could go true while
+     * the id was already null mid-transition; the id cannot.
+     * @private
+     */
+    _isEditViewOpen() {
+      return Boolean(this._currentEditImageId);
+    }
+
+    /**
+     * Substitute {count} in ONE pass with a function replacer — never a chained
+     * replace, for the reason the batch runner's own fillTemplate gives.
+     * @private
+     */
+    _fillBatchCount(template, count) {
+      return String(template).replace(
+        new RegExp(BATCH_START_COUNT_TOKEN.replace(/[{}]/g, "\\$&"), "g"),
+        () => String(count),
+      );
+    }
+
+    /**
+     * Parcel BG-P3 — substitute {count} in a SPOKEN line with the WORD form,
+     * per plan decision A9: counts are spoken as words zero to nine, digits
+     * from 10.
+     *
+     * THE WORD LIST IS THE RUNNER'S OWN, reached through its exported
+     * `countWord`, so the crossover lives in exactly one place; retuning it
+     * there retunes this line too. A second list here is how the start line and
+     * the outcome line would come to disagree about what "three" is.
+     *
+     * WHY THIS EXISTS AT ALL: the outcome line already honoured A9, because the
+     * runner composes it. The START line did not — it went through
+     * `_fillBatchCount`, which substitutes the digit — so a three-image batch
+     * opened by saying "Describing 3 images" and closed by saying "Three
+     * descriptions generated". One gesture, two conventions.
+     *
+     * ⚠ SPOKEN ONLY, AND THAT IS DELIBERATE. The start view's VISIBLE intro
+     * keeps the digit form through `_fillBatchCount`: A9 governs what is
+     * spoken, and a digit is the ordinary convention for a count on screen.
+     *
+     * The guard is independent of `_openBatchDialog`'s own module check, which
+     * tests `create` only — a build exposing the factory but not this helper
+     * would otherwise throw on the first line the person hears. It degrades to
+     * the digit form rather than to no line, on the same principle the runner's
+     * own `countWord` states: a count nobody can word is still a count.
+     *
+     * ⚠ IT PRODUCES THE MID-SENTENCE FORM, and that is not a detail. The
+     * runner's list is CAPITALISED — "Three", "Nine" — because its own clauses
+     * are sentence-initial ("Three descriptions generated."). This slot is not:
+     * the token sits inside "Describing {count} images", so the word arrives
+     * mid-sentence and its initial is cased down here. Found by the suite row
+     * that pins this, on its first run, where the naive version produced
+     * "Describing Three images. Please wait." — heard the same by a reader,
+     * which is exactly why only a written assertion catches it, and wrong on
+     * screen, because `showStatus` writes the visible status line too.
+     *
+     * THE FIX BELONGS TO THE CONSUMER, NEVER TO THE SHARED LIST. Lower-casing
+     * `BATCH_COUNT_WORDS` would silently break the outcome line's three clauses,
+     * every one of which starts its sentence with the count. A future
+     * sentence-initial consumer should call `countWord` directly, as the
+     * runner's own clauses do.
+     *
+     * ⚠ FOR MARKER GATES: a guarded call NAMES ITS METHOD TWICE — once in the
+     * typeof test and once in the call — so a needle on `countWord` counts two
+     * occurrences here, not one. Read the count out; do not predict it.
+     * @private
+     */
+    _fillBatchCountWord(template, count, runnerModule) {
+      const raw =
+        runnerModule && typeof runnerModule.countWord === "function"
+          ? runnerModule.countWord(count)
+          : String(count);
+      // Only the FIRST character, and only because this slot is mid-sentence.
+      // A digit is unchanged by this, so the crossover at ten needs no branch.
+      const word = raw.charAt(0).toLowerCase() + raw.slice(1);
+      // ONE pass with a function replacer, never a chained replace — a
+      // sequential pass rescans substituted values.
+      return String(template).replace(
+        new RegExp(BATCH_START_COUNT_TOKEN.replace(/[{}]/g, "\\$&"), "g"),
+        () => word,
+      );
+    }
+
+    /**
+     * Parcel BG-P2 — the REVERSE mutual-exclusion direction (A11).
+     *
+     * Mirrors `_refreshGenerateControl` deliberately and in every particular:
+     * the reset comes FIRST so no path can strand one reason on top of another,
+     * the control takes `aria-disabled` and NEVER the `disabled` property, it is
+     * never removed, and the reason goes into the accessible name through a
+     * visually-hidden span rather than a title attribute.
+     *
+     * TWO blocking causes, and they are given DIFFERENT names on purpose: a run
+     * in flight is a wait, and an open edit view is an action the person must
+     * take. Naming them identically would tell somebody to wait for something
+     * that will never finish on its own.
+     * @private
+     */
+    _refreshDescribeAllControl() {
+      const button = document.getElementById(BATCH_DESCRIBE_ALL_BTN_ID);
+      if (!button) {
+        logDebug(
+          `_refreshDescribeAllControl: #${BATCH_DESCRIBE_ALL_BTN_ID} not in DOM; nothing to reset`,
+        );
+        return;
+      }
+
+      // THE RESET, before anything conditional is computed.
+      const existing = button.querySelector(
+        `[${DESCRIBE_ALL_BLOCKED_SUFFIX_ATTR}]`,
+      );
+      if (existing) existing.remove();
+
+      const blockedByRun = this._editAltGenerating === true;
+      const blockedByEdit = this._isEditViewOpen();
+
+      if (!blockedByRun && !blockedByEdit) {
+        button.setAttribute("aria-disabled", "false");
+        logDebug("_refreshDescribeAllControl: nothing blocking; control enabled");
+        return;
+      }
+
+      button.setAttribute("aria-disabled", "true");
+
+      // A run in flight is reported ahead of an open edit view when both hold:
+      // the run is the one the person cannot do anything about.
+      const suffixText = blockedByRun
+        ? DESCRIBE_ALL_BLOCKED_BY_RUN_SUFFIX
+        : DESCRIBE_ALL_BLOCKED_BY_EDIT_SUFFIX;
+
+      const suffix = document.createElement("span");
+      suffix.className = DESCRIBE_ALL_BLOCKED_SUFFIX_CLASS;
+      suffix.setAttribute(DESCRIBE_ALL_BLOCKED_SUFFIX_ATTR, "true");
+      suffix.textContent = suffixText;
+      button.appendChild(suffix);
+      logInfo(
+        `_refreshDescribeAllControl: blocked (run=${blockedByRun}, edit=${blockedByEdit}) — ` +
+          "control disabled and the reason added to its accessible name",
+      );
+    }
+
+    /**
+     * Parcel BG-P2 — the blocked Describe All press SPEAKS, once, on ONE channel.
+     *
+     * Goes through the manager's own status host via `_showStatus`, which writes
+     * the visible line and the announcement in one call. NO `announce()` beside
+     * it and NO `notify*()`: either would speak the line twice, which is the
+     * commonest defect in AGENTS.md section Announcements.
+     *
+     * Silence is the defect this method exists to remove, so an unreachable host
+     * logs loudly rather than returning quietly.
+     * @private
+     */
+    _announceDescribeAllBlocked(reason) {
+      const line =
+        reason === "edit"
+          ? DESCRIBE_ALL_BLOCKED_BY_EDIT_LINE
+          : DESCRIBE_ALL_BLOCKED_BY_RUN_LINE;
+      this._showStatus(line, DESCRIBE_ALL_BLOCKED_STATUS_TYPE);
+      logDebug(`_announceDescribeAllBlocked: wrote the ${reason} line`);
+    }
+
+    /**
+     * Build the batch dialog's markup — three views (A3), exactly one visible.
+     *
+     * Every interpolated value passes through _escapeHTML. Both controls carry
+     * VISIBLE TEXT beside their icon, so neither depends on an aria-label.
+     * @private
+     */
+    _buildBatchDialogHTML(targetCount) {
+      const intro =
+        targetCount === 1
+          ? BATCH_START_INTRO_SINGULAR
+          : this._fillBatchCount(BATCH_START_INTRO_PLURAL, targetCount);
+
+      return `
+        <div class="mmd-image-manager-batch">
+          <section id="${BATCH_START_VIEW_ID}" class="mmd-image-manager-batch-view">
+            <p class="mmd-image-manager-batch-intro">${this._escapeHTML(intro)}</p>
+            <div class="mmd-image-manager-batch-actions">
+              <button type="button"
+                      id="${BATCH_CONFIRM_BTN_ID}"
+                      class="image-manager-btn mmd-image-manager-batch-confirm">
+                <span aria-hidden="true" data-icon="play"></span>
+                ${this._escapeHTML(BATCH_CONFIRM_LABEL)}
+              </button>
+            </div>
+          </section>
+
+          <!-- RUNNING VIEW. Every element here is VISUAL-ONLY and carries no
+               live semantics of any kind. The A10 pin allows exactly two spoken
+               lines per batch and both come from the dialog's own status host,
+               so anything live here would be a third voice. The rule is stated
+               without naming the attributes it forbids ON PURPOSE: this markup
+               sits inside a JS template literal, so an HTML comment here is not
+               reached by comment-stripping and a quoted attribute name would be
+               counted as a real live region by the live-region inventory. That
+               is exactly what happened when this comment was first written. -->
+          <section id="${BATCH_RUNNING_VIEW_ID}" class="mmd-image-manager-batch-view" hidden>
+            <p id="${BATCH_PROGRESS_COUNT_ID}" class="mmd-image-manager-batch-count"></p>
+            <p id="${BATCH_PROGRESS_STAGE_ID}" class="mmd-image-manager-batch-stage"></p>
+            <p id="${BATCH_PROGRESS_TIME_ID}" class="mmd-image-manager-batch-time"></p>
+            <div class="mmd-image-manager-batch-actions">
+              <button type="button"
+                      id="${BATCH_CANCEL_BTN_ID}"
+                      class="image-manager-btn mmd-image-manager-batch-cancel">
+                <span aria-hidden="true" data-icon="close"></span>
+                ${this._escapeHTML(BATCH_CANCEL_LABEL)}
+              </button>
+            </div>
+          </section>
+
+          <!-- COMPLETION VIEW. A paragraph carrying the outcome sentence
+               used to sit at the top of this section. F9-FIX removed it:
+               the sentence is written once, to the dialog status band,
+               which is where it is also spoken from. Two copies on screen
+               at the same moment was the whole of the defect. -->
+          <section id="${BATCH_COMPLETE_VIEW_ID}" class="mmd-image-manager-batch-view" hidden>
+            <div class="mmd-image-manager-batch-actions">
+              <button type="button"
+                      id="${BATCH_CLOSE_BTN_ID}"
+                      class="image-manager-btn mmd-image-manager-batch-close">
+                <span aria-hidden="true" data-icon="check"></span>
+                ${this._escapeHTML(BATCH_CLOSE_LABEL)}
+              </button>
+            </div>
+          </section>
+        </div>`;
+    }
+
+    /**
+     * Show exactly one of the three views. Uses the `hidden` property so a
+     * non-current view is out of the accessibility tree entirely rather than
+     * merely invisible.
+     * @private
+     */
+    _showBatchView(root, viewId) {
+      if (!root) return;
+      [BATCH_START_VIEW_ID, BATCH_RUNNING_VIEW_ID, BATCH_COMPLETE_VIEW_ID].forEach(
+        (id) => {
+          const section = root.querySelector(`#${id}`);
+          if (section) section.hidden = id !== viewId;
+        },
+      );
+    }
+
+    /**
+     * Build the batch's SILENT progress controller.
+     *
+     * THIS IS THE A10 PIN IN CODE. The orchestrator emits exactly one
+     * `showStatus` OR one `showError` per run — that is per IMAGE — so handing
+     * it a speaking controller would put N lines into the spoken stream for a
+     * gesture the person made once. Every method here writes to a non-live
+     * element or does nothing at all, and none reaches an announcer.
+     *
+     * The visible per-image detail is written by the loop's own onProgress
+     * callback rather than from here, because the orchestrator's stage labels
+     * describe one image's run and the person needs the batch's position.
+     * @private
+     */
+    _makeBatchProgressController(root) {
+      const stageEl = root ? root.querySelector(`#${BATCH_PROGRESS_STAGE_ID}`) : null;
+      return {
+        showProgress: () => {},
+        // Deliberately writes NOTHING anywhere. The per-image outcome is
+        // carried by the tally and spoken once, at the end, by the runner's
+        // composed line.
+        showStatus: (message) => {
+          logDebug(`batch progress: per-image status suppressed (${message})`);
+        },
+        showError: (message) => {
+          logDebug(`batch progress: per-image error suppressed (${message})`);
+        },
+        hideProgress: () => {
+          if (stageEl) stageEl.textContent = "";
+        },
+      };
+    }
+
+    /**
+     * Parcel BG-P2 — the Describe All toolbar handler.
+     *
+     * Both blocking directions are checked HERE, before anything opens, and the
+     * blocked press speaks (A11). The order matters: a run in flight is checked
+     * first because it is the condition the person cannot resolve themselves.
+     *
+     * ⚠ ITS RETURNED PROMISE SETTLES ON DIALOG CLOSE, NOT ON DIALOG OPEN, and
+     * on a blocked press it settles immediately. That is inherited from
+     * _promptFieldSelection, whose promise is the person's answer. The onclick
+     * wrapper ignores it, so nothing in production waits — but ANY DRIVE THAT
+     * AWAITS THIS CALL ON AN UNBLOCKED PRESS WILL HANG for the lifetime of the
+     * dialog. Park it and poll `_batchDialogOpen` instead. Recorded because the
+     * BG-P2 gate probe did exactly that and had to be killed.
+     * @private
+     */
+    async _handleDescribeAll() {
+      if (this._editAltGenerating === true) {
+        logInfo("_handleDescribeAll: blocked — a per-field run is in flight");
+        this._refreshDescribeAllControl();
+        this._announceDescribeAllBlocked("run");
+        return;
+      }
+
+      // A2 — the LOCK. A batch write into an open edit view leaves the save
+      // baseline stale, and a later Save silently reverts the batch's work.
+      if (this._isEditViewOpen()) {
+        logInfo("_handleDescribeAll: blocked — the edit view is open");
+        this._refreshDescribeAllControl();
+        this._announceDescribeAllBlocked("edit");
+        return;
+      }
+
+      if (this._batchDialogOpen) {
+        logWarn("_handleDescribeAll: a batch dialog is already open; ignoring re-entry");
+        return;
+      }
+
+      await this._openBatchDialog();
+    }
+
+    /**
+     * Parcel BG-P2 — open the batch dialog and drive the run (A1, A3).
+     *
+     * A SIBLING UniversalModal over the manager, copying _promptFieldSelection
+     * in every particular: markup built in JS, buttons wired in onOpen against
+     * instance.modal, a resolve-once guard, the distinctive class stamped in
+     * onOpen because the shim does not forward `className`, and onClose
+     * resolving before it clears the re-entry flag.
+     * @private
+     */
+    async _openBatchDialog() {
+      const registry = this.restorer?.imageRegistry;
+      const runnerModule = window.MathPixAltTextBatchRunner;
+
+      if (!runnerModule || typeof runnerModule.create !== "function") {
+        logWarn("_openBatchDialog: MathPixAltTextBatchRunner unavailable");
+        this._showStatus("Batch description is unavailable.", "error");
+        return;
+      }
+
+      const allEntries =
+        registry && typeof registry.getAllImages === "function"
+          ? registry.getAllImages()
+          : [];
+      // Uncovered-only targeting (A6) comes from the RUNNER, never re-derived
+      // here — one predicate, one place.
+      const targets = runnerModule.selectTargets(allEntries);
+
+      if (targets.length === 0) {
+        logInfo("_openBatchDialog: no uncovered targets");
+        this._showStatus(BATCH_NO_TARGETS_TEXT, "info");
+        return;
+      }
+
+      this._batchDialogOpen = true;
+
+      return new Promise((resolve) => {
+        let resolved = false;
+        const resolveOnce = (value) => {
+          if (resolved) return;
+          resolved = true;
+          resolve(value);
+        };
+
+        const modal = new UniversalModal.Modal({
+          title: BATCH_DIALOG_TITLE,
+          content: this._buildBatchDialogHTML(targets.length),
+          size: "small",
+          className: BATCH_DIALOG_CLASS,
+          // Escape, the X and the overlay all close. While a run is in flight
+          // that close acts as CANCEL — see the onClose handler.
+          closeOnOverlayClick: true,
+          onOpen: (instance) => {
+            // The shim does not forward `className`, so stamp it on the live
+            // dialog here or the stylesheet and the guard rows will not bind.
+            if (instance.modal) {
+              instance.modal.classList.add(BATCH_DIALOG_CLASS);
+            }
+            const root = instance.modal;
+            if (root && typeof window.refreshIcons === "function") {
+              window.refreshIcons(root);
+            }
+
+            const confirmBtn = root
+              ? root.querySelector(`#${BATCH_CONFIRM_BTN_ID}`)
+              : null;
+            const cancelBtn = root
+              ? root.querySelector(`#${BATCH_CANCEL_BTN_ID}`)
+              : null;
+            const closeBtn = root
+              ? root.querySelector(`#${BATCH_CLOSE_BTN_ID}`)
+              : null;
+
+            if (confirmBtn) {
+              confirmBtn.addEventListener("click", () => {
+                this._runBatch({ instance, root, targets, resolveOnce });
+              });
+            } else {
+              logWarn("_openBatchDialog: confirm button not found in DOM");
+            }
+
+            if (cancelBtn) {
+              // A7 — Cancel sets the flag and STAYS IN THE DIALOG. It is never
+              // removed and never gains the `disabled` property, because the
+              // person who pressed it is focused on it and removing a focused
+              // control drops focus to the document.
+              cancelBtn.addEventListener("click", () => {
+                if (this._batchRunner) this._batchRunner.cancel();
+                cancelBtn.setAttribute("aria-disabled", "true");
+                logInfo("_openBatchDialog: cancel pressed; the in-flight image will finish");
+              });
+            } else {
+              logWarn("_openBatchDialog: cancel button not found in DOM");
+            }
+
+            if (closeBtn) {
+              closeBtn.addEventListener("click", () => instance.close());
+            } else {
+              logWarn("_openBatchDialog: close button not found in DOM");
+            }
+          },
+          onClose: () => {
+            // THE SETTLED DECISION — closing mid-run acts as CANCEL. The
+            // in-flight image finishes and is written (A5's no-mid-flight-abort
+            // is unchanged); the loop stops; and the outcome line REDIRECTS to
+            // the manager's own host, because this dialog is going away and its
+            // host goes with it. Still exactly two lines: the pin is honoured by
+            // redirect, not by dropping a line.
+            if (this._batchRunning) {
+              this._batchClosedMidRun = true;
+              if (this._batchRunner) this._batchRunner.cancel();
+              logInfo("_openBatchDialog: closed mid-run — treating as cancel, outcome will redirect");
+            }
+            resolveOnce(null);
+            this._batchDialogOpen = false;
+          },
+        });
+
+        modal.open();
+
+        // NO STATUS LINE IS WRITTEN HERE, AND THAT IS THE PARCEL (F1-FIX).
+        // The first of the two spoken lines used to be emitted on this line,
+        // immediately after open(). Two symptoms, one moment: a sighted person
+        // saw a notification stating the run had begun while the dialog was
+        // still asking them to confirm it, and a screen-reader user heard
+        // NOTHING — zero utterances across two journeys, on the stubbed engine
+        // and on the real one, with the write demonstrably arriving by element
+        // identity. The start line now fires from _runBatch, on RUN START,
+        // which is what A10 meant by "one at start", and it was HEARD there on
+        // real NVDA the same day. See the F1 item in the phase 3 breakdown, and
+        // bg-p3-listen-2026-08-18.md — section 6 for the defect, section 10 for
+        // the fix and the confirmed mechanism.
+      });
+    }
+
+    /**
+     * Parcel BG-P2 — drive the runner and place the outcome line.
+     * @private
+     */
+    async _runBatch({ instance, root, targets, resolveOnce }) {
+      const runnerModule = window.MathPixAltTextBatchRunner;
+      const orchestrator = this._buildBatchOrchestrator(root);
+
+      if (!orchestrator) {
+        logWarn("_runBatch: could not build a batch orchestrator");
+        this._showStatus("Batch description is unavailable.", "error");
+        return;
+      }
+
+      this._batchRunner = runnerModule.create({ orchestrator });
+      this._batchRunning = true;
+      this._batchClosedMidRun = false;
+
+      // THE FIRST OF THE TWO SPOKEN LINES (A10), MOVED HERE BY F1-FIX from
+      // _openBatchDialog, where it fired on dialog OPEN. It now fires on RUN
+      // START — the person has pressed the confirm control, so the line
+      // describes something that is actually happening, and the batch dialog's
+      // own status host has existed for as long as the person took to read the
+      // dialog rather than for microseconds. It is placed AFTER the
+      // orchestrator check deliberately: a build that cannot describe anything
+      // must not announce that it is describing.
+      //
+      // The count goes through the WORD filler, not the digit one, so the start
+      // line and the outcome line speak the same convention (A9). The singular
+      // branch needs no substitution: it carries "one" already.
+      const startLine =
+        targets.length === 1
+          ? BATCH_START_LINE_SINGULAR
+          : this._fillBatchCountWord(
+              BATCH_START_LINE_PLURAL,
+              targets.length,
+              runnerModule,
+            );
+      UniversalModal.showStatus(startLine, BATCH_START_STATUS_TYPE);
+      this._batchSpokenLines = 1;
+
+      this._showBatchView(root, BATCH_RUNNING_VIEW_ID);
+
+      const countEl = root ? root.querySelector(`#${BATCH_PROGRESS_COUNT_ID}`) : null;
+      const stageEl = root ? root.querySelector(`#${BATCH_PROGRESS_STAGE_ID}`) : null;
+      const timeEl = root ? root.querySelector(`#${BATCH_PROGRESS_TIME_ID}`) : null;
+
+      // Elapsed time, VISUAL ONLY, on a plain interval into a non-live element.
+      const startedAt = Date.now();
+      const timer = setInterval(() => {
+        if (timeEl) {
+          const seconds = Math.floor((Date.now() - startedAt) / 1000);
+          timeEl.textContent = `Elapsed: ${seconds}s`;
+        }
+      }, 1000);
+
+      let result = null;
+      try {
+        result = await this._batchRunner.run({
+          targets,
+          onProgress: ({ phase, index, total }) => {
+            if (phase !== runnerModule.PHASE.STARTING) return;
+            if (countEl) countEl.textContent = `${index + 1} of ${total}`;
+            if (stageEl) {
+              stageEl.textContent = this._fillBatchCount(
+                BATCH_RUNNING_STAGE_TEXT.replace("{index}", String(index + 1)),
+                total,
+              ).replace("{total}", String(total));
+            }
+          },
+        });
+      } catch (batchErr) {
+        logError("_runBatch: the batch loop threw", batchErr);
+      } finally {
+        clearInterval(timer);
+        this._batchRunning = false;
+      }
+
+      // Refresh the grid and the counters — the registry has moved.
+      try {
+        this.refresh();
+      } catch (refreshErr) {
+        logWarn("_runBatch: grid refresh failed after the batch", refreshErr);
+      }
+
+      // THE SECOND OF THE TWO SPOKEN LINES (A10). It is the RUNNER'S OWN
+      // composed line, passed through verbatim — never recomposed here, so the
+      // taxonomy lives in exactly one place.
+      const outcomeLine = result ? result.line : null;
+      if (!outcomeLine) {
+        logWarn("_runBatch: the runner returned no composed line; nothing to speak");
+        return;
+      }
+
+      if (this._batchClosedMidRun) {
+        await this._announceBatchOutcomeRedirected(outcomeLine);
+        return;
+      }
+
+      // Ordinary completion (A3): the dialog STAYS OPEN and carries its own
+      // line, so no teardown-settle race is entered at all.
+      // F9-FIX — ONE VISIBLE SENTENCE. The outcome was written twice: into
+      // a paragraph in the completion view, and through showStatus. Both
+      // were on screen at the same moment, so a sighted person read the
+      // sentence twice where a reader heard it once.
+      //
+      // showStatus is the survivor, and the choice was FORCED rather than
+      // preferred: the status band renders its message into the very node
+      // that carries the announcement, so the visible line and the spoken
+      // line cannot be separated through this API. Removing that half
+      // would have taken the second spoken line with it — the line A10
+      // pins and F1-FIX has only just heard.
+      //
+      // The paragraph was not buying persistence the band lacks. Measured
+      // on this path: showStatus is passed no duration, and the modal
+      // status area auto-hides only on a duration, so the band holds the
+      // sentence for as long as the dialog is open. (The manager-level
+      // _showStatus helper DOES auto-hide success after 3s, but that
+      // helper is on the redirect path, not this one.)
+      this._showBatchView(root, BATCH_COMPLETE_VIEW_ID);
+      UniversalModal.showStatus(outcomeLine, BATCH_OUTCOME_STATUS_TYPE);
+      this._batchSpokenLines = (this._batchSpokenLines || 0) + 1;
+      logInfo(`_runBatch: outcome spoken from the batch dialog's own host — ${outcomeLine}`);
+    }
+
+    /**
+     * Parcel BG-P2 — the REDIRECT path: the dialog was closed mid-run, so its
+     * status host went with it and the outcome line must land on the MANAGER's.
+     *
+     * The settle is READ FROM THE MODULE'S OWN CONSTANT, never restated, so
+     * retuning it retunes this path too. It is the dialog-scale settle because
+     * this is a dialog-scale teardown — a nested modal closing over the manager
+     * — which is the event REMOVE_ANNOUNCE_SETTLE_MS was measured against.
+     *
+     * Still the SECOND line, not a third: the pin is honoured by redirecting
+     * where the outcome is spoken, not by adding a voice.
+     * @private
+     */
+    async _announceBatchOutcomeRedirected(outcomeLine) {
+      await this._waitForOwnModalTop();
+      await new Promise((resolve) =>
+        setTimeout(resolve, REMOVE_ANNOUNCE_SETTLE_MS),
+      );
+      // _showStatus writes the visible line and the announcement in one call,
+      // through the manager's own host. No announce() beside it.
+      this._showStatus(outcomeLine, BATCH_OUTCOME_STATUS_TYPE);
+      this._batchSpokenLines = (this._batchSpokenLines || 0) + 1;
+      logInfo(
+        `_runBatch: dialog closed mid-run — outcome REDIRECTED to the manager's host after ` +
+          `${REMOVE_ANNOUNCE_SETTLE_MS}ms — ${outcomeLine}`,
+      );
+    }
+
+    /**
+     * Build an orchestrator for the batch, wired to the SILENT progress
+     * controller. Separate from `_editAltOrchestrator` on purpose: that one is
+     * view-scoped and would suppress or misdirect writes with no edit view open.
+     * @private
+     */
+    _buildBatchOrchestrator(root) {
+      if (
+        typeof window.MathPixAltTextCloudAdapter?.create !== "function" ||
+        typeof window.MathPixAltTextOrchestrator?.create !== "function"
+      ) {
+        logWarn("_buildBatchOrchestrator: an alt-text engine factory is unavailable");
+        return null;
+      }
+      try {
+        const adapter =
+          this._editAltAdapter ||
+          window.MathPixAltTextCloudAdapter.create({ embed: this._editAltEmbed });
+        const orchestrator = window.MathPixAltTextOrchestrator.create({
+          adapter,
+          progress: this._makeBatchProgressController(root),
+        });
+
+        // MATERIALISE LAZILY, IN A WRAPPER, one image at a time.
+        //
+        // The runner hands the orchestrator whatever `image` its target
+        // carried, and a registry entry carries none — the bytes come from
+        // _materialiseImageFile, which reads the restorer's blob and filename
+        // maps. Doing it here rather than in the runner is what keeps A4's
+        // no-DOM rule intact: the runner stays drivable with no page. Doing it
+        // per image rather than up front matters too, because a batch over
+        // eleven images would otherwise hold eleven files in memory before the
+        // first call, and a cancel would have paid for all of them.
+        //
+        // A materialisation failure is reported to the runner as a contract
+        // error, which is exactly how it is already counted: one failed image,
+        // the loop continues.
+        return {
+          run: async (runOptions) => {
+            const r = runOptions || {};
+            let image = r.image;
+            if (!image) {
+              const entry = this.restorer?.imageRegistry?.getImage(r.id);
+              try {
+                image = await this._materialiseImageFile(entry, r.id);
+              } catch (error) {
+                const message =
+                  error && error.message ? error.message : String(error);
+                logWarn(
+                  `_buildBatchOrchestrator: materialisation failed for ${r.id}: ${message}`,
+                );
+                return { status: "error", result: { error: message } };
+              }
+            }
+            return orchestrator.run({ ...r, image });
+          },
+        };
+      } catch (error) {
+        logWarn(
+          `_buildBatchOrchestrator: construction failed: ${
+            error && error.message ? error.message : String(error)
+          }`,
+        );
+        return null;
+      }
     }
 
     /**
@@ -5370,6 +6163,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
             // computes the running state for THIS image; the finally then
             // re-runs it against a cleared flag.
             this._refreshGenerateControl(id);
+            this._refreshDescribeAllControl();
             this._reconcileDirtyAfterRun(entry);
           } else {
             logInfo(
@@ -5460,6 +6254,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         // whatever the person is looking at NOW, which is precisely what that
         // field holds.
         this._refreshGenerateControl(this._currentEditImageId);
+        this._refreshDescribeAllControl();
         // Parcel g-1 (5 August 2026): no speech restore here — there is no
         // suppression to lift. HISTORY, kept because it is why the toggle
         // existed at all: 8d-notify-c removed this restore after the 1 August
@@ -5906,6 +6701,13 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       }
 
       this._updateCoverageCounter();
+
+      // BG-P2 — set the Describe All control's initial state. The toolbar is
+      // rebuilt with the manager's markup, so on a fresh open the button starts
+      // with no aria-disabled attribute at all; computing it here means the
+      // control is never briefly unlabelled-but-live between open and the first
+      // edit-view interaction.
+      this._refreshDescribeAllControl();
 
       logDebug(`Grid refreshed with ${total} image(s)`);
     }
@@ -6467,6 +7269,17 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     }
   };
 
+  // Parcel BG-P2 — the Describe All toolbar handler, on the same inline-onclick
+  // convention as addImageToDocument above (AGENTS.md accepts onclick for simple
+  // handlers). The blocking checks and the spoken feedback are the method's, not
+  // this wrapper's, so the button and any future caller behave identically.
+  window.describeAllImages = function () {
+    const mgr = getInstance();
+    if (mgr) {
+      mgr._handleDescribeAll();
+    }
+  };
+
   window.deleteImage = function (imageId) {
     const mgr = getInstance();
     if (mgr) {
@@ -6620,6 +7433,28 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     GENERATE_BLOCKED_SUFFIX_ATTR,
     EDIT_VIEW_GENERATE_BTN_ID,
     EDIT_VIEW_AI_STATUS_ID,
+    // Parcel BG-P2 — same single-source rule as every constant above: the guard
+    // rows READ these rather than restating the strings and ids, so rewording a
+    // blocked line or renaming a view retunes its own gate instead of reddening
+    // one. The two blocked suffixes are exposed separately because they are
+    // deliberately DIFFERENT sentences — a run in flight is a wait, an open edit
+    // view is an action — and a row must be able to tell them apart.
+    BATCH_DESCRIBE_ALL_BTN_ID,
+    BATCH_DIALOG_CLASS,
+    BATCH_START_VIEW_ID,
+    BATCH_RUNNING_VIEW_ID,
+    BATCH_COMPLETE_VIEW_ID,
+    BATCH_CONFIRM_BTN_ID,
+    BATCH_CANCEL_BTN_ID,
+    BATCH_CLOSE_BTN_ID,
+    BATCH_SUMMARY_ID,
+    BATCH_START_LINE_SINGULAR,
+    BATCH_START_LINE_PLURAL,
+    DESCRIBE_ALL_BLOCKED_SUFFIX_ATTR,
+    DESCRIBE_ALL_BLOCKED_BY_RUN_SUFFIX,
+    DESCRIBE_ALL_BLOCKED_BY_EDIT_SUFFIX,
+    DESCRIBE_ALL_BLOCKED_BY_RUN_LINE,
+    DESCRIBE_ALL_BLOCKED_BY_EDIT_LINE,
   };
 })();
 

@@ -32,6 +32,28 @@ const MusicRenderPhrase = (function () {
   // note.
   function extrasOf(d, nextNote) {
     const extras = [];
+
+    // Chord symbol (Stage 64), sited FIRST - ahead of the tuplet push and so ahead
+    // of every other clause. Unlike every other extra, which is a property of the
+    // NOTE being described (this note is staccato, this note begins a crescendo), a
+    // chord symbol is the harmonic CONTEXT arriving at that point in the bar. It is
+    // voiced at this note because document order put it there, not because it
+    // belongs to the note, so it reads ahead of the note's own attributes.
+    //
+    // The descriptor's harmony string is emitted UNCHANGED, with no scaffold word
+    // such as "chord" or "harmony" in front of it: the name already reads as a
+    // chord symbol, and the naming was settled at Stage 62. So a note reads
+    // "G5 semiquaver, C major, mezzo-piano, crescendo begins".
+    //
+    // Read DEFENSIVELY, exactly as the shaping clause below does. The three-key
+    // describeNote fallback at the top of this file is a degraded-mode placeholder
+    // that omits most of the descriptor's fields, so a descriptor from it carries
+    // harmony === undefined. Widening that stub was considered and DECLINED at
+    // Stage 59, and THAT DECISION STANDS: this guard is what keeps a degraded
+    // render working. It therefore tolerates undefined, null, a non-string, and an
+    // empty or whitespace-only string, adding no clause and never throwing.
+    if (typeof d.harmony === "string" && d.harmony.trim() !== "") extras.push(d.harmony);
+
     if (d.tuplet) extras.push(d.tuplet);
     if (d.articulations) for (const a of d.articulations) extras.push(a);
     if (d.ornaments) for (const o of d.ornaments) extras.push(o);
@@ -258,6 +280,81 @@ const MusicRenderPhrase = (function () {
     }
     const stubSwapRestored = walk.describeNote === realDescribeNote && phraseOf([melodyC4], null) === "C4 crotchet";
 
+    // Stage 64 harmony fixtures. The NOTE carries the parser's RAW record and the
+    // real describeNote names it, so these read through the shipping naming path
+    // rather than a hand-written string: a plain triad name; the dispatch's own
+    // worked example (a harmony beside a dynamic and a shaping start); a name with
+    // a BASS, which is the only place the word "over" appears; an explicit null
+    // harmony; a REST carrying a harmony, which is real - the Joplin puts symbols
+    // on rests, and singleText composes extras for a rest exactly as it does for a
+    // pitched note; and a note carrying a harmony ALONGSIDE a tuplet, an
+    // articulation, a dynamic, shaping, a tie and a slur, with a harmony-free twin
+    // so the two strings can be compared to prove the other clauses kept their
+    // relative order.
+    const harmonyPlainC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } };
+    const harmonyRichG5 = { rest: false, chord: false, step: "G", octave: 5, type: "16th", dynamic: "mp", shaping: { starts: ["crescendo"], stops: [] }, harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } };
+    const harmonyOverBassC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "dominant", bassStep: "B", bassAlter: -1 } };
+    const harmonyNullC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", harmony: null };
+    const harmonyRest = { rest: true, chord: false, step: null, octave: null, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } };
+    const harmonyAllExtrasG4 = { rest: false, chord: false, step: "G", octave: 4, type: "eighth", timeModification: { actualNotes: 3, normalNotes: 2 }, articulations: ["staccato"], dynamic: "f", shaping: { starts: ["crescendo"], stops: [] }, tie: { start: true, stop: false }, slur: { start: true, stop: false }, harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } };
+    const harmonyAllExtrasNoHarmonyG4 = { rest: false, chord: false, step: "G", octave: 4, type: "eighth", timeModification: { actualNotes: 3, normalNotes: 2 }, articulations: ["staccato"], dynamic: "f", shaping: { starts: ["crescendo"], stops: [] }, tie: { start: true, stop: false }, slur: { start: true, stop: false } };
+    const harmonyAllExtrasText = phraseOf([harmonyAllExtrasG4], melodyD4);
+    const harmonyAllExtrasNoHarmonyText = phraseOf([harmonyAllExtrasNoHarmonyG4], melodyD4);
+
+    // A chord whose HEAD carries a harmony and whose members carry none, and a
+    // chord whose head carries none while a MEMBER does - the second proves a
+    // member contributes nothing, exactly as it contributes no dynamic and no
+    // shaping, because phraseOf reads extras from the head's descriptor alone.
+    const triadHarmonyHead = [
+      { rest: false, chord: false, step: "C", octave: 4, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } },
+      { rest: false, chord: true, step: "E", octave: 4, type: "quarter" },
+      { rest: false, chord: true, step: "G", octave: 4, type: "quarter" },
+    ];
+    const triadHarmonyMemberOnly = [
+      { rest: false, chord: false, step: "C", octave: 4, type: "quarter" },
+      { rest: false, chord: true, step: "E", octave: 4, type: "quarter", harmony: { rootStep: "C", rootAlter: null, kind: "major", bassStep: null, bassAlter: null } },
+      { rest: false, chord: true, step: "G", octave: 4, type: "quarter" },
+    ];
+
+    // A NON-STRING harmony cannot be produced through the real describeNote, which
+    // maps a malformed record to null before the renderer ever sees it, so those
+    // values are staged at the DESCRIPTOR level: swap walk.describeNote for one
+    // returning a fixed descriptor, and restore it in a finally so a throw cannot
+    // leave the module patched. The staged descriptor carries a pitch and a value,
+    // so "no clause" reads as the plain "C4 crotchet" rather than the empty string
+    // and cannot be confused with the phrase collapsing for some other reason.
+    function phraseWithStagedHarmony(value) {
+      const real = walk.describeNote;
+      try {
+        walk.describeNote = function () { return { isRest: false, pitch: "C4", value: "crotchet", harmony: value }; };
+        return phraseOf([melodyC4], null);
+      } catch (e) {
+        return "THREW: " + e;
+      } finally {
+        walk.describeNote = real;
+      }
+    }
+
+    // The three-key describeNote fallback stub yields a descriptor whose harmony is
+    // UNDEFINED - the stub is a degraded-mode placeholder, widening it was declined
+    // at Stage 59, and that decision stands, so the guard in extrasOf is what keeps
+    // a degraded render working. Staged the same way the Stage 59 row is, with the
+    // stub's exact three-key return and a restore in a finally. Under the stub the
+    // phrase is "" because there is no pitch and no value; the row proves the guard
+    // added no clause and did not throw on a missing harmony key. The companion row
+    // re-measures afterwards to prove the swap was undone before any later row ran.
+    let harmonyStubDescriptorSafe = false;
+    const realDescribeNoteForHarmony = walk.describeNote;
+    try {
+      walk.describeNote = function () { return { isRest: false, pitch: null, value: null }; };
+      harmonyStubDescriptorSafe = phraseOf([harmonyPlainC4], null) === "";
+    } catch (e) {
+      harmonyStubDescriptorSafe = false;
+    } finally {
+      walk.describeNote = realDescribeNoteForHarmony;
+    }
+    const harmonyStubSwapRestored = walk.describeNote === realDescribeNoteForHarmony && phraseOf([melodyC4], null) === "C4 crotchet";
+
     const results = {
       hasPhraseOf: typeof phraseOf === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -301,6 +398,27 @@ const MusicRenderPhrase = (function () {
       shapingChordReadsHeadOnce: phraseOf(triadShapingHead, null) === "C4, E4 and G4 crotchet, crescendo begins",
       shapingChordMemberContributesNone: phraseOf(triadShapingMemberOnly, null) === "C4, E4 and G4 crotchet",
       shapingOnRestVoiced: phraseOf([shapeRest], null) === "rest crotchet, crescendo ends, diminuendo begins",
+      // Stage 64: the chord symbol voiced, unchanged and unscaffolded, read first.
+      harmonyVoiced: phraseOf([harmonyPlainC4], null) === "C4 crotchet, C major",
+      harmonyFullPhraseWithDynamicAndShaping: phraseOf([harmonyRichG5], null) === "G5 semiquaver, C major, mezzo-piano, crescendo begins",
+      harmonyReadsFirstAmongAllExtras: harmonyAllExtrasText === "G4 quaver, C major, triplet, staccato, forte, crescendo begins, tied to the next note, slurred to D4",
+      harmonyPrecedesTuplet: harmonyAllExtrasText.indexOf("C major") > -1 && harmonyAllExtrasText.indexOf("C major") < harmonyAllExtrasText.indexOf("triplet"),
+      harmonyOthersKeepOrderWithoutIt: harmonyAllExtrasNoHarmonyText === "G4 quaver, triplet, staccato, forte, crescendo begins, tied to the next note, slurred to D4" && harmonyAllExtrasText === harmonyAllExtrasNoHarmonyText.replace("G4 quaver, ", "G4 quaver, C major, "),
+      harmonyNullByteIdentical: phraseOf([melodyC4], melodyD4) === "C4 crotchet" && phraseOf([harmonyNullC4], null) === "C4 crotchet",
+      harmonyRichExtrasByteIdentical: phraseOf([richC4], melodyD4) === "C4 crotchet, forte, slurred to D4, lyric 'la'",
+      harmonyUndefinedFromStubNoClause: harmonyStubDescriptorSafe,
+      harmonyStubSwapRestored: harmonyStubSwapRestored,
+      harmonyStagedNullNoClause: phraseWithStagedHarmony(null) === "C4 crotchet",
+      harmonyStagedUndefinedNoClause: phraseWithStagedHarmony(undefined) === "C4 crotchet",
+      harmonyNumberNoClause: phraseWithStagedHarmony(7) === "C4 crotchet",
+      harmonyObjectNoClause: phraseWithStagedHarmony({ rootStep: "C", kind: "major" }) === "C4 crotchet",
+      harmonyArrayNoClause: phraseWithStagedHarmony(["C major"]) === "C4 crotchet",
+      harmonyEmptyStringNoClause: phraseWithStagedHarmony("") === "C4 crotchet",
+      harmonyWhitespaceOnlyNoClause: phraseWithStagedHarmony("   ") === "C4 crotchet" && phraseWithStagedHarmony(" \t\n ") === "C4 crotchet",
+      harmonyChordReadsHeadOnce: phraseOf(triadHarmonyHead, null) === "C4, E4 and G4 crotchet, C major",
+      harmonyChordMemberContributesNone: phraseOf(triadHarmonyMemberOnly, null) === "C4, E4 and G4 crotchet",
+      harmonyOnRestVoiced: phraseOf([harmonyRest], null) === "rest crotchet, C major",
+      harmonyOverBassSurvivesIntact: phraseOf([harmonyOverBassC4], null) === "C4 crotchet, C dominant seventh over B flat",
     };
 
     console.table(results);

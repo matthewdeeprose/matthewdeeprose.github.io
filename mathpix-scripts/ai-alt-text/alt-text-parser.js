@@ -43,6 +43,12 @@
  * in the local phase (S2F-Q3); this parcel implements only the settled rule —
  * prose-with-no-headers → long. Nothing cleverer.
  *
+ * ── Section boundaries (PARSE-F1) ──────────────────────────────────────────
+ * A recognised header NAME is necessary but not sufficient to start a new
+ * section. See `sectionBoundaryField` for the two further conditions — the
+ * level rule and the re-open guard — and the reasoning behind each. They are
+ * documented there and only there, so the two cannot drift.
+ *
  * ── Literal bodies (write-stage owner, please note) ─────────────────────────
  * Section bodies are returned as-is (trimmed only). The parser does NOT
  * interpret the Text Content sentinel "No text content." as an empty string —
@@ -134,6 +140,16 @@ const MathPixAltTextParser = (function () {
   const HEADER_LINE = /^\s*#{1,6}\s*(?:\d+\.?\s*)?(.+?)[:.\s]*$/;
 
   /**
+   * Captures the run of leading hashes on a header line, so its LEVEL can be
+   * read as the run's length.
+   *
+   * `#+` rather than a repeat of HEADER_LINE's own bound: the bound is
+   * HEADER_LINE's business, and this pattern is only ever applied to a line
+   * HEADER_LINE has already matched, so the run it sees is one to six.
+   */
+  const HEADER_LEVEL = /^\s*(#+)/;
+
+  /**
    * The always-returned four-field shape, every key an empty string.
    * A fresh object each call (never a shared mutable default).
    * @returns {{title: string, alt: string, long: string, text: string}}
@@ -168,6 +184,99 @@ const MathPixAltTextParser = (function () {
     // Object.create(null) map → own-property lookup is safe without hasOwnProperty.
     const field = NAME_TO_FIELD[name];
     return field || null;
+  }
+
+  /**
+   * The heading LEVEL of a line — the number of leading hashes. Only ever
+   * called on a line HEADER_LINE has already matched, so the answer is 1-6.
+   * @param {string} line
+   * @returns {number} 1-6, or 0 for a line carrying no hashes at all
+   */
+  function headerLevel(line) {
+    const match = HEADER_LEVEL.exec(line);
+    return match ? match[1].length : 0;
+  }
+
+  /**
+   * Has this field already collected a line with something on it? Blank lines
+   * do not count: a body is joined and TRIMMED on the way out, so a bucket
+   * holding only blank lines yields `""` and is not yet populated.
+   * @param {string[]|undefined} collected
+   * @returns {boolean}
+   */
+  function hasContent(collected) {
+    return (
+      Array.isArray(collected) && collected.some((line) => line.trim() !== "")
+    );
+  }
+
+  /**
+   * THE BOUNDARY DECISION. Does this line OPEN a section, and which one?
+   *
+   * A recognised header name is necessary but no longer sufficient. Two further
+   * conditions apply, and each exists to stop a heading INSIDE a section body
+   * being mistaken for the start of the next one:
+   *
+   * 1. LEVEL. The document's section level is taken from the FIRST recognised
+   *    header and never revised. The prompt emits `## 1. Title`, but a model
+   *    that uses another level uniformly is still correct, so the level is
+   *    read from the response rather than assumed. A header DEEPER than that
+   *    level is a subheading within the open section and is kept as content —
+   *    even when its name is one of the four. A header at the level, or
+   *    SHALLOWER than it, is a boundary: that is what a shallower heading
+   *    means everywhere else markdown is read, and treating one as content
+   *    would swallow a legitimately-named section into its predecessor.
+   *
+   *    Pinning to the FIRST header, rather than re-establishing on each
+   *    shallower one, is deliberate. Re-establishing would make every later
+   *    header deeper than the new level, so a single stray shallow heading
+   *    would swallow the whole remainder of the response.
+   *
+   * 2. THE RE-OPEN GUARD. A header naming a field that has already collected
+   *    content does not re-open it. Re-opening appended the second run of
+   *    content onto the first, so a stray `## Title` inside a description
+   *    WOULD arrive glued onto the real title, with the description
+   *    truncated ahead of it. That is measured against synthetic responses
+   *    (PARSE-G, PARSE-F1); no real generation has been observed doing it.
+   *    Suppressed, the line falls through and becomes content of
+   *    whichever section is currently open — nothing is dropped, and the stray
+   *    heading stays visible in the body where a reader can see it.
+   *
+   * `state.sectionLevel` starts null and is set here on the first recognised
+   * header; `state.bodies` is the same bucket map `parse` accumulates into.
+   *
+   * @param {string} line
+   * @param {{sectionLevel: number|null, bodies: Object<string, string[]>}} state
+   * @returns {string|null} the field this line opens, or null if it does not
+   */
+  function sectionBoundaryField(line, state) {
+    const field = fieldForHeaderLine(line);
+    if (!field) return null;
+
+    const level = headerLevel(line);
+
+    // The first recognised header sets the level everything else is judged
+    // against. It is therefore always a boundary: nothing is deeper than a
+    // level that does not exist yet, and no bucket has content yet.
+    if (state.sectionLevel === null) {
+      state.sectionLevel = level;
+    }
+
+    if (level > state.sectionLevel) {
+      logDebug("reserved name kept as content — deeper than the section level", {
+        field,
+        level,
+        sectionLevel: state.sectionLevel,
+      });
+      return null;
+    }
+
+    if (hasContent(state.bodies[field])) {
+      logWarn(`re-open suppressed for an already-populated field: ${field}`);
+      return null;
+    }
+
+    return field;
   }
 
   // ---------------------------------------------------------------------------
@@ -207,13 +316,17 @@ const MathPixAltTextParser = (function () {
     /** @type {Object<string, string[]>} field → collected body lines */
     const bodies = Object.create(null);
     let sawHeader = false;
+    /** Boundary state: the level taken from the first recognised header. */
+    const state = { sectionLevel: null, bodies };
 
     for (const line of lines) {
-      const field = fieldForHeaderLine(line);
+      const field = sectionBoundaryField(line, state);
       if (field) {
-        // A recognised section header opens (or re-opens) that field. The
-        // header line is consumed, not stored. A duplicated header appends to
-        // the same field's body via the shared bucket.
+        // A section boundary opens that field. The header line is consumed,
+        // not stored. A header that names a field but is NOT a boundary —
+        // deeper than the section level, or naming a field that already has
+        // content — returns null above and falls through to the body push
+        // below, so it is kept verbatim inside whichever section is open.
         sawHeader = true;
         current = field;
         if (!bodies[current]) bodies[current] = [];

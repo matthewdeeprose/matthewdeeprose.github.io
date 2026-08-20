@@ -61,6 +61,15 @@
   }
 
   // ============================================================================
+  // CONSTANTS
+  // ============================================================================
+
+  // The curation-loss warning shown beside the Re-analyse control, and the
+  // control it describes. Both ids are declared in tools.html.
+  const REANALYSE_WARNING_ID = "imgdesc-reanalyse-warning";
+  const REANALYSE_BUTTON_ID = "imgdesc-reanalyse-btn";
+
+  // ============================================================================
   // ANALYSIS PIPELINE METHODS
   // ============================================================================
 
@@ -622,10 +631,41 @@
     // ========================================================================
 
     /**
+     * Show or hide the warning that Re-analyse will discard saved curation.
+     *
+     * No announcement, by design. Both toast systems and the shared announcer
+     * speak, and a curation warning is not an event the user has just caused —
+     * it is a property of the control they are about to press. It is therefore
+     * delivered as the button's accessible DESCRIPTION, which is spoken when
+     * they reach the control and BEFORE they activate it. The attribute is
+     * added only while there is curation to lose, so a user with none is never
+     * told about a loss that cannot happen.
+     *
+     * @param {boolean} hasCuration - whether saved OCR curation would be lost
+     */
+    setReanalyseWarning(hasCuration) {
+      const warning = document.getElementById(REANALYSE_WARNING_ID);
+      if (!warning) return;
+
+      warning.hidden = !hasCuration;
+
+      const button = document.getElementById(REANALYSE_BUTTON_ID);
+      if (!button) return;
+
+      if (hasCuration) {
+        button.setAttribute("aria-describedby", REANALYSE_WARNING_ID);
+      } else {
+        button.removeAttribute("aria-describedby");
+      }
+    },
+
+    /**
      * Show the cache recall banner with the date the analysis was created.
      * @param {number} createdAt - Timestamp from the cached record
+     * @param {boolean} [hasCuration] - whether the restored record carries
+     *   user curation that Re-analyse would destroy
      */
-    showCacheRecallBanner(createdAt) {
+    showCacheRecallBanner(createdAt, hasCuration) {
       const banner = this.elements.cacheRecallBanner;
       const textEl = this.elements.cacheRecallText;
       if (!banner || !textEl) return;
@@ -651,6 +691,19 @@
         day + " " + months[date.getMonth()] + " " + date.getFullYear();
 
       textEl.textContent = "Previous analysis restored (" + formatted + ")";
+
+      // Set BEFORE the banner is un-hidden, matching the order already used
+      // for the banner text, so this introduces no new announcement.
+      //
+      // KNOWN GAP, recorded rather than half-solved: this reflects the
+      // curation the record carried at recall time. Curation added after the
+      // banner appears does not refresh it, because the only honest trigger
+      // is the overlay's own persist path and reaching into it is outside
+      // this change. The Re-analyse control is only reachable on a cache hit,
+      // so the case this covers — returning to an image curated earlier — is
+      // the one that loses expensive work.
+      this.setReanalyseWarning(!!hasCuration);
+
       banner.hidden = false;
       logDebug("Cache recall banner shown — created " + formatted);
     },
@@ -663,6 +716,7 @@
       const textEl = this.elements.cacheRecallText;
       if (banner) banner.hidden = true;
       if (textEl) textEl.textContent = "";
+      this.setReanalyseWarning(false);
     },
 
     /**
@@ -695,6 +749,10 @@
         }
         window.ImageDescriberOverlay.clearAnalysis();
         window.ImageDescriberOverlay._userEdits = null;
+        // Paired for the same reason as the other clearAnalysis() sites: a
+        // stale _sortedItems now survives long enough to be used, because
+        // getCorrectedAnalysis() only re-derives when the array is EMPTY.
+        window.ImageDescriberOverlay._sortedItems = [];
       }
       const overlayToolbar = document.getElementById("imgdesc-overlay-toolbar");
       if (overlayToolbar) overlayToolbar.hidden = true;
@@ -709,6 +767,72 @@
 
       // 6. Re-run analysis
       this.startBackgroundAnalysis();
+    },
+
+    // ========================================================================
+    // CACHE-RESTORE MIGRATION
+    // ========================================================================
+
+    /**
+     * Repair a cached analysis record written before ocr.florenceMergeApplied
+     * existed, in place, at the moment it is restored.
+     *
+     * WHY THIS IS NEEDED. The flag is written at merge time and persisted by
+     * updateSlot(hash, "ocr", …). Every record written before that change has
+     * merged ocr.items and no flag, so on a cache hit the format layer reads
+     * the flag as false and emits the raw Florence OCR section a second time —
+     * beside the human's corrected list, which is the original defect. The
+     * same record holds those corrections, so the cache must NOT be
+     * invalidated or versioned to fix this: that would throw away expensive
+     * human work to repair a missing boolean.
+     *
+     * WHY THIS IS NOT THE HEURISTIC STAGE 2 REMOVED. The removed heuristic
+     * asked which items SURVIVED dedup — `items.some(i => i.source ===
+     * "florence2")` — and read false precisely when dedup worked best. This
+     * asks whether both OCR passes COMPLETED, which is the merge's own guard
+     * (see runFlorenceAnalysis, the `ocrResult.status === "complete" &&
+     * this.lastAnalysis.ocr.status === "complete"` condition). Completion is
+     * the merge's actual precondition; survival was only ever a proxy for it.
+     *
+     * WHY IT LIVES HERE AND NOT IN formatForPrompt. A fallback in the format
+     * layer would reintroduce inference at the exact seam this work made
+     * factual. Here it is a bounded migration of old data at the one boundary
+     * old data enters through, and everything downstream still reads a flag
+     * that was recorded rather than guessed.
+     *
+     * KNOWN IMPRECISION, stated rather than hidden: the merge guard also
+     * requires window.ImageDescriberAnalyserOCR to have been present when
+     * Florence ran, and that is an environment condition no record preserves.
+     * A pre-fix record written on a page where that module failed to load
+     * would have its flag derived wrongly. The module is a core load-order
+     * dependency of the analyser, so this is vanishingly unlikely, but it is
+     * the one case where this derivation can be wrong.
+     *
+     * Derives only when the flag is ABSENT — an explicitly recorded value is
+     * never overwritten. Not persisted back to IndexedDB: the derivation is
+     * cheap, deterministic and idempotent, so running it on each restore is
+     * preferable to a write that could race the Florence slot updates.
+     *
+     * @param {object} analysis — a cached analysis, mutated in place
+     * @returns {boolean} true if the flag was derived on this call
+     */
+    _migrateCachedAnalysis(analysis) {
+      if (!analysis || !analysis.ocr) return false;
+      if (analysis.ocr.florenceMergeApplied !== undefined) return false;
+
+      const bothPassesComplete =
+        analysis.ocr.status === "complete" &&
+        analysis.florenceOCR &&
+        analysis.florenceOCR.status === "complete";
+
+      if (!bothPassesComplete) return false;
+
+      analysis.ocr.florenceMergeApplied = true;
+      logInfo(
+        "Cached analysis predates florenceMergeApplied — flag derived from " +
+          "both OCR passes having completed, which is the merge's own guard",
+      );
+      return true;
     },
 
     // ========================================================================
@@ -784,6 +908,34 @@
         this._analysisPending = cacheCheck
           .then((cached) => {
             if (cached && cached.analysis) {
+              // Restore user edits on a HASH hit, whatever the profile.
+              //
+              // Review-mode corrections describe the IMAGE's text. They have
+              // nothing to do with the analysis profile, and gating them on it
+              // meant a profile change alone silently discarded the most
+              // expensive input this tool accepts — see
+              // docs/ocr-curation-loss-defect.md.
+              //
+              // KNOWN IMPRECISION, stated rather than solved: corrections
+              // index into _sortedItems, and a different profile can produce a
+              // different OCR item list, so restored edits may not map
+              // cleanly. Restoring them anyway is the correct behaviour;
+              // getCorrectedAnalysis() already degrades to "corrections lost,
+              // data intact" with a logWarn, a path added at 0eea309 for
+              // exactly this shape. Do NOT build a second reconciliation
+              // mechanism beside it.
+              if (
+                cached.userEdits &&
+                typeof window.ImageDescriberOverlay !== "undefined"
+              ) {
+                const edits = cached.userEdits;
+                // Phase 11D: deserialise objectRemovals back to Set
+                if (Array.isArray(edits.objectRemovals)) {
+                  edits.objectRemovals = new Set(edits.objectRemovals);
+                }
+                window.ImageDescriberOverlay._userEdits = edits;
+              }
+
               // Check if the cached analysis matches current profile
               const cachedProfile = cached.analysis.profile;
               if (cachedProfile === profile) {
@@ -797,18 +949,8 @@
                   this.currentFileHash,
                 );
 
-                // Restore user edits if any
-                if (
-                  cached.userEdits &&
-                  typeof window.ImageDescriberOverlay !== "undefined"
-                ) {
-                  const edits = cached.userEdits;
-                  // Phase 11D: deserialise objectRemovals back to Set
-                  if (Array.isArray(edits.objectRemovals)) {
-                    edits.objectRemovals = new Set(edits.objectRemovals);
-                  }
-                  window.ImageDescriberOverlay._userEdits = edits;
-                }
+                // Repair pre-fix records before they reach the format layer.
+                this._migrateCachedAnalysis(cached.analysis);
 
                 applyFullResult(cached.analysis);
 
@@ -818,7 +960,10 @@
                 }
 
                 // Phase 11D: show cache recall banner
-                this.showCacheRecallBanner(cached.createdAt);
+                this.showCacheRecallBanner(
+                  cached.createdAt,
+                  !!cached.userEdits,
+                );
 
                 return cached.analysis;
               } else {
@@ -1046,6 +1191,15 @@
                 img.naturalHeight,
               );
             this.lastAnalysis.ocr.items = mergeResult.merged;
+            // Record that the merge ran, as a fact rather than as something
+            // inferred later from the merged list. The format layer used to
+            // infer it by looking for a surviving item with source ===
+            // "florence2", which reads false exactly when dedup worked best —
+            // every Florence item overlapped a Tesseract one and was dropped.
+            // The flag lives on ocr so it survives both the getCorrectedAnalysis()
+            // deep copy and the cache round trip (updateSlot saves the whole
+            // ocr object below).
+            this.lastAnalysis.ocr.florenceMergeApplied = true;
             logInfo("OCR merge stats:", mergeResult.stats);
           }
         }
@@ -1463,6 +1617,11 @@
               img.naturalHeight,
             );
           this.lastAnalysis.ocr.items = mergeResult.merged;
+          // Same recording as the Florence-2 panel path above — this
+          // quick-access prompt is a sibling merge site, so it must set the
+          // flag too or the format layer will re-emit the redundant section
+          // for anyone who enhanced OCR from here rather than from the panel.
+          this.lastAnalysis.ocr.florenceMergeApplied = true;
           newItemCount = mergeResult.merged.length - beforeCount;
           logInfo("OCR merge stats:", mergeResult.stats);
         }

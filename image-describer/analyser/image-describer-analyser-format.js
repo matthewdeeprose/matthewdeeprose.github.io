@@ -523,14 +523,22 @@
       imgW,
       imgH,
     );
-    // Suppress separate Florence-2 OCR section if items are already merged into main OCR
-    const florenceMerged =
-      analysis.ocr &&
-      analysis.ocr.items &&
-      analysis.ocr.items.some(function (item) {
-        return item.source === "florence2";
-      });
-    const florenceOCRText = florenceMerged
+    // The merge (mergeTesseractAndFlorence) always runs when both OCR passes
+    // complete, and dedups Florence items that overlap Tesseract ones. So once
+    // it has run, every non-duplicate Florence item is already in ocr.items and
+    // this section can only repeat — or, after review-mode corrections,
+    // contradict — the main list. Emit it only when the merge never happened,
+    // i.e. Tesseract OCR was skipped or failed and this is Florence's only surface.
+    //
+    // This replaces a heuristic that asked whether any item with
+    // source === "florence2" survived into the main list. That reads FALSE
+    // exactly when dedup worked best — Florence found the same labels
+    // Tesseract did, so nothing Florence-sourced survived — and the raw text
+    // was printed anyway, beside the human-corrected version of itself.
+    const florenceMergeApplied = !!(
+      analysis.ocr && analysis.ocr.florenceMergeApplied
+    );
+    const florenceOCRText = florenceMergeApplied
       ? ""
       : formatFlorence2OCRForPrompt(analysis.florenceOCR);
 

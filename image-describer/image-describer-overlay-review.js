@@ -1283,10 +1283,49 @@
         );
       }
 
+      // D2: this list used to be rebuilt solely from _sortedItems, which is
+      // written in exactly one place — _renderOCRLayer — and only when an OCR
+      // DOM layer exists. Cache recall restores _userEdits before any render,
+      // and any non-UI path that applies an analysis without rendering hits
+      // the same gap, so corrections could outlive the array they index into
+      // and the entire OCR list would silently come back empty.
+      const ocrItems = (corrected.ocr && corrected.ocr.items) || [];
+      let sortedItems = this._sortedItems || [];
+
+      if (
+        sortedItems.length === 0 &&
+        ocrItems.length > 0 &&
+        typeof this._deriveSortedItems === "function"
+      ) {
+        // The sort is deterministic over the same input, so this reproduces
+        // the exact ordering the corrections were made against.
+        sortedItems = this._deriveSortedItems(this._analysisRef.ocr);
+        logWarn(
+          "_sortedItems was empty with " +
+            ocrItems.length +
+            " OCR items present — reading order derived on demand",
+        );
+      }
+
       const newItems = [];
 
-      for (let i = 0; i < this._sortedItems.length; i++) {
-        const entry = this._sortedItems[i];
+      if (sortedItems.length === 0 && ocrItems.length > 0) {
+        // Corrections exist but cannot be mapped to any item. Degrading to
+        // "corrections lost, data intact" is acceptable; degrading to
+        // "everything lost" is not, and degrading silently is what hid this.
+        logWarn(
+          "Corrections present but reading order could not be derived — " +
+            "keeping all " +
+            ocrItems.length +
+            " OCR items uncorrected",
+        );
+        for (let i = 0; i < ocrItems.length; i++) {
+          newItems.push(JSON.parse(JSON.stringify(ocrItems[i])));
+        }
+      }
+
+      for (let i = 0; i < sortedItems.length; i++) {
+        const entry = sortedItems[i];
         const correction = corrections[i];
 
         if (correction) {
@@ -1344,6 +1383,13 @@
           quadrantSummary[item.quadrant].push(item);
         }
       });
+
+      if (!corrected.ocr) {
+        // Nothing to write the rebuilt list into. Previously this threw and
+        // took the whole generate path with it; return what we have instead.
+        logWarn("Corrected analysis has no ocr block — returning it unchanged");
+        return corrected;
+      }
 
       corrected.ocr.items = newItems;
       corrected.ocr.labelCount = newItems.length;

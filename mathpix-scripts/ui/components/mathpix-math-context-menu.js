@@ -789,22 +789,24 @@ class MathPixMathContextMenu {
         item.setAttribute("data-copied", "true");
       }
 
-      // Announce success
-      this.announce(`${label} copied to clipboard.`);
-
-      // Use notification system if available
+      // The toast already announces through the shared announcer, so it is the
+      // only voice when it is available; this file's own assertive region is the
+      // fallback for when the notification module is absent. One voice per event.
       if (typeof window.notifySuccess === "function") {
-        window.notifySuccess(`${label} copied to clipboard`);
+        window.notifySuccess(`${label} copied to clipboard.`);
+      } else {
+        this.announce(`${label} copied to clipboard.`);
       }
 
       // Close menu after a brief flash so the user sees the feedback
       setTimeout(() => this.close(), 250);
     } catch (err) {
       logError("Clipboard write failed", err);
-      this.announce(`Failed to copy ${label}. Please try again.`);
-
+      // Toast first, announcer as the fallback — see the success path above.
       if (typeof window.notifyError === "function") {
-        window.notifyError(`Failed to copy ${label}`);
+        window.notifyError(`Failed to copy ${label}. Please try again.`);
+      } else {
+        this.announce(`Failed to copy ${label}. Please try again.`);
       }
     }
   }

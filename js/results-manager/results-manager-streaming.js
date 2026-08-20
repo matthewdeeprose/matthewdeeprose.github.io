@@ -5530,32 +5530,37 @@ export class StreamingManager {
                     );
                   }
 
-                  // ✅ STEP 6: User feedback
+                  // ✅ STEP 6: User feedback — and the ONLY voice for this event.
+                  //
+                  // The guidance leads and the variable tail closes, because a
+                  // modal is open here: the toast reroutes into
+                  // .universal-modal-status-text, which carries role="status" and
+                  // is therefore atomic and read whole. Ordering is for the ear,
+                  // not the eye.
+                  //
+                  // This REPLACES a comment that said of a separate announcer
+                  // call: "This is NOT a duplicate of the toast above and must
+                  // not be deleted as one." That comment closed by naming its own
+                  // open question — whether a body-level live region reading
+                  // ignored with reason activeModalDialog could reach a reader
+                  // here at all — and asked for a measurement before anything was
+                  // relied on. The measurement was taken on 18 August 2026 and
+                  // settled it: #a11y-sr-announce read ignored: true, reason
+                  // activeModalDialog, before, during and after the write, with a
+                  // canary inside the same open dialog reading ignored: false and
+                  // a no-modal control reading ignored: false. Both motion
+                  // settings were identical, because this modal does NOT close on
+                  // reset, so there is no release window for motion to act on.
+                  // The announcer sentence had never been audible, and its
+                  // guidance is carried here instead of being discarded.
+                  //
+                  // So: anything added to this event goes on the TOAST, never on
+                  // the shared announcer, for exactly that reason.
                   window.notifyInfo?.(
-                    `Preference cleared. Now showing original default: ${
+                    `Preference cleared. You can make a new selection and optionally save it. Now showing original default: ${
                       originalDefaultLabel || originalDefault
                     }`
                   );
-
-                  // ✅ STEP 6: Accessibility announcement
-                  //
-                  // This is NOT a duplicate of the toast above and must not be
-                  // deleted as one. The toast reports the EVENT ("Preference
-                  // cleared…"), which everyone gets; this reports the CONSEQUENCE —
-                  // that the modal itself has changed underneath them — which
-                  // sighted users can simply see. The leading "Preference cleared."
-                  // was removed because the toast already says it, and hearing it
-                  // twice was the actual defect.
-                  //
-                  // Open question, deliberately not asserted either way: a
-                  // body-level live region has been observed reading ignored with
-                  // reason activeModalDialog while a modal is open, so this may not
-                  // reach a reader here at all. Measure before relying on it.
-                  if (window.accessibilityHelpers?.announce) {
-                    window.accessibilityHelpers.announce(
-                      `The choice has been reset to the original default. You can now make a new selection and optionally save it.`
-                    );
-                  }
 
                   logInfo(
                     "[CHOICE MODAL] ✅ Modal UI updated immediately - user can now make fresh choice"

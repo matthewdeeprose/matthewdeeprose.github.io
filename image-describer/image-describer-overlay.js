@@ -612,13 +612,20 @@
     },
 
     /**
-     * Render OCR bounding boxes into the OCR layer.
+     * Derive the reading-order item list that review-mode corrections index
+     * into. Pure — no DOM, no state written — so it can be recomputed on
+     * demand by getCorrectedAnalysis() when no OCR layer was ever rendered.
+     *
+     * The sort is deterministic over the same input, so a list derived here
+     * is byte-identical to the one _renderOCRLayer stored, and existing
+     * corrections keep pointing at the items they were made against.
+     *
      * @param {Object} ocrResult - The OCR result from analysis
+     * @returns {Array<{item: Object, suppressed: boolean}>} reading-order list
      * @private
      */
-    _renderOCRLayer(ocrResult) {
-      const layer = this._layers.ocr;
-      if (!layer) return;
+    _deriveSortedItems(ocrResult) {
+      if (!ocrResult) return [];
 
       const items = ocrResult.items || [];
       const suppressedItems = ocrResult.suppressedItems || [];
@@ -627,7 +634,7 @@
       // by visual reading order (top-to-bottom, left-to-right).
       // Items within 5% vertical distance are treated as the same line.
       const LINE_TOLERANCE = 0.05;
-      const allItems = items
+      return items
         .map(function (item) {
           return { item: item, suppressed: false };
         })
@@ -647,6 +654,21 @@
           }
           return ay - by;
         });
+    },
+
+    /**
+     * Render OCR bounding boxes into the OCR layer.
+     * @param {Object} ocrResult - The OCR result from analysis
+     * @private
+     */
+    _renderOCRLayer(ocrResult) {
+      const layer = this._layers.ocr;
+      if (!layer) return;
+
+      const items = ocrResult.items || [];
+      const suppressedItems = ocrResult.suppressedItems || [];
+
+      const allItems = this._deriveSortedItems(ocrResult);
 
       // Store sorted items for review mode index mapping (Phase 5D-2)
       this._sortedItems = allItems;

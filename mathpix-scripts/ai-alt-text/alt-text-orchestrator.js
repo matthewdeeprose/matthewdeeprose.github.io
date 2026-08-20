@@ -286,6 +286,8 @@ const MathPixAltTextOrchestrator = (function () {
    */
   const DESCRIPTION_PROMPT = `Describe this image for accessibility using these sections:
 
+Write all output in British English.
+
 ## 1. Title
 A brief descriptive title under 10 words.
 
@@ -303,6 +305,8 @@ Use markdown structure wherever it aids comprehension, rather than as decoration
 - headings to separate the distinct parts of a longer description.
 
 Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
+
+Write mathematical expressions as inline LaTeX between dollar signs, matching the notation used in the surrounding document. This applies to the long description only: the alt text stays plain prose, with no LaTeX and no markdown.
 
 Do not reuse "Title", "Alt Text", "Long Description" or "Text Content" as a heading inside this section.
 
@@ -338,6 +342,167 @@ List every word, number, and label visible in the image. If none, write "No text
         ? window.getMathPixSessionRestorer()
         : null;
     return restorer ? restorer.imageRegistry : null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // CTX-P4 — PROMPT RESOLUTION (gather here, compute in the builder)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run one gather step, returning `undefined` rather than throwing.
+   *
+   * ABSENCE IS A LEGAL STATE, so a failure here logs at DEBUG and not WARN. A
+   * document with no context entered, a session that has not restored, an image
+   * whose line number is unknown — all ordinary. Warning on them would train the
+   * reader to ignore the channel that also carries the real fault below.
+   *
+   * `null` IS NORMALISED TO `undefined`, deliberately. Two of the four gathers
+   * can legitimately produce `null` rather than nothing — `_defaultRegistry()`
+   * returns it when no restorer exists, and `registry.getImage()` returns it on
+   * a miss — and the builder's own guards test for absence, so handing it a
+   * `null` where it expects a missing argument would be a second shape meaning
+   * the same thing. One absence value, not two.
+   *
+   * @param {string} label - what was being gathered, for the DEBUG line.
+   * @param {Function} fn - the gather thunk.
+   * @returns {*} the gathered value, or `undefined` (never `null`).
+   */
+  function _gather(label, fn) {
+    try {
+      const value = fn();
+      return value === null ? undefined : value;
+    } catch (err) {
+      logDebug(`prompt gather: ${label} unavailable — degrading that input`, err);
+      return undefined;
+    }
+  }
+
+  /**
+   * Resolve the prompt for ONE run.
+   *
+   * | Source | When it wins |
+   * | --- | --- |
+   * | `runOptions.prompt` | a non-empty string on the run call |
+   * | `create({ prompt })` | a non-empty string given at construction |
+   * | the prompt builder | neither of the above was supplied AND the builder returns a non-empty string |
+   * | `DESCRIPTION_PROMPT` | everything else, including any builder failure |
+   *
+   * The BUILDER itself resolves on the same three-step precedence:
+   * `runOptions.promptBuilder`, then `create({ promptBuilder })`, then
+   * `window.MathPixAltTextPromptBuilder`.
+   *
+   * THE ORCHESTRATOR GATHERS; THE BUILDER COMPUTES. Every window read lives
+   * here, each independently guarded, and the builder receives plain arguments —
+   * which is what keeps the builder pure and gateable with no page. This split is
+   * deliberate: put a window read inside the builder and its whole suite needs a
+   * served page.
+   *
+   * THE RUN NEVER FAILS BECAUSE OF THE BUILDER. Absent, throwing, or returning a
+   * non-string or an empty string all degrade to `DESCRIPTION_PROMPT` with ONE
+   * WARN naming which happened, and the run proceeds. A prompt is an input to a
+   * generation, not a precondition for one.
+   *
+   * @param {Object} r - the run options.
+   * @param {string|null} explicitPrompt - the create()-time prompt, or null.
+   * @param {Object|null} injectedBuilder - the create()-time builder, or null.
+   * @param {Object|null} injectedRegistry - the create()-time registry, or null.
+   * @returns {string} the prompt to send.
+   */
+  function _resolvePromptForRun(
+    r,
+    explicitPrompt,
+    injectedBuilder,
+    injectedRegistry,
+  ) {
+    // 1. An explicit prompt wins outright, and the builder is not consulted at
+    //    all — not called, not even resolved. A caller who names a prompt has
+    //    said what they want.
+    if (typeof r.prompt === "string" && r.prompt) return r.prompt;
+    if (explicitPrompt) return explicitPrompt;
+
+    // 2. Resolve the builder the same way the parser and write stage are
+    //    resolved — injected first, else the global, read at CALL time so a page
+    //    that loads the builder after this module still finds it. Run-level
+    //    injection beats create-level, matching the prompt's own precedence.
+    const builder =
+      r.promptBuilder || injectedBuilder || window.MathPixAltTextPromptBuilder;
+    if (!builder || typeof builder.buildDescriptionPrompt !== "function") {
+      logWarn(
+        "prompt builder unavailable (absent or no buildDescriptionPrompt) — sending the plain instruction",
+      );
+      return DESCRIPTION_PROMPT;
+    }
+
+    // 3. Gather, each input independently. The registry is resolved HERE rather
+    //    than reusing the success branch's copy further down, because that one is
+    //    deliberately taken AFTER the adapter await and moving it would change
+    //    when the restorer is consulted on the write path.
+    const context = _gather("document context", () =>
+      window.MathPixContextManager && typeof window.MathPixContextManager.getContext === "function"
+        ? window.MathPixContextManager.getContext()
+        : undefined,
+    );
+
+    // THE ACCESSOR, NEVER restoredSession.currentMMD. Measured at CTX-P0 (read
+    // B3): the raw property misses unsaved editor changes, because
+    // getCurrentMMDContent prefers the live textarea value, and under a
+    // collapsed display layer the property can carry placeholder tokens where
+    // the accessor guarantees working MMD with real URLs.
+    const mmd = _gather("working MMD", () => {
+      const restorer =
+        typeof window.getMathPixSessionRestorer === "function"
+          ? window.getMathPixSessionRestorer()
+          : null;
+      return restorer && typeof restorer.getCurrentMMDContent === "function"
+        ? restorer.getCurrentMMDContent()
+        : undefined;
+    });
+
+    const registry = _gather(
+      "registry",
+      () => injectedRegistry || _defaultRegistry(),
+    );
+    const entry = _gather("registry entry", () =>
+      registry && typeof registry.getImage === "function"
+        ? registry.getImage(r.id)
+        : undefined,
+    );
+    const allEntries = _gather("registry entries", () =>
+      registry && typeof registry.getAllImages === "function"
+        ? registry.getAllImages()
+        : undefined,
+    );
+
+    // 4. Compute, and validate the shape rather than trusting it.
+    let built;
+    try {
+      built = builder.buildDescriptionPrompt({
+        context,
+        mmd,
+        entry,
+        allEntries,
+      });
+    } catch (err) {
+      logWarn(
+        "prompt builder threw — sending the plain instruction; the run proceeds",
+        err,
+      );
+      return DESCRIPTION_PROMPT;
+    }
+
+    if (typeof built !== "string" || built === "") {
+      logWarn(
+        `prompt builder returned an unusable shape (${built === "" ? "empty string" : typeof built}) — sending the plain instruction; the run proceeds`,
+      );
+      return DESCRIPTION_PROMPT;
+    }
+
+    logDebug("prompt built", {
+      length: built.length,
+      enriched: built !== DESCRIPTION_PROMPT,
+      id: r.id,
+    });
+    return built;
   }
 
   // ---------------------------------------------------------------------------
@@ -561,7 +726,14 @@ List every word, number, and label visible in the image. If none, write "No text
    *   via window.getMathPixSessionRestorer?.().imageRegistry.
    * @param {Object} [options.parser] - optional; default window.MathPixAltTextParser.
    * @param {Object} [options.writeStage] - optional; default window.MathPixAltTextWriteStage.
-   * @param {string} [options.prompt] - optional; default DESCRIPTION_PROMPT.
+   * @param {Object} [options.promptBuilder] - optional; default
+   *   window.MathPixAltTextPromptBuilder, resolved at call time. Consulted only
+   *   when NO explicit prompt was supplied — see `_resolvePromptForRun` for the
+   *   precedence table.
+   * @param {string} [options.prompt] - optional. When supplied, it WINS over the
+   *   builder for every run of this instance, and the builder is never consulted.
+   *   When absent, the builder is consulted per run and DESCRIPTION_PROMPT is the
+   *   floor.
    * @param {string} [options.source] - optional; default DEFAULT_SOURCE.
    * @returns {{ run: Function }}
    */
@@ -572,8 +744,20 @@ List every word, number, and label visible in the image. If none, write "No text
     const injectedRegistry = opts.registry || null;
     const injectedParser = opts.parser || null;
     const injectedWriteStage = opts.writeStage || null;
-    const prompt =
-      typeof opts.prompt === "string" && opts.prompt ? opts.prompt : DESCRIPTION_PROMPT;
+    const injectedPromptBuilder = opts.promptBuilder || null;
+
+    // CTX-P4. The EXPLICITNESS is captured separately from the resolved string,
+    // and that separation is the whole reason this parcel needed a read rather
+    // than a guess. The line below used to collapse "a caller supplied a prompt"
+    // and "nobody supplied one" into a single string before run() ever saw it,
+    // so run() had no way to tell them apart — and it could not recover the
+    // distinction by comparing against DESCRIPTION_PROMPT either, since a caller
+    // is entitled to pass a string equal to it. `explicitPrompt` is therefore the
+    // flag the precedence rule reads; `prompt` is kept exactly as it was so
+    // nothing downstream of it changes shape.
+    const explicitPrompt =
+      typeof opts.prompt === "string" && opts.prompt ? opts.prompt : null;
+    const prompt = explicitPrompt || DESCRIPTION_PROMPT;
     const source = opts.source != null ? opts.source : DEFAULT_SOURCE;
 
     if (!adapter || typeof adapter.generate !== "function") {
@@ -602,6 +786,11 @@ List every word, number, and label visible in the image. If none, write "No text
      * @param {File|Blob} runOptions.image - the image to describe.
      * @param {string} runOptions.id - the registry entry id to write onto.
      * @param {string} [runOptions.model] - explicit model id override (passed to adapter).
+     * @param {string} [runOptions.prompt] - optional per-run prompt override, added
+     *   at CTX-P4. Highest precedence: it beats the create()-time prompt and stops
+     *   the builder being consulted for this run only.
+     * @param {Object} [runOptions.promptBuilder] - optional per-run builder
+     *   override, beating the create()-time one and the global.
      * @param {string[]} [runOptions.overwriteFields] - optional write-stage field keys a
      *   person explicitly authorised for overwrite in the interface (Parcel 8b). Forwarded
      *   to the write stage UNVALIDATED — the write stage owns validation.
@@ -625,10 +814,20 @@ List every word, number, and label visible in the image. If none, write "No text
         progress.showProgress("PREPARING");
         progress.showProgress("GENERATING");
 
-        // 2. Call the injected adapter — it returns a FINALISED contract result.
+        // 2. Resolve the prompt for THIS run, then call the injected adapter —
+        //    it returns a FINALISED contract result. Resolution happens per run
+        //    rather than per create() because the context and the MMD can both
+        //    change between two runs in one manager session, and an image's own
+        //    line number moves whenever the document is edited.
+        const promptForRun = _resolvePromptForRun(
+          r,
+          explicitPrompt,
+          injectedPromptBuilder,
+          injectedRegistry,
+        );
         const result = await adapter.generate({
           image: r.image,
-          prompt,
+          prompt: promptForRun,
           model: r.model,
         });
 

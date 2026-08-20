@@ -314,6 +314,12 @@
       // Clear overlay analysis (Phase 5D-1)
       if (typeof window.ImageDescriberOverlay !== "undefined") {
         window.ImageDescriberOverlay.clearAnalysis();
+        // Corrections are per-image and index into _sortedItems — clearing the
+        // analysis without clearing them leaves getCorrectedAnalysis() returning
+        // null while hasCorrections() still reports true. The other three
+        // clearAnalysis() call sites already pair the reset this way.
+        window.ImageDescriberOverlay._userEdits = null;
+        window.ImageDescriberOverlay._sortedItems = [];
       }
 
       // Clean up preview images

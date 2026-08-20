@@ -296,6 +296,44 @@ window.ImageDescriberCache = (function () {
       cacheRecord = buildRecord(hash, record);
     }
 
+    // store.put REPLACES the record wholesale, so every field the incoming
+    // record does not carry is destroyed. buildRecord hard-sets userEdits to
+    // null and generations to [], which silently deleted review-mode OCR
+    // curation — the most expensive input this tool accepts — on any
+    // re-analysis of an already-curated image, with nothing in the UI to say
+    // it had happened. Measured, not predicted: see
+    // docs/ocr-curation-loss-defect.md.
+    //
+    // PRESERVE, never merge. A field the caller did not supply keeps whatever
+    // the stored record already holds; a field the caller did supply wins
+    // outright. There is deliberately no attempt to reconcile two versions of
+    // userEdits — no rule for that exists, and inventing one would be worse
+    // than either behaviour.
+    var existing = await withStore("readonly", function (store) {
+      return store.get(hash);
+    });
+
+    if (existing) {
+      if (
+        cacheRecord.userEdits === null ||
+        cacheRecord.userEdits === undefined
+      ) {
+        cacheRecord.userEdits = existing.userEdits || null;
+      }
+
+      // An empty array is "the caller supplied nothing" rather than "clear
+      // the history": generations are only ever appended, by saveGeneration's
+      // own read-modify-write, and delete() is how a record is discarded.
+      if (
+        !Array.isArray(cacheRecord.generations) ||
+        cacheRecord.generations.length === 0
+      ) {
+        cacheRecord.generations = Array.isArray(existing.generations)
+          ? existing.generations
+          : [];
+      }
+    }
+
     await withStore("readwrite", function (store) {
       return store.put(cacheRecord);
     });

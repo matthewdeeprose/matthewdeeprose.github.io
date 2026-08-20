@@ -659,9 +659,20 @@
           typeof window.ImageDescriberOverlay !== "undefined" &&
           window.ImageDescriberOverlay.hasCorrections()
         ) {
-          analysisToFormat =
-            window.ImageDescriberOverlay.getCorrectedAnalysis();
-          logDebug("Using corrected analysis with user OCR edits");
+          // getCorrectedAnalysis() returns _analysisRef — possibly null — when
+          // it has no analysis to correct. Assigning that unguarded replaced a
+          // perfectly good lastAnalysis with null, and formatForPrompt(null)
+          // returns "", so the ENTIRE machine pre-analysis block vanished from
+          // the prompt: OCR, colour, classification, depth and Florence alike.
+          const corrected = window.ImageDescriberOverlay.getCorrectedAnalysis();
+          if (corrected) {
+            analysisToFormat = corrected;
+            logDebug("Using corrected analysis with user OCR edits");
+          } else {
+            logWarn(
+              "Corrections reported but corrected analysis unavailable — using raw analysis",
+            );
+          }
         }
         const analysisText =
           window.ImageDescriberAnalyser.formatForPrompt(analysisToFormat);
@@ -771,8 +782,17 @@
         typeof window.ImageDescriberOverlay !== "undefined" &&
         window.ImageDescriberOverlay.hasCorrections()
       ) {
-        analysis = window.ImageDescriberOverlay.getCorrectedAnalysis();
-        logDebug("Analysis reference using corrected OCR data");
+        // Guarded for the same reason as buildUserPrompt above — a null here
+        // would blank the whole analysis reference, not just the corrections.
+        const corrected = window.ImageDescriberOverlay.getCorrectedAnalysis();
+        if (corrected) {
+          analysis = corrected;
+          logDebug("Analysis reference using corrected OCR data");
+        } else {
+          logWarn(
+            "Corrections reported but corrected analysis unavailable — using raw analysis",
+          );
+        }
       }
 
       // Use the format module's confidenceWord if available
@@ -900,7 +920,15 @@
         typeof window.ImageDescriberOverlay !== "undefined" &&
         window.ImageDescriberOverlay.hasCorrections()
       ) {
-        analysis = window.ImageDescriberOverlay.getCorrectedAnalysis();
+        // Guarded for the same reason as the two sites above.
+        const corrected = window.ImageDescriberOverlay.getCorrectedAnalysis();
+        if (corrected) {
+          analysis = corrected;
+        } else {
+          logWarn(
+            "Corrections reported but corrected analysis unavailable — using raw analysis",
+          );
+        }
       }
 
       const fmt = window.ImageDescriberAnalyserFormat;

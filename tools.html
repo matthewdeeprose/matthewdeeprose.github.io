@@ -1014,6 +1014,58 @@
           <span class="mathjax-label">MathJax Loaded:</span>
           <span id="mathjax-status-value">No</span>
         </div>
+        <!-- Shared audio-export progress surface (D2, 18 August 2026).
+
+             ONE element for the whole page, deliberately OUTSIDE every tool
+             <article>. Selecting a tool hides the other tools' DOM, which
+             computes ariaHiddenSubtree, so a progress bar living inside any
+             one tool would be unreachable whenever a different tool was
+             selected. The export lock is page-wide — at most one export runs
+             at a time — so a single element serves every tool unambiguously.
+
+             It is NOT a live region and has NO live ancestor, on purpose. The
+             chat Save buttons' progress label used to sit inside
+             #local-chat-messages / #chat-messages (role="log"), so each
+             counter tick made NVDA re-read the entire message bubble:
+             fourteen whole-bubble reads for one save, measured 18 August 2026.
+             Nothing here announces. The shared announcer is atomic with a
+             repeat suppressor and auto-clear, so repeated progress strings
+             would be re-read whole and partly suppressed; the export's start
+             and end sentences remain the only spoken output.
+
+             <div> rather than <output>: <output> carries an IMPLICIT
+             role="status", so it computes aria-live="polite" and
+             aria-atomic="true" with nothing in the markup to show it. Hosting
+             progress in one would reproduce this very defect one level out.
+
+             Classes are reused from image-describer.css, whose .progress-inline
+             block documents itself as tool-neutral and names this exact case.
+             No new CSS. -->
+        <div
+          id="audio-export-progress"
+          class="imgdesc-mm-progress progress-inline"
+          hidden
+        >
+          <div
+            id="audio-export-progress-bar"
+            class="imgdesc-mm-progress-bar"
+            role="progressbar"
+            aria-label="Audio export progress"
+            aria-valuenow="0"
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            <div
+              id="audio-export-progress-fill"
+              class="imgdesc-mm-progress-bar-fill"
+            ></div>
+          </div>
+          <span
+            id="audio-export-progress-text"
+            class="imgdesc-mm-progress-text"
+          ></span>
+        </div>
+
         <article class="standard" id="setup-app" aria-hidden="false">
           <h1>Set Up</h1>
 
@@ -13882,18 +13934,37 @@ Science,91</pre
                           aria-label="Camera preview for image capture"
                         ></video>
                       </div>
+
+                      <!--
+                        Captured photo. A SIBLING of the mirror wrapper, never a
+                        child of it: the wrapper carries a baseline
+                        transform: scaleX(-1) from image-describer.css, and
+                        applyMirrorState() in universal-camera-capture.js writes
+                        an inline transform onto the video's parentElement.
+                        Nothing may be inserted between that wrapper and the
+                        video.
+                      -->
+                      <img
+                        id="imgdesc-camera-captured"
+                        class="imgdesc-camera-captured-img"
+                        alt="The photo you have just captured"
+                        hidden
+                      />
                     </div>
 
                     <!-- Camera controls -->
-                    <div class="imgdesc-camera-controls">
+                    <div
+                      class="imgdesc-camera-controls"
+                      id="imgdesc-camera-controls"
+                    >
                       <button
                         type="button"
                         id="imgdesc-camera-start"
                         class="imgdesc-camera-btn imgdesc-camera-start-btn"
-                        onclick="ImageDescriberController.startCamera()"
+                        onclick="ImageDescriberController.toggleCamera()"
                       >
                         <span aria-hidden="true" data-icon="camera"></span>
-                        Start Camera
+                        <span id="imgdesc-camera-start-text">Start Camera</span>
                       </button>
                       <button
                         type="button"
@@ -13902,34 +13973,96 @@ Science,91</pre
                         onclick="ImageDescriberController.capturePhoto()"
                         disabled
                       >
-                        <span aria-hidden="true" data-icon="camera"></span>
+                        <span aria-hidden="true" data-icon="capture"></span>
                         Capture Photo
                       </button>
                       <button
                         type="button"
-                        id="imgdesc-camera-stop"
-                        class="imgdesc-camera-btn imgdesc-camera-stop-btn"
-                        onclick="ImageDescriberController.stopCamera()"
+                        id="imgdesc-camera-mirror"
+                        class="imgdesc-camera-btn"
+                        onclick="ImageDescriberController.toggleCameraMirror()"
                         disabled
                       >
-                        <span aria-hidden="true" data-icon="close"></span>
-                        Stop Camera
+                        <span aria-hidden="true" data-icon="flipView"></span>
+                        Mirror preview
+                      </button>
+                      <button
+                        type="button"
+                        id="imgdesc-camera-switch"
+                        class="imgdesc-camera-btn"
+                        onclick="ImageDescriberController.switchCamera()"
+                        disabled
+                      >
+                        <span aria-hidden="true" data-icon="switch"></span>
+                        Switch camera
                       </button>
                     </div>
 
-                    <!-- Camera status -->
+                    <!-- Post-capture adjustment, revealed once a photo exists -->
+                    <div id="imgdesc-camera-adjust" hidden>
+                      <p class="imgdesc-camera-adjust-hint">
+                        Check the photo. Rotate or flip it if you need to, then
+                        confirm.
+                      </p>
+                      <div class="imgdesc-camera-adjust-controls">
+                        <button
+                          type="button"
+                          id="imgdesc-camera-rotate"
+                          class="imgdesc-camera-btn"
+                          onclick="ImageDescriberController.rotateCapturedPhoto()"
+                        >
+                          <span aria-hidden="true" data-icon="redo"></span>
+                          Rotate
+                        </button>
+                        <button
+                          type="button"
+                          id="imgdesc-camera-flip"
+                          class="imgdesc-camera-btn"
+                          onclick="ImageDescriberController.flipCapturedPhoto()"
+                        >
+                          <span aria-hidden="true" data-icon="flip"></span>
+                          Flip
+                        </button>
+                        <button
+                          type="button"
+                          id="imgdesc-camera-confirm"
+                          class="imgdesc-camera-btn primary-button"
+                          onclick="ImageDescriberController.confirmCapturedPhoto()"
+                        >
+                          <span aria-hidden="true" data-icon="check"></span>
+                          Confirm photo
+                        </button>
+                        <button
+                          type="button"
+                          id="imgdesc-camera-retake"
+                          class="imgdesc-camera-btn"
+                          onclick="ImageDescriberController.retakePhoto()"
+                        >
+                          <span aria-hidden="true" data-icon="refresh"></span>
+                          Retake
+                        </button>
+                      </div>
+                    </div>
+
+                    <!--
+                      Camera status. role="status" already supplies an implicit
+                      aria-atomic="true", so the attribute below changes nothing
+                      a screen reader does. It is written literally because the
+                      camera harness asserts getAttribute("aria-atomic") at rows
+                      1.13 and 10.2, where an implicit value reads as null.
+                    -->
                     <div
                       class="imgdesc-camera-status"
                       id="imgdesc-camera-status"
                       role="status"
                       aria-live="polite"
+                      aria-atomic="true"
                     ></div>
 
-                    <!-- Camera error -->
+                    <!-- Camera unavailable -->
                     <div
-                      class="imgdesc-camera-error"
-                      id="imgdesc-camera-error"
-                      role="alert"
+                      class="imgdesc-camera-unavailable"
+                      id="imgdesc-camera-unavailable"
                       hidden
                     >
                       <p>
@@ -14053,6 +14186,28 @@ Science,91</pre
                       Re-analyse
                     </button>
                   </div>
+                  <!--
+                    Curation-loss warning. reanalyse() deletes the cache record
+                    and nulls _userEdits, so it is the one path that discards a
+                    user's hand-curated OCR on purpose; they should learn that
+                    BEFORE pressing it, not from an export that quietly carries
+                    the wrong text.
+
+                    Deliberately OUTSIDE the role="status" banner above: that
+                    region carries an implicit aria-atomic, so writing into it
+                    would re-announce the whole banner. Nothing announces here.
+                    The Re-analyse button gains aria-describedby pointing at
+                    this element only while there is curation to lose, so it is
+                    spoken on focus — before the press.
+                  -->
+                  <p
+                    id="imgdesc-reanalyse-warning"
+                    class="imgdesc-accuracy-warning"
+                    hidden
+                  >
+                    Re-analysing discards the OCR corrections saved for this
+                    image. They cannot be recovered.
+                  </p>
                   <!-- Overlay Toolbar (Phase 5D-1) -->
                   <div
                     class="imgdesc-overlay-toolbar"
@@ -15784,23 +15939,6 @@ Science,91</pre
                       class="visually-hidden"
                       aria-live="polite"
                     ></span>
-                    <div
-                      id="imgdesc-save-audio-progress"
-                      class="imgdesc-mm-progress progress-inline"
-                      hidden
-                    >
-                      <div
-                        class="imgdesc-mm-progress-bar"
-                        role="progressbar"
-                        aria-label="Audio export progress"
-                        aria-valuenow="0"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                      >
-                        <div class="imgdesc-mm-progress-bar-fill"></div>
-                      </div>
-                      <span class="imgdesc-mm-progress-text"></span>
-                    </div>
                   </div>
 
                   <!-- Action buttons group -->
@@ -19100,6 +19238,8 @@ Science,91</pre
     <script src="mathpix-scripts/ai-alt-text/alt-text-orchestrator.js?v=1.0"></script>
     <!-- Phase 4 (Parcel CTX-P3): pure prompt builder — buildDescriptionPrompt({ context, mmd, entry, allEntries }) assembles context, position and MMD excerpt ahead of the four-section instruction; degrades byte-identically to it (window.MathPixAltTextPromptBuilder). Placed after the orchestrator for readability only: the orchestrator resolves its collaborators at CALL time, so there is no load-order dependency in either direction. -->
     <script src="mathpix-scripts/ai-alt-text/alt-text-prompt-builder.js?v=1.0"></script>
+    <!-- Phase 4 (Parcel BG-P1): batch runner — the sequential loop, the cancel flag, the tally and the outcome-line taxonomy for a Describe All run (window.MathPixAltTextBatchRunner). Makes NO DOM calls and takes no load-order dependency: the orchestrator instance is supplied to create() by the caller. -->
+    <script src="mathpix-scripts/ai-alt-text/alt-text-batch-runner.js?v=1.0"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
     <script
       type="application/dev-test"
@@ -19118,6 +19258,11 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-orchestrator-tests.js"
+    ></script>
+    <!-- Phase 4 (Parcel BG-P1): batch runner suite (window.runBatchRunnerTests) — aggregated into runFloorSummary between runOrchestratorTests and runLaneCTests -->
+    <script
+      type="application/dev-test"
+      data-src="mathpix-scripts/testing/mathpix-batch-runner-tests.js"
     ></script>
     <!-- Phase 3 (Parcel 0): trigger-and-review scaffold suite (window.runTriggerReviewTests) — NOT yet aggregated into runFloorSummary (parcel 10) -->
     <script
@@ -19512,6 +19657,12 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="image-describer/testing/tests-10d-fix.js"
+    ></script>
+
+    <!-- Verifying prompt-fixture exporter (window.imgDescExportFixture) -->
+    <script
+      type="application/dev-test"
+      data-src="image-describer/testing/idq-fixture-export.js"
     ></script>
 
     <!-- Phase 11A: Depth Anything V2 integration tests -->

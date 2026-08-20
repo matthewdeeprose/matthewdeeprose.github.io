@@ -70,11 +70,7 @@ var TTSReadAloud = (function () {
     saveAudioButton: null,
     saveAudioLabel: null,
     saveAudioFormatButton: null,
-    saveAudioFormatLabel: null,
-    saveAudioProgress: null,
-    saveAudioProgressBar: null,
-    saveAudioProgressFill: null,
-    saveAudioProgressText: null
+    saveAudioFormatLabel: null
   };
 
   /** True while an export is in progress — prevents double-click */
@@ -420,84 +416,104 @@ var TTSReadAloud = (function () {
   }
 
   /**
-   * Handle click on the Save as Audio button.
+   * The audio-export progress bar is ONE page-level element declared in
+   * tools.html (#audio-export-progress), outside every tool <article> and
+   * outside any live region. See the comment on that markup for why.
+   *
+   * It used to be this button's own label plus a local bar inside
+   * #imgdesc-output-section. That label IS the button's accessible name —
+   * there is no aria-label — so every counter tick renamed the control: 23
+   * name changes for one export, measured 18 August 2026. Nothing here
+   * announces; the export's start and end sentences remain the only spoken
+   * output.
+   *
+   * LOCAL COPY, not a shared import. chat/chat-messages.js and
+   * local-chat/local-chat-messages.js each declare these same helpers
+   * privately inside their own IIFE and expose neither, so there is nothing to
+   * call. The three copies must stay behaviourally identical; extracting a
+   * shared module is the obvious follow-up and is not this change.
    */
+  var EXPORT_PROGRESS_IDS = Object.freeze({
+    wrapper: 'audio-export-progress',
+    bar: 'audio-export-progress-bar',
+    fill: 'audio-export-progress-fill',
+    text: 'audio-export-progress-text'
+  });
+
   /**
-   * Show the export progress bar in its initial (indeterminate) state.
-   * Called before the first tts:exportProgress event fires.
+   * Write one progress step. chunk/totalChunks of 0 clears the surface.
+   * @param {number} chunk - 1-based chunk index just started
+   * @param {number} totalChunks - total chunks in this export
    */
-  function showExportProgress() {
-    if (!els.saveAudioProgress) return;
-    els.saveAudioProgress.hidden = false;
-    if (els.saveAudioProgressFill) {
-      els.saveAudioProgressFill.style.width = '0%';
-    }
-    if (els.saveAudioProgressBar) {
-      els.saveAudioProgressBar.setAttribute('aria-valuenow', '0');
-    }
-    if (els.saveAudioProgressText) {
-      els.saveAudioProgressText.textContent = 'Starting\u2026';
+  function setExportProgress(chunk, totalChunks) {
+    var bar = document.getElementById(EXPORT_PROGRESS_IDS.bar);
+    var fill = document.getElementById(EXPORT_PROGRESS_IDS.fill);
+    var text = document.getElementById(EXPORT_PROGRESS_IDS.text);
+    var percent = totalChunks > 0 ? Math.round((chunk / totalChunks) * 100) : 0;
+
+    if (bar) bar.setAttribute('aria-valuenow', String(percent));
+    if (fill) fill.style.width = percent + '%';
+    if (text) {
+      // The surface no longer sits on the control, so it names what it is
+      // doing rather than relying on the button for context.
+      text.textContent =
+        totalChunks > 0 ? 'Saving audio, ' + chunk + ' of ' + totalChunks : '';
     }
   }
 
   /**
-   * Update the export progress bar from a tts:exportProgress event.
+   * Reveal the shared surface at export start.
+   */
+  function showExportProgress() {
+    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
+    if (!wrapper) return;
+    setExportProgress(0, 0);
+    wrapper.hidden = false;
+  }
+
+  /**
+   * Update the shared surface from a tts:exportProgress event.
+   *
+   * The emitter is SHARED with both chat tools, so this guards on OWNERSHIP as
+   * well as payload shape: `exporting` is this tool's equivalent of the chat
+   * tools' activeExportingBtn filter. The older unguarded version reacted to
+   * every tool's export, wrote Image Describer's DOM while Image Describer was
+   * display:none, and left a stale accessible name on the button that nothing
+   * restored.
+   *
+   * The button label is deliberately NOT touched — it is the accessible name.
+   *
    * @param {number} chunk - 1-based index of chunk just generated
    * @param {number} totalChunks - total number of chunks to generate
    */
   function updateExportProgress(chunk, totalChunks) {
-    if (!els.saveAudioProgress || !totalChunks) return;
-    var percent = Math.round((chunk / totalChunks) * 100);
-    if (els.saveAudioProgressFill) {
-      els.saveAudioProgressFill.style.width = percent + '%';
-    }
-    if (els.saveAudioProgressBar) {
-      els.saveAudioProgressBar.setAttribute('aria-valuenow', String(percent));
-    }
-    if (els.saveAudioProgressText) {
-      els.saveAudioProgressText.textContent = chunk + ' / ' + totalChunks;
-    }
-    if (els.saveAudioLabel) {
-      els.saveAudioLabel.textContent =
-        'Generating ' + chunk + ' of ' + totalChunks + '\u2026';
-    }
+    if (!exporting || !totalChunks) return;
+    setExportProgress(chunk, totalChunks);
   }
 
   /**
-   * Update the progress bar during the MP3 encoding phase (after all chunks
-   * have been generated). Reuses the same progress element as generation but
-   * relabels it so users see the two distinct phases.
-   * @param {number} percent — 0–100
-   */
-  function updateEncodeProgress(percent) {
-    if (!els.saveAudioProgress) return;
-    var p = Math.max(0, Math.min(100, Math.round(percent)));
-    if (els.saveAudioProgressFill) {
-      els.saveAudioProgressFill.style.width = p + '%';
-    }
-    if (els.saveAudioProgressBar) {
-      els.saveAudioProgressBar.setAttribute('aria-valuenow', String(p));
-    }
-    if (els.saveAudioProgressText) {
-      els.saveAudioProgressText.textContent = 'Encoding ' + p + '%';
-    }
-    if (els.saveAudioLabel) {
-      els.saveAudioLabel.textContent = 'Encoding MP3 ' + p + '%\u2026';
-    }
-  }
-
-  /**
-   * Hide the export progress bar and reset its state.
+   * Hide the shared surface and reset it. Called from the export's finally.
+   *
+   * There is deliberately no tts:exportEncodeProgress companion, matching both
+   * chat tools. encodeMp3's eleven emits share ONE macrotask, so no
+   * intermediate encoding state was ever observable to anyone, sighted or
+   * otherwise. tts/tts-controller.js still emits the event; nothing consumes it.
    */
   function hideExportProgress() {
-    if (!els.saveAudioProgress) return;
-    els.saveAudioProgress.hidden = true;
-    if (els.saveAudioProgressFill) els.saveAudioProgressFill.style.width = '0%';
-    if (els.saveAudioProgressBar) els.saveAudioProgressBar.setAttribute('aria-valuenow', '0');
-    if (els.saveAudioProgressText) els.saveAudioProgressText.textContent = '';
+    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
+    if (!wrapper) return;
+    wrapper.hidden = true;
+    setExportProgress(0, 0);
   }
 
   function handleSaveAudioClick() {
+    // Re-entry guard. Until 18 August 2026 re-entry was refused by the disabled
+    // attribute, which cost the user their focus for the whole export. The
+    // button now stays enabled, so a second click has to be refused here. There
+    // is only one Save button in this tool, so a click during its own export is
+    // always the same control: a silent no-op, with nothing to tell the user.
+    if (exporting) return;
+
     if (!window.TTSController) {
       logWarn('TTSController not available');
       return;
@@ -522,13 +538,30 @@ var TTSReadAloud = (function () {
       return;
     }
 
-    // Lock UI immediately \u2014 the existing "Generating\u2026" + disabled state covers
-    // both the SRE wait (first call only) and the subsequent chunk-generation
-    // phase, so no separate LOADING mirror is needed.
+    // Lock the UI immediately. NEITHER control is disabled: disabling a focused
+    // control moves focus to <body>, and nothing restored it, so the user was
+    // left on the document body for the whole export — measured 18 August 2026
+    // by NVDA listen and reproduced by drive. Both stay enabled, keep their
+    // names, and carry aria-busy instead. Same fix as both chat tools at
+    // 95f2c0c.
+    //
+    // Re-entry is refused by the `exporting` guard at the top of this handler,
+    // and for the format toggle by the identical check in
+    // handleFormatToggleClick, so a mid-export format change still cannot
+    // relabel the running button.
+    //
+    // refreshSaveAudioEnabled early-returns while `exporting`, so the resting
+    // predicate cannot disable either control mid-export either; the finally
+    // clears the flag before calling it, which restores the resting state.
+    //
+    // The LABEL is deliberately left alone: it is the button's accessible name,
+    // so writing progress into it renamed the control on every tick. Progress
+    // goes to the shared page-level surface instead.
     exporting = true;
-    els.saveAudioButton.disabled = true;
-    if (els.saveAudioFormatButton) els.saveAudioFormatButton.disabled = true;
-    els.saveAudioLabel.textContent = 'Generating\u2026';
+    els.saveAudioButton.setAttribute('aria-busy', 'true');
+    if (els.saveAudioFormatButton) {
+      els.saveAudioFormatButton.setAttribute('aria-busy', 'true');
+    }
     var icon = els.saveAudioButton.querySelector('[data-icon]');
     if (icon) {
       icon.setAttribute('data-icon', 'hourglass');
@@ -545,22 +578,35 @@ var TTSReadAloud = (function () {
         return exportFn.call(window.TTSController, result);
       })
       .then(function () {
-        announce('Audio file saved');
+        // One voice per event: the shared notification path announces in its
+        // own right, so the file-local announce() is the fallback for pages
+        // where the notification module is absent.
         if (typeof window.notifySuccess === 'function') {
-          window.notifySuccess('Audio file saved successfully.');
+          window.notifySuccess('Audio file saved.');
+        } else {
+          announce('Audio file saved.');
         }
       })
       .catch(function (err) {
         logError(format.toUpperCase() + ' export failed', err);
-        announce('Audio export failed: ' + (err && err.message ? err.message : 'unknown error'));
+        // One voice per event; announce() is the fallback. See the note on the
+        // save path above.
         if (typeof window.notifyWarning === 'function') {
           window.notifyWarning('Audio export failed: ' + (err && err.message ? err.message : 'unknown error'));
+        } else {
+          announce('Audio export failed: ' + (err && err.message ? err.message : 'unknown error'));
         }
       })
       .then(function () {
-        // Always restore button state (finally equivalent)
+        // Always restore button state (finally equivalent). Clearing
+        // `exporting` first is load-bearing: refreshSaveAudioEnabled below
+        // early-returns while it is set, and that call is what restores the
+        // resting disabled state for both controls.
         exporting = false;
-        if (els.saveAudioFormatButton) els.saveAudioFormatButton.disabled = false;
+        els.saveAudioButton.removeAttribute('aria-busy');
+        if (els.saveAudioFormatButton) {
+          els.saveAudioFormatButton.removeAttribute('aria-busy');
+        }
         hideExportProgress();
         refreshFormatToggle();
         if (icon) {
@@ -699,16 +745,11 @@ var TTSReadAloud = (function () {
       refreshSaveAudioEnabled();
     });
 
-    // Export progress — update the inline progress bar during multi-chunk generation
+    // Export progress — drives the SHARED page-level surface. Filtered on
+    // ownership inside updateExportProgress; the emitter serves all three tools.
     window.EmbedEventEmitter.on('tts:exportProgress', function (data) {
       if (!data || typeof data.chunk !== 'number' || typeof data.totalChunks !== 'number') return;
       updateExportProgress(data.chunk, data.totalChunks);
-    });
-
-    // MP3 encode progress — second phase after chunk generation finishes
-    window.EmbedEventEmitter.on('tts:exportEncodeProgress', function (data) {
-      if (!data || typeof data.percent !== 'number') return;
-      updateEncodeProgress(data.percent);
     });
 
     logInfo('TTS event listeners wired');
@@ -768,12 +809,6 @@ var TTSReadAloud = (function () {
     els.saveAudioLabel = document.getElementById('imgdesc-save-audio-label');
     els.saveAudioFormatButton = document.getElementById('imgdesc-save-audio-format');
     els.saveAudioFormatLabel = document.getElementById('imgdesc-save-audio-format-label');
-    els.saveAudioProgress = document.getElementById('imgdesc-save-audio-progress');
-    if (els.saveAudioProgress) {
-      els.saveAudioProgressBar = els.saveAudioProgress.querySelector('.imgdesc-mm-progress-bar');
-      els.saveAudioProgressFill = els.saveAudioProgress.querySelector('.imgdesc-mm-progress-bar-fill');
-      els.saveAudioProgressText = els.saveAudioProgress.querySelector('.imgdesc-mm-progress-text');
-    }
 
     // Attach click handlers
     els.button.addEventListener('click', handleClick);

@@ -3597,9 +3597,17 @@ class MathPixResultRenderer extends MathPixBaseModule {
           }
 
           if (!blob) {
-            self._announceChemistry("Failed to generate image");
+            // The toast already announces through the shared announcer, so it is
+            // the only voice when available; the chemistry live region is the
+            // fallback for when the notification module is absent.
             if (typeof window.notifyError === "function") {
-              window.notifyError("Failed to generate structure image");
+              window.notifyError(
+                "Failed to generate structure image. Please try again."
+              );
+            } else {
+              self._announceChemistry(
+                "Failed to generate structure image. Please try again."
+              );
             }
             return;
           }
@@ -3622,15 +3630,22 @@ class MathPixResultRenderer extends MathPixBaseModule {
           // can race the download and produce a silent no-op save.
           setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-          self._announceChemistry("Structure image saved as " + filename);
+          // Toast first, chemistry live region as the fallback — see above.
           if (typeof window.notifySuccess === "function") {
-            window.notifySuccess("Saved " + filename);
+            window.notifySuccess("Structure image saved as " + filename);
+          } else {
+            self._announceChemistry("Structure image saved as " + filename);
           }
         } catch (err) {
           logWarn("Phase 8B: Save image failed", { error: err.message });
-          self._announceChemistry("Failed to save image");
           if (typeof window.notifyError === "function") {
-            window.notifyError("Failed to save structure image");
+            window.notifyError(
+              "Failed to save structure image. Please try again."
+            );
+          } else {
+            self._announceChemistry(
+              "Failed to save structure image. Please try again."
+            );
           }
         } finally {
           saveImageBtn.disabled = false;
@@ -3687,9 +3702,11 @@ class MathPixResultRenderer extends MathPixBaseModule {
         // time to read the blob asynchronously after a.click().
         setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-        self._announceChemistry("Structure SVG saved as " + filename);
+        // Toast first, chemistry live region as the fallback — see above.
         if (typeof window.notifySuccess === "function") {
-          window.notifySuccess("Saved " + filename);
+          window.notifySuccess("Structure SVG saved as " + filename);
+        } else {
+          self._announceChemistry("Structure SVG saved as " + filename);
         }
       };
     }

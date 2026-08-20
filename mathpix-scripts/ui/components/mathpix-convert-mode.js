@@ -1237,8 +1237,7 @@ class MathPixConvertMode {
 
     try {
       await navigator.clipboard.writeText(this.currentMMDContent);
-      this.showNotification("Source copied to clipboard!", "success");
-      this.announceToScreenReader("Source code copied to clipboard");
+      this.showNotification("Source code copied to clipboard.", "success");
       logDebug("Source content copied to clipboard");
       return true;
     } catch (error) {
@@ -1554,6 +1553,13 @@ class MathPixConvertMode {
     } else {
       // Fallback to console
       console.log(`[ConvertMode ${type}]`, message);
+
+      // SAFETY NET. With the universal notification module absent, nothing above
+      // spoke, so announce here — this restores the announcement net for EVERY
+      // caller of showNotification, not only the sites whose own announcer call
+      // was removed on 18 August 2026. It cannot double: the branches above are
+      // else-if arms of one chain, so this branch runs only when none of them did.
+      this.announceToScreenReader(message);
     }
   }
 
@@ -2533,8 +2539,7 @@ class MathPixConvertMode {
     // Clean up
     URL.revokeObjectURL(url);
 
-    this.showNotification(`Downloaded as ${downloadFilename}`, "success");
-    this.announceToScreenReader(`File downloaded as ${downloadFilename}`);
+    this.showNotification(`File downloaded as ${downloadFilename}`, "success");
 
     logInfo("MMD downloaded:", downloadFilename);
   }
@@ -2607,8 +2612,7 @@ class MathPixConvertMode {
       this.redoStack = [];
       this.updateUndoRedoButtons();
 
-      this.showNotification(`Loaded ${file.name}`, "success");
-      this.announceToScreenReader(`File ${file.name} loaded successfully`);
+      this.showNotification(`File ${file.name} loaded`, "success");
 
       logInfo("MMD file uploaded:", file.name);
     } catch (error) {
