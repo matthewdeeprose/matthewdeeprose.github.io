@@ -930,6 +930,13 @@
             </label>
           </fieldset>
         </nav>
+        <!-- Tool registry — controls which tools appear above, in what order,
+             and which carry an "Alpha" / "Beta" badge. Edit the TOOLS array in
+             js/tool-registry.js; nothing in this file needs changing.
+             Loaded HERE, immediately after the picker markup and before the
+             remaining ~21,000 lines of this document are parsed, so the
+             reorder and hide apply with no flash of the wrong order. -->
+        <script src="js/tool-registry.js"></script>
         <!-- Tool-switch handler stubs — load-order safety net.
              Each radio above carries onclick="showXxx()", but the real showXxx
              functions are declared in an inline script near the END of this
@@ -1158,11 +1165,29 @@
             <div class="setup-quick-start">
               <h2>Quick Start Guide</h2>
               <p>
-                This application provides six tools for accessible content
+                This application provides
+                <!-- Numeral written by js/tool-registry.js from the number of
+                     tools visible in the picker, so it cannot go stale when a
+                     tool is hidden or added. Edit the surrounding sentence
+                     freely; only this span's text is replaced. -->
+                <span data-tool-count>six</span> tools for accessible content
                 creation. Most tools require an API credential to function.
                 Expand a section below to configure your credentials.
               </p>
+              <!-- Order, hiding and the Alpha/Beta badges below are applied at
+                   runtime by js/tool-registry.js so this list always matches
+                   the tool picker. The source order here is only what a reader
+                   of the markup sees; edit the prose, not the sequence.
+                   An entry whose term matches no tool — Microsoft Foundry, a
+                   credential provider rather than a tool — is left alone and
+                   falls to the end of the rendered list. -->
               <dl class="setup-quick-start-list">
+                <dt>Set Up</dt>
+                <dd>
+                  This page. Configure API credentials for every tool, and
+                  download or remove local AI models. No credentials needed.
+                </dd>
+
                 <dt>OpenRouter AI</dt>
                 <dd>
                   Send prompts to a wide range of AI models. Requires an
@@ -1199,12 +1224,35 @@
                   OpenRouter API key, or download a local model below.
                 </dd>
 
+                <dt>Chat</dt>
+                <dd>
+                  Hold a conversation with a wide range of cloud AI models,
+                  filtering them by cost, capability and provider. Requires an
+                  OpenRouter API key, or a Microsoft Foundry connection.
+                </dd>
+
+                <dt>Local Chat</dt>
+                <dd>
+                  Chat with a local AI model running entirely in your browser.
+                  No data leaves your device. No credentials needed, but you
+                  will need to download a model from the Local AI Models
+                  section.
+                </dd>
+
                 <dt>Ally Reporting</dt>
                 <dd>
                   Query the Blackboard Ally API for course accessibility
                   reports. Requires an Ally API token and Client ID.
                 </dd>
               </dl>
+              <!-- Order the list to match the tool picker NOW, rather than at
+                   DOMContentLoaded — on this page that is seconds after first
+                   paint, so the list would visibly rearrange itself. The
+                   registry also listens for DOMContentLoaded as a fallback;
+                   the pass is idempotent, so running twice is harmless. -->
+              <script>
+                if (window.ToolRegistry) window.ToolRegistry.applyQuickStart();
+              </script>
             </div>
           </div>
 

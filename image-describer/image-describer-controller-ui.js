@@ -63,33 +63,40 @@
   // FULLSCREEN FOCUS RETURN
   // ============================================================================
 
-  // WHY THIS IS HAND-ROLLED AND NOT `returnFocusTo`, WHICH IS THE STANDARD.
-  // docs/universal-ui-components-guide.md § 6.4 says every modal should declare
-  // returnFocusTo rather than refocusing by hand. This one CANNOT, and the
-  // reason is structural rather than a preference.
+  // THE TRIGGER TRAVELS INTO THE MODAL, WHICH IS WHY THIS NEEDED TWO PARTS.
   //
   // showFullscreenImage() passes the workspace ELEMENT as `content`, so
   // UniversalModal appendChild()s #imgdesc-workspace INTO the dialog and leaves
-  // a placeholder behind. The trigger #imgdesc-fullscreen-btn lives inside that
-  // workspace, so THE OPENER TRAVELS INTO THE MODAL. The workspace is put back
-  // by onClose — which runs from the show() promise reaction, i.e. AFTER
-  // finishClose has already resolved and restored focus. At the moment
-  // returnFocusTo would be resolved, the trigger is inside the detached dialog
-  // subtree: not connected, so the resolver correctly returns null and the tier
-  // chain lands on #main.
+  // a placeholder behind. #imgdesc-fullscreen-btn lives inside that workspace,
+  // so at close time it is inside the detached dialog — `returnFocusTo` alone
+  // resolves to nothing and the tier chain lands on #main.
   //
-  // MEASURED 21 August 2026, BEFORE any change: focus settled on main#main for
-  // all three journeys — including the CONTROL one with no nested modal at all.
-  // So this modal's focus return was broken outright, not merely under nesting,
-  // and #main is the landing that makes NVDA read the entire main region (see
-  // AGENTS.md § Announcements and the same day's session-manager listen).
+  // MEASURED 21 August 2026, before any change: focus settled on main#main for
+  // all four journeys, including the CONTROL arm with no nested modal at all.
+  // This modal's focus return was broken outright, not merely under nesting.
   //
-  // onClose is the earliest hook where the trigger is back in the page. It also
-  // runs for EVERY close route; onBeforeClose does not — it fires only from
-  // Modal.prototype.close(), so the × button and an overlay click bypass it.
-  // A focus call here lands last and therefore wins, the same ordering
-  // js/universal-modal.js finishClose() documents for the image manager's
-  // _returnFocus().
+  // ⚠ CORRECTED THE SAME DAY, and the correction is the useful part. The first
+  // fix restored focus at the end of onClose. That IS last, it DID land on the
+  // trigger, and a four-journey drive plus an inversion all agreed — yet a real
+  // NVDA listen still got the whole-page read. A focus-EVENT log explained it:
+  //
+  //     focusout -> body
+  //     focusin  -> main#main                      <- tier chain, 6ms earlier
+  //     focusout -> body
+  //     focusin  -> button#imgdesc-fullscreen-btn  <- the onClose fix
+  //
+  // Focusing the #main landmark is what makes NVDA read the entire main region,
+  // and it had already happened. AN END-STATE MEASUREMENT CANNOT SEE A
+  // TRANSIENT LANDING — every drive that reported "settled on the trigger" was
+  // correct and answered the wrong question.
+  //
+  // So the DOM restore moved into `onBeforeFocusRestore`, which runs inside
+  // finishClose after the dialog is detached and immediately BEFORE the opener
+  // is resolved. The trigger is then connected and visible, `returnFocusTo`
+  // resolves it, tier 1 fires, and #main is never focused at all. onClose is
+  // too late for this by construction (it runs from the show() promise
+  // reaction), and the native <dialog> "close" event is too late as well —
+  // the spec queues it rather than firing it synchronously.
   const FULLSCREEN_TRIGGER_ID = "imgdesc-fullscreen-btn";
   // Reached only if the preview is gone, which means the image was cleared
   // while fullscreen was open. Landing on the upload control is the surface's
@@ -497,6 +504,45 @@
         //   3. Nothing else    → close the fullscreen modal
         // ────────────────────────────────────────────────────────────
         const self = this; // controller reference for case 3
+
+        /**
+         * Put the workspace (and, in output mode, the preview) back where they
+         * came from. IDEMPOTENT — it is called from onBeforeFocusRestore, which
+         * is where it has to run so the trigger exists before focus is
+         * restored, and again from onClose as a safety net for any close route
+         * that did not reach the hook. The placeholder is the guard: it is
+         * removed on the first call, so the second does nothing.
+         */
+        const restoreWorkspaceToPage = function () {
+          workspace.classList.remove("imgdesc-workspace--fullscreen");
+          workspace.classList.remove("imgdesc-workspace--view-only");
+          // Sidebar layout classes that only apply in fullscreen
+          workspace.classList.remove("imgdesc-workspace--review-active");
+          workspace.classList.remove("imgdesc-workspace--expanded");
+
+          if (!placeholder.parentNode) return; // already restored
+
+          placeholder.parentNode.insertBefore(workspace, placeholder);
+          placeholder.remove();
+
+          // Move the preview back to the output section if still in output mode
+          const layoutEl = document.querySelector(".imgdesc-layout");
+          if (
+            layoutEl &&
+            layoutEl.classList.contains("imgdesc-output-mode") &&
+            self.elements.preview &&
+            self.elements.progress
+          ) {
+            self.elements.progress.parentElement.insertBefore(
+              self.elements.preview,
+              self.elements.progress,
+            );
+            logDebug("[UI] Preview moved back to output section");
+          }
+
+          logDebug("[UI] Workspace restored to page");
+        };
+
         const escapeHandler = function (e) {
           if (e.key !== "Escape") return;
 
@@ -657,6 +703,27 @@
           className: "imgdesc-fullscreen-modal",
           closeOnEscape: true,
           closeOnOverlayClick: true,
+
+          // WHERE FOCUS RETURNS. Works only because onBeforeFocusRestore below
+          // has already put the workspace — and therefore this button — back in
+          // the page. Resolved by id at close time, since displayPreview()
+          // rebuilds the preview markup and a captured element can be stale.
+          returnFocusTo: FULLSCREEN_TRIGGER_ID,
+
+          // PUT THE DOM BACK BEFORE ANYTHING IS FOCUSED.
+          //
+          // This used to live in onClose, and focus still ended up on the right
+          // button — but a focus-event log showed #main being focused 6ms FIRST,
+          // by the tier chain, because at that instant the trigger was still
+          // inside the detached dialog. Landing on the #main landmark is what
+          // makes NVDA read the entire main region, so the listen heard a
+          // whole-page read even though the final activeElement was correct.
+          // An end-state measurement cannot see a transient landing; the event
+          // log is what found it.
+          onBeforeFocusRestore: function () {
+            restoreWorkspaceToPage();
+          },
+
           onOpen: function () {
             workspace.classList.add("imgdesc-workspace--fullscreen");
 
@@ -708,26 +775,12 @@
             const overlay = window.ImageDescriberOverlay;
             const wasInReviewMode = overlay && overlay._inReviewMode;
 
-            // Restore workspace to original DOM position
-            workspace.classList.remove("imgdesc-workspace--fullscreen");
-            workspace.classList.remove("imgdesc-workspace--view-only");
-            // Also remove sidebar layout classes that only apply in fullscreen
-            workspace.classList.remove("imgdesc-workspace--review-active");
-            workspace.classList.remove("imgdesc-workspace--expanded");
-            if (placeholder.parentNode) {
-              placeholder.parentNode.insertBefore(workspace, placeholder);
-              placeholder.remove();
-            }
-
-            // Fix: Move preview back to output section if still in output mode
-            const layoutEl = document.querySelector(".imgdesc-layout");
-            if (layoutEl && layoutEl.classList.contains("imgdesc-output-mode") && self.elements.preview && self.elements.progress) {
-              self.elements.progress.parentElement.insertBefore(
-                self.elements.preview,
-                self.elements.progress,
-              );
-              logDebug("[UI] Preview moved back to output section after fullscreen close");
-            }
+            // The workspace and preview are already back — onBeforeFocusRestore
+            // did it, so the trigger existed in time for tier 1. Calling it
+            // again is a no-op by design, and is kept so that a close route
+            // which somehow skipped that hook still restores the DOM rather
+            // than leaving the workspace detached.
+            restoreWorkspaceToPage();
 
             // Rebuild toggletips — the old ones were destroyed when the
             // <dialog> was removed from the DOM.  refreshLayout() detects
@@ -751,11 +804,16 @@
 
             logInfo("[UI] Fullscreen workspace closed, DOM restored");
 
-            // LAST, deliberately: the workspace is back in the page and
-            // enterReviewMode() above moves no focus of its own, so nothing
-            // competes with this call. See restoreFocusAfterFullscreen() for
-            // why this modal cannot use returnFocusTo.
-            restoreFocusAfterFullscreen();
+            // SAFETY NET ONLY. returnFocusTo + onBeforeFocusRestore should
+            // already have landed focus on the trigger during finishClose, so
+            // in the normal case this does nothing. It stays for the route
+            // where the hook did not run, and it is GUARDED so it cannot fire a
+            // second, redundant focus move — the whole point of this parcel is
+            // that an extra landing is audible even when the final one is right.
+            const trigger = document.getElementById(FULLSCREEN_TRIGGER_ID);
+            if (document.activeElement !== trigger) {
+              restoreFocusAfterFullscreen();
+            }
           },
         });
 

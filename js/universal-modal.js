@@ -347,6 +347,23 @@ const UniversalModal = (function () {
           // not is unaffected by this field's existence and keeps the legacy
           // path exactly. See docs/universal-modal-focus-return-plan.md.
           returnFocusTo: config.returnFocusTo || null,
+
+          // OPT-IN LAST CHANCE TO PUT THE DOM BACK (21 August 2026), for the
+          // modals that were handed an ELEMENT as content and therefore had it
+          // appendChild()ed into the dialog. Their opener travels into the
+          // modal, so by the time the tiers below run it is detached,
+          // returnFocusTo resolves to nothing, and focus lands on #main.
+          //
+          // onClose is too late: it runs from the show() promise reaction,
+          // AFTER the tiers. The native <dialog> "close" event is too late as
+          // well — the spec queues it as a task rather than firing it
+          // synchronously. This hook runs inside finishClose, after the dialog
+          // is detached and immediately before the opener is resolved, which is
+          // the only moment where the DOM can be restored in time.
+          //
+          // Null for every modal that does not declare it, so nothing existing
+          // changes. See docs/universal-modal-focus-return-plan.md.
+          onBeforeFocusRestore: config.onBeforeFocusRestore || null,
         });
 
         this.hasActiveModal = true;
@@ -1010,6 +1027,18 @@ const UniversalModal = (function () {
       // some other modal on the stack, and silently reintroducing it to a caller
       // that explicitly opted out of it is the defect wearing a disguise. Null
       // here means the tiers below decide, which is the honest outcome.
+      // LAST CHANCE TO PUT THE DOM BACK, before anything is resolved or
+      // focused. Only modals that declared it are affected. Wrapped, because a
+      // throwing callback here would abandon focus restore altogether and leave
+      // focus on <body> — strictly worse than whatever the callback was fixing.
+      if (typeof modalData.onBeforeFocusRestore === "function") {
+        try {
+          modalData.onBeforeFocusRestore();
+        } catch (error) {
+          logError(`onBeforeFocusRestore threw: ${error.message}`);
+        }
+      }
+
       const opener = modalData.returnFocusTo
         ? this.resolveReturnFocusTarget(modalData.returnFocusTo)
         : this.originalFocus;
@@ -1033,6 +1062,16 @@ const UniversalModal = (function () {
       // below enqueues it — so it runs AFTER this entire synchronous body and
       // therefore LANDS LAST AND WINS. Measured in the F-1 before capture at
       // +1080ms against tier 1 at +1068ms, both aiming at the same element.
+      //
+      // UPDATED 21 August 2026 (Phase 2 step 4), AND THE HAZARD BELOW IS
+      // UNCHANGED. The image manager now DECLARES returnFocusTo, so tier 1
+      // reaches #resume-manage-images-btn from its own per-modal record rather
+      // than from the shared field. What that fixes is which element tier 1
+      // aims at after a nested close; it does NOT retire _returnFocus(), which
+      // still runs, still lands last, and would still yank focus to a control
+      // behind the top layer if the manager ever closed over a surviving modal.
+      // The 300ms close described below is STILL the only thing preventing it.
+      // Read the rest of this block as current, not as history.
       //
       // Today that redundancy is harmless. It stops being harmless if the image
       // manager itself ever closes while another modal REMAINS on the stack:
@@ -1303,6 +1342,7 @@ const UniversalModal = (function () {
       focusElement: options.focusElement || null,
       className: options.className || "",
       returnFocusTo: options.returnFocusTo || null,
+      onBeforeFocusRestore: options.onBeforeFocusRestore || null,
       onOpen: options.onOpen || null,
       onClose: options.onClose || null,
       onBeforeClose: options.onBeforeClose || null,
@@ -1329,6 +1369,7 @@ const UniversalModal = (function () {
       size: this.options.size,
       className: this.options.className,
       returnFocusTo: this.options.returnFocusTo,
+      onBeforeFocusRestore: this.options.onBeforeFocusRestore,
       options: {
         allowBackgroundClose: this.options.closeOnOverlayClick,
       },

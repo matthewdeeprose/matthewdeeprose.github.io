@@ -6638,3 +6638,32 @@ pre.language-json {
   background-color: transparent;
   white-space: nowrap;
 }
+
+/* Tool maturity badges ("Alpha" / "Beta").
+ * Injected by js/tool-registry.js into the tool picker and the Quick Start
+ * list. Structure is in main.css; only the accents live here.
+ * Transparent background, so the badge reads against the page surface
+ * (#231f20) whether the option is checked or not.
+ * Beta takes the project primary (#c1d100), matching .setup-active-badge
+ * above; alpha takes the warm amber already used for "needs attention" to
+ * read as the earlier, more cautionary stage. Distinguishable beyond colour
+ * per WCAG SC 1.4.1 — the words "Alpha" and "Beta" carry the meaning, so the
+ * accents are reinforcement only.
+ * Measured in both states. A checked pill carries a faint tint, so its
+ * resolved backdrop is rgb(43,40,30) rather than #231f20 — the worse case:
+ *   alpha  6.29:1 checked, 6.96:1 unchecked
+ *   beta   8.69:1 checked, 9.62:1 unchecked
+ * Both clear 4.5:1 for the text and 3:1 for the border as a graphical object.
+ * Note when re-measuring: main.css transitions background-color over 0.2s, so
+ * a computed read taken in the same tick as the state change returns the OLD
+ * value and makes the tint look as though it never applied. Settle first.
+ */
+.tool-flag[data-flag="alpha"] {
+  color: #d4a058;
+  border-color: #d4a058;
+}
+
+.tool-flag[data-flag="beta"] {
+  color: #c1d100;
+  border-color: #c1d100;
+}

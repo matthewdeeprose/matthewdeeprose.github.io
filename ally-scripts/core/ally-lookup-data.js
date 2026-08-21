@@ -2,12 +2,12 @@
  * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Module
  * @module AllyLookup
  * @requires None - Standalone data module
- * @generated 2026-06-29T07:43:16.553Z
+ * @generated 2026-08-21T11:22:22.270Z
  * @version 1.0.0
  *
  * @description
  * Generated from CSV files - provides human-readable names for Ally internal IDs.
- * Contains 39 terms and 88 departments.
+ * Contains 39 terms and 89 departments.
  *
  * Course lookups are delegated to ALLY_COURSES (loaded separately due to size).
  */
@@ -55,6 +55,11 @@ const ALLY_LOOKUP = (function() {
    * @type {Object.<string, {name: string, type: string, sortOrder: number}>}
    */
   const terms = {
+    "_299_1": {
+      "name": "Templates",
+      "type": "system",
+      "sortOrder": -99
+    },
     "_387_1": {
       "name": "Archived",
       "type": "system",
@@ -145,6 +150,16 @@ const ALLY_LOOKUP = (function() {
       "type": "system",
       "sortOrder": -99
     },
+    "_483_1": {
+      "name": "Recommended Training",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_482_1": {
+      "name": "Mandatory Student Training",
+      "type": "system",
+      "sortOrder": -99
+    },
     "_344_1": {
       "name": "2024-25 Modules",
       "type": "academic",
@@ -171,7 +186,7 @@ const ALLY_LOOKUP = (function() {
       "sortOrder": -2
     },
     "_207_1": {
-      "name": "Training and Further Resources",
+      "name": "Further Resources",
       "type": "system",
       "sortOrder": -99
     },
@@ -215,16 +230,6 @@ const ALLY_LOOKUP = (function() {
       "type": "system",
       "sortOrder": -99
     },
-    "_468_1": {
-      "name": "Mandatory Training",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_475_1": {
-      "name": "2026-27 Modules.",
-      "type": "academic",
-      "sortOrder": 26
-    },
     "_451_1": {
       "name": "Preparation for 2026-27",
       "type": "system",
@@ -237,11 +242,6 @@ const ALLY_LOOKUP = (function() {
     },
     "_430_1": {
       "name": "Demonstration courses",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_299_1": {
-      "name": "Templates",
       "type": "system",
       "sortOrder": -99
     },
@@ -567,6 +567,11 @@ const ALLY_LOOKUP = (function() {
       "shortCode": null,
       "isSystemTag": true
     },
+    "_113_1": {
+      "name": "Faculty Central (FEPS) (GN)",
+      "shortCode": "GN",
+      "isSystemTag": false
+    },
     "_281_1": {
       "name": "No Turnitin",
       "shortCode": null,
@@ -657,14 +662,14 @@ const ALLY_LOOKUP = (function() {
       "shortCode": "EW",
       "isSystemTag": false
     },
-    "_113_1": {
-      "name": "Faculty Central (FEPS) (GN)",
-      "shortCode": "GN",
-      "isSystemTag": false
-    },
     "_302_1": {
       "name": "Arts and Media Technology (EN)",
       "shortCode": "EN",
+      "isSystemTag": false
+    },
+    "_205_1": {
+      "name": "Careers & Employability (LR)",
+      "shortCode": "LR",
       "isSystemTag": false
     },
     "_300_1": {

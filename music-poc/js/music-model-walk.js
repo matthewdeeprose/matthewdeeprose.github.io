@@ -201,6 +201,79 @@ const MusicModelWalk = (function () {
     return false;
   }
 
+  // Dynamic codes ranked softest to loudest, for ordering a dynamics range. Only
+  // the eight LEVEL codes are ranked. sf, sfz and fp are accents rather than
+  // levels and have no honest place on a soft-to-loud scale, so they carry no
+  // rank and are skipped, exactly as pitchRange skips a note whose step is not in
+  // STEP_INDEX. The rank lives here rather than in music-names because that
+  // module holds closed-set LOOKUPS, and this is an ORDER; STEP_INDEX sets the
+  // precedent for an ordering table living beside the walk that needs it.
+  const DYNAMIC_INDEX = { ppp: 0, pp: 1, p: 2, mp: 3, mf: 4, f: 5, ff: 6, fff: 7 };
+
+  // dynamicsOverview(model): pure; NEVER throws. Walks every note across
+  // parts -> measures -> notes and returns
+  // { softest, loudest, shapingStarts, shapingStops }, or null when the model
+  // carries no dynamic and no shaping at all.
+  //
+  // softest and loudest are FULL NAMES through dynamicName, not raw codes, and
+  // are both null when no note carries a rankable dynamic. A piece using one
+  // dynamic returns the same name for both, which is what pitchRange does with a
+  // single pitch.
+  //
+  // First-appearance order is deliberately DISCARDED. It is not loudness order in
+  // any of the three real files, and the walk is part-major rather than
+  // time-major, so on a multi-part score it is not heard order either.
+  //
+  // The two shaping counts are returned SEPARATELY and are never paired. The real
+  // Palestrina carries seven crescendo starts and no stops, so any count that
+  // assumed endpoints pair would be wrong on a real file in the corpus.
+  function dynamicsOverview(model) {
+    const m = model || {};
+    const parts = Array.isArray(m.parts) ? m.parts : [];
+    let softestCode = null;
+    let loudestCode = null;
+    let softestIndex = 0;
+    let loudestIndex = 0;
+    let shapingStarts = 0;
+    let shapingStops = 0;
+    for (const part of parts) {
+      const measures = part && Array.isArray(part.measures) ? part.measures : [];
+      for (const measure of measures) {
+        const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
+        for (const note of notes) {
+          const n = note || {};
+          if (typeof n.dynamic === "string" && n.dynamic !== "") {
+            const index = DYNAMIC_INDEX[n.dynamic];
+            if (index !== undefined) {
+              if (softestCode === null || index < softestIndex) {
+                softestCode = n.dynamic;
+                softestIndex = index;
+              }
+              if (loudestCode === null || index > loudestIndex) {
+                loudestCode = n.dynamic;
+                loudestIndex = index;
+              }
+            }
+          }
+          // The two endpoint lists are counted INDEPENDENTLY, each guarded on its
+          // own, so a malformed shaping object carrying only one of them still
+          // contributes the half it does carry rather than being dropped whole.
+          if (n.shaping && typeof n.shaping === "object") {
+            if (Array.isArray(n.shaping.starts)) shapingStarts += n.shaping.starts.length;
+            if (Array.isArray(n.shaping.stops)) shapingStops += n.shaping.stops.length;
+          }
+        }
+      }
+    }
+    if (softestCode === null && shapingStarts === 0 && shapingStops === 0) return null;
+    return {
+      softest: softestCode === null ? null : names.dynamicName(softestCode),
+      loudest: loudestCode === null ? null : names.dynamicName(loudestCode),
+      shapingStarts: shapingStarts,
+      shapingStops: shapingStops,
+    };
+  }
+
   // groupNotes(notes): pure; NEVER throws. The SINGLE definition of a chord
   // event. Turns a bar's flat note list into an array of groups, each group an
   // array of notes that sound together. A note with chord true joins the current
@@ -784,6 +857,28 @@ const MusicModelWalk = (function () {
       partGroups: [{ number: "1", symbol: "brace", name: null, partIds: ["P1"] }],
     };
 
+    // Stage 68 fixtures. One bar, one part, so each model isolates exactly the
+    // dynamic and shaping arrangement its row is named after and nothing else.
+    function dynModel(notes) {
+      return { parts: [{ id: "P1", name: "Dyn", measures: [{ number: "1", notes: notes }] }] };
+    }
+    function dynNote(dynamic, shaping) {
+      return { rest: false, step: "C", octave: 4, duration: 2, type: "quarter", dynamic: dynamic, shaping: shaping };
+    }
+    const DYN_TWO = dynModel([dynNote("pp", null), dynNote("f", null)]);
+    const DYN_TWO_REVERSED = dynModel([dynNote("f", null), dynNote("pp", null)]);
+    const DYN_SINGLE = dynModel([dynNote("mf", null)]);
+    const DYN_NOTHING = dynModel([dynNote(null, null), dynNote(null, null)]);
+    const DYN_SHAPING_ONLY = dynModel([dynNote(null, { starts: ["crescendo"], stops: ["diminuendo"] })]);
+    // Three starts and no stops across two notes: the real Palestrina's arrangement,
+    // which carries seven crescendo starts the file never closes.
+    const DYN_STARTS_NO_STOPS = dynModel([
+      dynNote(null, { starts: ["crescendo", "diminuendo"], stops: [] }),
+      dynNote(null, { starts: ["crescendo"], stops: [] }),
+    ]);
+    const DYN_WITH_ACCENT = dynModel([dynNote("p", null), dynNote("sf", null), dynNote("f", null)]);
+    const DYN_ACCENT_ONLY = dynModel([dynNote("sf", null)]);
+
     const results = {
       hasDescribeNote: typeof describeNote === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -1224,13 +1319,69 @@ const MusicModelWalk = (function () {
           });
         });
       })(),
+      // --- Stage 68: the aggregate dynamics helper (M1-05) ---------------------
+      hasDynamicsOverview: typeof dynamicsOverview === "function",
+      dynamicsRangeAcrossTwo: (function () {
+        const d = dynamicsOverview(DYN_TWO);
+        return !!d && d.softest === "pianissimo" && d.loudest === "forte";
+      })(),
+      // The SAME two codes in the reverse document order give the identical result,
+      // proving first-appearance order is discarded and the rank alone decides.
+      dynamicsRangeIgnoresOrder: (function () {
+        const forward = dynamicsOverview(DYN_TWO);
+        const reversed = dynamicsOverview(DYN_TWO_REVERSED);
+        return !!forward && !!reversed &&
+          reversed.softest === forward.softest && reversed.loudest === forward.loudest &&
+          reversed.softest === "pianissimo" && reversed.loudest === "forte";
+      })(),
+      dynamicsSingleValueBothEnds: (function () {
+        const d = dynamicsOverview(DYN_SINGLE);
+        return !!d && d.softest === "mezzo-forte" && d.loudest === "mezzo-forte";
+      })(),
+      // The returned strings are full NAMES, not the raw codes they came from.
+      dynamicsNamesNotCodes: (function () {
+        const d = dynamicsOverview(DYN_TWO);
+        return !!d && d.softest !== "pp" && d.loudest !== "f";
+      })(),
+      dynamicsNullWhenNothing: dynamicsOverview(DYN_NOTHING) === null,
+      dynamicsShapingOnlyGivesNulls: (function () {
+        const d = dynamicsOverview(DYN_SHAPING_ONLY);
+        return !!d && d.softest === null && d.loudest === null;
+      })(),
+      dynamicsShapingStartsCounted: (function () {
+        const d = dynamicsOverview(DYN_STARTS_NO_STOPS);
+        return !!d && d.shapingStarts === 3;
+      })(),
+      // The real Palestrina case: starts the file never closes. The two counts are
+      // asserted as literals, so a pairing assumption could not read as a pass.
+      dynamicsStartsWithoutStops: (function () {
+        const d = dynamicsOverview(DYN_STARTS_NO_STOPS);
+        return !!d && d.shapingStarts === 3 && d.shapingStops === 0;
+      })(),
+      dynamicsUnrankableSkipped: (function () {
+        const d = dynamicsOverview(DYN_WITH_ACCENT);
+        return !!d && d.softest === "piano" && d.loudest === "forte";
+      })(),
+      dynamicsOnlyUnrankableNullEnds: dynamicsOverview(DYN_ACCENT_ONLY) === null,
+      dynamicsNeverThrows: (function () {
+        try {
+          dynamicsOverview(null);
+          dynamicsOverview(undefined);
+          dynamicsOverview({});
+          dynamicsOverview({ parts: null });
+          dynamicsOverview({ parts: [{ id: "P1", measures: [{ number: "1", notes: "not an array" }] }] });
+          return true;
+        } catch (e) {
+          return false;
+        }
+      })(),
     };
 
     console.table(results);
     return results;
   }
 
-  return { describeNote, pitchLabel, pitchRange, noteValueCounts, hasLyrics, groupNotes, groupByStaff, groupByVoice, keyboardPairs, selfTest };
+  return { describeNote, pitchLabel, pitchRange, noteValueCounts, hasLyrics, dynamicsOverview, groupNotes, groupByStaff, groupByVoice, keyboardPairs, selfTest };
 })();
 
 window.MusicModelWalk = MusicModelWalk;

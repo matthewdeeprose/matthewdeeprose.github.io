@@ -1106,6 +1106,31 @@ const MathPixImageManagerUI = (function () {
           content: content,
           size: "fullscreen",
           className: "image-manager-modal-wrapper",
+          // Phase 2 step 4 (21 August 2026). OPT-IN focus return. The manager is
+          // a PARENT modal — its delete confirm, its field-selection dialog and
+          // its batch dialog each open OVER it and each overwrite
+          // modalManager's SINGLE SHARED originalFocus — so tier 1 could never
+          // restore this opener after a nested close. Declaring it makes the
+          // manager read its own per-modal record instead, which no other modal
+          // on the stack can reach.
+          //
+          // MEASURED before and after, four journeys, landing SEQUENCE rather
+          // than settled element (.claude/a11y/sr/modal-focus-step4-drive.mjs).
+          // Before, three of the four passed transiently through main#main —
+          // the landing that makes NVDA read the entire main region — and every
+          // one of them still SETTLED on this button, so an end-state
+          // measurement could not have told the four apart.
+          //
+          // A PLAIN ID, NOT A FUNCTION. #resume-manage-images-btn is authored in
+          // tools.html, un-hidden once a session loads
+          // (session-restorer-display-layer.js), and never removed or
+          // re-hidden — updateManageImagesButtonState only rewrites its label
+          // between "Manage images" and "Add image". That is why this does not
+          // need the session manager's () => Element form, which exists because
+          // THAT modal can hide its own opener.
+          //
+          // See docs/universal-modal-focus-return-plan.md § Phase 2 step 4.
+          returnFocusTo: MANAGE_IMAGES_BTN_ID,
           closeOnOverlayClick: true,
           onClose: () => {
             // Chunk 4b — save-on-X is handled by _attachXButtonInterceptor,
@@ -5193,6 +5218,23 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       // its label just becomes "Add image" (updateManageImagesButtonState in
       // session-restorer-display-layer.js). Guarded, and the guard costs the
       // focus move only: a missing button must never cost the announcement.
+      //
+      // ⚠ THE PREMISE ABOVE CHANGED ON 21 AUGUST 2026 AND THE PARK IS KEPT
+      // DELIBERATELY. Phase 2 step 4 declared returnFocusTo on the manager's
+      // own modal, so tier 1 now resolves THIS SAME BUTTON and focus is already
+      // here when the flush runs — measured, the landing sequence for this
+      // journey no longer contains main#main at all. The park is therefore a
+      // re-focus of an already-focused element, which fires no focus event and
+      // costs nothing.
+      //
+      // IT IS NOT REDUNDANT UNTIL SOMEBODY HEARS THAT IT IS. The park was
+      // proven BY EAR (probe five, 6 August 2026), and "tier 1 makes it
+      // unnecessary" is an inference from a DOM measurement about a defect that
+      // is audible and not visible. Removing it is a separate decision needing
+      // its own listen, and the same holds for the g-8 settle below. Note also
+      // that the guard's else branch still earns its place: tier 1 falls to the
+      // lower tiers if the button ever loses its layout box, and the park is
+      // then the only thing left aiming at a page control.
       const parkTarget = document.getElementById(MANAGE_IMAGES_BTN_ID);
       if (parkTarget && typeof parkTarget.focus === "function") {
         parkTarget.focus();
@@ -5212,9 +5254,18 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       // and why g-5's constant was not reused.
       //
       // Not awaited by onClose — this function is fire-and-forget from there, so
-      // the settle delays only the announcement, never the teardown. _returnFocus
-      // runs immediately after the park and targets the SAME button, so it does
-      // not disturb the parked focus this write depends on.
+      // the settle delays only the announcement, never the teardown.
+      //
+      // NOTHING DISTURBS THE PARKED FOCUS THIS WRITE DEPENDS ON, and the reason
+      // is stronger than it was. This comment used to say _returnFocus runs
+      // after the park and targets the same button, which is true and is not the
+      // load-bearing fact: on THIS journey _returnFocus is dead twice over —
+      // close() calls it while the dialog is still open, so the background is
+      // inert and the focus() is a no-op, and it nulls _triggerButton on the way
+      // out, so onClose's later call no-ops too. Measured LANDED=false with an
+      // inert ancestor, 17 of 17 across three cells (parcel G-9-E). Since
+      // 21 August 2026 the button is also where finishClose's tier 1 has already
+      // put focus, by declaration — see the returnFocusTo note in open().
       await new Promise((resolve) =>
         setTimeout(resolve, LAST_IMAGE_ANNOUNCE_SETTLE_MS),
       );

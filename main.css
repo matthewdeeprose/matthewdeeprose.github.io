@@ -4084,6 +4084,31 @@ a:hover {
   width: 21px;
   height: 21px;
 }
+
+/* Tool maturity badge ("Alpha" / "Beta").
+ * Injected by js/tool-registry.js as the last child of the option's <label>.
+ * Because the label wraps the radio, the badge text becomes part of the
+ * radio's accessible name — "Image Describer Beta, radio button" — so no ARIA
+ * is needed and the visible label matches the accessible name (SC 2.5.3).
+ * The word itself distinguishes alpha from beta, so nothing depends on colour
+ * (SC 1.4.1). Non-actionable: no hover or focus treatment of its own.
+ * Structure only; colours are in dark.css and light.css.
+ * The second selector styles the matching badge in the Set Up Quick Start list.
+ */
+#toolSelection .tool-option-wrapper .tool-flag,
+.setup-quick-start-list .tool-flag {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75em;
+  font-weight: 600;
+  line-height: 1.4;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 3px;
+  background-color: transparent;
+  white-space: nowrap;
+}
 /* Stacked layout: full width buttons */
 @media (max-width: 500px) {
   #toolSelection {
