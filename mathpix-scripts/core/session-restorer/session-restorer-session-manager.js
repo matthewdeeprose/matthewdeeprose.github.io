@@ -236,6 +236,37 @@
       content: contentHTML,
       size: "large",
       className: "session-manager-modal",
+      // WHERE FOCUS RETURNS. Declared rather than left to UniversalModal's
+      // default, because ModalManager keeps ONE shared originalFocus field for
+      // the whole stack and the delete button below opens a safeConfirm over
+      // this modal — which overwrites that field with #sm-delete-btn. Measured
+      // 20 August 2026 before this line existed: a clean close returned focus
+      // correctly, but cancelling the confirm and then closing landed on
+      // main#main, and so did the delete-everything path that auto-closes.
+      //
+      // A FUNCTION, not an id string, because THIS MODAL CAN HIDE ITS OWN
+      // OPENER. Deleting the last session runs updateStorageDashboard(), which
+      // re-hides #resume-storage-dashboard — and the opener lives inside it. A
+      // hidden target is refused by resolveReturnFocusTarget (it would be a
+      // silent no-op landing on <body>), so without this the journey fell to
+      // the tier chain and focus landed on #main.
+      //
+      // #main IS A BAD LANDING FOR A SCREEN READER, and it took a listen to see
+      // it: NVDA announces the landmark and then READS THE WHOLE MAIN REGION —
+      // the tool menu, all nine mode radios, the MathPix sub-mode radios, the
+      // server notice — after an action as small as deleting one session. The
+      // DOM measurement could not see that, and recorded #main as merely "no
+      // worse than before".
+      //
+      // So pick the panel's remaining primary action instead. It is already
+      // focusable (role="button" tabindex="0"), it is what the person would do
+      // next now that there is nothing left to manage, and it announces in one
+      // short utterance instead of a page.
+      returnFocusTo: () => {
+        const opener = document.getElementById("resume-manage-sessions-btn");
+        if (opener && opener.getClientRects().length > 0) return opener;
+        return document.getElementById("resume-drop-zone");
+      },
       closeOnOverlayClick: true,
       onOpen: () => {
         // Attach event listeners after modal renders
@@ -276,7 +307,26 @@
 
     let html = `<div class="session-manager-content">`;
 
-    // Toolbar: Select All + Delete button
+    // Toolbar: Select All + Delete button.
+    //
+    // THE DELETE BUTTON DELIBERATELY CARRIES NO LIVE REGION. It had
+    // aria-live (polite) until 21 August 2026, on the BUTTON itself — which put
+    // the label rewrite AND the button's own enable/disable flip inside the same
+    // region, so ticking the first box spoke "Delete Selected (1)" twice.
+    // Measured by counting mutations inside the region: 2 on the 0->1 and 1->0
+    // transitions, which are exactly where `disabled` flips, and 1 on every
+    // other count change. Found by ear, on a real NVDA listen.
+    //
+    // Nothing is lost by removing it: the count is the button's ACCESSIBLE NAME,
+    // so tabbing to it still announces "Delete Selected (3), button". What goes
+    // is per-tick chatter on top of the checkbox's own "checked".
+    //
+    // NOTE FOR ANYONE RE-ADDING ONE: this was the ONLY button in the shipped
+    // tree carrying aria-live, and a live region belongs on a non-interactive
+    // element so that state changes on the host cannot speak. Do not write the
+    // attribute's name in an HTML comment inside this template either — the
+    // live-region inventory strips JS comments but emits string literals
+    // verbatim, so prose in here counts as a live region.
     html += `<div class="session-manager-toolbar">
       <label class="session-manager-select-all">
         <input type="checkbox" id="sm-select-all"
@@ -286,8 +336,7 @@
       <button type="button"
         id="sm-delete-btn"
         class="session-manager-delete-btn"
-        disabled
-        aria-live="polite">
+        disabled>
         <span aria-hidden="true" data-icon="trash"></span>
         <span id="sm-delete-text">Delete Selected (0)</span>
       </button>

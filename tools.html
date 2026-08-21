@@ -16810,6 +16810,7 @@ Science,91</pre
                 disabled
                 data-api-required="true"
                 data-requires-course="true"
+                data-course-selected="false"
                 aria-describedby="ally-cr-execute-help"
               >
                 <span aria-hidden="true" data-icon="eye"></span> Generate Report
@@ -17089,6 +17090,7 @@ Science,91</pre
                 disabled
                 data-api-required="true"
                 data-requires-course="true"
+                data-course-selected="false"
                 aria-describedby="ally-sp-execute-help"
               >
                 <span aria-hidden="true" data-icon="eye"></span> Generate
@@ -19413,6 +19415,17 @@ Science,91</pre
     <script src="openrouter-embed/local-gpu-monitor.js"></script>
     <script src="openrouter-embed/local-text-model-manager-ui.js"></script>
     <script src="openrouter-embed/openrouter-embed-local-backend.js"></script>
+
+    <!-- Shared audio-export progress surface writer. Consumed by
+         local-chat/local-chat-messages.js, chat/chat-messages.js and
+         tts/tts-read-aloud.js, so it must load before all three.
+
+         CLASSIC SCRIPT BY NECESSITY, not by preference: all three consumers are
+         plain classic scripts whose IIFEs run at parse time, so in-order
+         execution is what guarantees AudioExportProgress exists before any of
+         them runs. Adding defer or type="module" here would move this file to a
+         later phase than its consumers and break that guarantee silently. -->
+    <script src="js/audio-export-progress.js"></script>
 
     <!-- Local Chat Tool — state first, then chips, messages, persistence, core last -->
     <script src="local-chat/local-chat-state.js"></script>

@@ -94,7 +94,11 @@ const MusicRenderPhrase = (function () {
       for (const s of starts) if (typeof s === "string" && s) extras.push(s + " begins");
     }
 
-    if (d.tie && d.tie.start && d.tie.stop) extras.push("tied");
+    // A tie is voiced from the reader's position in the line: the arriving side
+    // first, then the departing one, so a note tied on both sides reads both
+    // clauses rather than the bare word. This is the same chronology the shaping
+    // clause follows, where a stop precedes a start.
+    if (d.tie && d.tie.start && d.tie.stop) extras.push("tied from the previous note and to the next note");
     else if (d.tie && d.tie.start) extras.push("tied to the next note");
     else if (d.tie && d.tie.stop) extras.push("tied from the previous note");
     if (d.slur && d.slur.start) {
@@ -177,6 +181,7 @@ const MusicRenderPhrase = (function () {
     const richC4 = { rest: false, chord: false, step: "C", octave: 4, type: "quarter", dynamic: "f", lyric: "la", slur: { start: true, stop: false }, tie: null };
     const tieStart = { rest: false, chord: false, step: "E", octave: 4, type: "quarter", tie: { start: true, stop: false } };
     const tieStop = { rest: false, chord: false, step: "E", octave: 4, type: "quarter", tie: { start: false, stop: true } };
+    const tieBoth = { rest: false, chord: false, step: "E", octave: 4, type: "quarter", tie: { start: true, stop: true } };
 
     const triadCrotchet = [
       { rest: false, chord: false, step: "C", octave: 4, type: "quarter" },
@@ -363,6 +368,7 @@ const MusicRenderPhrase = (function () {
       richExtras: phraseOf([richC4], melodyD4) === "C4 crotchet, forte, slurred to D4, lyric 'la'",
       tieToNext: phraseOf([tieStart], null) === "E4 crotchet, tied to the next note",
       tieFromPrev: phraseOf([tieStop], null) === "E4 crotchet, tied from the previous note",
+      tieBothSides: phraseOf([tieBoth], null) === "E4 crotchet, tied from the previous note and to the next note",
       triadNamedTogether: phraseOf(triadCrotchet, null) === "C4, E4 and G4 crotchet",
       dyadNamedTogether: phraseOf(dyad, null) === "E4 and G4 crotchet",
       triadMinimValue: phraseOf(triadMinim, null) === "C4, E4 and G4 minim",

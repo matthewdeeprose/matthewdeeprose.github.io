@@ -340,10 +340,19 @@ const UniversalModal = (function () {
           element: modal,
           resolve,
           options: config.options || {},
+          // OPT-IN focus return (20 August 2026). Per modal, unlike
+          // this.originalFocus below, which is ONE field for the whole stack and
+          // is therefore overwritten by any modal opened on top of this one. A
+          // modal that declares returnFocusTo is immune to that; one that does
+          // not is unaffected by this field's existence and keeps the legacy
+          // path exactly. See docs/universal-modal-focus-return-plan.md.
+          returnFocusTo: config.returnFocusTo || null,
         });
 
         this.hasActiveModal = true;
         this.activeModalElement = modal;
+        // DELIBERATELY UNCHANGED. Undeclared modals must behave byte-identically,
+        // so this assignment stays even though it is the defect's mechanism.
         this.originalFocus = document.activeElement;
         this.displayModal(modal, modalId);
       });
@@ -368,6 +377,20 @@ const UniversalModal = (function () {
       const modal = document.createElement("dialog");
       modal.id = modalId;
       modal.className = `universal-modal universal-modal-${size}`;
+
+      // Caller-supplied hook class, applied ADDITIVELY so it can never clobber
+      // the structural classes above or the ones added below. Accepted by the
+      // legacy Modal since it was written and silently discarded until
+      // 20 August 2026; note that showAlert/showConfirm default it to
+      // "universal-alert"/"universal-confirm", so wiring it means every alert
+      // and confirm now carries that class. No stylesheet matches either name,
+      // so the change is inert — recorded because it is app-wide.
+      if (config.className) {
+        String(config.className)
+          .split(/\s+/)
+          .filter(Boolean)
+          .forEach((cls) => modal.classList.add(cls));
+      }
 
       // Add legacy classes for backward compatibility
       modal.classList.add("accessible-modal", `modal-size-${size}`);
@@ -807,6 +830,85 @@ const UniversalModal = (function () {
       }
     }
 
+    /**
+     * Resolves a `returnFocusTo` declaration to a focusable element, at CLOSE
+     * time.
+     *
+     * Resolving late is the point: a string or a function survives the DOM being
+     * rebuilt while the modal was open, which is precisely what defeats a
+     * captured element (parcel g-6 — the card's Remove button died in the
+     * refresh() that followed a delete). A caller that genuinely wants the
+     * element it held at open time may still pass the element itself.
+     *
+     * Returns null rather than throwing for every failure — a bad selector, a
+     * throwing function, a target that has been removed, or one that is
+     * disabled. A null sends finishClose to its lower tiers, which is a worse
+     * landing but never a vanished focus.
+     *
+     * @param {string|Element|Function|null} spec
+     * @returns {Element|null}
+     */
+    resolveReturnFocusTarget(spec) {
+      if (!spec) return null;
+
+      let target = null;
+      try {
+        if (typeof spec === "function") {
+          target = spec();
+        } else if (typeof spec === "string") {
+          // Bare id first, so the common case needs no selector syntax.
+          target =
+            document.getElementById(spec) || document.querySelector(spec);
+        } else if (spec && spec.nodeType === 1) {
+          target = spec;
+        } else {
+          logWarn(`returnFocusTo has unusable type "${typeof spec}"; ignoring`);
+          return null;
+        }
+      } catch (error) {
+        logWarn(`returnFocusTo could not be resolved: ${error.message}`);
+        return null;
+      }
+
+      if (!target || typeof target.focus !== "function") return null;
+
+      // A disconnected or disabled target cannot take focus, and attempting it
+      // would leave focus wherever removeChild left it — usually <body>.
+      if (!target.isConnected || target.disabled) {
+        logWarn(
+          "returnFocusTo resolved to a target that cannot take focus " +
+            `(connected: ${target.isConnected}, disabled: ${!!target.disabled})`,
+        );
+        return null;
+      }
+
+      // NOR CAN A TARGET WITH NO LAYOUT BOX — and this one is invisible in
+      // every other check. `hidden`, `display: none`, or ANY hidden ancestor
+      // leaves the element connected and not disabled, so it passes the test
+      // above, resolves, satisfies finishClose's openerUsable, and then
+      // .focus() is a SILENT NO-OP that drops focus to <body>. Returning null
+      // instead sends finishClose to its lower tiers, which land on the
+      // surviving modal or #main — worse than the opener, far better than body.
+      //
+      // MEASURED, not predicted (20 August 2026, session-manager migration).
+      // Deleting every saved session runs updateStorageDashboard(), which
+      // re-hides #resume-storage-dashboard because the count is now zero — and
+      // #resume-manage-sessions-btn lives inside it. Declaring the opener took
+      // that journey from main#main to body: the declaration made the landing
+      // WORSE than no declaration. getClientRects() is the same reachability
+      // test .claude/a11y/sr/modal-focus-baseline.mjs uses on its triggers,
+      // for the same reason.
+      if (target.getClientRects().length === 0) {
+        logWarn(
+          "returnFocusTo resolved to a target with no layout box (hidden, " +
+            "display:none, or a hidden ancestor); falling through to the tiers",
+        );
+        return null;
+      }
+
+      return target;
+    }
+
     finishClose(modalId, result) {
       const modalData = this.activeModals.get(modalId);
       if (!modalData) return;
@@ -899,7 +1001,18 @@ const UniversalModal = (function () {
       //   the timings are indicative. Both arms settled identically, on the
       //   next card's alt button — the fallback did NOT disturb the g-9b
       //   landing, which was measured and HEARD on 12 August 2026.
-      const opener = this.originalFocus;
+      // OPT-IN (20 August 2026). A modal that DECLARED where focus should return
+      // reads its own per-modal record; one that did not keeps the shared field
+      // and the behaviour it has always had.
+      //
+      // A declared target that resolves to nothing deliberately does NOT fall
+      // back to this.originalFocus. That field may hold an element belonging to
+      // some other modal on the stack, and silently reintroducing it to a caller
+      // that explicitly opted out of it is the defect wearing a disguise. Null
+      // here means the tiers below decide, which is the honest outcome.
+      const opener = modalData.returnFocusTo
+        ? this.resolveReturnFocusTarget(modalData.returnFocusTo)
+        : this.originalFocus;
       const skipLink = document.getElementById("skipToContent");
       const openerUsable =
         opener &&
@@ -1181,8 +1294,15 @@ const UniversalModal = (function () {
       size: options.size || "medium",
       closeOnOverlayClick: options.closeOnOverlayClick !== false,
       closeOnEscape: options.closeOnEscape !== false,
+      // STILL DROPPED, deliberately (20 August 2026): closeOnEscape and
+      // focusElement are accepted here and never reach modalManager, because
+      // neither has manager-side support — the escape handler keys off
+      // allowBackgroundClose, and there is no focus-target plumbing. Forwarding
+      // them would be a real behaviour change wearing the clothes of a bug fix.
+      // className and returnFocusTo ARE forwarded; see Modal.prototype.open.
       focusElement: options.focusElement || null,
       className: options.className || "",
+      returnFocusTo: options.returnFocusTo || null,
       onOpen: options.onOpen || null,
       onClose: options.onClose || null,
       onBeforeClose: options.onBeforeClose || null,
@@ -1207,6 +1327,8 @@ const UniversalModal = (function () {
       title: this.options.title,
       content: this.options.content,
       size: this.options.size,
+      className: this.options.className,
+      returnFocusTo: this.options.returnFocusTo,
       options: {
         allowBackgroundClose: this.options.closeOnOverlayClick,
       },

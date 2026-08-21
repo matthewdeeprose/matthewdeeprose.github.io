@@ -26,10 +26,14 @@ const MusicParse = (function () {
   // missing here reads as undefined rather than null on every page where
   // MusicParseNote failed to load. dynamic, shaping and harmony are all listed for
   // that reason even though the orchestrator assigns all three on every note
-  // regardless.
+  // regardless. dots is listed for the same reason: the orchestrator now writes it
+  // when it derives a typeless rest's value, so a page without MusicParseNote must
+  // still read null rather than undefined there. The stub still omits six further
+  // keys extractNote returns — accidental, timeModification, articulations,
+  // ornaments, staff and voice — which the extractNote tidy will close.
   const noteLayer = window.MusicParseNote || {
     extractNote() {
-      return { rest: false, chord: false, step: null, octave: null, alter: null, duration: null, type: null, tie: null, slur: null, lyric: null, dynamic: null, shaping: null, harmony: null };
+      return { rest: false, chord: false, step: null, octave: null, alter: null, duration: null, type: null, tie: null, slur: null, lyric: null, dots: null, dynamic: null, shaping: null, harmony: null };
     },
   };
 
@@ -65,6 +69,63 @@ const MusicParse = (function () {
     if (text === null) return null;
     const n = parseInt(text, 10);
     return Number.isNaN(n) ? null : n;
+  }
+
+  // The standard note values, each held as a count of thirty-seconds of a
+  // crotchet, LONGEST FIRST. Every base is a multiple of four, so the dotted
+  // products below stay whole numbers. breve has no entry in the British naming
+  // map, which falls back to the raw type, so a derived breve names itself
+  // "breve" rather than reading as null.
+  const VALUE_BASES_IN_THIRTY_SECONDS = [
+    { type: "breve", base: 256 },
+    { type: "whole", base: 128 },
+    { type: "half", base: 64 },
+    { type: "quarter", base: 32 },
+    { type: "eighth", base: 16 },
+    { type: "16th", base: 8 },
+    { type: "32nd", base: 4 },
+  ];
+
+  // A rest with no <type> still has a duration, and duration against divisions
+  // gives its value exactly. This derives that value so the existing naming chain
+  // composes it unchanged: dottedValueName takes a type and a dot count, so the
+  // return shape is { type, dots } rather than a type alone.
+  //
+  // The arithmetic is INTEGER. Each candidate is held as a count of
+  // thirty-seconds of a crotchet, a dot multiplies a base by 1.5 and two dots by
+  // 1.75, and every one of those products is a whole number in thirty-seconds.
+  // The match is therefore a cross-multiplication of two integers, with no
+  // floating point and no rounding tolerance.
+  //
+  // The meter is deliberately NOT consulted. Whether a rest fills its bar is a
+  // different question from what it is worth, and only the second one is being
+  // answered here.
+  //
+  // Returns null when the duration maps onto no standard value, when either
+  // argument is missing, or when either is not a positive number. A null return
+  // leaves the note exactly as it arrived.
+  function derivedValueOf(duration, divisions) {
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration <= 0) return null;
+    if (typeof divisions !== "number" || !Number.isFinite(divisions) || divisions <= 0) return null;
+
+    // duration counts divisions of a crotchet and a candidate counts thirty-seconds
+    // of one, so the two describe the same value when
+    // duration / divisions === candidate / 32. Cross-multiplied, that is an
+    // equality of two integers and nothing is ever divided at comparison time.
+    const scaledDuration = duration * 32;
+
+    // Longest first, and the first exact match is returned. The twenty-one
+    // candidate products are all DISTINCT, so the order decides which value is
+    // reported first rather than resolving a tie: no duration can match two.
+    for (const entry of VALUE_BASES_IN_THIRTY_SECONDS) {
+      const candidates = [entry.base, (entry.base * 3) / 2, (entry.base * 7) / 4];
+      for (let dots = 0; dots < candidates.length; dots++) {
+        if (scaledDuration === divisions * candidates[dots]) {
+          return { type: entry.type, dots: dots };
+        }
+      }
+    }
+    return null;
   }
 
   // The font-size of an element as a finite number, or 0. Reads the MusicXML
@@ -522,6 +583,24 @@ const MusicParse = (function () {
       const firstBarNumber = measureEls.length ? measureEls[0].getAttribute("number") : null;
       for (let m = 0; m < measureEls.length; m++) {
         const measureEl = measureEls[m];
+        // model.divisions is read ONCE at the document root, so a bar that redeclares
+        // it with a different value would have its durations read against the wrong
+        // unit. No file in the corpus does — Satie declares 1 once, Joplin 4 twice and
+        // Palestrina 480 four times, each file agreeing with itself — so this warns
+        // rather than rebuilds the model, and the stored value is deliberately left
+        // alone. Read as a direct child declaration so a nested <divisions> cannot
+        // answer for the bar.
+        const measureDivisionsEl = measureEl.querySelector("attributes > divisions");
+        const measureDivisions = measureDivisionsEl === null
+          ? null
+          : parseInt((measureDivisionsEl.textContent || "").trim(), 10);
+        if (measureDivisions !== null && !Number.isNaN(measureDivisions) && measureDivisions !== divisions) {
+          logWarn(
+            "MusicParse: bar " + measureEl.getAttribute("number") + " declares divisions " +
+              measureDivisions + ", which differs from the document's " + divisions +
+              "; keeping the first declaration and reading every duration against it"
+          );
+        }
         const notes = [];
         // Track the dynamic from any <direction> we pass so it attaches to the
         // next note. Reset per measure; cross-measure persistence is out of scope.
@@ -654,6 +733,19 @@ const MusicParse = (function () {
             cursor += (intOf(child, "duration") || 0);
           } else if (child.tagName === "note") {
             const note = noteLayer.extractNote(child);
+            // A typeless rest's value, derived from its duration (Stage 67). Placed
+            // FIRST, so the note's own fields are complete before the orchestrator's
+            // stamps begin. RESTS ONLY: no pitched note in the corpus lacks a <type>,
+            // and a pitched note without one is a file we have not seen rather than a
+            // gap to fill in. A null derivation leaves the note exactly as it arrived,
+            // type and dots untouched.
+            if (note.rest === true && note.type === null) {
+              const derived = derivedValueOf(note.duration, divisions);
+              if (derived) {
+                note.type = derived.type;
+                note.dots = derived.dots;
+              }
+            }
             note.dynamic = pendingDynamic;
             pendingDynamic = null;
             // note.shaping is the dynamic shaping AT this note: an object
@@ -2122,6 +2214,81 @@ const MusicParse = (function () {
       textualWithDynamicModel, textualPlainModel,
     ];
 
+    // --- Stage 67 fixtures: a rest's value derived from its duration ---
+    // DOTTED_REST: 3/4 at divisions 1, one rest of duration 3 and no <type>.
+    // Three crotchets is a dotted minim, so the derivation must report both the
+    // type and the dot count.
+    const DOTTED_REST = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>1</divisions><time><beats>3</beats><beat-type>4</beat-type></time></attributes>
+      <note><rest/><duration>3</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const dottedRestModel = parse(DOTTED_REST);
+    const s67DottedRest = dottedRestModel ? dottedRestModel.parts[0].measures[0].notes[0] : null;
+
+    // MINIM_REST: 2/4 at divisions 4, one rest of duration 8 and no <type>. The
+    // same value at a different divisions, so a match cannot be an accident of
+    // divisions 1 making duration and thirty-seconds line up.
+    const MINIM_REST = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type></time></attributes>
+      <note><rest/><duration>8</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const minimRestModel = parse(MINIM_REST);
+    const s67MinimRest = minimRestModel ? minimRestModel.parts[0].measures[0].notes[0] : null;
+
+    // MIXED_NO_TYPE: divisions 2, holding the five cases that must NOT all behave
+    // alike — a derivable typeless rest, a rest that already carries its type, a
+    // PITCHED note with no type, a duration matching no standard value, and a zero
+    // duration. Kept in one bar so a single parse proves the branch fires on
+    // exactly the note it should and on no other.
+    const MIXED_NO_TYPE = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>2</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <note><rest/><duration>1</duration></note>
+      <note><rest/><duration>2</duration><type>quarter</type></note>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration></note>
+      <note><rest/><duration>5</duration></note>
+      <note><rest/><duration>0</duration></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const mixedNoTypeModel = parse(MIXED_NO_TYPE);
+    const mnt = mixedNoTypeModel ? mixedNoTypeModel.parts[0].measures[0].notes : [];
+    const s67Quaver = mnt[0], s67TypedRest = mnt[1], s67PitchedNoType = mnt[2];
+    const s67Unmappable = mnt[3], s67ZeroDuration = mnt[4];
+
+    // LATER_DIVISIONS: bar 1 declares divisions 2 and bar 2 declares 4. The model
+    // keeps the FIRST declaration and warns; the parse must still return a model.
+    const LATER_DIVISIONS = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>2</divisions><time><beats>4</beats><beat-type>4</beat-type></time></attributes>
+      <note><pitch><step>C</step><octave>4</octave></pitch><duration>2</duration><type>quarter</type></note>
+    </measure>
+    <measure number="2">
+      <attributes><divisions>4</divisions></attributes>
+      <note><pitch><step>D</step><octave>4</octave></pitch><duration>4</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const s67LaterDivisionsModel = parse(LATER_DIVISIONS);
+
     const results = {
       hasParse: typeof parse === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -2621,6 +2788,41 @@ const MusicParse = (function () {
       harmonyDynamicAndShapingUnaffectedOnRichFixture:
         !!rC4 && rC4.dynamic === "f" && rC4.lyric === "la" && rC4.shaping === null &&
         !!rG4 && rG4.dynamic === null && rG4.shaping === null,
+
+      // --- Stage 67: a typeless rest's value derived from duration (M1-09) ---
+      // Three crotchets at divisions 1 is a dotted minim. dots is asserted as the
+      // NUMBER 0, 1 or 2 throughout this block, never merely as truthy, so a
+      // derived 0 can never be confused with the null a rest arrives carrying.
+      restNoTypeDerivesDottedMinim:
+        !!s67DottedRest && s67DottedRest.type === "half" && s67DottedRest.dots === 1,
+      // Eight at divisions 4 is a plain minim — the same value read against a
+      // different divisions, so the match is not an artefact of divisions 1.
+      restNoTypeDerivesMinim:
+        !!s67MinimRest && s67MinimRest.type === "half" && s67MinimRest.dots === 0,
+      restNoTypeDerivesQuaver:
+        !!s67Quaver && s67Quaver.type === "eighth" && s67Quaver.dots === 0,
+      // A rest that already declares its type is left exactly as it arrived: the
+      // type is the file's own and dots stays null, not the derived 0.
+      restWithTypeUntouched:
+        !!s67TypedRest && s67TypedRest.type === "quarter" && s67TypedRest.dots === null,
+      // The branch is gated on rest === true, so a pitched note missing its type
+      // keeps that gap rather than having one invented for it.
+      pitchedNoteNoTypeUntouched:
+        !!s67PitchedNoType && s67PitchedNoType.rest === false &&
+        s67PitchedNoType.type === null && s67PitchedNoType.dots === null,
+      // Five at divisions 2 is two and a half crotchets, which no standard value
+      // and no dotting of one reaches; the note is left untouched.
+      restUnmappableDurationStaysNull:
+        !!s67Unmappable && s67Unmappable.type === null && s67Unmappable.dots === null,
+      // A zero duration is refused by the positive-number guard rather than
+      // reaching the candidate table, and the parse completes.
+      restZeroDurationSafe:
+        !!mixedNoTypeModel && !!s67ZeroDuration &&
+        s67ZeroDuration.type === null && s67ZeroDuration.dots === null,
+      // A later bar redeclaring divisions warns and changes nothing: the model
+      // keeps the first declaration and the parse still returns a model.
+      laterDivisionsKeepsFirstValue:
+        !!s67LaterDivisionsModel && s67LaterDivisionsModel.divisions === 2,
     };
 
     console.table(results);

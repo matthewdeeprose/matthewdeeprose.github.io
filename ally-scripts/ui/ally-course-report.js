@@ -668,10 +668,11 @@ const ALLY_COURSE_REPORT = (function () {
     selectedCourse = course;
     logDebug("Course selection changed:", course ? course.name : "none");
 
-    // Enable/disable execute button
-    if (elements.executeButton) {
-      elements.executeButton.disabled = !course;
-    }
+    // The execute button is deliberately NOT touched here. The search module has
+    // already declared the selection on the button (data-course-selected) and had
+    // ALLY_MAIN_CONTROLLER arbitrate it against the API state before this callback
+    // runs. A second write here would bypass that check and could enable the
+    // button mid-warm-up.
 
     // Only clear results when selecting a DIFFERENT course (not when clearing)
     // This preserves the report when user clicks Clear button
@@ -3351,8 +3352,15 @@ const ALLY_COURSE_REPORT = (function () {
     } finally {
       isGenerating = false;
 
-      // Re-enable execute button if course still selected
-      if (elements.executeButton && selectedCourse) {
+      // Re-arbitrate rather than re-enabling outright: a failed request will have
+      // moved the API to ERROR, and a bare `disabled = false` here would be the
+      // last word after that transition and hand back a button that cannot work.
+      if (
+        typeof ALLY_MAIN_CONTROLLER !== "undefined" &&
+        typeof ALLY_MAIN_CONTROLLER.refreshExecuteButtonStates === "function"
+      ) {
+        ALLY_MAIN_CONTROLLER.refreshExecuteButtonStates();
+      } else if (elements.executeButton && selectedCourse) {
         elements.executeButton.disabled = false;
       }
     }

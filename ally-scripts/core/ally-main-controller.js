@@ -962,105 +962,91 @@ const ALLY_MAIN_CONTROLLER = (function () {
   }
 
   /**
-   * Updates the state of all API-dependent execute buttons
+   * Help text shown while the API cannot serve a request, keyed by API state.
+   * Every non-READY state has an entry, so no state can leave stale text behind.
+   * @private
+   * @type {Object.<string, string>}
+   */
+  const API_NOT_READY_MESSAGES = Object.freeze({
+    UNKNOWN: "Configure API credentials first",
+    WARMING: "Please wait while the API warms up...",
+    ERROR: "API connection error. Check credentials.",
+    IDLE: "The connection has gone idle. It will reconnect automatically.",
+  });
+
+  /**
+   * Help text shown to a course-required button when no module is selected.
+   * The two wordings differ deliberately — the Course Report search sits above
+   * its button, the Statement Preview one does not.
+   * @private
+   * @type {Object.<string, string>}
+   */
+  const COURSE_REQUIRED_MESSAGES = Object.freeze({
+    "ally-cr-execute": "Select a module above to enable this button",
+    "ally-sp-execute": "Select a module first to enable this button",
+  });
+
+  /** @private @type {string} Fallback for a course-required button not listed above */
+  const COURSE_REQUIRED_MESSAGE_DEFAULT =
+    "Select a module first to enable this button";
+
+  /**
+   * Updates the state of all API-dependent execute buttons.
+   *
+   * This is the SINGLE arbiter of `disabled` and of the help text for every
+   * `[data-api-required="true"]` button. Course-selection state is read from the
+   * button's own `data-course-selected` attribute, written by the search module
+   * that owns the selection.
+   *
+   * It is deliberately NOT inferred from the help text. This function is also what
+   * overwrites that help text during a warm-up, so reading it back made a selected
+   * module read as "no module selected" on the way back to READY — which disabled
+   * the Generate button roughly three minutes into every session and kept it
+   * disabled thereafter.
+   *
    * @private
    */
   function updateExecuteButtonStates() {
-    var apiReady = apiState === "READY";
-    var apiNotReadyStates = ["UNKNOWN", "WARMING", "ERROR"];
-    var showApiNotReady = apiNotReadyStates.indexOf(apiState) !== -1;
+    const apiReady = apiState === "READY";
 
-    // Default help messages for course-required buttons
-    var defaultCourseMessages = {
-      "ally-cr-execute": "Select a module above to enable this button",
-      "ally-sp-execute": "Select a module first to enable this button",
-    };
-
-    // API-related messages we set (to detect if we changed the help text)
-    var apiMessages = [
-      "Please wait while the API warms up...",
-      "Configure API credentials first",
-      "API connection error. Check credentials.",
-    ];
-
-    // Get all buttons with data-api-required attribute
-    var apiRequiredButtons = document.querySelectorAll(
+    const apiRequiredButtons = document.querySelectorAll(
       '[data-api-required="true"]',
     );
 
     apiRequiredButtons.forEach(function (button) {
-      var helpTextId = button.getAttribute("aria-describedby");
-      var helpTextEl = helpTextId ? document.getElementById(helpTextId) : null;
-      var requiresCourse =
+      const helpTextId = button.getAttribute("aria-describedby");
+      const helpTextEl = helpTextId
+        ? document.getElementById(helpTextId)
+        : null;
+      const requiresCourse =
         button.getAttribute("data-requires-course") === "true";
+      const courseSelected =
+        button.getAttribute("data-course-selected") === "true";
 
-      // Determine button state and help message
-      var shouldDisable = false;
-      var helpMessage = "";
+      let shouldDisable;
+      let helpMessage;
 
       if (!apiReady) {
-        // API not ready - always disable and show indicator
+        // The API cannot serve a request in any state but READY.
         shouldDisable = true;
+        helpMessage = API_NOT_READY_MESSAGES[apiState] || "";
         button.setAttribute("data-api-not-ready", "true");
-
-        if (apiState === "WARMING") {
-          helpMessage = "Please wait while the API warms up...";
-        } else if (apiState === "UNKNOWN") {
-          helpMessage = "Configure API credentials first";
-        } else if (apiState === "ERROR") {
-          helpMessage = "API connection error. Check credentials.";
-        }
       } else {
-        // API is ready - remove indicator
         button.removeAttribute("data-api-not-ready");
 
-        if (requiresCourse) {
-          // These buttons also need course selection
-          var currentHelpText = helpTextEl ? helpTextEl.textContent : "";
-
-          // Check if we previously set an API-related message
-          var isOurApiMessage = apiMessages.indexOf(currentHelpText) !== -1;
-
-          // Check if it's a "select module" message
-          var isSelectMessage =
-            currentHelpText.toLowerCase().indexOf("select a") !== -1;
-
-          if (isOurApiMessage) {
-            // We changed the text during API not-ready state
-            // Restore the default "select module" message
-            shouldDisable = true;
-            helpMessage =
-              defaultCourseMessages[button.id] ||
-              "Select a module first to enable this button";
-          } else if (isSelectMessage) {
-            // Original "select module" message - no course selected
-            shouldDisable = true;
-            helpMessage = currentHelpText; // Keep existing
-          } else {
-            // Help text is empty or something else - course likely selected
-            shouldDisable = false;
-            helpMessage = "";
-          }
-        } else {
-          // Button only depends on API being ready
-          shouldDisable = false;
-          helpMessage = "";
-        }
+        shouldDisable = requiresCourse && !courseSelected;
+        helpMessage = shouldDisable
+          ? COURSE_REQUIRED_MESSAGES[button.id] ||
+            COURSE_REQUIRED_MESSAGE_DEFAULT
+          : "";
       }
 
       button.disabled = shouldDisable;
 
-      // Update help text
-      if (helpTextEl) {
-        if (helpMessage) {
-          helpTextEl.textContent = helpMessage;
-        } else if (!requiresCourse) {
-          // Clear help text for non-course buttons when API ready
-          helpTextEl.textContent = "";
-        } else if (!shouldDisable) {
-          // Course-required button is enabled - clear help text
-          helpTextEl.textContent = "";
-        }
+      // Written from state, never read back. Write-if-changed because the span is
+      // an aria-describedby target, and rewriting identical text is at best waste.
+      if (helpTextEl && helpTextEl.textContent !== helpMessage) {
+        helpTextEl.textContent = helpMessage;
       }
     });
 
@@ -3075,6 +3061,19 @@ const ALLY_MAIN_CONTROLLER = (function () {
      */
     getApiState: function () {
       return apiState;
+    },
+
+    /**
+     * Re-arbitrates the enabled state and help text of every
+     * [data-api-required="true"] button against the current API state and each
+     * button's own data-course-selected attribute.
+     *
+     * Called by the course-search modules after they change a selection, so that
+     * a selected module and a not-yet-ready API can never disagree about whether
+     * the button should be pressable.
+     */
+    refreshExecuteButtonStates: function () {
+      updateExecuteButtonStates();
     },
 
     /**

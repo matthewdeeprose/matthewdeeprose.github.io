@@ -60,6 +60,75 @@
   }
 
   // ============================================================================
+  // FULLSCREEN FOCUS RETURN
+  // ============================================================================
+
+  // WHY THIS IS HAND-ROLLED AND NOT `returnFocusTo`, WHICH IS THE STANDARD.
+  // docs/universal-ui-components-guide.md § 6.4 says every modal should declare
+  // returnFocusTo rather than refocusing by hand. This one CANNOT, and the
+  // reason is structural rather than a preference.
+  //
+  // showFullscreenImage() passes the workspace ELEMENT as `content`, so
+  // UniversalModal appendChild()s #imgdesc-workspace INTO the dialog and leaves
+  // a placeholder behind. The trigger #imgdesc-fullscreen-btn lives inside that
+  // workspace, so THE OPENER TRAVELS INTO THE MODAL. The workspace is put back
+  // by onClose — which runs from the show() promise reaction, i.e. AFTER
+  // finishClose has already resolved and restored focus. At the moment
+  // returnFocusTo would be resolved, the trigger is inside the detached dialog
+  // subtree: not connected, so the resolver correctly returns null and the tier
+  // chain lands on #main.
+  //
+  // MEASURED 21 August 2026, BEFORE any change: focus settled on main#main for
+  // all three journeys — including the CONTROL one with no nested modal at all.
+  // So this modal's focus return was broken outright, not merely under nesting,
+  // and #main is the landing that makes NVDA read the entire main region (see
+  // AGENTS.md § Announcements and the same day's session-manager listen).
+  //
+  // onClose is the earliest hook where the trigger is back in the page. It also
+  // runs for EVERY close route; onBeforeClose does not — it fires only from
+  // Modal.prototype.close(), so the × button and an overlay click bypass it.
+  // A focus call here lands last and therefore wins, the same ordering
+  // js/universal-modal.js finishClose() documents for the image manager's
+  // _returnFocus().
+  const FULLSCREEN_TRIGGER_ID = "imgdesc-fullscreen-btn";
+  // Reached only if the preview is gone, which means the image was cleared
+  // while fullscreen was open. Landing on the upload control is the surface's
+  // remaining primary action; it is `visually-hidden` (clip-based, 1px) rather
+  // than display:none, so it keeps a layout box and can genuinely take focus.
+  const FULLSCREEN_FALLBACK_ID = "imgdesc-file-input";
+
+  /**
+   * Return focus after the fullscreen workspace closes.
+   *
+   * Resolves by id at call time rather than using a captured element: the
+   * preview markup — trigger included — is rebuilt by displayPreview(), so a
+   * reference held from open time can be stale.
+   *
+   * @returns {string|null} id of the element focused, or null if none was usable
+   */
+  function restoreFocusAfterFullscreen() {
+    // A focus call on an element with no layout box is a SILENT no-op, so test
+    // reachability rather than mere existence.
+    const usable = (el) =>
+      !!el && el.isConnected && !el.disabled && el.getClientRects().length > 0;
+
+    for (const id of [FULLSCREEN_TRIGGER_ID, FULLSCREEN_FALLBACK_ID]) {
+      const el = document.getElementById(id);
+      if (!usable(el)) continue;
+      el.focus();
+      if (document.activeElement === el) {
+        logDebug(`[UI] Focus returned to #${id} after fullscreen close`);
+        return id;
+      }
+    }
+
+    // Deliberately loud. Focus is now wherever the tier chain left it, which is
+    // #main and therefore a whole-page read on a screen reader.
+    logWarn("[UI] No usable focus target after fullscreen close");
+    return null;
+  }
+
+  // ============================================================================
   // METHODS (mixed into ImageDescriberController)
   // ============================================================================
 
@@ -681,6 +750,12 @@
             }
 
             logInfo("[UI] Fullscreen workspace closed, DOM restored");
+
+            // LAST, deliberately: the workspace is back in the page and
+            // enterReviewMode() above moves no focus of its own, so nothing
+            // competes with this call. See restoreFocusAfterFullscreen() for
+            // why this modal cannot use returnFocusTo.
+            restoreFocusAfterFullscreen();
           },
         });
 

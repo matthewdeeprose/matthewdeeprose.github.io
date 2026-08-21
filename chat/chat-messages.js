@@ -1269,7 +1269,7 @@
     activeExportingBtn = btn;
     btn.setAttribute("aria-busy", "true");
     if (formatBtn) formatBtn.setAttribute("aria-busy", "true");
-    showExportProgress();
+    AudioExportProgress.showExportProgress();
     if (icon) {
       icon.setAttribute("data-icon", "hourglass");
       if (typeof window.refreshIcons === "function") window.refreshIcons(icon);
@@ -1329,7 +1329,7 @@
         activeExportingBtn = null;
         btn.removeAttribute("aria-busy");
         if (formatBtn) formatBtn.removeAttribute("aria-busy");
-        hideExportProgress();
+        AudioExportProgress.hideExportProgress();
         if (icon) {
           icon.setAttribute("data-icon", "download");
           if (typeof window.refreshIcons === "function")
@@ -1352,49 +1352,17 @@
    * the whole message bubble — fourteen whole-bubble reads for one save,
    * measured 18 August 2026. Nothing here announces; the export's start and
    * end sentences remain the only spoken output.
+   *
+   * The DOM writes themselves moved to js/audio-export-progress.js on
+   * 20 August 2026. This file's private EXPORT_PROGRESS_IDS table and its three
+   * helpers were one of three copies of the same code and are gone; only the
+   * call sites remain.
+   *
+   * What did NOT move is onExportProgress below — this tool's ownership filter,
+   * which reads activeExportingBtn. All three tools keep their own, over three
+   * different private variables, and the module header says why that is correct
+   * rather than duplication.
    */
-  const EXPORT_PROGRESS_IDS = Object.freeze({
-    wrapper: "audio-export-progress",
-    bar: "audio-export-progress-bar",
-    fill: "audio-export-progress-fill",
-    text: "audio-export-progress-text",
-  });
-
-  /**
-   * Write one progress step. chunk/totalChunks of 0 clears the surface.
-   * @param {number} chunk — 1-based chunk index just started
-   * @param {number} totalChunks — total chunks in this export
-   */
-  function setExportProgress(chunk, totalChunks) {
-    const bar = document.getElementById(EXPORT_PROGRESS_IDS.bar);
-    const fill = document.getElementById(EXPORT_PROGRESS_IDS.fill);
-    const text = document.getElementById(EXPORT_PROGRESS_IDS.text);
-    const percent =
-      totalChunks > 0 ? Math.round((chunk / totalChunks) * 100) : 0;
-
-    if (bar) bar.setAttribute("aria-valuenow", String(percent));
-    if (fill) fill.style.width = percent + "%";
-    if (text) {
-      // The surface no longer sits on the control, so it names what it is
-      // doing rather than relying on the button for context.
-      text.textContent =
-        totalChunks > 0 ? "Saving audio, " + chunk + " of " + totalChunks : "";
-    }
-  }
-
-  function showExportProgress() {
-    const wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
-    if (!wrapper) return;
-    setExportProgress(0, 0);
-    wrapper.hidden = false;
-  }
-
-  function hideExportProgress() {
-    const wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
-    if (!wrapper) return;
-    wrapper.hidden = true;
-    setExportProgress(0, 0);
-  }
 
   /**
    * tts:exportProgress handler — only fires for the actively-exporting
@@ -1416,7 +1384,7 @@
       typeof data.totalChunks !== "number"
     )
       return;
-    setExportProgress(data.chunk, data.totalChunks);
+    AudioExportProgress.setExportProgress(data.chunk, data.totalChunks);
   }
 
   // ── Engine badge (conversation-level) ──────────────────────────────

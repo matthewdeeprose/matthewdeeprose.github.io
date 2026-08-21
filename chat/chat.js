@@ -105,10 +105,6 @@
   // The live re-resolve listeners (provider:changed / credentials:changed) are
   // wired exactly once, so re-entrant init/refresh does not double-bind them.
   let eventsWired = false;
-  // The provider dropdown's <option>s are appended from GROUP_ORDER exactly once,
-  // so a refresh does not duplicate them onto the static "All providers" option.
-  let providerOptionsBuilt = false;
-
   // The full unified model list, cached ONCE at build time so filtering runs in
   // memory without re-gating (re-running getAllEligibleModels) on each keystroke.
   let allModels = [];
@@ -165,6 +161,34 @@
     { providerId: "openrouter", label: "OpenRouter" },
     { providerId: "azure-openai", label: "Microsoft Foundry" },
   ];
+
+  // The provider-scope rule: the picker offers on-device models plus the ACTIVE
+  // cloud provider's group, and hides the other cloud group entirely. Set Up owns
+  // that choice, and since sign-in switches it (provider KB section 2.6) a
+  // signed-in colleague would otherwise be reading a menu of models they may have
+  // no key for. The one exemption is the model currently in use — see
+  // modelMatchesAllFilters and renderPickerOptions.
+  //
+  // "local" is unconditional; it is not a cloud provider and Set Up's radio does
+  // not speak for it. The comparison is a single providerId test because the
+  // selector already folds azure-responses into azure-openai (PROVIDER_GROUPS),
+  // so both Foundry surfaces are covered. Deliberately NOT
+  // ProviderSwitcher.filterToActiveProvider(), which compares resolved ids
+  // without expanding that group and would drop azure-responses models.
+  function isProviderInScope(providerId) {
+    return providerId === "local" || providerId === activeProvider();
+  }
+
+  // Heading for the exempt in-use model when its own group is out of scope. It
+  // gets its own heading rather than a lone option under "OpenRouter", which
+  // would misrepresent what that provider offers and give a screen-reader user
+  // no clue why a single model is sitting there.
+  // CHANGE-HERE to alter the in-use group heading.
+  const IN_USE_GROUP_LABEL = "Currently in use";
+
+  // The provider dropdown's "no provider filter" value, as written in the static
+  // markup (tools.html) and defaulted to by getActiveFilterState.
+  const ALL_PROVIDERS_FILTER_VALUE = "all";
 
   // Whether each picker option shows the upstream vendor in parentheses after the
   // model name (e.g. "Llama 3.3 70B Instruct (meta)"). Reproduces the old tool's
@@ -228,6 +252,15 @@
   // dial is on and the entry carries one; otherwise returns the bare model name.
   // No aria-label is set on options: this text IS the accessible name a screen
   // reader announces, and the optgroup heading already conveys the routing provider.
+  // Build one picker <option>. Shared by the grouped render and the in-use
+  // group so the two can never disagree about value or label.
+  function createModelOption(model) {
+    const option = document.createElement("option");
+    option.value = model.id; // FULL id verbatim (e.g. "local/…")
+    option.textContent = formatOptionLabel(model);
+    return option;
+  }
+
   function formatOptionLabel(model) {
     const name = model.name || model.id || "";
     if (SHOW_UPSTREAM_VENDOR_IN_OPTION && model.provider) {
@@ -316,6 +349,11 @@
       state.provider !== "all" &&
       model.providerId !== state.provider
     )
+      return false;
+    // Provider scope (Set Up's active provider). The model currently in use is
+    // exempt, so a provider change cannot pull the menu out from under a live
+    // conversation; renderPickerOptions gives that survivor its own heading.
+    if (!isProviderInScope(model.providerId) && model.id !== S.currentModel)
       return false;
     // Capability filters compose with AND through the selector's public
     // normalisation gate, so the checkboxes read one normalised shape rather than
@@ -939,21 +977,38 @@
     select.innerHTML = "";
 
     const counts = {};
+    const renderedIds = new Set();
     GROUP_ORDER.forEach((group) => {
+      if (!isProviderInScope(group.providerId)) return; // provider scope
       const models = list.filter((m) => m.providerId === group.providerId);
       if (models.length === 0) return; // skip empty groups
 
       const optgroup = document.createElement("optgroup");
       optgroup.label = group.label;
       models.forEach((model) => {
-        const option = document.createElement("option");
-        option.value = model.id; // FULL id verbatim (e.g. "local/…")
-        option.textContent = formatOptionLabel(model);
-        optgroup.appendChild(option);
+        optgroup.appendChild(createModelOption(model));
+        renderedIds.add(model.id);
       });
       select.appendChild(optgroup);
       counts[group.label] = models.length;
     });
+
+    // The in-use model survives the provider-scope filter even when its group is
+    // hidden, so it lands here rather than nowhere. Scoped to that one id on
+    // purpose: a model whose providerId is in no group at all is still dropped,
+    // exactly as before, rather than being relabelled "Currently in use".
+    const inUseSurvivor = list.filter(
+      (m) => m.id === S.currentModel && !renderedIds.has(m.id),
+    );
+    if (inUseSurvivor.length > 0) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = IN_USE_GROUP_LABEL;
+      inUseSurvivor.forEach((model) => {
+        optgroup.appendChild(createModelOption(model));
+      });
+      select.appendChild(optgroup);
+      counts[IN_USE_GROUP_LABEL] = inUseSurvivor.length;
+    }
 
     logDebug("picker rendered — per group:", counts, "total=" + list.length);
   }
@@ -1008,17 +1063,45 @@
    * Guarded so a refresh does not duplicate the options onto the static one.
    */
   function populateProviderOptions() {
-    if (providerOptionsBuilt) return;
     const select = S.els.filterProvider;
     if (!select) return; // panel not in the DOM yet — nothing to build
-    GROUP_ORDER.forEach((group) => {
+
+    // Rebuilt on every call rather than built once, because the in-scope set
+    // changes with the active provider. Only options a previous build added are
+    // removed, so the static "All providers" option in the markup survives.
+    Array.prototype.slice
+      .call(select.querySelectorAll("option[data-group-option]"))
+      .forEach((option) => option.remove());
+
+    const previous = select.value;
+    let previousStillOffered = previous === ALL_PROVIDERS_FILTER_VALUE;
+
+    const offered = GROUP_ORDER.filter((group) =>
+      isProviderInScope(group.providerId),
+    );
+    offered.forEach((group) => {
       const option = document.createElement("option");
       option.value = group.providerId;
       option.textContent = group.label;
+      option.dataset.groupOption = "true";
       select.appendChild(option);
+      if (group.providerId === previous) previousStillOffered = true;
     });
-    providerOptionsBuilt = true;
-    logDebug("provider options built from GROUP_ORDER (" + GROUP_ORDER.length + ")");
+
+    // A selection naming a provider that is no longer offered would filter every
+    // model away and read as a fault rather than as a filter, so fall back to
+    // "all". Assigning .value fires no 'change', so no filter re-run is triggered
+    // here; the caller re-renders.
+    select.value = previousStillOffered ? previous : ALL_PROVIDERS_FILTER_VALUE;
+
+    logDebug(
+      "provider options rebuilt — offered=" +
+        offered.length +
+        " of " +
+        GROUP_ORDER.length +
+        ", value=" +
+        select.value,
+    );
   }
 
   /**
@@ -1293,8 +1376,15 @@
       announceTimer = null;
     }
     if (S.els.count) {
+      // Count what the reset actually renders, NOT allModels.length: the cached
+      // list still holds every provider's models, and the provider-scope rule
+      // means a reset does not show all of them.
+      const resetCount = filterAndOrder(
+        allModels,
+        getActiveFilterState(),
+      ).length;
       S.els.count.textContent =
-        FILTER_CLEARED_PREFIX + filterCountMessage(allModels.length);
+        FILTER_CLEARED_PREFIX + filterCountMessage(resetCount);
     }
 
     logDebug(
@@ -1430,9 +1520,75 @@
    */
   function wireProviderEvents() {
     if (eventsWired) return;
-    window.addEventListener("provider:changed", maybeReResolveOpening);
+    window.addEventListener("provider:changed", handleProviderChange);
+    // Credentials do not change the SCOPE — which groups are offered follows the
+    // active provider alone — so this one still only re-resolves the opening
+    // model, exactly as before.
     window.addEventListener("credentials:changed", maybeReResolveOpening);
     eventsWired = true;
+  }
+
+  /**
+   * Re-render the picker for a change of active provider, then re-resolve the
+   * opening model. Both halves are needed: the rendered option set is a function
+   * of activeProvider(), and maybeReResolveOpening on its own re-runs the opening
+   * policy over the CACHED list without rebuilding any markup — so without this
+   * the scoping would not appear until the next switch into Chat.
+   *
+   * DELIBERATELY SILENT. It calls renderFiltered rather than applyFilter, so
+   * #chat-model-count (role="status") is not written: nothing the user did here
+   * asks for a spoken count, and the sign-in that most often causes this is
+   * already announced by the Set Up card. One event, one utterance.
+   *
+   * Never writes ChatState.currentModel. Restoring the menu to the committed
+   * model is programmatic (select.value), which fires no 'change';
+   * maybeReResolveOpening keeps its own guards on a genuine user pick and on a
+   * non-empty conversation, so a live thread is not switched out from under.
+   */
+  function handleProviderChange() {
+    if (!S.els.select) {
+      maybeReResolveOpening();
+      return;
+    }
+
+    populateProviderOptions();
+    renderForCurrentScope();
+
+    // Re-render when the re-resolve MOVES the committed model. It can: an AUTO
+    // default reverts to the new provider's opening model, which changes what
+    // the in-use exemption retains. Without this the previous provider's model
+    // is left sitting under "Currently in use" when nothing is using it any
+    // more — measured, not predicted. The guard is on the value rather than on
+    // whether the re-resolve ran, because it self-guards on a user pick and on a
+    // live thread, and in both of those cases nothing moves and nothing is
+    // re-rendered.
+    const before = S.currentModel;
+    maybeReResolveOpening();
+    if (S.currentModel !== before) renderForCurrentScope();
+
+    logDebug(
+      "picker re-rendered for provider change — active=" +
+        activeProvider() +
+        ", model " +
+        (S.currentModel === before ? "unchanged" : before + " -> " + S.currentModel),
+    );
+  }
+
+  /**
+   * Render the picker for the CURRENT scope and filter state, restoring the menu
+   * to the committed model when it is shown. Programmatic (select.value), so no
+   * 'change' fires and ChatState.currentModel is never written here.
+   * @returns {Array<Object>} the models rendered
+   */
+  function renderForCurrentScope() {
+    const select = S.els.select;
+    if (!select) return [];
+    const rendered = filterAndOrder(allModels, getActiveFilterState());
+    renderFiltered(rendered);
+    if (S.currentModel && rendered.some((m) => m.id === S.currentModel)) {
+      select.value = S.currentModel;
+    }
+    return rendered;
   }
 
   // ── Context-limit lookup (token budget, step 2a) ──────────────────────────

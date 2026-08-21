@@ -295,6 +295,31 @@ window.MermaidParseAdapter = (function () {
   // (stage 0 M3a), so the adapter collapses the synonym itself.
   const DIRECTION_SYNONYMS = Object.freeze({ TD: "TB" });
 
+  // Shape spellings: Mermaid delivers every `@{ shape: … }` name VERBATIM,
+  // so one visual shape reaches the modules under several different strings
+  // — a diamond as `diam`, `decision`, `question` or `diamond`. Measured
+  // in docs/mermaid-shape-grounding-2026-08-20.md § 1.2 and § 5.1: 121
+  // distinct strings collapse onto roughly forty visual shapes.
+  //
+  // The modules test the CANONICAL string, so an alias spelling silently
+  // misses every shape predicate. `decisionIds` and the R7 split guard both
+  // read `shape === "diamond"`, and an alias-spelled diamond was measured
+  // narrating as an ordinary step — or, with unlabelled exits, as a
+  // parallel split, which R13 forbids in terms (§ 5.2). This is the fix
+  // for that defect.
+  //
+  // FIRST SLICE OF THE FULL NORMALISATION TABLE. The diamond ONLY: the
+  // remaining shapes wait on the shape-vocabulary ruling, and the full table
+  // is register item 41 territory — the adapter is the only place a
+  // spelling can be collapsed, because the modules never see the source.
+  // Extend one shape at a time; the canonical value on the right is always
+  // the string the modules already test, never a new invention.
+  const SHAPE_SYNONYMS = Object.freeze({
+    diam: "diamond",
+    decision: "diamond",
+    question: "diamond",
+  });
+
   // Single-slot memo: the last code string parsed and its promise. The
   // promise is cached, not the resolved value, so concurrent callers with
   // the same code share one parse and a rejection stays deterministic.
@@ -328,6 +353,23 @@ window.MermaidParseAdapter = (function () {
   ].join("\n");
 
   /**
+   * Collapse an alias shape spelling onto the canonical string the
+   * description modules test. Anything absent from SHAPE_SYNONYMS — `null`
+   * included — is returned exactly as Mermaid delivered it.
+   * @param {string|null} rawShape - The shape as the db delivered it
+   * @returns {string|null} The canonical shape, or the raw value unchanged
+   */
+  function normaliseShape(rawShape) {
+    const canonical = SHAPE_SYNONYMS[rawShape];
+    // A typeof test rather than a truthiness one: a shape string that happens
+    // to name an Object.prototype member must not resolve through the
+    // prototype chain and rewrite the shape into a function.
+    if (typeof canonical !== "string") return rawShape;
+    logDebug(`Shape alias "${rawShape}" normalised to "${canonical}"`);
+    return canonical;
+  }
+
+  /**
    * Normalise one Mermaid Diagram instance into the adapter's graph shape.
    * Field sources are the stage 0 measurements: vertex and edge shapes from
    * M2, bare-id text and absent type from M3i, subgraph flattening from M3l.
@@ -349,8 +391,10 @@ window.MermaidParseAdapter = (function () {
       id: vertex.id,
       label: decodeAuthorText(vertex.text),
       // Bare-id nodes carry no type property at all (M3i); null marks
-      // "no declared shape" explicitly for consumers.
-      shape: vertex.type === undefined ? null : vertex.type,
+      // "no declared shape" explicitly for consumers. The alias spellings are
+      // collapsed here, inside the queue slot the db read already runs in, so
+      // every consumer sees one string per visual shape.
+      shape: normaliseShape(vertex.type === undefined ? null : vertex.type),
     }));
 
     const edges = db.getEdges().map((edge) => ({

@@ -427,49 +427,28 @@ var TTSReadAloud = (function () {
    * announces; the export's start and end sentences remain the only spoken
    * output.
    *
-   * LOCAL COPY, not a shared import. chat/chat-messages.js and
-   * local-chat/local-chat-messages.js each declare these same helpers
-   * privately inside their own IIFE and expose neither, so there is nothing to
-   * call. The three copies must stay behaviourally identical; extracting a
-   * shared module is the obvious follow-up and is not this change.
+   * WITHDRAWN 20 August 2026 — the paragraph that stood here read:
+   *
+   *   "LOCAL COPY, not a shared import. chat/chat-messages.js and
+   *   local-chat/local-chat-messages.js each declare these same helpers
+   *   privately inside their own IIFE and expose neither, so there is nothing
+   *   to call. The three copies must stay behaviourally identical; extracting a
+   *   shared module is the obvious follow-up and is not this change."
+   *
+   * That follow-up has happened. The three copies were extracted to
+   * js/audio-export-progress.js, and this tool now calls the shared module.
+   * This file's own EXPORT_PROGRESS_IDS table and its three private helpers are
+   * gone; only the call sites remain.
+   *
+   * What did NOT move is updateExportProgress below — the ownership guard. All
+   * three tools keep their own, over three different private variables, and the
+   * module header says why that is correct rather than duplication.
+   *
+   * There is deliberately no tts:exportEncodeProgress companion, matching both
+   * chat tools. encodeMp3's eleven emits share ONE macrotask, so no
+   * intermediate encoding state was ever observable to anyone, sighted or
+   * otherwise. tts/tts-controller.js still emits the event; nothing consumes it.
    */
-  var EXPORT_PROGRESS_IDS = Object.freeze({
-    wrapper: 'audio-export-progress',
-    bar: 'audio-export-progress-bar',
-    fill: 'audio-export-progress-fill',
-    text: 'audio-export-progress-text'
-  });
-
-  /**
-   * Write one progress step. chunk/totalChunks of 0 clears the surface.
-   * @param {number} chunk - 1-based chunk index just started
-   * @param {number} totalChunks - total chunks in this export
-   */
-  function setExportProgress(chunk, totalChunks) {
-    var bar = document.getElementById(EXPORT_PROGRESS_IDS.bar);
-    var fill = document.getElementById(EXPORT_PROGRESS_IDS.fill);
-    var text = document.getElementById(EXPORT_PROGRESS_IDS.text);
-    var percent = totalChunks > 0 ? Math.round((chunk / totalChunks) * 100) : 0;
-
-    if (bar) bar.setAttribute('aria-valuenow', String(percent));
-    if (fill) fill.style.width = percent + '%';
-    if (text) {
-      // The surface no longer sits on the control, so it names what it is
-      // doing rather than relying on the button for context.
-      text.textContent =
-        totalChunks > 0 ? 'Saving audio, ' + chunk + ' of ' + totalChunks : '';
-    }
-  }
-
-  /**
-   * Reveal the shared surface at export start.
-   */
-  function showExportProgress() {
-    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
-    if (!wrapper) return;
-    setExportProgress(0, 0);
-    wrapper.hidden = false;
-  }
 
   /**
    * Update the shared surface from a tts:exportProgress event.
@@ -488,22 +467,7 @@ var TTSReadAloud = (function () {
    */
   function updateExportProgress(chunk, totalChunks) {
     if (!exporting || !totalChunks) return;
-    setExportProgress(chunk, totalChunks);
-  }
-
-  /**
-   * Hide the shared surface and reset it. Called from the export's finally.
-   *
-   * There is deliberately no tts:exportEncodeProgress companion, matching both
-   * chat tools. encodeMp3's eleven emits share ONE macrotask, so no
-   * intermediate encoding state was ever observable to anyone, sighted or
-   * otherwise. tts/tts-controller.js still emits the event; nothing consumes it.
-   */
-  function hideExportProgress() {
-    var wrapper = document.getElementById(EXPORT_PROGRESS_IDS.wrapper);
-    if (!wrapper) return;
-    wrapper.hidden = true;
-    setExportProgress(0, 0);
+    AudioExportProgress.setExportProgress(chunk, totalChunks);
   }
 
   function handleSaveAudioClick() {
@@ -567,7 +531,7 @@ var TTSReadAloud = (function () {
       icon.setAttribute('data-icon', 'hourglass');
       if (typeof window.refreshIcons === 'function') window.refreshIcons(els.saveAudioButton);
     }
-    showExportProgress();
+    AudioExportProgress.showExportProgress();
     announce('Generating ' + format.toUpperCase() + ' audio file\u2026');
 
     getPreparedOutputResult()
@@ -607,7 +571,7 @@ var TTSReadAloud = (function () {
         if (els.saveAudioFormatButton) {
           els.saveAudioFormatButton.removeAttribute('aria-busy');
         }
-        hideExportProgress();
+        AudioExportProgress.hideExportProgress();
         refreshFormatToggle();
         if (icon) {
           icon.setAttribute('data-icon', 'download');

@@ -3222,9 +3222,17 @@
   margin-top: 0rem;
 }
 
-/* Hide depth legend in fullscreen — on-image labels provide the visual data */
+/* Workspace furniture that fullscreen does not need. The depth legend is
+   redundant there because the on-image labels carry the same data; the file
+   info and the Florence-2 OCR prompt are configuration-time strips that only
+   crowd the image. Hiding the Florence prompt also removes it as an unplaced
+   item in the review-mode grid at 1024px and above (it carries no grid-row or
+   grid-column, so it was auto-placed into a stray implicit row).
+   Note this silences the Florence prompt's role="status" region while
+   fullscreen is open — the same trade-off --view-only already accepts. */
 .imgdesc-workspace--fullscreen .imgdesc-depth-legend,
-.imgdesc-workspace--fullscreen .imgdesc-file-info {
+.imgdesc-workspace--fullscreen .imgdesc-file-info,
+.imgdesc-workspace--fullscreen .imgdesc-florence-ocr-prompt {
   display: none;
 }
 

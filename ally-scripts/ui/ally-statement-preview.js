@@ -308,10 +308,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     selectedCourse = course;
     logDebug("Course selection changed:", course ? course.name : "none");
 
-    // Enable/disable execute button
-    if (elements.executeButton) {
-      elements.executeButton.disabled = !course;
-    }
+    // The execute button is deliberately NOT touched here. The search module has
+    // already declared the selection on the button (data-course-selected) and had
+    // ALLY_MAIN_CONTROLLER arbitrate it against the API state before this callback
+    // runs. A second write here would bypass that check and could enable the
+    // button mid-warm-up.
 
     // Enable/disable the inclusion-questions wizard trigger (needs a course, but
     // not the API). Clear its help text when enabled, restore it when not.
@@ -1134,6 +1135,16 @@ const ALLY_STATEMENT_PREVIEW = (function () {
       });
   }
 
+  // The SCORM export's new-tab link treatment — see applyExportNewTabLinks.
+  // EXTERNAL_ICON_NAME is a data-icon key resolved from icon-library.js by the
+  // caller's IconLibrary pass, so no SVG is authored here.
+  const EXTERNAL_ICON_NAME = "external";
+  const NEW_TAB_SUFFIX = " (opens in a new tab)";
+  const REL_NEW_TAB = Object.freeze(["noopener", "noreferrer"]);
+  // Only a link authored as ABSOLUTE http(s) is external. Matched against the RAW
+  // href on purpose — see applyExportNewTabLinks.
+  const ABSOLUTE_HTTP_RE = /^https?:\/\//i;
+
   // Matches an 11-char YouTube video id in any common URL shape.
   const YOUTUBE_ID_RE =
     /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?v=|embed\/|v\/|shorts\/))([A-Za-z0-9_-]{11})/;
@@ -1220,6 +1231,72 @@ const ALLY_STATEMENT_PREVIEW = (function () {
   }
 
   /**
+   * Rewrites the statement's external links so they open in a NEW TAB, and says so.
+   *
+   * WHY: inside an LMS the exported package runs in a sandboxed content frame, and
+   * navigating that frame to another origin is blocked — the link simply does
+   * nothing. A new tab works. So the SCORM target (and ONLY that target, threaded
+   * down as options.newTabLinks) rewrites each external link here, at BUILD time
+   * rather than from an injected script: the "opens in a new tab" promise is then
+   * true with JavaScript off, and the Phase 3 refresh island — baked through this
+   * same cleanup — inherits the treatment for free.
+   *
+   * Scope is links authored as ABSOLUTE http(s). A mailto:/tel: link opened in a
+   * new tab leaves a blank tab behind, an in-page #anchor in a new tab reloads the
+   * whole document, and a relative in-package link must keep navigating in place —
+   * all three are left alone.
+   *
+   * Each treated link gains two children INSIDE the <a>, so both ride in its
+   * accessible name: a decorative external-link icon (aria-hidden, left empty for
+   * the caller's IconLibrary pass to populate) and a visually-hidden
+   * " (opens in a new tab)" suffix. The visible text stays the START of that name,
+   * so SC 2.5.3 Label in Name still holds. Note the export output styles neither
+   * .visually-hidden nor the icon — ALLY_STATEMENT_EXPORT_CSS supplies both, the
+   * icon with an explicit size (the library base rule inflates an unsized SVG).
+   *
+   * Export path only. Runs AFTER embedExportMedia, so the video fallback link is
+   * covered too.
+   *
+   * @param {HTMLElement} root - detached clone to mutate in place
+   */
+  function applyExportNewTabLinks(root) {
+    root.querySelectorAll("a[href]").forEach(function (link) {
+      // Already targeted by the author or an earlier pass — leave it alone.
+      if (link.hasAttribute("target")) return;
+
+      // Test the RAW href, never a resolved URL. Measured 20 August 2026: an
+      // in-page "#anchor", a relative path and a malformed href ALL resolve to the
+      // document's own http: scheme, so a scheme test on new URL(href, base)
+      // rewrote all three — a fragment link opened in a new tab reloads the whole
+      // document, and an in-package link must keep navigating in place. Every
+      // external statement link is authored absolute, so this is also the simpler
+      // rule, and it needs no try/catch: a malformed href simply does not match.
+      if (!ABSOLUTE_HTTP_RE.test(link.getAttribute("href") || "")) return;
+
+      link.setAttribute("target", "_blank");
+
+      // Merge into any existing rel, never overwrite: embedExportMedia already
+      // sets rel="noopener" on the video fallback link.
+      const rel = (link.getAttribute("rel") || "").split(/\s+/).filter(Boolean);
+      REL_NEW_TAB.forEach(function (token) {
+        if (rel.indexOf(token) === -1) rel.push(token);
+      });
+      link.setAttribute("rel", rel.join(" "));
+
+      const icon = document.createElement("span");
+      icon.className = "ally-sp-external-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.setAttribute("data-icon", EXTERNAL_ICON_NAME);
+      link.appendChild(icon);
+
+      const note = document.createElement("span");
+      note.className = "visually-hidden";
+      note.textContent = NEW_TAB_SUFFIX;
+      link.appendChild(note);
+    });
+  }
+
+  /**
    * Clones the rendered statement's top-level exportable sections into a detached
    * wrapper — the shared core behind copy, Word and SCORM/HTML export. Drops
    * descendants marked omit and reveals those marked expand.
@@ -1232,6 +1309,10 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    *     is revealed (visible in the raw HTML, so it is readable with JS off). When
    *     false/omitted (copy + Word), the button is dropped and the content revealed
    *     inline — byte-identical to the pre-refactor behaviour.
+   *   - newTabLinks: SCORM target only. Rewrites external http(s) links to open in
+   *     a new tab, with an icon and a visually-hidden warning (see
+   *     applyExportNewTabLinks). Ignored unless nativiseDisclosures is also true,
+   *     so copy/Word can never reach it. The standalone HTML export leaves it off.
    *   - sourceContainer: the element whose top-level sections are cloned. Defaults
    *     to the live results container (copy/Word/export). The Phase 3 refresh-island
    *     builder passes an off-screen container holding a single freshly-rendered
@@ -1275,6 +1356,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
       if (opts.nativiseDisclosures) {
         prepareExportDisclosures(clone);
         embedExportMedia(clone);
+        // SCORM only: the LMS content frame blocks same-frame navigation to
+        // another origin, so external links have to open in a new tab.
+        if (opts.newTabLinks) {
+          applyExportNewTabLinks(clone);
+        }
       }
 
       // Drop descendants marked omit (freshness notice, disclosure buttons,
@@ -1774,15 +1860,19 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    * @param {function(HTMLElement):void} applyHeadingTransform - the same heading
    *   transform buildExportFragment applies (promote-up when a header exists,
    *   else down-shift), computed once by the caller so every fragment matches.
+   * @param {{newTabLinks?: boolean}} [options] - the same export options
+   *   buildExportFragment passes. Must match, or a refreshed section drifts from a
+   *   fresh export (§12: the island tracks the export pipeline).
    * @returns {string|null} the export innerHTML, or null if cleanup produced nothing
    */
-  function sectionToExportHtml(sectionEl, applyHeadingTransform) {
+  function sectionToExportHtml(sectionEl, applyHeadingTransform, options) {
     if (!sectionEl) return null;
     const temp = document.createElement("div");
     temp.appendChild(sectionEl);
     const wrapper = cloneStatementSections({
       nativiseDisclosures: true,
       sourceContainer: temp,
+      newTabLinks: !!(options && options.newTabLinks),
     });
     if (!wrapper) return null;
     if (typeof applyHeadingTransform === "function") {
@@ -1832,10 +1922,13 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    * construction). The field->theme map, order, heading level and intro
    * placement are baked so the bundle never re-derives layout logic.
    *
-   * @param {{clientId?: string, courseId?: string, region?: string, workerUrl?: string}} [meta]
+   * @param {{clientId?: string, courseId?: string, region?: string, workerUrl?: string,
+   *          newTabLinks?: boolean}} [meta]
    *   Optional overrides; when omitted the client id / region are read from the
    *   Ally API client and the course id from the current selection. workerUrl is
-   *   baked in verbatim when supplied (Stage 4 wires it).
+   *   baked in verbatim when supplied (Stage 4 wires it). newTabLinks must carry
+   *   the SAME value buildExportFragment is given for this export, or refreshed
+   *   sections drift from a fresh one.
    * @returns {Object|null} the island object, or null if the config, the icon
    *   library, or a course id is unavailable (the export then degrades to a
    *   static snapshot with no refresh).
@@ -1907,6 +2000,11 @@ const ALLY_STATEMENT_PREVIEW = (function () {
       headingLevel = Math.max(2, contentLevel - 1);
     }
 
+    // The export options the fragments must be baked with — SCORM's new-tab link
+    // treatment above all. Same value buildExportFragment gets, or the baked
+    // fragments stop being byte-identical to a fresh export.
+    const exportOptions = { newTabLinks: !!options.newTabLinks };
+
     // Pre-render every theme (regardless of current count) + intro + success.
     const warnings = {};
     const fieldMap = {};
@@ -1931,6 +2029,7 @@ const ALLY_STATEMENT_PREVIEW = (function () {
       const html = sectionToExportHtml(
         renderWarningSection(resolvedTheme, contentLevel),
         applyHeadingTransform,
+        exportOptions,
       );
       if (html === null) {
         ok = false;
@@ -1944,10 +2043,12 @@ const ALLY_STATEMENT_PREVIEW = (function () {
     const introHtml = sectionToExportHtml(
       renderIntroSection(null, contentLevel),
       applyHeadingTransform,
+      exportOptions,
     );
     const successHtml = sectionToExportHtml(
       renderSuccessState(contentLevel),
       applyHeadingTransform,
+      exportOptions,
     );
 
     if (!ok || introHtml === null || successHtml === null) {
@@ -2003,12 +2104,19 @@ const ALLY_STATEMENT_PREVIEW = (function () {
    *     has no header section,
    *   - defensively populates any still-empty data-icon spans in the clone.
    * @param {{courseCode?: string, courseName?: string}} meta
+   * @param {{newTabLinks?: boolean}} [options] - SCORM-only presentation opts.
+   *   newTabLinks rewrites external links to open in a new tab (see
+   *   applyExportNewTabLinks). Defaults OFF, so the standalone HTML export and
+   *   every existing caller of the public API are byte-identical to before.
    * @returns {string|null} innerHTML for the facade, or null if nothing to export
    */
-  function buildExportFragment(meta) {
+  function buildExportFragment(meta, options) {
     // Export path: nativise disclosures to static <details>/<summary> (copy/Word
     // keep the flattened form via buildCopyFragment()).
-    const wrapper = cloneStatementSections({ nativiseDisclosures: true });
+    const wrapper = cloneStatementSections({
+      nativiseDisclosures: true,
+      newTabLinks: !!(options && options.newTabLinks),
+    });
     if (!wrapper) return null;
 
     // Heading outline. Prefer the statement's own header heading as the single
@@ -2081,7 +2189,12 @@ const ALLY_STATEMENT_PREVIEW = (function () {
         "",
     };
 
-    const content = buildExportFragment(meta);
+    // The LMS content frame blocks same-frame navigation to another origin, so a
+    // SCORM export opens its external links in a new tab. The standalone HTML page
+    // has no such frame and is left exactly as before.
+    const newTabLinks = target === "scorm";
+
+    const content = buildExportFragment(meta, { newTabLinks: newTabLinks });
     if (!content) {
       showCopyError("No content to export");
       return;
@@ -2118,7 +2231,7 @@ const ALLY_STATEMENT_PREVIEW = (function () {
         // even when the flag is on ("Ally data" toggled off).
         sectionVisibility.data !== false;
       if (refreshEnabled) {
-        const island = buildRefreshDataIsland();
+        const island = buildRefreshDataIsland({ newTabLinks: newTabLinks });
         if (island) {
           // Escape "</" so the JSON can never close its own <script> tag.
           const islandJson = JSON.stringify(island).replace(/<\//g, "<\\/");

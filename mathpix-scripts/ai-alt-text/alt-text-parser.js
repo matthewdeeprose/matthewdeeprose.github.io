@@ -43,11 +43,13 @@
  * in the local phase (S2F-Q3); this parcel implements only the settled rule —
  * prose-with-no-headers → long. Nothing cleverer.
  *
- * ── Section boundaries (PARSE-F1) ──────────────────────────────────────────
+ * ── Section boundaries (PARSE-F1, PARSE-F2) ────────────────────────────────
  * A recognised header NAME is necessary but not sufficient to start a new
  * section. See `sectionBoundaryField` for the two further conditions — the
- * level rule and the re-open guard — and the reasoning behind each. They are
- * documented there and only there, so the two cannot drift.
+ * level rule and the re-open guard — and `mixedLevelFallback` for what
+ * happens when a response uses its heading levels inconsistently and the
+ * level rule costs it sections. Each is documented at its own function and
+ * nowhere else, so no two accounts of them can drift apart.
  *
  * ── Literal bodies (write-stage owner, please note) ─────────────────────────
  * Section bodies are returned as-is (trimmed only). The parser does NOT
@@ -246,7 +248,9 @@ const MathPixAltTextParser = (function () {
    * header; `state.bodies` is the same bucket map `parse` accumulates into.
    *
    * @param {string} line
-   * @param {{sectionLevel: number|null, bodies: Object<string, string[]>}} state
+   * @param {{sectionLevel: number|null, bodies: Object<string, string[]>,
+   *          levelBlind: boolean, deeperRefusals: string[],
+   *          headerLevels: number[]}} state
    * @returns {string|null} the field this line opens, or null if it does not
    */
   function sectionBoundaryField(line, state) {
@@ -255,6 +259,11 @@ const MathPixAltTextParser = (function () {
 
     const level = headerLevel(line);
 
+    // Every recognised header is tallied by level, refused or not: the
+    // fallback needs to know how the response distributes its headers, not
+    // merely which ones it accepted.
+    state.headerLevels.push(level);
+
     // The first recognised header sets the level everything else is judged
     // against. It is therefore always a boundary: nothing is deeper than a
     // level that does not exist yet, and no bucket has content yet.
@@ -262,7 +271,15 @@ const MathPixAltTextParser = (function () {
       state.sectionLevel = level;
     }
 
-    if (level > state.sectionLevel) {
+    // The level rule is switched off on the FALLBACK pass (see parse), which
+    // is the pre-PARSE-F1 behaviour. The re-open guard below is NOT switched
+    // off with it: its condition reads the bucket map and never reads
+    // sectionLevel, so it is independent of the level rule, and it carries no
+    // mixed-level cost that the fallback would need to undo.
+    if (!state.levelBlind && level > state.sectionLevel) {
+      // Recorded, not merely refused: parse reads this back to decide whether
+      // the response looks like a mixed-level casualty worth re-parsing.
+      state.deeperRefusals.push(field);
       logDebug("reserved name kept as content — deeper than the section level", {
         field,
         level,
@@ -272,11 +289,118 @@ const MathPixAltTextParser = (function () {
     }
 
     if (hasContent(state.bodies[field])) {
-      logWarn(`re-open suppressed for an already-populated field: ${field}`);
+      // Quiet on the fallback pass, so one suppression cannot be reported
+      // twice for one input. The cost, stated rather than hidden: a re-open
+      // suppressed ONLY on the fallback pass is not logged.
+      if (!state.levelBlind) {
+        logWarn(`re-open suppressed for an already-populated field: ${field}`);
+      }
       return null;
     }
 
     return field;
+  }
+
+  /**
+   * Is the established section level held by FEWER recognised headers than
+   * some other single level? That is the signature of a response whose
+   * first header was an outlier — `## 1. Title` followed by three `###`
+   * sections gives one header at level 2 and three at level 3.
+   *
+   * A stray subheading gives the opposite shape, and a tie is deliberately
+   * NOT enough: one section header plus one stray subheading is one-all,
+   * and arming on that would misroute the stray exactly as the pre-PARSE-F1
+   * parser did.
+   * @param {{sectionLevel: number|null, headerLevels: number[]}} state
+   * @returns {boolean}
+   */
+  function establishedLevelIsOutnumbered(state) {
+    const tally = Object.create(null);
+    for (const level of state.headerLevels) {
+      tally[level] = (tally[level] || 0) + 1;
+    }
+    const established = tally[state.sectionLevel] || 0;
+    return Object.keys(tally).some(
+      (level) =>
+        Number(level) !== state.sectionLevel && tally[level] > established,
+    );
+  }
+
+  /**
+   * THE MIXED-LEVEL FALLBACK (PARSE-F2).
+   *
+   * The level rule assumes a model uses its section levels UNIFORMLY. One that
+   * opens at `## 1. Title` and then continues at `### 2. Alt Text` is not
+   * uniform, and every deeper header is refused as a subheading, so its
+   * sections are swallowed into the one above them. Before the level rule
+   * existed those responses parsed correctly, so the rule bought protection at
+   * their expense. This buys it back.
+   *
+   * THE TRIGGER HAS TWO PARTS, and the second is the one that is easy to
+   * leave out. The first is a LOST FIELD: a header that was present, was
+   * refused for being deeper than the established level, and whose field is
+   * consequently empty. That alone is NOT sufficient, and treating it as
+   * sufficient reinstates the misroute the level rule exists to prevent —
+   * a stray reserved subheading in a response that never emitted that
+   * section leaves exactly the same trace. The second part is therefore
+   * `establishedLevelIsOutnumbered`, which separates the two by how the
+   * response distributes its headers rather than by what it left empty.
+   *
+   * Emptiness on its own never arms anything, so a sparse response — only a
+   * title and alt text, or all four headers with nothing written under two
+   * of them — cannot reach the re-parse at all.
+   *
+   * THE ACCEPTANCE TEST is a demonstrated recovery, not a suspected one: the
+   * re-parse is adopted only if it fills a field the first parse left empty.
+   * A re-parse that recovers nothing is pure loss, since it would discard the
+   * level rule and the fault it prevents in exchange for no content.
+   *
+   * @param {string} rawText the original input, to be re-parsed level-blind
+   * @param {{title: string, alt: string, long: string, text: string}} result the first parse
+   * @param {{levelBlind: boolean, deeperRefusals: string[],
+   *          headerLevels: number[], sectionLevel: number|null}} state
+   *   that parse's boundary state
+   * @returns {{title: string, alt: string, long: string, text: string}|null} the
+   *   re-parsed result to return instead, or null to keep the first parse
+   */
+  function mixedLevelFallback(rawText, result, state) {
+    // The fallback pass must not recurse into itself.
+    if (state.levelBlind) return null;
+
+    // De-duplicated: two refused headers can name the same field, and this
+    // list is reported as the set of fields emptied, not as a refusal count.
+    const lost = SECTIONS.map((section) => section.field).filter(
+      (field) =>
+        result[field] === "" && state.deeperRefusals.indexOf(field) !== -1,
+    );
+    if (lost.length === 0) return null;
+
+    // A lost field is NOT on its own a mixed-level signal, and reading it as
+    // one reintroduces the very fault the level rule exists to prevent: a
+    // stray reserved subheading in a response that never emitted that
+    // section leaves exactly the same trace as a genuine casualty. The two
+    // are separated by how the response DISTRIBUTES its headers. In a
+    // mixed-level response the established level is an outlier, held by the
+    // single header that happened to come first while the real run of
+    // sections sits deeper; a stray subheading is itself the outlier, and
+    // the established level holds its own or better. So the fallback arms
+    // only when some OTHER single level carries strictly more recognised
+    // headers than the established one does.
+    if (!establishedLevelIsOutnumbered(state)) return null;
+
+    const reparsed = parse(rawText, true);
+    const recovered = SECTIONS.filter(
+      (section) =>
+        result[section.field] === "" && reparsed[section.field] !== "",
+    ).map((section) => section.field);
+    if (recovered.length === 0) return null;
+
+    logWarn(
+      "mixed-level response: re-parsed level-blind to recover fields the " +
+        "level rule had emptied",
+      { emptied: lost, recovered },
+    );
+    return reparsed;
   }
 
   // ---------------------------------------------------------------------------
@@ -298,9 +422,11 @@ const MathPixAltTextParser = (function () {
    * Never throws; always returns all four keys as strings.
    *
    * @param {string} rawText — the generation TEXT ONLY (never the result object).
+   * @param {boolean} [levelBlind] INTERNAL. Set only by `mixedLevelFallback`
+   *   when it re-parses; callers pass one argument.
    * @returns {{title: string, alt: string, long: string, text: string}}
    */
-  function parse(rawText) {
+  function parse(rawText, levelBlind) {
     const result = emptyResult();
 
     // Non-string / nullish / empty / whitespace-only → all four empty.
@@ -316,8 +442,18 @@ const MathPixAltTextParser = (function () {
     /** @type {Object<string, string[]>} field → collected body lines */
     const bodies = Object.create(null);
     let sawHeader = false;
-    /** Boundary state: the level taken from the first recognised header. */
-    const state = { sectionLevel: null, bodies };
+    /**
+     * Boundary state: the level taken from the first recognised header, plus
+     * the record of headers refused for being deeper than it. `levelBlind` is
+     * set only on the internal fallback pass.
+     */
+    const state = {
+      sectionLevel: null,
+      bodies,
+      levelBlind: levelBlind === true,
+      deeperRefusals: [],
+      headerLevels: [],
+    };
 
     for (const line of lines) {
       const field = sectionBoundaryField(line, state);
@@ -362,7 +498,8 @@ const MathPixAltTextParser = (function () {
       }
     }
 
-    return result;
+    const fallback = mixedLevelFallback(rawText, result, state);
+    return fallback || result;
   }
 
   logInfo("MathPixAltTextParser ready (pure four-field parse)");

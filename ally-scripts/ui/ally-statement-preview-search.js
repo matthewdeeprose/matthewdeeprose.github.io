@@ -734,18 +734,34 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
    * Updates the execute button state and help text visibility
    */
   function updateExecuteButton() {
-    if (elements.executeButton) {
-      elements.executeButton.disabled = !selectedCourse;
+    if (!elements.executeButton) {
+      return;
     }
 
-    // Hide help text when course is selected, show when not
+    // Declare the selection state; do not decide the button state from it. The
+    // button also depends on the API being ready, which only the main controller
+    // knows, so it is the single arbiter of `disabled` AND of the help text.
+    // Writing either here as well is how the two came to disagree.
+    elements.executeButton.setAttribute(
+      "data-course-selected",
+      selectedCourse ? "true" : "false",
+    );
+
+    if (
+      typeof ALLY_MAIN_CONTROLLER !== "undefined" &&
+      typeof ALLY_MAIN_CONTROLLER.refreshExecuteButtonStates === "function"
+    ) {
+      ALLY_MAIN_CONTROLLER.refreshExecuteButtonStates();
+      return;
+    }
+
+    // Fallback: the controller has not loaded yet, so keep the button usable.
+    logWarn("ALLY_MAIN_CONTROLLER unavailable - setting button state directly");
+    elements.executeButton.disabled = !selectedCourse;
     if (elements.executeHelp) {
-      if (selectedCourse) {
-        elements.executeHelp.textContent = "";
-      } else {
-        elements.executeHelp.textContent =
-          "Select a module first to enable this button";
-      }
+      elements.executeHelp.textContent = selectedCourse
+        ? ""
+        : "Select a module first to enable this button";
     }
   }
 

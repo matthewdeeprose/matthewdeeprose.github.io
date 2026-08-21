@@ -1605,6 +1605,84 @@ window.SetUpTool = (function () {
   }
 
   // ============================================================
+  // Provider switch on sign-in
+  // ============================================================
+  // Completing a University sign-in makes Microsoft Foundry the active
+  // provider, so the models on offer are the ones the person has just proved
+  // they can use. This deliberately OVERRIDES an earlier OpenRouter choice.
+  //
+  // WHY A MARKER, RATHER THAN JUST READING detail.isSignedIn. There is no
+  // sign-in event to listen for. EntraAuth.signIn() calls loginRedirect(), so
+  // the return leg is a FRESH PAGE LOAD and arrives as reason "init" with
+  // isSignedIn true — byte-identical to an ordinary load by somebody already
+  // signed in. That is the same fact the sign-in card's own listener records
+  // in initSignIn below. Switching on the event alone would therefore force
+  // Foundry on EVERY load, so a person who afterwards chose OpenRouter would
+  // be reverted on their next reload and could never make the choice stick.
+  //
+  // The marker is written immediately before the redirect and read once on the
+  // way back, which is what separates "just signed in" from "loaded the page
+  // while already signed in". sessionStorage rather than localStorage, so an
+  // abandoned sign-in leaves nothing behind once the tab closes.
+  //
+  // THIS FUNCTION NEVER ANNOUNCES. renderSignInState already speaks the
+  // sign-in state through announce(), and the radio re-render carries no live
+  // region, so a second announcement would make one action speak twice.
+  //
+  // Idempotent by construction: the marker is deleted on the first settled
+  // state, signed in or out, so a second call finds nothing to act on.
+  const SIGN_IN_PROVIDER_MARKER_KEY = "setup-signin-provider-switch-pending";
+  const SIGN_IN_TARGET_PROVIDER_ID = "azure-openai";
+
+  function markProviderSwitchPending() {
+    try {
+      sessionStorage.setItem(SIGN_IN_PROVIDER_MARKER_KEY, "1");
+    } catch (err) {
+      // A failed write costs the automatic switch, never the sign-in.
+      logWarn("Could not mark the provider switch as pending", err);
+    }
+  }
+
+  function switchProviderAfterSignIn(detail) {
+    const state = detail || {};
+
+    // Read and clear in one step, on ANY settled state. A marker left behind
+    // by an abandoned sign-in would otherwise fire the switch on a later,
+    // unrelated event in the same tab.
+    let pending = null;
+    try {
+      pending = sessionStorage.getItem(SIGN_IN_PROVIDER_MARKER_KEY);
+      if (pending) sessionStorage.removeItem(SIGN_IN_PROVIDER_MARKER_KEY);
+    } catch (err) {
+      logWarn("Could not read the pending provider switch marker", err);
+      return;
+    }
+
+    if (!pending || state.isSignedIn !== true) return;
+
+    if (
+      !window.ProviderSwitcher ||
+      typeof window.ProviderSwitcher.setActive !== "function"
+    ) {
+      logWarn("ProviderSwitcher unavailable — active provider left unchanged");
+      return;
+    }
+
+    // setActive() persists the choice and dispatches 'provider:changed';
+    // ProviderSwitcherUI owns the radio and updates it from that event, so the
+    // checked state is never set here. A false return means Foundry was
+    // already active — a no-op, not a failure.
+    const changed = window.ProviderSwitcher.setActive(
+      SIGN_IN_TARGET_PROVIDER_ID,
+    );
+    logInfo(
+      changed
+        ? "Active provider switched to Microsoft Foundry after sign-in"
+        : "Microsoft Foundry was already the active provider after sign-in",
+    );
+  }
+
+  // ============================================================
   // University sign-in card (F2 stage 9a)
   // ============================================================
   // Renders the sign-in card's five states. The badge deliberately carries NO
@@ -1744,6 +1822,10 @@ window.SetUpTool = (function () {
       logWarn("Sign-in requested but window.EntraAuth is unavailable");
       return;
     }
+    // Mark the pending provider switch BEFORE the redirect — see
+    // switchProviderAfterSignIn. Nothing after signIn() runs, so this is the
+    // only moment at which the intention can be recorded.
+    markProviderSwitchPending();
     // signIn() NAVIGATES AWAY to Microsoft — nothing after this call runs.
     // The state change is announced by the card render, not here.
     window.EntraAuth.signIn();
@@ -2055,11 +2137,15 @@ window.SetUpTool = (function () {
     // the event's own detail carries everything reconciliation needs.
     if (window.EntraAuth) {
       window.addEventListener(window.EntraAuth.CHANGE_EVENT, function (event) {
-        reconcileFoundryWithSignInState(
-          event && event.detail ? event.detail : {},
-        );
+        const detail = event && event.detail ? event.detail : {};
+        // Reconcile FIRST — it discards a stale auth-* Foundry test result, so
+        // the Foundry card is coherent before Foundry becomes active.
+        reconcileFoundryWithSignInState(detail);
+        switchProviderAfterSignIn(detail);
       });
-      logDebug("entra:changed Foundry reconciliation listener registered");
+      logDebug(
+        "entra:changed Foundry reconciliation and provider-switch listener registered",
+      );
     }
 
     // Same arrangement for the Ally card — see reconcileAllyWithSignInState,

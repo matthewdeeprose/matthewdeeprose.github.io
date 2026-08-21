@@ -59,6 +59,18 @@ const ALLY_INCLUSION_QUESTIONS = (function () {
   }
 
   // ========================================================================
+  // Constants
+  // ========================================================================
+
+  /**
+   * The control that opens this wizard, declared to UniversalModal as
+   * `returnFocusTo` so focus comes back here on close. See the Modal config in
+   * open(), and docs/universal-ui-components-guide.md § 6.4.
+   * @type {string}
+   */
+  const TRIGGER_BTN_ID = "ally-sp-answer-questions";
+
+  // ========================================================================
   // Module state (single wizard instance at a time)
   // ========================================================================
 
@@ -804,6 +816,17 @@ const ALLY_INCLUSION_QUESTIONS = (function () {
         content: shell,
         size: "fullscreen",
         className: "ally-iq-modal-wrapper",
+        // WHERE FOCUS RETURNS. Declared rather than left to UniversalModal's
+        // default, because the "Discard your answer?" confirm is a SECOND modal
+        // over this one and the manager keeps only ONE shared opener record for
+        // the whole stack -- so the default loses this wizard's opener and lands
+        // focus on #main (WCAG 2.4.3). Resolved by id at CLOSE time, so
+        // reopening from the "Edit answers" toast, whose button is gone by then,
+        // still returns focus to a real control.
+        //
+        // This replaced a hand-rolled restore (8893771) once the option existed
+        // at d0e4102. See docs/universal-ui-components-guide.md § 6.4.
+        returnFocusTo: TRIGGER_BTN_ID,
         closeOnOverlayClick: false, // avoid accidental loss of in-progress answers
         onOpen: function () {
           renderStep();

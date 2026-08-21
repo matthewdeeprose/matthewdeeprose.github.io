@@ -62,6 +62,13 @@
  * :focus-visible). The content ships VISIBLE in the raw HTML (readable with JS
  * off); the script collapses it on load.
  *
+ * EXTERNAL LINKS are rewritten to open in a new tab by the SCORM target ONLY
+ * (see applyExportNewTabLinks in ally-scripts/ui/ally-statement-preview.js). This
+ * sheet supplies the two classes that treatment needs — .visually-hidden, which
+ * the output does NOT define (it has .sr-only), and an explicitly-sized
+ * .ally-sp-external-icon. Both are inert in a standalone HTML export, which never
+ * emits the markup.
+ *
  * ONE DELIBERATE DEVIATION (accessibility over fidelity): the in-app dark
  * `.ally-sp-error` keeps a near-white background (#fef7f6) while dark body text
  * is light — a latent contrast failure. The export pins dark text on the
@@ -571,6 +578,47 @@ export const ALLY_STATEMENT_EXPORT_CSS = `<style id="ally-statement-export-css">
   width: 1.1rem;
   height: 1.1rem;
   flex-shrink: 0;
+}
+
+/* --- External links that open in a new tab (SCORM target only) ---
+   The SCORM export rewrites external http(s) links to target="_blank" (the LMS
+   content frame blocks same-frame navigation to another origin), appending a
+   decorative icon and a visually-hidden " (opens in a new tab)" suffix INSIDE the
+   <a>. The output's own CSS supplies NEITHER class: it defines .sr-only and
+   .lyt-visually-hidden but not .visually-hidden, and it styles only its own
+   component classes. Both are therefore supplied here.
+
+   Colour is deliberately absent: the icon is stroke="currentColor", so it takes
+   the link's own colour in both themes and its contrast tracks the link text. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.ally-sp-external-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 0.25rem;
+}
+/* Explicit size, always: the library base rule is svg { max-width:100%; height:auto },
+   so an unsized injected icon inflates to fill its container. */
+.ally-sp-external-icon svg,
+.ally-sp-external-icon .icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+/* Inside a link-button the icon is a flex item and the button already supplies
+   gap: 0.4rem, so the margin above would double-space it. */
+.ally-sp-linkbutton .ally-sp-external-icon {
+  margin-left: 0;
 }
 
 /* --- Course information --- */
