@@ -1,0 +1,112 @@
+FONTLOG for the Leipzig font
+===========================
+
+This file provides detailed information on the Leipzig Font Software. This information should be distributed along with the Leipzig font and any derivative works.
+
+Change log
+----------
+
+2014-03-21: Created.
+Version 5.2.0 - adding glyphs (dynamics, ornaments, mensural note heads, etc)
+Version 5.2.1 - adding repeats
+Version 5.2.2 - fixing size of some glpyhs
+Version 5.2.3 - adding mensural clefs
+Version 5.2.4 - adding more dynam glyphs
+Version 5.2.5 - adding more dynam glyphs
+Version 5.2.6 - adding some octaves glyphs
+Version 5.2.7 - adjusting pedal glyphs
+Version 5.2.8 - adding perc clef
+Version 5.2.9 - adding two mensural clefs
+Version 5.2.10 - adding articulations and two fermatas and bow directions
+Version 5.2.11 - adding harmonic and reviewing bows
+Version 5.2.12 - reviewing artic width
+Version 5.2.13 - adding (very)short/long fermata and breath comma
+Version 5.2.14 - adding mensural stems
+Version 5.2.15 - changing ascent/descent to 750/250
+Version 5.2.16 - adding mensural rests
+Version 5.2.17 - correcting mensural rests position
+Version 5.2.18 - adding accid square brackets and reviewing bow directions
+Version 5.2.19 - adding some quartertone accidentals (Gould and Stein-Zimmermann)
+Version 5.2.20 - adding some anchor points (accidentals)
+Version 5.2.21 - adding stem flags (16th to 256th)
+Version 5.2.22 - fixing anchor point names
+Version 5.2.23 - adding anchor points to all accidentals
+Version 5.2.24 - changing 8th flags
+Version 5.2.25 - reviewing mensural clefs
+Version 5.2.26 - revising position of some rests
+Version 5.2.27 - adding some anchor points to note heads
+Version 5.2.28 - correcting anchor points
+Version 5.2.29 - adding plus time signature symbols
+Version 5.2.30 - adding some combining strokes for trills
+Version 5.2.31 - adding some arpegio glyphs (Mulit-segment lines)
+Version 5.2.32 - adding pedal sostenuto glyph
+Version 5.2.33 - adding mensural prolations
+Version 5.2.34 - adding some tablature glyphs
+Version 5.2.35 - adding 512th and 1024th flags
+Version 5.2.36 - adding 512th and 1024th rests
+Version 5.2.37 - adding some more tablature glyphs
+Version 5.2.38 - validating font
+Version 5.2.39 - adjusting some more tablature glyphs
+Version 5.2.40 - adding brace glyph
+Version 5.2.41 - adding sprechgesang glyph
+Version 5.2.42 - adding some notehead glyphs
+Version 5.2.43 - adding buzz roll glyph
+Version 5.2.44 - adding anchor points to noteheads
+Version 5.2.45 - adding precomposed ornaments
+Version 5.2.46 - adding single P and S for piano pedal
+Version 5.2.47 - adding glyphs for longer rests
+Version 5.2.48 - adding baroque ornament
+Version 5.2.49 - adding arabic accidentals
+Version 5.2.50 - adding more clefs, notehead parentheses and slash noteheads
+Version 5.2.51 - adding old quarter rests and fingering numerals
+Version 5.2.52 - adding old accidentals and completing the octaves range
+Version 5.2.53 - fix arpeggio arrow down direction
+Version 5.2.54 - fix time signature margins
+Version 5.2.55 - complete Petrucci C clefs range
+Version 5.2.56 - adding glyphs to Time signatures range
+Version 5.2.57 - adding soft accents
+Version 5.2.58 - fix arpeggio arrow width
+Version 5.2.59 - adding Henze fermatas
+Version 5.2.60 - reworked arpeggio glyphs and added glissando glyph
+Version 5.2.61 - adding glyphs for muted brass
+Version 5.2.62 - adding double whole note glyphs
+Version 5.2.63 - adding barlines, repeat dots, and square coda
+Version 5.2.64 - completed rests and bar repeats range
+Version 5.2.65 - reworked tablature glyphs and fix some validation errors
+Version 5.2.66 - reworked tablature glyph duration symbols
+Version 5.2.67 - completed arrow quartertone accidental range
+Version 5.2.68 - revising and adding tremolo slashes
+Version 5.2.69 - revising and adding mensural noteheads
+Version 5.2.70 - adding lute tablature and cut time glyphs
+Version 5.2.71 - completed mensural clef and time signatures supplement ranges
+Version 5.2.72 - minor clefs revision
+Version 5.2.73 - adding some beaters pictograms and electronic music pictograms
+Version 5.2.74 - adding caesuras
+Version 5.2.75 - adding glyphs previously in VerovioText
+Version 5.2.76 - adding figured bass accidentals
+Version 5.2.77 - adding space and some metronom marks
+Version 5.2.78 - fix x-adv of some glyph and some validation issues
+Version 5.2.79 - add some plainchant glyphs (single and multiple forms)
+Version 5.2.80 - remove wrongly placed glyphs
+Version 5.2.81 - adding presian accidental and missing plainchant glyph
+Version 5.2.82 - adding octaves supplement, minor refinements and fixes
+Version 5.2.83 - adding glyphs from the plucked range
+Version 5.2.84 - adding half pedal marks
+Version 5.2.85 - adding German lute tablature glyphs
+Version 5.2.86 - adding chant division and staff raise glyphs
+Version 5.2.87 - adding chant staff raise glyph
+Version 5.2.88 - adding filled minim notehead
+Version 5.2.89 - adding anchor points to mensural noteheads
+Version 5.2.90 - adding proportion number glyphs
+Version 5.2.91 - adding chant glyphs
+Version 5.2.92 - adding stroke for trill
+Version 5.2.93 - adding square note heads
+Version 5.2.94 - adding neume G clef
+Version 5.2.95 - adding circle X notehead
+Version 5.2.96 - adding noteheads with slash and backslash
+Version 5.2.97 - adding Salzedo breath mark
+Version 5.2.98 - adding medRenOriscusCMN SMUFL glyph
+Version 5.2.99 - adding episema and ictus
+Version 5.2.100 - adding epsisema
+Version 5.2.101 - fix Italian tenor clef
+Version 5.2.102 - adding Turkish folk music accidentals

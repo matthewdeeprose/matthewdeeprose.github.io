@@ -122,6 +122,24 @@ const MusicModelWalk = (function () {
   // pitches. Ordering stays diatonic and ignores alter, so a C sharp and a C
   // natural sort to the same slot; the spelled accidental lives in the label,
   // not the index.
+  //
+  // This is a plain object and therefore inherits from Object.prototype, so a
+  // step of "constructor", "toString" or "valueOf" returns an inherited FUNCTION
+  // rather than undefined. The reader below admits only a NUMBER for that reason.
+  // An undefined test alone let such a step through, and the damage was not the
+  // odd label it produced: the arithmetic on that function gave NaN, every later
+  // comparison against NaN was false, and so the first poisoned note silently
+  // ERASED every real pitch in the piece from the range.
+  //
+  // A byte-identical STEP_INDEX lives in music-transpose.js (around line 51),
+  // read in transposeXml and guarded there by hasOwnProperty rather than by the
+  // numeric test used here. The two guards differ because the defects did: that
+  // copy sat behind `in`, the WRONG OPERATOR, which walks the prototype chain by
+  // specification, so a key test was the correction there; this one sat behind a
+  // weak `undefined` test that an inherited function passes, so a VALUE test was
+  // the correction here. The copies are independent and nothing keeps them in
+  // step, so an edit to either must be checked against the other; they are
+  // deliberately NOT merged.
   const STEP_INDEX = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
 
   // pitchRange(model): pure; NEVER throws. Walks every note across
@@ -145,7 +163,7 @@ const MusicModelWalk = (function () {
           if (n.rest === true) continue;
           if (n.step === null || n.step === undefined || n.octave === null || n.octave === undefined) continue;
           const stepIndex = STEP_INDEX[n.step];
-          if (stepIndex === undefined) continue;
+          if (typeof stepIndex !== "number") continue;
           const index = Number(n.octave) * 7 + stepIndex;
           const label = pitchLabel(n.step, n.octave, n.alter);
           if (lowest === null || index < lowestIndex) {
@@ -165,11 +183,29 @@ const MusicModelWalk = (function () {
 
   // noteValueCounts(model): pure; NEVER throws. Tallies every note (pitched and
   // rests) across parts -> measures -> notes by British note-value name,
-  // returning an object mapping name -> count. Notes whose type is unmapped to a
-  // name (null type) are skipped.
+  // returning an object mapping name -> count. A note whose type is ABSENT is
+  // skipped, having no name to tally under. A note whose type is PRESENT but
+  // unmapped is NOT skipped: it tallies under its raw type, which is the
+  // fallback noteValueName documents. A name colliding with an inherited Object
+  // member is skipped, so the returned object stays a name-to-number map.
   function noteValueCounts(model) {
     const m = model || {};
     const parts = Array.isArray(m.parts) ? m.parts : [];
+    // counts is a plain object and therefore inherits from Object.prototype, so
+    // reading a name of "constructor", "toString" or "valueOf" back gives an
+    // inherited FUNCTION rather than undefined. The old falsiness read passed
+    // that through and stored `function + 1` — a STRING, not a count — whereupon
+    // dominantNoteValue's comparison against -Infinity was false and the rhythm
+    // clause VANISHED from the summary. Admitting only a NUMBER as the prior
+    // tally skips such a name, exactly as an absent type is skipped, and refuses
+    // no legitimate name, because every prior this function writes is a number.
+    // The test covers every inherited member, not only the three named above:
+    // "hasOwnProperty", "toLocaleString" and "isPrototypeOf" each damaged the
+    // tally identically, and each is now skipped. "__proto__" is the exception
+    // worth knowing — it reads back as an OBJECT rather than a function, and its
+    // write was already discarded by its own setter, so the note vanished either
+    // way. Its outcome is unchanged; what changes is that it is now skipped
+    // deliberately rather than by accident.
     const counts = {};
     for (const part of parts) {
       const measures = part && Array.isArray(part.measures) ? part.measures : [];
@@ -177,7 +213,10 @@ const MusicModelWalk = (function () {
         const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
         for (const note of notes) {
           const name = names.noteValueName(note ? note.type : null);
-          if (name !== null) counts[name] = (counts[name] || 0) + 1;
+          if (name === null) continue;
+          const prior = counts[name] === undefined ? 0 : counts[name];
+          if (typeof prior !== "number") continue;
+          counts[name] = prior + 1;
         }
       }
     }
@@ -204,10 +243,19 @@ const MusicModelWalk = (function () {
   // Dynamic codes ranked softest to loudest, for ordering a dynamics range. Only
   // the eight LEVEL codes are ranked. sf, sfz and fp are accents rather than
   // levels and have no honest place on a soft-to-loud scale, so they carry no
-  // rank and are skipped, exactly as pitchRange skips a note whose step is not in
-  // STEP_INDEX. The rank lives here rather than in music-names because that
-  // module holds closed-set LOOKUPS, and this is an ORDER; STEP_INDEX sets the
-  // precedent for an ordering table living beside the walk that needs it.
+  // rank and are skipped. The rank lives here rather than in music-names because
+  // that module holds closed-set LOOKUPS, and this is an ORDER; STEP_INDEX sets
+  // the precedent for an ordering table living beside the walk that needs it.
+  //
+  // Like STEP_INDEX this is a plain object inheriting from Object.prototype, so a
+  // code of "constructor", "toString" or "valueOf" returns an inherited FUNCTION
+  // rather than undefined, and the reader below admits only a NUMBER for that
+  // reason. The two tables now share that admission test, but NOT the scope of
+  // the skip, and the difference is deliberate: pitchRange abandons the whole
+  // note with a continue, whereas the gate below wraps the ranking block ALONE,
+  // so a note whose dynamic is unrankable still contributes its shaping
+  // endpoints. An earlier version of this comment claimed the skip happened
+  // "exactly as pitchRange skips a note", which conflated the two scopes.
   const DYNAMIC_INDEX = { ppp: 0, pp: 1, p: 2, mp: 3, mf: 4, f: 5, ff: 6, fff: 7 };
 
   // dynamicsOverview(model): pure; NEVER throws. Walks every note across
@@ -244,7 +292,7 @@ const MusicModelWalk = (function () {
           const n = note || {};
           if (typeof n.dynamic === "string" && n.dynamic !== "") {
             const index = DYNAMIC_INDEX[n.dynamic];
-            if (index !== undefined) {
+            if (typeof index === "number") {
               if (softestCode === null || index < softestIndex) {
                 softestCode = n.dynamic;
                 softestIndex = index;
@@ -879,6 +927,64 @@ const MusicModelWalk = (function () {
     const DYN_WITH_ACCENT = dynModel([dynNote("p", null), dynNote("sf", null), dynNote("f", null)]);
     const DYN_ACCENT_ONLY = dynModel([dynNote("sf", null)]);
 
+    // Stage 73 fixtures. The three Object.prototype member names are held in one
+    // list so both ordering tables are proved against the same seeds; a guard
+    // that admitted only two of the three would otherwise pass a row naming one.
+    const PROTO_KEYS = ["constructor", "toString", "valueOf"];
+    // The poisoned step sits FIRST, ahead of two real pitches at the extremes of
+    // the range, because the defect was never the odd label on its own: the
+    // arithmetic on the inherited function gave NaN, and every later comparison
+    // against NaN was false, so the poisoned note ERASED C3 and G6 from the
+    // result. Asserting the two real values by name is what catches that; a row
+    // asserting only that the odd label has gone would pass on an empty range.
+    function protoStepModel(step) {
+      return { parts: [{ id: "P1", name: "Proto", measures: [{ number: "1", notes: [
+        { rest: false, step: step, octave: 4, duration: 2, type: "quarter" },
+        { rest: false, step: "C", octave: 3, duration: 2, type: "quarter" },
+        { rest: false, step: "G", octave: 6, duration: 2, type: "quarter" },
+      ] }] }] };
+    }
+    function protoStepOnlyModel(step) {
+      return { parts: [{ id: "P1", name: "Proto", measures: [{ number: "1", notes: [
+        { rest: false, step: step, octave: 4, duration: 2, type: "quarter" },
+      ] }] }] };
+    }
+    function protoDynModel(code) {
+      return dynModel([dynNote(code, null), dynNote("p", null), dynNote("f", null)]);
+    }
+    function protoDynOnlyModel(code) {
+      return dynModel([dynNote(code, null)]);
+    }
+    // An unrankable dynamic must still contribute its shaping endpoints, because
+    // the gate wraps the ranking block alone. Counts are deliberately unequal so
+    // a fix that paired or conflated them cannot pass.
+    function protoDynShapingModel(code) {
+      return dynModel([dynNote(code, { starts: ["crescendo", "diminuendo"], stops: ["diminuendo"] })]);
+    }
+
+    // Stage 74 fixtures, for the counts accumulator. They reuse PROTO_KEYS above,
+    // so the accumulator is proved against the same three seeds as both ordering
+    // tables. Every assertion below reads the COUNTS OBJECT, never the summary
+    // sentence: the rendered text is identical on the defective and the fixed
+    // build in every case, so a row asserting on the sentence would pass on both
+    // and prove nothing.
+    function noteTyped(type) {
+      return { rest: false, step: "C", octave: 4, duration: 2, type: type };
+    }
+    function typeModel(types) {
+      return { parts: [{ id: "P1", name: "Proto", measures: [{ number: "1",
+        notes: types.map(noteTyped) }] }] };
+    }
+    // Three real crotchets carry the tally, so a fix that dropped the poisoned
+    // name AND its innocent neighbours cannot pass. The count is asserted by
+    // VALUE for the same reason.
+    function protoTypeModel(type) {
+      return typeModel(["quarter", "quarter", "quarter", type]);
+    }
+    function protoTypeOnlyModel(type) {
+      return typeModel([type]);
+    }
+
     const results = {
       hasDescribeNote: typeof describeNote === "function",
       hasSelfTest: typeof selfTest === "function",
@@ -908,6 +1014,47 @@ const MusicModelWalk = (function () {
       noteValueCountsCorrect: (function () {
         const c = noteValueCounts(MODEL);
         return c.crotchet === 5 && c.quaver === 2 && c.minim === 1 && Object.keys(c).length === 3;
+      })(),
+      // Stage 74. A type naming an Object.prototype member yields no tallyable
+      // name, so a model carrying nothing else returns an EMPTY object — the same
+      // outcome as a model whose only note has an absent type.
+      noteValueCountsProtoTypeOnlyEmpty: PROTO_KEYS.every(function (k) {
+        return Object.keys(noteValueCounts(protoTypeOnlyModel(k))).length === 0;
+      }),
+      // The poisoned name reaches the returned object by neither route: not as an
+      // enumerable key, and not as an own property. Asserted both ways because
+      // hasOwnProperty is what distinguishes a key that was written from one that
+      // was merely inherited and read back.
+      noteValueCountsProtoTypeKeyAbsent: PROTO_KEYS.every(function (k) {
+        const c = noteValueCounts(protoTypeModel(k));
+        return Object.keys(c).indexOf(k) === -1 && !Object.prototype.hasOwnProperty.call(c, k);
+      }),
+      // The load-bearing row: the three REAL crotchets survive a poisoned note
+      // alongside them, and are asserted BY VALUE. A fix that dropped the whole
+      // model rather than the one name would pass the absence row above and fail
+      // this one.
+      noteValueCountsProtoTypeRealCountIntact: PROTO_KEYS.every(function (k) {
+        const c = noteValueCounts(protoTypeModel(k));
+        return c.crotchet === 3 && Object.keys(c).length === 1;
+      }),
+      // The contract the header states, asserted directly: the returned object is
+      // a name-to-NUMBER map. On the defective build each seed stored its OWN
+      // method's source text plus 1 — "function Object() { [native code] }1" for
+      // "constructor", and so on for the other two — so this reads red on all
+      // three. Never through JSON, which drops a function-valued property and
+      // would read clean on a broken build.
+      noteValueCountsEveryValueIsNumber: PROTO_KEYS.every(function (k) {
+        const c = noteValueCounts(protoTypeModel(k));
+        return Object.keys(c).every(function (key) { return typeof c[key] === "number"; });
+      }),
+      // PRESERVATION row, and it reads the SAME on both modules by design: it is
+      // not a failed inversion. An unmapped but PRESENT type is not a collision
+      // and must still tally under its raw type, per noteValueName's documented
+      // fallback. Without it, a guard that skipped every unmapped name would pass
+      // all four rows above while silently dropping legitimate note values.
+      noteValueCountsUnmappedPresentTypeStillTallies: (function () {
+        const c = noteValueCounts(typeModel(["zz", "zz", "quarter"]));
+        return c.zz === 2 && c.crotchet === 1 && Object.keys(c).length === 2;
       })(),
       describeSurfacesDynamic: dRich.dynamic === "forte",
       describeSurfacesLyric: dRich.lyric === "la",
@@ -950,6 +1097,27 @@ const MusicModelWalk = (function () {
         const r = pitchRange(ALTERED_MODEL);
         return !!r && r.lowest === "B flat 3" && r.highest === "C sharp 5";
       })(),
+      // Stage 73. A step naming an Object.prototype member is not a pitch, so a
+      // model carrying nothing else has no pitched note and the range is null —
+      // the same outcome as a step legitimately absent from STEP_INDEX.
+      pitchRangeProtoStepOnlyIsNull: PROTO_KEYS.every(function (k) {
+        return pitchRange(protoStepOnlyModel(k)) === null;
+      }),
+      // The load-bearing row: the two REAL pitches survive a poisoned note that
+      // walks ahead of them. Asserted by value, because the failure being guarded
+      // against is their silent erasure, not a cosmetic label.
+      pitchRangeProtoStepLeavesRealRangeIntact: PROTO_KEYS.every(function (k) {
+        const r = pitchRange(protoStepModel(k));
+        return !!r && r.lowest === "C3" && r.highest === "G6";
+      }),
+      // And the visible symptom itself: the poisoned label reaches neither end of
+      // the range. Asserted on the returned STRINGS, never through JSON, which
+      // drops a function-valued property and would read clean on a broken build.
+      pitchRangeProtoStepLabelAbsentFromRange: PROTO_KEYS.every(function (k) {
+        const r = pitchRange(protoStepModel(k));
+        return !!r && typeof r.lowest === "string" && typeof r.highest === "string" &&
+          r.lowest.indexOf(k) === -1 && r.highest.indexOf(k) === -1;
+      }),
       hasGroupNotes: typeof groupNotes === "function",
       groupNotesSimpleMelodyUnchanged: (function () {
         const g = groupNotes(MODEL.parts[0].measures[0].notes);
@@ -1363,6 +1531,36 @@ const MusicModelWalk = (function () {
         return !!d && d.softest === "piano" && d.loudest === "forte";
       })(),
       dynamicsOnlyUnrankableNullEnds: dynamicsOverview(DYN_ACCENT_ONLY) === null,
+      // Stage 73. A code naming an Object.prototype member carries no rank, so it
+      // is passed over exactly as sf, sfz and fp are, and the real piano-to-forte
+      // range stands. Asserted on the returned NAMES, so a leaked function fails
+      // the string comparison rather than being dropped by a JSON round trip.
+      dynamicsProtoDynNotRanked: PROTO_KEYS.every(function (k) {
+        const d = dynamicsOverview(protoDynModel(k));
+        return !!d && d.softest === "piano" && d.loudest === "forte";
+      }),
+      // With no other dynamic and no shaping to report, the whole overview is
+      // null — the DYN_ACCENT_ONLY outcome, reached by an inherited key.
+      dynamicsProtoDynOnlyNullOverview: PROTO_KEYS.every(function (k) {
+        return dynamicsOverview(protoDynOnlyModel(k)) === null;
+      }),
+      // PRESERVATION, not removal: the gate wraps the ranking block alone, so an
+      // unrankable dynamic still contributes its shaping endpoints. The two ends
+      // are counted independently and never paired, hence 2 starts against 1 stop.
+      dynamicsProtoDynStillCountsShaping: PROTO_KEYS.every(function (k) {
+        const d = dynamicsOverview(protoDynShapingModel(k));
+        return !!d && d.softest === null && d.loudest === null &&
+          d.shapingStarts === 2 && d.shapingStops === 1;
+      }),
+      // The counts ALONE, held apart from the ranking. This row is deliberately
+      // NOT an inversion: it reads the same on the committed build as here,
+      // because the shaping counts are behaviour this stage PRESERVES rather than
+      // changes. Kept separate because the row above asserts both halves at once,
+      // and a combined row cannot show which half a failure came from.
+      dynamicsProtoDynShapingCountsPreserved: PROTO_KEYS.every(function (k) {
+        const d = dynamicsOverview(protoDynShapingModel(k));
+        return !!d && d.shapingStarts === 2 && d.shapingStops === 1;
+      }),
       dynamicsNeverThrows: (function () {
         try {
           dynamicsOverview(null);

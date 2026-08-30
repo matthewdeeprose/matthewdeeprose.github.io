@@ -88,6 +88,68 @@ const MathPixContextAI = (function () {
    */
   const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
 
+  // ---------------------------------------------------------------------------
+  // Shared capability module (parcel EA-4)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Reach the shared capability module at CALL time, never as a module-scope
+   * capture. Its script tag precedes this file in tools.html, so an absence
+   * here is a page-configuration fault rather than a capability finding — and
+   * it is reported as one, with its own sentence, so it can never be mistaken
+   * for a model being refused on its merits.
+   *
+   * @returns {Object|null} window.MathPixModelCapability, or null with an error.
+   */
+  function _capability() {
+    const shared = window.MathPixModelCapability;
+    if (!shared) {
+      logError(
+        "MathPixModelCapability unavailable at call time. Its script tag precedes this file in tools.html, so this is a page-configuration fault, not a capability result."
+      );
+      return null;
+    }
+    return shared;
+  }
+
+  /**
+   * The sentence used when the shared module itself did not load. Deliberately
+   * NOT a second copy of NON_PDF_REFUSAL: it names a different fault, so a
+   * reader who sees it is not sent looking at the model.
+   */
+  const CAPABILITY_MODULE_MISSING =
+    "The model capability module did not load. Reload the page and try again.";
+
+  /**
+   * The PDF refusal sentence, read from the shared module at call time.
+   *
+   * @deprecated Moved to window.MathPixModelCapability.NON_PDF_REFUSAL at EA-4.
+   *   Kept here only as a working facade for existing consumers; read it from
+   *   the shared module in new code.
+   * @returns {string}
+   */
+  function _nonPdfRefusal() {
+    const shared = _capability();
+    return shared && typeof shared.NON_PDF_REFUSAL === "string"
+      ? shared.NON_PDF_REFUSAL
+      : CAPABILITY_MODULE_MISSING;
+  }
+
+  /**
+   * The provider-membership refusal sentence, read from the shared module at
+   * call time.
+   *
+   * @deprecated Moved to window.MathPixModelCapability.PROVIDER_REFUSAL at EA-4.
+   *   Kept here only as a working facade for existing consumers.
+   * @returns {string}
+   */
+  function _providerRefusal() {
+    const shared = _capability();
+    return shared && typeof shared.PROVIDER_REFUSAL === "string"
+      ? shared.PROVIDER_REFUSAL
+      : CAPABILITY_MODULE_MISSING;
+  }
+
   /** Approximate characters per token, for the max_tokens scaling below. */
   const CHARS_PER_TOKEN = 4;
 
@@ -468,6 +530,60 @@ const MathPixContextAI = (function () {
     return null;
   }
 
+  // ===========================================================================
+  // SEND-BOUNDARY PREDICATES — delegating facade (parcel EA-4)
+  // ===========================================================================
+  // Both predicates, both refusal sentences and the umbrella fold MOVED to
+  // mathpix-scripts/core/mathpix-model-capability.js at EA-4, together with the
+  // vision predicate and the 27-entry known-vision list they had always been
+  // siblings of. The comment that used to sit on isModelProviderAvailable said
+  // this facade was their home UNTIL that module existed; it now does.
+  //
+  // What is left here is a working facade, kept so this parcel changes no
+  // consumer. The enhancer, the multi-pass orchestrator and the suite all reach
+  // window.MathPixContextAI at call time and are untouched; they are expected to
+  // move to the shared module in a later parcel, at which point these four
+  // exports and the two helpers above can go.
+  //
+  // Each delegation reaches the shared module at CALL time, so the facade stays
+  // stubbable — several suite rows replace these very properties — and so a
+  // reordered script tag fails loudly rather than capturing undefined.
+
+  /**
+   * Can this model id read a PDF attachment?
+   *
+   * @deprecated Moved to window.MathPixModelCapability.isModelPdfCapable at
+   *   EA-4. The FF.1 asymmetry, the no-authority refusals and every branch
+   *   comment moved with it, unchanged; read the decision table there.
+   * @param {string} modelId - the model id actually about to be sent with.
+   * @returns {boolean} true only when the id is positively established as able
+   *   to read a PDF for its own provider. False when the shared module is
+   *   absent, matching the predicate's own no-authority branch.
+   */
+  function isModelPdfCapable(modelId) {
+    const shared = _capability();
+    if (!shared || typeof shared.isModelPdfCapable !== "function") return false;
+    return shared.isModelPdfCapable(modelId);
+  }
+
+  /**
+   * Is this model served by the provider the user currently has selected?
+   *
+   * @deprecated Moved to window.MathPixModelCapability.isModelProviderAvailable
+   *   at EA-4, along with PROVIDER_GROUPS and the fail-open reasoning.
+   * @param {string} modelId
+   * @returns {boolean} true when the model belongs to the active provider.
+   *   False when the shared module is absent — the predicate's own lookup
+   *   branch refuses on a missing authority for the same reason.
+   */
+  function isModelProviderAvailable(modelId) {
+    const shared = _capability();
+    if (!shared || typeof shared.isModelProviderAvailable !== "function") {
+      return false;
+    }
+    return shared.isModelProviderAvailable(modelId);
+  }
+
   /**
    * Create the hidden OpenRouter Embed instance for one context round-trip.
    *
@@ -510,6 +626,35 @@ const MathPixContextAI = (function () {
       options.model ||
       (this._resolvedModel && this._resolvedModel.id) ||
       DEFAULT_MODEL;
+
+    // ---- Send boundary (S2F-D8) ---------------------------------------------
+    // The one final id is now resolved, and NOTHING has been constructed or
+    // attached yet. Re-check capability HERE, on that id, whatever chose it.
+    //
+    // On the wired UI path this is defence in depth: handleAnalyseClick already
+    // refuses when _resolveModel() returns null, so the button cannot reach an
+    // incapable model. What this catches is everything the button is not — the
+    // DEFAULT_MODEL last rung of the ladder above, an options.model override,
+    // and any direct caller of the exported facade. S2F-D8 locks the placement
+    // at the send boundary on the resolved model precisely because a picker
+    // filters the list and not the send.
+    if (!isModelPdfCapable(model)) {
+      logWarn("initEmbed: refusing a model that cannot read PDF files.", {
+        model,
+        resolvedForRun: this._resolvedModel && this._resolvedModel.id,
+        explicitOverride: options.model || null,
+      });
+      // Read ONCE, so the announced and the thrown string are the same string
+      // by construction rather than by two reads happening to agree.
+      const refusal = _nonPdfRefusal();
+      if (typeof this._announce === "function") {
+        this._announce(refusal);
+      }
+      // Throw the SAME sentence the person hears, so a direct facade caller
+      // cannot proceed and cannot invent its own wording for this refusal.
+      throw new Error(refusal);
+    }
+
     const modelCap = options.modelMaxOutput || DEFAULT_MODEL_MAX_OUTPUT;
 
     // Single source of truth: the same buildPrompt() that produces the user
@@ -1276,6 +1421,28 @@ const MathPixContextAI = (function () {
     // so it can be inspected and, under test, replaced with a stub.
     embed: null,
     _resolveModel,
+    // ------------------------------------------------------------------------
+    // Send-boundary facade (parcel EA-4). All four MOVED to
+    // window.MathPixModelCapability; these are working delegations kept so no
+    // consumer changed in that parcel, and they are expected to be retired once
+    // the consumers are repointed. New code should read the shared module.
+    //
+    // The two predicates stay WRITABLE data properties rather than getters
+    // because several suite rows stub them in place and restore them by
+    // reference afterwards; a getter would break that silently.
+    // ------------------------------------------------------------------------
+    /** @deprecated Use window.MathPixModelCapability.isModelPdfCapable. */
+    isModelPdfCapable,
+    /** @deprecated Use window.MathPixModelCapability.isModelProviderAvailable. */
+    isModelProviderAvailable,
+    /** @deprecated Use window.MathPixModelCapability.NON_PDF_REFUSAL. */
+    get NON_PDF_REFUSAL() {
+      return _nonPdfRefusal();
+    },
+    /** @deprecated Use window.MathPixModelCapability.PROVIDER_REFUSAL. */
+    get PROVIDER_REFUSAL() {
+      return _providerRefusal();
+    },
     initEmbed,
     attachPDF,
     readFileAsBase64,

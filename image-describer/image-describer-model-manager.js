@@ -32,6 +32,10 @@
  * Architecture: IIFE with window.ImageDescriberModelManager global.
  * No NPM — pure browser JS loaded via <script> tag.
  *
+ * Shared engine: consumed by the MathPix alt-text lane
+ * (see mathpix-scripts/docs/alt-text/local-describer-plan.md).
+ * Check both consumers before changing public shapes.
+ *
  * VERSION: 1.2.0
  * DATE: 27 March 2026
  * PHASE: 9C — Model Manager Module

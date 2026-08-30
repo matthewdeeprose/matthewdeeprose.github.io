@@ -105,64 +105,37 @@
   const FAMILY_OTHER = "Other";
 
   // ============================================================================
-  // KNOWN VISION MODELS — single source of truth (Layer 2)
+  // KNOWN VISION MODELS — no longer here
   // ============================================================================
-  // Hoisted to module scope so the population gate (filterVisionModelsFallback)
-  // and the runtime re-check (isModelVisionCapable) share ONE list and can never
-  // drift. Belt-and-braces against registries that don't flag vision correctly;
-  // includes both OpenRouter-prefixed entries and Foundry-routed entries.
-  const KNOWN_VISION_MODELS = [
-    // OpenRouter — Anthropic Claude models (all recent versions support vision)
-    "anthropic/claude-sonnet-4.6",
-    "anthropic/claude-opus-4.6",
-    "anthropic/claude-haiku-4.5",
-    // OpenRouter — OpenAI GPT-4 vision models
-    "openai/gpt-4-vision-preview",
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4-turbo",
-    // OpenRouter — Google Gemini models
-    "google/gemini-pro-vision",
-    "google/gemini-1.5-pro",
-    "google/gemini-1.5-flash",
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.5-pro-preview",
-    "google/gemini-2.5-flash-preview",
-    // Foundry — Azure OpenAI deployments (Task 3.5b)
-    "azure-openai/gpt-5.4-mini",
-    // Foundry — vision-capable additions (factory registration, post-Stage-3b).
-    // All four Foundry deployments empirically verified vision-capable
-    // (31 May 2026); gpt-5.4-nano was added here once its conservative
-    // vision: false default was flipped in js/foundry-model-definitions.js.
-    "azure-openai/gpt-4o-mini",
-    "azure-openai/gpt-5.4",
-    "azure-openai/gpt-5.4-nano",
-    // Foundry — GPT-5.x flagships, vision verified via Image Describer
-    // (4 June 2026); initially registered text-only in f9ef566, flipped
-    // once vision: true landed in js/foundry-model-definitions.js.
-    "azure-openai/gpt-5",
-    "azure-openai/gpt-5.1",
-    "azure-openai/gpt-5.2",
-    // Foundry — GPT-4.1 family, GPT-4o, and o4-mini, vision verified via
-    // Image Describer (6 June 2026); initially registered text-only in
-    // d1f6cfc, flipped once vision: true landed in
-    // js/foundry-model-definitions.js.
-    "azure-openai/gpt-4.1",
-    "azure-openai/gpt-4.1-mini",
-    "azure-openai/gpt-4.1-nano",
-    "azure-openai/gpt-4o",
-    "azure-openai/o4-mini",
-    // Foundry — Phi-4 Multimodal, vision verified via Image Describer
-    // (6 June 2026); initially registered text-only in 683f2fb on an
-    // ambiguous degenerate-pixel probe (escape-phrase false negative),
-    // flipped once vision: true landed in js/foundry-model-definitions.js.
-    // The other ten batch-3 models remain confirmed text-only.
-    "azure-openai/Phi-4-multimodal-instruct",
-    // Foundry — Responses-API surface (azure-responses provider). gpt-5-pro
-    // vision verified via a live Foundry call (Task 5b); the five Codex
-    // deployments remain text-only.
-    "azure-responses/gpt-5-pro",
-  ];
+  // The 27-entry list MOVED to mathpix-scripts/core/mathpix-model-capability.js
+  // at parcel EA-4, along with isModelVisionCapable. A byte-identical copy had
+  // grown in mathpix-scripts/ai-alt-text/alt-text-cloud-adapter.js, whose own
+  // comment recorded the duplication as a follow-up; both now read ONE frozen
+  // array by reference.
+
+  /**
+   * Returned in place of the shared list when the capability module is absent.
+   * Frozen and module-scope so a caller never receives a fresh array per call.
+   */
+  const EMPTY_VISION_LIST = Object.freeze([]);
+
+  /**
+   * The shared known-vision list, reached at CALL time. An absence is a
+   * page-configuration fault — the capability module's script tag precedes this
+   * file in tools.html — so it is reported as an error rather than absorbed.
+   *
+   * @returns {ReadonlyArray<string>} the shared list, or a frozen empty array.
+   */
+  function _visionList() {
+    const capability = window.MathPixModelCapability;
+    if (!capability || !Array.isArray(capability.KNOWN_VISION_MODELS)) {
+      logError(
+        "MathPixModelCapability unavailable at call time — the shared vision list cannot be read",
+      );
+      return EMPTY_VISION_LIST;
+    }
+    return capability.KNOWN_VISION_MODELS;
+  }
 
   // ============================================================================
   // METHODS (mixed into ImageDescriberController)
@@ -378,9 +351,11 @@
      * @returns {Array<{id: string, name: string}>} Vision-capable model stubs
      */
     filterVisionModelsFallback(activeProvider = "openrouter") {
-      // Uses the module-scope KNOWN_VISION_MODELS (single source of truth shared
-      // with isModelVisionCapable — see top of file).
-      const filtered = KNOWN_VISION_MODELS.filter((modelId) => {
+      // Reads the SHARED list from the capability module at call time (EA-4).
+      // It is the same frozen array the alt-text cloud adapter reads, which is
+      // what makes the drift the two verbatim copies invited impossible rather
+      // than merely unlikely.
+      const filtered = _visionList().filter((modelId) => {
         if (activeProvider === "openrouter") {
           // OpenRouter-routed: anything NOT explicitly azure-openai/ or
           // azure-responses/ prefixed. Legacy bare entries ('anthropic/...',
@@ -414,54 +389,35 @@
     },
 
     /**
-     * Vision-capability predicate — single source of truth for the runtime
-     * re-check (Layer 2) AND the population gate's fallback list. Consults
-     * EmbedModelSelector vision eligibility when available; falls back to
-     * KNOWN_VISION_MODELS membership otherwise. Called pre-send in generate()
-     * and runVerification() to deterministically refuse non-vision models that
-     * slip past the population-only gate (show-all-models, restored preference,
-     * verification selector, direct callers).
+     * Vision-capability predicate — MOVED to
+     * mathpix-scripts/core/mathpix-model-capability.js at parcel EA-4, together
+     * with the KNOWN_VISION_MODELS list. Every branch moved unchanged: the
+     * prefix-derived provider, the non-empty-list-is-authoritative rule, the
+     * EMPTY-list fall-through that must NOT conclude "not vision", the
+     * thrown-selector fall-through, and the membership fallback. Read the
+     * decision table there.
+     *
+     * This method survives because it is called on the controller (`this`) by
+     * generate() and runVerification(), and EA-4 changes no consumer.
+     *
+     * @deprecated Use window.MathPixModelCapability.isModelVisionCapable.
      * @param {string} modelId - The model id actually about to be used
-     * @returns {boolean} true if the model can process images
+     * @returns {boolean} true if the model can process images. False when the
+     *   shared module is absent — with no authority to consult, refusing is the
+     *   honest answer, and the caller's own send-boundary refusal then runs.
      */
     isModelVisionCapable(modelId) {
-      if (!modelId || typeof modelId !== "string") return false;
-
-      // Derive the provider the same way the gate does: an explicit azure-openai
-      // prefix routes to Foundry's chat surface, azure-responses to Foundry's
-      // Responses surface; everything else routes via OpenRouter.
-      const provider = modelId.startsWith("azure-openai/")
-        ? "azure-openai"
-        : modelId.startsWith("azure-responses/")
-        ? "azure-responses"
-        : "openrouter";
-
-      // Primary: EmbedModelSelector vision eligibility (same source as the gate).
+      const capability = window.MathPixModelCapability;
       if (
-        window.EmbedModelSelector &&
-        typeof window.EmbedModelSelector.getEligibleModels === "function"
+        !capability ||
+        typeof capability.isModelVisionCapable !== "function"
       ) {
-        try {
-          const eligible = window.EmbedModelSelector.getEligibleModels({
-            providerId: provider,
-            capabilities: ["vision"],
-          });
-          if (Array.isArray(eligible) && eligible.length > 0) {
-            // Non-empty list is authoritative: in-list => vision, absent => not.
-            return eligible.some((m) => m && m.id === modelId);
-          }
-          // Empty list (selector misconfigured / nothing registered) — do NOT
-          // conclude "not vision"; fall through to the membership fallback.
-        } catch (error) {
-          logWarn(
-            "isModelVisionCapable: getEligibleModels failed, using fallback:",
-            error,
-          );
-        }
+        logError(
+          "MathPixModelCapability unavailable at call time — the shared vision predicate cannot be consulted",
+        );
+        return false;
       }
-
-      // Fallback: KNOWN_VISION_MODELS membership (module-scope, shared list).
-      return KNOWN_VISION_MODELS.includes(modelId);
+      return capability.isModelVisionCapable(modelId);
     },
 
     // ========================================================================

@@ -20,6 +20,29 @@ const MusicNames = (function () {
   const log = window.MusicLog || { logError() {}, logWarn() {}, logInfo() {}, logDebug() {} };
   const { logError, logWarn, logInfo, logDebug } = log;
 
+  // A table lookup that admits ONLY a table's own string values. Every lookup here
+  // reads a plain object, which inherits from Object.prototype, so a key of
+  // "constructor", "toString" or "valueOf" returns an inherited FUNCTION rather
+  // than undefined. Each falsiness guard below then passed that function through
+  // as if it were a name, and a reader was read the words "function Object()
+  // { [native code] }" where a dynamic, an articulation or an ending belonged.
+  // Requiring a string admits every legitimate value, because every value in every
+  // table in this file is a string, and admits nothing inherited.
+  //
+  // It returns null for anything unusable and NEVER supplies a fallback itself:
+  // the callers' documented fallbacks differ — some return the raw code, one
+  // normalises it, and some return null — so each caller applies its own.
+  //
+  // PRIVATE, and deliberately not added to the returned object. Three other files
+  // stub MusicNames with hand-listed method sets, and music-render-text.js records
+  // that such a stub cannot be self-tested because it is captured in a const at
+  // load, so a new exported method would need adding to all three whitelists with
+  // nothing to catch a miss.
+  function mappedString(table, key) {
+    const value = table[key];
+    return typeof value === "string" ? value : null;
+  }
+
   // MusicXML note <type> values mapped to their British note-value names.
   const NOTE_VALUE_NAMES = {
     whole: "semibreve",
@@ -31,10 +54,12 @@ const MusicNames = (function () {
   };
 
   // Translate a MusicXML note type to its British name, falling back to the raw
-  // type when unmapped, or null when the type is absent.
+  // type when unmapped, or null when the type is absent. A type naming an
+  // inherited Object member, such as "constructor", counts as UNMAPPED and takes
+  // the same raw-type fallback.
   function noteValueName(type) {
     if (type === null || type === undefined) return null;
-    return NOTE_VALUE_NAMES[type] || type;
+    return mappedString(NOTE_VALUE_NAMES, type) || type;
   }
 
   // Raw MusicXML dynamic codes mapped to their full names, so a screen reader
@@ -54,10 +79,12 @@ const MusicNames = (function () {
   };
 
   // dynamicName(code): pure. Maps a raw dynamic code to its full name, falls back
-  // to the raw code when unmapped, or null when the code is absent.
+  // to the raw code when unmapped, or null when the code is absent. A code naming
+  // an inherited Object member, such as "constructor", counts as UNMAPPED and
+  // takes the same raw-code fallback.
   function dynamicName(code) {
     if (code === null || code === undefined) return null;
-    return DYNAMIC_NAMES[code] || code;
+    return mappedString(DYNAMIC_NAMES, code) || code;
   }
 
   // Accidental words keyed by the <alter> value, spelled in full as words (never
@@ -143,10 +170,12 @@ const MusicNames = (function () {
   };
 
   // articulationName(tag): pure. Maps a raw articulation tagName to its spoken
-  // name, falling back to the raw tag when unmapped, or null when absent.
+  // name, falling back to the raw tag when unmapped, or null when absent. A tag
+  // naming an inherited Object member, such as "constructor", counts as UNMAPPED
+  // and takes the same raw-tag fallback.
   function articulationName(tag) {
     if (tag === null || tag === undefined) return null;
-    return ARTICULATION_NAMES[tag] || tag;
+    return mappedString(ARTICULATION_NAMES, tag) || tag;
   }
 
   // Ornament tag names mapped to their spoken names, e.g. "trill-mark" -> "trill".
@@ -158,10 +187,12 @@ const MusicNames = (function () {
   };
 
   // ornamentName(tag): pure. Maps a raw ornament tagName to its spoken name,
-  // falling back to the raw tag when unmapped, or null when absent.
+  // falling back to the raw tag when unmapped, or null when absent. A tag naming
+  // an inherited Object member, such as "constructor", counts as UNMAPPED and
+  // takes the same raw-tag fallback.
   function ornamentName(tag) {
     if (tag === null || tag === undefined) return null;
-    return ORNAMENT_NAMES[tag] || tag;
+    return mappedString(ORNAMENT_NAMES, tag) || tag;
   }
 
   // Clef sign-and-line pairs mapped to their spoken clef names, keyed on the
@@ -194,10 +225,11 @@ const MusicNames = (function () {
 
   // endingName(number): pure. Maps a volta number to its spoken ending name
   // (e.g. "1" -> "first-time ending"), accepting a number or a string, or null
-  // when the number is absent or unmapped.
+  // when the number is absent or unmapped. A number naming an inherited Object
+  // member, such as "constructor", counts as UNMAPPED and returns null.
   function endingName(number) {
     if (number === null || number === undefined) return null;
-    return ENDING_NAMES[String(number)] || null;
+    return mappedString(ENDING_NAMES, String(number));
   }
 
   // MusicXML <kind> values mapped to their spoken chord-quality words. The set is
@@ -227,9 +259,12 @@ const MusicNames = (function () {
   // file, not of the format: a second engraver would very likely emit a kind
   // outside this map, and an unmapped kind should cost a reader a clumsy word and
   // never silence.
+  //
+  // A kind naming an inherited Object member, such as "constructor", counts as
+  // UNMAPPED and takes the same hyphen-normalised raw fallback.
   function chordKindName(kind) {
     if (kind === null || kind === undefined || kind === "") return null;
-    return CHORD_KIND_NAMES[kind] || String(kind).replace(/-/g, " ");
+    return mappedString(CHORD_KIND_NAMES, kind) || String(kind).replace(/-/g, " ");
   }
 
   // Accidental suffix for a chord root or bass — " sharp", " flat" and so on with
@@ -411,6 +446,74 @@ const MusicNames = (function () {
         return samples.every(function (input) {
           const out = chordSymbolName(input);
           return typeof out === "string" && out.indexOf("undefined") === -1 && out.indexOf("null") === -1;
+        });
+      })(),
+
+      // Stage 72: the inherited-key guard. Every table in this file is a plain
+      // object, so a key naming an Object.prototype member returned an inherited
+      // FUNCTION rather than undefined, and the falsiness guards passed it through
+      // to a reader. Three seeds rather than one, because they arrive from
+      // different places — "constructor" is Object itself, while "toString" and
+      // "valueOf" are Object.prototype methods — so a guard could plausibly catch
+      // one family and miss the other.
+      //
+      // The helper is asserted PER PREDICATE, not only through its callers: it
+      // must admit a table's own value, and reject BOTH an inherited member and a
+      // plain miss. A helper that rejected everything would leave every caller
+      // row below green, because five of the six fall back to the raw code.
+      hasMappedString: typeof mappedString === "function",
+      mappedStringAdmitsOwnValue: mappedString({ a: "semibreve" }, "a") === "semibreve",
+      mappedStringRejectsInherited: mappedString({}, "constructor") === null &&
+        mappedString({}, "toString") === null && mappedString({}, "valueOf") === null,
+      mappedStringRejectsPlainMiss: mappedString({ a: "semibreve" }, "zz") === null,
+
+      // Each row asserts that function's OWN documented fallback, never a shared
+      // one: five fall back to the raw code, and endingName returns null.
+      noteValueNameInheritedConstructor: noteValueName("constructor") === "constructor",
+      noteValueNameInheritedToString: noteValueName("toString") === "toString",
+      noteValueNameInheritedValueOf: noteValueName("valueOf") === "valueOf",
+      dynamicNameInheritedConstructor: dynamicName("constructor") === "constructor",
+      dynamicNameInheritedToString: dynamicName("toString") === "toString",
+      dynamicNameInheritedValueOf: dynamicName("valueOf") === "valueOf",
+      articulationNameInheritedConstructor: articulationName("constructor") === "constructor",
+      articulationNameInheritedToString: articulationName("toString") === "toString",
+      articulationNameInheritedValueOf: articulationName("valueOf") === "valueOf",
+      ornamentNameInheritedConstructor: ornamentName("constructor") === "constructor",
+      ornamentNameInheritedToString: ornamentName("toString") === "toString",
+      ornamentNameInheritedValueOf: ornamentName("valueOf") === "valueOf",
+      endingNameInheritedConstructor: endingName("constructor") === null,
+      endingNameInheritedToString: endingName("toString") === null,
+      endingNameInheritedValueOf: endingName("valueOf") === null,
+      chordKindNameInheritedConstructor: chordKindName("constructor") === "constructor",
+      chordKindNameInheritedToString: chordKindName("toString") === "toString",
+      chordKindNameInheritedValueOf: chordKindName("valueOf") === "valueOf",
+
+      // chordSymbolName composes THROUGH chordKindName, so an inherited kind
+      // reached a reader as "C function Object() { [native code] }". It now takes
+      // chordKindName's own hyphen-normalised raw fallback.
+      chordSymbolNameInheritedKind: chordSymbolName({ rootStep: "C", kind: "constructor" }) === "C constructor",
+
+      // Cross-cutting, and asserted on the RETURNED VALUE rather than through
+      // JSON.stringify: stringify erases a function outright, so a JSON-routed
+      // assertion reads clean on a broken build and cannot fail in the direction
+      // this defect fails in.
+      guardedLookupsNeverReturnFunction: (function () {
+        const seeds = ["constructor", "toString", "valueOf"];
+        const lookups = [noteValueName, dynamicName, articulationName, ornamentName, endingName, chordKindName];
+        return lookups.every(function (fn) {
+          return seeds.every(function (seed) {
+            return typeof fn(seed) !== "function";
+          });
+        });
+      })(),
+      guardedLookupsNeverEmitNativeCode: (function () {
+        const seeds = ["constructor", "toString", "valueOf"];
+        const lookups = [noteValueName, dynamicName, articulationName, ornamentName, endingName, chordKindName];
+        return lookups.every(function (fn) {
+          return seeds.every(function (seed) {
+            const out = fn(seed);
+            return out === null || (typeof out === "string" && out.indexOf("native code") === -1);
+          });
         });
       })(),
     };

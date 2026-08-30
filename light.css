@@ -4713,6 +4713,115 @@ input[type="file"] {
   background-color: #9fb1bd;
 }
 
+/* Mermaid description inset cards — moved here from
+   md-scripts/css/mermaid-description-styles.css by PS1, 24 August 2026.
+   The background is unchanged from what that file declared; the paired
+   `color` is new, and it is what was missing. Declaring the surface without
+   its text colour left the card taking whatever the theme sheet gave body
+   text, which in dark theme is #e1e8ec on this same #e1e8ec — 1:1.
+   Light-theme appearance is unchanged: #00131d on #e1e8ec is 15.26:1, and
+   #00131d is what this card already inherited here. */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description,
+.mermaid-detailed-description {
+  background-color: #e1e8ec;
+  color: #00131d;
+}
+
+/* PS3, 25 August 2026 — the one LIGHT-theme contrast failure the
+   fifteen-type sweep found. GENERATED from
+   md-scripts/css/mermaid-description-styles.css's own rules.
+
+   #1e8765 measured 3.94:1 on the #f0f2e8 card and 4.21:1 on #f3f9ff, on the
+   rendered gantt panel. It is PRE-EXISTING — PS1 predicted it from the
+   stylesheet at 3.6:1 against the then-#e1e8ec card and registered it as
+   item 51; PS2's card change nudged it up without clearing 4.5:1. This is
+   the first session to measure it on a rendered page rather than infer it.
+
+   #155724 is NOT a new colour: it is already used as a text colour elsewhere in
+   this sheet's own light palette, it stays unambiguously a positive/success
+   green (which is what .gantt-milestone-name, .gantt-task-type and the high
+   journey scores mean), and it measures 8.18:1 / 7.67:1 / 7.00:1 against
+   #f3f9ff, #f0f2e8 and #e1e8ec. The nearer-in-hue #005051 was available and
+   passes too, but reads as an informational teal rather than a success
+   green, so hue proximity lost to meaning.
+
+   TEXT USES ONLY. #1e8765 also colours six borders, where 4.21:1 against the
+   light card already clears the 3:1 a non-text boundary needs; those are
+   untouched. Dark theme is unaffected — PS2 maps #1e8765 to #b3dbd2 there. */
+.mermaid-description .diagram-insight-largest::before,
+.mermaid-description .diagram-pattern-balanced,
+.mermaid-description .gantt-milestone-name,
+.mermaid-description .gantt-task-type,
+.mermaid-description .score-10,
+.mermaid-description .score-7,
+.mermaid-description .score-8,
+.mermaid-description .score-9 {
+  color: #155724;
+}
+
+/* PS2, 25 August 2026 — Mermaid section cards, headings, takeaway and data
+   table, mirroring the Chart.js treatment below so the two description panels
+   read as one system. Layout for these lives in
+   md-scripts/css/mermaid-description-styles.css; only colour is here. */
+
+.mermaid-detailed-description .mermaid-section {
+  background-color: #f3f9ff;
+  color: #00131d;
+  border-left-width: 10px;
+  border-left-color: #495961;
+}
+
+/* Chart.js gives its three named sections three accents. Mermaid sections
+   carry no semantics the shell can read, so the accent CYCLES by position
+   instead of encoding anything. Nothing is conveyed by the colour — the
+   heading carries the meaning — so SC 1.4.1 is not engaged. */
+.mermaid-detailed-description .mermaid-section:nth-of-type(3n + 1) {
+  border-left-color: #8d3970;
+}
+
+.mermaid-detailed-description .mermaid-section:nth-of-type(3n + 2) {
+  border-left-color: #005c84;
+}
+
+h4.mermaid-details-heading {
+  color: #00131d;
+}
+
+h4.mermaid-details-heading::before {
+  background-color: #d5007f;
+}
+
+/* The takeaway. Every generator that bolds a lead insight puts it in a
+   `strong` inside the first list item; Chart.js styles the same shape. */
+.mermaid-detailed-description li strong {
+  color: #002e3b;
+}
+
+.mermaid-data-table caption {
+  color: #00131d;
+}
+
+.mermaid-data-table thead th {
+  background-color: #9fb1bd;
+  color: #00131d;
+}
+
+.mermaid-data-table tbody th,
+.mermaid-data-table td {
+  color: #00131d;
+}
+
+.mermaid-data-table th,
+.mermaid-data-table td {
+  border-bottom-color: #495961;
+}
+
+.mermaid-disclaimer {
+  border-top: 1px dashed #231f20;
+}
+
 .chart-short-description,
 .mermaid-short-description {
   background-color: #e1e8ec;
@@ -6391,4 +6500,53 @@ pre.language-json {
 
 #resume-context-ai-summary {
   background: #9fb1bd;
+}
+
+/* xychart-beta series outlines — light mode.
+
+   WHY THIS IS CSS AND NOT A THEME VARIABLE. Mermaid's xychart renderer
+   hard-codes the bar outline to `strokeWidth: 0` with `strokeFill` set to the
+   bar's own fill, and the line stroke width to the literal `2`. No theme
+   variable reaches any of the three. But the renderer paints every colour with
+   d3 `.attr()` and never `.style()`, so they are PRESENTATION ATTRIBUTES — the
+   weakest source in the cascade — and an ordinary author rule beats them.
+   Measured 25 August 2026 by disable-and-remeasure: injecting these rules moved
+   the bar's computed stroke-width 0px -> 2px and its computed stroke to the
+   value below, and removing them returned both to the original reading exactly.
+   No !important is needed: nothing else in this repo's CSS targets an xychart
+   element, and Mermaid's own in-SVG <style> block does not either.
+
+   WHY THE SELECTOR IS THE ROLEDESCRIPTION AND NOT THE CONTAINER. Every control
+   button in md-scripts/mermaid/mermaid-controls.js carries an inline 16x16 icon
+   <svg>, and a container-scoped selector can reach those — that trap cost a
+   false measurement during the grounding session, where a probe reported the
+   diagram SVG empty when it had in fact read a button icon. `svg[
+   aria-roledescription="xychart"]` is set by Mermaid on the diagram root only,
+   so a button icon cannot match it by construction rather than by exclusion,
+   and the rule does not depend on the container's shape.
+
+   WHY ONE COLOUR SERVES EVERY LIGHT THEME. The selector in
+   mermaid-theme.js only offers light-mode users the six themes in
+   themeConfig.modeVisibleThemes.light, and every one of them renders its chart
+   on a white ground (default, neutral and forest on the `white` keyword;
+   accessibleLight, highContrastLight and wcagLight on #FFFFFF). So one dark
+   outline is sufficient, and #00131D — already this file's own dark neutral,
+   267 uses — measures 18.9:1 against that ground in all six.
+
+   WHAT THIS DOES AND DOES NOT LIFT. It gives every BAR a boundary against the
+   ground, which is what carries the four Mermaid builtin palettes: those are not
+   editable through themeVariables and their fills sit as low as 1.14:1. It does
+   NOT lift a LINE, because a line has no fill and its palette colour IS its
+   stroke — the width goes to 3px for legibility but the colour is untouched.
+   The six custom themes therefore carry their own compliant palettes (see
+   XYCHART_PALETTES in mermaid-theme.js); the builtins' line series remain below
+   3:1 and are registered in docs/mermaid-outstanding.md. */
+
+svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
+  stroke: #00131d;
+  stroke-width: 2px;
+}
+
+svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
+  stroke-width: 3px;
 }

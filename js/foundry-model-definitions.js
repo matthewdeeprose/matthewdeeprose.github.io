@@ -1915,22 +1915,463 @@ const FOUNDRY_MODELS = [
       "Text-only in this registration: registered without vision capability pending verification. The OpenRouter sibling mistralai/mistral-large-2512 is multimodal upstream — vision is a candidate for a follow-up smoke test.",
   }),
 
+  // ── gpt-5-mini (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads (INCONCLUSIVE — the token budget bound), pdf accepted-reads.
+  // "reasoning" capability: reasoning tokens observed directly (64)
+  createFoundryModel({
+    deploymentName: "gpt-5-mini",
+    displayName: "GPT-5 Mini",
+    description:
+      "Compact GPT-5 family model balancing capability and cost. Reads images and PDF attachments. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5-mini for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5-mini sibling costs
+    costs: { input: 0.25, output: 2.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 400000,
+    fallbackTo: "openai/gpt-5-mini",
+    releaseDate: "2025-08-07",
+    categoryDescription:
+      "Compact GPT-5 family model routed via Microsoft Foundry — same upstream as openai/gpt-5-mini, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "cost-efficiency",
+    },
+    bestFor: [
+      "everyday chat and general assistance",
+      "questions over uploaded documents",
+      "budget-conscious image description",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "cost-efficiency",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 0.00-1.00).",
+  }),
+
+  // ── gpt-5-nano (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf accepted-reads.
+  // "reasoning" capability: reasoning tokens observed directly (64, 100, 100)
+  createFoundryModel({
+    deploymentName: "gpt-5-nano",
+    displayName: "GPT-5 Nano",
+    description:
+      "Smallest GPT-5 family model; fast and inexpensive. Strong image and PDF reading for its size. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5-nano for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5-nano sibling costs
+    costs: { input: 0.05, output: 0.4 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 400000,
+    fallbackTo: "openai/gpt-5-nano",
+    releaseDate: "2025-08-07",
+    categoryDescription:
+      "Smallest GPT-5 family model routed via Microsoft Foundry — same upstream as openai/gpt-5-nano, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "efficiency-at-scale",
+    },
+    bestFor: [
+      "quick, low-latency tasks",
+      "high-volume batch work",
+      "first drafts and rough summaries",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "efficiency-at-scale",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
+  // ── o3 (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-partial, pdf accepted-reads.
+  // "reasoning" capability: INDIRECT — no reasoning tokens on a trivial
+  // prompt, but all four sampling parameters refused, which is the v1
+  // adapter's own reasoning-model signature.
+  createFoundryModel({
+    deploymentName: "o3",
+    displayName: "o3",
+    description:
+      "Reasoning specialist. Handles PDFs well; image understanding present but text inside images reads unreliably. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: engages with images but transcribes small text in them unreliably; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+    // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
+    costs: { input: 0, output: 0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "code",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 200000, // o-series family value (matches the o4-mini entry)
+    fallbackTo: null,
+    releaseDate: "2025-04-16",
+    categoryDescription:
+      "Reasoning model routed via Microsoft Foundry — no OpenRouter sibling registered, Foundry-only transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "multi-step-reasoning",
+    },
+    bestFor: [
+      "multi-step reasoning and analysis",
+      "planning and decomposition tasks",
+      "document analysis",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "multi-step-reasoning",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured 27-28 August 2026: median accepted-partial over three sampled runs — the model engages with the image but transcribes small bitmap text unreliably, reading the fixture word as \"TOILET\" identically across all three.",
+  }),
+
+  // ── gpt-5.5 (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf accepted-reads.
+  // "reasoning" capability: reasoning tokens observed directly (7, 7)
+  createFoundryModel({
+    deploymentName: "gpt-5.5",
+    displayName: "GPT-5.5",
+    description:
+      "Previous-generation flagship; strong all-round capability including image and PDF reading. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.5 for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5.5 sibling costs
+    costs: { input: 5.0, output: 30.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 1050000,
+    fallbackTo: "openai/gpt-5.5",
+    releaseDate: "2026-04-24",
+    categoryDescription:
+      "Previous-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.5, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "complex drafting and analysis",
+      "work where the 5.6 family is unnecessary",
+      "mixed text, image and document tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
+  // ── gpt-5.6-terra (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf accepted-partial.
+  // "reasoning" capability: INDIRECT — no reasoning tokens on a trivial
+  // prompt, but all four sampling parameters refused, which is the v1
+  // adapter's own reasoning-model signature.
+  createFoundryModel({
+    deploymentName: "gpt-5.6-terra",
+    displayName: "GPT-5.6 Terra",
+    description:
+      "Current flagship family. Full image reading; PDF handling present but weaker than its siblings in testing. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-terra for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5.6-terra sibling costs
+    costs: { input: 2.5, output: 15.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 1000000,
+    fallbackTo: "openai/gpt-5.6-terra",
+    releaseDate: "2026-07-09",
+    categoryDescription:
+      "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-terra, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "demanding general-purpose work",
+      "image-led tasks",
+      "prefer Luna or Sol for document-heavy work",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
+  // ── gpt-5.6-luna (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf accepted-reads.
+  // "reasoning" capability: INDIRECT — no reasoning tokens on a trivial
+  // prompt, but all four sampling parameters refused, which is the v1
+  // adapter's own reasoning-model signature.
+  createFoundryModel({
+    deploymentName: "gpt-5.6-luna",
+    displayName: "GPT-5.6 Luna",
+    description:
+      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-luna for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5.6-luna sibling costs
+    costs: { input: 1.0, output: 6.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 1000000,
+    fallbackTo: "openai/gpt-5.6-luna",
+    releaseDate: "2026-07-09",
+    categoryDescription:
+      "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-luna, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "demanding mixed-content work",
+      "document-heavy tasks",
+      "the default choice in this tier",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
+  // ── gpt-5.6-sol (chat — reasoning; registered 28 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf accepted-reads.
+  // "reasoning" capability: INDIRECT — no reasoning tokens on a trivial
+  // prompt, but all four sampling parameters refused, which is the v1
+  // adapter's own reasoning-model signature.
+  createFoundryModel({
+    deploymentName: "gpt-5.6-sol",
+    displayName: "GPT-5.6 Sol",
+    description:
+      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-sol for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5.6-sol sibling costs
+    costs: { input: 5.0, output: 30.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    maxContext: 1000000,
+    fallbackTo: "openai/gpt-5.6-sol",
+    releaseDate: "2026-07-09",
+    categoryDescription:
+      "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-sol, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "demanding mixed-content work",
+      "document-heavy tasks",
+      "same tier as Luna — pick by cost or availability",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
   // ══════════════════════════════════════════════════════════════════════════
-  // RESPONSES-API SURFACE (six Codex/pro deployments — apiSurface: "responses")
+  // RESPONSES-API SURFACE (eight Codex/pro deployments — apiSurface: "responses")
   // ══════════════════════════════════════════════════════════════════════════
   //
-  // These six are Responses-API-ONLY: they 400 "operation is unsupported" on
-  // /openai/v1/chat/completions and speak only /openai/v1/responses. They route
-  // through the azure-responses provider (providers/azure-openai-responses.js,
-  // Task 2), so `apiSurface: "responses"` gives them the `azure-responses/`
-  // prefix and routing. Text-only this integration — NO "vision", NO
-  // "tool_calling" (both untested → honest omission; gpt-5-pro vision is
-  // Task 5). Costs are provisional {0,0}; fallbackTo null (Foundry-only).
+  // These eight route through the azure-responses provider
+  // (providers/azure-openai-responses.js, Task 2), so `apiSurface: "responses"`
+  // gives them the `azure-responses/` prefix and routing.
+  //
+  // The six original members are Responses-API-ONLY: they 400 "operation is
+  // unsupported" on /openai/v1/chat/completions. THAT WAS NOT RE-TESTED for the
+  // two added on 28 August 2026 (gpt-5.4-pro, gpt-5.1-codex-max) — both were
+  // probed on the Responses surface only, which they serve, so the
+  // chat-rejection claim is NOT made about them.
+  //
+  // VISION and PDF are PER-ENTRY facts on this surface, each recorded in its
+  // own entry against the measurement that established it — they are not a
+  // property of the surface and must not be summarised here. TOOL_CALLING
+  // remains untested across every member and is omitted everywhere.
   //
   // SAMPLING SPLIT (must stay in sync with SAMPLING_PARAMS_ALLOWED in
   // providers/azure-openai-responses.js): only gpt-5.3-codex accepts
-  // temperature/top_p and emits NO reasoning item; the other five reject
-  // sampling params and emit a reasoning item (surfaced as nothing, D3).
+  // temperature/top_p and emits NO reasoning item; every other member rejects
+  // sampling params. Confirmed 28 August 2026 for the two added that day —
+  // both refused all four sampling parameters.
+  //
+  // REASONING EFFORT: gpt-5-pro remains the ONLY member needing a forced
+  // "high" (REASONING_EFFORT_HIGH_ONLY in the provider). Both 28 August
+  // additions accepted all three effort variants, so neither joins it.
 
   // ── gpt-5-pro (Responses — reasoning + vision, image input wired Task 5b) ──
   createFoundryModel({
@@ -2235,6 +2676,146 @@ const FOUNDRY_MODELS = [
     ],
     imageSupportNote:
       "Image input verified via the Responses surface (input_image) this session — the model describes diagrams and reads visible labels. The earlier ‘text-only, vision out of scope’ note is superseded.",
+  }),
+  // ── gpt-5.4-pro (Responses — reasoning + vision + pdf; registered 28 August
+  //    2026, pdf resolved 30 August 2026) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-reads, pdf errored (transport timeout, not a refusal).
+  // "reasoning" capability: reasoning tokens observed directly (19, 11, 14)
+  createFoundryModel({
+    apiSurface: "responses",
+    deploymentName: "gpt-5.4-pro",
+    displayName: "GPT-5.4 Pro",
+    description:
+      "Pro-tier reasoning model on the Responses surface. Reads images and PDFs. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images. PDF RESOLVED 30 August 2026 — accepted-reads, 6/6 sentinel characters on an image-only fixture, 363 input and 2935 output tokens. The two earlier attempts were TRANSPORT TIMEOUTS, not refusals: re-running at a 600s ceiling returned a clean 200 well inside the standing token budget, so latency was the whole cause. Attribution is unattributed — this surface preprocesses the attachment, so the read cannot be assigned to the model rather than the platform. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.4-pro for OpenRouter routing.",
+    // Source: in-repo openai/gpt-5.4-pro sibling costs
+    costs: { input: 30.0, output: 180.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      // Added 30 August 2026. The 28 August registration withheld this token
+      // because the probe had TIMED OUT twice on the transport — an absence of
+      // evidence, not evidence of absence. Re-run at a 600s ceiling it returned
+      // accepted-reads, 6/6 sentinel characters, 363 input and 2935 output
+      // tokens: comfortably inside the standing budget, so latency was the
+      // whole cause and no cap was ever binding. Artefact:
+      // results/probe-retry-gpt-5.4-pro-2026-08-30.json.
+      "pdf",
+    ],
+    maxContext: 1050000,
+    fallbackTo: "openai/gpt-5.4-pro",
+    releaseDate: "2026-03-05",
+    categoryDescription:
+      "Pro-tier reasoning model (Responses API) routed via Microsoft Foundry — same upstream as openai/gpt-5.4-pro, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "frontier-reasoning",
+    },
+    bestFor: [
+      "the hardest reasoning tasks",
+      "work alongside gpt-5-pro",
+      "image-bearing analysis",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "frontier-reasoning",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+  }),
+
+  // ── gpt-5.1-codex-max (Responses — reasoning + pdf + vision; registered 28
+  //    August 2026, vision resolved 30 August 2026 at tier accepted-partial) ──
+  // Measured 27-28 August 2026 by .claude/foundry-catalogue/probe.mjs:
+  // requires max_completion_tokens; REFUSES temperature, top_p and both
+  // penalties; accepts all three reasoning-effort variants (omitted,
+  // explicit default, explicit high) so it needs NO forced effort value.
+  // image accepted-blind (INCONCLUSIVE — the token budget bound), pdf accepted-reads.
+  // "reasoning" capability: reasoning tokens observed directly (64, 64)
+  createFoundryModel({
+    apiSurface: "responses",
+    deploymentName: "gpt-5.1-codex-max",
+    displayName: "GPT-5.1 Codex Max",
+    description:
+      "Large Codex-family coding model on the Responses surface. Reads images, but transcribes bitmap text unreliably. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads PDF attachments; image reading was UNVERIFIED because the probe's token budget bound before an answer was emitted. RESOLVED 30 August 2026 at a 64000 budget — accepted-partial, unanimous across three sampled runs, transcribing the six-character fixture as TOILET, TOLLEUM and TOLTEEU (2/6, 4/6, 3/6). It engages with image content; it does not transcribe reliably. The earlier binding is now explained rather than inferred: one run spent 19,176 output tokens, above the standing 16000 cap, so that cap was the cause. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+    // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
+    costs: { input: 0, output: 0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "code",
+      "pdf",
+      // Added 30 August 2026 at tier accepted-PARTIAL, and the tier is the
+      // point: three sampled runs all returned accepted-partial (2/6, 4/6, 3/6
+      // sentinel characters), so the model demonstrably engages with image
+      // content while transcribing bitmap text unreliably. The 28 August
+      // registration withheld this token because the 16000-token budget bound
+      // before an answer was emitted — a cap that binds is indistinguishable
+      // in the verdict from a model that cannot do the task. Re-run at 64000
+      // one sample spent 19,176 output tokens, above the old cap, which
+      // measures the binding rather than inferring it. Artefact:
+      // results/probe-retry-gpt-5.1-codex-max-2026-08-30.json.
+      "vision",
+    ],
+    maxContext: 400000, // GPT-5 family value (matches the gpt-5.1-codex entry)
+    fallbackTo: null,
+    releaseDate: "2025-12-04",
+    categoryDescription:
+      "Large agentic-coding reasoning model (Responses API) routed via Microsoft Foundry — no OpenRouter sibling, Foundry-only transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "agentic-coding",
+    },
+    bestFor: [
+      "substantial code generation",
+      "code review and refactoring",
+      "agentic and multi-step coding tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "agentic-coding",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision UNVERIFIED, not absent. Two of three sampled runs consumed the whole 16,000-token budget and returned nothing; the one that answered used 10,907 tokens. That is a budget that binds, not a blind model, and escalating further costs real consumed spend.",
   }),
 ];
 

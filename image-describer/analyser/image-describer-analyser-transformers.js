@@ -33,6 +33,10 @@
  *   getQwenStatus()                  → string
  *   generateQwenDescription(imageSource, options) → Promise<DescriptionResult>
  *
+ * Shared engine: consumed by the MathPix alt-text lane
+ * (see mathpix-scripts/docs/alt-text/local-describer-plan.md).
+ * Check both consumers before changing public shapes.
+ *
  * VERSION: 6.1.0
  * DATE: 27 March 2026
  * PHASE: Phase 14A (Qwen3.5-0.8B gateway integration)

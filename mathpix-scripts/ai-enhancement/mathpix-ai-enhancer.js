@@ -95,6 +95,15 @@
     PROMPTS_PATH: "mathpix-scripts/ai-enhancement/mathpix-ai-prompts.json",
 
     /**
+     * The default provider id (EA-2c). Used as the key a LEGACY flat models
+     * block is filed under, and as the fallback when ProviderSwitcher is not
+     * on the page. It matches ProviderSwitcher's own DEFAULT_PROVIDER_ID; the
+     * two are separate declarations because this module must work when the
+     * switcher has not loaded.
+     */
+    DEFAULT_PROVIDER_ID: "openrouter",
+
+    /**
      * Fallback model if config loading fails
      * Note: When config loads successfully, the model with "recommended": true
      * in mathpix-ai-prompts.json takes precedence (currently Sonnet 4.5)
@@ -160,6 +169,37 @@
    * const enhancer = getMathPixAIEnhancer();
    * enhancer.openModal();
    */
+
+  /**
+   * The ONE composition of the spoken failure line.
+   *
+   * EA-L2 (FIX-6): join, do not concatenate blindly. Several refusal constants
+   * are whole SENTENCES ending in a full stop — NON_PDF_REFUSAL and
+   * PROVIDER_REFUSAL both do — so appending ". You can try again" produced
+   * "Choose a different model.. You can try again", heard at the 25 August 2026
+   * listen. Trimming one trailing terminal mark fixes every such message rather
+   * than this one, and leaves a message with no punctuation still correctly
+   * terminated.
+   *
+   * EXTRACTED at EA-5 because the hoisted pre-flight speaks the same sentence
+   * from the configuration state, and a second copy of this join is exactly how
+   * the doubled full stop would come back.
+   *
+   * MODULE SCOPE, NOT A PROTOTYPE METHOD, and that is load-bearing rather than
+   * stylistic. It was written as a method first, and every FIX-5b and FIX-5d row
+   * went red: those drives call `proto.showError.call(stub, ...)` against PLAIN
+   * OBJECT receivers, so `this._composeFailureLine` was undefined and showError
+   * threw before reaching anything they assert. A pure function of its argument
+   * has no business reading `this`, and keeping it off the receiver means no
+   * caller can be surprised by what its receiver happens to inherit.
+   *
+   * @param {string} message the refusal or error, a sentence or a fragment
+   * @returns {string} the line a person hears
+   */
+  function composeFailureLine(message) {
+    return `Enhancement failed: ${String(message).trim().replace(/[.!?]+$/, "")}. You can try again or close the dialog.`;
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -265,6 +305,12 @@
        * @type {string}
        */
       this.enhancerPrefsKey = "ai-enhance-preferences";
+
+      // EA-2b: provider:changed subscriber handle, and the radio count the
+      // picker's two-sided empty-state branch reads. Declared here so the shape
+      // of an instance is complete at construction rather than growing later.
+      this._providerChangedHandler = null;
+      this._lastModelOptionsCount = -1;
 
       /**
        * Cached DOM elements
@@ -588,10 +634,18 @@
         const config = await response.json();
 
         this.prompts = config.systemPrompt;
-        this.models = config.models;
+
+        // EA-2c: config.models is now a MAP keyed by provider id. The whole map
+        // is kept, and this.models is pointed at the active provider's set —
+        // which is what every one of the twenty-odd existing readers of
+        // this.models already expects, so none of them changes.
+        this.recommendedByProvider = this.normaliseRecommendedSets(
+          config.models,
+        );
+        this.models = this.getRecommendedModels();
 
         // Set default model to recommended one
-        const recommendedModel = Object.entries(this.models).find(
+        const recommendedModel = Object.entries(this.models || {}).find(
           ([, model]) => model.recommended,
         );
         if (recommendedModel) {
@@ -606,7 +660,8 @@
           path: this.loadedPromptPath,
           version: this.loadedPromptVersion,
           label: this.loadedPromptLabel,
-          modelsCount: Object.keys(this.models).length,
+          providers: Object.keys(this.recommendedByProvider || {}),
+          modelsCount: Object.keys(this.models || {}).length,
           defaultModel: this.selectedModel,
         });
       } catch (error) {
@@ -623,17 +678,21 @@
           outputFormat: "Return the complete corrected MMD document.",
         };
 
-        this.models = {
-          sonnet: {
-            id: "anthropic/claude-sonnet-4",
-            name: "Claude Sonnet 4",
-            description: "Balanced performance",
-            costPer1kInput: 0.003,
-            costPer1kOutput: 0.015,
-            maxTokens: 8192,
-            recommended: true,
+        // EA-2c: the emergency fallback is an OpenRouter model, so it belongs
+        // under the openrouter key. Cost fields are gone from here too — the
+        // registry is the single source, via calculateCost.
+        this.recommendedByProvider = {
+          openrouter: {
+            sonnet: {
+              id: "anthropic/claude-sonnet-4",
+              name: "Claude Sonnet 4",
+              description: "Balanced performance",
+              maxTokens: 8192,
+              recommended: true,
+            },
           },
         };
+        this.models = this.getRecommendedModels();
 
         this.loadedPromptPath = path;
         this.loadedPromptVersion = null;
@@ -755,9 +814,32 @@
               .getAllModels()
               .some((m) => m.id === prefs.model);
 
-          if (inPrompts || inRegistry) {
+          // EA-2b: a remembered id can be perfectly valid AND belong to a
+          // provider the user is no longer on — the switch persists separately
+          // from these preferences, and either can change while the other does
+          // not. Validation here was provider-blind before this parcel, so a
+          // Foundry id remembered from a previous session was silently restored
+          // under OpenRouter and sent there.
+          //
+          // The discard is DELIBERATELY SILENT: logWarn only, no announcement.
+          // It runs at picker build, before the person has chosen anything, so
+          // there is nothing to tell them about — and a spoken line at build
+          // time would land in a surface they have only just opened, which is
+          // the placement contract's fact 3 caveat.
+          const providerOk =
+            typeof window.MathPixContextAI?.isModelProviderAvailable !==
+            "function"
+              ? true // absent facade is a page fault, not a membership finding
+              : window.MathPixContextAI.isModelProviderAvailable(prefs.model);
+
+          if ((inPrompts || inRegistry) && providerOk) {
             this.selectedModel = prefs.model;
             logDebug("Restored model preference:", prefs.model);
+          } else if (inPrompts || inRegistry) {
+            logWarn(
+              "Saved model is not available with the current provider; falling back to the default:",
+              prefs.model,
+            );
           } else {
             logWarn("Saved model no longer available:", prefs.model);
           }
@@ -1036,6 +1118,10 @@
           className: "ai-enhancement-modal",
           closeOnOverlayClick: false,
           onClose: () => {
+            // EA-2b: drop the provider subscriber with the modal that owns it.
+            // Unsubscribing here rather than in a global teardown keeps the
+            // listener's lifetime identical to the surface it rebuilds.
+            this._unsubscribeProviderChanged();
             if (this.isProcessing) {
               this.cancelEnhancement();
             }
@@ -1043,6 +1129,10 @@
         });
 
         this.currentModal.open();
+
+        // EA-2b: subscribe AFTER open, so a change arriving mid-construction
+        // cannot rebuild a modal that does not exist yet.
+        this._subscribeProviderChanged();
 
         // Inject footer buttons after modal is open
         this.updateFooterButtons("configuration");
@@ -1160,6 +1250,202 @@
       logDebug(`Footer buttons updated for state: ${state}`);
     }
 
+    // ========================================================================
+    // FIX-5b: THE REBUILD FOCUS SEAM
+    // ========================================================================
+    // updateFooterButtons above replaces footer.innerHTML, and setContent
+    // replaces the modal body. Between them every state change destroys the
+    // control the person was standing on. Measured at FIX-5a: the Start
+    // Enhancement button is destroyed by the PROCESSING footer rebuild, at the
+    // very beginning of a run, so the person is adrift for its whole duration
+    // and not merely at the end. All three states therefore land focus.
+
+    /**
+     * The footer button whose visible label matches, or null.
+     *
+     * Read from the LIVE DOM after the rebuild on purpose: updateFooterButtons
+     * replaces the footer innerHTML, so every reference taken before it is a
+     * detached node that would focus nothing and report success to a proxy
+     * check. Matching is on trimmed lowercase text, because the button label is
+     * also its accessible name and there is no id to match on.
+     *
+     * @param {string} text the visible label
+     * @returns {HTMLButtonElement|null}
+     */
+    _footerButtonByLabel(text) {
+      const modalElement = document.querySelector(
+        "dialog[open].universal-modal",
+      );
+      const footer = modalElement?.querySelector(".universal-modal-footer");
+      if (!footer) {
+        logWarn("No modal footer to resolve a focus target from");
+        return null;
+      }
+      const wanted = String(text).trim().toLowerCase();
+      const found = Array.from(footer.querySelectorAll("button")).find(
+        (b) => b.textContent.trim().toLowerCase() === wanted,
+      );
+      if (!found) {
+        logWarn(`No footer button labelled ${wanted} to land focus on`);
+      }
+      return found || null;
+    }
+
+    /**
+     * Speak a line AFTER the rebuild focus settle.
+     *
+     * ORDERING A (Matthew, 22 August 2026): focus moves at the rebuild, and the
+     * spoken line is deferred behind it. Landing focus IS a focus change, and a
+     * polite write landing within roughly ten milliseconds of one has been
+     * measured lost — the reader is still working through the context change and
+     * never speaks it, which is how parcels g-5 and g-8 lost theirs. The cost is
+     * that the visible toast is delayed by the same amount, knowingly accepted.
+     *
+     * The notifier is resolved BY NAME at fire time, never captured: the shared
+     * notification globals are published by a plain script and a module-scope
+     * capture takes undefined.
+     *
+     * The settle is READ FROM THE FACADE, never copied. Where the facade is
+     * absent the delay degrades to zero, which is exactly the behaviour before
+     * this parcel — a page-configuration fault must not silence a line.
+     *
+     * @param {string} notifierName one of notifyInfo, notifySuccess, notifyError
+     * @param {string} message the line to speak
+     */
+    _announceAfterRebuild(notifierName, message) {
+      const settle =
+        (window.UniversalModal &&
+          window.UniversalModal.UNIVERSAL_MODAL_REBUILD_ANNOUNCE_SETTLE_MS) ||
+        0;
+      if (!settle) {
+        logWarn(
+          "Rebuild announce settle unavailable from UniversalModal; speaking immediately",
+        );
+      }
+
+      // THE SUPERSEDE RULE (parcel FIX-5d). A deferred line carries the state it
+      // describes, and a line whose state has ended is DROPPED rather than
+      // spoken late. See _beginModalStateTransition for the measurement that
+      // forced this.
+      const scheduledForState = this._modalStateSeq;
+
+      window.setTimeout(() => {
+        if (this._modalStateSeq !== scheduledForState) {
+          logWarn(
+            `Dropping a superseded deferred line (${notifierName}): scheduled for modal state ${scheduledForState}, current state is ${this._modalStateSeq}. Line was: ${message}`,
+          );
+          return;
+        }
+        const notify = window[notifierName];
+        if (typeof notify === "function") {
+          notify(message);
+        } else {
+          logWarn(`Notifier ${notifierName} unavailable; line not spoken`);
+        }
+      }, settle);
+    }
+
+    /**
+     * Is this run refusable before it starts? (parcel EA-5)
+     *
+     * Asks the two questions that are decidable from the resolved id alone, in
+     * the same order initialiseEmbed asks them so the two layers cannot disagree
+     * about which refusal a person hears. Returns the refusal SENTENCE to speak,
+     * or null to proceed.
+     *
+     * READS THE SHARED CAPABILITY MODULE (parcel EA-4) rather than the
+     * mathpix-context-ai.js facade. The boundary guards still read the facade and
+     * are deliberately untouched by this parcel; repointing them is the hoist
+     * parcel EA-4 named. New code goes to the shared home.
+     *
+     * FAIL OPEN on an absent module, with one logWarn, matching the recorded
+     * consumer pattern and for the same reason the boundary guards give: an
+     * absent module is a page-configuration fault, not a capability finding, and
+     * refusing on it would take enhancement down completely.
+     *
+     * @returns {string|null} the refusal sentence, or null when nothing is
+     *   decidable in advance
+     */
+    _preflightRefusal() {
+      // The SAME id initialiseEmbed captures into resolvedModelId, read from the
+      // same property, so the early check and the boundary guard provably assess
+      // one value rather than two that happen to agree.
+      const modelId = this.selectedModel;
+
+      const capability = window.MathPixModelCapability;
+      if (!capability) {
+        logWarn(
+          "EA-5 pre-flight skipped: MathPixModelCapability unavailable. Proceeding to the send-boundary guards, which fail open on the same reasoning.",
+          { model: modelId },
+        );
+        return null;
+      }
+
+      // PDF FIRST, then provider membership. That is initialiseEmbed's order, and
+      // matching it is not cosmetic: a model failing BOTH questions must produce
+      // the SAME sentence here as it would at the boundary, or the hoist changes
+      // what a person hears rather than only when they hear it.
+      if (
+        typeof capability.isModelPdfCapable === "function" &&
+        !capability.isModelPdfCapable(modelId)
+      ) {
+        logWarn(
+          "EA-5 pre-flight: refusing a model that cannot read PDF files, before entering the processing state",
+          { model: modelId },
+        );
+        return capability.NON_PDF_REFUSAL;
+      }
+
+      if (
+        typeof capability.isModelProviderAvailable === "function" &&
+        !capability.isModelProviderAvailable(modelId)
+      ) {
+        logWarn(
+          "EA-5 pre-flight: refusing a model the active provider does not serve, before entering the processing state",
+          { model: modelId },
+        );
+        return capability.PROVIDER_REFUSAL;
+      }
+
+      return null;
+    }
+
+    /**
+     * Open a new modal state, invalidating any deferred line still in flight for
+     * the state being left.
+     *
+     * WHY THIS EXISTS, measured at the FIX-5c listen on 23 August 2026, real
+     * NVDA on DINING with speech capture. On the PDF-refusal journey the whole
+     * processing state lasts about twenty milliseconds, because the capability
+     * guard refuses before any request is built. The start line, deferred by the
+     * rebuild settle, therefore arrived 978 ms AFTER the failure had already
+     * been announced, and the person was told:
+     *     Enhancement Failed, heading level 3
+     *     AI enhancement started. Preparing... please wait.
+     *     Enhancement failed: The selected model cannot read PDF files...
+     * They were told the run was starting after being told it had failed. That
+     * is a REGRESSION the deferral itself introduced — before the settle existed
+     * the start line fired synchronously and could not arrive out of order.
+     *
+     * WHY A FIRE-TIME CHECK RATHER THAN A CANCEL, and this is the load-bearing
+     * design choice. Cancelling the pending timer on each transition leaves a
+     * race: a transition landing between the cancel and the next schedule can
+     * still leave a stale timer armed, and the shape has to be got right at
+     * every call site. Comparing the token AT FIRE TIME cannot speak a stale
+     * line by construction — the check is one place, it runs last, and a new
+     * call site inherits it for free. Fire-and-forget is kept deliberately.
+     *
+     * @param {string} stateName for the log only
+     * @returns {number} the token now current
+     */
+    _beginModalStateTransition(stateName) {
+      this._modalStateSeq = (this._modalStateSeq || 0) + 1;
+      logDebug(
+        `Modal state transition to ${stateName}, token ${this._modalStateSeq}`,
+      );
+      return this._modalStateSeq;
+    }
+
     /**
      * Handle modal button actions
      *
@@ -1236,12 +1522,11 @@
         </div>
 
         <!-- Model Selection (radio buttons for recommended models) -->
-        <fieldset class="ai-model-selection">
-          <legend>Select AI Model</legend>
-          <div class="model-options" role="radiogroup" aria-label="AI model selection">
-            ${this.buildModelOptions()}
-          </div>
-        </fieldset>
+        <!-- EA-2b: under a non-OpenRouter provider every recommended id filters
+             out, so the whole group is replaced by visible explanatory text
+             rather than left as an empty radiogroup. Visible DOM only — no live
+             region, no announcement; the person reads it when they get there. -->
+        ${this.buildRecommendedModelSection()}
 
         <!-- Advanced Options: override model + engine (Phase 7.4) -->
         ${this.buildAdvancedOptions()}
@@ -1249,7 +1534,7 @@
         <!-- Cost Estimate -->
         <div class="ai-cost-estimate" role="region" aria-label="Cost estimate">
           <div class="ai-cost-estimate-label">Estimated cost:</div>
-          <div class="ai-cost-estimate-value" id="ai-cost-value" role="status" aria-live="polite">
+          <div class="ai-cost-estimate-value" id="ai-cost-value" role="status" aria-live="off">
             ${costDisplay}
           </div>
           <div class="ai-cost-estimate-note">
@@ -1279,28 +1564,14 @@
       try {
         const allModels = window.modelRegistry.getAllModels();
 
-        // Known vision-capable models (same list as image-describer-controller)
-        const KNOWN_VISION_MODELS = [
-          "anthropic/claude-sonnet-4.6",
-
-          "anthropic/claude-opus-4.6",
-
-          "anthropic/claude-haiku-4.5",
-          "openai/gpt-4-vision-preview",
-          "openai/gpt-4o",
-          "openai/gpt-4o-mini",
-          "openai/gpt-4-turbo",
-          "google/gemini-pro-vision",
-          "google/gemini-1.5-pro",
-          "google/gemini-1.5-flash",
-          "google/gemini-2.0-flash-001",
-          "google/gemini-2.5-pro-preview",
-          "google/gemini-2.5-flash-preview",
-        ];
-
-        // Filter for vision-capable models
+        // EA-2b DELETED a 13-entry function-local KNOWN_VISION_MODELS list that
+        // used to sit here as a fourth branch of this filter. It was measured
+        // inert before removal: the filter returns 159 models with it and 159
+        // without, and the set difference is EMPTY — every id it named already
+        // passes on capabilities. It was also function-local, referenced once,
+        // and shared with nothing; the two 27-entry lists elsewhere are separate
+        // module-scope copies in different files and cannot see it.
         const visionModels = allModels.filter((model) => {
-          if (KNOWN_VISION_MODELS.includes(model.id)) return true;
           if (model.supportsImages === true) return true;
           if (model.capabilities?.includes("vision")) return true;
           if (model.capabilities?.includes("image")) return true;
@@ -1317,9 +1588,18 @@
           (m) => !recommendedIds.has(m.id),
         );
 
+        // EA-2b: narrow to what the active provider serves AND what clears the
+        // PDF send boundary, in that order. Membership alone is not enough —
+        // measured, six azure ids pass membership and fail the PDF guard, so a
+        // membership-only list would offer models initialiseEmbed then refuses.
+        // Composing here means every model the select offers can be sent.
+        const providerScoped = deduplicated.filter(
+          (m) => this._isProviderAvailable(m.id) && this._isPdfCapable(m.id),
+        );
+
         // Group by cost tier
         const grouped = { low: [], medium: [], high: [] };
-        deduplicated.forEach((model) => {
+        providerScoped.forEach((model) => {
           const inputCost = model.costs?.input || 0;
           const outputCost = model.costs?.output || 0;
           const avgCost = (inputCost + outputCost * 2) / 3;
@@ -1346,6 +1626,7 @@
         logDebug("Registry models fetched:", {
           total: visionModels.length,
           deduplicated: deduplicated.length,
+          providerScoped: providerScoped.length,
           low: grouped.low.length,
           medium: grouped.medium.length,
           high: grouped.high.length,
@@ -1363,12 +1644,362 @@
      *
      * @returns {string} HTML for model options
      */
+    /**
+     * Normalise whatever `config.models` turned out to be into the
+     * provider-keyed map the rest of this class expects.
+     *
+     * TWO SHAPES ARE ACCEPTED, and the legacy one is a WARNING, never an error
+     * (EA-2c). Before this parcel the JSON carried a single flat set of three
+     * OpenRouter models; a file still in that shape is treated as the
+     * `openrouter` set, because that is what it factually was. Throwing on it
+     * would take enhancement down for a file that is merely old.
+     *
+     * The two are told apart structurally rather than by a version field: a
+     * per-provider map's values are themselves objects OF model entries, so
+     * they have no `id` of their own. A flat set's values are model entries and
+     * do. No entry in either shape can be mistaken for the other.
+     *
+     * Each entry is normalised so `label` and `name` are interchangeable —
+     * EA-2c writes `label` in the JSON, every existing reader here reads
+     * `name`, and neither had to change.
+     *
+     * @param {Object} raw config.models as parsed
+     * @returns {Object} { [providerId]: { [key]: entry } }
+     */
+    normaliseRecommendedSets(raw) {
+      if (!raw || typeof raw !== "object") {
+        logWarn("Prompt config carries no models block; recommended sets empty");
+        return {};
+      }
+
+      const values = Object.values(raw);
+      const isLegacyFlat =
+        values.length > 0 &&
+        values.every((v) => v && typeof v === "object" && typeof v.id === "string");
+
+      const map = isLegacyFlat ? { [AI_ENHANCER_CONFIG.DEFAULT_PROVIDER_ID]: raw } : raw;
+
+      if (isLegacyFlat) {
+        logWarn(
+          "Prompt config uses the LEGACY flat models shape. Treating it as the openrouter recommended set. Migrate it to a provider-keyed map.",
+        );
+      }
+
+      const out = {};
+      for (const [providerId, set] of Object.entries(map)) {
+        if (!set || typeof set !== "object") continue;
+        out[providerId] = {};
+        for (const [key, entry] of Object.entries(set)) {
+          if (!entry || typeof entry.id !== "string") continue;
+          out[providerId][key] = {
+            ...entry,
+            name: entry.name || entry.label || entry.id,
+            label: entry.label || entry.name || entry.id,
+          };
+        }
+      }
+      return out;
+    }
+
+    /**
+     * The recommended set for one provider, filtered to entries that can
+     * actually be sent.
+     *
+     * THE SINGLE READ POINT FOR BOTH JOURNEYS. `buildConfigurationContent` is
+     * reached from `openModal` on the open path and from
+     * `rebuildConfigurationBody` on the provider:changed path, and both funnel
+     * through `buildModelOptions`, which calls this. So a provider switch is
+     * honoured on the rebuild for the same reason it is honoured on the open —
+     * there is one place that decides, not two that must be kept in step.
+     *
+     * Validation composes the EA-2b filters: a JSON entry that fails either the
+     * PDF boundary or provider membership is dropped HERE rather than rendered
+     * as a radio the send would then refuse. A misconfigured entry therefore
+     * disappears quietly instead of becoming a dead control.
+     *
+     * @param {string} [providerId] defaults to the active provider
+     * @returns {Object} { [key]: entry } — possibly empty
+     */
+    getRecommendedModels(providerId) {
+      const active =
+        providerId ||
+        (typeof window.ProviderSwitcher?.getActive === "function"
+          ? window.ProviderSwitcher.getActive()
+          : AI_ENHANCER_CONFIG.DEFAULT_PROVIDER_ID);
+
+      const set = (this.recommendedByProvider || {})[active];
+      if (!set) {
+        logWarn(
+          "No recommended model set for the active provider; the picker will show the fallback message.",
+          { provider: active },
+        );
+        return {};
+      }
+
+      const kept = {};
+      for (const [key, entry] of Object.entries(set)) {
+        if (!this._isProviderAvailable(entry.id)) {
+          logWarn(
+            "Recommended entry dropped: the active provider does not serve it.",
+            { provider: active, model: entry.id },
+          );
+          continue;
+        }
+        if (!this._isPdfCapable(entry.id)) {
+          logWarn(
+            "Recommended entry dropped: it does not clear the PDF send boundary.",
+            { provider: active, model: entry.id },
+          );
+          continue;
+        }
+        kept[key] = entry;
+      }
+      return kept;
+    }
+
+    /**
+     * Is this id served by the provider the user currently has selected?
+     *
+     * One call-time reach into the capability facade, never a module-scope
+     * capture: mathpix-context-ai.js loads AFTER this file in tools.html, so a
+     * captured reference would be undefined here. Absent facade returns true —
+     * a page-configuration fault must not empty the picker.
+     *
+     * @param {string} modelId
+     * @returns {boolean}
+     */
+    _isProviderAvailable(modelId) {
+      const capability = window.MathPixContextAI;
+      if (typeof capability?.isModelProviderAvailable !== "function") {
+        return true;
+      }
+      return capability.isModelProviderAvailable(modelId);
+    }
+
+    /**
+     * Does this id clear the PDF send boundary?
+     *
+     * Composed with membership on the ADVANCED path so every model the list
+     * offers can actually be sent. Without it the picker would offer the six
+     * measured azure ids that pass membership and then fail the guard —
+     * gpt-4o-mini, gpt-4o, DeepSeek-V3.1 and friends — which is the loud dead
+     * end one layer in. The send-boundary guards themselves are untouched.
+     *
+     * @param {string} modelId
+     * @returns {boolean}
+     */
+    _isPdfCapable(modelId) {
+      const capability = window.MathPixContextAI;
+      if (typeof capability?.isModelPdfCapable !== "function") {
+        return true;
+      }
+      return capability.isModelPdfCapable(modelId);
+    }
+
+    /**
+     * Subscribe to provider:changed for as long as the configuration modal is
+     * open, rebuilding the picker body when the active provider moves.
+     *
+     * MEASURED CAVEAT, recorded because it decides how much this listener is
+     * really doing: the provider switch fieldset (#provider-switch-fieldset in
+     * tools.html) is a descendant of a body child, and makeBackgroundInert sets
+     * inert on every `body > *:not(dialog):not(script):not(style)` while a
+     * modal is open. So the switch is NOT operable in this tab while this modal
+     * is up, and the main journey is carried by the BUILD-TIME filter, not by
+     * this subscriber. What the subscriber genuinely serves is the CROSS-TAB
+     * path — ProviderSwitcher._handleStorageEvent re-dispatches the same event
+     * when another tab switches — plus any future programmatic setActive.
+     * It is built regardless: cheap, and the cross-tab case is real.
+     *
+     * detail is { oldProvider, newProvider }, both always strings.
+     */
+    _subscribeProviderChanged() {
+      if (this._providerChangedHandler) return;
+
+      this._providerChangedHandler = (event) => {
+        // Guard on the modal, not on a flag: a rebuild is only meaningful while
+        // there is a body to rebuild, and the closed case must do NOTHING.
+        if (!this.currentModal) {
+          logDebug("provider:changed received with no modal open; no rebuild");
+          return;
+        }
+        // Only the configuration state carries the picker. Rebuilding during
+        // processing or results would replace live output with a fresh form.
+        if (this.isProcessing) {
+          logDebug("provider:changed received while processing; no rebuild");
+          return;
+        }
+        logInfo("provider:changed — rebuilding the enhancer picker", {
+          oldProvider: event?.detail?.oldProvider,
+          newProvider: event?.detail?.newProvider,
+        });
+        this.rebuildConfigurationBody();
+      };
+
+      window.addEventListener("provider:changed", this._providerChangedHandler);
+      logDebug("Subscribed to provider:changed for the enhancer picker");
+    }
+
+    /** Remove the provider:changed subscriber. Idempotent. */
+    _unsubscribeProviderChanged() {
+      if (!this._providerChangedHandler) return;
+      window.removeEventListener(
+        "provider:changed",
+        this._providerChangedHandler,
+      );
+      this._providerChangedHandler = null;
+      logDebug("Unsubscribed from provider:changed");
+    }
+
+    /**
+     * Rebuild the configuration body in place, preserving focus.
+     *
+     * setContent replaces the body wholesale, which destroys whatever had focus
+     * inside it — silently. That is the FIX-5a destruction the modal's focus
+     * contract exists to cure, so the rebuild is wrapped in
+     * captureFocusContext / restoreFocusAfterRebuild exactly as the processing
+     * transition is.
+     *
+     * The FOOTER is deliberately NOT touched. updateFooterButtons resolves its
+     * target with document.querySelector("dialog[open].universal-modal") — a
+     * GLOBAL lookup that would find the first open universal-modal rather than
+     * this one — and the configuration footer is already correct, so there is
+     * nothing to rebuild and no reason to take that risk. This path therefore
+     * does not reach the global-resolution hazard at all.
+     *
+     * No announcement is added. The rebuild is silent by design.
+     */
+    rebuildConfigurationBody() {
+      if (!this.currentModal) return;
+
+      const focusContext = this.currentModal.captureFocusContext();
+
+      // Build BEFORE touching the modal, and fail LOUDLY. This runs inside a
+      // window event handler, so an uncaught throw here would abandon the
+      // rebuild with the old body still on screen and nothing in the log
+      // pointing at the cause — the picker would simply go on showing the
+      // previous provider's models. Building first also means a failure leaves
+      // the modal exactly as it was rather than half-replaced.
+      let content;
+      try {
+        content = this.buildConfigurationContent();
+      } catch (error) {
+        logError(
+          "provider:changed rebuild ABANDONED — buildConfigurationContent threw. The picker still shows the previous provider's models.",
+          error,
+        );
+        return;
+      }
+
+      this.currentModal.setContent(content);
+
+      // The picker wires with inline onchange attributes, which survive an
+      // innerHTML rebuild by construction — nothing to re-bind. Icons do NOT:
+      // populateIcons runs once at DOMContentLoaded, so any data-icon span in
+      // the rebuilt string would come back empty. Scoped to the modal element
+      // so the call cannot rescan the whole document.
+      // The Modal instance holds its dialog on `.modal`, NOT `.element` — read
+      // out of universal-modal.js rather than assumed. A wrong field here is
+      // silent in both directions: icons come back empty and focus never lands.
+      const modalEl = this.currentModal.modal || null;
+      if (modalEl && window.IconLibrary?.populateIcons) {
+        window.IconLibrary.populateIcons(modalEl);
+      }
+
+      // Land focus on the first control the rebuilt body offers. Under Foundry
+      // the radios are gone, so the advanced select is the landing by
+      // elimination; under OpenRouter the first radio is the natural target.
+      const target =
+        (modalEl &&
+          (modalEl.querySelector('.model-options input[type="radio"]') ||
+            modalEl.querySelector("#ai-advanced-model-select"))) ||
+        null;
+
+      this.currentModal.restoreFocusAfterRebuild(focusContext, target, {
+        label: "enhancer provider rebuild",
+      });
+    }
+
+    /**
+     * Build the recommended-models block: either the radio group, or the
+     * explanatory text that replaces it when no recommended model is served by
+     * the active provider.
+     *
+     * Two-sided by construction — exactly one of the two branches renders, so
+     * the empty state cannot show radios and the populated state cannot show
+     * the message.
+     *
+     * @returns {string} HTML for the recommended-model section
+     */
+    buildRecommendedModelSection() {
+      const radios = this.buildModelOptions();
+
+      if (this._lastModelOptionsCount === 0) {
+        return `
+        <div class="ai-model-selection-empty" id="ai-model-selection-empty">
+          <p>Recommended models are available with OpenRouter. Choose a model from the advanced list below.</p>
+        </div>
+      `;
+      }
+
+      return `
+        <fieldset class="ai-model-selection">
+          <legend>Select AI Model</legend>
+          <div class="model-options">
+            ${radios}
+          </div>
+        </fieldset>
+      `;
+    }
+
+    // EA-L2 DELETED buildRadioCostLabel and the per-radio cost line it fed.
+    //
+    // EA-2c had put a registry-sourced figure on each radio, quoted against a
+    // fixed 10,000-token notional. The estimate region below the picker quotes
+    // the REAL document. Both were correct; together they were not. A listen on
+    // 25 August 2026 heard "Estimated ~£0.053" from the Mini radio and then
+    // "~£0.027" from the region, seconds apart, with nothing saying they
+    // measured different things.
+    //
+    // NO GUARD ROW COULD HAVE SEEN THIS. Each figure passed its own assertion
+    // in isolation; the defect existed only in the pair, and only when spoken.
+    // That is the class of thing the ear finds and static coverage cannot.
+    //
+    // The estimate region is now the SINGLE cost surface. It keeps role=status
+    // and sits inside a labelled region ("Cost estimate"), so it stays
+    // reachable and readable — it just no longer interrupts.
     buildModelOptions() {
+      // EA-2c: re-read the ACTIVE provider's set on every build. This is what
+      // makes the provider:changed rebuild show the new provider's trio —
+      // rebuildConfigurationBody reaches buildConfigurationContent, which
+      // reaches here, so the open path and the rebuild path share one read
+      // rather than needing two that must be kept in step.
+      if (this.recommendedByProvider) {
+        this.models = this.getRecommendedModels();
+      }
+
       if (!this.models) {
+        // Not an empty PROVIDER result — a missing config. Leave the count
+        // unset so the caller renders this message rather than the empty-state
+        // one, which would misattribute a load failure to the provider.
+        this._lastModelOptionsCount = -1;
         return "<p>Model configuration not loaded.</p>";
       }
 
-      return Object.entries(this.models)
+      // EA-2b's filter is retained rather than trusted to getRecommendedModels.
+      // It is the same predicate applied twice on purpose: this one also covers
+      // the legacy path and the emergency fallback, neither of which is
+      // guaranteed to have gone through the accessor above.
+      const available = Object.entries(this.models).filter(([, model]) =>
+        this._isProviderAvailable(model.id),
+      );
+
+      // Recorded for buildRecommendedModelSection, which decides between the
+      // radio group and the empty-state message. Set here rather than recomputed
+      // there so both read the SAME filter result and cannot disagree.
+      this._lastModelOptionsCount = available.length;
+
+      return available
         .map(([key, model]) => {
           const isChecked = model.id === this.selectedModel;
           const recommendedBadge = model.recommended
@@ -1387,7 +2018,6 @@
             <span class="model-option-content">
               <span class="model-option-name">${this.escapeHtml(model.name)}${recommendedBadge}</span>
               <span class="model-option-description">${this.escapeHtml(model.description)}</span>
-              <span class="model-option-cost">Input: £${model.costPer1kInput}/1K tokens | Output: £${model.costPer1kOutput}/1K tokens</span>
             </span>
           </label>
         `;
@@ -1421,20 +2051,28 @@
       if (hasRegistryModels) {
         const placeholderSelected = isRecommendedModel ? " selected" : "";
 
+        // Plain text, no emoji (Decision 10, EA-4). These labels used to carry
+        // a money bag, a balance scale and a rocket. An optgroup label is text
+        // sent straight to the synthesiser, so what a screen-reader user heard
+        // depended on their own symbol verbosity \u2014 heard as a finding on the
+        // EA-L3 listen, 26 August 2026 \u2014 and AGENTS.md forbids emoji as icons
+        // in any case, directing UI symbols to the SVG library. A native
+        // optgroup cannot host an SVG, so the symbol is dropped rather than
+        // replaced; the label already says what the tier is.
         const tiers = [
           {
             key: "low",
-            label: "\uD83D\uDCB0 Low Cost",
+            label: "Low Cost",
             models: registry.low,
           },
           {
             key: "medium",
-            label: "\u2696\uFE0F Medium Cost",
+            label: "Medium Cost",
             models: registry.medium,
           },
           {
             key: "high",
-            label: "\uD83D\uDE80 High Cost",
+            label: "High Cost",
             models: registry.high,
           },
         ];
@@ -1470,7 +2108,8 @@
               ${optgroupsHTML}
             </select>
             <p id="ai-advanced-model-help" class="ai-advanced-help">
-              Choose a different vision-capable model from the registry.
+              Choose a different model from the registry. The list shows only
+              models the current provider serves and that can read PDF files.
             </p>
           </div>`;
       }
@@ -2088,7 +2727,19 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         (m) => m.id === modelId,
       );
 
-      if (promptsModel) {
+      // EA-2c: the prompt JSON no longer carries cost fields — the registry is
+      // the single source. The branch is KEPT rather than deleted, because a
+      // legacy JSON still in the old shape does carry them and should still be
+      // honoured. It is now guarded on the fields being NUMBERS: without the
+      // guard an entry without them multiplies by undefined and returns NaN,
+      // which is worse than falling through, because NaN is not null and would
+      // sail past every degradation check downstream and render as "£NaN".
+      const hasPromptCosts =
+        promptsModel &&
+        typeof promptsModel.costPer1kInput === "number" &&
+        typeof promptsModel.costPer1kOutput === "number";
+
+      if (hasPromptCosts) {
         const outputTokens = inputTokens;
         const systemPromptTokens = 500;
         const totalInputTokens = inputTokens + systemPromptTokens;
@@ -2142,6 +2793,31 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       if (!model) {
         logWarn("Model not found for cost calculation:", this.stats.model);
         return 0;
+      }
+
+      // EA-2c: same guard, same reason as calculateCost above. Without the
+      // JSON cost fields this computed NaN and wrote it into stats.actualCost,
+      // where it would have been reported as the ACTUAL SPEND of a completed
+      // run — a wrong number in the one place a person is most likely to trust
+      // it. Falling back to the registry-based estimate is the honest answer.
+      const hasPromptCosts =
+        typeof model.costPer1kInput === "number" &&
+        typeof model.costPer1kOutput === "number";
+
+      if (!hasPromptCosts) {
+        const registryCost = this.calculateCost(
+          this.stats.model,
+          this.stats.inputTokens,
+        );
+        this.stats.actualCost =
+          registryCost === null || Number.isNaN(registryCost)
+            ? 0
+            : registryCost;
+        logDebug("Actual cost from the registry (no prompt-JSON cost fields)", {
+          model: this.stats.model,
+          actualCost: this.stats.actualCost,
+        });
+        return this.stats.actualCost;
       }
 
       const inputCost = (this.stats.inputTokens / 1000) * model.costPer1kInput;
@@ -2960,10 +3636,87 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // Build reasoning configuration based on model and user preference
       const reasoningConfig = this.buildReasoningConfig();
 
+      // ---- PDF send boundary (S2F-D8, parcel P4-M2b) -------------------------
+      // EARLY CHECK FOR THE PERSON; BOUNDARY GUARD FOR THE MACHINE. EA-5 added a
+      // pre-flight in startEnhancement that asks these same two questions before
+      // the processing state opens, so a refusal a person could have been told
+      // about immediately no longer costs them a state transition. THIS GUARD DID
+      // NOT MOVE AND MUST NOT. The pre-flight covers ONE entry point and the id
+      // it can see there; this covers the send itself, whatever path reached it —
+      // a direct caller, a future entry point, a model changed between the
+      // gesture and the request. A picker filters a list, a pre-flight improves a
+      // journey, and only a boundary guard is a guarantee.
+      //
+      // The one final id, captured once so the id the guard checks and the id
+      // the constructor sends are provably the same value.
+      const resolvedModelId = this.selectedModel;
+
+      // The predicate lives in MathPixContextAI and is reached at CALL time, not
+      // captured at module scope: mathpix-context-ai.js loads AFTER this file in
+      // tools.html, so a module-scope capture would be undefined here. There is
+      // deliberately NO second copy of the predicate — the extraction of both it
+      // and the vision list into one shared capability module is the recorded
+      // follow-up for this seam.
+      const capability = window.MathPixContextAI;
+      if (typeof capability?.isModelPdfCapable !== "function") {
+        // FAIL OPEN, and this is deliberately the OPPOSITE of the predicate's
+        // own no-authority branch. Inside isModelPdfCapable, an absent selector
+        // means the capability authority was consulted and was not there, so
+        // false is the honest answer. Here, an absent facade means a production
+        // script did not load — that is a page-configuration fault and NOT a
+        // capability finding. Refusing on it would reject every OpenRouter model
+        // (204 measured eligible on this page) and take enhancement down
+        // completely, which is the outage the FF.1 measurement warns about.
+        logWarn(
+          "PDF send boundary skipped: MathPixContextAI.isModelPdfCapable unavailable. Proceeding without a capability check.",
+          { model: resolvedModelId },
+        );
+      } else if (!capability.isModelPdfCapable(resolvedModelId)) {
+        logWarn("initialiseEmbed: refusing a model that cannot read PDF files", {
+          model: resolvedModelId,
+        });
+        // Throw the facade's own constant, never a retyped copy. startEnhancement
+        // catches this and calls showError, whose existing notifyError speaks the
+        // outcome line from the modal status text. So NO new announcement is
+        // added, the at-most-two polite line pin is satisfied by redirect, and
+        // no listen is owed beyond the outcome line that already existed.
+        throw new Error(capability.NON_PDF_REFUSAL);
+      }
+
+      // ---- Provider membership send boundary (EA-2b) -------------------------
+      // Asks a DIFFERENT question from the PDF guard above: not "can this model
+      // read a PDF" but "is this model served by the provider the user has
+      // selected". Before this parcel the enhancer never consulted the switch in
+      // either direction, so with Foundry active all three recommended radios
+      // sent to OpenRouter and SUCCEEDED silently. Nothing errored and nothing
+      // announced — the defect was silence, not breakage.
+      //
+      // Same resolvedModelId as the PDF guard and the constructor, so all three
+      // provably assess the same value. Same fail-open-on-absent-facade shape,
+      // and the same throw into startEnhancement's existing catch, which reaches
+      // showError and its notifyError. No new spoken line is added.
+      //
+      // EARLY CHECK FOR THE PERSON; BOUNDARY GUARD FOR THE MACHINE (EA-5). The
+      // pre-flight in startEnhancement asks this same question first, in the same
+      // order, on the same id, so on the normal journey this branch is now
+      // unreached rather than gone. It is the safety net, not the user
+      // experience, and an unreached guard is doing its job.
+      if (typeof capability?.isModelProviderAvailable !== "function") {
+        logWarn(
+          "Provider send boundary skipped: MathPixContextAI.isModelProviderAvailable unavailable. Proceeding without a membership check.",
+          { model: resolvedModelId },
+        );
+      } else if (!capability.isModelProviderAvailable(resolvedModelId)) {
+        logWarn("initialiseEmbed: refusing a model the active provider does not serve", {
+          model: resolvedModelId,
+        });
+        throw new Error(capability.PROVIDER_REFUSAL);
+      }
+
       // Create embed instance
       this.embed = new OpenRouterEmbed({
         containerId: "ai-enhance-embed-container",
-        model: this.selectedModel,
+        model: resolvedModelId,
         systemPrompt: this.buildSystemPrompt(),
         temperature: 0.3, // Lower temperature for more consistent corrections
         max_tokens: dynamicMaxTokens, // Phase 7.4.1: dynamically scaled
@@ -3208,6 +3961,49 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
       if (this.isProcessing) {
         logWarn("Enhancement already in progress");
+        return;
+      }
+
+      // ---- EA-5: the pre-decidable refusals, hoisted -------------------------
+      // EARLY CHECK FOR THE PERSON; BOUNDARY GUARD FOR THE MACHINE. This asks
+      // the same two questions initialiseEmbed asks, on the same id, and it does
+      // NOT replace them — see the matching note at both guards there. What it
+      // changes is only WHERE the answer is delivered when the answer is already
+      // knowable.
+      //
+      // WHY, measured at the EA-L3 listen on 26 August 2026. A refusal decidable
+      // before any request is built still cost a full state transition: the
+      // processing state opened, focus landed on its Cancel button for 41ms, the
+      // element was destroyed before NVDA could resolve its name, and the person
+      // heard a bare "button". The FIX-5 focus contract was working correctly on
+      // that path; the fault was that the path existed at all.
+      //
+      // So these run FIRST, before any state mutation — before isProcessing,
+      // before the abort controller, before the timing log, and before the try
+      // block opens at all. That last point is why this speaks directly rather
+      // than throwing: there is no enclosing catch here yet, and reaching the
+      // existing one would mean entering the error state, which is the rebuild
+      // this hoist exists to avoid.
+      //
+      // NOTHING IS MUTATED ON THE REFUSED PATH. No _beginModalStateTransition,
+      // so the supersede token is unchanged and no deferred line is scheduled or
+      // invalidated; no setContent, so focus stays exactly where the person left
+      // it; no footer rebuild, so the control under their hands survives. The
+      // modal remains in the configuration state with the picker still open,
+      // which is where the fix for the refusal actually is.
+      const refusal = this._preflightRefusal();
+      if (refusal) {
+        // The modal is open, so the shared notification path reroutes this into
+        // the dialogue's own div.universal-modal-status-text — the same host the
+        // error state's line reaches, and the same one it would reach from here.
+        // Spoken SYNCHRONOUSLY and not through _announceAfterRebuild: that
+        // deferral exists to let focus land after a rebuild, and there is no
+        // rebuild on this path to settle behind.
+        if (typeof window.notifyError === "function") {
+          window.notifyError(MathPixAIEnhancer.composeFailureLine(refusal));
+        } else {
+          logWarn("notifyError unavailable; the pre-flight refusal was not spoken");
+        }
         return;
       }
 
@@ -3538,6 +4334,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * Show processing state in modal
      */
     showProcessingState() {
+      // FIX-5d: open the new state FIRST, so any line still deferred for the
+      // state being left is invalidated before this one schedules its own.
+      this._beginModalStateTransition("processing");
+
       if (!this.currentModal) {
         logWarn("No modal to update");
         return;
@@ -3556,8 +4356,21 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       </div>
     `;
 
+      // FIX-5b: capture before the rebuild, land after it. THIS is the
+      // destruction point FIX-5a measured — the Start Enhancement button lives
+      // in the footer, and updateFooterButtons("processing") replaces it. Cancel
+      // is the only control the processing state has, so it is the landing by
+      // elimination rather than by preference.
+      const focusContext = this.currentModal.captureFocusContext();
+
       this.currentModal.setContent(content);
       this.updateFooterButtons("processing");
+
+      this.currentModal.restoreFocusAfterRebuild(
+        focusContext,
+        this._footerButtonByLabel("Cancel"),
+        { label: "enhancer processing" },
+      );
 
       // Phase 7.3J: Populate document metrics
       const lines = this.originalMMD.split("\n").length;
@@ -3581,10 +4394,12 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         hintEl.textContent = "Usually takes 15\u201360 seconds";
       }
 
-      // Use notification system to announce start - reliable for screen readers
-      if (window.notifyInfo) {
-        window.notifyInfo("AI enhancement started. Preparing... please wait.");
-      }
+      // Use notification system to announce start - reliable for screen readers.
+      // FIX-5b: deferred behind the rebuild focus settle, ordering A.
+      this._announceAfterRebuild(
+        "notifyInfo",
+        "AI enhancement started. Preparing... please wait.",
+      );
 
       logDebug("Modal updated to processing state");
     }
@@ -3811,6 +4626,15 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * Default visibility: Enhanced + Preview shown, Original + PDF hidden
      */
     async showResults() {
+      // FIX-5d: the third transition. Its own supersede case — a results render
+      // arriving after an error, invalidating the failure line — is NOT
+      // reachable from the current code, because startEnhancement either
+      // resolves through showResults or falls into the catch that calls
+      // showError, never both. It is guarded anyway: defence in depth is two
+      // lines here, and the alternative is a rule that holds only while nobody
+      // adds a retry path.
+      this._beginModalStateTransition("results");
+
       logInfo("Showing enhancement results...");
 
       // Hide any lingering status notification
@@ -3934,8 +4758,28 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       </div>
     `;
 
+      // FIX-5b: the results state shares the defect — setContent plus a footer
+      // rebuild, and no focus handling. It is NOT error-path-only.
+      //
+      // LANDING TARGET, from a read of buttonConfigs.results rather than a
+      // guess. That footer is Discard, Try Again, Apply Changes in DOM order,
+      // and the results body has no heading to land on the way the error state
+      // does — its first element is a fieldset of display toggles. So the choice
+      // is between footer buttons, and first-in-DOM is DISCARD, which points a
+      // stray Enter at destroying the enhancement that just succeeded. Apply
+      // Changes is taken instead: it is the primary, it is what the spoken line
+      // names first, and of the two committing actions it is the recoverable one
+      // — applied text can be enhanced again, a discarded result cannot.
+      const focusContext = this.currentModal.captureFocusContext();
+
       this.currentModal.setContent(content);
       this.updateFooterButtons("results");
+
+      this.currentModal.restoreFocusAfterRebuild(
+        focusContext,
+        this._footerButtonByLabel("Apply Changes"),
+        { label: "enhancer results" },
+      );
 
       // Populate SVG icons in the modal content
       if (window.IconLibrary?.populateIcons) {
@@ -3971,12 +4815,12 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         requestAnimationFrame(() => this.setupScrollSync());
       }
 
-      // Announce completion to screen reader users
-      if (window.notifySuccess) {
-        window.notifySuccess(
-          "Enhancement complete. Review the results and choose Apply Changes or Discard.",
-        );
-      }
+      // Announce completion to screen reader users, deferred behind the focus
+      // land per ordering A.
+      this._announceAfterRebuild(
+        "notifySuccess",
+        "Enhancement complete. Review the results and choose Apply Changes or Discard.",
+      );
 
       logDebug("Modal updated to results state with 4-column view");
     }
@@ -4701,6 +5545,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * @param {string} message - Error message
      */
     showError(message) {
+      // FIX-5d: this is the transition that supersedes the processing start
+      // line on the fast-fail journey — the measured case, where the whole
+      // processing state lasts about twenty milliseconds.
+      this._beginModalStateTransition("error");
+
       // Phase 7.3J: Stop elapsed timer before showing error
       this.stopElapsedTimer();
 
@@ -4718,20 +5567,34 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const content = `
       <div class="ai-error-display" data-state="error">
         <div class="error-icon" aria-hidden="true">⚠</div>
-        <h3>Enhancement Failed</h3>
+        <h3 id="ai-error-heading" tabindex="-1">Enhancement Failed</h3>
         <p>${this.escapeHtml(message)}</p>
       </div>
     `;
 
+      // FIX-5b: the heading carries tabindex="-1" set HERE, in the caller
+      // markup, because restoreFocusAfterRebuild never mutates its target — a
+      // helper that quietly adds attributes makes this template lie about what
+      // is focusable. The heading rather than a button is Matthew choice of
+      // 22 August 2026: it names the state the person has arrived in, and it
+      // points a stray Enter at nothing.
+      const focusContext = this.currentModal.captureFocusContext();
+
       this.currentModal.setContent(content);
       this.updateFooterButtons("error");
 
-      // Announce error to screen reader users
-      if (window.notifyError) {
-        window.notifyError(
-          `Enhancement failed: ${message}. You can try again or close the dialog.`,
-        );
-      }
+      this.currentModal.restoreFocusAfterRebuild(
+        focusContext,
+        document.getElementById("ai-error-heading"),
+        { label: "enhancer error" },
+      );
+
+      // Announce error to screen reader users, deferred behind the focus land
+      // per ordering A. See _announceAfterRebuild for why beside it is wrong.
+      this._announceAfterRebuild(
+        "notifyError",
+        MathPixAIEnhancer.composeFailureLine(message),
+      );
 
       logDebug("Modal updated to error state");
     }
@@ -5239,6 +6102,74 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // GLOBAL EXPOSURE
   // ============================================================================
 
+  // The failure-line composer, exposed as a STATIC. Both call sites go through
+  // MathPixAIEnhancer.composeFailureLine rather than calling the module-scope
+  // function directly, and that indirection is deliberate on two counts.
+  //
+  // It lets the guard rows assert WHICH refusal was spoken by reading the product
+  // own composer instead of re-implementing the join — EA-L2 wrote that
+  // expression out longhand in the suite and an inversion then deleted the trim
+  // from the product without moving a single row, because the rows were testing
+  // the suite own arithmetic.
+  //
+  // And it makes the composer REACHABLE TO AN INVERSION. Written the other way
+  // round first, with the call sites on the closed-over function and the static a
+  // mere alias, an inversion that replaced the static moved the suite expectation
+  // and left the product untouched — three rows reddened and the one row written
+  // to catch a doubled full stop stayed green. An unpatchable seam is an
+  // unprovable one.
+  MathPixAIEnhancer.composeFailureLine = composeFailureLine;
+
+  // ==========================================================================
+  // DEV-ONLY CONSOLE HARNESS GATE
+  // ==========================================================================
+  // The console test harnesses below are reachable on a PRODUCTION page load,
+  // and testAIEnhancerReasoning's part 2 sends a REAL billable request. They
+  // are dev tooling, so they refuse unless the page is running in dev mode.
+
+  /** The key the gated-harness loader in tools.html persists. */
+  const DEV_FLAG_KEY = "dev-test-harnesses";
+
+  /**
+   * Mirrors the gated-harness loader in tools.html: ?dev=1 or ?test enables,
+   * ?dev=0 disables outright, otherwise the persisted key decides. READ-ONLY —
+   * that loader owns the write and this file must never set the key.
+   *
+   * location.search is consulted before the stored key on purpose: this file's
+   * <script> runs at tools.html ~:19263 and the loader at ~:23377, so on a
+   * FIRST ?dev=1 load the key has not been written yet and the persisted value
+   * alone would refuse a legitimate dev load.
+   *
+   * @returns {boolean} whether dev harnesses are enabled for this page load
+   */
+  function devHarnessesEnabled() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("dev") === "0") return false;
+      if (params.has("dev") || params.has("test")) return true;
+      return window.localStorage.getItem(DEV_FLAG_KEY) === "true";
+    } catch (error) {
+      // A blocked storage accessor must fail CLOSED. Throwing here would leave
+      // a billable harness reachable on exactly the pages least able to say so.
+      return false;
+    }
+  }
+
+  /**
+   * The gate every dev-only harness consults, held on an object so a seam test
+   * can replace it and drive BOTH branches. Call sites must go through this
+   * reference rather than calling devHarnessesEnabled() directly — the same
+   * reason composeFailureLine is a static above: an unpatchable seam is an
+   * unprovable one.
+   */
+  const devHarnessGate = { enabled: devHarnessesEnabled };
+  MathPixAIEnhancer.devHarnessGate = devHarnessGate;
+
+  /** The one refusal line, so the harnesses and their guard rows share it. */
+  const DEV_ONLY_REFUSAL =
+    "Dev-only console harness. Load tools.html?dev=1 to use it.";
+  MathPixAIEnhancer.DEV_ONLY_REFUSAL = DEV_ONLY_REFUSAL;
+
   window.MathPixAIEnhancer = MathPixAIEnhancer;
   window.getMathPixAIEnhancer = getMathPixAIEnhancer;
 
@@ -5333,6 +6264,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
    * Usage: window.testAIDataProviderIntegration()
    */
   window.testAIDataProviderIntegration = function () {
+    // Reaches no billable send, but it is a console test harness on the same
+    // production exposure — gated with its sibling rather than left behind.
+    if (!devHarnessGate.enabled()) {
+      logWarn(`testAIDataProviderIntegration: ${DEV_ONLY_REFUSAL}`);
+      return;
+    }
+
     const results = { passed: 0, failed: 0, errors: [] };
 
     function assert(condition, label) {
@@ -5662,6 +6600,12 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
    * Usage: await window.testAIEnhancerReasoning()
    */
   window.testAIEnhancerReasoning = async function () {
+    // Part 2 below sends a REAL billable request. Refuse before anything runs.
+    if (!devHarnessGate.enabled()) {
+      logWarn(`testAIEnhancerReasoning: ${DEV_ONLY_REFUSAL}`);
+      return;
+    }
+
     const results = { passed: 0, failed: 0, errors: [] };
 
     function assert(condition, label) {

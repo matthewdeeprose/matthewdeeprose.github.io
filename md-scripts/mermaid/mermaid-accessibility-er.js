@@ -246,10 +246,32 @@ const EntityRelationshipModule = (function () {
     const safeFrom = Common.escapeHtml(fromName);
     const safeTo = Common.escapeHtml(toName);
 
-    // An empty role is legal — an empty quoted label parses (stage 0 E6) —
-    // so the neutral verb carries the sentence when there is no verb to use.
+    // The role is QUOTED as a label and the frame supplies its own verb
+    // ("links"), because the author's label is not necessarily a finite verb.
+    // The old frame read `each {from} {role} {cardinality}`, which assumed one:
+    // a participle such as "supported by" produced "Each PROJECT supported by
+    // zero or more FUNDER records", a sentence asserting nothing. Item 63.
+    //
+    // The label is placed, never INFLECTED — item 26 / ledger entry 9, the
+    // standing rule that a name written by a diagram author is never
+    // conjugated or transformed by the generator, which owns only the words
+    // around it. Conjugating the label would read better in more cases and is
+    // forbidden for that reason.
+    //
+    // The opening article is the invariant "The", so no a/an is ever selected
+    // against author text. An "a {role} relationship" frame would have to, and
+    // would be wrong on every vowel-initial label (contract clause C9).
+    //
+    // The quote marks are generator furniture and are NOT escaped. The role
+    // inside them is author text and is escaped exactly once, here, by this
+    // caller — so an author's own quote arrives as &quot; and stays visibly
+    // distinct from the furniture.
+    //
+    // An empty role is legal — an empty quoted label parses (stage 0 E6) — and
+    // its branch is untouched: the neutral verb still carries the sentence when
+    // there is no label to place.
     const forward = relationship.role
-      ? `each ${safeFrom} ${Common.escapeHtml(relationship.role)} ${cardinalityClause(relationship.toPerFrom, toName)}`
+      ? `The "${Common.escapeHtml(relationship.role)}" relationship links each ${safeFrom} to ${cardinalityClause(relationship.toPerFrom, toName)}`
       : `each ${safeFrom} is linked to ${cardinalityClause(relationship.toPerFrom, toName)}`;
 
     const reverse = `each ${safeTo} is linked to ${cardinalityClause(relationship.fromPerTo, fromName)}`;

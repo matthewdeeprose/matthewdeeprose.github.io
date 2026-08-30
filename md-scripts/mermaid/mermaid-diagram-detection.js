@@ -157,6 +157,18 @@ window.MermaidDiagramDetection = (function () {
     // there is no scan-key coincidence to check — the legacy keyword scan's
     // sankey branch cannot match a real sankey diagram at all.
     sankey: "sankey",
+    // XY chart has a single live name: detectType returns "xychart" for
+    // `xychart-beta` (xychart grounding § 2, measured on all six gold
+    // exemplars). No -v2-style pair exists, so one entry suffices.
+    //
+    // UNCHANGED BY THIS ENTRY, and deliberately so: a bare `xychart` without
+    // `-beta` makes detectType THROW, which returns null and falls through to
+    // the legacy keyword scan below — and that scan has no xychart branch at
+    // all, so it answers `flowchart` and a chart is described as a flowchart
+    // (grounding § 2). This map cannot reach that path, because it is only
+    // consulted for a type Mermaid's own detector produced. The misroute is
+    // registered as outstanding rather than fixed here.
+    xychart: "xychart",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

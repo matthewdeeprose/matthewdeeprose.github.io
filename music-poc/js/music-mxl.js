@@ -61,11 +61,16 @@ const MusicMxl = (function () {
         }
       }
 
-      // Fall back: container.xml absent or gave no usable rootfile. Pick the
-      // first entry outside META-INF/, not the mimetype marker, ending .musicxml
-      // or .xml (case-insensitive).
+      // Fall back: container.xml absent or gave no usable rootfile — the warning
+      // below says which of the two it was, so the absent case never names a file
+      // the archive does not have. Pick the first entry outside META-INF/, not the
+      // mimetype marker, ending .musicxml or .xml (case-insensitive).
       if (!entryName) {
-        logWarn("extractXml: no usable rootfile in container.xml — falling back to first score entry");
+        logWarn(
+          containerEntry
+            ? "extractXml: no usable rootfile in container.xml — falling back to first score entry"
+            : "extractXml: no META-INF/container.xml in the archive — falling back to first score entry"
+        );
         entryName =
           Object.keys(zip.files).find(function (name) {
             if (/^META-INF\//i.test(name)) return false;
@@ -91,7 +96,7 @@ const MusicMxl = (function () {
   // selfTest — BROWSER-ONLY (needs the JSZip global and DOMParser). Async because
   // it builds its own .mxl fixtures with JSZip.generateAsync and round-trips them
   // through extractXml. Builds a results object, console.table()s it and returns
-  // it (the resolved value of the promise). MusicPdfRasterise.selfTest is the
+  // it (the resolved value of the promise). MusicRenderScore.selfTest is the
   // precedent for an async selfTest.
   async function selfTest() {
     const MARKER = "<!--MXL-SELFTEST-->";
@@ -99,6 +104,15 @@ const MusicMxl = (function () {
     const score =
       '<?xml version="1.0" encoding="UTF-8"?><score-partwise version="3.1">' +
       MARKER +
+      "</score-partwise>";
+
+    // A second marker and score, so the unusable-container row asserts on ITS OWN
+    // entry's content rather than on the shared one. Deliberately not a superstring
+    // of MARKER, so neither marker's indexOf can be satisfied by the other's score.
+    const UNUSABLE_MARKER = "<!--MXL-SELFTEST-UNUSABLE-->";
+    const unusableScore =
+      '<?xml version="1.0" encoding="UTF-8"?><score-partwise version="3.1">' +
+      UNUSABLE_MARKER +
       "</score-partwise>";
 
     // container.xml naming a given rootfile path.
@@ -168,6 +182,26 @@ const MusicMxl = (function () {
     } catch (e) {
       logError("selfTest: fallsBackWithoutContainer fixture failed", e);
       results.fallsBackWithoutContainer = false;
+    }
+
+    // container.xml PRESENT but unusable: its rootfile's full-path names an entry
+    // the archive does not contain, so the rootfile is rejected and the fallback
+    // picks the real score. Exercises the truthy arm of the two-way fallback
+    // warning through its BEHAVIOUR, needing no logger spy — which matters,
+    // because the log functions are destructured once at IIFE evaluation time and
+    // a later swap of window.MusicLog would not reach them.
+    try {
+      const zip = new JSZip();
+      zip.file("mimetype", "application/vnd.recordare.musicxml+xml");
+      zip.file("META-INF/container.xml", container("MusicXML/absent.musicxml"));
+      zip.file("tune.musicxml", unusableScore);
+      const buf = await zip.generateAsync({ type: "arraybuffer" });
+      const xml = await extractXml(buf);
+      results.unusableContainerFallsBack =
+        typeof xml === "string" && xml.indexOf(UNUSABLE_MARKER) !== -1;
+    } catch (e) {
+      logError("selfTest: unusableContainerFallsBack fixture failed", e);
+      results.unusableContainerFallsBack = false;
     }
 
     // Garbage (non-zip) bytes: resolves null AND does not throw.

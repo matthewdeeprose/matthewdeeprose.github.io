@@ -571,6 +571,34 @@ window.MermaidAccessibility = (function () {
         );
         mermaidDiv.innerHTML = result.svg;
 
+        // A fresh SVG has landed. Series encoding and size are re-applied
+        // through reapplyAfterRender — the ONE named after-render step, in
+        // mermaid-controls.js — rather than this path keeping its own copy of
+        // the list. That is the whole point of the helper: the next thing a
+        // render has to restore is one edit there, not four across the tree.
+        //
+        // This path does ALSO reach the same work indirectly, through
+        // initializeAllControls -> addControlsToContainer -> addThemeSelector
+        // -> applyTheme, which re-renders and re-applies in its own .then.
+        // That coverage is INCIDENTAL rather than designed: it holds only
+        // while MermaidThemes is present and the theme selector is actually
+        // added, and it lands one async re-render later than the accessibility
+        // features that read this SVG. Register item 56 was opened against a
+        // gap here that measurement then showed did not exist — the indirect
+        // route was already covering it. The explicit call is kept because it
+        // makes the guarantee this path's own instead of borrowing it.
+        if (
+          window.MermaidControls &&
+          typeof window.MermaidControls.reapplyAfterRender === "function"
+        ) {
+          window.MermaidControls.reapplyAfterRender(container, mermaidDiv, {
+            index: diagramId,
+          });
+          logDebug(
+            `[Mermaid Accessibility] reapplyAfterRender run after retry for diagram ${diagramId}`
+          );
+        }
+
         // Initialize all control systems first
         initializeAllControls(container, diagramId);
 
@@ -1340,8 +1368,32 @@ window.MermaidAccessibility = (function () {
       controlsContainer.appendChild(descriptionToggleButton);
     }
 
-    // Apply short description to diagram for screen readers
+    // Apply short description to diagram for screen readers.
+    //
+    // The PLAIN tier, never the HTML one: this is an attribute sink, so the
+    // author's text goes in verbatim and must not be escaped or it would be
+    // spoken with its entities (item 27, and the figcaption branch above).
     svgElement.setAttribute("aria-label", descriptions.short);
+
+    // Cache the accessible name on the CONTAINER, which survives a re-render.
+    // Every render replaces the SVG wholesale, so anything written onto it is
+    // gone; the figcaption and data-accessibility-initialized survive only
+    // because they live outside the .mermaid div. This dataset entry gives
+    // MermaidControls.reapplyAfterRender the exact value to put back, without
+    // re-running a generator — which it could not do anyway, because this
+    // function early-returns once data-accessibility-initialized is "true".
+    // Register item 61. The figcaption id is already cached just above, and
+    // carries aria-describedby's target for the same reason.
+    container.dataset.svgAccessibleName = descriptions.short;
+
+    // Verify the write rather than assuming it. Item 58's note: a helper that
+    // reports success without reading the attribute back is optimistic, and
+    // its own log line is then evidence of nothing.
+    if (svgElement.getAttribute("aria-label") !== descriptions.short) {
+      logDebug(
+        `[Mermaid Accessibility] aria-label did not take on diagram ${diagramId}`
+      );
+    }
 
     // Mark as initialised
     container.setAttribute("data-accessibility-initialized", "true");

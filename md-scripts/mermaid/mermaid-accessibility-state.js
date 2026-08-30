@@ -56,12 +56,88 @@
   }
 
   // Utility function aliases
-  const Utils = window.MermaidAccessibilityUtils;
   // Diagram-source text is escaped once, where it enters an HTML string. This
   // module's ONLY short tier is plain text (there is no generateShortHTML): it
   // feeds the figcaption and the SVG aria-label, neither of which parses HTML,
   // so it is deliberately left raw.
   const Common = window.MermaidAccessibilityCommon;
+  // MermaidAccessibilityUtils is deliberately NOT aliased here. Its only
+  // consumer in this module was extractTitleFromSVG, removed by item 67 below.
+
+  // Mermaid's YAML frontmatter opens the source and closes on a `---` of its
+  // own. Nothing before the opener counts as frontmatter.
+  const FRONTMATTER_PATTERN =
+    /^\s*---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+
+  // A top-level `title:` inside that block. Anchored at column 0 on purpose: a
+  // `title:` indented under another key belongs to that key, and Mermaid draws
+  // no caption for it (measured 28 August 2026 on `config:` / `  title:`).
+  const FRONTMATTER_TITLE_PATTERN = /^title[ \t]*:[ \t]*(.*)$/m;
+
+  // YAML strips one layer of matching quotes and the drawing follows YAML:
+  // `title: "Quoted caption"` renders as Quoted caption (measured 28 August
+  // 2026). The inner classes exclude the delimiter, so a value carrying its own
+  // quotes is left alone rather than mis-stripped.
+  const DOUBLE_QUOTED_PATTERN = /^"([^"]*)"$/;
+  const SINGLE_QUOTED_PATTERN = /^'([^']*)'$/;
+
+  /**
+   * Strip one layer of matching YAML quotes from a frontmatter scalar
+   * @param {string} value - The raw text after `title:`
+   * @returns {string} The value with a single matching quote pair removed
+   */
+  function stripMatchingQuotes(value) {
+    const doubled = DOUBLE_QUOTED_PATTERN.exec(value);
+    if (doubled) return doubled[1];
+
+    const singled = SINGLE_QUOTED_PATTERN.exec(value);
+    if (singled) return singled[1];
+
+    return value;
+  }
+
+  /**
+   * Extract the diagram's caption title from the SOURCE, and only from there.
+   *
+   * Item 67. This site used to read `Utils.extractTitleFromSVG(svgElement)`,
+   * which returns the rendered SVG's `<title>` element — and that is exactly
+   * where Mermaid writes an `accTitle`. An accTitle is an accessible NAME; a
+   * title is a caption. Narrating the one as the other claimed a title the
+   * author never wrote.
+   *
+   * Measured 28 August 2026 against the pinned build at securityLevel strict,
+   * reading the rendered SVG directly:
+   *   accTitle only      `<title>` carries the accTitle; there is no `<text>`
+   *   frontmatter title  no `<title>`; one `<text class="statediagramTitleText">`
+   *   both               `<title>` carries the accTitle and the real title is
+   *                      drawn as that `<text>` — so the caption was DISCARDED
+   *                      and the accessible name narrated in its place
+   *   neither            no `<title>` and no `<text>` at all
+   * A bare `title X` body line is not state syntax: it draws nothing.
+   *
+   * The shared helper is deliberately NOT changed. Its two other callers do not
+   * have this defect — sequence prefers its own parsed title, and common.js
+   * reaches it only after a source regex has failed — so a helper-level fix
+   * would spread a state-only defect into two modules that do not have it.
+   * `Common.parseDiagramTitle` is not reusable here either: its `/title\s+/`
+   * pattern cannot match the frontmatter `title:` form, it falls back to the
+   * same SVG helper, and it returns a default string where this site needs null.
+   *
+   * @param {string} code - The original mermaid source, frontmatter included
+   * @returns {string|null} The frontmatter title, or null when there is none
+   */
+  function extractTitleFromSource(code) {
+    if (!code) return null;
+
+    const frontmatter = FRONTMATTER_PATTERN.exec(code);
+    if (!frontmatter) return null;
+
+    const titleLine = FRONTMATTER_TITLE_PATTERN.exec(frontmatter[1]);
+    if (!titleLine) return null;
+
+    const title = stripMatchingQuotes(titleLine[1].trim()).trim();
+    return title || null;
+  }
 
   /**
    * Generate a short description for a state diagram
@@ -77,8 +153,9 @@
     // Parse the state diagram
     const parsedData = parseStateDiagram(code);
 
-    // Extract title if available
-    let title = Utils.extractTitleFromSVG(svgElement);
+    // Extract the caption title, from the SOURCE only — see the helper above
+    // for why the rendered SVG is not consulted (item 67).
+    const title = extractTitleFromSource(code);
 
     // Count states (excluding initial/final markers)
     const regularStates = parsedData.allStates.filter(

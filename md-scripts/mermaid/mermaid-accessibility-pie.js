@@ -59,6 +59,25 @@ const MermaidAccessibilityPieChart = (function () {
   const Common = window.MermaidAccessibilityCommon;
 
   /**
+   * Render a segment value or total at the precision the author wrote it
+   *
+   * An integer renders bare, so a count of 142 is not read out as "142.0";
+   * a value the author wrote with decimals renders exactly as the number
+   * holds it. This is the single choke point for VALUE rendering, so a site
+   * added later cannot reintroduce a fixed precision on its own.
+   *
+   * PERCENTAGES do not come through here. They are computed rather than
+   * authored, and one decimal place is the right precision for them, so they
+   * keep their own toFixed(1).
+   *
+   * @param {number} value - The segment value or total
+   * @returns {string} The value as text, with no imposed precision
+   */
+  function formatValue(value) {
+    return String(value);
+  }
+
+  /**
    * Generate a short description for a pie chart
    * @param {HTMLElement} svgElement - The SVG element of the diagram
    * @param {string} code - The original mermaid code
@@ -250,10 +269,11 @@ const MermaidAccessibilityPieChart = (function () {
     if (segments.length > 0) {
       description += `<p>The chart shows <span class="diagram-count">${segments.length}</span> categories:</p><ul class="diagram-segment-list">`;
       segments.forEach((segment) => {
-        // Escaped AFTER the lower-casing transform: escaping first would turn
-        // the entity names themselves into lower case (&LT; is not &lt;).
+        // The author's name, as written. This list used to lower-case it while
+        // Key Insights and Complete Data Points did not, so one description
+        // spelled the same category two ways.
         description += `<li><span class="diagram-segment">${Common.escapeHtml(
-          segment.name.toLowerCase()
+          segment.name
         )}</span></li>`;
       });
       description += `</ul>`;
@@ -303,9 +323,7 @@ const MermaidAccessibilityPieChart = (function () {
     }
 
     // Add total
-    description += `<li class="diagram-insight diagram-insight-total">Total: <span class="diagram-value">${total.toFixed(
-      1
-    )}</span></li>`;
+    description += `<li class="diagram-insight diagram-insight-total">Total: <span class="diagram-value">${formatValue(total)}</span></li>`;
 
     // Add largest and smallest segments
     if (segments.length > 0) {
@@ -317,9 +335,7 @@ const MermaidAccessibilityPieChart = (function () {
       );
       description += `<li class="diagram-insight diagram-insight-largest">Largest segment: <span class="diagram-segment">${Common.escapeHtml(
         largestSegment.name
-      )}</span> (<span class="diagram-value">${largestSegment.value.toFixed(
-        1
-      )}</span>, <span class="diagram-percentage">${largestPercentage}%</span>)</li>`;
+      )}</span> (<span class="diagram-value">${formatValue(largestSegment.value)}</span>, <span class="diagram-percentage">${largestPercentage}%</span>)</li>`;
 
       const smallestPercentage = (
         (smallestSegment.value / total) *
@@ -327,9 +343,7 @@ const MermaidAccessibilityPieChart = (function () {
       ).toFixed(1);
       description += `<li class="diagram-insight diagram-insight-smallest">Smallest segment: <span class="diagram-segment">${Common.escapeHtml(
         smallestSegment.name
-      )}</span> (<span class="diagram-value">${smallestSegment.value.toFixed(
-        1
-      )}</span>, <span class="diagram-percentage">${smallestPercentage}%</span>)</li>`;
+      )}</span> (<span class="diagram-value">${formatValue(smallestSegment.value)}</span>, <span class="diagram-percentage">${smallestPercentage}%</span>)</li>`;
     }
 
     description += `</ul></section>`;
@@ -344,9 +358,7 @@ const MermaidAccessibilityPieChart = (function () {
       const percentage = ((segment.value / total) * 100).toFixed(1);
       description += `<li class="diagram-data-item"><span class="diagram-segment">${Common.escapeHtml(
         segment.name
-      )}</span>: <span class="diagram-value">${segment.value.toFixed(
-        1
-      )}</span> (<span class="diagram-percentage">${percentage}%</span>)</li>`;
+      )}</span>: <span class="diagram-value">${formatValue(segment.value)}</span> (<span class="diagram-percentage">${percentage}%</span>)</li>`;
     });
 
     description += `</ul></section>`;

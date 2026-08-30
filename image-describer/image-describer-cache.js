@@ -24,6 +24,10 @@
  * Architecture: IIFE with window.ImageDescriberCache global.
  * No NPM — pure browser JS loaded via <script> tag.
  *
+ * Shared engine: consumed by the MathPix alt-text lane
+ * (see mathpix-scripts/docs/alt-text/local-describer-plan.md).
+ * Check both consumers before changing public shapes.
+ *
  * VERSION: 1.0.0
  * DATE: 22 March 2026
  * PHASE: 9B — Analysis Cache + File Hashing

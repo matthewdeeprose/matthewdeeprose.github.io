@@ -316,7 +316,53 @@ const FlowchartModule = (function () {
     // R13: the word is "decision point" everywhere (ruled by Matthew,
     // 16 August 2026).
     DECISION_PREFIX: "Decision point:",
+    // R25 SHAPE VOCABULARY (ruled 20 August 2026). Three visual shapes carry
+    // a convention sourced from BOTH Mermaid's own documentation and an
+    // ISO 5807 guide, and none of the three is derivable from the graph — a
+    // datastore is an ordinary node, and input, output and manual entry are
+    // invisible to a traversal. Every other shape stays unnarrated: Set B
+    // duplicates what R1, R5, R7 and R13 already say from structure, Set C
+    // has no sourced convention, and subroutine is placed out with a
+    // user-feedback re-open trigger. Grounding: Q3 in
+    // docs/mermaid-shape-grounding-2026-08-20.md.
+    DATASTORE_PREFIX: "Datastore:",
+    // One prefix for BOTH parallelogram directions. Mermaid draws them as
+    // mirrored shapes and the adapter keeps them apart, but the convention
+    // its two sources give is the same one either way round — "input or
+    // output" — so the narration does not distinguish them.
+    IN_OUT_PREFIX: "Input or output:",
+    MANUAL_INPUT_PREFIX: "Manual input:",
   });
+
+  // R25's lookup, canonical adapter string to prefix. Keyed on the CANONICAL
+  // only: an alias spelling is collapsed upstream by the parse adapter's
+  // SHAPE_SYNONYMS (register item 44), which is why the table extends to
+  // these shapes in the same change as this rule. A shape absent from this
+  // map takes no prefix, which is every shape but these four spellings.
+  const SHAPE_PREFIXES = Object.freeze({
+    cylinder: NARRATION.DATASTORE_PREFIX,
+    lean_right: NARRATION.IN_OUT_PREFIX,
+    lean_left: NARRATION.IN_OUT_PREFIX,
+    "sl-rect": NARRATION.MANUAL_INPUT_PREFIX,
+  });
+
+  /**
+   * R25: the narration prefix for a step's shape, ready to concatenate.
+   *
+   * Returns the prefix WITH its trailing space, or the empty string, so every
+   * emission site can interpolate it unconditionally and no site needs a
+   * conditional of its own. A `typeof` guard rather than a truthy one, for
+   * the same reason the adapter's normaliseShape uses one: the shape string
+   * reaches here from author text, and a name that happens to match an
+   * Object.prototype member must not resolve through the prototype chain.
+   *
+   * @param {string|null} shape - The canonical shape from the parse adapter
+   * @returns {string} "Datastore: ", "Input or output: ", "Manual input: ", or ""
+   */
+  const shapePrefix = (shape) => {
+    const prefix = SHAPE_PREFIXES[shape];
+    return typeof prefix === "string" ? `${prefix} ` : "";
+  };
 
   // R10 BRANCH-LABEL QUOTING. A branch label is spoken bare; one carrying
   // punctuation is wrapped in double quotes; one carrying a double quote is
@@ -1424,6 +1470,15 @@ const FlowchartModule = (function () {
     // R9, takes one when it lacks terminal punctuation of its own.
     const labelStop = isDecisionPoint ? "" : Common.labelFullStop(label);
 
+    // R25 SHAPE VOCABULARY. Empty for every shape but the four canonicals
+    // R25 narrates, and carries its own trailing space, so each emission
+    // site below interpolates it unconditionally. It cannot collide with
+    // R13's prefix: a decision point is `shape === "diamond"` by definition
+    // and a node has exactly one shape, so the two populations are disjoint
+    // by construction rather than by a guard. R17 is unaffected — these are
+    // ordinary steps and keep their appended full stop.
+    const shapeLead = shapePrefix(node.shape);
+
     // A labelled self-loop is narrated as a nested item, so it forces the
     // nested form too. An R7 parallel split never takes it: its exits are
     // one sentence at the splitting step, not a branch list.
@@ -1461,7 +1516,7 @@ const FlowchartModule = (function () {
     if (nestedForm) {
       main = isDecisionPoint
         ? `${NARRATION.DECISION_PREFIX} <span class="diagram-decision">${safeLabel}</span>${labelStop}`
-        : `<span class="diagram-action">${safeLabel}</span>${labelStop}`;
+        : `${shapeLead}<span class="diagram-action">${safeLabel}</span>${labelStop}`;
       for (const edge of out) {
         nestedItems.push(
           edge.label
@@ -1490,7 +1545,7 @@ const FlowchartModule = (function () {
           split.targets.length === 2 ? "both paths" : `all ${wayWord} paths`;
         sentence += `; ${allPaths} rejoin at step ${Common.narrationNumber(t.numberOf.get(split.rejoin))}`;
       }
-      main = `<span class="diagram-action">${safeLabel}</span>${labelStop} ${sentence}.`;
+      main = `${shapeLead}<span class="diagram-action">${safeLabel}</span>${labelStop} ${sentence}.`;
     } else if (out.length === 1) {
       const edge = out[0];
       const word = Common.narrationNumber(t.numberOf.get(edge.to));
@@ -1515,7 +1570,7 @@ const FlowchartModule = (function () {
       } else {
         sentence = `Proceed to step ${word}.`;
       }
-      main = `<span class="diagram-action">${safeLabel}</span>${labelStop}${sentence ? ` ${sentence}` : ""}`;
+      main = `${shapeLead}<span class="diagram-action">${safeLabel}</span>${labelStop}${sentence ? ` ${sentence}` : ""}`;
     } else if (t.hasWayOut(id)) {
       // R23 TWO-WAY ENDINGS. No ordering edge LEAVES this step, so the chain
       // above found nothing to say — but a two-way edge ARRIVES at it, and
@@ -1523,7 +1578,7 @@ const FlowchartModule = (function () {
       // sentence of its own: the relation is already narrated at the other
       // end of the two-way edge, by R22's "Connects both ways with step N."
       // No new wording is minted here, which is what ruling 7 asked for.
-      main = `<span class="diagram-action">${safeLabel}</span>${labelStop}`;
+      main = `${shapeLead}<span class="diagram-action">${safeLabel}</span>${labelStop}`;
     } else {
       // R5 ENDINGS. A sole end point closes the process; where several
       // paths end, each says so for itself. The count is the diagram-wide
@@ -1531,7 +1586,7 @@ const FlowchartModule = (function () {
       // both read `hasWayOut`, they cannot drift apart.
       const ending =
         t.endCount === 1 ? NARRATION.SOLE_ENDING : NARRATION.PATH_ENDING;
-      main = `<span class="diagram-node">${safeLabel}</span>${labelStop} ${ending}`;
+      main = `${shapeLead}<span class="diagram-node">${safeLabel}</span>${labelStop} ${ending}`;
     }
 
     // R14 REJOIN ACKNOWLEDGEMENT. A generator-owned sentence naming the

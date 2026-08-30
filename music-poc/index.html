@@ -75,9 +75,245 @@
            #status so it never collides with the notify toasts. -->
       <section aria-labelledby="pdfHeading">
         <h2 id="pdfHeading">Download tagged PDF</h2>
+
+        <!-- Image-description level for the PDF's page images. Static HTML like
+             the buttons below: the handler reads the checked radio at click
+             time, so a change made after load is honoured with no rebuild and
+             no change listener. Native radios sharing one name give the
+             browser's own single tab stop and arrow-key movement, and the
+             fieldset's legend names the group, so no ARIA is needed. Since
+             Stage 82 "pages" and "summary" are both acted on; "talking-score"
+             is accepted and produces the "pages" document until Stage 83 builds
+             it. The trailing paragraph says so in plain sight rather than
+             hiding it in a description attribute. It sits BEFORE the buttons so
+             the choice is met before the action. -->
+        <fieldset>
+          <legend>PDF image descriptions</legend>
+          <div>
+            <input type="radio" name="pdfAltTextLevel" id="pdfAltTextLevelPages" value="pages" checked />
+            <label for="pdfAltTextLevelPages">Page numbers only</label>
+          </div>
+          <div>
+            <input type="radio" name="pdfAltTextLevel" id="pdfAltTextLevelSummary" value="summary" />
+            <label for="pdfAltTextLevelSummary">Whole-piece summary on page 1</label>
+          </div>
+          <div>
+            <input type="radio" name="pdfAltTextLevel" id="pdfAltTextLevelTalkingScore" value="talking-score" />
+            <label for="pdfAltTextLevelTalkingScore">Per-page descriptions with full talking score appendix</label>
+          </div>
+          <p>
+            Page numbers only gives each page image a short alt such as "Score,
+            page 1 of 3". Whole-piece summary adds the plain-language summary of
+            the piece to the first page's image description, after its page
+            number; later pages keep their page numbers, so the summary is not
+            repeated. Per-page descriptions gives every page an image description
+            of its own bars and adds a full talking score appendix listing every
+            note, which makes the document roughly five times as many pages.
+          </p>
+        </fieldset>
+
+        <!-- LARGE-PRINT SETTINGS (Stage 91). Three radio groups and a reset,
+             reaching the LARGE-PRINT button only. Static HTML on exactly the
+             pattern of the group above: the handler reads the checked radios at
+             CLICK time, so a change made after load travels with no rebuild and
+             no change listener on the read path. Native radios sharing one name
+             give the browser's own single tab stop and arrow-key movement, and
+             each nested fieldset's legend names its group, so no ARIA is needed.
+
+             WHY THE HINT SAYS "LARGE-PRINT ONLY" IN PLAIN SIGHT. Stage 90's
+             profileOverridesFrom refuses an override aimed at the standard
+             profile, so the standard PDF is unchanged by construction rather
+             than by nobody having wired a control to it — and a control whose
+             reach a user has to guess at is a control they will mistrust.
+
+             THE STAFF FIGURES ARE MEASURED, and they describe the PRINTED page,
+             not Verovio's nominal one. Stage 89 established 160.0 mm of content
+             width inside Typst's default A4 margins and measured the four sizes
+             by three agreeing routes: 6.98, 9.97, 12.80 and 13.96 mm. The
+             millimetre in each label is that measurement rounded, since the
+             record now speaks in millimetres. See the Stage 89 record in
+             music-poc/docs/backlog-clearance-plan.md.
+
+             The three groups persist to localStorage on change under
+             music-poc-large-print. The stored value is always a NAME, never a
+             page width or a line width, so a stale entry cannot outlive a
+             profile edit and silently pin an old geometry. -->
+        <fieldset id="largePrintSettings">
+          <legend>Large-print settings</legend>
+          <p>
+            These settings change the large-print PDF only. The tagged PDF
+            button is not affected by any of them.
+          </p>
+
+          <fieldset>
+            <legend>Staff size</legend>
+            <div>
+              <input type="radio" name="largePrintStaff" id="largePrintStaffSmall" value="small" />
+              <label for="largePrintStaffSmall">Small, about 7 mm staff</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintStaff" id="largePrintStaffMedium" value="medium" />
+              <label for="largePrintStaffMedium">Medium, about 10 mm staff</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintStaff" id="largePrintStaffCurrent" value="current" checked />
+              <label for="largePrintStaffCurrent">Current, 12.8 mm staff (default)</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintStaff" id="largePrintStaffLarge" value="large" />
+              <label for="largePrintStaffLarge">Large, about 14 mm staff</label>
+            </div>
+            <p>
+              A larger staff takes more pages. The two larger sizes also squeeze
+              the music horizontally whatever the bars per system; about 10 mm
+              and below does not.
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Line weight</legend>
+            <div>
+              <input type="radio" name="largePrintThickness" id="largePrintThicknessThin" value="thin" checked />
+              <label for="largePrintThicknessThin">Thin (default)</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintThickness" id="largePrintThicknessMedium" value="medium" />
+              <label for="largePrintThicknessMedium">Medium</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintThickness" id="largePrintThicknessThick" value="thick" />
+              <label for="largePrintThicknessThick">Thick</label>
+            </div>
+            <p>
+              This thickens the drawn lines only: the staff lines, the bar lines
+              and the note stems. Noteheads, clefs, rests and accidentals are
+              font symbols and keep the same weight at every setting.
+            </p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Bars per system</legend>
+            <div>
+              <input type="radio" name="largePrintBars" id="largePrintBars1" value="1" />
+              <label for="largePrintBars1">1 bar</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintBars" id="largePrintBars2" value="2" checked />
+              <label for="largePrintBars2">2 bars (default)</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintBars" id="largePrintBars3" value="3" />
+              <label for="largePrintBars3">3 bars</label>
+            </div>
+            <div>
+              <input type="radio" name="largePrintBars" id="largePrintBars4" value="4" />
+              <label for="largePrintBars4">4 bars</label>
+            </div>
+            <p>
+              Fewer bars to a line gives each bar more room across the page and
+              takes more pages.
+            </p>
+          </fieldset>
+
+          <button type="button" id="largePrintResetButton"><span aria-hidden="true" data-icon="refresh"></span> Reset large-print settings</button>
+        </fieldset>
+
         <button type="button" id="pdfButton"><span aria-hidden="true" data-icon="download"></span> Download tagged PDF</button>
         <button type="button" id="pdfLargePrintButton"><span aria-hidden="true" data-icon="download"></span> Download large-print PDF</button>
         <p id="pdfStatus" aria-live="polite"></p>
+      </section>
+
+      <!-- Capture a bar range as an image, with its descriptions. Static HTML for
+           the whole shell, exactly as the PDF section above: the handler reads the
+           two inputs at click time, so a value typed after load is honoured with
+           no rebuild and no change listener, and icon-library.js auto-populates
+           the data-icon span because the button is in the initial DOM.
+
+           The two inputs are type="text", NOT type="number", and that is a
+           correctness decision rather than a stylistic one: MusicXML bar numbers
+           are STRINGS matched exactly, so "0" is a pickup bar and "1a" a split
+           bar, and a number input would refuse the second and coerce the first.
+           music-excerpt.js refuses a numeric argument outright for the same
+           reason. inputmode is left alone so the field stays a plain text field
+           for assistive technology.
+
+           captureStatus is its own polite live region, kept separate from #status
+           and #pdfStatus so three long-running jobs can never overwrite each
+           other's progress. captureResults starts EMPTY and is the only part the
+           handler builds, because its contents are genuinely dynamic (an image,
+           a download link and two descriptions that do not exist until a capture
+           has run). -->
+      <section aria-labelledby="captureHeading">
+        <h2 id="captureHeading">Capture bars as an image</h2>
+
+        <p id="captureHint">
+          Type the printed bar numbers as they appear in the screen reader note
+          list above, for example 9 and 16. A pickup bar may be numbered 0, and
+          some scores number a split bar 1a, so these are typed exactly as
+          printed rather than chosen from a range.
+        </p>
+
+        <div>
+          <label for="captureFrom">From bar</label>
+          <input type="text" id="captureFrom" aria-describedby="captureHint" />
+        </div>
+        <div>
+          <label for="captureTo">To bar</label>
+          <input type="text" id="captureTo" aria-describedby="captureHint" />
+        </div>
+
+        <button type="button" id="captureButton">
+          <span aria-hidden="true" data-icon="capture"></span> Capture these bars
+        </button>
+
+
+        <!-- Stage 88: crop trims. These are type="number", the OPPOSITE decision
+             to the two bar inputs above and for the opposite reason: a trim is a
+             real quantity of pixels, so coercion and a min are exactly what is
+             wanted, where a bar number is a string matched exactly and both
+             would be wrong. min="0" refuses a negative trim in the control
+             itself; the handler still clamps, because a typed value can reach a
+             number input past its min.
+
+             They are read at click time like everything else in this section, so
+             they need no change listener and travel to the NEXT capture as well
+             as to a re-crop. The re-crop button ships disabled and is enabled
+             only once a capture has succeeded, because there is no held image to
+             re-crop before that. -->
+        <fieldset>
+          <legend>Trim the captured image</legend>
+
+          <p id="cropHint">
+            Pixels to cut from each edge of the finished image. They apply to the
+            next capture, or press Re-crop to apply them to the image already
+            captured. Leave every box at 0 to keep the whole image.
+          </p>
+
+          <div>
+            <label for="cropTop">Trim top</label>
+            <input type="number" id="cropTop" min="0" step="1" value="0" aria-describedby="cropHint" />
+          </div>
+          <div>
+            <label for="cropBottom">Trim bottom</label>
+            <input type="number" id="cropBottom" min="0" step="1" value="0" aria-describedby="cropHint" />
+          </div>
+          <div>
+            <label for="cropLeft">Trim left</label>
+            <input type="number" id="cropLeft" min="0" step="1" value="0" aria-describedby="cropHint" />
+          </div>
+          <div>
+            <label for="cropRight">Trim right</label>
+            <input type="number" id="cropRight" min="0" step="1" value="0" aria-describedby="cropHint" />
+          </div>
+
+          <button type="button" id="recropButton" disabled>
+            <span aria-hidden="true" data-icon="crop"></span> Re-crop this image
+          </button>
+        </fieldset>
+
+        <p id="captureStatus" aria-live="polite"></p>
+
+        <div id="captureResults"></div>
       </section>
     </main>
 
@@ -111,18 +347,27 @@
     <script src="js/music-render-phrase.js"></script>
     <script src="js/music-render-text.js"></script>
     <script src="js/music-render-summary.js"></script>
+    <script src="js/music-describe-span.js"></script>
     <script src="js/music-export.js"></script>
     <script src="js/music-audio-schedule.js"></script>
     <script src="js/music-audio.js"></script>
     <script src="js/music-midi-build.js"></script>
     <script src="js/music-midi.js"></script>
     <script src="js/music-transpose.js"></script>
+    <!-- Pure MusicXML slicer: a structural sibling of music-transpose (an
+         XML-string in, XML-string out transform owning no page DOM), so it loads
+         beside it. Nothing consumes it yet. -->
+    <script src="js/music-excerpt.js"></script>
     <script src="js/music-play-along.js"></script>
-    <!-- PDF pipeline: the pure builder and the rasterise primitive load before
-         the orchestrator that drives them. -->
+    <!-- PDF pipeline: the pure builder loads before the orchestrator that
+         drives it. -->
     <script src="js/music-pdf-markup.js"></script>
-    <script src="js/music-pdf-rasterise.js"></script>
     <script src="js/music-pdf.js"></script>
+    <!-- Excerpt engraver and the SVG-to-PNG rasterise primitive. Loads beside the
+         PDF orchestrator because it shares its Verovio dependency (and mints its
+         own toolkit for excerpts — see the corrected note on renderPagesAndBars).
+         Nothing consumes it yet. -->
+    <script src="js/music-raster.js"></script>
     <!-- .mxl extractor: unzips compressed MusicXML to the inner XML string.
          Loads after JSZip (above) and before the controller. -->
     <script src="js/music-mxl.js"></script>

@@ -84,6 +84,24 @@
     CHARS_PER_TOKEN: 4,
   };
 
+  /**
+   * Marker property set on the PDF send-boundary refusal so orchestrate's catch
+   * can let that ONE error escape while every other failure stays non-fatal
+   * (parcel P4-M2b). A tag rather than a message match, so the refusal wording
+   * can change in MathPixContextAI without silently widening the rethrow.
+   */
+  const PDF_REFUSAL_TAG = "__mathpixPdfCapabilityRefusal";
+
+  /**
+   * Sibling marker for the PROVIDER-membership refusal added at EA-2b. A SECOND
+   * tag rather than a reuse of the one above, deliberately: reusing it would
+   * make the constant's name lie about what it marks, and a diagnostic reading
+   * the tag could no longer tell the two refusals apart. The catch below matches
+   * either, by identity on the property — never on the message string, so both
+   * wordings can change in MathPixContextAI without widening the rethrow.
+   */
+  const PROVIDER_REFUSAL_TAG = "__mathpixProviderMembershipRefusal";
+
   // ============================================================================
   // VERIFICATION PROMPTS
   // ============================================================================
@@ -576,10 +594,71 @@
         pdfBase64Length: pass1Base64.length,
       });
 
+      // ---- PDF send boundary (S2F-D8, parcel P4-M2b) -----------------------
+      // Pass 2 re-attaches the Pass 1 PDF and sends again, so it is a second
+      // send boundary and needs its own guard. It reads enhancer.selectedModel
+      // LIVE, exactly as the constructor below does, and THAT IS THE POINT: the
+      // id can differ from the one Pass 1 was built with, because the picker
+      // handlers and window.handleAIModelChange stay callable between the two
+      // passes. A guard on Pass 1 alone cannot see that change.
+      //
+      // The predicate is reached at CALL time from MathPixContextAI, with no
+      // second copy; extraction to a shared capability module is the recorded
+      // follow-up.
+      const pass2ModelId = enhancer.selectedModel;
+      const capability = window.MathPixContextAI;
+      if (typeof capability?.isModelPdfCapable !== "function") {
+        // FAIL OPEN — same semantics as the enhancer site, and deliberately the
+        // opposite of the predicate's own no-authority branch. An absent facade
+        // is a page-configuration fault, not a capability finding, and refusing
+        // on it would disable verification for every OpenRouter model.
+        logWarn(
+          "PDF send boundary skipped: MathPixContextAI.isModelPdfCapable unavailable. Proceeding without a capability check.",
+          { model: pass2ModelId },
+        );
+      } else if (!capability.isModelPdfCapable(pass2ModelId)) {
+        logWarn("orchestrate: refusing a Pass 2 model that cannot read PDF files", {
+          model: pass2ModelId,
+        });
+        // TAGGED so the catch below can let it through. Everything else this
+        // try block can throw stays non-fatal and still returns null; only this
+        // one refusal escapes, reaching startEnhancement's catch, showError and
+        // the existing notifyError. No new spoken line is added.
+        const refusal = new Error(capability.NON_PDF_REFUSAL);
+        refusal[PDF_REFUSAL_TAG] = true;
+        throw refusal;
+      }
+
+      // ---- Provider membership send boundary (EA-2b) -----------------------
+      // Same reasoning as the PDF guard immediately above, and the same reason
+      // Pass 2 needs its own: pass2ModelId is the LIVE re-read, so the id can
+      // have changed since Pass 1 was built — the picker handlers and
+      // window.handleAIModelChange stay callable between the two passes, and so
+      // does the provider switch in another tab. A membership check on Pass 1
+      // alone cannot see either.
+      if (typeof capability?.isModelProviderAvailable !== "function") {
+        // FAIL OPEN — an absent facade is a page-configuration fault, not a
+        // provider finding. Identical semantics to the PDF branch above.
+        logWarn(
+          "Provider send boundary skipped: MathPixContextAI.isModelProviderAvailable unavailable. Proceeding without a membership check.",
+          { model: pass2ModelId },
+        );
+      } else if (!capability.isModelProviderAvailable(pass2ModelId)) {
+        logWarn("orchestrate: refusing a Pass 2 model the active provider does not serve", {
+          model: pass2ModelId,
+        });
+        // TAGGED with its OWN marker so the catch lets it through while the two
+        // refusals stay distinguishable. Everything else this try block can
+        // throw is still non-fatal and still returns null.
+        const refusal = new Error(capability.PROVIDER_REFUSAL);
+        refusal[PROVIDER_REFUSAL_TAG] = true;
+        throw refusal;
+      }
+
       // 4. Create Pass 2 embed instance with verification system prompt
       const pass2Embed = new OpenRouterEmbed({
         containerId: "ai-enhance-embed-container",
-        model: enhancer.selectedModel,
+        model: pass2ModelId,
         systemPrompt: buildVerificationSystemPrompt(),
         temperature: MULTIPASS_CONFIG.TEMPERATURE,
         max_tokens: maxTokens,
@@ -718,6 +797,27 @@
 
       return verifiedMMD;
     } catch (error) {
+      // NARROW RETHROW, and narrow is the whole point. This catch exists to make
+      // a failed Pass 2 non-fatal — Pass 1 output is still valid, so every other
+      // error keeps returning null exactly as before. The PDF capability refusal
+      // is the one exception: it must reach the person, and the only route to
+      // showError and the existing notifyError is to escape this function. It is
+      // matched on a tag rather than on the message string, so the wording can
+      // change in one place without silently re-widening this branch.
+      // EA-2b widened this branch by exactly one tag. It now names TWO send
+      // boundaries — PDF capability and provider membership — and still nothing
+      // else. Both are matched by identity on their own marker property, so the
+      // branch cannot widen further by a wording change in either refusal.
+      if (error && (error[PDF_REFUSAL_TAG] || error[PROVIDER_REFUSAL_TAG])) {
+        logWarn(
+          "Pass 2 refused at a send boundary — rethrowing so the person is told",
+          {
+            boundary: error[PDF_REFUSAL_TAG] ? "pdf-capability" : "provider-membership",
+          },
+        );
+        throw error;
+      }
+
       logError("Pass 2 verification failed:", error.message);
 
       // Log failure to enhancer's timing log
@@ -767,6 +867,12 @@
     buildVerificationUserPrompt,
     computeDiffManifest,
     shouldSkipPass2,
+    // Exposed so the seam suite can assert the narrow rethrow by identity
+    // instead of retyping the marker (parcel P4-M2b).
+    PDF_REFUSAL_TAG,
+    // The EA-2b sibling, exposed on the same terms: the suite asserts which of
+    // the two boundaries an escaping refusal came from, by identity.
+    PROVIDER_REFUSAL_TAG,
     lastRun: null,
   };
 

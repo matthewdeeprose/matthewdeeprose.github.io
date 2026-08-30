@@ -445,9 +445,13 @@ var TTSReadAloud = (function () {
    * module header says why that is correct rather than duplication.
    *
    * There is deliberately no tts:exportEncodeProgress companion, matching both
-   * chat tools. encodeMp3's eleven emits share ONE macrotask, so no
-   * intermediate encoding state was ever observable to anyone, sighted or
-   * otherwise. tts/tts-controller.js still emits the event; nothing consumes it.
+   * chat tools, and as of 24 August 2026 there is no such event either.
+   * encodeMp3's eleven emits shared ONE macrotask, so no intermediate encoding
+   * state was ever observable to anyone, sighted or otherwise — which is why
+   * this subscription, the only one ever built, was removed at 91c83b7 and
+   * nothing replaced it. With zero consumers tree-wide, both emits were
+   * removed from tts/tts-controller.js by owner decision, item 30 of
+   * openrouter-embed/docs/foundry-f2-pending-doc-updates.md.
    */
 
   /**

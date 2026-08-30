@@ -111,6 +111,25 @@
     /^o1.*$/i, // o1, o1-mini, o1-preview, etc.
     /^o3.*$/i, // o3, o3-mini, etc.
     /^o4.*$/i, // o4, o4-mini, etc.
+
+    // Added 29 August 2026. Each of the five below was measured REFUSING all
+    // four sampling parameters (temperature, top_p, frequency_penalty,
+    // presence_penalty) by .claude/foundry-catalogue/probe.mjs on 27-28 August
+    // 2026, one deployment at a time — the classify-don't-infer routine, not a
+    // family guess. They were registered in js/foundry-model-definitions.js at
+    // fa66522 and the wire-format gate was not widened to match, so a live send
+    // returned HTTP 400 "Unsupported value: 'temperature' does not support 0.7
+    // with this model" until this entry landed.
+    //
+    // ANCHORED EXACTLY, per the lesson-22 rule: a family pattern such as
+    // /^gpt-5\.6.*$/i would also capture deployments nobody has probed, and
+    // breadth is a bug wherever the family is mixed. gpt-5.4-nano in
+    // particular has NEVER been probed and is deliberately NOT matched here.
+    /^gpt-5-nano$/i,
+    /^gpt-5\.5$/i,
+    /^gpt-5\.6-terra$/i,
+    /^gpt-5\.6-luna$/i,
+    /^gpt-5\.6-sol$/i,
   ];
 
   // Deployment-name patterns for models whose strict MaaS schema rejects
@@ -130,7 +149,46 @@
   // REASONING_OUTPUT_FLOOR, but at a far smaller, probe-sized value (1024 vs 16000)
   // because the chat surface only needs enough headroom to emit visible content.
   const REASONING_BUDGET_FLOOR = 1024;
-  const REASONING_BUDGET_FLOOR_PATTERNS = [/^Kimi-K2\.5$/i, /^gpt-oss.*$/i];
+  const REASONING_BUDGET_FLOOR_PATTERNS = [
+    /^Kimi-K2\.5$/i,
+    /^gpt-oss.*$/i,
+
+    // Added 29 August 2026. Hidden reasoning spend measured on an image task
+    // by .claude/foundry-catalogue/probe.mjs, three runs each (27-28 August
+    // 2026): gpt-5-nano 398/782/462, gpt-5.5 63/79/104, gpt-5.6-terra
+    // 55/102/61, gpt-5.6-luna 68/70/59, gpt-5.6-sol 8/8/8. All five sit
+    // comfortably under 1024, so the standard floor is sufficient — but none
+    // was in ANY floor list before today, so a caller passing a small cap got
+    // a completed-but-empty answer with no error. Anchored exactly, same rule
+    // as REASONING_MODEL_PATTERNS above.
+    /^gpt-5-nano$/i,
+    /^gpt-5\.5$/i,
+    /^gpt-5\.6-terra$/i,
+    /^gpt-5\.6-luna$/i,
+    /^gpt-5\.6-sol$/i,
+  ];
+
+  // Raised floor for chat models whose hidden reasoning spend EXCEEDS
+  // REASONING_BUDGET_FLOOR, so the standard 1024 would be a floor that looks
+  // like coverage and provides none. Checked before the standard floor.
+  //
+  // o3 burned 1583 / 1622 / 790 completion tokens on an image task across
+  // three runs, and returned EMPTY three times at a 1024 cap — i.e. the
+  // standard floor is measurably insufficient for it, not merely tight.
+  // gpt-5-mini burned 654 / 1024 / 462 across the same three runs and
+  // returned empty once; the middle figure EQUALS the cap that produced it,
+  // so its true spend is a LOWER BOUND of 1024 and is unknown above that.
+  // 2048 is therefore measured-sufficient for o3 and provisional for
+  // gpt-5-mini — a guard against an empty answer, not a promise of a roomy
+  // one. A caller wanting substantive output from either on an image should
+  // pass a cap well above this.
+  //
+  // Chosen at 2048: above o3's observed maximum of 1622 with headroom, and
+  // close enough to the 2000-token app default that it barely inflates a
+  // normal call. Both patterns anchored exactly — gpt-5.4-nano and the
+  // other o-series deployments are deliberately not matched.
+  const REASONING_BUDGET_FLOOR_HIGH = 2048;
+  const REASONING_BUDGET_FLOOR_HIGH_PATTERNS = [/^o3$/i, /^gpt-5-mini$/i];
 
   // ============================================================================
   // INTERNAL HELPERS
@@ -339,23 +397,39 @@
   }
 
   /**
-   * Test whether a stripped deployment id matches any pattern in
-   * REASONING_BUDGET_FLOOR_PATTERNS — i.e. it spends hidden reasoning budget
-   * before visible content and so needs a minimum token cap. Used by
-   * buildRequest to decide whether to raise a sub-floor token cap.
+   * Resolve the reasoning-budget floor that applies to a stripped deployment
+   * id — i.e. the minimum token cap it needs to emit visible content after
+   * its hidden reasoning phase. Used by buildRequest to decide whether, and
+   * to what, a sub-floor token cap should be raised.
+   *
+   * Returns a NUMBER (the applicable floor) or `null` (no floor applies), so
+   * a model needing more than the standard floor is expressible. The high
+   * list is checked first: a deployment in both lists takes the higher value.
    *
    * @param {string} strippedDeploymentId - e.g. "Kimi-K2.5" (NOT
    *   "azure-openai/Kimi-K2.5"). Strip the registry prefix before calling this.
-   * @returns {boolean}
+   * @returns {number|null}
    * @private
    */
-  function usesReasoningBudgetFloor(strippedDeploymentId) {
+  function reasoningBudgetFloorFor(strippedDeploymentId) {
     if (typeof strippedDeploymentId !== "string" || !strippedDeploymentId) {
-      return false;
+      return null;
     }
-    return REASONING_BUDGET_FLOOR_PATTERNS.some((re) =>
-      re.test(strippedDeploymentId),
-    );
+    if (
+      REASONING_BUDGET_FLOOR_HIGH_PATTERNS.some((re) =>
+        re.test(strippedDeploymentId),
+      )
+    ) {
+      return REASONING_BUDGET_FLOOR_HIGH;
+    }
+    if (
+      REASONING_BUDGET_FLOOR_PATTERNS.some((re) =>
+        re.test(strippedDeploymentId),
+      )
+    ) {
+      return REASONING_BUDGET_FLOOR;
+    }
+    return null;
   }
 
   /**
@@ -547,20 +621,23 @@
         body[tokenField] = tokenValue;
       }
 
-      // Reasoning-budget floor (19 June 2026). Chat models in
-      // REASONING_BUDGET_FLOOR_PATTERNS (e.g. Kimi-K2.5) spend hidden reasoning
-      // budget before emitting visible content, so a sub-floor cap returns a
-      // completed-but-empty answer. Raise such caps to REASONING_BUDGET_FLOOR.
+      // Reasoning-budget floor (19 June 2026; two-tier since 29 August 2026).
+      // Chat models in either floor list (e.g. Kimi-K2.5) spend hidden
+      // reasoning budget before emitting visible content, so a sub-floor cap
+      // returns a completed-but-empty answer. Raise such caps to whichever
+      // floor applies — reasoningBudgetFloorFor returns the higher value for
+      // the models measured to exceed the standard one.
+      const applicableFloor = reasoningBudgetFloorFor(deploymentName);
       if (
         tokenValue !== null &&
+        applicableFloor !== null &&
         typeof body[tokenField] === "number" &&
-        body[tokenField] < REASONING_BUDGET_FLOOR &&
-        usesReasoningBudgetFloor(deploymentName)
+        body[tokenField] < applicableFloor
       ) {
         const original = body[tokenField];
-        body[tokenField] = REASONING_BUDGET_FLOOR;
+        body[tokenField] = applicableFloor;
         logDebug(
-          `Reasoning-budget floor: raised ${tokenField} ${original} → ${REASONING_BUDGET_FLOOR} for ${deploymentName}`,
+          `Reasoning-budget floor: raised ${tokenField} ${original} → ${applicableFloor} for ${deploymentName}`,
         );
       }
 

@@ -25,6 +25,28 @@ const MusicTranspose = (function () {
 
   // The seven diatonic letter names in order, and their index within an octave.
   // LETTERS is the inverse of STEP_INDEX: LETTERS[STEP_INDEX[x]] === x.
+  //
+  // STEP_INDEX is a plain object and therefore inherits from Object.prototype.
+  // The read below was written as `step in STEP_INDEX`, and `in` walks the
+  // prototype chain BY SPECIFICATION, so it answered true for "constructor",
+  // "toString" and "valueOf" and handed the arithmetic an inherited FUNCTION.
+  // That was a WRONG OPERATOR rather than a missing check: `in` was doing
+  // exactly what it is defined to do, and every ordinary unknown letter such as
+  // "H" was already rejected correctly. The read now uses hasOwnProperty, which
+  // asks the same question — does this object carry this key — while excluding
+  // the prototype chain.
+  //
+  // The inverse identity above is left TRUE by that change rather than needing a
+  // qualifier: the only read of STEP_INDEX is guarded, so the domain of x
+  // becomes the seven own letter keys by construction, and no inherited name can
+  // reach the lookup.
+  //
+  // A byte-identical STEP_INDEX lives in music-model-walk.js (around line 133),
+  // read in pitchRange and hardened at Stage 73 by a numeric test on the looked-up
+  // value. The two copies are independent and nothing keeps them in step; they are
+  // deliberately NOT merged. The mechanisms differ because the defects did — that
+  // one sat behind a weak `undefined` test, so a value test was the correction,
+  // where this one sat behind the wrong key operator.
   const LETTERS = ["C", "D", "E", "F", "G", "A", "B"];
   const STEP_INDEX = { C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6 };
 
@@ -105,8 +127,20 @@ const MusicTranspose = (function () {
       const octaveEl = pitch.querySelector("octave");
       if (!stepEl || !octaveEl) continue;
 
+      // Own-key test, not `in`: see the note above STEP_INDEX. The warning covers
+      // BOTH rejected cases — an inherited Object member and an ordinary unknown
+      // letter — because after this change they are the same branch, and telling
+      // them apart in code would mean reinstating the very operator being removed.
+      // Naming the step in the message lets a reader tell them apart from the log.
+      // MusicXML's step is a closed A-G enumeration, so any other value is a
+      // malformed file rather than a notation this PoC has yet to learn; that is
+      // why warning on every rejection is a report and not noise. Neither path's
+      // BEHAVIOUR changes: both leave the note exactly as it was found.
       const step = stepEl.textContent;
-      if (!(step in STEP_INDEX)) continue;
+      if (!Object.prototype.hasOwnProperty.call(STEP_INDEX, step)) {
+        logWarn('transposeXml: skipping a pitch whose step is not a diatonic letter: "' + step + '"');
+        continue;
+      }
 
       const octave = parseInt(octaveEl.textContent, 10);
       if (!isFinite(octave)) continue;
@@ -228,6 +262,52 @@ const MusicTranspose = (function () {
       "    </measure>\n" +
       "  </part>\n" +
       "</score-partwise>\n";
+
+    // Stage 75. A one-bar score whose FIRST note carries the supplied step,
+    // followed by a real C4 and a real G4. The odd step leads on purpose: it is
+    // the position that proves the rejected note is left alone AND that the notes
+    // after it still transpose, and it matches the ordering the pitchRange rows in
+    // music-model-walk.js use for the same reason.
+    function scoreLedBy(step) {
+      return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n' +
+        '<score-partwise version="4.0">\n' +
+        '  <part id="P1">\n' +
+        '    <measure number="1">\n' +
+        "      <note><pitch><step>" + step + "</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>\n" +
+        "      <note><pitch><step>C</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>\n" +
+        "      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration><type>quarter</type></note>\n" +
+        "    </measure>\n" +
+        "  </part>\n" +
+        "</score-partwise>\n"
+      );
+    }
+
+    // Transpose such a score up one diatonic step and hand back both the returned
+    // string and its parsed pitches, so a row can assert on either.
+    function stepUpLedBy(step) {
+      const xml = transposeXml(scoreLedBy(step), { octaves: 0, steps: 1 });
+      return { xml: xml, pitches: readPitches(xml).pitches };
+    }
+
+    // The three inherited Object.prototype members a step can name.
+    const INHERITED_STEPS = ["constructor", "toString", "valueOf"];
+
+    // A rejected leading note must come back byte-for-byte as it went in, and the
+    // two real notes after it must have transposed. Asserting the step TEXT and the
+    // octave by value, not merely that neither is NaN.
+    function leadUntouchedAndRestMoved(step) {
+      const r = stepUpLedBy(step);
+      return (
+        r.pitches.length === 3 &&
+        r.pitches[0].step === step &&
+        r.pitches[0].octave === 4 &&
+        r.pitches[1].step === "D" &&
+        r.pitches[1].octave === 4 &&
+        r.pitches[2].step === "A" &&
+        r.pitches[2].octave === 4
+      );
+    }
 
     // A minimal chord: a C major triad, to prove a chord survives a semitone shift
     // (its <chord/> elements untouched) and its pitches respell.
@@ -402,6 +482,63 @@ const MusicTranspose = (function () {
       diatonicThenChromaticComposes:
         !!combo && combo.step === "D" && combo.octave === 4 && combo.alter === 1,
       guardNoMount: render(null, function () {}) === false,
+      // Stage 75. The two INVERSION rows: both read red against the committed
+      // module, whose `in` test admitted the inherited member and wrote <step/>
+      // with <octave>NaN</octave> over the note.
+      inheritedStepLeavesTheNoteUntouched: INHERITED_STEPS.every(leadUntouchedAndRestMoved),
+      inheritedStepEmitsNoNaN: INHERITED_STEPS.every(function (step) {
+        const xml = stepUpLedBy(step).xml;
+        return typeof xml === "string" && xml.length > 0 && xml.indexOf("NaN") === -1;
+      }),
+      // Stage 75. The three PRESERVATION rows. None of these is an inversion and
+      // none reads red against the committed module — they exist to prove the fix
+      // did not reach past the inherited names into behaviour that was already
+      // correct. "H" is the over-reach guard: an ordinary letter absent from the
+      // table was rejected correctly before this stage and must still pass through
+      // untouched, reading the same on both modules.
+      unknownLetterStillPassesThrough: leadUntouchedAndRestMoved("H"),
+      realNotesSurviveAPoisonedNeighbour: INHERITED_STEPS.concat(["H"]).every(function (step) {
+        const p = stepUpLedBy(step).pitches;
+        return p.length === 3 && p[1].step === "D" && p[2].step === "A";
+      }),
+      cleanScoreUnaffectedByTheGuard: (function () {
+        const p = stepUpLedBy("E").pitches;
+        return (
+          p.length === 3 &&
+          p[0].step === "F" && p[0].octave === 4 &&
+          p[1].step === "D" && p[1].octave === 4 &&
+          p[2].step === "A" && p[2].octave === 4
+        );
+      })(),
+      // Stage 75. The warning IS reachable from a row, despite this module
+      // destructuring logWarn at load: music-log.js resolves console.warn on the
+      // console object at CALL time, so a stub installed here sees it. Both
+      // rejected cases are checked, and each message must NAME its step. The
+      // clean-score call is a NEGATIVE CONTROL inside the same stub window — it
+      // must add nothing, so a positive count cannot be an artefact of the stub.
+      rejectedStepWarnsNamingIt: (function () {
+        const seen = [];
+        const realWarn = console.warn;
+        let cleanAddedNothing = false;
+        console.warn = function () {
+          seen.push(Array.prototype.join.call(arguments, " "));
+        };
+        try {
+          stepUpLedBy("constructor");
+          stepUpLedBy("H");
+          const afterRejections = seen.length;
+          stepUpLedBy("E");
+          cleanAddedNothing = seen.length === afterRejections;
+        } finally {
+          console.warn = realWarn;
+        }
+        return (
+          seen.length === 2 &&
+          seen[0].indexOf('"constructor"') !== -1 &&
+          seen[1].indexOf('"H"') !== -1 &&
+          cleanAddedNothing
+        );
+      })(),
     };
 
     temp.remove();

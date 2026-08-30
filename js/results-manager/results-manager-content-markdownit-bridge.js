@@ -40,6 +40,26 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+/**
+ * Escape HTML-significant characters in a string.
+ *
+ * Copied verbatim from markdown-editor.js so the two fence renderers deliver a
+ * diagram source identically. Deliberately NOT md.utils.escapeHtml, which
+ * leaves the apostrophe alone — that would be an approximation of the
+ * mechanism rather than the mechanism.
+ *
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+function escapeHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // ✅ Phase 2: Processing State Management
 const ProcessingState = {
   IDLE: "idle",
@@ -1274,7 +1294,27 @@ export class MarkdownItBridge extends ContentProcessorBase {
   }
 
   /**
-   * Render mermaid diagram (same logic as MarkdownEditor)
+   * Render mermaid diagram.
+   *
+   * PARITY WITH MarkdownEditor, MEASURED 26 August 2026 rather than assumed —
+   * this comment used to read "same logic as MarkdownEditor" and was half
+   * wrong. Evidence: docs/mermaid-item59-bridge-measurement-2026-08-26.md.
+   *
+   * TRUE: a diagram rendered here receives series encoding, size, controls,
+   * the theme selector and the full accessibility surface, every reading
+   * matching a same-session control. It receives none of that from this
+   * method — it arrived through addControlsToContainer -> addThemeSelector ->
+   * applyTheme, the most INCIDENTAL of the five render sites' routes. The
+   * reapplyAfterRender call below makes the encoding and size guarantee this
+   * site's own rather than borrowed.
+   *
+   * WAS FALSE, and is fixed here: this method interpolated the diagram source
+   * RAW into the .mermaid div while MarkdownEditor escaped it, so markup in a
+   * diagram became live elements and corrupted the source. Mermaid reads that
+   * div's textContent, so escaping keeps the read identical. This site is the
+   * production DEFAULT for AI responses, which is what made it the one path
+   * that had to be right.
+   *
    * @param {string} code - Mermaid diagram code
    * @returns {string} Mermaid HTML
    */
@@ -1300,16 +1340,36 @@ export class MarkdownItBridge extends ContentProcessorBase {
                   svg.style.height = "auto";
                 }
 
+                const container = element.closest(".mermaid-container");
+                const diagramIndex = mermaidId.split("-").pop();
+
+                // A fresh SVG has landed. Series encoding and size go through
+                // the one named after-render step, so this site states its own
+                // coverage instead of inheriting whatever
+                // addControlsToContainer happens to reach. Resolved off window
+                // at call time — the load order does not guarantee
+                // MermaidControls exists when this module is evaluated.
+                if (
+                  container &&
+                  window.MermaidControls &&
+                  typeof window.MermaidControls.reapplyAfterRender ===
+                    "function"
+                ) {
+                  window.MermaidControls.reapplyAfterRender(container, element, {
+                    index: diagramIndex,
+                  });
+                  logDebug(`Re-applied after-render state for ${mermaidId}`);
+                }
+
                 if (
                   window.MermaidControls &&
                   typeof window.MermaidControls.addControlsToContainer ===
                     "function"
                 ) {
-                  const container = element.closest(".mermaid-container");
                   if (container) {
                     window.MermaidControls.addControlsToContainer(
                       container,
-                      mermaidId.split("-").pop()
+                      diagramIndex
                     );
                   }
                 }
@@ -1320,10 +1380,22 @@ export class MarkdownItBridge extends ContentProcessorBase {
         }
       }, 0);
 
+      // The diagram source is placed in the div as a placeholder only — the
+      // render above is driven from the cleanCode variable, and every
+      // downstream consumer reads this element's textContent, never its
+      // innerHTML. Escaping it keeps that read identical while stopping the
+      // source being parsed as live markup on the way in.
+      const escapedCode = escapeHtml(cleanCode);
+      if (escapedCode !== cleanCode) {
+        logDebug(
+          `Escaped HTML-significant characters in diagram source for ${mermaidId}`
+        );
+      }
+
       return `<div class="mermaid-container" aria-label="Diagram" role="figure" data-diagram-code="${encodeURIComponent(
         cleanCode
       )}">
-              <div id="${mermaidId}" class="mermaid">${cleanCode}</div>
+              <div id="${mermaidId}" class="mermaid">${escapedCode}</div>
             </div>`;
     } catch (err) {
       logError("Invalid mermaid diagram", { error: err });

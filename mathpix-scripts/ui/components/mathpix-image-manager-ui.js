@@ -170,6 +170,27 @@ const MathPixImageManagerUI = (function () {
   // park the deferred close announcement is spoken behind.
   const MANAGE_IMAGES_BTN_ID = "resume-manage-images-btn";
 
+  // The MathPix sub-mode radio for Resume Session. NOT a trigger for anything
+  // here — it is the FOCUS-RETURN FALLBACK for the case where the manager
+  // outlives the panel it was opened from.
+  //
+  // WHY IT IS NEEDED (measured by ear, 21 August 2026, then reproduced
+  // headlessly). MANAGE_IMAGES_BTN_ID lives inside #mathpix-resume-mode-container,
+  // and switchToUploadMode() sets that container to `display: none`. The button
+  // then stays CONNECTED and ENABLED while its layout box goes to zero, so
+  // resolveReturnFocusTarget correctly refuses it and finishClose falls to the
+  // tiers — landing on #main, which makes NVDA read the entire main region.
+  //
+  // This radio is the right fallback: measured visible, enabled and named
+  // "Resume Session" in exactly that state, it is the control that takes a
+  // person back to the panel they were working in, and it announces in one
+  // short utterance rather than a page. It is deliberately NOT the upload drop
+  // zone, which is where the app went rather than where the person was.
+  //
+  // If the radio is hidden too, the resolver refuses it as well and the tiers
+  // decide. That is the designed floor and needs no third level.
+  const RESUME_MODE_RADIO_ID = "mathpix-resume-mode-radio";
+
   const GRID_VIEW_CONTAINER_ID = "mmd-image-manager-grid-view";
   const GRID_REGION_HEADING_ID = "mmd-image-manager-grid-view-heading";
   const EDIT_VIEW_CONTAINER_ID = "mmd-image-manager-edit-view";
@@ -1121,16 +1142,43 @@ const MathPixImageManagerUI = (function () {
           // one of them still SETTLED on this button, so an end-state
           // measurement could not have told the four apart.
           //
-          // A PLAIN ID, NOT A FUNCTION. #resume-manage-images-btn is authored in
-          // tools.html, un-hidden once a session loads
-          // (session-restorer-display-layer.js), and never removed or
-          // re-hidden — updateManageImagesButtonState only rewrites its label
-          // between "Manage images" and "Add image". That is why this does not
-          // need the session manager's () => Element form, which exists because
-          // THAT modal can hide its own opener.
+          // A FUNCTION, NOT A PLAIN ID — CORRECTED 21 August 2026 AFTER A LISTEN
+          // FAILED. It was first written as the bare id, on the reasoning that
+          // the button is authored in tools.html, un-hidden once a session loads
+          // and never removed, with only its label rewritten between "Manage
+          // images" and "Add image". Every clause of that is true and the
+          // conclusion was still wrong: `never removed` is not `always
+          // visible`. The button lives inside #mathpix-resume-mode-container,
+          // and switchToUploadMode() sets that container to `display: none`.
+          //
+          // In that state the button stays CONNECTED and ENABLED with a zero
+          // layout box, so resolveReturnFocusTarget refuses it — correctly,
+          // because .focus() on it is a silent no-op that drops focus to <body>
+          // — and finishClose falls to the tiers, landing on #main and making
+          // NVDA read the entire main region. Heard on a real listen, then
+          // reproduced headlessly by switching the sub-mode underneath an open
+          // manager.
+          //
+          // Resolved at CLOSE time, which is what makes the choice possible at
+          // all: a capture-at-open scheme cannot express "whichever of these two
+          // is on screen when the dialog goes away".
+          //
+          // This is the SAME correction the session manager needed at step 2,
+          // for the same reason, and it is trap 4 in the handover: where a modal
+          // can outlive the surface its opener sits on, pass () => Element and
+          // name a visible fallback yourself.
           //
           // See docs/universal-modal-focus-return-plan.md § Phase 2 step 4.
-          returnFocusTo: MANAGE_IMAGES_BTN_ID,
+          returnFocusTo: () => {
+            const opener = document.getElementById(MANAGE_IMAGES_BTN_ID);
+            if (opener && opener.getClientRects().length > 0) return opener;
+
+            logWarn(
+              `returnFocusTo: #${MANAGE_IMAGES_BTN_ID} has no layout box ` +
+                `(the resume panel is hidden); falling back to #${RESUME_MODE_RADIO_ID}`,
+            );
+            return document.getElementById(RESUME_MODE_RADIO_ID);
+          },
           closeOnOverlayClick: true,
           onClose: () => {
             // Chunk 4b — save-on-X is handled by _attachXButtonInterceptor,
@@ -7474,6 +7522,11 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     // id from here, so moving the park moves its own gate rather than leaving
     // a row that quietly asserts the wrong element.
     MANAGE_IMAGES_BTN_ID,
+    // Phase 2 step 4 — the focus-return FALLBACK, for the case where the resume
+    // panel is hidden and MANAGE_IMAGES_BTN_ID therefore has no layout box.
+    // Same single-source rule: a row asserting the fallback landing reads this
+    // rather than restating the id.
+    RESUME_MODE_RADIO_ID,
     // Parcel g-10 — same single-source rule as the constants above: the guard
     // rows READ these rather than restating the strings, so rewording the
     // blocked line or the name suffix retunes its own gate instead of

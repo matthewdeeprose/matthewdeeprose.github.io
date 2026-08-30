@@ -94,9 +94,24 @@ window.MermaidThemes = (function () {
   // Theme configuration
   const themeConfig = {
     // Default themes to use based on site theme
+    // Default themes to use based on site theme.
+    //
+    // BOTH are the accessible pair deliberately, changed 25 August 2026. The
+    // dark default was the `dark` BUILT-IN, whose palette this repo cannot
+    // reach through themeVariables: two of its ten entries sit below 3:1
+    // against its own #333 ground (#34495e at 1.36:1, #9b59b6 at 2.71:1), and a
+    // line series landing on either cannot be lifted by the CSS outline, because
+    // a line has no fill and its palette colour IS its stroke. It also puts a
+    // red and a green adjacent in series order, which is the CVD collision the
+    // design seat's screenshots show.
+    //
+    // Changing the DEFAULT is not the same as removing a theme. Every built-in
+    // stays in the selector, so the failure recorded as item 53 in
+    // docs/mermaid-outstanding.md is now opt-in rather than what a dark-mode
+    // user is handed.
     defaultThemes: {
       light: "accessibleLight", // Default theme for light mode
-      dark: "dark", // Default theme for dark mode
+      dark: "accessibleDark", // Default theme for dark mode
     },
 
     // Control which themes appear in the selector
@@ -150,6 +165,521 @@ window.MermaidThemes = (function () {
       accentColor: "#1E56A0", // Proper blue for light mode
     },
   };
+
+  /**
+   * xychart-beta series palettes, one per theme ground.
+   *
+   * Mermaid exposes exactly ONE string for all series colour
+   * (themeVariables.xyChart.plotColorPalette) and hard-codes the bar outline to
+   * `strokeWidth: 0`, so a palette is the only colour lever a theme has here.
+   * Before this block existed no theme in this repo set any xyChart variable at
+   * all, so every custom theme fell through to Mermaid's `base` default palette
+   * — of which one entry in ten cleared 3:1 on white. The first bar series
+   * measured 1.09:1, in "High Contrast Light" among others.
+   *
+   * Derived from the Chart.js palettes in md-scripts/charts/chart-controls.js so
+   * the two engines' charts read as one system: light grounds take the "Okabe
+   * and Ito" borderColor list, dark grounds "Paul Tol Bright", both as
+   * full-opacity FILLS. Entries that failed the target against their ground were
+   * darkened (light) or lightened (dark) in HSL with hue and saturation held, to
+   * the first value clearing it with margin. Every substitution and its
+   * before/after ratio is recorded in
+   * docs/mermaid-xychart-svg-theming-fix-2026-08-25.md § 2.
+   *
+   * Why every entry must clear the bar on its own: a LINE series has no fill, so
+   * its palette colour IS its stroke, and the CSS outline in light.css/dark.css
+   * changes a line's stroke-width but never its colour. A palette entry that
+   * leans on the outline would be correct for bars and still fail for lines.
+   */
+  /**
+   * ORDER IS LOAD-BEARING, and it is not the order these palettes shipped in.
+   *
+   * Series colour is assigned by walking this list, so consecutive entries land
+   * on adjacent series. Reordered 25 August 2026 to alternate the palette's
+   * darker and lighter halves — sort by relative luminance, then interleave
+   * dark/light/dark/light — so neighbouring series differ in LIGHTNESS and not
+   * only in hue. Reordering cannot change any entry's ratio against the chart
+   * ground, so every figure in the 25 August fix report still holds.
+   *
+   * Measured improvement in adjacent-pair contrast (minimum across the six
+   * pairs, then mean):
+   *
+   *   dark               min 1.04 -> 1.58,  mean 1.91 -> 2.35
+   *   darkHighContrast   min 1.01 -> 1.58,  mean 1.76 -> 2.22
+   *   light              min 1.00 -> 1.00,  mean 1.18 -> 1.19
+   *   lightHighContrast  min 1.00 -> 1.00,  mean 1.04 -> 1.02
+   *
+   * THE LIGHT PALETTES CANNOT BE HELPED BY ANY ORDERING, and that is a proof
+   * rather than an observation: an exhaustive search of all 5,040 orderings of
+   * seven entries gives a best-possible adjacent-pair minimum of 1.06 for
+   * `light` and 1.01 for `lightHighContrast`. The cause is self-inflicted and
+   * unavoidable — every entry was tuned to clear the SAME ratio against the
+   * SAME white ground, which forces their luminances together. The dark
+   * palettes reach 1.58 against a ceiling of 1.69 and 1.68, i.e. 94% of what is
+   * achievable.
+   *
+   * This is the argument for the pattern fills in applySeriesEncoding(): on a
+   * light ground, lightness is exhausted as a channel and only texture is left.
+   * Pairwise 3:1 across seven series is unreachable and is not a WCAG
+   * requirement — SC 1.4.11 asks about the object against its background, which
+   * every entry already satisfies.
+   */
+  const XYCHART_PALETTES = Object.freeze({
+    // Okabe and Ito, every entry >= 3.2:1 against #FFFFFF
+    light: "#0072B2,#CA74A4,#D55E00,#9C920C,#009E73,#BF8400,#1D97DC",
+    // Okabe and Ito, every entry >= 4.7:1 against #FFFFFF
+    lightHighContrast: "#0072B2,#177AB2,#008360,#BE5400,#7D750A,#BA4B89,#9A6A00",
+    // Paul Tol Bright, every entry >= 3.2:1 against #1E1E1E
+    dark: "#BC3883,#66CCEE,#4477AA,#BBBBBB,#228833,#CCBB44,#EE6677",
+    // Paul Tol Bright, every entry >= 4.7:1 against #000000
+    darkHighContrast: "#C74690,#66CCEE,#467BAF,#BBBBBB,#228A34,#CCBB44,#EE6677",
+  });
+
+  /**
+   * Marker Mermaid sets on an xychart diagram root and on nothing else.
+   *
+   * Every query in applySeriesEncoding() is scoped through this. A bare
+   * `querySelector("svg")` on a container can return a CONTROL BUTTON'S 16x16
+   * icon once controls exist — that trap cost the grounding session a false
+   * reading, where a probe reported the diagram SVG empty having measured a
+   * button icon. Matching the roledescription makes a button icon unmatchable
+   * by construction rather than by exclusion.
+   */
+  const XYCHART_ROLEDESCRIPTION = "xychart";
+
+  /**
+   * Pattern vocabulary, mirroring the Chart.js names in
+   * md-scripts/charts/chart-controls.js one-for-one so the two engines read as
+   * one system. Chart.js lists `solid` first; here the FIRST bar series is left
+   * unpatterned instead, so this list starts at the second.
+   */
+  const SERIES_PATTERNS = Object.freeze([
+    "lines",
+    "dots",
+    "diagonal",
+    "crosses",
+    "crosshatch",
+  ]);
+
+  /**
+   * Dash vocabulary, taken from the same file's `borderDash` list with its
+   * leading `[]` (solid) dropped for the same reason.
+   */
+  const SERIES_DASHES = Object.freeze([
+    "5,5",
+    "2,2",
+    "15,3,3,3",
+    "10,5,2,5",
+    "3,3,10,3",
+  ]);
+
+  /** Tile size for every pattern, in user units. */
+  const PATTERN_TILE = 8;
+
+  /**
+   * How much wider a line's casing is than the line itself, in user units.
+   * Four gives a 2-unit halo on each side, which is enough to separate a line
+   * from a patterned bar without the halo reading as a second line.
+   */
+  const CASING_EXTRA_WIDTH = 4;
+
+  /**
+   * Single-point marker radius, as a multiple of the line's own stroke width.
+   * At the 3px lines this repo sets in light.css/dark.css that is r=6, a 12-unit
+   * disc on a 700x500 chart — large enough to find without implying a data band.
+   * Derived from the stroke rather than fixed so it tracks any future width
+   * change rather than silently going out of proportion.
+   */
+  const MARKER_RADIUS_MULTIPLE = 2;
+
+  /** Casing width for the single-point marker's own outline, in user units. */
+  const MARKER_STROKE_WIDTH = 2;
+
+  /** Attributes marking elements this pass owns, so the sweep can rebuild them. */
+  const CASING_ATTRIBUTE = "data-xychart-casing";
+  const MARKER_ATTRIBUTE = "data-xychart-marker";
+
+  /** The two inks a pattern may use; whichever contrasts better with the fill wins. */
+  const PATTERN_INKS = Object.freeze(["#FFFFFF", "#00131D"]);
+
+  /**
+   * Geometry for one pattern tile, drawn over a ground rect of the series colour.
+   * Strokes overrun the tile deliberately so the motif is continuous across tiles.
+   *
+   * @param {string} name - One of SERIES_PATTERNS
+   * @param {string} ink - Stroke/fill colour for the motif
+   * @returns {string} SVG markup for the tile's contents, ground rect excluded
+   */
+  function patternMotif(name, ink) {
+    const s = `stroke="${ink}" fill="none" stroke-linecap="square"`;
+    switch (name) {
+      case "lines":
+        return `<path d="M0,2 H8 M0,6 H8" ${s} stroke-width="2"/>`;
+      case "dots":
+        return `<circle cx="2" cy="2" r="1.4" fill="${ink}"/><circle cx="6" cy="6" r="1.4" fill="${ink}"/>`;
+      case "diagonal":
+        return `<path d="M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4" ${s} stroke-width="2"/>`;
+      case "crosses":
+        return `<path d="M4,1 V7 M1,4 H7" ${s} stroke-width="1.6"/>`;
+      case "crosshatch":
+        return `<path d="M-2,2 l4,-4 M0,8 l8,-8 M6,10 l4,-4 M-2,6 l4,4 M0,0 l8,8 M6,-2 l4,4" ${s} stroke-width="1.4"/>`;
+      default:
+        return "";
+    }
+  }
+
+  /**
+   * Pick the ink that contrasts better with a given series fill.
+   *
+   * THE CHART.JS MODEL DOES NOT TRANSFER UNCHANGED, and this is where it
+   * diverges. There, a series is a 20%-alpha fill with the motif drawn in the
+   * full-strength series colour — the motif contrasts against a pale ground.
+   * Here the bars carry FULL-STRENGTH fills, chosen to clear 3:1 against the
+   * chart ground, so a motif in the series colour would be invisible on itself.
+   * The motif therefore uses white or near-black, whichever is further from
+   * that fill, and the fill keeps its own ground contrast unchanged.
+   *
+   * @param {string} fill - The series colour, as #rrggbb
+   * @returns {string} One of PATTERN_INKS
+   */
+  function pickPatternInk(fill) {
+    let best = PATTERN_INKS[0];
+    let bestRatio = -1;
+    PATTERN_INKS.forEach((ink) => {
+      const ratio = calculateContrastRatio(ink, fill);
+      if (ratio > bestRatio) {
+        bestRatio = ratio;
+        best = ink;
+      }
+    });
+    return best;
+  }
+
+  /**
+   * The chart's own ground colour, resolved rather than assumed.
+   *
+   * Read from the COMPUTED fill of rect.background at pass time, so it is right
+   * for whichever theme is active and re-derives on every theme change without
+   * this module holding a second copy of the palette. Falls back to the
+   * attribute if the SVG is detached, where getComputedStyle returns empty.
+   *
+   * @param {SVGElement} svg - The xychart diagram root
+   * @returns {string} A colour, or "#FFFFFF" if the chart has no background rect
+   */
+  function resolveGroundColour(svg) {
+    const background = svg.querySelector("rect.background");
+    if (!background) return "#FFFFFF";
+
+    const computed = window.getComputedStyle(background).fill;
+    return computed || background.getAttribute("fill") || "#FFFFFF";
+  }
+
+  /**
+   * Recover the single coordinate of a one-point line series, or null.
+   *
+   * MERMAID 11.6.0 RENDERS A ONE-POINT LINE SERIES AS NOTHING AT ALL, and this
+   * is the signature. `line [42]` on a one-category axis emits a real path with
+   * a real `d` — measured verbatim as `d="M386.4,287.4Z"` — which is a moveto
+   * followed by a closepath and NO line segment. A zero-length subpath under the
+   * default `stroke-linecap: butt` paints no pixels, so the plot is empty while
+   * the accessible description correctly says "a single value, 42". The picture
+   * says less than the words.
+   *
+   * Detection counts coordinates rather than matching the `M…Z` string: a path
+   * carrying exactly one pair is a single point whatever punctuation d uses. The
+   * two-point control measures `d="M78.301,287.4L694.5,214.5"` — four numbers —
+   * and is correctly not matched.
+   *
+   * @param {string} d - The path's d attribute
+   * @returns {{x: number, y: number}|null} The point, or null if not a single point
+   */
+  function singlePointOf(d) {
+    if (!d) return null;
+
+    const numbers = d.match(/-?\d+(?:\.\d+)?/g);
+    if (!numbers || numbers.length !== 2) return null;
+
+    return { x: parseFloat(numbers[0]), y: parseFloat(numbers[1]) };
+  }
+
+  /**
+   * Apply non-colour series encoding to a rendered xychart: pattern fills on
+   * bars from the second bar onwards, dash arrays on lines from the second line
+   * onwards.
+   *
+   * WHY THIS EXISTS. Series colour is the only channel Mermaid's xychart offers,
+   * and on a light ground it is exhausted: see XYCHART_PALETTES above, where an
+   * exhaustive search shows NO ordering of the light palettes can separate
+   * adjacent series past 1.06:1. Texture is the remaining channel, and it is the
+   * one that survives both colour-vision deficiency and a greyscale print.
+   *
+   * MECHANISM, AND WHY THIS ONE. Each pattern carries the series colour as its
+   * own ground rect and the motif on top, so a single `fill="url(#id)"` both
+   * keeps the colour and adds the texture. The alternative — layering a second
+   * transparent rect over each bar — was not used: it doubles the rect count,
+   * needs every geometry attribute copied, and each copy is a chance for the two
+   * to drift apart. One attribute on the existing element cannot drift.
+   *
+   * ATTRIBUTES, NOT CSS, and that is forced rather than chosen. Pattern ids must
+   * be unique per chart (they are document-scoped), so a stylesheet cannot name
+   * them. The compensation is that attributes survive `cloneNode(true)` by
+   * construction, so the export carries patterns without further work.
+   *
+   * IDEMPOTENT. Re-running replaces its own defs block and re-reads each series'
+   * colour from `data-series-fill` rather than from the live `fill`, which by
+   * then is a `url(#…)`. Safe after every re-render, theme change and
+   * orientation change.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG itself
+   * @returns {Object|null} Summary of what was applied, or null if no xychart was found
+   */
+  function applySeriesEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${XYCHART_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No xychart SVG in this container - series encoding skipped");
+      return null;
+    }
+
+    // Pattern ids are document-scoped, so they must be unique per chart. The
+    // render id is already unique and is stable across re-renders of the same
+    // diagram, which is what keeps the assignment deterministic.
+    const chartId = (svg.getAttribute("id") || "xychart").replace(
+      /[^A-Za-z0-9_-]/g,
+      "-"
+    );
+
+    // Idempotency: drop everything this pass owns before writing new ones. The
+    // casings and markers are swept the same way the defs are, and for the same
+    // reason — a second run must rebuild them, never stack a second copy on top.
+    const existingDefs = svg.querySelector("defs[data-xychart-series]");
+    if (existingDefs) existingDefs.remove();
+    svg
+      .querySelectorAll(`[${CASING_ATTRIBUTE}], [${MARKER_ATTRIBUTE}]`)
+      .forEach((owned) => owned.remove());
+
+    const ground = resolveGroundColour(svg);
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    const defs = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "defs"
+    );
+    defs.setAttribute("data-xychart-series", "true");
+    const tiles = [];
+    const applied = { patterns: [], dashes: [], casings: [], markers: [] };
+
+    // --- bars: first stays solid, the rest take patterns in vocabulary order
+    const barGroups = svg.querySelectorAll('g[class^="bar-plot"]');
+    barGroups.forEach((group, ordinal) => {
+      const rects = group.querySelectorAll("rect");
+      if (!rects.length) return;
+
+      // Read the ORIGINAL colour, not the live fill, which is a url() on re-run.
+      const seriesFill =
+        rects[0].getAttribute("data-series-fill") || rects[0].getAttribute("fill");
+      rects.forEach((rect) => rect.setAttribute("data-series-fill", seriesFill));
+
+      if (ordinal === 0) {
+        // Restore, in case a re-run follows a change that reduced the series count.
+        rects.forEach((rect) => rect.setAttribute("fill", seriesFill));
+        applied.patterns.push({ group: group.getAttribute("class"), pattern: "solid" });
+        return;
+      }
+
+      const name = SERIES_PATTERNS[(ordinal - 1) % SERIES_PATTERNS.length];
+      const ink = pickPatternInk(seriesFill);
+      const patternId = `${chartId}-pat-${ordinal}`;
+
+      tiles.push(
+        `<pattern id="${patternId}" patternUnits="userSpaceOnUse" width="${PATTERN_TILE}" height="${PATTERN_TILE}">` +
+          `<rect width="${PATTERN_TILE}" height="${PATTERN_TILE}" fill="${seriesFill}"/>` +
+          patternMotif(name, ink) +
+          `</pattern>`
+      );
+
+      rects.forEach((rect) => rect.setAttribute("fill", `url(#${patternId})`));
+      applied.patterns.push({
+        group: group.getAttribute("class"),
+        pattern: name,
+        seriesFill,
+        ink,
+        inkOnFill: calculateContrastRatio(ink, seriesFill),
+      });
+    });
+
+    // --- lines: first stays solid, the rest take dash arrays in vocabulary order.
+    // Each line then gains a ground-coloured casing behind it, and a one-point
+    // series gains a marker, because Mermaid draws one-point series as nothing.
+    const lineGroups = svg.querySelectorAll('g[class^="line-plot"]');
+    lineGroups.forEach((group, ordinal) => {
+      // Only Mermaid's own paths: this pass's casings were swept above, so
+      // nothing here can pick up a casing from a previous run.
+      const paths = group.querySelectorAll("path");
+      if (!paths.length) return;
+
+      // Dash FIRST, because the casing copies whatever dash the line ends with.
+      let dash = null;
+      if (ordinal === 0) {
+        paths.forEach((path) => path.removeAttribute("stroke-dasharray"));
+        applied.dashes.push({ group: group.getAttribute("class"), dash: "solid" });
+      } else {
+        dash = SERIES_DASHES[(ordinal - 1) % SERIES_DASHES.length];
+        paths.forEach((path) => path.setAttribute("stroke-dasharray", dash));
+        applied.dashes.push({ group: group.getAttribute("class"), dash });
+      }
+
+      paths.forEach((path) => {
+        const d = path.getAttribute("d");
+        const computed = window.getComputedStyle(path);
+        const lineWidth =
+          parseFloat(computed.strokeWidth) ||
+          parseFloat(path.getAttribute("stroke-width")) ||
+          2;
+
+        // --- casing: a ground-coloured halo, painted BEHIND its own line.
+        // Sibling order is paint order in SVG, so inserting before the line is
+        // what puts the halo underneath it.
+        const casing = document.createElementNS(svgNS, "path");
+        casing.setAttribute(CASING_ATTRIBUTE, "true");
+        casing.setAttribute("d", d);
+        casing.setAttribute("fill", "none");
+        casing.setAttribute("stroke", ground);
+        // ⚠ THE WIDTH MUST BE AN INLINE STYLE, NOT A PRESENTATION ATTRIBUTE.
+        // light.css and dark.css carry
+        //   svg[aria-roledescription="xychart"] g[class^="line-plot"] path
+        //     { stroke-width: 3px; }
+        // and this casing IS a path inside a line-plot group, so that rule
+        // matches it too. A presentation attribute is the weakest source in the
+        // cascade — the whole reason session 1's outline work is possible — so
+        // `stroke-width="7"` computed to 3px and the casing was drawn at exactly
+        // the line's own width, haloing nothing. It looked correct in every
+        // attribute reading and was inert on screen; the export measurement is
+        // what caught it, because inlineComputedPaint writes the COMPUTED value
+        // and the clone came back carrying 3.
+        // An inline style beats an author rule that carries no !important, and
+        // neither theme sheet uses one here.
+        casing.style.strokeWidth = `${lineWidth + CASING_EXTRA_WIDTH}px`;
+        // THE CASING MUST CARRY THE LINE'S OWN DASH. A solid casing behind a
+        // dashed line fills the line's gaps with ground colour, which redraws it
+        // as a solid band of background and destroys the dash as a channel —
+        // the very thing session 2 added it for.
+        if (dash) casing.setAttribute("stroke-dasharray", dash);
+        casing.setAttribute("stroke-linecap", computed.strokeLinecap || "butt");
+        casing.setAttribute("stroke-linejoin", computed.strokeLinejoin || "miter");
+        casing.setAttribute("aria-hidden", "true");
+        group.insertBefore(casing, path);
+        applied.casings.push({
+          group: group.getAttribute("class"),
+          stroke: ground,
+          width: lineWidth + CASING_EXTRA_WIDTH,
+          dash: dash || "solid",
+        });
+
+        // --- single-point marker: only where Mermaid drew nothing.
+        const point = singlePointOf(d);
+        if (!point) return;
+
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+          logWarn(
+            `Single-point line series in ${group.getAttribute(
+              "class"
+            )} has an unrecoverable coordinate (d="${d}") - no marker drawn, rather than one guessed from axis geometry`
+          );
+          applied.markers.push({
+            group: group.getAttribute("class"),
+            drawn: false,
+            reason: "coordinate not recoverable from d",
+          });
+          return;
+        }
+
+        const marker = document.createElementNS(svgNS, "circle");
+        marker.setAttribute(MARKER_ATTRIBUTE, "true");
+        marker.setAttribute("cx", String(point.x));
+        marker.setAttribute("cy", String(point.y));
+        marker.setAttribute("r", String(lineWidth * MARKER_RADIUS_MULTIPLE));
+        marker.setAttribute("fill", path.getAttribute("stroke"));
+        marker.setAttribute("stroke", ground);
+        marker.setAttribute("stroke-width", String(MARKER_STROKE_WIDTH));
+        marker.setAttribute("aria-hidden", "true");
+        // Appended, not inserted, so the marker sits ON TOP of its own casing.
+        group.appendChild(marker);
+        applied.markers.push({
+          group: group.getAttribute("class"),
+          drawn: true,
+          cx: point.x,
+          cy: point.y,
+          r: lineWidth * MARKER_RADIUS_MULTIPLE,
+          fill: path.getAttribute("stroke"),
+          stroke: ground,
+        });
+      });
+    });
+
+    if (tiles.length) {
+      defs.innerHTML = tiles.join("");
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    logInfo(
+      `Series encoding applied: ${applied.patterns.length} bar series, ${applied.dashes.length} line series, ${tiles.length} patterns, ${applied.casings.length} casings, ${applied.markers.filter((m) => m.drawn).length} single-point markers`
+    );
+    return applied;
+  }
+
+  /**
+   * Build the COMPLETE xyChart theme block for a theme.
+   *
+   * ⚠ ALL ELEVEN KEYS ARE SET DELIBERATELY, AND OMITTING ANY ONE IS A DEFECT.
+   * Supplying an `xyChart` block inside `themeVariables` is all-or-nothing: any
+   * key left out does NOT fall through to this theme's own `primaryTextColor`,
+   * it falls through to Mermaid's `default` theme value, which is the near-black
+   * olive #131300. Measured 25 August 2026 on the accessibleDark variables, four
+   * controlled renders reading the same three elements:
+   *
+   *   A  no xyChart block at all      label #ffffff   background #1E1E1E   (correct)
+   *   B  xyChart: palette only        label #131300   background white     (both lost)
+   *   C  xyChart: background+palette  label #131300   background #1E1E1E   (axes lost)
+   *   D  xyChart: all eleven keys     label #ffffff   background #1E1E1E   (correct)
+   *
+   * Row C is what this function shipped for its first half hour, and it put the
+   * dark themes' axis labels at 1.12:1 against their own ground — a WORSE defect
+   * than the pale series this change exists to fix, and one no reading of the
+   * fallback chain in Mermaid's source predicts. The grounding document
+   * explicitly expected the fallback to hold and recorded the ten axis colours
+   * as needing no work; that expectation was correct about the colours and wrong
+   * about what happens once any sibling key is supplied.
+   *
+   * @param {string} ground - Chart background, the ground the palette was measured against
+   * @param {string} ink - Axis, tick, label and title colour; this theme's text colour
+   * @param {string} palette - One of XYCHART_PALETTES
+   * @returns {Object} A complete themeVariables.xyChart block
+   */
+  function buildXyChartTheme(ground, ink, palette) {
+    return {
+      backgroundColor: ground,
+      titleColor: ink,
+      xAxisTitleColor: ink,
+      xAxisLabelColor: ink,
+      xAxisTickColor: ink,
+      xAxisLineColor: ink,
+      yAxisTitleColor: ink,
+      yAxisLabelColor: ink,
+      yAxisTickColor: ink,
+      yAxisLineColor: ink,
+      plotColorPalette: palette,
+    };
+  }
+
   /**
    * Convert hex colour to RGB array
    * @param {string} hex - Hex colour code
@@ -318,6 +848,128 @@ window.MermaidThemes = (function () {
 
     return themeToUse;
   }
+
+  // ---------------------------------------------------------------------------
+  // Diagram theme persistence — register item 55
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Storage key for the user's diagram-theme choice.
+   *
+   * DELIBERATELY NOT "theme". That key is the SITE light/dark theme and is what
+   * isDarkThemeActive() reads; writing a diagram palette into it would let a
+   * chart decide whether the whole site is in dark mode. Item 55 names the
+   * collision as the one thing whoever took it had to get right.
+   *
+   * The preference is per PAGE, not per diagram: one stored value, every
+   * diagram on the page follows it. Decided 27 August 2026.
+   */
+  const THEME_PREFERENCE_KEY = "mermaid-diagram-theme";
+
+  /**
+   * Light/dark counterparts, for a stored choice that the mode the user has
+   * just switched to does not offer.
+   *
+   * Only TRUE pairs belong here — two themes of the same family, one in each
+   * mode's `modeVisibleThemes` list. DERIVED from that config on 27 August
+   * 2026 rather than guessed, and the derivation is worth keeping: `wcagLight`,
+   * `default`, `neutral` and `forest` are light-only and the `dark` built-in is
+   * dark-only, so none of them has anything to map to. Adding a `wcagDark`
+   * later means adding a pair here in the same change, or the new theme
+   * silently behaves as unpaired.
+   */
+  const THEME_PAIRS = Object.freeze({
+    accessibleLight: "accessibleDark",
+    accessibleDark: "accessibleLight",
+    highContrastLight: "highContrastDark",
+    highContrastDark: "highContrastLight",
+  });
+
+  /**
+   * Read the stored diagram theme preference.
+   * @returns {string|null} The stored theme id, or null if none or unreadable
+   */
+  function getStoredThemePreference() {
+    // Guarded because localStorage throws outright in some private-browsing
+    // modes — the same guard isDarkThemeActive() carries, for the same reason.
+    try {
+      return localStorage.getItem(THEME_PREFERENCE_KEY);
+    } catch (e) {
+      logWarn("Error reading stored diagram theme preference:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Store the user's diagram theme preference.
+   * @param {string} themeId - Theme id to store
+   * @returns {boolean} True if it was written
+   */
+  function saveThemePreference(themeId) {
+    try {
+      localStorage.setItem(THEME_PREFERENCE_KEY, themeId);
+      logDebug("Saved diagram theme preference:", themeId);
+      return true;
+    } catch (e) {
+      logWarn("Error saving diagram theme preference:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Decide which theme a diagram should show right now, honouring the stored
+   * preference where the current mode can express it.
+   *
+   * Three outcomes, in order:
+   *
+   * 1. The stored choice is offered in this mode — use it.
+   * 2. It is not, but its counterpart is — use the counterpart, and REWRITE the
+   *    stored value to it. The map is symmetric, so a light→dark→light round
+   *    trip returns the user to what they originally picked.
+   * 3. It is not, and it has no counterpart — show the mode default but LEAVE
+   *    THE STORED VALUE ALONE. This is the deliberate half. Overwriting it with
+   *    the fallback would destroy the choice permanently, which is the very
+   *    complaint item 55 was raised about; preserving it means the return flip
+   *    restores the original, giving unpaired themes the same round-trip
+   *    guarantee the paired ones get. The consequence to know: while the user
+   *    is in the other mode, the selector and the stored value disagree — the
+   *    selector shows what is applied, the stored value holds the intent.
+   *
+   * @returns {{themeId: string, storeAs: string|null}} The theme to apply, and
+   *   the value to store if the caller should rewrite the preference
+   */
+  function resolveThemeForCurrentMode() {
+    const defaultTheme = getDefaultThemeForCurrentMode();
+    const storedTheme = getStoredThemePreference();
+
+    if (!storedTheme) {
+      logDebug("No stored diagram theme; using the mode default:", defaultTheme);
+      return { themeId: defaultTheme, storeAs: null };
+    }
+
+    // Validate against what this mode actually offers, never against the full
+    // theme list — modeVisibleThemes is what the selector is built from, so a
+    // value absent from it cannot be selected and must not be applied.
+    const availableIds = getAllThemes().map((theme) => theme.id);
+
+    if (availableIds.includes(storedTheme)) {
+      logDebug("Stored diagram theme is offered in this mode:", storedTheme);
+      return { themeId: storedTheme, storeAs: null };
+    }
+
+    const counterpart = THEME_PAIRS[storedTheme];
+    if (counterpart && availableIds.includes(counterpart)) {
+      logDebug(
+        `Stored diagram theme "${storedTheme}" is not offered in this mode; mapped to its counterpart "${counterpart}"`
+      );
+      return { themeId: counterpart, storeAs: counterpart };
+    }
+
+    logDebug(
+      `Stored diagram theme "${storedTheme}" has no counterpart in this mode; applying the mode default "${defaultTheme}" and keeping the stored choice for the return flip`
+    );
+    return { themeId: defaultTheme, storeAs: null };
+  }
   /**
    * Generate an accessible theme based on mode and base colours
    * @param {boolean} isDarkMode - Whether to use dark mode colours
@@ -433,6 +1085,15 @@ window.MermaidThemes = (function () {
         !isDarkMode
       );
     }
+
+    // xychart-beta series colour. Both branches above leave xychart untouched,
+    // so without this the chart falls through to Mermaid's pale `base` palette
+    // whatever the rest of the theme says.
+    theme.xyChart = buildXyChartTheme(
+      actualCanvasColor,
+      actualTextColor,
+      isDarkMode ? XYCHART_PALETTES.dark : XYCHART_PALETTES.light
+    );
 
     return theme;
   }
@@ -587,6 +1248,13 @@ window.MermaidThemes = (function () {
         // Other elements
         edgeLabelBackground: "#FFFFFF",
         titleColor: "#000000",
+
+        // xychart-beta: ground is this theme's own `background`, #FFFFFF
+        xyChart: buildXyChartTheme(
+          "#FFFFFF",
+          "#000000",
+          XYCHART_PALETTES.light
+        ),
       },
     },
     {
@@ -619,6 +1287,13 @@ window.MermaidThemes = (function () {
         noteBkgColor: "#FFFFFF",
         noteTextColor: "#000000",
         noteBorderColor: "#000000",
+
+        // xychart-beta: high-contrast pair targets 4.7:1, not 3.2:1
+        xyChart: buildXyChartTheme(
+          "#FFFFFF",
+          "#000000",
+          XYCHART_PALETTES.lightHighContrast
+        ),
       },
     },
     {
@@ -641,6 +1316,13 @@ window.MermaidThemes = (function () {
         noteBkgColor: "#000000",
         noteTextColor: "#FFFFFF",
         noteBorderColor: "#FFFFFF",
+
+        // xychart-beta: high-contrast pair targets 4.7:1, not 3.2:1
+        xyChart: buildXyChartTheme(
+          "#000000",
+          "#FFFFFF",
+          XYCHART_PALETTES.darkHighContrast
+        ),
       },
     },
     {
@@ -672,6 +1354,17 @@ window.MermaidThemes = (function () {
         labelBoxBkgColor: "#7FBC00",
         fontFamily: "Inter, sans-serif",
         fontSize: "13px",
+
+        // xychart-beta: ground is this theme's own `background`, #FFFFFF.
+        // blueAccent is in `visibleThemes` but in NEITHER modeVisibleThemes
+        // list, so it never reaches the selector today; it is themed anyway so
+        // that adding it to a list later is a one-line change rather than a
+        // silent contrast regression.
+        xyChart: buildXyChartTheme(
+          "#FFFFFF",
+          "#000000",
+          XYCHART_PALETTES.light
+        ),
       },
     },
   ];
@@ -740,40 +1433,48 @@ window.MermaidThemes = (function () {
         mermaidDiv.innerHTML = result.svg;
         logInfo(`Successfully re-rendered diagram with theme "${themeId}"`);
 
-        // Re-apply size settings if MermaidControls is available
-        const svg = mermaidDiv.querySelector("svg");
-        if (
-          svg &&
-          window.MermaidControls &&
-          typeof window.MermaidControls.applyDiagramSize === "function"
-        ) {
-          const widthSlider = container.querySelector(
-            'input[id^="mermaid-width-slider"]'
-          );
-          const heightSlider = container.querySelector(
-            'input[id^="mermaid-height-slider"]'
-          );
-          const aspectRatioCheckbox = container.querySelector(
-            ".aspect-ratio-checkbox"
-          );
+        const index = mermaidId.split("-").pop();
 
-          if (widthSlider && heightSlider) {
-            window.MermaidControls.applyDiagramSize(
-              svg,
-              widthSlider.value,
-              heightSlider.value,
-              aspectRatioCheckbox ? aspectRatioCheckbox.checked : false
-            );
-            logDebug("Re-applied diagram size settings");
-          }
+        // A fresh SVG has landed. Series encoding and size are re-applied
+        // through the one named after-render step in mermaid-controls.js,
+        // rather than this site keeping its own copy of the list.
+        //
+        // The helper is SAFE to call from inside applyTheme's own .then
+        // because it never calls applyTheme — it applies encoding and size and
+        // nothing else, so there is no re-render loop. That is a standing
+        // constraint on the helper, recorded in register item 56, not an
+        // accident of its current body.
+        //
+        // The local fallback is deliberate and is NOT a second route. The
+        // helper lives in another module, and encoding on this path used to be
+        // guaranteed by a module-internal call that needed nothing external;
+        // routing through the helper without a fallback would make that
+        // guarantee depend on MermaidControls being loaded. In practice it
+        // always is here, because applyTheme is reached through
+        // addThemeSelector, which requires the controls container to exist —
+        // but applyTheme is also exported, and a direct caller has no such
+        // guarantee.
+        if (
+          window.MermaidControls &&
+          typeof window.MermaidControls.reapplyAfterRender === "function"
+        ) {
+          window.MermaidControls.reapplyAfterRender(container, mermaidDiv, {
+            index: index,
+          });
+        } else {
+          logWarn(
+            "MermaidControls.reapplyAfterRender unavailable; applying series encoding locally"
+          );
+          applySeriesEncoding(mermaidDiv);
         }
 
-        // Re-initialize controls if needed
+        // Re-initialize controls if needed. This stays with applyTheme: it is a
+        // lifecycle decision, not part of re-applying what we already knew
+        // about the diagram.
         if (
           window.MermaidControls &&
           typeof window.MermaidControls.addControlsToContainer === "function"
         ) {
-          const index = mermaidId.split("-").pop();
           window.MermaidControls.addControlsToContainer(container, index);
           logDebug("Re-initialised diagram controls");
         }
@@ -957,19 +1658,34 @@ window.MermaidThemes = (function () {
       themeSelect.appendChild(option);
     });
 
-    // Get default theme for current mode
-    const defaultTheme = getDefaultThemeForCurrentMode();
-    logDebug("Default theme to use:", defaultTheme);
+    // Which theme this diagram should show. Register item 55: a stored choice
+    // wins where the current mode offers it, maps to its counterpart where it
+    // does not, and yields to the mode default otherwise.
+    const resolvedTheme = resolveThemeForCurrentMode();
+    const themeToApply = resolvedTheme.themeId;
+    if (resolvedTheme.storeAs) {
+      saveThemePreference(resolvedTheme.storeAs);
+    }
+    logDebug("Theme to use:", themeToApply);
 
-    // Set the default theme as the selected option
-    themeSelect.value = defaultTheme;
+    // Set the resolved theme as the selected option. THE CONTROL REFLECTING
+    // THE RESTORED STATE IS THE SIGNAL — item 55 rules out announcing a
+    // restore, because the user did not just make this change and a spoken
+    // line on every page load is load chatter, not information.
+    themeSelect.value = themeToApply;
 
     // Add event listener for theme changes
     themeSelect.addEventListener("change", function () {
       const newTheme = this.value;
       logInfo("User changed theme to:", newTheme);
 
-      // Apply the theme to the diagram (but don't save preference)
+      // Store the choice. Register item 55: this line replaces a comment
+      // reading "but don't save preference", which described the defect
+      // rather than a decision — a reload, or a site light/dark flip, threw
+      // the user's choice away without telling them.
+      saveThemePreference(newTheme);
+
+      // Apply the theme to the diagram
       applyTheme(container, newTheme);
 
       // Announce to screen readers if MermaidControls is available
@@ -995,9 +1711,9 @@ window.MermaidThemes = (function () {
     // Append as the last row in the sliders container
     slidersContainer.appendChild(themeRow);
 
-    // Apply the default theme
-    logDebug("Applying theme:", defaultTheme);
-    applyTheme(container, defaultTheme);
+    // Apply the resolved theme
+    logDebug("Applying theme:", themeToApply);
+    applyTheme(container, themeToApply);
 
     logInfo("Theme selector added and theme applied");
   }
@@ -1014,9 +1730,22 @@ window.MermaidThemes = (function () {
     const mermaidContainers = document.querySelectorAll(".mermaid-container");
     logDebug("Found", mermaidContainers.length, "mermaid containers");
 
-    // Get the current appropriate default theme
-    const newDefaultTheme = getDefaultThemeForCurrentMode();
-    logDebug("Current default theme for mode:", newDefaultTheme);
+    // Register item 55. This used to compute the mode default and force it
+    // into every selector, so a user who picked "High Contrast Light" and then
+    // toggled the site to dark and back had lost their choice with no notice.
+    // The preference is now carried across the flip: mapped to its counterpart
+    // where one exists, and where none does the mode default is APPLIED while
+    // the stored choice is LEFT INTACT, so flipping back restores what the
+    // user actually picked rather than the fallback they never chose.
+    //
+    // Resolved ONCE, outside the loop: the preference is per page, so every
+    // container gets the same answer and the store is written at most once.
+    const resolvedTheme = resolveThemeForCurrentMode();
+    const themeToApply = resolvedTheme.themeId;
+    if (resolvedTheme.storeAs) {
+      saveThemePreference(resolvedTheme.storeAs);
+    }
+    logDebug("Theme to apply after the mode change:", themeToApply);
 
     // Get visible themes for current mode
     const visibleThemes = getAllThemes();
@@ -1041,9 +1770,10 @@ window.MermaidThemes = (function () {
         themeSelect.appendChild(option);
       });
 
-      // Set selected theme to default for current mode
-      themeSelect.value = newDefaultTheme;
-      applyTheme(container, newDefaultTheme);
+      // Show and apply the resolved theme, so the control reflects what the
+      // diagram is actually rendering in.
+      themeSelect.value = themeToApply;
+      applyTheme(container, themeToApply);
     });
 
     logInfo(`Updated ${mermaidContainers.length} diagrams for theme change`);
@@ -1385,6 +2115,7 @@ window.MermaidThemes = (function () {
     init: init,
     addThemeSelector: addThemeSelector,
     applyTheme: applyTheme,
+    applySeriesEncoding: applySeriesEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

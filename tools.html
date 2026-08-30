@@ -19208,6 +19208,8 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-alt-text-provenance.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-mmd-serialiser.js"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
+    <!-- Parcel EA-4: shared model-capability module — the ONE home for isModelPdfCapable, isModelVisionCapable, isModelProviderAvailable, PROVIDER_GROUPS, the two refusal sentences and the 27-entry KNOWN_VISION_MODELS list (window.MathPixModelCapability). MUST load before its consumers: mathpix-context-ai.js (the delegating facade), alt-text-cloud-adapter.js and image-describer-controller-model.js all reach it at call time, and mathpix-ai-enhancer.js and mathpix-ai-multipass.js reach it through the facade. -->
+    <script src="mathpix-scripts/core/mathpix-model-capability.js"></script>
     <script
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"
@@ -19318,6 +19320,11 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-trigger-review-tests.js"
+    ></script>
+    <!-- P4-M2b: AI enhancer seam suite — the two PDF send-boundary guards (window.runEnhancerSeamTests) -->
+    <script
+      type="application/dev-test"
+      data-src="mathpix-scripts/testing/mathpix-enhancer-seam-tests.js"
     ></script>
     <!-- Floor summary aggregator: one normalised table across every floor suite (window.runFloorSummary) -->
     <script
@@ -21410,6 +21417,7 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-class.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-git.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-sankey.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-xychart.js"></script>
 
     <script>
       // Ensure MermaidPanZoom is properly initialized and globally available

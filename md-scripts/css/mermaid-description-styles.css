@@ -435,12 +435,12 @@ h5.flow-heading {
 }
 
 /* Specific section styling */
-.sequence-overview,
-.mermaid-section,
-.mermaid-short-description,
-.mermaid-detailed-description {
-  background-color: #e1e8ec;
-}
+/* The inset-card SURFACE COLOURS for these four selectors moved to light.css
+   and dark.css on 24 August 2026 (PS1). They were declared here, and this file
+   loads after both theme sheets, so the light background survived into dark
+   theme while dark.css supplied #e1e8ec body text — measured 1:1 contrast on
+   the short description, the detailed description and every table cell. The
+   surface is theming, so the theme sheets own it. Layout stays here. */
 
 .mermaid-detailed-description {
   padding: 10px;
@@ -1188,6 +1188,94 @@ li.process-step .step-number {
   line-height: 1.5;
 }
 
+/* The transition above was unguarded. chart-controls.css declares the same
+   `transition: all 0.3s ease` on `.chart-description, .mermaid-description`
+   and this file loads after it (tools.html: chart-controls at 115, this at
+   137), so the override below reaches BOTH declarations rather than only the
+   local one. Scoped to the Mermaid panel, so the Chart.js panel is untouched. */
+@media (prefers-reduced-motion: reduce) {
+  .mermaid-description {
+    transition: none;
+  }
+}
+
+/* =================
+   PS2 — SECTION, HEADING AND TABLE HOOKS (LAYOUT ONLY)
+   ================= */
+/* Added 25 August 2026. These match the shape of Chart.js's own description
+   treatment in md-scripts/css/chart-controls.css, so the two panels read as
+   one system. EVERY COLOUR IN THIS BLOCK LIVES IN light.css AND dark.css —
+   PS1's lesson, which was that a colour declared here loads after both theme
+   sheets and therefore survives into the wrong theme. Border and background
+   COLOURS, and the accent width (which differs by theme, as Chart.js's does),
+   are deliberately absent below. */
+
+/* The section card. `.mermaid-section` is emitted by several generators and
+   added to the rest by the shell pass in mermaid-accessibility-utils.js, so
+   one rule reaches all fifteen types. Scoped under the detailed wrapper so a
+   generator's own use of the class elsewhere is untouched. */
+.mermaid-detailed-description .mermaid-section {
+  padding: 1.25rem;
+  margin: 1.25rem 0;
+  border-radius: 4px;
+  border-left-style: solid;
+}
+
+/* Section heading. Element-qualified on purpose: `.mermaid-details-heading`
+   is also the panel's own h3 ("Detailed Description"), and Chart.js
+   disambiguates the identical pair the same way. */
+h4.mermaid-details-heading {
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem 0;
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+h4.mermaid-details-heading::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 0.5rem;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* Data table. Only the xychart generator emits one today, and it emits it
+   bare; the wrapper is added by the shell pass. The wrapper is what keeps a
+   wide table from pushing the page sideways (SC 1.4.10) — the table itself
+   must NOT scroll, or the caption scrolls with it. */
+.mermaid-data-table-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 1rem 0;
+}
+
+.mermaid-data-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.mermaid-data-table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+}
+
+.mermaid-data-table th,
+.mermaid-data-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
+
+.mermaid-data-table tbody th {
+  font-weight: 600;
+}
+
 /* was @media (max-width: 768px) { */
 @media (max-width: 1024px) {
   .mermaid-description,
@@ -1273,11 +1361,9 @@ h5.flow-heading {
 }
 
 /* Specific section styling */
-.sequence-overview,
-.mermaid-section,
-.mermaid-short-description {
-  background-color: #e1e8ec;
-}
+/* SECOND COPY of the same surface-colour rule, removed by PS1 on 24 August
+   2026 for the reason recorded at the first copy above. Both copies were live;
+   deleting only one would have left the defect intact. */
 
 /* Actor and Participant sections */
 .actor-item,

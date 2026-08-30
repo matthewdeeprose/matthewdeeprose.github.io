@@ -1742,16 +1742,20 @@ window.MermaidControls = (function () {
               const element = document.getElementById(mermaidId);
               if (element) {
                 element.innerHTML = result.svg;
-                const svgElement = element.querySelector("svg");
-                if (svgElement) {
-                  // Apply existing width and height to newly rendered diagram
-                  applyDiagramSize(
-                    svgElement,
-                    widthSlider.value,
-                    heightSlider.value,
-                    aspectRatioCheckbox.checked
-                  );
-                }
+
+                // A fresh SVG has landed. Encoding and size are re-applied
+                // through the one named after-render step, so this site does
+                // not carry its own copy of the list — see reapplyAfterRender
+                // above.
+                //
+                // This handler is bound only when supportsOrientation() is
+                // true, which admits graph and flowchart and nothing else, so
+                // an XYCHART CAN NEVER REACH THIS SITE. An earlier comment
+                // here warned that an orientation change silently drops every
+                // pattern and dash; measured 26 August 2026, that gesture does
+                // not exist. The helper call serves the types that can
+                // actually flip, and names the invariant for all of them.
+                reapplyAfterRender(container, element, { index: index });
               }
             })
             .catch((error) => {
@@ -2235,6 +2239,172 @@ window.MermaidControls = (function () {
    * @param {boolean} maintainAspectRatio - Whether to maintain aspect ratio
    * @param {number} aspectRatio - Aspect ratio to maintain (width/height)
    */
+  /**
+   * Re-apply everything we know about a diagram after a fresh SVG has landed.
+   *
+   * THE NAMED AFTER-RENDER INVARIANT. Every render replaces the SVG
+   * wholesale, so anything written onto the previous SVG is gone. Before this
+   * helper existed, four render sites re-applied overlapping subsets by three
+   * different routes — an internal call, an external call, and an incidental
+   * side effect of adding a theme selector — and nothing named the invariant,
+   * so nothing could check it. Register item 56 was opened against a coverage
+   * gap that did not exist, precisely because the routes were not legible.
+   *
+   * The payload is SERIES ENCODING, SIZE and the ACCESSIBILITY WIRING.
+   * Rebuilding the controls and INITIALISING the accessibility features stay
+   * with their callers, because those two are not "re-apply what we knew" —
+   * they are per-site lifecycle decisions, and the retry path in particular
+   * removes and rebuilds them on purpose.
+   *
+   * THE THIRD MEMBER REVISITS AN EARLIER RULING, deliberately and on evidence.
+   * When this helper was written the payload was encoding and size only, and
+   * the accessibility wiring was left with the callers on the reasoning above.
+   * Register item 61 then measured what that costs: a theme change replaced
+   * the SVG and the diagram's accessible name went with it, on every render
+   * path, in every mode. The distinction that survives is between INITIALISING
+   * the accessibility features — running a generator, building the figure,
+   * figcaption and toggle button, which is still a caller's lifecycle
+   * decision — and RE-APPLYING the two attributes we already hold, which is
+   * exactly what this helper is for. Only the second is done here.
+   *
+   * IT MUST NEVER CALL applyTheme. One of its consumers is applyTheme's own
+   * .then, so a helper that re-entered applyTheme would loop the render.
+   *
+   * Cross-module handles are resolved off `window` at CALL time and guarded
+   * with `typeof`, never captured in a module-scope const — the load order
+   * does not guarantee MermaidThemes exists when this file is evaluated.
+   *
+   * @param {HTMLElement} container - The .mermaid-container element
+   * @param {HTMLElement} mermaidDiv - The .mermaid div whose innerHTML was just replaced
+   * @param {Object} [options] - Options
+   * @param {string|number} [options.index] - The diagram index, for logging only
+   * @returns {Object} What was applied, for probes and callers that want to
+   *   assert — `{ encoding, size, a11y }`. The first two record that the call
+   *   was made; `a11y` is read back off the SVG and records that the write
+   *   LANDED, so the three are not equally strong and must not be read as if
+   *   they were. See item 58's note in docs/mermaid-outstanding.md.
+   */
+  function reapplyAfterRender(container, mermaidDiv, options) {
+    const opts = options || {};
+    const applied = { encoding: false, size: false, a11y: false };
+
+    if (!mermaidDiv) {
+      Logger.warn("reapplyAfterRender: no mermaid div provided");
+      return applied;
+    }
+
+    // 1. Non-colour series encoding — patterns and dashes for xychart.
+    // A no-op for every other diagram type. Resolved off window at call
+    // time; MermaidThemes may legitimately be absent.
+    if (
+      window.MermaidThemes &&
+      typeof window.MermaidThemes.applySeriesEncoding === "function"
+    ) {
+      window.MermaidThemes.applySeriesEncoding(mermaidDiv);
+      applied.encoding = true;
+    }
+
+    // 2. Size. The live sliders are the authority where they exist, because
+    // they carry the user's current adjustment; their input handlers write
+    // the saved preference on every change, so the two agree in the normal
+    // case. Where controls have not been built yet the sliders are absent,
+    // and the saved preferences are the same values addControlsToContainer
+    // would apply moments later — so the fallback introduces no new value.
+    const svgElement = mermaidDiv.querySelector("svg");
+    if (svgElement) {
+      const scope = container || mermaidDiv;
+      const widthSlider = scope.querySelector(
+        'input[id^="mermaid-width-slider"]'
+      );
+      const heightSlider = scope.querySelector(
+        'input[id^="mermaid-height-slider"]'
+      );
+      const aspectRatioCheckbox = scope.querySelector(".aspect-ratio-checkbox");
+
+      let width;
+      let height;
+      let locked;
+
+      if (widthSlider && heightSlider) {
+        width = widthSlider.value;
+        height = heightSlider.value;
+        locked = aspectRatioCheckbox ? aspectRatioCheckbox.checked : false;
+      } else {
+        width = Utils.getSavedPreference(
+          "mermaid-diagram-width",
+          config.defaultWidth
+        );
+        height = Utils.getSavedPreference(
+          "mermaid-diagram-height",
+          config.defaultHeight
+        );
+        const savedLock = Utils.getSavedPreference(
+          "mermaid-lock-aspect-ratio",
+          config.lockAspectRatioDefault
+        );
+        locked = savedLock === "true" || savedLock === true;
+      }
+
+      applyDiagramSize(svgElement, width, height, locked);
+      applied.size = true;
+    }
+
+    // 3. Accessibility wiring — the diagram's accessible name, and the tie to
+    // its caption. Both are written onto the SVG by initAccessibilityFeatures
+    // and both die with it on every re-render; the container outlives the SVG
+    // and holds each value already, so this is a restore, not a regeneration.
+    //
+    // The name is used VERBATIM. It is the plain short tier — an author's own
+    // accTitle where there is one — and aria-label is an attribute sink, so
+    // escaping it would put entities into what a screen reader speaks.
+    //
+    // Absent dataset entries mean the accessibility features have not
+    // initialised on this container yet, which is the ordinary case on a first
+    // render. Nothing is written then, so a placeholder label set by the
+    // render site itself is left alone rather than overwritten with nothing.
+    const accessibleName = container
+      ? container.dataset.svgAccessibleName
+      : undefined;
+
+    if (svgElement && accessibleName) {
+      svgElement.setAttribute("aria-label", accessibleName);
+
+      const figcaptionId = container.dataset.figcaptionId;
+      if (figcaptionId) {
+        svgElement.setAttribute("aria-describedby", figcaptionId);
+      }
+
+      // Read the attribute back rather than reporting success from having
+      // called the setter — item 58's note, which caught a size block that
+      // logged success on a path where nothing was written. Unlike its two
+      // siblings above, this flag is VERIFIED rather than optimistic.
+      applied.a11y =
+        svgElement.getAttribute("aria-label") === accessibleName &&
+        (!figcaptionId ||
+          svgElement.getAttribute("aria-describedby") === figcaptionId);
+
+      if (!applied.a11y) {
+        Logger.debug(
+          `reapplyAfterRender: accessibility wiring did not take on diagram ${
+            opts.index !== undefined ? opts.index : "(unindexed)"
+          }`
+        );
+      }
+    }
+
+    Logger.debug(
+      `reapplyAfterRender: diagram ${
+        opts.index !== undefined ? opts.index : "(unindexed)"
+      } — encoding ${applied.encoding ? "applied" : "unavailable"}, size ${
+        applied.size ? "applied" : "no SVG"
+      }, accessibility wiring ${
+        applied.a11y ? "re-applied" : "not stored yet"
+      }`
+    );
+
+    return applied;
+  }
+
   function applyDiagramSize(
     svgElement,
     widthPercent,
@@ -3320,6 +3490,7 @@ window.MermaidControls = (function () {
     addControlsToContainer: addControlsToContainer,
     announceToScreenReader: announceToScreenReader,
     applyDiagramSize: applyDiagramSize,
+    reapplyAfterRender: reapplyAfterRender,
     autoFitDiagram: autoFitDiagram,
     estimateDiagramComplexity: estimateDiagramComplexity,
     detectOrientation: detectOrientation,

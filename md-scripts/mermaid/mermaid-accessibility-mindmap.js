@@ -821,18 +821,41 @@ const MermaidAccessibilityMindmap = (function () {
       <h4 class="mindmap-section-heading">Visual Representation</h4>
       <p>In the visual diagram, concepts are arranged radially around the central topic, with connecting lines showing relationships between parent and child concepts.</p>`;
 
-    // Note different shapes if used
+    // Note shapes only where they genuinely differentiate. A circled root with
+    // plain children is mindmap convention rather than a distinction a reader
+    // can use, so the root's own shape alone earns no sentence at all. Root and
+    // non-root shapes are therefore collected separately.
     const shapes = new Set();
+    const shapesBelowRoot = new Set();
     mindmapStructure.nodeMap.forEach((node) => {
-      if (node.shape && node.shape !== "default") {
-        shapes.add(node.shape);
-      }
+      if (!node.shape || node.shape === "default") return;
+
+      shapes.add(node.shape);
+      // Identity, not id: both parse paths put the very object they assigned to
+      // rootNode into nodeMap, so this holds for the code and the SVG route.
+      if (node !== rootNode) shapesBelowRoot.add(node.shape);
     });
 
-    if (shapes.size > 0) {
+    // Shape words are the module's own vocabulary (rounded, square, circle,
+    // bang, cloud, hexagon) and never author text, so they are furniture here
+    // and are not escaped.
+    if (shapes.size > 1) {
+      // Two or more distinct shapes: the plural claim is supported.
       const shapeList = Array.from(shapes).join(", ");
       description += `<p>The diagram uses different shapes (${shapeList}) to visually distinguish between different types of concepts.</p>`;
       logDebug(`Found different shapes in mindmap: ${shapeList}`);
+    } else if (shapesBelowRoot.size === 1) {
+      // One shape, carried below the root: it marks those concepts out from the
+      // rest, but nothing is distinguished from anything else, so the sentence
+      // claims marking rather than differentiation. "the" avoids any a/an
+      // selection against the shape word.
+      const [shape] = shapesBelowRoot;
+      description += `<p>The diagram uses the ${shape} shape to visually mark some concepts.</p>`;
+      logDebug(`Found a single marking shape in mindmap: ${shape}`);
+    } else {
+      logDebug(
+        `No differentiating shapes in mindmap: ${shapes.size} distinct non-default shape(s), none below the root`
+      );
     }
 
     description += `</section>`;

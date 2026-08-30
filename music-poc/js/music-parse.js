@@ -24,16 +24,27 @@ const MusicParse = (function () {
   // The stub below is a SECOND independent copy of extractNote's default shape, so
   // it must stay in step with that shape key for key: a key present there but
   // missing here reads as undefined rather than null on every page where
-  // MusicParseNote failed to load. dynamic, shaping and harmony are all listed for
-  // that reason even though the orchestrator assigns all three on every note
-  // regardless. dots is listed for the same reason: the orchestrator now writes it
-  // when it derives a typeless rest's value, so a page without MusicParseNote must
-  // still read null rather than undefined there. The stub still omits six further
-  // keys extractNote returns — accidental, timeModification, articulations,
-  // ornaments, staff and voice — which the extractNote tidy will close.
+  // MusicParseNote failed to load. It now lists every key extractNote returns, in
+  // that function's own source order, so the two literals read the same way.
+  //
+  // The stub binds whenever window.MusicParseNote is falsy at the point THIS FILE
+  // evaluates the line below. A page where music-parse-note.js failed to load is
+  // the expected route to that, but it is not the only one: a script order that
+  // put this file ahead of that one would bind the stub just as surely, with the
+  // module loading perfectly a moment later. No consumer calls extractNote
+  // directly: the sole call site outside that module's own self-test is the
+  // measure loop below, so on any normally-loaded page the real module answers
+  // and this literal is never reached.
+  //
+  // shaping and harmony are present here and absent from extractNote DELIBERATELY.
+  // The orchestrator assigns both unconditionally on every note, so a note from
+  // the real module always carries them by the time it leaves this file; the stub
+  // lists them because a degraded page must read null rather than undefined
+  // before that assignment. dots is listed for the same reason: the orchestrator
+  // writes it when it derives a typeless rest's value.
   const noteLayer = window.MusicParseNote || {
     extractNote() {
-      return { rest: false, chord: false, step: null, octave: null, alter: null, duration: null, type: null, tie: null, slur: null, lyric: null, dots: null, dynamic: null, shaping: null, harmony: null };
+      return { rest: false, chord: false, step: null, octave: null, alter: null, accidental: null, duration: null, type: null, tie: null, slur: null, lyric: null, dots: null, timeModification: null, articulations: null, ornaments: null, staff: null, voice: null, dynamic: null, shaping: null, harmony: null };
     },
   };
 

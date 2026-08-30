@@ -86,6 +86,13 @@
   // ============================================================================
 
   /**
+   * Below this chroma a colour is treated as grey and named by lightness alone.
+   * The value is unchanged from the saturation threshold it replaces; only the
+   * quantity it is compared against has changed. See ACHROMATIC note below.
+   */
+  const ACHROMATIC_MAX_CHROMA = 0.1;
+
+  /**
    * Maps HSL values to a human-readable colour name.
    * Approximately 18 named colours covering the full spectrum.
    *
@@ -95,8 +102,20 @@
    * @returns {string} colour name
    */
   function getColourName(h, s, l) {
-    // Achromatic colours (low saturation)
-    if (s < 0.1) {
+    // ACHROMATIC. Saturation cannot serve as a greyness test. Above mid lightness
+    // HSL saturation is delta / (2 - max - min), and that denominator vanishes as a
+    // colour approaches white — so two units of channel difference in a near-white
+    // pixel compute a saturation near 1, this guard could not fire, and the hue was
+    // decided by whichever channel happened to be low, which near white is a codec
+    // or a rounding rather than a colour.
+    //
+    // Chroma is the quantity the test actually wants: it reconstructs max - min
+    // exactly from h, s and l, so no signature change is needed. At l = 0.5 the
+    // factor is 1 and chroma equals s, so mid-lightness behaviour is unchanged and
+    // genuinely chromatic colours are untouched; only the lightness extremes move,
+    // which is where the fault was. Stage F-iii, KB § 9.44.
+    const chroma = s * (1 - Math.abs(2 * l - 1));
+    if (chroma < ACHROMATIC_MAX_CHROMA) {
       if (l > 0.9) return "white";
       if (l > 0.7) return "light grey";
       if (l > 0.4) return "grey";

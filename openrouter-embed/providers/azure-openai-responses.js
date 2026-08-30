@@ -135,6 +135,9 @@
   // gpt-5-pro-2025-10-06 (empirical, PDF fast-follow). For these, "high" is the
   // only working value, so the adapter forces it rather than leaving Azure's
   // rejected default in place.
+  // 28 August 2026: none of the nine deployments registered that day requires
+  // forcing — all three effort variants (omitted, explicit default, explicit
+  // "high") measured ACCEPTED on each. gpt-5-pro remains the only member.
   const REASONING_EFFORT_HIGH_ONLY = new Set(["gpt-5-pro"]);
 
   // Reasoning-aware output floor. Reasoning models on the Responses surface

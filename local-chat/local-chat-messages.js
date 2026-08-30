@@ -1446,11 +1446,14 @@
    * filter on activeExportingBtn so we never react to Image Describer's
    * exports.
    *
-   * There is deliberately no tts:exportEncodeProgress companion. Its eleven
-   * writes share ONE macrotask, zero animation frames apart, so no
-   * intermediate encoding state was ever observable to anyone, sighted or
-   * otherwise (measured 18 August 2026). encodeMp3 still emits the event —
-   * it is shared with Image Describer — this consumer simply ignores it.
+   * There is deliberately no tts:exportEncodeProgress companion, and as of
+   * 24 August 2026 there is no such event either. Its eleven writes shared
+   * ONE macrotask, zero animation frames apart, so no intermediate encoding
+   * state was ever observable to anyone, sighted or otherwise (measured
+   * 18 August 2026) — which is why no consumer was ever built here or in
+   * either sibling tool. encodeMp3 emitted it with zero listeners tree-wide;
+   * both emits were removed by owner decision, item 30 of
+   * openrouter-embed/docs/foundry-f2-pending-doc-updates.md.
    */
   function onExportProgress(data) {
     if (!activeExportingBtn) return;
@@ -1588,8 +1591,10 @@
    *     Chat bubble owns playback, i.e. activeBubbleBtn set).
    *   - tts:engineChanged / model:stateChange → recompute Save buttons.
    *   - tts:exportProgress → update the shared page-level progress bar
-   *     (filtered by activeExportingBtn). tts:exportEncodeProgress is
-   *     deliberately NOT subscribed — see onExportProgress.
+   *     (filtered by activeExportingBtn). There is no encode-progress event
+   *     to subscribe to — tts:exportEncodeProgress was removed from
+   *     encodeMp3 on 24 August 2026; see onExportProgress, and item 30 of
+   *     openrouter-embed/docs/foundry-f2-pending-doc-updates.md.
    *
    * Engine-badge wiring lives here rather than in wireReadAloudEvents
    * because it's conceptually a Stage 4 control (companion to Save audio)

@@ -522,6 +522,145 @@ window.MermaidAccessibilityUtils = (function () {
   // DOM utility functions
   const DOMUtils = {
     /**
+     * Add presentation hooks to a generator's detailed fragment (PS2).
+     *
+     * PURELY DECORATIVE. It adds classes and two wrapper elements; it changes
+     * no text, no attribute a screen reader reads for meaning, and no heading
+     * level. The fifteen generators are untouched by design — every one of
+     * them would otherwise need the same edit, and the gold targets and the
+     * 128-fixture corpus assert the generators' own output.
+     *
+     * SAFE AGAINST THE HARNESS by construction, verified 25 August 2026:
+     * `.claude/mermaid-harness/run.mjs`'s CAPTURE calls the registered
+     * generator's tiers and `getDiagramDescriptions` directly, and computes
+     * its structural counts by writing the returned string into a DETACHED
+     * div. It never calls `initAccessibilityFeatures`, which is the only
+     * route to this file's `createDescriptionContainer`. So nothing here can
+     * reach a fixture assertion.
+     *
+     * ON THE "never move DOM elements between containers" RULE in AGENTS.md:
+     * that rule is about relocating elements ACROSS panels, where an
+     * id-based lookup then resolves into the wrong container and every mode
+     * transition has to undo the move. Neither hazard exists here — the wrap
+     * is one-time, same-parent, on nodes parsed moments earlier from a string,
+     * inside a fragment that is still detached, and nothing looks any of them
+     * up by id.
+     *
+     * @param {HTMLElement} root - The `.mermaid-detailed-description` element
+     * @returns {void}
+     */
+    decorateDetailedFragment: function (root) {
+      if (!root || root.dataset.mermaidDecorated === "true") return;
+
+      // DESCEND THROUGH A SINGLE PLAIN WRAPPER, because most generators have
+      // one. Measured 25 August 2026: quadrant emits one
+      // `div.quadrant-chart-description` holding SEVEN sections, so a pass
+      // that only looked at `root.children` saw one div and decorated
+      // nothing. Only a lone DIV is descended into — flowchart's single child
+      // is itself a `section.mermaid-section`, and descending into that would
+      // nest a card inside a card.
+      let host = root;
+      const rootKids = Array.from(root.children);
+      if (rootKids.length === 1 && rootKids[0].tagName === "DIV") {
+        host = rootKids[0];
+      }
+
+      // Existing sections keep their identity and are never re-wrapped —
+      // many generators emit their own, often already carrying this class.
+      // They only join the styled set.
+      const topLevel = Array.from(host.children);
+      topLevel.forEach(function (child) {
+        if (child.tagName === "SECTION") child.classList.add("mermaid-section");
+      });
+
+      // Wrap each h4-delimited run. A run is the h4 plus every following
+      // sibling up to the next h4 OR the next section — a generator that
+      // mixes loose h4s with its own sections keeps the sections intact.
+      let wrapped = 0;
+      if (topLevel.some((el) => el.tagName === "H4")) {
+        let i = 0;
+        while (i < topLevel.length) {
+          if (topLevel[i].tagName !== "H4") {
+            i += 1;
+            continue;
+          }
+          const run = [topLevel[i]];
+          let j = i + 1;
+          while (
+            j < topLevel.length &&
+            topLevel[j].tagName !== "H4" &&
+            topLevel[j].tagName !== "SECTION"
+          ) {
+            run.push(topLevel[j]);
+            j += 1;
+          }
+          const section = document.createElement("section");
+          section.className = "mermaid-section";
+          host.insertBefore(section, topLevel[i]);
+          run.forEach((el) => section.appendChild(el));
+          wrapped += 1;
+          i = j;
+        }
+      }
+
+      // The heading hook. `mermaid-details-heading` rather than a new name:
+      // it is already the convention, emitted on an h4 by SEVEN generator
+      // modules (class, er, flowchart, git, pie, sankey, and the core's own
+      // fallback), and it mirrors Chart.js, which disambiguates the same
+      // class by element — `h3.chart-details-heading` for the panel heading,
+      // `h4.chart-details-heading` for the section heading. The theme rules
+      // are therefore written as `h4.mermaid-details-heading`, so the panel's
+      // own h3 is unaffected. A new class would have left those seven
+      // generators' headings styled differently from the eight the shell
+      // decorates, for no gain.
+      root.querySelectorAll("h4").forEach(function (h) {
+        h.classList.add("mermaid-details-heading");
+      });
+
+      // Tables: a scroll wrapper so a wide table cannot push the page
+      // sideways (SC 1.4.10), plus a class the theme sheets can reach. Only
+      // the xychart generator emits a table today, and it emits it bare.
+      let tables = 0;
+      root.querySelectorAll("table").forEach(function (table) {
+        table.classList.add("mermaid-data-table");
+        if (
+          !table.parentElement ||
+          !table.parentElement.classList.contains("mermaid-data-table-wrapper")
+        ) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "mermaid-data-table-wrapper";
+          table.parentNode.insertBefore(wrapper, table);
+          wrapper.appendChild(table);
+        }
+
+        // data-label on each body cell, derived from the column's header.
+        // Cheap, so it is done: the column index must count th AND td,
+        // because an xychart row opens with a `th scope="row"` and its first
+        // td is therefore column 1, not column 0.
+        const headers = Array.from(table.querySelectorAll("thead th")).map(
+          function (th) {
+            return th.textContent.trim();
+          }
+        );
+        if (headers.length) {
+          table.querySelectorAll("tbody tr").forEach(function (row) {
+            Array.from(row.children).forEach(function (cell, index) {
+              if (cell.tagName === "TD" && headers[index]) {
+                cell.setAttribute("data-label", headers[index]);
+              }
+            });
+          });
+        }
+        tables += 1;
+      });
+
+      root.dataset.mermaidDecorated = "true";
+      logDebug(
+        `[Mermaid Accessibility] Decorated description fragment: ${wrapped} section(s) wrapped, ${tables} table(s)`
+      );
+    },
+
+    /**
      * Create the description container for a diagram
      * @param {HTMLElement} svgElement - The SVG element
      * @param {string} diagramCode - The original mermaid code
@@ -726,6 +865,11 @@ window.MermaidAccessibilityUtils = (function () {
           detailedDescription
         )}</p>`;
       }
+
+      // PRESENTATION ONLY. Adds the section/heading/table hooks the theme
+      // sheets need, without any generator emitting them. It runs on the
+      // detached fragment, before it is attached, and touches no text.
+      self.decorateDetailedFragment(detailContentElem);
 
       detailedDescSection.appendChild(detailContentElem);
 

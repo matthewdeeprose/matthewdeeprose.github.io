@@ -624,6 +624,14 @@
         freshSessions.length,
         currentKey,
       );
+      // FIX-5b: capture BEFORE the rebuild. setContent replaces the whole
+      // session-manager body, and #sm-delete-btn — the button the person just
+      // pressed — is destroyed with it, leaving focus on the document while the
+      // dialog still covers the page. Same defect as the enhancer states; the
+      // shared cause is that setContent has no focus contract of its own.
+      const focusContext = modal.captureFocusContext();
+      const allDeleted = freshSessions.length === 0;
+
       modal.setContent(freshHTML);
 
       // Re-attach events (content was replaced)
@@ -635,6 +643,33 @@
             "dialog[open].universal-modal",
           );
           if (dialogEl) populateIcons(dialogEl);
+        }
+
+        // Land focus AFTER the events are back, so what takes focus is a live
+        // control rather than one that looks right and does nothing.
+        //
+        // THE TARGET IS #sm-select-all, NOT #sm-delete-btn, and that is decided
+        // by a read of _buildSessionManagerHTML rather than by preference: the
+        // rebuilt toolbar emits the delete button with a literal `disabled`
+        // attribute, because the fresh selection count is zero. A focus call on
+        // a disabled button is a SILENT no-op — it would report success to any
+        // proxy check and leave the person exactly where this parcel found them.
+        // The select-all checkbox is its nearest surviving neighbour in the same
+        // toolbar, is always enabled, and is the natural next action.
+        //
+        // Skipped where every session was deleted, because the branch below
+        // closes the modal outright and the close path has its own declared
+        // returnFocusTo. Landing focus inside a dialog that is being torn down
+        // would race that, and this contract must not fight it.
+        if (!allDeleted) {
+          const dialogEl = document.querySelector(
+            "dialog[open].universal-modal",
+          );
+          modal.restoreFocusAfterRebuild(
+            focusContext,
+            dialogEl ? dialogEl.querySelector("#sm-select-all") : null,
+            { label: "session manager after delete" },
+          );
         }
       });
 

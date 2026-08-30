@@ -74,6 +74,138 @@ window.MermaidExportUtils = (function () {
   };
 
   /**
+   * Marker Mermaid sets on an xychart diagram root, and on nothing else.
+   * Used to scope the paint-inlining pass below. Matching on this rather than on
+   * a container also makes the pass immune to the control-button icon <svg>
+   * elements that a container-scoped query can reach.
+   */
+  const XYCHART_ROLEDESCRIPTION = "xychart";
+
+  /**
+   * Paint properties copied from the live cascade onto the export clone.
+   * `fill-opacity` and `stroke-dasharray` carry nothing today; they are here so
+   * the pattern-fill and dashed-series work does not have to revisit this list.
+   */
+  const INLINED_PAINT_PROPERTIES = Object.freeze([
+    "fill",
+    "stroke",
+    "stroke-width",
+    "fill-opacity",
+    "stroke-dasharray",
+  ]);
+
+  /**
+   * Normalise a computed paint value into something valid as an SVG
+   * presentation attribute in a STANDALONE file.
+   *
+   * Two differences between CSS computed values and SVG attribute syntax matter:
+   * getComputedStyle returns a FuncIRI as `url("#id")` with quotes, which CSS
+   * accepts and the SVG attribute grammar does not; and it returns lengths as
+   * `2px`, where a bare number is the portable spelling. Both are handled here
+   * rather than at the call site so the pattern work inherits it.
+   *
+   * @param {string} property - One of INLINED_PAINT_PROPERTIES
+   * @param {string} value - The computed value
+   * @returns {string} A value safe to write as an attribute
+   */
+  function normalisePaintValue(property, value) {
+    let normalised = value;
+
+    // url("#id") -> url(#id)
+    if (normalised.includes("url(")) {
+      normalised = normalised.replace(/url\((['"])(.*?)\1\)/g, "url($2)");
+    }
+
+    // 2px -> 2, for stroke-width and friends
+    if (property === "stroke-width" && /^[\d.]+px$/.test(normalised)) {
+      normalised = normalised.slice(0, -2);
+    }
+
+    // "5px, 5px" -> "5,5". getComputedStyle returns a dash array with a unit on
+    // every entry; SVG 1.1's attribute grammar takes bare numbers, and the
+    // unitless spelling is what a standalone file should carry. Measured 25
+    // August 2026: without this the series dashes export as "5px, 5px".
+    if (property === "stroke-dasharray" && normalised !== "none") {
+      normalised = normalised.replace(/([\d.]+)px/g, "$1").replace(/,\s+/g, ",");
+    }
+
+    return normalised;
+  }
+
+  /**
+   * Copy the RESOLVED paint of an xychart onto its export clone.
+   *
+   * WHY THIS EXISTS. `cloneNode(true)` carries attributes and does not carry the
+   * cascade, and the xychart series outlines in light.css/dark.css are CSS. So
+   * before this pass a saved file showed the ORIGINAL presentation-attribute
+   * paint — measured 25 August 2026 against this very function: the on-page bar
+   * computed `rgb(30, 86, 160)` while the clone's fill attribute still read
+   * `#ECECFF` and the serialised output contained no trace of the CSS colour.
+   * A user saw a correct chart and saved a wrong one, with nothing to signal it.
+   *
+   * WHY IT IS SCOPED TO XYCHART. Every other diagram type gets its colour from
+   * the <style> block Mermaid writes INSIDE the SVG, which cloneNode does carry,
+   * so those exports are already correct and this pass would be pure risk. The
+   * scope is asserted, not assumed: a non-xychart export was measured
+   * byte-identical before and after this change.
+   *
+   * The computed values must be read from the ORIGINAL, which is in the
+   * document; getComputedStyle on a detached clone returns empty strings.
+   *
+   * @param {SVGElement} originalSvg - The live, in-document diagram SVG
+   * @param {SVGElement} clone - The detached clone being prepared for export
+   * @returns {number} Count of elements whose paint was inlined
+   */
+  function inlineComputedPaint(originalSvg, clone) {
+    if (
+      originalSvg.getAttribute("aria-roledescription") !==
+      XYCHART_ROLEDESCRIPTION
+    ) {
+      logDebug(
+        "[Mermaid Export] Not an xychart - paint inlining skipped, the in-SVG <style> block carries this diagram's colour"
+      );
+      return 0;
+    }
+
+    const originals = originalSvg.querySelectorAll("*");
+    const clones = clone.querySelectorAll("*");
+
+    // A length mismatch means the two trees are not in step and pairing by index
+    // would write one element's paint onto another. Refuse rather than corrupt.
+    if (originals.length !== clones.length) {
+      logError(
+        `[Mermaid Export] Paint inlining ABORTED - original has ${originals.length} elements, clone has ${clones.length}. Export will carry the un-themed attribute paint.`
+      );
+      return 0;
+    }
+
+    let inlined = 0;
+
+    originals.forEach((original, index) => {
+      const computed = window.getComputedStyle(original);
+      let touched = false;
+
+      INLINED_PAINT_PROPERTIES.forEach((property) => {
+        const value = computed.getPropertyValue(property);
+        if (!value) return;
+
+        clones[index].setAttribute(
+          property,
+          normalisePaintValue(property, value)
+        );
+        touched = true;
+      });
+
+      if (touched) inlined++;
+    });
+
+    logInfo(
+      `[Mermaid Export] Inlined resolved paint onto ${inlined} xychart elements`
+    );
+    return inlined;
+  }
+
+  /**
    * Fix text wrapping in SVG elements and apply consistent font
    * @param {SVGElement} svgElement - The SVG element to prepare
    * @returns {SVGElement} Prepared SVG clone with fixed text wrapping and font
@@ -91,8 +223,30 @@ window.MermaidExportUtils = (function () {
     // Create a clone to avoid modifying the displayed SVG
     const clone = svgElement.cloneNode(true);
 
-    // Set the background to white
-    clone.style.backgroundColor = "white";
+    // Carry the resolved cascade onto the clone before anything else touches it,
+    // so the saved file matches the screen. No-op for non-xychart diagrams.
+    inlineComputedPaint(svgElement, clone);
+
+    // Background. This used to be an unconditional `white`, which is correct for
+    // the diagram types whose own <style> assumes a light ground and WRONG for a
+    // chart carrying its own background: a dark-theme xychart was exported as a
+    // #e0dfdf axis on white, i.e. invisible. That was a pre-existing defect, not
+    // one the theming work introduced, and it is fixed here because this is the
+    // line that caused it.
+    //
+    // Only an xychart has a rect.background, so the conditional is also what
+    // keeps every other diagram type byte-identical to before.
+    const chartBackground = svgElement.querySelector("rect.background");
+    if (chartBackground) {
+      const resolvedBackground =
+        window.getComputedStyle(chartBackground).fill || "white";
+      clone.style.backgroundColor = resolvedBackground;
+      logDebug(
+        `[Mermaid Export] Using the chart's own background: ${resolvedBackground}`
+      );
+    } else {
+      clone.style.backgroundColor = "white";
+    }
 
     // Apply font family to SVG root
     clone.style.fontFamily = config.font;

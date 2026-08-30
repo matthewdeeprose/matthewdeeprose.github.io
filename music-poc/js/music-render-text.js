@@ -2,14 +2,17 @@
 // Text-score rendering service for the Accessible Music proof of concept.
 //
 // A stateless service, like music-render-score.js: it owns no DOM elements and
-// caches nothing. It exposes a single render(model, mountEl) method that builds
-// an accessible, ordered text outline of a parsed model — headings per part,
-// ordered lists of bars, and ordered lists of notes — into the given mount
-// element, plus a selfTest(). Unlike the visual renderer it is SYNCHRONOUS and
-// it never notifies: on bad input it logs and returns false. It groups each bar's
-// notes into events with MusicModelWalk.groupNotes and asks MusicRenderPhrase for
-// each event's spoken text, building every node with createElement + textContent
-// so text is never injected unescaped. Exposed as window.MusicRenderText.
+// caches nothing. It exposes render(model, mountEl), which builds an accessible,
+// ordered text outline of a parsed model — headings per part, ordered lists of
+// bars, and ordered lists of notes — into the given mount element; outlineOf(model),
+// which returns that same outline as PLAIN DATA for a consumer that needs the words
+// rather than the markup (the PDF talking-score appendix); and a selfTest(). Both
+// run through one private data walk, so the two can never disagree. Unlike the
+// visual renderer it is SYNCHRONOUS and it never notifies: on bad input it logs and
+// returns false. It groups each bar's notes into events with MusicModelWalk.groupNotes
+// and asks MusicRenderPhrase for each event's spoken text, building every node with
+// createElement + textContent so text is never injected unescaped. Exposed as
+// window.MusicRenderText.
 
 const MusicRenderText = (function () {
   "use strict";
@@ -110,19 +113,53 @@ const MusicRenderText = (function () {
   // and dies with the element, so a re-render (render clears the mount with
   // replaceChildren) drops it with the old items and no cleanup is needed. It
   // exists so play-along can map a schedule entry to its note item by identity
-  // rather than by document position; NOTHING reads it yet.
-  function noteListOf(notes, followingHead) {
-    const noteList = document.createElement("ol");
+  // rather than by document position.
+  //
+  // CORRECTED at Stage 84: this comment ended "NOTHING reads it yet", and that
+  // has been false since Stage 51. `music-play-along.js` reads it — see its
+  // identity lookup (~:104) and the logWarn it fires when no item carries the
+  // property (~:227), which is the fallback to the order-dependent positional
+  // mapping the property exists to replace. The stale clause mattered: Stage 84
+  // splits this function into a data half and a DOM half, and a reader trusting
+  // it would have dropped the attachment as dead weight and silently regressed
+  // play-along to the positional path.
+  //
+  // Stage 84 splits the old noteListOf in two. eventsOf is the DATA half: it
+  // returns one entry per event, each carrying the phrase STRING and the event's
+  // own note objects, so the PDF appendix can take the words without a DOM. The
+  // look-ahead is threaded here rather than in the emitter, because a bar-final
+  // slur names its target from the NEXT event's head — or, at the end of a bar,
+  // from followingHead — and losing that would silently drop every bar-final
+  // slur's target. notes is null rather than an empty array for an empty group,
+  // so the emitter's guard stays a single truthiness test.
+  function eventsOf(notes, followingHead) {
     const groups = walk.groupNotes(Array.isArray(notes) ? notes : []);
+    const items = [];
     for (let i = 0; i < groups.length; i++) {
-      const noteItem = document.createElement("li");
+      const group = groups[i];
       const nextHead = groups[i + 1] ? groups[i + 1][0] : (followingHead || null);
-      noteItem.textContent = phrase.phraseOf(groups[i], nextHead);
+      items.push({
+        text: phrase.phraseOf(group, nextHead),
+        notes: Array.isArray(group) && group.length ? group : null,
+      });
+    }
+    return items;
+  }
+
+  // emitItems is the DOM half: one <li> per event, the phrase as textContent and
+  // the note objects attached BY REFERENCE on musicNotes. The reference is the
+  // one eventsOf put in the data node, which is the one groupNotes returned —
+  // never copied, never mapped, never cloned — so identity survives the split.
+  function emitItems(items) {
+    const noteList = document.createElement("ol");
+    for (const item of items) {
+      const noteItem = document.createElement("li");
+      noteItem.textContent = item.text;
 
       // The event's own note objects, by reference. Guarded so an empty group
       // leaves the property unset rather than attaching a meaningless array.
-      if (Array.isArray(groups[i]) && groups[i].length) {
-        noteItem.musicNotes = groups[i];
+      if (item.notes) {
+        noteItem.musicNotes = item.notes;
       }
 
       noteList.appendChild(noteItem);
@@ -298,22 +335,30 @@ const MusicRenderText = (function () {
     return parts.join(", ");
   }
 
-  // Render one cross-part keyboard pair as a SINGLE merged block: one <h3> named
-  // by the pair, then one <ol> of bars interleaving both parts hand by hand, so a
-  // reader hears bar 1 right hand, bar 1 left hand, bar 2 right hand … rather than
-  // the whole right-hand part followed by the whole left-hand part. The partner
-  // part emits nothing of its own; render skips it.
+  // Build the data for one cross-part keyboard pair as a SINGLE merged block: a
+  // heading named by the pair, then one bar list interleaving both parts hand by
+  // hand, so a reader hears bar 1 right hand, bar 1 left hand, bar 2 right hand …
+  // rather than the whole right-hand part followed by the whole left-hand part.
+  // The partner part contributes nothing of its own; outlineOf skips it.
   //
   // Bars run to the GREATER of the two parts' measure counts, so a part that runs
   // short simply contributes no thread for the bars it does not reach. Threads are
   // emitted in partIndices order, which keyboardPairs sorts ascending, so the lower
   // part's hand always reads first. A bar-final slur takes its look-ahead from THAT
   // PART's own next measure, so a slur never crosses into the other hand.
-  function renderKeyboardPair(pair, model, mountEl) {
-    const heading = document.createElement("h3");
-    heading.textContent = pair.name;
-    mountEl.appendChild(heading);
-
+  //
+  // Stage 84 turned this from a DOM builder into a data builder. Every string it
+  // produces comes from the same three composers as before — barLabelOf,
+  // mergedMeasureOf and keyboardHandHeadingOf — which are untouched, so the merged
+  // wording and its clause order cannot have moved.
+  //
+  // A keyboard bar ALWAYS uses the groups form, even when the pair contributes a
+  // single thread, because that is what the pre-Stage-84 renderer did: it wrapped
+  // every hand in its own <li> under a hand list. The one degenerate case is a bar
+  // in which neither member has notes, which yields no groups and no items; the
+  // emitter then produces an empty <ol>, which is byte-identical to the empty hand
+  // list the old code appended.
+  function keyboardBlockOf(pair, model) {
     // The pair's member parts with their measure lists, in partIndices order.
     const members = [];
     for (let i = 0; i < pair.partIndices.length; i++) {
@@ -327,8 +372,13 @@ const MusicRenderText = (function () {
     }
 
     // Unequal parts are a real file, not a fault: warn once for the pair, naming
-    // both counts, then render the greater count. Logging inside the bar loop
+    // both counts, then build the greater count. Logging inside the bar loop
     // would repeat the same line for every bar.
+    //
+    // Stage 84 moved this warning from the renderer to the data walk, so it fires
+    // ONCE PER OUTLINE rather than once per consumer. render calls outlineOf once,
+    // so a render still warns exactly once; what changed is that the PDF appendix
+    // does not add a second copy of the same line for the same score.
     if (members.length === 2 && members[0].measures.length !== members[1].measures.length) {
       logWarn(
         "Keyboard pair '" + pair.name + "' has parts of unequal length: " +
@@ -337,40 +387,166 @@ const MusicRenderText = (function () {
       );
     }
 
-    const measureList = document.createElement("ol");
+    const bars = [];
     for (let mi = 0; mi < barCount; mi++) {
-      const measureItem = document.createElement("li");
-
       // One merged label per bar, built by the shared label builder so the wording
       // and clause order stay exactly as they are for a single part.
       const lowerMeasure = members[0] ? members[0].measures[mi] || null : null;
       const upperMeasure = members[1] ? members[1].measures[mi] || null : null;
-      measureItem.appendChild(document.createTextNode(barLabelOf(mergedMeasureOf(lowerMeasure, upperMeasure))));
 
-      // One <li> per hand thread, both parts' hands under the one bar.
-      const handList = document.createElement("ol");
+      // One group per hand thread, both parts' hands under the one bar.
+      const groups = [];
       for (const member of members) {
         const measure = member.measures[mi] || null;
         const nextMeasure = member.measures[mi + 1] || null;
         const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
-        const groups = voicedGroupsOf(notes);
-        for (let g = 0; g < groups.length; g++) {
-          const group = groups[g];
-          const handItem = document.createElement("li");
-          handItem.appendChild(document.createTextNode(keyboardHandHeadingOf(group, member.part)));
-          handItem.appendChild(noteListOf(group.notes, firstHeadOnStaffVoice(nextMeasure, group.staff, group.voice)));
-          handList.appendChild(handItem);
+        const voiced = voicedGroupsOf(notes);
+        for (let g = 0; g < voiced.length; g++) {
+          const group = voiced[g];
+          groups.push({
+            heading: keyboardHandHeadingOf(group, member.part),
+            items: eventsOf(group.notes, firstHeadOnStaffVoice(nextMeasure, group.staff, group.voice)),
+          });
         }
       }
-      measureItem.appendChild(handList);
-      measureList.appendChild(measureItem);
+
+      bars.push({
+        label: barLabelOf(mergedMeasureOf(lowerMeasure, upperMeasure)),
+        groups: groups,
+        items: [],
+      });
     }
-    mountEl.appendChild(measureList);
+
+    return { heading: pair.name, bars: bars };
+  }
+
+  // Build the data for one UNPAIRED part: a heading, then one entry per bar.
+  //
+  // A bar takes ONE of two shapes, mirroring the branch the renderer has had since
+  // Stage 14. More than one voiced group gives the GROUPS shape — one entry per
+  // staff and/or voice, each with its own heading and items, which is the depth-3
+  // outline. One group or none gives the ITEMS shape — the events hang straight off
+  // the bar with no intermediate heading, which is the depth-2 outline. Exactly one
+  // of `groups` and `items` is ever populated, so a consumer branches on
+  // `groups.length` and needs no other signal.
+  function partBlockOf(part, model) {
+    const heading = part && part.name ? part.name : "Part " + (part ? part.id : "");
+    const measures = part && Array.isArray(part.measures) ? part.measures : [];
+    const bars = [];
+
+    for (let mi = 0; mi < measures.length; mi++) {
+      const measure = measures[mi];
+      const nextMeasure = measures[mi + 1] || null;
+
+      // Split the bar into voiced groups: one per voice within each staff, in
+      // document order. A single-staff single-voice bar yields one group, so the
+      // events hang off the bar as before; a piano bar, or a staff carrying more
+      // than one voice, yields one group per staff/voice, each under a heading.
+      const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
+      const voiced = voicedGroupsOf(notes);
+      const staffCount = new Set(voiced.map((g) => g.staff)).size;
+
+      // Leading bar label, built by the shared barLabelOf, which Stage 53
+      // extracted so a merged keyboard bar reuses the same wording and clause
+      // order. Untouched by Stage 84.
+      const bar = { label: barLabelOf(measure), groups: [], items: [] };
+
+      if (voiced.length > 1) {
+        for (let g = 0; g < voiced.length; g++) {
+          const group = voiced[g];
+          bar.groups.push({
+            heading: groupHeadingOf(group, model, staffCount),
+            items: eventsOf(group.notes, firstHeadOnStaffVoice(nextMeasure, group.staff, group.voice)),
+          });
+        }
+      } else {
+        const single = voiced.length === 1 ? voiced[0] : null;
+        const singleNotes = single ? single.notes : [];
+        const singleFollowing = single
+          ? firstHeadOnStaffVoice(nextMeasure, single.staff, single.voice)
+          : null;
+        bar.items = eventsOf(singleNotes, singleFollowing);
+      }
+
+      bars.push(bar);
+    }
+
+    return { heading: heading, bars: bars };
+  }
+
+  // outlineOf(model) → the text outline as PLAIN DATA, or null when the model
+  // cannot be walked. PUBLIC and DOM-FREE, so a consumer that needs the WORDS
+  // rather than the markup — the PDF talking-score appendix above all — takes
+  // them from here instead of rendering into a detached div and scraping the
+  // list back out. Synchronous and it NEVER throws.
+  //
+  // This follows the Stage 82 summaryText precedent exactly: one private walk that
+  // BOTH the renderer and the string consumer run through, so the two can never
+  // disagree about what the score says. The four phrase-and-heading composers
+  // (barLabelOf, groupHeadingOf, keyboardHandHeadingOf and MusicRenderPhrase's
+  // phraseOf) are untouched by this stage — only their call sites moved — which is
+  // what makes "the appendix says exactly what the screen says" provable rather
+  // than merely intended.
+  //
+  // The shape:
+  //   { blocks: [ { heading, bars: [ { label, groups, items } ] } ] }
+  //   groups: [ { heading, items } ]      — populated for a depth-3 bar
+  //   items:  [ { text, notes } ]         — populated for a depth-2 bar
+  // `notes` is the model's OWN note objects by reference, or null for an empty
+  // event; see eventsOf and the musicNotes note above it.
+  function outlineOf(model) {
+    // Guard: we need a model with a parts array to walk. Checked here as well as
+    // in render so the failure keeps its own message on either entry point.
+    if (!model || !Array.isArray(model.parts)) {
+      logError("Cannot build text outline: model is missing or has no parts array");
+      return null;
+    }
+
+    // Stage 53: the cross-part keyboard pairs, read ONCE per outline from the
+    // single shared definition. A pair is a grand staff written as two parts, and
+    // the two are merged into one block below so the reader hears them bar by bar.
+    // A model with no pairs — every single-part score, and every ensemble — takes
+    // exactly the same path it took before that stage.
+    const pairs = (walk && typeof walk.keyboardPairs === "function") ? walk.keyboardPairs(model) : [];
+
+    // Two lookups keyed by part index: the pair a part is the LOWER member of (so
+    // the merged block appears at that position), and the set of parts that are
+    // the UPPER member of some pair (so they contribute nothing, having already
+    // been merged with their partner). A part in neither behaves exactly as today.
+    const pairByLowerIndex = new Map();
+    const upperIndices = new Set();
+    for (const pair of pairs) {
+      pairByLowerIndex.set(pair.partIndices[0], pair);
+      upperIndices.add(pair.partIndices[1]);
+    }
+
+    const blocks = [];
+    for (let pi = 0; pi < model.parts.length; pi++) {
+      // Upper member: already covered by its pair's merged block.
+      if (upperIndices.has(pi)) continue;
+
+      // Lower member: the merged keyboard block takes this part's position.
+      const pair = pairByLowerIndex.get(pi);
+      if (pair) {
+        blocks.push(keyboardBlockOf(pair, model));
+        continue;
+      }
+
+      blocks.push(partBlockOf(model.parts[pi], model));
+    }
+
+    return { blocks: blocks };
   }
 
   // Build an accessible text outline of model into mountEl. Synchronous; returns
   // true on success and false on any failure; NEVER throws. There is no
   // notification — the rendered outline is itself the feedback.
+  //
+  // Stage 84 made this a THIN EMITTER over outlineOf: every string it writes comes
+  // from that walk, and this function decides only which element carries it. The
+  // emitted markup is unchanged — headings per block, an ordered list of bars, a
+  // bar label as a leading text node, and either a nested staff/voice list or the
+  // events directly.
   function render(model, mountEl) {
     // Guard: we need a model with a parts array to walk.
     if (!model || !Array.isArray(model.parts)) {
@@ -384,85 +560,38 @@ const MusicRenderText = (function () {
       return false;
     }
 
+    const outline = outlineOf(model);
+    if (!outline) return false;
+
     // Clear any previous render from the mount before building afresh.
     mountEl.replaceChildren();
 
-    // Stage 53: the cross-part keyboard pairs, read ONCE per render from the
-    // single shared definition. A pair is a grand staff written as two parts, and
-    // the two are merged into one block below so the reader hears them bar by bar.
-    // A model with no pairs — every single-part score, and every ensemble — takes
-    // exactly the same path it took before this stage.
-    const pairs = (walk && typeof walk.keyboardPairs === "function") ? walk.keyboardPairs(model) : [];
-
-    // Two lookups keyed by part index: the pair a part is the LOWER member of (so
-    // the merged block is emitted at that position), and the set of parts that are
-    // the UPPER member of some pair (so they emit nothing, having already been
-    // rendered with their partner). A part in neither renders exactly as today.
-    const pairByLowerIndex = new Map();
-    const upperIndices = new Set();
-    for (const pair of pairs) {
-      pairByLowerIndex.set(pair.partIndices[0], pair);
-      upperIndices.add(pair.partIndices[1]);
-    }
-
-    for (let pi = 0; pi < model.parts.length; pi++) {
-      const part = model.parts[pi];
-
-      // Upper member: already rendered as part of its pair's merged block.
-      if (upperIndices.has(pi)) continue;
-
-      // Lower member: emit the merged keyboard block in this part's position.
-      const pair = pairByLowerIndex.get(pi);
-      if (pair) {
-        renderKeyboardPair(pair, model, mountEl);
-        continue;
-      }
-
-      // Unpaired part: unchanged from Stage 52 onwards.
-      // Part heading: the part name, or "Part <id>" when the name is absent.
+    for (const block of outline.blocks) {
+      // Block heading: the part name, the pair name, or "Part <id>" when the name
+      // is absent — all decided in the data walk.
       const heading = document.createElement("h3");
-      const partName = part && part.name ? part.name : "Part " + (part ? part.id : "");
-      heading.textContent = partName;
+      heading.textContent = block.heading;
       mountEl.appendChild(heading);
 
       // Ordered list of bars, so assistive tech announces each bar's position.
       const measureList = document.createElement("ol");
-      const measures = part && Array.isArray(part.measures) ? part.measures : [];
-      for (let mi = 0; mi < measures.length; mi++) {
-        const measure = measures[mi];
-        const nextMeasure = measures[mi + 1] || null;
+      for (const bar of block.bars) {
         const measureItem = document.createElement("li");
+        measureItem.appendChild(document.createTextNode(bar.label));
 
-        // Leading bar label, then the nested ordered list of notes. The label and
-        // its structural marks are built by the shared barLabelOf, which Stage 53
-        // extracted verbatim from here so a merged keyboard bar reuses the same
-        // wording and clause order.
-        measureItem.appendChild(document.createTextNode(barLabelOf(measure)));
-
-        // Split the bar into voiced groups: one per voice within each staff, in
-        // document order. A single-staff single-voice bar yields one group, so the
-        // note list renders directly as before; a piano bar, or a staff carrying
-        // more than one voice, yields one sub-list per group, each under a staff
-        // and/or voice heading.
-        const notes = measure && Array.isArray(measure.notes) ? measure.notes : [];
-        const groups = voicedGroupsOf(notes);
-        const staffCount = new Set(groups.map((g) => g.staff)).size;
-        if (groups.length > 1) {
+        if (bar.groups.length) {
           const staffList = document.createElement("ol");
-          for (let g = 0; g < groups.length; g++) {
-            const group = groups[g];
+          for (const group of bar.groups) {
             const staffItem = document.createElement("li");
-            staffItem.appendChild(document.createTextNode(groupHeadingOf(group, model, staffCount)));
-            staffItem.appendChild(noteListOf(group.notes, firstHeadOnStaffVoice(nextMeasure, group.staff, group.voice)));
+            staffItem.appendChild(document.createTextNode(group.heading));
+            staffItem.appendChild(emitItems(group.items));
             staffList.appendChild(staffItem);
           }
           measureItem.appendChild(staffList);
         } else {
-          const single = groups.length === 1 ? groups[0] : null;
-          const singleNotes = single ? single.notes : [];
-          const singleFollowing = single ? firstHeadOnStaffVoice(nextMeasure, single.staff, single.voice) : null;
-          measureItem.appendChild(noteListOf(singleNotes, singleFollowing));
+          measureItem.appendChild(emitItems(bar.items));
         }
+
         measureList.appendChild(measureItem);
       }
       mountEl.appendChild(measureList);
@@ -1213,9 +1342,216 @@ const MusicRenderText = (function () {
     const tempKbRehearsalNeither = document.createElement("div");
     render(keyboardRehearsalModelOf(null, null), tempKbRehearsalNeither);
 
+    // ---- Stage 84 (outlineOf): the data half of the renderer ----
+    //
+    // The load-bearing row is the AGREEMENT row. Flatten the RENDERED DOM and the
+    // OUTLINE into the same sequence of strings and compare position for position,
+    // so a heading, a bar label or an item that the two disagree about reddens. It
+    // is the Stage 82 summaryTextMatchesRenderedParagraph precedent one dimension
+    // up. A non-empty assertion rides with it, because an outlineOf that returned
+    // an empty tree — and a flattener that returned nothing — would otherwise agree
+    // with each other perfectly and prove nothing.
+
+    // The rendered mount as a flat sequence: block headings, bar labels, group
+    // headings and item texts, in document order. A bar or group <li> contributes
+    // only its OWN text nodes; a leaf <li> contributes its whole textContent.
+    const flattenDom = function (root) {
+      const out = [];
+      const visit = function (el) {
+        for (const child of Array.from(el.children)) {
+          if (child.tagName === "H3") {
+            out.push(child.textContent);
+          } else if (child.tagName === "OL") {
+            visit(child);
+          } else if (child.tagName === "LI") {
+            const nested = Array.from(child.children).find(function (c) { return c.tagName === "OL"; });
+            if (nested) {
+              out.push(
+                Array.from(child.childNodes)
+                  .filter(function (n) { return n.nodeType === 3; })
+                  .map(function (n) { return n.textContent; })
+                  .join("")
+              );
+              visit(child);
+            } else {
+              out.push(child.textContent);
+            }
+          }
+        }
+      };
+      visit(root);
+      return out;
+    };
+
+    // The outline as the SAME flat sequence, walked in the same order.
+    const flattenOutline = function (outline) {
+      const out = [];
+      if (!outline) return out;
+      for (const block of outline.blocks) {
+        out.push(block.heading);
+        for (const bar of block.bars) {
+          out.push(bar.label);
+          if (bar.groups.length) {
+            for (const group of bar.groups) {
+              out.push(group.heading);
+              for (const item of group.items) out.push(item.text);
+            }
+          } else {
+            for (const item of bar.items) out.push(item.text);
+          }
+        }
+      }
+      return out;
+    };
+
+    // True when a model's rendered DOM and its outline say exactly the same thing,
+    // in the same order, and both say SOMETHING.
+    const outlineAgreesFor = function (model) {
+      const div = document.createElement("div");
+      render(model, div);
+      const fromDom = flattenDom(div);
+      const fromOutline = flattenOutline(outlineOf(model));
+      return (
+        fromDom.length > 0 &&
+        fromDom.length === fromOutline.length &&
+        fromDom.every(function (s, i) { return s === fromOutline[i]; })
+      );
+    };
+
+    // Every item node in an outline, flat, in document order.
+    const outlineItemsOf = function (outline) {
+      const out = [];
+      if (!outline) return out;
+      for (const block of outline.blocks) {
+        for (const bar of block.bars) {
+          if (bar.groups.length) {
+            for (const group of bar.groups) for (const item of group.items) out.push(item);
+          } else {
+            for (const item of bar.items) out.push(item);
+          }
+        }
+      }
+      return out;
+    };
+
+    const outlineSimple = outlineOf(MODEL);
+    const outlinePiano = outlineOf(PIANO_MODEL);
+    const outlineKeyboard = outlineOf(KEYBOARD_MODEL);
+    const simpleItems = outlineItemsOf(outlineSimple);
+    const pianoItems = outlineItemsOf(outlinePiano);
+
+    // Every bar in an outline populates exactly ONE of groups and items — never
+    // both, and (for a bar that has any content at all) never neither.
+    const shapesAreExclusive = function (outline) {
+      if (!outline) return false;
+      let seen = 0;
+      for (const block of outline.blocks) {
+        for (const bar of block.bars) {
+          if (bar.groups.length && bar.items.length) return false;
+          seen++;
+        }
+      }
+      return seen > 0;
+    };
+
     const results = {
       hasRender: typeof render === "function",
       hasSelfTest: typeof selfTest === "function",
+
+      // ---- Stage 84 (outlineOf) ----
+      hasOutlineOf: typeof outlineOf === "function",
+
+      // THE AGREEMENT ROWS. Each renders a model into a detached div, builds the
+      // outline from the same model, and compares the two flattened sequences
+      // position for position — headings, bar labels, group headings and item
+      // texts alike. Five models, chosen to cover every branch the walk has: the
+      // plain single-part depth-2 case, the rich extras, the structural bar
+      // labels, the two-staff depth-3 case, and the merged cross-part keyboard.
+      outlineAgreesWithRenderSimple: outlineAgreesFor(MODEL),
+      outlineAgreesWithRenderRich: outlineAgreesFor(RICH_MODEL),
+      outlineAgreesWithRenderStructure: outlineAgreesFor(STRUCTURE_MODEL),
+      outlineAgreesWithRenderPiano: outlineAgreesFor(PIANO_MODEL),
+      outlineAgreesWithRenderKeyboard: outlineAgreesFor(KEYBOARD_MODEL),
+
+      // The agreement rows above compare two sequences, so an outlineOf that
+      // returned nothing AND a flattener that returned nothing would agree with
+      // each other. These pin the sequences to real, known lengths so an empty
+      // tree cannot pass. MODEL is one part, two bars, eight notes: one heading,
+      // two bar labels and eight item texts.
+      outlineNonEmptyOnGoodModel:
+        flattenOutline(outlineSimple).length === 11 &&
+        simpleItems.length === 8,
+      outlineFirstItemTextIsPhrase: !!simpleItems[0] && simpleItems[0].text === "C4 crotchet",
+      outlineBlockHeadingIsPartName:
+        !!outlineSimple && outlineSimple.blocks.length === 1 &&
+        outlineSimple.blocks[0].heading === "Melody",
+      outlineBarLabelIsBarLabelOf:
+        !!outlineSimple && outlineSimple.blocks[0].bars[0].label === "Bar 1",
+
+      // A bad model returns null and does NOT throw, on the same terms as
+      // summaryText's null-model row. Each is checked separately, because a
+      // single combined row cannot say which guard failed.
+      outlineNullModelReturnsNull: outlineOf(null) === null,
+      outlineNoPartsArrayReturnsNull: outlineOf({ workTitle: "No parts" }) === null,
+      outlineUndefinedModelReturnsNull: outlineOf(undefined) === null,
+
+      // outlineOf must not touch the page: it is the DOM-FREE half of the pair,
+      // and the PDF calls it with no mount at all.
+      outlineRendersNothing: (function () {
+        const before = document.body.childElementCount;
+        outlineOf(MODEL);
+        outlineOf(PIANO_MODEL);
+        return document.body.childElementCount === before;
+      })(),
+
+      // THE musicNotes TRAP. The outline carries the model's OWN note objects by
+      // reference, and the emitter attaches that same reference to the leaf <li>.
+      // Both halves are asserted: identity from the outline back to the model, and
+      // identity from the rendered leaf back to the model. play-along's identity
+      // mapping depends on the second, and the first is what makes the split safe.
+      outlineItemCarriesModelNoteByIdentity:
+        !!simpleItems[0] && Array.isArray(simpleItems[0].notes) &&
+        simpleItems[0].notes[0] === MODEL.parts[0].measures[0].notes[0],
+      outlineEveryItemCarriesNotes:
+        simpleItems.length === 8 &&
+        simpleItems.every(function (it) { return Array.isArray(it.notes) && it.notes.length >= 1; }),
+      outlineChordItemCarriesWholeChord:
+        !!pianoItems[0] && Array.isArray(pianoItems[0].notes) &&
+        pianoItems[0].notes.length === 3 &&
+        pianoItems[0].notes[0] === PIANO_MODEL.parts[0].measures[0].notes[0],
+      // The rendered leaves still carry it after the refactor, one per outline item.
+      renderedLeafCountMatchesOutlineItems: (function () {
+        const div = document.createElement("div");
+        render(PIANO_MODEL, div);
+        const leaves = leavesOf(div);
+        return leaves.length === pianoItems.length && leaves.length > 0 &&
+          leaves.every(function (li) { return Array.isArray(li.musicNotes) && li.musicNotes.length >= 1; });
+      })(),
+
+      // THE DEPTH-2 VERSUS DEPTH-3 SHAPE. A single-staff single-voice bar puts its
+      // events straight on the bar (groups empty, items populated); a two-staff bar
+      // puts them under one group per staff (groups populated, items empty). The
+      // exclusivity row proves a consumer can branch on groups.length alone.
+      outlineDepth2BarUsesItems:
+        !!outlineSimple && outlineSimple.blocks[0].bars[0].groups.length === 0 &&
+        outlineSimple.blocks[0].bars[0].items.length === 5,
+      outlineDepth3BarUsesGroups:
+        !!outlinePiano && outlinePiano.blocks[0].bars[0].groups.length === 2 &&
+        outlinePiano.blocks[0].bars[0].items.length === 0,
+      outlineDepth3GroupHeadingsAreStaffNames:
+        !!outlinePiano &&
+        outlinePiano.blocks[0].bars[0].groups[0].heading === "Treble staff" &&
+        outlinePiano.blocks[0].bars[0].groups[1].heading === "Bass staff",
+      outlineKeyboardBarUsesGroups:
+        !!outlineKeyboard && outlineKeyboard.blocks.length === 1 &&
+        outlineKeyboard.blocks[0].heading === "Parts P1 and P2" &&
+        outlineKeyboard.blocks[0].bars[0].groups.length === 2 &&
+        outlineKeyboard.blocks[0].bars[0].items.length === 0,
+      outlineShapesAreMutuallyExclusive:
+        shapesAreExclusive(outlineSimple) &&
+        shapesAreExclusive(outlinePiano) &&
+        shapesAreExclusive(outlineKeyboard),
+
       returnsTrue: returnsTrue,
       onePartHeading: headings.length === 1 && headings[0].textContent.indexOf("Melody") !== -1,
       twoMeasures: measureItems.length === 2,
@@ -1526,7 +1862,7 @@ const MusicRenderText = (function () {
     return results;
   }
 
-  return { render, selfTest };
+  return { render, outlineOf, selfTest };
 })();
 
 window.MusicRenderText = MusicRenderText;

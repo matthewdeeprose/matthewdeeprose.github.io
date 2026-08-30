@@ -1445,6 +1445,159 @@ const UniversalModal = (function () {
     return this;
   };
 
+  // =========================================================================
+  // THE REBUILD FOCUS CONTRACT (parcel FIX-5b, 22 August 2026)
+  // =========================================================================
+  // setContent below replaces .universal-modal-body wholesale, and consumers
+  // that also rebuild a footer replace that too. Neither does anything about
+  // focus. So a person standing on a control inside the modal has that control
+  // destroyed under them, and focus falls to the document.
+  //
+  // MEASURED (FIX-5a, 22 August 2026, headless, pinned chromium-1223) on the
+  // MathPix AI enhancer error journey, by activeElement IDENTITY at each step:
+  //   baseline, Start Enhancement focused    -> button:Start Enhancement
+  //   before updateFooterButtons(processing) -> button:Start Enhancement
+  //   after  updateFooterButtons(processing) -> BODY, button gone from the DOM
+  //   after  showError                       -> dialog element, and it stays
+  // Two things that measurement settled, both of which had been assumed wrong:
+  //   - The destroying call is the FOOTER rebuild at the START of the run, not
+  //     setContent inside showError. The control the person was standing on
+  //     lived in the footer, which setContent never touches.
+  //   - The resting place here was the dialog element, not document.body. The
+  //     BODY reading is the synchronous moment after innerHTML, before the
+  //     browser fixup runs. A HEADED run with a real keypress read document.body
+  //     at rest, and that discrepancy is UNRESOLVED — it rides the checkpoint
+  //     listen for this parcel. Do not quote either as settled.
+  // Either way the person is outside a dialog that still covers the page, and
+  // NVDA announced "Accessibility tools document" mid-journey.
+  //
+  // WHY THE CAPTURE IS A SEPARATE CALL. After the rebuild, activeElement is the
+  // dialog or the body in BOTH the case we must repair (focus was inside and was
+  // destroyed) and the case we must not touch (focus was never in this modal).
+  // Those two are indistinguishable after the fact, so the question has to be
+  // asked BEFORE. Two calls, each doing one honest thing, beats one call that
+  // guesses. The capture lives here rather than in the caller so the container
+  // boundary is decided in one place and no consumer can get it wrong.
+  const UNIVERSAL_MODAL_REBUILD_ANNOUNCE_SETTLE_MS = 1000;
+  // ^ THE SETTLE, and it is the CALLER who applies it — see the JSDoc below.
+  //
+  // Started at 1000 ms in the REMOVE_ANNOUNCE_SETTLE_MS precedent
+  // (mathpix-image-manager-ui.js), which was measured against a reader
+  // re-orienting after a dialog-scale change — the same failure mode this
+  // contract creates, because landing focus immediately before a polite write
+  // is exactly the window in which g-5 and g-8 lost their announcements.
+  //
+  // WARNING — ONE READER, ONE MACHINE, ONE DATE, AND BORROWED RATHER THAN
+  // MEASURED HERE. The lower bound is NOT bracketed: nothing between 0 and this
+  // value has been tested on THIS journey, so it is a starting value, not a
+  // threshold. Tune it only from a listen against this contract. And never read
+  // a passing guard row as evidence anybody heard anything — the rows assert
+  // that the delay was scheduled, which is a different claim.
+
+  /**
+   * Record where focus is BEFORE the caller rebuilds this modal.
+   *
+   * Ask this immediately before setContent or a footer rebuild, and hand the
+   * result to restoreFocusAfterRebuild once the new DOM is in place.
+   *
+   * The boundary is the dialog element, not .universal-modal-container, so a
+   * focus already resting on the dialog itself counts as inside.
+   *
+   * @returns {{wasInside: boolean, previous: (Element|null)}} an opaque context
+   */
+  Modal.prototype.captureFocusContext = function () {
+    const previous = document.activeElement || null;
+    const wasInside = !!(this.modal && previous && this.modal.contains(previous));
+    logDebug(
+      `captureFocusContext: wasInside=${wasInside}, previous=${
+        previous ? previous.tagName.toLowerCase() : "(none)"
+      }`,
+    );
+    return { wasInside, previous };
+  };
+
+  /**
+   * Put focus back inside this modal after its content has been rebuilt.
+   *
+   * WHAT IT DOES. If the captured context says focus was inside this modal, it
+   * focuses `target` and VERIFIES by identity that activeElement really is that
+   * element — per F-0/F-1, a focus call on a target inside a hidden or inert
+   * ancestor is a SILENT no-op, and a proxy check cannot tell the difference.
+   * Where the target refuses focus it falls back to the dialog element, which is
+   * natively focusable with no attribute, identity-checks that too, and logs a
+   * warning either way so a silent no-op cannot pass as a landing.
+   *
+   * WHAT IT NEVER DOES, and each of these is deliberate:
+   *   - It never steals focus from outside. If the captured context says focus
+   *     was not inside this modal, it does nothing at all and returns null. A
+   *     person working elsewhere on the page is not dragged into a dialog.
+   *   - It never mutates the target. If a target needs tabindex="-1" to be
+   *     focusable, the CALLER puts it in its own markup. A helper that quietly
+   *     adds attributes makes the caller markup lie about what is focusable.
+   *   - It never announces. Deferral stays with the caller so this contract
+   *     does exactly one job.
+   *
+   * THE DROP WINDOW, and why a caller that announces must defer. Landing focus
+   * is a focus change, and a polite write landing within roughly ten
+   * milliseconds of one has been measured lost — the reader is still working
+   * through the context change and never speaks it. So a caller that both
+   * rebuilds and announces should schedule its announcement
+   * UNIVERSAL_MODAL_REBUILD_ANNOUNCE_SETTLE_MS after this call rather than
+   * beside it. Read the constant from the facade; do not copy the number.
+   *
+   * @param {{wasInside: boolean}} context from captureFocusContext
+   * @param {Element|null} target where focus should land
+   * @param {{label?: string}} [options] label used only in logs
+   * @returns {Element|null} what actually took focus, verified, or null
+   */
+  Modal.prototype.restoreFocusAfterRebuild = function (
+    context,
+    target,
+    options,
+  ) {
+    const label = (options && options.label) || "modal rebuild";
+
+    if (!context || context.wasInside !== true) {
+      logDebug(
+        `restoreFocusAfterRebuild (${label}): focus was not inside this modal, leaving it where it is`,
+      );
+      return null;
+    }
+
+    if (!this.modal) {
+      logWarn(
+        `restoreFocusAfterRebuild (${label}): no modal element, cannot land focus`,
+      );
+      return null;
+    }
+
+    if (target && typeof target.focus === "function") {
+      target.focus();
+      if (document.activeElement === target) {
+        logDebug(`restoreFocusAfterRebuild (${label}): landed on the target`);
+        return target;
+      }
+      logWarn(
+        `restoreFocusAfterRebuild (${label}): focus on the target was a SILENT NO-OP, falling back to the dialog`,
+      );
+    } else {
+      logWarn(
+        `restoreFocusAfterRebuild (${label}): no usable target, falling back to the dialog`,
+      );
+    }
+
+    this.modal.focus();
+    if (document.activeElement === this.modal) {
+      logWarn(`restoreFocusAfterRebuild (${label}): landed on the dialog`);
+      return this.modal;
+    }
+
+    logWarn(
+      `restoreFocusAfterRebuild (${label}): the target AND the dialog fallback were both silent no-ops, focus is loose`,
+    );
+    return null;
+  };
+
   Modal.prototype.setContent = function (content) {
     if (!this.modal) {
       logWarn("Cannot set content: modal not created yet");
@@ -1876,6 +2029,13 @@ const UniversalModal = (function () {
 
     // Utilities
     escapeHtml: escapeHtml,
+
+    // The rebuild focus contract (parcel FIX-5b). The METHODS live on
+    // Modal.prototype, so a consumer holding a modal instance calls them there;
+    // only the settle is exported, because a caller that announces after a
+    // rebuild has to schedule against it rather than copy the number. Guard rows
+    // assert against THIS export, never against a literal.
+    UNIVERSAL_MODAL_REBUILD_ANNOUNCE_SETTLE_MS,
 
     // Built-in debugging tools
     quickDiagnostic: quickDiagnostic,

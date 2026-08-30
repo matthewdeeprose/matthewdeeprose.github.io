@@ -132,9 +132,18 @@
     included.forEach((item) => {
       let line = `- "${item.text}" \u2014 ${item.quadrant} (${confidenceWord(item.confidence)})`;
 
-      if (item.nearbyColour) {
-        line += `, within a ${item.nearbyColour.colourName} region`;
-      }
+      // WITHHELD at Stage F-iii, and deliberately not reworded. `nearbyColour` is
+      // sampled from a ring around the label's own bounding box, so it names whatever
+      // the label floats over — measured right for 6 of 6 labels printed on their
+      // subject and 0 of 22 joined to it by a leader line. The word "nearby" was
+      // dropped at the point the data became prose, which turned a true statement
+      // about the label into a false one about the thing it names.
+      //
+      // A rewording would have cured 18 of those 22 and could not touch the naming
+      // fault above, so a reworded clause would still have carried names that were
+      // wrong for a second, independent reason. `sampleNearbyColour` and the
+      // `nearbyColour` field are left in place: they are correct code doing what
+      // their names say, and the fault was the sentence. KB § 9.44.
 
       if (item.orientation && item.orientation !== "horizontal") {
         const orientLabel =

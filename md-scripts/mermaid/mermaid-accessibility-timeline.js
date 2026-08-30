@@ -323,21 +323,62 @@
   }
 
   /**
+   * The forms a period label may take and still be read as a date. Mermaid
+   * accepts any string as a period label, so a label carries chronology only
+   * when it says so; "Phase one" does not.
+   *
+   * The set is deliberately narrow. A label the generator does not recognise
+   * is treated as NOT date-like, because the two errors cost different
+   * amounts: a wrong chronology claim tells the reader something false, while
+   * a wrong sequence claim tells them something weaker and true.
+   */
+  const DATE_LIKE_PERIOD_PATTERNS = [
+    // A 4-digit year 1000-2999, alone or as a range (hyphen or en dash).
+    /^[12]\d{3}(\s*[-–]\s*[12]\d{3})?$/,
+    // An ISO date, YYYY-MM or YYYY-MM-DD.
+    /^[12]\d{3}-(0[1-9]|1[0-2])(-(0[1-9]|[12]\d|3[01]))?$/,
+    // An English month name or three-letter abbreviation, optionally with a year.
+    /^(jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(tember)?|oct(ober)?|nov(ember)?|dec(ember)?)(\s+[12]\d{3})?$/i,
+  ];
+
+  /**
+   * Decide whether one period label reads as a date
+   * @param {string} label - The author's period label
+   * @returns {boolean} True only when the label matches a recognised date form
+   */
+  function isDateLikePeriod(label) {
+    if (typeof label !== "string") return false;
+
+    const trimmed = label.trim();
+    if (!trimmed) return false;
+
+    return DATE_LIKE_PERIOD_PATTERNS.some((pattern) => pattern.test(trimmed));
+  }
+
+  /**
+   * Collect every time period in document order, across sections or without them
+   * @param {Object} timelineData - Parsed timeline data
+   * @returns {Array} The time-period objects, each carrying a `time` label
+   */
+  function collectTimePeriods(timelineData) {
+    if (timelineData.sections && timelineData.sections.length > 0) {
+      let periods = [];
+      timelineData.sections.forEach((section) => {
+        periods = periods.concat(section.events);
+      });
+      return periods;
+    }
+
+    return timelineData.events || [];
+  }
+
+  /**
    * Calculate the time range of the timeline
    * @param {Object} timelineData - Parsed timeline data
    * @returns {Object|null} Object with start and end times, or null if cannot determine
    */
   function calculateTimeRange(timelineData) {
-    let allEvents = [];
-
-    // Collect all time periods
-    if (timelineData.sections && timelineData.sections.length > 0) {
-      timelineData.sections.forEach((section) => {
-        allEvents = allEvents.concat(section.events);
-      });
-    } else {
-      allEvents = timelineData.events;
-    }
+    const allEvents = collectTimePeriods(timelineData);
 
     if (allEvents.length === 0) return null;
 
@@ -511,14 +552,45 @@
 
     description += `</section>`;
 
-    // Add chronological progression insight
-    description += `<section class="timeline-section timeline-insights">
+    // Add the closing insight. Whether it may claim CHRONOLOGY depends on the
+    // period labels: Mermaid accepts any string there, so a timeline of
+    // "Phase one" and "Phase two" has an order but no time order. An empty
+    // set satisfies `every` vacuously and keeps the original wording, which
+    // preserves the no-periods fallbacks below exactly as they were.
+    const periods = collectTimePeriods(timelineData);
+    const everyPeriodIsDateLike = periods.every((period) =>
+      isDateLikePeriod(period.time)
+    );
+
+    if (everyPeriodIsDateLike) {
+      description += `<section class="timeline-section timeline-insights">
         <h4 class="timeline-section-heading">Chronological Progression</h4>
         <p>The timeline progresses chronologically from ${Common.escapeHtml(
           timeRange?.start || "the beginning"
         )} to ${Common.escapeHtml(timeRange?.end || "the end")}, 
         displaying how events develop over time.</p>
       </section>`;
+    } else if (periods.length === 1) {
+      // One period has no sequence to describe, and the plural frame below
+      // would read "1 periods". Naming the single label is all there is to say.
+      description += `<section class="timeline-section timeline-insights">
+        <h4 class="timeline-section-heading">Period Sequence</h4>
+        <p>The timeline presents a single period, ${Common.escapeHtml(
+          periods[0].time
+        )}.</p>
+      </section>`;
+    } else {
+      // Order without chronology. The labels are the author's, escaped once
+      // here and unquoted, exactly as the chronological branch treats them.
+      description += `<section class="timeline-section timeline-insights">
+        <h4 class="timeline-section-heading">Period Sequence</h4>
+        <p>The timeline presents ${
+          periods.length
+        } periods in the order listed, from ${Common.escapeHtml(
+        timeRange?.start || "the beginning"
+      )} to ${Common.escapeHtml(timeRange?.end || "the end")}.</p>
+      </section>`;
+    }
 
     return description;
   }

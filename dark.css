@@ -4969,6 +4969,615 @@ input[type="file"] {
   background-color: #00131d;
 }
 
+/* Mermaid description inset cards — moved here from
+   md-scripts/css/mermaid-description-styles.css by PS1, 24 August 2026, to
+   close a measured 1:1 contrast failure across all fifteen diagram types.
+
+   PS1 MADE THIS A LIGHT CARD AND PS2 HAS DARKENED IT. Both were correct in
+   turn, and the history is kept because the reversal looks like a mistake
+   otherwise. PS1 measured that all nine of the description stylesheet's text
+   colours fail 4.5:1 on any dark surface, and it had no per-section hook to
+   reach them with, so the only safe move was to keep the card light and give
+   it dark ink. PS2 adds the hook and migrates the palette — nine text
+   colours and ten background tints, both blocks generated below — so the
+   surface can go dark with its text following it. The PS1 objection was
+   never to a dark card; it was to a dark card WITHOUT that migration.
+
+   Working: docs/mermaid-presentation-ps1-2026-08-24.md § 4 for the
+   measurement that blocked it, ps2 for the one that unblocked it. */
+.sequence-overview,
+.mermaid-section,
+.mermaid-short-description,
+.mermaid-detailed-description {
+  background-color: #231f20;
+  color: #e1e8ec;
+}
+
+/* Headings INSIDE those cards, dark theme only.
+   The generators emit unclassed h4/h5/h6, which inherit the card's colour in
+   light theme but not here: this file's own
+   `article.standard h1 … h6 { color: #9fb1bd }` sets them explicitly, at
+   specificity (0,1,2), and the markdown output really does sit inside
+   article.standard (ancestor chain measured 24 August 2026). Two class names
+   put this rule at (0,2,1), which beats (0,1,2).
+
+   THE VALUE WAS #00131d UNTIL PS2 AND IS NOW #e1e8ec. That is the same rule
+   doing the same job either side of the card going dark: PS1 needed dark ink
+   on a light card, PS2 needs light ink on a dark one. Measured 25 August
+   2026 — left at #00131d it read 1.16:1 on the #231f20 card, on eleven
+   headings across all three test panels, which is how it was caught.
+   light.css deliberately gets NO counterpart — light theme measured clean at
+   every one of these points, and adding a rule there would move colours that
+   already pass. */
+.mermaid-description .mermaid-detailed-description h3,
+.mermaid-description .mermaid-detailed-description h4,
+.mermaid-description .mermaid-detailed-description h5,
+.mermaid-description .mermaid-detailed-description h6,
+.mermaid-description .mermaid-section h3,
+.mermaid-description .mermaid-section h4,
+.mermaid-description .mermaid-section h5,
+.mermaid-description .mermaid-section h6,
+.mermaid-description .mermaid-short-description h4,
+.mermaid-description .mermaid-short-description h5,
+.mermaid-description .mermaid-short-description h6 {
+  color: #e1e8ec;
+}
+
+/* PS2, 25 August 2026 — Mermaid section cards, headings, takeaway and data
+   table, dark-native, mirroring the Chart.js treatment below.
+
+   THIS SUPERSEDES PS1's LIGHT CARD, and the reason PS1 could not do it is
+   worth stating so neither decision looks arbitrary. PS1 measured that every
+   one of the description stylesheet's nine text colours fails 4.5:1 on any
+   dark surface, and it had no way to reach those colours: the markup carried
+   no per-section hook, so the only lever was the one shared card. PS2 adds
+   the hook (the shell pass in mermaid-accessibility-utils.js) AND migrates
+   the nine colours in the block below, so the surface can finally go dark
+   with its text following it. The objection was never to a dark card; it was
+   to a dark card WITHOUT that migration. */
+
+.mermaid-detailed-description {
+  background-color: #00131d;
+  color: #e1e8ec;
+}
+
+.mermaid-detailed-description .mermaid-section {
+  background-color: #231f20;
+  color: #e1e8ec;
+  border-left-width: 4px;
+  border-left-color: #fcbc00;
+}
+
+/* Accent cycles by position; see the light.css counterpart for why that
+   conveys nothing and is safe under SC 1.4.1. */
+.mermaid-detailed-description .mermaid-section:nth-of-type(3n + 1) {
+  border-left-color: #c1d100;
+}
+
+.mermaid-detailed-description .mermaid-section:nth-of-type(3n + 2) {
+  border-left-color: #74c9e5;
+}
+
+h4.mermaid-details-heading {
+  color: #e1e8ec;
+}
+
+h4.mermaid-details-heading::before {
+  background-color: #c1d100;
+}
+
+.mermaid-detailed-description li strong {
+  color: #c1d100;
+}
+
+.mermaid-data-table caption {
+  color: #e1e8ec;
+}
+
+.mermaid-data-table thead th {
+  background-color: #495961;
+  color: #fffff4;
+}
+
+.mermaid-data-table tbody th,
+.mermaid-data-table td {
+  color: #e1e8ec;
+}
+
+.mermaid-data-table th,
+.mermaid-data-table td {
+  border-bottom-color: #9fb1bd;
+}
+
+.mermaid-disclaimer {
+  border-top: 1px dashed #9fb1bd;
+}
+
+/* PS2 dark-theme text palette for the Mermaid description panel.
+   GENERATED from md-scripts/css/mermaid-description-styles.css's own rules on
+   25 August 2026, not typed: every selector below was read out of that file,
+   grouped by the light-theme colour it declares, and scoped under
+   `.mermaid-description` so nothing outside the panel is touched. Nine light
+   values map to seven dark ones, each measured at >= 5.87:1 against BOTH dark
+   surfaces (#231f20 card, #00131d panel).
+
+   #002e3b -> #e1e8ec    #00131d -> #fffff4    #231f20 -> #fffff4
+   #495961 -> #9fb1bd    #005c84 -> #74c9e5    #8d3970 -> #fcbc00
+   #1e8765 -> #b3dbd2    #2e7d32 -> #c1d100    #d32f2f -> #ff6b6b
+
+   ONE MAPPING SHIFTS HUE FAMILY AND IT IS DELIBERATE: #8d3970 is a magenta
+   with no light counterpart in this site's dark palette, and #d5007f — the
+   nearest — measures 3.21:1 on the card, below 4.5:1. Amber was chosen for
+   separation from the cyan and lime already in use. If a magenta is ever
+   added to the dark palette, this is the line to revisit.
+
+   Regenerate with the script rather than editing by hand; a colour added to
+   the description stylesheet needs re-running, not a new rule here. */
+
+/* #002e3b -> #e1e8ec (27 selectors) */
+.mermaid-description .architecture-group-name,
+.mermaid-description .architecture-junction-connections h6,
+.mermaid-description .architecture-junction-group h6,
+.mermaid-description .architecture-parent-group,
+.mermaid-description .architecture-section h3,
+.mermaid-description .diagram-notation-heading,
+.mermaid-description .diagram-root-node,
+.mermaid-description .diagram-title,
+.mermaid-description .gantt-critical-path-heading,
+.mermaid-description .gantt-exclusions-heading,
+.mermaid-description .gantt-milestones-heading,
+.mermaid-description .gantt-parallel-heading,
+.mermaid-description .gantt-risk-heading,
+.mermaid-description .gantt-title,
+.mermaid-description .gantt-transitions-heading,
+.mermaid-description .group-name,
+.mermaid-description .insight-title,
+.mermaid-description .journey-section-name,
+.mermaid-description .mermaid-section-heading,
+.mermaid-description .mindmap-level-1,
+.mermaid-description .mindmap-root-concept,
+.mermaid-description .mindmap-section-heading,
+.mermaid-description .sequence-reading-heading,
+.mermaid-description .sequence-summary-heading,
+.mermaid-description .timeline-section-heading,
+.mermaid-description h5.flow-heading,
+.mermaid-description h6.comment-category {
+  color: #e1e8ec;
+}
+
+/* #00131d -> #fffff4 (20 selectors) */
+.mermaid-description .alternative-path,
+.mermaid-description .branch-outcome,
+.mermaid-description .break-path,
+.mermaid-description .diagram-actors,
+.mermaid-description .diagram-count,
+.mermaid-description .diagram-node,
+.mermaid-description .diagram-percentage,
+.mermaid-description .diagram-scores,
+.mermaid-description .diagram-value,
+.mermaid-description .gantt-critical-task-duration,
+.mermaid-description .gantt-section-name,
+.mermaid-description .gantt-task-duration,
+.mermaid-description .gantt-task-name,
+.mermaid-description .mindmap-level-5,
+.mermaid-description .mindmap-level-6,
+.mermaid-description .original-message-number,
+.mermaid-description .score-value,
+.mermaid-description .success-path,
+.mermaid-description .task-name,
+.mermaid-description .timeline-event {
+  color: #fffff4;
+}
+
+/* #231f20 -> #fffff4 (2 selectors) */
+.mermaid-description .branch-condition,
+.mermaid-description .message-type {
+  color: #fffff4;
+}
+
+/* #495961 -> #9fb1bd (17 selectors) */
+.mermaid-description .actor-group,
+.mermaid-description .architecture-icon-info,
+.mermaid-description .architecture-service-icon,
+.mermaid-description .break-subsequent-note,
+.mermaid-description .comment-step,
+.mermaid-description .conditional-context,
+.mermaid-description .detail-label,
+.mermaid-description .diagram-insight-total::before,
+.mermaid-description .diagram-proportion,
+.mermaid-description .gantt-critical-path-note,
+.mermaid-description .gantt-exclusion-impact,
+.mermaid-description .gantt-task-status,
+.mermaid-description .message-comment,
+.mermaid-description .note-indicator,
+.mermaid-description .participant-group,
+.mermaid-description .score-3,
+.mermaid-description .score-4 {
+  color: #9fb1bd;
+}
+
+/* #005c84 -> #74c9e5 (38 selectors) */
+.mermaid-description .architecture-service-name,
+.mermaid-description .architecture-source,
+.mermaid-description .architecture-target,
+.mermaid-description .branch-title,
+.mermaid-description .diagram-action,
+.mermaid-description .diagram-branch-name,
+.mermaid-description .diagram-data-item::before,
+.mermaid-description .diagram-insight-smallest::before,
+.mermaid-description .diagram-level-count,
+.mermaid-description .diagram-node-count,
+.mermaid-description .diagram-segment,
+.mermaid-description .gantt-from-phase,
+.mermaid-description .gantt-milestone-date,
+.mermaid-description .gantt-parallel-date,
+.mermaid-description .gantt-section-dates,
+.mermaid-description .gantt-task-dependency,
+.mermaid-description .gantt-task-end-date,
+.mermaid-description .gantt-task-start-date,
+.mermaid-description .gantt-task-until,
+.mermaid-description .gantt-to-phase,
+.mermaid-description .gantt-transition-date,
+.mermaid-description .key-actor,
+.mermaid-description .message-number,
+.mermaid-description .message-receiver.participant,
+.mermaid-description .message-sender.participant,
+.mermaid-description .mindmap-level-2,
+.mermaid-description .mindmap-topic,
+.mermaid-description .participant-name,
+.mermaid-description .score-5,
+.mermaid-description .score-6,
+.mermaid-description .stage-name,
+.mermaid-description .step-number,
+.mermaid-description .timeline-end,
+.mermaid-description .timeline-events,
+.mermaid-description .timeline-section-name,
+.mermaid-description .timeline-sections,
+.mermaid-description .timeline-start,
+.mermaid-description .timeline-time {
+  color: #74c9e5;
+}
+
+/* #8d3970 -> #fcbc00 (16 selectors) */
+.mermaid-description .actor-name,
+.mermaid-description .architecture-junction-id,
+.mermaid-description .break-condition-header,
+.mermaid-description .diagram-decision,
+.mermaid-description .diagram-insight-primary::before,
+.mermaid-description .diagram-pattern-skewed,
+.mermaid-description .gantt-critical-task-name,
+.mermaid-description .gantt-exclusion-dates,
+.mermaid-description .gantt-exclusion-weekends,
+.mermaid-description .gantt-resource-note,
+.mermaid-description .message-receiver.actor,
+.mermaid-description .message-sender.actor,
+.mermaid-description .mindmap-level-3,
+.mermaid-description .parallel-step .branch-condition,
+.mermaid-description .score-1,
+.mermaid-description .score-2 {
+  color: #fcbc00;
+}
+
+/* #1e8765 -> #b3dbd2 (8 selectors) */
+.mermaid-description .diagram-insight-largest::before,
+.mermaid-description .diagram-pattern-balanced,
+.mermaid-description .gantt-milestone-name,
+.mermaid-description .gantt-task-type,
+.mermaid-description .score-10,
+.mermaid-description .score-7,
+.mermaid-description .score-8,
+.mermaid-description .score-9 {
+  color: #b3dbd2;
+}
+
+/* #2e7d32 -> #c1d100 (1 selectors) */
+.mermaid-description .mermaid-export-feedback.success {
+  color: #c1d100;
+}
+
+/* #d32f2f -> #ff6b6b (1 selectors) */
+.mermaid-description .mermaid-export-feedback.error {
+  color: #ff6b6b;
+}
+
+/* PS2 dark-theme BACKGROUND palette for the Mermaid description panel,
+   REGENERATED BY PS3 on 25 August 2026 to carry `!important` through.
+   Generated from md-scripts/css/mermaid-description-styles.css's own rules,
+   never hand-edited inside. Ten light tints — #f3f9ff #f0f2e8 #f5f5f5
+   #fafafa #e1e8ec #fff8f8 #fffff4 #f8f8f8 #e6f7e6 #fdecea — all collapse to
+   the panel colour #00131d, which reads as an inset against the #231f20
+   section card and carries every mapped text colour at 5.87:1 or better.
+
+   WHY A SECOND GROUP EXISTS. Eight selectors declare their background
+   `!important` in the stylesheet, which beats any specificity a scoped rule
+   can reach, so PS2's single plain group was silently defeated on all eight.
+   Measured 25 August 2026: 42 unreadable elements across the architecture and
+   pie panels, ratios as low as 1.04:1 — and PS2 never saw it because it
+   measured three types, none of which uses these classes. The dark rule now
+   mirrors the source declaration's own weight rather than trying to out-
+   specify it. This group is NOT a licence to reach for `!important`
+   elsewhere; it exists only because the source already does.
+
+   FOUR SATURATED FILLS ARE DELIBERATELY LEFT ALONE: #8d3970, #005c84,
+   #1e8765 and #495961. Every one is a satisfaction-bar fill or a ::before
+   marker — a decorative graphic with no text on it — and each already reads
+   as colour against a dark ground. Recolouring them would change what the
+   bars look like, which is a design decision and not a contrast repair. */
+
+.mermaid-description .actor-item,
+.mermaid-description .architecture-connection,
+.mermaid-description .architecture-connection:nth-child(odd),
+.mermaid-description .architecture-junction-connections,
+.mermaid-description .architecture-junction-group,
+.mermaid-description .architecture-service-item,
+.mermaid-description .architecture-service-item:nth-child(odd),
+.mermaid-description .branch,
+.mermaid-description .break-container,
+.mermaid-description .chart-construction,
+.mermaid-description .conditional-step,
+.mermaid-description .decision-paths,
+.mermaid-description .diagram-condition,
+.mermaid-description .diagram-insight,
+.mermaid-description .diagram-insight:nth-child(odd),
+.mermaid-description .diagram-pattern,
+.mermaid-description .gantt-critical-path-section,
+.mermaid-description .gantt-critical-task-duration,
+.mermaid-description .gantt-dependencies-note,
+.mermaid-description .gantt-exclusions,
+.mermaid-description .gantt-milestones,
+.mermaid-description .gantt-overview,
+.mermaid-description .gantt-parallel-work,
+.mermaid-description .gantt-phase-transitions,
+.mermaid-description .gantt-resource-note,
+.mermaid-description .gantt-risk-areas,
+.mermaid-description .gantt-sections,
+.mermaid-description .gantt-task-duration,
+.mermaid-description .gantt-task-status,
+.mermaid-description .gantt-task-type,
+.mermaid-description .group-item,
+.mermaid-description .journey-analysis,
+.mermaid-description .journey-details,
+.mermaid-description .journey-insight,
+.mermaid-description .journey-insight:nth-child(odd),
+.mermaid-description .journey-overview,
+.mermaid-description .journey-task,
+.mermaid-description .journey-visual,
+.mermaid-description .lifecycle-step,
+.mermaid-description .mermaid-export-feedback.error,
+.mermaid-description .mermaid-export-feedback.success,
+.mermaid-description .message-comment,
+.mermaid-description .mindmap-insight,
+.mermaid-description .mindmap-insight:nth-child(odd),
+.mermaid-description .mindmap-insights,
+.mermaid-description .mindmap-node,
+.mermaid-description .mindmap-node-bang,
+.mermaid-description .mindmap-node-cloud,
+.mermaid-description .mindmap-node-hexagon,
+.mermaid-description .mindmap-overview,
+.mermaid-description .mindmap-structure,
+.mermaid-description .mindmap-visual-note,
+.mermaid-description .note-content,
+.mermaid-description .note-step,
+.mermaid-description .participant-item,
+.mermaid-description .process-step,
+.mermaid-description .satisfaction-indicator,
+.mermaid-description .score-1,
+.mermaid-description .score-10,
+.mermaid-description .score-2,
+.mermaid-description .score-3,
+.mermaid-description .score-4,
+.mermaid-description .score-5,
+.mermaid-description .score-6,
+.mermaid-description .score-7,
+.mermaid-description .score-8,
+.mermaid-description .score-9,
+.mermaid-description .score-value,
+.mermaid-description .standalone-comment,
+.mermaid-description .standalone-comment-container,
+.mermaid-description .timeline-content,
+.mermaid-description .timeline-insights,
+.mermaid-description .timeline-overview,
+.mermaid-description .timeline-structure,
+.mermaid-description .timeline-time {
+  background-color: #00131d;
+}
+
+/* Mirrors the stylesheet's own !important on these eight. */
+.mermaid-description .architecture-connections,
+.mermaid-description .architecture-insights,
+.mermaid-description .architecture-services,
+.mermaid-description .architecture-structure,
+.mermaid-description .architecture-visual-notes,
+.mermaid-description .chart-data,
+.mermaid-description .chart-insights,
+.mermaid-description .chart-patterns {
+  background-color: #00131d !important;
+}
+
+/* PS3 dark-theme BORDER palette for the Mermaid description panel,
+   25 August 2026. GENERATED from md-scripts/css/mermaid-description-styles.css's
+   own rules, like the two blocks above; do not hand-edit inside it.
+
+   PS2 migrated text and backgrounds and left borders alone, because the three
+   panels it measured carried almost none. The twelve-type sweep found 121
+   border declarations with a hard-coded light-theme hex, many computing at
+   1.0 to 1.16:1 against the dark card — invisible rather than unreadable, so
+   no WCAG text failure, but the panel lost every rule, divider and accent
+   the light theme uses to group things.
+
+   Saturated hues keep PS2's hue-preserving mapping, because they carry
+   meaning across the types — a critical path, an alternative branch, an
+   insight kind: #005c84 -> #74c9e5, #8d3970 and #d5007f -> #fcbc00,
+   #1e8765 -> #b3dbd2, #e73037 -> #ff6b6b. The five NEUTRALS (#495961,
+   #231f20, #00131d, #002e3b, #000, #ddd) all become #9fb1bd, the hairline
+   dark.css already uses for .chart-container; every one measures 7.37:1 or
+   better against both dark surfaces.
+
+   ONLY THE SIDE THE SOURCE DECLARES IS OVERRIDDEN. A rule setting
+   `border-left` alone gets `border-left-color` alone, so nothing gains
+   three new visible edges it never had in light theme. */
+
+.mermaid-description .architecture-connection,
+.mermaid-description .diagram-condition,
+.mermaid-description .gantt-critical-task-duration,
+.mermaid-description .gantt-task-duration,
+.mermaid-description .timeline-time {
+  border-bottom-color: #74c9e5;
+}
+
+.mermaid-description .architecture-section h3,
+.mermaid-description .diagram-insight,
+.mermaid-description .gantt-critical-path-heading,
+.mermaid-description .gantt-exclusions-heading,
+.mermaid-description .gantt-milestones-heading,
+.mermaid-description .gantt-parallel-heading,
+.mermaid-description .gantt-risk-heading,
+.mermaid-description .gantt-transitions-heading,
+.mermaid-description .journey-section-name,
+.mermaid-description .mermaid-section-heading,
+.mermaid-description .mindmap-insight,
+.mermaid-description .mindmap-section-heading,
+.mermaid-description .note-step,
+.mermaid-description .process-step,
+.mermaid-description .timeline-section-heading {
+  border-bottom-color: #9fb1bd;
+}
+
+.mermaid-description .associated-comment {
+  border-bottom-color: #fcbc00;
+}
+
+.mermaid-description .alternative-path,
+.mermaid-description .architecture-junction-group {
+  border-color: #74c9e5;
+}
+
+.mermaid-description .architecture-junction-connections,
+.mermaid-description .architecture-junction-group,
+.mermaid-description .branch,
+.mermaid-description .branch-container,
+.mermaid-description .chart-data,
+.mermaid-description .chart-insights,
+.mermaid-description .chart-patterns,
+.mermaid-description .diagram-pattern,
+.mermaid-description .gantt-critical-path-section,
+.mermaid-description .gantt-exclusions,
+.mermaid-description .gantt-milestones,
+.mermaid-description .gantt-parallel-work,
+.mermaid-description .journey-insight,
+.mermaid-description .journey-section,
+.mermaid-description .journey-task,
+.mermaid-description .mermaid-description,
+.mermaid-description .mermaid-export-feedback.visible,
+.mermaid-description .mindmap-node,
+.mermaid-description .satisfaction-indicator,
+.mermaid-description .score-value,
+.mermaid-description .timeline-content,
+.mermaid-description .timeline-insights,
+.mermaid-description .timeline-structure {
+  border-color: #9fb1bd;
+}
+
+.mermaid-description .success-path {
+  border-color: #b3dbd2;
+}
+
+.mermaid-description .break-container,
+.mermaid-description .break-path,
+.mermaid-description .gantt-risk-areas {
+  border-color: #fcbc00;
+}
+
+.mermaid-description .activate-step,
+.mermaid-description .architecture-connection,
+.mermaid-description .architecture-service-item,
+.mermaid-description .conditional-step,
+.mermaid-description .diagram-insight,
+.mermaid-description .gantt-active,
+.mermaid-description .gantt-task,
+.mermaid-description .journey-insight,
+.mermaid-description .journey-task,
+.mermaid-description .key-participant,
+.mermaid-description .mindmap-insight,
+.mermaid-description .mindmap-node-default,
+.mermaid-description .mindmap-node-rounded,
+.mermaid-description .process-step,
+.mermaid-description .timeline-time-period {
+  border-left-color: #74c9e5;
+}
+
+.mermaid-description .architecture-children::before,
+.mermaid-description .complex-stage,
+.mermaid-description .deactivate-step,
+.mermaid-description .gantt-done,
+.mermaid-description .group-item,
+.mermaid-description .lifecycle-step,
+.mermaid-description .message-comment,
+.mermaid-description .mindmap-node-circle,
+.mermaid-description .mindmap-node-cloud,
+.mermaid-description .mindmap-node-hexagon,
+.mermaid-description .note-step,
+.mermaid-description .standalone-comment,
+.mermaid-description .terminal-node .diagram-node {
+  border-left-color: #9fb1bd;
+}
+
+.mermaid-description .creation-step,
+.mermaid-description .diagram-pattern-balanced,
+.mermaid-description .gantt-milestone,
+.mermaid-description .high-satisfaction,
+.mermaid-description .parallel-step .branch-container {
+  border-left-color: #b3dbd2;
+}
+
+.mermaid-description .associated-comment,
+.mermaid-description .break-step,
+.mermaid-description .decision-paths,
+.mermaid-description .diagram-pattern-skewed,
+.mermaid-description .gantt-critical,
+.mermaid-description .gantt-critical-path,
+.mermaid-description .low-satisfaction,
+.mermaid-description .mindmap-node-bang,
+.mermaid-description .mindmap-node-square,
+.mermaid-description .timeline-time-period:nth-child(odd) {
+  border-left-color: #fcbc00;
+}
+
+.mermaid-description .destruction-step {
+  border-left-color: #ff6b6b;
+}
+
+.mermaid-description .architecture-connection {
+  border-right-color: #74c9e5;
+}
+
+.mermaid-description .diagram-insight,
+.mermaid-description .mindmap-insight,
+.mermaid-description .note-step,
+.mermaid-description .process-step {
+  border-right-color: #9fb1bd;
+}
+
+.mermaid-description .associated-comment {
+  border-right-color: #fcbc00;
+}
+
+.mermaid-description .architecture-connection {
+  border-top-color: #74c9e5;
+}
+
+.mermaid-description .break-subsequent-note,
+.mermaid-description .diagram-insight,
+.mermaid-description .mindmap-insight,
+.mermaid-description .note-step,
+.mermaid-description .process-step {
+  border-top-color: #9fb1bd;
+}
+
+.mermaid-description .associated-comment {
+  border-top-color: #fcbc00;
+}
+
 .chart-short-description-heading,
 h3.chart-details-heading,
 .mermaid-short-description-heading,
@@ -6666,4 +7275,45 @@ pre.language-json {
 .tool-flag[data-flag="beta"] {
   color: #c1d100;
   border-color: #c1d100;
+}
+
+/* xychart-beta series outlines — dark mode.
+
+   The reasoning is the light-mode block's, in light.css, and is not repeated
+   here beyond what differs. In short: Mermaid hard-codes the bar outline to
+   `strokeWidth: 0` and the line stroke to `2` with no theme variable reaching
+   either, but paints through d3 `.attr()`, so these are presentation attributes
+   and an ordinary author rule beats them — measured by disable-and-remeasure on
+   25 August 2026. The selector is the diagram root's own
+   `aria-roledescription="xychart"` rather than a container, because every
+   control button carries an inline icon <svg> that a container-scoped selector
+   can reach.
+
+   WHY ONE COLOUR SERVES EVERY DARK THEME. themeConfig.modeVisibleThemes.dark
+   offers exactly three: dark (ground #333), accessibleDark (#1E1E1E) and
+   highContrastDark (#000000). #E1E8EC — already this file's own light ink, 283
+   uses — measures 10.2:1, 13.46:1 and 16.96:1 against those three respectively,
+   so one value clears 3:1 on all of them with margin.
+
+   A NOTE ON WHAT THE OUTLINE IS FOR ON DARK, BECAUSE THE READING LOOKS WRONG.
+   Against a pale fill this outline is nearly invisible — #E1E8EC against the
+   dark builtin's white series measures 1.24:1, and against Paul Tol's palest
+   entry 1.48:1. That is not a defect. On dark themes a pale fill already clears
+   3:1 against the ground on its own, so the boundary is carried by the fill and
+   the outline is redundant. Where the outline earns its place is the opposite
+   case: the `dark` builtin's #34495e series sits at 1.36:1 against #333, and it
+   is this light outline at 10.2:1 that gives that bar an edge at all. The two
+   mechanisms cover each other, which is why one outline colour is safe across
+   fills of every lightness.
+
+   As in light mode this lifts BARS only. A line's palette colour is its stroke
+   and is untouched; the width goes to 3px for legibility. */
+
+svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
+  stroke: #e1e8ec;
+  stroke-width: 2px;
+}
+
+svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
+  stroke-width: 3px;
 }

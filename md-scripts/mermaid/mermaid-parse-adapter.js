@@ -308,16 +308,64 @@ window.MermaidParseAdapter = (function () {
   // parallel split, which R13 forbids in terms (§ 5.2). This is the fix
   // for that defect.
   //
-  // FIRST SLICE OF THE FULL NORMALISATION TABLE. The diamond ONLY: the
-  // remaining shapes wait on the shape-vocabulary ruling, and the full table
-  // is register item 41 territory — the adapter is the only place a
-  // spelling can be collapsed, because the modules never see the source.
-  // Extend one shape at a time; the canonical value on the right is always
-  // the string the modules already test, never a new invention.
+  // SECOND SLICE OF THE FULL NORMALISATION TABLE (register item 44 — NOT
+  // item 41, which is markdown emphasis stripping; the two were conflated
+  // once and item 44 records the misreading). The adapter is the only place
+  // a spelling can be collapsed, because the modules never see the source.
+  // Extend one shape at a time, and only for shapes something actually
+  // READS — a row that no consumer tests buys nothing and can go stale.
+  //
+  //   Slice 1, 20 August 2026 — the diamond, for the two module predicates.
+  //   Slice 2, 21 August 2026 — the datastore, both parallelogram directions
+  //     and the manual-input sloped rectangle, for R25's shape vocabulary.
+  //
+  // CANONICAL CHOICE: the string the CLASSIC bracket form delivers, where a
+  // classic form exists, otherwise Mermaid's own canonical name. That is why
+  // the right-hand side carries the underscore spellings `lean_right` and
+  // `lean_left` — those are what `[/x/]` and `[\x\]` deliver, and they cannot
+  // be written inside `@{ shape: … }` at all (measured 21 August 2026: an
+  // underscore name is REJECTED there, "Shape names should be lowercase").
+  //
+  // BOTH PARALLELOGRAM DIRECTIONS KEEP DISTINCT CANONICALS. They are
+  // measurably different drawn shapes — mirrored polygons — and the adapter's
+  // job is to preserve visual identity. R25 maps both to one narration
+  // prefix; that collapse belongs to the module, not here.
+  //
+  // `disk` IS DELIBERATELY ABSENT from the cylinder rows. The shape grounding
+  // lists it as a cylinder alias; a rendered-geometry comparison on
+  // 21 August 2026 measured its outline byte-identical to `lin-cyl` ("disk
+  // storage") and DIFFERENT from `cyl`. Including it would fire the datastore
+  // narration on a shape the reader sees as something else, which is the
+  // exact defect this table exists to prevent. See the shape vocabulary
+  // report of 21 August 2026.
+  //
+  // NO TRAPEZOID SPELLING APPEARS HERE. `manual` and `manual-file` name the
+  // manual-TASK trapezoid, a different visual shape from the manual-INPUT
+  // sloped rectangle, and the two were measured distinct in both directions
+  // — different delivered strings and different drawn outlines. Register
+  // item 44 carries the ruling and its stop condition.
   const SHAPE_SYNONYMS = Object.freeze({
+    // Slice 1: the diamond. Canonical is the classic `{ }` form's string.
     diam: "diamond",
     decision: "diamond",
     question: "diamond",
+    // Slice 2, datastore. Canonical `cylinder` is what `[(x)]` delivers.
+    cyl: "cylinder",
+    db: "cylinder",
+    database: "cylinder",
+    // Slice 2, parallelogram pointing right. Canonical `lean_right` is what
+    // `[/x/]` delivers; the `@{ }` spellings all collapse onto it.
+    "lean-r": "lean_right",
+    "in-out": "lean_right",
+    "lean-right": "lean_right",
+    // Slice 2, parallelogram pointing left. Canonical `lean_left` is what
+    // `[\x\]` delivers.
+    "lean-l": "lean_left",
+    "out-in": "lean_left",
+    "lean-left": "lean_left",
+    // Slice 2, manual-input sloped rectangle. NO classic form exists for it,
+    // so the canonical is Mermaid's own canonical name, `sl-rect`.
+    "manual-input": "sl-rect",
   });
 
   // Single-slot memo: the last code string parsed and its promise. The
@@ -2473,6 +2521,1713 @@ window.MermaidParseAdapter = (function () {
     return sankeyHealthy;
   }
 
+  // ---------------------------------------------------------------------
+  // XY chart surface
+  //
+  // Parallel to the five surfaces above in every structural respect — own
+  // single-slot memo, own lazy self-check state, own advisory health flag,
+  // every parse-and-read inside one adapterParseQueue slot — and DIFFERENT
+  // from all five in one: ITS DATA COMES FROM READING THE DIAGRAM SOURCE,
+  // not from the db.
+  //
+  // THAT IS FORCED BY MEASUREMENT, NOT CHOSEN. Measured 22 August 2026 and
+  // recorded in docs/mermaid-xychart-grounding-2026-08-22.md:
+  //
+  //   - § 3.2 THE DB DELIVERS NO DATA. All nineteen of its members are
+  //     FUNCTIONS and not one returns the chart's numbers. The only route to
+  //     content is getDrawableElem(), which returns RENDERED GEOMETRY —
+  //     a bar's value exists solely as a rectangle height and a line's values
+  //     solely as pixel coordinates inside one SVG path string (§ 3.4). A
+  //     description that wants to say "872 submissions on Friday" cannot get
+  //     872 from Mermaid.
+  //   - § 7 SERIES NAMES ARE DISCARDED OUTRIGHT. `bar "Actual intake" […]`
+  //     parses cleanly and the name appears nowhere: not in the db, not in
+  //     any group name, not in the rendered SVG.
+  //   - § 6.2 BAND AND RANGE X-AXES ARE INDISTINGUISHABLE from anything
+  //     Mermaid delivers. Two sources constructed to collide produced
+  //     identical group structure, identical label texts, an identical path
+  //     string byte for byte and an identical getChartConfig().xAxis; the
+  //     ONLY difference anywhere was floating-point noise in tick
+  //     x-positions (145.1 against 145.10000000000002), which is not a
+  //     signal and which a Mermaid patch release could erase.
+  //   - § 6.3 THE DECLARED AXIS RANGE IS NOT DELIVERED, and the top tick is
+  //     not a substitute for it: a source declaring `0 --> 250` delivers a
+  //     top tick of 240.
+  //
+  // MERMAID IS STILL THE JUDGE OF VALIDITY. The reader runs ONLY after
+  // getDiagramFromText has resolved, in the same queue slot, so this surface
+  // can never narrate a source Mermaid rejected. The reader is a second
+  // opinion about CONTENT, never a first opinion about legality.
+  //
+  // THE READER'S FAILURE CONTRACT, stated here because a future consumer
+  // depends on it: if the reader meets a source Mermaid ACCEPTED but our
+  // grammar subset cannot understand — Mermaid's grammar growing past ours —
+  // it THROWS an Error whose message begins XYCHART_READER_ERROR_PREFIX. It
+  // never guesses, never partially fills the shape, and never returns a
+  // chart with fields quietly missing. The generator module of build session
+  // 2 will let that throw reach the core's generation-failed branch, so the
+  // reader says "we could not read this" out loud instead of describing a
+  // chart it half understood. A silent partial read is the one outcome this
+  // surface must never produce.
+  //
+  // WHY THE SINGLETON DEFENCES STILL APPLY EVEN THOUGH THE DATA IS OURS.
+  // Measured § 3.3: the xychart db IS a shared singleton (two parses return
+  // the same object, and the second silently rewrites the first diagram's
+  // contents), and § 5: `title`, `accTitle` and `accDescr` come from
+  // Mermaid's cross-type shared store, which EVERY parse of EVERY type
+  // clears. So the three scalars are read same-tick inside the parse's own
+  // .then, behind the queue, exactly as normaliseGit does. The axis and
+  // series data cannot be lost that way — it is read from the caller's own
+  // string — but the three scalars can, and they are the whole reason this
+  // surface queues.
+  //
+  // TWO DB MEMBERS THIS SURFACE DELIBERATELY NEVER TOUCHES:
+  //   - setTmpSVGG() — handed a raw SVG <g> instead of a d3 selection it
+  //     accepts silently and then EVERY subsequent getDrawableElem() on the
+  //     page throws, for every diagram, not only the one that poisoned it
+  //     (grounding § 0). getDrawableElem does not need it, so the correct
+  //     handling is never to call it.
+  //   - getDrawableElem() itself — rendered geometry, per the headline
+  //     above. Nothing here needs it, and reading it would reintroduce the
+  //     scale-inversion guesswork the source read exists to avoid.
+  //
+  // Field sources are docs/mermaid-xychart-grounding-2026-08-22.md; the
+  // delivered shape is docs/mermaid-xychart-gold-targets-2026-08-23.md § 3.
+  // ---------------------------------------------------------------------
+
+  // Frozen-const enums rather than bare strings, per AGENTS.md: these values
+  // cross the adapter boundary into a generator that will branch on them.
+  const XYCHART_ORIENTATIONS = Object.freeze({
+    VERTICAL: "vertical",
+    HORIZONTAL: "horizontal",
+  });
+  const XYCHART_AXIS_KINDS = Object.freeze({ BAND: "band", RANGE: "range" });
+  const XYCHART_SERIES_KINDS = Object.freeze({ BAR: "bar", LINE: "line" });
+
+  // Every reader refusal carries this prefix, so a consumer can tell "our
+  // subset lags Mermaid's grammar" from "Mermaid rejected the source" without
+  // string-matching on Mermaid's own error text.
+  const XYCHART_READER_ERROR_PREFIX = "XY chart source reader";
+
+  // A declared axis bound: an optionally-signed integer or decimal. Anchored
+  // at BOTH ends deliberately — an unanchored variant would accept trailing
+  // text and silently discard it (AGENTS.md § Diagnosis Discipline: verify
+  // the exact variant the prose names).
+  const XYCHART_NUMBER = "-?\\d+(?:\\.\\d+)?";
+  const XYCHART_RANGE_ONLY = new RegExp(
+    `^(${XYCHART_NUMBER})\\s*-->\\s*(${XYCHART_NUMBER})$`
+  );
+  const XYCHART_TITLED_RANGE = new RegExp(
+    `^(.*?)\\s+(${XYCHART_NUMBER})\\s*-->\\s*(${XYCHART_NUMBER})$`
+  );
+
+  // Single-slot memo, matching every other surface's contract: the PROMISE is
+  // cached, not the resolved value, and the memo sits IN FRONT of the parse
+  // queue so an identical-code call never enqueues a second singleton
+  // replacement.
+  let xychartMemoCode = null;
+  let xychartMemoPromise = null;
+
+  // XY chart self-check health: null until the check has run, then true or
+  // false. Independent of the other five flags by design.
+  let xychartHealthy = null;
+
+  // Lazy, memoised, first-parseXychart trigger — same reasoning as the other
+  // five self-checks: Mermaid's diagram detectors are not registered at
+  // script-evaluation time, so an eager check reports a false failure.
+  let xychartSelfCheckStarted = false;
+  let xychartSelfCheckPromise = null;
+
+  /**
+   * Band self-check fixture: a categorical x-axis, a declared y range and one
+   * bar series. It carries a body `title`, an `accTitle` and an `accDescr`
+   * because those three are the fields the shared store can lose, so the
+   * check pins the same-tick snapshot as well as the reader.
+   *
+   * ASCII only, and every label distinctive, so a cross-delivery from another
+   * diagram NAMES ITS SOURCE rather than merely looking wrong.
+   */
+  const XYCHART_SELF_CHECK_FIXTURE_BAND = [
+    "xychart-beta",
+    "    accTitle: SelfCheck xychart acc title",
+    "    accDescr: SelfCheck xychart acc descr",
+    '    title "SelfCheck xychart title"',
+    '    x-axis "SelfCheck x title" [Alpha, "Bravo two", Charlie]',
+    '    y-axis "SelfCheck y title" 0 --> 90',
+    '    bar "SelfCheck bar" [10, 20.5, 30]',
+  ].join("\n");
+
+  /**
+   * Range self-check fixture: a NUMERIC-RANGE x-axis and a line series with
+   * no series name. Two fixtures rather than one because the band/range split
+   * is the single distinction Mermaid cannot express (grounding § 6.2) and is
+   * therefore the reader's whole reason to exist — a check that exercised only
+   * one of them would leave the other's branch unproven.
+   */
+  const XYCHART_SELF_CHECK_FIXTURE_RANGE = [
+    "xychart-beta",
+    '    title "SelfCheck range title"',
+    '    x-axis "SelfCheck range x" 0 --> 100',
+    "    y-axis 0 --> 40",
+    "    line [1, 2, 4]",
+  ].join("\n");
+
+  /**
+   * Reproduce Mermaid's own `encodeEntities` over a whole diagram source.
+   *
+   * Quoted verbatim from the pinned 11.6.0 bundle in
+   * docs/mermaid-quot-placeholder-capture-2026-08-08.md § 3.1, including the
+   * two leading `style` / `classDef` passes, which are reproduced rather than
+   * dropped so this function is a faithful copy rather than an approximation
+   * of one.
+   *
+   * WHY IT IS HERE AT ALL, and it is the one thing about this surface's decode
+   * that a reader must understand. The other five surfaces receive text the db
+   * hands them, which Mermaid has ALREADY encoded — encodeEntities runs on the
+   * whole source inside Diagram.fromText, before the parser sees it. This
+   * surface reads the CALLER'S RAW STRING, which has been through nothing. So
+   * to reach the same delivered bytes the other surfaces start from, the raw
+   * source must be encoded here first, and only then decoded by the shared
+   * decodePlaceholders. Encode-then-decode is not a round trip to nowhere: it
+   * is how Mermaid's own `#word;` escape reaches the character it stands for.
+   *
+   * @param {string} source - The caller's raw diagram source
+   * @returns {string} The source with `#word;` tokens in Mermaid's private
+   *   delimiter form
+   */
+  function encodeXychartEntities(source) {
+    return source
+      .replace(/style.*:\S*#.*;/g, (match) => match.substring(0, match.length - 1))
+      .replace(/classDef.*:\S*#.*;/g, (match) => match.substring(0, match.length - 1))
+      .replace(/#\w+;/g, (match) => {
+        const inner = match.substring(1, match.length - 1);
+        return /^\+?\d+$/.test(inner)
+          ? `${PLACEHOLDER_NUMERIC}${inner}${PLACEHOLDER_END}`
+          : `${PLACEHOLDER_NAMED}${inner}${PLACEHOLDER_END}`;
+      });
+  }
+
+  /**
+   * Throw the reader's own distinct, descriptive error.
+   * @param {string} detail - What could not be read
+   * @param {number|null} lineNumber - 1-based source line, when known
+   */
+  function throwXychartReaderError(detail, lineNumber) {
+    throw buildXychartReaderError(detail, lineNumber);
+  }
+
+  /**
+   * The line shapes that hang Mermaid 11.6.0's xychart parser.
+   *
+   * `accDescr` has two spellings in Mermaid's accessibility grammar: the
+   * one-line colon form and a braced BLOCK form. On `xychart-beta` the block
+   * form does not parse — it HANGS, synchronously, and the whole page with it.
+   * Measured 23 August 2026 (docs/mermaid-xychart-adapter-2026-08-23.md § 7):
+   * four cases on their own fresh pages, each behind a positive control —
+   * multi-line block NO SETTLE in 20,000ms, single-line `accDescr { inline }`
+   * NO SETTLE in 20,000ms, one-line `accDescr:` ACCEPT in 12ms, and the same
+   * block form on a `flowchart` ACCEPT in 19ms. The loop is SYNCHRONOUS by
+   * inference rather than observation: two earlier probes raced the call
+   * against a `setTimeout` and the timeout never fired, which requires the JS
+   * thread to be blocked.
+   *
+   * `accDescription` is not Mermaid syntax at all and cannot hang; it is
+   * matched here because the block form of a near-miss spelling is exactly the
+   * thing a reader of this file will try next, and refusing is the safe
+   * direction — an unreadable source falls back, where a hang takes the page.
+   */
+  const XYCHART_ACC_BLOCK_PATTERN = /^accDesc(?:r|ription)\s*\{/;
+
+  /**
+   * Cheap pre-scan for the hanging form, run BEFORE the parse is queued.
+   *
+   * The adapter has no timeout machinery by design (see the queue's own
+   * declaration: a timeout would abandon a slot whose parse may still be
+   * mutating a singleton db), so a queued parse that never settles would
+   * stall ALL SIX surfaces for the life of the page. This is the only defence
+   * available, and it costs one pass over the source's lines.
+   *
+   * NOT COMMENT-STRIPPED BEYOND `%%`, and deliberately not frontmatter-aware:
+   * a false positive refuses a source and falls back, which is recoverable,
+   * where a false negative hangs the page, which is not.
+   *
+   * @param {string} code - The caller's raw Mermaid source
+   * @returns {number|null} The 1-based line number of the offending statement,
+   *   or null when the source carries none
+   */
+  function findXychartHangingAccBlock(code) {
+    // Same line-ending normalisation the source reader uses, and for the
+    // same reason: a CRLF source must split identically to an LF one.
+    const lines = String(code)
+      .split("\r\n")
+      .join("\n")
+      .split("\r")
+      .join("\n")
+      .split("\n");
+    for (let i = 0; i < lines.length; i += 1) {
+      if (XYCHART_ACC_BLOCK_PATTERN.test(stripXychartComment(lines[i]).trim())) {
+        return i + 1;
+      }
+    }
+    return null;
+  }
+
+  // The default tail on a reader refusal, and it states a PRECONDITION rather
+  // than decorating the sentence: every refusal raised from readXychartSource
+  // happens inside `getDiagramFromText(...).then`, so Mermaid has already
+  // judged the source valid by the time it is reached. The hang guard is the
+  // one refusal raised BEFORE the parse, so it must not claim this, and it
+  // passes its own tail.
+  const XYCHART_READER_ERROR_TAIL =
+    "Mermaid accepted this source, so the reader's grammar subset lags " +
+    "Mermaid's own; the diagram must fall back rather than be described " +
+    "from a partial read.";
+
+  /**
+   * Build (never throw) the reader's own distinct, descriptive error.
+   * @param {string} detail - What could not be read
+   * @param {number|null} lineNumber - 1-based source line, when known
+   * @param {string} [tail] - Closing sentence; defaults to the
+   *   Mermaid-already-accepted-it precondition above
+   * @returns {Error} The reader error
+   */
+  function buildXychartReaderError(detail, lineNumber, tail) {
+    const where = typeof lineNumber === "number" ? ` at source line ${lineNumber}` : "";
+    return new Error(
+      `${XYCHART_READER_ERROR_PREFIX}: ${detail}${where}. ` +
+        (tail || XYCHART_READER_ERROR_TAIL)
+    );
+  }
+
+  /**
+   * Remove a trailing `%%` comment, ignoring one that falls inside quotes.
+   * @param {string} line - One source line
+   * @returns {string} The line with any comment removed
+   */
+  function stripXychartComment(line) {
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const character = line.charAt(i);
+      if (character === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (!inQuotes && character === "%" && line.charAt(i + 1) === "%") {
+        return line.slice(0, i);
+      }
+    }
+    return line;
+  }
+
+  /**
+   * Take a leading double-quoted string off a statement's remainder.
+   * @param {string} text - The trimmed remainder
+   * @returns {Object|null} `{ value, rest }`, or null when there is no
+   *   leading quoted string
+   */
+  function takeXychartQuoted(text) {
+    if (text.charAt(0) !== '"') {
+      return null;
+    }
+    const end = text.indexOf('"', 1);
+    if (end === -1) {
+      return null;
+    }
+    return { value: text.slice(1, end), rest: text.slice(end + 1).trim() };
+  }
+
+  /**
+   * Strip one surrounding pair of double quotes, if present.
+   * @param {string} text - A bracket-list item
+   * @returns {string} The item without its surrounding quotes
+   */
+  function unquoteXychartItem(text) {
+    const trimmed = text.trim();
+    if (
+      trimmed.length >= 2 &&
+      trimmed.charAt(0) === '"' &&
+      trimmed.charAt(trimmed.length - 1) === '"'
+    ) {
+      return trimmed.slice(1, -1);
+    }
+    return trimmed;
+  }
+
+  /**
+   * Split a bracket list's interior on TOP-LEVEL commas only, so a quoted
+   * label may legitimately contain one.
+   * @param {string} inner - The text between `[` and `]`
+   * @returns {string[]} The items, quotes intact, untrimmed
+   */
+  function splitXychartList(inner) {
+    if (inner.trim() === "") {
+      return [];
+    }
+    const items = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < inner.length; i += 1) {
+      const character = inner.charAt(i);
+      if (character === '"') {
+        inQuotes = !inQuotes;
+        current += character;
+        continue;
+      }
+      if (character === "," && !inQuotes) {
+        items.push(current);
+        current = "";
+        continue;
+      }
+      current += character;
+    }
+    items.push(current);
+    return items;
+  }
+
+  /**
+   * Read one `x-axis` or `y-axis` statement's remainder.
+   *
+   * Four accepted forms, each with an optional leading axis title in either
+   * the quoted or the bare spelling: a bracketed band list (x only), a
+   * `min --> max` range, a title with no data at all, and a bare range.
+   *
+   * @param {string} remainder - The statement text after the keyword
+   * @param {boolean} allowBand - True for the x-axis, false for the y-axis
+   * @param {number} lineNumber - 1-based source line, for the error message
+   * @returns {Object} `{ kind, title, categories }` or `{ kind, title, min, max }`
+   */
+  function readXychartAxis(remainder, allowBand, lineNumber) {
+    let rest = remainder.trim();
+    let title = null;
+
+    const quoted = takeXychartQuoted(rest);
+    if (quoted) {
+      title = quoted.value;
+      rest = quoted.rest;
+    }
+
+    // Title only, no data — a legal `y-axis "Count"` with no declared range.
+    if (rest === "") {
+      if (title === null) {
+        throwXychartReaderError("an axis statement with nothing after it", lineNumber);
+      }
+      // The title decodes here exactly as it does on every other return path
+      // below. Missing it would make ONE axis form silently deliver raw
+      // placeholder bytes while the others decoded — the kind of per-branch
+      // omission that reads as correct in review.
+      return allowBand
+        ? {
+            kind: XYCHART_AXIS_KINDS.RANGE,
+            title: decodePlaceholders(title),
+            min: null,
+            max: null,
+          }
+        : { kind: null, title: decodePlaceholders(title), min: null, max: null };
+    }
+
+    const open = rest.indexOf("[");
+    if (open !== -1) {
+      if (!allowBand) {
+        throwXychartReaderError(
+          "a bracketed category list on the y-axis, which has no band form",
+          lineNumber
+        );
+      }
+      const close = rest.lastIndexOf("]");
+      if (close < open) {
+        throwXychartReaderError("an unclosed category list", lineNumber);
+      }
+      if (rest.slice(close + 1).trim() !== "") {
+        throwXychartReaderError("trailing text after a category list", lineNumber);
+      }
+      const beforeBracket = rest.slice(0, open).trim();
+      if (beforeBracket !== "") {
+        if (title !== null) {
+          throwXychartReaderError(
+            "two axis titles on one statement, one quoted and one bare",
+            lineNumber
+          );
+        }
+        title = beforeBracket;
+      }
+      const categories = splitXychartList(rest.slice(open + 1, close)).map((item) =>
+        decodePlaceholders(unquoteXychartItem(item))
+      );
+      return {
+        kind: XYCHART_AXIS_KINDS.BAND,
+        title: title === null ? null : decodePlaceholders(title),
+        categories: categories,
+      };
+    }
+
+    const bare = XYCHART_RANGE_ONLY.exec(rest);
+    if (bare) {
+      return {
+        kind: XYCHART_AXIS_KINDS.RANGE,
+        title: title === null ? null : decodePlaceholders(title),
+        min: Number(bare[1]),
+        max: Number(bare[2]),
+      };
+    }
+
+    // A bare (unquoted) axis title in front of a range.
+    const titled = XYCHART_TITLED_RANGE.exec(rest);
+    if (titled && titled[1].trim() !== "") {
+      if (title !== null) {
+        throwXychartReaderError(
+          "two axis titles on one statement, one quoted and one bare",
+          lineNumber
+        );
+      }
+      return {
+        kind: XYCHART_AXIS_KINDS.RANGE,
+        title: decodePlaceholders(titled[1].trim()),
+        min: Number(titled[2]),
+        max: Number(titled[3]),
+      };
+    }
+
+    throwXychartReaderError(
+      `an axis statement in a form the reader does not know: ${JSON.stringify(remainder.trim())}`,
+      lineNumber
+    );
+    return null;
+  }
+
+  /**
+   * Read one `bar` or `line` statement's remainder.
+   * @param {string} kind - "bar" or "line"
+   * @param {string} remainder - The statement text after the keyword
+   * @param {number} lineNumber - 1-based source line, for the error message
+   * @returns {Object} `{ kind, name, values }`
+   */
+  function readXychartSeries(kind, remainder, lineNumber) {
+    let rest = remainder.trim();
+    let name = null;
+
+    const quoted = takeXychartQuoted(rest);
+    if (quoted) {
+      name = quoted.value;
+      rest = quoted.rest;
+    }
+
+    const open = rest.indexOf("[");
+    const close = rest.lastIndexOf("]");
+    if (open === -1 || close < open) {
+      throwXychartReaderError(`a ${kind} statement with no value list`, lineNumber);
+    }
+    if (rest.slice(close + 1).trim() !== "") {
+      throwXychartReaderError(`trailing text after a ${kind} value list`, lineNumber);
+    }
+    const beforeBracket = rest.slice(0, open).trim();
+    if (beforeBracket !== "") {
+      if (name !== null) {
+        throwXychartReaderError(
+          `two series names on one ${kind} statement, one quoted and one bare`,
+          lineNumber
+        );
+      }
+      name = beforeBracket;
+    }
+
+    const values = splitXychartList(rest.slice(open + 1, close)).map((item) => {
+      const text = item.trim();
+      const value = Number(text);
+      if (text === "" || !Number.isFinite(value)) {
+        throwXychartReaderError(
+          `a ${kind} value the reader cannot read as a number: ${JSON.stringify(text)}`,
+          lineNumber
+        );
+      }
+      return value;
+    });
+
+    return {
+      kind: kind,
+      name: name === null ? null : decodePlaceholders(name),
+      values: values,
+    };
+  }
+
+  /**
+   * Read the chart's axes, series and orientation out of the diagram SOURCE.
+   *
+   * Runs ONLY after getDiagramFromText has resolved on the same string, in
+   * the same queue slot — see the surface preamble. Titles are NOT read here:
+   * `title`, `accTitle` and `accDescr` statements are skipped, because the db
+   * delivers those three and delivers them decoded of quoting.
+   *
+   * @param {string} code - The caller's raw Mermaid source
+   * @returns {Object} `{ orientation, xAxis, yAxis, series }`
+   */
+  function readXychartSource(code) {
+    // Encode first, so the shared decodePlaceholders below starts from the
+    // same bytes every other surface starts from. See encodeXychartEntities.
+    const encoded = encodeXychartEntities(
+      String(code).split("\r\n").join("\n").split("\r").join("\n")
+    );
+    const lines = encoded.split("\n");
+
+    let sawHeader = false;
+    let inFrontmatter = false;
+    let inAccBlock = false;
+    let orientation = XYCHART_ORIENTATIONS.VERTICAL;
+    let xAxis = null;
+    let yAxis = null;
+    const series = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const lineNumber = i + 1;
+      let text = stripXychartComment(lines[i]).trim();
+
+      if (inAccBlock) {
+        if (text.indexOf("}") !== -1) {
+          inAccBlock = false;
+        }
+        continue;
+      }
+      if (text === "") {
+        continue;
+      }
+      // YAML frontmatter is skipped wholesale: whatever it carries, this
+      // surface takes its three scalars from the db, never from the source.
+      if (!sawHeader && text === "---") {
+        inFrontmatter = !inFrontmatter;
+        continue;
+      }
+      if (inFrontmatter) {
+        continue;
+      }
+      if (text.charAt(text.length - 1) === ";") {
+        text = text.slice(0, -1).trim();
+      }
+
+      if (!sawHeader) {
+        if (!/^xychart-beta\b/.test(text)) {
+          throwXychartReaderError(
+            "a source that does not open with xychart-beta",
+            lineNumber
+          );
+        }
+        const tail = text.slice("xychart-beta".length).trim();
+        if (tail === XYCHART_ORIENTATIONS.HORIZONTAL) {
+          orientation = XYCHART_ORIENTATIONS.HORIZONTAL;
+        } else if (tail !== "" && tail !== XYCHART_ORIENTATIONS.VERTICAL) {
+          throwXychartReaderError(
+            `an unknown word after xychart-beta: ${JSON.stringify(tail)}`,
+            lineNumber
+          );
+        }
+        sawHeader = true;
+        continue;
+      }
+
+      // The db supplies all three of these; the reader only has to not choke.
+      if (/^accDescr\s*\{/.test(text)) {
+        inAccBlock = text.indexOf("}") === -1;
+        continue;
+      }
+      if (/^(accTitle|accDescr)\s*:/.test(text)) {
+        continue;
+      }
+      if (/^title\b/.test(text)) {
+        continue;
+      }
+
+      if (/^x-axis\b/.test(text)) {
+        if (xAxis !== null) {
+          throwXychartReaderError("a second x-axis statement", lineNumber);
+        }
+        xAxis = readXychartAxis(text.slice("x-axis".length), true, lineNumber);
+        continue;
+      }
+      if (/^y-axis\b/.test(text)) {
+        if (yAxis !== null) {
+          throwXychartReaderError("a second y-axis statement", lineNumber);
+        }
+        const read = readXychartAxis(text.slice("y-axis".length), false, lineNumber);
+        yAxis = { title: read.title, min: read.min, max: read.max };
+        continue;
+      }
+      const seriesKeyword = /^(bar|line)\b/.exec(text);
+      if (seriesKeyword) {
+        series.push(
+          readXychartSeries(
+            seriesKeyword[1] === XYCHART_SERIES_KINDS.BAR
+              ? XYCHART_SERIES_KINDS.BAR
+              : XYCHART_SERIES_KINDS.LINE,
+            text.slice(seriesKeyword[1].length),
+            lineNumber
+          )
+        );
+        continue;
+      }
+
+      throwXychartReaderError(
+        `a statement the reader does not know: ${JSON.stringify(text.slice(0, 60))}`,
+        lineNumber
+      );
+    }
+
+    if (!sawHeader) {
+      throwXychartReaderError("a source with no xychart-beta header at all", null);
+    }
+    if (series.length === 0) {
+      throwXychartReaderError("a chart with no bar or line series", null);
+    }
+
+    // AN ABSENT x-axis IS NOT AN ABSENT AXIS. Measured § 6.4: Mermaid
+    // silently synthesises a numeric range 1 → N over the data length. It is
+    // delivered here as a RANGE axis with NULL bounds rather than with the
+    // synthesised 1 and N, because those bounds are the renderer's invention
+    // and not the author's declaration — and rule XC2 says a description
+    // speaks DECLARED bounds. A generator therefore finds nothing to speak,
+    // which is the correct outcome, and the ordinal rule XC6 still applies.
+    if (xAxis === null) {
+      xAxis = {
+        kind: XYCHART_AXIS_KINDS.RANGE,
+        title: null,
+        min: null,
+        max: null,
+      };
+    }
+
+    return {
+      orientation: orientation,
+      xAxis: xAxis,
+      yAxis: yAxis,
+      series: series,
+    };
+  }
+
+  /**
+   * Normalise one resolved xychart Diagram instance into the adapter's
+   * xychart shape.
+   *
+   * SAME-TICK SNAPSHOT (the git/sankey singleton defence 1, reaching a third
+   * surface): the three scalars below come from Mermaid's CROSS-TYPE shared
+   * store, which every parse of every type clears (register item 21), and the
+   * xychart db is itself a singleton (grounding § 3.3). They are therefore
+   * read here — inside the parse's own .then, behind the queue — and copied
+   * into this function's own return object before it returns. Nothing in the
+   * delivered chart references a db-owned object, and no consumer may go back
+   * to the db later.
+   *
+   * The axis and series data cannot be lost that way, because it is read from
+   * the caller's own string rather than from the db; the source read is done
+   * inside the slot anyway, so the whole function is one indivisible unit and
+   * a future editor cannot accidentally split the scalars from the rest.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @param {string} code - The caller's raw source, the reader's input
+   * @returns {Object} The normalised xychart
+   */
+  function normaliseXychart(diagram, code) {
+    const db = diagram.db;
+
+    // The three shared-store reads, together, first, before anything else can
+    // yield. Measured § 5: all three surface on the db and only on the db.
+    const rawTitle = db.getDiagramTitle() || "";
+    const rawAccTitle = db.getAccTitle() || "";
+    const rawAccDescription = db.getAccDescription() || "";
+
+    const read = readXychartSource(code);
+
+    return {
+      type: "xychart",
+      // ITEM 9, VERDICT C-PH for the drawn text on this surface. Measured
+      // § 6.1 on a CATEGORY LABEL: an author's `#quot;` is drawn as a real
+      // quote, an author's `&` is drawn as itself, and there is no
+      // foreignObject anywhere in an xychart. [OBSERVED]
+      //
+      // Applying the same verdict to the chart TITLE is an INFERENCE, stated
+      // as one: `chart-title` is a `text` element on the same SVG drawing
+      // path as `bottom-axis/label` (§ 3.4), so the same treatment follows —
+      // but the title itself was not among the strings measured in § 6.1. The
+      // test that would settle it is a render of a title carrying `#quot;`,
+      // read back as code points; it has not been run.
+      //
+      // The one DELIBERATE DIVERGENCE FROM THE DRAWING, ruled by the design
+      // seat as rule XC9 on 23 August 2026: an author's `<` is drawn by
+      // Mermaid 11.6.0 as the literal five characters `&lt;` — a rendering
+      // defect visible with none of our code involved — and this surface
+      // delivers a real `<` instead, because the description speaks author
+      // intent. Re-open trigger: a Mermaid upgrade that changes the drawing.
+      title: decodePlaceholders(rawTitle),
+      // NO transform on accTitle or accDescr, matching the standing
+      // carve-out declared at the placeholder-decoding block near the top of
+      // this file. It is deliberate on all six surfaces and must not be
+      // "completed" by a later editor.
+      accTitle: rawAccTitle,
+      accDescr: rawAccDescription,
+      orientation: read.orientation,
+      xAxis: read.xAxis,
+      yAxis: read.yAxis,
+      series: read.series,
+    };
+  }
+
+  /**
+   * Parse Mermaid xychart code into the normalised xychart shape.
+   *
+   * Rejects with Mermaid's own error on a parse failure, and with a distinct
+   * Error whose message begins "XY chart source reader" when Mermaid accepted
+   * a source the reader's grammar subset cannot read. Both are rejections of
+   * the returned promise; the call itself never throws synchronously, so
+   * awaiting this promise is the single error path.
+   *
+   * SERIALISED PARSES: every parse is chained through the adapter-wide queue,
+   * so it cannot replace the shared singleton's data or clear the shared
+   * accessible-title store while an earlier call's snapshot is still in
+   * progress. The chain advances on settlement, not success, so a rejection
+   * cannot wedge it.
+   *
+   * @param {string} code - The Mermaid source
+   * @returns {Promise<Object>} Resolves to the normalised xychart
+   */
+  function parseXychart(code) {
+    // THE HANG GUARD, AND IT RUNS BEFORE EVERYTHING ELSE — before the memo,
+    // before the self-check trigger, before the queue. An `accDescr { ... }`
+    // block hangs Mermaid's xychart parser synchronously, and this adapter
+    // has no timeout machinery to recover a queue slot from that, so the one
+    // safe move is never to queue such a source at all. See
+    // findXychartHangingAccBlock for the measurements.
+    //
+    // It REJECTS rather than throwing, because this function's contract is
+    // that it never throws synchronously and awaiting the promise is the
+    // single error path. The rejection carries the reader's own error, so a
+    // generator awaiting it propagates and the core speaks its
+    // generation-failed statement, exactly as for any other refusal.
+    const hangingBlockLine = findXychartHangingAccBlock(code);
+    if (hangingBlockLine !== null) {
+      return Promise.reject(
+        buildXychartReaderError(
+          "an accDescr block (brace syntax), which Mermaid 11.6.0 cannot " +
+            "parse on an xychart at all",
+          hangingBlockLine,
+          "Mermaid has NOT judged this source: the block form hangs its " +
+            "xychart parser synchronously, so the parse was refused before " +
+            "it was queued rather than after it was accepted. Use the " +
+            "one-line `accDescr:` form, which is fully supported."
+        )
+      );
+    }
+
+    // Lazy xychart self-check trigger, matching the other surfaces' ordering.
+    // The check enqueues its own fixture parses first, so it holds the front
+    // of the queue ahead of this call's parse.
+    if (!xychartSelfCheckStarted) {
+      runXychartSelfCheck();
+    }
+
+    if (code === xychartMemoCode && xychartMemoPromise) {
+      logDebug("Returning memoised xychart parse for identical code string");
+      return xychartMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    // Per-parse trace (register item 24) - see the flowchart surface for why
+    // it sits inside run and why only the code LENGTH is logged.
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(
+        `XY chart parse entering its queue slot, ${code.length} characters`
+      );
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `XY chart parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          // MERMAID HAS NOW JUDGED THE SOURCE VALID. Only here does the
+          // reader run, and it runs inside this same slot.
+          const chart = normaliseXychart(diagram, code);
+          logDebug(
+            `XY chart parse delivered after ${Math.round(performance.now() - startedAt)}ms`
+          );
+          return chart;
+        })
+        .catch((error) => {
+          logDebug(
+            `XY chart parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    // Chain on settlement, not success: the queue itself never rejects (see
+    // the tail below), but `run` is passed as both handlers so a future change
+    // to that invariant cannot silently skip a parse.
+    const result = adapterParseQueue.then(run, run);
+
+    // Settlement-only tail — a rejected parse must not wedge the queue.
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    xychartMemoCode = code;
+    xychartMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Parse the two embedded xychart fixtures and assert the db accessor names,
+   * the same-tick title snapshot and the source reader's normalised shape.
+   * Resolves true on a clean run; on any failure logs ONE ERROR naming the
+   * first failed assertion, marks the xychart surface unhealthy, and resolves
+   * false. Never throws.
+   *
+   * BOTH FIXTURES RUN INSIDE ONE QUEUE SLOT, and the band chart is fully
+   * normalised BEFORE the range parse is issued. That ordering is the point:
+   * the second parse clears the shared title store and rewrites the singleton
+   * db, so a check that parsed both and read afterwards would be measuring
+   * the second chart twice. One slot rather than two is deliberate — it is
+   * strictly stronger isolation, and it keeps the pair indivisible.
+   *
+   * @returns {Promise<boolean>} Resolves to the xychart health verdict
+   */
+  function runXychartSelfCheck() {
+    if (xychartSelfCheckPromise) {
+      return xychartSelfCheckPromise;
+    }
+    xychartSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            XYCHART_SELF_CHECK_FIXTURE_BAND
+          );
+        })
+        .then((bandDiagram) => {
+          const db = bandDiagram.db;
+          // The accessor names this surface depends on, read before anything
+          // else, so a Mermaid rename fails here rather than delivering "".
+          const accessorsPresent =
+            typeof db.getDiagramTitle === "function" &&
+            typeof db.getAccTitle === "function" &&
+            typeof db.getAccDescription === "function";
+          // Fully normalised — including the same-tick scalar snapshot —
+          // before the second parse is allowed to begin.
+          const band = normaliseXychart(bandDiagram, XYCHART_SELF_CHECK_FIXTURE_BAND);
+
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(XYCHART_SELF_CHECK_FIXTURE_RANGE)
+            .then((rangeDiagram) => {
+              const range = normaliseXychart(
+                rangeDiagram,
+                XYCHART_SELF_CHECK_FIXTURE_RANGE
+              );
+
+              const bandSeries = band.series[0];
+              const rangeSeries = range.series[0];
+
+              // Each entry: [assertion name, predicate]. The first false
+              // predicate fails the check and is named in the single ERROR
+              // line. The predicates are EVALUATED HERE, inside the slot, so
+              // the verdict below never touches a db.
+              return [
+                [
+                  "the three shared-store accessors exist by name on the db",
+                  accessorsPresent,
+                ],
+                [
+                  "the band chart's title, accTitle and accDescr survive " +
+                    "the same-tick snapshot",
+                  band.title === "SelfCheck xychart title" &&
+                    band.accTitle === "SelfCheck xychart acc title" &&
+                    band.accDescr === "SelfCheck xychart acc descr",
+                ],
+                [
+                  'the band x-axis reads kind "band", its quoted title, and ' +
+                    "three categories in source order with quotes stripped",
+                  band.xAxis.kind === "band" &&
+                    band.xAxis.title === "SelfCheck x title" &&
+                    band.xAxis.categories.length === 3 &&
+                    band.xAxis.categories[0] === "Alpha" &&
+                    band.xAxis.categories[1] === "Bravo two" &&
+                    band.xAxis.categories[2] === "Charlie",
+                ],
+                [
+                  "the band y-axis reads its title and its DECLARED bounds 0 " +
+                    "and 90 as numbers",
+                  band.yAxis !== null &&
+                    band.yAxis.title === "SelfCheck y title" &&
+                    band.yAxis.min === 0 &&
+                    band.yAxis.max === 90,
+                ],
+                [
+                  'the band series reads kind "bar", its quoted name, and its ' +
+                    "three values including a decimal, as numbers",
+                  band.series.length === 1 &&
+                    bandSeries.kind === "bar" &&
+                    bandSeries.name === "SelfCheck bar" &&
+                    bandSeries.values.length === 3 &&
+                    bandSeries.values[0] === 10 &&
+                    bandSeries.values[1] === 20.5 &&
+                    bandSeries.values[2] === 30,
+                ],
+                [
+                  'orientation defaults to "vertical" with no keyword',
+                  band.orientation === "vertical",
+                ],
+                [
+                  'THE BAND/RANGE PIN: the range chart\'s x-axis reads kind ' +
+                    '"range" with declared bounds 0 and 100 and NO categories ' +
+                    "— the one distinction Mermaid cannot express",
+                  range.xAxis.kind === "range" &&
+                    range.xAxis.title === "SelfCheck range x" &&
+                    range.xAxis.min === 0 &&
+                    range.xAxis.max === 100 &&
+                    range.xAxis.categories === undefined,
+                ],
+                [
+                  'the range chart\'s series reads kind "line" with a null ' +
+                    "name, and its untitled y-axis reads a null title with " +
+                    "declared bounds",
+                  range.series.length === 1 &&
+                    rangeSeries.kind === "line" &&
+                    rangeSeries.name === null &&
+                    range.yAxis !== null &&
+                    range.yAxis.title === null &&
+                    range.yAxis.min === 0 &&
+                    range.yAxis.max === 40,
+                ],
+                [
+                  "the range chart's own title reaches it, proving the band " +
+                    "chart's snapshot was taken before this parse cleared the " +
+                    "shared store",
+                  range.title === "SelfCheck range title",
+                ],
+              ];
+            });
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    xychartSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `XY chart self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's xychart internals no longer " +
+              "match the 22 August 2026 measurements, or the source reader's " +
+              "grammar subset has drifted; do not trust xychart adapter output."
+          );
+          xychartHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "XY chart self-check passed: accessor, snapshot and source-reader " +
+            "assertions all hold"
+        );
+        xychartHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          `XY chart self-check FAILED at assertion: both fixtures parse and read. ` +
+            `The fixture run rejected: ${error && error.message}`
+        );
+        xychartHealthy = false;
+        return false;
+      });
+
+    return xychartSelfCheckPromise;
+  }
+
+  /**
+   * Report the xychart surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the xychart self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isXychartHealthy() {
+    return xychartHealthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // Gantt chart surface
+  //
+  // Parallel to the five STANDARD surfaces above in every structural
+  // respect — own single-slot memo, own lazy self-check state, own advisory
+  // health flag, every parse-and-read inside one adapterParseQueue slot —
+  // and deliberately NOT modelled on the xychart surface beside it. Xychart
+  // reads the diagram source because its db delivers no data; the gantt db
+  // is measured FULL, so this is an ordinary db-reading surface and there is
+  // no source reader here.
+  //
+  // WHY THIS SURFACE EXISTS. The shipped gantt description module parses the
+  // source with its own regexes, and a task line carrying a status flag
+  // defeats them: `Research :done, r1, 2026-01-05, 5d` has FOUR metadata
+  // fields against a THREE-capture pattern, so the flag becomes the id slot,
+  // the real id is read as a timing field, and the date and duration arrive
+  // jammed together. Every date in such a chart is lost, and the fixture
+  // pinning it passes green while encoding a chart with no dates at all.
+  // Measured in docs/mermaid-item-68-arc-open-2026-08-29.md § 3.3. Mermaid's
+  // own db parses that line correctly, which is the whole reason for this
+  // surface. Register item 68 owns the module rebuild that consumes it.
+  //
+  // WHAT THE DB DELIVERS, measured 29 August 2026 (arc-open § 3.6) and
+  // re-measured directly this session:
+  //
+  //   - getTasks() returns fully RESOLVED tasks: `id` correct even behind a
+  //     status flag, `prevTaskId` carrying the `after` target, and
+  //     `startTime` / `endTime` as real Date instances with the dependency
+  //     chain already walked.
+  //   - `excludes weekends` is applied BY MERMAID: the same 5d task runs
+  //     05→10 Jan with no excludes and 05→12 Jan with weekends excluded.
+  //     Nothing here recomputes a working-day calendar.
+  //   - the four status flags arrive as own keys holding `undefined` when
+  //     absent and `true` when set, so every read is an explicit test rather
+  //     than a truthiness check.
+  //
+  // SINGLETON MODE — REASSIGNMENT, LIKE SANKEY, NOT IN-PLACE LIKE GIT.
+  // Measured this session, and it is why the snapshot below is shaped as it
+  // is. Two parses return the SAME db object; the second installs a NEW
+  // tasks array rather than mutating the first's, so the first parse's task
+  // objects survive untouched (a tagged object kept its tag and its name),
+  // while the db itself then answers with the second diagram's data. So a
+  // projection taken at the right moment is durable — exactly sankey's S2e
+  // reasoning — and the queue is what guarantees the right moment.
+  //
+  // EAGER SNAPSHOT (defence 1) IS REQUIRED, and the check that settles it:
+  // getTasks() and getSections() return the SAME array reference, holding
+  // the SAME element references, on repeated calls within one parse — they
+  // are NOT freshly built per call the way sankey's getGraph() projection
+  // is. So every value is copied into the adapter's own objects here, inside
+  // the parse's own .then, behind the queue, and no consumer may ever go
+  // back to the db afterwards.
+  //
+  // DATES ARE COPIED, NOT ALIASED, and that is not tidiness. Measured: a
+  // dependent task's `startTime` IS THE SAME Date OBJECT as its
+  // predecessor's `endTime`. Delivering those references would hand two
+  // tasks one shared mutable Date, so a consumer normalising one task's date
+  // in place would silently move another's. Every date below is a new Date.
+  //
+  // ITEM 9, VERDICT C-PLACEHOLDER — decodePlaceholders, MEASURED FOR THIS
+  // TYPE rather than copied from another. The discriminator is where Mermaid
+  // draws the label, and the gantt renderer draws every label into SVG
+  // <text>: foreignObject count is ZERO on both a plain and a hostile
+  // render, with the title, the section name and the task names all in
+  // <text> nodes. A hostile source was then round-tripped: the db delivers
+  // `Task <placeholder>one<placeholder> &amp; two` holding Mermaid's private
+  // delimiter bytes, and the canvas DRAWS `Task "one" &amp; two` — the
+  // placeholder resolved, the author's own `&amp;` drawn literally. Applying
+  // both candidate transforms to the delivered bytes, decodePlaceholders
+  // reproduces the drawn string exactly on the title, the section and the
+  // task name, and decodeAuthorText differs on all three. Gantt therefore
+  // sits with git graph, not with flowchart / ER / class.
+  //
+  // accTitle AND accDescr ARE POPULATED ON THIS TYPE, unlike ER and class
+  // which deliver them permanently empty. Measured: `accTitle:` and
+  // `accDescr:` both round-trip. They are still delivered with NO transform,
+  // per the standing carve-out at the top of this file — clause X3 owns
+  // author override and reads the raw source.
+  //
+  // The `title` body form wins over a frontmatter title, measured: a source
+  // carrying both delivers the body form.
+  //
+  // Field sources and the three verbatim deliveries are in
+  // docs/mermaid-item-68-gantt-surface-2026-08-29.md.
+  // ---------------------------------------------------------------------
+
+  // Single-slot memo for the gantt surface, matching parse()'s contract: the
+  // promise is cached rather than the resolved value. The memo sits IN FRONT
+  // of the parse queue — an identical-code call returns the cached promise
+  // without enqueueing a second singleton replacement.
+  let ganttMemoCode = null;
+  let ganttMemoPromise = null;
+
+  // Gantt self-check health: null until the check has run, then true or
+  // false. Independent of the other six flags by design.
+  let ganttHealthy = null;
+
+  // Lazy, memoised, first-parseGantt trigger — same reasoning as the other
+  // six self-checks: Mermaid's diagram detectors are not registered at
+  // script-evaluation time, so an eager check reports a false failure.
+  let ganttSelfCheckStarted = false;
+  let ganttSelfCheckPromise = null;
+
+  /**
+   * The embedded gantt self-check fixture. Two tasks are enough to pin
+   * everything this surface depends on.
+   *
+   * The FIRST task is deliberately a FOUR-FIELD line carrying a status flag
+   * (`:done, s1, 2026-01-05, 5d`). That is the exact shape the shipped
+   * module's regexes mis-split, and pinning it here is the point of the
+   * surface: if a Mermaid upgrade ever started reading the flag as the id,
+   * this check fails loudly instead of the surface quietly delivering the
+   * same wrong answer the regex parser does.
+   *
+   * The THIRD task pins `after` dependency resolution AND the distinction
+   * between the dependency and Mermaid's `prevTaskId`: it depends on the
+   * FIRST task while the SECOND is the one declared before it, so a reading
+   * that confused the two would fail here. That confusion is not
+   * hypothetical — this surface shipped it for one draft.
+   */
+  const GANTT_SELF_CHECK_FIXTURE = [
+    "gantt",
+    "    title Adapter self check",
+    "    accTitle: Self check accessible title",
+    "    dateFormat YYYY-MM-DD",
+    "    section Alpha",
+    "    First :done, s1, 2026-01-05, 5d",
+    "    Second :s2, 2026-02-01, 2d",
+    "    Third :s3, after s1, 3d",
+  ].join("\n");
+
+  /**
+   * One day in milliseconds, for the duration assertion in the self-check.
+   */
+  const GANTT_MS_PER_DAY = 86400000;
+
+  /**
+   * An `after` dependency clause, matched case-insensitively on the keyword.
+   */
+  const GANTT_AFTER_CLAUSE = /^after\s+/i;
+
+  /**
+   * An `until` clause in the end slot.
+   */
+  const GANTT_UNTIL_CLAUSE = /^until\s+/i;
+
+  /**
+   * The task's START declaration, verbatim as the author wrote it — a date
+   * string, or an `after ...` clause.
+   * @param {Object} task - The db's task object
+   * @returns {string} The declaration, or "" when absent
+   */
+  function ganttStartDeclaration(task) {
+    const start = task && task.raw ? task.raw.startTime : null;
+    return start && typeof start.startData === "string" ? start.startData : "";
+  }
+
+  /**
+   * The task's END declaration, verbatim — a duration such as "5d", an
+   * explicit end date, or an `until ...` clause.
+   * @param {Object} task - The db's task object
+   * @returns {string} The declaration, or "" when absent
+   */
+  function ganttEndDeclaration(task) {
+    const end = task && task.raw ? task.raw.endTime : null;
+    return end && typeof end.data === "string" ? end.data : "";
+  }
+
+  /**
+   * The ids a task's `after` clause names, in the order written.
+   *
+   * THIS IS NOT prevTaskId, and the difference is the trap this helper
+   * exists to close. MEASURED 29 August 2026: `prevTaskId` is the task
+   * declared immediately BEFORE this one, unconditionally — a task with an
+   * absolute start date and no dependency at all still carries one, and a
+   * task written `after a` two positions later reports `b`. Mermaid resolves
+   * the real dependency into startTime and keeps the clause only in
+   * raw.startTime.startData, which is what this reads.
+   *
+   * Mermaid accepts several targets (`after a b`) and starts the task after
+   * the LATEST of them, so this returns every id rather than the first.
+   *
+   * @param {Object} task - The db's task object
+   * @returns {string[]} The dependency ids, empty when the start is a date
+   */
+  function ganttDependencies(task) {
+    const declaration = ganttStartDeclaration(task);
+    if (!GANTT_AFTER_CLAUSE.test(declaration)) {
+      return [];
+    }
+    return declaration
+      .replace(GANTT_AFTER_CLAUSE, "")
+      .split(/\s+/)
+      .filter((id) => id !== "");
+  }
+
+  /**
+   * The id an `until` clause names, or null.
+   * @param {Object} task - The db's task object
+   * @returns {string|null} The target id, or null when the end is not an
+   *   `until` clause
+   */
+  function ganttUntilTarget(task) {
+    const declaration = ganttEndDeclaration(task);
+    if (!GANTT_UNTIL_CLAUSE.test(declaration)) {
+      return null;
+    }
+    const target = declaration.replace(GANTT_UNTIL_CLAUSE, "").trim();
+    return target === "" ? null : target;
+  }
+
+  /**
+   * Copy a db-owned Date into an adapter-owned one, or null.
+   *
+   * Never returns the db's own object: a dependent task's startTime is the
+   * SAME Date instance as its predecessor's endTime (measured), so passing
+   * references through would share one mutable date between two delivered
+   * tasks. An unparseable date arrives as an Invalid Date rather than as
+   * null, and is normalised to null here so a consumer has one absent case
+   * to test rather than two.
+   *
+   * @param {*} value - The db's date value
+   * @returns {Date|null} An adapter-owned Date, or null when absent/invalid
+   */
+  function copyGanttDate(value) {
+    if (!(value instanceof Date)) {
+      return null;
+    }
+    const time = value.getTime();
+    return Number.isNaN(time) ? null : new Date(time);
+  }
+
+  /**
+   * Normalise one resolved gantt Diagram instance into the adapter's gantt
+   * shape.
+   *
+   * EAGER SNAPSHOT (defence 1): getTasks() and getSections() hand back the
+   * db's own arrays holding the db's own objects — the same references on
+   * every call — and the next gantt parse replaces them. Both are therefore
+   * read ONCE here, inside the parse's own .then and behind the queue, and
+   * mapped into the adapter's own objects immediately. Nothing in the
+   * returned shape references a db-owned object, dates included.
+   *
+   * The three shared-store scalars (title, accTitle, accDescr) are read in
+   * this same slot, per register item 21: they live in Mermaid's cross-type
+   * common db, which EVERY parse of EVERY type clears.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @returns {Object} The normalised gantt chart
+   */
+  function normaliseGantt(diagram) {
+    const db = diagram.db;
+
+    // The two data reads. Everything below maps these.
+    const rawTasks = Array.isArray(db.getTasks()) ? db.getTasks() : [];
+    const rawSections = Array.isArray(db.getSections()) ? db.getSections() : [];
+
+    const tasks = rawTasks.map((task) => ({
+      // ITEM 9, VERDICT C-PLACEHOLDER — see the section header.
+      //
+      // TRIMMED, ruled 29 August 2026, reversing this surface's first
+      // draft. Mermaid's grammar captures everything up to the colon, so
+      // `Task :id` delivers "Task " and `Task:id` delivers "Task" —
+      // measured, and the difference is the author's SEPARATOR spacing
+      // rather than content they chose. Left untrimmed, every consumer
+      // would have to strip it before interpolating or emit
+      // "Research , which starts on ...", and the gold targets
+      // (docs/mermaid-gantt-gold-targets-2026-08-29.md) are authored
+      // against trimmed names.
+      //
+      // TRIMMED AFTER THE DECODE, not before: an author-encoded space
+      // reaches the db as placeholder bytes and only becomes whitespace
+      // once decoded, so trimming first would leave it behind.
+      //
+      // PER-TYPE BY RULE. This trim belongs to the gantt surface alone;
+      // the other six deliver their author text untouched. The adapter
+      // decides delivery per type on measurement and does not generalise
+      // one surface's normalisation across the rest.
+      name: decodePlaceholders(
+        typeof task.task === "string" ? task.task : ""
+      ).trim(),
+
+      // The id survives a leading status flag — the defect this surface
+      // exists to route around. Absent ids arrive as undefined; normalised
+      // to null so a consumer has one absent case.
+      id: typeof task.id === "string" ? task.id : null,
+
+      section: decodePlaceholders(
+        typeof task.section === "string" ? task.section : ""
+      ),
+
+      // Creation order across the whole chart, not within a section.
+      order: typeof task.order === "number" ? task.order : null,
+
+      // AN AUTO-GENERATED ID IS NOT AUTHOR TEXT. A task written without one
+      // still receives an id — measured: an id-less task is delivered as
+      // `task1`. The test is exact rather than a pattern match: Mermaid keeps
+      // the author's own metadata verbatim in raw.data, so an id the author
+      // wrote appears there and a generated one does not. A description that
+      // said "task task1" would be quoting the parser to the reader.
+      hasGeneratedId:
+        typeof task.id === "string" &&
+        !(
+          task.raw &&
+          typeof task.raw.data === "string" &&
+          task.raw.data.indexOf(task.id) !== -1
+        ),
+
+      // The author's own start and end clauses, verbatim. Delivered raw
+      // because Mermaid keeps no parsed form of them and the narration layer
+      // owns how a duration or an explicit end date should read.
+      startDeclaration: ganttStartDeclaration(task),
+      endDeclaration: ganttEndDeclaration(task),
+
+      // The REAL dependency, from the `after` clause — NOT prevTaskId, which
+      // is declaration order (see ganttDependencies). An array because
+      // Mermaid accepts several targets and starts after the latest.
+      dependsOn: ganttDependencies(task),
+
+      // The `until` target, which ends a task at another task rather than
+      // after a duration.
+      untilTaskId: ganttUntilTarget(task),
+
+      startDate: copyGanttDate(task.startTime),
+      endDate: copyGanttDate(task.endTime),
+
+      // The four status flags are own keys holding `undefined` when unset,
+      // so each is an explicit === true rather than a truthiness test, and
+      // each is delivered as a real boolean.
+      isDone: task.done === true,
+      isActive: task.active === true,
+      isCritical: task.crit === true,
+      isMilestone: task.milestone === true,
+    }));
+
+    return {
+      type: "gantt",
+
+      // Gantt accepts the body `title` form, and it WINS over a frontmatter
+      // title (measured). This is the third type after git graph and xychart
+      // whose title genuinely carries data.
+      title: decodePlaceholders(db.getDiagramTitle()),
+
+      // NO transform on either, per the standing carve-out: clause X3 owns
+      // author override and reads the raw source. Unlike ER and class these
+      // are genuinely POPULATED on this type, so they are delivered rather
+      // than omitted.
+      accTitle: db.getAccTitle(),
+      accDescr: db.getAccDescription(),
+
+      // The author's declared date format, which the description names.
+      dateFormat: db.getDateFormat(),
+
+      // The day the working week starts. It is not decoration: it decides
+      // WHICH days `excludes weekends` actually removes, so a description
+      // naming Saturday and Sunday is wrong on a chart declaring
+      // `weekday monday`.
+      weekday: db.getWeekday(),
+
+      // Copied into adapter-owned arrays for the same reason the tasks are.
+      excludes: Array.isArray(db.getExcludes()) ? [...db.getExcludes()] : [],
+      includes: Array.isArray(db.getIncludes()) ? [...db.getIncludes()] : [],
+
+      sections: rawSections.map((section) =>
+        decodePlaceholders(typeof section === "string" ? section : "")
+      ),
+
+      tasks: tasks,
+    };
+  }
+
+  /**
+   * Parse Mermaid gantt code into the normalised gantt shape.
+   *
+   * Rejects with Mermaid's own error on a parse failure. The call itself
+   * never throws synchronously, so awaiting this promise is the single error
+   * path.
+   *
+   * SERIALISED PARSES (adapter-wide since register item 21): every parse is
+   * chained through the queue so it cannot replace the shared singleton's
+   * data while an earlier call's snapshot is still in progress, and so the
+   * three shared-store scalars are read before another parse can clear them.
+   * The chain advances on settlement, not success, so a rejection cannot
+   * wedge it.
+   *
+   * @param {string} code - The Mermaid source
+   * @returns {Promise<Object>} Resolves to the normalised gantt chart
+   */
+  function parseGantt(code) {
+    // Lazy gantt self-check trigger, matching the other surfaces' ordering.
+    // The check enqueues its own fixture parse first, so it holds the front
+    // of the queue ahead of this call's parse.
+    if (!ganttSelfCheckStarted) {
+      runGanttSelfCheck();
+    }
+
+    if (code === ganttMemoCode && ganttMemoPromise) {
+      logDebug("Returning memoised gantt parse for identical code string");
+      return ganttMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    // Per-parse trace (register item 24) - see the flowchart surface for
+    // why it sits inside run and why only the code LENGTH is logged.
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Gantt parse entering its queue slot, ${code.length} characters`);
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `Gantt parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const chart = normaliseGantt(diagram);
+          logDebug(
+            `Gantt parse delivered after ${Math.round(performance.now() - startedAt)}ms`
+          );
+          return chart;
+        })
+        .catch((error) => {
+          logDebug(
+            `Gantt parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    // Chain on settlement, not success: the queue itself never rejects
+    // (see the tail below), but `run` is passed as both handlers so a
+    // future change to that invariant cannot silently skip a parse.
+    const result = adapterParseQueue.then(run, run);
+
+    // Settlement-only tail — a rejected parse must not wedge the queue.
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    ganttMemoCode = code;
+    ganttMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Parse the embedded gantt fixture and assert the db accessor names and
+   * field shapes the gantt surface depends on. Resolves true on a clean
+   * pass. On any failure it logs one ERROR naming the failed assertion,
+   * marks the gantt surface unhealthy, and resolves false. Never throws,
+   * never rejects, and never reads or writes the other six health flags.
+   *
+   * Like the ER, class, git, sankey and xychart checks, this resolves the
+   * Diagram itself rather than going through parseGantt(): its assertions
+   * are deliberately about the RAW db internals the normalised shape exists
+   * to hide — above all THE FOUR-FIELD PIN, so a Mermaid upgrade that
+   * started mis-splitting a flagged task line would fail here rather than
+   * letting this surface deliver the same wrong answer the regex parser it
+   * replaces already delivers.
+   *
+   * The fixture parse goes through the parse QUEUE: a direct unqueued
+   * getDiagramFromText call could replace the singleton db's data
+   * mid-snapshot of a queued consumer parse. All raw reads happen
+   * synchronously inside the parse's own .then, before the queue advances.
+   *
+   * NO ABSOLUTE CALENDAR DATE IS ASSERTED, deliberately — though NOT for
+   * the reason this comment first gave, which was inverted.
+   *
+   * MEASURED 29 August 2026: Mermaid builds these Dates at LOCAL midnight,
+   * NOT at UTC midnight. The consequence runs the opposite way to the
+   * original claim — getDate() is the SAFE accessor and toISOString() is
+   * the unsafe one, because from 29 March 2026 British Summer Time puts
+   * local midnight at 23:00 UTC the previous day, so a UTC read reports
+   * every date one day early. That silently invalidated a first-pass
+   * derivation of the gold targets before it was caught.
+   *
+   * The assertions below are UNCHANGED and were measured sound: they use
+   * only differences and identities, which hold in any zone, and the
+   * day-count is rounded so a DST boundary inside a span cannot fail it.
+   * An absolute-date assertion is still avoided, because it would pin this
+   * check to the machine's own zone for no gain.
+   *
+   * @returns {Promise<boolean>} Resolves to the gantt health verdict
+   */
+  function runGanttSelfCheck() {
+    if (ganttSelfCheckPromise) {
+      return ganttSelfCheckPromise;
+    }
+    ganttSelfCheckStarted = true;
+
+    // Every raw db read happens INSIDE the queued run, so `run` resolves to
+    // the completed assertion list rather than to a diagram for a later
+    // .then to read — the structural form of the queue's invariant.
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            GANTT_SELF_CHECK_FIXTURE
+          );
+        })
+        .then((diagram) => {
+          const db = diagram.db;
+
+          // All raw reads are synchronous within the slot — the queue cannot
+          // advance until they are done.
+          const tasks = Array.isArray(db.getTasks()) ? db.getTasks() : [];
+          const sections = Array.isArray(db.getSections())
+            ? db.getSections()
+            : [];
+          const first = tasks[0];
+          const second = tasks[1];
+          const third = tasks[2];
+
+          // The freshness pin below needs a second read of the same accessor.
+          const tasksAgain = db.getTasks();
+
+          const title = db.getDiagramTitle();
+          const accTitle = db.getAccTitle();
+
+          // Each entry: [assertion name, predicate]. The first false
+          // predicate fails the check and is named in the single ERROR line.
+          // The predicates are EVALUATED HERE, inside the slot, so the
+          // verdict below never touches the db.
+          return [
+            [
+              'getSections returns ["Alpha"] and getTasks returns three tasks',
+              sections.length === 1 &&
+                sections[0] === "Alpha" &&
+                tasks.length === 3 &&
+                !!first &&
+                !!second &&
+                !!third,
+            ],
+            [
+              "THE FOUR-FIELD PIN: a task line written `:done, s1, <date>, 5d` " +
+                'delivers id "s1" with done true — the flag is NOT read as the id',
+              !!first && first.id === "s1" && first.done === true,
+            ],
+            [
+              "an unset status flag is an own key holding undefined, not false",
+              !!second &&
+                Object.prototype.hasOwnProperty.call(second, "done") &&
+                second.done === undefined,
+            ],
+            [
+              "startTime and endTime are real Date instances spanning the " +
+                "declared 5d duration",
+              !!first &&
+                first.startTime instanceof Date &&
+                first.endTime instanceof Date &&
+                !Number.isNaN(first.startTime.getTime()) &&
+                !Number.isNaN(first.endTime.getTime()) &&
+                Math.round(
+                  (first.endTime.getTime() - first.startTime.getTime()) /
+                    GANTT_MS_PER_DAY
+                ) === 5,
+            ],
+            [
+              "the `after` dependency is RESOLVED: the third task declares " +
+                '`after s1` and starts exactly where the first task ends',
+              !!third &&
+                third.raw &&
+                third.raw.startTime &&
+                third.raw.startTime.startData === "after s1" &&
+                third.startTime instanceof Date &&
+                third.startTime.getTime() === first.endTime.getTime(),
+            ],
+            [
+              "THE DEPENDENCY/ORDER PIN: prevTaskId is the task declared " +
+                'BEFORE this one ("s2"), NOT the `after` target ("s1") — the ' +
+                "two are different fields and this fixture separates them",
+              !!third && third.prevTaskId === "s2",
+            ],
+            [
+              "THE ALIASING PIN: a dependent task's startTime is the SAME Date " +
+                "object as its dependency's endTime, so the surface must copy",
+              !!third && third.startTime === first.endTime,
+            ],
+            [
+              "THE FRESHNESS PIN: getTasks returns the db's OWN array, the same " +
+                "reference on a second call, so an eager snapshot is required",
+              tasksAgain === tasks,
+            ],
+            [
+              "the body `title` form and `accTitle:` both populate on this type",
+              title === "Adapter self check" &&
+                accTitle === "Self check accessible title",
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    ganttSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Gantt self-check FAILED at assertion: ${failed[0]}. ` +
+              "The pinned Mermaid build's gantt parse internals no longer " +
+              "match the measurements this surface was built on; do not " +
+              "trust gantt adapter output."
+          );
+          ganttHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Gantt self-check passed: all accessor and field-shape assertions hold"
+        );
+        ganttHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          `Gantt self-check FAILED at assertion: parse resolves. ` +
+            `The fixture parse rejected: ${error && error.message}`
+        );
+        ganttHealthy = false;
+        return false;
+      });
+
+    return ganttSelfCheckPromise;
+  }
+
+  /**
+   * Report the gantt surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the gantt self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isGanttHealthy() {
+    return ganttHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -2489,6 +4244,12 @@ window.MermaidParseAdapter = (function () {
     parseSankey: parseSankey,
     runSankeySelfCheck: runSankeySelfCheck,
     isSankeyHealthy: isSankeyHealthy,
+    parseXychart: parseXychart,
+    runXychartSelfCheck: runXychartSelfCheck,
+    isXychartHealthy: isXychartHealthy,
+    parseGantt: parseGantt,
+    runGanttSelfCheck: runGanttSelfCheck,
+    isGanttHealthy: isGanttHealthy,
     // Register item 24: the global enableAllLog() cannot reach this module's
     // level, so the control is exported here as MermaidThemes and
     // MermaidControls already do. Without it the per-parse trace above is

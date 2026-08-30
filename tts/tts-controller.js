@@ -1408,7 +1408,6 @@ const TTSController = (function () {
   /**
    * Encode Float32Array PCM samples as a 128 kbps CBR mono MP3 file.
    * Requires lamejs to already be loaded (call _loadLameJs() first).
-   * Emits tts:exportEncodeProgress events at ~10% intervals.
    *
    * @param {Float32Array} samples — mono PCM samples in [-1, 1] range
    * @param {number} sampleRate — e.g. 44100
@@ -1432,27 +1431,16 @@ const TTSController = (function () {
     var blockSize = 1152; // standard MP3 frame size
     var mp3Data = [];
     var totalBlocks = Math.ceil(int16.length / blockSize);
-    var lastReportedPercent = -10;
 
     for (var b = 0; b < totalBlocks; b++) {
       var start = b * blockSize;
       var chunk = int16.subarray(start, start + blockSize);
       var mp3buf = encoder.encodeBuffer(chunk);
       if (mp3buf.length > 0) mp3Data.push(mp3buf);
-
-      var percent = Math.floor(((b + 1) / totalBlocks) * 100);
-      if (percent - lastReportedPercent >= 10) {
-        emit('tts:exportEncodeProgress', { percent: percent });
-        lastReportedPercent = percent;
-      }
     }
 
     var tail = encoder.flush();
     if (tail.length > 0) mp3Data.push(tail);
-
-    if (lastReportedPercent < 100) {
-      emit('tts:exportEncodeProgress', { percent: 100 });
-    }
 
     // Concatenate all MP3 chunks
     var totalLength = 0;

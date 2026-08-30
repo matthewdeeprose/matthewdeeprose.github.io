@@ -1,6 +1,42 @@
 /**
  * Mermaid Accessibility - Gantt Chart Module
- * Generates accessible descriptions for Gantt charts
+ *
+ * Generates accessible descriptions for `gantt` diagrams from the shared parse
+ * adapter's gantt surface (mermaid-parse-adapter.js), never from the SVG and
+ * never from the diagram source. The seventh adapter-consuming generator.
+ *
+ * THE VOICE IS FROZEN. Every sentence below implements
+ * docs/mermaid-gantt-gold-targets-2026-08-29.md — rules G1 to G17 and six
+ * byte-exact approved targets. A mismatch between this module's output and a
+ * target is a STOP that goes back to the design seat; it is never a reason to
+ * edit a target or a fixture.
+ *
+ * AMENDED 30 August 2026, enacting the design seat's rulings on the hostile
+ * probe sweep (docs/mermaid-gantt-probe-sweep-2026-08-30.md): G17 minted for
+ * null-dated tasks (F2), G8 rewritten to speak the author's own exclusions and
+ * claim nothing about scheduling (F5, F6), G16's insight no longer names a
+ * cause (F4), milestone durations forced to 0 days (F3), unresolved
+ * dependencies signalled rather than dropped (F1b), and a flagged milestone's
+ * Status cell composed rather than truncated (F10).
+ *
+ * WHY THE REWRITE. The module this replaces read the diagram source with three
+ * hand-written regexes and re-derived every date itself, including roughly 280
+ * lines of exclusion arithmetic. Its task-line regex captured three metadata
+ * fields, so a four-field line — `Research :done, r1, 2026-01-05, 5d` — put the
+ * status flag in the id slot, the id in the timing slot and a malformed string
+ * into the date parser, and the whole chart lost its dates silently. Mermaid
+ * itself already resolves ids, flags, `after` chains and `excludes`; the
+ * adapter surface delivers that resolution, and this module narrates it.
+ *
+ * DATES ARE READ WITH getFullYear/getMonth/getDate, NEVER toISOString. Mermaid
+ * builds its Dates at LOCAL midnight, so under BST a delivered
+ * `2026-03-31T23:00:00.000Z` is 1 April 2026 and toISOString would narrate the
+ * previous day. Measured on the gold exemplars, 29 August 2026.
+ *
+ * END DATES FOLLOW CONVENTION C (gold method notes). The surface's `endDate` is
+ * EXCLUSIVE — start plus duration — and Mermaid pushes it past excluded days,
+ * so the narrated end is the last non-excluded day strictly before it. A
+ * milestone contributes its own date instead.
  */
 (function () {
   // Logging configuration (inside module scope)
@@ -56,1550 +92,1440 @@
     return;
   }
 
-  // Utility function aliases
-  const Utils = window.MermaidAccessibilityUtils;
-  const DateUtils = Utils.DateUtils;
-  const Common = window.MermaidAccessibilityCommon;
+  // ---------------------------------------------------------------------
+  // The shared prose layer, resolved AT CALL TIME and never cached
+  // ---------------------------------------------------------------------
+  //
+  // A module-scope `const Common = window.MermaidAccessibilityCommon` captures
+  // `undefined` permanently if this file ever loses the load race, and the
+  // symptom is a TypeError deep inside a tier rather than anything naming the
+  // load order. One property read per call cannot go stale. (XY chart
+  // precedent.)
 
   /**
-   * Generate a short description for a Gantt chart
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {object} An object with HTML and plain text versions of the description
+   * The shared prose layer (narrationNumber, formatList, escapeHtml).
+   * @returns {Object} MermaidAccessibilityCommon
    */
-  function generateShortDescription(svgElement, code) {
-    // Extract title from code
-    const titleMatch = code.match(/title\s+([^\n]+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : "Gantt Chart";
+  function common() {
+    return window.MermaidAccessibilityCommon;
+  }
 
-    // Parse sections, tasks, and exclusions
-    const { sections, excludesWeekends, excludedDates, weekendConfig } =
-      parseGanttChart(code);
+  /**
+   * Escape one string of AUTHOR TEXT for an HTML sink.
+   *
+   * Knowledge base § 14.2: the caller escapes, exactly once, at the point the
+   * field enters the HTML; generator furniture — the tags, the quotation marks
+   * around a name, the commas and the "and" — is never escaped; transforms run
+   * before the escape; list items are escaped before a join, never after. The
+   * PLAIN short tier is raw author text and calls none of this.
+   *
+   * @param {string} text - Author text
+   * @returns {string} The escaped string
+   */
+  function escapeText(text) {
+    return common().escapeHtml(text);
+  }
 
-    // Count tasks and milestones
-    let taskCount = 0;
-    let milestoneCount = 0;
+  /**
+   * The identity transform, for the PLAIN tier. Passed where an HTML sink
+   * would pass `escapeText`, so one builder serves both tiers and neither can
+   * drift from the other.
+   * @param {string} text - Author text
+   * @returns {string} The same text
+   */
+  function rawText(text) {
+    return String(text);
+  }
 
-    sections.forEach((section) => {
-      section.tasks.forEach((task) => {
-        if (task.isMilestone) {
-          milestoneCount++;
-        } else {
-          taskCount++;
-        }
-      });
-    });
+  /**
+   * Narration count: words for zero to nine, digits from 10 (rule G4). The one
+   * number-to-word route in this module — there is deliberately no second
+   * computation of it.
+   * @param {number} value - The count
+   * @returns {string} The count as it is spoken
+   */
+  function countWord(value) {
+    return common().narrationNumber(value);
+  }
 
-    // Diagram-source text is escaped once, here, where it enters an HTML
-    // string. The PLAIN tier below deliberately keeps the raw title: it feeds
-    // the SVG aria-label and the textContent fallback, neither of which parses
-    // HTML, so entities there would be read out literally.
-    const safeTitle = Common.escapeHtml(title);
-
-    // Build a concise description - HTML version
-    let htmlDescription = `A Gantt chart titled "<span class="diagram-title">${safeTitle}</span>" showing `;
-
-    if (sections.length > 0) {
-      htmlDescription += `<span class="diagram-section-count">${sections.length}</span> project `;
-      htmlDescription += sections.length === 1 ? "phase" : "phases";
+  /**
+   * A task's position among the tasks sharing its name, as a word (rules G5 and
+   * G11, amended 30 August 2026). "first", "second" … "ninth", then "10th".
+   *
+   * This is the module's own vocabulary and not a second number-to-word route:
+   * countWord speaks CARDINALS and cannot produce an ordinal, so there is
+   * nothing here to keep in step with it.
+   *
+   * @param {number} position - The 1-based position
+   * @returns {string} The ordinal
+   */
+  function ordinalWord(position) {
+    if (position >= 1 && position <= ORDINAL_WORDS.length) {
+      return ORDINAL_WORDS[position - 1];
     }
+    const lastTwo = position % 100;
+    const lastOne = position % 10;
+    const suffix =
+      lastTwo >= 11 && lastTwo <= 13
+        ? "th"
+        : lastOne === 1
+          ? "st"
+          : lastOne === 2
+            ? "nd"
+            : lastOne === 3
+              ? "rd"
+              : "th";
+    return `${position}${suffix}`;
+  }
 
-    if (taskCount > 0) {
-      htmlDescription += ` with <span class="diagram-task-count">${taskCount}</span> `;
-      htmlDescription += taskCount === 1 ? "task" : "tasks";
-    }
+  // ---------------------------------------------------------------------
+  // Constants
+  // ---------------------------------------------------------------------
 
-    if (milestoneCount > 0) {
-      htmlDescription += ` and <span class="diagram-milestone-count">${milestoneCount}</span> `;
-      htmlDescription += milestoneCount === 1 ? "milestone" : "milestones";
-    }
+  const MONTH_NAMES = Object.freeze([
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]);
 
-    // Add exclusion information if present
-    if (excludesWeekends || (excludedDates && excludedDates.length > 0)) {
-      htmlDescription += ". The schedule excludes ";
+  const DAY_NAMES = Object.freeze([
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+  ]);
 
-      if (excludesWeekends) {
-        htmlDescription += `<span class="diagram-excludes-weekends">weekends`;
-        if (weekendConfig) {
-          htmlDescription += ` (${
-            weekendConfig === "friday" ? "Friday-Saturday" : "Saturday-Sunday"
-          })`;
-        }
-        htmlDescription += "</span>";
+  // Rule G7's flag vocabulary, in prose and in the table. Exact strings; the
+  // table forms are capitalised and the prose forms are not, so they are two
+  // frozen tables rather than one with a transform applied at the call site.
+  const FLAG_KEYS = Object.freeze(["done", "active", "crit"]);
+  const FLAG_PROSE = Object.freeze({
+    done: "complete",
+    active: "in progress",
+    crit: "on the critical path",
+  });
+  const FLAG_TABLE = Object.freeze({
+    done: "Complete",
+    active: "In progress",
+    crit: "On the critical path",
+  });
+  const STATUS_NONE = "None";
+  const STATUS_MILESTONE = "Milestone";
 
-        if (excludedDates && excludedDates.length > 0) {
-          htmlDescription += " and ";
-        }
-      }
+  // Rule G17 (minted 30 August 2026, sweep finding F2). What a table cell reads
+  // for a task whose dates Mermaid could not resolve — a self-dependency, a
+  // dependency cycle, or an `after` naming nothing. The surface delivers
+  // startDate and endDate as null in those cases, honestly; before G17 the
+  // module dereferenced them and generateDetailed threw, losing the entire
+  // detailed tier while the short tier carried on as though nothing was wrong.
+  const NOT_RESOLVED = "Not resolved";
+  const NO_DATES_PHRASE = "has no resolvable dates";
 
-      if (excludedDates && excludedDates.length > 0) {
-        htmlDescription += `<span class="diagram-excludes-dates">${excludedDates.length} specific `;
-        htmlDescription += excludedDates.length === 1 ? "date" : "dates";
-        htmlDescription += "</span>";
-      }
-    }
+  // Rule G11: a milestone's Duration is 0 days whatever the author declared in
+  // the end slot (sweep finding F3, where `:milestone, m1, 2026-01-05, 5d`
+  // printed "5 days" in a row whose Start and End were the same single day).
+  const MILESTONE_DURATION_TEXT = "0 days";
 
-    htmlDescription += ".";
+  // Rule G5's enactment note of 30 August 2026 (sweep findings F1 and F1b). A
+  // dependency that resolves to no task in the chart is SIGNALLED, never
+  // dropped: the id itself is parser text and is never narrated, so the reader
+  // is told that a predecessor exists and could not be found.
+  const UNRESOLVED_PREDECESSOR = Object.freeze({
+    singular: "a task not found in the chart",
+    plural: "tasks not found in the chart",
+  });
 
-    // Plain text version (without HTML tags)
-    let plainTextDescription = `A Gantt chart titled "${title}" showing `;
+  // Rule G11's caption for a chart that declares no title.
+  const UNTITLED_CAPTION = "Data table for this Gantt chart";
 
-    if (sections.length > 0) {
-      plainTextDescription += `${sections.length} project `;
-      plainTextDescription += sections.length === 1 ? "phase" : "phases";
-    }
+  // Rules G1/G2 as amended 30 August 2026 (sweep finding F8). The short's own
+  // budget, and deliberately the SAME number the harness's contract clause C1
+  // uses: two numbers that must agree is one number that will eventually not.
+  // The module owns the discipline rather than the gate, because a short only
+  // the gate objects to is still a short a reader has to listen to.
+  const SHORT_MAX_CHARS = 250;
 
-    if (taskCount > 0) {
-      plainTextDescription += ` with ${taskCount} `;
-      plainTextDescription += taskCount === 1 ? "task" : "tasks";
-    }
+  // Rules G5/G11 as amended 30 August 2026 (sweep finding F9). The words a
+  // duplicate name is addressed by. They are GENERATOR-OWNED — the author's
+  // name is never altered, only qualified — and they follow rule G4's boundary:
+  // words to ninth, digits from 10th.
+  const ORDINAL_WORDS = Object.freeze([
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh",
+    "eighth",
+    "ninth",
+  ]);
 
-    if (milestoneCount > 0) {
-      plainTextDescription += ` and ${milestoneCount} `;
-      plainTextDescription += milestoneCount === 1 ? "milestone" : "milestones";
-    }
+  // Mermaid's `excludes weekends` keyword, and the `weekend` directive's only
+  // non-default value. `weekend friday` moves the excluded pair to Friday and
+  // Saturday; every other delivered value (including the default "sunday",
+  // measured 29 August 2026) means Saturday and Sunday.
+  const EXCLUDE_WEEKENDS = "weekends";
+  const WEEKEND_FRIDAY = "friday";
 
-    // Add exclusion information if present
-    if (excludesWeekends || (excludedDates && excludedDates.length > 0)) {
-      plainTextDescription += ". The schedule excludes ";
+  // A duration declaration is the author's own digits plus one of Mermaid's
+  // units. Anchored at both ends: an unanchored test would match a number
+  // inside some other end-slot form, such as `until b2`.
+  const DURATION_DECLARATION = /^(\d+(?:\.\d+)?)\s*(ms|[smhdw])?$/i;
 
-      if (excludesWeekends) {
-        plainTextDescription += `weekends`;
-        if (weekendConfig) {
-          plainTextDescription += ` (${
-            weekendConfig === "friday" ? "Friday-Saturday" : "Saturday-Sunday"
-          })`;
-        }
+  // The noun each unit takes, and how many days one of it is worth. The days
+  // figure is used only to rank tasks by length and to detect rule G16's
+  // stretch; the NOUN is what reaches the reader.
+  const DURATION_UNITS = Object.freeze({
+    ms: { noun: "millisecond", days: 1 / 86400000 },
+    s: { noun: "second", days: 1 / 86400 },
+    m: { noun: "minute", days: 1 / 1440 },
+    h: { noun: "hour", days: 1 / 24 },
+    d: { noun: "day", days: 1 },
+    w: { noun: "week", days: 7 },
+  });
+  const DEFAULT_DURATION_UNIT = "d";
 
-        if (excludedDates && excludedDates.length > 0) {
-          plainTextDescription += " and ";
-        }
-      }
+  // The walk-back in `narratedEndDate` steps one day at a time over excluded
+  // days. A chart excluding a whole year would otherwise spin; the bound is a
+  // guard against a malformed excludes list, not a supported case.
+  const MAX_EXCLUDED_WALK_BACK_DAYS = 366;
 
-      if (excludedDates && excludedDates.length > 0) {
-        plainTextDescription += `${excludedDates.length} specific `;
-        plainTextDescription += excludedDates.length === 1 ? "date" : "dates";
-      }
-    }
+  const MS_PER_DAY = 86400000;
 
-    plainTextDescription += ".";
+  // ---------------------------------------------------------------------
+  // Dates — local components only
+  // ---------------------------------------------------------------------
 
+  /**
+   * A Date's LOCAL calendar day, as a plain triple. Every date decision in this
+   * module goes through this; nothing calls toISOString.
+   * @param {Date} date - The date
+   * @returns {Object} { year, month, day }
+   */
+  function localParts(date) {
     return {
-      html: htmlDescription,
-      text: plainTextDescription,
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      day: date.getDate(),
     };
   }
 
   /**
-   * Wrapper for the short description generator to maintain backwards compatibility
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {string} The plain text description for backwards compatibility
+   * A date offset by whole days, rebuilt from LOCAL components so a daylight
+   * saving boundary inside the offset cannot shift the calendar day.
+   * @param {Date} date - The starting date
+   * @param {number} days - Days to add; may be negative
+   * @returns {Date} The offset date, at local midnight
    */
-  function shortDescriptionWrapper(svgElement, code) {
-    const descriptions = generateShortDescription(svgElement, code);
+  function addDays(date, days) {
+    const p = localParts(date);
+    return new Date(p.year, p.month, p.day + days);
+  }
 
-    // Return text version for backwards compatibility with existing code
+  /**
+   * Two dates' calendar days compared, ignoring the time of day.
+   * @param {Date} a - First date
+   * @param {Date} b - Second date
+   * @returns {number} Negative if a is earlier, 0 if the same day, positive if later
+   */
+  function compareDays(a, b) {
+    const pa = localParts(a);
+    const pb = localParts(b);
+    return (
+      Date.UTC(pa.year, pa.month, pa.day) - Date.UTC(pb.year, pb.month, pb.day)
+    );
+  }
+
+  /**
+   * The INCLUSIVE count of calendar days from one date to another (rule G15).
+   * Computed through Date.UTC on the local components so no daylight saving
+   * transition inside the span can cost or add an hour and round wrongly.
+   * @param {Date} from - The first day, counted
+   * @param {Date} to - The last day, counted
+   * @returns {number} The number of calendar days
+   */
+  function inclusiveDayCount(from, to) {
+    return Math.round(compareDays(to, from) / MS_PER_DAY) + 1;
+  }
+
+  /**
+   * A date in British narration form: 2 March 2026 (rule G4).
+   * @param {Date} date - The date
+   * @returns {string} The formatted date
+   */
+  function formatBritishDate(date) {
+    const p = localParts(date);
+    return `${p.day} ${MONTH_NAMES[p.month]} ${p.year}`;
+  }
+
+  /**
+   * A date rendered in the author's own declared `dateFormat`, so an `excludes`
+   * entry naming a specific day can be compared against it.
+   *
+   * Supports the day, month and year tokens; anything else in the pattern is
+   * left alone. Mermaid's excludes list holds the author's own strings, so an
+   * exact comparison against the author's own format is the only test that can
+   * match without guessing at their intent.
+   *
+   * @param {Date} date - The date
+   * @param {string} pattern - The chart's dateFormat
+   * @returns {string} The date in that format
+   */
+  function formatByPattern(date, pattern) {
+    const p = localParts(date);
+    const pad = (n) => String(n).padStart(2, "0");
+    return String(pattern || "YYYY-MM-DD")
+      .replace(/YYYY/g, String(p.year))
+      .replace(/YY/g, pad(p.year % 100))
+      .replace(/MM/g, pad(p.month + 1))
+      .replace(/DD/g, pad(p.day))
+      .replace(/\bM\b/g, String(p.month + 1))
+      .replace(/\bD\b/g, String(p.day));
+  }
+
+  // ---------------------------------------------------------------------
+  // Exclusions
+  // ---------------------------------------------------------------------
+
+  /**
+   * Which two weekdays this chart's `excludes weekends` removes, and what they
+   * are called.
+   *
+   * Mermaid's `weekend` directive accepts `friday` or `saturday`; every chart
+   * measured on 29 August 2026 that declares neither delivers `"sunday"`, and
+   * its excluded days are Saturday and Sunday. So Friday is the one value that
+   * moves the pair, and everything else takes the default.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {Object} { days: number[], names: string[] }
+   */
+  function weekendDefinition(chart) {
+    const weekday = String(chart.weekday || "").toLowerCase();
+    if (weekday === WEEKEND_FRIDAY) {
+      return { days: [5, 6], names: [DAY_NAMES[5], DAY_NAMES[6]] };
+    }
+    return { days: [6, 0], names: [DAY_NAMES[6], DAY_NAMES[0]] };
+  }
+
+  /**
+   * Whether Mermaid would refuse to schedule work on this day.
+   *
+   * `includes` wins over `excludes`, matching Mermaid's own precedence. This is
+   * consulted ONLY to walk back from a delivered exclusive end date; no date in
+   * this module is ever re-derived from a duration.
+   *
+   * @param {Date} date - The day to test
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {boolean} True when the day is excluded
+   */
+  function isExcludedDay(date, chart) {
+    const formatted = formatByPattern(date, chart.dateFormat);
+    const includes = Array.isArray(chart.includes) ? chart.includes : [];
+    if (includes.indexOf(formatted) !== -1) return false;
+
+    const excludes = Array.isArray(chart.excludes) ? chart.excludes : [];
+    if (excludes.length === 0) return false;
+
+    if (excludes.indexOf(EXCLUDE_WEEKENDS) !== -1) {
+      const weekend = weekendDefinition(chart);
+      if (weekend.days.indexOf(date.getDay()) !== -1) return true;
+    }
+
+    const dayName = DAY_NAMES[date.getDay()].toLowerCase();
+    if (excludes.some((e) => String(e).toLowerCase() === dayName)) return true;
+
+    return excludes.indexOf(formatted) !== -1;
+  }
+
+  /**
+   * Whether the chart excludes weekends at all.
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {boolean} True when `excludes weekends` was declared
+   */
+  function excludesWeekends(chart) {
+    const excludes = Array.isArray(chart.excludes) ? chart.excludes : [];
+    return excludes.indexOf(EXCLUDE_WEEKENDS) !== -1;
+  }
+
+  /**
+   * Whether the chart declares ANY exclusion.
+   *
+   * Rule G16's guard as amended 30 August 2026. It used to be
+   * `excludesWeekends`, which was coherent only while the insight named the
+   * weekend as the cause; now that the sentence says "excluded days" without
+   * naming a kind, gating it on one kind would silently withhold the insight
+   * from a chart stretched by an excluded DATE — which is the very chart sweep
+   * finding F4 was measured on.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {boolean} True when any exclusion was declared
+   */
+  function hasExclusions(chart) {
+    return Array.isArray(chart.excludes) && chart.excludes.length > 0;
+  }
+
+  /**
+   * Parse a date written in the author's own declared `dateFormat`.
+   *
+   * The inverse of `formatByPattern`, and it exists for one reason: rule G8 as
+   * amended now SPEAKS the dates a chart excludes, and an excludes entry is
+   * written in the author's format, which is not necessarily ISO. Rendering
+   * `07/01/2026` as "7 January 2026" needs the pattern to say which field is
+   * which.
+   *
+   * Returns null when the text does not match the pattern, which is not an
+   * error: `excludes` also carries `weekends` and weekday names, and an author
+   * may write anything at all there.
+   *
+   * @param {string} text - One excludes entry
+   * @param {string} pattern - The chart's dateFormat
+   * @returns {Date|null} A local-midnight Date, or null
+   */
+  function parseByPattern(text, pattern) {
+    const source = String(pattern || "YYYY-MM-DD");
+    const order = [];
+    let regex = "";
+    for (let i = 0; i < source.length; ) {
+      const token = ["YYYY", "MM", "DD", "YY", "M", "D"].find(
+        (t) => source.startsWith(t, i)
+      );
+      if (token) {
+        order.push(token[0] === "Y" ? "y" : token[0] === "M" ? "m" : "d");
+        regex += token.length === 1 ? "(\\d{1,2})" : `(\\d{${token.length}})`;
+        i += token.length;
+      } else {
+        regex += source[i].replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        i += 1;
+      }
+    }
+
+    const match = new RegExp(`^${regex}$`).exec(String(text).trim());
+    if (!match) return null;
+
+    const parts = { y: null, m: null, d: null };
+    order.forEach((key, i) => {
+      parts[key] = Number(match[i + 1]);
+    });
+    if (parts.y === null || parts.m === null || parts.d === null) return null;
+    if (parts.y < 100) parts.y += 2000;
+
+    // Built from LOCAL components, like every other date in this module.
+    const date = new Date(parts.y, parts.m - 1, parts.d);
+    return date.getMonth() === parts.m - 1 && date.getDate() === parts.d
+      ? date
+      : null;
+  }
+
+  /**
+   * Rule G8's construction sentence, AMENDED 30 August 2026 (sweep findings F5
+   * and F6), detailed tier only.
+   *
+   * It used to read "Weekends are excluded, so no task is scheduled on a
+   * Saturday or Sunday." Both halves were wrong. The second clause is
+   * FALSIFIABLE — Mermaid honours an explicit start date on an excluded day, so
+   * a chart could assert it and then narrate a task running from a Saturday two
+   * sentences later (F5). And the sentence named only weekends, so a chart
+   * excluding a specific date or a weekday said nothing about them at all (F6).
+   *
+   * The sentence now reports the author's own declarations and claims nothing
+   * about what is scheduled. Weekends first, then weekday names as capitalised
+   * generator-owned plurals, then dates in British form, source order within
+   * each kind.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Function} esc - The escape transform for this sink
+   * @returns {string} The sentence, or "" when nothing is excluded
+   */
+  function buildExcludesSentence(chart, esc) {
+    if (!hasExclusions(chart)) return "";
+
+    const weekends = [];
+    const weekdays = [];
+    const dates = [];
+
+    for (const entry of chart.excludes) {
+      const text = String(entry).trim();
+      if (text.toLowerCase() === EXCLUDE_WEEKENDS) {
+        if (weekends.length === 0) weekends.push(EXCLUDE_WEEKENDS);
+        continue;
+      }
+
+      const dayIndex = DAY_NAMES.findIndex(
+        (d) => d.toLowerCase() === text.toLowerCase()
+      );
+      if (dayIndex !== -1) {
+        // The PLURAL is the generator's own word, attached to a day name the
+        // generator owns — author text is never inflected (register item 26).
+        weekdays.push(`${DAY_NAMES[dayIndex]}s`);
+        continue;
+      }
+
+      const parsed = parseByPattern(text, chart.dateFormat);
+      // A token that is neither a weekend, a weekday nor a parseable date is
+      // the author's own string and is escaped as author text.
+      dates.push(parsed ? formatBritishDate(parsed) : esc(text));
+    }
+
+    const items = [...weekends, ...weekdays, ...dates];
+    if (items.length === 0) return "";
+
+    // Not `formatList`: that helper writes an Oxford comma and this sentence
+    // takes none.
+    const joined =
+      items.length === 1
+        ? items[0]
+        : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+    return `The chart excludes ${joined}.`;
+  }
+
+  // ---------------------------------------------------------------------
+  // The narrated view of one task
+  // ---------------------------------------------------------------------
+
+  /**
+   * The end date a description names, per CONVENTION C.
+   *
+   * A milestone is a point, so it contributes its own date. Every other task
+   * contributes the last day that is not excluded and is strictly before the
+   * delivered exclusive `endDate` — Mermaid pushes that end past excluded days,
+   * so `endDate - 1` alone lands on a Sunday for a task that really finished on
+   * the Friday (measured on gold exemplar 4, whose Proofreading is delivered
+   * ending Monday 15 June and is narrated ending Friday 12 June).
+   *
+   * @param {Object} task - One delivered task
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {Date|null} The narrated end date
+   */
+  function narratedEndDate(task, chart) {
+    if (!task.startDate || !task.endDate) return null;
+    if (task.isMilestone) return task.startDate;
+
+    let candidate = addDays(task.endDate, -1);
+    let steps = 0;
+    while (
+      isExcludedDay(candidate, chart) &&
+      compareDays(candidate, task.startDate) > 0 &&
+      steps < MAX_EXCLUDED_WALK_BACK_DAYS
+    ) {
+      candidate = addDays(candidate, -1);
+      steps += 1;
+    }
+
+    // A task cannot be narrated as ending before it starts. Reachable only on a
+    // zero-length non-milestone task, which Mermaid delivers with equal start
+    // and end.
+    return compareDays(candidate, task.startDate) < 0
+      ? task.startDate
+      : candidate;
+  }
+
+  /**
+   * The author's DECLARED duration, kept in their own digits with noun
+   * agreement (rule G4) — `1 day`, `5 days`, `0 days`.
+   *
+   * When the end slot carries something other than a duration (an `until`
+   * clause, or an explicit end date) there is no declared duration to keep. The
+   * gold document covers no such chart, so the fallback is STATED rather than
+   * inferred: the narrated span's own inclusive calendar-day count, spoken
+   * through countWord and named as calendar days so a reader can tell a derived
+   * figure from a declared one.
+   *
+   * @param {Object} task - One delivered task
+   * @param {Date|null} start - The task's start date
+   * @param {Date|null} end - The task's narrated end date
+   * @returns {Object} { text, tableText, days, declared } — `text` is the prose
+   *   form and `tableText` the Duration column's, which differ only for a
+   *   derived span (rule G4 as amended 30 August 2026)
+   */
+  function taskDuration(task, start, end) {
+    // RULE G11, ENACTED 30 August 2026 (sweep finding F3). A milestone's
+    // Duration is 0 days whatever the author wrote in the end slot. G11 always
+    // said so; the module read `endDeclaration` without consulting
+    // `isMilestone`, so `:milestone, m1, 2026-01-05, 5d` produced a row stating
+    // a five-day duration beside a Start and an End one day apart.
+    if (task.isMilestone) {
+      return {
+        text: MILESTONE_DURATION_TEXT,
+        tableText: MILESTONE_DURATION_TEXT,
+        days: 0,
+        declared: true,
+      };
+    }
+
+    const match = DURATION_DECLARATION.exec(
+      String(task.endDeclaration || "").trim()
+    );
+
+    if (match) {
+      const value = Number(match[1]);
+      const unitKey = (match[2] || DEFAULT_DURATION_UNIT).toLowerCase();
+      const unit = DURATION_UNITS[unitKey] || DURATION_UNITS.d;
+      const noun = value === 1 ? unit.noun : `${unit.noun}s`;
+      return {
+        text: `${match[1]} ${noun}`,
+        tableText: `${match[1]} ${noun}`,
+        days: value * unit.days,
+        declared: true,
+      };
+    }
+
+    if (start && end) {
+      const days = inclusiveDayCount(start, end);
+      const noun = days === 1 ? "day" : "days";
+      // RULES G4/G11 AS AMENDED 30 August 2026 (sweep finding F11). The two
+      // forms are the same span said two ways, and the split is deliberate:
+      // PROSE keeps rule G4's spoken count, because a sentence is read aloud,
+      // while the DURATION COLUMN is scanned vertically and a reader comparing
+      // "5 days" against "one calendar day" is comparing two number styles
+      // before they can compare two lengths. One derivation, two renderings —
+      // never two computations, which could disagree.
+      return {
+        text: `${countWord(days)} calendar ${noun}`,
+        tableText: `${days} calendar ${noun}`,
+        days: days,
+        declared: false,
+      };
+    }
+
+    return { text: "", tableText: "", days: 0, declared: false };
+  }
+
+  /**
+   * The narrated view of every task, in delivery order.
+   *
+   * Every derived value a sentence or a table row needs is computed once, here,
+   * so no two surfaces can disagree about a date, a duration or a flag.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {Array<Object>} The narrated tasks
+   */
+  function narrateTasks(chart) {
+    // RULES G5/G11 AS AMENDED 30 August 2026 (sweep finding F9). Two tasks may
+    // legitimately share a name, and G5 narrates a predecessor BY NAME because
+    // an id is parser text — so on such a chart "starting after \"Review\"" names
+    // two different tasks and identifies neither. The position among the tasks
+    // sharing a name is computed ONCE here, so the sentence and the table row
+    // header cannot address the same task differently.
+    const nameCounts = new Map();
+    for (const task of chart.tasks || []) {
+      nameCounts.set(task.name, (nameCounts.get(task.name) || 0) + 1);
+    }
+    const positions = new Map();
+
+    return (chart.tasks || []).map((task) => {
+      const shared = (nameCounts.get(task.name) || 0) > 1;
+      const position = (positions.get(task.name) || 0) + 1;
+      positions.set(task.name, position);
+      const start = task.startDate || null;
+      const end = narratedEndDate(task, chart);
+      const duration = taskDuration(task, start, end);
+      return {
+        source: task,
+        name: task.name,
+        section: task.section || "",
+        isMilestone: task.isMilestone === true,
+        // Null on a unique name, which is the overwhelming case: a qualifier
+        // on a name nothing else shares would be noise, so every consumer of
+        // this field asks whether it is set rather than what it says.
+        nameOrdinal: shared ? ordinalWord(position) : null,
+        start: start,
+        end: end,
+        // RULE G17 (30 August 2026, sweep finding F2). ONE flag, computed once,
+        // read by every surface that could otherwise dereference a null date.
+        // `narratedEndDate` already returns null when either delivered date is
+        // null, so this is true only when BOTH resolved.
+        resolved: !!(start && end),
+        duration: duration,
+        // The inclusive calendar days the task really occupies, which rule G16
+        // compares against the declared duration.
+        calendarDays: start && end ? inclusiveDayCount(start, end) : 0,
+        flags: FLAG_KEYS.filter(
+          (key) =>
+            (key === "done" && task.isDone) ||
+            (key === "active" && task.isActive) ||
+            (key === "crit" && task.isCritical)
+        ),
+      };
+    });
+  }
+
+  /**
+   * The predecessors a task declares, resolved to the NARRATED tasks.
+   *
+   * Rule G5: narrated only when declared, and only from the surface's resolved
+   * `dependsOn`, which comes from the `after` clause. It returns the narrated
+   * tasks rather than bare names (amended 30 August 2026, sweep finding F9), so
+   * the caller can reach `nameOrdinal` and address a shared name; an id naming
+   * no task in this chart is counted, never quoted at the reader.
+   *
+   * @param {Object} source - One delivered task
+   * @param {Array<Object>} tasks - Every narrated task in the chart
+   * @returns {Object} { found, unresolved } — the tasks, in declaration order
+   */
+  function predecessorNames(source, tasks) {
+    const ids = Array.isArray(source.dependsOn) ? source.dependsOn : [];
+    if (ids.length === 0) return { found: [], unresolved: 0 };
+
+    // LAST DEFINITION WINS, and that is load-bearing rather than incidental:
+    // Mermaid resolves a duplicate id to the LATER task, so this map has to as
+    // well or the sentence would name a different task from the one the chart
+    // draws. The sweep recorded the agreement as CG6 and noted it was unguarded;
+    // fixtures/gantt-hostile/duplicate-ids now pins it from this side.
+    const byId = new Map();
+    for (const candidate of tasks) {
+      if (candidate.source && candidate.source.id) {
+        byId.set(candidate.source.id, candidate);
+      }
+    }
+
+    const found = [];
+    let unresolved = 0;
+    for (const id of ids) {
+      const task = byId.get(id);
+      if (task) found.push(task);
+      else unresolved += 1;
+    }
+    return { found: found, unresolved: unresolved };
+  }
+
+  // ---------------------------------------------------------------------
+  // Counts and shared clauses
+  // ---------------------------------------------------------------------
+
+  /**
+   * A count and its noun, agreeing: "one task", "two tasks".
+   * @param {number} count - The count
+   * @param {string} singular - The singular noun
+   * @param {string} plural - The plural noun
+   * @returns {string} The counted noun
+   */
+  function countedNoun(count, singular, plural) {
+    return `${countWord(count)} ${count === 1 ? singular : plural}`;
+  }
+
+  /**
+   * The chart's flag totals, which the short's status sentence (rule G2) and
+   * the Key Insights summary both read.
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Object} { done, active, crit }
+   */
+  function flagCounts(tasks) {
+    const counts = {};
+    for (const key of FLAG_KEYS) {
+      counts[key] = tasks.filter((t) => t.flags.indexOf(key) !== -1).length;
+    }
+    return counts;
+  }
+
+  /**
+   * The status sentence of rule G2 — "One task is complete, one is in progress
+   * and one is on the critical path."
+   *
+   * The FIRST clause present carries the noun and every later clause drops it,
+   * which is why the clauses are built in order rather than assembled from a
+   * table. The join is deliberately NOT `formatList`: that helper writes an
+   * Oxford comma and this sentence takes none.
+   *
+   * @param {Object} counts - The output of flagCounts
+   * @param {Array<string>} keys - Which flags to include, in order
+   * @returns {string} The sentence, or "" when no clause applies
+   */
+  function buildStatusSentence(counts, keys) {
+    const clauses = [];
+    for (const key of keys) {
+      const n = counts[key];
+      if (n === 0) continue;
+      const verb = n === 1 ? "is" : "are";
+      const subject =
+        clauses.length === 0 ? countedNoun(n, "task", "tasks") : countWord(n);
+      clauses.push(`${subject} ${verb} ${FLAG_PROSE[key]}`);
+    }
+    if (clauses.length === 0) return "";
+
+    const joined =
+      clauses.length === 1
+        ? clauses[0]
+        : `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`;
+
+    return `${joined.charAt(0).toUpperCase()}${joined.slice(1)}.`;
+  }
+
+  /**
+   * The project span the description narrates: the earliest delivered start and
+   * the latest NARRATED end.
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Object|null} { start, end }, or null when no task carries dates
+   */
+  function projectSpan(tasks) {
+    let start = null;
+    let end = null;
+    for (const task of tasks) {
+      // RULE G17: a task with no resolvable dates contributes to no span. The
+      // old test read `task.start` alone, so a task with a start and a null end
+      // would have moved the project START while contributing no end.
+      if (!task.resolved) continue;
+      if (task.start && (start === null || compareDays(task.start, start) < 0)) {
+        start = task.start;
+      }
+      if (task.end && (end === null || compareDays(task.end, end) > 0)) {
+        end = task.end;
+      }
+    }
+    return start && end ? { start: start, end: end } : null;
+  }
+
+  /**
+   * The longest tasks, by declared duration in days. Milestones are excluded: a
+   * point has no length, and rule G14's takeaway is about work.
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Array<Object>} Every task tied at the maximum, in order
+   */
+  function longestTasks(tasks) {
+    // RULE G17: an unresolved task is excluded even when it DECLARED a
+    // duration — the circular pair of sweep finding F2 declares `3d` and `2d`
+    // and resolves to no dates at all, so without this gate it would win the
+    // takeaway.
+    const candidates = tasks.filter(
+      (t) => t.resolved && !t.isMilestone && t.duration.text
+    );
+    if (candidates.length === 0) return [];
+
+    let max = candidates[0].duration.days;
+    for (const task of candidates) {
+      if (task.duration.days > max) max = task.duration.days;
+    }
+    return candidates.filter((t) => t.duration.days === max);
+  }
+
+  // ---------------------------------------------------------------------
+  // The overview (rules G1, G6, G8 as amended 30 August 2026)
+  // ---------------------------------------------------------------------
+
+  /**
+   * The opening sentence, shared by both tiers.
+   *
+   * The two tiers differ only in their lead and their verb — "A Gantt chart …
+   * with" against "This Gantt chart … shows" — so one builder writes both and
+   * the counts, the milestone qualifier and the span cannot drift between them.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @param {Function} esc - The escape transform for this sink
+   * @param {boolean} detailed - True for the detailed tier's wording
+   * @returns {string} The sentence
+   */
+  function buildOverviewSentence(chart, tasks, esc, detailed) {
+    const milestoneCount = tasks.filter((t) => t.isMilestone).length;
+    const sectionCount = Array.isArray(chart.sections)
+      ? chart.sections.length
+      : 0;
+    const span = projectSpan(tasks);
+
+    let sentence = detailed ? "This Gantt chart" : "A Gantt chart";
+    if (chart.title) sentence += ` titled "${esc(chart.title)}"`;
+    sentence += detailed ? " shows " : " with ";
+    sentence += countedNoun(tasks.length, "task", "tasks");
+
+    if (sectionCount > 0) {
+      sentence += ` in ${countedNoun(sectionCount, "section", "sections")}`;
+    }
+
+    if (milestoneCount > 0) {
+      sentence += `, ${countWord(milestoneCount)} of them ${
+        milestoneCount === 1 ? "a milestone" : "milestones"
+      }`;
+    }
+
+    if (span) {
+      // RULES G1/G4 AS AMENDED 30 August 2026 (sweep finding F13). G4 already
+      // gave the TASK sentence a same-day form and the module used it; the
+      // opening had none, so a one-day chart announced itself as "running from
+      // 5 January 2026 to 5 January 2026" one line above "runs on 5 January
+      // 2026". Same date twice is not a span, and reading it as one costs the
+      // listener a re-parse to discover nothing was said.
+      sentence +=
+        compareDays(span.start, span.end) === 0
+          ? `, on ${formatBritishDate(span.start)}`
+          : `, running from ${formatBritishDate(
+              span.start
+            )} to ${formatBritishDate(span.end)}`;
+    }
+
+    return `${sentence}.`;
+  }
+
+  /**
+   * Rule G8's exclusion sentence, detailed tier only. The short never mentions
+   * it — the dates it quotes already reflect it.
+   * @param {Object} chart - The adapter's normalised chart
+   * @returns {string} The sentence, or "" when no weekend is excluded
+   */
+  // ---------------------------------------------------------------------
+  // The Schedule section (rules G4, G5, G6, G7)
+  // ---------------------------------------------------------------------
+
+  /**
+   * The predecessor phrase for one task, resolved names and unfound ones.
+   *
+   * Rule G5, with the enactment note of 30 August 2026 (sweep finding F1b). An
+   * `after` target naming no task in the chart used to be dropped in silence,
+   * so a task whose start Mermaid had quietly defaulted to today was narrated
+   * with no dependency clause at all and no hint that anything had failed. The
+   * id is never narrated — it is parser text — but its ABSENCE now is.
+   *
+   * @param {Object} source - The delivered task
+   * @param {Array<Object>} tasks - Every narrated task in the chart
+   * @param {Function} esc - The escape transform for this sink
+   * @returns {string} The phrase, or "" when nothing was declared
+   */
+  function predecessorClause(source, tasks, esc) {
+    const { found, unresolved } = predecessorNames(source, tasks);
+    if (found.length === 0 && unresolved === 0) return "";
+
+    // RULE G5 AS AMENDED 30 August 2026 (sweep finding F9). The qualifier is
+    // generator furniture and sits OUTSIDE the quotation marks, so the author's
+    // name is quoted exactly as written and the addressing is visibly ours.
+    const quoted = found.map((t) =>
+      t.nameOrdinal
+        ? `the ${t.nameOrdinal} "${esc(t.name)}"`
+        : `"${esc(t.name)}"`
+    );
+    const missing =
+      unresolved === 0
+        ? ""
+        : unresolved === 1
+          ? UNRESOLVED_PREDECESSOR.singular
+          : UNRESOLVED_PREDECESSOR.plural;
+
+    if (quoted.length === 0) return missing;
+    const resolved = common().formatList(quoted);
+    return missing ? `${resolved} and ${missing}` : resolved;
+  }
+
+  /**
+   * One task's sentence.
+   *
+   * Clause order is fixed: what it does and when, then how long, then what it
+   * waits for, then its status — so the status reads as the final conjunct.
+   *
+   * @param {Object} task - One narrated task
+   * @param {Array<Object>} tasks - Every narrated task in the chart
+   * @param {Function} esc - The escape transform for this sink
+   * @returns {string} The sentence
+   */
+  function buildTaskSentence(task, tasks, esc) {
+    const name = `"${esc(task.name)}"`;
+
+    // RULE G17 FIRST, before the milestone branch, because a milestone whose
+    // dependency cannot resolve has no date either. This is the branch whose
+    // ABSENCE threw: `sameDay` correctly evaluated false on a null start and
+    // execution fell straight through into `formatBritishDate(task.start)`.
+    if (!task.resolved) return `${name} ${NO_DATES_PHRASE}.`;
+
+    const list = predecessorClause(task.source, tasks, esc);
+
+    if (task.isMilestone) {
+      let milestone = `${name} is a milestone on ${formatBritishDate(task.end)}`;
+      if (list) milestone += `, following ${list}`;
+      return `${milestone}.`;
+    }
+
+    const sameDay =
+      task.start && task.end && compareDays(task.start, task.end) === 0;
+
+    let sentence = sameDay
+      ? `${name} runs on ${formatBritishDate(task.start)}`
+      : `${name} runs from ${formatBritishDate(
+          task.start
+        )} to ${formatBritishDate(task.end)}`;
+
+    if (task.duration.text) sentence += `, lasting ${task.duration.text}`;
+    if (list) sentence += `, starting after ${list}`;
+
+    if (task.flags.length > 0) {
+      const phrases = task.flags.map((key) => FLAG_PROSE[key]);
+      sentence += `, and is ${common().formatList(phrases)}`;
+    }
+
+    return `${sentence}.`;
+  }
+
+  /**
+   * The sections a chart's tasks are grouped under, in the order the author
+   * declared them.
+   *
+   * A section a task names but the chart's own section list omits is appended
+   * in first-appearance order rather than dropped — the alternative is a task
+   * that never reaches the Schedule at all.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Array<string>} The section names
+   */
+  function orderedSections(chart, tasks) {
+    const ordered = [];
+    const seen = new Set();
+
+    for (const name of Array.isArray(chart.sections) ? chart.sections : []) {
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        ordered.push(name);
+      }
+    }
+    for (const task of tasks) {
+      if (task.section && !seen.has(task.section)) {
+        seen.add(task.section);
+        ordered.push(task.section);
+      }
+    }
+    return ordered;
+  }
+
+  /**
+   * The Schedule section's body (rule G3): one `<ul>` for a sectionless chart,
+   * and an introducing `<p>` plus a `<ul>` per section otherwise. It passes the
+   * whole narrated set down to each sentence, because a predecessor clause has
+   * to reach tasks outside its own section.
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Array<string>} The lines
+   */
+  function buildSchedule(chart, tasks) {
+    const esc = escapeText;
+    const sections = orderedSections(chart, tasks);
+    const lines = [];
+
+    if (sections.length === 0) {
+      lines.push("<ul>");
+      for (const task of tasks) {
+        lines.push(`<li>${buildTaskSentence(task, tasks, esc)}</li>`);
+      }
+      lines.push("</ul>");
+      return lines;
+    }
+
+    for (const section of sections) {
+      const members = tasks.filter((t) => t.section === section);
+      if (members.length === 0) continue;
+
+      lines.push(`<p>In the "${esc(section)}" section:</p>`);
+      lines.push("<ul>");
+      for (const task of members) {
+        lines.push(`<li>${buildTaskSentence(task, tasks, esc)}</li>`);
+      }
+      lines.push("</ul>");
+    }
+    return lines;
+  }
+
+  // ---------------------------------------------------------------------
+  // Key Insights (rules G14, G15, G16)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Rule G14's takeaway, bolded and first.
+   *
+   * A critical-path task is the takeaway when one exists, and when that task is
+   * also the longest the two claims merge into one sentence rather than being
+   * said twice. Otherwise the longest task is the takeaway, and every task tied
+   * at the maximum is named.
+   *
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @param {Function} esc - The escape transform for this sink
+   * @returns {string} The sentence, or "" when no task can carry it
+   */
+  function buildTakeaway(tasks, esc) {
+    // RULE G14 AS AMENDED 30 August 2026 (sweep finding F7). `longestTasks`
+    // excludes milestones — correctly, a point has no length — so a chart of
+    // nothing but milestones returned "" and the section lost its bolded lead
+    // entirely. The whole-chart fact is the takeaway on such a chart, and it is
+    // tested FIRST because it describes every task rather than one of them.
+    //
+    // A ONE-TASK MILESTONE CHART IS DELIBERATELY EXCLUDED and keeps today's
+    // behaviour. "All one tasks are milestones" is ungrammatical and would fail
+    // contract clause C8's word branch; the ruling gives no singular form, and
+    // minting one here would be inventing a rule rather than enacting one. The
+    // per-milestone sentence still names it. Recorded as a gap, not a decision.
+    if (tasks.length > 1 && tasks.every((t) => t.isMilestone)) {
+      return `All ${countWord(tasks.length)} tasks are milestones.`;
+    }
+
+    const longest = longestTasks(tasks);
+    const critical = tasks.filter((t) => t.flags.indexOf("crit") !== -1);
+
+    if (critical.length > 0) {
+      const task = critical[0];
+      const name = `"${esc(task.name)}"`;
+      if (longest.indexOf(task) !== -1) {
+        return `${name}, the longest task at ${task.duration.text}, is on the critical path.`;
+      }
+      // RULE G14 AS AMENDED 30 August 2026 (sweep confirmed-good CG11). The
+      // merged form carries the duration and this one dropped it, so the
+      // takeaway told a reader LESS about a chart whose critical task is not
+      // its longest — the case where the length is the more interesting fact.
+      // The duration is the prose form per rule G4 as amended, so a derived
+      // span still reads "one calendar day" here and "1 calendar day" in the
+      // table. A task with no parseable duration keeps the bare sentence.
+      return task.duration.text
+        ? `${name}, lasting ${task.duration.text}, is on the critical path.`
+        : `${name} is on the critical path.`;
+    }
+
+    if (longest.length === 0) return "";
+
+    if (longest.length === 1) {
+      return `The longest task is "${esc(longest[0].name)}", lasting ${
+        longest[0].duration.text
+      }.`;
+    }
+
+    const names = longest.map((t) => `"${esc(t.name)}"`);
+    return `The longest tasks are ${common().formatList(names)}, each lasting ${
+      longest[0].duration.text
+    }.`;
+  }
+
+  /**
+   * Rule G16's exclusion insight: one sentence per chart, on the first task the
+   * exclusion actually stretched past its declared duration.
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Function} esc - The escape transform for this sink
+   * @returns {string} The sentence, or "" when nothing was stretched
+   */
+  function buildExclusionInsight(tasks, chart, esc) {
+    if (!hasExclusions(chart)) return "";
+
+    const stretched = tasks.find(
+      (t) =>
+        t.resolved &&
+        !t.isMilestone &&
+        t.duration.declared &&
+        t.calendarDays > t.duration.days
+    );
+    if (!stretched) return "";
+
+    const noun = stretched.calendarDays === 1 ? "day" : "days";
+    return `"${esc(stretched.name)}" spans ${countWord(
+      stretched.calendarDays
+    )} calendar ${noun} because excluded days fall within it.`;
+  }
+
+  /**
+   * The Key Insights section's paragraphs, in rule G14's order: the takeaway,
+   * the milestone sentences, the status summary, the exclusion insight, and
+   * rule G15's span sentence, each only when it applies.
+   *
+   * THE STATUS SUMMARY OMITS THE CRITICAL PATH. When a critical task exists it
+   * IS the takeaway, which has already said so; repeating it in the summary is
+   * the doubling gold exemplar 2 is authored against.
+   *
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Array<string>} The lines
+   */
+  function buildInsights(chart, tasks) {
+    const esc = escapeText;
+    const lines = [];
+
+    const takeaway = buildTakeaway(tasks, esc);
+    if (takeaway) lines.push(`<p><strong>${takeaway}</strong></p>`);
+
+    for (const task of tasks) {
+      if (!task.isMilestone) continue;
+      lines.push(
+        `<p>"${esc(task.name)}" is a milestone on ${formatBritishDate(
+          task.end
+        )}.</p>`
+      );
+    }
+
+    const status = buildStatusSentence(flagCounts(tasks), ["done", "active"]);
+    if (status) lines.push(`<p>${status}</p>`);
+
+    const exclusion = buildExclusionInsight(tasks, chart, esc);
+    if (exclusion) lines.push(`<p>${exclusion}</p>`);
+
+    const span = projectSpan(tasks);
+    if (span) {
+      const days = inclusiveDayCount(span.start, span.end);
+      lines.push(
+        `<p>The schedule spans ${countWord(days)} calendar ${
+          days === 1 ? "day" : "days"
+        }.</p>`
+      );
+    }
+
+    return lines;
+  }
+
+  // ---------------------------------------------------------------------
+  // The data table (rule G11)
+  // ---------------------------------------------------------------------
+
+  /**
+   * A task's Status cell. A milestone is a milestone whatever else it carries;
+   * a task with no flag reads None rather than an empty cell, so a reader can
+   * tell "no status" from a dropped value.
+   * @param {Object} task - One narrated task
+   * @returns {string} The cell text
+   */
+  function statusCell(task) {
+    // ENACTED 30 August 2026 (sweep finding F10). A milestone used to return
+    // "Milestone" and DISCARD its flags, so a chart whose short reported "three
+    // are on the critical path" showed only two such rows and a reader
+    // cross-checking the two could not reconcile them. Milestone leads, then
+    // the flags in done/active/crit order.
+    const flags = task.flags.map((key) => FLAG_TABLE[key]);
+    if (task.isMilestone) return [STATUS_MILESTONE, ...flags].join(", ");
+    if (flags.length === 0) return STATUS_NONE;
+    return flags.join(", ");
+  }
+
+  /**
+   * The data table. The Section column appears only on a sectioned chart and
+   * the Status column only when some task carries a flag or is a milestone, so
+   * no chart is given a column of nothing.
+   * @param {Object} chart - The adapter's normalised chart
+   * @param {Array<Object>} tasks - The narrated tasks
+   * @returns {Array<string>} The lines
+   */
+  function buildTable(chart, tasks) {
+    const esc = escapeText;
+    const hasSections = orderedSections(chart, tasks).length > 0;
+    const hasStatus = tasks.some((t) => t.isMilestone || t.flags.length > 0);
+
+    const caption = chart.title
+      ? `Data table for: ${esc(chart.title)}`
+      : UNTITLED_CAPTION;
+
+    const headers = ["Task"];
+    if (hasSections) headers.push("Section");
+    headers.push("Start", "End", "Duration");
+    if (hasStatus) headers.push("Status");
+
+    const lines = [];
+    lines.push("<table>");
+    lines.push(`<caption>${caption}</caption>`);
+    lines.push("<thead>");
+    lines.push(
+      `<tr>${headers.map((h) => `<th scope="col">${h}</th>`).join("")}</tr>`
+    );
+    lines.push("</thead>");
+    lines.push("<tbody>");
+
+    for (const task of tasks) {
+      const cells = [];
+      if (hasSections) cells.push(esc(task.section));
+      // RULE G17: an unresolved row keeps its Task header and says so in every
+      // other cell, rather than showing three empty cells a reader cannot tell
+      // from a dropped value.
+      cells.push(task.resolved ? formatBritishDate(task.start) : NOT_RESOLVED);
+      cells.push(task.resolved ? formatBritishDate(task.end) : NOT_RESOLVED);
+      cells.push(task.resolved ? task.duration.tableText : NOT_RESOLVED);
+      if (hasStatus) cells.push(statusCell(task));
+
+      // RULE G11 AS AMENDED 30 August 2026 (sweep finding F9). Two rows whose
+      // `<th scope="row">` is the identical string is a row-header uniqueness
+      // problem in its own right, quite apart from the prose: a screen-reader
+      // user moving through the table hears the same header twice and cannot
+      // tell which row they are in. The suffix is generator-owned and therefore
+      // sits OUTSIDE the escaped name, and it matches the words the predecessor
+      // clause uses, so the two surfaces address a task the same way.
+      const header = task.nameOrdinal
+        ? `${esc(task.name)} (${task.nameOrdinal})`
+        : esc(task.name);
+
+      lines.push(
+        `<tr><th scope="row">${header}</th>${cells
+          .map((c) => `<td>${c}</td>`)
+          .join("")}</tr>`
+      );
+    }
+
+    lines.push("</tbody>");
+    lines.push("</table>");
+    return lines;
+  }
+
+  // ---------------------------------------------------------------------
+  // The registered tiers
+  // ---------------------------------------------------------------------
+
+  /**
+   * Fetch and verify the chart, or throw.
+   *
+   * A parse rejection is deliberately NOT caught — the core's catch turns it
+   * into the honest generation-failed fallback. A failed adapter self-check
+   * throws for the same reason: never narrate an unverified chart.
+   *
+   * `isGanttHealthy()` reads `null` until the lazy self-check settles, which is
+   * why the guard tests for `false` rather than falsiness — a `!healthy` test
+   * would refuse every first call on a page.
+   *
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<Object>} The adapter's normalised chart
+   */
+  async function readChart(code) {
+    const chart = await window.MermaidParseAdapter.parseGantt(code);
+    if (window.MermaidParseAdapter.isGanttHealthy() === false) {
+      logWarn(
+        "[Mermaid Accessibility] Gantt self-check failed; refusing to narrate"
+      );
+      throw new Error(
+        "Parse adapter failed its Gantt self-check; refusing to narrate an unverified chart"
+      );
+    }
+    if (!chart.tasks || chart.tasks.length === 0) {
+      throw new Error("Gantt chart carries no tasks; refusing to narrate it");
+    }
+    return chart;
+  }
+
+  /**
+   * Generate a short description for a Gantt chart.
+   *
+   * The PLAIN form is the tier of record and is never escaped: it reaches a
+   * `textContent` sink and the SVG's `aria-label`, where an entity would be
+   * announced literally. The HTML form is the same sentence escaped exactly
+   * once, with no spans and no classes of its own.
+   *
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<Object>} Resolves to `{ html, text }`
+   */
+  async function generateShortDescription(svgElement, code) {
+    logInfo("[Mermaid Accessibility] Generating Gantt short description");
+
+    const chart = await readChart(code);
+    const tasks = narrateTasks(chart);
+
+    const overview = buildOverviewSentence(chart, tasks, rawText, false);
+    const status = buildStatusSentence(flagCounts(tasks), FLAG_KEYS);
+
+    // RULES G1/G2 AS AMENDED 30 August 2026 (sweep finding F8). The two rules
+    // compose ADDITIVELY and neither had any length discipline, so a chart with
+    // enough sections, milestones and flags could push the short past the
+    // corpus cap on generator prose alone — measured at 274 characters, of
+    // which only 76 were the author's title.
+    //
+    // THE STATUS SENTENCE IS WHAT GOES, and never the opening: the opening
+    // carries the author's title, the counts and the span, and rule G12's
+    // sibling principle in the XY chart set forbids cutting author text. The
+    // status information is not lost, only moved — the detailed tier's Key
+    // Insights carries its own status summary, and the critical path is the
+    // takeaway there.
+    //
+    // A FIRST SENTENCE ALREADY OVER THE CAP STANDS. There is nothing left to
+    // drop that is not the author's own words, and the per-fixture
+    // `shortMaxChars` override is the accommodation the harness provides for
+    // exactly that case (gold exemplar 5 of the XY chart set is the precedent).
+    let text = status ? `${overview} ${status}` : overview;
+    if (status && text.length > SHORT_MAX_CHARS) text = overview;
+    logDebug(`[Mermaid Accessibility] Gantt short: ${text}`);
+
+    return {
+      html: escapeText(text),
+      text: text,
+    };
+  }
+
+  /**
+   * Wrapper for the short description generator, returning the plain tier.
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<string>} Resolves to the plain text description
+   */
+  async function shortDescriptionWrapper(svgElement, code) {
+    const descriptions = await generateShortDescription(svgElement, code);
     return descriptions.text;
   }
-  /**
-   * Parse Gantt chart code to extract sections, tasks and configuration
-   * @param {string} code - The Mermaid diagram code
-   * @returns {Object} Parsed Gantt chart elements
-   */
-  function parseGanttChart(code) {
-    // Initialise result object
-    const result = {
-      sections: [],
-      excludesWeekends: false,
-      excludedDates: [],
-      weekendConfig: "sunday", // Default weekend config
-      dateFormat: "YYYY-MM-DD", // Default date format
-    };
-
-    const lines = code.split("\n");
-    let currentSection = null;
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Check for date format
-      const dateFormatMatch = trimmedLine.match(/dateFormat\s+([^\n]+)/i);
-      if (dateFormatMatch) {
-        result.dateFormat = dateFormatMatch[1].trim();
-        continue;
-      }
-
-      // Check for exclusions
-      const excludesMatch = trimmedLine.match(/excludes\s+([^\n]+)/i);
-      if (excludesMatch) {
-        const exclusions = excludesMatch[1].trim().toLowerCase();
-
-        if (exclusions.includes("weekend")) {
-          result.excludesWeekends = true;
-        } else {
-          // Extract specific dates
-          const dates = exclusions.split(",").map((date) => date.trim());
-          dates.forEach((date) => {
-            if (date.match(/\d{4}-\d{2}-\d{2}/)) {
-              result.excludedDates.push(DateUtils.parseDate(date));
-            }
-          });
-        }
-
-        continue;
-      }
-
-      // Check for weekend configuration
-      const weekendMatch = trimmedLine.match(/weekend\s+([^\n]+)/i);
-      if (weekendMatch) {
-        const weekendDay = weekendMatch[1].trim().toLowerCase();
-        if (weekendDay === "friday" || weekendDay === "saturday") {
-          result.weekendConfig = weekendDay;
-        }
-        continue;
-      }
-
-      // Section detection
-      const sectionMatch = trimmedLine.match(/section\s+(.+)/i);
-      if (sectionMatch) {
-        currentSection = {
-          name: sectionMatch[1].trim(),
-          tasks: [],
-        };
-        result.sections.push(currentSection);
-        continue;
-      }
-
-      // Task detection (only process if we have a current section)
-      if (
-        currentSection &&
-        trimmedLine &&
-        !trimmedLine.startsWith("title") &&
-        !trimmedLine.startsWith("dateFormat") &&
-        !trimmedLine.startsWith("gantt") &&
-        !trimmedLine.startsWith("excludes") &&
-        !trimmedLine.startsWith("weekend") &&
-        !trimmedLine.startsWith("%%")
-      ) {
-        parseTaskLine(trimmedLine, currentSection);
-      }
-    }
-
-    return result;
-  }
 
   /**
-   * Parse a task line and add it to the current section
-   * @param {string} line - The task line from Gantt chart
-   * @param {Object} currentSection - The current section object
-   */
-  function parseTaskLine(line, currentSection) {
-    // Check for task metadata - handle various formats
-    // Skip comments that might have been missed in parseGanttChart
-    if (line.trim().startsWith("%%")) {
-      return;
-    }
-
-    // Complex task with multiple pieces of metadata (id, dates, etc)
-    // Format: "Task name :id, start/dependency, end/duration"
-    const complexTaskMatch = line.match(
-      /(.+?)\s*:([^,]+)(?:,\s*(.+?))?(?:,\s*(.+))?$/
-    );
-
-    if (complexTaskMatch) {
-      const taskName = complexTaskMatch[1].trim();
-      const firstMeta = complexTaskMatch[2].trim();
-      const secondMeta = complexTaskMatch[3]
-        ? complexTaskMatch[3].trim()
-        : null;
-      const thirdMeta = complexTaskMatch[4] ? complexTaskMatch[4].trim() : null;
-
-      // Process task status and ID
-      const { id, taskStatus } = parseTaskIdAndStatus(firstMeta);
-
-      // Create task object
-      const task = {
-        name: taskName,
-        id: id,
-        ...taskStatus,
-      };
-
-      // Process dependencies and timing
-      if (secondMeta) {
-        // Check if it's a dependency ("after X")
-        if (secondMeta.toLowerCase().startsWith("after ")) {
-          // Multiple dependencies: "after task1 task2 task3"
-          const dependencies = secondMeta.substring(6).trim().split(/\s+/);
-          task.dependsOn =
-            dependencies.length === 1 ? dependencies[0] : dependencies;
-        }
-        // Check if it's an "until" dependency
-        else if (secondMeta.toLowerCase().startsWith("until ")) {
-          const untilTaskId = secondMeta.substring(6).trim();
-          task.untilTaskId = untilTaskId;
-        }
-        // Otherwise it's a start date
-        else {
-          task.timing = secondMeta;
-          if (secondMeta.match(/\d{4}-\d{2}-\d{2}/)) {
-            task.startDate = DateUtils.parseDate(secondMeta);
-          }
-        }
-      }
-
-      // Process duration or end date
-      if (thirdMeta) {
-        // Check if it's milestone
-        if (thirdMeta.toLowerCase() === "milestone") {
-          task.isMilestone = true;
-          task.duration = "0d";
-        }
-        // Check if it's an "until" dependency
-        else if (thirdMeta.toLowerCase().startsWith("until ")) {
-          const untilTaskId = thirdMeta.substring(6).trim();
-          task.untilTaskId = untilTaskId;
-        }
-        // Check if it's a duration (like "5d", "2w", "48h")
-        else if (thirdMeta.match(/^\d+[dwhmM]$/)) {
-          task.duration = thirdMeta;
-        }
-        // Otherwise, assume it's an end date
-        else if (thirdMeta.match(/\d{4}-\d{2}-\d{2}/)) {
-          task.endDate = DateUtils.parseDate(thirdMeta);
-        }
-      }
-
-      currentSection.tasks.push(task);
-    }
-    // Simple task format (just name and possibly duration)
-    else {
-      const simpleTaskMatch = line.match(/(.+?)(?:\s*:\s*(.+))?$/);
-      if (simpleTaskMatch) {
-        const taskName = simpleTaskMatch[1].trim();
-        const duration = simpleTaskMatch[2]
-          ? simpleTaskMatch[2].trim()
-          : "unspecified";
-
-        currentSection.tasks.push({
-          name: taskName,
-          duration: duration,
-          isMilestone: duration.toLowerCase() === "milestone",
-        });
-      }
-    }
-  }
-
-  /**
-   * Parse task ID and status flags from first metadata item
-   * @param {string} metaString - The metadata string
-   * @returns {Object} Task ID and status object
-   */
-  function parseTaskIdAndStatus(metaString) {
-    const result = {
-      id: null,
-      taskStatus: {
-        isDone: false,
-        isActive: false,
-        isCritical: false,
-        isMilestone: false,
-      },
-    };
-
-    // Split string by spaces to find status flags
-    const parts = metaString.split(/\s+/);
-    let idFound = false;
-
-    for (const part of parts) {
-      const lowerPart = part.toLowerCase();
-
-      // Check for status flags
-      if (lowerPart === "done") {
-        result.taskStatus.isDone = true;
-      } else if (lowerPart === "active") {
-        result.taskStatus.isActive = true;
-      } else if (lowerPart === "crit") {
-        result.taskStatus.isCritical = true;
-      } else if (lowerPart === "milestone") {
-        result.taskStatus.isMilestone = true;
-      }
-      // If not a status flag, it's the ID
-      else if (!idFound) {
-        result.id = part;
-        idFound = true;
-      }
-    }
-
-    return result;
-  }
-  /**
-   * Enhanced duration conversions for all format types
-   * @param {string} duration - Duration string (e.g., "5d", "2w", "12h", "3m")
-   * @returns {number} Number of days
-   */
-  function durationToDays(duration) {
-    if (!duration) return 0;
-    if (duration === "milestone" || duration === "0d") return 0;
-    if (duration === "unspecified") return 1; // Default to 1 day if unspecified
-
-    // Match number and unit
-    const match = duration.match(/(\d+)([dwhmM])/);
-    if (!match) return 0;
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2].toLowerCase();
-
-    switch (unit) {
-      case "d":
-        return value; // days
-      case "w":
-        return value * 7; // weeks
-      case "m":
-        if (match[2] === "m") {
-          return Math.ceil(value / 24); // hours (rounded up to days)
-        } else {
-          return value * 30; // months (approximate)
-        }
-      case "h":
-        return Math.ceil(value / 24); // hours (rounded up to days)
-      default:
-        return 0;
-    }
-  }
-
-  /**
-   * Calculate task dates accounting for excluded dates
-   * @param {Array} sections - Array of sections with tasks
-   * @param {Array} excludedDates - Array of excluded dates
-   * @param {boolean} excludesWeekends - Whether weekends are excluded
-   * @param {string} weekendConfig - Weekend configuration ('friday' or 'sunday')
-   * @returns {Object} Object with updated sections, project start and end dates
-   */
-  function calculateTaskDatesWithExclusions(
-    sections,
-    excludedDates = [],
-    excludesWeekends = false,
-    weekendConfig = "sunday"
-  ) {
-    // Make a deep copy to avoid modifying the original
-    const sectionsCopy = JSON.parse(JSON.stringify(sections));
-
-    // Convert sections to a flat array of tasks with IDs for easier processing
-    const allTasks = {};
-    sectionsCopy.forEach((section) => {
-      section.tasks.forEach((task) => {
-        if (task.id) {
-          allTasks[task.id] = { ...task, section: section.name };
-        }
-      });
-    });
-
-    // First, set dates for tasks with explicit start dates
-    let projectStart = null;
-    let projectEnd = null;
-
-    // Process tasks with explicit dates
-    Object.values(allTasks).forEach((task) => {
-      if (task.startDate) {
-        // Update project start date
-        if (!projectStart || task.startDate < projectStart) {
-          projectStart = new Date(task.startDate);
-        }
-
-        // Calculate end date for non-milestones
-        if (!task.isMilestone && task.duration) {
-          // Calculate end date accounting for exclusions
-          const endDate = calculateEndDateWithExclusions(
-            task.startDate,
-            task.duration,
-            excludedDates,
-            excludesWeekends,
-            weekendConfig
-          );
-
-          task.endDate = endDate;
-
-          // Update project end date
-          if (!projectEnd || endDate > projectEnd) {
-            projectEnd = new Date(endDate);
-          }
-        } else if (task.isMilestone) {
-          task.endDate = new Date(task.startDate);
-
-          // Update project end date for milestone
-          if (!projectEnd || task.endDate > projectEnd) {
-            projectEnd = new Date(task.endDate);
-          }
-        }
-      }
-    });
-
-    // Resolve dependencies
-    resolveDependencies(
-      Object.values(allTasks),
-      excludedDates,
-      excludesWeekends,
-      weekendConfig,
-      projectStart,
-      projectEnd
-    );
-
-    // Update tasks in original sections
-    sectionsCopy.forEach((section) => {
-      section.tasks.forEach((task) => {
-        if (task.id && allTasks[task.id]) {
-          task.startDate = allTasks[task.id].startDate;
-          task.endDate = allTasks[task.id].endDate;
-          task.dependsOnTaskName = allTasks[task.id].dependsOnTaskName;
-          task.untilTaskName = allTasks[task.id].untilTaskName;
-        }
-      });
-    });
-
-    // Calculate section date ranges
-    sectionsCopy.forEach((section) => {
-      if (section.tasks.length > 0) {
-        let sectionStart = null;
-        let sectionEnd = null;
-
-        section.tasks.forEach((task) => {
-          if (task.startDate) {
-            if (!sectionStart || task.startDate < sectionStart) {
-              sectionStart = new Date(task.startDate);
-            }
-          }
-
-          if (task.endDate) {
-            if (!sectionEnd || task.endDate > sectionEnd) {
-              sectionEnd = new Date(task.endDate);
-            }
-          }
-        });
-
-        if (sectionStart) section.startDate = sectionStart;
-        if (sectionEnd) section.endDate = sectionEnd;
-      }
-    });
-
-    // Calculate project duration
-    let projectDuration = null;
-    if (projectStart && projectEnd) {
-      const durationDays = DateUtils.differenceInDays(
-        DateUtils.addDays(projectEnd, 1), // Add 1 day for inclusive end date
-        projectStart
-      );
-
-      projectDuration = {
-        days: durationDays,
-        formatted: DateUtils.formatDurationInWeeksAndDays(durationDays),
-      };
-    }
-
-    return {
-      projectStart,
-      projectEnd,
-      projectDuration,
-      updatedSections: sectionsCopy,
-    };
-  }
-
-  /**
-   * Calculate end date accounting for excluded dates
-   * @param {Date} startDate - Task start date
-   * @param {string} duration - Duration string
-   * @param {Array} excludedDates - Array of excluded dates
-   * @param {boolean} excludesWeekends - Whether weekends are excluded
-   * @param {string} weekendConfig - Weekend configuration ('friday' or 'sunday')
-   * @returns {Date} Calculated end date
-   */
-  function calculateEndDateWithExclusions(
-    startDate,
-    duration,
-    excludedDates,
-    excludesWeekends,
-    weekendConfig
-  ) {
-    // Convert duration to days
-    const durationDays =
-      typeof duration === "string" ? durationToDays(duration) : duration;
-
-    if (durationDays <= 0) return new Date(startDate);
-
-    logDebug(
-      `[Mermaid Accessibility] Calculating end date for ${durationDays} days from ${DateUtils.formatDate(
-        startDate
-      )}`
-    );
-    logDebug(
-      `[Mermaid Accessibility] Exclusions: weekends=${excludesWeekends}, weekendConfig=${weekendConfig}, excludedDates=${
-        excludedDates ? excludedDates.length : 0
-      }`
-    );
-
-    let currentDate = new Date(startDate);
-    let daysAdded = 0;
-    let skippedDays = 0;
-
-    while (daysAdded < durationDays) {
-      currentDate = DateUtils.addDays(currentDate, 1);
-
-      // Skip excluded dates
-      if (
-        !isExcludedDate(
-          currentDate,
-          excludedDates,
-          excludesWeekends,
-          weekendConfig
-        )
-      ) {
-        daysAdded++;
-      } else {
-        skippedDays++;
-        logDebug(
-          `[Mermaid Accessibility] Skipping excluded date: ${DateUtils.formatDate(
-            currentDate
-          )}`
-        );
-      }
-    }
-
-    logDebug(
-      `[Mermaid Accessibility] Total calendar days: ${
-        daysAdded + skippedDays
-      }, Working days: ${daysAdded}, Skipped days: ${skippedDays}`
-    );
-    logDebug(
-      `[Mermaid Accessibility] End date: ${DateUtils.formatDate(currentDate)}`
-    );
-
-    // Subtract 1 day as end date is inclusive
-    return DateUtils.addDays(currentDate, -1);
-  }
-
-  /**
-   * Check if a date is excluded
-   * @param {Date} date - Date to check
-   * @param {Array} excludedDates - Array of excluded dates
-   * @param {boolean} excludesWeekends - Whether weekends are excluded
-   * @param {string} weekendConfig - Weekend configuration ('friday' or 'sunday')
-   * @returns {boolean} True if date is excluded
-   */
-  function isExcludedDate(
-    date,
-    excludedDates,
-    excludesWeekends,
-    weekendConfig
-  ) {
-    // Check explicit excluded dates
-    if (excludedDates && excludedDates.length > 0) {
-      for (const excludedDate of excludedDates) {
-        if (DateUtils.formatDate(date) === DateUtils.formatDate(excludedDate)) {
-          return true;
-        }
-      }
-    }
-
-    // Check weekends
-    if (excludesWeekends) {
-      const day = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-
-      if (weekendConfig === "friday") {
-        // Friday-Saturday weekend
-        return day === 5 || day === 6; // 5 = Friday, 6 = Saturday
-      } else {
-        // Saturday-Sunday weekend (default)
-        return day === 0 || day === 6; // 0 = Sunday, 6 = Saturday
-      }
-    }
-
-    return false;
-  }
-  /**
-   * Resolve dependencies between tasks
-   * @param {Array} tasks - Array of task objects
-   * @param {Array} excludedDates - Array of excluded dates
-   * @param {boolean} excludesWeekends - Whether weekends are excluded
-   * @param {string} weekendConfig - Weekend configuration
-   * @param {Date} projectStart - Project start date
-   * @param {Date} projectEnd - Project end date
-   */
-  function resolveDependencies(
-    tasks,
-    excludedDates,
-    excludesWeekends,
-    weekendConfig,
-    projectStart,
-    projectEnd
-  ) {
-    // Create a map of task IDs to tasks for easier lookup
-    const tasksById = {};
-    tasks.forEach((task) => {
-      if (task.id) {
-        tasksById[task.id] = task;
-      }
-    });
-
-    // Iterate until no more changes are made
-    let progress = true;
-    let iterations = 0;
-    const MAX_ITERATIONS = 100; // Safety limit
-
-    while (progress && iterations < MAX_ITERATIONS) {
-      progress = false;
-      iterations++;
-
-      for (const task of tasks) {
-        // Skip tasks that already have both start and end dates
-        if (task.startDate && task.endDate) continue;
-
-        // Handle "after" dependencies
-        if (task.dependsOn && !task.startDate) {
-          const dependencies = Array.isArray(task.dependsOn)
-            ? task.dependsOn
-            : [task.dependsOn];
-
-          let allDependenciesResolved = true;
-          let latestEndDate = null;
-          let dependencyNames = [];
-
-          for (const depId of dependencies) {
-            const dependency = tasksById[depId];
-            if (!dependency || !dependency.endDate) {
-              allDependenciesResolved = false;
-              break;
-            }
-
-            if (!latestEndDate || dependency.endDate > latestEndDate) {
-              latestEndDate = new Date(dependency.endDate);
-            }
-
-            dependencyNames.push(dependency.name);
-          }
-
-          if (allDependenciesResolved) {
-            // Start date is day after latest dependency ends
-            const startDate = DateUtils.addDays(latestEndDate, 1);
-            task.startDate = startDate;
-            task.dependsOnTaskName = dependencyNames.join(" and ");
-
-            // Calculate end date if duration is known
-            if (task.duration && !task.isMilestone) {
-              task.endDate = calculateEndDateWithExclusions(
-                startDate,
-                task.duration,
-                excludedDates,
-                excludesWeekends,
-                weekendConfig
-              );
-            } else if (task.isMilestone) {
-              task.endDate = new Date(startDate);
-            }
-
-            progress = true;
-          }
-        }
-
-        // Handle "until" dependencies
-        if (task.untilTaskId && task.startDate && !task.endDate) {
-          const untilTask = tasksById[task.untilTaskId];
-          if (untilTask && untilTask.startDate) {
-            // End date is the day before the until task starts
-            task.endDate = DateUtils.addDays(untilTask.startDate, -1);
-            task.untilTaskName = untilTask.name;
-
-            // Override duration to match the calculated dates
-            if (task.startDate && task.endDate) {
-              const calculatedDuration = DateUtils.differenceInDays(
-                DateUtils.addDays(task.endDate, 1),
-                task.startDate
-              );
-              task.calculatedDuration = calculatedDuration;
-            }
-
-            progress = true;
-          }
-        }
-
-        // Update project bounds
-        if (
-          task.startDate &&
-          (!projectStart || task.startDate < projectStart)
-        ) {
-          projectStart = new Date(task.startDate);
-        }
-
-        if (task.endDate && (!projectEnd || task.endDate > projectEnd)) {
-          projectEnd = new Date(task.endDate);
-        }
-      }
-    }
-
-    // Check for unresolved tasks and provide useful diagnostics
-    const unresolvedTasks = tasks.filter(
-      (task) => !task.startDate || !task.endDate
-    );
-    if (unresolvedTasks.length > 0) {
-      logWarn(
-        "[Mermaid Accessibility] Some tasks could not be resolved:",
-        unresolvedTasks
-      );
-
-      // For each unresolved task, check if dependencies exist
-      unresolvedTasks.forEach((task) => {
-        if (task.dependsOn) {
-          const dependencies = Array.isArray(task.dependsOn)
-            ? task.dependsOn
-            : [task.dependsOn];
-
-          dependencies.forEach((depId) => {
-            if (!tasksById[depId]) {
-              logWarn(
-                `[Mermaid Accessibility] Task "${task.name}" depends on non-existent task "${depId}"`
-              );
-            } else if (!tasksById[depId].endDate) {
-              logWarn(
-                `[Mermaid Accessibility] Task "${task.name}" depends on unresolved task "${tasksById[depId].name}"`
-              );
-            }
-          });
-        }
-
-        if (task.untilTaskId) {
-          if (!tasksById[task.untilTaskId]) {
-            logWarn(
-              `[Mermaid Accessibility] Task "${task.name}" runs until non-existent task "${task.untilTaskId}"`
-            );
-          } else if (!tasksById[task.untilTaskId].startDate) {
-            logWarn(
-              `[Mermaid Accessibility] Task "${
-                task.name
-              }" runs until unresolved task "${
-                tasksById[task.untilTaskId].name
-              }"`
-            );
-          }
-        }
-      });
-    }
-
-    // Handle circular dependencies
-    if (iterations >= MAX_ITERATIONS) {
-      logError(
-        "[Mermaid Accessibility] Possible circular dependencies detected in Gantt chart"
-      );
-    }
-  }
-
-  /**
-   * Calculate the critical path of a project
-   * @param {Array} sections - Array of sections with tasks
-   * @returns {Array} Array of task IDs on the critical path
-   */
-  function calculateCriticalPath(sections) {
-    // Flatten all tasks for processing
-    const allTasks = [];
-    const tasksById = {};
-
-    sections.forEach((section) => {
-      section.tasks.forEach((task) => {
-        if (task.id) {
-          allTasks.push(task);
-          tasksById[task.id] = task;
-        }
-      });
-    });
-
-    // Verify tasks have required dates
-    const validTasks = allTasks.filter(
-      (task) => task.startDate && task.endDate
-    );
-    if (validTasks.length === 0) return [];
-
-    // Find project end date and tasks ending on that date
-    let projectEndDate = null;
-    validTasks.forEach((task) => {
-      if (!projectEndDate || task.endDate > projectEndDate) {
-        projectEndDate = new Date(task.endDate);
-      }
-    });
-
-    // Get tasks that end on the project end date
-    let endTasks = validTasks.filter(
-      (task) =>
-        DateUtils.formatDate(task.endDate) ===
-        DateUtils.formatDate(projectEndDate)
-    );
-
-    // If no tasks end on project end date, take the latest task
-    if (endTasks.length === 0) {
-      let latestTask = validTasks[0];
-      validTasks.forEach((task) => {
-        if (task.endDate > latestTask.endDate) {
-          latestTask = task;
-        }
-      });
-      endTasks = [latestTask];
-    }
-
-    // Work backwards from end tasks
-    const criticalPath = [];
-    const processedTaskIds = new Set();
-
-    // Process each end task (there could be multiple)
-    endTasks.forEach((endTask) => {
-      const taskPath = [endTask.id];
-      let currentTask = endTask;
-
-      // Add to processed set to avoid duplicate processing
-      processedTaskIds.add(endTask.id);
-
-      // Trace backwards through dependencies
-      while (true) {
-        // Find predecessor tasks
-        let predecessors = [];
-
-        if (currentTask.dependsOn) {
-          const dependencies = Array.isArray(currentTask.dependsOn)
-            ? currentTask.dependsOn
-            : [currentTask.dependsOn];
-
-          // Find all valid predecessor tasks
-          dependencies.forEach((depId) => {
-            const dep = tasksById[depId];
-            if (dep && dep.endDate) {
-              predecessors.push(dep);
-            }
-          });
-        }
-
-        // If no predecessors, break the loop
-        if (predecessors.length === 0) break;
-
-        // Find the latest ending predecessor
-        let latestPredecessor = predecessors[0];
-        predecessors.forEach((pred) => {
-          if (pred.endDate > latestPredecessor.endDate) {
-            latestPredecessor = pred;
-          }
-        });
-
-        // Add to path if not already processed
-        if (!processedTaskIds.has(latestPredecessor.id)) {
-          taskPath.unshift(latestPredecessor.id);
-          processedTaskIds.add(latestPredecessor.id);
-          currentTask = latestPredecessor;
-        } else {
-          // Already processed this task, stop here
-          break;
-        }
-      }
-
-      // Add this path to the critical path
-      criticalPath.push(...taskPath.filter((id) => !criticalPath.includes(id)));
-    });
-
-    return criticalPath;
-  }
-  /**
-   * Generate a detailed description for a Gantt chart
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
+   * Generate a detailed description for a Gantt chart.
+   *
+   * Four headed sections in a fixed order (rule G3): Chart Construction,
+   * Schedule, Key Insights with the takeaway first and bolded, and the Data
+   * Table. The old module's unconditional dependency sentence and its Potential
+   * Schedule Risks section do not survive — rule G12 admits only what the
+   * surface delivered.
+   *
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
    * @param {string} code - The original mermaid code
-   * @returns {string} A detailed HTML description
+   * @returns {Promise<string>} Resolves to the detailed HTML fragment
    */
-  function generateDetailedDescription(svgElement, code) {
-    logInfo("[Mermaid Accessibility] Generating Gantt chart description");
-
-    // Extract title from code
-    const titleMatch = code.match(/title\s+([^\n]+)/i);
-    const title = titleMatch ? titleMatch[1].trim() : "Gantt Chart";
-
-    // Extract date format if present
-    const dateFormatMatch = code.match(/dateFormat\s+([^\n]+)/i);
-    const dateFormat = dateFormatMatch
-      ? dateFormatMatch[1].trim()
-      : "YYYY-MM-DD";
-
-    // Parse the Gantt chart
-    const { sections, excludesWeekends, excludedDates, weekendConfig } =
-      parseGanttChart(code);
-
-    // Calculate dates and durations with exclusions
-    const { projectStart, projectEnd, projectDuration, updatedSections } =
-      calculateTaskDatesWithExclusions(
-        sections,
-        excludedDates,
-        excludesWeekends,
-        weekendConfig
-      );
-
-    // Identify parallel work streams
-    const parallelWork = identifyParallelTasks(updatedSections);
-
-    // Calculate critical path
-    const criticalPath = calculateCriticalPath(updatedSections);
-
-    // Identify potential resource constraints
-    const resourceConstraints = identifyResourceConstraints(parallelWork);
-
-    // Check for schedule risks
-    const riskAreas = identifySchedulingRisks(updatedSections);
-
-    // Identify phase transitions
-    const phaseTransitions = identifyPhaseTransitions(updatedSections);
-
-    // Start building the description
-    let description = `<div class="gantt-description">`;
-
-    // Overview section
-    description += `<div class="gantt-overview">
-        <p class="gantt-title">This Gantt chart titled "${Common.escapeHtml(
-          title
-        )}" shows a project timeline with ${sections.length} ${
-      sections.length === 1 ? "section" : "sections"
-    }.</p>
-        <p class="gantt-date-format">Dates are displayed in ${Common.escapeHtml(
-          dateFormat
-        )} format.</p>`;
-
-    // Project duration
-    if (projectStart && projectEnd && projectDuration) {
-      description += `<p class="gantt-project-duration">The project starts on ${DateUtils.formatDate(
-        projectStart
-      )} and is scheduled to complete on ${DateUtils.formatDate(
-        projectEnd
-      )}, spanning approximately ${projectDuration.formatted}.</p>`;
-    }
-
-    // Calculate total calendar days and working days for clarity
-    const totalCalendarDays =
-      projectStart && projectEnd
-        ? DateUtils.differenceInDays(
-            DateUtils.addDays(projectEnd, 1),
-            projectStart
-          )
-        : 0;
-
-    // Only add this section if there are exclusions
-    if (
-      (excludesWeekends || (excludedDates && excludedDates.length > 0)) &&
-      projectDuration &&
-      totalCalendarDays > projectDuration.days
-    ) {
-      const excludedDaysCount = totalCalendarDays - projectDuration.days;
-
-      // Add to overview after the project duration
-      description = description.replace(
-        /<\/p>\s*<\/div>/,
-        `</p><p class="gantt-exclusion-impact">The project spans ${totalCalendarDays} calendar days, with ${excludedDaysCount} excluded days (${(
-          (excludedDaysCount / totalCalendarDays) *
-          100
-        ).toFixed(1)}% of the timeline).</p></div>`
-      );
-    }
-
-    description += `</div>`;
-
-    // Add exclusions section if present
-    if (excludesWeekends || (excludedDates && excludedDates.length > 0)) {
-      description += `<div class="gantt-exclusions">
-    <h4 class="gantt-exclusions-heading">Schedule Exclusions</h4>
-    <p>This schedule excludes:`;
-
-      if (excludesWeekends) {
-        description += ` <span class="gantt-exclusion-weekends">weekends (${
-          weekendConfig === "friday" ? "Friday-Saturday" : "Saturday-Sunday"
-        })</span>`;
-
-        if (excludedDates && excludedDates.length > 0) {
-          description += " and";
-        }
-      }
-
-      if (excludedDates && excludedDates.length > 0) {
-        description += ` <span class="gantt-exclusion-dates">specific dates: ${excludedDates
-          .map((d) => DateUtils.formatDate(d))
-          .join(", ")}</span>`;
-      }
-
-      description += `.</p>
-    <p class="gantt-exclusion-note">These excluded dates are not counted in task durations. For example, a 10-day task may span more than 10 calendar days if it includes excluded dates.</p>
-  </div>`;
-    }
-
-    // Sections and tasks
-    description += `<div class="gantt-sections">
-        <p class="gantt-sections-intro">The project is organised into the following ${
-          sections.length === 1 ? "section" : "sections"
-        }:</p>
-        <ul class="gantt-section-list">`;
-
-    updatedSections.forEach((section) => {
-      description += `<li class="gantt-section">
-            <div class="gantt-section-header">
-                <strong class="gantt-section-name">${Common.escapeHtml(
-                  section.name
-                )}</strong>`;
-
-      if (section.startDate && section.endDate) {
-        const sectionDuration = DateUtils.differenceInDays(
-          DateUtils.addDays(section.endDate, 1), // Add 1 for inclusive end date
-          section.startDate
-        );
-        description += ` <span class="gantt-section-dates">(${DateUtils.formatDate(
-          section.startDate
-        )} to ${DateUtils.formatDate(
-          section.endDate
-        )}, ${DateUtils.formatDurationInWeeksAndDays(sectionDuration)})</span>`;
-      }
-      description += `</div>`;
-
-      if (section.tasks.length > 0) {
-        description += `<ul class="gantt-task-list">`;
-
-        section.tasks.forEach((task) => {
-          // Add appropriate class for task type
-          let taskClass = "gantt-task";
-          if (task.isMilestone) taskClass += " gantt-milestone";
-          if (task.isDone) taskClass += " gantt-done";
-          if (task.isActive) taskClass += " gantt-active";
-          if (task.isCritical) taskClass += " gantt-critical";
-          if (criticalPath && task.id && criticalPath.includes(task.id))
-            taskClass += " gantt-critical-path";
-
-          description += `<li class="${taskClass}">`;
-
-          // Task name with status
-          let taskDescription = `<span class="gantt-task-name">${Common.escapeHtml(
-            task.name
-          )}</span>`;
-
-          // Add status text
-          let statusText = "";
-          if (task.isDone) statusText = " (completed)";
-          if (task.isActive) statusText = " (in progress)";
-          if (task.isCritical) statusText = " (critical)";
-
-          if (statusText) {
-            taskDescription += `<span class="gantt-task-status">${statusText}</span>`;
-          }
-
-          // Add timing information
-          if (task.startDate) {
-            taskDescription += `, which starts on <span class="gantt-task-start-date">${DateUtils.formatDate(
-              task.startDate
-            )}</span>`;
-
-            if (task.dependsOnTaskName) {
-              taskDescription += ` after the completion of <span class="gantt-task-dependency">${Common.escapeHtml(
-                task.dependsOnTaskName
-              )}</span>`;
-            }
-          }
-
-          // Add duration information
-          if (task.isMilestone) {
-            taskDescription += ` <span class="gantt-task-type">(milestone event)</span>`;
-          } else if (task.duration && task.duration !== "unspecified") {
-            // Convert abbreviated durations to full words
-            const durationDays =
-              task.calculatedDuration || durationToDays(task.duration);
-
-            taskDescription += ` with a duration of <span class="gantt-task-duration">${DateUtils.formatDurationInWeeksAndDays(
-              durationDays
-            )}</span>`;
-          }
-
-          // Add "until" relationship if present
-          if (task.untilTaskName) {
-            taskDescription += `, running until <span class="gantt-task-until">${Common.escapeHtml(
-              task.untilTaskName
-            )}</span> begins`;
-          }
-          // Add end date if available
-          else if (task.endDate && !task.isMilestone) {
-            taskDescription += `, ending on <span class="gantt-task-end-date">${DateUtils.formatDate(
-              task.endDate
-            )}</span>`;
-          }
-
-          description += taskDescription + `</li>`;
-        });
-
-        description += `</ul>`;
-      }
-
-      description += `</li>`;
-    });
-
-    description += `</ul></div>`;
-
-    // Milestones section
-    const milestones = updatedSections.flatMap((section) =>
-      section.tasks.filter((task) => task.isMilestone)
-    );
-
-    if (milestones.length > 0) {
-      description += `<div class="gantt-milestones">
-            <h4 class="gantt-milestones-heading">Project Milestones</h4>
-            <p class="gantt-milestones-intro">The project includes ${
-              milestones.length
-            } milestone${milestones.length > 1 ? "s" : ""}:</p>
-            <ul class="gantt-milestone-list">`;
-
-      milestones.forEach((milestone) => {
-        let milestoneDesc = `<span class="gantt-milestone-name">${Common.escapeHtml(
-          milestone.name
-        )}</span>`;
-        if (milestone.startDate) {
-          milestoneDesc += ` <span class="gantt-milestone-date">(${DateUtils.formatDate(
-            milestone.startDate
-          )})</span>`;
-
-          if (milestone.dependsOnTaskName) {
-            milestoneDesc += ` after completion of ${Common.escapeHtml(
-              milestone.dependsOnTaskName
-            )}`;
-          }
-        }
-        description += `<li class="gantt-milestone-item">${milestoneDesc}</li>`;
-      });
-
-      description += `</ul></div>`;
-    }
-
-    // Parallel work section
-    if (parallelWork.length > 0) {
-      description += `<div class="gantt-parallel-work">
-            <h4 class="gantt-parallel-heading">Parallel Work</h4>
-            <p class="gantt-parallel-intro">The project includes ${
-              parallelWork.length
-            } instance${
-        parallelWork.length > 1 ? "s" : ""
-      } of parallel work:</p>
-            <ul class="gantt-parallel-list">`;
-
-      parallelWork.forEach((parallel) => {
-        // Each name is escaped BEFORE the join — the " and " the join inserts
-        // is generator furniture and must not be escaped.
-        const taskNames = parallel.tasks
-          .map((t) => Common.escapeHtml(t.name))
-          .join(" and ");
-        description += `<li class="gantt-parallel-item">On <span class="gantt-parallel-date">${parallel.date}</span>, <span class="gantt-parallel-tasks">${taskNames}</span> begin simultaneously`;
-
-        // Add resource insight if available
-        if (resourceConstraints && resourceConstraints[parallel.date]) {
-          description += ` <span class="gantt-resource-note">(Note: May require careful resource allocation)</span>`;
-        }
-
-        description += `</li>`;
-      });
-
-      description += `</ul></div>`;
-    }
-
-    // Critical path section
-    if (criticalPath && criticalPath.length > 0) {
-      description += `<div class="gantt-critical-path-section">
-            <h4 class="gantt-critical-path-heading">Critical Path</h4>
-            <p class="gantt-critical-path-intro">The critical path (tasks that directly affect the project end date) includes:</p>
-            <ol class="gantt-critical-path-list">`;
-
-      criticalPath.forEach((taskId) => {
-        const task = findTaskById(updatedSections, taskId);
-        if (task) {
-          description += `<li class="gantt-critical-path-item">
-                    <span class="gantt-critical-task-name">${Common.escapeHtml(
-                      task.name
-                    )}</span>`;
-          if (task.duration && !task.isMilestone) {
-            description += ` <span class="gantt-critical-task-duration">(${Common.escapeHtml(
-              task.duration
-            )})</span>`;
-          }
-          description += `</li>`;
-        }
-      });
-
-      description += `</ol>
-            <p class="gantt-critical-path-note">Delays to these tasks will directly impact the overall project completion date.</p>
-        </div>`;
-    }
-
-    // Risk areas section
-    if (riskAreas && riskAreas.length > 0) {
-      description += `<div class="gantt-risk-areas">
-            <h4 class="gantt-risk-heading">Potential Schedule Risks</h4>
-            <ul class="gantt-risk-list">`;
-
-      riskAreas.forEach((risk) => {
-        description += `<li class="gantt-risk-item">${risk}</li>`;
-      });
-
-      description += `</ul>
-        </div>`;
-    }
-
-    // Phase transitions section
-    if (phaseTransitions && phaseTransitions.length > 0) {
-      description += `<div class="gantt-phase-transitions">
-            <h4 class="gantt-transitions-heading">Key Phase Transitions</h4>
-            <ul class="gantt-transitions-list">`;
-
-      phaseTransitions.forEach((transition) => {
-        description += `<li class="gantt-transition-item">
-                Transition from <span class="gantt-from-phase">${Common.escapeHtml(
-                  transition.fromPhase
-                )}</span> to 
-                <span class="gantt-to-phase">${Common.escapeHtml(
-                  transition.toPhase
-                )}</span> occurs on 
-                <span class="gantt-transition-date">${DateUtils.formatDate(
-                  transition.date
-                )}</span>
-            </li>`;
-      });
-
-      description += `</ul>
-        </div>`;
-    }
-
-    // General dependencies note
-    description += `<div class="gantt-dependencies-note">
-        <p>The chart shows task dependencies, with successor tasks starting after their prerequisite tasks complete.</p>
-    </div>`;
-
-    description += `</div>`;
-
-    return description;
-  }
-  /**
-   * Identify potential scheduling risks in the project
-   * @param {Array} sections - Array of sections with tasks
-   * @returns {Array} Array of risk descriptions
-   */
-  function identifySchedulingRisks(sections) {
-    const risks = [];
-
-    // Flatten all tasks for easier processing
-    const allTasks = [];
-    sections.forEach((section) => {
-      section.tasks.forEach((task) => {
-        allTasks.push({
-          ...task,
-          section: section.name,
-        });
-      });
-    });
-
-    // Check for tight dependencies (end and start on same day)
-    allTasks.forEach((task) => {
-      if (task.endDate) {
-        // Find tasks that start the day this task ends
-        const dependentTasks = allTasks.filter(
-          (t) =>
-            t.startDate &&
-            DateUtils.formatDate(t.startDate) ===
-              DateUtils.formatDate(task.endDate) &&
-            t.dependsOn === task.id
-        );
-
-        if (dependentTasks.length > 0) {
-          dependentTasks.forEach((depTask) => {
-            // Risk strings are interpolated into an <li> by the caller, so the
-            // task names are escaped HERE, where they enter the string — not at
-            // the consumption site, which would escape the whole sentence.
-            risks.push(
-              `Tight dependency: "${Common.escapeHtml(
-                task.name
-              )}" directly transitions to "${Common.escapeHtml(
-                depTask.name
-              )}" on the same day with no buffer`
-            );
-          });
-        }
-      }
-    });
-
-    // Check for long-duration tasks (potential risk)
-    const longTasks = allTasks.filter((task) => {
-      if (!task.duration || task.isMilestone) return false;
-      const days = task.calculatedDuration || durationToDays(task.duration);
-      return days > 10; // Consider tasks longer than 2 weeks as potentially risky
-    });
-
-    longTasks.forEach((task) => {
-      risks.push(
-        `Long-duration task: "${Common.escapeHtml(
-          task.name
-        )}" has a ${Common.escapeHtml(
-          task.duration
-        )} duration, which may be difficult to estimate accurately`
-      );
-    });
-
-    // Check for "until" dependencies (can be risky if the target task moves)
-    const untilTasks = allTasks.filter((task) => task.untilTaskName);
-
-    untilTasks.forEach((task) => {
-      risks.push(
-        `Flexible end date: "${Common.escapeHtml(
-          task.name
-        )}" runs until "${Common.escapeHtml(
-          task.untilTaskName
-        )}" begins, which creates uncertainty in scheduling`
-      );
-    });
-
-    return risks;
+  async function generateDetailedDescription(svgElement, code) {
+    logInfo("[Mermaid Accessibility] Generating Gantt detailed description");
+
+    const chart = await readChart(code);
+    const tasks = narrateTasks(chart);
+
+    const construction = [
+      buildOverviewSentence(chart, tasks, escapeText, true),
+      buildExcludesSentence(chart, escapeText),
+    ]
+      .filter((sentence) => sentence)
+      .join(" ");
+
+    // RULE G3 AS AMENDED 30 August 2026 (fix A § 5.2). A heading that would
+    // introduce no content is omitted entirely. It fires today only on Key
+    // Insights, for a chart with no takeaway, no milestone, no flag and no span
+    // — the circular pair of finding F2, whose section was a heading with
+    // nothing under it. A heading is a promise that something follows, and a
+    // reader who navigates to one and finds the next heading has been sent
+    // somewhere for nothing. The rule is written generally rather than as a Key
+    // Insights special case, so a future section that can empty is covered by
+    // construction rather than by whoever remembers.
+    const parts = [];
+    const pushSection = (heading, lines) => {
+      if (!lines || lines.length === 0) return;
+      parts.push(`<h4>${heading}</h4>`);
+      parts.push(...lines);
+    };
+
+    pushSection("Chart Construction", construction ? [`<p>${construction}</p>`] : []);
+    pushSection("Schedule", buildSchedule(chart, tasks));
+    pushSection("Key Insights", buildInsights(chart, tasks));
+    pushSection("Data Table", buildTable(chart, tasks));
+
+    // Newline-joined so text-content extraction stays readable: without them,
+    // list and row boundaries concatenate with no space.
+    return parts.join("\n");
   }
 
-  /**
-   * Identify phase transitions in the project
-   * @param {Array} sections - Array of sections with tasks
-   * @returns {Array} Array of transition objects
-   */
-  function identifyPhaseTransitions(sections) {
-    const transitions = [];
-
-    // Find where one section ends and another begins
-    for (let i = 0; i < sections.length - 1; i++) {
-      const currentSection = sections[i];
-      const nextSection = sections[i + 1];
-
-      if (currentSection.endDate && nextSection.startDate) {
-        // Check if there's a gap or overlap
-        const endDate = DateUtils.formatDate(currentSection.endDate);
-        const startDate = DateUtils.formatDate(nextSection.startDate);
-
-        let transitionType = "immediate";
-        if (
-          DateUtils.differenceInDays(
-            nextSection.startDate,
-            currentSection.endDate
-          ) > 1
-        ) {
-          transitionType = "gap";
-        } else if (endDate === startDate) {
-          transitionType = "same-day";
-        }
-
-        transitions.push({
-          fromPhase: currentSection.name,
-          toPhase: nextSection.name,
-          date: nextSection.startDate,
-          type: transitionType,
-        });
-      }
-    }
-
-    return transitions;
-  }
-
-  /**
-   * Find a task by ID
-   * @param {Array} sections - Array of sections with tasks
-   * @param {string} taskId - ID of the task to find
-   * @returns {Object|null} The task object or null
-   */
-  function findTaskById(sections, taskId) {
-    for (const section of sections) {
-      for (const task of section.tasks) {
-        if (task.id === taskId) {
-          return task;
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Identify potential resource constraints from parallel tasks
-   * @param {Array} parallelWork - Array of parallel work instances
-   * @returns {Object} Map of dates to resource constraint flags
-   */
-  function identifyResourceConstraints(parallelWork) {
-    const constraints = {};
-
-    // For now, simply flag days with 2+ parallel tasks as potentially constrained
-    parallelWork.forEach((parallel) => {
-      if (parallel.tasks.length >= 2) {
-        constraints[parallel.date] = true;
-      }
-    });
-
-    return constraints;
-  }
-
-  /**
-   * Enhanced version of the existing identifyParallelTasks function
-   * @param {Array} sections - Array of sections with tasks
-   * @returns {Array} Array of parallel work instances with additional context
-   */
-  function identifyParallelTasks(sections) {
-    const datesMap = new Map();
-    const tasksByDate = {};
-
-    // Group tasks by start date
-    sections.forEach((section) => {
-      section.tasks.forEach((task) => {
-        if (task.startDate) {
-          const dateKey = DateUtils.formatDate(task.startDate);
-          if (!datesMap.has(dateKey)) {
-            datesMap.set(dateKey, []);
-            tasksByDate[dateKey] = [];
-          }
-          datesMap.get(dateKey).push({
-            name: task.name,
-            section: section.name,
-            id: task.id,
-          });
-          tasksByDate[dateKey].push(task);
-        }
-      });
-    });
-
-    // Find dates with multiple tasks starting
-    const parallelWorkStreams = [];
-    datesMap.forEach((tasks, date) => {
-      if (tasks.length > 1) {
-        // Calculate the combined workload for this parallel set
-        const combinedDuration = tasksByDate[date].reduce((total, task) => {
-          if (!task.isMilestone && task.duration) {
-            return (
-              total + (task.calculatedDuration || durationToDays(task.duration))
-            );
-          }
-          return total;
-        }, 0);
-
-        parallelWorkStreams.push({
-          date,
-          tasks,
-          combinedDuration,
-          potentialResourceImpact: tasks.length > 2 ? "high" : "moderate",
-        });
-      }
-    });
-
-    // Sort by date for chronological presentation
-    parallelWorkStreams.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      return dateA - dateB;
-    });
-
-    return parallelWorkStreams;
-  }
-
-  // Register with the core module
+  // Register with the core module. `generateShort` returns plain text because
+  // the core assigns its result straight to descriptions.short, which reaches
+  // the figcaption and the SVG aria-label.
+  //
+  // generateShortHTML is the ASYNC shape, and it has to be: this module awaits
+  // the parse adapter, so `generateShortDescription(...).html` on the returned
+  // promise would be `undefined` and the tier would register, be called, and
+  // yield nothing silently (register item 13). Flowchart and XY chart are the
+  // precedent this follows.
   window.MermaidAccessibility.registerDescriptionGenerator("gantt", {
     generateShort: shortDescriptionWrapper,
     generateDetailed: generateDetailedDescription,
-    // Add a new property for HTML-formatted short description
-    generateShortHTML: function (svgElement, code) {
-      return generateShortDescription(svgElement, code).html;
+    generateShortHTML: async function (svgElement, code) {
+      const descriptions = await generateShortDescription(svgElement, code);
+      return descriptions.html;
     },
   });
 
-  logInfo("[Mermaid Accessibility] Gantt chart module loaded and registered");
+  logInfo(
+    "[Mermaid Accessibility] Gantt chart module loaded and registered on the parse adapter's gantt surface"
+  );
 })();

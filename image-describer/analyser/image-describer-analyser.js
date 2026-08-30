@@ -27,6 +27,10 @@
  *   4. window.ImageDescriberAnalyserXRef
  *   5. window.ImageDescriberAnalyserFormat
  *
+ * Shared engine: consumed by the MathPix alt-text lane
+ * (see mathpix-scripts/docs/alt-text/local-describer-plan.md).
+ * Check both consumers before changing public shapes.
+ *
  * VERSION: 3.0.0
  * DATE: 28 March 2026
  * PHASE: Local Analysis — Phase 15A (two-phase analysis split)

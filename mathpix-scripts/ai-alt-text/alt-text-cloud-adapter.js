@@ -49,7 +49,8 @@
  * cannot bite. Pure otherwise: no DOM, no `title` attribute.
  *
  * @see mathpix-scripts/ai-alt-text/alt-text-generation-contract.js (2.1 — finalise/STATUS/SOURCE)
- * @see image-describer/image-describer-controller-model.js (F6 source — isModelVisionCapable, KNOWN_VISION_MODELS)
+ * @see mathpix-scripts/core/mathpix-model-capability.js (EA-4 — isModelVisionCapable and KNOWN_VISION_MODELS now live there, shared with the Image Describer)
+ * @see image-describer/image-describer-controller-model.js (F6 source, and the other consumer of the shared list)
  * @see openrouter-embed/openrouter-embed-model-selector.js (getEligibleModels)
  * @see openrouter-embed/provider-switcher.js (getActive)
  */
@@ -110,67 +111,23 @@ const MathPixAltTextCloudAdapter = (function () {
    */
   const NO_MODEL_RESOLVED = null;
 
+  /**
+   * Returned in place of the shared list when the capability module is absent.
+   * Frozen and module-scope so the getter below never hands back a fresh array
+   * per access, which would make an identity assertion meaningless.
+   */
+  const EMPTY_VISION_LIST = Object.freeze([]);
+
   // ===========================================================================
-  // KNOWN VISION MODELS
+  // KNOWN VISION MODELS — no longer here
   // ===========================================================================
-  // COPIED VERBATIM from image-describer-controller-model.js (KNOWN_VISION_MODELS).
-  // This duplicates a list that DRIFTS — every time a Foundry deployment's vision
-  // flag flips, both copies must be edited. FOLLOW-UP (recorded, not built here):
-  // reconcile the two into ONE shared vision-capability source in a later phase.
-  // Belt-and-braces against registries that don't flag vision correctly; includes
-  // both OpenRouter-prefixed entries and Foundry-routed entries.
-  const KNOWN_VISION_MODELS = [
-    // OpenRouter — Anthropic Claude models (all recent versions support vision)
-    "anthropic/claude-sonnet-4.6",
-    "anthropic/claude-opus-4.6",
-    "anthropic/claude-haiku-4.5",
-    // OpenRouter — OpenAI GPT-4 vision models
-    "openai/gpt-4-vision-preview",
-    "openai/gpt-4o",
-    "openai/gpt-4o-mini",
-    "openai/gpt-4-turbo",
-    // OpenRouter — Google Gemini models
-    "google/gemini-pro-vision",
-    "google/gemini-1.5-pro",
-    "google/gemini-1.5-flash",
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.5-pro-preview",
-    "google/gemini-2.5-flash-preview",
-    // Foundry — Azure OpenAI deployments (Task 3.5b)
-    "azure-openai/gpt-5.4-mini",
-    // Foundry — vision-capable additions (factory registration, post-Stage-3b).
-    // All four Foundry deployments empirically verified vision-capable
-    // (31 May 2026); gpt-5.4-nano was added here once its conservative
-    // vision: false default was flipped in js/foundry-model-definitions.js.
-    "azure-openai/gpt-4o-mini",
-    "azure-openai/gpt-5.4",
-    "azure-openai/gpt-5.4-nano",
-    // Foundry — GPT-5.x flagships, vision verified via Image Describer
-    // (4 June 2026); initially registered text-only in f9ef566, flipped
-    // once vision: true landed in js/foundry-model-definitions.js.
-    "azure-openai/gpt-5",
-    "azure-openai/gpt-5.1",
-    "azure-openai/gpt-5.2",
-    // Foundry — GPT-4.1 family, GPT-4o, and o4-mini, vision verified via
-    // Image Describer (6 June 2026); initially registered text-only in
-    // d1f6cfc, flipped once vision: true landed in
-    // js/foundry-model-definitions.js.
-    "azure-openai/gpt-4.1",
-    "azure-openai/gpt-4.1-mini",
-    "azure-openai/gpt-4.1-nano",
-    "azure-openai/gpt-4o",
-    "azure-openai/o4-mini",
-    // Foundry — Phi-4 Multimodal, vision verified via Image Describer
-    // (6 June 2026); initially registered text-only in 683f2fb on an
-    // ambiguous degenerate-pixel probe (escape-phrase false negative),
-    // flipped once vision: true landed in js/foundry-model-definitions.js.
-    // The other ten batch-3 models remain confirmed text-only.
-    "azure-openai/Phi-4-multimodal-instruct",
-    // Foundry — Responses-API surface (azure-responses provider). gpt-5-pro
-    // vision verified via a live Foundry call (Task 5b); the five Codex
-    // deployments remain text-only.
-    "azure-responses/gpt-5-pro",
-  ];
+  // The 27-entry list this file used to carry, copied verbatim from
+  // image-describer-controller-model.js, MOVED to
+  // mathpix-scripts/core/mathpix-model-capability.js at parcel EA-4. The two
+  // copies were confirmed byte-identical immediately before the collapse, so
+  // nothing was lost in merging them, and the drift this file's own comment
+  // warned about can no longer happen: both consumers now read ONE frozen array
+  // by reference.
 
   // ---------------------------------------------------------------------------
   // Global reach helpers (reach at CALL time, guarded)
@@ -189,67 +146,48 @@ const MathPixAltTextCloudAdapter = (function () {
   }
 
   // ===========================================================================
-  // VISION CAPABILITY RE-CHECK (F6 — both halves)
+  // VISION CAPABILITY RE-CHECK (F6 — both halves, now shared)
   // ===========================================================================
 
   /**
-   * Vision-capability predicate — COPIED from image-describer-controller-model.js
-   * (isModelVisionCapable), retargeted to standalone module scope. Both halves
-   * of the F6 decision are preserved:
-   *   • provider derivation from the id prefix,
-   *   • primary path via EmbedModelSelector.getEligibleModels with the
-   *     NON-EMPTY-list-is-authoritative rule (in-list ⇒ vision, absent ⇒ not),
-   *   • the EMPTY-list fall-through (a misconfigured / empty selector must NOT
-   *     conclude "not vision" — fall through to the static list),
-   *   • the thrown-selector fall-through,
-   *   • the KNOWN_VISION_MODELS membership fallback.
+   * The shared capability module, reached at CALL time. Returns null (with an
+   * ERROR) if absent — its script tag precedes this file in tools.html, so an
+   * absence is a page-configuration fault rather than a capability result.
+   */
+  function _capability() {
+    const c = window.MathPixModelCapability;
+    if (!c || typeof c.isModelVisionCapable !== "function") {
+      logError(
+        "MathPixModelCapability unavailable at call time — the shared vision predicate cannot be consulted",
+      );
+      return null;
+    }
+    return c;
+  }
+
+  /**
+   * Vision-capability predicate — MOVED to
+   * mathpix-scripts/core/mathpix-model-capability.js at parcel EA-4, together
+   * with the 27-entry KNOWN_VISION_MODELS list this file used to carry a
+   * verbatim copy of. Both halves of the F6 decision moved with it unchanged:
+   * the prefix-derived provider, the non-empty-list-is-authoritative rule, the
+   * EMPTY-list fall-through, the thrown-selector fall-through and the
+   * membership fallback. Read the decision table there.
    *
-   * The controller's `showError` / `announceStatus` / `return` are NOT copied —
-   * they are controller-coupled and cannot run standalone. Reaches
-   * window.EmbedModelSelector at CALL time with the reference's guard, so it
-   * runs headless (no embed required).
+   * This wrapper survives because the 2.3 guard and the orchestrator suite
+   * drive `MathPixAltTextCloudAdapter.isModelVisionCapable` directly, and this
+   * parcel changes no consumer.
    *
+   * @deprecated Use window.MathPixModelCapability.isModelVisionCapable.
    * @param {string} modelId - The model id actually about to be used.
-   * @returns {boolean} true if the model can process images.
+   * @returns {boolean} true if the model can process images. False when the
+   *   shared module is absent — with no authority to consult, a refusal is the
+   *   honest answer, and generate() then refuses via the standard send boundary.
    */
   function isModelVisionCapable(modelId) {
-    if (!modelId || typeof modelId !== "string") return false;
-
-    // Derive the provider the same way the gate does: an explicit azure-openai
-    // prefix routes to Foundry's chat surface, azure-responses to Foundry's
-    // Responses surface; everything else routes via OpenRouter.
-    const provider = modelId.startsWith("azure-openai/")
-      ? "azure-openai"
-      : modelId.startsWith("azure-responses/")
-      ? "azure-responses"
-      : "openrouter";
-
-    // Primary: EmbedModelSelector vision eligibility (same source as the gate).
-    if (
-      window.EmbedModelSelector &&
-      typeof window.EmbedModelSelector.getEligibleModels === "function"
-    ) {
-      try {
-        const eligible = window.EmbedModelSelector.getEligibleModels({
-          providerId: provider,
-          capabilities: ["vision"],
-        });
-        if (Array.isArray(eligible) && eligible.length > 0) {
-          // Non-empty list is authoritative: in-list => vision, absent => not.
-          return eligible.some((m) => m && m.id === modelId);
-        }
-        // Empty list (selector misconfigured / nothing registered) — do NOT
-        // conclude "not vision"; fall through to the membership fallback.
-      } catch (error) {
-        logWarn(
-          "isModelVisionCapable: getEligibleModels failed, using fallback:",
-          error,
-        );
-      }
-    }
-
-    // Fallback: KNOWN_VISION_MODELS membership (module-scope, shared list).
-    return KNOWN_VISION_MODELS.includes(modelId);
+    const cap = _capability();
+    if (!cap) return false;
+    return cap.isModelVisionCapable(modelId);
   }
 
   // ===========================================================================
@@ -487,8 +425,19 @@ const MathPixAltTextCloudAdapter = (function () {
     // headless (no embed) — the 2.3 guard drives these directly.
     isModelVisionCapable,
     _resolveModel,
-    // Frozen reference copy of the copied list for tests.
-    KNOWN_VISION_MODELS: Object.freeze(KNOWN_VISION_MODELS.slice()),
+    /**
+     * The shared frozen list, BY REFERENCE — deliberately not a copy. Before
+     * EA-4 this exported `Object.freeze(list.slice())`, defending a local array
+     * that no longer exists; a copy now would defeat the very property the
+     * collapse bought, which is that this adapter and the Image Describer read
+     * the same array identity and cannot drift.
+     *
+     * @deprecated Use window.MathPixModelCapability.KNOWN_VISION_MODELS.
+     */
+    get KNOWN_VISION_MODELS() {
+      const cap = _capability();
+      return cap ? cap.KNOWN_VISION_MODELS : EMPTY_VISION_LIST;
+    },
     DEFAULT_MODEL,
     NON_VISION_REFUSAL,
   };
