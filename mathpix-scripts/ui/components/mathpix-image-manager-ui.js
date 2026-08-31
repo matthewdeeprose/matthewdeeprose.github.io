@@ -1092,9 +1092,6 @@ const MathPixImageManagerUI = (function () {
       /** @type {string|null} Image ID for pending swap action */
       this._pendingSwapId = null;
 
-      /** @type {HTMLElement|null} Trigger button for focus return */
-      this._triggerButton = null;
-
       /**
        * @type {string|null} Parcel g-4. A line deferred until the modal has
        * finished closing, spoken from the PAGE announcer rather than the modal
@@ -1116,8 +1113,6 @@ const MathPixImageManagerUI = (function () {
      */
     open() {
       logInfo("Opening image manager modal");
-
-      this._triggerButton = document.getElementById(MANAGE_IMAGES_BTN_ID);
 
       const content = this._buildModalContent();
 
@@ -1210,11 +1205,17 @@ const MathPixImageManagerUI = (function () {
             // the dialog element has left the DOM (onClose is invoked from a
             // .then() on modalManager.show(), whose promise finishClose
             // resolves last), so the page's own live region is no longer
-            // blocked by the top layer. Before _returnFocus, so the
-            // announcement is in the region ahead of the focus move.
+            // blocked by the top layer.
+            //
+            // Step 4b (31 August 2026): this used to be followed by
+            // _returnFocus(), and the ordering comment here said the flush ran
+            // first so the announcement was in the region ahead of the focus
+            // move. That hand-rolled return is RETIRED — finishClose's tier 1
+            // resolves returnFocusTo above and has already moved focus by the
+            // time onClose runs. The flush's own g-6 park is what puts focus on
+            // a living control on the last-image journey, and the g-8 settle
+            // above the write is what keeps the announcement behind it.
             this._flushPendingCloseAnnouncement();
-
-            this._returnFocus();
           },
         });
 
@@ -1268,7 +1269,12 @@ const MathPixImageManagerUI = (function () {
 
     /**
      * Close the image manager modal.
-     * Returns focus to the trigger button.
+     *
+     * Focus return is UniversalModal's, not this class's: the modal declares
+     * returnFocusTo in open(), so finishClose resolves the opener from the
+     * manager's own per-modal record. Step 4b (31 August 2026) retired the
+     * hand-rolled _returnFocus() that used to run here — see the returnFocusTo
+     * note in open() and docs/universal-modal-focus-return-plan.md.
      */
     close() {
       logInfo("Closing image manager modal");
@@ -1277,23 +1283,6 @@ const MathPixImageManagerUI = (function () {
         this.currentModal.close();
         this.currentModal = null;
       }
-
-      this._returnFocus();
-    }
-
-    /**
-     * Return focus to the trigger button
-     * @private
-     */
-    _returnFocus() {
-      if (
-        this._triggerButton &&
-        typeof this._triggerButton.focus === "function"
-      ) {
-        this._triggerButton.focus();
-        logDebug("Focus returned to manage images button");
-      }
-      this._triggerButton = null;
     }
 
     // ========================================================================
@@ -4185,23 +4174,6 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       return false;
     }
 
-    /**
-     * Focus the original modal trigger. Q8c — when the X closes the
-     * manager modal, focus returns to the button that opened it.
-     *
-     * The trigger is already stashed at open() time by Stage 4 (see
-     * _triggerButton), and Stage 4's _returnFocus() implements the actual
-     * focus call. This helper delegates to _returnFocus() to document
-     * intent at Chunk 4 call sites — there is no separate Q8c focus
-     * call to add; this is the symmetry stub.
-     *
-     * @private
-     */
-    _focusModalTrigger() {
-      logInfo("_focusModalTrigger (delegating to _returnFocus)");
-      this._returnFocus();
-    }
-
     // ------------------------------------------------------------------------
     // Toggletip lifecycle (Q1). Caption toggletip is created on manager
     // open and destroyed on manager close — see open() and onClose below.
@@ -5304,16 +5276,21 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       // Not awaited by onClose — this function is fire-and-forget from there, so
       // the settle delays only the announcement, never the teardown.
       //
-      // NOTHING DISTURBS THE PARKED FOCUS THIS WRITE DEPENDS ON, and the reason
-      // is stronger than it was. This comment used to say _returnFocus runs
-      // after the park and targets the same button, which is true and is not the
-      // load-bearing fact: on THIS journey _returnFocus is dead twice over —
-      // close() calls it while the dialog is still open, so the background is
-      // inert and the focus() is a no-op, and it nulls _triggerButton on the way
-      // out, so onClose's later call no-ops too. Measured LANDED=false with an
-      // inert ancestor, 17 of 17 across three cells (parcel G-9-E). Since
-      // 21 August 2026 the button is also where finishClose's tier 1 has already
-      // put focus, by declaration — see the returnFocusTo note in open().
+      // NOTHING DISTURBS THE PARKED FOCUS THIS WRITE DEPENDS ON, and since
+      // 21 August 2026 the reason is that the button is where finishClose's
+      // tier 1 has already put focus, by declaration — see the returnFocusTo
+      // note in open().
+      //
+      // ARCHAEOLOGY, kept because it is why the park was safe BEFORE the
+      // declaration existed and why retiring the old code cost this journey
+      // nothing. This class used to carry a hand-rolled _returnFocus(), and on
+      // THIS journey it was dead twice over: close() called it while the dialog
+      // was still open, so the background was inert and the focus() a no-op,
+      // and it nulled its captured trigger on the way out, so onClose's later
+      // call no-opped too. Measured LANDED=false with an inert ancestor, 17 of
+      // 17 across three cells (parcel G-9-E). Step 4b (31 August 2026) retired
+      // it; that measurement is what established the retirement could not move
+      // this journey, and the before/after landing sequences confirmed it.
       await new Promise((resolve) =>
         setTimeout(resolve, LAST_IMAGE_ANNOUNCE_SETTLE_MS),
       );

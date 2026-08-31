@@ -302,6 +302,118 @@ window.MermaidThemes = (function () {
   /** The two inks a pattern may use; whichever contrasts better with the fill wins. */
   const PATTERN_INKS = Object.freeze(["#FFFFFF", "#00131D"]);
 
+  // ==========================================================================
+  // GANTT ENCODING — findings G3 to G7, 30 August 2026
+  //
+  // Same shape as the xychart work above and for the same reason: no theme in
+  // this repo set a gantt variable except wcagLight, so eight of the nine
+  // selectable theme/mode combinations fell through to Mermaid's own gantt
+  // palette. Measured before any change, on a five-state chart driven through
+  // the real theme selector: the four bar states `plain`, `done`, `active` and
+  // `crit` are byte-identical in every non-colour channel, and four bars are
+  // left with neither a fill nor an outline clearing 3:1 against the band they
+  // sit on. The state is carried by colour and by nothing else.
+  //
+  // THREE MECHANISMS DECIDED THE DESIGN, all read out of the rendered SVG
+  // rather than assumed. They are recorded here because each one makes the
+  // obvious implementation wrong.
+  //
+  //  1. THE BANDS ARE 20% OPAQUE. Mermaid's in-SVG block carries
+  //     `.section { stroke:none; opacity:0.2 }`, so a band's DECLARED fill is
+  //     never the colour anything sits on. There are two declared fills per
+  //     theme and two COMPOSITED grounds, and the composite is what an outline
+  //     has to clear. Deriving against the declaration would have produced
+  //     confident wrong numbers in all nine cells.
+  //
+  //  2. EVERY WRITE MUST BE AN INLINE STYLE. Mermaid's block sets
+  //     `.task { stroke-width:2 }`, `.done0 { stroke:grey; fill:lightgrey }`,
+  //     `.today { stroke:red; stroke-width:2px }` and more, as CLASS rules — and
+  //     a presentation attribute is the weakest source in the cascade, so an
+  //     attribute write is inert. This is the xychart casing lesson (§ 14.18)
+  //     arriving at a second diagram type.
+  //
+  //  3. LABEL FILLS ADDITIONALLY NEED `!important`. `.activeText0`,
+  //     `.doneText0`, `.activeCritText0` and `.doneCritText0` are declared
+  //     `fill:#000000!important` in that same block, so even an inline style
+  //     loses to them. Only an inline style carrying its own `important`
+  //     priority wins. Written that way for EVERY label, not only the four, so
+  //     no future Mermaid release can silently reclaim one.
+  // ==========================================================================
+
+  /** Marker Mermaid sets on a gantt diagram root and on nothing else. */
+  const GANTT_ROLEDESCRIPTION = "gantt";
+
+  /** SC 1.4.11 for outlines, boundaries and the today marker. */
+  const GANTT_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for every bar label. */
+  const GANTT_TEXT_TARGET = 4.5;
+
+  /**
+   * Non-colour channel per task state. `plain` is the unmarked case and
+   * `milestone` is already shape-distinct through Mermaid's own
+   * `.milestone { transform: rotate(45deg) scale(0.8,0.8) }`, so neither takes
+   * a channel here — adding one would only blur what the other three mean.
+   *
+   * The three that DO take one are separated on three DIFFERENT axes — texture,
+   * dash and weight — rather than three variants of one axis, so no pair
+   * depends on a reader judging a quantity.
+   */
+  const GANTT_STATE_ENCODING = Object.freeze({
+    plain: { width: 2, dash: null, pattern: null },
+    done: { width: 2, dash: null, pattern: "diagonal" },
+    active: { width: 2, dash: "4,3", pattern: null },
+    crit: { width: 4, dash: null, pattern: null },
+    milestone: { width: 2, dash: null, pattern: null },
+  });
+
+  /**
+   * Order matters: `milestone` is tested first because Mermaid writes it
+   * ALONGSIDE a `task<n>` class (measured: `class="task milestone  task1"`), so
+   * a plain-first test would claim the milestone as plain.
+   */
+  const GANTT_STATE_TESTS = Object.freeze([
+    ["milestone", /(^|\s)milestone(\s|$)/],
+    ["crit", /(^|\s)(crit|doneCrit|activeCrit)\d*(\s|$)/],
+    ["done", /(^|\s)done\d*(\s|$)/],
+    ["active", /(^|\s)active\d*(\s|$)/],
+  ]);
+
+  /** Tile size for the gantt pattern, matching the xychart vocabulary. */
+  const GANTT_PATTERN_TILE = 8;
+
+  /** Dash for the today marker, so it is never a colour-only signal. */
+  const GANTT_TODAY_DASH = "6,4";
+
+  /** Width of a synthesised section-boundary line, in user units. */
+  const GANTT_BOUNDARY_WIDTH = 2;
+
+  /** Attributes marking elements and defs this pass owns, so a re-run rebuilds them. */
+  const GANTT_BOUNDARY_ATTRIBUTE = "data-gantt-boundary";
+  const GANTT_DEFS_ATTRIBUTE = "data-gantt-encoding";
+
+  /** Where a bar's ORIGINAL fill is parked, so a re-run does not read back a url(). */
+  const GANTT_ORIGINAL_FILL_ATTRIBUTE = "data-gantt-fill";
+
+  /** Where the FLAT colour a label sits on is parked - the fill after any adjustment. */
+  const GANTT_PAINT_ATTRIBUTE = "data-gantt-paint";
+
+  /**
+   * Grey ramp for deriving outlines, boundaries and pattern motifs.
+   *
+   * A ramp rather than the two-ink set, because an outline has to clear its
+   * target against BOTH of a theme's composited band grounds at once, and a
+   * theme can carry one dark band and one mid band (`accessibleDark` measures
+   * #2f2f34 and #585355). Seventeen steps is enough to land within one step of
+   * any achievable optimum and small enough to search per element.
+   */
+  const GANTT_INK_RAMP = Object.freeze(
+    Array.from({ length: 17 }, (unused, i) => {
+      const v = Math.round((i * 255) / 16);
+      return rgbToHex(v, v, v);
+    })
+  );
+
   /**
    * Geometry for one pattern tile, drawn over a ground rect of the series colour.
    * Strokes overrun the tile deliberately so the motif is continuous across tiles.
@@ -403,6 +515,614 @@ window.MermaidThemes = (function () {
   }
 
   /**
+   * Parse any CSS colour a computed style can hand back into {r,g,b,a}.
+   *
+   * The existing hexToRgb takes hex only, and every value read off a rendered
+   * diagram arrives as `rgb(…)` or `rgba(…)`. Returns null for `none`,
+   * `transparent` and anything unparseable, so a caller can tell "no paint"
+   * from "black".
+   *
+   * @param {string} value - A computed colour
+   * @returns {{r: number, g: number, b: number, a: number}|null}
+   */
+  function parsePaint(value) {
+    if (!value) return null;
+
+    const text = String(value).trim();
+    if (text === "none" || text === "transparent") return null;
+
+    const functional = /^rgba?\(([^)]+)\)$/i.exec(text);
+    if (functional) {
+      const parts = functional[1]
+        .split(/[,\s/]+/)
+        .filter(Boolean)
+        .map(Number);
+      if (parts.length < 3 || parts.some((n) => Number.isNaN(n))) return null;
+      return {
+        r: parts[0],
+        g: parts[1],
+        b: parts[2],
+        a: parts.length > 3 ? parts[3] : 1,
+      };
+    }
+
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(text)) {
+      const [r, g, b] = hexToRgb(text);
+      return { r, g, b, a: 1 };
+    }
+
+    return null;
+  }
+
+  /**
+   * Composite a partly transparent colour over an opaque one.
+   *
+   * @param {{r,g,b,a}|null} top - The overlay, or null for none
+   * @param {{r,g,b,a}} bottom - An opaque ground
+   * @returns {{r,g,b,a}} The resulting opaque colour
+   */
+  function compositeOver(top, bottom) {
+    if (!top || top.a <= 0) return bottom;
+    if (top.a >= 1) return { r: top.r, g: top.g, b: top.b, a: 1 };
+
+    return {
+      r: top.r * top.a + bottom.r * (1 - top.a),
+      g: top.g * top.a + bottom.g * (1 - top.a),
+      b: top.b * top.a + bottom.b * (1 - top.a),
+      a: 1,
+    };
+  }
+
+  /**
+   * @param {{r,g,b}} colour
+   * @returns {string} #rrggbb
+   */
+  function paintToHex(colour) {
+    return rgbToHex(colour.r, colour.g, colour.b);
+  }
+
+  /**
+   * The first OPAQUE background above an element, as hex.
+   *
+   * Identical in intent to resolveExportBackground in the export module and
+   * kept separate on purpose: that one answers what a SAVED FILE should be
+   * painted on, this one answers what a rendered band is composited over. They
+   * agree today and are free to diverge.
+   *
+   * @param {Element} element - Any element in the document
+   * @returns {string} #rrggbb, defaulting to white
+   */
+  function resolveHostGround(element) {
+    let node = element;
+
+    while (node && node.nodeType === 1) {
+      const parsed = parsePaint(window.getComputedStyle(node).backgroundColor);
+      if (parsed && parsed.a >= 1) return paintToHex(parsed);
+      node = node.parentNode;
+    }
+
+    return "#FFFFFF";
+  }
+
+  /**
+   * Pick the ink from a candidate list that maximises the WORST contrast across
+   * every target it has to clear.
+   *
+   * Maximising the minimum rather than the mean is deliberate: an outline that
+   * clears one band by 15:1 and the other by 1.2:1 is invisible on half the
+   * chart, and a mean would call that a good result.
+   *
+   * @param {string[]} candidates - Hex colours to choose from
+   * @param {string[]} targets - Hex colours the ink must contrast against
+   * @param {Function} [permits] - Optional extra predicate on a candidate
+   * @returns {{ink: string, worst: number}} The winner and its worst ratio
+   */
+  function pickInkAgainst(candidates, targets, permits) {
+    let best = candidates[0];
+    let bestWorst = -1;
+
+    candidates.forEach((ink) => {
+      if (permits && !permits(ink)) return;
+
+      const worst = targets.reduce(
+        (lowest, target) =>
+          Math.min(lowest, calculateContrastRatio(ink, target)),
+        Infinity
+      );
+
+      if (worst > bestWorst) {
+        bestWorst = worst;
+        best = ink;
+      }
+    });
+
+    return { ink: best, worst: bestWorst };
+  }
+
+  /**
+   * Every gantt band, with the ground it ACTUALLY presents once its 20% opacity
+   * is composited over the page.
+   *
+   * @param {SVGElement} svg - The gantt diagram root
+   * @param {string} pageGround - Hex ground behind the diagram
+   * @returns {{rows: Array, grounds: string[]}} Per-band rows and the distinct grounds
+   */
+  function resolveGanttBands(svg, pageGround) {
+    const base = parsePaint(pageGround) || { r: 255, g: 255, b: 255, a: 1 };
+
+    const rows = [...svg.querySelectorAll("rect.section")].map((rect) => {
+      const computed = window.getComputedStyle(rect);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 1) *
+        (parseFloat(computed.fillOpacity) || 1) *
+        (parseFloat(computed.opacity) || 1);
+
+      const ground = paintToHex(
+        compositeOver(declared ? { ...declared, a: alpha } : null, base)
+      );
+
+      return {
+        element: rect,
+        className: rect.getAttribute("class") || "",
+        y: parseFloat(rect.getAttribute("y")) || 0,
+        height: parseFloat(rect.getAttribute("height")) || 0,
+        x: parseFloat(rect.getAttribute("x")) || 0,
+        width: parseFloat(rect.getAttribute("width")) || 0,
+        declaredFill: computed.fill,
+        effectiveAlpha: Math.round(alpha * 1000) / 1000,
+        ground,
+      };
+    });
+
+    rows.sort((a, b) => a.y - b.y);
+
+    return { rows, grounds: [...new Set(rows.map((row) => row.ground))] };
+  }
+
+  /**
+   * Which of the five states a task rect is in, from its class list.
+   *
+   * @param {Element} rect - A rect.task
+   * @returns {string} A key of GANTT_STATE_ENCODING
+   */
+  function ganttStateOf(rect) {
+    const className = rect.getAttribute("class") || "";
+    const match = GANTT_STATE_TESTS.find(([, test]) => test.test(className));
+    return match ? match[0] : "plain";
+  }
+
+  /**
+   * Apply the accessibility encoding to a rendered gantt chart: an outline that
+   * clears its own band, a non-colour channel per state, section boundaries,
+   * label inks that clear their bar, and a today marker that is not colour-only.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES. Four of the nine
+   * selectable theme/mode combinations are Mermaid BUILT-INS, which applyTheme
+   * reaches as `{'theme': '<id>'}` with no themeVariables at all — so a variable
+   * written here could never reach `default`, `neutral`, `forest` or `dark`. A
+   * pass over the rendered SVG reaches all nine by construction, and derives
+   * from what each theme actually produced rather than from a table that has to
+   * be kept in step with it.
+   *
+   * IDEMPOTENT, on the xychart pattern: everything this pass owns is swept
+   * first, and each bar's ORIGINAL fill is parked in an attribute so a re-run
+   * never reads back the `url(#…)` it wrote last time.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyGanttEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === GANTT_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${GANTT_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No gantt SVG in this container - gantt encoding skipped");
+      return null;
+    }
+
+    const chartId = (svg.getAttribute("id") || "gantt").replace(
+      /[^A-Za-z0-9_-]/g,
+      "-"
+    );
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    // --- sweep what a previous run owned ------------------------------------
+    const ownedDefs = svg.querySelector(`defs[${GANTT_DEFS_ATTRIBUTE}]`);
+    if (ownedDefs) ownedDefs.remove();
+    svg
+      .querySelectorAll(`[${GANTT_BOUNDARY_ATTRIBUTE}]`)
+      .forEach((owned) => owned.remove());
+
+    const pageGround = resolveHostGround(svg);
+    const { rows: bands, grounds } = resolveGanttBands(svg, pageGround);
+    // A chart with no sections still has bars; the page is then their ground.
+    const groundSet = grounds.length ? grounds : [pageGround];
+
+    const applied = {
+      pageGround,
+      bandGrounds: groundSet,
+      bands: bands.length,
+      bars: [],
+      labels: [],
+      boundaries: [],
+      today: null,
+      warnings: [],
+    };
+
+    // --- the outline ink, ONE per chart, clearing EVERY band ----------------
+    // One ink rather than one per state, because outline COLOUR is no longer
+    // carrying the state — texture, dash and weight are — and a single ink is
+    // the only way to clear every band at once without a per-band search whose
+    // result would change as a bar moved row.
+    const outline = pickInkAgainst(GANTT_INK_RAMP, groundSet);
+    if (outline.worst < GANTT_OBJECT_TARGET) {
+      applied.warnings.push(
+        `no outline ink clears ${GANTT_OBJECT_TARGET}:1 against every band (best ${
+          Math.round(outline.worst * 100) / 100
+        }:1 with ${outline.ink}); using the best available`
+      );
+    }
+    applied.outline = { ink: outline.ink, worst: Math.round(outline.worst * 100) / 100 };
+
+    // --- bars: outline, weight, dash, pattern -------------------------------
+    const defs = document.createElementNS(svgNS, "defs");
+    defs.setAttribute(GANTT_DEFS_ATTRIBUTE, "true");
+    const tiles = [];
+
+    const groundForY = (centre) => {
+      const band = bands.find(
+        (row) => centre >= row.y && centre <= row.y + row.height
+      );
+      return band ? band.ground : pageGround;
+    };
+
+    [...svg.querySelectorAll("rect.task")].forEach((rect, index) => {
+      const state = ganttStateOf(rect);
+      const encoding = GANTT_STATE_ENCODING[state];
+      const computed = window.getComputedStyle(rect);
+
+      // Read the ORIGINAL fill, never the live one, which is a url() on re-run.
+      const originalFill =
+        rect.getAttribute(GANTT_ORIGINAL_FILL_ATTRIBUTE) ||
+        paintToHex(parsePaint(computed.fill) || { r: 255, g: 255, b: 255 });
+      rect.setAttribute(GANTT_ORIGINAL_FILL_ATTRIBUTE, originalFill);
+
+      // THE FILL IS ADJUSTED ONLY WHEN THE LABEL CANNOT BE RESCUED WITHOUT IT.
+      // A bar fill can put 4.5:1 out of reach of BOTH label inks at once:
+      // `neutral`'s crit red #dd4422 measured 4.43:1 against near-black and
+      // 4.26:1 against white, so no choice of ink clears SC 1.4.3 and the
+      // ceiling belongs to the fill. The fill is then moved away from the
+      // better ink — lightened when the label wants to be dark, darkened when
+      // it wants to be light — by the smallest step that clears the target.
+      //
+      // Minimal by construction: a fill that already admits a passing ink is
+      // left exactly as the theme drew it, so this fires on one bar in one
+      // theme today rather than repainting every chart.
+      const bestLabelInk = pickInkAgainst(PATTERN_INKS, [originalFill]);
+      let workingFill = originalFill;
+      if (bestLabelInk.worst < GANTT_TEXT_TARGET) {
+        const wantsLighterFill =
+          calculateLuminance(hexToRgb(bestLabelInk.ink)) < 0.5;
+        workingFill = adjustColorForContrast(
+          originalFill,
+          bestLabelInk.ink,
+          GANTT_TEXT_TARGET,
+          wantsLighterFill
+        );
+        applied.warnings.push(
+          `${state} fill ${originalFill} put every label ink below ${GANTT_TEXT_TARGET}:1 (best ${
+            Math.round(bestLabelInk.worst * 100) / 100
+          }:1); adjusted to ${workingFill}`
+        );
+      }
+
+      const centre =
+        (parseFloat(rect.getAttribute("y")) || 0) +
+        (parseFloat(rect.getAttribute("height")) || 0) / 2;
+      const ground = groundForY(centre);
+
+      // ⚠ INLINE STYLES, NOT ATTRIBUTES. Mermaid's in-SVG block declares
+      // `.task { stroke-width:2 }` and per-state `stroke`/`fill` as CLASS
+      // rules, which beat any presentation attribute. See the block comment
+      // above GANTT_ROLEDESCRIPTION.
+      rect.style.setProperty("stroke", outline.ink);
+      rect.style.setProperty("stroke-width", `${encoding.width}px`);
+      if (encoding.dash) {
+        rect.style.setProperty("stroke-dasharray", encoding.dash);
+      } else {
+        rect.style.removeProperty("stroke-dasharray");
+      }
+
+      let motif = null;
+      if (encoding.pattern) {
+        // The motif ink is chosen to be as visible as possible against the bar
+        // SUBJECT TO a label still clearing 4.5:1 against both the bar and the
+        // motif. Maximising the motif alone would make the label unreadable —
+        // see the patterned-surface rule this session mints.
+        const permits = (ink) =>
+          PATTERN_INKS.some(
+            (labelInk) =>
+              calculateContrastRatio(labelInk, workingFill) >=
+                GANTT_TEXT_TARGET &&
+              calculateContrastRatio(labelInk, ink) >= GANTT_TEXT_TARGET
+          );
+
+        let chosen = pickInkAgainst(GANTT_INK_RAMP, [workingFill], permits);
+
+        // THE LABEL CONSTRAINT USUALLY BINDS, AND THAT IS THE DESIGN, NOT A
+        // DEFECT — but it must not be silent. On the standard `lightgrey`
+        // done fill the darkest ink a readable label permits is #808080, which
+        // sits at 2.64:1 against the fill rather than the 3:1 an SC 1.4.11
+        // OBJECT would need. The bar itself is not relying on it: its outline
+        // measures 7.5:1 to 20.5:1 against the band in every theme, so the
+        // pattern is a redundancy channel for colour-vision deficiency and for
+        // greyscale, and the label is the thing with a conformance target.
+        // Reported at every run so the figure is never assumed.
+        if (chosen.worst >= 0 && chosen.worst < GANTT_OBJECT_TARGET) {
+          applied.warnings.push(
+            `${state} motif ${chosen.ink} sits at ${
+              Math.round(chosen.worst * 100) / 100
+            }:1 against ${workingFill} - the darkest ink that still leaves the label at ${GANTT_TEXT_TARGET}:1; texture channel, not an SC 1.4.11 object`
+          );
+        }
+
+        if (chosen.worst < 0) {
+          // No ink leaves a readable label. The label wins: the state keeps its
+          // texture at whatever contrast is left rather than the bar becoming
+          // unreadable, and the shortfall is reported rather than swallowed.
+          chosen = pickInkAgainst(GANTT_INK_RAMP, [workingFill]);
+          applied.warnings.push(
+            `${state} pattern on ${workingFill}: no motif ink leaves a label at ${GANTT_TEXT_TARGET}:1; using ${chosen.ink}`
+          );
+        }
+
+        const patternId = `${chartId}-gantt-${state}-${index}`;
+        tiles.push(
+          `<pattern id="${patternId}" patternUnits="userSpaceOnUse" width="${GANTT_PATTERN_TILE}" height="${GANTT_PATTERN_TILE}">` +
+            `<rect width="${GANTT_PATTERN_TILE}" height="${GANTT_PATTERN_TILE}" fill="${workingFill}"/>` +
+            patternMotif(encoding.pattern, chosen.ink) +
+            `</pattern>`
+        );
+        rect.style.setProperty("fill", `url(#${patternId})`);
+        motif = {
+          pattern: encoding.pattern,
+          ink: chosen.ink,
+          inkOnFill: Math.round(chosen.worst * 100) / 100,
+        };
+      } else if (workingFill !== originalFill) {
+        rect.style.setProperty("fill", workingFill);
+      } else {
+        rect.style.removeProperty("fill");
+      }
+
+      // The FLAT colour a label actually sits on, parked so the label pass and
+      // any probe read the adjusted value rather than either the theme's
+      // original or the `url(#…)` a patterned bar computes to.
+      rect.setAttribute(GANTT_PAINT_ATTRIBUTE, workingFill);
+
+      applied.bars.push({
+        state,
+        className: rect.getAttribute("class") || "",
+        fill: workingFill,
+        originalFill,
+        fillAdjusted: workingFill !== originalFill,
+        ground,
+        outlineOnGround:
+          Math.round(calculateContrastRatio(outline.ink, ground) * 100) / 100,
+        fillOnGround:
+          Math.round(calculateContrastRatio(workingFill, ground) * 100) / 100,
+        width: encoding.width,
+        dash: encoding.dash,
+        motif,
+      });
+    });
+
+    if (tiles.length) {
+      defs.innerHTML = tiles.join("");
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    // --- labels -------------------------------------------------------------
+    // A label's target is resolved GEOMETRICALLY, not from its class: two plain
+    // tasks in one section carry identical class lists, so class matching
+    // cannot tell which bar a label belongs to. A label whose centre is inside
+    // no bar is an OUTSIDE label — the milestone's is — and its ground is the
+    // band, not a bar.
+    const barBoxes = [...svg.querySelectorAll("rect.task")].map((rect) => ({
+      rect,
+      box: rect.getBoundingClientRect(),
+      fill: rect.getAttribute(GANTT_PAINT_ATTRIBUTE),
+      state: ganttStateOf(rect),
+    }));
+    const motifByRect = new Map();
+    applied.bars.forEach((bar, i) => {
+      if (bar.motif) motifByRect.set(barBoxes[i] && barBoxes[i].rect, bar.motif.ink);
+    });
+
+    svg
+      .querySelectorAll(
+        'text.taskText, text[class*="taskTextOutside"], text.milestoneText'
+      )
+      .forEach((label) => {
+        const box = label.getBoundingClientRect();
+        const cx = box.left + box.width / 2;
+        const cy = box.top + box.height / 2;
+
+        const host = barBoxes.find(
+          (candidate) =>
+            candidate.box.width > 0 &&
+            cx >= candidate.box.left &&
+            cx <= candidate.box.right &&
+            cy >= candidate.box.top &&
+            cy <= candidate.box.bottom
+        );
+
+        const targets = [];
+        let where;
+        if (host) {
+          targets.push(host.fill);
+          const motifInk = motifByRect.get(host.rect);
+          if (motifInk) targets.push(motifInk);
+          where = `bar:${host.state}`;
+        } else {
+          const centre =
+            parseFloat(label.getAttribute("y")) ||
+            (box.top + box.height / 2);
+          targets.push(groundForY(centre));
+          where = "band";
+        }
+
+        const chosen = pickInkAgainst(PATTERN_INKS, targets);
+        // ⚠ `important` IS REQUIRED. `.activeText0` and `.doneText0` are
+        // declared `fill:#000000!important` in Mermaid's own block, which beats
+        // a plain inline style. Applied to every label so a future release
+        // cannot silently reclaim one.
+        label.style.setProperty("fill", chosen.ink, "important");
+
+        if (chosen.worst < GANTT_TEXT_TARGET) {
+          applied.warnings.push(
+            `label on ${where} (${targets.join(", ")}): best ink ${
+              chosen.ink
+            } reaches only ${Math.round(chosen.worst * 100) / 100}:1`
+          );
+        }
+
+        applied.labels.push({
+          where,
+          targets,
+          ink: chosen.ink,
+          worst: Math.round(chosen.worst * 100) / 100,
+          text: (label.textContent || "").trim().slice(0, 24),
+        });
+      });
+
+    // --- section boundaries -------------------------------------------------
+    // MERMAID DRAWS NO BOUNDARY ELEMENT. Measured on a rendered chart: the only
+    // non-tick <line> in the whole SVG is `line.today`, and `rect.section` is
+    // emitted once per ROW rather than once per section, so consecutive rows
+    // whose section class differs are where a boundary belongs. The line is
+    // therefore SYNTHESISED, on the same precedent as the xychart casings and
+    // single-point markers above — it is swept and rebuilt on every run, and it
+    // is aria-hidden because it carries no information the description lacks.
+    for (let i = 1; i < bands.length; i += 1) {
+      const above = bands[i - 1];
+      const below = bands[i];
+      if (above.className === below.className) continue;
+
+      const ink = pickInkAgainst(GANTT_INK_RAMP, [above.ground, below.ground]);
+      const line = document.createElementNS(svgNS, "line");
+      line.setAttribute(GANTT_BOUNDARY_ATTRIBUTE, "true");
+      line.setAttribute("x1", String(below.x));
+      line.setAttribute("x2", String(below.x + below.width));
+      line.setAttribute("y1", String(below.y));
+      line.setAttribute("y2", String(below.y));
+      line.style.setProperty("stroke", ink.ink);
+      line.style.setProperty("stroke-width", `${GANTT_BOUNDARY_WIDTH}px`);
+      line.setAttribute("aria-hidden", "true");
+      svg.appendChild(line);
+
+      if (ink.worst < GANTT_OBJECT_TARGET) {
+        applied.warnings.push(
+          `section boundary at y=${below.y}: best ink ${ink.ink} reaches only ${
+            Math.round(ink.worst * 100) / 100
+          }:1 against its two bands`
+        );
+      }
+
+      applied.boundaries.push({
+        y: below.y,
+        between: [above.className, below.className],
+        grounds: [above.ground, below.ground],
+        ink: ink.ink,
+        worst: Math.round(ink.worst * 100) / 100,
+      });
+    }
+
+    // --- today marker -------------------------------------------------------
+    // Its HUE is kept and only its lightness moved, because red is Mermaid's
+    // own today semantic and a grey today marker would lose meaning a sighted
+    // reader already has. The dash is what stops it being colour-only.
+    // `line.today` EXPLICITLY. Mermaid wraps the marker in a `<g class="today">`
+    // that precedes the line, so a `querySelector("line.today, .today")` returns
+    // the GROUP — and because stroke and stroke-dasharray both inherit in SVG,
+    // styling the group still works, which is exactly what makes the mistake
+    // hard to see. It cost this session a polluted baseline: the probe's
+    // disable arm stripped the line and left the group, so the "before" reading
+    // showed a marker already dashed and already at 3.05:1.
+    const today = svg.querySelector("line.today");
+    if (today) {
+      const computed = window.getComputedStyle(today);
+      const original =
+        today.getAttribute(GANTT_ORIGINAL_FILL_ATTRIBUTE) ||
+        paintToHex(parsePaint(computed.stroke) || { r: 255, g: 0, b: 0 });
+      today.setAttribute(GANTT_ORIGINAL_FILL_ATTRIBUTE, original);
+
+      // It crosses every band and the page, so it must clear all of them.
+      const crossed = [...new Set([...groundSet, pageGround])];
+      const worstGround = crossed.reduce(
+        (worst, ground) =>
+          calculateContrastRatio(original, ground) <
+          calculateContrastRatio(original, worst)
+            ? ground
+            : worst,
+        crossed[0]
+      );
+
+      const groundLuminance = calculateLuminance(hexToRgb(worstGround));
+      let stroke = original;
+      if (
+        calculateContrastRatio(original, worstGround) < GANTT_OBJECT_TARGET
+      ) {
+        stroke = adjustColorForContrast(
+          original,
+          worstGround,
+          GANTT_OBJECT_TARGET,
+          groundLuminance < 0.5
+        );
+      }
+
+      today.style.setProperty("stroke", stroke);
+      today.style.setProperty("stroke-dasharray", GANTT_TODAY_DASH);
+
+      const worst = crossed.reduce(
+        (lowest, ground) =>
+          Math.min(lowest, calculateContrastRatio(stroke, ground)),
+        Infinity
+      );
+      if (worst < GANTT_OBJECT_TARGET) {
+        applied.warnings.push(
+          `today marker ${stroke} reaches only ${
+            Math.round(worst * 100) / 100
+          }:1 against its worst ground`
+        );
+      }
+
+      applied.today = {
+        original,
+        stroke,
+        dash: GANTT_TODAY_DASH,
+        worstGround,
+        worst: Math.round(worst * 100) / 100,
+      };
+    }
+
+    logInfo(
+      `Gantt encoding applied: ${applied.bars.length} bars, ${applied.labels.length} labels, ${applied.boundaries.length} section boundaries, outline ${outline.ink} at ${applied.outline.worst}:1, ${applied.warnings.length} warnings`
+    );
+    applied.warnings.forEach((warning) => logWarn(`Gantt encoding: ${warning}`));
+
+    return applied;
+  }
+
+  /**
    * Apply non-colour series encoding to a rendered xychart: pattern fills on
    * bars from the second bar onwards, dash arrays on lines from the second line
    * onwards.
@@ -436,6 +1156,18 @@ window.MermaidThemes = (function () {
   function applySeriesEncoding(root) {
     if (!root) return null;
 
+    // GANTT DISPATCH, added 30 August 2026. `applySeriesEncoding` is the one
+    // named after-render encoding step: mermaid-controls.js's
+    // reapplyAfterRender calls it, and applyTheme's own fallback calls it. A
+    // second exported entry point would have to be wired into both, and one of
+    // them is in a module this session must not touch — so the gantt pass is
+    // reached from here rather than beside it. The name is kept for the same
+    // reason: renaming it would break reapplyAfterRender's call.
+    //
+    // A diagram is one type or the other, so exactly one of these two ever does
+    // work; each returns null for a diagram it does not recognise.
+    const ganttEncoding = applyGanttEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -445,7 +1177,10 @@ window.MermaidThemes = (function () {
           );
 
     if (!svg) {
-      logDebug("No xychart SVG in this container - series encoding skipped");
+      if (ganttEncoding) return { gantt: ganttEncoding };
+      logDebug(
+        "No xychart or gantt SVG in this container - series encoding skipped"
+      );
       return null;
     }
 
@@ -2116,6 +2851,10 @@ window.MermaidThemes = (function () {
     addThemeSelector: addThemeSelector,
     applyTheme: applyTheme,
     applySeriesEncoding: applySeriesEncoding,
+    // Exported for MEASUREMENT, not as a second wiring route. Every production
+    // path reaches it through applySeriesEncoding above; a probe needs to call
+    // it directly and read back the ratios it measured.
+    applyGanttEncoding: applyGanttEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

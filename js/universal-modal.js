@@ -1053,43 +1053,47 @@ const UniversalModal = (function () {
       // The surviving-modal fallback, defined once and used by both arms so the
       // two cannot drift apart.
       //
-      // ⚠ NAMED CONNECTION — READ THIS BEFORE CHANGING THE 300ms CLOSE IN
-      // mathpix-scripts/ui/components/mathpix-image-manager-ui.js.
+      // ⚠ NAMED CONNECTION — CLOSED BY CONSTRUCTION ON 31 AUGUST 2026. THE
+      // HAZARD BELOW IS HISTORY, NOT A LIVE WARNING. Kept because the 300ms
+      // close it names still exists in
+      // mathpix-scripts/ui/components/mathpix-image-manager-ui.js, and a reader
+      // who finds that delay and no explanation here will assume this note was
+      // lost rather than discharged.
       //
-      // That file's MathPixImageManagerUI._returnFocus() focuses its captured
-      // trigger, #resume-manage-images-btn. It runs from the show() promise
-      // reaction — Modal.prototype.open attaches .then, and modalData.resolve
-      // below enqueues it — so it runs AFTER this entire synchronous body and
-      // therefore LANDS LAST AND WINS. Measured in the F-1 before capture at
+      // WHAT THE HAZARD WAS. MathPixImageManagerUI carried a hand-rolled
+      // _returnFocus() that focused its captured trigger,
+      // #resume-manage-images-btn. It ran from the show() promise reaction —
+      // Modal.prototype.open attaches .then, and modalData.resolve below
+      // enqueues it — so it ran AFTER this entire synchronous body and
+      // therefore LANDED LAST AND WON. Measured in the F-1 before capture at
       // +1080ms against tier 1 at +1068ms, both aiming at the same element.
       //
-      // UPDATED 21 August 2026 (Phase 2 step 4), AND THE HAZARD BELOW IS
-      // UNCHANGED. The image manager now DECLARES returnFocusTo, so tier 1
-      // reaches #resume-manage-images-btn from its own per-modal record rather
-      // than from the shared field. What that fixes is which element tier 1
-      // aims at after a nested close; it does NOT retire _returnFocus(), which
-      // still runs, still lands last, and would still yank focus to a control
-      // behind the top layer if the manager ever closed over a surviving modal.
-      // The 300ms close described below is STILL the only thing preventing it.
-      // Read the rest of this block as current, not as history.
+      // That redundancy was harmless only while the manager never closed over a
+      // surviving modal. Had it done so, the fallback below would have aimed at
+      // the surviving dialog and _returnFocus would then have yanked focus to
+      // #resume-manage-images-btn — behind the top layer at that instant, and
+      // unreachable. AND IT WOULD HAVE BEEN SILENT: the identity check below
+      // would already have passed, because at that moment the fallback had
+      // genuinely landed, and _returnFocus undid it afterwards, outside
+      // anything this method can see.
       //
-      // Today that redundancy is harmless. It stops being harmless if the image
-      // manager itself ever closes while another modal REMAINS on the stack:
-      // this fallback would aim at the surviving dialog, and _returnFocus would
-      // then yank focus to #resume-manage-images-btn, which at that moment sits
-      // behind the top layer and is unreachable — a focus call that lands
-      // nowhere.
+      // WHY IT CANNOT HAPPEN NOW. Phase 2 step 4 (21 August 2026) declared
+      // returnFocusTo on the manager's modal, so tier 1 reaches its opener from
+      // its own per-modal record. Step 4b (31 August 2026) then DELETED
+      // _returnFocus(), its captured trigger field and the dead
+      // _focusModalTrigger() stub — so there is no longer any code in that file
+      // that moves focus after this body runs, and nothing left to undo the
+      // fallback. Before/after landing sequences at n=2 a side, five journeys,
+      // are unchanged and none touches #main
+      // (.claude/a11y/sr/modal-focus-step4-drive.mjs).
       //
-      // AND IT WOULD BE SILENT. The identity check below would have already
-      // passed, because at that instant the fallback had genuinely landed;
-      // _returnFocus undoes it afterwards, outside anything this method can
-      // see. The failure would read clean from here.
-      //
-      // The ONLY thing preventing it today is the last-image path in that
-      // file's handleDelete(), which closes the manager via
-      // setTimeout(() => this.close(), 300) — and whose own comment records
-      // that the delay exists so the confirm has left the stack first. Shorten
-      // or remove that delay and this becomes reachable.
+      // THE 300ms CLOSE STAYS, AND NOT BECAUSE OF THIS. The last-image path in
+      // that file's handleDelete() still closes the manager via
+      // setTimeout(() => this.close(), 300), and its own comment records the
+      // reason that survives: the confirm must have left the stack first.
+      // Retiring _returnFocus removed one thing the delay was incidentally
+      // protecting; it did not remove the delay's own justification. See
+      // docs/universal-modal-focus-return-plan.md § Phase 2 step 4b.
       const focusSurvivingModal = () => {
         if (typeof remainingModal.focus === "function") {
           remainingModal.focus();

@@ -2815,7 +2815,7 @@ const FOUNDRY_MODELS = [
       "system-prompt",
     ],
     imageSupportNote:
-      "Vision UNVERIFIED, not absent. Two of three sampled runs consumed the whole 16,000-token budget and returned nothing; the one that answered used 10,907 tokens. That is a budget that binds, not a blind model, and escalating further costs real consumed spend.",
+      "Vision RESOLVED 30 August 2026 at tier accepted-PARTIAL — it reads images and transcribes bitmap text unreliably. Three sampled runs all returned accepted-partial, rendering the six-character fixture as TOILET, TOLLEUM and TOLTEEU (2/6, 4/6, 3/6). Use it for image content; do not rely on it to transcribe text in an image. This supersedes the 28 August wording, which read that vision was UNVERIFIED because two of three runs consumed the whole 16,000-token budget and returned nothing — that reading was correct at the time and the cause is now measured rather than inferred: re-run at 64,000, one sample spent 19,176 output tokens, above the old cap, so the cap was the whole cause and no run was ever blind.",
   }),
 ];
 

@@ -73,18 +73,22 @@ window.MermaidExportUtils = (function () {
     maxCanvasPixels: 16777216, // 4096x4096 - browser canvas limit safety margin
   };
 
-  /**
-   * Marker Mermaid sets on an xychart diagram root, and on nothing else.
-   * Used to scope the paint-inlining pass below. Matching on this rather than on
-   * a container also makes the pass immune to the control-button icon <svg>
-   * elements that a container-scoped query can reach.
-   */
-  const XYCHART_ROLEDESCRIPTION = "xychart";
+  const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
   /**
-   * Paint properties copied from the live cascade onto the export clone.
-   * `fill-opacity` and `stroke-dasharray` carry nothing today; they are here so
-   * the pattern-fill and dashed-series work does not have to revisit this list.
+   * Fallback ground for an export whose host chain yields no opaque colour —
+   * a diagram prepared while detached, for instance. Every diagram on a real
+   * page terminates the walk long before this.
+   */
+  const FALLBACK_EXPORT_BACKGROUND = "white";
+
+  /**
+   * Paint properties copied from the live cascade onto the export clone, for
+   * elements in the SVG namespace.
+   *
+   * `fill-opacity` and `stroke-dasharray` carry nothing on most types; they are
+   * here so the pattern-fill and dashed-series work does not have to revisit
+   * this list.
    */
   const INLINED_PAINT_PROPERTIES = Object.freeze([
     "fill",
@@ -92,6 +96,30 @@ window.MermaidExportUtils = (function () {
     "stroke-width",
     "fill-opacity",
     "stroke-dasharray",
+  ]);
+
+  /**
+   * The same job for HTML inside a <foreignObject>, whose paint channel is
+   * `color` and `background-color` rather than `fill` and `stroke`. A flowchart
+   * label is HTML, not SVG text, so without this branch the largest diagram
+   * type's text is not covered at all — measured 30 August 2026, see
+   * inlineComputedPaint's note.
+   */
+  const INLINED_HTML_PAINT_PROPERTIES = Object.freeze([
+    "color",
+    "background-color",
+  ]);
+
+  /**
+   * Elements the pass leaves alone: they carry no paint of their own, and
+   * writing attributes onto them only bloats the file.
+   */
+  const PAINT_PASS_SKIPPED_TAGS = Object.freeze([
+    "style",
+    "script",
+    "title",
+    "desc",
+    "metadata",
   ]);
 
   /**
@@ -133,21 +161,82 @@ window.MermaidExportUtils = (function () {
   }
 
   /**
-   * Copy the RESOLVED paint of an xychart onto its export clone.
+   * The ground the export should be painted on, read from the LIVE page.
+   *
+   * WHY A WALK RATHER THAN A RECT. This used to read `rect.background`, which is
+   * a chart element only an xychart draws, so every other diagram type fell to a
+   * hard-coded `white`. In dark mode that discards the ground the in-SVG <style>
+   * block chose its text colour for, and a saved gantt came out white-on-white:
+   * 20 of 21 text elements failing, 14 of them at exactly 1:1, measured 30
+   * August 2026.
+   *
+   * WHY THE HOST CHAIN IS UNIVERSAL. Every diagram, of every type, is rendered
+   * into a `div.mermaid` that the site theme paints, inside a document whose
+   * body the theme also paints. So walking up from the SVG and taking the first
+   * OPAQUE background is a source that exists for all types by construction,
+   * needs no knowledge of what the diagram drew, and answers the right question:
+   * what is behind this diagram on the page it is being saved from. Measured the
+   * same day: `div.mermaid` computes `rgb(249, 255, 244)` in light and
+   * `rgb(46, 40, 42)` in dark, opaque in both, for gantt, xychart and flowchart
+   * alike.
+   *
+   * A partly transparent layer is deliberately NOT composited. Nothing in this
+   * codebase paints one, and a wrong composite is harder to notice than a
+   * skipped one; the walk simply continues until something is fully opaque.
+   *
+   * @param {SVGElement} svgElement - The live, in-document diagram SVG
+   * @returns {string} A CSS colour, never empty
+   */
+  function resolveExportBackground(svgElement) {
+    let node = svgElement;
+
+    while (node && node.nodeType === 1) {
+      const background = window.getComputedStyle(node).backgroundColor;
+
+      // Opaque is the only thing that settles the question. `transparent`,
+      // `rgba(…, 0)` and the empty string all mean "keep looking".
+      if (background && !/^rgba\(.*,\s*0\)$/.test(background) && background !== "transparent") {
+        logDebug(
+          `[Mermaid Export] Export ground ${background} from <${node.tagName.toLowerCase()}>`
+        );
+        return background;
+      }
+
+      node = node.parentNode;
+    }
+
+    logDebug(
+      `[Mermaid Export] No opaque ground in the host chain - falling back to ${FALLBACK_EXPORT_BACKGROUND}`
+    );
+    return FALLBACK_EXPORT_BACKGROUND;
+  }
+
+  /**
+   * Copy the RESOLVED paint of a diagram onto its export clone.
    *
    * WHY THIS EXISTS. `cloneNode(true)` carries attributes and does not carry the
-   * cascade, and the xychart series outlines in light.css/dark.css are CSS. So
-   * before this pass a saved file showed the ORIGINAL presentation-attribute
-   * paint — measured 25 August 2026 against this very function: the on-page bar
-   * computed `rgb(30, 86, 160)` while the clone's fill attribute still read
-   * `#ECECFF` and the serialised output contained no trace of the CSS colour.
-   * A user saw a correct chart and saved a wrong one, with nothing to signal it.
+   * cascade. So before this pass a saved file showed the ORIGINAL
+   * presentation-attribute paint — measured 25 August 2026 on an xychart: the
+   * on-page bar computed `rgb(30, 86, 160)` while the clone's fill attribute
+   * still read `#ECECFF`. A user saw a correct chart and saved a wrong one, with
+   * nothing to signal it.
    *
-   * WHY IT IS SCOPED TO XYCHART. Every other diagram type gets its colour from
-   * the <style> block Mermaid writes INSIDE the SVG, which cloneNode does carry,
-   * so those exports are already correct and this pass would be pure risk. The
-   * scope is asserted, not assumed: a non-xychart export was measured
-   * byte-identical before and after this change.
+   * WHY IT IS NO LONGER SCOPED TO XYCHART. It was, on the assertion that every
+   * other type takes its colour from the <style> block Mermaid writes INSIDE the
+   * SVG, which cloneNode does carry. That assertion is true of most paint and
+   * FALSE of anything resolved against the PAGE, which a standalone file has
+   * none of. Two channels were measured falling through it on 30 August 2026:
+   *
+   *   - `stroke="currentColor"` on a gantt's 15 axis and grid lines, which
+   *     resolves against the page's inherited `color` and lands on the UA
+   *     default BLACK in the file — in both modes;
+   *   - inherited `color` on a flowchart's `.edgeLabel`, HTML inside a
+   *     <foreignObject>, which does the same, also in both modes.
+   *
+   * Neither is a type-specific bug, so neither gets a type-specific guard. The
+   * pass writes what the page computes, for every type; where the in-SVG <style>
+   * block already governs an SVG element the attribute it writes is the weakest
+   * source in the cascade and changes nothing, which is why widening it is safe.
    *
    * The computed values must be read from the ORIGINAL, which is in the
    * document; getComputedStyle on a detached clone returns empty strings.
@@ -157,16 +246,6 @@ window.MermaidExportUtils = (function () {
    * @returns {number} Count of elements whose paint was inlined
    */
   function inlineComputedPaint(originalSvg, clone) {
-    if (
-      originalSvg.getAttribute("aria-roledescription") !==
-      XYCHART_ROLEDESCRIPTION
-    ) {
-      logDebug(
-        "[Mermaid Export] Not an xychart - paint inlining skipped, the in-SVG <style> block carries this diagram's colour"
-      );
-      return 0;
-    }
-
     const originals = originalSvg.querySelectorAll("*");
     const clones = clone.querySelectorAll("*");
 
@@ -182,25 +261,42 @@ window.MermaidExportUtils = (function () {
     let inlined = 0;
 
     originals.forEach((original, index) => {
+      if (PAINT_PASS_SKIPPED_TAGS.includes(original.tagName.toLowerCase())) {
+        return;
+      }
+
       const computed = window.getComputedStyle(original);
+      const target = clones[index];
       let touched = false;
 
-      INLINED_PAINT_PROPERTIES.forEach((property) => {
-        const value = computed.getPropertyValue(property);
-        if (!value) return;
+      if (original.namespaceURI === SVG_NAMESPACE) {
+        INLINED_PAINT_PROPERTIES.forEach((property) => {
+          const value = computed.getPropertyValue(property);
+          if (!value) return;
 
-        clones[index].setAttribute(
-          property,
-          normalisePaintValue(property, value)
-        );
-        touched = true;
-      });
+          target.setAttribute(property, normalisePaintValue(property, value));
+          touched = true;
+        });
+      } else {
+        // HTML inside a <foreignObject>. `fill` and `stroke` mean nothing here,
+        // and a `color` ATTRIBUTE is not honoured on an HTML element either, so
+        // these go on as an inline style. That is the strongest source, but the
+        // value written is the one the cascade already produced, so it is
+        // idempotent wherever the in-SVG <style> block was already deciding.
+        INLINED_HTML_PAINT_PROPERTIES.forEach((property) => {
+          const value = computed.getPropertyValue(property);
+          if (!value) return;
+
+          target.style.setProperty(property, value);
+          touched = true;
+        });
+      }
 
       if (touched) inlined++;
     });
 
     logInfo(
-      `[Mermaid Export] Inlined resolved paint onto ${inlined} xychart elements`
+      `[Mermaid Export] Inlined resolved paint onto ${inlined} of ${originals.length} elements`
     );
     return inlined;
   }
@@ -224,29 +320,16 @@ window.MermaidExportUtils = (function () {
     const clone = svgElement.cloneNode(true);
 
     // Carry the resolved cascade onto the clone before anything else touches it,
-    // so the saved file matches the screen. No-op for non-xychart diagrams.
+    // so the saved file matches the screen. Runs for every diagram type.
     inlineComputedPaint(svgElement, clone);
 
-    // Background. This used to be an unconditional `white`, which is correct for
-    // the diagram types whose own <style> assumes a light ground and WRONG for a
-    // chart carrying its own background: a dark-theme xychart was exported as a
-    // #e0dfdf axis on white, i.e. invisible. That was a pre-existing defect, not
-    // one the theming work introduced, and it is fixed here because this is the
-    // line that caused it.
-    //
-    // Only an xychart has a rect.background, so the conditional is also what
-    // keeps every other diagram type byte-identical to before.
-    const chartBackground = svgElement.querySelector("rect.background");
-    if (chartBackground) {
-      const resolvedBackground =
-        window.getComputedStyle(chartBackground).fill || "white";
-      clone.style.backgroundColor = resolvedBackground;
-      logDebug(
-        `[Mermaid Export] Using the chart's own background: ${resolvedBackground}`
-      );
-    } else {
-      clone.style.backgroundColor = "white";
-    }
+    // Background, from the diagram's own host chain rather than from anything
+    // the diagram happened to draw. The previous form read `rect.background`,
+    // which only an xychart has, and fell to a hard-coded `white` for every
+    // other type - so a dark-mode gantt was saved as white text on white.
+    // See resolveExportBackground for why the host chain is the universal
+    // source and what was measured to establish it.
+    clone.style.backgroundColor = resolveExportBackground(svgElement);
 
     // Apply font family to SVG root
     clone.style.fontFamily = config.font;
@@ -738,8 +821,16 @@ window.MermaidExportUtils = (function () {
       const ctx = canvas.getContext("2d");
       ctx.scale(config.pngScale, config.pngScale);
 
-      // Draw white background
-      ctx.fillStyle = "#FFFFFF";
+      // Draw the diagram's own ground under the raster, not a hard-coded white.
+      // MEASURED 30 August 2026: the clone's inline `background-color` DOES
+      // reach the rasterised pixel - a dark xychart's corner pixel read
+      // rgb(30, 30, 30) through this same canvas path while it was still being
+      // painted white first. So this underlay is normally invisible, and it is
+      // put in step anyway because the one case that would expose it is a clone
+      // whose background resolved to something transparent, which is exactly
+      // the case a hard-coded white gets wrong.
+      ctx.fillStyle =
+        preparedSvg.style.backgroundColor || FALLBACK_EXPORT_BACKGROUND;
       ctx.fillRect(0, 0, width, height);
 
       logDebug("[Mermaid Export] Canvas prepared, converting SVG to data URL");

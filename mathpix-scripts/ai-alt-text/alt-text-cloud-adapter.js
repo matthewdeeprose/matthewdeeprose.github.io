@@ -290,6 +290,9 @@ const MathPixAltTextCloudAdapter = (function () {
      *   1. resolve the model,
      *   2. re-check vision on the RESOLVED model — refuse (contract error) if
      *      false, with NO attach and NO send,
+     *   2b. APPLY the resolved model to the embed (AW-1) — after the re-check,
+     *      so a refused model never reaches the embed, and before the attach,
+     *      so the send provably goes out on the id the result reports,
      *   3. attach the image,
      *   4. time + await the send,
      *   5. success → finalise(SOURCE.CLOUD, success),
@@ -345,6 +348,47 @@ const MathPixAltTextCloudAdapter = (function () {
             "Cloud embed is unavailable (no attachFile) — cannot generate",
           );
         }
+
+        // ---- Apply the resolved model to the embed (AW-1, 31 August 2026) ---
+        // THE DEFECT THIS CLOSES. Everything above resolves, re-checks and
+        // records `resolvedId`, and the finalised result reports it as the model
+        // used — but nothing ever told the embed. `sendRequest` reads
+        // `this.model`, and the edit view constructs its embed with no `model`
+        // key at all (mathpix-image-manager-ui.js `_constructEditAltEmbed`), so
+        // the send went out on the embed-core default. Measured 31 August 2026
+        // in a Node shim with ProviderSwitcher forced to 'azure-openai':
+        // result.model read "azure-openai/gpt-5.4-mini" while the model at send
+        // read the stub's untouched sentinel. The two agreed only by accident,
+        // whenever the resolution happened to land on the default id.
+        //
+        // PLACED AFTER the send-boundary re-check and BEFORE attachFile, so a
+        // refused model can never reach the embed at all — the refusal path
+        // returns above this line and leaves `embed.model` exactly as it found
+        // it, which is what the zero canary in the suite asserts.
+        //
+        // setModel WHEN IT EXISTS, a direct assignment otherwise. This is not
+        // defensive padding: the suite's stub embeds, and any future caller
+        // injecting a plain object, expose only attachFile and sendRequest, so a
+        // bare `embed.setModel(...)` would throw a TypeError straight into the
+        // catch below and turn what should be a successful generate into a
+        // contract error. The real OpenRouterEmbed carries setModel, which
+        // validates the id and logs the transition, so the live path takes that
+        // branch and the stubs take the assignment.
+        //
+        // Scoped deliberately: the ONLY pre-existing adapter row that calls
+        // generate() is the send-boundary refusal row, and it refuses above this
+        // line, so a bare call would not have reddened it. The row that would go
+        // red is the no-setModel one added with this fix, which exists for
+        // exactly that reason.
+        if (typeof embed.setModel === "function") {
+          embed.setModel(resolvedId);
+        } else {
+          embed.model = resolvedId;
+        }
+        logDebug("generate(): applied the resolved model to the embed", {
+          model: resolvedId,
+          via: typeof embed.setModel === "function" ? "setModel" : "assignment",
+        });
 
         // 3. Attach the image.
         logDebug("generate(): attaching image to embed");

@@ -272,6 +272,12 @@ const MusicPdfMarkup = (function () {
   // use, so the selfTest asserts against the same string the builder emits.
   const APPENDIX_HEADING = "Appendix: the note list";
 
+  // The document title's heading level. Named rather than written at the point of
+  // use so the relationship below is stated once: the appendix's levels are chosen
+  // RELATIVE to this one, and moving the title without moving them would produce
+  // either two h1s or a gap in the heading sequence.
+  const TITLE_HEADING_LEVEL = 1;
+
   // The heading levels the appendix uses. The document title is already a level-1
   // heading, so the appendix sits at level 2 and each block — a part, or a merged
   // keyboard pair — at level 3. That keeps ONE h1 in the tagged PDF and makes the
@@ -300,13 +306,13 @@ const MusicPdfMarkup = (function () {
   // /LBody elements, in the same order, hashing the same. So code mode costs
   // NOTHING in tagging and buys the whole escaping problem away.
   //
-  // NOTE WHAT THIS DELIBERATELY DOES NOT DO. It does not fix the summary body and
-  // title, which are emitted as markup and escaped with escapeTypstString — the
-  // wrong escaper for that context. That defect is real, is recorded in
-  // music-poc/docs/backlog-clearance-plan.md, and needs a stage that owns the
-  // change and re-baselines the level-1 comparison. What this stage guarantees is
-  // that it does not ADD a second instance of it: no string the appendix emits
-  // ever reaches a markup context.
+  // WHAT THIS DELIBERATELY DID NOT DO, AND WHO CLOSED IT. Stage 84 left the
+  // summary body and the document title emitted as MARKUP and escaped with
+  // escapeTypstString — the wrong escaper for that context — because fixing it
+  // would have moved the level-1 and level-2 documents that stage's whole gate
+  // needed byte-identical. STAGE 92 took that fix: both now emit in code mode,
+  // through this same route, so there is one escaping context in this whole module
+  // and escapeTypstString is correct everywhere it is called.
   //
   // A null, empty or malformed outline emits "" rather than throwing or emitting a
   // bare heading. The caller then produces exactly the document it would have
@@ -450,6 +456,39 @@ const MusicPdfMarkup = (function () {
   // overrides — goes through escapeTypstAlt, so there is one route and no way to
   // add a page-alt path that misses it. The defaults are unchanged by that, being
   // words and digits with nothing to escape.
+  //
+  // SINCE STAGE 92 THERE IS ONLY ONE ESCAPING CONTEXT IN THIS BUILDER, and that is
+  // what makes the sentence above true rather than merely tidy. Until then the
+  // visible title and the summary were emitted as Typst MARKUP — a bare "= …"
+  // heading line and a bare paragraph line — while still being run through
+  // escapeTypstString, the escaper for a "…" string LITERAL. The two contexts want
+  // opposite things, so the mismatch cut both ways: #, *, _, $, <, >, @, [, ] and ~
+  // in a score's own title or summary reached the document as LIVE markup and were
+  // interpreted, a line beginning -, +, = or a digit-then-dot silently became a
+  // list or a heading, and a backslash arrived doubled and rendered literally.
+  // Both now emit in CODE MODE — #heading(level: 1, "…") and #par("…") — which is
+  // the route Stage 84's appendix already uses and Stage 84's spike already
+  // MEASURED to cost nothing in tagging (the same content compiled as markup and
+  // as code mode produced byte-identical structure trees). A second markup-context
+  // escaper was the alternative and was rejected: it would have had to be complete
+  // against every Typst metacharacter, and a miss in it is silent, where a string
+  // literal has exactly two special characters and escapeTypstString has always
+  // handled both.
+  //
+  // THE COST, STATED: the emitted MARKUP is no longer byte-identical to the
+  // pre-Stage-92 document, so the level-1 and level-2 markup baselines were re-cut
+  // at that stage. The selfTest therefore asserts on the string content the heading
+  // and the paragraph CARRY, not on markup bytes, which differ by design.
+  //
+  // THE COMPILED PDF, HOWEVER, IS BYTE-IDENTICAL — measured, not argued. Both
+  // builders were run against the same compiler on the same page, and Satie at
+  // levels 1, 2 and 3, Satie large-print and Joplin at level 1 all produced the
+  // same SHA-256 within a single creation second. On the two-second Joplin
+  // talking-score compile the runs straddle a second, and every differing byte was
+  // then enumerated: all of them sit inside /CreationDate, /ModDate,
+  // xmp:CreateDate, xmp:ModifyDate, xmpMM:InstanceID, xmpMM:DocumentID or /ID. So
+  // Stage 84's spike finding — code mode costs nothing in tagging — holds at the
+  // whole-document level, not merely at the structure tree.
   function buildMultiPageMarkup(opts) {
     const o = opts || {};
     const title = o.title || "Untitled score";
@@ -476,11 +515,22 @@ const MusicPdfMarkup = (function () {
     lines.push("");
 
     /* Title as a level-1 heading (real text), then the honest summary as a
-     * normal paragraph (real text). Authored once; read once. */
-    lines.push("= " + escapeTypstString(title));
+     * normal paragraph (real text). Authored once; read once.
+     *
+     * CODE MODE since Stage 92 — see the ESCAPING note above for why. Both carry
+     * their text as a "…" string literal, where escapeTypstString is the correct
+     * and complete escaper, rather than as a markup line where the engraver's own
+     * words would be interpreted. */
+    lines.push(
+      "#heading(level: " +
+        TITLE_HEADING_LEVEL +
+        ', "' +
+        escapeTypstString(title) +
+        '")'
+    );
     lines.push("");
     if (summaryText.trim()) {
-      lines.push(escapeTypstString(summaryText.trim()));
+      lines.push('#par("' + escapeTypstString(summaryText.trim()) + '")');
       lines.push("");
     }
 
@@ -895,6 +945,72 @@ const MusicPdfMarkup = (function () {
     const idxAppendix = docWithOutline.indexOf("#heading(level: 2,");
     const idxAttach = docWithOutline.indexOf("#pdf.attach(");
 
+    // ---- Stage 92 (the markup-context escaping fix) ----
+    //
+    // The document title and the summary now emit in CODE MODE, on the same route
+    // the appendix has used since Stage 84. These fixtures reuse HOSTILE — the
+    // always-special and sequence-special set grounded at that stage — and add a
+    // LINE-START-SPECIAL prefix to each, because that class is the one a bare
+    // markup line turns into a list or a heading and no character-by-character
+    // check would catch. A title beginning "3." and a summary beginning "- " are
+    // exactly the shapes a real edition's title page and a generated summary can
+    // take, so neither prefix is contrived.
+    const MARKUP_TITLE = "3. " + HOSTILE + "title";
+    const MARKUP_SUMMARY = "- " + HOSTILE + "summary";
+    const markupContextDoc = buildMultiPageMarkup({
+      title: MARKUP_TITLE,
+      summaryText: MARKUP_SUMMARY,
+      pageImagePaths: ["/assets/p1.png"],
+    });
+
+    // readTypstLiteralAfter(source, opener) → the value of the Typst "…" string
+    // literal that begins immediately after `opener`, with its escapes RESOLVED,
+    // or null when the opener is absent or the literal is unterminated.
+    //
+    // WHY A SCANNER AND NOT A REGEX. The claim these rows make is that the string
+    // the builder was given is the string a Typst parser will recover. A regex
+    // ending at the first double quote stops at an ESCAPED one too, so a hostile
+    // value would be silently truncated and the row would then compare one
+    // truncation against another and PASS. Walking the literal the way the parser
+    // does — a backslash consumes the next character, an unescaped quote ends it —
+    // is the only reading that can fail in the direction the rows care about.
+    //
+    // It is an INSTRUMENT, so it carries its own canary row below rather than
+    // being trusted: a scanner that always returned the same value would satisfy
+    // every round-trip row on this list.
+    function readTypstLiteralAfter(source, opener) {
+      const at = source.indexOf(opener);
+      if (at === -1) return null;
+      let i = at + opener.length;
+      let out = "";
+      while (i < source.length) {
+        const ch = source.charAt(i);
+        if (ch === BACKSLASH_CHAR) {
+          i += 1;
+          if (i >= source.length) return null;
+          out += source.charAt(i);
+          i += 1;
+          continue;
+        }
+        if (ch === DQUOTE_CHAR) return out;
+        out += ch;
+        i += 1;
+      }
+      return null;
+    }
+
+    const TITLE_OPENER = "#heading(level: " + TITLE_HEADING_LEVEL + ', "';
+    const SUMMARY_OPENER = '#par("';
+
+    // The line-start constructs a bare markup line would have created. Applied to
+    // EVERY line of the assembled hostile document, not only the two that changed:
+    // the claim is about the document, and a fix that moved the problem elsewhere
+    // would satisfy a narrower row.
+    const startsWithMarkupConstruct = function (line) {
+      const t = line.trim();
+      return /^[-+=]\s/.test(t) || /^\d+\.\s/.test(t) || /^\/\s/.test(t);
+    };
+
     const results = {
       hasWithEncodedBreaks: typeof withEncodedBreaks === "function",
       hasBuildMultiPageMarkup: typeof buildMultiPageMarkup === "function",
@@ -1156,6 +1272,105 @@ const MusicPdfMarkup = (function () {
       newlineAltFoldedToEscape:
         markupNewlineAlt.indexOf('alt: "Line one\\r\\nline two"') !== -1 &&
         markupNewlineAlt.indexOf("Line one\r\nline two") === -1,
+
+      // ---- Stage 92 (the markup-context escaping fix) ----
+      //
+      // THE CONSTRUCTS. The title is a #heading call at the named level and the
+      // summary a #par call, so neither text is in a markup context any more.
+      titleEmitsCodeModeHeading: markupContextDoc.indexOf(TITLE_OPENER) !== -1,
+      summaryEmitsCodeModePar: markupContextDoc.indexOf(SUMMARY_OPENER) !== -1,
+      titleHeadingLevelMatchesConstant: TITLE_HEADING_LEVEL === 1,
+      // The old constructs are GONE, not merely joined by the new ones. Without
+      // this a builder emitting both would satisfy the two rows above.
+      noBareMarkupHeadingLineRemains: markupContextDoc
+        .split("\n")
+        .every(function (line) {
+          return line.indexOf("= ") !== 0;
+        }),
+
+      // THE ROUND TRIP, and the whole claim of the stage: what an escape-honouring
+      // read of the emitted literal recovers is the string the builder was given,
+      // character for character — the hash, the asterisk, the underscore, the
+      // dollar, the angle brackets, the at-sign, the square brackets, the tilde,
+      // the double dash, the double slash, the comment opener, the apostrophe, the
+      // quote and the backslash all included.
+      hostileTitleRoundTrips:
+        readTypstLiteralAfter(markupContextDoc, TITLE_OPENER) === MARKUP_TITLE,
+      hostileSummaryRoundTrips:
+        readTypstLiteralAfter(markupContextDoc, SUMMARY_OPENER) === MARKUP_SUMMARY,
+      // The scanner's own canary. It must recover DIFFERENT values from the two
+      // literals and must return null for an opener that is not there — a scanner
+      // returning one fixed value, or the same value for everything, would satisfy
+      // both rows above while proving nothing.
+      literalScannerDiscriminates:
+        readTypstLiteralAfter(markupContextDoc, TITLE_OPENER) !==
+          readTypstLiteralAfter(markupContextDoc, SUMMARY_OPENER) &&
+        readTypstLiteralAfter(markupContextDoc, '#nosuchcall("') === null,
+      // …and it must honour the escapes rather than stopping at the first quote it
+      // meets. HOSTILE carries an embedded double quote, so a regex-style read
+      // would truncate there; this row fails if the scanner ever degrades to that.
+      // The `|| ""` is not defensive noise: an inversion that removes the heading
+      // makes the scanner return null, and a row that THROWS takes the whole
+      // selfTest down instead of reddening — which is exactly what it did the
+      // first time this inversion was run.
+      literalScannerHonoursEscapedQuote:
+        (readTypstLiteralAfter(markupContextDoc, TITLE_OPENER) || "").indexOf(
+          DQUOTE_CHAR
+        ) !== -1,
+
+      // INSIDE the literal the markup metacharacters arrive UNESCAPED. Escaping
+      // them would be the mirror-image defect: literal backslashes rendered on the
+      // page and spoken by a reader.
+      //
+      // Asserted on the RECOVERED VALUE, not on the emitted line. Reading the line
+      // would let the construct answer for the content — `#heading(` and `#par("`
+      // each carry a hash of their own, so a `#` check over the raw line passes
+      // whether or not the score's title contains one.
+      markupCharsUnescapedInsideLiterals: (function () {
+        const inert = ["#", "*", "_", "$", "<", ">", "@", "[", "]", "~", "--", "//", "/*", "'"];
+        const titleValue = readTypstLiteralAfter(markupContextDoc, TITLE_OPENER);
+        const parValue = readTypstLiteralAfter(markupContextDoc, SUMMARY_OPENER);
+        if (titleValue === null || parValue === null) return false;
+        return inert.every(function (ch) {
+          return titleValue.indexOf(ch) !== -1 && parValue.indexOf(ch) !== -1;
+        });
+      })(),
+      // …while the two that ARE live inside a literal arrive escaped, which is
+      // what keeps the emitted line parseable at all.
+      markupContextQuoteEscapedAndBackslashDoubled:
+        markupContextDoc.indexOf(BACKSLASH_CHAR + DQUOTE_CHAR) !== -1 &&
+        markupContextDoc.indexOf(BACKSLASH_CHAR + BACKSLASH_CHAR) !== -1,
+
+      // NO LINE of the assembled document begins with a Typst markup construct,
+      // which is the line-start-special class: the title begins "3." and the
+      // summary begins "- ", and before this stage each would have opened a list
+      // or a heading. Asserted over the whole document, not the two changed lines.
+      noDocumentLineStartsWithMarkupConstruct:
+        markupContextDoc.split("\n").every(function (line) {
+          return !startsWithMarkupConstruct(line);
+        }),
+      // The positive canary for the row above: the fixture really does carry the
+      // two line-start constructs, so a builder that dropped the title and the
+      // summary altogether could not pass it.
+      markupContextFixtureCarriesLineStartConstructs:
+        startsWithMarkupConstruct(MARKUP_TITLE) &&
+        startsWithMarkupConstruct(MARKUP_SUMMARY),
+
+      // A PLAIN title and summary reach the document UNCHANGED. Asserted on the
+      // string content the heading and the paragraph carry, NOT on markup bytes —
+      // the bytes moved by design at this stage, and comparing them would only
+      // restate that. markup3 is the long-standing three-page fixture, so these
+      // two rows read the same document the alt and figure rows above read.
+      plainTitleContentUnchanged:
+        readTypstLiteralAfter(markup3, TITLE_OPENER) === "Test score",
+      plainSummaryContentUnchanged:
+        readTypstLiteralAfter(markup3, SUMMARY_OPENER) ===
+        "A short honest summary of the piece.",
+      // The document-property title and the visible heading carry the SAME text by
+      // construction rather than by coincidence — two literals, one source value.
+      documentTitleAndHeadingAgree:
+        readTypstLiteralAfter(markup3, '#set document(title: "') ===
+        readTypstLiteralAfter(markup3, TITLE_OPENER),
     };
 
     if (typeof console !== "undefined" && typeof console.table === "function") {
