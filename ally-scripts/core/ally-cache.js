@@ -21,6 +21,19 @@
  * - Single localStorage key: 'ally-cache-store'
  * - Contains version, entries object, and metadata
  * - Entries keyed by report type prefix (ally-cache-cr-, ally-cache-sp-, ally-cache-rb-)
+ *   followed by a TENANT SCOPE segment: '<clientId>@<region>~<identifier>'
+ *
+ * Tenant scoping:
+ * - One store still holds every tenant, so LRU eviction and the storage-pressure
+ *   figures stay whole-profile. What is scoped is the ENTRY KEY, so a read made
+ *   while configured for one institution cannot reach another's cached report.
+ * - The scope is resolved at the moment a key is built, never captured at load
+ *   time - the person can change client id or region without reloading.
+ * - The LIVE credentials the API client is querying under win over anything in
+ *   localStorage, because localStorage only carries a client id when "Remember
+ *   credentials" was ticked. See readLiveCredentials().
+ * - Entries written before scoping (schema v1) are DISCARDED on migration, not
+ *   adopted. See migrateStore() for why.
  *
  * Integration:
  * - Used by ally-course-report.js for caching course reports
@@ -29,8 +42,8 @@
  * - Available globally via ALLY_CACHE
  *
  * @example
- * // Cache a course report
- * var key = ALLY_CACHE.courseReportKey('_12345_1');
+ * // Cache a course report (the key carries the current tenant scope)
+ * var key = ALLY_CACHE.courseReportKey('_12345_1'); // 'ally-cache-cr-577@EU~_12345_1'
  * ALLY_CACHE.set(key, { type: 'course-report', courseId: '_12345_1', data: {...} });
  *
  * // Retrieve cached data
@@ -118,8 +131,11 @@ const ALLY_CACHE = (function () {
   /** localStorage key for the cache store */
   var STORAGE_KEY = "ally-cache-store";
 
-  /** Current schema version for migrations */
-  var SCHEMA_VERSION = 1;
+  /**
+   * Current schema version for migrations.
+   * v1 to v2 added the tenant scope segment to every entry key.
+   */
+  var SCHEMA_VERSION = 2;
 
   /** Maximum total cache size in bytes (4MB) */
   var MAX_SIZE_BYTES = 4194304;
@@ -140,6 +156,30 @@ const ALLY_CACHE = (function () {
     REPORT_BUILDER: "ally-cache-rb-",
   };
 
+  /** Every key prefix in one place, so scope parsing cannot miss a report type */
+  var ALL_KEY_PREFIXES = [
+    KEY_PREFIX.COURSE_REPORT,
+    KEY_PREFIX.STATEMENT_PREVIEW,
+    KEY_PREFIX.REPORT_BUILDER,
+  ];
+
+  /**
+   * Separates the tenant scope from the entry identifier.
+   * Deliberately a character the scope sanitiser strips, so a scope can never
+   * contain one: without that, tenant "a~b" + id "c" and tenant "a" + id "b~c"
+   * would build the same key.
+   */
+  var SCOPE_DELIMITER = "~";
+
+  /** Joins the client id and the region inside a scope token */
+  var SCOPE_JOIN = "@";
+
+  /** Scope part used when no client id can be resolved */
+  var UNRESOLVED_CLIENT_ID = "unset";
+
+  /** Region used when nothing valid is stored and ALLY_CONFIG is unreachable */
+  var FALLBACK_REGION = "EU";
+
   // ========================================================================
   // Private State
   // ========================================================================
@@ -150,6 +190,193 @@ const ALLY_CACHE = (function () {
   // ========================================================================
   // Private Utility Functions
   // ========================================================================
+
+  // ========================================================================
+  // Tenant Scoping
+  // ========================================================================
+
+  /**
+   * Strips everything that is not safe in a scope token, including the
+   * delimiter and the join character, so a scope can never be mis-parsed.
+   * @param {*} value - Raw client id or region
+   * @returns {string} Sanitised part, possibly empty
+   */
+  function sanitiseScopePart(value) {
+    if (typeof value !== "string") return "";
+    return value.trim().replace(/[^A-Za-z0-9_-]/g, "");
+  }
+
+  /**
+   * Reads the configured region, falling back to the configured default.
+   *
+   * ALLY_CONFIG is a top-level const in ally-config.js, which tools.html loads
+   * in the <script> immediately before this file. It is read INSIDE the
+   * function body on purpose: the tenant a key belongs to is whatever is
+   * configured when the key is built, not whatever was configured when this
+   * module evaluated.
+   *
+   * @returns {string} Region key, never empty
+   */
+  function resolveRegion() {
+    var config = typeof ALLY_CONFIG !== "undefined" ? ALLY_CONFIG : null;
+
+    try {
+      var storageKeys = config && config.STORAGE_KEYS;
+      if (storageKeys && storageKeys.REGION) {
+        var stored = window.localStorage.getItem(storageKeys.REGION);
+        var trimmed = typeof stored === "string" ? stored.trim() : "";
+        var valid =
+          trimmed &&
+          (typeof config.isValidRegion !== "function" ||
+            config.isValidRegion(trimmed));
+        if (valid) return trimmed;
+      }
+    } catch (e) {
+      logWarn("Could not read configured region:", e.message);
+    }
+
+    return (config && config.DEFAULT_REGION) || FALLBACK_REGION;
+  }
+
+  /**
+   * Resolves the effective client id through ALLY_CONFIG, which gates the
+   * Southampton default on an institutional sign-in.
+   * @returns {string} Client id, or "" when none applies
+   */
+  function resolveClientId() {
+    try {
+      if (
+        typeof ALLY_CONFIG !== "undefined" &&
+        ALLY_CONFIG &&
+        typeof ALLY_CONFIG.getEffectiveClientId === "function"
+      ) {
+        return ALLY_CONFIG.getEffectiveClientId();
+      }
+    } catch (e) {
+      logWarn("Could not resolve client id:", e.message);
+    }
+    return "";
+  }
+
+  /**
+   * Reads the credentials the API client is CURRENTLY querying under.
+   *
+   * This is the authoritative answer to "which institution is this", and it is
+   * NOT always what localStorage says. ally-api-client.js writes CLIENT_ID to
+   * localStorage only from saveCredentials(), i.e. only when "Remember
+   * credentials" is ticked - so an unticked session queries under a real client
+   * id while getEffectiveClientId() returns "".
+   *
+   * Scoping such a session to 'unset' would pool EVERY unticked session in the
+   * profile into one scope, and two institutions there would read each other's
+   * cache. Measured 5 September 2026: A configured 111 without saving, cached a
+   * course, B configured 999 without saving, and B read A's course. That is the
+   * defect this preference closes, and it is the same leak the scoping exists
+   * to prevent, reached by a different route.
+   *
+   * clientId and region are taken TOGETHER and never mixed with stored values.
+   * The client's region always holds a value - it defaults to EU at load - so
+   * reading it alone would override a stored region for a client that has not
+   * been configured at all.
+   *
+   * @returns {{clientId: string, region: string}|null} Live credentials, or
+   *   null when the client is absent, unloaded, or holds no client id
+   */
+  function readLiveCredentials() {
+    // Read INSIDE the function: ally-api-client.js is a later <script> than
+    // this file, so a module-scope capture would be permanently null.
+    try {
+      if (
+        typeof ALLY_API_CLIENT === "undefined" ||
+        !ALLY_API_CLIENT ||
+        typeof ALLY_API_CLIENT.getCredentials !== "function"
+      ) {
+        return null;
+      }
+
+      var creds = ALLY_API_CLIENT.getCredentials();
+      var clientId =
+        creds && typeof creds.clientId === "string" ? creds.clientId.trim() : "";
+      if (!clientId) return null;
+
+      return {
+        clientId: clientId,
+        region:
+          creds && typeof creds.region === "string" ? creds.region.trim() : "",
+      };
+    } catch (e) {
+      logWarn("Could not read live credentials:", e.message);
+      return null;
+    }
+  }
+
+  /**
+   * Builds the tenant scope token for the current configuration.
+   * @returns {string} Scope token, e.g. '577@EU' or 'unset@EU'
+   */
+  function getTenantScope() {
+    var live = readLiveCredentials();
+
+    var clientId = sanitiseScopePart(
+      live ? live.clientId : resolveClientId(),
+    );
+    // Kept atomic with the client id: a live pair never borrows a stored region.
+    var region = sanitiseScopePart(live ? live.region : resolveRegion());
+
+    return (
+      (clientId || UNRESOLVED_CLIENT_ID) +
+      SCOPE_JOIN +
+      (region || FALLBACK_REGION)
+    );
+  }
+
+  /**
+   * Builds the scoped prefix a key of the given report type starts with.
+   * @param {string} typePrefix - One of KEY_PREFIX
+   * @returns {string} Scoped prefix, e.g. 'ally-cache-cr-577@EU~'
+   */
+  function scopedPrefix(typePrefix) {
+    return typePrefix + getTenantScope() + SCOPE_DELIMITER;
+  }
+
+  /**
+   * Extracts the tenant scope from a cache key.
+   * @param {string} key - Cache key
+   * @returns {string|null} Scope token, or null when the key carries none -
+   *   either a v1 key written before scoping, or a key that is not one of the
+   *   three report types at all
+   */
+  function scopeOfKey(key) {
+    if (typeof key !== "string") return null;
+
+    for (var i = 0; i < ALL_KEY_PREFIXES.length; i++) {
+      var prefix = ALL_KEY_PREFIXES[i];
+      if (key.indexOf(prefix) !== 0) continue;
+
+      var rest = key.slice(prefix.length);
+      var cut = rest.indexOf(SCOPE_DELIMITER);
+      if (cut === -1) return null;
+      return rest.slice(0, cut);
+    }
+
+    return null;
+  }
+
+  /**
+   * Reports whether a key is readable under the current tenant.
+   *
+   * Deliberately conservative: a key is hidden only when it PROVABLY carries a
+   * different tenant's scope. An unscoped key - a v1 leftover, or a key a
+   * caller built by hand - stays visible, so this cannot silently swallow an
+   * entry it does not understand.
+   *
+   * @param {string} key - Cache key
+   * @returns {boolean} True if the entry belongs to the current tenant
+   */
+  function isCurrentTenantKey(key) {
+    var scope = scopeOfKey(key);
+    return scope === null || scope === getTenantScope();
+  }
 
   /**
    * Creates an empty cache store with default structure
@@ -232,23 +459,50 @@ const ALLY_CACHE = (function () {
       "Migrating cache store from version " + (oldStore.version || "unknown"),
     );
 
-    // For now, just create a fresh store
-    // Future versions can implement actual migration logic
+    // An UNSCOPED entry is DISCARDED, never adopted into the current tenant.
+    //
+    // Adopting is superficially attractive: the app was single-tenant until
+    // scoping landed, so every v1 entry really was written by the only
+    // institution this profile had. But that premise is true when the CODE is
+    // written and the migration runs at an unbounded later time - on whichever
+    // page load happens first, under whichever client id is configured by then.
+    // It is one-shot and irreversible: once an entry is stamped 999@EU, the
+    // institution that created it can never reach it again and 999 keeps it.
+    // That is the last path by which one institution's data lands under
+    // another's scope, which is the whole point of the scoping.
+    //
+    // The asymmetry decides it. Cache entries are regenerable API responses, so
+    // discarding costs a refetch; adopting wrongly costs permanently.
+    //
+    // Entries that ALREADY carry a scope are preserved - they are attributable,
+    // so nothing about them is being guessed at.
     var newStore = createEmptyStore();
+    var discarded = 0;
 
-    // Attempt to preserve valid entries
     if (oldStore.entries && typeof oldStore.entries === "object") {
       Object.keys(oldStore.entries).forEach(function (key) {
         var entry = oldStore.entries[key];
-        if (entry && entry.type && entry.data) {
-          newStore.entries[key] = entry;
-          newStore.metadata.entryCount++;
-          newStore.metadata.totalSize += entry.size || 0;
+        if (!entry || !entry.type || !entry.data) return;
+
+        if (scopeOfKey(key) === null) {
+          discarded++;
+          return;
         }
+
+        newStore.entries[key] = entry;
+        newStore.metadata.entryCount++;
+        newStore.metadata.totalSize += entry.size || 0;
       });
     }
 
     saveStore(newStore);
+    logInfo(
+      "Migration complete: " +
+        discarded +
+        " unattributable entries discarded, " +
+        newStore.metadata.entryCount +
+        " scoped entries kept",
+    );
     return newStore;
   }
 
@@ -419,29 +673,29 @@ const ALLY_CACHE = (function () {
     // ====== Key Generation ======
 
     /**
-     * Generates cache key for Course Report
+     * Generates cache key for Course Report, scoped to the current tenant
      * @param {string} courseId - Course ID (e.g., '_12345_1')
-     * @returns {string} Cache key (e.g., 'ally-cache-cr-_12345_1')
+     * @returns {string} Cache key (e.g., 'ally-cache-cr-577@EU~_12345_1')
      */
     courseReportKey: function (courseId) {
       if (!courseId || typeof courseId !== "string") {
         logWarn("Invalid courseId for courseReportKey");
-        return KEY_PREFIX.COURSE_REPORT + "invalid";
+        return scopedPrefix(KEY_PREFIX.COURSE_REPORT) + "invalid";
       }
-      return KEY_PREFIX.COURSE_REPORT + courseId;
+      return scopedPrefix(KEY_PREFIX.COURSE_REPORT) + courseId;
     },
 
     /**
-     * Generates cache key for Statement Preview
+     * Generates cache key for Statement Preview, scoped to the current tenant
      * @param {string} courseId - Course ID (e.g., '_12345_1')
-     * @returns {string} Cache key (e.g., 'ally-cache-sp-_12345_1')
+     * @returns {string} Cache key (e.g., 'ally-cache-sp-577@EU~_12345_1')
      */
     statementPreviewKey: function (courseId) {
       if (!courseId || typeof courseId !== "string") {
         logWarn("Invalid courseId for statementPreviewKey");
-        return KEY_PREFIX.STATEMENT_PREVIEW + "invalid";
+        return scopedPrefix(KEY_PREFIX.STATEMENT_PREVIEW) + "invalid";
       }
-      return KEY_PREFIX.STATEMENT_PREVIEW + courseId;
+      return scopedPrefix(KEY_PREFIX.STATEMENT_PREVIEW) + courseId;
     },
 
     /**
@@ -452,7 +706,7 @@ const ALLY_CACHE = (function () {
      * @param {string} sort - Sort field
      * @param {string} order - 'asc' or 'desc'
      * @param {number} limit - Results limit
-     * @returns {string} Cache key (e.g., 'ally-cache-rb-a1b2c3d4')
+     * @returns {string} Cache key (e.g., 'ally-cache-rb-577@EU~a1b2c3d4')
      */
     reportBuilderKey: function (endpoint, filters, sort, order, limit) {
       // Normalise inputs for consistent hashing
@@ -468,7 +722,18 @@ const ALLY_CACHE = (function () {
       var hashInput = JSON.stringify(normalised);
       var hash = hashString(hashInput);
 
-      return KEY_PREFIX.REPORT_BUILDER + hash;
+      // The scope goes in the PREFIX rather than into the hash input, so a key
+      // stays readable and its tenant stays visible in the cache browser.
+      return scopedPrefix(KEY_PREFIX.REPORT_BUILDER) + hash;
+    },
+
+    /**
+     * Returns the tenant scope token cache keys are currently built with.
+     * Exposed so a caller can report or assert which tenant a read belongs to.
+     * @returns {string} Scope token, e.g. '577@EU'
+     */
+    tenantScope: function () {
+      return getTenantScope();
     },
 
     // ====== Core Operations ======
@@ -614,15 +879,51 @@ const ALLY_CACHE = (function () {
     },
 
     /**
-     * Clears all cached data
+     * Clears every cached entry BELONGING TO THE CURRENT TENANT.
+     * Another institution's entries in the same browser profile are left alone,
+     * so the count this reports and the list the cache browser shows agree.
      */
     clear: function () {
+      var store = getStore();
+      var removed = 0;
+
+      Object.keys(store.entries).forEach(function (key) {
+        if (!isCurrentTenantKey(key)) return;
+        delete store.entries[key];
+        removed++;
+      });
+
+      store.metadata.entryCount = Object.keys(store.entries).length;
+      store.metadata.totalSize = Object.keys(store.entries).reduce(function (
+        sum,
+        k,
+      ) {
+        return sum + (store.entries[k].size || 0);
+      }, 0);
+
+      saveStore(store);
+
+      logInfo("Cache cleared for " + getTenantScope() + ": " + removed + " entries");
+
+      // Notify listeners
+      notifyChange("clear", null);
+    },
+
+    /**
+     * Clears the whole store, every tenant included.
+     *
+     * DELIBERATELY NOT WIRED TO ANY CONTROL. There is no interface route to
+     * clearing another tenant's entries, and that is the intended state: LRU
+     * eviction already handles storage pressure, and getStats().storeEntryCount
+     * exposes the whole-store total for anyone who needs to see it. This exists
+     * as a console escape hatch, not as a feature.
+     */
+    clearAll: function () {
       var store = createEmptyStore();
       saveStore(store);
 
-      logInfo("Cache cleared");
+      logInfo("Cache cleared for ALL tenants");
 
-      // Notify listeners
       notifyChange("clear", null);
     },
 
@@ -643,7 +944,7 @@ const ALLY_CACHE = (function () {
     // ====== Query Methods ======
 
     /**
-     * Gets all entries of a specific type
+     * Gets all entries of a specific type BELONGING TO THE CURRENT TENANT
      * @param {'course-report'|'statement-preview'|'report-builder'} type - Report type
      * @returns {Array} Array of {key, entry} sorted by accessedAt (newest first)
      */
@@ -658,7 +959,7 @@ const ALLY_CACHE = (function () {
 
       Object.keys(store.entries).forEach(function (key) {
         var entry = store.entries[key];
-        if (entry.type === type) {
+        if (entry.type === type && isCurrentTenantKey(key)) {
           results.push({ key: key, entry: entry });
         }
       });
@@ -672,7 +973,8 @@ const ALLY_CACHE = (function () {
     },
 
     /**
-     * Gets all entries (for cache browser)
+     * Gets all entries BELONGING TO THE CURRENT TENANT (for cache browser).
+     * Another institution's cached reports are not listed and cannot be loaded.
      * @returns {Array} Array of {key, entry} sorted by accessedAt (newest first)
      */
     getAllEntries: function () {
@@ -680,6 +982,7 @@ const ALLY_CACHE = (function () {
       var results = [];
 
       Object.keys(store.entries).forEach(function (key) {
+        if (!isCurrentTenantKey(key)) return;
         results.push({ key: key, entry: store.entries[key] });
       });
 
@@ -694,18 +997,32 @@ const ALLY_CACHE = (function () {
     // ====== Metadata ======
 
     /**
-     * Gets cache statistics
-     * @returns {Object} { totalSize, entryCount, maxSize, maxEntries, usagePercent }
+     * Gets cache statistics.
+     *
+     * Two figures deliberately count different things, because they answer
+     * different questions:
+     * - entryCount is TENANT-SCOPED. It is what the interface shows as "N
+     *   cached reports", beside a list that shows only this tenant's entries,
+     *   so the two have to agree.
+     * - allyCacheSize and totalSize are WHOLE-PROFILE. They are storage
+     *   pressure, and the browser does not partition its quota by institution.
+     *
+     * @returns {Object} { totalSize, entryCount, storeEntryCount, allyCacheSize,
+     *   maxSize, maxEntries, usagePercent, allyCachePercent, tenantScope }
      */
     getStats: function () {
       var store = getStore();
       var entries = Object.keys(store.entries);
       var allyCacheSize = 0;
+      var scopedEntryCount = 0;
 
       entries.forEach(function (key) {
         var entry = store.entries[key];
         if (entry && entry.size) {
           allyCacheSize += entry.size;
+        }
+        if (isCurrentTenantKey(key)) {
+          scopedEntryCount++;
         }
       });
 
@@ -730,11 +1047,13 @@ const ALLY_CACHE = (function () {
       return {
         allyCacheSize: allyCacheSize,
         totalSize: totalLocalStorageSize,
-        entryCount: entries.length,
+        entryCount: scopedEntryCount,
+        storeEntryCount: entries.length,
         maxSize: localStorageLimit,
         maxEntries: MAX_ENTRIES,
         usagePercent: (totalLocalStorageSize / localStorageLimit) * 100,
         allyCachePercent: (allyCacheSize / localStorageLimit) * 100,
+        tenantScope: getTenantScope(),
       };
     },
 
@@ -828,9 +1147,11 @@ const ALLY_CACHE = (function () {
 
       return {
         stats: publicApi.getStats(),
+        tenantScope: getTenantScope(),
         constants: {
           storageKey: STORAGE_KEY,
           schemaVersion: SCHEMA_VERSION,
+          scopeDelimiter: SCOPE_DELIMITER,
           maxSizeBytes: MAX_SIZE_BYTES,
           maxEntries: MAX_ENTRIES,
           evictionThreshold: EVICTION_THRESHOLD,

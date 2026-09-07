@@ -1,7 +1,7 @@
 // /mathpix-scripts/ui/components/mathpix-result-renderer.js
 // Logging configuration (module level)
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 

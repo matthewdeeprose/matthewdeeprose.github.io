@@ -340,6 +340,80 @@
   margin-left: 1.75rem;
 }
 
+/* ------------------------------------------------------------
+ * Foundry proxy picker (unit 4b-i)
+ *
+ * Deliberately modelled on .setup-checkbox-group above rather than invented:
+ * same 44px control target, same label weight, same help-text indent. The two
+ * are the only grouped controls in this tool and should not look like two
+ * different design decisions.
+ *
+ * NO RULE HERE SETS `display`. The fieldset ships with the `hidden` attribute
+ * and must stay hidden until the wiring unit removes it; a `display` rule on
+ * .setup-proxy-picker would out-rank the UA's `[hidden] { display: none }` and
+ * silently reveal an unwired control. Measured after this sheet was written:
+ * computed display is `none`, offsetParent is null, client area is 0.
+ *
+ * Colours are inherited on purpose — light.css and dark.css already theme
+ * inputs and labels, so naming colours here would create a third place to keep
+ * in step for no gain.
+ * ------------------------------------------------------------ */
+.setup-proxy-picker {
+  margin-top: 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.setup-proxy-picker > legend {
+  font-weight: 600;
+}
+
+.setup-proxy-option {
+  margin-top: 0.25rem;
+}
+
+.setup-proxy-option input[type="radio"] {
+  width: 24px;
+  height: 24px;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+  cursor: pointer;
+}
+#setup-proxy-picker {
+  gap: 0.5rem;
+  border: 1px solid currentcolor;
+  border-radius: 4px;
+  padding: 0.75rem 1rem 1rem 1rem;
+  margin: 0.5rem 0 1.5rem 0;
+}
+
+.setup-proxy-option {
+  font-size: 1rem;
+}
+.setup-proxy-option > label {
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+/* An option's own help text (the Stage 6 data-format picker carries one per
+ * radio, and the script option's is its warning) indents like the checkbox
+ * group's, so the two grouped controls keep reading as one design. */
+.setup-proxy-option > .setup-help-text {
+  margin-left: 1.75rem;
+}
+
+/* The Custom option is disabled unless it is the current state — it reflects
+ * the proxy-URL field rather than setting it. Opacity is a SECONDARY cue only:
+ * the control is genuinely `disabled`, so it is unreachable by keyboard and
+ * announced as unavailable, and nothing here relies on colour or contrast to
+ * convey the state (SC 1.4.1). */
+.setup-proxy-option input[type="radio"]:disabled,
+.setup-proxy-option input[type="radio"]:disabled + label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .setup-model-card-dl {
   font-size: 0.875rem;
 }

@@ -41,7 +41,20 @@ import { parameterRegistry } from "./modules/parameters/base/parameter-registry.
 import { FileHandler } from "./file-handler/file-handler-core.js";
 import { responseSizeManager } from "./response-size-manager.js";
 
-import "./testing/pdf-testing-suite.js";
+// A static `import "./testing/pdf-testing-suite.js"` stood here, and a matching
+// one for ./testing/stage7-error-handling-tests.js below. BOTH ARE GONE — the
+// two files are now dev-gated in tools.html like every other harness.
+//
+// A <script>-tag gate is powerless against an import inside a module the page
+// already loads, so these two ran on EVERY production page load while the other
+// 32 files in js/testing/ did not. That was not only untidy: pdf-testing-suite
+// instantiates itself at module top level, and its constructor wrapped
+// window.onerror and console.warn, so production error reporting ran through a
+// test suite. See AGENTS.md § Console Testing.
+//
+// The ~40 debug globals they register now need ?dev=1, in common with every
+// other harness. Nothing in production referenced any of them — checked per
+// name before the imports were removed.
 
 // Stage 7: Error Handling System imports
 import { errorHandler } from "./error-handler/error-handler-main.js";
@@ -49,8 +62,7 @@ import { errorClassification } from "./error-handler/error-classification.js";
 import { recoveryStrategies } from "./error-handler/recovery-strategies.js";
 import { errorMessages } from "./error-handler/error-messages.js";
 
-// Stage 7: Testing Commands (separate file for better organisation)
-import "./testing/stage7-error-handling-tests.js";
+// Stage 7 testing commands: dev-gated in tools.html — see the note above.
 
 // ============================================================================
 // LOGGING CONFIGURATION (Module Scope)

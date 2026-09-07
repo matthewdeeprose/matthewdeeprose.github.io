@@ -325,6 +325,26 @@ const MusicNames = (function () {
     return name;
   }
 
+  // partDisplayName(name, id): pure. The display name for a part, used wherever a
+  // part has to be named to a reader — the note list, and since Stage 93 the
+  // on-screen staff label too. A part that declares a <part-name> keeps it
+  // VERBATIM, untrimmed, because the name is the publisher's own text and this
+  // module is not the place to re-punctuate it; the trim decides only whether a
+  // name is present at all, so a whitespace-only name counts as absent.
+  //
+  // With no usable name the fallback is built from the part id ("Part P1"), and
+  // with no usable id either it is the bare word "Part". Both are deliberately
+  // duller than OSMD's own invented "Instr. P1": a reader should hear the
+  // structural fact, not a fabricated instrument.
+  //
+  // It takes arguments rather than reading a table, so mappedString's inherited-key
+  // guard does not apply — there is no object being indexed by a caller's string.
+  function partDisplayName(name, id) {
+    if (typeof name === "string" && name.trim().length > 0) return name;
+    if (typeof id === "string" && id.length > 0) return "Part " + id;
+    return "Part";
+  }
+
   // Self-test: synchronous and self-contained. Asserts every lookup against known
   // codes, including fallbacks and the null-when-absent paths. console.table()s
   // and returns the results object.
@@ -416,6 +436,14 @@ const MusicNames = (function () {
       chordNullWhenArray: chordSymbolName(["C", "major"]) === null,
       chordNullWhenMissingRoot: chordSymbolName({ kind: "major" }) === null,
       chordNullWhenMissingKind: chordSymbolName({ rootStep: "C" }) === null,
+      hasPartDisplayName: typeof partDisplayName === "function",
+      partNamePassesThrough: partDisplayName("Soprano", "P1") === "Soprano",
+      partNameKeepsSurroundingSpaces: partDisplayName("  Piano  ", "P1") === "  Piano  ",
+      partEmptyNameUsesId: partDisplayName("", "P1") === "Part P1",
+      partNullNameUsesId: partDisplayName(null, "P2") === "Part P2",
+      partUndefinedNameAndIdIsBareWord: partDisplayName(undefined, undefined) === "Part",
+      partEmptyNameAndEmptyIdIsBareWord: partDisplayName("", "") === "Part",
+      partNonStringNameUsesId: partDisplayName(3, "P1") === "Part P1",
       chordNeverThrows: (function () {
         const hostile = [
           null, undefined, "C major", 7, true, ["C", "major"], {},
@@ -522,7 +550,7 @@ const MusicNames = (function () {
     return results;
   }
 
-  return { noteValueName, dynamicName, keySignatureName, alterName, dottedValueName, tupletName, articulationName, ornamentName, clefName, endingName, chordKindName, chordSymbolName, selfTest };
+  return { noteValueName, dynamicName, keySignatureName, alterName, dottedValueName, tupletName, articulationName, ornamentName, clefName, endingName, chordKindName, chordSymbolName, partDisplayName, selfTest };
 })();
 
 window.MusicNames = MusicNames;

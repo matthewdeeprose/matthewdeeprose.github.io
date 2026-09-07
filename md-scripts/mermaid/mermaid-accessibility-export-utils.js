@@ -12,7 +12,7 @@ window.MermaidAccessibilityExport = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 

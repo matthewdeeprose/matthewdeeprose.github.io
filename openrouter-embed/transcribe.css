@@ -1,0 +1,405 @@
+/*
+ * openrouter-embed/transcribe.css — the Transcribe tool's own styling.
+ *
+ * Register item 43, iteration 3. Until this file existed the tool shipped with
+ * NO stylesheet of its own: it borrowed four .imgdesc-upload-* rules from the
+ * Image Describer and carried four transcribe-* classes that nothing styled.
+ * Both tools.html comments covering this tool said "No new CSS." in terms, and
+ * this file knowingly ends that, for the reason item 43's strand 3 gives.
+ *
+ * WHY THIS FOLDER. The one-sheet-per-tool convention puts a tool's sheet in
+ * the tool's own folder — image-describer/image-describer.css, chat/chat.css,
+ * local-chat/local-chat.css, setup-tool/setup-tool.css — each a plain
+ * unconditional <link> in tools.html's <head>. Both Transcribe files live in
+ * openrouter-embed/, so this does too. Stated because openrouter-embed/ had
+ * never carried a stylesheet before: the convention supplies the shape without
+ * supplying a precedent for this folder.
+ *
+ * =========================================================================
+ * COLOUR: THERE IS NONE. THIS IS THE LOAD-BEARING DECISION IN THIS FILE.
+ * =========================================================================
+ *
+ * NO TEXT COLOUR IS DECLARED ANYWHERE IN THIS FILE, and none may be. Every
+ * text-bearing rule inherits or uses `currentColor`, which is the house
+ * pattern in image-describer.css and is what makes a sheet theme-correct
+ * without knowing the theme.
+ *
+ * UNIT 2 OF ITEM 55 ADDED TWO ACHROMATIC SURFACE TINTS — a 6% grey panel on
+ * .transcribe-list and a 25% grey row separator — written as rgba greys so
+ * they composite over whatever the theme supplies and carry no hue of their
+ * own. THEY TOUCH SURFACES, NEVER TEXT. The prohibition above is unchanged
+ * for text, and the numbers below are measured with those tints in force.
+ *
+ * The pairs that actually reach the screen, measured ON THE PAGE in both
+ * themes rather than computed on paper. The background is the COMPOSITED
+ * surface — `main` with this file's 6% panel tint over it — because that is
+ * what the text is actually read against:
+ *
+ *   light   #00131d on rgb(247, 247, 237)  = 17.58:1
+ *   dark    #e1e8ec on rgb(41, 37, 38)     = 12.27:1
+ *
+ * All three of .transcribe-time, .transcribe-speaker and .transcribe-text
+ * measure identically, because none of them declares a colour.
+ *
+ * WITHOUT the panel tint the same text reads 18.78:1 and 13.16:1 on bare
+ * `main`. So the tint costs 1.20 in light and 0.89 in dark, which is the
+ * number to spend against — NOT the bare-main pair — if a later unit adds
+ * anything of its own on top of this panel.
+ *
+ * THE EARLIER BODY-BASED PAIRS WERE WITHDRAWN IN UNIT 2 OF ITEM 55, because
+ * the transcript paints on `main`, not on `body`. They read `#00131d on
+ * #f0f2e8 = 16.72:1` and `#e1e8ec on #161415 = 14.81:1`; against the surface
+ * that actually composites, light was understated and dark was OVERSTATED by
+ * 1.65 — the unsafe direction for anyone budgeting headroom against it.
+ *
+ * A MUTED TIMESTAMP IS THE OBVIOUS INSTINCT AND THE OBVIOUS WAY TO FAIL
+ * SC 1.4.3, so the numbers are recorded here rather than the intention.
+ * Compositing the body text over the body background:
+ *
+ *   opacity 0.7   light 6.74:1   dark 7.66:1   both pass
+ *   opacity 0.6   light 4.80:1   dark 5.94:1   both pass
+ *   opacity 0.5   light 3.46:1   dark 4.51:1   LIGHT FAILS, DARK PASSES
+ *
+ * That last row is the trap in its most dangerous form: a dimmed timestamp
+ * looks correct to anyone working in dark theme and is a real failure for
+ * everyone else. So the timestamp is distinguished by TYPOGRAPHY AND POSITION
+ * — tabular figures, a hanging indent — and never by dimming. Do not add an
+ * opacity, a grey, or a --muted token to anything in this file without
+ * recomputing both themes and writing the numbers here.
+ *
+ * NO :focus OR :focus-visible RULE APPEARS IN THIS FILE, deliberately. The app
+ * already gives every control an inverted fill plus a coloured glow, measured
+ * at 7.3:1 light and 11.2:1 dark. A component-level box-shadow REPLACES that
+ * glow rather than adding to it, so a well-meant override is usually less
+ * prominent than doing nothing, plus one control that signals focus unlike
+ * every other. See AGENTS.md § Focus indicators.
+ *
+ * NOTHING HERE CHANGES THE ACCESSIBILITY TREE. No display:none, no
+ * visibility, no `content` that inserts text, nothing that folds or unfolds a
+ * node. The single rule that touches semantics at all is `list-style: none` —
+ * see the note on .transcribe-list.
+ */
+
+/* =========================================================================
+   THE UPLOAD AREA
+   ========================================================================= */
+
+/*
+ * Transcribe borrows the four .imgdesc-upload-* CHILD rules from
+ * image-describer.css but not the wrapper rule, because its wrapper is
+ * .transcribe-upload-area and image-describer.css scopes the frame to
+ * .imgdesc-upload-area. The result today is the CONTENTS of a drop zone with
+ * no drop zone around them.
+ *
+ * The frame is reproduced here rather than by widening the Image Describer's
+ * selector: that file belongs to another tool, and a shared selector would
+ * make either tool's restyle a change to both. Duplicating four declarations
+ * is the cheaper coupling.
+ *
+ * Values match image-describer.css:36-42 so the two tools look like siblings.
+ * The `transition` is deliberately NOT copied — Transcribe has no drag-over
+ * state to transition to, so it would animate nothing.
+ */
+.transcribe-upload-area {
+  border: 2px dashed currentColor;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* =========================================================================
+   PRE-RUN OPTIONS
+   ========================================================================= */
+
+.transcribe-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+/*
+ * Each option takes a line's worth of width and is free to be narrower.
+ *
+ * `min-width: 0` IS LOAD-BEARING AND WAS ADDED AFTER MEASUREMENT, NOT BEFORE.
+ * A flex item defaults to `min-width: auto`, which refuses to shrink below its
+ * content's minimum — and the <select> inside has an intrinsic minimum wider
+ * than a 320px viewport. Measured at 320px WITHOUT this line: the item computed
+ * 325px inside a 279px parent, with its right edge at 338px, exactly the
+ * document's scrollWidth. `min-width: 0` releases that floor.
+ *
+ * The child cap does the other half: a <select> can still report a wide
+ * intrinsic size, and 100% of a now-shrinkable parent is the ceiling that
+ * actually binds it.
+ *
+ * Recorded because the first draft of this rule looked correct, passed every
+ * desktop reading, and only failed at the width SC 1.4.10 is about.
+ */
+.transcribe-option {
+  flex: 1 1 14rem;
+  min-width: 0;
+}
+
+.transcribe-option select,
+.transcribe-option input {
+  max-width: 100%;
+}
+
+/* =========================================================================
+   DISPLAY OPTIONS — the speaker-label checkbox
+   ========================================================================= */
+
+/*
+ * The wrapper carries `hidden` until a transcript with informative speaker
+ * labels exists. NO `display` DECLARATION APPEARS HERE, and that is deliberate
+ * rather than an omission: a `display` value on this selector would override
+ * the user-agent's `[hidden] { display: none }` and put the control into the
+ * accessibility tree while the markup still read hidden. The reveal is done by
+ * the renderer toggling the attribute, and nothing in CSS may compete with it.
+ */
+.transcribe-display-options {
+  display: flex;
+  /*
+   * Item 54 unit 5. Measured 5 September 2026 (item 54 unit 1): with two
+   * controls visible at 320px and no wrap, the single flex line squeezes the
+   * two labels side by side into three and four lines each. With wrap the
+   * second control drops to its own line and each label keeps its width.
+   * `display` is not touched by this unit — see the comment above the rule.
+   */
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+/* =========================================================================
+   THE TRANSCRIPT
+   ========================================================================= */
+
+/*
+ * The row number is not the content. A transcript's locator is its TIMESTAMP,
+ * which every row already carries as a <time>, so an ordinal marker beside it
+ * would be a second, competing address for the same phrase.
+ *
+ * ONE CAVEAT, FLAGGED RATHER THAN GLOSSED: WebKit is known to drop the
+ * implicit list/listitem semantics from a list styled `list-style: none`. The
+ * standard remedy is role="list" on the <ol>, and THAT ROLE HAS NOW BEEN
+ * ADDED, in openrouter-embed-transcribe-ui.js's renderer rather than in this
+ * file — a role is markup, not styling. This paragraph previously told a
+ * future reader to expect to add it themselves; iteration 4 falsified that
+ * instruction and corrects it here in the same commit rather than leaving a
+ * comment to be believed after it stopped being true.
+ *
+ * WHAT IS UNCHANGED BY THAT: Chrome's computed tree WAS measured with this
+ * rule in force and still reports list and listitem — measured again either
+ * side of the role being added, and unmoved. Safari and iOS have NOT been
+ * measured, and nothing here should be read as covering them, so the role
+ * remains an unmeasured precaution rather than a verified fix. Owed-listen row
+ * 40 (a) is still where a reader's ability to move through the rows is judged.
+ */
+/*
+ * THE PANEL, ADDED IN UNIT 2 OF ITEM 55. Every value here is borrowed rather
+ * than invented, so the transcript reads as a sibling of the other tools'
+ * results containers instead of a fifth opinion:
+ *
+ *   outline + border-radius   .imgdesc-output (image-describer.css:294) and
+ *                             .results-content (main.css:1937), which both use
+ *                             `outline: 0.1rem solid currentcolor` with a small
+ *                             radius. OUTLINE, NOT BORDER, deliberately — it is
+ *                             what those two use, and it takes no layout space,
+ *                             so it cannot push the row box at 320px.
+ *   padding: 1rem             the same two rules.
+ *   background                the chat.css card pattern (#chat-app
+ *                             .chat-dev-panel pre, chat.css:856), which tints a
+ *                             results surface with an rgba grey rather than a
+ *                             per-theme hex. An achromatic alpha composites
+ *                             over either theme's `main`, so ONE declaration is
+ *                             correct in both and neither theme sheet is
+ *                             touched.
+ *
+ * The 6% is deliberately far below anything that could matter to SC 1.4.3 —
+ * the measured pairs in the file header are taken WITH this tint in force.
+ */
+.transcribe-list {
+  list-style: none;
+  margin: 0;
+  outline: 0.1rem solid currentcolor;
+  border-radius: 0.25rem;
+  padding: 1rem;
+  background: rgba(127, 127, 127, 0.06);
+}
+
+/*
+ * A hanging indent, so a phrase that wraps aligns under its own text rather
+ * than under its timestamp — the timestamp stays the leftmost thing on the row
+ * and the eye can run down the column of them.
+ *
+ * REFLOW (SC 1.4.10): this is normal inline flow with a negative text-indent,
+ * NOT a two-column grid or flex row. That is the whole reflow strategy. The
+ * timestamp and the phrase sit side by side while there is room and the phrase
+ * simply wraps beneath when there is not; nothing is clipped, nothing scrolls
+ * sideways, and there is no fixed column to squash. A grid with a fixed
+ * timestamp column would look tidier at desktop width and would crush the
+ * phrase into a few characters at 320px.
+ *
+ * The indent is in `ch` so it tracks the font rather than the viewport, which
+ * keeps it correct at 200% zoom.
+ */
+/*
+ * THE ROW SEPARATOR, ADDED IN UNIT 2 OF ITEM 55. Same achromatic-rgba
+ * reasoning as the panel above: one declaration, correct in both themes, no
+ * theme-sheet edit. The vertical padding gives the rule something to separate.
+ *
+ * `border-bottom`, NOT the panel's `outline`, because a border is per-row and
+ * an outline would draw all four sides. It costs 1px of layout per row, which
+ * the hanging indent does not depend on.
+ *
+ * MEASURED 1.32:1 IN LIGHT AND 1.38:1 IN DARK against the composited panel.
+ * That is below SC 1.4.11's 3:1 deliberately, and it is not a target of it:
+ * the separator is decorative. The panel OUTLINE is the component boundary, at
+ * 18.78:1, and the rows carry real listitem semantics, so removing this rule
+ * would cost a reader no information — it refines a boundary that is already
+ * conveyed twice over.
+ *
+ * THE SPACING ASYMMETRY UNIT 2 LEFT OPEN WAS RESOLVED IN UNIT 2b: the
+ * pre-existing `margin: 0 0 0.5rem` is now `margin: 0`, so the vertical
+ * padding alone sets the gap and it is equal on both sides of the rule.
+ */
+.transcribe-row {
+  margin: 0;
+  padding-left: 8ch;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  text-indent: -8ch;
+  line-height: 1.5;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+.transcribe-row:last-child {
+  border-bottom: 0;
+}
+
+/*
+ * NARROW WIDTHS: THE HANGING INDENT IS DROPPED, ADDED IN UNIT 2b OF ITEM 55.
+ *
+ * The indent is 8ch, and unit 2 measured what that leaves for the phrase at a
+ * 320px viewport: a text column of 16.28ch WITH this file's panel padding, and
+ * 19.43ch WITHOUT it. So the indent costs more than half the available column
+ * — the panel made it worse, but it was already under 20ch on the bare page,
+ * which is why the fix is here rather than in the panel padding alone.
+ *
+ * Below 30rem the timestamp and speaker therefore run INLINE with the phrase
+ * instead of sitting in their own column. That is the same trade the rule's
+ * own comment above describes refusing at desktop width — a fixed timestamp
+ * column would crush the phrase — arriving at the width where the column
+ * itself becomes the thing doing the crushing.
+ *
+ * NOTHING HERE TOUCHES THE ACCESSIBILITY TREE. `padding`, `padding-left` and
+ * `text-indent` are all layout; the reading order, the roles and the text are
+ * unchanged, which is why the tree gate is taken at 320px as well as at
+ * desktop width and both readings must match.
+ */
+@media (max-width: 30rem) {
+  .transcribe-list {
+    padding: 0.5rem;
+  }
+
+  .transcribe-row {
+    padding-left: 0;
+    text-indent: 0;
+  }
+}
+
+/*
+ * Tabular figures so the clock strings form a straight column, and a slightly
+ * smaller size to sit back visually — NEITHER of which touches colour. This is
+ * the whole of the timestamp's visual differentiation, for the reason in the
+ * file header.
+ *
+ * `white-space: nowrap` because "[1:02:03]" breaking across two lines would be
+ * unreadable, and it is short enough that it cannot cause overflow.
+ */
+/*
+ * UNIT 2 OF ITEM 55 ADDED THE MONOSPACE STACK, and it is the same kind of
+ * differentiation the rest of this rule already uses: TYPOGRAPHY, NOT COLOUR
+ * AND NOT OPACITY. `ui-monospace` first so each platform gets its own system
+ * mono rather than a downloaded face — this file ships no @font-face and adds
+ * no network request. `tabular-nums` is kept because it is not redundant: it
+ * still governs figure width should the stack fall through to a proportional
+ * last resort.
+ */
+.transcribe-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9375rem;
+  white-space: nowrap;
+  font-family:
+    ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+}
+
+/* Weight, not colour. A bold run of "Speaker 2:" reads as a label at any
+   contrast, and at 14.8:1 there is no headroom problem to solve. */
+.transcribe-speaker {
+  font-weight: 600;
+}
+
+/* Inherits everything. Present so the class has a home and so the no-phrase
+   fallback <p>, which the renderer also gives this class, picks up the same
+   measure. `max-width` in ch keeps a long transcript from running to an
+   uncomfortable line length on a wide screen, and being a maximum it cannot
+   cause a horizontal scrollbar at any narrow width. */
+.transcribe-text {
+  max-width: 80ch;
+}
+
+/* =========================================================================
+   THE SPEAKER-LABEL CAVEAT
+   ========================================================================= */
+
+/* The standing note under the transcript. Same colour as everything else. */
+#transcribe-note {
+  font-size: 0.9375rem;
+  margin-top: 1rem;
+}
+
+/* =========================================================================
+   FORCED COLOURS
+   ========================================================================= */
+
+/*
+ * ADDED IN UNIT 2 OF ITEM 55, following chat.css:910, which does exactly this
+ * for its own results surface.
+ *
+ * WHY IT IS NEEDED AT ALL: under forced-colors the user agent replaces author
+ * colours with the user's own palette, and an rgba grey is exactly the kind of
+ * declaration that gets replaced with something that does not separate
+ * anything. Naming the system keywords puts the panel edge and the row rule
+ * back on colours the user has chosen. `Canvas` for the panel rather than a
+ * tint, because there is no forced-colors equivalent of "6% grey" and a
+ * surface that cannot be tinted should not pretend to be.
+ *
+ * The outline WIDTH is left alone — only its colour is restated, since the
+ * geometry is not what forced-colors disturbs. AGENTS.md § Focus indicators
+ * notes that `box-shadow` is dropped entirely under forced-colors; this file
+ * declares none, so nothing here depends on one surviving.
+ */
+@media (forced-colors: active) {
+  .transcribe-list {
+    outline-color: CanvasText;
+    background: Canvas;
+  }
+
+  .transcribe-row {
+    border-bottom-color: CanvasText;
+  }
+}
+
+/* =========================================================================
+   REDUCED MOTION
+   ========================================================================= */
+
+/*
+ * There is nothing to disable. This file declares no transition, no animation
+ * and no transform, so `prefers-reduced-motion` has nothing to act on — which
+ * is why no media query for it appears below. Recorded so a reviewer checking
+ * for one finds the answer rather than the absence.
+ */

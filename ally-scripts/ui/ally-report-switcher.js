@@ -147,7 +147,19 @@ const ALLY_REPORT_SWITCHER = (function () {
       "course-report": sections.courseReport,
       "statement-preview": sections.statementPreview,
       "report-builder": sections.reportBuilder,
+      trends: sections.trends,
     };
+
+    // The trends view loads its own data on first use, so it is activated on
+    // selection rather than at startup - half a megabyte nobody should pay for
+    // unless they open it.
+    if (
+      reportType === "trends" &&
+      typeof ALLY_TRENDS_UI !== "undefined" &&
+      typeof ALLY_TRENDS_UI.activate === "function"
+    ) {
+      ALLY_TRENDS_UI.activate();
+    }
 
     // Show selected section
     var targetSection = sectionMap[reportType];
@@ -196,6 +208,7 @@ const ALLY_REPORT_SWITCHER = (function () {
         "course-report": "Course Report",
         "statement-preview": "Accessibility Statement Preview",
         "report-builder": "Report Builder",
+        trends: "Accessibility Over Time",
       };
       label = fallbackLabels[reportType] || reportType;
     }
@@ -256,6 +269,7 @@ const ALLY_REPORT_SWITCHER = (function () {
     sections.reportBuilder = document.getElementById(
       "ally-report-builder-section",
     );
+    sections.trends = document.getElementById("ally-trends-section");
 
     // Cache Report Builder related sections (siblings that should hide with it)
     reportBuilderRelated.results = document.getElementById(
@@ -269,6 +283,7 @@ const ALLY_REPORT_SWITCHER = (function () {
     radios.courseReport = document.getElementById("ally-report-course");
     radios.statementPreview = document.getElementById("ally-report-statement");
     radios.reportBuilder = document.getElementById("ally-report-builder");
+    radios.trends = document.getElementById("ally-report-trends");
 
     // Log what was found
     logDebug("Cached elements:", {

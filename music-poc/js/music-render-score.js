@@ -58,6 +58,33 @@ const MusicRenderScore = (function () {
         drawTitle: true,
       });
       await osmd.load(xmlText);
+
+      // Stage 93. OSMD invents a staff label for a part whose <part-name> is empty,
+      // spelling it "Instr. " plus the part id — so an unnamed part is engraved as
+      // "Instr. P1", which names an instrument nobody declared. Rewrite exactly that
+      // pattern to the SAME fallback the note list already uses, so the screen and the
+      // spoken description agree on what a part is called. Only OSMD's own invented
+      // string is matched: a real part-name, and any label a publisher chose, is left
+      // untouched. Guarded end to end — an absent Sheet, absent Instruments or absent
+      // MusicNames skips the walk silently, because a missing label is a smaller harm
+      // than a render that does not happen.
+      const sheet = osmd.Sheet;
+      const instruments = sheet ? sheet.Instruments : null;
+      if (!instruments || !Array.isArray(instruments)) {
+        logDebug("Part labels left as OSMD set them: no readable Sheet.Instruments");
+      } else if (!window.MusicNames || typeof window.MusicNames.partDisplayName !== "function") {
+        logDebug("Part labels left as OSMD set them: MusicNames.partDisplayName unavailable");
+      } else {
+        for (const instrument of instruments) {
+          if (!instrument) continue;
+          const id = instrument.IdString;
+          if (typeof id !== "string" || id.length === 0) continue;
+          if (instrument.Name !== "Instr. " + id) continue;
+          instrument.Name = window.MusicNames.partDisplayName("", id);
+          logDebug("Replaced OSMD's invented label for part " + id + " with " + instrument.Name);
+        }
+      }
+
       osmd.render();
       // Hold the live instance so the play-along module can drive its cursor.
       currentOsmd = osmd;

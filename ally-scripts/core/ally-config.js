@@ -42,7 +42,7 @@ const ALLY_CONFIG = (function () {
   // ========================================================================
 
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -198,6 +198,22 @@ const ALLY_CONFIG = (function () {
       // deliberately SURVIVES an unchecked-"Remember credentials" clear: it is
       // the fallback that keeps the app working without a token.
       WORKER_URL: "ally-worker-url",
+
+      // Stage 3 tenant identity. These three are the ONLY new storage the
+      // tenant record introduces: region, client id, token and worker URL keep
+      // their existing keys above, and the record is a VIEW over them rather
+      // than a second copy. Two sources of truth for a credential is how the
+      // stored/live divergence Stage 1 closed came about in the first place.
+      TENANT_ID: "ally-tenant-id",
+      TENANT_NAME: "ally-tenant-name",
+      TENANT_DATA_SOURCE: "ally-tenant-data-source",
+
+      // Stage 6: where a tenant's course data is fetched from, and in which
+      // form. Not credentials: like WORKER_URL they survive an unticked
+      // Remember box and go only on an explicit clear. The URL is kept when
+      // the fetched copy is removed, so a refresh does not mean re-typing it.
+      TENANT_DATA_URL: "ally-tenant-data-url",
+      TENANT_DATA_URL_FORMAT: "ally-tenant-data-url-format",
     },
 
     /**
@@ -220,6 +236,64 @@ const ALLY_CONFIG = (function () {
      * @type {string}
      */
     DEFAULT_CLIENT_ID: "577",
+
+    /**
+     * Discriminator written into an exported tenant configuration file and
+     * required on import. A JSON file that does not carry it is refused rather
+     * than partly applied — an import overwrites live credentials, so "looks
+     * like JSON" is nowhere near a strong enough test to act on.
+     * @type {string}
+     */
+    TENANT_RECORD_KIND: "ally-tenant-configuration",
+
+    /**
+     * Schema version of the exported tenant record. Bump it only for a change
+     * an older reader could MISREAD; parseTenantRecord refuses a version it
+     * does not know rather than guessing at the shape.
+     * @type {number}
+     */
+    TENANT_RECORD_VERSION: 1,
+
+    /**
+     * Where a tenant's course data comes from. BUNDLED is the Southampton
+     * default, UPLOAD is an export parsed in the browser (Stage 4), and REMOTE
+     * is a payload fetched once from a URL and stored (Stage 6). The record
+     * carried the field from Stage 3, so an export written then still parses
+     * now, with no version bump to gain a key.
+     * @type {Object.<string, string>}
+     */
+    DATA_SOURCES: Object.freeze({
+      BUNDLED: "bundled",
+      UPLOAD: "upload",
+      REMOTE: "remote",
+    }),
+
+    /**
+     * The two forms a hosted course payload can take (Stage 6). JSON is a
+     * data-only fetch and the default. SCRIPT loads the converter's two
+     * generated modules by <script src> — it works from any host, and it runs
+     * that host's code inside this origin beside every stored key, which is
+     * why it is an explicit opt-in with a visible warning and never a default.
+     * @type {Object.<string, string>}
+     */
+    DATA_URL_FORMATS: Object.freeze({
+      JSON: "json",
+      SCRIPT: "script",
+    }),
+
+    /**
+     * The format assumed when none is stored or a record names none.
+     * @type {string}
+     */
+    DEFAULT_DATA_URL_FORMAT: "json",
+
+    /**
+     * Hosts a browser treats as secure without https. Mixed-content blocking
+     * never applies to them, and they are where the preview server lives, so
+     * normaliseDataUrl accepts http for these and refuses it everywhere else.
+     * @type {Array<string>}
+     */
+    LOOPBACK_HOSTS: Object.freeze(["localhost", "127.0.0.1", "[::1]"]),
 
     /**
      * Paths the proxy Worker exposes, appended to the base worker URL.
@@ -553,6 +627,7 @@ const ALLY_CONFIG = (function () {
       "course-report": "Course Report",
       "statement-preview": "Accessibility Statement Preview",
       "report-builder": "Report Builder",
+      trends: "Accessibility Over Time",
     },
 
     /**
@@ -873,6 +948,57 @@ const ALLY_CONFIG = (function () {
   };
 
   /**
+   * Normalises a course-data URL (multi-tenancy Stage 6).
+   *
+   * Same idiom as normaliseWorkerUrl — new URL() in a try/catch, a protocol
+   * check, origin + pathname, trailing slashes stripped — with ONE stricter
+   * rule: https only, except on a loopback host. The production site is
+   * https, so the browser would block an http fetch or script as mixed
+   * content anyway; refusing here produces a sentence where the browser
+   * would fail silently. The query string and fragment are dropped: a JSON
+   * file needs neither, and the script route appends two filenames to what
+   * is returned, which a query string would break.
+   *
+   * @param {string} url - Raw user input
+   * @returns {string} Normalised URL, or "" if unusable
+   *
+   * @example
+   * ALLY_CONFIG.normaliseDataUrl("https://example.github.io/ally/ally-course-payload.json ");
+   * // Returns: 'https://example.github.io/ally/ally-course-payload.json'
+   */
+  config.normaliseDataUrl = function (url) {
+    if (!url || typeof url !== "string") return "";
+
+    const trimmed = url.trim();
+    if (!trimmed) return "";
+
+    let parsed;
+    try {
+      parsed = new URL(trimmed);
+    } catch (e) {
+      logWarn("Data URL is not a valid absolute URL:", trimmed);
+      return "";
+    }
+
+    const loopback = config.LOOPBACK_HOSTS.indexOf(parsed.hostname) !== -1;
+    if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && loopback)) {
+      logWarn("Data URL must be https, got:", parsed.protocol);
+      return "";
+    }
+
+    return (parsed.origin + parsed.pathname).replace(/\/+$/, "");
+  };
+
+  /**
+   * Whether a value names one of the two payload formats.
+   * @param {*} value
+   * @returns {boolean}
+   */
+  config.isValidDataUrlFormat = function (value) {
+    return Object.values(config.DATA_URL_FORMATS).indexOf(value) !== -1;
+  };
+
+  /**
    * Resolves the effective Ally proxy-Worker BASE url: a configured
    * localStorage value wins over the DEFAULT_WORKER_URL code default. An
    * unreadable or partitioned store falls back to the default rather than
@@ -997,6 +1123,465 @@ const ALLY_CONFIG = (function () {
     if (!base) return null;
 
     return base + path;
+  };
+
+  // ==========================================================================
+  // Tenant record (Stage 3) — one institution's configuration, exportable
+  // ==========================================================================
+  //
+  // A tenant record is a VIEW over the credential keys above plus three
+  // identity keys, NOT a second copy of them. Region, client id, token and
+  // worker URL keep their own storage and their own owners; nothing here
+  // becomes an alternative source of truth for a credential.
+  //
+  // Read § "Two constraints that will bite" in
+  // ally-scripts/docs/multi-tenancy-stage-3-dispatch.md before changing any of
+  // this. The short form:
+  //
+  //   1. LIVE credentials are authoritative. Resolving a tenant from
+  //      localStorage alone reintroduces the cross-institution cache leak
+  //      Stage 1 closed, and it fails SILENTLY — the tool works, the scope is
+  //      just wrong.
+  //   2. DEFAULT_CLIENT_ID must stay unreachable from here. This is a NEW
+  //      resolution path and must not become a second route to Southampton's
+  //      id, so nothing below calls getEffectiveClientId().
+
+  /**
+   * Reads the client id and region the API client is CURRENTLY querying under.
+   *
+   * Deliberately mirrors the private readLiveCredentials() in
+   * ally-scripts/core/ally-cache.js rather than sharing it: that function is
+   * module-private and this file loads before it. The two must agree, so a
+   * change to either belongs in both.
+   *
+   * The pair is ATOMIC. The client's region always holds a value — it defaults
+   * to EU at load — so reading the region alone would override a stored region
+   * for a client that was never configured at all.
+   *
+   * ALLY_API_CLIENT is read INSIDE the function body: ally-api-client.js is a
+   * LATER <script> than this file, so a module-scope capture would be
+   * permanently undefined. Same rule as hasInstitutionalSignIn() above.
+   *
+   * @returns {{clientId: string, region: string}|null} The live pair, or null
+   *   when the client is absent, unloaded, or holds no client id
+   */
+  config.readLiveTenantIdentity = function () {
+    try {
+      if (
+        typeof ALLY_API_CLIENT === "undefined" ||
+        !ALLY_API_CLIENT ||
+        typeof ALLY_API_CLIENT.getCredentials !== "function"
+      ) {
+        return null;
+      }
+
+      const creds = ALLY_API_CLIENT.getCredentials();
+      const clientId =
+        creds && typeof creds.clientId === "string" ? creds.clientId.trim() : "";
+      if (!clientId) return null;
+
+      return {
+        clientId: clientId,
+        region:
+          creds && typeof creds.region === "string" ? creds.region.trim() : "",
+      };
+    } catch (e) {
+      logWarn("Could not read live tenant identity:", e.message);
+      return null;
+    }
+  };
+
+  /**
+   * Reads a stored value and trims it, returning "" for anything unusable.
+   * @private
+   * @param {string} key - A STORAGE_KEYS value
+   * @returns {string} Trimmed stored value, or ""
+   */
+  function readStoredTrimmed(key) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      return typeof raw === "string" ? raw.trim() : "";
+    } catch (e) {
+      logWarn("Could not read " + key + ":", e.message);
+      return "";
+    }
+  }
+
+  /**
+   * Caps a free-text field so a hostile or corrupt file cannot write an
+   * unbounded string into localStorage.
+   * @private
+   */
+  const TENANT_TEXT_MAX_LENGTH = 120;
+
+  /**
+   * Builds the tenant record describing this browser's current configuration.
+   *
+   * The client id and region come from the LIVE API client when it holds a
+   * client id, and from storage otherwise — as one pair, never mixed. See
+   * constraint 1 above.
+   *
+   * The stored client id is read RAW. getEffectiveClientId() is deliberately
+   * NOT used, because its sign-in-gated fallback to DEFAULT_CLIENT_ID would
+   * make an export from a signed-in colleague's browser silently carry
+   * Southampton's client id to another institution. See constraint 2.
+   *
+   * @param {Object} [options] - Options
+   * @param {boolean} [options.includeToken=false] - Include the API token. The
+   *   token is a credential: anyone holding the exported file can query as the
+   *   exporter, so this is opt-in and defaults to OFF.
+   * @returns {Object} The tenant record. The `token` key is ABSENT rather than
+   *   empty when not included, so a reader can tell "withheld" from "blank".
+   *
+   * @example
+   * const record = ALLY_CONFIG.getTenantRecord({ includeToken: false });
+   */
+  config.getTenantRecord = function (options) {
+    const includeToken = !!(options && options.includeToken === true);
+
+    const live = config.readLiveTenantIdentity();
+    const clientId = live
+      ? live.clientId
+      : readStoredTrimmed(config.STORAGE_KEYS.CLIENT_ID);
+    const rawRegion = live
+      ? live.region
+      : readStoredTrimmed(config.STORAGE_KEYS.REGION);
+    const region = config.isValidRegion(rawRegion)
+      ? rawRegion
+      : config.DEFAULT_REGION || "EU";
+
+    const storedDataSource = readStoredTrimmed(
+      config.STORAGE_KEYS.TENANT_DATA_SOURCE,
+    );
+    const dataSource = Object.values(config.DATA_SOURCES).includes(
+      storedDataSource,
+    )
+      ? storedDataSource
+      : config.DATA_SOURCES.BUNDLED;
+
+    const record = {
+      kind: config.TENANT_RECORD_KIND,
+      version: config.TENANT_RECORD_VERSION,
+      // A stable handle for this tenant. Falls back to the same shape the cache
+      // uses for its scope token, so the two read alike in a log line.
+      id:
+        readStoredTrimmed(config.STORAGE_KEYS.TENANT_ID) ||
+        (clientId ? clientId + "@" + region : ""),
+      displayName: readStoredTrimmed(config.STORAGE_KEYS.TENANT_NAME),
+      region: region,
+      clientId: clientId,
+      dataSource: dataSource,
+    };
+
+    // Only a worker URL the user CONFIGURED is exported. DEFAULT_WORKER_URL is
+    // Southampton's proxy — origin-restricted to *.soton.ac.uk and gated on
+    // Southampton's Entra tenant — so exporting it would hand another
+    // institution an endpoint that can only fail for them, confusingly.
+    if (config.hasConfiguredWorkerUrl()) {
+      record.workerUrl = config.getWorkerUrl();
+    }
+
+    // The course-data URL and its format travel together, and only when a
+    // URL that normalises is stored: a format with no URL describes nothing.
+    // Not a secret - it is where a colleague's copy of the tool will fetch
+    // the institution's course data from, which is the point of exporting it.
+    const dataUrl = config.normaliseDataUrl(
+      readStoredTrimmed(config.STORAGE_KEYS.TENANT_DATA_URL),
+    );
+    if (dataUrl) {
+      record.dataUrl = dataUrl;
+      const storedFormat = readStoredTrimmed(
+        config.STORAGE_KEYS.TENANT_DATA_URL_FORMAT,
+      );
+      record.dataUrlFormat = config.isValidDataUrlFormat(storedFormat)
+        ? storedFormat
+        : config.DEFAULT_DATA_URL_FORMAT;
+    }
+
+    if (includeToken) {
+      const token = readStoredTrimmed(config.STORAGE_KEYS.TOKEN);
+      if (token) record.token = token;
+    }
+
+    return record;
+  };
+
+  /**
+   * Serialises a tenant record for download.
+   *
+   * `exportedAt` is stamped HERE rather than in getTenantRecord() so that
+   * function stays deterministic and comparable between calls.
+   *
+   * @param {Object} record - A record from getTenantRecord()
+   * @returns {string} Pretty-printed JSON
+   */
+  config.serialiseTenantRecord = function (record) {
+    const payload = Object.assign({}, record, {
+      exportedAt: new Date().toISOString(),
+    });
+    return JSON.stringify(payload, null, 2);
+  };
+
+  /**
+   * Parses and VALIDATES an exported tenant record.
+   *
+   * Refuses rather than half-applies. An import overwrites live credentials, so
+   * every field is checked here and applyTenantRecord() receives only a
+   * normalised record — a caller can never write raw file content to storage.
+   *
+   * @param {string} text - Raw file contents
+   * @returns {{ok: boolean, record: (Object|null), error: string}} A normalised
+   *   record on success; a human-readable reason on failure
+   *
+   * @example
+   * const parsed = ALLY_CONFIG.parseTenantRecord(fileText);
+   * if (!parsed.ok) showError(parsed.error);
+   */
+  config.parseTenantRecord = function (text) {
+    function refuse(reason) {
+      return { ok: false, record: null, error: reason };
+    }
+
+    let raw;
+    try {
+      raw = JSON.parse(text);
+    } catch (e) {
+      return refuse("That file is not valid JSON.");
+    }
+
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      return refuse("That file does not contain an Ally configuration.");
+    }
+    if (raw.kind !== config.TENANT_RECORD_KIND) {
+      return refuse(
+        "That file is not an Ally configuration export. Choose the file you " +
+          "downloaded with Export configuration.",
+      );
+    }
+    if (raw.version !== config.TENANT_RECORD_VERSION) {
+      return refuse(
+        "That configuration file was written by a different version of this " +
+          "tool and cannot be read.",
+      );
+    }
+
+    const clientId =
+      typeof raw.clientId === "string" ? raw.clientId.trim() : "";
+    if (!clientId) {
+      return refuse("That configuration file has no Client ID.");
+    }
+
+    const region = typeof raw.region === "string" ? raw.region.trim() : "";
+    if (!config.isValidRegion(region)) {
+      return refuse(
+        "That configuration file names a region this tool does not support.",
+      );
+    }
+
+    const record = {
+      kind: config.TENANT_RECORD_KIND,
+      version: config.TENANT_RECORD_VERSION,
+      id:
+        typeof raw.id === "string"
+          ? raw.id.trim().slice(0, TENANT_TEXT_MAX_LENGTH)
+          : "",
+      displayName:
+        typeof raw.displayName === "string"
+          ? raw.displayName.trim().slice(0, TENANT_TEXT_MAX_LENGTH)
+          : "",
+      region: region,
+      clientId: clientId.slice(0, TENANT_TEXT_MAX_LENGTH),
+      dataSource: Object.values(config.DATA_SOURCES).includes(raw.dataSource)
+        ? raw.dataSource
+        : config.DATA_SOURCES.BUNDLED,
+    };
+    if (!record.id) record.id = record.clientId + "@" + record.region;
+
+    // A worker URL that will not normalise is a typo, not a request to drop the
+    // worker — the same reasoning saveAllyCredentials() applies to the field.
+    // Refuse it, rather than silently importing a tenant with no transport.
+    if (raw.workerUrl !== undefined && raw.workerUrl !== null && raw.workerUrl !== "") {
+      const workerUrl = config.normaliseWorkerUrl(raw.workerUrl);
+      if (!workerUrl) {
+        return refuse(
+          "That configuration file has a proxy worker URL this tool cannot " +
+            "read. It must be a full http or https URL.",
+        );
+      }
+      record.workerUrl = workerUrl;
+    }
+
+    // A course-data URL that will not normalise is refused the same way, not
+    // silently dropped: dropping it would import a tenant whose data source
+    // says "remote" with nowhere to fetch from, and that fails quietly as
+    // "no course data" on the colleague's machine. An unknown format falls
+    // back to JSON - the data-only route is the safe direction to default in.
+    if (raw.dataUrl !== undefined && raw.dataUrl !== null && raw.dataUrl !== "") {
+      const dataUrl = config.normaliseDataUrl(raw.dataUrl);
+      if (!dataUrl) {
+        return refuse(
+          "That configuration file has a course data URL this tool cannot " +
+            "read. It must be a full https address.",
+        );
+      }
+      record.dataUrl = dataUrl;
+      record.dataUrlFormat = config.isValidDataUrlFormat(raw.dataUrlFormat)
+        ? raw.dataUrlFormat
+        : config.DEFAULT_DATA_URL_FORMAT;
+    }
+    if (record.dataSource === config.DATA_SOURCES.REMOTE && !record.dataUrl) {
+      return refuse(
+        "That configuration file says course data comes from a URL but " +
+          "does not name one.",
+      );
+    }
+
+    // Absent and empty are treated alike HERE, because both mean "no token to
+    // apply". They are NOT alike on export, where an absent key is what says
+    // the token was deliberately withheld.
+    if (typeof raw.token === "string" && raw.token.trim()) {
+      record.token = raw.token.trim();
+    }
+
+    return { ok: true, record: record, error: "" };
+  };
+
+  /**
+   * Applies a tenant record: writes it to storage AND pushes it into the live
+   * API client.
+   *
+   * THE TWO HALVES MUST NEVER BE SEPARATED, and that is why they are one
+   * function rather than two. ally-cache.js scopes its entries on the LIVE
+   * credentials in preference to the stored ones, so an import that wrote
+   * localStorage and stopped would leave ALLY_API_CLIENT holding the PREVIOUS
+   * tenant's client id — and the new tenant's reports would be cached under the
+   * old tenant's scope. That is the Stage 1 leak arriving from the opposite
+   * direction, and it fails silently: everything works, the scope is wrong.
+   *
+   * setWorkerCredentials() is used rather than clearCredentials() for a
+   * token-free record. Both null the previous tenant's token, which is the part
+   * that matters; setWorkerCredentials additionally keeps the client id the
+   * worker transport needs, where clearCredentials would leave the client
+   * unable to issue a request at all.
+   *
+   * SAVE_CREDENTIALS is set because an import is an explicit instruction to
+   * configure this browser for this tenant. Without it loadSavedCredentials()
+   * refuses on the next page load and the import evaporates on reload.
+   *
+   * @param {Object} record - A record from parseTenantRecord()
+   * @returns {{ok: boolean, error: string, pushedToClient: boolean,
+   *   transport: string}} transport is "direct" (token) or "worker"
+   *
+   * @example
+   * const applied = ALLY_CONFIG.applyTenantRecord(parsed.record);
+   */
+  config.applyTenantRecord = function (record) {
+    const failure = {
+      ok: false,
+      error: "That configuration could not be applied.",
+      pushedToClient: false,
+      transport: "",
+    };
+
+    // Re-checked rather than trusted: a caller that skipped parseTenantRecord
+    // must not be able to write a broken tenant into storage.
+    if (!record || typeof record !== "object") return failure;
+    const clientId =
+      typeof record.clientId === "string" ? record.clientId.trim() : "";
+    const region = typeof record.region === "string" ? record.region.trim() : "";
+    if (!clientId || !config.isValidRegion(region)) return failure;
+
+    const token = typeof record.token === "string" ? record.token.trim() : "";
+    const workerUrl = config.normaliseWorkerUrl(record.workerUrl || "");
+    const keys = config.STORAGE_KEYS;
+
+    try {
+      window.localStorage.setItem(keys.REGION, region);
+      window.localStorage.setItem(keys.CLIENT_ID, clientId);
+      if (token) {
+        window.localStorage.setItem(keys.TOKEN, token);
+      } else {
+        window.localStorage.removeItem(keys.TOKEN);
+      }
+
+      // An import is a TENANT SWITCH, so a worker URL the record does not carry
+      // is removed rather than left behind. Keeping the previous tenant's proxy
+      // would point the new institution at an endpoint belonging to the old
+      // one. This is not the "WORKER_URL survives a credentials clear" rule
+      // being weakened — that rule is about an unticked Remember box, which is
+      // a save; this is an explicit instruction to become someone else.
+      if (workerUrl) {
+        window.localStorage.setItem(keys.WORKER_URL, workerUrl);
+      } else {
+        window.localStorage.removeItem(keys.WORKER_URL);
+      }
+
+      window.localStorage.setItem(keys.SAVE_CREDENTIALS, "true");
+      window.localStorage.setItem(
+        keys.TENANT_ID,
+        record.id || clientId + "@" + region,
+      );
+      if (record.displayName) {
+        window.localStorage.setItem(keys.TENANT_NAME, record.displayName);
+      } else {
+        window.localStorage.removeItem(keys.TENANT_NAME);
+      }
+      window.localStorage.setItem(
+        keys.TENANT_DATA_SOURCE,
+        record.dataSource || config.DATA_SOURCES.BUNDLED,
+      );
+
+      // Same tenant-switch reasoning as the worker URL: a course-data URL the
+      // record does not carry is removed, so the new institution never
+      // fetches the previous one's data. The two keys move together.
+      const dataUrl = config.normaliseDataUrl(record.dataUrl || "");
+      if (dataUrl) {
+        window.localStorage.setItem(keys.TENANT_DATA_URL, dataUrl);
+        window.localStorage.setItem(
+          keys.TENANT_DATA_URL_FORMAT,
+          config.isValidDataUrlFormat(record.dataUrlFormat)
+            ? record.dataUrlFormat
+            : config.DEFAULT_DATA_URL_FORMAT,
+        );
+      } else {
+        window.localStorage.removeItem(keys.TENANT_DATA_URL);
+        window.localStorage.removeItem(keys.TENANT_DATA_URL_FORMAT);
+      }
+    } catch (e) {
+      logError("Could not write tenant record to storage:", e.message);
+      return failure;
+    }
+
+    // The second half. Read at call time — see readLiveTenantIdentity().
+    let pushedToClient = false;
+    try {
+      if (typeof ALLY_API_CLIENT !== "undefined" && ALLY_API_CLIENT) {
+        pushedToClient = token
+          ? ALLY_API_CLIENT.setCredentials(token, clientId) === true
+          : ALLY_API_CLIENT.setWorkerCredentials(clientId) === true;
+        ALLY_API_CLIENT.setRegion(region);
+      } else {
+        logWarn("ALLY_API_CLIENT unavailable; live credentials not updated");
+      }
+    } catch (e) {
+      logError("Could not push tenant record to the API client:", e.message);
+    }
+
+    logInfo(
+      "Tenant record applied for client " +
+        clientId +
+        " (" +
+        region +
+        "), live client updated: " +
+        pushedToClient,
+    );
+
+    return {
+      ok: true,
+      error: "",
+      pushedToClient: pushedToClient,
+      transport: token ? "direct" : "worker",
+    };
   };
 
   /**

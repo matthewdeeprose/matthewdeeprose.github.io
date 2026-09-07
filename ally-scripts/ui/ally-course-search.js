@@ -81,6 +81,11 @@ const ALLY_COURSE_SEARCH = (function () {
   let activeIndex = -1;
   let currentResults = [];
 
+  // Multi-tenancy Stage 5: the API fallback binding, built at initialise()
+  // from ALLY_COURSE_SEARCH_API. Null when that module is absent, in which
+  // case the search behaves exactly as it did before Stage 5.
+  let apiBinding = null;
+
   const elements = {
     searchInput: null,
     resultsContainer: null,
@@ -89,6 +94,13 @@ const ALLY_COURSE_SEARCH = (function () {
     clearButton: null,
     statusMessage: null,
     searchIcon: null,
+    // Stage 5 API-mode surfaces
+    label: null,
+    help: null,
+    apiNote: null,
+    apiSend: null,
+    apiCancel: null,
+    apiProgress: null,
   };
 
   // ========================================================================
@@ -110,6 +122,18 @@ const ALLY_COURSE_SEARCH = (function () {
     );
     elements.searchIcon = document.querySelector(
       "#ally-course-search-container .ally-search-icon",
+    );
+    elements.label = document.querySelector(
+      'label[for="ally-course-search-input"]',
+    );
+    elements.help = document.getElementById("ally-course-search-help");
+    elements.apiNote = document.getElementById("ally-course-search-api-note");
+    elements.apiSend = document.getElementById("ally-course-search-api-send");
+    elements.apiCancel = document.getElementById(
+      "ally-course-search-api-cancel",
+    );
+    elements.apiProgress = document.getElementById(
+      "ally-course-search-api-progress",
     );
 
     const allFound =
@@ -163,6 +187,7 @@ const ALLY_COURSE_SEARCH = (function () {
               code: match.courseCode || "",
               termId: match.termId || "",
               termName: getTermName(match.termId),
+              score: typeof match.score === "number" ? match.score : null,
               matchType: "code",
             });
           }
@@ -204,6 +229,9 @@ const ALLY_COURSE_SEARCH = (function () {
             code: course.courseCode || "",
             termId: course.termId || "",
             termName: getTermName(course.termId),
+            // May be null: about a third of courses have no scanned files and
+            // therefore no score. Null is NOT zero.
+            score: typeof course.score === "number" ? course.score : null,
             matchType: codeMatch ? "code" : "name",
           });
         }
@@ -413,7 +441,7 @@ const ALLY_COURSE_SEARCH = (function () {
     if (results.length === 0) {
       elements.resultsList.innerHTML = "";
       hideResults();
-      updateStatus("No courses found");
+      updateStatus(noResultsMessage());
       return;
     }
 
@@ -422,12 +450,18 @@ const ALLY_COURSE_SEARCH = (function () {
         const highlightedName = highlightMatch(course.name, query);
         const highlightedCode = highlightMatch(course.code, query);
 
-        // Build accessible label with full context
+        const score = describeScore(course.score);
+
+        // Build accessible label with full context. The score BAND goes in
+        // here, not just the colour class: a colour-only badge says nothing to
+        // a screen reader and nothing to a colour-blind user either.
         const accessibleLabel =
           escapeHtml(course.name) +
           ", " +
           escapeHtml(course.code) +
-          (course.termName ? ", " + escapeHtml(course.termName) : "");
+          (course.termName ? ", " + escapeHtml(course.termName) : "") +
+          ", " +
+          escapeHtml(score.spoken);
 
         return (
           '<li id="ally-course-option-' +
@@ -453,6 +487,11 @@ const ALLY_COURSE_SEARCH = (function () {
               escapeHtml(course.termName) +
               "</span>"
             : "") +
+          '<span class="ally-course-option-score ' +
+          score.cssClass +
+          '" aria-hidden="true">' +
+          escapeHtml(score.visible) +
+          "</span>" +
           "</li>"
         );
       })
@@ -507,6 +546,85 @@ const ALLY_COURSE_SEARCH = (function () {
     if (elements.statusMessage) {
       elements.statusMessage.textContent = message;
     }
+  }
+
+  /**
+   * Describes a course score for display and for a screen reader.
+   *
+   * A null score means the course has no scanned files, which is NOT the same
+   * as scoring zero - about a third of courses are in that state, and showing
+   * them as 0% would brand them the worst content in the institution.
+   *
+   * @param {number|null} score - Score on a 0-1 scale, or null
+   * @returns {{visible: string, spoken: string, cssClass: string}}
+   */
+  function describeScore(score) {
+    if (typeof score !== "number") {
+      return {
+        visible: "—",
+        spoken: "not scored, no files checked",
+        cssClass: "score-unknown",
+      };
+    }
+
+    const hasConfig = typeof ALLY_CONFIG !== "undefined";
+    const percentage = hasConfig
+      ? ALLY_CONFIG.formatScoreAsPercentage(score, 0)
+      : Math.round(score * 100) + "%";
+    const cssClass = hasConfig
+      ? ALLY_CONFIG.getScoreColourClass(score)
+      : "score-unknown";
+
+    // Reuse the existing band labels rather than re-deriving thresholds that
+    // are already duplicated in several places.
+    let band = "";
+    if (
+      typeof ALLY_COURSE_REPORT_CONFIG !== "undefined" &&
+      typeof ALLY_COURSE_REPORT_CONFIG.getScoreRating === "function"
+    ) {
+      const rating = ALLY_COURSE_REPORT_CONFIG.getScoreRating(score);
+      if (rating && rating.label) band = ", " + rating.label;
+    }
+
+    return {
+      visible: percentage,
+      spoken: "accessibility score " + percentage + band,
+      cssClass: cssClass,
+    };
+  }
+
+  /**
+   * Builds the empty-result message, saying why nothing matched when the
+   * course data was built without archived courses.
+   *
+   * Read from the data rather than hard-coded, so it cannot lie: rebuild with
+   * archived courses kept and this reverts by itself.
+   *
+   * @returns {string} Status message
+   */
+  function noResultsMessage() {
+    // API mode: the sentence names the code limit, because "no courses found"
+    // for a code the person typed would read as a bug rather than a limit.
+    if (apiBinding && apiBinding.isApiMode()) {
+      return ALLY_COURSE_SEARCH_API.TEXT.NONE_FOUND;
+    }
+    if (
+      typeof ALLY_COURSES !== "undefined" &&
+      ALLY_COURSES.excludesArchived === true
+    ) {
+      return "No courses found. Archived courses are not included.";
+    }
+    return "No courses found";
+  }
+
+  /**
+   * Re-applies the search mode to the interface (labels, hint, buttons).
+   * Cheap and idempotent, so it runs at every point of use: a tenant change
+   * made in Set Up can install or remove ALLY_COURSES between two searches.
+   * @returns {boolean} Whether API mode is active
+   */
+  function refreshMode() {
+    return apiBinding ? apiBinding.applyMode() : false;
   }
 
   /**
@@ -681,6 +799,7 @@ const ALLY_COURSE_SEARCH = (function () {
    */
   function handleInput() {
     updateSearchIconVisibility();
+    refreshMode();
     const query = elements.searchInput?.value || "";
 
     // Clear any pending search
@@ -702,6 +821,18 @@ const ALLY_COURSE_SEARCH = (function () {
 
     // Debounce the search
     debounceTimer = setTimeout(function () {
+      // API mode (no course data on the page): keystrokes never send. The
+      // person gets a hint and sends with Enter or the Search Ally button.
+      // The term filter is inert here - Stage 4 installs an EMPTY lookup
+      // under the none state, so the dropdown has nothing to offer, and the
+      // API row carries termName itself.
+      if (apiBinding && apiBinding.isApiMode()) {
+        // The hint applies only to text nobody has sent yet; once a send is
+        // in flight or done, leave its results and its outcome line alone.
+        if (apiBinding.showHint(query)) hideResults();
+        return;
+      }
+
       // Check if term filter is active
       const filterTermId = getSelectedTermFilter();
       const results = searchCourses(query, filterTermId);
@@ -754,6 +885,9 @@ const ALLY_COURSE_SEARCH = (function () {
         event.preventDefault();
         if (activeIndex >= 0 && activeIndex < currentResults.length) {
           selectCourse(activeIndex);
+        } else if (apiBinding && refreshMode()) {
+          // API mode with no option active: Enter is the explicit send.
+          apiBinding.send(elements.searchInput?.value || "");
         }
         break;
 
@@ -785,6 +919,7 @@ const ALLY_COURSE_SEARCH = (function () {
    */
   function handleClear() {
     selectedCourse = null;
+    if (apiBinding) apiBinding.cancel();
     if (elements.searchInput) {
       elements.searchInput.value = "";
       elements.searchInput.focus();
@@ -822,6 +957,7 @@ const ALLY_COURSE_SEARCH = (function () {
       });
       elements.searchInput.addEventListener("focus", function () {
         updateSearchIconVisibility();
+        refreshMode();
         // Re-show results if there's a query
         const query = elements.searchInput.value;
         if (
@@ -879,14 +1015,52 @@ const ALLY_COURSE_SEARCH = (function () {
       // Set up event listeners
       setupEventListeners();
 
+      // Stage 5: the API fallback binding. The provider owns the query, the
+      // single-flight rule and the interface swaps; this module only renders.
+      if (
+        typeof ALLY_COURSE_SEARCH_API !== "undefined" &&
+        typeof ALLY_COURSE_SEARCH_API.createBinding === "function"
+      ) {
+        apiBinding = ALLY_COURSE_SEARCH_API.createBinding({
+          input: elements.searchInput,
+          label: elements.label,
+          help: elements.help,
+          note: elements.apiNote,
+          sendButton: elements.apiSend,
+          cancelButton: elements.apiCancel,
+          progress: elements.apiProgress,
+          limit: CONFIG.MAX_RESULTS,
+          onResults: function (results, query) {
+            renderResults(results, query);
+          },
+          onStatus: updateStatus,
+        });
+      }
+
       // Initial state
       hideResults();
       updateSelectedDisplay();
+      refreshMode();
 
       initialised = true;
       logInfo("Course Search initialised successfully");
 
       return true;
+    },
+
+    /**
+     * Re-applies the search mode (local type-ahead or API fallback) to the
+     * interface. Safe to call at any time.
+     * @returns {boolean} Whether API mode is active
+     */
+    refreshMode: refreshMode,
+
+    /**
+     * Whether the API fallback is the active search mode
+     * @returns {boolean}
+     */
+    isApiMode: function () {
+      return !!apiBinding && apiBinding.isApiMode();
     },
 
     /**

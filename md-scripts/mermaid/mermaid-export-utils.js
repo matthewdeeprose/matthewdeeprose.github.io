@@ -11,7 +11,7 @@ window.MermaidExportUtils = (function () {
     DEBUG: 3,
   };
 
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.INFO;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -238,6 +238,15 @@ window.MermaidExportUtils = (function () {
    * block already governs an SVG element the attribute it writes is the weakest
    * source in the cascade and changes nothing, which is why widening it is safe.
    *
+   * AMENDED 1 September 2026. That last sentence is still true and is no longer
+   * the whole story: being the weakest source is what makes widening safe AND
+   * what made the pass silently incomplete wherever the renderer painted through
+   * an INLINE STYLE, which `cloneNode(true)` carries. A third channel was
+   * measured falling through, on quadrantChart — the six quadrant boundary
+   * lines, whose correct ink reached the file as an attribute and lost to
+   * Mermaid's own inline `style`. The narrow repair is in the SVG branch below,
+   * with the two rejected alternatives and the measurements that rejected them.
+   *
    * The computed values must be read from the ORIGINAL, which is in the
    * document; getComputedStyle on a detached clone returns empty strings.
    *
@@ -275,6 +284,52 @@ window.MermaidExportUtils = (function () {
           if (!value) return;
 
           target.setAttribute(property, normalisePaintValue(property, value));
+
+          // AN ATTRIBUTE IS THE WEAKEST SOURCE IN THE CASCADE, AND
+          // `cloneNode(true)` CARRIES THE ELEMENT'S OWN INLINE STYLE — so where
+          // the renderer painted through `style` rather than through an
+          // attribute, the value written above is present in the file and
+          // INERT. Measured 1 September 2026 on a quadrant chart: the exported
+          // border line carried `stroke="rgb(225, 232, 236)"` next to
+          // `style="stroke: rgb(0, 0, 0)"`, and rendered black. The correct
+          // paint was in the file and lost.
+          //
+          // The repair is narrow ON PURPOSE. Only where the clone ALREADY
+          // carries an inline declaration for this property is the value also
+          // written into the clone's own style at `important` priority, which
+          // is the one priority an inline declaration cannot outrank.
+          // Everywhere else nothing changes, so the pass keeps the property the
+          // note above depends on — the attribute stays the weakest source and
+          // the in-SVG <style> block goes on governing what it already governed.
+          //
+          // WHY NOT STRIP THE CONFLICTING DECLARATION INSTEAD, which was the
+          // other candidate: because REMOVING A DECLARATION DOES NOT PROMOTE
+          // YOUR ATTRIBUTE, IT PROMOTES WHATEVER WAS NEXT IN THE CASCADE — and
+          // that is a rule rather than a gantt quirk. Measured on the same day
+          // across three types: stripping took gantt from 71 of 71 carried to
+          // 65, because Mermaid's own in-SVG class rules (`.task.done0`,
+          // `.taskText0`) then won instead, repainting a done bar's fill from
+          // its pattern to `rgb(211, 211, 211)` and its outline from white to
+          // grey. Worse, it strips `applyGanttEncoding`'s own
+          // `fill: … !important` label declarations and the exported task text
+          // turns white on a pale bar. Quadrant and xychart were unaffected, so
+          // a quadrant-only measurement would have chosen the wrong repair.
+          //
+          // WHY NOT WRITE EVERY PROPERTY AT `important`, the simplest form of
+          // this fix: it also reaches 100% carried, but it emits 260 to 345
+          // `!important` declarations per file where this emits 12 to 13, and
+          // it makes the pass the STRONGEST source on every element rather than
+          // the weakest — inverting the very property that made widening it
+          // safe for all fifteen types.
+          //
+          // The STYLE takes the raw computed value and the ATTRIBUTE takes the
+          // normalised one, because the two grammars differ: `url("#id")` and
+          // `2px` are valid CSS and not valid as SVG attribute syntax. That
+          // split already exists between this branch and the HTML branch below.
+          if (target.style.getPropertyValue(property)) {
+            target.style.setProperty(property, value, "important");
+          }
+
           touched = true;
         });
       } else {

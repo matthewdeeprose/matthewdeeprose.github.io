@@ -5108,6 +5108,20 @@ del {
   background-color: #fffdf9;
 }
 
+/* Transcribe. openrouter-embed/transcribe.css declares no text colour by design;
+ * per-theme tints live here, as .results-content and .imgdesc-output take their
+ * surface from this sheet. Measured on the page 5 September 2026 (item 55, unit 3a)
+ * against the composited panel rgb(247, 247, 237): speaker 6.62:1, timestamp 5.01:1.
+ * Not .transcriptSpeaker (:5447), which is an unrelated, unscoped site class. Under
+ * forced-colors both elements compute to CanvasText regardless of these values. */
+.transcribe-speaker {
+  color: #8d3970;
+}
+
+.transcribe-time {
+  color: #6b6b60;
+}
+
 /* Dependency list*/
 .module-list li {
   background-color: #e1e8ec;
@@ -6549,4 +6563,48 @@ svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
 
 svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
   stroke-width: 3px;
+}
+
+/* quadrantChart quadrant boundaries — light mode.
+
+   WHAT WAS WRONG. The six <line> elements in `g.border` draw the plot area's
+   outer edge and the two internal dividers, and they are the ONLY thing that
+   marks where one quadrant ends and the next begins: the four quadrant fills
+   differ from one another by as little as 1.00:1 and from the card behind them
+   by 1.00-1.66:1 in every one of the nine selectable theme/mode combinations.
+   Measured 1 September 2026 on rendered pages, computed values throughout: the
+   border cleared 3:1 in five cells and failed in four — `default` 1.40:1,
+   `neutral` 1.27:1, `forest` 1.55:1 here, and `accessibleDark` 1.91:1 in dark
+   mode, which is the DARK-MODE DEFAULT theme.
+
+   WHY IT NEEDS `!important`, WHICH THE XYCHART BLOCK ABOVE DOES NOT.
+   PRESENTATION STANDARD RULE 5 CUTS BOTH WAYS, and this is its other edge.
+   Mermaid's quadrant renderer does NOT paint the border with d3 `.attr()` as
+   the xychart renderer paints bars: it writes an INLINE STYLE, and the elements
+   carry no `stroke` attribute at all (measured — `getAttribute("stroke")` is
+   null while `getAttribute("style")` is set). An inline style beats every
+   author rule that is not `!important`, so the plain form of this rule is
+   INERT. That was established by disable-and-remeasure rather than reasoned
+   from the xychart block: injecting the plain rule left the computed stroke at
+   `rgb(0, 0, 0)`, unchanged, and the `!important` form moved it on all six
+   lines, with the page restored exactly afterwards. Copying the precedent
+   without measuring would have shipped a rule that looked right in review and
+   did nothing — the inert-casing failure this file's xychart comment warns
+   about, arriving from the opposite direction.
+
+   WHY ONE COLOUR SERVES EVERY LIGHT THEME, MEASURED AND NOT ASSUMED. Rule 12
+   of the presentation standard says the one-outline-per-mode ruling does NOT
+   transfer to a BANDED chart, and a quadrant chart is banded — four fills, not
+   one ground. So the ink was derived rule 12's way, by maximising the WORST
+   ratio across every surface the line touches: all four quadrant fills AND the
+   card behind the plot area, in all six light-mode themes. #00131D — this
+   file's own dark neutral, already in heavy use, so no new colour enters the
+   palette — clears every one of those surfaces at 13.63:1 to 18.90:1.
+
+   The stroke WIDTH is deliberately untouched. Mermaid's own 2px is sufficient
+   once the colour carries, and changing a geometry the renderer chose would
+   alter the chart's proportions for no accessibility gain. */
+
+svg[aria-roledescription="quadrantChart"] g.border line {
+  stroke: #00131d !important;
 }

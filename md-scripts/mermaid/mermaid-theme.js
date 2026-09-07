@@ -1122,6 +1122,582 @@ window.MermaidThemes = (function () {
     return applied;
   }
 
+  // ==========================================================================
+  // SEQUENCE DIAGRAMS — the per-theme SVG encoding pass, 4 September 2026
+  //
+  // WHY IT EXISTS. The item 70 graphical checklist measured all nine selectable
+  // theme/mode combinations and found sequence had NO encoding pass at all:
+  // applySeriesEncoding returned null for every sequence subject while
+  // returning an object for a gantt in the same run. The consequence is
+  // recorded per cell in that report — 80 of 122 graphical objects
+  // indistinguishable in accessibleDark (actor boundaries, lifelines, note
+  // borders, block frames and label tags painted #000000 on a #2e282a ground,
+  // 1.45:1), 80 / 76 / 47 of 122 in default, neutral and forest, and autonumber
+  // digits at 1.00:1 in wcagLight, where the theme paints black glyphs on a
+  // black disc.
+  //
+  // THREE FACTS MEASURED BEFORE ANY EDIT, each of which decides a mechanism:
+  //
+  //  1. EVERY COLOUR MERMAID GIVES A SEQUENCE DIAGRAM IS DECLARED AS A CLASS
+  //     RULE IN ITS OWN IN-SVG <style> BLOCK — `#<id> .actor{stroke:…;fill:…}`,
+  //     `.actor-line`, `.messageLine0/1`, `#arrowhead path`, `.sequenceNumber`,
+  //     `.labelBox`, `.loopLine`, `.note`, `.activation0/1/2`. A presentation
+  //     attribute is therefore INERT (standard rule 5, the xychart casing
+  //     lesson). Every write below is an inline style.
+  //
+  //  2. NONE OF THOSE RULES CARRIES `!important`, and no page stylesheet reaches
+  //     inside the diagram SVG at all — light.css and dark.css declare only
+  //     `.mermaid-description …` panel rules. So a PLAIN inline style wins here,
+  //     unlike gantt's labels, which need their own `important` priority to beat
+  //     `.doneText0{fill:#000000!important}`. Verified at the computed value
+  //     rather than assumed.
+  //
+  //  3. MARKER REFERENCES ARE ATTRIBUTES (`marker-end="url(#arrowhead)"`), the
+  //     markers live in <defs>, and their ids are NOT chart-scoped: measured on
+  //     a four-diagram page, `arrowhead`, `crosshead`, `filled-head` and
+  //     `sequencenumber` each appear FOUR times with the same id, so every
+  //     diagram paints its arrowheads from the first diagram's defs. That is
+  //     Mermaid's own id collision and this pass does not repair it — every
+  //     diagram on a page shares one theme and therefore one ink, so the
+  //     rendered result is right either way. It is recorded because a probe
+  //     reading getComputedStyle on the second diagram's marker reports the
+  //     value written there while the PIXELS come from the first diagram's.
+  //     Marker readings are settled by rasterising, per the checklist's § 10.4.
+  // ==========================================================================
+
+  /** Marker Mermaid sets on a sequence diagram root and on nothing else. */
+  const SEQUENCE_ROLEDESCRIPTION = "sequence";
+
+  /** SC 1.4.11 for every outline, boundary and the autonumber disc. */
+  const SEQUENCE_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for the autonumber digits against their disc. */
+  const SEQUENCE_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD, from the presentation standard § 1.4 — the same
+   * pair the bar outlines use, `#00131D` for light grounds and `#E1E8EC` for
+   * dark. They are tried FIRST and used wherever they clear the target, so this
+   * type reads as one system with xychart rather than inventing a second ink.
+   *
+   * Both are offered to every derivation rather than being selected by mode.
+   * The GROUND is the evidence: an element sitting on the author's own light
+   * region inside a dark diagram wants the light-ground ink, and a mode flag
+   * would hand it the wrong one.
+   */
+  const SEQUENCE_OUTLINE_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /**
+   * Fallback ramp, used only where neither ink of record clears the target.
+   *
+   * 65 steps rather than gantt's 17 because the case that needs it is NARROW: an
+   * element crossing the author's `rect rgb(230,230,250)` region inside a dark
+   * diagram has to clear both `#e6e6fa` and `#2e282a` at once, and the whole
+   * admissible band is a luminance window about 0.06 wide. A coarse ramp lands
+   * on its edge; a fine one lands near the optimum.
+   */
+  const SEQUENCE_INK_RAMP = Object.freeze(
+    Array.from({ length: 65 }, (unused, i) => {
+      const v = Math.round((i * 255) / 64);
+      return rgbToHex(v, v, v);
+    })
+  );
+
+  /** Width of the boundary given to a region rect Mermaid draws with none. */
+  const SEQUENCE_REGION_BOUNDARY_WIDTH = 2;
+
+  /** Attribute marking the defs block this pass owns, so a re-run rebuilds it. */
+  const SEQUENCE_ENCODING_ATTRIBUTE = "data-sequence-encoding";
+
+  /** Where a line's ORIGINAL marker references are parked, for idempotency. */
+  const SEQUENCE_MARKER_REFS = Object.freeze([
+    "marker-start",
+    "marker-mid",
+    "marker-end",
+  ]);
+  const SEQUENCE_MARKER_PARK_PREFIX = "data-sequence-";
+
+  /**
+   * Paint properties carried from an original marker onto a clone.
+   *
+   * A cloned marker takes a new id, so Mermaid's `#<svg> #arrowhead path`
+   * rules no longer reach it and anything not written here falls back to the
+   * browser default rather than to the theme.
+   */
+  const SEQUENCE_MARKER_CARRIED = Object.freeze([
+    "fill",
+    "stroke",
+    "stroke-width",
+    "stroke-dasharray",
+    "stroke-linecap",
+    "stroke-linejoin",
+    "fill-opacity",
+    "stroke-opacity",
+  ]);
+
+  /**
+   * Every outline the checklist named, with the selector that matches it.
+   *
+   * `rect.actor` and not `.actor`: Mermaid overloads that class onto BOTH the
+   * rect and the `<text>`, which is what made the checklist's first sweep read
+   * actor labels as white on white. Painting `.actor` would put a stroke on the
+   * label glyphs.
+   */
+  const SEQUENCE_OUTLINE_TARGETS = Object.freeze([
+    { key: "actorBox", selector: "rect.actor" },
+    { key: "actorFigure", selector: "g.actor-man line, g.actor-man circle" },
+    { key: "lifeline", selector: "line.actor-line" },
+    { key: "messageLine", selector: "line[class*='messageLine']", markers: true },
+    { key: "activationBar", selector: "rect[class*='activation']" },
+    { key: "noteBorder", selector: "rect.note" },
+    { key: "blockFrame", selector: "line.loopLine" },
+    { key: "blockLabelTag", selector: "polygon.labelBox" },
+  ]);
+
+  /**
+   * A CSS opacity value as a number, defaulting only when it is not a number.
+   *
+   * `parseFloat(value) || 1` reads a declared `0` as fully opaque, which is the
+   * one value that matters here — a region with `fill-opacity: 0` paints
+   * nothing and must not be treated as a ground.
+   *
+   * @param {string} value - A computed opacity or fill-opacity
+   * @returns {number} The value, or 1 when it is not a number
+   */
+  function opacityValue(value) {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 1;
+  }
+
+  /**
+   * Apply the accessibility encoding to a rendered sequence diagram: an outline
+   * ink per element that clears the ground that element actually sits on, a
+   * boundary on the region rects Mermaid draws with `stroke: none`, and an
+   * autonumber disc and digit pair derived TOGETHER.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES — the gantt argument,
+   * unchanged. Four of the nine selectable combinations are Mermaid BUILT-INS
+   * (`default`, `neutral`, `forest`, `dark`), which applyTheme reaches as
+   * `{'theme': '<id>'}` with no themeVariables at all, so a variable written
+   * here could never reach them. A pass over the rendered SVG reaches all nine
+   * by construction.
+   *
+   * WHY THE INK IS PER ELEMENT AND NOT PER DIAGRAM. Gantt derives ONE ink
+   * clearing every band because a bar can move between bands as the chart
+   * relayouts, so no stable per-object assignment exists. A sequence region is
+   * a FIXED area, so each element's grounds can be resolved geometrically —
+   * and doing so matters: measured, one ink clearing both `#2e282a` and the
+   * author's `#e6e6fa` region can reach only 3.4:1, so a single-ink diagram
+   * would drop every outline in a dark E5 from about 12:1 to about 3.3:1 to
+   * rescue the two elements that cross the region. Per-element grounds keep the
+   * 119 that never touch it at the ink of record.
+   *
+   * IDEMPOTENT BY CONSTRUCTION. Every derivation reads only the page
+   * background and the region FILLS — never a property this pass writes — so a
+   * re-run cannot read back its own output. The defs it owns are swept and
+   * rebuilt, and each line's original marker references are parked in an
+   * attribute and restored before any repointing.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applySequenceEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === SEQUENCE_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${SEQUENCE_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No sequence SVG in this container - sequence encoding skipped");
+      return null;
+    }
+
+    const chartId = (svg.getAttribute("id") || "sequence").replace(
+      /[^A-Za-z0-9_-]/g,
+      "-"
+    );
+    const svgNS = "http://www.w3.org/2000/svg";
+
+    // --- sweep what a previous run owned ------------------------------------
+    const ownedDefs = svg.querySelector(`defs[${SEQUENCE_ENCODING_ATTRIBUTE}]`);
+    if (ownedDefs) ownedDefs.remove();
+
+    const parkMarkerRefs = (element) => {
+      SEQUENCE_MARKER_REFS.forEach((ref) => {
+        const key = SEQUENCE_MARKER_PARK_PREFIX + ref;
+        if (element.getAttribute(key) === null) {
+          element.setAttribute(key, element.getAttribute(ref) || "");
+        }
+      });
+    };
+    const restoreMarkerRefs = (element) => {
+      SEQUENCE_MARKER_REFS.forEach((ref) => {
+        const parked = element.getAttribute(SEQUENCE_MARKER_PARK_PREFIX + ref);
+        if (parked === null) return;
+        if (parked === "") element.removeAttribute(ref);
+        else element.setAttribute(ref, parked);
+      });
+    };
+
+    // --- grounds ------------------------------------------------------------
+    const pageGround = resolveHostGround(svg);
+    const background = svg.querySelector("rect.background");
+    const svgGround = background
+      ? paintToHex(
+          compositeOver(
+            parsePaint(window.getComputedStyle(background).fill),
+            parsePaint(pageGround)
+          )
+        )
+      : pageGround;
+
+    // `rect.rect` carries TWO different things: the author's `rect rgb(...)`
+    // highlight region, which has a fill and NO stroke, and the frame Mermaid
+    // draws for a `box` participant grouping, which has a stroke and no fill.
+    // They are told apart by whether anything is actually painted, and every
+    // alpha is composited before a ratio is taken (standard rule 13).
+    const regions = [...svg.querySelectorAll("rect.rect")].map((rect) => {
+      const computed = window.getComputedStyle(rect);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+
+      return {
+        element: rect,
+        painted: alpha > 0,
+        ground: paintToHex(
+          compositeOver(
+            declared ? { ...declared, a: alpha } : null,
+            parsePaint(svgGround)
+          )
+        ),
+        box: rect.getBoundingClientRect(),
+      };
+    });
+
+    const paintedRegions = regions.filter((region) => region.painted);
+    const allGrounds = [
+      ...new Set([svgGround, ...paintedRegions.map((region) => region.ground)]),
+    ];
+
+    const applied = {
+      pageGround,
+      svgGround,
+      grounds: allGrounds,
+      regions: regions.length,
+      paintedRegions: paintedRegions.length,
+      counts: {},
+      inks: [],
+      elements: [],
+      markerSets: 0,
+      warnings: [],
+    };
+
+    /**
+     * The ink for a set of grounds: an ink of record where one clears the
+     * target, otherwise the ramp entry maximising the WORST ratio (standard
+     * rule 12 — an ink clearing one ground at 15:1 and another at 1.2:1 is
+     * invisible on part of the diagram, and a mean would call that good).
+     */
+    const inkCache = new Map();
+    const inkFor = (grounds) => {
+      const key = grounds.join("|");
+      if (inkCache.has(key)) return inkCache.get(key);
+
+      const record = pickInkAgainst(SEQUENCE_OUTLINE_INKS, grounds);
+      let chosen;
+      if (record.worst >= SEQUENCE_OBJECT_TARGET) {
+        chosen = { ink: record.ink, worst: record.worst, source: "record" };
+      } else {
+        const derived = pickInkAgainst(SEQUENCE_INK_RAMP, grounds);
+        chosen = { ink: derived.ink, worst: derived.worst, source: "derived" };
+        applied.warnings.push(
+          `no ink of record clears ${SEQUENCE_OBJECT_TARGET}:1 against ${grounds.join(
+            " + "
+          )} (best ${Math.round(record.worst * 100) / 100}:1 with ${
+            record.ink
+          }); derived ${derived.ink} at ${
+            Math.round(derived.worst * 100) / 100
+          }:1 - a CANDIDATE for the standard's section 1.4`
+        );
+      }
+      chosen = { ...chosen, worst: Math.round(chosen.worst * 100) / 100, grounds };
+      inkCache.set(key, chosen);
+      applied.inks.push(chosen);
+      return chosen;
+    };
+
+    /**
+     * The grounds one element sits on, resolved geometrically.
+     *
+     * An element wholly INSIDE a painted region sits on that region alone; one
+     * that merely crosses it sits on both, and has to clear both.
+     */
+    const groundsForBox = (box) => {
+      const inside = paintedRegions.find(
+        (region) =>
+          box.left >= region.box.left &&
+          box.right <= region.box.right &&
+          box.top >= region.box.top &&
+          box.bottom <= region.box.bottom
+      );
+      if (inside) return [inside.ground];
+
+      const grounds = [svgGround];
+      paintedRegions.forEach((region) => {
+        const misses =
+          box.right <= region.box.left ||
+          box.left >= region.box.right ||
+          box.bottom <= region.box.top ||
+          box.top >= region.box.bottom;
+        if (!misses) grounds.push(region.ground);
+      });
+      return [...new Set(grounds)];
+    };
+
+    // --- the autonumber disc and its digits, DERIVED TOGETHER ---------------
+    // The checklist's finding F3 is explicit that they cannot be derived apart:
+    // each theme sets them independently, and wcagLight sets BOTH to black, so
+    // a disc chosen for the ground alone can leave no readable digit. The disc
+    // is therefore chosen subject to a digit ink still clearing 4.5:1 against
+    // it — the same shape as gantt's patterned-label constraint.
+    //
+    // It is derived against EVERY ground rather than per element, because a
+    // disc is drawn from a single <marker> and can land anywhere in the diagram.
+    const permitsDigit = (candidate) =>
+      PATTERN_INKS.some(
+        (digitInk) =>
+          calculateContrastRatio(digitInk, candidate) >= SEQUENCE_TEXT_TARGET
+      );
+
+    let disc = pickInkAgainst(SEQUENCE_OUTLINE_INKS, allGrounds, permitsDigit);
+    let discSource = "record";
+    if (disc.worst < SEQUENCE_OBJECT_TARGET) {
+      disc = pickInkAgainst(SEQUENCE_INK_RAMP, allGrounds, permitsDigit);
+      discSource = "derived";
+    }
+    if (disc.worst < SEQUENCE_OBJECT_TARGET) {
+      // No candidate leaves a readable digit. The DIGIT wins — an unreadable
+      // number is worse than a disc that reads at less than 3:1 — and the
+      // shortfall is reported rather than swallowed.
+      const relaxed = pickInkAgainst(SEQUENCE_INK_RAMP, allGrounds);
+      applied.warnings.push(
+        `no autonumber disc clears ${SEQUENCE_OBJECT_TARGET}:1 against ${allGrounds.join(
+          " + "
+        )} while leaving a digit at ${SEQUENCE_TEXT_TARGET}:1; using ${
+          relaxed.ink
+        } at ${Math.round(relaxed.worst * 100) / 100}:1`
+      );
+      disc = relaxed;
+      discSource = "relaxed";
+    }
+    const digit = pickInkAgainst(PATTERN_INKS, [disc.ink]);
+    if (digit.worst < SEQUENCE_TEXT_TARGET) {
+      applied.warnings.push(
+        `autonumber digit ${digit.ink} reaches only ${
+          Math.round(digit.worst * 100) / 100
+        }:1 against the disc ${disc.ink}`
+      );
+    }
+    applied.autonumber = {
+      disc: disc.ink,
+      discSource,
+      discOnGround: Math.round(disc.worst * 100) / 100,
+      digit: digit.ink,
+      digitOnDisc: Math.round(digit.worst * 100) / 100,
+    };
+
+    // --- markers ------------------------------------------------------------
+    // The originals carry the BASE ink — the one an element on the diagram
+    // ground gets. A line needing a different ink gets a cloned set with
+    // chart-scoped ids, so its arrowhead matches the line it terminates. The
+    // clone also happens to be immune to the shared-id collision recorded in
+    // the block comment above, which the originals are not.
+    const baseInk = inkFor([svgGround]);
+    const originalMarkers = [...svg.querySelectorAll("marker")];
+    const encodingDefs = document.createElementNS(svgNS, "defs");
+    encodingDefs.setAttribute(SEQUENCE_ENCODING_ATTRIBUTE, "true");
+
+    const paintMarker = (marker, ink) => {
+      marker.querySelectorAll("path, polygon, line").forEach((shape) => {
+        const computed = window.getComputedStyle(shape);
+        if (parsePaint(computed.fill)) shape.style.setProperty("fill", ink);
+        if (parsePaint(computed.stroke)) shape.style.setProperty("stroke", ink);
+      });
+      // Every disc takes the autonumber ink whatever set it belongs to.
+      marker
+        .querySelectorAll("circle")
+        .forEach((circle) => circle.style.setProperty("fill", disc.ink));
+    };
+
+    originalMarkers.forEach((marker) => paintMarker(marker, baseInk.ink));
+
+    const markerSets = new Map();
+    const markerSetFor = (ink) => {
+      if (ink === baseInk.ink) return null;
+      if (markerSets.has(ink)) return markerSets.get(ink);
+
+      const slug = ink.replace(/[^0-9a-z]/gi, "").toLowerCase();
+      const map = new Map();
+      originalMarkers.forEach((marker) => {
+        const id = marker.getAttribute("id");
+        if (!id) return;
+        const clone = marker.cloneNode(true);
+        const cloneId = `${chartId}-seq-${slug}-${id}`;
+        clone.setAttribute("id", cloneId);
+
+        // THE CLONE'S PAINT IS CARRIED FROM THE ORIGINAL, NOT READ OFF THE
+        // CLONE, and both halves of that are load-bearing.
+        //
+        // A detached node has NO computed style, so reading the clone before it
+        // is inserted returns empty strings and every conditional write is
+        // skipped — measured: the first version of this pass did exactly that
+        // and left one arrowhead per dark cell at the base ink on the author's
+        // region, 1.01:1, while every other reading was clean.
+        //
+        // And inserting it first would not be enough either. Mermaid's rules
+        // are keyed on the marker's ID (`#<svg> #arrowhead path`), so a clone
+        // with a new id matches NOTHING and would fall back to the browser
+        // defaults for anything not written here.
+        const from = marker.querySelectorAll("path, polygon, line, circle");
+        const to = clone.querySelectorAll("path, polygon, line, circle");
+        from.forEach((shape, index) => {
+          const target = to[index];
+          if (!target) return;
+          const computed = window.getComputedStyle(shape);
+
+          SEQUENCE_MARKER_CARRIED.forEach((property) => {
+            const value = computed.getPropertyValue(property);
+            if (value) target.style.setProperty(property, value);
+          });
+
+          if (target.tagName === "circle") {
+            target.style.setProperty("fill", disc.ink);
+            return;
+          }
+          if (parsePaint(computed.fill)) target.style.setProperty("fill", ink);
+          if (parsePaint(computed.stroke)) {
+            target.style.setProperty("stroke", ink);
+          }
+        });
+
+        encodingDefs.appendChild(clone);
+        map.set(id, cloneId);
+      });
+
+      markerSets.set(ink, map);
+      return map;
+    };
+
+    const repointMarkers = (element, map) => {
+      SEQUENCE_MARKER_REFS.forEach((ref) => {
+        const value = element.getAttribute(ref);
+        if (!value) return;
+        const match = /^url\(#(.+)\)$/.exec(value.trim());
+        if (!match) return;
+        const cloneId = map.get(match[1]);
+        if (cloneId) element.setAttribute(ref, `url(#${cloneId})`);
+      });
+    };
+
+    // --- outlines -----------------------------------------------------------
+    SEQUENCE_OUTLINE_TARGETS.forEach((target) => {
+      const nodes = [...svg.querySelectorAll(target.selector)];
+      applied.counts[target.key] = nodes.length;
+
+      nodes.forEach((node) => {
+        if (target.markers) {
+          parkMarkerRefs(node);
+          restoreMarkerRefs(node);
+        }
+
+        const grounds = groundsForBox(node.getBoundingClientRect());
+        const chosen = inkFor(grounds);
+        node.style.setProperty("stroke", chosen.ink);
+
+        if (target.markers && chosen.ink !== baseInk.ink) {
+          const map = markerSetFor(chosen.ink);
+          if (map) repointMarkers(node, map);
+        }
+
+        applied.elements.push({
+          key: target.key,
+          ink: chosen.ink,
+          source: chosen.source,
+          grounds,
+          worst: chosen.worst,
+        });
+      });
+    });
+
+    // --- region boundaries --------------------------------------------------
+    // MERMAID DRAWS THE AUTHOR'S HIGHLIGHT REGION WITH `stroke: none`, so its
+    // only channel is a fill the AUTHOR chose — measured at 1.21:1 against the
+    // light ground in all nine cells, and carried by hue alone. The author's
+    // fill stays the author's; what is added is the boundary Mermaid omitted.
+    //
+    // This is standard rule 16's move — synthesise what the renderer did not
+    // draw, and say so — with one difference worth stating, because a later
+    // reader cannot tell from the markup: gantt had NO element to style and a
+    // <line> had to be inserted, whereas the rect here EXISTS and only its
+    // boundary is missing, so the stroke is written onto Mermaid's own element
+    // and no node is added to the tree.
+    //
+    // A boundary sits half inside the shape and half outside it, so it is
+    // judged against BOTH the region's own composited ground and what is behind
+    // the region.
+    regions.forEach((region) => {
+      const grounds = region.painted
+        ? [...new Set([region.ground, svgGround])]
+        : [svgGround];
+      const chosen = inkFor(grounds);
+      region.element.style.setProperty("stroke", chosen.ink);
+      region.element.style.setProperty(
+        "stroke-width",
+        `${SEQUENCE_REGION_BOUNDARY_WIDTH}px`
+      );
+      applied.elements.push({
+        key: region.painted ? "regionBoundary" : "boxFrame",
+        ink: chosen.ink,
+        source: chosen.source,
+        grounds,
+        worst: chosen.worst,
+      });
+    });
+    applied.counts.regionBoundary = paintedRegions.length;
+    applied.counts.boxFrame = regions.length - paintedRegions.length;
+
+    // --- autonumber digits --------------------------------------------------
+    const digits = [...svg.querySelectorAll("text.sequenceNumber")];
+    digits.forEach((text) => text.style.setProperty("fill", digit.ink));
+    applied.counts.autonumberDigit = digits.length;
+
+    if (encodingDefs.childNodes.length) {
+      svg.insertBefore(encodingDefs, svg.firstChild);
+      applied.markerSets = markerSets.size;
+    }
+
+    logInfo(
+      `Sequence encoding applied: ${applied.elements.length} outlines, ${
+        applied.counts.autonumberDigit
+      } autonumber digits, ${applied.markerSets} extra marker set(s), base ink ${
+        baseInk.ink
+      } at ${baseInk.worst}:1 on ${svgGround}, ${applied.warnings.length} warnings`
+    );
+    applied.warnings.forEach((warning) =>
+      logWarn(`Sequence encoding: ${warning}`)
+    );
+
+    return applied;
+  }
+
   /**
    * Apply non-colour series encoding to a rendered xychart: pattern fills on
    * bars from the second bar onwards, dash arrays on lines from the second line
@@ -1168,6 +1744,14 @@ window.MermaidThemes = (function () {
     // work; each returns null for a diagram it does not recognise.
     const ganttEncoding = applyGanttEncoding(root);
 
+    // SEQUENCE DISPATCH, added 4 September 2026, for the same wiring reason and
+    // deliberately at the same seam: the invariant that reapplyAfterRender's
+    // encoding limb re-applies everything after every theme flip and re-render
+    // lives in ONE function, and a second call site would be a second place for
+    // it to be forgotten. applySequenceEncoding never calls applyTheme — it is
+    // reached FROM the re-render, so calling back into it would recurse.
+    const sequenceEncoding = applySequenceEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -1178,8 +1762,9 @@ window.MermaidThemes = (function () {
 
     if (!svg) {
       if (ganttEncoding) return { gantt: ganttEncoding };
+      if (sequenceEncoding) return { sequence: sequenceEncoding };
       logDebug(
-        "No xychart or gantt SVG in this container - series encoding skipped"
+        "No xychart, gantt or sequence SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -2855,6 +3440,7 @@ window.MermaidThemes = (function () {
     // path reaches it through applySeriesEncoding above; a probe needs to call
     // it directly and read back the ratios it measured.
     applyGanttEncoding: applyGanttEncoding,
+    applySequenceEncoding: applySequenceEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

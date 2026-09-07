@@ -44,7 +44,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
   // ========================================================================
 
   const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.DEBUG;
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
@@ -189,13 +189,22 @@ const ALLY_MAIN_CONTROLLER = (function () {
   // ========================================================================
 
   /**
-   * Loads stored credentials from localStorage
+   * Loads stored credentials from localStorage into the form.
+   *
+   * Returns the resolved set as well as applying it (Stage 3a), so the
+   * credentials:changed subscriber can push exactly what the form was given
+   * onto the live API client. Reading it back with getFormValues() would be a
+   * second source of truth — and that call returns the whole form, including a
+   * workerUrl of `undefined` when the field is absent, which is precisely the
+   * value persistWorkerUrl() must never be handed.
+   *
    * @private
+   * @returns {Object|null} The values applied to the form, or null if none were
    */
   function loadStoredCredentials() {
     if (typeof ALLY_CONFIG === "undefined") {
       logWarn("ALLY_CONFIG not available - cannot load credentials");
-      return;
+      return null;
     }
 
     try {
@@ -268,8 +277,10 @@ const ALLY_MAIN_CONTROLLER = (function () {
       ALLY_UI_MANAGER.setFormValues(values);
       setWorkerUrlError("");
       logInfo("Restored saved credentials");
+      return values;
     } catch (error) {
       logError("Failed to load stored credentials:", error);
+      return null;
     }
   }
 
@@ -420,6 +431,28 @@ const ALLY_MAIN_CONTROLLER = (function () {
 
     persistWorkerUrl(formValues.workerUrl);
 
+    return pushCredentialsToClient(formValues);
+  }
+
+  /**
+   * The CLIENT half of applyCredentialsToClient(), with no persistence.
+   *
+   * Split out for the credentials:changed subscriber, which is REACTING to a
+   * storage write made elsewhere: calling the persisting half from there would
+   * write back into the very keys that triggered it. The subscriber therefore
+   * deliberately does NOT run persistWorkerUrl() — the Set Up page has already
+   * stored whatever worker URL it meant to store, and re-normalising it from a
+   * form field that may not exist on that page is how a working URL gets
+   * deleted. Everything else applyCredentialsToClient() does happens here, so
+   * there is still exactly one setter path onto the client.
+   *
+   * @private
+   * @param {Object} formValues - Credential values to push
+   * @returns {boolean} True if credentials were applied
+   */
+  function pushCredentialsToClient(formValues) {
+    if (typeof ALLY_API_CLIENT === "undefined") return false;
+
     const applied = formValues.token
       ? ALLY_API_CLIENT.setCredentials(formValues.token, formValues.clientId)
       : ALLY_API_CLIENT.setWorkerCredentials(formValues.clientId);
@@ -428,6 +461,41 @@ const ALLY_MAIN_CONTROLLER = (function () {
       ALLY_API_CLIENT.setRegion(formValues.region);
     }
 
+    return applied;
+  }
+
+  /**
+   * Pushes credentials just loaded from storage onto the LIVE API client.
+   *
+   * Stage 3a. Without this the credentials:changed subscriber updated the form
+   * and left the client on the previous institution, so the next query could go
+   * out under the old client ID — and ALLY_CACHE.getTenantScope() reads the live
+   * client first, so the cached copy was filed under the old tenant too.
+   *
+   * An empty client ID with no token is not a credential set to push, it is what
+   * a clear looks like: setWorkerCredentials() would (correctly) refuse it and
+   * leave the cleared institution loaded. clearCredentials() is the client's own
+   * instruction for that case, and it is used only here — the clear branch is
+   * NOT folded into pushCredentialsToClient(), so the four existing callers of
+   * applyCredentialsToClient() keep their behaviour exactly.
+   *
+   * @private
+   * @param {Object} values - Values returned by loadStoredCredentials()
+   * @returns {boolean} True if the client was updated
+   */
+  function syncClientToStoredCredentials(values) {
+    if (typeof ALLY_API_CLIENT === "undefined" || !values) return false;
+
+    if (!values.clientId && !values.token) {
+      ALLY_API_CLIENT.clearCredentials();
+      logInfo("Credentials cleared on the live API client");
+      return true;
+    }
+
+    const applied = pushCredentialsToClient(values);
+    if (!applied) {
+      logWarn("Stored credentials could not be applied to the live API client");
+    }
     return applied;
   }
 
@@ -2966,14 +3034,20 @@ const ALLY_MAIN_CONTROLLER = (function () {
         logDebug("Cache UI initialised");
       }
 
-      // Load stored credentials
+      // Load stored credentials. The return value is deliberately ignored here:
+      // the live client is loaded a few lines below by performWarmUp(), and
+      // pushing it here as well would set it twice on every page load — for no
+      // gain, and it would make "did the subscriber do it?" unmeasurable.
       loadStoredCredentials();
 
       // Listen for credential changes from Set Up (Phase SU-3)
       if (window.EmbedEventEmitter && typeof window.EmbedEventEmitter.on === 'function') {
         window.EmbedEventEmitter.on('credentials:changed', function (data) {
           if (data && data.service === 'ally') {
-            loadStoredCredentials();
+            // Stage 3a: the form is what the person SEES, the client is what the
+            // app USES. Updating only the first left the next query going out
+            // under the previous institution's client ID.
+            syncClientToStoredCredentials(loadStoredCredentials());
           }
         });
       }

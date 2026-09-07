@@ -2270,6 +2270,13 @@ const ALLY_STATEMENT_PREVIEW = (function () {
         title: title,
         metadata: metadata,
         focusMode: focusMode,
+        // A statement is a DOCUMENT, not an assessment. Without this the built
+        // package tells the LMS on exit that the learner PASSED, and Blackboard
+        // renders that as "Submitted, not marked" - measured 21 August 2026, where
+        // two packages differing only in that one line read "Submitted, not marked"
+        // and "Opened not saved". The completion report is kept, so opening the
+        // statement is still recorded; only the false pass goes.
+        honestCompletionStatus: true,
         download: true,
         options: {
           head: facade.ALLY_STATEMENT_EXPORT_CSS,

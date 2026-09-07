@@ -31,7 +31,12 @@
  *                         target: "scorm", title: "My lesson" });
  */
 
-import { exportDocument, setDefaults, download } from "../../scorm-builder/index.js";
+import {
+  exportDocument,
+  setDefaults,
+  download,
+  ensureDependencies,
+} from "../../scorm-builder/index.js";
 import {
   parseQuizJson,
   quizContentFromQuestions,
@@ -57,6 +62,116 @@ export const INPUT_FORMATS = Object.freeze(["html", "markdown", "json"]);
 
 function isBrowser() {
   return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+// --- honest completion status -------------------------------------------------
+// The library's generated scorm-api.js asserts, on exit, that a content-only
+// package was PASSED:
+//
+//     api.SetValue("cmi.completion_status", "completed");
+//     api.SetValue("cmi.success_status", "passed");
+//
+// For a quiz that is correct. For a document it is a false statement in the LMS
+// data model, and Blackboard renders it as "Submitted, not marked" — which tells
+// a marker that work was handed in for assessment. Measured in Blackboard on
+// 21 August 2026: two packages differing ONLY in that one line read "Submitted,
+// not marked" and "Opened not saved" respectively.
+//
+// We do NOT hand-edit scorm-builder/ (vendored), and the library exposes no option
+// for this, so the line is removed from the built package by rewriting that one
+// zip entry. The completion line is deliberately KEPT: dropping both would leave
+// the LMS with no record that the learner opened the document at all, and silence
+// is a worse outcome than a wrong label.
+const ZIP_TARGETS = new Set(["scorm", "html-offline"]);
+const API_ENTRY = "scorm-api.js";
+const PASS_ASSERTION = 'api.SetValue("cmi.success_status", "passed");';
+const COMPLETION_ASSERTION = 'api.SetValue("cmi.completion_status", "completed");';
+const HONEST_REPLACEMENT =
+  "/* mp-73: success_status intentionally NOT asserted - this is a document, " +
+  "not an assessment. Completion is still reported on the line above. */";
+
+/**
+ * Rewrites the built package's SCORM API wrapper so it no longer claims a pass.
+ * Returns a NEW result object; the input is not mutated.
+ *
+ * Fails SOFT on anything unexpected — a warning and the original package — because
+ * refusing to export a document over a data-model nicety is the wrong trade. It
+ * fails HARD only if an edit it did make produced a package that is worse than the
+ * one it started with.
+ *
+ * @param {{data: Blob|Uint8Array, filename?: string, mediaType?: string}} result
+ * @returns {Promise<object>} the result, rewritten where possible
+ */
+async function stripFalsePassAssertion(result) {
+  const { JSZip } = await ensureDependencies({ jszip: true });
+  if (!JSZip) {
+    logWarn("honestCompletionStatus: JSZip unavailable - package left unchanged.");
+    return result;
+  }
+
+  // In Node the facade hands back a Blob, which JSZip cannot read directly.
+  const input =
+    result.data && typeof result.data.arrayBuffer === "function"
+      ? new Uint8Array(await result.data.arrayBuffer())
+      : result.data;
+
+  const zip = await JSZip.loadAsync(input);
+  const entry = zip.file(API_ENTRY);
+  if (!entry) {
+    // No SCORM wrapper in this target (e.g. html-offline). Nothing to correct.
+    return result;
+  }
+
+  const before = await entry.async("string");
+  const passCount = before.split(PASS_ASSERTION).length - 1;
+
+  if (passCount === 0) {
+    logWarn(
+      "honestCompletionStatus: the pass assertion was not found - the library's " +
+        "wrapper has changed shape. Package left unchanged; re-check api-wrapper.js."
+    );
+    return result;
+  }
+  if (passCount !== 1) {
+    logWarn(
+      "honestCompletionStatus: expected 1 pass assertion, found " +
+        passCount +
+        " - package left unchanged."
+    );
+    return result;
+  }
+  // Guard BEFORE editing: only remove the pass if the completion line is there to
+  // carry the record. Without it the package would report nothing at all.
+  if (before.indexOf(COMPLETION_ASSERTION) === -1) {
+    logWarn(
+      "honestCompletionStatus: no completion assertion to fall back on - " +
+        "package left unchanged rather than silenced."
+    );
+    return result;
+  }
+
+  const after = before.split(PASS_ASSERTION).join(HONEST_REPLACEMENT);
+
+  // Assert against the EDITED text, not against intent.
+  if (after.indexOf(PASS_ASSERTION) !== -1) {
+    throw new Error("honestCompletionStatus: the pass assertion survived the rewrite.");
+  }
+  if (after.indexOf(COMPLETION_ASSERTION) === -1) {
+    throw new Error(
+      "honestCompletionStatus: the rewrite removed the completion assertion - refusing " +
+        "to emit a package that reports nothing."
+    );
+  }
+
+  zip.file(API_ENTRY, after);
+  const data = await zip.generateAsync({
+    type: isBrowser() ? "blob" : "nodebuffer",
+    compression: "DEFLATE",
+    mimeType: result.mediaType || "application/zip",
+  });
+
+  logInfo("honestCompletionStatus: the false pass assertion was removed.");
+  return { ...result, data };
 }
 
 let configured = false;
@@ -132,6 +247,10 @@ function buildQuizExport(content, { title, features, scorm }) {
  * @param {boolean} [params.focusMode]       - open the exported document in focus
  *   mode (distraction-free: sidebar + TOC hidden, Escape/toggle restores). Omitted
  *   or falsy leaves the library default (off), so existing exports are unchanged.
+ * @param {boolean} [params.honestCompletionStatus=false] - zip targets only. Removes
+ *   the wrapper's exit-time `cmi.success_status = "passed"` claim, keeping the
+ *   completion report. Use for DOCUMENTS; leave off for a scored quiz, where the
+ *   pass is real. Defaults off, so every existing caller is byte-identical.
  * @param {boolean} [params.download=true]   - in a browser, trigger a file download.
  * @param {object} [params.options]          - escape hatch: extra `exportDocument` options.
  * @returns {Promise<{data, filename, mediaType, metadata, html, entries?}>}
@@ -146,6 +265,7 @@ export async function exportContent({
   features,
   scorm,
   focusMode,
+  honestCompletionStatus = false,
   download: doDownload = true,
   options = {},
 } = {}) {
@@ -210,11 +330,23 @@ export async function exportContent({
       );
   }
 
+  // When the package is going to be rewritten, the library must NOT download the
+  // un-rewritten one first; we download the corrected package ourselves below.
+  const rewriting = honestCompletionStatus && ZIP_TARGETS.has(target);
+  const willDownload = doDownload && isBrowser();
+  if (rewriting) call.download = false;
+
   logInfo(`exporting format=${format} target=${target} (deps: ${Object.keys(base.deps).join(", ") || "auto"})`);
   try {
     const result = await exportDocument(call);
-    logInfo(`export ok -> ${result.filename} (${result.mediaType})`);
-    return result;
+    if (!rewriting) {
+      logInfo(`export ok -> ${result.filename} (${result.mediaType})`);
+      return result;
+    }
+    const corrected = await stripFalsePassAssertion(result);
+    if (willDownload) download(corrected);
+    logInfo(`export ok -> ${corrected.filename} (${corrected.mediaType})`);
+    return corrected;
   } catch (err) {
     logError(`export failed (format=${format}, target=${target}):`, err && err.message);
     throw err;

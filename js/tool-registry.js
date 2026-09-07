@@ -84,6 +84,14 @@ window.ToolRegistry = (function () {
     { value: "Chat", status: "beta", hidden: false },
     { value: "Graph Builder", status: "alpha", hidden: false },
 
+    // Placed LAST among the visible tools deliberately, which is where the
+    // fallback had already left it. Until this entry existed the registry
+    // warned on every load that "Transcribe" was in tools.html but not in
+    // TOOLS, and parked it at the end; putting it anywhere else now would
+    // renumber the group and invalidate the NVDA sitting of 2 September 2026,
+    // which heard it as "9 of 9". Same position, no longer by accident.
+    { value: "Transcribe", status: "alpha", hidden: false },
+
     { value: "OpenRouter", status: null, hidden: true },
   ];
 

@@ -132,6 +132,7 @@
     <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
     <link rel="stylesheet" href="local-chat/local-chat.css" />
     <link rel="stylesheet" href="chat/chat.css" />
+    <link rel="stylesheet" href="openrouter-embed/transcribe.css" />
     <link rel="stylesheet" href="setup-tool/setup-tool.css" />
 
     <link
@@ -928,6 +929,38 @@
               </svg>
               <span class="radio">Chat</span>
             </label>
+            <!-- Transcribe. The icon comes from the SVG library via data-icon
+                 rather than the inline <svg> the older options use: AGENTS.md
+                 § Icons requires the library, and a new option should not add
+                 another instance of the pattern being moved away from. The
+                 existing inline SVGs are deliberately left alone — migrating
+                 them is its own unit, not a side effect of adding a tool.
+
+                 audioWave rather than microphone, on purpose: this tool reads
+                 an audio FILE and does not record, and a microphone glyph
+                 would imply a capability it does not have.
+
+                 THIS IS THE TENTH OPTION, and it is what exposed the pa11y
+                 viewport defect fixed at 9222bba — the extra 58px row pushed a
+                 <dd> in Set Up's list past the 1024px sample area, and axe
+                 returned it as incomplete rather than measuring it. See
+                 engine-baseline.md note 13. Nothing here needs to compensate
+                 for that; the instrument was corrected, not the page. -->
+            <label class="tool-option-wrapper" for="Transcribe">
+              <input
+                type="radio"
+                id="Transcribe"
+                name="presentation"
+                value="Transcribe"
+                onclick="showTranscribeTool()"
+              />
+              <span
+                class="tool-icon"
+                aria-hidden="true"
+                data-icon="audioWave"
+              ></span>
+              <span class="radio">Transcribe</span>
+            </label>
           </fieldset>
         </nav>
         <!-- Tool registry — controls which tools appear above, in what order,
@@ -964,6 +997,7 @@
               "showAllyReporting",
               "showLocalChat",
               "showChat",
+              "showTranscribeTool",
             ];
             names.forEach(function (name) {
               window[name] = function () {
@@ -1014,10 +1048,7 @@
              told MathJax finished. aria-atomic made it worse by re-speaking the
              label with the value each time, which is where the run-together
              "MathJax Loaded:Yes" a listener reported came from. -->
-        <div
-          id="mathjax-status"
-          data-ready="false"
-        >
+        <div id="mathjax-status" data-ready="false">
           <span class="mathjax-label">MathJax Loaded:</span>
           <span id="mathjax-status-value">No</span>
         </div>
@@ -1073,6 +1104,73 @@
           ></span>
         </div>
 
+        <!-- Shared transcription progress surface (item 35 unit 6).
+
+             A SIBLING of the audio-export surface above, and outside every tool
+             <article> for the same reason that one is: selecting a tool sets
+             display:none on the others, which computes ariaHiddenSubtree, so a
+             progress surface inside one tool would be unreachable whenever a
+             different tool was selected.
+
+             NOT the audio-export surface itself, and this is a deliberate
+             separation on two grounds. OWNERSHIP: that module's own header rests
+             on "the export lock is page-wide — at most one export runs at a
+             time", and that lock covers audio EXPORTS, not transcription, so
+             sharing one element would allow two owners — the defect its header
+             records as having shipped once. SHAPE: the export bar is
+             DETERMINATE, driven by chunk events, whereas Speech fast
+             transcription is a single synchronous POST with no chunking — one
+             request, one response, 55s for an hour of audio. There is no chunk
+             and no total, so an aria-valuenow here would be a fiction.
+
+             INDETERMINATE on purpose: a progressbar role with an accessible
+             name and NO aria-valuenow/valuemin/valuemax. That is the ARIA
+             convention for "in progress, position unknown", and inventing a
+             percentage would be worse than omitting one.
+
+             NOT a live region and no live ancestor, matching the surface above.
+             Nothing here announces; the tool's start and finish sentences go
+             through the shared notification path, which already speaks. A <div>
+             rather than <output> because <output> carries an implicit status
+             role and would reintroduce the very defect the sibling comment
+             above documents.
+
+             The attribute names above are written WITHOUT their quoted values
+             on purpose. THE REASON GIVEN HERE WAS WRONG AND IS CORRECTED; the
+             convention stands. It read: "live-region-inventory.mjs matches
+             those literal strings and counts them wherever they appear, so a
+             comment that spells one out reintroduces the finding it was
+             written to explain." Measured at unit 43.3: that tool walks
+             git ls-files for js only (live-region-inventory.mjs:446) and the
+             hook gates it behind an isJs branch (hook-check.mjs:163), so it
+             never scans this file and a comment here cannot reintroduce
+             anything. What IS true is the rule AGENTS.md records for naming an
+             attribute inside a JS string literal — and the convention is kept
+             here anyway, house-wide and costing nothing, so the habit does not
+             have to be relearned in the files where the tool does look. Note
+             this paragraph follows its own advice: every attribute it names
+             appears without a quoted value.
+
+             Classes reused from image-describer.css, whose .progress-inline
+             block documents itself as tool-neutral. THIS ELEMENT still needs
+             no CSS of its own, and that part stands. The trailing "No new CSS."
+             that used to close this sentence has been removed: it read as a
+             claim about the TOOL, and the tool gained its own sheet at
+             openrouter-embed/transcribe.css in item 43 iteration 3. The
+             progress surface is not styled by it. -->
+        <div id="transcribe-progress" class="progress-inline" hidden>
+          <div
+            id="transcribe-progress-indicator"
+            class="imgdesc-mm-progress-bar"
+            role="progressbar"
+            aria-label="Transcribing audio"
+          ></div>
+          <span
+            id="transcribe-progress-text"
+            class="imgdesc-mm-progress-text"
+          ></span>
+        </div>
+
         <article class="standard" id="setup-app" aria-hidden="false">
           <h1>Set Up</h1>
 
@@ -1100,9 +1198,7 @@
                     ><span aria-hidden="true" data-icon="message"></span
                   ></span>
                   <span class="setup-status-label">OpenRouter</span>
-                  <span
-                    class="setup-status-value"
-                    id="setup-summary-or-value"
+                  <span class="setup-status-value" id="setup-summary-or-value"
                     ><span class="visually-hidden">OpenRouter: </span
                     ><span class="setup-status-text">Checking...</span></span
                   >
@@ -1112,9 +1208,7 @@
                     ><span aria-hidden="true" data-icon="ocr"></span
                   ></span>
                   <span class="setup-status-label">MathPix</span>
-                  <span
-                    class="setup-status-value"
-                    id="setup-summary-mp-value"
+                  <span class="setup-status-value" id="setup-summary-mp-value"
                     ><span class="visually-hidden">MathPix: </span
                     ><span class="setup-status-text">Checking...</span></span
                   >
@@ -1124,9 +1218,7 @@
                     ><span aria-hidden="true" data-icon="flame"></span
                   ></span>
                   <span class="setup-status-label">Microsoft Foundry</span>
-                  <span
-                    class="setup-status-value"
-                    id="setup-summary-fdy-value"
+                  <span class="setup-status-value" id="setup-summary-fdy-value"
                     ><span class="visually-hidden">Microsoft Foundry: </span
                     ><span class="setup-status-text">Checking...</span></span
                   >
@@ -1136,9 +1228,7 @@
                     ><span aria-hidden="true" data-icon="chart"></span
                   ></span>
                   <span class="setup-status-label">Ally</span>
-                  <span
-                    class="setup-status-value"
-                    id="setup-summary-ally-value"
+                  <span class="setup-status-value" id="setup-summary-ally-value"
                     ><span class="visually-hidden">Ally: </span
                     ><span class="setup-status-text">Checking...</span></span
                   >
@@ -1244,6 +1334,18 @@
                   Query the Blackboard Ally API for course accessibility
                   reports. Requires an Ally API token and Client ID.
                 </dd>
+
+                <!-- No "Alpha" badge is written here on purpose. ToolRegistry
+                     appends one to the <dt> from the TOOLS array, matching on
+                     the visible name, so a hand-written badge would be doubled.
+                     The registry also reorders this list and rewrites the tool
+                     count in the intro paragraph. -->
+                <dt>Transcribe</dt>
+                <dd>
+                  Turn an audio recording into a text transcript with speaker
+                  labels and timestamps. Alpha — expect rough edges. Requires
+                  signing in with your University account.
+                </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
                    DOMContentLoaded — on this page that is seconds after first
@@ -1347,7 +1449,9 @@
                   class="setup-credential-summary-status"
                   id="setup-signin-status-badge"
                   ><span class="visually-hidden">Status: </span
-                  ><span class="setup-status-text">Not yet available</span></span
+                  ><span class="setup-status-text"
+                    >Not yet available</span
+                  ></span
                 >
               </summary>
               <div class="setup-credential-body">
@@ -1383,6 +1487,92 @@
                     out
                   </button>
                 </div>
+
+                <!-- Foundry proxy picker — WIRED AND VISIBLE (unit 4b-ii).
+                     ==========================================================
+                     The handler is a single DELEGATED change listener on this
+                     fieldset, registered in setup-tool.js init(). There is
+                     deliberately NO onclick here: an inline handler naming a
+                     method that does not exist fails silently at author time,
+                     and a delegated listener needs no window.setup* global at
+                     all. Do not add one.
+
+                     ONE STORED VALUE, THREE DERIVED STATES. All three options
+                     describe the SAME localStorage key, `foundryProxyUrl`, which
+                     the proxy-URL field in the Foundry credentials section below
+                     already writes (setup-tool.js saveFoundryCredentials). There
+                     is deliberately no second key: two keys that can disagree is
+                     a silent wrong-host bug, where the picker says one thing and
+                     requests go somewhere else. The wiring unit derives the
+                     checked state from the stored value and keeps the two
+                     controls in step through the existing `credentials:changed`
+                     event, which setup-tool.js already dispatches on window.
+
+                     NORMALISE BEFORE COMPARING. azure-openai-v1.js strips
+                     trailing slashes from the stored URL; setup-tool.js's
+                     effectiveFoundryProxyUrl() only trims whitespace. So a
+                     stored default with one trailing slash is Cloudflare to the
+                     adapter and Custom to a naive comparison. Trim AND strip
+                     trailing slashes on both sides.
+
+                     WHY "Custom URL" IS DISABLED. It REFLECTS the field below
+                     rather than setting it, so derivation stays one-way and
+                     there is no question of what selecting it would do.
+                     syncProxyPicker() enables it only while it is the current
+                     state, and moves focus to the newly-checked radio first
+                     where Custom holds focus — a control that holds focus is
+                     never disabled out from under it.
+
+                     Row 41 of openrouter-embed/docs/chat-owed-sr-listen.md is
+                     open for this control. This unit ARMS part (b) — what is
+                     announced on change — and discharges NOTHING; the row stays
+                     fully owed and needs a person at a screen reader. -->
+                <fieldset class="setup-proxy-picker" id="setup-proxy-picker">
+                  <legend>AI service proxy</legend>
+
+                  <p class="setup-help-text" id="setup-proxy-picker-help">
+                    Choose which proxy you go through to reach University AI
+                    services for this session. Changes reach Chat straight away.
+                    Image Describer reads this setting once when the page loads,
+                    so reload the page before describing an image.
+                  </p>
+
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="setup-proxy-choice"
+                      id="setup-proxy-cloudflare"
+                      value="cloudflare"
+                      checked
+                    />
+                    <label for="setup-proxy-cloudflare"
+                      >Cloudflare (default)</label
+                    >
+                  </div>
+
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="setup-proxy-choice"
+                      id="setup-proxy-azure"
+                      value="azure"
+                    />
+                    <label for="setup-proxy-azure">Azure UK South (beta)</label>
+                  </div>
+
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="setup-proxy-choice"
+                      id="setup-proxy-custom"
+                      value="custom"
+                      disabled
+                    />
+                    <label for="setup-proxy-custom"
+                      >Custom URL (from Foundry credentials below)</label
+                    >
+                  </div>
+                </fieldset>
               </div>
             </details>
             <!-- OpenRouter Credentials -->
@@ -1814,6 +2004,311 @@
                     >Ally Reporting tool</a
                   >.
                 </p>
+
+                <!--
+                  Share this configuration (multi-tenancy Stage 3).
+
+                  One administrator configures Ally once and colleagues import
+                  the file rather than each repeating the setup. The record is a
+                  view over the credential fields above plus the institution
+                  name; it carries NO course data and no reports.
+                -->
+                <div class="setup-input-group">
+                  <label for="setup-ally-tenant-name"
+                    >Institution name (optional)</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="text"
+                      id="setup-ally-tenant-name"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="e.g., University of Southampton"
+                      aria-describedby="setup-ally-tenant-name-help"
+                    />
+                  </div>
+                  <p class="setup-help-text" id="setup-ally-tenant-name-help">
+                    Labels this configuration so colleagues can tell which
+                    institution a shared file is for. Saved with your
+                    credentials.
+                  </p>
+                </div>
+                <div class="setup-checkbox-group">
+                  <!--
+                    aria-labelledby is REDUNDANT for a browser: label[for] alone
+                    already names this control, measured in the accessibility
+                    tree as checkbox "Include the API token in the exported
+                    file". It is here because IBM Equal Access's
+                    input_label_exists rule reports "no associated label" for
+                    this control and the file input below without it. Isolated
+                    on a fixture 5 September 2026: inside a CLOSED <details>,
+                    IBM fails to resolve label[for] for text, checkbox and file
+                    inputs alike, and resolves aria-labelledby correctly - so
+                    the accommodation is aimed at the engine, not at a defect.
+                    The exact trigger on this page was NOT isolated. Note the
+                    same pairing already on #setup-ally-region and
+                    #setup-ally-remember, which predate this block.
+                  -->
+                  <input
+                    type="checkbox"
+                    id="setup-ally-export-token"
+                    aria-labelledby="setup-ally-export-token-label"
+                  />
+                  <label
+                    id="setup-ally-export-token-label"
+                    for="setup-ally-export-token"
+                    >Include the API token in the exported file</label
+                  >
+                  <p class="setup-help-text">
+                    Off by default. The API token is a credential: anyone who
+                    receives a file containing it can query your Ally data as
+                    you. Leave this unticked and let each colleague enter their
+                    own token.
+                  </p>
+                </div>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="setupExportAlly()"
+                  >
+                    <span aria-hidden="true" data-icon="download"></span> Export
+                    configuration
+                    <span class="visually-hidden">&nbsp;— Ally</span>
+                  </button>
+                </div>
+                <div class="setup-input-group">
+                  <!-- aria-labelledby: see the note on the checkbox above. -->
+                  <label
+                    id="setup-ally-import-file-label"
+                    for="setup-ally-import-file"
+                    >Import a configuration file</label
+                  >
+                  <input
+                    type="file"
+                    id="setup-ally-import-file"
+                    accept="application/json,.json"
+                    onchange="setupImportAlly(event)"
+                    aria-labelledby="setup-ally-import-file-label"
+                    aria-describedby="setup-ally-import-help setup-ally-import-error"
+                  />
+                  <p
+                    class="credential-field-error"
+                    id="setup-ally-import-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="setup-ally-import-help">
+                    Choosing a file replaces the region, Client ID, API token
+                    and proxy worker URL above, so you are asked to confirm
+                    first. Course data and cached reports are never included in
+                    one of these files.
+                  </p>
+                </div>
+
+                <!--
+                  Course data from your own Ally export (multi-tenancy Stage 4).
+
+                  The three files are parsed in the browser and the compact
+                  payload is stored in IndexedDB keyed by Client ID and region,
+                  so it survives a reload and is never sent anywhere. Courses
+                  and the term/department lookup are stored as ONE record:
+                  a lookup from one institution against another's courses
+                  renders wrong names wherever an id collides.
+                  aria-labelledby: see the note on the export-token checkbox.
+                -->
+                <div class="setup-input-group">
+                  <label
+                    id="setup-ally-data-files-label"
+                    for="setup-ally-data-files"
+                    >Upload course data from your Ally export</label
+                  >
+                  <input
+                    type="file"
+                    id="setup-ally-data-files"
+                    multiple
+                    accept=".csv,text/csv"
+                    onchange="setupUploadAllyData(event)"
+                    aria-labelledby="setup-ally-data-files-label"
+                    aria-describedby="setup-ally-data-help setup-ally-data-error"
+                  />
+                  <p
+                    class="credential-field-error"
+                    id="setup-ally-data-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="setup-ally-data-help">
+                    Choose courses.csv, terms.csv and departments_years.csv
+                    together from the same Ally export. They are read in this
+                    browser and stored here for the Client ID and region above,
+                    so save those first. Nothing is uploaded to a server. Add
+                    years.csv, months.csv and departments_terms.csv as well to
+                    see the Trends view on your own accessibility history; all
+                    three are needed, and the status line below says whether
+                    history is stored.
+                  </p>
+                </div>
+                <div class="setup-checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="setup-ally-data-exclude-archived"
+                    aria-labelledby="setup-ally-data-exclude-archived-label"
+                    checked
+                  />
+                  <label
+                    id="setup-ally-data-exclude-archived-label"
+                    for="setup-ally-data-exclude-archived"
+                    >Leave out archived courses</label
+                  >
+                  <p class="setup-help-text">
+                    Courses whose name carries [archived] are skipped, which is
+                    roughly two thirds of a typical export. Search results say
+                    when this is in effect.
+                  </p>
+                </div>
+
+                <!--
+                  Course data fetched from a URL (multi-tenancy Stage 6).
+
+                  An institution hosts the converter's ally-course-payload.json
+                  once and every colleague's copy of the tool fetches it from
+                  there, instead of each person uploading a 50 MB export. The
+                  fetch happens on the button below, and once automatically on
+                  opening Ally Reporting when the data source is set to a URL
+                  and nothing is stored yet - never on a plain page load. What
+                  arrives is STORED in IndexedDB under the Client ID and
+                  region, so a reload costs no download and a tenant switch
+                  cannot serve another institution's data.
+
+                  The script format is an opt-in whose warning is VISIBLE
+                  text beside the option, not help or a tooltip: it runs the
+                  host's code inside this site beside every stored key.
+                  aria-labelledby: see the note on the export-token checkbox.
+                -->
+                <div class="setup-input-group">
+                  <label
+                    id="setup-ally-data-url-label"
+                    for="setup-ally-data-url"
+                    >Fetch course data from a URL</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="url"
+                      id="setup-ally-data-url"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="https://your-institution.github.io/ally/ally-course-payload.json"
+                      aria-labelledby="setup-ally-data-url-label"
+                      aria-describedby="setup-ally-data-url-help setup-ally-data-url-error"
+                    />
+                  </div>
+                  <p
+                    class="credential-field-error"
+                    id="setup-ally-data-url-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="setup-ally-data-url-help">
+                    The https address of the ally-course-payload.json file the
+                    <a href="ally-scripts/core/convert-ally-csv.html"
+                      >converter</a
+                    >
+                    produces, hosted somewhere that allows this site to read it.
+                    A GitHub repository or GitHub Pages site does; Blackboard
+                    does not, so a file uploaded there cannot be fetched. The
+                    data is fetched once and stored in this browser for the
+                    Client ID and region above, so save those first. Select the
+                    button again to refresh it. Colleagues who import your
+                    exported configuration fetch it the first time they open
+                    Ally Reporting.
+                  </p>
+                </div>
+                <!-- aria-labelledby beside the legend for the same reason the
+                     inputs above carry it beside label[for]: IBM cannot
+                     resolve either inside a closed details. -->
+                <fieldset
+                  class="setup-proxy-picker"
+                  id="setup-ally-data-url-format"
+                  aria-labelledby="setup-ally-data-url-format-legend"
+                >
+                  <legend id="setup-ally-data-url-format-legend">
+                    Format of the hosted course data
+                  </legend>
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="setup-ally-data-url-format"
+                      id="setup-ally-data-url-format-json"
+                      value="json"
+                      aria-labelledby="setup-ally-data-url-format-json-label"
+                      checked
+                    />
+                    <label
+                      id="setup-ally-data-url-format-json-label"
+                      for="setup-ally-data-url-format-json"
+                      >JSON file (default)</label
+                    >
+                    <p class="setup-help-text">
+                      One ally-course-payload.json file. Data only: nothing from
+                      the host runs on this page.
+                    </p>
+                  </div>
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="setup-ally-data-url-format"
+                      id="setup-ally-data-url-format-script"
+                      value="script"
+                      aria-labelledby="setup-ally-data-url-format-script-label"
+                      aria-describedby="setup-ally-data-url-format-script-warning"
+                    />
+                    <label
+                      id="setup-ally-data-url-format-script-label"
+                      for="setup-ally-data-url-format-script"
+                      >Scripts from a folder</label
+                    >
+                    <p
+                      class="setup-help-text"
+                      id="setup-ally-data-url-format-script-warning"
+                    >
+                      Loads ally-lookup-data.js and ally-courses-data.js from
+                      the folder at that address. It works from any host,
+                      including Blackboard, but it runs whoever controls that
+                      address's code inside this site, beside every key this
+                      site has stored for you: your Ally API token, and any
+                      OpenRouter, MathPix or Azure keys. Choose it only for an
+                      address your own institution controls. Nothing is stored;
+                      the scripts are loaded again each time Ally Reporting
+                      opens.
+                    </p>
+                  </div>
+                </fieldset>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    id="setup-ally-data-fetch-btn"
+                    onclick="setupFetchAllyData()"
+                  >
+                    <span aria-hidden="true" data-icon="download"></span> Fetch
+                    course data from URL
+                    <span class="visually-hidden">&nbsp;— Ally</span>
+                  </button>
+                </div>
+                <!-- Plain text, not a live region: setup-tool.js announces
+                     every change through the shared announcer, and it is
+                     refreshed when this card opens rather than on page load,
+                     so a plain tools.html load reads no stored payload. -->
+                <p class="setup-help-text" id="setup-ally-data-status"></p>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="setupRemoveAllyData()"
+                  >
+                    <span aria-hidden="true" data-icon="trash"></span> Remove
+                    uploaded course data
+                    <span class="visually-hidden">&nbsp;— Ally</span>
+                  </button>
+                </div>
               </div>
             </details>
           </section>
@@ -2189,7 +2684,11 @@
                         class="setup-model-card"
                         id="setup-model-card-lfm2-350m"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— LFM2 350M</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— LFM2 350M</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -2277,7 +2776,11 @@
                         class="setup-model-card"
                         id="setup-model-card-lfm2.5-1.2b"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— LFM2.5 1.2B Instruct</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— LFM2.5 1.2B Instruct</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -2367,7 +2870,11 @@
                         class="setup-model-card"
                         id="setup-model-card-phi-3.5-mini"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— Phi 3.5 Mini</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— Phi 3.5 Mini</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -2457,7 +2964,11 @@
                         class="setup-model-card"
                         id="setup-model-card-llama-3.2-1b"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— Llama 3.2 1B</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— Llama 3.2 1B</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -2547,7 +3058,11 @@
                         class="setup-model-card"
                         id="setup-model-card-qwen2.5-1.5b"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— Qwen 2.5 1.5B</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— Qwen 2.5 1.5B</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -2637,7 +3152,11 @@
                         class="setup-model-card"
                         id="setup-model-card-llama-3.2-3b"
                       >
-                        <summary>Details &amp; benchmarks<span class="visually-hidden">&nbsp;— Llama 3.2 3B</span></summary>
+                        <summary>
+                          Details &amp; benchmarks<span class="visually-hidden"
+                            >&nbsp;— Llama 3.2 3B</span
+                          >
+                        </summary>
                         <div class="setup-model-card-body">
                           <p
                             class="setup-model-card-summary"
@@ -3091,10 +3610,7 @@
                   <span class="summary-text" id="filters-summary-label"
                     >Advanced Model Filters</span
                   >
-                  <span
-                    class="filter-status"
-                    id="filter-status"
-                  >
+                  <span class="filter-status" id="filter-status">
                     <!-- Will be populated with current filter info -->
                     <span class="models-count">Showing all models</span>
                     <span
@@ -4147,13 +4663,12 @@
                   <div class="debug-panel raw-panel">
                     <div class="panel-header">
                       <h3>Raw Response</h3>
-                      <button
-                        id="download-raw"
-                        class="download-button"
-                      >
+                      <button id="download-raw" class="download-button">
                         <span aria-hidden="true" data-icon="download"></span>
                         Download
-                        <span class="visually-hidden">&nbsp;— the raw response</span>
+                        <span class="visually-hidden"
+                          >&nbsp;— the raw response</span
+                        >
                       </button>
                     </div>
                     <pre id="raw-response"></pre>
@@ -4161,10 +4676,7 @@
                   <div class="debug-panel formatted-panel">
                     <div class="panel-header">
                       <h3>Formatted Response</h3>
-                      <button
-                        id="download-formatted"
-                        class="download-button"
-                      >
+                      <button id="download-formatted" class="download-button">
                         <span aria-hidden="true" data-icon="download"></span>
                         Download HTML
                         <span class="visually-hidden">
@@ -4177,10 +4689,7 @@
                   <div class="debug-panel semantic-panel">
                     <div class="panel-header">
                       <h3>Semantic Analysis</h3>
-                      <button
-                        id="download-semantic"
-                        class="download-button"
-                      >
+                      <button id="download-semantic" class="download-button">
                         <span aria-hidden="true" data-icon="download"></span>
                         Download JSON
                         <span class="visually-hidden">
@@ -4374,11 +4883,7 @@
                 </span>
               </div>
               <div class="button-group">
-                <button
-                  id="loadExampleButton"
-                  type="button"
-                  disabled
-                >
+                <button id="loadExampleButton" type="button" disabled>
                   Load Example
                 </button>
               </div>
@@ -6247,8 +6752,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-docx-title">DOCX</span>
-                        <span class="format-description" id="convert-mode-format-docx-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-docx-title"
+                          >DOCX</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-docx-desc"
                           >Microsoft Word format</span
                         >
                       </span>
@@ -6265,9 +6776,16 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-xlsx-title">Excel (XLSX)</span>
-                        <span class="format-description" id="convert-mode-format-xlsx-desc"
-                          >Microsoft Excel format &mdash; tables only, one sheet per table</span
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-xlsx-title"
+                          >Excel (XLSX)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-xlsx-desc"
+                          >Microsoft Excel format &mdash; tables only, one sheet
+                          per table</span
                         >
                       </span>
                     </label>
@@ -6283,8 +6801,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-pdf-title">PDF (HTML Rendering)</span>
-                        <span class="format-description" id="convert-mode-format-pdf-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-pdf-title"
+                          >PDF (HTML Rendering)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-pdf-desc"
                           >Portable document with rendered mathematics</span
                         >
                       </span>
@@ -6301,8 +6825,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-tex-title">LaTeX (ZIP)</span>
-                        <span class="format-description" id="convert-mode-format-tex-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-tex-title"
+                          >LaTeX (ZIP)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-tex-desc"
                           >Academic typesetting format in ZIP archive</span
                         >
                       </span>
@@ -6319,8 +6849,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-latexpdf-title">PDF (LaTeX Rendering)</span>
-                        <span class="format-description" id="convert-mode-format-latexpdf-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-latexpdf-title"
+                          >PDF (LaTeX Rendering)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-latexpdf-desc"
                           >PDF with selectable LaTeX equations</span
                         >
                       </span>
@@ -6337,8 +6873,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-html-title">HTML</span>
-                        <span class="format-description" id="convert-mode-format-html-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-html-title"
+                          >HTML</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-html-desc"
                           >Web-ready format with MathML and hidden screen-reader
                           speech text</span
                         >
@@ -6356,8 +6898,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-md-title">MD (Plain Markdown)</span>
-                        <span class="format-description" id="convert-mode-format-md-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-md-title"
+                          >MD (Plain Markdown)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-md-desc"
                           >Standard Markdown for broad compatibility</span
                         >
                       </span>
@@ -6374,8 +6922,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-pptx-title">PowerPoint (PPTX)</span>
-                        <span class="format-description" id="convert-mode-format-pptx-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-pptx-title"
+                          >PowerPoint (PPTX)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-pptx-desc"
                           >Presentation slides compatible with PowerPoint
                           2007+</span
                         >
@@ -6393,8 +6947,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-mmdzip-title">MMD Archive (ZIP)</span>
-                        <span class="format-description" id="convert-mode-format-mmdzip-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-mmdzip-title"
+                          >MMD Archive (ZIP)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-mmdzip-desc"
                           >MMD file with all images packaged in ZIP
                           archive</span
                         >
@@ -6412,8 +6972,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-mdzip-title">Markdown Archive (ZIP)</span>
-                        <span class="format-description" id="convert-mode-format-mdzip-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-mdzip-title"
+                          >Markdown Archive (ZIP)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-mdzip-desc"
                           >Markdown file with all images packaged in ZIP
                           archive</span
                         >
@@ -6431,8 +6997,14 @@ Science,91</pre
                         onclick="updateConvertModeSelectAll()"
                       />
                       <span class="format-content">
-                        <span class="format-label" id="convert-mode-format-htmlzip-title">HTML Archive (ZIP)</span>
-                        <span class="format-description" id="convert-mode-format-htmlzip-desc"
+                        <span
+                          class="format-label"
+                          id="convert-mode-format-htmlzip-title"
+                          >HTML Archive (ZIP)</span
+                        >
+                        <span
+                          class="format-description"
+                          id="convert-mode-format-htmlzip-desc"
                           >Less accessible than HTML. Math expressions are
                           pre-rendered images — no screen-reader speech text or
                           semantic structure. Use plain HTML for full
@@ -8263,8 +8835,14 @@ Science,91</pre
                           aria-describedby="resume-format-docx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-docx-title">DOCX</span>
-                          <span class="format-description" id="resume-format-docx-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-docx-title"
+                            >DOCX</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-docx-desc"
                             >Microsoft Word format</span
                           >
                         </span>
@@ -8280,9 +8858,16 @@ Science,91</pre
                           aria-describedby="resume-format-xlsx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-xlsx-title">Excel (XLSX)</span>
-                          <span class="format-description" id="resume-format-xlsx-desc"
-                            >Microsoft Excel format &mdash; tables only, one sheet per table</span
+                          <span
+                            class="format-label"
+                            id="resume-format-xlsx-title"
+                            >Excel (XLSX)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-xlsx-desc"
+                            >Microsoft Excel format &mdash; tables only, one
+                            sheet per table</span
                           >
                         </span>
                       </label>
@@ -8297,8 +8882,14 @@ Science,91</pre
                           aria-describedby="resume-format-pdf-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-pdf-title">PDF (HTML Rendering)</span>
-                          <span class="format-description" id="resume-format-pdf-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-pdf-title"
+                            >PDF (HTML Rendering)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-pdf-desc"
                             >Portable document with rendered mathematics</span
                           >
                         </span>
@@ -8314,8 +8905,14 @@ Science,91</pre
                           aria-describedby="resume-format-tex-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-tex-title">LaTeX (ZIP)</span>
-                          <span class="format-description" id="resume-format-tex-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-tex-title"
+                            >LaTeX (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-tex-desc"
                             >Academic typesetting format in ZIP archive</span
                           >
                         </span>
@@ -8331,10 +8928,14 @@ Science,91</pre
                           aria-describedby="resume-format-latexpdf-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-latexpdf-title"
+                          <span
+                            class="format-label"
+                            id="resume-format-latexpdf-title"
                             >PDF (LaTeX Rendering)</span
                           >
-                          <span class="format-description" id="resume-format-latexpdf-desc"
+                          <span
+                            class="format-description"
+                            id="resume-format-latexpdf-desc"
                             >PDF with selectable LaTeX equations</span
                           >
                         </span>
@@ -8350,8 +8951,14 @@ Science,91</pre
                           aria-describedby="resume-format-html-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-html-title">HTML</span>
-                          <span class="format-description" id="resume-format-html-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-html-title"
+                            >HTML</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-html-desc"
                             >Web-ready format with MathML and hidden
                             screen-reader speech text</span
                           >
@@ -8368,8 +8975,12 @@ Science,91</pre
                           aria-describedby="resume-format-md-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-md-title">MD (Plain Markdown)</span>
-                          <span class="format-description" id="resume-format-md-desc"
+                          <span class="format-label" id="resume-format-md-title"
+                            >MD (Plain Markdown)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-md-desc"
                             >Standard Markdown for broad compatibility</span
                           >
                         </span>
@@ -8385,8 +8996,14 @@ Science,91</pre
                           aria-describedby="resume-format-pptx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-pptx-title">PowerPoint (PPTX)</span>
-                          <span class="format-description" id="resume-format-pptx-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-pptx-title"
+                            >PowerPoint (PPTX)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-pptx-desc"
                             >Presentation slides compatible with PowerPoint
                             2007+</span
                           >
@@ -8403,8 +9020,14 @@ Science,91</pre
                           aria-describedby="resume-format-mmdzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-mmdzip-title">MMD Archive (ZIP)</span>
-                          <span class="format-description" id="resume-format-mmdzip-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-mmdzip-title"
+                            >MMD Archive (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-mmdzip-desc"
                             >MMD file with all images packaged in ZIP
                             archive</span
                           >
@@ -8421,10 +9044,14 @@ Science,91</pre
                           aria-describedby="resume-format-mdzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-mdzip-title"
+                          <span
+                            class="format-label"
+                            id="resume-format-mdzip-title"
                             >Markdown Archive (ZIP)</span
                           >
-                          <span class="format-description" id="resume-format-mdzip-desc"
+                          <span
+                            class="format-description"
+                            id="resume-format-mdzip-desc"
                             >Markdown file with all images packaged in ZIP
                             archive</span
                           >
@@ -8441,8 +9068,14 @@ Science,91</pre
                           aria-describedby="resume-format-htmlzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-htmlzip-title">HTML Archive (ZIP)</span>
-                          <span class="format-description" id="resume-format-htmlzip-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-htmlzip-title"
+                            >HTML Archive (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-htmlzip-desc"
                             >Less accessible than HTML. Math expressions are
                             pre-rendered images — no screen-reader speech text
                             or semantic structure. Use plain HTML for full
@@ -8467,8 +9100,14 @@ Science,91</pre
                           aria-describedby="resume-format-scorm-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-scorm-title">SCORM package</span>
-                          <span class="format-description" id="resume-format-scorm-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-scorm-title"
+                            >SCORM package</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-scorm-desc"
                             >Built entirely in your browser — nothing is sent to
                             the MathPix API and no conversion credit is used. An
                             accessible, self-contained package for a VLE such as
@@ -8488,8 +9127,14 @@ Science,91</pre
                           aria-describedby="resume-format-standalone-html-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="resume-format-standalone-html-title">Standalone HTML</span>
-                          <span class="format-description" id="resume-format-standalone-html-desc"
+                          <span
+                            class="format-label"
+                            id="resume-format-standalone-html-title"
+                            >Standalone HTML</span
+                          >
+                          <span
+                            class="format-description"
+                            id="resume-format-standalone-html-desc"
                             >Built entirely in your browser — nothing is sent to
                             the MathPix API and no conversion credit is used. A
                             single self-contained web page with images embedded.
@@ -10339,7 +10984,9 @@ Science,91</pre
                       disabled
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-mmd-title">MMD (MathPix Markdown)</span>
+                      <span class="format-label" id="pdf-format-mmd-title"
+                        >MMD (MathPix Markdown)</span
+                      >
                       <span class="format-description" id="pdf-format-mmd-desc"
                         >Base format — always included with every
                         conversion</span
@@ -10348,9 +10995,17 @@ Science,91</pre
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-md" value="md" aria-labelledby="pdf-format-md-title" aria-describedby="pdf-format-md-desc" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-md"
+                      value="md"
+                      aria-labelledby="pdf-format-md-title"
+                      aria-describedby="pdf-format-md-desc"
+                    />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-md-title">MD (Plain Markdown)</span>
+                      <span class="format-label" id="pdf-format-md-title"
+                        >MD (Plain Markdown)</span
+                      >
                       <span class="format-description" id="pdf-format-md-desc"
                         >Standard Markdown for broad compatibility</span
                       >
@@ -10366,7 +11021,9 @@ Science,91</pre
                       aria-describedby="pdf-format-html-desc"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-html-title">HTML</span>
+                      <span class="format-label" id="pdf-format-html-title"
+                        >HTML</span
+                      >
                       <span class="format-description" id="pdf-format-html-desc"
                         >Web-ready format with MathML and hidden screen-reader
                         speech text</span
@@ -10383,17 +11040,29 @@ Science,91</pre
                       value="tex.zip"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-latex-title">LaTeX</span>
-                      <span class="format-description" id="pdf-format-latex-desc"
+                      <span class="format-label" id="pdf-format-latex-title"
+                        >LaTeX</span
+                      >
+                      <span
+                        class="format-description"
+                        id="pdf-format-latex-desc"
                         >Academic typesetting format (ZIP file)</span
                       >
                     </span>
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-docx" value="docx" aria-labelledby="pdf-format-docx-title" aria-describedby="pdf-format-docx-desc" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-docx"
+                      value="docx"
+                      aria-labelledby="pdf-format-docx-title"
+                      aria-describedby="pdf-format-docx-desc"
+                    />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-docx-title">DOCX</span>
+                      <span class="format-label" id="pdf-format-docx-title"
+                        >DOCX</span
+                      >
                       <span class="format-description" id="pdf-format-docx-desc"
                         >Microsoft Word format</span
                       >
@@ -10401,20 +11070,36 @@ Science,91</pre
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-xlsx" value="xlsx" aria-labelledby="pdf-format-xlsx-title" aria-describedby="pdf-format-xlsx-desc" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-xlsx"
+                      value="xlsx"
+                      aria-labelledby="pdf-format-xlsx-title"
+                      aria-describedby="pdf-format-xlsx-desc"
+                    />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-xlsx-title">Excel (XLSX)</span>
+                      <span class="format-label" id="pdf-format-xlsx-title"
+                        >Excel (XLSX)</span
+                      >
                       <span class="format-description" id="pdf-format-xlsx-desc"
-                        >Microsoft Excel format &mdash; tables only, one sheet per
-                        table</span
+                        >Microsoft Excel format &mdash; tables only, one sheet
+                        per table</span
                       >
                     </span>
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-pptx" value="pptx" aria-labelledby="pdf-format-pptx-title" aria-describedby="pdf-format-pptx-desc" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-pptx"
+                      value="pptx"
+                      aria-labelledby="pdf-format-pptx-title"
+                      aria-describedby="pdf-format-pptx-desc"
+                    />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-pptx-title">PowerPoint (PPTX)</span>
+                      <span class="format-label" id="pdf-format-pptx-title"
+                        >PowerPoint (PPTX)</span
+                      >
                       <span class="format-description" id="pdf-format-pptx-desc"
                         >Presentation slides compatible with PowerPoint
                         2007+</span
@@ -10423,9 +11108,17 @@ Science,91</pre
                   </label>
 
                   <label class="mathpix-format-checkbox">
-                    <input type="checkbox" id="pdf-format-pdf" value="pdf" aria-labelledby="pdf-format-pdf-title" aria-describedby="pdf-format-pdf-desc" />
+                    <input
+                      type="checkbox"
+                      id="pdf-format-pdf"
+                      value="pdf"
+                      aria-labelledby="pdf-format-pdf-title"
+                      aria-describedby="pdf-format-pdf-desc"
+                    />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-pdf-title">PDF (HTML Rendering)</span>
+                      <span class="format-label" id="pdf-format-pdf-title"
+                        >PDF (HTML Rendering)</span
+                      >
                       <span class="format-description" id="pdf-format-pdf-desc"
                         >Portable document with rendered mathematics</span
                       >
@@ -10441,8 +11134,12 @@ Science,91</pre
                       value="latexpdf"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-latexpdf-title">PDF (LaTeX Rendering)</span>
-                      <span class="format-description" id="pdf-format-latexpdf-desc"
+                      <span class="format-label" id="pdf-format-latexpdf-title"
+                        >PDF (LaTeX Rendering)</span
+                      >
+                      <span
+                        class="format-description"
+                        id="pdf-format-latexpdf-desc"
                         >PDF with selectable LaTeX equations</span
                       >
                     </span>
@@ -10457,8 +11154,12 @@ Science,91</pre
                       value="mmd.zip"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-mmdzip-title">MMD Archive (ZIP)</span>
-                      <span class="format-description" id="pdf-format-mmdzip-desc"
+                      <span class="format-label" id="pdf-format-mmdzip-title"
+                        >MMD Archive (ZIP)</span
+                      >
+                      <span
+                        class="format-description"
+                        id="pdf-format-mmdzip-desc"
                         >MMD file with all images packaged in ZIP archive</span
                       >
                     </span>
@@ -10473,8 +11174,12 @@ Science,91</pre
                       value="md.zip"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-mdzip-title">Markdown Archive (ZIP)</span>
-                      <span class="format-description" id="pdf-format-mdzip-desc"
+                      <span class="format-label" id="pdf-format-mdzip-title"
+                        >Markdown Archive (ZIP)</span
+                      >
+                      <span
+                        class="format-description"
+                        id="pdf-format-mdzip-desc"
                         >Markdown file with all images packaged in ZIP
                         archive</span
                       >
@@ -10490,8 +11195,12 @@ Science,91</pre
                       aria-describedby="pdf-format-htmlzip-desc"
                     />
                     <span class="format-content">
-                      <span class="format-label" id="pdf-format-htmlzip-title">HTML Archive (ZIP)</span>
-                      <span class="format-description" id="pdf-format-htmlzip-desc"
+                      <span class="format-label" id="pdf-format-htmlzip-title"
+                        >HTML Archive (ZIP)</span
+                      >
+                      <span
+                        class="format-description"
+                        id="pdf-format-htmlzip-desc"
                         >Less accessible than HTML. Math expressions are
                         pre-rendered images — no screen-reader speech text or
                         semantic structure. Use plain HTML for full
@@ -13171,8 +13880,14 @@ Science,91</pre
                           aria-describedby="convert-format-docx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-docx-title">DOCX</span>
-                          <span class="format-description" id="convert-format-docx-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-docx-title"
+                            >DOCX</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-docx-desc"
                             >Microsoft Word format</span
                           >
                         </span>
@@ -13188,8 +13903,14 @@ Science,91</pre
                           aria-describedby="convert-format-pdf-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-pdf-title">PDF (HTML Rendering)</span>
-                          <span class="format-description" id="convert-format-pdf-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-pdf-title"
+                            >PDF (HTML Rendering)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-pdf-desc"
                             >Portable document with rendered mathematics</span
                           >
                         </span>
@@ -13205,8 +13926,14 @@ Science,91</pre
                           aria-describedby="convert-format-tex-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-tex-title">LaTeX (ZIP)</span>
-                          <span class="format-description" id="convert-format-tex-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-tex-title"
+                            >LaTeX (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-tex-desc"
                             >Academic typesetting format in ZIP archive</span
                           >
                         </span>
@@ -13222,10 +13949,14 @@ Science,91</pre
                           aria-describedby="convert-format-latexpdf-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-latexpdf-title"
+                          <span
+                            class="format-label"
+                            id="convert-format-latexpdf-title"
                             >PDF (LaTeX Rendering)</span
                           >
-                          <span class="format-description" id="convert-format-latexpdf-desc"
+                          <span
+                            class="format-description"
+                            id="convert-format-latexpdf-desc"
                             >PDF with selectable LaTeX equations</span
                           >
                         </span>
@@ -13241,8 +13972,14 @@ Science,91</pre
                           aria-describedby="convert-format-html-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-html-title">HTML</span>
-                          <span class="format-description" id="convert-format-html-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-html-title"
+                            >HTML</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-html-desc"
                             >Web-ready format with MathML and hidden
                             screen-reader speech text</span
                           >
@@ -13259,8 +13996,14 @@ Science,91</pre
                           aria-describedby="convert-format-md-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-md-title">MD (Plain Markdown)</span>
-                          <span class="format-description" id="convert-format-md-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-md-title"
+                            >MD (Plain Markdown)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-md-desc"
                             >Standard Markdown for broad compatibility</span
                           >
                         </span>
@@ -13276,8 +14019,14 @@ Science,91</pre
                           aria-describedby="convert-format-pptx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-pptx-title">PowerPoint (PPTX)</span>
-                          <span class="format-description" id="convert-format-pptx-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-pptx-title"
+                            >PowerPoint (PPTX)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-pptx-desc"
                             >Presentation slides compatible with PowerPoint
                             2007+</span
                           >
@@ -13294,8 +14043,14 @@ Science,91</pre
                           aria-describedby="convert-format-mmdzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-mmdzip-title">MMD Archive (ZIP)</span>
-                          <span class="format-description" id="convert-format-mmdzip-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-mmdzip-title"
+                            >MMD Archive (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-mmdzip-desc"
                             >MMD file with all images packaged in ZIP
                             archive</span
                           >
@@ -13312,10 +14067,14 @@ Science,91</pre
                           aria-describedby="convert-format-mdzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-mdzip-title"
+                          <span
+                            class="format-label"
+                            id="convert-format-mdzip-title"
                             >Markdown Archive (ZIP)</span
                           >
-                          <span class="format-description" id="convert-format-mdzip-desc"
+                          <span
+                            class="format-description"
+                            id="convert-format-mdzip-desc"
                             >Markdown file with all images packaged in ZIP
                             archive</span
                           >
@@ -13332,8 +14091,14 @@ Science,91</pre
                           aria-describedby="convert-format-htmlzip-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-htmlzip-title">HTML Archive (ZIP)</span>
-                          <span class="format-description" id="convert-format-htmlzip-desc"
+                          <span
+                            class="format-label"
+                            id="convert-format-htmlzip-title"
+                            >HTML Archive (ZIP)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-htmlzip-desc"
                             >Less accessible than HTML. Math expressions are
                             pre-rendered images — no screen-reader speech text
                             or semantic structure. Use plain HTML for full
@@ -13352,10 +14117,16 @@ Science,91</pre
                           aria-describedby="convert-format-xlsx-desc"
                         />
                         <span class="format-content">
-                          <span class="format-label" id="convert-format-xlsx-title">Excel (XLSX)</span>
-                          <span class="format-description" id="convert-format-xlsx-desc"
-                            >Microsoft Excel format &mdash; tables only, one sheet
-                            per table</span
+                          <span
+                            class="format-label"
+                            id="convert-format-xlsx-title"
+                            >Excel (XLSX)</span
+                          >
+                          <span
+                            class="format-description"
+                            id="convert-format-xlsx-desc"
+                            >Microsoft Excel format &mdash; tables only, one
+                            sheet per table</span
                           >
                         </span>
                       </label>
@@ -14057,7 +14828,9 @@ Science,91</pre
                           type="button"
                           id="imgdesc-camera-rotate"
                           class="imgdesc-camera-btn"
-                          onclick="ImageDescriberController.rotateCapturedPhoto()"
+                          onclick="
+                            ImageDescriberController.rotateCapturedPhoto()
+                          "
                         >
                           <span aria-hidden="true" data-icon="redo"></span>
                           Rotate
@@ -14075,7 +14848,9 @@ Science,91</pre
                           type="button"
                           id="imgdesc-camera-confirm"
                           class="imgdesc-camera-btn primary-button"
-                          onclick="ImageDescriberController.confirmCapturedPhoto()"
+                          onclick="
+                            ImageDescriberController.confirmCapturedPhoto()
+                          "
                         >
                           <span aria-hidden="true" data-icon="check"></span>
                           Confirm photo
@@ -14140,7 +14915,8 @@ Science,91</pre
                   ></p>
                   <label class="imgdesc-profile-suggestion-skip-ocr">
                     <input type="checkbox" id="imgdesc-skip-ocr" />
-                    Skip text detection (no relevant text in this image)
+                    Skip text detection (saves about a minute). Select this only
+                    if you do not need any text in the image described.
                   </label>
                   <div class="imgdesc-profile-suggestion-actions">
                     <button
@@ -15799,10 +16575,7 @@ Science,91</pre
                      beside it. The controller's announceStatus() now speaks through
                      the always-exposed shared announcer instead. Do not add
                      aria-live here — add an announceStatus() call. -->
-                <p
-                  id="imgdesc-status"
-                  class="imgdesc-status"
-                ></p>
+                <p id="imgdesc-status" class="imgdesc-status"></p>
 
                 <div
                   id="imgdesc-output-accuracy-warning"
@@ -16495,6 +17268,37 @@ Science,91</pre
                   </svg>
                   <span class="report-label">Report Builder</span>
                 </label>
+
+                <!-- Trends -->
+                <label class="ally-report-option">
+                  <input
+                    type="radio"
+                    name="ally-report-type"
+                    value="trends"
+                    id="ally-report-trends"
+                  />
+                  <svg
+                    class="report-icon"
+                    aria-hidden="true"
+                    height="21"
+                    viewBox="0 0 21 21"
+                    width="21"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <g
+                      fill="none"
+                      fill-rule="evenodd"
+                      stroke="currentColor"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      transform="translate(3 4)"
+                    >
+                      <path d="m.5.5v13h14" />
+                      <path d="m3.5 9.5 3-4 3 2 4-6" />
+                    </g>
+                  </svg>
+                  <span class="report-label">Trends</span>
+                </label>
               </div>
               <!-- aria-live="off" is DELIBERATE: it overrides the implicit polite
                    liveness that role="status" carries. The role is kept, so the card
@@ -16817,6 +17621,45 @@ Science,91</pre
                     Type to search modules. Use arrow keys to navigate results,
                     Enter to select, Escape to close.
                   </span>
+                  <!-- Multi-tenancy Stage 5: the API fallback surfaces. All
+                       hidden under local data; ALLY_COURSE_SEARCH_API reveals
+                       them when no course data is installed. The note is
+                       VISIBLE text on purpose - the limits are stated in the
+                       interface, not only in a doc. The progress line has no
+                       live role: one announcement per event, none per poll. -->
+                  <p
+                    id="ally-cr-search-api-note"
+                    class="ally-help-text ally-course-search-api-note"
+                    hidden
+                  >
+                    No course data has been uploaded for this institution, so
+                    search asks the Ally service directly. It matches module
+                    names only, not module codes, and each search can take a few
+                    minutes while the report prepares.
+                  </p>
+                  <button
+                    type="button"
+                    id="ally-cr-search-api-send"
+                    class="ally-secondary-btn ally-course-search-api-btn"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="search"></span> Search
+                    Ally
+                  </button>
+                  <button
+                    type="button"
+                    id="ally-cr-search-api-cancel"
+                    class="ally-secondary-btn ally-course-search-api-btn"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="close"></span> Cancel
+                    search
+                  </button>
+                  <p
+                    id="ally-cr-search-api-progress"
+                    class="ally-help-text ally-course-search-api-progress"
+                    hidden
+                  ></p>
                 </div>
 
                 <!-- Results dropdown -->
@@ -17090,6 +17933,45 @@ Science,91</pre
                   press Down arrow at the end of the list, or Tab to the Show
                   more button, to load more.
                 </span>
+                <!-- Multi-tenancy Stage 5: the API fallback surfaces. All
+                     hidden under local data; ALLY_COURSE_SEARCH_API reveals
+                     them when no course data is installed. The note is
+                     VISIBLE text on purpose - the limits are stated in the
+                     interface, not only in a doc. The progress line has no
+                     live role: one announcement per event, none per poll. -->
+                <p
+                  id="ally-sp-search-api-note"
+                  class="ally-help-text ally-course-search-api-note"
+                  hidden
+                >
+                  No course data has been uploaded for this institution, so
+                  search asks the Ally service directly. It matches module names
+                  only, not module codes, and each search can take a few minutes
+                  while the report prepares.
+                </p>
+                <button
+                  type="button"
+                  id="ally-sp-search-api-send"
+                  class="ally-secondary-btn ally-course-search-api-btn"
+                  hidden
+                >
+                  <span aria-hidden="true" data-icon="search"></span> Search
+                  Ally
+                </button>
+                <button
+                  type="button"
+                  id="ally-sp-search-api-cancel"
+                  class="ally-secondary-btn ally-course-search-api-btn"
+                  hidden
+                >
+                  <span aria-hidden="true" data-icon="close"></span> Cancel
+                  search
+                </button>
+                <p
+                  id="ally-sp-search-api-progress"
+                  class="ally-help-text ally-course-search-api-progress"
+                  hidden
+                ></p>
                 <div
                   id="ally-sp-search-results"
                   class="ally-course-search-results"
@@ -17261,6 +18143,78 @@ Science,91</pre
             </details>
           </section>
 
+          <!-- Trends Section -->
+          <section
+            class="ally-report-section"
+            id="ally-trends-section"
+            aria-labelledby="ally-trends-heading"
+            hidden
+          >
+            <h2 id="ally-trends-heading">Accessibility Over Time</h2>
+            <p class="ally-section-description">
+              How accessibility scores have changed, for the whole institution
+              or for one department. This is the only view built from a periodic
+              export rather than a live request, because the Ally API returns
+              the current position only and has no way to ask for an earlier
+              one.
+            </p>
+
+            <div class="ally-trends-controls">
+              <div class="ally-form-group">
+                <label for="ally-trends-period">Period</label>
+                <select id="ally-trends-period">
+                  <option value="year">Academic year</option>
+                  <option value="term">Term</option>
+                  <option value="month" selected>Month</option>
+                </select>
+              </div>
+
+              <div class="ally-form-group">
+                <label for="ally-trends-metric">Measure</label>
+                <select id="ally-trends-metric">
+                  <option value="Overall score">Overall score</option>
+                  <option value="Files score" selected>Files score</option>
+                  <option value="WYSIWYG score">WYSIWYG score</option>
+                </select>
+              </div>
+
+              <div class="ally-form-group">
+                <label for="ally-trends-department">Scope</label>
+                <select id="ally-trends-department">
+                  <option value="">Whole institution</option>
+                  <!-- Departments added by ally-trends.js -->
+                </select>
+              </div>
+            </div>
+
+            <!-- Status is polite and carries the summary a screen reader
+                 needs, because a canvas says nothing on its own. -->
+            <div
+              id="ally-trends-status"
+              class="ally-trends-status"
+              role="status"
+              aria-live="polite"
+            ></div>
+
+            <div class="ally-trends-chart-wrapper">
+              <canvas
+                id="ally-trends-chart"
+                role="img"
+                aria-labelledby="ally-trends-chart-summary"
+              ></canvas>
+              <p id="ally-trends-chart-summary" class="visually-hidden"></p>
+            </div>
+
+            <!-- The chart's accessible alternative. Required, not optional:
+                 a canvas is opaque to assistive technology. -->
+            <details class="ally-trends-table-wrapper" open>
+              <summary>Data table</summary>
+              <div id="ally-trends-table" tabindex="0"></div>
+            </details>
+
+            <p id="ally-trends-provenance" class="ally-trends-provenance"></p>
+          </section>
+
           <!-- Report Builder Section (existing query builder, wrapped) -->
           <section
             class="ally-report-section ally-query-section"
@@ -17354,6 +18308,45 @@ Science,91</pre
                     Type to search module. Use arrow keys to navigate results,
                     Enter to select, Escape to close.
                   </span>
+                  <!-- Multi-tenancy Stage 5: the API fallback surfaces. All
+                       hidden under local data; ALLY_COURSE_SEARCH_API reveals
+                       them when no course data is installed. The note is
+                       VISIBLE text on purpose - the limits are stated in the
+                       interface, not only in a doc. The progress line has no
+                       live role: one announcement per event, none per poll. -->
+                  <p
+                    id="ally-course-search-api-note"
+                    class="ally-help-text ally-course-search-api-note"
+                    hidden
+                  >
+                    No course data has been uploaded for this institution, so
+                    search asks the Ally service directly. It matches module
+                    names only, not module codes, and each search can take a few
+                    minutes while the report prepares.
+                  </p>
+                  <button
+                    type="button"
+                    id="ally-course-search-api-send"
+                    class="ally-secondary-btn ally-course-search-api-btn"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="search"></span> Search
+                    Ally
+                  </button>
+                  <button
+                    type="button"
+                    id="ally-course-search-api-cancel"
+                    class="ally-secondary-btn ally-course-search-api-btn"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="close"></span> Cancel
+                    search
+                  </button>
+                  <p
+                    id="ally-course-search-api-progress"
+                    class="ally-help-text ally-course-search-api-progress"
+                    hidden
+                  ></p>
                 </div>
 
                 <!-- Results dropdown -->
@@ -18509,6 +19502,216 @@ Science,91</pre
           </details>
         </article>
 
+        <!-- Transcribe Tool (item 35 unit 6).
+
+             MARKUP AND REGISTRATION ONLY. Every control here is inert: there is
+             no script for this tool yet, and the client module
+             openrouter-embed-transcribe.js has no caller. Unit 7 wires it up.
+
+             The file picker is a <label for> plus a visually-hidden input,
+             which is the house pattern (see #imgdesc-file-input above) and
+             triggers the picker NATIVELY. A <button> would need JavaScript to
+             call .click(), and this unit ships none — so the label is not a
+             stylistic preference here, it is the only no-script option. -->
+        <article
+          id="transcribe-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Transcribe</h1>
+          <p class="tool-description">
+            Turn a recording into text. Upload an audio file and get a
+            transcript with timings and speaker labels.
+          </p>
+
+          <div class="transcribe-upload-area">
+            <label for="transcribe-file-input" class="imgdesc-upload-label">
+              <span
+                class="imgdesc-upload-icon"
+                aria-hidden="true"
+                data-icon="audioWave"
+              ></span>
+              <span class="imgdesc-upload-text"
+                >Choose an audio file or drag and drop</span
+              >
+              <span class="imgdesc-upload-formats"
+                >Supports: MP3, WAV, M4A, OGG, WebM, FLAC, AAC</span
+              >
+            </label>
+            <input
+              type="file"
+              id="transcribe-file-input"
+              accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm,.flac,.aac"
+              class="visually-hidden"
+            />
+            <p id="transcribe-file-name">No file chosen</p>
+          </div>
+
+          <div class="transcribe-options">
+            <div class="transcribe-option">
+              <label for="transcribe-locale">Spoken language</label>
+              <select id="transcribe-locale">
+                <option value="en-GB" selected>English (United Kingdom)</option>
+                <option value="en-US">English (United States)</option>
+                <option value="cy-GB">Welsh</option>
+                <option value="fr-FR">French</option>
+                <option value="de-DE">German</option>
+                <option value="es-ES">Spanish</option>
+              </select>
+            </div>
+
+            <div class="transcribe-option">
+              <label for="transcribe-max-speakers"
+                >Maximum number of speakers</label
+              >
+              <select id="transcribe-max-speakers">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4" selected>4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </div>
+          </div>
+
+          <button type="button" id="transcribe-run">
+            <span aria-hidden="true" data-icon="audioWave"></span> Transcribe
+          </button>
+
+          <section
+            id="transcribe-results"
+            aria-labelledby="transcribe-results-heading"
+          >
+            <h2 id="transcribe-results-heading">Transcript</h2>
+            <!-- Display options for a transcript that ALREADY EXISTS — not a
+                 request option, which is why this sits here and not beside the
+                 pre-run controls above. Register item 43 (speaker labels,
+                 decided 3 September 2026) and item 54 (timestamps, in build
+                 from 5 September 2026).
+
+                 WITHDRAWN 5 September 2026 — item 56's shape, a comment that
+                 went false against the build that followed it. It read: "SHIPS
+                 HIDDEN AND STAYS HIDDEN IN THIS ITERATION. The hidden attribute
+                 is on the wrapper, nothing removes it, and no JavaScript reads
+                 the checkbox yet — the renderer that honours it is iteration
+                 2." The speaker checkbox has been wired since that iteration
+                 landed; the contract that stands is below.
+
+                 THE SPEAKER CHECKBOX, transcribe-show-every-speaker. WIRED:
+                 openrouter-embed-transcribe-ui.js listens for its change
+                 event, holds the choice as module-scope in-memory state that
+                 resets on load, and re-renders the rows already in hand
+                 through renderTranscript — it never re-transcribes. It is
+                 revealed only when speaker labels are INFORMATIVE — more than
+                 one distinct speaker, distinctSpeakerCount > 1 in the UI. At
+                 one speaker, or on a backend that returns no labels at all,
+                 both formatters already suppress the label, so a control
+                 offering to hide what is already hidden would do nothing and
+                 is withheld entirely rather than shown disabled. Row 40 of
+                 chat-owed-sr-listen.md heard it on 4 September 2026 and is
+                 closed.
+
+                 THE TIMESTAMPS CHECKBOX, transcribe-show-timestamps. Register
+                 item 54. In this commit it SHIPS HIDDEN AND UNWIRED: its own
+                 div carries the hidden attribute, nothing removes it, and no
+                 JavaScript reads it yet. A hidden subtree is outside the
+                 accessibility tree, so this control is unreachable by pointer,
+                 keyboard and screen reader alike until item 54 unit 6 lands.
+                 That unit wires it, and moves the hidden attribute that today
+                 sits on the wrapper to transcribe-speaker-option with its
+                 condition unchanged — so the wrapper reveals for every
+                 rendered transcript and the speaker control keeps its own
+                 predicate. Unchecked, the renderer omits each row's leading
+                 time element AND the space that follows it — no class toggle,
+                 no display rule — so a row reads speaker label then phrase, or
+                 phrase alone. Row 42 of chat-owed-sr-listen.md was opened at
+                 f58aaa8, ahead of the build; this commit arms none of its
+                 parts and discharges nothing.
+
+                 EACH CONTROL GOVERNS VISUAL AND SPOKEN OUTPUT TOGETHER, AND
+                 THE SCREEN ONLY. Checked reproduces exactly what the tool
+                 renders today and what the downloaded text file contains, so
+                 the default changes no information for anybody. Unchecked
+                 prints the label on the first row of each run of consecutive
+                 same-speaker phrases, for everyone — there is deliberately no
+                 visually-hidden label kept on the other rows for screen-reader
+                 users, because that would be precisely the divergence this
+                 decision refuses. The clipboard and both downloads are
+                 untouched by either box: the UI hands the formatters no
+                 display-mode option, so no choice made here can reach them.
+
+                 NO TOAST AND NO ANNOUNCEMENT ON TOGGLE, for either box. The
+                 checkbox conveys its own state, and the transcript below is
+                 not a live region and has no live ancestor, so an announcement
+                 here would be a second voice for one gesture. Row 40 judged
+                 that sufficient feedback for the speaker control, by ear; row
+                 42 (c) asks the same of the timestamps control, and silence is
+                 the failure mode to watch for there, not doubling.
+
+                 Attribute names in this comment are written WITHOUT their
+                 quoted values, matching the note on the transcribe progress
+                 surface above and for the same reason. -->
+            <div
+              id="transcribe-display-options"
+              class="transcribe-display-options"
+              hidden
+            >
+              <div
+                id="transcribe-speaker-option"
+                class="transcribe-display-option"
+              >
+                <input
+                  type="checkbox"
+                  id="transcribe-show-every-speaker"
+                  checked
+                />
+                <label for="transcribe-show-every-speaker"
+                  >Show speaker name on every line</label
+                >
+              </div>
+              <div
+                id="transcribe-timestamps-option"
+                class="transcribe-display-option"
+                hidden
+              >
+                <input
+                  type="checkbox"
+                  id="transcribe-show-timestamps"
+                  checked
+                />
+                <label for="transcribe-show-timestamps">Show timestamps</label>
+              </div>
+            </div>
+            <!-- A <div>, NOT <output>: <output> carries an implicit status
+                 role, so it would compute as a polite atomic live region with
+                 nothing in the markup to show it, and every write would
+                 re-speak the whole transcript. Attribute names are left
+                 unquoted here deliberately — see the note on the transcribe
+                 progress surface for why. -->
+            <div id="transcribe-transcript"></div>
+            <div class="transcribe-actions">
+              <button type="button" id="transcribe-copy">
+                <span aria-hidden="true" data-icon="clipboardCopy"></span> Copy
+                transcript
+              </button>
+              <button type="button" id="transcribe-download-txt">
+                <span aria-hidden="true" data-icon="fileText"></span> Download
+                as text
+              </button>
+              <button type="button" id="transcribe-download-srt">
+                <span aria-hidden="true" data-icon="fileDownload"></span>
+                Download as subtitles
+              </button>
+            </div>
+            <p id="transcribe-note">
+              Speaker labels are estimates. Similar voices can be merged into
+              one speaker.
+            </p>
+          </section>
+        </article>
+
         <!-- Local Chat Tool (Phase 11a) -->
         <article id="local-chat-app" style="display: none" aria-hidden="true">
           <h1>Local Chat</h1>
@@ -19194,6 +20397,25 @@ Science,91</pre
       data-src="js/testing/image-describer-camera-tests.js"
     ></script>
 
+    <!-- These two were STATIC IMPORTS in js/main.js until 1 September 2026, so
+         they ran on every production page load while the other 32 files in
+         js/testing/ did not — a <script>-tag gate cannot reach an import inside
+         a module the page already loads. pdf-testing-suite also instantiates
+         itself at module top level and its constructor wrapped window.onerror
+         and console.warn, putting production error reporting through a test
+         suite. Both are ES modules, hence data-module. See AGENTS.md
+         § Console Testing. -->
+    <script
+      type="application/dev-test"
+      data-module="true"
+      data-src="js/testing/pdf-testing-suite.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-module="true"
+      data-src="js/testing/stage7-error-handling-tests.js"
+    ></script>
+
     <!-- Phase 6.2: Convert UI Controller -->
     <script
       type="module"
@@ -19427,6 +20649,92 @@ Science,91</pre
     <script src="openrouter-embed/provider-switcher.js"></script>
     <script src="openrouter-embed/provider-mismatch-notice.js"></script>
     <script src="openrouter-embed/provider-switcher-ui.js"></script>
+
+    <!-- Audio transcription client for the Worker's Speech route.
+
+         A PLAIN script, not type="module" and not a dev-test tag: it publishes
+         window.OpenRouterEmbedTranscribe for callers to reach.
+
+         It loads BEFORE auth/entra-auth.js, which is tagged `defer` at the end
+         of this file, and that ordering cannot be fixed by moving this tag —
+         a plain script always runs during parsing and a deferred one only
+         after. The module is built for it: the Entra token is read inside
+         transcribe(), never at load, so window.EntraAuth being undefined right
+         now is expected and harmless. Do NOT "fix" this by hoisting a token
+         into module scope; that captures undefined for the life of the page. -->
+    <script src="openrouter-embed/openrouter-embed-transcribe.js"></script>
+
+    <!-- The Transcribe tool's controller (item 35 unit 7). MUST load after the
+         module above, which it resolves at call time but verifies at init.
+
+         Also after js/universal-notifications.js (near the top of this file),
+         which is what publishes window.notifySuccess and its siblings — the
+         only voices this tool has. It never calls announce(): every notify*()
+         already announces through the shared announcer, so a second call would
+         speak each event twice. -->
+    <script src="openrouter-embed/openrouter-embed-transcribe-ui.js"></script>
+
+    <!-- Captions Fixer, Stage 1: the cue list. Parses .srt/.vtt into cues and
+         a file meta object, serialises them back byte-identically, adapts a
+         Transcribe result into the same cue list, and applies an accepted
+         change set. Pure functions, no DOM, no voice.
+
+         A PLAIN script publishing window.CaptionsFixerCues. It loads AFTER the
+         Transcribe module above because its adapter resolves
+         OpenRouterEmbedTranscribe.speakerLabelFor at call time — the ONE
+         speaker-label rule, shared rather than copied — and it verifies that
+         global when called, never at load. -->
+    <script src="captions-fixer/captions-fixer-cues.js"></script>
+
+    <!-- Captions Fixer, Stage 2: the chunker. Cuts a cue list into model-sized
+         chunks at sentence ends with a little context either side, so the
+         cue-level pass and the slide sync consume one shape. Pure, no DOM, no
+         voice, no timestamps in its output; publishes window.CaptionsFixerChunker
+         and depends on nothing but the cue-list shape above. -->
+    <script src="captions-fixer/captions-fixer-chunker.js"></script>
+
+    <!-- Captions Fixer, Stage 3: the guards. Pure functions that judge ONE
+         change-set entry at a time and hold back a proposal that changes a
+         speaker label, a number in either form, a symbol, or the length of a
+         cue beyond a bound. Every stage's output runs through runGuards();
+         nothing else decides what is held back. Pure, no DOM, no voice,
+         no cue list — a check that needs a neighbouring cue is a stage, not a
+         guard. Publishes window.CaptionsFixerGuards and depends on no other
+         module: the two values it shares with the cue module (the rejected
+         status, and the "Speaker N: " label form) are mirrored locally and the
+         suite proves they have not drifted. -->
+    <script src="captions-fixer/captions-fixer-guards.js"></script>
+
+    <!-- DEV-ONLY fixture loader for the Transcribe tool. Replays a real 657-row
+         captured transcript through the shipped render path at ZERO SPEND, so
+         work on register items 45 to 48 and the owed-listen row 40 sitting need
+         not pay for a transcription each time.
+
+         type="application/dev-test" means the browser never fetches or runs it
+         on a normal load — it is an inert data block until ?dev=1 recreates it.
+         That gating is also what keeps it out of production: the publish
+         manifest DERIVES its harness exclusions from these data-src attributes,
+         so this file excludes itself by construction rather than by a hand-kept
+         list.
+
+         It STUBS ONLY transcribe(), and only for the duration of one call,
+         restoring the real function in a finally. The renderer, the resolver
+         and both formatters all run for real. Its header comment carries the
+         four ways the fixture is reconstructed rather than measured; read them
+         before asserting anything against it. -->
+    <script
+      type="application/dev-test"
+      data-src="js/testing/transcribe-fixture-loader.js"
+    ></script>
+
+    <!-- DEV-ONLY Captions Fixer Stage 1 suite: await testCaptionsFixer() on
+         ?dev=1. Builds its synthetic SRT in memory through the real toSrt()
+         from captions-fixer/testing/fixtures/capture-2026-09-04.result.json;
+         zero spend, no storage touched. Inert data block on a normal load. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests.js"
+    ></script>
 
     <!-- Browser-autofill defence: must load before any mode controller so
          its DOMContentLoaded listener registers first and applies the
@@ -19956,8 +21264,7 @@ Science,91</pre
           localStorage.setItem("theme", "Dark");
           let themePref = localStorage.getItem("theme");
           window.AppLogging.logInfo("Site theme preference set to ", themePref);
-          document.getElementById("lightDark").innerHTML =
-            "Dark theme enabled";
+          document.getElementById("lightDark").innerHTML = "Dark theme enabled";
 
           window.AppLogging.logDebug(
             "[Theme Toggle Debug] Switched to Dark mode, updating Mermaid diagrams",
@@ -21709,11 +23016,42 @@ Science,91</pre
           announceText: "Switched to Ally Accessibility Reporting tool",
           courseDataLoaded: false,
           init: async function () {
-            // Lazy load course data if not already loaded (check flag to prevent double-loading)
-            if (!this.courseDataLoaded && typeof ALLY_COURSES === "undefined") {
+            // Course data is resolved PER TENANT (multi-tenancy Stage 4): a
+            // payload uploaded and stored in IndexedDB for the current Client
+            // ID and region wins, the bundled Southampton file is the default,
+            // and a tenant configured for upload with nothing stored gets
+            // nothing rather than another institution's courses. The resolver
+            // runs on EVERY switch into this mode so a tenant change made in
+            // Set Up is picked up; it short-circuits when nothing changed. It
+            // stays LAZY: no payload is read or fetched on a plain load.
+            if (typeof ALLY_TENANT_DATA !== "undefined") {
+              try {
+                const outcome = await ALLY_TENANT_DATA.resolveCourseData();
+                this.courseDataLoaded = outcome.source !== "none";
+                console.log(
+                  "[AllyReporting] Course data source: " +
+                    outcome.source +
+                    (outcome.reason ? " (" + outcome.reason + ")" : ""),
+                );
+              } catch (error) {
+                console.warn(
+                  "[AllyReporting] Course data resolution failed:",
+                  error.message,
+                );
+                this.courseDataLoaded = false;
+              }
+            } else if (
+              !this.courseDataLoaded &&
+              typeof ALLY_COURSES === "undefined"
+            ) {
+              // Fallback for a page without the resolver script: the bundled
+              // file, exactly as before Stage 4.
               this.courseDataLoaded = true; // Set flag immediately to prevent race conditions
-              const courseDataUrl =
-                "https://blackboard.soton.ac.uk/bbcswebdav/xid-37749029_1";
+              // Served from the repo since the file was cut from 32.3 MB to
+              // 4.7 MB. It stays LAZY on purpose - a plain <script> tag would
+              // put it on every tools.html load for a mode most visits never
+              // open. Rebuild it with: node .claude/ally-course-data/build.mjs
+              const courseDataUrl = "ally-scripts/core/ally-courses-data.js";
 
               try {
                 await new Promise((resolve, reject) => {
@@ -21750,7 +23088,17 @@ Science,91</pre
             }
             return true;
           },
-          cleanup: null,
+          // Multi-tenancy Stage 5: an API course search left polling when
+          // the tool is switched away from is cancelled. Guarded rather than
+          // assumed, as the Transcribe cleanup above is.
+          cleanup: function () {
+            if (
+              typeof ALLY_COURSE_SEARCH_API !== "undefined" &&
+              typeof ALLY_COURSE_SEARCH_API.cancel === "function"
+            ) {
+              ALLY_COURSE_SEARCH_API.cancel();
+            }
+          },
         },
         //insert_new_tool_here
         "Image Describer": {
@@ -21823,6 +23171,47 @@ Science,91</pre
           },
           cleanup: null, // No cleanup needed yet
         },
+
+        Transcribe: {
+          articleId: "transcribe-app",
+          displayName: "Transcribe",
+          announceText: "Switched to Transcribe tool",
+          // Unit 7 replaced the markup-only placeholder that stood here. The
+          // controller's init RETURNS false ON A GENUINE FAILURE — a missing
+          // module, or any of the twelve elements it addresses — which is what
+          // the placeholder's comment demanded and what the Image Describer
+          // entry above still does not do (its catch logs and then returns true
+          // regardless, so its failure path can never be reached).
+          //
+          // The missing-controller branch below is the one case this file must
+          // answer itself: if the script did not load there is no init to call,
+          // and returning true would leave a tool whose every control is dead
+          // while telling the user it opened correctly.
+          init: function () {
+            if (
+              !window.OpenRouterEmbedTranscribeUI ||
+              typeof window.OpenRouterEmbedTranscribeUI.init !== "function"
+            ) {
+              console.error(
+                "[Transcribe] openrouter-embed-transcribe-ui.js did not load",
+              );
+              return false;
+            }
+            return window.OpenRouterEmbedTranscribeUI.init();
+          },
+          // Aborts an in-flight transcription when the tool is left. Guarded
+          // rather than assumed: runGlobalCleanup catches a throw, but a throw
+          // there is noise in the console for a case this can simply answer.
+          cleanup: function () {
+            if (
+              window.OpenRouterEmbedTranscribeUI &&
+              typeof window.OpenRouterEmbedTranscribeUI.cleanup === "function"
+            ) {
+              window.OpenRouterEmbedTranscribeUI.cleanup();
+            }
+          },
+        },
+
         "Local Chat": {
           articleId: "local-chat-app",
           displayName: "Local Chat",
@@ -22064,6 +23453,9 @@ Science,91</pre
       function showImageDescTool(isUserInitiated = true) {
         switchToTool("Image Describer", isUserInitiated);
       }
+      function showTranscribeTool(isUserInitiated = true) {
+        switchToTool("Transcribe", isUserInitiated);
+      }
 
       function showAllyReporting(isUserInitiated = true) {
         switchToTool("Ally Reporting", isUserInitiated);
@@ -22188,8 +23580,16 @@ Science,91</pre
           "Ally Reporting": "Ally Reporting",
           "Local Chat": "Local Chat",
           Chat: "Chat",
+          Transcribe: "Transcribe",
         };
 
+        // MEASURED 2 September 2026, and the omission was NOT cosmetic: with
+        // Transcribe checked at parse time and no entry here, the lookup fell
+        // through to the "OpenRouter" default and the page opened OpenRouter AI
+        // while the picker showed Transcribe selected. OpenRouter is
+        // hidden: true in js/tool-registry.js, so the fallback served a tool
+        // deliberately withdrawn from the picker. ensureVisibleSelection did
+        // not catch it. Any tool added to the picker needs a row above.
         const toolName = radioToTool[toolValue] || "OpenRouter";
         switchToTool(toolName, false); // false = not user-initiated
       }
@@ -23315,9 +24715,26 @@ Science,91</pre
          drive the "inclusive-design" card visibility. Separate from ally-cache
          (no LRU eviction) since authored answers are not regenerable. -->
     <script src="ally-scripts/core/ally-inclusion-answers.js"></script>
+    <!-- The behaviour half of the three generated data modules. MUST load
+         before any ally-*-data.js payload: those files are now pure data and
+         call ALLY_DATA_RUNTIME.installX() to publish their global. It
+         deliberately defines NO data global itself, so the lazy-load guards
+         below (and the two in ally-trends.js) still read "not loaded yet". -->
+    <script src="ally-scripts/core/ally-data-runtime.js"></script>
     <script src="ally-scripts/core/ally-lookup-data.js"></script>
     <!-- Course data loaded lazily when Ally Reporting selected -->
     <script src="ally-scripts/core/ally-api-client.js"></script>
+    <!-- Multi-tenancy Stage 4: the export parser, shared with
+         ally-scripts/core/convert-ally-csv.html, and the per-tenant course
+         data resolver. Both read their dependencies late. Nothing here runs
+         on a plain load: the resolver is called from the Ally Reporting mode
+         init below, in place of the bare bundled fetch that used to be there. -->
+    <script src="ally-scripts/core/ally-csv-parser.js"></script>
+    <script src="ally-scripts/core/ally-tenant-data.js"></script>
+    <!-- Multi-tenancy Stage 5: the ONE shared API fallback for course search,
+         used by all three *-search.js modules when no course data is
+         installed. After ally-api-client.js, before the search modules. -->
+    <script src="ally-scripts/core/ally-course-search-api.js"></script>
     <script src="ally-scripts/core/ally-ui-manager.js"></script>
     <script src="ally-scripts/ui/ally-cache-ui.js"></script>
     <script src="ally-scripts/core/ally-main-controller.js"></script>
@@ -23326,6 +24743,10 @@ Science,91</pre
     <script src="ally-scripts/ui/ally-result-renderer.js"></script>
     <script src="ally-scripts/ui/ally-chart-renderer.js"></script>
     <script src="ally-scripts/ui/ally-report-switcher.js"></script>
+    <!-- Trends view. Its DATA (ally-trends-data.js) is not loaded here: the
+         view fetches it on first selection, so a session that never opens
+         Trends never downloads it. -->
+    <script src="ally-scripts/ui/ally-trends.js"></script>
     <script src="ally-scripts/ui/ally-course-report-search.js"></script>
     <script src="ally-scripts/ui/ally-course-report-config.js"></script>
     <script src="ally-scripts/ui/ally-course-report.js"></script>
@@ -23346,6 +24767,18 @@ Science,91</pre
          Load after the preview controller (the wizard calls back into it). -->
     <script src="ally-scripts/ui/ally-inclusion-questions-content.js"></script>
     <script src="ally-scripts/ui/ally-inclusion-questions.js"></script>
+
+    <!-- Ally console test suites: testAllyAll, testAllyCache,
+         testAllyCacheTenantScoping, testAllyCourseSearch, testAllyCourseReport
+         and the rest. Gated behind ?dev=1 like every other harness, so a normal
+         load never fetches it. It had NEVER been declared here at all - not
+         gated, simply absent - so its 400-plus rows could only be run by
+         injecting the file by hand, which is how the tenant-scoping suite was
+         verified when the cache was scoped by tenant. An IIFE, not a module. -->
+    <script
+      type="application/dev-test"
+      data-src="ally-scripts/testing/ally-tests.js"
+    ></script>
 
     <!-- Dev-only workflow tracer (window.trace). Standalone console helper for
          recording a browser workflow into one ordered, reload-surviving

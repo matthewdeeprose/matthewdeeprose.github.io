@@ -5847,6 +5847,20 @@ del {
   background-color: #00131d;
 }
 
+/* Transcribe. openrouter-embed/transcribe.css declares no text colour by design;
+ * per-theme tints live here, mirroring light.css. Measured on the page
+ * 5 September 2026 (item 55, unit 4) against the composited panel
+ * rgb(41, 37, 38): speaker 8.97:1, timestamp 6.03:1. Not .transcriptSpeaker (:6199),
+ * which is an unrelated, unscoped site class. Under forced-colors both elements
+ * compute to CanvasText regardless of these values. */
+.transcribe-speaker {
+  color: #c1d100;
+}
+
+.transcribe-time {
+  color: #a3a3a3;
+}
+
 .results-content pre {
   background-color: #231f20;
 }
@@ -7316,4 +7330,37 @@ svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
 
 svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
   stroke-width: 3px;
+}
+
+/* quadrantChart quadrant boundaries — dark mode.
+
+   The reasoning is the light-mode block's, in light.css, and is not repeated
+   here beyond what differs. In short: the six <line> elements in `g.border` are
+   the only thing marking where one quadrant ends and the next begins, because
+   the four fills differ from each other and from the card by 1.00:1 to 1.66:1
+   in every theme; and the rule needs `!important` because Mermaid writes the
+   quadrant border as an INLINE STYLE rather than as a presentation attribute,
+   so the plain form is inert — established by disable-and-remeasure, not
+   inherited from the xychart block above it.
+
+   THE DARK-MODE CASE IS THE ONE THAT FORCED THIS WORK. `accessibleDark` is the
+   DEFAULT dark theme, and it renders the border `rgb(0, 0, 0)` on quadrant
+   fills of #2C3E50 to #3B4D5F — measured at 1.91:1 to 2.41:1 on 1 September
+   2026. Black on dark blue-grey: the quadrant divisions were effectively
+   invisible in the theme a dark-mode user is handed by default, and the two
+   built-in dark themes were clean, so nothing else in the record would have
+   pointed at it.
+
+   WHY ONE COLOUR SERVES ALL THREE DARK THEMES. Derived rule 12's way, by
+   maximising the WORST ratio across every surface the line touches — all four
+   quadrant fills and the card behind the plot area — in `dark`,
+   `accessibleDark` and `highContrastDark`. #E1E8EC, already this file's own
+   light ink, clears every one of those twelve surfaces at 7.03:1 to 16.96:1.
+   The worst of those, 7.03:1, is `accessibleDark`'s palest band and is still
+   more than twice the 3:1 the criterion asks.
+
+   The stroke WIDTH is deliberately untouched, as in light mode. */
+
+svg[aria-roledescription="quadrantChart"] g.border line {
+  stroke: #e1e8ec !important;
 }

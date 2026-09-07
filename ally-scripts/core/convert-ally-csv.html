@@ -1,0 +1,2713 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prepare your Ally export for the Accessibility Reporting tool</title>
+  <style>
+    /* ========================================================================
+       Base Styles
+       ======================================================================== */
+    :root {
+      --colour-primary: #1a5a96;
+      --colour-primary-dark: #0d3a5f;
+      --colour-success: #1e7e34;
+      --colour-warning: #ffc107;
+      --colour-error: #dc3545;
+      --colour-info: #17a2b8;
+      --colour-bg: #f8f9fa;
+      --colour-bg-alt: #ffffff;
+      --colour-text: #212529;
+      --colour-text-muted: #656d73;
+      --colour-border: #dee2e6;
+      --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      --border-radius: 0.375rem;
+      --shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+      --shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-family);
+      font-size: 1rem;
+      line-height: 1.5;
+      color: var(--colour-text);
+      background-color: var(--colour-bg);
+      margin: 0;
+      padding: 1.5rem;
+    }
+
+    /* ========================================================================
+       Layout
+       ======================================================================== */
+    .container {
+      max-width: 80rem;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid var(--colour-primary);
+    }
+
+    h1 {
+      color: var(--colour-primary-dark);
+      margin: 0 0 0.5rem 0;
+      font-size: 1.75rem;
+    }
+
+    .subtitle {
+      color: var(--colour-text-muted);
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+
+    @media (max-width: 64rem) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    section {
+      background: var(--colour-bg-alt);
+      border: 1px solid var(--colour-border);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      color: var(--colour-primary-dark);
+      margin: 0 0 1rem 0;
+      font-size: 1.25rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--colour-border);
+    }
+
+    h3 {
+      color: var(--colour-text);
+      margin: 1.5rem 0 0.75rem 0;
+      font-size: 1rem;
+    }
+
+    /* ========================================================================
+       Form Elements
+       ======================================================================== */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.375rem;
+      font-weight: 600;
+      color: var(--colour-text);
+    }
+
+    .label-hint {
+      font-weight: normal;
+      color: var(--colour-text-muted);
+      font-size: 0.875rem;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 0.9375rem;
+      border: 2px dashed var(--colour-border);
+      border-radius: var(--border-radius);
+      background: var(--colour-bg);
+      cursor: pointer;
+    }
+
+    input[type="file"]:hover {
+      border-color: var(--colour-primary);
+      background: #e3f2fd;
+    }
+
+    input[type="file"]:focus {
+      outline: 3px solid var(--colour-primary);
+      outline-offset: 2px;
+      border-color: var(--colour-primary);
+    }
+
+    /* ========================================================================
+       Buttons
+       ======================================================================== */
+    .button-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1.5rem;
+    }
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1.25rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: var(--border-radius);
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    button:focus {
+      outline: 3px solid var(--colour-primary);
+      outline-offset: 2px;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--colour-primary);
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--colour-primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--colour-text-muted);
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #5a6268;
+    }
+
+    .btn-success {
+      background: var(--colour-success);
+      color: white;
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #19692c;
+    }
+
+    /* ========================================================================
+       Status & Output
+       ======================================================================== */
+    .status-panel {
+      background: var(--colour-bg);
+      border: 1px solid var(--colour-border);
+      border-radius: var(--border-radius);
+      padding: 1rem;
+      margin-top: 1rem;
+      min-height: 6rem;
+    }
+
+    .status-message {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: var(--border-radius);
+      margin-bottom: 0.5rem;
+    }
+
+    .status-message:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-info {
+      background: #e3f2fd;
+      color: #0d47a1;
+    }
+
+    .status-success {
+      background: #e8f5e9;
+      color: #1b5e20;
+    }
+
+    .status-warning {
+      background: #fff8e1;
+      color: #8a5000;
+    }
+
+    .status-error {
+      background: #ffebee;
+      color: #b71c1c;
+    }
+
+    .output-area {
+      margin-top: 1.5rem;
+    }
+
+    .output-tabs {
+      display: flex;
+      gap: 0.25rem;
+      border-bottom: 2px solid var(--colour-border);
+      margin-bottom: 0;
+    }
+
+    .output-tab {
+      padding: 0.5rem 1rem;
+      background: var(--colour-bg);
+      border: 1px solid var(--colour-border);
+      border-bottom: none;
+      border-radius: var(--border-radius) var(--border-radius) 0 0;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .output-tab:hover {
+      background: #e9ecef;
+    }
+
+    .output-tab.active {
+      background: var(--colour-bg-alt);
+      border-bottom: 2px solid var(--colour-bg-alt);
+      margin-bottom: -2px;
+    }
+
+    .output-tab:focus {
+      outline: 3px solid var(--colour-primary);
+      outline-offset: -3px;
+    }
+
+    .output-content {
+      display: none;
+      border: 1px solid var(--colour-border);
+      border-top: none;
+    }
+
+    .output-content.active {
+      display: block;
+    }
+
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: var(--colour-bg);
+      border-bottom: 1px solid var(--colour-border);
+    }
+
+    .output-stats {
+      font-size: 0.875rem;
+      color: var(--colour-text-muted);
+    }
+
+    /* What each output is FOR, above the buttons rather than below them, so
+       the sentence about the script route's risk is read before the download
+       is reached. */
+    .output-purpose {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      font-size: 0.9375rem;
+      background: var(--colour-bg-alt);
+      border-bottom: 1px solid var(--colour-border);
+    }
+
+    textarea.code-output {
+      width: 100%;
+      height: 20rem;
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.4;
+      padding: 1rem;
+      border: none;
+      resize: vertical;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+
+    textarea.code-output:focus {
+      outline: 3px solid var(--colour-primary);
+      outline-offset: -3px;
+    }
+
+    /* ========================================================================
+       File Info Cards
+       ======================================================================== */
+    .file-info {
+      display: none;
+      background: var(--colour-bg);
+      border: 1px solid var(--colour-border);
+      border-radius: var(--border-radius);
+      padding: 0.75rem 1rem;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .file-info.visible {
+      display: block;
+    }
+
+    .file-info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+
+    .file-info-label {
+      color: var(--colour-text-muted);
+    }
+
+    .file-info-value {
+      font-weight: 500;
+    }
+
+    /* ========================================================================
+       Instructions
+       ======================================================================== */
+    .instructions {
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      border-radius: var(--border-radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .instructions h3 {
+      margin: 1.25rem 0 0.5rem 0;
+      color: var(--colour-primary-dark);
+    }
+
+    .instructions h3:first-child {
+      margin-top: 0;
+    }
+
+    .instructions p {
+      margin: 0 0 0.5rem 0;
+    }
+
+    .instructions p:last-child {
+      margin-bottom: 0;
+    }
+
+    .instructions ol {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .instructions li {
+      margin-bottom: 0.375rem;
+    }
+
+    /* ========================================================================
+       Checkbox rows
+       ======================================================================== */
+    .checkbox-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 1.125rem;
+      height: 1.125rem;
+      margin: 0.1875rem 0 0 0;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .checkbox-row input[type="checkbox"]:focus {
+      outline: 3px solid var(--colour-primary);
+      outline-offset: 2px;
+    }
+
+    .checkbox-row label {
+      margin-bottom: 0;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .checkbox-hint {
+      display: block;
+      font-weight: normal;
+      font-size: 0.875rem;
+      color: var(--colour-text-muted);
+    }
+
+    /* ========================================================================
+       Progress
+       ======================================================================== */
+    .progress-row {
+      margin-top: 1rem;
+    }
+
+    .progress-row[hidden] {
+      display: none;
+    }
+
+    .progress-row progress {
+      width: 100%;
+      height: 1rem;
+    }
+
+    .progress-text {
+      margin: 0.375rem 0 0 0;
+      font-size: 0.875rem;
+      color: var(--colour-text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ========================================================================
+       Accessibility
+       ======================================================================== */
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    [aria-live] {
+      position: relative;
+    }
+
+    /* Skip link */
+    .skip-link {
+      position: absolute;
+      top: -100%;
+      left: 0;
+      background: var(--colour-primary);
+      color: white;
+      padding: 0.5rem 1rem;
+      z-index: 100;
+      text-decoration: none;
+    }
+
+    .skip-link:focus {
+      top: 0;
+    }
+  </style>
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Skip to main content</a>
+
+  <div class="container">
+    <header>
+      <h1>Prepare your Ally export for the Accessibility Reporting tool</h1>
+      <p class="subtitle">This page turns your institution's Ally export into one data file you can host, so your colleagues' copies of the Accessibility Reporting tool show your courses instead of ours. Your files are read in this browser and nothing is uploaded anywhere.</p>
+    </header>
+
+    <main id="main-content">
+      <!-- Input Section -->
+      <section aria-labelledby="input-heading">
+        <h2 id="input-heading">Your Ally export</h2>
+
+        <div class="instructions">
+          <h3>Before you start</h3>
+          <p>
+            Your files come from Ally's Institutional Report: open Export and
+            download the report. Ally gives you one ZIP archive holding seven
+            CSV files. Upload that archive below and this page takes the six
+            files it reads straight out of it —
+            <code>courses.csv</code>, <code>terms.csv</code> and
+            <code>departments_years.csv</code>, which it needs, and
+            <code>years.csv</code>, <code>months.csv</code> and
+            <code>departments_terms.csv</code>, which add accessibility history
+            to the Trends view. The seventh, <code>departments_months.csv</code>,
+            is not used. Every file must come from the same export: if
+            they do not, this page stops rather than produce data that shows
+            raw ids where names belong.
+          </p>
+          <p>
+            Opening a ZIP needs an internet connection, because this page
+            fetches a ZIP reader the first time you use one. Choosing the six
+            CSV files yourself needs no connection at all, and stays available
+            whether or not the archive route works.
+          </p>
+
+          <h3>What to do</h3>
+          <ol>
+            <li>Upload the ZIP archive Ally produced. This page fills the six file boxes below from it and says which file went where, so you can change one if you need to. You can choose the six files yourself instead.</li>
+            <li>Select Generate. This page checks everything it builds before it offers you anything to download.</li>
+            <li>Download <code>ally-course-payload.json</code>.</li>
+            <li>Host that file at an https address your colleagues' browsers can read — a GitHub repository or GitHub Pages site works with no configuration — then enter that address in Set Up, under "Fetch course data from a URL".</li>
+          </ol>
+          <p>
+            If the data is only for you, you do not need this page at all:
+            upload the same CSV files in Set Up instead, under "Upload course
+            data from your Ally export".
+          </p>
+        </div>
+
+        <!-- The archive route. It fills the six pickers below rather than
+             running a generate path of its own, so everything downstream -
+             the refusals, the checks, the single enable point - is inherited
+             whole and the person can still see and change what landed where. -->
+        <div class="form-group">
+          <label for="zip-file">
+            Your Ally export archive
+            <span class="label-hint">(the .zip Ally produced - this fills the six boxes below)</span>
+          </label>
+          <input type="file" id="zip-file" accept=".zip,application/zip" aria-describedby="zip-hint">
+          <div id="zip-hint" class="visually-hidden">Choose the ZIP archive from your Ally Institutional Report export, exactly as Ally produced it. This page reads six of its seven CSV files and fills the file boxes below, which you can then change one at a time. Opening a ZIP needs an internet connection; choosing the CSV files yourself does not.</div>
+          <div id="zip-info" class="file-info" aria-live="polite"></div>
+        </div>
+
+        <h3>Or choose the six files yourself</h3>
+
+        <div class="form-group">
+          <label for="terms-file">
+            Terms
+            <span class="label-hint">(terms.csv - required; term ids and their names)</span>
+          </label>
+          <input type="file" id="terms-file" accept=".csv" aria-describedby="terms-hint">
+          <div id="terms-hint" class="visually-hidden">Choose terms.csv from your Ally export. It is required, and must come from the same export as the other files.</div>
+          <div id="terms-info" class="file-info" aria-live="polite"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="depts-file">
+            Departments
+            <span class="label-hint">(departments_years.csv - required; department ids and their names)</span>
+          </label>
+          <input type="file" id="depts-file" accept=".csv" aria-describedby="depts-hint">
+          <div id="depts-hint" class="visually-hidden">Choose departments_years.csv from your Ally export - not departments_terms.csv, which is one of the optional accessibility history files. It is required.</div>
+          <div id="depts-info" class="file-info" aria-live="polite"></div>
+        </div>
+
+        <div class="form-group">
+          <label for="courses-file">
+            Courses
+            <span class="label-hint">(courses.csv - required; the courses people search for)</span>
+          </label>
+          <input type="file" id="courses-file" accept=".csv" aria-describedby="courses-hint">
+          <div id="courses-hint" class="visually-hidden">Choose courses.csv from your Ally export. It is required: without it there are no courses to search.</div>
+          <div id="courses-info" class="file-info" aria-live="polite"></div>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="exclude-archived" checked>
+            <label for="exclude-archived">
+              Leave out archived courses
+              <span class="checkbox-hint">
+                Courses whose name contains &ldquo;[archived]&rdquo; are left out. They are
+                about 63% of a typical export and cannot be remediated, so leaving
+                them out makes the generated file roughly three times smaller. Untick to
+                keep every course searchable.
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Multi-tenancy Stage 7: the aggregate files behind the Trends view.
+             terms.csv and departments_years.csv above already carry the same
+             metrics; these three complete the set. All-or-nothing: with any
+             one missing, no trends are generated and the status says which. -->
+        <fieldset class="form-group" aria-describedby="trends-hint">
+          <legend>Accessibility history (optional)</legend>
+          <p id="trends-hint" class="label-hint">
+            years.csv, months.csv and departments_terms.csv, together with the
+            terms and departments files above, generate ally-trends-data.js and
+            add accessibility history to the payload, so the Trends view can show
+            an institution its own scores over time. All three are needed: with
+            any one missing, no history is generated and the status says which.
+          </p>
+
+          <div class="form-group">
+            <label for="years-file">
+              Years CSV
+              <span class="label-hint">(years.csv - scores by academic year)</span>
+            </label>
+            <input type="file" id="years-file" accept=".csv" aria-describedby="years-hint">
+            <div id="years-hint" class="visually-hidden">Select the years.csv file. Optional; needed with months.csv and departments_terms.csv for accessibility history.</div>
+            <div id="years-info" class="file-info" aria-live="polite"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="months-file">
+              Months CSV
+              <span class="label-hint">(months.csv - scores by month)</span>
+            </label>
+            <input type="file" id="months-file" accept=".csv" aria-describedby="months-hint">
+            <div id="months-hint" class="visually-hidden">Select the months.csv file. Optional; needed with years.csv and departments_terms.csv for accessibility history.</div>
+            <div id="months-info" class="file-info" aria-live="polite"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="dept-terms-file">
+              Departments by term CSV
+              <span class="label-hint">(departments_terms.csv - scores by department and term)</span>
+            </label>
+            <input type="file" id="dept-terms-file" accept=".csv" aria-describedby="dept-terms-hint">
+            <div id="dept-terms-hint" class="visually-hidden">Select the departments_terms.csv file. Optional; needed with years.csv and months.csv for accessibility history.</div>
+            <div id="dept-terms-info" class="file-info" aria-live="polite"></div>
+          </div>
+        </fieldset>
+
+        <div class="button-group">
+          <button type="button" id="generate-btn" class="btn-primary" onclick="generateJavaScript()">
+            <span aria-hidden="true">⚙️</span> Generate JavaScript
+          </button>
+          <button type="button" id="clear-btn" class="btn-secondary" onclick="clearAll()">
+            <span aria-hidden="true">🗑️</span> Clear All
+          </button>
+        </div>
+
+        <!-- Progress lives OUTSIDE the polite status panel on purpose: a
+             per-chunk readout inside a live region would announce hundreds of
+             times during one conversion. Milestones go to the panel instead. -->
+        <div class="progress-row" id="progress-row" hidden>
+          <label for="convert-progress">Conversion progress</label>
+          <progress id="convert-progress" max="100" value="0"></progress>
+          <p id="convert-progress-text" class="progress-text" aria-live="off"></p>
+        </div>
+
+        <div class="status-panel" id="status-panel" aria-live="polite" aria-atomic="false">
+          <div class="status-message status-info">
+            <span aria-hidden="true">ℹ️</span>
+            <span>Upload your Ally export archive, or choose the CSV files, to begin.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Output Section -->
+      <section aria-labelledby="output-heading">
+        <h2 id="output-heading">Your files</h2>
+
+        <p class="subtitle">
+          Nothing here can be downloaded until this page has loaded everything
+          it built and checked it works. The first file is the one to host; the
+          rest are for the script route described under each of them.
+        </p>
+
+        <div class="output-area">
+          <!-- The payload is the FIRST tab and the default because it is the
+               route the guide sends people down: one data-only file, hosted at
+               a URL, that runs no code on the page fetching it. The two
+               JavaScript modules stay first-class tabs rather than moving
+               behind a <details>, which would read notRendered in the
+               accessibility tree. -->
+          <div class="output-tabs" role="tablist" aria-label="Output files">
+            <button role="tab" id="tab-payload" class="output-tab active"
+                    aria-selected="true" aria-controls="panel-payload"
+                    onclick="switchTab('payload')">
+              ally-course-payload.json
+            </button>
+            <button role="tab" id="tab-lookup" class="output-tab"
+                    aria-selected="false" aria-controls="panel-lookup"
+                    onclick="switchTab('lookup')">
+              ally-lookup-data.js
+            </button>
+            <button role="tab" id="tab-courses" class="output-tab"
+                    aria-selected="false" aria-controls="panel-courses"
+                    onclick="switchTab('courses')">
+              ally-courses-data.js
+            </button>
+            <button role="tab" id="tab-trends" class="output-tab"
+                    aria-selected="false" aria-controls="panel-trends"
+                    onclick="switchTab('trends')">
+              ally-trends-data.js
+            </button>
+          </div>
+
+          <!-- Multi-tenancy Stage 6: the course payload as ONE JSON file, for
+               hosting at a URL that colleagues' copies of the tool fetch from
+               (Set Up, "Fetch course data from URL"). Its courses and lookup
+               are the same objects the two modules below hand the runtime,
+               so a fetched install and a script install build the same maps.
+               JSON is the data-only route: unlike the two modules it runs no
+               code on the page that fetches it. -->
+          <div role="tabpanel" id="panel-payload" class="output-content active"
+               aria-labelledby="tab-payload">
+            <p class="output-purpose">
+              This is the file to download and host. Put it at an https address
+              your colleagues' browsers can read, then enter that address in
+              Set Up under "Fetch course data from a URL". It is data only, so
+              it runs no code on the pages that fetch it.
+            </p>
+            <div class="output-header">
+              <span id="payload-stats" class="output-stats">No data generated yet</span>
+              <div class="button-group" style="margin: 0;">
+                <button type="button" class="btn-primary" onclick="downloadFile('payload')" id="download-payload-btn" disabled>
+                  <span aria-hidden="true">💾</span> Download
+                </button>
+              </div>
+            </div>
+            <label for="payload-output" class="visually-hidden">Generated ally-course-payload.json content</label>
+            <textarea id="payload-output" class="code-output" readonly
+                      placeholder="Generated ally-course-payload.json will appear here. Host this file at an https address and enter that address in Set Up to share course data without each colleague uploading an export."></textarea>
+          </div>
+
+          <div role="tabpanel" id="panel-lookup" class="output-content"
+               aria-labelledby="tab-lookup" hidden>
+            <p class="output-purpose">
+              Term and department names, for the script route only. That route
+              loads JavaScript from your folder, which runs whoever controls
+              that folder's code inside the tool, beside every key the tool has
+              stored for you. Use it only for a folder your own institution
+              controls, and prefer the JSON file above. Each of these modules
+              needs <code>ally-scripts/core/ally-data-runtime.js</code> loaded
+              before it.
+            </p>
+            <div class="output-header">
+              <span id="lookup-stats" class="output-stats">No data generated yet</span>
+              <div class="button-group" style="margin: 0;">
+                <button type="button" class="btn-primary" onclick="downloadFile('lookup')" id="download-lookup-btn" disabled>
+                  <span aria-hidden="true">💾</span> Download
+                </button>
+              </div>
+            </div>
+            <label for="lookup-output" class="visually-hidden">Generated ally-lookup-data.js code</label>
+            <textarea id="lookup-output" class="code-output" readonly
+                      placeholder="Generated ally-lookup-data.js will appear here..."></textarea>
+
+            <!-- Deliberately here rather than beside the payload's own
+                 Download button. The payload alone is what the guide's
+                 primary route needs, and a prominent "download everything"
+                 on the first tab nudges people toward the script route, which
+                 carries the warning above. This is the tab where that route
+                 is already explained. -->
+            <p class="output-purpose" id="download-all-hint">
+              One archive holding all four files - ally-course-payload.json,
+              ally-lookup-data.js, ally-courses-data.js and
+              ally-trends-data.js - so the script route does not need four
+              separate downloads. Building it needs an internet connection,
+              for the same ZIP reader the archive upload uses. Files this run
+              did not generate are left out.
+            </p>
+            <div class="button-group" style="margin: 0.75rem 1rem 1rem 1rem;">
+              <button type="button" class="btn-secondary" onclick="downloadAllFiles()"
+                      id="download-all-btn" aria-describedby="download-all-hint" disabled>
+                <span aria-hidden="true">📦</span> Download all four files (.zip)
+              </button>
+            </div>
+          </div>
+
+          <div role="tabpanel" id="panel-courses" class="output-content"
+               aria-labelledby="tab-courses" hidden>
+            <p class="output-purpose">
+              The courses themselves, for the script route only, and large. The
+              same warning applies: it runs the host folder's code inside the
+              tool, so prefer the JSON file above unless you control the folder.
+            </p>
+            <div class="output-header">
+              <span id="courses-stats" class="output-stats">No data generated yet</span>
+              <div class="button-group" style="margin: 0;">
+                <button type="button" class="btn-primary" onclick="downloadFile('courses')" id="download-courses-btn" disabled>
+                  <span aria-hidden="true">💾</span> Download
+                </button>
+              </div>
+            </div>
+            <label for="courses-output" class="visually-hidden">Generated ally-courses-data.js code</label>
+            <textarea id="courses-output" class="code-output" readonly
+                      placeholder="Generated ally-courses-data.js will appear here..."></textarea>
+          </div>
+
+          <!-- Multi-tenancy Stage 7: the fourth output. Emitted from the same
+               two templates the Node builder uses (trends-head.txt and
+               trends-tail.txt are re-extracted FROM this file), so the two
+               produce byte-identical modules from one export. -->
+          <div role="tabpanel" id="panel-trends" class="output-content"
+               aria-labelledby="tab-trends" hidden>
+            <p class="output-purpose">
+              Accessibility history for the Trends view, for the script route
+              only, and generated only when you also chose years.csv, months.csv
+              and departments_terms.csv. The JSON file above already carries the
+              same history, so most people never need this one.
+            </p>
+            <div class="output-header">
+              <span id="trends-stats" class="output-stats">No data generated yet</span>
+              <div class="button-group" style="margin: 0;">
+                <button type="button" class="btn-primary" onclick="downloadFile('trends')" id="download-trends-btn" disabled>
+                  <span aria-hidden="true">💾</span> Download
+                </button>
+              </div>
+            </div>
+            <label for="trends-output" class="visually-hidden">Generated ally-trends-data.js code</label>
+            <textarea id="trends-output" class="code-output" readonly
+                      placeholder="Generated ally-trends-data.js will appear here (requires years.csv, months.csv and departments_terms.csv as well as the terms and departments files)."></textarea>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- The runtime, shared with the application. This page loads it so it can
+       RUN what it just generated - each emitted module is evaluated on top of
+       this runtime and self-tested before any download is offered, which is
+       the browser analogue of the Node builder's VM. It defines no data global
+       on load, so loading it here costs nothing but the parse. -->
+  <script src="ally-data-runtime.js"></script>
+
+  <!-- The parser, shared with the application (multi-tenancy Stage 4).
+       Same directory, so this page keeps working when opened from disk. -->
+  <script src="ally-csv-parser.js"></script>
+  <script>
+    /**
+     * Ally export converter - the interactive route to the four data files
+     * Converts Ally export CSV files into JavaScript data PAYLOADS and one
+     * JSON payload
+     *
+     * WHAT THIS EMITS IS DATA, NOT A SELF-CONTAINED MODULE. Each output file
+     * calls ALLY_DATA_RUNTIME.installX() and carries no behaviour of its own;
+     * the methods live in ally-scripts/core/ally-data-runtime.js, which is
+     * shipped once and never regenerated. A payload dropped onto a page that
+     * does not load the runtime first refuses loudly and installs nothing.
+     *
+     * THIS PAGE IS THE INTERACTIVE ROUTE, NOT THE CANONICAL ONE.
+     * The normal way to rebuild the data files is:
+     *
+     *   node .claude/ally-course-data/build.mjs <export-folder>
+     *
+     * That builder emits the SAME module, from templates extracted from this
+     * file, and adds gates this page has no way to run - term consistency
+     * between the two outputs above all. If you change the emitted module
+     * here, re-extract the templates, or the two will drift; the drift check
+     * is a byte diff of the two outputs on the same input.
+     *
+     * THE PARSER IS NOT IN THIS FILE. Since multi-tenancy Stage 4 it lives in
+     * ally-csv-parser.js, beside this page, so the application can read an
+     * export with the same code. This page keeps the code generation and
+     * the UI only.
+     *
+     * THE THIRD OUTPUT IS JSON, NOT A MODULE. Since Stage 6 this page also
+     * emits ally-course-payload.json - the same courses and lookup objects
+     * as the two modules, built by the parser's one payload builder, for
+     * hosting at a URL that Set Up's "Fetch course data from URL" reads.
+     * build.mjs does not emit it; parity is proved at the rehydrated-map
+     * level by the Stage 6 suite, not by a second emitter.
+     *
+     * THE FOURTH OUTPUT IS ally-trends-data.js (Stage 7), from the five
+     * aggregate CSVs - years, terms, months, departments_years and
+     * departments_terms. The aggregate pipeline lives in the parser
+     * (buildTrends, a port of the builder's); this page carries the two
+     * trends templates, which are re-extracted from it like the other
+     * three, and the same data goes into the JSON payload's `trends`.
+     * All-or-nothing on the three files the lookup does not already need.
+     *
+     * ONE TIMESTAMP PER RUN. The builder stamps its three outputs with one
+     * timestamp; this page does the same for its four, so the trends
+     * module's generatedOn and the payload's trends.generatedOn agree.
+     */
+    (function() {
+      'use strict';
+
+      if (typeof ALLY_CSV_PARSER === 'undefined') {
+        const panel = document.getElementById('status-panel');
+        if (panel) {
+          panel.textContent = 'ally-csv-parser.js did not load. It must sit in the same ' +
+            'folder as this page.';
+        }
+        throw new Error('ALLY_CSV_PARSER is not loaded');
+      }
+
+      // The builder refuses when the runtime is missing, because without it
+      // nothing it generates can be run. Same here, and for the same reason:
+      // this page verifies its own output by evaluating it on top of the
+      // runtime, so a missing runtime means an unverifiable download.
+      if (typeof ALLY_DATA_RUNTIME === 'undefined') {
+        const panel = document.getElementById('status-panel');
+        if (panel) {
+          panel.textContent = 'ally-data-runtime.js did not load. It must sit in the same ' +
+            'folder as this page. Without it, nothing generated here can be checked, ' +
+            'so nothing is offered for download.';
+        }
+        throw new Error('ALLY_DATA_RUNTIME is not loaded');
+      }
+
+      // The parsing and processing functions, lifted verbatim at Stage 4.
+      const parseCSV = ALLY_CSV_PARSER.parseCSV;
+      const readFileAsText = ALLY_CSV_PARSER.readFileAsText;
+      const streamCourses = ALLY_CSV_PARSER.streamCourses;
+      const processTerms = ALLY_CSV_PARSER.processTerms;
+      const processDepartments = ALLY_CSV_PARSER.processDepartments;
+      const findMissingTerms = ALLY_CSV_PARSER.findMissingTerms;
+      const ARCHIVED_NAME_PATTERN = ALLY_CSV_PARSER.ARCHIVED_NAME_PATTERN;
+
+      // ========================================================================
+      // State
+      // ========================================================================
+
+      const state = {
+        termsData: null,
+        deptsData: null,
+        // The raw text of terms.csv and departments_years.csv, kept because
+        // the trends need them a second time as aggregate files.
+        termsText: null,
+        deptsText: null,
+        generatedLookup: null,
+        generatedLookupBlob: null,
+        generatedCoursesBlob: null,
+        generatedPayloadBlob: null,
+        generatedTrendsBlob: null,
+        // The trends module as text, kept only long enough for the checks to
+        // run it. The other three sources are either held whole already or
+        // rebuilt from their chunks at check time.
+        generatedTrendsSource: null,
+        // Set true only by a verification pass that found no failures, and
+        // cleared at the top of every run. downloadFile reads it as well as
+        // the button's own disabled state, so the gate holds on both the
+        // control a person presses and the function a script could call.
+        verified: false
+      };
+
+      /** Output type to download filename. The payload name is what Set Up's help text tells people to host. */
+      const OUTPUT_FILENAMES = Object.freeze({
+        lookup: 'ally-lookup-data.js',
+        courses: 'ally-courses-data.js',
+        payload: 'ally-course-payload.json',
+        trends: 'ally-trends-data.js'
+      });
+
+      /** The Blob holding a generated output, or null when not generated. */
+      function generatedBlob(type) {
+        if (type === 'lookup') return state.generatedLookupBlob;
+        if (type === 'courses') return state.generatedCoursesBlob;
+        if (type === 'payload') return state.generatedPayloadBlob;
+        if (type === 'trends') return state.generatedTrendsBlob;
+        return null;
+      }
+
+      /**
+       * The three aggregate files the lookup does not already need, keyed by
+       * the parser's slot names. Read from the parser so this page and the
+       * application cannot disagree about which files complete the set.
+       */
+      const TREND_ONLY_INPUTS = ALLY_CSV_PARSER.TREND_ONLY_INPUTS;
+
+      // ========================================================================
+      // Tuning
+      // ========================================================================
+
+      /** Object entries rendered into each output chunk string. */
+      const ENTRIES_PER_CHUNK = 2000;
+
+      /** Chunks built between yields, so output assembly never blocks for long. */
+      const YIELD_EVERY_CHUNKS = 10;
+
+      /** Characters of generated output shown in the preview textarea. */
+      const PREVIEW_LIMIT_CHARS = 200000;
+
+      /** Delay before releasing a download URL, so the browser can spool it. */
+      const REVOKE_DELAY_MS = 60000;
+
+      // ========================================================================
+      // The Ally export archive
+      // ========================================================================
+
+      /**
+       * The ZIP reader, fetched on first use.
+       *
+       * NOT VENDORED, DELIBERATELY. This is the copy tools.html already loads
+       * from the same address, so the ZIP route adds no tracked file here and
+       * no licence artefact - JSZip's dual MIT / GPLv3 banner is inside the
+       * minified file. The cost is that this route needs an internet
+       * connection, which the page copy states and Z2 below says out loud.
+       */
+      const JSZIP_URL = 'https://matthewdeeprose.github.io/scripts/jszip.min.js';
+
+      /**
+       * The six entries this page reads from an Ally export archive, each
+       * with the picker it fills and the card that reports it.
+       *
+       * The archive is FLAT - seven entries at the root under exactly these
+       * names - so an entry is matched on its whole path. A re-zipped folder
+       * therefore lands in Z3, which names what it did find, rather than
+       * being silently half-read.
+       */
+      const ZIP_ENTRIES = Object.freeze([
+        { name: 'terms.csv', input: 'termsFile', info: 'termsInfo' },
+        { name: 'departments_years.csv', input: 'deptsFile', info: 'deptsInfo' },
+        { name: 'courses.csv', input: 'coursesFile', info: 'coursesInfo' },
+        { name: 'years.csv', input: 'yearsFile', info: 'yearsInfo' },
+        { name: 'months.csv', input: 'monthsFile', info: 'monthsInfo' },
+        { name: 'departments_terms.csv', input: 'deptTermsFile', info: 'deptTermsInfo' }
+      ]);
+
+      /** The three entries an archive must carry, or there is nothing to build. */
+      const ZIP_REQUIRED_ENTRIES = Object.freeze([
+        'courses.csv', 'terms.csv', 'departments_years.csv'
+      ]);
+
+      /**
+       * The seventh entry, read by nothing here. 2.5 MB for a
+       * department-by-month grain the tool does not use. Named in the status
+       * on purpose: someone who watches seven files go in and six come out
+       * will otherwise assume it broke.
+       */
+      const ZIP_IGNORED_ENTRY = 'departments_months.csv';
+
+      /** Entry names listed back in a refusal before the list is truncated. */
+      const ZIP_LISTED_ENTRY_LIMIT = 12;
+
+      /** The archive the "Download all four files" button offers. */
+      const ALL_FILES_ARCHIVE_NAME = 'ally-course-data.zip';
+
+      /**
+       * Deflate level for that archive. The two JavaScript modules are
+       * repetitive text and compress by roughly an order of magnitude, which
+       * is most of the point of offering an archive at all; 6 is zlib's own
+       * default balance of ratio against time.
+       */
+      const ARCHIVE_COMPRESSION_LEVEL = 6;
+
+      // ========================================================================
+      // DOM References
+      // ========================================================================
+
+      const elements = {
+        zipFile: document.getElementById('zip-file'),
+        zipInfo: document.getElementById('zip-info'),
+        downloadAllBtn: document.getElementById('download-all-btn'),
+        termsFile: document.getElementById('terms-file'),
+        deptsFile: document.getElementById('depts-file'),
+        coursesFile: document.getElementById('courses-file'),
+        excludeArchived: document.getElementById('exclude-archived'),
+        termsInfo: document.getElementById('terms-info'),
+        deptsInfo: document.getElementById('depts-info'),
+        coursesInfo: document.getElementById('courses-info'),
+        statusPanel: document.getElementById('status-panel'),
+        progressRow: document.getElementById('progress-row'),
+        progressBar: document.getElementById('convert-progress'),
+        progressText: document.getElementById('convert-progress-text'),
+        generateBtn: document.getElementById('generate-btn'),
+        lookupOutput: document.getElementById('lookup-output'),
+        coursesOutput: document.getElementById('courses-output'),
+        lookupStats: document.getElementById('lookup-stats'),
+        coursesStats: document.getElementById('courses-stats'),
+        downloadLookupBtn: document.getElementById('download-lookup-btn'),
+        downloadCoursesBtn: document.getElementById('download-courses-btn'),
+        payloadOutput: document.getElementById('payload-output'),
+        payloadStats: document.getElementById('payload-stats'),
+        downloadPayloadBtn: document.getElementById('download-payload-btn'),
+        yearsFile: document.getElementById('years-file'),
+        monthsFile: document.getElementById('months-file'),
+        deptTermsFile: document.getElementById('dept-terms-file'),
+        yearsInfo: document.getElementById('years-info'),
+        monthsInfo: document.getElementById('months-info'),
+        deptTermsInfo: document.getElementById('dept-terms-info'),
+        trendsOutput: document.getElementById('trends-output'),
+        trendsStats: document.getElementById('trends-stats'),
+        downloadTrendsBtn: document.getElementById('download-trends-btn')
+      };
+
+      // ========================================================================
+      // Code Generation
+      // ========================================================================
+
+      /**
+       * Renders course rows as array-literal body chunks, one course per line,
+       * batching them so the returned array stays small.
+       *
+       * Two reasons for the array shape. No single string ever holds the whole
+       * literal - the original JSON.stringify(obj, null, 2).replace(/\n/g, …)
+       * built a ~32 MB string and then ran a global regex over it to produce a
+       * second one, with both live at once. And an array carries no field
+       * names, where an object repeated them 143,468 times for 6.57 MB.
+       *
+       * @param {Array<Array>} rows - Compact course rows
+       * @param {string} indent - Leading whitespace for each row line
+       * @param {Function} [onProgress] - Called with (done, total) per batch
+       * @returns {Promise<Array<string>>} Chunks to append in order
+       */
+      async function buildRowChunks(rows, indent, onProgress) {
+        const chunks = [];
+        let buffer = '';
+
+        for (let i = 0; i < rows.length; i++) {
+          buffer += (i === 0 ? '' : ',\n') + indent + JSON.stringify(rows[i]);
+
+          if ((i + 1) % ENTRIES_PER_CHUNK !== 0) continue;
+
+          chunks.push(buffer);
+          buffer = '';
+
+          // Hand the main thread back periodically. Built in one go this step
+          // measured 1,687ms as a single blocking task on a fast machine,
+          // which is uncomfortably close to the unresponsive threshold on a
+          // slow one.
+          if (chunks.length % YIELD_EVERY_CHUNKS !== 0) continue;
+
+          if (onProgress) onProgress(i + 1, rows.length);
+          await new Promise(function(resolve) { setTimeout(resolve, 0); });
+        }
+
+        if (buffer) chunks.push(buffer);
+
+        return chunks;
+      }
+
+      /**
+       * Returns the same object with its keys in sorted order.
+       *
+       * Output must be deterministic given the same DATA, not the same CSV ROW
+       * ORDER. Without this, switching departments source produced a 400-line
+       * diff that was almost entirely reordering, hiding the three entries that
+       * had genuinely been added. Key order has no effect on behaviour: both
+       * maps are read by key lookup, and the two "sorted" accessors sort at
+       * runtime anyway.
+       *
+       * Kept character-for-character in step with build.mjs's sortByKey, which
+       * is the canonical implementation. The tool sorts to match the builder,
+       * never the reverse. Since Stage 6 the function lives in the parser
+       * module and is bound here, so the two modules and the JSON payload
+       * cannot sort the lookup differently.
+       *
+       * @param {Object} obj - Source object
+       * @returns {Object} Same entries, keys ascending
+       */
+      const sortByKey = ALLY_CSV_PARSER.sortByKey;
+
+      /**
+       * Generates ally-lookup-data.js content
+       * @param {Object} terms - Processed terms data
+       * @param {Object} departments - Processed departments data
+       * @param {string} timestamp - ISO timestamp of this run
+       * @returns {string} Generated JavaScript code
+       */
+      function generateLookupCode(terms, departments, timestamp) {
+        const termCount = Object.keys(terms).length;
+        const deptCount = Object.keys(departments).length;
+
+        return `/**
+ * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Payload
+ * @module AllyLookup
+ * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
+ * @generated ${timestamp}
+ * @version 2.0.0
+ *
+ * @description
+ * Generated from CSV files - provides human-readable names for Ally internal IDs.
+ * Contains ${termCount} terms and ${deptCount} departments.
+ *
+ * THIS FILE IS DATA ONLY. Every method on ALLY_LOOKUP - including the course
+ * methods that delegate to ALLY_COURSES - lives in
+ * ally-scripts/core/ally-data-runtime.js, which is shipped once and never
+ * regenerated. This file hands the runtime a payload, and the runtime assigns
+ * the global. Do not add behaviour here; it would be lost on the next rebuild.
+ */
+
+(function () {
+  "use strict";
+
+  if (typeof ALLY_DATA_RUNTIME === "undefined") {
+    console.error(
+      "[AllyLookupData] ally-scripts/core/ally-data-runtime.js must load " +
+        "BEFORE this payload. Term and department lookups have NOT been " +
+        "installed, and every ID will render raw."
+    );
+    return;
+  }
+
+  /**
+   * Term ID to term data mapping
+   * @type {Object.<string, {name: string, type: string, sortOrder: number}>}
+   */
+  const terms = ${JSON.stringify(sortByKey(terms), null, 2).replace(/\n/g, '\n  ')};
+
+  /**
+   * Department ID to department data mapping
+   * @type {Object.<string, {name: string, shortCode: string|null, isSystemTag: boolean, parentId: string|null, parentName: string|null}>}
+   */
+  const departments = ${JSON.stringify(sortByKey(departments), null, 2).replace(/\n/g, '\n  ')};
+
+  ALLY_DATA_RUNTIME.installLookup({
+    terms: terms,
+    departments: departments
+  });
+})();
+`;
+      }
+
+      /**
+       * Generates ally-courses-data.js as an ordered array of chunks.
+       *
+       * Returns chunks rather than a string so the caller can hand them
+       * straight to Blob. A real Ally export produces roughly 27 MB of output,
+       * which is fine as a Blob and ruinous as a single JavaScript string
+       * assigned to a textarea.
+       *
+       * @param {Object} coursesData - Streamed courses data
+       * @param {string} timestamp - ISO timestamp of this run
+       * @param {Function} [onProgress] - Called with (done, total) per batch
+       * @returns {Promise<Array<string>>} Generated JavaScript, in order
+       */
+      async function generateCoursesChunks(coursesData, timestamp, onProgress) {
+        const rows = Object.keys(coursesData.byId).map(function(id) {
+          return coursesData.byId[id];
+        });
+        const courseCount = rows.length;
+        const archivedNote = coursesData.archivedSkipped
+          ? '\n * Archived courses excluded: ' + coursesData.archivedSkipped.toLocaleString() + '.'
+          : '\n * Archived courses are INCLUDED in this build.';
+        const chunks = [];
+
+        chunks.push(`/**
+ * @fileoverview Ally Accessibility Reporting Tool - Courses Data Payload
+ * @module AllyCourses
+ * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
+ * @generated ${timestamp}
+ * @version 2.0.0
+ *
+ * @description
+ * Generated from courses.csv - provides course lookups by ID and code.
+ * Contains ${courseCount.toLocaleString()} courses.${archivedNote}
+ *
+ * THIS FILE IS DATA ONLY. Every method the application calls on ALLY_COURSES
+ * lives in ally-scripts/core/ally-data-runtime.js, which is shipped once and
+ * never regenerated. This file hands the runtime a payload, and the runtime
+ * assigns the global. Do not add behaviour here - it would be lost on the next
+ * rebuild.
+ *
+ * It is loaded on-demand due to its size, and the runtime deliberately leaves
+ * ALLY_COURSES undefined until this payload installs it, so the lazy-load
+ * guard in tools.html keeps working with no edit.
+ *
+ * STORAGE SHAPE: courses are stored as compact arrays and the object map is
+ * rebuilt by the runtime at install. Storing them as objects repeated the field
+ * names once per course, which cost 6.57 MB on a real export, and the
+ * code-to-id index is a pure inversion of data already present here, so it is
+ * derived rather than shipped. The public API is unchanged.
+ */
+
+(function () {
+  "use strict";
+
+  if (typeof ALLY_DATA_RUNTIME === "undefined") {
+    console.error(
+      "[AllyCoursesData] ally-scripts/core/ally-data-runtime.js must load " +
+        "BEFORE this payload. Course data has NOT been installed, and course " +
+        "search will return nothing."
+    );
+    return;
+  }
+
+  /**
+   * Term IDs, referenced by index from each course row
+   * @type {Array<string>}
+   */
+  const termIds = ${JSON.stringify(coursesData.termIds)};
+
+  /**
+   * Course rows: [courseId, courseCode, courseName, termIndex, scorePerMille]
+   * @type {Array<Array>}
+   */
+  const rows = [
+`);
+
+        chunks.push.apply(chunks, await buildRowChunks(rows, '    ', onProgress));
+
+        chunks.push(`
+  ];
+
+  ALLY_DATA_RUNTIME.installCourses({
+    termIds: termIds,
+    rows: rows,
+
+    // Build provenance. The search UI reads excludesArchived so its empty
+    // result can say WHY nothing matched, and so that message cannot lie:
+    // build with archived courses kept and it reverts by itself.
+    excludesArchived: ${coursesData.archivedSkipped > 0},
+    archivedExcluded: ${coursesData.archivedSkipped}
+  });
+})();
+`);
+
+        return chunks;
+      }
+
+      /**
+       * Generates ally-trends-data.js content (multi-tenancy Stage 7).
+       *
+       * The two template literals below ARE .claude/ally-course-data/
+       * templates/trends-head.txt and trends-tail.txt: extract-templates.mjs
+       * slices them out of this file and byte-compares them, as it does the
+       * three above. Unlike those three, both trends templates KEEP their
+       * trailing newline, because build.mjs's buildTrendsModule joins head,
+       * blocks and tail without re-adding one. The dataset blocks between
+       * them are the builder's own code, character for character.
+       *
+       * @param {Object} trends - ALLY_CSV_PARSER.buildTrends output
+       * @param {string} timestamp - ISO timestamp of this run
+       * @returns {string} Generated JavaScript code
+       */
+      function generateTrendsCode(trends, timestamp) {
+        const minFiles = ALLY_CSV_PARSER.MIN_FILES_FOR_TREND;
+
+        const head = `/**
+ * @fileoverview Ally Accessibility Reporting Tool - Trends Data Payload
+ * @module AllyTrends
+ * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
+ * @generated ${timestamp}
+ * @version 2.0.0
+ *
+ * @description
+ * Generated from the Ally export's aggregate CSVs - the SAME 60 metrics sliced
+ * by time and by department. This is the only time axis the tool has: the Ally
+ * REST API supports limit, offset, sort, order and filters and nothing else,
+ * so "is our accessibility improving?" cannot be answered from the API at all.
+ *
+ * Institution-level rows: [period, ...60 metrics]
+ * Department-level rows:  [period, departmentId, ...60 metrics]
+ *
+ * THIS FILE IS DATA ONLY. series(), isUsable(), isPartial(), latest(),
+ * topIssues() and departments() all live in
+ * ally-scripts/core/ally-data-runtime.js, which is shipped once and never
+ * regenerated. This file hands the runtime a payload, and the runtime assigns
+ * the global. Do not add behaviour here; it would be lost on the next rebuild.
+ *
+ * USABILITY FLAGS MATTER MORE THAN THEY LOOK. A period with no files reports
+ * an overall score of ~98% because the score collapses to the WYSIWYG score,
+ * and the trailing period is always partial. Charted raw, both produce a
+ * confident and completely false picture, so isUsable() and isPartial() are
+ * not decoration - use them.
+ */
+
+(function () {
+  "use strict";
+
+  if (typeof ALLY_DATA_RUNTIME === "undefined") {
+    console.error(
+      "[AllyTrendsData] ally-scripts/core/ally-data-runtime.js must load " +
+        "BEFORE this payload. Trend data has NOT been installed, and the " +
+        "Trends view will report no data."
+    );
+    return;
+  }
+
+  /** When the source export was taken. The newest point is only this fresh. */
+  const generatedOn = "${timestamp}";
+
+  /**
+   * Minimum files for a period to be worth charting.
+   * @type {number}
+   */
+  const minFiles = ${minFiles};
+
+  /**
+   * Metric names, shared by every dataset below and stored once.
+   * @type {Array<string>}
+   */
+  const metrics = ${JSON.stringify(trends.metrics)};
+`;
+
+        const datasets = [
+          ["byYear", trends.byYear, "[period, ...metrics]"],
+          ["byTerm", trends.byTerm, "[period, ...metrics]"],
+          ["byMonth", trends.byMonth, "[period, ...metrics]"],
+          ["byDepartmentYear", trends.byDepartmentYear, "[period, departmentId, ...metrics]"],
+          ["byDepartmentTerm", trends.byDepartmentTerm, "[period, departmentId, ...metrics]"],
+        ];
+
+        const blocks = datasets.map(([name, rows, shape]) => {
+          const body = rows.map((row) => "    " + JSON.stringify(row)).join(",\n");
+          return `\n  /** ${shape} @type {Array<Array>} */\n  const ${name} = [\n${body}\n  ];\n`;
+        });
+
+        const tail = `
+  ALLY_DATA_RUNTIME.installTrends({
+    generatedOn: generatedOn,
+    minFiles: minFiles,
+    metrics: metrics,
+    byYear: byYear,
+    byTerm: byTerm,
+    byMonth: byMonth,
+    byDepartmentYear: byDepartmentYear,
+    byDepartmentTerm: byDepartmentTerm
+  });
+})();
+`;
+
+        return [head, ...blocks, tail].join("");
+      }
+
+      /**
+       * Which of the three trend-only files were chosen, and which were not.
+       * @returns {{files: Object, missing: Array<string>}} files keyed by slot
+       */
+      function matchTrendFiles() {
+        const chosen = {
+          years: elements.yearsFile.files[0] || null,
+          months: elements.monthsFile.files[0] || null,
+          departmentTerms: elements.deptTermsFile.files[0] || null
+        };
+        const missing = Object.keys(TREND_ONLY_INPUTS)
+          .filter(function(slot) { return !chosen[slot]; })
+          .map(function(slot) { return TREND_ONLY_INPUTS[slot]; });
+
+        return { files: chosen, missing: missing };
+      }
+
+      // ========================================================================
+      // Verification
+      // ========================================================================
+      // The browser analogue of build.mjs's verify() (build.mjs:742-913). The
+      // builder loads each generated module in a Node VM on top of
+      // ally-data-runtime.js and refuses to WRITE if any gate fails; this page
+      // evaluates the same sources on top of the same runtime and refuses to
+      // OFFER A DOWNLOAD if any gate fails.
+      //
+      // WHY eval AND NOT AN IFRAME OR A BLOB URL. The iframe route needs the
+      // runtime as TEXT, and fetching a file:// sibling is blocked, so it
+      // cannot work from disk - and this page is meant to work from disk. A
+      // blob-URL <script> on a file:// origin is not reliable across browsers.
+      // Evaluating the source is the only route that works from disk AND
+      // proves the emitted TEXT parses, which is the whole point: installing
+      // the in-memory objects directly would verify the data and say nothing
+      // about the bytes the person is about to download.
+      //
+      // Every gate below runs against the installed API objects rather than
+      // against a file system, so each one ports as written. The only builder
+      // behaviour with no browser counterpart is the pre-write backup and the
+      // output-folder check, and neither is a check on the data.
+
+      /**
+       * Runs one generated module in this page, on top of the runtime, and
+       * returns the object it installed.
+       *
+       * The name is DELETED first, so a payload that runs without installing
+       * anything cannot be mistaken for a success by leaving the previous
+       * run's object in place. The read is of the BARE name, as the builder's
+       * is, so a shadowing declaration would be caught here too.
+       *
+       * @param {string} source - The generated module source, exactly as it will download
+       * @param {string} globalName - The global the payload installs
+       * @returns {Object} The installed API object
+       */
+      function runGeneratedModule(source, globalName) {
+        delete window[globalName];
+
+        // Indirect eval: the payload runs in global scope, exactly as a
+        // <script> tag would, rather than inside this closure.
+        (0, eval)(source);
+
+        const api = (0, eval)(
+          'typeof ' + globalName + ' === "undefined" ? undefined : ' + globalName);
+
+        if (api === undefined) {
+          throw new Error(globalName +
+            ' was not installed - the payload ran but assigned nothing');
+        }
+
+        return api;
+      }
+
+      /**
+       * Runs every gate over the generated set.
+       *
+       * @param {Object} built - { lookupSource, coursesSource, trendsSource, payloadJson }
+       * @param {Object} expected - { courseCount, archivedSkipped, excludeArchived }
+       * @returns {{rows: Array<{name: string, ok: boolean}>, notes: Array<string>, failures: Array<string>}}
+       */
+      function verifyGeneratedSet(built, expected) {
+        const rows = [];
+        const notes = [];
+
+        function check(name, ok) {
+          rows.push({ name: name, ok: !!ok });
+        }
+
+        function finish() {
+          return {
+            rows: rows,
+            notes: notes,
+            failures: rows.filter(function(row) { return !row.ok; })
+              .map(function(row) { return row.name; })
+          };
+        }
+
+        let courses;
+        let lookup;
+        let trends = null;
+
+        try {
+          courses = runGeneratedModule(built.coursesSource, 'ALLY_COURSES');
+          check('ally-courses-data.js parses and runs', true);
+        } catch (error) {
+          check('ally-courses-data.js parses and runs', false);
+          notes.push('parse error: ' + error.message);
+          return finish();
+        }
+
+        try {
+          lookup = runGeneratedModule(built.lookupSource, 'ALLY_LOOKUP');
+          check('ally-lookup-data.js parses and runs', true);
+        } catch (error) {
+          check('ally-lookup-data.js parses and runs', false);
+          notes.push('parse error: ' + error.message);
+          return finish();
+        }
+
+        const ids = Object.keys(courses.courses);
+
+        // Public API surface the three search modules depend on.
+        ['courses', 'courseCodeIndex', 'getCourseById', 'getCourseIdByCode',
+          'searchCoursesByCode'].forEach(function(name) {
+          check('API: ' + name + ' present', courses[name] !== undefined);
+        });
+
+        check('course count matches what was parsed', ids.length === expected.courseCount);
+
+        // Two-sided: the dropped field is gone AND the kept ones survived.
+        // Checking only the first would pass on a build that emitted nothing.
+        const sample = courses.courses[ids[0]];
+        check('departmentId is absent', !('departmentId' in sample));
+        check('courseCode, courseName, termId all present',
+          typeof sample.courseCode === 'string' && sample.courseCode.length > 0 &&
+          typeof sample.courseName === 'string' && typeof sample.termId === 'string');
+
+        check('dead functions are gone',
+          courses.getCoursesByTerm === undefined &&
+          courses.getCoursesByDepartment === undefined);
+
+        check('excludesArchived flag matches the build',
+          courses.excludesArchived === (expected.archivedSkipped > 0));
+        check('archivedExcluded count matches the build',
+          courses.archivedExcluded === expected.archivedSkipped);
+
+        // The reverse index must be derived, not shipped: if it were shipped
+        // while courses were filtered, searchCoursesByCode would dereference
+        // undefined on the first archived collision.
+        const codes = Object.keys(courses.courseCodeIndex);
+        check('courseCodeIndex is populated and no larger than the course set',
+          codes.length > 0 && codes.length <= ids.length);
+        check('every index entry points at a course that carries that code',
+          codes.every(function(code) {
+            const course = courses.courses[courses.courseCodeIndex[code]];
+            return course && course.courseCode === code;
+          }));
+
+        if (expected.excludeArchived) {
+          check('no archived course survived', !ids.some(function(id) {
+            return ARCHIVED_NAME_PATTERN.test(courses.courses[id].courseName);
+          }));
+        }
+
+        // Term consistency - the reason both files are built together. R7
+        // already refused on this before anything was generated; this is the
+        // same question asked of the emitted bytes rather than of the parse.
+        const lookupTerms = Object.keys(lookup.terms);
+        const missingTerms = ids.map(function(id) { return courses.courses[id].termId; })
+          .filter(function(termId, at, all) {
+            return termId !== '' && all.indexOf(termId) === at &&
+              lookupTerms.indexOf(termId) === -1;
+          });
+        check('every course term id exists in the lookup', missingTerms.length === 0);
+        if (missingTerms.length) notes.push('missing term ids: ' + missingTerms.join(', '));
+
+        // The per-course score. Two-sided: some courses must have one, and a
+        // course without files must be null rather than 0 - showing 0% would
+        // brand the 36% of unscored courses as the worst content anywhere.
+        const scored = ids.filter(function(id) {
+          return typeof courses.courses[id].score === 'number';
+        });
+        const unscored = ids.filter(function(id) {
+          return courses.courses[id].score === null;
+        });
+        check('some courses carry a score', scored.length > 0);
+        check('unscored courses are null, never 0',
+          unscored.length === 0 || unscored.every(function(id) {
+            return courses.courses[id].score === null;
+          }));
+        check('every score is within 0-1000', scored.every(function(id) {
+          return courses.courses[id].score >= 0 && courses.courses[id].score <= 1000;
+        }));
+
+        // Department parents, two-sided again.
+        const deptIds = Object.keys(lookup.departments);
+        const withParent = deptIds.filter(function(id) {
+          return lookup.departments[id].parentId;
+        });
+        check('most departments carry a parent',
+          withParent.length > 0 && withParent.length <= deptIds.length);
+        check('a department without a parent is null, not missing',
+          deptIds.every(function(id) { return 'parentId' in lookup.departments[id]; }));
+
+        // --- trends ---------------------------------------------------------
+        // Conditional, and this is the ONE structural difference from the
+        // builder: the builder requires all six inputs, where this page treats
+        // the three history files as optional because the guide and Set Up's
+        // own upload do. With no history generated there is nothing to check.
+        if (built.trendsSource) {
+          try {
+            trends = runGeneratedModule(built.trendsSource, 'ALLY_TRENDS');
+            check('ally-trends-data.js parses and runs', true);
+          } catch (error) {
+            check('ally-trends-data.js parses and runs', false);
+            notes.push('trends parse error: ' + error.message);
+            return finish();
+          }
+
+          check('trends: monthly series is populated', trends.byMonth.length > 0);
+          // Assert the metrics the view depends on, not a column COUNT: Ally
+          // adding a rule would break a hard-coded 60 while breaking nothing real.
+          check('trends: the metrics the view needs are present',
+            trends.metrics.length > 0 &&
+            ['Total files', 'Overall score', 'Files score'].every(function(m) {
+              return trends.metrics.indexOf(m) !== -1;
+            }));
+
+          const guarded = trends.series('year', 'Files score');
+          const unguarded = trends.series('year', 'Files score', { includeUnusable: true });
+          check('trends: the minimum-files guard removes something',
+            unguarded.length > guarded.length);
+          check('trends: every returned point is usable',
+            guarded.every(function(p) { return p.usable; }));
+          check('trends: no zero-file period survives the guard',
+            guarded.every(function(p) { return p.y !== null; }));
+
+          let ordered = true;
+          for (let i = 1; i < guarded.length; i++) {
+            if (String(guarded[i].x) < String(guarded[i - 1].x)) ordered = false;
+          }
+          check('trends: series is chronological', ordered);
+
+          check('trends: topIssues excludes LibraryReference',
+            !trends.topIssues('year', { limit: 10 }).some(function(r) {
+              return r.metric.indexOf('LibraryReference') === 0;
+            }));
+
+          check('trends: department list is populated',
+            trends.departments('departmentYear').length > 0);
+
+          // Every department named in the trends data must exist in the
+          // lookup, or the Trends view shows a raw id - the same failure the
+          // term gate prevents.
+          const unknownDepts = trends.departments('departmentYear')
+            .filter(function(id) { return deptIds.indexOf(id) === -1; });
+          check('trends: every department exists in the lookup', unknownDepts.length === 0);
+          if (unknownDepts.length) {
+            notes.push('unknown departments: ' + unknownDepts.slice(0, 5).join(', '));
+          }
+        }
+
+        // --- the payload -----------------------------------------------------
+        // The builder has no counterpart for these three, because it does not
+        // emit the payload at all - and the payload is the file this page most
+        // wants people to take away.
+        let payload = null;
+        try {
+          payload = JSON.parse(built.payloadJson);
+          check('ally-course-payload.json parses as JSON', true);
+        } catch (error) {
+          check('ally-course-payload.json parses as JSON', false);
+          notes.push('payload parse error: ' + error.message);
+        }
+
+        check('payload kind and version match what the application expects',
+          !!payload && payload.kind === ALLY_CSV_PARSER.PAYLOAD_KIND &&
+          payload.version === ALLY_CSV_PARSER.PAYLOAD_VERSION);
+        check('payload carries courses, terms and departments',
+          !!payload && !!payload.courses && Array.isArray(payload.courses.rows) &&
+          payload.courses.rows.length > 0 && !!payload.lookup &&
+          !!payload.lookup.terms && !!payload.lookup.departments);
+
+        // --- the modules' own self-tests --------------------------------------
+        try {
+          check('testAllyCourses() passes', window.testAllyCourses() === true);
+        } catch (error) {
+          check('testAllyCourses() passes', false);
+          notes.push('testAllyCourses() threw: ' + error.message);
+        }
+
+        try {
+          check('testAllyLookup() passes', window.testAllyLookup() === true);
+        } catch (error) {
+          check('testAllyLookup() passes', false);
+          notes.push('testAllyLookup() threw: ' + error.message);
+        }
+
+        if (trends) {
+          try {
+            check('testAllyTrends() passes', window.testAllyTrends() === true);
+          } catch (error) {
+            check('testAllyTrends() passes', false);
+            notes.push('testAllyTrends() threw: ' + error.message);
+          }
+        }
+
+        return finish();
+      }
+
+      /**
+       * Enables the Download button for each output that was generated.
+       *
+       * THE ONLY PLACE ANY DOWNLOAD BUTTON IS ENABLED. Nothing in the
+       * generation path touches these, so a run that stops anywhere - a
+       * refusal, a throw, a failed check - leaves every one of them disabled
+       * by construction rather than by an unwind path that could be forgotten.
+       *
+       * @param {Object} available - Output type to whether it was generated
+       */
+      function enableVerifiedDownloads(available) {
+        state.verified = true;
+        if (available.payload) elements.downloadPayloadBtn.disabled = false;
+        if (available.lookup) elements.downloadLookupBtn.disabled = false;
+        if (available.courses) elements.downloadCoursesBtn.disabled = false;
+        if (available.trends) elements.downloadTrendsBtn.disabled = false;
+        elements.downloadAllBtn.disabled = false;
+      }
+
+      /** Disables every Download button and withdraws the verification flag. */
+      function disableAllDownloads() {
+        state.verified = false;
+        elements.downloadPayloadBtn.disabled = true;
+        elements.downloadLookupBtn.disabled = true;
+        elements.downloadCoursesBtn.disabled = true;
+        elements.downloadTrendsBtn.disabled = true;
+        elements.downloadAllBtn.disabled = true;
+      }
+
+      // ========================================================================
+      // UI Functions
+      // ========================================================================
+
+      /**
+       * Displays file info after selection
+       * @param {File} file - Selected file
+       * @param {HTMLElement} infoElement - Element to display info in
+       */
+      function displayFileInfo(file, infoElement) {
+        const sizeKB = (file.size / 1024).toFixed(1);
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        const sizeDisplay = file.size > 1024 * 1024 ? sizeMB + ' MB' : sizeKB + ' KB';
+
+        infoElement.innerHTML = 
+          '<div class="file-info-row">' +
+            '<span class="file-info-label">File name:</span>' +
+            '<span class="file-info-value">' + escapeHtml(file.name) + '</span>' +
+          '</div>' +
+          '<div class="file-info-row">' +
+            '<span class="file-info-label">Size:</span>' +
+            '<span class="file-info-value">' + sizeDisplay + '</span>' +
+          '</div>' +
+          '<div class="file-info-row">' +
+            '<span class="file-info-label">Type:</span>' +
+            '<span class="file-info-value">' + (file.type || 'text/csv') + '</span>' +
+          '</div>';
+        infoElement.classList.add('visible');
+      }
+
+      /**
+       * Escapes HTML special characters
+       * @param {string} text - Text to escape
+       * @returns {string} Escaped text
+       */
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+
+      /**
+       * Hands the main thread back long enough for the browser to paint.
+       * Used before a synchronous step so the status it just announced is
+       * actually on screen while that step runs.
+       * @returns {Promise<void>}
+       */
+      function nextFrame() {
+        return new Promise(function(resolve) {
+          requestAnimationFrame(function() { setTimeout(resolve, 0); });
+        });
+      }
+
+      /**
+       * Formats a byte count for display
+       * @param {number} bytes - Byte count
+       * @returns {string} Human-readable size
+       */
+      function formatBytes(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+        return (bytes / 1024).toFixed(1) + ' KB';
+      }
+
+      /**
+       * Shows or hides the progress row, resetting it when shown
+       * @param {boolean} visible - Whether the row should be shown
+       */
+      function showProgress(visible) {
+        elements.progressRow.hidden = !visible;
+
+        if (visible) {
+          elements.progressBar.value = 0;
+          setProgressText('Starting...');
+        }
+      }
+
+      /**
+       * Writes the progress readout, only when it has actually changed.
+       * The readout is aria-live="off" deliberately - a screen reader must not
+       * hear every chunk of a long conversion. Milestones reach the polite
+       * status panel instead.
+       * @param {string} text - Readout text
+       */
+      function setProgressText(text) {
+        if (elements.progressText.textContent === text) return;
+        elements.progressText.textContent = text;
+      }
+
+      /**
+       * Builds a progress reporter for one run. Visual updates are unthrottled;
+       * only the halfway point is announced, so a long job adds one utterance
+       * rather than hundreds.
+       * @returns {Function} Reporter taking (bytesRead, totalBytes, rowCount)
+       */
+      function createProgressReporter() {
+        let announcedHalfway = false;
+
+        return function(bytesRead, totalBytes, rowCount) {
+          const percent = totalBytes
+            ? Math.min(100, Math.round((bytesRead / totalBytes) * 100))
+            : 0;
+
+          elements.progressBar.value = percent;
+          setProgressText(percent + '% - ' + rowCount.toLocaleString() +
+            ' rows read of ' + formatBytes(totalBytes));
+
+          // The `percent < 100` guard matters: a small file reports only once,
+          // at completion, and announcing "halfway" there would be a lie.
+          if (announcedHalfway || percent < 50 || percent >= 100) return;
+          announcedHalfway = true;
+          addStatus('Halfway - ' + rowCount.toLocaleString() + ' rows read', 'info');
+        };
+      }
+
+      /**
+       * Builds a bounded preview from output chunks. The full content stays in
+       * the Blob: assigning tens of megabytes to a textarea is what made the
+       * page stop responding.
+       * @param {Array<string>} chunks - Generated output chunks
+       * @param {number} totalBytes - Full output size
+       * @returns {string} Preview text
+       */
+      function buildPreview(chunks, totalBytes) {
+        if (totalBytes <= PREVIEW_LIMIT_CHARS) return chunks.join('');
+
+        let preview = '';
+
+        for (let i = 0; i < chunks.length && preview.length < PREVIEW_LIMIT_CHARS; i++) {
+          preview += chunks[i];
+        }
+
+        return preview.slice(0, PREVIEW_LIMIT_CHARS) +
+          '\n\n// ---- preview truncated ----\n' +
+          '// The full file is ' + formatBytes(totalBytes) +
+          '. Use the Download button to save all of it.\n';
+      }
+
+      /**
+       * Adds a status message to the status panel
+       * @param {string} message - Message text
+       * @param {string} type - Message type (info, success, warning, error)
+       */
+      function addStatus(message, type) {
+        const icon = {
+          info: 'ℹ️',
+          success: '✅',
+          warning: '⚠️',
+          error: '❌'
+        }[type] || 'ℹ️';
+
+        const div = document.createElement('div');
+        div.className = 'status-message status-' + type;
+        div.innerHTML = '<span aria-hidden="true">' + icon + '</span><span>' + escapeHtml(message) + '</span>';
+        elements.statusPanel.appendChild(div);
+
+        // Auto-scroll to bottom
+        elements.statusPanel.scrollTop = elements.statusPanel.scrollHeight;
+      }
+
+      /**
+       * Clears all status messages
+       */
+      function clearStatus() {
+        elements.statusPanel.innerHTML = '';
+      }
+
+      /**
+       * Switches between output tabs
+       * @param {string} tabId - Tab to switch to ('lookup' or 'courses')
+       */
+      window.switchTab = function(tabId) {
+        // Update tab buttons
+        document.querySelectorAll('.output-tab').forEach(function(tab) {
+          const isActive = tab.id === 'tab-' + tabId;
+          tab.classList.toggle('active', isActive);
+          tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        // Update panels
+        document.querySelectorAll('.output-content').forEach(function(panel) {
+          const isActive = panel.id === 'panel-' + tabId;
+          panel.classList.toggle('active', isActive);
+          panel.hidden = !isActive;
+        });
+      };
+
+      /**
+       * Downloads generated file
+       *
+       * The verification gate is read HERE as well as on the buttons, so a
+       * caller reaching this function directly cannot walk round it. The
+       * buttons are the gate a person meets; this is the same gate on the
+       * only other way in.
+       *
+       * @param {string} type - Output type ('lookup', 'courses', 'payload' or 'trends')
+       */
+      window.downloadFile = function(type) {
+        const blob = generatedBlob(type);
+        const filename = OUTPUT_FILENAMES[type];
+
+        if (!blob || !filename) {
+          addStatus('No content to download', 'warning');
+          return;
+        }
+
+        if (!state.verified) {
+          addStatus('Nothing is offered for download until the generated files have been ' +
+            'checked. Generate again, and read the checks that failed.', 'warning');
+          return;
+        }
+
+        triggerBlobDownload(blob, filename);
+
+        addStatus('Downloading ' + filename + ' (' + formatBytes(blob.size) + ')', 'success');
+      };
+
+      /**
+       * Hands a Blob to the browser as a download.
+       *
+       * Shared by the four individual downloads and the all-four archive, so
+       * the archive inherits the deferred revoke rather than rediscovering
+       * why it was needed: the browser is still spooling a multi-megabyte
+       * blob to disk when this returns, and revoking mid-flight aborts the
+       * download - which is why large files never arrived.
+       *
+       * @param {Blob} blob - Content to download
+       * @param {string} filename - Name to offer it under
+       */
+      function triggerBlobDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        setTimeout(function() { URL.revokeObjectURL(url); }, REVOKE_DELAY_MS);
+      }
+
+      /**
+       * Downloads every generated file as one archive.
+       *
+       * A SEPARATE FUNCTION FROM downloadFile, on purpose. The four individual
+       * downloads hand over the very Blobs that were checked, and the parity
+       * against the Node builder is measured on those bytes; this adds a
+       * second control beside them rather than a branch inside them, so
+       * nothing about the four can change because the archive exists. The
+       * entries it holds are those same Blobs, unmodified.
+       *
+       * It reads state.verified for itself, so the gate holds on both routes.
+       */
+      window.downloadAllFiles = async function() {
+        if (!state.verified) {
+          addStatus('The generated files are not offered as an archive until they ' +
+            'have been checked. Generate again, and read the checks that failed.',
+            'warning');
+          return;
+        }
+
+        const members = Object.keys(OUTPUT_FILENAMES)
+          .map(function(type) {
+            return { filename: OUTPUT_FILENAMES[type], blob: generatedBlob(type) };
+          })
+          .filter(function(member) { return !!member.blob; });
+
+        if (members.length === 0) {
+          addStatus('No content to download', 'warning');
+          return;
+        }
+
+        elements.downloadAllBtn.disabled = true;
+        try {
+          addStatus('Building ' + ALL_FILES_ARCHIVE_NAME + '...', 'info');
+          const JSZipCtor = await loadJSZip();
+          const archive = new JSZipCtor();
+          members.forEach(function(member) {
+            archive.file(member.filename, member.blob);
+          });
+
+          showProgress(true);
+          elements.progressBar.value = 0;
+          setProgressText('Building ' + ALL_FILES_ARCHIVE_NAME + '...');
+
+          const blob = await archive.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: ARCHIVE_COMPRESSION_LEVEL }
+          }, function(status) {
+            elements.progressBar.value = Math.min(100, Math.round(status.percent));
+            setProgressText('Building ' + ALL_FILES_ARCHIVE_NAME + ' - ' +
+              Math.round(status.percent) + '%');
+          });
+
+          showProgress(false);
+          triggerBlobDownload(blob, ALL_FILES_ARCHIVE_NAME);
+          addStatus('Downloading ' + ALL_FILES_ARCHIVE_NAME + ' (' + formatBytes(blob.size) +
+            ', ' + members.length + ' files: ' +
+            members.map(function(m) { return m.filename; }).join(', ') + ')', 'success');
+        } catch (error) {
+          showProgress(false);
+          addStatus('Error: ' + error.message, 'error');
+          console.error('Archive error:', error);
+        } finally {
+          elements.downloadAllBtn.disabled = !state.verified;
+        }
+      };
+
+      /**
+       * Reads the chosen files, refuses whatever the Node builder would
+       * refuse, builds all four outputs, checks them, and only then offers
+       * them for download.
+       *
+       * THE ORDER IS THE POINT. Every refusal fires before the first output is
+       * built, and no Download button is enabled anywhere except in
+       * enableVerifiedDownloads, which runs after the checks pass. So a run
+       * that stops for any reason at all leaves nothing downloadable, without
+       * an unwind path that could be forgotten.
+       *
+       * Every refusal throws, so it lands in the catch below and reaches the
+       * status panel as "Error: <sentence>". That sentence names the file and
+       * the remedy, because the person reading it has an export folder open
+       * and no idea what this page's internals are called.
+       */
+      window.generateJavaScript = async function() {
+        clearStatus();
+        addStatus('Starting conversion...', 'info');
+        elements.generateBtn.disabled = true;
+        disableAllDownloads();
+
+        // One timestamp for every output of this run, as the builder does.
+        const timestamp = new Date().toISOString();
+
+        try {
+          // ==================================================================
+          // Refuse on a missing input, before reading a single byte
+          // ==================================================================
+
+          if (elements.termsFile.files.length === 0) {
+            throw new Error('terms.csv is required. Choose it, ' +
+              'departments_years.csv and courses.csv from the same Ally export - ' +
+              'a set from two different exports shows raw ids where names belong.');
+          }
+
+          if (elements.deptsFile.files.length === 0) {
+            throw new Error('departments_years.csv is required. Choose ' +
+              'departments_years.csv, not departments_terms.csv - that second file ' +
+              'is one of the optional history files further down this page.');
+          }
+
+          if (elements.coursesFile.files.length === 0) {
+            throw new Error('courses.csv is required. Without it there are no ' +
+              'courses to search for, so there is no course data to build.');
+          }
+
+          // ==================================================================
+          // The two lookup inputs
+          // ==================================================================
+
+          addStatus('Reading terms.csv...', 'info');
+          const termsText = await readFileAsText(elements.termsFile.files[0]);
+          state.termsText = termsText;
+          state.termsData = processTerms(parseCSV(termsText));
+
+          if (Object.keys(state.termsData).length === 0) {
+            throw new Error('terms.csv produced no terms. Check that the file you ' +
+              'chose is terms.csv from an Ally Institutional Report export, with its ' +
+              'header row still on it.');
+          }
+
+          addStatus('Processed ' + Object.keys(state.termsData).length + ' terms', 'success');
+
+          addStatus('Reading departments_years.csv...', 'info');
+          const deptsText = await readFileAsText(elements.deptsFile.files[0]);
+          state.deptsText = deptsText;
+          state.deptsData = processDepartments(parseCSV(deptsText));
+
+          if (Object.keys(state.deptsData).length === 0) {
+            throw new Error('departments_years.csv produced no departments. Check that ' +
+              'the file you chose is departments_years.csv from an Ally Institutional ' +
+              'Report export, with its header row still on it.');
+          }
+
+          addStatus('Processed ' + Object.keys(state.deptsData).length +
+            ' unique departments', 'success');
+
+          // ==================================================================
+          // The courses, and the two refusals that depend on them
+          // ==================================================================
+
+          const coursesFile = elements.coursesFile.files[0];
+          addStatus('Reading courses.csv (' + formatBytes(coursesFile.size) +
+            ') - processed in chunks, the page stays usable', 'info');
+
+          showProgress(true);
+
+          // One streaming pass: read, parse and index together, yielding
+          // between chunks. Nothing holds the file and a parsed copy at once.
+          const excludeArchived = elements.excludeArchived.checked;
+          const coursesData = await streamCourses(coursesFile, createProgressReporter(), {
+            excludeArchived: excludeArchived
+          });
+          const courseCount = Object.keys(coursesData.byId).length;
+
+          showProgress(false);
+
+          // Three distinguishable causes, because "no courses" reads as the
+          // operator's fault when it is usually the file's. The browser parser
+          // does NOT throw on a missing course-code column the way the Node
+          // builder's own copy does - it resolves the column to -1 and skips
+          // every row - so the rowCount is what separates a wrong file from an
+          // empty one, and this is where that is caught.
+          if (courseCount === 0) {
+            if (excludeArchived && coursesData.archivedSkipped > 0) {
+              throw new Error('every course in courses.csv was left out as archived. ' +
+                'Untick "Leave out archived courses" if you meant to keep them.');
+            }
+            if (coursesData.rowCount > 0) {
+              throw new Error('courses.csv has ' + coursesData.rowCount.toLocaleString() +
+                ' rows, but none of them carries both a course id and a course code. ' +
+                'Check that this is courses.csv from an Ally Institutional Report ' +
+                'export: the tool needs its "Course id" and "Course code" columns.');
+            }
+            throw new Error('courses.csv produced no usable courses. Check that the ' +
+              'file you chose is courses.csv from an Ally Institutional Report export.');
+          }
+
+          // The gate the Node builder applies before writing, applied here
+          // before building. Courses and lookup are a SET: a course naming a
+          // term the lookup has never heard of prints "_465_1" where a term
+          // name belongs.
+          const missingTerms = findMissingTerms(coursesData, state.termsData);
+          if (missingTerms.length) {
+            throw new Error(missingTerms.length + ' term id(s) used by courses are ' +
+              'absent from terms.csv: ' + missingTerms.join(', ') + '. The two files ' +
+              'must come from the same export, or the tool shows raw ids where term ' +
+              'names belong.');
+          }
+
+          // ==================================================================
+          // The accessibility history, if all three of its files were chosen
+          // ==================================================================
+          // All-or-nothing, and OPTIONAL - the one place this page is
+          // deliberately laxer than the builder, which requires all six
+          // inputs. The guide and Set Up's own upload both treat history as
+          // optional, so requiring it here would refuse a run the guide tells
+          // people to make.
+
+          let trends = null;
+          const trendMatch = matchTrendFiles();
+          const trendMissing = trendMatch.missing.slice();
+
+          if (trendMissing.length === 0) {
+            addStatus('Reading years.csv, months.csv and departments_terms.csv...', 'info');
+            trends = ALLY_CSV_PARSER.buildTrends({
+              years: await readFileAsText(trendMatch.files.years),
+              terms: state.termsText,
+              months: await readFileAsText(trendMatch.files.months),
+              departments: state.deptsText,
+              departmentTerms: await readFileAsText(trendMatch.files.departmentTerms)
+            });
+
+            if (trends.byMonth.length === 0) {
+              throw new Error('months.csv produced no periods, so no accessibility ' +
+                'history can be built. Check that months.csv came from the same export ' +
+                'as the other files, or leave the three history files out.');
+            }
+          }
+
+          // ==================================================================
+          // Build all four outputs. Nothing is offered yet.
+          // ==================================================================
+
+          addStatus('Generating ally-lookup-data.js...', 'info');
+          state.generatedLookup = generateLookupCode(state.termsData, state.deptsData, timestamp);
+          state.generatedLookupBlob = new Blob([state.generatedLookup], { type: 'application/javascript' });
+          elements.lookupOutput.value = state.generatedLookup;
+          elements.lookupStats.textContent =
+            Object.keys(state.termsData).length + ' terms, ' +
+            Object.keys(state.deptsData).length + ' departments';
+          addStatus('ally-lookup-data.js generated (' +
+            (state.generatedLookup.length / 1024).toFixed(1) + ' KB)', 'success');
+
+          if (trends) {
+            addStatus('Generating ally-trends-data.js...', 'info');
+            const trendsCode = generateTrendsCode(trends, timestamp);
+            state.generatedTrendsBlob = new Blob([trendsCode], { type: 'application/javascript' });
+            elements.trendsOutput.value = buildPreview([trendsCode], state.generatedTrendsBlob.size);
+            elements.trendsStats.textContent = trends.byMonth.length + ' months, ' +
+              trends.byYear.length + ' years, ' + trends.byTerm.length + ' terms';
+            state.generatedTrendsSource = trendsCode;
+            addStatus('ally-trends-data.js generated: ' + trends.byMonth.length + ' months, ' +
+              trends.byYear.length + ' years, ' + trends.byTerm.length + ' terms (' +
+              formatBytes(state.generatedTrendsBlob.size) + ')', 'success');
+          } else {
+            state.generatedTrendsBlob = null;
+            state.generatedTrendsSource = null;
+            elements.trendsOutput.value = '// No accessibility history - add ' +
+              trendMissing.join(', ') + ' to generate this file';
+            elements.trendsStats.textContent = 'Not generated';
+            addStatus('ally-trends-data.js not generated: add ' + trendMissing.join(', ') +
+              ' to include accessibility history. The Trends view stays unavailable on ' +
+              'this data.', 'warning');
+          }
+
+          showProgress(true);
+          elements.progressBar.value = 0;
+          setProgressText('Building ally-courses-data.js...');
+          await nextFrame();
+
+          const chunks = await generateCoursesChunks(coursesData, timestamp, function(done, total) {
+            elements.progressBar.value = total
+              ? Math.min(100, Math.round((done / total) * 100))
+              : 0;
+            setProgressText('Building ally-courses-data.js - ' +
+              done.toLocaleString() + ' of ' + total.toLocaleString() + ' entries');
+          });
+          state.generatedCoursesBlob = new Blob(chunks, { type: 'application/javascript' });
+
+          elements.coursesOutput.value = buildPreview(chunks, state.generatedCoursesBlob.size);
+          elements.coursesStats.textContent = courseCount.toLocaleString() + ' courses';
+          showProgress(false);
+
+          // Always state what was left out, so a run can never quietly
+          // produce a smaller file than the operator expected.
+          const excluded = coursesData.archivedSkipped
+            ? coursesData.archivedSkipped.toLocaleString() + ' archived courses left out'
+            : 'archived courses included';
+
+          addStatus('ally-courses-data.js generated: ' + courseCount.toLocaleString() +
+            ' courses from ' + coursesData.rowCount.toLocaleString() + ' rows, ' +
+            excluded + ' (' + formatBytes(state.generatedCoursesBlob.size) +
+            '). The box below shows a preview - use Download for the whole file.', 'success');
+
+          // The JSON payload (Stage 6): the SAME courses and lookup objects
+          // the two modules above carry, in one data-only file for hosting.
+          // Compact JSON - a real export is about 5 MB this way, where the
+          // pretty-printed module runs to 27 MB - built by the parser's one
+          // payload builder so nothing here can drift from what the
+          // application stores for an upload.
+          addStatus('Generating ally-course-payload.json...', 'info');
+          const payload = ALLY_CSV_PARSER.buildCoursePayload(
+            coursesData, state.termsData, state.deptsData,
+            { trends: trends, generatedAt: timestamp });
+          const payloadJson = JSON.stringify(payload);
+          state.generatedPayloadBlob = new Blob([payloadJson], { type: 'application/json' });
+          elements.payloadOutput.value = buildPreview([payloadJson], state.generatedPayloadBlob.size);
+          elements.payloadStats.textContent = courseCount.toLocaleString() + ' courses, ' +
+            Object.keys(payload.lookup.terms).length + ' terms, ' +
+            Object.keys(payload.lookup.departments).length + ' departments' +
+            (trends ? ', with accessibility history' : ', no accessibility history');
+          addStatus('ally-course-payload.json generated (' +
+            formatBytes(state.generatedPayloadBlob.size) + ')' +
+            (trends
+              ? ', with accessibility history from years.csv, months.csv and departments_terms.csv'
+              : ', without accessibility history; add years.csv, months.csv and departments_terms.csv to include it'),
+            'success');
+
+          // ==================================================================
+          // Check what was built, BEFORE offering any of it
+          // ==================================================================
+
+          addStatus('Checking the generated files - each one is loaded and run here ' +
+            'before you are offered it...', 'info');
+          await nextFrame();
+
+          const startedAt = performance.now();
+          const outcome = verifyGeneratedSet({
+            lookupSource: state.generatedLookup,
+            coursesSource: chunks.join(''),
+            trendsSource: state.generatedTrendsSource,
+            payloadJson: payloadJson
+          }, {
+            courseCount: courseCount,
+            archivedSkipped: coursesData.archivedSkipped,
+            excludeArchived: excludeArchived
+          });
+          const tookMs = Math.round(performance.now() - startedAt);
+
+          outcome.notes.forEach(function(note) { addStatus(note, 'error'); });
+
+          if (outcome.failures.length) {
+            outcome.failures.forEach(function(name) {
+              addStatus('Check failed: ' + name, 'error');
+            });
+            throw new Error(outcome.failures.length + ' of ' + outcome.rows.length +
+              ' checks on the generated files failed (' + outcome.failures.join('; ') +
+              '). Nothing is offered for download. If this keeps happening, ' +
+              'rebuild from the same export with ' +
+              'node .claude/ally-course-data/build.mjs, which runs the same checks.');
+          }
+
+          addStatus(outcome.rows.length + ' checks passed in ' + tookMs +
+            'ms - the generated files load, install and self-test correctly', 'success');
+
+          // ==================================================================
+          // Only now is anything downloadable
+          // ==================================================================
+
+          enableVerifiedDownloads({
+            payload: true,
+            lookup: true,
+            courses: true,
+            trends: !!state.generatedTrendsBlob
+          });
+
+          addStatus('Download ally-course-payload.json, host it at an https address, ' +
+            'and enter that address in Set Up under "Fetch course data from a URL".',
+            'info');
+
+          addStatus('Conversion complete!', 'success');
+
+        } catch (error) {
+          showProgress(false);
+          disableAllDownloads();
+          addStatus('Error: ' + error.message, 'error');
+          console.error('Conversion error:', error);
+        } finally {
+          elements.generateBtn.disabled = false;
+        }
+      };
+
+      /**
+       * Clears all inputs and outputs
+       */
+      window.clearAll = function() {
+        // Clear file inputs
+        elements.zipFile.value = '';
+        elements.zipInfo.classList.remove('visible');
+        elements.termsFile.value = '';
+        elements.deptsFile.value = '';
+        elements.coursesFile.value = '';
+        elements.yearsFile.value = '';
+        elements.monthsFile.value = '';
+        elements.deptTermsFile.value = '';
+
+        // Clear file info
+        elements.termsInfo.classList.remove('visible');
+        elements.deptsInfo.classList.remove('visible');
+        elements.coursesInfo.classList.remove('visible');
+        elements.yearsInfo.classList.remove('visible');
+        elements.monthsInfo.classList.remove('visible');
+        elements.deptTermsInfo.classList.remove('visible');
+
+        // Clear outputs
+        elements.lookupOutput.value = '';
+        elements.coursesOutput.value = '';
+        elements.payloadOutput.value = '';
+        elements.trendsOutput.value = '';
+        elements.lookupStats.textContent = 'No data generated yet';
+        elements.coursesStats.textContent = 'No data generated yet';
+        elements.payloadStats.textContent = 'No data generated yet';
+        elements.trendsStats.textContent = 'No data generated yet';
+
+        // Disable buttons, and withdraw the verification flag with them
+        disableAllDownloads();
+
+        // Clear state
+        state.termsData = null;
+        state.deptsData = null;
+        state.termsText = null;
+        state.deptsText = null;
+        state.generatedLookup = null;
+        state.generatedLookupBlob = null;
+        state.generatedCoursesBlob = null;
+        state.generatedPayloadBlob = null;
+        state.generatedTrendsBlob = null;
+        state.generatedTrendsSource = null;
+
+        // Reset progress and status
+        showProgress(false);
+        elements.generateBtn.disabled = false;
+        clearStatus();
+        addStatus('All cleared. Upload your Ally export archive, or choose the CSV files, to begin.', 'info');
+      };
+
+      // ========================================================================
+      // The archive route
+      // ========================================================================
+
+      /** In-flight or settled JSZip load, so one fetch serves every use. */
+      let jsZipLoad = null;
+
+      /**
+       * Fetches JSZip once, lazily.
+       *
+       * LAZY IS LOAD-BEARING: the six-picker route never touches the network,
+       * so a person working from disk with no connection is unaffected by
+       * this feature existing. A failed load clears the cached promise, so
+       * reconnecting and trying again works without a reload.
+       *
+       * @returns {Promise<Function>} The JSZip constructor
+       */
+      function loadJSZip() {
+        if (typeof JSZip !== 'undefined') return Promise.resolve(JSZip);
+        if (jsZipLoad) return jsZipLoad;
+
+        jsZipLoad = new Promise(function(resolve, reject) {
+          const script = document.createElement('script');
+          script.src = JSZIP_URL;
+          script.onload = function() {
+            if (typeof JSZip === 'undefined') {
+              reject(new Error(zipReaderUnavailableMessage()));
+              return;
+            }
+            resolve(JSZip);
+          };
+          script.onerror = function() {
+            reject(new Error(zipReaderUnavailableMessage()));
+          };
+          document.head.appendChild(script);
+        });
+
+        // A failed fetch must not poison every later attempt. The handler is
+        // attached to a derived promise, so jsZipLoad itself still rejects
+        // for its real caller and nothing goes unhandled.
+        jsZipLoad.catch(function() { jsZipLoad = null; });
+
+        return jsZipLoad;
+      }
+
+      /** Z2. Named once, because both the upload and the archive button hit it. */
+      function zipReaderUnavailableMessage() {
+        return 'the ZIP reader could not be fetched, so this page cannot open or ' +
+          'build a ZIP. This route needs an internet connection. The six file ' +
+          'boxes still work from your own disk with no connection at all, so ' +
+          'choose the CSV files there instead, or reconnect and try again.';
+      }
+
+      /**
+       * Puts one extracted file into one of the six pickers.
+       *
+       * THE ASSIGNMENT IS CHECKED, not assumed. A browser that refuses a
+       * programmatic files assignment would otherwise leave the picker empty
+       * and the page would go on to a generate run with nothing in it, which
+       * reads as a broken export rather than a browser that said no.
+       *
+       * @param {HTMLInputElement} input - Picker to fill
+       * @param {File} file - File to put in it
+       */
+      function assignFileToInput(input, file) {
+        const transfer = new DataTransfer();
+        transfer.items.add(file);
+        input.files = transfer.files;
+
+        if (input.files.length !== 1 || input.files[0].name !== file.name) {
+          throw new Error('this browser would not let the page put ' + file.name +
+            ' into its file box, so the archive route cannot be used here. ' +
+            'Unzip the archive yourself and choose the six CSV files below.');
+        }
+      }
+
+      /** Empties one picker and hides the card that described what was in it. */
+      function clearFileInput(input, infoElement) {
+        input.value = '';
+        infoElement.innerHTML = '';
+        infoElement.classList.remove('visible');
+      }
+
+      /** Empties all six pickers, so a failed archive cannot leave a half-filled set. */
+      function clearExportInputs() {
+        ZIP_ENTRIES.forEach(function(entry) {
+          clearFileInput(elements[entry.input], elements[entry.info]);
+        });
+      }
+
+      /**
+       * Reads the six files this page uses out of an Ally export archive and
+       * puts them in the six pickers, so the generate path that follows is
+       * the same one a person who chose six files by hand would take.
+       *
+       * ONE ANNOUNCEMENT FOR THE WHOLE FILL. Each file-info card carries
+       * aria-live="polite" so a single hand-picked file is confirmed as it is
+       * chosen; six cards populated by one gesture would be six utterances
+       * for one action. They are silenced across the fill and the status
+       * panel carries the one summary line instead. Restoring the attribute
+       * afterwards announces nothing - a live region speaks on a change
+       * inside it, not on a change to it.
+       *
+       * @param {File} file - The archive the person chose
+       */
+      async function handleArchiveSelected(file) {
+        clearStatus();
+        disableAllDownloads();
+        elements.generateBtn.disabled = true;
+        addStatus('Reading ' + file.name + ' (' + formatBytes(file.size) + ')...', 'info');
+
+        try {
+          const JSZipCtor = await loadJSZip();
+
+          let archive;
+          try {
+            archive = await JSZipCtor.loadAsync(file);
+          } catch (error) {
+            throw new Error('"' + file.name + '" could not be opened as a ZIP ' +
+              'archive. Choose the archive Ally produced, exactly as it was ' +
+              'downloaded - not one that has been unzipped and zipped again, and ' +
+              'not a single CSV file. You can also choose the six CSV files ' +
+              'yourself below.');
+          }
+
+          const present = Object.create(null);
+          archive.forEach(function(path, entry) {
+            if (!entry.dir) present[path] = entry;
+          });
+          const found = Object.keys(present).sort();
+
+          const missing = ZIP_REQUIRED_ENTRIES.filter(function(name) {
+            return !present[name];
+          });
+          if (missing.length) {
+            const listed = found.length
+              ? found.slice(0, ZIP_LISTED_ENTRY_LIMIT).join(', ') +
+                (found.length > ZIP_LISTED_ENTRY_LIMIT
+                  ? ', and ' + (found.length - ZIP_LISTED_ENTRY_LIMIT) + ' more'
+                  : '')
+              : 'nothing at all';
+            throw new Error('this archive does not contain ' + missing.join(', ') +
+              ', which ' + (missing.length === 1 ? 'is' : 'are') + ' required. ' +
+              'It contains: ' + listed + '. The files must all come from one Ally ' +
+              'Institutional Report export - choose the archive Ally produced, or ' +
+              'choose the six CSV files yourself below.');
+          }
+
+          // Silence the six cards for the fill, and put them back afterwards
+          // whatever happens - a live region left at "off" would stay silent
+          // for every later hand-picked file.
+          ZIP_ENTRIES.forEach(function(entry) {
+            elements[entry.info].setAttribute('aria-live', 'off');
+          });
+
+          const used = [];
+          try {
+            for (const entry of ZIP_ENTRIES) {
+              const member = present[entry.name];
+              if (!member) {
+                clearFileInput(elements[entry.input], elements[entry.info]);
+                continue;
+              }
+              const blob = await member.async('blob');
+              // A real File, not the Blob: readFileAsText's error path reads
+              // .name, and streamCourses needs .stream() and .size.
+              const extracted = new File([blob], entry.name, { type: 'text/csv' });
+              assignFileToInput(elements[entry.input], extracted);
+              displayFileInfo(extracted, elements[entry.info]);
+              used.push(entry.name);
+            }
+          } finally {
+            // RESTORED A FRAME LATER, not on the next line. The last card's
+            // write and this restore would otherwise sit in one task, and
+            // whether a reader has already processed that write by then is
+            // not decidable from the DOM - so the restore is put beyond a
+            // rendering opportunity rather than argued about.
+            await nextFrame();
+            ZIP_ENTRIES.forEach(function(entry) {
+              elements[entry.info].setAttribute('aria-live', 'polite');
+            });
+          }
+
+          displayFileInfo(file, elements.zipInfo);
+
+          addStatus('Read ' + used.length + ' files from ' + file.name + ': ' +
+            used.join(', ') + '.', 'success');
+
+          if (present[ZIP_IGNORED_ENTRY]) {
+            addStatus(ZIP_IGNORED_ENTRY + ' is in the archive and is not used: it ' +
+              'holds a department-by-month grain this tool does not read, and it is ' +
+              'the largest of the aggregate files.', 'info');
+          }
+
+          const absent = ZIP_ENTRIES
+            .filter(function(entry) { return !present[entry.name]; })
+            .map(function(entry) { return entry.name; });
+          if (absent.length) {
+            addStatus('Not in the archive: ' + absent.join(', ') + '. Without all ' +
+              'three history files no accessibility history is generated, and the ' +
+              'Trends view stays unavailable on this data.', 'warning');
+          }
+
+          addStatus('Ready to generate. Change any of the six boxes below if you ' +
+            'need to, then select Generate.', 'info');
+        } catch (error) {
+          clearExportInputs();
+          clearFileInput(elements.zipFile, elements.zipInfo);
+          addStatus('Error: ' + error.message, 'error');
+          console.error('Archive error:', error);
+        } finally {
+          elements.generateBtn.disabled = false;
+        }
+      }
+
+      // ========================================================================
+      // Event Listeners
+      // ========================================================================
+
+      elements.zipFile.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          handleArchiveSelected(e.target.files[0]);
+        }
+      });
+
+      elements.termsFile.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          displayFileInfo(e.target.files[0], elements.termsInfo);
+        }
+      });
+
+      elements.deptsFile.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          displayFileInfo(e.target.files[0], elements.deptsInfo);
+        }
+      });
+
+      elements.coursesFile.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+          displayFileInfo(e.target.files[0], elements.coursesInfo);
+        }
+      });
+
+      [
+        [elements.yearsFile, elements.yearsInfo],
+        [elements.monthsFile, elements.monthsInfo],
+        [elements.deptTermsFile, elements.deptTermsInfo]
+      ].forEach(function(pair) {
+        pair[0].addEventListener('change', function(e) {
+          if (e.target.files.length > 0) {
+            displayFileInfo(e.target.files[0], pair[1]);
+          }
+        });
+      });
+
+      // Initial status
+      addStatus('Upload your Ally export archive, or choose the CSV files, to begin.', 'info');
+
+    })();
+  </script>
+</body>
+</html>

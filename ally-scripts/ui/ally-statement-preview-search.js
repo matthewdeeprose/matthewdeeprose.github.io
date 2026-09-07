@@ -97,6 +97,11 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
   // Callbacks for external integration
   let onSelectionChangeCallback = null;
 
+  // Multi-tenancy Stage 5: the API fallback binding, built at initialise()
+  // from ALLY_COURSE_SEARCH_API. Null when that module is absent, in which
+  // case the search behaves exactly as it did before Stage 5.
+  let apiBinding = null;
+
   const elements = {
     searchInput: null,
     resultsContainer: null,
@@ -108,6 +113,13 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     executeButton: null,
     executeHelp: null,
     moreButton: null,
+    // Stage 5 API-mode surfaces
+    label: null,
+    help: null,
+    apiNote: null,
+    apiSend: null,
+    apiCancel: null,
+    apiProgress: null,
   };
 
   // ========================================================================
@@ -139,6 +151,19 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
 
     // Optional - the module pages results without it if the markup is absent
     elements.moreButton = document.getElementById(ID_PREFIX + "search-more");
+
+    elements.label = document.querySelector(
+      'label[for="' + ID_PREFIX + 'search-input"]',
+    );
+    elements.help = document.getElementById(ID_PREFIX + "search-help");
+    elements.apiNote = document.getElementById(ID_PREFIX + "search-api-note");
+    elements.apiSend = document.getElementById(ID_PREFIX + "search-api-send");
+    elements.apiCancel = document.getElementById(
+      ID_PREFIX + "search-api-cancel",
+    );
+    elements.apiProgress = document.getElementById(
+      ID_PREFIX + "search-api-progress",
+    );
 
     const allFound =
       elements.searchInput && elements.resultsContainer && elements.resultsList;
@@ -533,7 +558,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     if (results.length === 0) {
       elements.resultsContainer.hidden = true;
       if (elements.moreButton) elements.moreButton.hidden = true;
-      updateStatus("No courses found");
+      updateStatus(noResultsMessage());
       return;
     }
 
@@ -629,6 +654,40 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     }
   }
 
+  /**
+   * Builds the empty-result message, saying why nothing matched when the
+   * course data was built without archived courses.
+   *
+   * Read from the data rather than hard-coded, so it cannot lie: rebuild with
+   * archived courses kept and this reverts by itself.
+   *
+   * @returns {string} Status message
+   */
+  function noResultsMessage() {
+    // API mode: the sentence names the code limit, because "no courses found"
+    // for a code the person typed would read as a bug rather than a limit.
+    if (apiBinding && apiBinding.isApiMode()) {
+      return ALLY_COURSE_SEARCH_API.TEXT.NONE_FOUND;
+    }
+    if (
+      typeof ALLY_COURSES !== "undefined" &&
+      ALLY_COURSES.excludesArchived === true
+    ) {
+      return "No courses found. Archived courses are not included.";
+    }
+    return "No courses found";
+  }
+
+  /**
+   * Re-applies the search mode to the interface (labels, hint, buttons).
+   * Cheap and idempotent, so it runs at every point of use: a tenant change
+   * made in Set Up can install or remove ALLY_COURSES between two searches.
+   * @returns {boolean} Whether API mode is active
+   */
+  function refreshMode() {
+    return apiBinding ? apiBinding.applyMode() : false;
+  }
+
   // ========================================================================
   // Private Methods - Selection
   // ========================================================================
@@ -641,9 +700,11 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     selectedCourse = course;
     logInfo("Course selected:", course.name);
 
-    // Update input value
+    // Update input value. An API row can carry no code; do not print " - ".
     if (elements.searchInput) {
-      elements.searchInput.value = course.code + " - " + course.name;
+      elements.searchInput.value = course.code
+        ? course.code + " - " + course.name
+        : course.name;
     }
 
     // Hide results
@@ -783,6 +844,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
    */
   function handleClear() {
     selectedCourse = null;
+    if (apiBinding) apiBinding.cancel();
 
     if (elements.searchInput) {
       elements.searchInput.value = "";
@@ -823,6 +885,19 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
    * @param {KeyboardEvent} event - Keyboard event
    */
   function handleKeydown(event) {
+    // API mode with no option active: Enter is the explicit send. Checked
+    // before the no-results guard below, which would otherwise swallow it.
+    if (
+      event.key === "Enter" &&
+      activeIndex < 0 &&
+      apiBinding &&
+      refreshMode()
+    ) {
+      event.preventDefault();
+      apiBinding.send(elements.searchInput ? elements.searchInput.value : "");
+      return;
+    }
+
     if (!currentResults.length && event.key !== "Escape") return;
 
     switch (event.key) {
@@ -927,6 +1002,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
    */
   function handleInput(event) {
     const query = event.target.value.trim();
+    refreshMode();
 
     // Clear any existing timer
     if (debounceTimer) {
@@ -944,6 +1020,14 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     // Debounce the search
     debounceTimer = setTimeout(function () {
       if (query.length >= CONFIG.MIN_SEARCH_LENGTH) {
+        // API mode (no course data on the page): keystrokes never send. The
+        // person gets a hint and sends with Enter or the Search Ally button.
+        if (apiBinding && apiBinding.isApiMode()) {
+          // The hint applies only to text nobody has sent yet; once a send
+          // is in flight or done, leave its results and outcome line alone.
+          if (apiBinding.showHint(query)) hideResults();
+          return;
+        }
         const results = searchCourses(query);
         showResults(results, query);
       } else {
@@ -983,6 +1067,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     // Focus handler - show results if there's a query, update icon
     elements.searchInput.addEventListener("focus", function () {
       updateSearchIconVisibility();
+      refreshMode();
       const query = elements.searchInput.value.trim();
       if (
         query.length >= CONFIG.MIN_SEARCH_LENGTH &&
@@ -1109,6 +1194,29 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
       // Set up event listeners
       setupEventListeners();
 
+      // Stage 5: the API fallback binding. Built ONCE, like the listeners -
+      // a force re-initialise must not bind the buttons twice.
+      if (
+        !apiBinding &&
+        typeof ALLY_COURSE_SEARCH_API !== "undefined" &&
+        typeof ALLY_COURSE_SEARCH_API.createBinding === "function"
+      ) {
+        apiBinding = ALLY_COURSE_SEARCH_API.createBinding({
+          input: elements.searchInput,
+          label: elements.label,
+          help: elements.help,
+          note: elements.apiNote,
+          sendButton: elements.apiSend,
+          cancelButton: elements.apiCancel,
+          progress: elements.apiProgress,
+          limit: CONFIG.INITIAL_RESULTS,
+          onResults: function (results, query) {
+            showResults(results, query);
+          },
+          onStatus: updateStatus,
+        });
+      }
+
       // Restore preserved course if we had one
       if (force && preservedCourse) {
         selectedCourse = preservedCourse;
@@ -1117,6 +1225,7 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
 
       // Initial state - only update display if no existing content to preserve
       hideResults();
+      refreshMode();
 
       if (elements.selectedDisplay) {
         var hasExistingContent =
@@ -1144,6 +1253,21 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
     },
 
     /**
+     * Re-applies the search mode (local type-ahead or API fallback) to the
+     * interface. Safe to call at any time.
+     * @returns {boolean} Whether API mode is active
+     */
+    refreshMode: refreshMode,
+
+    /**
+     * Whether the API fallback is the active search mode
+     * @returns {boolean}
+     */
+    isApiMode: function () {
+      return !!apiBinding && apiBinding.isApiMode();
+    },
+
+    /**
      * Gets the currently selected course
      * @returns {Object|null} Selected course or null
      */
@@ -1166,7 +1290,9 @@ const ALLY_STATEMENT_PREVIEW_SEARCH = (function () {
       if (course && course.name) {
         selectedCourse = course;
         if (elements.searchInput) {
-          elements.searchInput.value = course.code + " - " + course.name;
+          elements.searchInput.value = course.code
+            ? course.code + " - " + course.name
+            : course.name;
         }
         updateSelectedDisplay();
         updateExecuteButton();

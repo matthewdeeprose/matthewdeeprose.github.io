@@ -245,6 +245,44 @@ window.MermaidAccessibilityUtils = (function () {
   }
 
   /**
+   * Decode Mermaid's own `#word;` / `#digits;` escapes in an author directive
+   * value — REGISTER ITEM 78.
+   *
+   * The values this file extracts come from the RAW diagram source, which
+   * Mermaid's own encodeEntities never ran over (it transforms Mermaid's
+   * private copy inside Diagram.fromText). So an author who writes
+   * `accTitle: Acc #quot;A#quot;` was handed the literal bytes `#quot;` on
+   * every reader surface while the SVG <title> showed `Acc "A"` — three
+   * reader surfaces disagreeing with the picture, measured 4 September 2026
+   * in docs/mermaid-item-78-measurement-2026-09-04.md.
+   *
+   * The adapter is resolved OFF `window` AT CALL TIME, never captured at
+   * module scope: mermaid-parse-adapter.js loads AFTER this file in
+   * tools.html, so a module-scope const here would capture undefined.
+   *
+   * ORDER MATTERS, and it is transform-then-escape. This decode runs BEFORE
+   * the core sets its provenance flags, so the detailed sink still escapes
+   * the decoded text at its innerHTML branch (item 31) and the short still
+   * reaches its text and attribute sinks verbatim (item 30). Decoding here
+   * changes which characters those sinks receive; it changes nothing about
+   * which sink escapes.
+   *
+   * @param {string} text - A trimmed author directive value
+   * @returns {string} The decoded value, or the input unchanged when the
+   *   adapter is not available
+   */
+  function decodeAuthorEscapes(text) {
+    const adapter = window.MermaidParseAdapter;
+    if (adapter && typeof adapter.decodeSourcePlaceholders === "function") {
+      return adapter.decodeSourcePlaceholders(text);
+    }
+    logWarn(
+      "[Mermaid Accessibility] Parse adapter not available; author accTitle/accDescr delivered undecoded"
+    );
+    return text;
+  }
+
+  /**
    * Parse accessibility directives from mermaid code
    * @param {string} code - The mermaid diagram code
    * @returns {Object} Object containing title and description
@@ -262,18 +300,18 @@ window.MermaidAccessibilityUtils = (function () {
     const descrMatch = code.match(/accDescr\s*:\s*(.*?)(?:\n|$)/);
 
     if (titleMatch && titleMatch[1]) {
-      result.title = titleMatch[1].trim();
+      result.title = decodeAuthorEscapes(titleMatch[1].trim());
     }
 
     if (descrMatch && descrMatch[1]) {
-      result.description = descrMatch[1].trim();
+      result.description = decodeAuthorEscapes(descrMatch[1].trim());
     }
 
     // Also check for multi-line descriptions
     if (!result.description) {
       const multiLineMatch = code.match(/accDescr\s*\{([^}]*)\}/s);
       if (multiLineMatch && multiLineMatch[1]) {
-        result.description = multiLineMatch[1].trim();
+        result.description = decodeAuthorEscapes(multiLineMatch[1].trim());
       }
     }
 

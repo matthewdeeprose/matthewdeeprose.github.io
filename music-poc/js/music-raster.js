@@ -205,6 +205,124 @@ const MusicRaster = (function () {
     }
   }
 
+  // The elements MusicXML allows inside <score-part> AFTER <part-name>. Used to
+  // place a CREATED <part-name> in a schema-valid position instead of appending it
+  // at the end, where a strict consumer would reject the document.
+  const AFTER_PART_NAME = [
+    "part-name-display",
+    "part-abbreviation",
+    "part-abbreviation-display",
+    "group",
+    "score-instrument",
+    "player",
+    "midi-device",
+    "midi-instrument",
+  ];
+
+  // withPartDisplayNames(xmlText) → the same MusicXML with every unnamed part given
+  // the display name the note list already reads, or the input unchanged when it
+  // cannot be done. A <part-name> that is absent, or present but empty once trimmed,
+  // is filled from MusicNames.partDisplayName("", id) — so an unnamed part prints as
+  // "Part P1" rather than as Verovio's blank, and the engraved excerpt agrees with
+  // the spoken description. <part-abbreviation> and <instrument-name> are NOT
+  // touched: the abbreviation is what Verovio engraves beside later systems, and
+  // inventing one is a different decision nobody has taken.
+  //
+  // Lifted from js/music-pdf.js, where Stage 94 wrote it, and duplicated here the
+  // way verovioToolkitReady above is duplicated — these two files now share TWO
+  // functions rather than one, and the board item named in the header (extract a
+  // shared js/music-verovio.js) carries both. ONE deviation from a verbatim copy,
+  // named here so a future differ is not left guessing: the success logInfo says
+  // "excerpt working copy" where the sibling says "PDF working copy", because a
+  // raster path logging about a PDF would be false. Everything else is the
+  // sibling's, allowing for this file's LF endings against that file's CRLF.
+  //
+  // WHY IT LIVES HERE AND NOT IN MusicExcerpt.sliceXml, which is the other place it
+  // would fit. The slicer stays a VERBATIM slicer: what it returns is the author's
+  // own bars, and the copyable sliced XML the page hands the reader IS that string.
+  // Filling a name there would put a word this app invented into a document the
+  // reader copies out and takes away as their own. Doing it here, on the working
+  // copy handed to loadData and nowhere else, means only the PIXELS gain the label
+  // — the same bargain music-pdf.js strikes, where the MusicXML attached to the
+  // PDF stays the author's file and only the engraved pages carry the name.
+  //
+  // It returns the INPUT STRING BY IDENTITY when nothing needed filling, so a score
+  // whose parts are all named is not re-serialised and its excerpt PNG stays
+  // byte-identical to the one this module produced before Stage 95.
+  //
+  // BROWSER-ONLY, like everything else in this file: it needs DOMParser and
+  // XMLSerializer, and the guard below hands the input straight back without them.
+  function withPartDisplayNames(xmlText) {
+    if (typeof xmlText !== "string" || xmlText === "") return xmlText;
+
+    if (typeof DOMParser === "undefined" || typeof XMLSerializer === "undefined") {
+      logWarn("Part display names skipped: DOMParser/XMLSerializer unavailable (node?)");
+      return xmlText;
+    }
+    const names = globalThis.MusicNames;
+    if (!names || typeof names.partDisplayName !== "function") {
+      logWarn("Part display names skipped: MusicNames.partDisplayName unavailable");
+      return xmlText;
+    }
+
+    try {
+      const doc = new DOMParser().parseFromString(xmlText, "application/xml");
+      // A DOMParser failure surfaces as a <parsererror> element, not a throw.
+      if (!doc || !doc.documentElement || doc.getElementsByTagName("parsererror").length > 0) {
+        logWarn("Part display names skipped: the working copy is not well-formed XML");
+        return xmlText;
+      }
+
+      const scoreParts = doc.getElementsByTagName("score-part");
+      let filled = 0;
+
+      for (let i = 0; i < scoreParts.length; i++) {
+        const scorePart = scoreParts[i];
+        const id = scorePart.getAttribute("id") || "";
+
+        // Read the DIRECT child only. getElementsByTagName would reach into a
+        // nested element and rename the wrong thing.
+        let nameEl = null;
+        for (let c = 0; c < scorePart.childNodes.length; c++) {
+          const child = scorePart.childNodes[c];
+          if (child.nodeType === 1 && child.tagName === "part-name") {
+            nameEl = child;
+            break;
+          }
+        }
+
+        // A part that names itself keeps its name, whatever it says.
+        if (nameEl && String(nameEl.textContent).trim().length > 0) continue;
+
+        if (!nameEl) {
+          nameEl = doc.createElement("part-name");
+          let anchor = null;
+          for (let c = 0; c < scorePart.childNodes.length; c++) {
+            const child = scorePart.childNodes[c];
+            if (child.nodeType === 1 && AFTER_PART_NAME.indexOf(child.tagName) !== -1) {
+              anchor = child;
+              break;
+            }
+          }
+          // A null anchor appends, which is correct when nothing follows part-name.
+          scorePart.insertBefore(nameEl, anchor);
+        }
+
+        nameEl.textContent = names.partDisplayName("", id);
+        filled++;
+      }
+
+      if (filled === 0) return xmlText;
+      logInfo(
+        "Part display names filled for " + filled + " unnamed part(s) in the excerpt working copy"
+      );
+      return new XMLSerializer().serializeToString(doc);
+    } catch (e) {
+      logWarn("Part display names skipped: the working copy could not be rewritten", e);
+      return xmlText;
+    }
+  }
+
   // renderExcerptSvg(xmlText, options) → Promise<string|null> of ONE page of SVG.
   //
   // The input is a MusicXML string that already stands on its own — in the shipped
@@ -290,7 +408,15 @@ const MusicRaster = (function () {
         });
       }
 
-      const ok = tk.loadData(xml);
+      // Stage 95. Name the unnamed parts in the ENGRAVER'S working copy, immediately
+      // before loadData and nowhere earlier. A new binding rather than a
+      // reassignment, deliberately: it keeps `xml` — the caller's string, which is
+      // what MusicExcerpt handed over and what the page offers as copyable sliced
+      // XML — visibly untouched, exactly as music-pdf.js keeps its own attachment
+      // string. Returns its input by identity when every part is already named, so a
+      // named score's excerpt is engraved from the very string it was handed.
+      const labelledXml = withPartDisplayNames(xml);
+      const ok = tk.loadData(labelledXml);
       if (ok === false) {
         logError("renderExcerptSvg: Verovio loadData reported failure");
         return null;
@@ -734,6 +860,72 @@ const MusicRaster = (function () {
 
       excerptNeverThrows: true, // reaching this line at all is the assertion
     };
+
+    // ---- Stage 95 (the part-name working copy) ----
+    //
+    // The same five fixture behaviours js/music-pdf.js asserts on its own copy, plus
+    // the has-function row. UNLIKE that suite these need no node branch: this whole
+    // module is browser-only — it reads window.MusicLog at load and cannot be
+    // required under node at all — so DOMParser and XMLSerializer are present
+    // wherever this function runs, and a node-guard row here could only ever pass
+    // vacuously. `node --check` remains the only node gate this file has, and it is
+    // unchanged by this stage.
+    results.hasWithPartDisplayNames = typeof withPartDisplayNames === "function";
+
+    const scoreWith = function (partListInner) {
+      return (
+        '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<score-partwise version="4.0"><part-list>' + partListInner + '</part-list>' +
+        '<part id="P1"><measure number="1"/></part></score-partwise>'
+      );
+    };
+    // Read a value back out of the RESULT rather than matching on the serialised
+    // string: an empty element may serialise as <part-name/> or <part-name></part-name>
+    // and a row asserting either spelling would be testing the serialiser.
+    const readBackText = function (xmlOut, tag, index) {
+      const d = new DOMParser().parseFromString(xmlOut, "application/xml");
+      const els = d.getElementsByTagName(tag);
+      return els.length > (index || 0) ? String(els[index || 0].textContent) : null;
+    };
+
+    const EMPTY_NAME = scoreWith('<score-part id="P1"><part-name></part-name></score-part>');
+    const ABSENT_NAME = scoreWith('<score-part id="P2"><score-instrument id="P2-I1"/></score-part>');
+    const REAL_NAME = scoreWith('<score-part id="P1"><part-name>Piano</part-name></score-part>');
+    const WITH_ABBREV = scoreWith(
+      '<score-part id="P1"><part-name></part-name><part-abbreviation>Pno.</part-abbreviation></score-part>'
+    );
+    // Unclosed elements: DOMParser reports this as a <parsererror> document.
+    const MALFORMED = '<score-partwise><part-list><score-part id="P1">';
+
+    const abbrevOut = withPartDisplayNames(WITH_ABBREV);
+
+    results.partNamesEmptyGainsFallback =
+      readBackText(withPartDisplayNames(EMPTY_NAME), "part-name", 0) === "Part P1";
+    // The absent case must CREATE the element, so the count moves from 0 to 1 as
+    // well as the text being right; a row on the text alone would pass if the
+    // helper had somehow renamed a different element.
+    results.partNamesAbsentGainsFallback = (function () {
+      const countBefore = new DOMParser()
+        .parseFromString(ABSENT_NAME, "application/xml")
+        .getElementsByTagName("part-name").length;
+      const out = withPartDisplayNames(ABSENT_NAME);
+      const countAfter = new DOMParser()
+        .parseFromString(out, "application/xml")
+        .getElementsByTagName("part-name").length;
+      return (
+        countBefore === 0 && countAfter === 1 && readBackText(out, "part-name", 0) === "Part P2"
+      );
+    })();
+    // A real name is returned BY IDENTITY, which is the property that keeps a named
+    // score's excerpt PNG byte-identical rather than merely equivalent.
+    results.partNamesRealNameUntouched =
+      withPartDisplayNames(REAL_NAME) === REAL_NAME &&
+      readBackText(REAL_NAME, "part-name", 0) === "Piano";
+    results.partNamesAbbreviationUntouched =
+      readBackText(abbrevOut, "part-abbreviation", 0) === "Pno." &&
+      readBackText(abbrevOut, "part-name", 0) === "Part P1";
+    results.partNamesParserErrorReturnsUnchanged =
+      withPartDisplayNames(MALFORMED) === MALFORMED;
 
     if (typeof console !== "undefined" && typeof console.table === "function") {
       console.table(results);

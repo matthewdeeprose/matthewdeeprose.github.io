@@ -130,8 +130,23 @@ window.MermaidParseAdapter = (function () {
   // existing *-escaping fixture.
   //
   // Register item 19 (8 August 2026) completed the adoption across the
-  // remaining author-text fields, on the same two functions — there is no
-  // third transform, by design. Its render table is
+  // remaining author-text fields, on the same two functions. AMENDED
+  // 4 SEPTEMBER 2026 BY REGISTER ITEM 78: this read "there is no third
+  // transform, by design", and a THIRD ENTRY POINT now exists —
+  // decodeSourcePlaceholders, below. It is a COMPOSITION over
+  // decodePlaceholders, not a fourth mapping: it encodes with Mermaid's own
+  // rule first, because its input is the CALLER'S RAW SOURCE, which
+  // encodeEntities never ran over. It serves the core's author-override
+  // route and nothing else. The per-surface carve-out below is UNCHANGED.
+  // AMENDED 5 SEPTEMBER 2026: this read "it encodes with Mermaid's own
+  // `#\w+;` rule first", which named ONE of encodeEntities' three passes.
+  // The encode step is now the full three-pass copy, encodeMermaidEntities
+  // (renamed from encodeXychartEntities the same day), so the override route
+  // and the xychart source reader share one encoder rather than two. The two
+  // leading passes strip the trailing semicolon of a `style:`/`classDef:`
+  // colour token, so a one-pass encoder decoded a token the canvas leaves
+  // alone — measured, and recorded on decodeSourcePlaceholders itself.
+  // Its render table is
   // docs/mermaid-item19-field-capture-2026-08-08.md section 3, and each new
   // call site names its verdict. Three carve-outs are DELIBERATE and should
   // not be "completed" by a later editor:
@@ -140,7 +155,21 @@ window.MermaidParseAdapter = (function () {
   //     them permanently EMPTY while the rendered SVG's <title>/<desc> carries
   //     the author's text (a separate delivery defect, registered); flowchart
   //     and git do carry them, and no description module reads either field.
-  //     A transform there would be dead code no fixture could redden.
+  //     AMENDED 4 SEPTEMBER 2026 BY REGISTER ITEM 78: this read "a transform
+  //     there would be dead code no fixture could redden", and the CARVE-OUT
+  //     STANDS for exactly that reason — the TEN surfaces still deliver both
+  //     fields untransformed wherever they carry them at all. AMENDED
+  //     5 SEPTEMBER 2026 BY REGISTER ITEM 80, which added the block surface
+  //     and took the count from nine: the qualifier is new too, because two of
+  //     the ten carry NEITHER field and a bare count implied otherwise. Sankey
+  //     has no accTitle/accDescr syntax, and on block both directives are a
+  //     HARD PARSE ERROR, so neither surface delivers the fields to transform.
+  //     What changed is that the READER-FACING value
+  //     does not come from a surface at all: the core reads the RAW SOURCE
+  //     through parseAccessibilityDirectives and assigns it over both
+  //     description tiers, and THAT route is now decoded, by
+  //     decodeSourcePlaceholders below. Two undecoded forms from two code
+  //     paths; this bullet governs the surface half only.
   //   flowchart / ER / class `title` — delivered permanently empty; those
   //     grammars have no body title statement and a frontmatter title never
   //     reaches getDiagramTitle().
@@ -213,6 +242,48 @@ window.MermaidParseAdapter = (function () {
     return parseCharacterReferences(resolvePlaceholderDelimiters(text));
   }
 
+  /**
+   * Decode Mermaid's own #word; and #digits; escapes in text taken from the
+   * RAW diagram source, which encodeEntities never touched.
+   * Encodes with Mermaid's rule and then applies decodePlaceholders, so the
+   * author's own & and < survive as typed. Register item 78: this serves ONLY
+   * the core's author-override route, which reads the raw source; the TEN
+   * surfaces still hand accTitle/accDescr through untransformed wherever they
+   * carry them, because no module reads them there. (Nine until 5 September
+   * 2026, when register item 80 added the block surface — which, like sankey,
+   * carries neither field at all.)
+   *
+   * THE ENCODE STEP IS THE THREE-PASS COPY, AND HAS BEEN SINCE 5 SEPTEMBER
+   * 2026. It was a one-pass `#\w+;` replace inlined here until then — item 78
+   * implemented only the branch its dispatch named, and registered the
+   * duplication as a thing to decide. It is decided: this calls the shared
+   * encodeMermaidEntities below, and the local copy is gone.
+   *
+   * WHY THE TWO PRE-PASSES MATTER HERE and not only on xychart. Mermaid's own
+   * encodeEntities runs its `style`/`classDef` passes over the WHOLE source
+   * before the parser sees it, and each one STRIPS THE TRAILING SEMICOLON of a
+   * colour token — so a `#…;` token following `style:` or `classDef:` with no
+   * space between never becomes a placeholder, and the canvas draws it
+   * literally. A one-pass encoder decodes a token the canvas leaves alone, and
+   * the reader is then told something the sighted user cannot see. MEASURED
+   * 5 September 2026 on `accTitle: style:#quot;x#quot;`: the SVG <title> reads
+   * `style:"x#quot` where the one-pass decode gave `style:"x"`. The same value
+   * WITH a space after the colon agreed on both sides before this change and
+   * after it, because `\S*` cannot cross the space and no pre-pass fires.
+   *
+   * @param {string} text - Raw source text
+   * @returns {string} The decoded text, or the input unchanged when not a
+   *   non-empty string
+   */
+  function decodeSourcePlaceholders(text) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    // encodeMermaidEntities is a hoisted function declaration in this same
+    // IIFE, declared below; the call is resolved by hoisting, not by order.
+    return decodePlaceholders(encodeMermaidEntities(text));
+  }
+
   // ---------------------------------------------------------------------
   // THE ADAPTER-WIDE PARSE QUEUE — register item 21
   //
@@ -270,8 +341,17 @@ window.MermaidParseAdapter = (function () {
   // other parse. It is a racer that can never be a victim, so it queues for
   // the other four surfaces' sake rather than its own.
   //
+  // THE SURFACES ON THIS QUEUE, and there are TEN as of 5 September 2026:
+  // flowchart (the bare `parse`), ER, class, git, sankey, xychart, gantt,
+  // quadrant, sequence and block. Register item 80 added the last of them, and
+  // block is the type this queue matters MOST to — its db is a shared
+  // singleton on which a second parse replaces the WHOLE payload rather than
+  // only the shared scalar trio, so the slot is what protects the blocks and
+  // edges themselves and not merely the titles (census
+  // docs/mermaid-item-80-census-1-2026-09-05.md § Q8).
+  //
   // SHARED FATE, ACCEPTED DELIBERATELY: one queue means a parse that never
-  // settles stalls all five surfaces where five queues would have stalled
+  // settles stalls all ten surfaces where ten queues would have stalled
   // one. There is no timeout machinery here on purpose — a timeout would
   // have to abandon a slot whose parse may still be mutating a singleton
   // db, which is the very thing the queue exists to prevent. What CANNOT
@@ -2673,7 +2753,7 @@ window.MermaidParseAdapter = (function () {
   ].join("\n");
 
   /**
-   * Reproduce Mermaid's own `encodeEntities` over a whole diagram source.
+   * Reproduce Mermaid's own `encodeEntities` over raw source text.
    *
    * Quoted verbatim from the pinned 11.6.0 bundle in
    * docs/mermaid-quot-placeholder-capture-2026-08-08.md § 3.1, including the
@@ -2681,21 +2761,31 @@ window.MermaidParseAdapter = (function () {
    * dropped so this function is a faithful copy rather than an approximation
    * of one.
    *
-   * WHY IT IS HERE AT ALL, and it is the one thing about this surface's decode
-   * that a reader must understand. The other five surfaces receive text the db
-   * hands them, which Mermaid has ALREADY encoded — encodeEntities runs on the
-   * whole source inside Diagram.fromText, before the parser sees it. This
-   * surface reads the CALLER'S RAW STRING, which has been through nothing. So
-   * to reach the same delivered bytes the other surfaces start from, the raw
-   * source must be encoded here first, and only then decoded by the shared
-   * decodePlaceholders. Encode-then-decode is not a round trip to nowhere: it
-   * is how Mermaid's own `#word;` escape reaches the character it stands for.
+   * WHY IT IS HERE AT ALL, and it is the one thing about a raw-source decode
+   * that a reader must understand. The db-fed surfaces receive text Mermaid
+   * has ALREADY encoded — encodeEntities runs on the whole source inside
+   * Diagram.fromText, before the parser sees it. A raw-source reader has been
+   * through nothing. So to reach the same delivered bytes the db-fed surfaces
+   * start from, the raw text must be encoded here first, and only then decoded
+   * by the shared decodePlaceholders. Encode-then-decode is not a round trip
+   * to nowhere: it is how Mermaid's own `#word;` escape reaches the character
+   * it stands for.
    *
-   * @param {string} source - The caller's raw diagram source
-   * @returns {string} The source with `#word;` tokens in Mermaid's private
+   * IT NOW SERVES TWO ROUTES, AND WAS RENAMED FOR IT ON 5 SEPTEMBER 2026 —
+   * `encodeXychartEntities` until then, from the xychart surface that first
+   * needed it. The second route is `decodeSourcePlaceholders` above, which
+   * carried its own one-pass copy of the `#\w+;` branch alone until this date;
+   * that copy is deleted and the two routes now share this one encoder. The
+   * rename was taken because the single call site was, and remained, inside
+   * this file. Dated session reports in docs/ still name the old spelling and
+   * are correct as of their own dates.
+   *
+   * @param {string} source - Raw Mermaid text: a whole diagram source, or a
+   *   directive value taken out of one
+   * @returns {string} The text with `#word;` tokens in Mermaid's private
    *   delimiter form
    */
-  function encodeXychartEntities(source) {
+  function encodeMermaidEntities(source) {
     return source
       .replace(/style.*:\S*#.*;/g, (match) => match.substring(0, match.length - 1))
       .replace(/classDef.*:\S*#.*;/g, (match) => match.substring(0, match.length - 1))
@@ -3062,8 +3152,8 @@ window.MermaidParseAdapter = (function () {
    */
   function readXychartSource(code) {
     // Encode first, so the shared decodePlaceholders below starts from the
-    // same bytes every other surface starts from. See encodeXychartEntities.
-    const encoded = encodeXychartEntities(
+    // same bytes every other surface starts from. See encodeMermaidEntities.
+    const encoded = encodeMermaidEntities(
       String(code).split("\r\n").join("\n").split("\r").join("\n")
     );
     const lines = encoded.split("\n");
@@ -4228,6 +4318,2522 @@ window.MermaidParseAdapter = (function () {
     return ganttHealthy;
   }
 
+  // ---------------------------------------------------------------------
+  // Quadrant chart surface
+  //
+  // THE EIGHTH PER-TYPE SURFACE, and the second HYBRID one after xychart:
+  // three scalars from Mermaid's db, everything else from a reader over the
+  // author's own source. The split is a design-seat ruling of 1 September
+  // 2026, and it rests on one measurement — Mermaid's quadrant db delivers
+  // NO AUTHORED COORDINATE. `getQuadrantData().points` carries laid-out
+  // PIXELS: an author's `[0.25, 0.85]` arrives as `{ x: 147, y: 108.6 }`,
+  // after a layout that reserves a title band when a title is present and
+  // does not when it is absent.
+  //
+  // The authored pair IS arithmetically recoverable from those pixels plus
+  // the delivered quadrant rectangles — eight of eight exact to four decimal
+  // places, measured in
+  // docs/mermaid-item-69-quadrant-grounding-2026-09-01.md § B3.4a — and this
+  // surface DELIBERATELY DOES NOT DO THAT. Recovering an author's number by
+  // inverting a private layout is the same class of mistake as reading a
+  // title off a rendered SVG (register item 67): the float noise needs an
+  // arbitrary rounding decision nobody has authority to take on the author's
+  // behalf, the plot rectangle changes shape with the title, and the
+  // transform is Mermaid's layout code rather than a published contract, so
+  // any release can move every recovered figure with no gate of ours
+  // noticing. A description that states "coordinates [0.25, 0.85]" as fact
+  // must not compute that number from a picture.
+  //
+  // WHAT THE DB IS USED FOR INSTEAD. The pixels, the positional axis-label
+  // array and the quadrant rectangles are read in the SAME SLOT and
+  // delivered under `crossCheck`, which is CORROBORATION MATERIAL AND NEVER
+  // NARRATION. A consumer that speaks a crossCheck value is using the wrong
+  // field; its purpose is to let a gate assert that the source read and the
+  // canvas agree, which is the one thing a source reader cannot prove about
+  // itself.
+  //
+  // MERMAID IS STILL THE JUDGE OF VALIDITY, exactly as on the xychart
+  // surface: the reader runs ONLY after getDiagramFromText has resolved, in
+  // the same queue slot, so this surface can never narrate a source Mermaid
+  // rejected. The reader is a second opinion about CONTENT, never a first
+  // opinion about legality.
+  //
+  // THE READER'S FAILURE CONTRACT. A point line the reader cannot parse is a
+  // STOP: it throws an Error whose message begins
+  // QUADRANT_READER_ERROR_PREFIX and NAMES THE LINE. It never guesses, never
+  // partially fills the shape, and above all NEVER SILENTLY DROPS A POINT.
+  // That last clause is the defect this surface exists to remove: the
+  // shipped module's point regex cannot match Mermaid's own `Name:::class:`
+  // syntax, so a three-point chart is narrated as "1 data point" with two of
+  // the author's points invisible and nothing said about the loss
+  // (grounding § B2.7, measured in both directions).
+  //
+  // WHY THE SINGLETON DEFENCES APPLY, and here they are STRONGER than on any
+  // earlier surface. Measured (grounding § B3.4f): the quadrant db is a
+  // shared singleton whose object identity is the same across every parse on
+  // a page, and a second parse replaces the FIRST diagram's ENTIRE payload —
+  // points, axis labels and quadrant labels, not merely the three scalars
+  // register item 21 is about. Re-reading a stale Diagram handle after a
+  // second parse returns the second chart's data in full, and the handle
+  // looks live. So every db read below happens inside the parse's own .then,
+  // behind the queue, and the whole normalise is one indivisible unit.
+  //
+  // The source-read half cannot be lost that way, because it is read from
+  // the caller's own string — but the crossCheck half can, and it is exactly
+  // the half a gate would trust.
+  //
+  // DECODE — measured 1 September 2026, and the answer is SPLIT. Recorded as
+  // the ruling on open question OQ1.
+  //
+  //   Point names, axis end labels and quadrant labels: NO DECODE, because
+  //   no escape can reach them. Mermaid's quadrant lexer REJECTS `#quot;`
+  //   and `#35;` outright in all three positions ("Unrecognized text", and
+  //   the error text shows the placeholder bytes, so encodeEntities ran
+  //   first and the lexer then refused its own delimiters); it rejects a
+  //   bare `"` with a parse error; and it rejects a pre-escaped `&lt;`. The
+  //   one character that does get through is a bare `&`, and it is delivered
+  //   and DRAWN as itself, untransformed. So there is nothing to decode, and
+  //   a decode call here would be dead code no fixture could ever redden.
+  //
+  //   `title`: DECODED with decodePlaceholders, item 9 verdict C-PLACEHOLDER,
+  //   [OBSERVED] on all four routes rather than inferred from a sibling
+  //   surface. The title statement is a DIFFERENT lexer path from the three
+  //   above and does accept escapes. Author `#quot;` reaches the db as
+  //   placeholder bytes and is drawn as `"`; `#35;` is drawn as `#`; a bare
+  //   `&` is drawn as itself; a pre-escaped `&lt;` is drawn as the literal
+  //   six characters. decodePlaceholders reproduces the drawing in all four,
+  //   and the quadrant SVG has ZERO foreignObjects, so the SVG-text verdict
+  //   is the right one.
+  //
+  //   `accTitle` / `accDescr`: NO TRANSFORM, matching the standing carve-out
+  //   on all seven earlier surfaces. They accept escapes and deliver
+  //   placeholder bytes, and that is deliberately left alone here.
+  //
+  // NO HANG GUARD, and its absence is measured rather than assumed. The
+  // `accDescr { ... }` block form that hangs Mermaid 11.6.0's xychart parser
+  // parses cleanly on a quadrant chart in about a second and delivers its
+  // text correctly (grounding § B4, re-confirmed this session as grammar
+  // case G25). Register item 47 is unchanged; its blast radius simply does
+  // not reach this type.
+  //
+  // Field sources, the grammar census and three verbatim deliveries are in
+  // docs/mermaid-item-69-quadrant-surface-2026-09-01.md.
+  // ---------------------------------------------------------------------
+
+  // Every reader refusal carries this prefix, so a consumer can tell "our
+  // subset lags Mermaid's grammar" from "Mermaid rejected the source"
+  // without string-matching on Mermaid's own error text.
+  const QUADRANT_READER_ERROR_PREFIX = "Quadrant chart source reader";
+
+  // Stated as a PRECONDITION rather than as decoration: every refusal raised
+  // from readQuadrantSource happens inside `getDiagramFromText(...).then`,
+  // so Mermaid has already judged the source valid by the time it is
+  // reached. This surface has no pre-parse refusal, so unlike xychart there
+  // is no second tail.
+  const QUADRANT_READER_ERROR_TAIL =
+    "Mermaid accepted this source, so the reader's grammar subset lags " +
+    "Mermaid's own; the diagram must fall back rather than be described " +
+    "from a partial read.";
+
+  // THE POINT LINE, and every branch of it was measured against Mermaid's
+  // own parser on 1 September 2026 rather than copied from the shipped
+  // module, whose equivalent pattern is the defect this surface replaces.
+  //
+  //   name        either a double-quoted string, or a bare run with NO
+  //               colon in it. Bare is safe because Mermaid REJECTS a colon
+  //               inside an unquoted point name (measured), so `[^:]*`
+  //               cannot swallow the separator.
+  //   :::class    Mermaid's class syntax, OPTIONAL. The class name itself is
+  //               read and discarded — see readQuadrantSource for why it is
+  //               matched at all rather than ignored.
+  //   [x, y]      unsigned integer or decimal, both captured as the
+  //               AUTHOR'S OWN STRING. Mermaid rejects a negative, a value
+  //               above 1 and a bare `.5`, so this character class is
+  //               exactly its accepted set.
+  //   rest        trailing style pairs, accepted and discarded; this surface
+  //               delivers no styling.
+  //
+  // Anchored at BOTH ends, so trailing text cannot be silently discarded
+  // (AGENTS.md § Diagnosis Discipline — verify the exact variant the prose
+  // names).
+  const QUADRANT_POINT_LINE =
+    /^(?:"([^"]*)"|([^:]*))(?::::([^:\s]+))?\s*:\s*\[\s*(\d+(?:\.\d+)?)\s*,\s*(\d+(?:\.\d+)?)\s*\]\s*(.*)$/;
+
+  // The four quadrant statements, `quadrant-1` to `quadrant-4`. Case is
+  // Mermaid's own: measured, the axis keywords accept any case (`X-AXIS`
+  // parses), so every keyword test here is case-insensitive to match.
+  const QUADRANT_LABEL_LINE = /^quadrant-([1-4])\b\s*(.*)$/i;
+
+  // Mermaid draws the arrow as `-->` in source. A dangling `x-axis Low -->`
+  // is ACCEPTED by the grammar and delivered by the db as a single label
+  // reading "Low ⟶" — the arrow glyph survives into the label text. Split
+  // on the source spelling and the author's declaration is recovered
+  // correctly; see readQuadrantAxis.
+  const QUADRANT_AXIS_ARROW = "-->";
+
+  // Single-slot memo, matching every other surface's contract: the PROMISE
+  // is cached, not the resolved value, and the memo sits IN FRONT of the
+  // parse queue so an identical-code call never enqueues a second singleton
+  // replacement.
+  let quadrantMemoCode = null;
+  let quadrantMemoPromise = null;
+
+  // Quadrant self-check health: null until the check has run, then true or
+  // false. Independent of the other seven flags by design.
+  let quadrantHealthy = null;
+
+  // Lazy, memoised, first-parseQuadrant trigger — same reasoning as the
+  // other seven self-checks: Mermaid's diagram detectors are not registered
+  // at script-evaluation time, so an eager check reports a false failure.
+  let quadrantSelfCheckStarted = false;
+  let quadrantSelfCheckPromise = null;
+
+  /**
+   * Full self-check fixture: a title, both accessible fields, both axes with
+   * arrows, all four quadrant labels, and three points.
+   *
+   * The THIRD point is written `Gamma:::big:` and there is a `classDef` line
+   * below it. That is the whole reason this fixture exists in this shape: it
+   * is the exact construct the shipped module's regex drops in silence, so
+   * if a Mermaid upgrade ever changed the class syntax this check fails
+   * loudly instead of the surface quietly losing a point the way the parser
+   * it replaces already does.
+   *
+   * The SECOND point carries trailing inline styling, so the reader's
+   * discard-the-rest branch is exercised rather than assumed.
+   *
+   * ASCII only, and every label distinctive, so a cross-delivery from
+   * another diagram NAMES ITS SOURCE rather than merely looking wrong.
+   */
+  const QUADRANT_SELF_CHECK_FIXTURE_FULL = [
+    "quadrantChart",
+    "    title SelfCheck quadrant title",
+    "    accTitle: SelfCheck quadrant acc title",
+    "    accDescr: SelfCheck quadrant acc descr",
+    "    x-axis SelfCheck low x --> SelfCheck high x",
+    "    y-axis SelfCheck low y --> SelfCheck high y",
+    "    quadrant-1 SelfCheck q one",
+    "    quadrant-2 SelfCheck q two",
+    "    quadrant-3 SelfCheck q three",
+    "    quadrant-4 SelfCheck q four",
+    "    Alpha point: [0.25, 0.85]",
+    "    Beta point: [0.80, 0.30] radius: 12, color: #ff0000",
+    "    Gamma point:::big: [0.5, 0.5]",
+    "    classDef big radius: 15, stroke-width: 3px",
+  ].join("\n");
+
+  /**
+   * Small self-check fixture: two points, no title, no quadrant labels, no
+   * accessible fields.
+   *
+   * Two fixtures rather than one because the second is what proves the
+   * FIRST one's scalars were snapshotted before it ran — the quadrant db is
+   * a measured singleton whose second parse replaces the first chart's whole
+   * payload, so a check that parsed both and read afterwards would be
+   * measuring the second chart twice. It also pins the absent cases: an
+   * unlabelled quadrant is delivered as "" rather than omitted, and an
+   * absent title is "" rather than null.
+   */
+  const QUADRANT_SELF_CHECK_FIXTURE_SMALL = [
+    "quadrantChart",
+    "    x-axis SelfCheck small low --> SelfCheck small high",
+    "    y-axis SelfCheck small bottom --> SelfCheck small top",
+    "    Quick win: [0.2, 0.8]",
+    "    Long haul: [0.8, 0.3]",
+  ].join("\n");
+
+  /**
+   * Single-label self-check fixture: an x-axis written with NO arrow beside a
+   * y-axis written with one.
+   *
+   * A third fixture rather than a flag on the second, because the distinction
+   * it pins is a RULING and not a shape detail. Gold rule R6 says a
+   * single-label axis is an axis TITLE and must never be narrated as though
+   * the author had declared a polarity, so this surface delivers such a label
+   * in its own field with both ends left empty. Mixing the two forms in one
+   * chart is what makes the fixture bite: a reader that filled `left` from
+   * either form would pass on a chart carrying only one of them.
+   */
+  const QUADRANT_SELF_CHECK_FIXTURE_SINGLE_LABEL = [
+    "quadrantChart",
+    "    x-axis SelfCheck lone x",
+    "    y-axis SelfCheck lone low y --> SelfCheck lone high y",
+    "    Lone point: [0.7, 0.2]",
+  ].join("\n");
+
+  /**
+   * Build (never throw) the reader's own distinct, descriptive error.
+   * @param {string} detail - What could not be read
+   * @param {number|null} lineNumber - 1-based source line, when known
+   * @returns {Error} The reader error
+   */
+  function buildQuadrantReaderError(detail, lineNumber) {
+    const where =
+      typeof lineNumber === "number" ? ` at source line ${lineNumber}` : "";
+    return new Error(
+      `${QUADRANT_READER_ERROR_PREFIX}: ${detail}${where}. ` +
+        QUADRANT_READER_ERROR_TAIL
+    );
+  }
+
+  /**
+   * Throw the reader's own distinct, descriptive error.
+   * @param {string} detail - What could not be read
+   * @param {number|null} lineNumber - 1-based source line, when known
+   */
+  function throwQuadrantReaderError(detail, lineNumber) {
+    throw buildQuadrantReaderError(detail, lineNumber);
+  }
+
+  /**
+   * Remove a trailing `%%` comment, ignoring one that falls inside quotes.
+   *
+   * Quote-awareness is not decoration: a quoted point name is legal
+   * (measured — `"Alpha Beta": [0.2, 0.7]` parses and delivers the name with
+   * the quotes stripped), so a name could contain the comment marker.
+   *
+   * @param {string} line - One source line
+   * @returns {string} The line with any comment removed
+   */
+  function stripQuadrantComment(line) {
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const character = line.charAt(i);
+      if (character === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (!inQuotes && character === "%" && line.charAt(i + 1) === "%") {
+        return line.slice(0, i);
+      }
+    }
+    return line;
+  }
+
+  /**
+   * Read one axis statement's remainder into its end labels.
+   *
+   * Mermaid accepts three forms, all measured, and THEY ARE NOT THE SAME
+   * DECLARATION:
+   *
+   *   `Low --> High`   two ends, a polarity the author stated.
+   *   `Effort`         ONE LABEL AND NO POLARITY — an axis title. Mermaid
+   *                    happens to draw it at the low end of the axis, but
+   *                    that is a rendering choice, not something the author
+   *                    said.
+   *   `Low -->`        a dangling arrow: a low end declared and a high end
+   *                    left empty. The db obscures this by delivering the
+   *                    single label "Low ⟶", arrow glyph included; splitting
+   *                    the author's own source on `-->` recovers it.
+   *
+   * THE SINGLE LABEL IS DELIVERED IN ITS OWN FIELD, NOT AS `low`, and that
+   * is gold rule R6 rather than a preference: R6 rules that a single-label
+   * axis narrates as `The x-axis is labelled "LABEL"` and explicitly REJECTS
+   * "treating the single label as the left end and leaving the right end
+   * blank", because doing so fabricates a polarity the author never wrote.
+   * Delivering it as `low` would put the fabrication one step from every
+   * consumer and would ALSO make it indistinguishable from the dangling-arrow
+   * form, which really does declare a low end.
+   *
+   * @param {string} remainder - Everything after the axis keyword
+   * @param {number} lineNumber - 1-based source line, for a refusal
+   * @returns {Object} `{ low, high, label }`, each a string, "" when
+   *   undeclared. `label` is non-empty ONLY for the single-label form, and
+   *   `low`/`high` are both "" in that case.
+   */
+  function readQuadrantAxis(remainder, lineNumber) {
+    const parts = String(remainder).split(QUADRANT_AXIS_ARROW);
+    if (parts.length > 2) {
+      throwQuadrantReaderError(
+        `an axis statement with more than one ${QUADRANT_AXIS_ARROW} in it`,
+        lineNumber
+      );
+    }
+    if (parts.length === 1) {
+      return { low: "", high: "", label: parts[0].trim() };
+    }
+    return {
+      low: parts[0].trim(),
+      high: parts[1].trim(),
+      label: "",
+    };
+  }
+
+  /**
+   * Read the chart's axes, quadrant labels and points out of the diagram
+   * SOURCE.
+   *
+   * Runs ONLY after getDiagramFromText has resolved on the same string, in
+   * the same queue slot — see the surface preamble. `title`, `accTitle` and
+   * `accDescr` statements are SKIPPED, because the db delivers those three
+   * and is the better source for them.
+   *
+   * @param {string} code - The caller's raw Mermaid source
+   * @returns {Object} `{ xAxis, yAxis, quadrants, points }`
+   */
+  function readQuadrantSource(code) {
+    // No encode step, unlike xychart. That surface must reproduce Mermaid's
+    // encodeEntities over the raw source so its reader starts from the same
+    // bytes the db would have delivered — but here the three fields the
+    // reader owns cannot carry an escape at all: the lexer refuses `#word;`
+    // in a point name, an axis label and a quadrant label alike (measured).
+    // Encoding would therefore transform nothing, and the decode that
+    // followed it would be dead code.
+    const lines = String(code)
+      .split("\r\n")
+      .join("\n")
+      .split("\r")
+      .join("\n")
+      .split("\n");
+
+    let sawHeader = false;
+    let inFrontmatter = false;
+    let inAccBlock = false;
+    let xAxis = null;
+    let yAxis = null;
+    const quadrants = ["", "", "", ""];
+    const points = [];
+
+    for (let i = 0; i < lines.length; i += 1) {
+      const lineNumber = i + 1;
+      let text = stripQuadrantComment(lines[i]).trim();
+
+      if (inAccBlock) {
+        if (text.indexOf("}") !== -1) {
+          inAccBlock = false;
+        }
+        continue;
+      }
+      if (text === "") {
+        continue;
+      }
+      // YAML frontmatter is skipped wholesale. Measured, and worth stating
+      // because it is a real delivery limit rather than a shortcut: a
+      // frontmatter `title:` does NOT reach getDiagramTitle on this type,
+      // exactly as on flowchart, ER and class, so there is nothing here for
+      // either half of the surface to read. Only the body `title` form
+      // carries a title.
+      if (!sawHeader && text === "---") {
+        inFrontmatter = !inFrontmatter;
+        continue;
+      }
+      if (inFrontmatter) {
+        continue;
+      }
+      if (text.charAt(text.length - 1) === ";") {
+        text = text.slice(0, -1).trim();
+      }
+
+      if (!sawHeader) {
+        if (!/^quadrantChart\b/i.test(text)) {
+          throwQuadrantReaderError(
+            "a source that does not open with quadrantChart",
+            lineNumber
+          );
+        }
+        const tail = text.slice("quadrantChart".length).trim();
+        if (tail !== "") {
+          throwQuadrantReaderError(
+            `an unknown word after quadrantChart: ${JSON.stringify(tail)}`,
+            lineNumber
+          );
+        }
+        sawHeader = true;
+        continue;
+      }
+
+      // The db supplies all three of these; the reader only has to not choke.
+      if (/^accDescr\s*\{/i.test(text)) {
+        inAccBlock = text.indexOf("}") === -1;
+        continue;
+      }
+      if (/^(accTitle|accDescr)\s*:/i.test(text)) {
+        continue;
+      }
+      if (/^title\b/i.test(text)) {
+        continue;
+      }
+
+      // classDef is RECOGNISED AND SKIPPED. This surface delivers no
+      // styling, so the declaration has nothing to contribute — but it must
+      // be matched explicitly, because falling through to the point branch
+      // would make a perfectly legal `classDef` line a reader refusal.
+      if (/^classDef\b/i.test(text)) {
+        continue;
+      }
+
+      // LAST DECLARATION WINS on a repeated axis or quadrant statement, and
+      // that is Mermaid's own measured behaviour rather than a choice: two
+      // `x-axis` lines deliver the second, and `quadrant-1` twice delivers
+      // the second. Refusing the source instead would reject something
+      // Mermaid accepts and describes perfectly well.
+      if (/^x-axis\b/i.test(text)) {
+        xAxis = readQuadrantAxis(text.slice("x-axis".length), lineNumber);
+        continue;
+      }
+      if (/^y-axis\b/i.test(text)) {
+        yAxis = readQuadrantAxis(text.slice("y-axis".length), lineNumber);
+        continue;
+      }
+
+      const quadrantMatch = QUADRANT_LABEL_LINE.exec(text);
+      if (quadrantMatch) {
+        quadrants[Number(quadrantMatch[1]) - 1] = quadrantMatch[2].trim();
+        continue;
+      }
+
+      // Anything left must be a point line, and a point line the reader
+      // cannot parse is a STOP. It is never dropped: dropping one is the
+      // shipped module's defect, and a description that states a point count
+      // it computed from a partial read is worse than no description.
+      const pointMatch = QUADRANT_POINT_LINE.exec(text);
+      if (!pointMatch) {
+        throwQuadrantReaderError(
+          `a statement the reader does not know: ${JSON.stringify(text.slice(0, 60))}`,
+          lineNumber
+        );
+      }
+
+      const quoted = pointMatch[1];
+      const bare = pointMatch[2];
+      const name = (quoted === undefined ? bare : quoted).trim();
+      if (name === "") {
+        throwQuadrantReaderError("a point line with an empty name", lineNumber);
+      }
+
+      points.push({
+        name: name,
+        // THE AUTHOR'S OWN STRING, verbatim: `0.850` stays `0.850` and `0.85`
+        // stays `0.85`. The db cannot supply this — it delivers a laid-out
+        // pixel — and a consumer that wants to print the coordinate the
+        // author wrote has no other source for it.
+        x: pointMatch[4],
+        y: pointMatch[5],
+        // The same pair as numbers, so a consumer comparing against the 0.5
+        // boundary does not each parse the strings itself and disagree about
+        // how.
+        xValue: Number(pointMatch[4]),
+        yValue: Number(pointMatch[5]),
+      });
+    }
+
+    if (!sawHeader) {
+      throwQuadrantReaderError(
+        "a source with no quadrantChart header at all",
+        null
+      );
+    }
+
+    // AN UNDECLARED AXIS IS NOT AN ERROR. Measured: a quadrant chart with no
+    // axis statement at all, or with only one of the two, renders correctly
+    // and Mermaid simply draws no label. It is delivered as two empty
+    // strings, matching the way an unlabelled quadrant is delivered, so a
+    // consumer has ONE absent case across every author-text field on this
+    // surface rather than a null here and an empty string there.
+    //
+    // A POINTLESS CHART IS ALSO LEGAL, measured — `points` may be empty and
+    // that is not a refusal.
+    return {
+      xAxis: xAxis || { low: "", high: "", label: "" },
+      yAxis: yAxis || { low: "", high: "", label: "" },
+      quadrants: quadrants,
+      points: points,
+    };
+  }
+
+  /**
+   * Read the db's own view of the same chart, for corroboration only.
+   *
+   * EVERY VALUE HERE IS CROSS-CHECK MATERIAL AND NONE OF IT MAY BE
+   * NARRATED. It is delivered so a gate can assert that the source read and
+   * the canvas agree — the one thing a source reader cannot prove about
+   * itself — and for no other purpose.
+   *
+   * Two normalisations are applied, both mechanical and both measured:
+   *
+   *   THE AXIS ARRAY IS NOT FIXED AT FOUR. Mermaid delivers one entry per
+   *   DECLARED end, so its length is 0, 2, 3 or 4 depending on how many
+   *   arrows the author wrote. x entries carry `rotation: 0` and y entries
+   *   `rotation: -90`, which discriminates them reliably, so each axis's
+   *   entries are placed in its own two slots and the rest padded with "".
+   *   Without that the array's meaning would depend on the source, and a
+   *   positional comparison against the delivered fields would be nonsense.
+   *
+   *   THE POINT ARRAY IS REVERSED. Mermaid delivers points in REVERSE
+   *   declaration order (measured on every probe), so they are reversed back
+   *   into source order here — otherwise a positional comparison against the
+   *   reader's own list would pair every point with the wrong one.
+   *
+   * @param {Object} db - The resolved diagram's db, read inside the slot
+   * @returns {Object} `{ axisLabels, quadrantLabels, pixels, plotRect }`
+   */
+  function readQuadrantCrossCheck(db) {
+    const data = db.getQuadrantData();
+    const rawAxis = Array.isArray(data.axisLabels) ? data.axisLabels : [];
+    const rawQuadrants = Array.isArray(data.quadrants) ? data.quadrants : [];
+    const rawPoints = Array.isArray(data.points) ? data.points : [];
+
+    const xLabels = [];
+    const yLabels = [];
+    rawAxis.forEach((label) => {
+      const text = label && typeof label.text === "string" ? label.text : "";
+      if (label && label.rotation === 0) {
+        xLabels.push(text);
+      } else {
+        yLabels.push(text);
+      }
+    });
+    const slot = (list, index) =>
+      typeof list[index] === "string" ? list[index] : "";
+
+    // The plot rectangle as the UNION of the four quadrant rectangles,
+    // derived rather than assumed. It moves with the chart — a titled chart
+    // reserves a title band and an untitled one does not, and a chart with
+    // no axis labels reclaims their margin — so nothing here may be a
+    // constant.
+    let minX = null;
+    let minY = null;
+    let maxX = null;
+    let maxY = null;
+    rawQuadrants.forEach((quadrant) => {
+      if (!quadrant || typeof quadrant.x !== "number") {
+        return;
+      }
+      const right = quadrant.x + quadrant.width;
+      const bottom = quadrant.y + quadrant.height;
+      minX = minX === null ? quadrant.x : Math.min(minX, quadrant.x);
+      minY = minY === null ? quadrant.y : Math.min(minY, quadrant.y);
+      maxX = maxX === null ? right : Math.max(maxX, right);
+      maxY = maxY === null ? bottom : Math.max(maxY, bottom);
+    });
+
+    return {
+      axisLabels: [
+        slot(xLabels, 0),
+        slot(xLabels, 1),
+        slot(yLabels, 0),
+        slot(yLabels, 1),
+      ],
+      quadrantLabels: rawQuadrants.map((quadrant) =>
+        quadrant && quadrant.text && typeof quadrant.text.text === "string"
+          ? quadrant.text.text
+          : ""
+      ),
+      pixels: rawPoints
+        .map((point) => ({
+          name:
+            point && point.text && typeof point.text.text === "string"
+              ? point.text.text
+              : "",
+          x: typeof point.x === "number" ? point.x : null,
+          y: typeof point.y === "number" ? point.y : null,
+        }))
+        .reverse(),
+      plotRect: {
+        x: minX === null ? null : minX,
+        y: minY === null ? null : minY,
+        width: minX === null ? null : maxX - minX,
+        height: minY === null ? null : maxY - minY,
+      },
+    };
+  }
+
+  /**
+   * Normalise one resolved quadrant Diagram instance into the adapter's
+   * quadrant shape.
+   *
+   * SAME-TICK SNAPSHOT, and on this surface it protects more than the three
+   * scalars. The quadrant db is a measured singleton whose SECOND PARSE
+   * REPLACES THE FIRST CHART'S ENTIRE PAYLOAD — points, axis labels and
+   * quadrant labels included — and a stale Diagram handle read afterwards
+   * returns the second chart's data while looking perfectly live. So the
+   * crossCheck reads happen here, inside the parse's own .then, behind the
+   * queue, and are copied into this function's own return object before it
+   * returns. Nothing delivered references a db-owned object, and no consumer
+   * may go back to the db later.
+   *
+   * The reader's half cannot be lost that way, because it comes from the
+   * caller's own string; the source read is done inside the slot anyway, so
+   * the whole function is one indivisible unit and a future editor cannot
+   * accidentally split the db reads from the rest.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @param {string} code - The caller's raw source, the reader's input
+   * @returns {Object} The normalised quadrant chart
+   */
+  function normaliseQuadrant(diagram, code) {
+    const db = diagram.db;
+
+    // WRONG-TYPE GUARD, and it earns its place: getDiagramTitle, getAccTitle
+    // and getAccDescription exist on EVERY Mermaid db, so a caller that
+    // hands this surface a flowchart gets three happy scalar reads and then
+    // a bare `db.getQuadrantData is not a function` TypeError from inside
+    // the cross-check — measured. That is a stack trace where the contract
+    // promises a named refusal, so the type is checked on the one accessor
+    // that discriminates, before anything is read.
+    if (typeof db.getQuadrantData !== "function") {
+      throwQuadrantReaderError(
+        "a diagram whose db has no getQuadrantData accessor, so it is not a " +
+          "quadrant chart at all",
+        null
+      );
+    }
+
+    // The three shared-store reads, together, first, before anything else
+    // can yield. They come from Mermaid's CROSS-TYPE shared store, which
+    // every parse of every type clears (register item 21).
+    const rawTitle = db.getDiagramTitle() || "";
+    const rawAccTitle = db.getAccTitle() || "";
+    const rawAccDescription = db.getAccDescription() || "";
+
+    // The db's own view, same slot, corroboration only.
+    const crossCheck = readQuadrantCrossCheck(db);
+
+    // Mermaid has judged the source valid; only now does the reader run.
+    const read = readQuadrantSource(code);
+
+    return {
+      type: "quadrantChart",
+      // ITEM 9, VERDICT C-PLACEHOLDER for this field, [OBSERVED] on all four
+      // routes rather than inferred: `#quot;` is drawn as `"`, `#35;` as
+      // `#`, a bare `&` as itself, and a pre-escaped `&lt;` as the literal
+      // six characters. decodePlaceholders reproduces the drawing in every
+      // case, and the quadrant SVG carries no foreignObject.
+      title: decodePlaceholders(rawTitle),
+      // NO transform on accTitle or accDescr, matching the standing
+      // carve-out declared at the placeholder-decoding block near the top of
+      // this file. It is deliberate on all eight surfaces and must not be
+      // "completed" by a later editor.
+      accTitle: rawAccTitle,
+      accDescr: rawAccDescription,
+
+      // The author's own declarations, from the source. NO DECODE: the
+      // lexer refuses every escape form in these positions, so there is
+      // nothing a transform could do. See the surface preamble, OQ1.
+      //
+      // THREE FIELDS PER AXIS, NOT TWO, and the third is gold rule R6. A
+      // two-ended axis fills left/right and leaves `label` ""; a single-label
+      // axis fills `label` and leaves BOTH ends "". They are different
+      // declarations — the first states a polarity, the second is an axis
+      // title — and R6 forbids narrating the second as though it were the
+      // first. Collapsing them into left/right would also merge the
+      // single-label form with the dangling `x-axis Low -->`, which really
+      // does declare a low end and no high one.
+      xAxis: {
+        left: read.xAxis.low,
+        right: read.xAxis.high,
+        label: read.xAxis.label,
+      },
+      yAxis: {
+        bottom: read.yAxis.low,
+        top: read.yAxis.high,
+        label: read.yAxis.label,
+      },
+
+      // Mermaid's own quadrant order, 1 to 4. An unlabelled quadrant is ""
+      // rather than omitted, so the array is always length four and a
+      // consumer never indexes past its end.
+      quadrants: read.quadrants.slice(),
+
+      // SOURCE ORDER, which is the order the author wrote and the order a
+      // description should speak. The db reverses it.
+      points: read.points,
+
+      crossCheck: crossCheck,
+    };
+  }
+
+  /**
+   * Parse Mermaid quadrant chart code into the normalised quadrant shape.
+   *
+   * Rejects with Mermaid's own error on a parse failure, and with a distinct
+   * Error whose message begins "Quadrant chart source reader" when Mermaid
+   * accepted a source the reader's grammar subset cannot read. Both are
+   * rejections of the returned promise; the call itself never throws
+   * synchronously, so awaiting this promise is the single error path.
+   *
+   * SERIALISED PARSES: every parse is chained through the adapter-wide
+   * queue, so it cannot replace the shared singleton's data or clear the
+   * shared accessible-title store while an earlier call's snapshot is still
+   * in progress. The chain advances on settlement, not success, so a
+   * rejection cannot wedge it.
+   *
+   * @param {string} code - The Mermaid source
+   * @returns {Promise<Object>} Resolves to the normalised quadrant chart
+   */
+  function parseQuadrant(code) {
+    // Lazy quadrant self-check trigger, matching the other surfaces'
+    // ordering. The check enqueues its own fixture parses first, so it holds
+    // the front of the queue ahead of this call's parse.
+    if (!quadrantSelfCheckStarted) {
+      runQuadrantSelfCheck();
+    }
+
+    if (code === quadrantMemoCode && quadrantMemoPromise) {
+      logDebug("Returning memoised quadrant parse for identical code string");
+      return quadrantMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    // Per-parse trace (register item 24) - see the flowchart surface for why
+    // it sits inside run and why only the code LENGTH is logged.
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(
+        `Quadrant parse entering its queue slot, ${code.length} characters`
+      );
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `Quadrant parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          // MERMAID HAS NOW JUDGED THE SOURCE VALID. Only here does the
+          // reader run, and it runs inside this same slot.
+          const chart = normaliseQuadrant(diagram, code);
+          logDebug(
+            `Quadrant parse delivered after ${Math.round(performance.now() - startedAt)}ms`
+          );
+          return chart;
+        })
+        .catch((error) => {
+          logDebug(
+            `Quadrant parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    // Chain on settlement, not success: the queue itself never rejects (see
+    // the tail below), but `run` is passed as both handlers so a future
+    // change to that invariant cannot silently skip a parse.
+    const result = adapterParseQueue.then(run, run);
+
+    // Settlement-only tail — a rejected parse must not wedge the queue.
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    quadrantMemoCode = code;
+    quadrantMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Parse the two embedded quadrant fixtures and assert the db accessor
+   * names, the same-tick snapshot, the source reader's normalised shape and
+   * the agreement between the two halves. Resolves true on a clean run; on
+   * any failure logs ONE ERROR naming the first failed assertion, marks the
+   * quadrant surface unhealthy, and resolves false. Never throws.
+   *
+   * BOTH FIXTURES RUN INSIDE ONE QUEUE SLOT, and the full chart is fully
+   * normalised BEFORE the small one is issued. That ordering is the point,
+   * and on this surface it is load-bearing beyond the three scalars: the
+   * second parse replaces the first chart's WHOLE payload in the singleton
+   * db, so a check that parsed both and read afterwards would be measuring
+   * the second chart twice — including its crossCheck. One slot rather than
+   * two is deliberate, is strictly stronger isolation, and keeps the pair
+   * indivisible.
+   *
+   * @returns {Promise<boolean>} Resolves to the quadrant health verdict
+   */
+  function runQuadrantSelfCheck() {
+    if (quadrantSelfCheckPromise) {
+      return quadrantSelfCheckPromise;
+    }
+    quadrantSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            QUADRANT_SELF_CHECK_FIXTURE_FULL
+          );
+        })
+        .then((fullDiagram) => {
+          const db = fullDiagram.db;
+          // The accessor names this surface depends on, read before anything
+          // else, so a Mermaid rename fails here rather than delivering "".
+          const accessorsPresent =
+            typeof db.getDiagramTitle === "function" &&
+            typeof db.getAccTitle === "function" &&
+            typeof db.getAccDescription === "function" &&
+            typeof db.getQuadrantData === "function";
+          // Fully normalised — including the same-tick snapshot of both the
+          // scalars and the crossCheck — before the second parse begins.
+          const full = normaliseQuadrant(
+            fullDiagram,
+            QUADRANT_SELF_CHECK_FIXTURE_FULL
+          );
+
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(QUADRANT_SELF_CHECK_FIXTURE_SMALL)
+            .then((smallDiagram) => {
+              const small = normaliseQuadrant(
+                smallDiagram,
+                QUADRANT_SELF_CHECK_FIXTURE_SMALL
+              );
+
+              // THE THIRD PARSE, still inside this one slot. Each chart is
+              // fully normalised before the next is issued, because the
+              // quadrant db is a singleton whose next parse replaces the
+              // previous chart's whole payload.
+              return window.mermaid.mermaidAPI
+                .getDiagramFromText(QUADRANT_SELF_CHECK_FIXTURE_SINGLE_LABEL)
+                .then((singleLabelDiagram) => {
+                  const singleLabel = normaliseQuadrant(
+                    singleLabelDiagram,
+                    QUADRANT_SELF_CHECK_FIXTURE_SINGLE_LABEL
+                  );
+
+                  // Each entry: [assertion name, predicate]. The first false
+                  // predicate fails the check and is named in the single
+                  // ERROR line. The predicates are EVALUATED HERE, inside the
+                  // slot, so the verdict below never touches a db.
+                  return [
+                  [
+                    "the four db accessors this surface reads exist by name",
+                    accessorsPresent,
+                  ],
+                  [
+                    "the full chart's title, accTitle and accDescr survive the " +
+                      "same-tick snapshot",
+                    full.title === "SelfCheck quadrant title" &&
+                      full.accTitle === "SelfCheck quadrant acc title" &&
+                      full.accDescr === "SelfCheck quadrant acc descr",
+                  ],
+                  [
+                    "both axes read their two declared end labels from the " +
+                      "source, with an EMPTY single-label field",
+                    full.xAxis.left === "SelfCheck low x" &&
+                      full.xAxis.right === "SelfCheck high x" &&
+                      full.xAxis.label === "" &&
+                      full.yAxis.bottom === "SelfCheck low y" &&
+                      full.yAxis.top === "SelfCheck high y" &&
+                      full.yAxis.label === "",
+                  ],
+                  [
+                    "all four quadrant labels arrive in Mermaid's own 1-to-4 order",
+                    full.quadrants.length === 4 &&
+                      full.quadrants[0] === "SelfCheck q one" &&
+                      full.quadrants[1] === "SelfCheck q two" &&
+                      full.quadrants[2] === "SelfCheck q three" &&
+                      full.quadrants[3] === "SelfCheck q four",
+                  ],
+                  [
+                    "THE :::CLASS PIN: a point written `Gamma point:::big:` is " +
+                      "READ, not dropped — three points arrive, in SOURCE order, " +
+                      "and the classDef line is skipped rather than refused",
+                    full.points.length === 3 &&
+                      full.points[0].name === "Alpha point" &&
+                      full.points[1].name === "Beta point" &&
+                      full.points[2].name === "Gamma point",
+                  ],
+                  [
+                    "THE AUTHORED STRING PIN: `0.80` is delivered as \"0.80\" and " +
+                      "not as \"0.8\", with xValue/yValue the matching numbers",
+                    full.points[1].x === "0.80" &&
+                      full.points[1].y === "0.30" &&
+                      full.points[1].xValue === 0.8 &&
+                      full.points[1].yValue === 0.3 &&
+                      full.points[0].x === "0.25" &&
+                      full.points[0].y === "0.85",
+                  ],
+                  [
+                    "trailing inline styling is discarded rather than read as " +
+                      "part of the coordinate",
+                    full.points[1].xValue === 0.8 && full.points[1].yValue === 0.3,
+                  ],
+                  [
+                    "the crossCheck axis and quadrant labels agree with the " +
+                      "source read, field for field",
+                    full.crossCheck.axisLabels[0] === full.xAxis.left &&
+                      full.crossCheck.axisLabels[1] === full.xAxis.right &&
+                      full.crossCheck.axisLabels[2] === full.yAxis.bottom &&
+                      full.crossCheck.axisLabels[3] === full.yAxis.top &&
+                      full.crossCheck.quadrantLabels.length === 4 &&
+                      full.crossCheck.quadrantLabels[0] === full.quadrants[0] &&
+                      full.crossCheck.quadrantLabels[3] === full.quadrants[3],
+                  ],
+                  [
+                    "THE R6 PIN: a SINGLE-LABEL axis delivers its label in " +
+                      "`label` with BOTH ends empty, so no consumer can read it " +
+                      "as a polarity the author never wrote — and the db's own " +
+                      "positional array puts that same label in the first slot",
+                    singleLabel.xAxis.label === "SelfCheck lone x" &&
+                      singleLabel.xAxis.left === "" &&
+                      singleLabel.xAxis.right === "" &&
+                      singleLabel.yAxis.bottom === "SelfCheck lone low y" &&
+                      singleLabel.yAxis.top === "SelfCheck lone high y" &&
+                      singleLabel.yAxis.label === "" &&
+                      singleLabel.crossCheck.axisLabels[0] === "SelfCheck lone x" &&
+                      singleLabel.crossCheck.axisLabels[1] === "",
+                  ],
+                  [
+                    "the crossCheck pixels are reversed back into SOURCE order " +
+                      "and name the same three points",
+                    full.crossCheck.pixels.length === 3 &&
+                      full.crossCheck.pixels[0].name === "Alpha point" &&
+                      full.crossCheck.pixels[2].name === "Gamma point",
+                  ],
+                  [
+                    "THE PIXEL AGREEMENT PIN: every point's authored pair " +
+                      "reproduces its delivered pixel through the plotRect, so " +
+                      "the source read and the canvas describe one chart",
+                    full.crossCheck.plotRect.width > 0 &&
+                      full.crossCheck.plotRect.height > 0 &&
+                      full.points.every((point, index) => {
+                        const pixel = full.crossCheck.pixels[index];
+                        const rect = full.crossCheck.plotRect;
+                        const expectedX = rect.x + point.xValue * rect.width;
+                        const expectedY =
+                          rect.y + (1 - point.yValue) * rect.height;
+                        return (
+                          Math.abs(pixel.x - expectedX) < 0.5 &&
+                          Math.abs(pixel.y - expectedY) < 0.5
+                        );
+                      }),
+                  ],
+                  [
+                    "the small chart's ABSENT fields are empty strings rather " +
+                      "than null, and its two points still arrive",
+                    small.title === "" &&
+                      small.accTitle === "" &&
+                      small.accDescr === "" &&
+                      small.quadrants.length === 4 &&
+                      small.quadrants.every((label) => label === "") &&
+                      small.points.length === 2 &&
+                      small.points[0].name === "Quick win",
+                  ],
+                  [
+                    "the small chart's own axis labels reach it, proving the " +
+                      "full chart's snapshot was taken before this parse " +
+                      "replaced the singleton's whole payload",
+                    small.xAxis.left === "SelfCheck small low" &&
+                      small.yAxis.top === "SelfCheck small top" &&
+                      small.crossCheck.pixels.length === 2,
+                  ],
+                  [
+                    "and the SINGLE-LABEL chart's own point reaches it too, so " +
+                      "all three snapshots in this slot survived the two parses " +
+                      "that followed them",
+                    singleLabel.points.length === 1 &&
+                      singleLabel.points[0].name === "Lone point" &&
+                      singleLabel.crossCheck.pixels.length === 1 &&
+                      singleLabel.crossCheck.pixels[0].name === "Lone point",
+                  ],
+                  ];
+                });
+            });
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    quadrantSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Quadrant self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's quadrant internals no longer " +
+              "match the 1 September 2026 measurements, or the source " +
+              "reader's grammar subset has drifted; do not trust quadrant " +
+              "adapter output."
+          );
+          quadrantHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Quadrant self-check passed: accessor, snapshot, source-reader and " +
+            "cross-check assertions all hold"
+        );
+        quadrantHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          `Quadrant self-check FAILED at assertion: both fixtures parse and read. ` +
+            `The fixture run rejected: ${error && error.message}`
+        );
+        quadrantHealthy = false;
+        return false;
+      });
+
+    return quadrantSelfCheckPromise;
+  }
+
+  /**
+   * Report the quadrant surface's health, independently of the other
+   * surfaces.
+   * @returns {boolean|null} True or false once the quadrant self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isQuadrantHealthy() {
+    return quadrantHealthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // SEQUENCE — the ninth surface, and the second read entirely from the db
+  //
+  // WHY THERE IS NO SOURCE READER HERE, unlike quadrant. Quadrant needed one
+  // because its db delivers points as LAID-OUT PIXELS: the author's own
+  // numbers are recoverable only by inverting Mermaid's private layout.
+  // Sequence's db delivers no post-layout value at all — every field below is
+  // the author's own text, an id, or an enumerated constant, fixed at parse
+  // time before any geometry exists. There is nothing to invert and nothing
+  // to round. Measured in docs/mermaid-item-70-sequence-grounding-2026-09-02.md
+  // and ruled by the design seat on 3 September 2026.
+  //
+  // THE SHAPE THIS DELIVERY IS BUILT FOR is the gold document's rules S7-S12
+  // (docs/mermaid-sequence-gold-targets-2026-09-03.md). Mermaid hands back ONE
+  // ordered array carrying messages, block markers, notes, activations and the
+  // autonumber directive together. This surface keeps that single order —
+  // splitting it into per-kind lists would destroy the only record of where a
+  // note or a block boundary sits relative to the messages — but lifts the
+  // autonumber directives out, because they are a property of the diagram
+  // rather than events in it. EVERY directive is lifted, as an array carrying
+  // the ordinal each one starts governing at (ruling R17, 4 September 2026);
+  // the single object this surface delivered until then could not represent a
+  // second directive, so `autonumber off` erased the `autonumber` that
+  // preceded it.
+  //
+  // NESTING IS POSITIONAL IN THE DB: no depth field, no parent pointer. The
+  // stack below recovers it, and refuses rather than repairs.
+  const SEQUENCE_ARROW_KINDS = {
+    SOLID: { line: "solid", head: "arrow" },
+    SOLID_OPEN: { line: "solid", head: "open" },
+    DOTTED: { line: "dotted", head: "arrow" },
+    DOTTED_OPEN: { line: "dotted", head: "open" },
+    SOLID_CROSS: { line: "solid", head: "cross" },
+    DOTTED_CROSS: { line: "dotted", head: "cross" },
+    SOLID_POINT: { line: "solid", head: "async" },
+    DOTTED_POINT: { line: "dotted", head: "async" },
+    BIDIRECTIONAL_SOLID: { line: "solid", head: "bidirectional" },
+    BIDIRECTIONAL_DOTTED: { line: "dotted", head: "bidirectional" },
+  };
+
+  // Block markers, by LINETYPE NAME. Names rather than integers everywhere
+  // except the self-check, which is where the integers are pinned, so an
+  // upstream renumbering fails loudly in one place instead of silently
+  // remapping every arrow.
+  const SEQUENCE_BLOCK_STARTS = {
+    LOOP_START: "loop",
+    ALT_START: "alt",
+    OPT_START: "opt",
+    PAR_START: "par",
+    PAR_OVER_START: "par",
+    CRITICAL_START: "critical",
+    BREAK_START: "break",
+    RECT_START: "rect",
+  };
+  const SEQUENCE_BLOCK_BRANCHES = {
+    ALT_ELSE: "alt",
+    PAR_AND: "par",
+    CRITICAL_OPTION: "critical",
+  };
+  const SEQUENCE_BLOCK_ENDS = {
+    LOOP_END: "loop",
+    ALT_END: "alt",
+    OPT_END: "opt",
+    PAR_END: "par",
+    CRITICAL_END: "critical",
+    BREAK_END: "break",
+    RECT_END: "rect",
+  };
+  const SEQUENCE_PLACEMENTS = { LEFTOF: "left", RIGHTOF: "right", OVER: "over" };
+
+  let sequenceMemoCode = null;
+  let sequenceMemoPromise = null;
+  let sequenceHealthy = null;
+  let sequenceSelfCheckStarted = false;
+  let sequenceSelfCheckPromise = null;
+
+  /**
+   * Build the integer-to-name lookup for a db enumeration, read OFF THE DB.
+   * @param {Object} enumeration - db.LINETYPE or db.PLACEMENT
+   * @returns {Object} Integer-keyed map of constant names
+   */
+  function sequenceNamesByValue(enumeration) {
+    const names = {};
+    if (!enumeration) {
+      return names;
+    }
+    Object.keys(enumeration).forEach((name) => {
+      names[enumeration[name]] = name;
+    });
+    return names;
+  }
+
+  /**
+   * Normalise one Mermaid sequence diagram into the ninth surface's delivery.
+   *
+   * Every field is always present — "" or [] or null rather than absent — so a
+   * consumer has one absent case per field and never an undefined member.
+   *
+   * @param {Object} diagram - The resolved Mermaid diagram
+   * @returns {Object} The normalised sequence delivery
+   */
+  function normaliseSequence(diagram) {
+    const db = diagram.db;
+
+    // Read the two enumerations ONCE per parse, off this db instance.
+    const lineTypeNames = sequenceNamesByValue(db.LINETYPE);
+    const placementNames = sequenceNamesByValue(db.PLACEMENT);
+
+    const rawEntries = Array.isArray(db.getMessages()) ? db.getMessages() : [];
+    const actorKeys = Array.isArray(db.getActorKeys()) ? db.getActorKeys() : [];
+    const actorMap = db.getActors();
+
+    // The ordinal of a message is its one-based position among ARROW entries
+    // only. Notes, block markers, activations and the autonumber directive do
+    // not advance it, so the number a consumer narrates is the number the
+    // diagram's own autonumber draws. Register item 70 ruling R7.
+    const ordinalByIndex = {};
+    let messageOrdinal = 0;
+    rawEntries.forEach((entry, index) => {
+      const name = lineTypeNames[entry.type];
+      if (SEQUENCE_ARROW_KINDS[name]) {
+        messageOrdinal += 1;
+        ordinalByIndex[index] = messageOrdinal;
+      }
+    });
+
+    /**
+     * Convert a delivered list INDEX into a message ordinal, by counting arrow
+     * entries up to and including it. Used for create and destroy, which the
+     * db keys by index into getMessages().
+     * @param {number} index - The delivered list index
+     * @returns {number|null} The one-based message ordinal, or null
+     */
+    function ordinalForIndex(index) {
+      if (typeof index !== "number") {
+        return null;
+      }
+      let count = 0;
+      for (let i = 0; i <= index && i < rawEntries.length; i += 1) {
+        if (SEQUENCE_ARROW_KINDS[lineTypeNames[rawEntries[i].type]]) {
+          count += 1;
+        }
+      }
+      return count > 0 ? count : null;
+    }
+
+    /**
+     * Read a Map delivered by the db into a plain id-to-ordinal object.
+     * @param {Map|null} source - getCreatedActors() or getDestroyedActors()
+     * @returns {Object} Id-keyed map of message ordinals
+     */
+    function lifecycleOrdinals(source) {
+      const out = {};
+      if (source && typeof source.forEach === "function") {
+        source.forEach((index, id) => {
+          out[id] = ordinalForIndex(index);
+        });
+      }
+      return out;
+    }
+
+    const createdAtById = lifecycleOrdinals(
+      typeof db.getCreatedActors === "function" ? db.getCreatedActors() : null
+    );
+    const destroyedAtById = lifecycleOrdinals(
+      typeof db.getDestroyedActors === "function" ? db.getDestroyedActors() : null
+    );
+
+    // BOXES ARE BUILT BEFORE PARTICIPANTS, because membership is delivered as
+    // an INDEX into this array (ruling R15) rather than as the owning box's
+    // name. `getBoxes()` is the db's own grouping and is correct for an
+    // unnamed box, where `actor.box.name` is not a string at all.
+    const rawBoxes = typeof db.getBoxes === "function" ? db.getBoxes() : [];
+    const boxes = (Array.isArray(rawBoxes) ? rawBoxes : []).map((box) => ({
+      name: decodePlaceholders(typeof box.name === "string" ? box.name : ""),
+      members: Array.isArray(box.actorKeys) ? box.actorKeys.slice() : [],
+    }));
+
+    // Id to the index of the box that holds it, built once. The FIRST box
+    // naming an actor wins, matching the old consumer-side reconstruction; the
+    // db does not put one actor in two boxes.
+    const boxIndexById = {};
+    boxes.forEach((box, boxIndex) => {
+      box.members.forEach((id) => {
+        if (!Object.prototype.hasOwnProperty.call(boxIndexById, id)) {
+          boxIndexById[id] = boxIndex;
+        }
+      });
+    });
+
+    const participants = actorKeys.map((key) => {
+      const actor = actorMap && actorMap.get ? actorMap.get(key) : null;
+      // LINKS ARE DELIVERED VERBATIM, deliberately. The decode ruling below
+      // covers text Mermaid DRAWS into an SVG <text>; a link is a menu entry
+      // and a URL, and a URL must never be transformed. Recorded rather than
+      // left to inference — see the surface report of 3 September 2026.
+      const rawLinks = actor && actor.links ? actor.links : {};
+      const links = Object.keys(rawLinks).map((label) => ({
+        label: label,
+        url: typeof rawLinks[label] === "string" ? rawLinks[label] : "",
+      }));
+      return {
+        id: key,
+        // The DISPLAY text is `description`; `name` on the db object is the
+        // declared id. Delivered under the names a consumer expects.
+        name: decodePlaceholders(
+          actor && typeof actor.description === "string" ? actor.description : ""
+        ),
+        kind:
+          actor && typeof actor.type === "string" ? actor.type : "participant",
+        // RULING R15, 4 September 2026: the INDEX into `boxes`, or null. This
+        // replaces a `box` field carrying the owning box's NAME, which could
+        // not tell "in no box" from "in an UNNAMED box" — both delivered null,
+        // because an unnamed box's `actor.box.name` is not a string (sweep
+        // F12, docs/mermaid-item-70-sequence-sweep-2026-09-04.md). No
+        // narration was wrong on that account, because the only consumer read
+        // `boxes[].members`; the field is repaired because the obvious field
+        // being silently wrong is a trap for the next consumer.
+        boxIndex: Object.prototype.hasOwnProperty.call(boxIndexById, key)
+          ? boxIndexById[key]
+          : null,
+        links: links,
+        createdAt:
+          Object.prototype.hasOwnProperty.call(createdAtById, key) === true
+            ? createdAtById[key]
+            : null,
+        destroyedAt:
+          Object.prototype.hasOwnProperty.call(destroyedAtById, key) === true
+            ? destroyedAtById[key]
+            : null,
+      };
+    });
+
+    // THE BLOCK STACK. Push on a start, check the top on a branch, pop on an
+    // end. Every failure throws and names the entry index; nothing is
+    // recovered silently, because a mis-paired block would otherwise deliver a
+    // plausible tree describing a diagram nobody drew.
+    const blockStack = [];
+    const events = [];
+    // RULING R17, 4 September 2026: EVERY directive, in source order, not one
+    // field the last one overwrites. Empty array when the diagram has none.
+    const autonumber = [];
+    const activateFlags = [];
+    const counts = {
+      messages: 0,
+      loops: 0,
+      alternatives: 0,
+      optionalSections: 0,
+      parallelSections: 0,
+      criticalSections: 0,
+      breaks: 0,
+    };
+    const COUNT_KEY_FOR_BLOCK = {
+      loop: "loops",
+      alt: "alternatives",
+      opt: "optionalSections",
+      par: "parallelSections",
+      critical: "criticalSections",
+      break: "breaks",
+    };
+
+    rawEntries.forEach((entry, index) => {
+      const name = lineTypeNames[entry.type];
+      const text = typeof entry.message === "string" ? entry.message : "";
+
+      if (name === "AUTONUMBER") {
+        // THE ONLY HONEST SIGNAL. showSequenceNumbers() reads false on a
+        // diagram that HAS autonumber, and getConfig().showSequenceNumbers
+        // reads true on every diagram because it is the page's own Mermaid
+        // config — measured, grounding § B1.5. Both were rejected.
+        //
+        // RULING R17: EVERY directive is delivered, each carrying the ordinal
+        // of the FIRST MESSAGE IT GOVERNS. `counts.messages` is the count of
+        // arrow entries seen so far in this ordered walk, so one more than it
+        // is that ordinal by construction. Keeping a single overwritten object
+        // made a second directive invisible: `autonumber` … `autonumber off`
+        // delivered only the off, and a diagram drawing the numbers 1 and 2
+        // was narrated as saying nothing about numbering at all (sweep F4).
+        const directive = entry.message && typeof entry.message === "object" ? entry.message : {};
+        autonumber.push({
+          atOrdinal: counts.messages + 1,
+          start: typeof directive.start === "number" ? directive.start : null,
+          step: typeof directive.step === "number" ? directive.step : null,
+          visible: directive.visible === true,
+        });
+        return;
+      }
+
+      const arrow = SEQUENCE_ARROW_KINDS[name];
+      if (arrow) {
+        counts.messages += 1;
+        const ordinal = ordinalByIndex[index];
+        events.push({
+          kind: "message",
+          ordinal: ordinal,
+          from: typeof entry.from === "string" ? entry.from : null,
+          to: typeof entry.to === "string" ? entry.to : null,
+          text: decodePlaceholders(text),
+          line: arrow.line,
+          head: arrow.head,
+        });
+        activateFlags.push({ ordinal: ordinal, activate: entry.activate === true });
+        return;
+      }
+
+      if (name === "ACTIVE_START" || name === "ACTIVE_END") {
+        events.push({
+          kind: name === "ACTIVE_START" ? "activate" : "deactivate",
+          actor: typeof entry.from === "string" ? entry.from : null,
+        });
+        return;
+      }
+
+      if (name === "NOTE") {
+        const placement = SEQUENCE_PLACEMENTS[placementNames[entry.placement]] || null;
+        // A single-actor note arrives with from === to; there is no
+        // isSpanning field, so the comparison IS the signal.
+        const actors =
+          entry.from === entry.to
+            ? [typeof entry.from === "string" ? entry.from : null]
+            : [
+                typeof entry.from === "string" ? entry.from : null,
+                typeof entry.to === "string" ? entry.to : null,
+              ];
+        events.push({
+          kind: "note",
+          placement: placement,
+          actors: actors,
+          text: decodePlaceholders(text),
+        });
+        return;
+      }
+
+      const startKind = SEQUENCE_BLOCK_STARTS[name];
+      if (startKind) {
+        blockStack.push({ block: startKind, index: index });
+        const countKey = COUNT_KEY_FOR_BLOCK[startKind];
+        if (countKey) {
+          counts[countKey] += 1;
+        }
+        const startEvent = {
+          kind: "blockStart",
+          block: startKind,
+          label: decodePlaceholders(text),
+        };
+        if (name === "PAR_OVER_START") {
+          // MEASURED UNREACHABLE on this build (3 September 2026): `par over
+          // A,B: …` and `par over Label` both deliver PAR_START with the word
+          // "over" swallowed into the label. The mapping is kept anyway so a
+          // future build emitting 32 is delivered rather than refused as an
+          // unknown integer; the flag is therefore UNEXERCISED, not proven.
+          startEvent.parOver = true;
+        }
+        events.push(startEvent);
+        return;
+      }
+
+      const branchKind = SEQUENCE_BLOCK_BRANCHES[name];
+      if (branchKind) {
+        const top = blockStack[blockStack.length - 1];
+        if (!top || top.block !== branchKind) {
+          throw new Error(
+            `Sequence block structure is inconsistent: a ${name} branch at entry ` +
+              `${index} inside ${top ? `a ${top.block} block` : "no block"}`
+          );
+        }
+        events.push({
+          kind: "blockBranch",
+          block: branchKind,
+          label: decodePlaceholders(text),
+        });
+        return;
+      }
+
+      const endKind = SEQUENCE_BLOCK_ENDS[name];
+      if (endKind) {
+        const top = blockStack.pop();
+        if (!top || top.block !== endKind) {
+          throw new Error(
+            `Sequence block structure is inconsistent: a ${name} at entry ` +
+              `${index} closing ${top ? `a ${top.block} block` : "no open block"}`
+          );
+        }
+        events.push({ kind: "blockEnd", block: endKind });
+        return;
+      }
+
+      // An integer this surface has no mapping for is a STOP carrying the
+      // integer, never a dropped event: a silently skipped entry would take a
+      // message's neighbours with it and no consumer could tell.
+      throw new Error(
+        `Sequence delivered an unmapped LINETYPE ${entry.type}` +
+          `${name ? ` (${name})` : ""} at entry ${index}`
+      );
+    });
+
+    if (blockStack.length > 0) {
+      throw new Error(
+        `Sequence block structure is inconsistent: ${blockStack.length} block(s) ` +
+          `left open at the last entry, the outermost a ${blockStack[0].block} ` +
+          `opened at entry ${blockStack[0].index}`
+      );
+    }
+
+    return {
+      type: "sequence",
+      // THE THREE SHARED-STORE FIELDS. Read here, inside the same slot and
+      // the same .then as the payload, because Mermaid keeps the diagram
+      // title, accessible title and accessible description in ONE
+      // module-scoped store shared by every diagram type and cleared by every
+      // parse (register item 21; measured for sequence at grounding § B3,
+      // where a second parse overwrote the first handle's title in both
+      // orders while its actors and messages survived untouched).
+      title: decodePlaceholders(
+        typeof db.getDiagramTitle === "function" ? db.getDiagramTitle() || "" : ""
+      ),
+      // accTitle and accDescr take NO transform, on this surface as on every
+      // other — the standing carve-out documented at the top of this file.
+      accTitle:
+        typeof db.getAccTitle === "function" ? db.getAccTitle() || "" : "",
+      accDescr:
+        typeof db.getAccDescription === "function"
+          ? db.getAccDescription() || ""
+          : "",
+      participants: participants,
+      boxes: boxes,
+      autonumber: autonumber,
+      events: events,
+      counts: counts,
+      // Delivered for derivation checks only, never narrated: the message
+      // objects' own activate flag, which differs between the two activation
+      // spellings while the ACTIVE_START/ACTIVE_END events do not.
+      crossCheck: { activateFlags: activateFlags },
+    };
+  }
+
+  /**
+   * Parse a sequence diagram and deliver the normalised shape.
+   *
+   * Same contract as the other eight surfaces: the PROMISE is memoised on the
+   * code string, the memo sits in front of the adapter-wide queue, and every
+   * db read happens inside this call's own queue slot.
+   *
+   * @param {string} code - The Mermaid sequence source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseSequence(code) {
+    if (!sequenceSelfCheckStarted) {
+      runSequenceSelfCheck();
+    }
+
+    if (code === sequenceMemoCode && sequenceMemoPromise) {
+      logDebug("Returning memoised sequence parse for identical code string");
+      return sequenceMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(
+        `Sequence parse entering its queue slot, ${code.length} characters`
+      );
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `Sequence parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const sequence = normaliseSequence(diagram);
+          logDebug(
+            `Sequence parse delivered after ${Math.round(performance.now() - startedAt)}ms`
+          );
+          return sequence;
+        })
+        .catch((error) => {
+          logDebug(
+            `Sequence parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    sequenceMemoCode = code;
+    sequenceMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Self-check fixture: a title and both accessible fields, TWO autonumber
+   * directives, a NAMED box holding an actor-kind and a participant-kind
+   * declaration, an UNNAMED box holding one participant, a created
+   * participant belonging to no box, ONE MESSAGE OF EACH OF THE TEN ARROW
+   * FORMS, a note spanning two actors, and an alt with an else.
+   *
+   * THE SECOND BOX AND THE SECOND DIRECTIVE WERE ADDED 4 SEPTEMBER 2026,
+   * with rulings R15 and R17, and each is the only thing that can catch its
+   * own defect. The unnamed box gives `boxIndex` a member whose owning box
+   * has no name — the case the old `box` NAME field could not tell from "in
+   * no box", because both delivered null (sweep F12). The second directive,
+   * `autonumber off` after two messages, gives the array a second element at
+   * `atOrdinal` 3 — the case the old single overwritten object could not
+   * represent at all, and the one that made a diagram drawing numbers 1 and 2
+   * narrate as saying nothing about numbering (sweep F4). A fixture with one
+   * box and one directive passes an assertion over either shape, which is why
+   * neither was enough.
+   *
+   * The ten arrow forms are the point. The module this surface replaces reads
+   * arrows with a regex whose greedy sender class swallows a hyphen, so an
+   * unspaced two-dash arrow degrades and both bidirectional forms are dropped
+   * entirely (grounding § A4.5). Every form is written UNSPACED here, which is
+   * exactly the shape that defeated the regex, so if a Mermaid upgrade ever
+   * changed the arrow lexer this check fails loudly rather than the surface
+   * quietly reproducing the defect it exists to remove.
+   *
+   * ASCII only, every string distinctive, so a cross-delivery from another
+   * diagram NAMES ITS SOURCE rather than merely looking wrong.
+   */
+  const SEQUENCE_SELF_CHECK_FIXTURE = [
+    "sequenceDiagram",
+    "    title SelfCheck sequence title",
+    "    accTitle: SelfCheck sequence acc title",
+    "    accDescr: SelfCheck sequence acc descr",
+    "    autonumber 3 2",
+    "    box SelfCheck box",
+    "        actor SA as SelfCheck actor",
+    "        participant SB as SelfCheck bee",
+    "    end",
+    "    box rgb(210,220,230)",
+    "        participant SC as SelfCheck cee",
+    "    end",
+    "    create participant SD as SelfCheck dee",
+    "    SA->>SD: SelfCheck created",
+    "    SA->SB: SelfCheck solid open",
+    "    autonumber off",
+    "    SA->>SB: SelfCheck solid arrow",
+    "    SA-->SB: SelfCheck dotted open",
+    "    SA-->>SB: SelfCheck dotted arrow",
+    "    SA-xSB: SelfCheck solid cross",
+    "    SA--xSB: SelfCheck dotted cross",
+    "    SA-)SB: SelfCheck solid async",
+    "    SA--)SB: SelfCheck dotted async",
+    "    SA<<->>SB: SelfCheck solid bidi",
+    "    SA<<-->>SB: SelfCheck dotted bidi",
+    "    Note over SA,SB: SelfCheck note",
+    "    alt SelfCheck alt cond",
+    "        SA->>SC: SelfCheck alt yes",
+    "    else SelfCheck else cond",
+    "        SA->>SC: SelfCheck alt no",
+    "    end",
+  ].join("\n");
+
+  /**
+   * Parse the embedded fixture and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the sequence surface unhealthy, and
+   * resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the sequence health verdict
+   */
+  function runSequenceSelfCheck() {
+    if (sequenceSelfCheckPromise) {
+      return sequenceSelfCheckPromise;
+    }
+    sequenceSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            SEQUENCE_SELF_CHECK_FIXTURE
+          );
+        })
+        .then((diagram) => {
+          const db = diagram.db;
+          const accessorsPresent =
+            typeof db.getActorKeys === "function" &&
+            typeof db.getActors === "function" &&
+            typeof db.getBoxes === "function" &&
+            typeof db.getMessages === "function" &&
+            typeof db.getCreatedActors === "function" &&
+            typeof db.getDestroyedActors === "function" &&
+            typeof db.getDiagramTitle === "function" &&
+            typeof db.getAccTitle === "function" &&
+            typeof db.getAccDescription === "function";
+
+          // THE INTEGERS ARE PINNED HERE AND NOWHERE ELSE. Everything above
+          // maps by NAME, so this is the single place an upstream renumbering
+          // is caught.
+          const lt = db.LINETYPE || {};
+          const pl = db.PLACEMENT || {};
+          const integersPinned =
+            lt.SOLID === 0 &&
+            lt.DOTTED === 1 &&
+            lt.NOTE === 2 &&
+            lt.SOLID_CROSS === 3 &&
+            lt.DOTTED_CROSS === 4 &&
+            lt.SOLID_OPEN === 5 &&
+            lt.DOTTED_OPEN === 6 &&
+            lt.SOLID_POINT === 24 &&
+            lt.DOTTED_POINT === 25 &&
+            lt.AUTONUMBER === 26 &&
+            lt.BIDIRECTIONAL_SOLID === 33 &&
+            lt.BIDIRECTIONAL_DOTTED === 34 &&
+            pl.LEFTOF === 0 &&
+            pl.RIGHTOF === 1 &&
+            pl.OVER === 2;
+
+          const rawEntryCount = Array.isArray(db.getMessages())
+            ? db.getMessages().length
+            : -1;
+
+          const delivery = normaliseSequence(diagram);
+          const messages = delivery.events.filter((e) => e.kind === "message");
+          const heads = messages.map((m) => m.line + "/" + m.head).join(" ");
+
+          return [
+            [
+              "the nine db accessors this surface reads exist by name",
+              accessorsPresent,
+            ],
+            [
+              "db.LINETYPE and db.PLACEMENT still carry the 3 September 2026 " +
+                "integers for every constant this surface maps",
+              integersPinned,
+            ],
+            [
+              "the title and both accessible fields survive the read",
+              delivery.title === "SelfCheck sequence title" &&
+                delivery.accTitle === "SelfCheck sequence acc title" &&
+                delivery.accDescr === "SelfCheck sequence acc descr",
+            ],
+            [
+              "four participants arrive in declaration order, with display " +
+                "names and kinds",
+              delivery.participants.length === 4 &&
+                delivery.participants[0].id === "SA" &&
+                delivery.participants[0].name === "SelfCheck actor" &&
+                delivery.participants[0].kind === "actor" &&
+                delivery.participants[1].id === "SB" &&
+                delivery.participants[1].kind === "participant" &&
+                delivery.participants[2].id === "SC" &&
+                delivery.participants[3].name === "SelfCheck dee",
+            ],
+            [
+              "RULING R15: boxIndex is the INDEX of the owning box — 0 for " +
+                "the boxed actor and its neighbour, 1 for the member of the " +
+                "UNNAMED box, and null for the participant in no box",
+              delivery.participants[0].boxIndex === 0 &&
+                delivery.participants[1].boxIndex === 0 &&
+                delivery.participants[2].boxIndex === 1 &&
+                delivery.participants[3].boxIndex === null &&
+                Object.prototype.hasOwnProperty.call(
+                  delivery.participants[0],
+                  "box"
+                ) === false,
+            ],
+            [
+              "two boxes arrive in declaration order — the named one with its " +
+                "two members, the unnamed one with an EMPTY NAME and its one " +
+                "member",
+              delivery.boxes.length === 2 &&
+                delivery.boxes[0].name === "SelfCheck box" &&
+                delivery.boxes[0].members.length === 2 &&
+                delivery.boxes[0].members[0] === "SA" &&
+                delivery.boxes[0].members[1] === "SB" &&
+                delivery.boxes[1].name === "" &&
+                delivery.boxes[1].members.length === 1 &&
+                delivery.boxes[1].members[0] === "SC",
+            ],
+            [
+              "the created participant carries message ordinal one, converted " +
+                "from the delivered list index, and nothing is destroyed",
+              delivery.participants[3].createdAt === 1 &&
+                delivery.participants[3].destroyedAt === null &&
+                delivery.participants[0].createdAt === null,
+            ],
+            [
+              "RULING R17: BOTH autonumber directives arrive, in source " +
+                "order, at atOrdinal 1 and 3 — the first with its start and " +
+                "step, the second the trailing `off`",
+              Array.isArray(delivery.autonumber) &&
+                delivery.autonumber.length === 2 &&
+                delivery.autonumber[0].atOrdinal === 1 &&
+                delivery.autonumber[0].start === 3 &&
+                delivery.autonumber[0].step === 2 &&
+                delivery.autonumber[0].visible === true &&
+                delivery.autonumber[1].atOrdinal === 3 &&
+                delivery.autonumber[1].start === null &&
+                delivery.autonumber[1].step === null &&
+                delivery.autonumber[1].visible === false,
+            ],
+            [
+              "THE TEN ARROW FORMS: each unspaced form is typed distinctly, in " +
+                "source order, and none degrades to another",
+              heads ===
+                "solid/arrow solid/open solid/arrow dotted/open dotted/arrow " +
+                  "solid/cross dotted/cross solid/async dotted/async " +
+                  "solid/bidirectional dotted/bidirectional solid/arrow solid/arrow",
+            ],
+            [
+              "the note spans two actors, with its placement and text",
+              delivery.events.filter((e) => e.kind === "note").length === 1 &&
+                delivery.events.find((e) => e.kind === "note").placement ===
+                  "over" &&
+                delivery.events.find((e) => e.kind === "note").actors.length ===
+                  2 &&
+                delivery.events.find((e) => e.kind === "note").actors[0] ===
+                  "SA" &&
+                delivery.events.find((e) => e.kind === "note").text ===
+                  "SelfCheck note",
+            ],
+            [
+              "the alt arrives as a balanced start, branch and end, with both " +
+                "conditions",
+              delivery.events.filter((e) => e.kind === "blockStart").length ===
+                1 &&
+                delivery.events.find((e) => e.kind === "blockStart").block ===
+                  "alt" &&
+                delivery.events.find((e) => e.kind === "blockStart").label ===
+                  "SelfCheck alt cond" &&
+                delivery.events.find((e) => e.kind === "blockBranch").label ===
+                  "SelfCheck else cond" &&
+                delivery.events.filter((e) => e.kind === "blockEnd").length === 1,
+            ],
+            [
+              "events.length and counts.messages are what the source declares, " +
+                "and NEITHER autonumber directive is an event",
+              rawEntryCount === 19 &&
+                delivery.events.length === 17 &&
+                delivery.counts.messages === 13 &&
+                messages.length === 13,
+            ],
+            [
+              "the structure counts read one alternative and nothing else",
+              delivery.counts.loops === 0 &&
+                delivery.counts.alternatives === 1 &&
+                delivery.counts.optionalSections === 0 &&
+                delivery.counts.parallelSections === 0 &&
+                delivery.counts.criticalSections === 0 &&
+                delivery.counts.breaks === 0,
+            ],
+            [
+              "the crossCheck carries one activate flag per message, ordinals " +
+                "one to thirteen, and none is set in this fixture",
+              delivery.crossCheck.activateFlags.length === 13 &&
+                delivery.crossCheck.activateFlags[0].ordinal === 1 &&
+                delivery.crossCheck.activateFlags[12].ordinal === 13 &&
+                delivery.crossCheck.activateFlags.every(
+                  (f) => f.activate === false
+                ),
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    sequenceSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Sequence self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's sequence internals no longer " +
+              "match the 2 September 2026 census, or this surface's mapping " +
+              "has drifted; do not trust sequence adapter output."
+          );
+          sequenceHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Sequence self-check passed: accessor, enumeration, arrow-form, " +
+            "block-balance and lifecycle assertions all hold"
+        );
+        sequenceHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Sequence self-check FAILED at assertion: the fixture parses and " +
+            `reads. The fixture run rejected: ${error && error.message}`
+        );
+        sequenceHealthy = false;
+        return false;
+      });
+
+    return sequenceSelfCheckPromise;
+  }
+
+  /**
+   * Report the sequence surface's health, independently of the other
+   * surfaces.
+   * @returns {boolean|null} True or false once the sequence self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isSequenceHealthy() {
+    return sequenceHealthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // BLOCK — the tenth surface, and the third read entirely from the db
+  //
+  // WHY THERE IS NO SOURCE READER HERE, unlike xychart and quadrant. Every
+  // fact the canvas draws is in the db: ids, labels, shape names, nesting,
+  // per-composite column declarations, spans, spaces and their widths, edge
+  // endpoints, edge labels, edge arrow kinds, block-arrow directions, class
+  // names, class definitions and inline styles. Three facts live in the
+  // source and NOT in the db, and a sighted reader is given none of them
+  // either — a frontmatter `title:` is discarded by the db, by Mermaid's
+  // shared store AND by the canvas; the link spellings `---`, `-->` and
+  // `<-->` are drawn identically at the markers; and an author's own
+  // accTitle/accDescr is unauthorable, being a hard parse error. So there is
+  // nothing for a source reader to recover. Measured in
+  // docs/mermaid-item-80-census-1-2026-09-05.md §§ Q4, Q5 and Q9. This is the
+  // SEQUENCE answer, not the quadrant one.
+  //
+  // NO title, accTitle OR accDescr FIELD — a MEASURED ABSENCE, 5 September
+  // 2026, not an omission (census § Q5 and its CONTRADICTION 2). The block db
+  // carries NO COMMON TRIO AT ALL: `getDiagramTitle`, `getAccTitle` and
+  // `getAccDescription` are `undefined` on it, on every one of the census's
+  // eight parsed probes, and `Object.keys(diagram)` has no title-shaped member
+  // either. `accTitle:` and `accDescr:` are HARD PARSE ERRORS in this grammar
+  // — the whole diagram fails to render — and a frontmatter `title:` reaches
+  // neither the db, nor the shared store, nor the canvas, on a read route
+  // positively controlled in the same session. A field here would therefore be
+  // a FICTION: permanently empty, and implying an author route that does not
+  // exist. Do not "complete" the shape by adding them.
+  //
+  // THE DECODE IS decodeAuthorText ON BOTH LABEL KINDS, and each half was
+  // measured rather than inherited from the other. Block labels: the census's
+  // § Q6 read nine probes at securityLevel "strict" and found a
+  // <foreignObject> HTML subtree on every one, with ZERO <text> elements, and
+  // decodeAuthorText agreeing with the canvas on all four author-typed
+  // character references where decodePlaceholders disagreed on three. EDGE
+  // labels were measured SEPARATELY in this session, 5 September 2026, because
+  // the block-label answer does not transfer: on the census's P5 rendered at
+  // strict the SVG carries 10 <foreignObject> and 0 <text>, the one labelled
+  // edge's text sits in 1 foreignObject and 0 SVG text, and its host chain is
+  // g.edgeLabel > g.label > foreignObject > div > span.edgeLabel. A second
+  // probe confirmed the bytes: an edge label written `Amp &amp; edge` draws
+  // `Amp & edge` and `Quot &quot;x&quot; edge` draws `Quot "x" edge`, which is
+  // decodeAuthorText's output and not decodePlaceholders'. Both halves take
+  // the same transform, for the same measured reason.
+  //
+  // THE DB IS A SHARED SINGLETON, AND THE WHOLE PAYLOAD CROSSES — this is the
+  // register item 21 hazard in its strongest form. Census § Q8 measured
+  // `dbA === dbB` true across two parses, with the first handle's getters
+  // returning the SECOND diagram's blocks afterwards. Unlike sequence, where
+  // only the shared scalar trio crosses, block has no per-instance half at
+  // all. Every read below therefore happens inside this parse's own queue slot
+  // and is copied into the adapter's own objects in the SAME TICK, before the
+  // slot ends. See the eager snapshot in normaliseBlock.
+  //
+  // A RENDER MUTATES THE OBJECTS THE DB HANDS OUT (census § Q10), adding a
+  // pixel `size` and a LIVE d3 selection holding DOM nodes, plus an
+  // `intersect` function. That is why the copy below takes a NAMED KEY LIST
+  // and must never become a structured clone of the db's block: a clone would
+  // drag a d3 selection and a function across, and a later consumer would be
+  // reading post-layout geometry it must never narrate. Nothing post-layout is
+  // delivered by this surface at all — there is no crossCheck field, because
+  // there is no authored value to corroborate against a laid-out one. `size`
+  // is cross-check material only, and this surface does not carry it.
+  //
+  // WHAT `columns` MEANS HERE, and why getColumns is never called. Census § Q2:
+  // `getColumns(id)` is a LAYOUT CONVENIENCE, not the author's declaration — it
+  // returns `children.length` for a composite the author left alone, so a
+  // two-child `block:grp` reports 2 whether the author wrote `columns 2` or
+  // wrote nothing at all. The declaration is the block's OWN `columns` key,
+  // which a nested composite carries only when declared and root always
+  // carries, defaulting to -1. Both -1 and absent deliver null here, meaning
+  // "not declared", so a narration can say "laid out in two columns" only when
+  // the author said so.
+  const BLOCK_COLUMNS_UNSET = -1;
+
+  // The nine keys a delivered block carries, in order. Named as a constant
+  // because the self-check asserts the delivered key set EXACTLY against it:
+  // that is the assertion which catches a stray `size` from a render, and any
+  // future field added here without a field-manifest row.
+  const BLOCK_DELIVERED_KEYS = Object.freeze([
+    "id",
+    "label",
+    "shape",
+    "children",
+    "widthInColumns",
+    "columns",
+    "classes",
+    "styles",
+    "directions",
+  ]);
+
+  let blockMemoCode = null;
+  let blockMemoPromise = null;
+  let blockHealthy = null;
+  let blockSelfCheckStarted = false;
+  let blockSelfCheckPromise = null;
+
+  /**
+   * Read a block's OWN declared column count.
+   *
+   * NEVER getColumns(id) — see the surface comment above. Absent and the
+   * sentinel -1 both mean "the author declared nothing" and both deliver null,
+   * so a consumer has ONE absent case rather than two.
+   *
+   * @param {Object|null} raw - A db block object, or null
+   * @returns {number|null} The declared count, or null when undeclared
+   */
+  function blockDeclaredColumns(raw) {
+    if (!raw || !Object.prototype.hasOwnProperty.call(raw, "columns")) {
+      return null;
+    }
+    const value = raw.columns;
+    if (typeof value !== "number" || value === BLOCK_COLUMNS_UNSET) {
+      return null;
+    }
+    return value;
+  }
+
+  /**
+   * Copy ONE db block into this surface's own object, recursing into children.
+   *
+   * THE KEY LIST IS CLOSED AND THAT IS THE POINT (census § Q10). Only the nine
+   * keys in BLOCK_DELIVERED_KEYS are read; nothing is spread, assigned wholesale
+   * or cloned, so a `size` and a live d3 selection added by a render cannot
+   * cross into the delivery even if this runs after one.
+   *
+   * THE WIDTH KEYS DIFFER BY KIND, and this is the one place the surface
+   * reconciles them. A block declared `wide["W"]:3` carries `widthInColumns`;
+   * a `space:2` carries `width` and NO `widthInColumns` at all (census § Q3,
+   * re-measured 5 September 2026). Both are the author's declared span in
+   * columns, so both arrive here under the single delivered name
+   * `widthInColumns`. Recorded rather than left to inference: the dispatch for
+   * this session named `widthInColumns` for space blocks, the db names it
+   * `width`, and mapping the two is what closes that gap without adding a
+   * tenth field nobody documented.
+   *
+   * TWO TRAPS THE COPY PRESERVES rather than repairs, because repairing either
+   * would hide the db's own behaviour from a consumer that has to know it.
+   * A `space:2` arrives as TWO sibling entries, each carrying width 2, so
+   * SUMMING widths double-counts — the declared span is the value on one of
+   * them. And a space block's `label` is its OWN GENERATED PARENT ID, which is
+   * machine text, non-deterministic between parses, and must never be spoken.
+   *
+   * @param {Object} raw - A db block object
+   * @returns {Object} The delivered block
+   */
+  function copyBlock(raw) {
+    const id = typeof raw.id === "string" ? raw.id : "";
+
+    // LABEL. decodeAuthorText, per the ruling above. A block whose db label is
+    // ABSENT delivers the id as the db gives it — and it should be recorded
+    // which case the db actually produces, because the answer is "none of the
+    // delivered ones". Measured 5 September 2026 across four sources: every
+    // leaf, every space block and every composite carries a `label` key. A
+    // composite's is the EMPTY STRING, not the id and not absent, so it is
+    // delivered as "" and the narration module owns the fallback phrase. Only
+    // ROOT has no label, and root is never delivered as a block. The fallback
+    // is therefore a defence, not a live path.
+    const label =
+      typeof raw.label === "string" ? decodeAuthorText(raw.label) : id;
+
+    const widthInColumns =
+      typeof raw.widthInColumns === "number"
+        ? raw.widthInColumns
+        : typeof raw.width === "number"
+          ? raw.width
+          : null;
+
+    return {
+      id: id,
+      label: label,
+      // THE DB'S OWN TYPE STRING, VERBATIM. Naming the vocabulary — deciding
+      // that `stadium` is spoken one way and `lean_right` another — is a later
+      // session's table, and inventing one here would put a wording decision
+      // in the adapter where no fixture could reach it.
+      shape: typeof raw.type === "string" ? raw.type : "",
+      // [] FOR A LEAF, so the shape is uniform and a consumer never branches
+      // on the presence of a key. A leaf carries no `children` key at all on
+      // the db; a space block carries an empty array.
+      children: Array.isArray(raw.children) ? raw.children.map(copyBlock) : [],
+      widthInColumns: widthInColumns,
+      columns: blockDeclaredColumns(raw),
+      // Assigned class NAMES, and raw declaration strings, each present on the
+      // db only when something was assigned. Both are the AUTHOR'S OWN
+      // declarations rather than computed values, so unlike `size` they are
+      // honest to read — but they are paint, and whether paint is ever
+      // narrated is the presentation standard's question, not this file's.
+      classes: Array.isArray(raw.classes) ? raw.classes.slice() : [],
+      styles: Array.isArray(raw.styles) ? raw.styles.slice() : [],
+      // AN ARRAY FOR block_arrow SHAPES, [] OTHERWISE. Measured 5 September
+      // 2026: `ar1<["Right"]>(right)` delivers ["right"] and `(x)` delivers
+      // ["x"], while every other kind carries `directions` as an OWN KEY
+      // HOLDING undefined — invisible to JSON.stringify, which is why it was
+      // read with Object.keys. A space block has no such key at all.
+      directions: Array.isArray(raw.directions) ? raw.directions.slice() : [],
+    };
+  }
+
+  /**
+   * Snapshot the classDef table.
+   *
+   * The db delivers a MAP keyed by class name, whose values are db-owned
+   * objects; this returns a plain object keyed the same way, with each entry's
+   * arrays copied, so nothing in the delivery references anything the next
+   * parse can replace. A Map is not delivered because the shape a consumer
+   * reads should not depend on a container type the db happens to have chosen.
+   *
+   * @param {Map|null} rawClasses - db.getClasses()
+   * @returns {Object} Class-name-keyed table of { id, styles, textStyles }
+   */
+  function copyBlockClasses(rawClasses) {
+    const table = {};
+    if (!rawClasses || typeof rawClasses.forEach !== "function") {
+      return table;
+    }
+    rawClasses.forEach((value, name) => {
+      table[name] = {
+        id: value && typeof value.id === "string" ? value.id : String(name),
+        styles: value && Array.isArray(value.styles) ? value.styles.slice() : [],
+        textStyles:
+          value && Array.isArray(value.textStyles) ? value.textStyles.slice() : [],
+      };
+    });
+    return table;
+  }
+
+  /**
+   * Normalise one Mermaid block diagram into the tenth surface's delivery.
+   *
+   * EAGER SNAPSHOT (the singleton defence, census § Q8): every db accessor is
+   * called ONCE here, inside the parse's own .then and behind the adapter-wide
+   * queue, and each result is mapped into this adapter's own objects in the
+   * same tick. Nothing in the returned object references a db-owned object, and
+   * no consumer may ever go back to the db later — on this type a second parse
+   * replaces the WHOLE payload, not merely the shared scalars.
+   *
+   * Every field is always present — "" or [] or null rather than absent — so a
+   * consumer has one absent case per field and never an undefined member.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @returns {Object} The normalised block delivery
+   */
+  function normaliseBlock(diagram) {
+    const db = diagram.db;
+
+    // The four reads. Everything below maps these and nothing else.
+    // `getBlocks()` is ROOT'S CHILDREN as a tree, in declaration order, with
+    // nesting preserved to every depth (census § Q1). `getBlocksFlat()` is the
+    // same objects in a depth-first pre-order walk with ROOT FIRST, and it is
+    // read here for one reason only: root's own `columns` key, which is the
+    // author's top-level declaration and is on no other object.
+    const rawBlocks = db.getBlocks();
+    const rawFlat = db.getBlocksFlat();
+    const rawEdges = db.getEdges();
+    const rawClasses = db.getClasses();
+
+    const rawRoot = Array.isArray(rawFlat) && rawFlat.length > 0 ? rawFlat[0] : null;
+
+    const blocks = (Array.isArray(rawBlocks) ? rawBlocks : []).map(copyBlock);
+
+    const edges = (Array.isArray(rawEdges) ? rawEdges : []).map((edge) => ({
+      // The id is COMPOSED BY MERMAID as `<n>-<start>-<end>` and the endpoints
+      // are the AUTHOR'S OWN ids (census § Q4), so an edge is quotable against
+      // the blocks above without a lookup table.
+      id: typeof edge.id === "string" ? edge.id : "",
+      start: typeof edge.start === "string" ? edge.start : null,
+      end: typeof edge.end === "string" ? edge.end : null,
+      // decodeAuthorText, on the foreignObject measurement recorded at the top
+      // of this surface. An unlabelled edge delivers "" from the db, not
+      // undefined or null, and "" is passed through unchanged.
+      label: typeof edge.label === "string" ? decodeAuthorText(edge.label) : "",
+      // THE ARROW-TYPE STRINGS ARE DELIVERED VERBATIM AND ARE FAITHFUL, which
+      // is worth stating because they look lossy. `---` and `<-->` are both
+      // typed `arrow_point` at the end and `arrow_open` at the start, exactly
+      // as a plain `-->` is — and the CANVAS AGREES: rendered at strict, the
+      // plain `---` carries the same `marker-end` and a null `marker-start` as
+      // `-->`, so the db is a truthful record of what is drawn rather than a
+      // dropped distinction (census § Q4). Only `--o` and `--x` draw
+      // differently, and only those two are distinguished here.
+      arrowTypeStart:
+        typeof edge.arrowTypeStart === "string" ? edge.arrowTypeStart : null,
+      arrowTypeEnd:
+        typeof edge.arrowTypeEnd === "string" ? edge.arrowTypeEnd : null,
+    }));
+
+    return {
+      // `diagramType` rather than `type`, because `type` is this surface's
+      // per-block SHAPE key and one word cannot honestly mean both. Named by
+      // the design seat's dispatch of 5 September 2026; it is the only surface
+      // of the ten whose discriminator is spelt this way, and the field
+      // manifest carries it under that name.
+      diagramType: "block",
+      blocks: blocks,
+      rootColumns: blockDeclaredColumns(rawRoot),
+      edges: edges,
+      classes: copyBlockClasses(rawClasses),
+    };
+  }
+
+  /**
+   * Parse a block diagram and deliver the normalised shape.
+   *
+   * Same contract as the other nine surfaces: the PROMISE is memoised on the
+   * code string, the memo sits in front of the adapter-wide queue, and every db
+   * read happens inside this call's own queue slot. On this type the queue is
+   * load-bearing for the payload itself and not only for the shared scalars —
+   * the db is a singleton whose whole contents a concurrent parse replaces.
+   *
+   * @param {string} code - The Mermaid block source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseBlock(code) {
+    if (!blockSelfCheckStarted) {
+      runBlockSelfCheck();
+    }
+
+    if (code === blockMemoCode && blockMemoPromise) {
+      logDebug("Returning memoised block parse for identical code string");
+      return blockMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Block parse entering its queue slot, ${code.length} characters`);
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `Block parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const block = normaliseBlock(diagram);
+          logDebug(
+            `Block parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${block.blocks.length} top-level block(s), ${block.edges.length} edge(s), ` +
+              `rootColumns ${block.rootColumns}`
+          );
+          return block;
+        })
+        .catch((error) => {
+          logDebug(
+            `Block parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    blockMemoCode = code;
+    blockMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Self-check fixture: root declaring `columns 2`, three leaf blocks, one
+   * composite carrying one child and declaring NO columns of its own, and one
+   * labelled edge between two of the leaves.
+   *
+   * THE UNDECLARED COMPOSITE IS THE POINT. `getColumns("scGroup")` returns 1 on
+   * this fixture — its child count — which is indistinguishable from an author
+   * who wrote `columns 1`. The delivered value must be null, and this is the
+   * assertion that catches a future editor "simplifying" the own-key read into
+   * a getColumns call. A fixture whose composite declared its own columns would
+   * pass either way, which is why this one does not.
+   *
+   * ASCII only, every string distinctive and prefixed SelfCheck, so a
+   * cross-delivery from another diagram NAMES ITS SOURCE rather than merely
+   * looking wrong.
+   */
+  const BLOCK_SELF_CHECK_FIXTURE = [
+    "block-beta",
+    "    columns 2",
+    '    scAlpha["SelfCheck alpha"]',
+    '    scBravo["SelfCheck bravo"]',
+    '    scCharlie["SelfCheck charlie"]',
+    "    block:scGroup",
+    '        scDelta["SelfCheck delta"]',
+    "    end",
+    '    scAlpha -- "SelfCheck edge" --> scBravo',
+  ].join("\n");
+
+  /**
+   * Parse the embedded fixture and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the block surface unhealthy, and resolves
+   * false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the block health verdict
+   */
+  function runBlockSelfCheck() {
+    if (blockSelfCheckPromise) {
+      return blockSelfCheckPromise;
+    }
+    blockSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            BLOCK_SELF_CHECK_FIXTURE
+          );
+        })
+        .then((diagram) => {
+          const db = diagram.db;
+          const accessorsPresent =
+            typeof db.getBlocks === "function" &&
+            typeof db.getBlocksFlat === "function" &&
+            typeof db.getEdges === "function" &&
+            typeof db.getClasses === "function" &&
+            typeof db.getColumns === "function";
+
+          // THE MEASURED ABSENCE, PINNED. The block db has no common trio, and
+          // this surface's decision to deliver no title, accTitle or accDescr
+          // rests on that. A Mermaid upgrade that ADDS any of the three should
+          // fail here loudly, because it reopens the decision — a silently
+          // available getter would leave the surface delivering a fiction of
+          // absence rather than a measured one.
+          const trioStillAbsent =
+            typeof db.getDiagramTitle === "undefined" &&
+            typeof db.getAccTitle === "undefined" &&
+            typeof db.getAccDescription === "undefined";
+
+          // Raw reads, taken in this same slot, for the two structural facts
+          // the delivery cannot itself expose: that the flat walk starts at
+          // root, and that getColumns would have LIED about the composite.
+          const rawFlat = db.getBlocksFlat();
+          const rawRoot = Array.isArray(rawFlat) ? rawFlat[0] : null;
+          const rootIsFirst = !!rawRoot && rawRoot.id === "root";
+          const getColumnsWouldLie = db.getColumns("scGroup") === 1;
+
+          const delivery = normaliseBlock(diagram);
+          const [alpha, bravo, charlie, group] = delivery.blocks;
+          const child = group && group.children ? group.children[0] : null;
+          const edge = delivery.edges[0];
+          const keysOf = (b) => (b ? Object.keys(b).join(",") : "");
+          const expectedKeys = BLOCK_DELIVERED_KEYS.join(",");
+
+          return [
+            [
+              "the five db accessors this surface reads exist by name",
+              accessorsPresent,
+            ],
+            [
+              "the block db still carries NO getDiagramTitle, getAccTitle or " +
+                "getAccDescription — the measured absence this surface's " +
+                "missing title fields rest on",
+              trioStillAbsent,
+            ],
+            [
+              "getBlocksFlat still starts at root, which is where rootColumns " +
+                "is read from",
+              rootIsFirst,
+            ],
+            [
+              "the delivery names its type and carries four top-level blocks " +
+                "in declaration order, with the author's ids",
+              delivery.diagramType === "block" &&
+                delivery.blocks.length === 4 &&
+                alpha.id === "scAlpha" &&
+                bravo.id === "scBravo" &&
+                charlie.id === "scCharlie" &&
+                group.id === "scGroup",
+            ],
+            [
+              "every delivered block carries EXACTLY the nine documented keys " +
+                "and no other — the assertion that catches a render's `size` " +
+                "and `intersect` crossing into the delivery",
+              keysOf(alpha) === expectedKeys &&
+                keysOf(group) === expectedKeys &&
+                keysOf(child) === expectedKeys,
+            ],
+            [
+              "labels are the author's text, the composite's is the EMPTY " +
+                "STRING the db delivers rather than its id, and shapes are the " +
+                "db's own type strings verbatim",
+              alpha.label === "SelfCheck alpha" &&
+                bravo.label === "SelfCheck bravo" &&
+                charlie.label === "SelfCheck charlie" &&
+                group.label === "" &&
+                alpha.shape === "square" &&
+                group.shape === "composite",
+            ],
+            [
+              "root's declared columns reads 2, and the UNDECLARED composite " +
+                "reads null even though getColumns would answer 1 for it",
+              delivery.rootColumns === 2 &&
+                group.columns === null &&
+                alpha.columns === null &&
+                getColumnsWouldLie,
+            ],
+            [
+              "the composite carries its one child nested, and a leaf carries " +
+                "an EMPTY children array rather than no key",
+              group.children.length === 1 &&
+                child.id === "scDelta" &&
+                child.label === "SelfCheck delta" &&
+                Array.isArray(alpha.children) &&
+                alpha.children.length === 0,
+            ],
+            [
+              "spans, classes, styles and directions are the empty-case shapes " +
+                "this fixture declares — widthInColumns 1, and [] rather than " +
+                "absent for the other three",
+              alpha.widthInColumns === 1 &&
+                group.widthInColumns === 1 &&
+                Array.isArray(alpha.classes) &&
+                alpha.classes.length === 0 &&
+                Array.isArray(alpha.styles) &&
+                alpha.styles.length === 0 &&
+                Array.isArray(alpha.directions) &&
+                alpha.directions.length === 0,
+            ],
+            [
+              "the one edge carries the AUTHOR'S OWN ids at start and end, its " +
+                "decoded label, and an arrow type at each end",
+              delivery.edges.length === 1 &&
+                edge.start === "scAlpha" &&
+                edge.end === "scBravo" &&
+                edge.label === "SelfCheck edge" &&
+                edge.arrowTypeStart === "arrow_open" &&
+                edge.arrowTypeEnd === "arrow_point" &&
+                edge.id === "1-scAlpha-scBravo",
+            ],
+            [
+              "the class table is a PLAIN OBJECT snapshot rather than the db's " +
+                "Map, and is empty on a fixture declaring no classDef",
+              !!delivery.classes &&
+                typeof delivery.classes === "object" &&
+                !(delivery.classes instanceof Map) &&
+                Object.keys(delivery.classes).length === 0,
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    blockSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Block self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's block internals no longer " +
+              "match the 5 September 2026 census, or this surface's mapping " +
+              "has drifted; do not trust block adapter output."
+          );
+          blockHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Block self-check passed: accessor, absent-trio, key-set, nesting, " +
+            "declared-column and edge assertions all hold"
+        );
+        blockHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Block self-check FAILED at assertion: the fixture parses and " +
+            `reads. The fixture run rejected: ${error && error.message}`
+        );
+        blockHealthy = false;
+        return false;
+      });
+
+    return blockSelfCheckPromise;
+  }
+
+  /**
+   * Report the block surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the block self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isBlockHealthy() {
+    return blockHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -4250,6 +6856,18 @@ window.MermaidParseAdapter = (function () {
     parseGantt: parseGantt,
     runGanttSelfCheck: runGanttSelfCheck,
     isGanttHealthy: isGanttHealthy,
+    parseQuadrant: parseQuadrant,
+    runQuadrantSelfCheck: runQuadrantSelfCheck,
+    isQuadrantHealthy: isQuadrantHealthy,
+    parseSequence: parseSequence,
+    runSequenceSelfCheck: runSequenceSelfCheck,
+    isSequenceHealthy: isSequenceHealthy,
+    parseBlock: parseBlock,
+    runBlockSelfCheck: runBlockSelfCheck,
+    isBlockHealthy: isBlockHealthy,
+    // Register item 78: the ONE decoder exported from this module, for the
+    // core's author-override route, which reads the raw diagram source.
+    decodeSourcePlaceholders: decodeSourcePlaceholders,
     // Register item 24: the global enableAllLog() cannot reach this module's
     // level, so the control is exported here as MermaidThemes and
     // MermaidControls already do. Without it the per-parse trace above is

@@ -224,6 +224,25 @@
    * Formats classification data into a prompt section.
    * Used to give the LLM context about what type of image this is.
    *
+   * Phase H-5a (1 September 2026) — the block was cut from five lines to three.
+   * Three of the four claims it made were removed and one was kept:
+   *
+   *   - the confidence parenthetical on the headline sentence. On every image
+   *     whose source is CLIP, that percentage is CLIP's confidence in a
+   *     DIFFERENT word from the one the sentence asserts, measured identical
+   *     across all four such frozen fixtures. The provenance token beside it
+   *     went with it as a wording judgement, not on evidence.
+   *   - the raw CLIP top-label sentence, right 3 of 6 and measured being copied
+   *     into descriptions verbatim.
+   *   - the alternatives list, which vote-split against the headline word and
+   *     supplied one further measured injection from a 22% also-ran.
+   *
+   * The headline word itself is KEPT — it was right 5 of 6 and nothing has been
+   * measured copying it — as is the closing instruction to verify against the image.
+   *
+   * External validity: seven hard images, no easy cases. See
+   * docs/idq-corpus-validity.md for what this makes incomparable with what.
+   *
    * @param {object} classification — ClassificationResult from classify module
    * @returns {string} formatted prompt text, or empty string if no classification
    */
@@ -233,27 +252,9 @@
     const parts = [];
     parts.push("### Image Classification (automated pre-analysis)");
 
-    const pct = Math.round((classification.confidence || 0) * 100);
     parts.push(
-      `This image has been automatically classified as a **${classification.profile}** (${pct}% confidence, source: ${classification.source}).`,
+      `This image has been automatically classified as a **${classification.profile}**.`,
     );
-
-    // Add CLIP detail if available
-    if (classification.clip && classification.clip.status === "success") {
-      const clipPct = Math.round(classification.clip.topConfidence * 100);
-      parts.push(
-        `CLIP model identified it as "${classification.clip.topLabel}" (${clipPct}% confidence).`,
-      );
-
-      // Include top 3 alternative labels for context
-      if (classification.clip.labels && classification.clip.labels.length > 1) {
-        const alts = classification.clip.labels
-          .slice(1, 4)
-          .map((l) => `${l.label} (${Math.round(l.score * 100)}%)`)
-          .join(", ");
-        parts.push(`Other possibilities: ${alts}.`);
-      }
-    }
 
     parts.push(
       "Use this classification to inform your description approach, but verify it against what you see in the image.",

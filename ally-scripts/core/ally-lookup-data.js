@@ -1,105 +1,38 @@
 /**
- * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Module
+ * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Payload
  * @module AllyLookup
- * @requires None - Standalone data module
- * @generated 2026-08-21T11:22:22.270Z
- * @version 1.0.0
+ * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
+ * @generated 2026-09-05T13:12:43.051Z
+ * @version 2.0.0
  *
  * @description
  * Generated from CSV files - provides human-readable names for Ally internal IDs.
- * Contains 39 terms and 89 departments.
+ * Contains 39 terms and 92 departments.
  *
- * Course lookups are delegated to ALLY_COURSES (loaded separately due to size).
+ * THIS FILE IS DATA ONLY. Every method on ALLY_LOOKUP - including the course
+ * methods that delegate to ALLY_COURSES - lives in
+ * ally-scripts/core/ally-data-runtime.js, which is shipped once and never
+ * regenerated. This file hands the runtime a payload, and the runtime assigns
+ * the global. Do not add behaviour here; it would be lost on the next rebuild.
  */
 
-const ALLY_LOOKUP = (function() {
-  'use strict';
+(function () {
+  "use strict";
 
-  // ========================================================================
-  // Logging Configuration
-  // ========================================================================
-
-  const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
-  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
-  const ENABLE_ALL_LOGGING = false;
-  const DISABLE_ALL_LOGGING = false;
-
-  function shouldLog(level) {
-    if (DISABLE_ALL_LOGGING) return false;
-    if (ENABLE_ALL_LOGGING) return true;
-    return level <= DEFAULT_LOG_LEVEL;
+  if (typeof ALLY_DATA_RUNTIME === "undefined") {
+    console.error(
+      "[AllyLookupData] ally-scripts/core/ally-data-runtime.js must load " +
+        "BEFORE this payload. Term and department lookups have NOT been " +
+        "installed, and every ID will render raw."
+    );
+    return;
   }
-
-  function logError(message, ...args) {
-    if (shouldLog(LOG_LEVELS.ERROR)) console.error('[AllyLookup] ' + message, ...args);
-  }
-
-  function logWarn(message, ...args) {
-    if (shouldLog(LOG_LEVELS.WARN)) console.warn('[AllyLookup] ' + message, ...args);
-  }
-
-  function logInfo(message, ...args) {
-    if (shouldLog(LOG_LEVELS.INFO)) console.log('[AllyLookup] ' + message, ...args);
-  }
-
-  function logDebug(message, ...args) {
-    if (shouldLog(LOG_LEVELS.DEBUG)) console.log('[AllyLookup] ' + message, ...args);
-  }
-
-  // ========================================================================
-  // Data (Generated from CSVs)
-  // ========================================================================
 
   /**
    * Term ID to term data mapping
    * @type {Object.<string, {name: string, type: string, sortOrder: number}>}
    */
   const terms = {
-    "_299_1": {
-      "name": "Templates",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_387_1": {
-      "name": "Archived",
-      "type": "system",
-      "sortOrder": -1
-    },
-    "_253_1": {
-      "name": "External courses",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_287_1": {
-      "name": "Guest Access",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_24_1": {
-      "name": "2010-11",
-      "type": "academic",
-      "sortOrder": 10
-    },
-    "_23_1": {
-      "name": "2011-12",
-      "type": "academic",
-      "sortOrder": 11
-    },
-    "_22_1": {
-      "name": "2012-13",
-      "type": "academic",
-      "sortOrder": 12
-    },
-    "_21_1": {
-      "name": "2013-14",
-      "type": "academic",
-      "sortOrder": 13
-    },
-    "_81_1": {
-      "name": "2014-15",
-      "type": "academic",
-      "sortOrder": 14
-    },
     "_110_1": {
       "name": "2015-16",
       "type": "academic",
@@ -145,41 +78,6 @@ const ALLY_LOOKUP = (function() {
       "type": "academic",
       "sortOrder": 23
     },
-    "_313_1": {
-      "name": "Preparation for 2023-24",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_483_1": {
-      "name": "Recommended Training",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_482_1": {
-      "name": "Mandatory Student Training",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_344_1": {
-      "name": "2024-25 Modules",
-      "type": "academic",
-      "sortOrder": 24
-    },
-    "_211_1": {
-      "name": "Pre sessional",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_362_1": {
-      "name": "Preparation for 2024-25",
-      "type": "system",
-      "sortOrder": -99
-    },
-    "_384_1": {
-      "name": "Preparation for 2025-26",
-      "type": "system",
-      "sortOrder": -99
-    },
     "_174_1": {
       "name": "Sandboxes",
       "type": "system",
@@ -190,53 +88,88 @@ const ALLY_LOOKUP = (function() {
       "type": "system",
       "sortOrder": -99
     },
-    "_42_1": {
-      "name": "Faculty of Medicine Subjects",
+    "_211_1": {
+      "name": "Pre sessional",
       "type": "system",
       "sortOrder": -99
     },
-    "_463_1": {
-      "name": "2025-26 Modules (Malaysia)",
+    "_21_1": {
+      "name": "2013-14",
       "type": "academic",
-      "sortOrder": 25
+      "sortOrder": 13
     },
-    "_462_1": {
-      "name": "2025-26 Modules (Delhi)",
+    "_22_1": {
+      "name": "2012-13",
       "type": "academic",
-      "sortOrder": 25
-    },
-    "_383_1": {
-      "name": "2025-26 Modules",
-      "type": "academic",
-      "sortOrder": 25
-    },
-    "_467_1": {
-      "name": "2026-27 Modules (Malaysia)",
-      "type": "academic",
-      "sortOrder": 26
-    },
-    "_466_1": {
-      "name": "2026-27 Modules (Delhi)",
-      "type": "academic",
-      "sortOrder": 26
-    },
-    "_465_1": {
-      "name": "2026-27 Modules",
-      "type": "academic",
-      "sortOrder": 26
+      "sortOrder": 12
     },
     "_231_1": {
       "name": "Programme Information",
       "type": "system",
       "sortOrder": -99
     },
-    "_451_1": {
-      "name": "Preparation for 2026-27",
+    "_23_1": {
+      "name": "2011-12",
+      "type": "academic",
+      "sortOrder": 11
+    },
+    "_241_1": {
+      "name": "Organisations",
       "type": "system",
       "sortOrder": -99
     },
-    "_448_1": {
-      "name": "CPD / LLL Courses",
+    "_24_1": {
+      "name": "2010-11",
+      "type": "academic",
+      "sortOrder": 10
+    },
+    "_253_1": {
+      "name": "External courses",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_287_1": {
+      "name": "Guest Access",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_299_1": {
+      "name": "Templates",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_313_1": {
+      "name": "Preparation for 2023-24",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_344_1": {
+      "name": "2024-25 Modules",
+      "type": "academic",
+      "sortOrder": 24
+    },
+    "_362_1": {
+      "name": "Preparation for 2024-25",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_383_1": {
+      "name": "2025-26 Modules",
+      "type": "academic",
+      "sortOrder": 25
+    },
+    "_384_1": {
+      "name": "Preparation for 2025-26",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_387_1": {
+      "name": "Archived",
+      "type": "system",
+      "sortOrder": -1
+    },
+    "_42_1": {
+      "name": "Faculty of Medicine Subjects",
       "type": "system",
       "sortOrder": -99
     },
@@ -245,795 +178,711 @@ const ALLY_LOOKUP = (function() {
       "type": "system",
       "sortOrder": -99
     },
-    "_241_1": {
-      "name": "Organisations",
+    "_448_1": {
+      "name": "CPD / LLL Courses",
       "type": "system",
       "sortOrder": -99
+    },
+    "_451_1": {
+      "name": "Preparation for 2026-27",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_462_1": {
+      "name": "2025-26 Modules (Delhi)",
+      "type": "academic",
+      "sortOrder": 25
+    },
+    "_463_1": {
+      "name": "2025-26 Modules (Malaysia)",
+      "type": "academic",
+      "sortOrder": 25
+    },
+    "_465_1": {
+      "name": "2026-27 Modules",
+      "type": "academic",
+      "sortOrder": 26
+    },
+    "_466_1": {
+      "name": "2026-27 Modules (Delhi)",
+      "type": "academic",
+      "sortOrder": 26
+    },
+    "_467_1": {
+      "name": "2026-27 Modules (Malaysia)",
+      "type": "academic",
+      "sortOrder": 26
+    },
+    "_482_1": {
+      "name": "Mandatory Student Training",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_483_1": {
+      "name": "Recommended Training",
+      "type": "system",
+      "sortOrder": -99
+    },
+    "_81_1": {
+      "name": "2014-15",
+      "type": "academic",
+      "sortOrder": 14
     }
   };
 
   /**
    * Department ID to department data mapping
-   * @type {Object.<string, {name: string, shortCode: string|null, isSystemTag: boolean}>}
+   * @type {Object.<string, {name: string, shortCode: string|null, isSystemTag: boolean, parentId: string|null, parentName: string|null}>}
    */
   const departments = {
-    "_265_1": {
-      "name": "Course Format",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_266_1": {
-      "name": "Original",
-      "shortCode": null,
-      "isSystemTag": true
-    },
-    "_1_1": {
-      "name": "University of Southampton",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_127_1": {
-      "name": "Film Studies (LT)",
-      "shortCode": "LT",
-      "isSystemTag": false
-    },
     "_100_1": {
       "name": "Politics & International Relations (CA)",
       "shortCode": "CA",
-      "isSystemTag": false
-    },
-    "_97_1": {
-      "name": "School of Biological Sciences (BJ)",
-      "shortCode": "BJ",
-      "isSystemTag": false
-    },
-    "_138_1": {
-      "name": "English (PL)",
-      "shortCode": "PL",
-      "isSystemTag": false
-    },
-    "_88_1": {
-      "name": "(A3) Faculty of Engineering and Physical Sciences",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_132_1": {
-      "name": "Engineering Education - Acoustical Engineering (ND)",
-      "shortCode": "ND",
-      "isSystemTag": false
-    },
-    "_149_1": {
-      "name": "Engineering Education - Mechanical Engineering (VN)",
-      "shortCode": "VN",
-      "isSystemTag": false
-    },
-    "_86_1": {
-      "name": "(A1) Faculty of Arts and Humanities",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_117_1": {
-      "name": "Nursing, Midwifery and Health (JB)",
-      "shortCode": "JB",
-      "isSystemTag": false
-    },
-    "_139_1": {
-      "name": "Zepler Institute for Photonics and Nanoelectronics (PN)",
-      "shortCode": "PN",
-      "isSystemTag": false
-    },
-    "_120_1": {
-      "name": "School of Psychology (JW)",
-      "shortCode": "JW",
-      "isSystemTag": false
-    },
-    "_157_1": {
-      "name": "Academic Structure",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_118_1": {
-      "name": "Southampton Law School (JJ)",
-      "shortCode": "JJ",
-      "isSystemTag": false
-    },
-    "_89_1": {
-      "name": "(A4) Faculty of Medicine",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_140_1": {
-      "name": "Engineering Education - Civil and Environmental Engineering (PV)",
-      "shortCode": "PV",
-      "isSystemTag": false
-    },
-    "_112_1": {
-      "name": "Languages, Cultures and Linguistics (GC)",
-      "shortCode": "GC",
-      "isSystemTag": false
-    },
-    "_104_1": {
-      "name": "Cancer Sciences (CM)",
-      "shortCode": "CM",
-      "isSystemTag": false
-    },
-    "_109_1": {
-      "name": "Winchester School of Art (FH)",
-      "shortCode": "FH",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
     },
     "_101_1": {
       "name": "School of Economic, Social and Political Sciences (CC)",
       "shortCode": "CC",
-      "isSystemTag": false
-    },
-    "_131_1": {
-      "name": "Music (NC)",
-      "shortCode": "NC",
-      "isSystemTag": false
-    },
-    "_105_1": {
-      "name": "School of Engineering (DA)",
-      "shortCode": "DA",
-      "isSystemTag": false
-    },
-    "_143_1": {
-      "name": "Faculty Central (FELS) (RW)",
-      "shortCode": "RW",
-      "isSystemTag": false
-    },
-    "_153_1": {
-      "name": "School of Physics & Astronomy (WF)",
-      "shortCode": "WF",
-      "isSystemTag": false
-    },
-    "_92_1": {
-      "name": "Human Development and Health (AF)",
-      "shortCode": "AF",
-      "isSystemTag": false
-    },
-    "_103_1": {
-      "name": "Southampton Education School (CJ)",
-      "shortCode": "CJ",
-      "isSystemTag": false
-    },
-    "_150_1": {
-      "name": "Engineering Education - Maritime Engineering (VT)",
-      "shortCode": "VT",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
     },
     "_102_1": {
       "name": "School of Health Sciences (CF)",
       "shortCode": "CF",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
     },
-    "_130_1": {
-      "name": "Engineering Education - Central (MM)",
-      "shortCode": "MM",
-      "isSystemTag": false
+    "_103_1": {
+      "name": "Southampton Education School (CJ)",
+      "shortCode": "CJ",
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
     },
-    "_98_1": {
-      "name": "Economics (BL)",
-      "shortCode": "BL",
-      "isSystemTag": false
+    "_104_1": {
+      "name": "Cancer Sciences (CM)",
+      "shortCode": "CM",
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
     },
-    "_129_1": {
-      "name": "Archaeology (MH)",
-      "shortCode": "MH",
-      "isSystemTag": false
-    },
-    "_111_1": {
-      "name": "School of Electronics & Computer Science (FP)",
-      "shortCode": "FP",
-      "isSystemTag": false
-    },
-    "_145_1": {
-      "name": "Sociology, Social Policy & Criminology (TG)",
-      "shortCode": "TG",
-      "isSystemTag": false
-    },
-    "_152_1": {
-      "name": "Gerontology (WB)",
-      "shortCode": "WB",
-      "isSystemTag": false
-    },
-    "_87_1": {
-      "name": "(A2) Faculty of Environmental and Life Sciences",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_133_1": {
-      "name": "Engineering Education - Audiology (NT)",
-      "shortCode": "NT",
-      "isSystemTag": false
-    },
-    "_95_1": {
-      "name": "School of Humanities (AR)",
-      "shortCode": "AR",
-      "isSystemTag": false
-    },
-    "_108_1": {
-      "name": "Clinical and Experimental Sciences (FC)",
-      "shortCode": "FC",
-      "isSystemTag": false
-    },
-    "_142_1": {
-      "name": "History (RG)",
-      "shortCode": "RG",
-      "isSystemTag": false
-    },
-    "_136_1": {
-      "name": "Engineering Education - Aerospace Engineering (PE)",
-      "shortCode": "PE",
-      "isSystemTag": false
-    },
-    "_121_1": {
-      "name": "Social Statistics & Demography (KA)",
-      "shortCode": "KA",
-      "isSystemTag": false
-    },
-    "_110_1": {
-      "name": "Philosophy (FJ)",
-      "shortCode": "FJ",
-      "isSystemTag": false
-    },
-    "_146_1": {
-      "name": "Southampton Business School (TR)",
-      "shortCode": "TR",
-      "isSystemTag": false
-    },
-    "_116_1": {
-      "name": "School of Ocean and Earth Science (HN)",
-      "shortCode": "HN",
-      "isSystemTag": false
-    },
-    "_154_1": {
-      "name": "School of Geography and Environmental Science (WR)",
-      "shortCode": "WR",
-      "isSystemTag": false
-    },
-    "_151_1": {
-      "name": "Allied Health Professions (WA)",
-      "shortCode": "WA",
-      "isSystemTag": false
-    },
-    "_137_1": {
-      "name": "School of Mathematical Sciences (PJ)",
-      "shortCode": "PJ",
-      "isSystemTag": false
-    },
-    "_126_1": {
-      "name": "Faculty Central (Medicine) (LL)",
-      "shortCode": "LL",
-      "isSystemTag": false
+    "_105_1": {
+      "name": "School of Engineering (DA)",
+      "shortCode": "DA",
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
     },
     "_106_1": {
       "name": "School of Chemistry (EB)",
       "shortCode": "EB",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
     },
-    "_90_1": {
-      "name": "(A5) Faculty of Social Sciences",
-      "shortCode": null,
-      "isSystemTag": false
+    "_108_1": {
+      "name": "Clinical and Experimental Sciences (FC)",
+      "shortCode": "FC",
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
     },
-    "_124_1": {
-      "name": "Primary Care, Population Sciences and Medical Education (LG)",
-      "shortCode": "LG",
-      "isSystemTag": false
+    "_109_1": {
+      "name": "Winchester School of Art (FH)",
+      "shortCode": "FH",
+      "isSystemTag": false,
+      "parentId": "_86_1",
+      "parentName": "(A1) Faculty of Arts and Humanities"
     },
-    "_114_1": {
-      "name": "Academic Centre for International Students (HG)",
-      "shortCode": "HG",
-      "isSystemTag": false
+    "_110_1": {
+      "name": "Philosophy (FJ)",
+      "shortCode": "FJ",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
-    "_123_1": {
-      "name": "Centre for Higher Education Practice (LD)",
-      "shortCode": "LD",
-      "isSystemTag": false
+    "_111_1": {
+      "name": "School of Electronics & Computer Science (FP)",
+      "shortCode": "FP",
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
     },
-    "_135_1": {
-      "name": "Faculty Central (FSS) (PD)",
-      "shortCode": "PD",
-      "isSystemTag": false
-    },
-    "_148_1": {
-      "name": "Engineering Education - Foundation Year (VL)",
-      "shortCode": "VL",
-      "isSystemTag": false
-    },
-    "_134_1": {
-      "name": "Faculty Central (Arts and Humanities) (NX)",
-      "shortCode": "NX",
-      "isSystemTag": false
-    },
-    "_173_1": {
-      "name": "Research & Innovation Services (TW)",
-      "shortCode": "TW",
-      "isSystemTag": false
-    },
-    "_155_1": {
-      "name": "(P1) Professional Services",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_169_1": {
-      "name": "Global Recruitment and Admissions (NP)",
-      "shortCode": "NP",
-      "isSystemTag": false
-    },
-    "_267_1": {
-      "name": "Ultra",
-      "shortCode": null,
-      "isSystemTag": true
+    "_112_1": {
+      "name": "Languages, Cultures and Linguistics (GC)",
+      "shortCode": "GC",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
     "_113_1": {
       "name": "Faculty Central (FEPS) (GN)",
       "shortCode": "GN",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
     },
-    "_281_1": {
-      "name": "No Turnitin",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_274_1": {
-      "name": "LTI Tool Availablity",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_166_1": {
-      "name": "iSolutions (JF)",
-      "shortCode": "JF",
-      "isSystemTag": false
-    },
-    "_327_1": {
-      "name": "Final LTI tests in PROD",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_275_1": {
-      "name": "CourseArc",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_328_1": {
-      "name": "Jove",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_369_1": {
-      "name": "CPDHUB/BCC/TDM",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_283_1": {
-      "name": "Chirun",
-      "shortCode": null,
-      "isSystemTag": false
-    },
-    "_160_1": {
-      "name": "Engagement & Advancement (CD)",
-      "shortCode": "CD",
-      "isSystemTag": false
+    "_114_1": {
+      "name": "Academic Centre for International Students (HG)",
+      "shortCode": "HG",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
     "_115_1": {
       "name": "National Oceanography Centre (HK)",
       "shortCode": "HK",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
     },
-    "_161_1": {
-      "name": "Human Resources (DD)",
-      "shortCode": "DD",
-      "isSystemTag": false
+    "_116_1": {
+      "name": "School of Ocean and Earth Science (HN)",
+      "shortCode": "HN",
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
     },
-    "_163_1": {
-      "name": "Residences (FB)",
-      "shortCode": "FB",
-      "isSystemTag": false
+    "_117_1": {
+      "name": "Nursing, Midwifery and Health (JB)",
+      "shortCode": "JB",
+      "isSystemTag": false,
+      "parentId": "_102_1",
+      "parentName": "School of Health Sciences (CF)"
     },
-    "_165_1": {
-      "name": "Widening Participation and Social Mobility (HL)",
-      "shortCode": "HL",
-      "isSystemTag": false
+    "_118_1": {
+      "name": "Southampton Law School (JJ)",
+      "shortCode": "JJ",
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
     },
-    "_172_1": {
-      "name": "Estates & Facilities (TD)",
-      "shortCode": "TD",
-      "isSystemTag": false
+    "_120_1": {
+      "name": "School of Psychology (JW)",
+      "shortCode": "JW",
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
     },
-    "_168_1": {
-      "name": "Library & the Arts (KX)",
-      "shortCode": "KX",
-      "isSystemTag": false
-    },
-    "_94_1": {
-      "name": "Aeronautical and Astronautical Engineering (AK)",
-      "shortCode": "AK",
-      "isSystemTag": false
+    "_121_1": {
+      "name": "Social Statistics & Demography (KA)",
+      "shortCode": "KA",
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
     },
     "_122_1": {
       "name": "Institute of Sound & Vibration Research (KR)",
       "shortCode": "KR",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
     },
-    "_162_1": {
-      "name": "Student Services (EW)",
-      "shortCode": "EW",
-      "isSystemTag": false
+    "_123_1": {
+      "name": "Centre for Higher Education Practice (LD)",
+      "shortCode": "LD",
+      "isSystemTag": false,
+      "parentId": "_135_1",
+      "parentName": "Faculty Central (FSS) (PD)"
     },
-    "_302_1": {
-      "name": "Arts and Media Technology (EN)",
-      "shortCode": "EN",
-      "isSystemTag": false
+    "_124_1": {
+      "name": "Primary Care, Population Sciences and Medical Education (LG)",
+      "shortCode": "LG",
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
     },
-    "_205_1": {
-      "name": "Careers & Employability (LR)",
-      "shortCode": "LR",
-      "isSystemTag": false
+    "_126_1": {
+      "name": "Faculty Central (Medicine) (LL)",
+      "shortCode": "LL",
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
     },
-    "_300_1": {
-      "name": "Design (WJ)",
-      "shortCode": "WJ",
-      "isSystemTag": false
+    "_127_1": {
+      "name": "Film Studies (LT)",
+      "shortCode": "LT",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
-    "_164_1": {
-      "name": "Student & Academic Administration (GX)",
-      "shortCode": "GX",
-      "isSystemTag": false
+    "_129_1": {
+      "name": "Archaeology (MH)",
+      "shortCode": "MH",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
-    "_96_1": {
-      "name": "Civil, Maritime & Environmental Engineering (AT)",
-      "shortCode": "AT",
-      "isSystemTag": false
+    "_130_1": {
+      "name": "Engineering Education - Central (MM)",
+      "shortCode": "MM",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
     },
-    "_301_1": {
-      "name": "Fashion and Textiles (CP)",
-      "shortCode": "CP",
-      "isSystemTag": false
+    "_131_1": {
+      "name": "Music (NC)",
+      "shortCode": "NC",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
     },
-    "_303_1": {
-      "name": "Optoelectronics Research Centre (BA)",
-      "shortCode": "BA",
-      "isSystemTag": false
+    "_132_1": {
+      "name": "Engineering Education - Acoustical Engineering (ND)",
+      "shortCode": "ND",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_133_1": {
+      "name": "Engineering Education - Audiology (NT)",
+      "shortCode": "NT",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_134_1": {
+      "name": "Faculty Central (Arts and Humanities) (NX)",
+      "shortCode": "NX",
+      "isSystemTag": false,
+      "parentId": "_86_1",
+      "parentName": "(A1) Faculty of Arts and Humanities"
+    },
+    "_135_1": {
+      "name": "Faculty Central (FSS) (PD)",
+      "shortCode": "PD",
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
+    },
+    "_136_1": {
+      "name": "Engineering Education - Aerospace Engineering (PE)",
+      "shortCode": "PE",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_137_1": {
+      "name": "School of Mathematical Sciences (PJ)",
+      "shortCode": "PJ",
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
+    },
+    "_138_1": {
+      "name": "English (PL)",
+      "shortCode": "PL",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
+    },
+    "_139_1": {
+      "name": "Zepler Institute for Photonics and Nanoelectronics (PN)",
+      "shortCode": "PN",
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
+    },
+    "_140_1": {
+      "name": "Engineering Education - Civil and Environmental Engineering (PV)",
+      "shortCode": "PV",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_142_1": {
+      "name": "History (RG)",
+      "shortCode": "RG",
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
+    },
+    "_143_1": {
+      "name": "Faculty Central (FELS) (RW)",
+      "shortCode": "RW",
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
+    },
+    "_145_1": {
+      "name": "Sociology, Social Policy & Criminology (TG)",
+      "shortCode": "TG",
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
+    },
+    "_146_1": {
+      "name": "Southampton Business School (TR)",
+      "shortCode": "TR",
+      "isSystemTag": false,
+      "parentId": "_90_1",
+      "parentName": "(A5) Faculty of Social Sciences"
     },
     "_147_1": {
       "name": "Wessex Institute (VB)",
       "shortCode": "VB",
-      "isSystemTag": false
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
+    },
+    "_148_1": {
+      "name": "Engineering Education - Foundation Year (VL)",
+      "shortCode": "VL",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_149_1": {
+      "name": "Engineering Education - Mechanical Engineering (VN)",
+      "shortCode": "VN",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_150_1": {
+      "name": "Engineering Education - Maritime Engineering (VT)",
+      "shortCode": "VT",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_151_1": {
+      "name": "Allied Health Professions (WA)",
+      "shortCode": "WA",
+      "isSystemTag": false,
+      "parentId": "_102_1",
+      "parentName": "School of Health Sciences (CF)"
+    },
+    "_152_1": {
+      "name": "Gerontology (WB)",
+      "shortCode": "WB",
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
+    },
+    "_153_1": {
+      "name": "School of Physics & Astronomy (WF)",
+      "shortCode": "WF",
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
+    },
+    "_154_1": {
+      "name": "School of Geography and Environmental Science (WR)",
+      "shortCode": "WR",
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
+    },
+    "_155_1": {
+      "name": "(P1) Professional Services",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_157_1": {
+      "name": "Academic Structure",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_160_1": {
+      "name": "Engagement & Advancement (CD)",
+      "shortCode": "CD",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_161_1": {
+      "name": "Human Resources (DD)",
+      "shortCode": "DD",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_162_1": {
+      "name": "Student Services (EW)",
+      "shortCode": "EW",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_163_1": {
+      "name": "Residences (FB)",
+      "shortCode": "FB",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_164_1": {
+      "name": "Student & Academic Administration (GX)",
+      "shortCode": "GX",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_165_1": {
+      "name": "Widening Participation and Social Mobility (HL)",
+      "shortCode": "HL",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_166_1": {
+      "name": "iSolutions (JF)",
+      "shortCode": "JF",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_168_1": {
+      "name": "Library & the Arts (KX)",
+      "shortCode": "KX",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_169_1": {
+      "name": "Global Recruitment and Admissions (NP)",
+      "shortCode": "NP",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_172_1": {
+      "name": "Estates & Facilities (TD)",
+      "shortCode": "TD",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_173_1": {
+      "name": "Research & Innovation Services (TW)",
+      "shortCode": "TW",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_1_1": {
+      "name": "University of Southampton",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": null,
+      "parentName": null
+    },
+    "_205_1": {
+      "name": "Careers & Employability (LR)",
+      "shortCode": "LR",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
+    "_265_1": {
+      "name": "Course Format",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_266_1": {
+      "name": "Original",
+      "shortCode": null,
+      "isSystemTag": true,
+      "parentId": "_265_1",
+      "parentName": "Course Format"
+    },
+    "_267_1": {
+      "name": "Ultra",
+      "shortCode": null,
+      "isSystemTag": true,
+      "parentId": "_265_1",
+      "parentName": "Course Format"
+    },
+    "_274_1": {
+      "name": "LTI Tool Availablity",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_275_1": {
+      "name": "CourseArc",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_274_1",
+      "parentName": "LTI Tool Availablity"
+    },
+    "_281_1": {
+      "name": "No Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_274_1",
+      "parentName": "LTI Tool Availablity"
+    },
+    "_283_1": {
+      "name": "Chirun",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_274_1",
+      "parentName": "LTI Tool Availablity"
+    },
+    "_300_1": {
+      "name": "Design (WJ)",
+      "shortCode": "WJ",
+      "isSystemTag": false,
+      "parentId": "_109_1",
+      "parentName": "Winchester School of Art (FH)"
+    },
+    "_301_1": {
+      "name": "Fashion and Textiles (CP)",
+      "shortCode": "CP",
+      "isSystemTag": false,
+      "parentId": "_109_1",
+      "parentName": "Winchester School of Art (FH)"
+    },
+    "_302_1": {
+      "name": "Arts and Media Technology (EN)",
+      "shortCode": "EN",
+      "isSystemTag": false,
+      "parentId": "_109_1",
+      "parentName": "Winchester School of Art (FH)"
+    },
+    "_303_1": {
+      "name": "Optoelectronics Research Centre (BA)",
+      "shortCode": "BA",
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
+    },
+    "_327_1": {
+      "name": "Final LTI tests in PROD",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_328_1": {
+      "name": "Jove",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_327_1",
+      "parentName": "Final LTI tests in PROD"
+    },
+    "_347_1": {
+      "name": "Southampton Online",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_348_1": {
+      "name": "Southampton Online BLUEPRINT",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_347_1",
+      "parentName": "Southampton Online"
+    },
+    "_349_1": {
+      "name": "Southampton Online BUILD",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_347_1",
+      "parentName": "Southampton Online"
+    },
+    "_369_1": {
+      "name": "CPDHUB/BCC/TDM",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_86_1": {
+      "name": "(A1) Faculty of Arts and Humanities",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_87_1": {
+      "name": "(A2) Faculty of Environmental and Life Sciences",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_88_1": {
+      "name": "(A3) Faculty of Engineering and Physical Sciences",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_89_1": {
+      "name": "(A4) Faculty of Medicine",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_90_1": {
+      "name": "(A5) Faculty of Social Sciences",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_157_1",
+      "parentName": "Academic Structure"
+    },
+    "_92_1": {
+      "name": "Human Development and Health (AF)",
+      "shortCode": "AF",
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
+    },
+    "_94_1": {
+      "name": "Aeronautical and Astronautical Engineering (AK)",
+      "shortCode": "AK",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_95_1": {
+      "name": "School of Humanities (AR)",
+      "shortCode": "AR",
+      "isSystemTag": false,
+      "parentId": "_86_1",
+      "parentName": "(A1) Faculty of Arts and Humanities"
+    },
+    "_96_1": {
+      "name": "Civil, Maritime & Environmental Engineering (AT)",
+      "shortCode": "AT",
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_97_1": {
+      "name": "School of Biological Sciences (BJ)",
+      "shortCode": "BJ",
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
+    },
+    "_98_1": {
+      "name": "Economics (BL)",
+      "shortCode": "BL",
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
     }
   };
 
-  // ========================================================================
-  // Term Methods
-  // ========================================================================
-
-  /**
-   * Gets term name by ID
-   * @param {string} termId - Term ID
-   * @returns {string} Term name or the ID if not found
-   */
-  function getTermName(termId) {
-    const term = terms[termId];
-    return term ? term.name : termId;
-  }
-
-  /**
-   * Gets term data by ID
-   * @param {string} termId - Term ID
-   * @returns {Object|null} Term data or null if not found
-   */
-  function getTerm(termId) {
-    return terms[termId] || null;
-  }
-
-  /**
-   * Gets academic terms sorted by most recent first
-   * @returns {Array<{id: string, name: string, type: string, sortOrder: number}>}
-   */
-  function getAcademicTermsSorted() {
-    return Object.entries(terms)
-      .filter(function(entry) { return entry[1].type === 'academic'; })
-      .map(function(entry) { return { id: entry[0], name: entry[1].name, type: entry[1].type, sortOrder: entry[1].sortOrder }; })
-      .sort(function(a, b) { return b.sortOrder - a.sortOrder; });
-  }
-
-  /**
-   * Gets all terms sorted (academic first, then system)
-   * @returns {Array<{id: string, name: string, type: string, sortOrder: number}>}
-   */
-  function getAllTermsSorted() {
-    return Object.entries(terms)
-      .map(function(entry) { return { id: entry[0], name: entry[1].name, type: entry[1].type, sortOrder: entry[1].sortOrder }; })
-      .sort(function(a, b) {
-        // Academic terms first, sorted by year descending
-        if (a.type === 'academic' && b.type !== 'academic') return -1;
-        if (a.type !== 'academic' && b.type === 'academic') return 1;
-        return b.sortOrder - a.sortOrder;
-      });
-  }
-
-  // ========================================================================
-  // Department Methods
-  // ========================================================================
-
-  /**
-   * Gets department name by ID
-   * @param {string} deptId - Department ID
-   * @returns {string} Department name or the ID if not found
-   */
-  function getDepartmentName(deptId) {
-    const dept = departments[deptId];
-    return dept ? dept.name : deptId;
-  }
-
-  /**
-   * Gets department data by ID
-   * @param {string} deptId - Department ID
-   * @returns {Object|null} Department data or null if not found
-   */
-  function getDepartment(deptId) {
-    return departments[deptId] || null;
-  }
-
-  /**
-   * Formats a semicolon-separated department ID string to names
-   * @param {string} deptIdString - e.g., "_267_1; _120_1"
-   * @returns {string} e.g., "Ultra; School of Psychology (JW)"
-   */
-  function formatDepartments(deptIdString) {
-    if (!deptIdString) return '';
-    return deptIdString
-      .split(';')
-      .map(function(id) { return getDepartmentName(id.trim()); })
-      .join('; ');
-  }
-
-  /**
-   * Checks if a course's department string contains a specific department
-   * @param {string} courseDeptIdString - Course's department IDs (semicolon-separated)
-   * @param {string} targetDeptId - Department to search for
-   * @returns {boolean} Whether the department is present
-   */
-  function courseContainsDepartment(courseDeptIdString, targetDeptId) {
-    if (!courseDeptIdString || !targetDeptId) return false;
-    var deptIds = courseDeptIdString.split(';').map(function(id) { return id.trim(); });
-    return deptIds.indexOf(targetDeptId) !== -1;
-  }
-
-  /**
-   * Gets non-system departments sorted alphabetically
-   * @returns {Array<{id: string, name: string, shortCode: string|null}>}
-   */
-  function getDepartmentsSorted() {
-    return Object.entries(departments)
-      .filter(function(entry) { return !entry[1].isSystemTag; })
-      .map(function(entry) { return { id: entry[0], name: entry[1].name, shortCode: entry[1].shortCode }; })
-      .sort(function(a, b) { return a.name.localeCompare(b.name); });
-  }
-
-  /**
-   * Gets all departments including system tags
-   * @returns {Array<{id: string, name: string, shortCode: string|null, isSystemTag: boolean}>}
-   */
-  function getAllDepartments() {
-    return Object.entries(departments)
-      .map(function(entry) { return { id: entry[0], name: entry[1].name, shortCode: entry[1].shortCode, isSystemTag: entry[1].isSystemTag }; })
-      .sort(function(a, b) { return a.name.localeCompare(b.name); });
-  }
-
-  // ========================================================================
-  // Course Methods (delegate to ALLY_COURSES if loaded)
-  // ========================================================================
-
-  /**
-   * Gets course by ID (delegates to ALLY_COURSES)
-   * @param {string} courseId - Course ID
-   * @returns {Object|null} Course data or null
-   */
-  function getCourseById(courseId) {
-    if (typeof ALLY_COURSES !== 'undefined') {
-      return ALLY_COURSES.getCourseById(courseId);
-    }
-    logWarn('ALLY_COURSES not loaded - course lookup unavailable');
-    return null;
-  }
-
-  /**
-   * Gets course ID by code (delegates to ALLY_COURSES)
-   * @param {string} courseCode - Course code
-   * @returns {string|null} Course ID or null
-   */
-  function getCourseIdByCode(courseCode) {
-    if (typeof ALLY_COURSES !== 'undefined') {
-      return ALLY_COURSES.getCourseIdByCode(courseCode);
-    }
-    logWarn('ALLY_COURSES not loaded - course lookup unavailable');
-    return null;
-  }
-
-  /**
-   * Gets course by code (convenience method)
-   * @param {string} courseCode - Course code
-   * @returns {Object|null} Course data or null
-   */
-  function getCourseByCode(courseCode) {
-    var courseId = getCourseIdByCode(courseCode);
-    return courseId ? getCourseById(courseId) : null;
-  }
-
-  /**
-   * Searches courses by partial code (for autocomplete)
-   * @param {string} partialCode - Partial course code
-   * @param {number} [limit=10] - Maximum results
-   * @returns {Array} Matching courses
-   */
-  function searchCoursesByCode(partialCode, limit) {
-    if (typeof ALLY_COURSES !== 'undefined') {
-      return ALLY_COURSES.searchCoursesByCode(partialCode, limit);
-    }
-    logWarn('ALLY_COURSES not loaded - course search unavailable');
-    return [];
-  }
-
-  /**
-   * Formats course name for display
-   * @param {string} courseId - Course ID
-   * @returns {string} "CODE: Name" or courseId if not found
-   */
-  function formatCourseName(courseId) {
-    var course = getCourseById(courseId);
-    if (course) {
-      return course.courseCode + ': ' + course.courseName;
-    }
-    return courseId;
-  }
-
-  /**
-   * Checks if course data is loaded
-   * @returns {boolean} Whether ALLY_COURSES is available
-   */
-  function isCoursesDataLoaded() {
-    return typeof ALLY_COURSES !== 'undefined';
-  }
-
-  /**
-   * Gets statistics about loaded data
-   * @returns {Object} Statistics object
-   */
-  function getStatistics() {
-    return {
-      termCount: Object.keys(terms).length,
-      departmentCount: Object.keys(departments).length,
-      academicTermCount: getAcademicTermsSorted().length,
-      nonSystemDepartmentCount: getDepartmentsSorted().length,
-      coursesLoaded: isCoursesDataLoaded(),
-      courseCount: isCoursesDataLoaded() ? Object.keys(ALLY_COURSES.courses).length : 0
-    };
-  }
-
-  logInfo('ALLY_LOOKUP initialised with ' + Object.keys(terms).length + ' terms and ' + Object.keys(departments).length + ' departments');
-
-  // ========================================================================
-  // Public API
-  // ========================================================================
-
-  return {
-    // Raw data
+  ALLY_DATA_RUNTIME.installLookup({
     terms: terms,
-    departments: departments,
-
-    // Term methods
-    getTermName: getTermName,
-    getTerm: getTerm,
-    getAcademicTermsSorted: getAcademicTermsSorted,
-    getAllTermsSorted: getAllTermsSorted,
-
-    // Department methods
-    getDepartmentName: getDepartmentName,
-    getDepartment: getDepartment,
-    formatDepartments: formatDepartments,
-    courseContainsDepartment: courseContainsDepartment,
-    getDepartmentsSorted: getDepartmentsSorted,
-    getAllDepartments: getAllDepartments,
-
-    // Course methods (delegate to ALLY_COURSES)
-    getCourseById: getCourseById,
-    getCourseIdByCode: getCourseIdByCode,
-    getCourseByCode: getCourseByCode,
-    searchCoursesByCode: searchCoursesByCode,
-    formatCourseName: formatCourseName,
-    isCoursesDataLoaded: isCoursesDataLoaded,
-
-    // Utilities
-    getStatistics: getStatistics
-  };
-
+    departments: departments
+  });
 })();
-
-// ========================================================================
-// Console Testing Functions
-// ========================================================================
-
-/**
- * Tests ALLY_LOOKUP functionality
- * @returns {boolean} True if all tests pass
- */
-function testAllyLookup() {
-  console.group('ALLY_LOOKUP Tests');
-
-  var passed = 0;
-  var failed = 0;
-
-  function test(name, condition) {
-    if (condition) {
-      console.log('✓ ' + name);
-      passed++;
-    } else {
-      console.error('✗ ' + name);
-      failed++;
-    }
-  }
-
-  // Test 1: Module exists
-  test('ALLY_LOOKUP exists', typeof ALLY_LOOKUP === 'object');
-
-  // Test 2: Terms data exists
-  test('terms data exists', typeof ALLY_LOOKUP.terms === 'object');
-
-  // Test 3: Departments data exists
-  test('departments data exists', typeof ALLY_LOOKUP.departments === 'object');
-
-  // Test 4: getTermName returns string
-  var termKeys = Object.keys(ALLY_LOOKUP.terms);
-  if (termKeys.length > 0) {
-    var termName = ALLY_LOOKUP.getTermName(termKeys[0]);
-    test('getTermName returns string', typeof termName === 'string' && termName.length > 0);
-  } else {
-    test('getTermName (skipped - no terms)', true);
-  }
-
-  // Test 5: getDepartmentName returns string
-  var deptKeys = Object.keys(ALLY_LOOKUP.departments);
-  if (deptKeys.length > 0) {
-    var deptName = ALLY_LOOKUP.getDepartmentName(deptKeys[0]);
-    test('getDepartmentName returns string', typeof deptName === 'string' && deptName.length > 0);
-  } else {
-    test('getDepartmentName (skipped - no depts)', true);
-  }
-
-  // Test 6: getAcademicTermsSorted returns array
-  var academicTerms = ALLY_LOOKUP.getAcademicTermsSorted();
-  test('getAcademicTermsSorted returns array', Array.isArray(academicTerms));
-
-  // Test 7: getDepartmentsSorted returns array
-  var sortedDepts = ALLY_LOOKUP.getDepartmentsSorted();
-  test('getDepartmentsSorted returns array', Array.isArray(sortedDepts));
-
-  // Test 8: courseContainsDepartment works
-  test('courseContainsDepartment with match', ALLY_LOOKUP.courseContainsDepartment('_267_1; _120_1', '_120_1') === true);
-  test('courseContainsDepartment without match', ALLY_LOOKUP.courseContainsDepartment('_267_1; _120_1', '_999_1') === false);
-
-  // Test 9: formatDepartments works
-  test('formatDepartments returns string', typeof ALLY_LOOKUP.formatDepartments('_267_1') === 'string');
-
-  // Test 10: isCoursesDataLoaded returns boolean
-  test('isCoursesDataLoaded returns boolean', typeof ALLY_LOOKUP.isCoursesDataLoaded() === 'boolean');
-
-  // Test 11: getStatistics returns object
-  var stats = ALLY_LOOKUP.getStatistics();
-  test('getStatistics returns object with counts', 
-    typeof stats === 'object' && 
-    typeof stats.termCount === 'number' && 
-    typeof stats.departmentCount === 'number'
-  );
-
-  console.log('\n' + passed + ' passed, ' + failed + ' failed');
-  console.groupEnd();
-
-  return failed === 0;
-}
-
-if (typeof window !== 'undefined') {
-  window.testAllyLookup = testAllyLookup;
-}

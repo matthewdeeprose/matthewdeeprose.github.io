@@ -200,6 +200,177 @@
     return `Enhancement failed: ${String(message).trim().replace(/[.!?]+$/, "")}. You can try again or close the dialog.`;
   }
 
+  /** Shown and spoken when a provider body names a rate limit (HTTP 429). */
+  const PROVIDER_BUSY_LINE = "The AI service is busy right now";
+
+  /** Shown and spoken when a braced message cannot be read as a JSON body. */
+  const PROVIDER_ERROR_LINE = "The AI service returned an error";
+
+  /** A status or code that means "rate limited", whichever name a provider uses. */
+  const RATE_LIMIT_PATTERN = /429|rate_limit/i;
+
+  /**
+   * Turn a provider error message into a plain line for a person, and keep the
+   * raw body for a closed "Technical details" disclosure.
+   *
+   * AW-12b measured what a person got on an HTTP 429: the provider's raw JSON
+   * body — braces, field names and `"code": "rate_limit_exceeded"` — in the
+   * on-screen paragraph AND in the spoken line, before "You can try again or
+   * close the dialog." The Foundry adapters throw
+   * `Foundry request failed: HTTP <status> — <raw body>`, so the body arrives
+   * inside `error.message` and nothing downstream had ever looked inside it.
+   *
+   * Four branches, in order:
+   *   1. the message carries a JSON object whose `status` or `code` (at the top
+   *      level or under `error`) matches 429 or rate_limit → the busy line, with
+   *      the body as detail;
+   *   2. it carries a JSON object with a string `error.message` → that message,
+   *      with the body as detail;
+   *   3. it carries a brace but no JSON object can be read out of it → the
+   *      generic line, with the whole message as detail;
+   *   4. otherwise the message passes through UNCHANGED with no detail — so the
+   *      refusal constants and every plain string keep exactly the line they
+   *      had before, and every existing seam row keeps its meaning.
+   *
+   * MODULE SCOPE and pure, for the same reason composeFailureLine is: it is
+   * called against plain-object receivers in the seam suite, and a pure
+   * function of its argument has no business reading `this`.
+   *
+   * @param {string} message the error message as the send path threw it
+   * @returns {{ line: string, detail: (string|null) }} the plain line, and the
+   *   raw body where there was one
+   */
+  function describeProviderFailure(message) {
+    const text = String(message === undefined || message === null ? "" : message);
+    const open = text.indexOf("{");
+    if (open === -1) {
+      return { line: text, detail: null };
+    }
+
+    // The body is the outermost braced span. A message with an opening brace
+    // and nothing readable inside it is branch 3.
+    const close = text.lastIndexOf("}");
+    let body = null;
+    if (close > open) {
+      try {
+        body = JSON.parse(text.slice(open, close + 1));
+      } catch (parseError) {
+        body = null;
+      }
+    }
+    if (!body || typeof body !== "object") {
+      return { line: PROVIDER_ERROR_LINE, detail: text };
+    }
+
+    const raw = text.slice(open, close + 1);
+    const inner = body.error && typeof body.error === "object" ? body.error : {};
+    const codes = [body.status, body.code, inner.status, inner.code]
+      .filter((value) => value !== undefined && value !== null)
+      .map(String);
+    if (codes.some((code) => RATE_LIMIT_PATTERN.test(code))) {
+      return { line: PROVIDER_BUSY_LINE, detail: raw };
+    }
+    if (typeof inner.message === "string" && inner.message.trim() !== "") {
+      return { line: inner.message.trim(), detail: raw };
+    }
+    return { line: PROVIDER_ERROR_LINE, detail: raw };
+  }
+
+  /** Shown and spoken when the provider cut the reply off before it finished. */
+  const INCOMPLETE_REPLY_LINE =
+    "The AI reply was incomplete. Nothing was changed";
+
+  /**
+   * The reply-to-original character-length ratio at or above which a reply is
+   * treated as COMPLETE. Below it the reply is refused and nothing is applied.
+   *
+   * MEASURED 6 September 2026 over every staged AW-15 enhancement reply on the
+   * Handwritten-Maths-Moderate-33 fixture (5,457 characters of raw OCR),
+   * classified by the wire's own `finish_reason` rather than by appearance:
+   *
+   *   cut (`length`)   0.200, 0.262, 0.368, 0.871   ← highest cut reply 0.871
+   *   complete (`stop`) 1.008, 1.014, 1.018, 1.020, 1.033
+   *   controls          1.000 raw OCR, 1.023 × 2 AW-14 haiku, 1.027 gold
+   *
+   * MARGIN ON BOTH SIDES: 0.94 sits 0.069 above the highest cut reply and
+   * 0.068 below the lowest complete one. Nineteen further replies from the
+   * AW-12, AW-14 and AW-15 blinded packs were measured as a widening check and
+   * every one falls at or below 0.565 or at or above 1.008 — nothing in any set
+   * lands inside the gap.
+   *
+   * WHY LENGTH AND NOT LINE RETENTION. Both were measured, and only this one
+   * separates. Exact retained-line ratio OVERLAPS by 0.197 (the cut opus reply
+   * retains 0.701 of the original's lines, MORE than a complete haiku reply's
+   * 0.504, because an enhancement legitimately rewrites lines throughout while
+   * a cut reply keeps its early lines verbatim). A tail-coverage variant
+   * overlaps by 0.031. A figure that reads high on a cut reply and low on a
+   * good one cannot carry a threshold. The diff engine's own measures were
+   * read and are not candidates: `computeChangeLog` and `calculateDiff` both
+   * need the global `Diff` library, so neither is pure, and its "inventory" is
+   * a symbol-substitution report rather than a loss figure.
+   *
+   * STATED LIMITATION. One fixture, one document length. On a very short
+   * original a single dropped line moves the ratio by more than 0.06, so this
+   * could refuse a legitimate reply there. That error is the SAFE direction —
+   * the person is told nothing was changed and can try again — where the error
+   * this closes is silent data loss. No minimum-length floor is added, because
+   * nothing has been measured that would set one.
+   */
+  const INCOMPLETE_REPLY_MIN_CHAR_RATIO = 0.94;
+
+  /**
+   * Decide whether an AI reply was cut off before it finished.
+   *
+   * The provider knows the answer — it sets `finish_reason: "length"` — but the
+   * OpenRouter client discards it before the enhancer can see it (AW-15
+   * HEADLINE 2). Until that is surfaced, this measures the consequence rather
+   * than the cause: a cut reply is short, and on the measured corpus it is
+   * short by a margin nothing complete comes near.
+   *
+   * MODULE SCOPE and pure, for the same reason `composeFailureLine` and
+   * `describeProviderFailure` are: it is called against plain-object receivers
+   * in the seam suite, and a pure function of its arguments has no business
+   * reading `this`.
+   *
+   * It returns an OBJECT rather than a bare boolean despite its name, because
+   * the refusal has to show its working — the disclosure below the failure line
+   * carries the retained figure and the reply length, and a caller that had to
+   * recompute them would be a second copy of this arithmetic.
+   *
+   * @param {string} originalMMD the MMD sent for enhancement
+   * @param {string} replyMMD the reply, as processResponse returned it
+   * @returns {{ incomplete: boolean, ratio: number, threshold: number,
+   *   originalChars: number, replyChars: number, originalLines: number,
+   *   replyLines: number }}
+   */
+  function isIncompleteReply(originalMMD, replyMMD) {
+    const asText = (value) =>
+      String(value === undefined || value === null ? "" : value);
+    const original = asText(originalMMD);
+    const reply = asText(replyMMD);
+
+    const meaningfulLines = (text) =>
+      text.split("\n").filter((line) => line.trim().length > 0).length;
+
+    const originalChars = original.length;
+    const replyChars = reply.length;
+
+    // An empty original gives no ratio to measure against, and startEnhancement
+    // cannot reach here with one — openModal refuses when there is no MMD. Read
+    // as complete rather than refusing on a figure nothing supports.
+    const ratio = originalChars === 0 ? 1 : replyChars / originalChars;
+
+    return {
+      incomplete: originalChars > 0 && ratio < INCOMPLETE_REPLY_MIN_CHAR_RATIO,
+      ratio,
+      threshold: INCOMPLETE_REPLY_MIN_CHAR_RATIO,
+      originalChars,
+      replyChars,
+      originalLines: meaningfulLines(original),
+      replyLines: meaningfulLines(reply),
+    };
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -4215,12 +4386,46 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         // Stage 5: Validate
         this.updateProgress("VALIDATING");
 
-        // Process response
-        this.enhancedMMD = this.processResponse(response);
+        // Process response. AW-16: into a LOCAL, not straight onto the
+        // instance — the completeness check below runs before the reply
+        // becomes state, so a refused reply leaves this.enhancedMMD at the ""
+        // openModal reset it to, and applyEnhancement has nothing to apply.
+        const replyMMD = this.processResponse(response);
 
-        if (!this.enhancedMMD || this.enhancedMMD.trim().length === 0) {
+        if (!replyMMD || replyMMD.trim().length === 0) {
           throw new Error("Empty response from AI");
         }
+
+        // AW-16: refuse a reply the provider cut off. AW-15 measured four such
+        // replies applied without warning, one turning a 5,457-character
+        // document into 1,089 characters in the session. The provider marks
+        // them `finish_reason: "length"`, but the OpenRouter client discards
+        // that before it reaches here, so the consequence is measured instead.
+        //
+        // Ordered AFTER the empty check on purpose: an empty reply keeps its
+        // own "Empty response from AI" message, which existing rows pin.
+        //
+        // Reached through the STATIC so an inversion moves product and rows
+        // together.
+        const completeness = MathPixAIEnhancer.isIncompleteReply(
+          this.originalMMD,
+          replyMMD,
+        );
+        if (completeness.incomplete) {
+          logError("Refusing an incomplete AI reply", completeness);
+          const percent = (value) => Math.round(value * 100);
+          this.showError(
+            INCOMPLETE_REPLY_LINE,
+            `The reply was ${percent(completeness.ratio)}% of the original's length, ` +
+              `below the ${percent(completeness.threshold)}% a complete reply has measured at.\n` +
+              `Reply: ${completeness.replyChars} characters, ${completeness.replyLines} non-empty lines.\n` +
+              `Original: ${completeness.originalChars} characters, ${completeness.originalLines} non-empty lines.\n` +
+              `The document was not changed.`,
+          );
+          return;
+        }
+
+        this.enhancedMMD = replyMMD;
 
         // Phase 7.5H1/2: Multi-pass verification
         if (this.multiPassEnabled && window.MathPixMultiPass) {
@@ -5543,8 +5748,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * Show error state in modal
      *
      * @param {string} message - Error message
+     * @param {string} [detail] - AW-16: technical detail the CALLER already
+     *   holds, for the closed disclosure. Only the incomplete-reply refusal
+     *   passes one today: its message is a sentence rather than a provider
+     *   body, so describeProviderFailure has nothing to read a detail out of.
+     *   Left undefined, every existing single-argument caller behaves exactly
+     *   as it did — the described detail still decides.
      */
-    showError(message) {
+    showError(message, detail) {
       // FIX-5d: this is the transition that supersedes the processing start
       // line on the fast-fail journey — the measured case, where the whole
       // processing state lasts about twenty milliseconds.
@@ -5554,21 +5765,47 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       this.stopElapsedTimer();
 
       logError("Showing error:", message);
+      // lastError keeps the RAW message on purpose: the comparison drive's
+      // transport classifier reads it, and the plain line below would hide a
+      // 429 from it.
       this.lastError = message;
+
+      // AW-13: a provider body becomes a plain line before anything is shown
+      // or spoken. The raw body, where there was one, goes into a closed
+      // disclosure below the paragraph — outside every live region, so no
+      // reader is made to hear it. Reached through the STATIC for the same
+      // reason composeFailureLine is: so an inversion at the static reaches
+      // the product.
+      const described = MathPixAIEnhancer.describeProviderFailure(message);
 
       if (!this.currentModal) {
         // Modal not open, use notification
         if (window.notifyError) {
-          window.notifyError(`Enhancement failed: ${message}`);
+          window.notifyError(`Enhancement failed: ${described.line}`);
         }
         return;
       }
+
+      // AW-16: a caller-supplied detail wins; otherwise the described one does,
+      // exactly as before. Note the disclosure stays CLOSED and outside every
+      // live region either way — the reason 47.5 exists.
+      const detailText =
+        detail === undefined || detail === null ? described.detail : String(detail);
+
+      const detailsMarkup =
+        detailText === null
+          ? ""
+          : `<details class="ai-error-details">
+          <summary>Technical details</summary>
+          <pre>${this.escapeHtml(detailText)}</pre>
+        </details>`;
 
       const content = `
       <div class="ai-error-display" data-state="error">
         <div class="error-icon" aria-hidden="true">⚠</div>
         <h3 id="ai-error-heading" tabindex="-1">Enhancement Failed</h3>
-        <p>${this.escapeHtml(message)}</p>
+        <p>${this.escapeHtml(described.line)}</p>
+        ${detailsMarkup}
       </div>
     `;
 
@@ -5593,7 +5830,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // per ordering A. See _announceAfterRebuild for why beside it is wrong.
       this._announceAfterRebuild(
         "notifyError",
-        MathPixAIEnhancer.composeFailureLine(message),
+        MathPixAIEnhancer.composeFailureLine(described.line),
       );
 
       logDebug("Modal updated to error state");
@@ -6119,6 +6356,24 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // to catch a doubled full stop stayed green. An unpatchable seam is an
   // unprovable one.
   MathPixAIEnhancer.composeFailureLine = composeFailureLine;
+
+  // AW-13: the provider-body describer, published on the same terms and for
+  // the same two reasons. showError calls the static, so one patch of it
+  // inverts the product and the seam rows together.
+  MathPixAIEnhancer.describeProviderFailure = describeProviderFailure;
+
+  // AW-16: the incomplete-reply predicate, published on the same terms and for
+  // the same two reasons. startEnhancement calls the STATIC, so one patch of it
+  // inverts the product and the seam rows together — an unpatchable seam is an
+  // unprovable one.
+  MathPixAIEnhancer.isIncompleteReply = isIncompleteReply;
+
+  /** The literal a person is shown and hears when a reply was cut. */
+  MathPixAIEnhancer.INCOMPLETE_REPLY_LINE = INCOMPLETE_REPLY_LINE;
+
+  /** The measured threshold, so a guard row can pin both sides of it. */
+  MathPixAIEnhancer.INCOMPLETE_REPLY_MIN_CHAR_RATIO =
+    INCOMPLETE_REPLY_MIN_CHAR_RATIO;
 
   // ==========================================================================
   // DEV-ONLY CONSOLE HARNESS GATE

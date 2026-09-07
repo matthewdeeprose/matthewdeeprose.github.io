@@ -1,8 +1,67 @@
 /**
  * Mermaid Accessibility - Sequence Diagram Module
- * Generates accessible descriptions for sequence diagrams
+ *
+ * Generates accessible descriptions for `sequenceDiagram` diagrams from the
+ * shared parse adapter's sequence surface (mermaid-parse-adapter.js), never
+ * from the SVG and never from the diagram source. The ninth
+ * adapter-consuming generator.
+ *
+ * THE VOICE IS FROZEN. Every sentence below implements
+ * docs/mermaid-sequence-gold-targets-2026-09-03.md — rules S1 to S16, rulings
+ * R1 to R21 (VERSION 3, 4 September 2026, which enacted the hostile sweep's
+ * findings; the rulings this file gained there are R14 attachment, R15 an
+ * unnamed box and boxIndex, R16 an empty message text, R17 and R18 autonumber,
+ * and R20 same-kind nested closers), and six byte-exact approved targets. A
+ * mismatch between this
+ * module's output and a target is a STOP that goes back to the design seat; it
+ * is never a reason to edit a target or a fixture.
+ *
+ * WHY THE REWRITE. The module this replaces read the diagram source with its
+ * own hand-written regexes, in 3,194 lines, and its defects were factual
+ * rather than stylistic (grounding sections A2 to A4,
+ * docs/mermaid-item-70-sequence-grounding-2026-09-02.md):
+ *
+ *   - ITS ARROW REGEX DEGRADED FOUR FORMS AND DROPPED TWO. The sender class was
+ *     greedy enough to swallow a hyphen, so an UNSPACED two-dash arrow —
+ *     `S-->>U: Fresh copy`, the commonest way anyone writes a reply — was read
+ *     as a request. Both bidirectional forms (`<<->>`, `<<-->>`) were not
+ *     recognised at all. Whether a message narrated as a reply therefore turned
+ *     on whether the author had typed a space. The db carries an enumerated
+ *     LINETYPE integer per arrow and has no such ambiguity; rule S7 is written
+ *     against those ten constants.
+ *   - IT FABRICATED A TITLE. An untitled diagram was narrated as "Sequence
+ *     Diagram" or "Message Exchange Process"; rule S1 forbids both, and an
+ *     untitled diagram now simply drops the title clause.
+ *   - IT FABRICATED A FLOW NAME AND A HAPPY PATH, and asserted a purpose
+ *     inferred from message text ("It primarily shows requests or commands").
+ *     Rule S14 forbids every claim that does not trace to a delivered field or
+ *     a count of delivered fields, so all of that prose is deleted rather than
+ *     repaired.
+ *   - IT LEAKED A GLOBAL. `generateFlowDescription` assigned to an undeclared
+ *     `description`, and with no `"use strict"` in the file that created
+ *     `window.description` on every detailed build (grounding A4.6) — an
+ *     unusually collision-prone name on a page that also carries a description
+ *     engine. This file is strict, so the class of defect cannot recur.
+ *   - IT COMPUTED THE SHORT TIER TWICE, once plain and once with its own
+ *     `<span class="diagram-title">` markup, so the two tiers could and did
+ *     disagree. Rule S1 and the quadrant precedent give ONE plain string, built
+ *     once, with the HTML tier as its escape.
+ *
+ * THE SOURCE IS READ BEHIND THE ADAPTER'S QUEUE, NOT HERE. Mermaid keeps the
+ * diagram title, accessible title and accessible description in one
+ * module-scoped store shared by every diagram type and cleared by every parse
+ * (register item 21), so a read outside the adapter's queue slot can return
+ * another diagram's title while looking live. This module holds no regex of
+ * its own for that reason.
+ *
+ * ACCTITLE AND ACCDESCR ARE NOT NARRATED HERE (rule S15). The author override
+ * is applied by the core, from a regex over the RAW source in
+ * mermaid-accessibility-utils.js, after the generator block — so it reaches
+ * every diagram type identically and no sentence in this file is on its path.
  */
 (function () {
+  "use strict";
+
   // Logging configuration (inside module scope)
   const LOG_LEVELS = {
     ERROR: 0,
@@ -18,34 +77,35 @@
   // Current logging level
   let currentLogLevel = DEFAULT_LOG_LEVEL;
 
-  // Helper functions for logging
+  // Helper functions for logging level checks
   function shouldLog(level) {
     if (DISABLE_ALL_LOGGING) return false;
     if (ENABLE_ALL_LOGGING) return true;
     return level <= currentLogLevel;
   }
 
-  function logError(message, ...args) {
+  // Logging helper methods
+  function logError(message) {
     if (shouldLog(LOG_LEVELS.ERROR)) {
-      console.error(message, ...args);
+      console.error(message);
     }
   }
 
-  function logWarn(message, ...args) {
+  function logWarn(message) {
     if (shouldLog(LOG_LEVELS.WARN)) {
-      console.warn(message, ...args);
+      console.warn(message);
     }
   }
 
-  function logInfo(message, ...args) {
+  function logInfo(message) {
     if (shouldLog(LOG_LEVELS.INFO)) {
-      console.log(message, ...args);
+      console.log(message);
     }
   }
 
-  function logDebug(message, ...args) {
+  function logDebug(message) {
     if (shouldLog(LOG_LEVELS.DEBUG)) {
-      console.log(message, ...args);
+      console.log(message);
     }
   }
 
@@ -55,3140 +115,1139 @@
     return;
   }
 
-  // Utility function aliases
-  const Utils = window.MermaidAccessibilityUtils;
-
-  // Escaping helper. Applied to DIAGRAM-SOURCE text (titles, participant and
-  // actor names, aliases, message and note content, block conditions and
-  // labels, flow names) at the point it enters an HTML string — never to the
-  // module's own markup, and never twice on the same string.
+  // ---------------------------------------------------------------------
+  // The shared prose layer, resolved AT CALL TIME and never cached
+  // ---------------------------------------------------------------------
   //
-  // The PLAIN short tier is deliberately excluded: it is consumed as text, not
-  // as HTML, so escaping it would show entities to the reader. See the plain
-  // string built from line 167 onward, and formatList, which that tier shares.
-  const Common = window.MermaidAccessibilityCommon;
+  // A module-scope `const Common = window.MermaidAccessibilityCommon` captures
+  // `undefined` permanently if this file ever loses the load race, and the
+  // symptom is a TypeError deep inside a tier rather than anything naming the
+  // load order. One property read per call cannot go stale. (Gantt, XY chart
+  // and quadrant precedent; the module this replaces used the cached-alias
+  // form.)
+  //
+  // There is deliberately NO `MermaidAccessibilityUtils` handle. The module
+  // this replaces carried one; every field this file narrates now arrives from
+  // the adapter already decoded, so nothing is left for it to do.
 
   /**
-   * Generate a short description for a sequence diagram
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {Object} An object with HTML and plain text versions of the description
+   * The shared prose layer (narrationNumber, escapeHtml).
+   * @returns {Object} MermaidAccessibilityCommon
    */
-  function generateShortDescription(svgElement, code) {
-    // Parse sequence diagram
-    const sequence = parseSequenceDiagram(code);
+  function common() {
+    return window.MermaidAccessibilityCommon;
+  }
 
-    // Try to get a meaningful flow name first
-    let flowName = "Message Exchange Process"; // Default fallback
+  /**
+   * Escape one string of AUTHOR TEXT for an HTML sink.
+   *
+   * Knowledge base section 14.2: the caller escapes, exactly once, at the point
+   * the field enters the HTML; generator furniture — the tags, the quotation
+   * marks around a name, the commas, the "and" — is never escaped. The PLAIN
+   * short tier is raw author text and calls none of this (rule S13).
+   *
+   * The adapter has already applied `decodePlaceholders` to every author-text
+   * field it delivers (rule S16, ruling R10). THIS MODULE NEVER DECODES; it
+   * only escapes, once, here.
+   *
+   * @param {string} text - Author text
+   * @returns {string} The escaped string
+   */
+  function escapeText(text) {
+    return common().escapeHtml(text);
+  }
 
-    // Try to infer a more specific name from the messages
-    if (sequence.allMessages && sequence.allMessages.length > 0) {
-      flowName = inferFlowName(sequence.allMessages, sequence);
-    }
+  /**
+   * Narration count: words for zero to nine, digits from 10. The one
+   * number-to-word route in this module — there is deliberately no second
+   * computation of it.
+   * @param {number} value - The count
+   * @returns {string} The count as it is spoken
+   */
+  function countWord(value) {
+    return common().narrationNumber(value);
+  }
 
-    // Extract title from SVG or code as fallback
-    const fallbackTitle =
-      Utils.extractTitleFromSVG(svgElement) ||
-      sequence.title ||
-      "Sequence Diagram";
+  /**
+   * A count and its noun: "six messages", "one message".
+   * @param {number} value - The count
+   * @param {string} singular - The singular noun
+   * @param {string} plural - The plural noun
+   * @returns {string} The counted noun
+   */
+  function countedNoun(value, singular, plural) {
+    return `${countWord(value)} ${value === 1 ? singular : plural}`;
+  }
 
-    // Only use explicit titles or proper inferred titles, never use notes as titles
-    const displayTitle =
-      sequence.title ||
-      (flowName && flowName !== "Message Exchange Process"
-        ? flowName
-        : inferTitleFromContent(sequence) || "Sequence Diagram");
+  /**
+   * Join a list with commas and a final "and", and NO OXFORD COMMA:
+   * `"A", "B" and "C"`.
+   *
+   * MEASURED, NOT ASSUMED. `MermaidAccessibilityCommon`'s own `formatList`
+   * returns `${others.join(", ")}, and ${last}` on three or more items — an
+   * Oxford comma — which gold exemplars E2, E4 and E5 all contradict. Gantt
+   * built the join locally twice and quadrant once for the same reason; this is
+   * the fourth such site. The shared helper is not changed, because callers in
+   * this file's siblings depend on the Oxford form.
+   *
+   * @param {Array<string>} items - The already-rendered items
+   * @returns {string} The joined list
+   */
+  function joinNames(items) {
+    if (!items || items.length === 0) return "";
+    if (items.length === 1) return items[0];
+    return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+  }
 
-    // Total participant count (actors + participants)
-    const totalParticipantCount =
-      sequence.actors.length + sequence.participants.length;
+  // ---------------------------------------------------------------------
+  // Constants
+  // ---------------------------------------------------------------------
 
-    // Define hasGroups variable
-    const hasGroups = sequence.groups && sequence.groups.length > 0;
+  // Rule S2's structure clause, in the rule's own fixed order. Only non-zero
+  // entries are spoken. `rect` blocks and notes are absent on purpose (ruling
+  // R6): a highlighted region is emphasis rather than control flow, and a
+  // listener told "one highlighted region" in the short learns nothing about
+  // the exchange.
+  const STRUCTURE_NOUNS = Object.freeze([
+    Object.freeze({ key: "loops", singular: "loop", plural: "loops" }),
+    Object.freeze({
+      key: "alternatives",
+      singular: "alternative",
+      plural: "alternatives",
+    }),
+    Object.freeze({
+      key: "optionalSections",
+      singular: "optional section",
+      plural: "optional sections",
+    }),
+    Object.freeze({
+      key: "parallelSections",
+      singular: "parallel section",
+      plural: "parallel sections",
+    }),
+    Object.freeze({
+      key: "criticalSections",
+      singular: "critical section",
+      plural: "critical sections",
+    }),
+    Object.freeze({ key: "breaks", singular: "break", plural: "breaks" }),
+  ]);
 
-    // Determine what special features we have to mention
-    const specialFeatures = [];
-    if (sequence.hasLoops) specialFeatures.push("loops");
-    if (sequence.hasAlts) specialFeatures.push("conditional branches");
-    if (sequence.hasOpts) specialFeatures.push("optional paths");
-    if (sequence.hasNotes) specialFeatures.push("explanatory notes");
-    if (sequence.hasActivations) specialFeatures.push("component activations");
-    if (sequence.hasParallel) specialFeatures.push("parallel actions");
-    if (sequence.hasCritical) specialFeatures.push("critical actions");
-    // Add this line:
-    if (sequence.hasBreaks) specialFeatures.push("break conditions");
-    if (sequence.allMessages.some((m) => m.isBidirectional))
-      specialFeatures.push("bidirectional messaging");
-    if (sequence.creationEvents.length > 0)
-      specialFeatures.push("participant creation");
-    if (sequence.destructionEvents.length > 0)
-      specialFeatures.push("participant destruction");
+  // Rule S1 and ruling R4: participants are listed by name in the short up to
+  // this many, and counted from one more. Four quoted names fit inside the
+  // 250-character contract cap alongside a title and a structure clause; five
+  // rarely do, and gold exemplar E6 is the witness.
+  const NAME_LIST_MAX = 4;
 
-    // Format the special features text
-    let specialFeaturesText = "";
-    if (specialFeatures.length > 0) {
-      specialFeaturesText = ` with ${formatList(specialFeatures)}`;
-    }
+  // Rule S9's two suffix phrases, quoted verbatim from the frozen gold. They
+  // sit BEFORE the final full stop and after any S7 decoration.
+  const ACTIVE_SUFFIX = ", which becomes active";
+  const INACTIVE_SUFFIX = " and becomes inactive";
 
-    // Ensure proper pluralization
-    const messagePlural = sequence.messageCount === 1 ? "message" : "messages";
-    const participantPlural =
-      totalParticipantCount === 1 ? "participant" : "participants";
+  // Rule S7 and ruling R16: what stands in the text slot when the author's
+  // message text trims to nothing. Unquoted deliberately — quoting it would
+  // claim the author wrote the words.
+  const EMPTY_MESSAGE_TEXT = "an empty message";
 
-    // Basic description without formatting numbers yet
-    let htmlDescriptionRaw = `A sequence diagram showing `;
+  // Rule S6 and ruling R15: the opener of a box the author left unnamed. The
+  // name clause is dropped rather than rendered as an empty pair of quotation
+  // marks, matching S10's treatment of an empty block condition.
+  const UNNAMED_BOX_OPENER = "A box, containing:";
 
-    // Only add title if it comes from an explicit title declaration in the diagram
-    if (sequence.title) {
-      htmlDescriptionRaw += `a <span class="diagram-title">${Common.escapeHtml(sequence.title)}</span> process`;
-    } else {
-      // Use a more generic description without potentially misleading title
-      htmlDescriptionRaw += `a message exchange process`;
-    }
+  // ---------------------------------------------------------------------
+  // Names (rules S5, S7, S11)
+  // ---------------------------------------------------------------------
 
-    htmlDescriptionRaw += ` illustrating the interaction between ${totalParticipantCount} `;
-
-    if (sequence.actors.length > 0 && sequence.participants.length > 0) {
-      htmlDescriptionRaw += `entities (${sequence.actors.length} ${
-        sequence.actors.length === 1 ? "actor" : "actors"
-      } and ${sequence.participants.length} ${
-        sequence.participants.length === 1 ? "system" : "systems"
-      })`;
-    } else if (sequence.actors.length > 0) {
-      htmlDescriptionRaw += `${
-        sequence.actors.length === 1 ? "actor" : "actors"
-      }`;
-    } else {
-      htmlDescriptionRaw += `${
-        sequence.participants.length === 1 ? "participant" : "participants"
-      }`;
-    }
-
-    // Add mention of groups if present
-    if (hasGroups) {
-      htmlDescriptionRaw += ` in ${sequence.groups.length} ${
-        sequence.groups.length === 1 ? "group" : "groups"
-      }`;
-    }
-
-    htmlDescriptionRaw += `. The diagram contains ${sequence.messageCount} ${messagePlural}${specialFeaturesText}.`;
-
-    // Plain text version with proper pluralization
-    let plainTextDescriptionRaw = `A sequence diagram showing `;
-
-    // Only add title if it comes from an explicit title declaration in the diagram
-    if (sequence.title) {
-      plainTextDescriptionRaw += `a ${sequence.title} process`;
-    } else {
-      // Use a more generic description without potentially misleading title
-      plainTextDescriptionRaw += `a message exchange process`;
-    }
-
-    plainTextDescriptionRaw += ` illustrating the interaction between ${totalParticipantCount} `;
-
-    if (sequence.actors.length > 0 && sequence.participants.length > 0) {
-      plainTextDescriptionRaw += `entities (${sequence.actors.length} ${
-        sequence.actors.length === 1 ? "actor" : "actors"
-      } and ${sequence.participants.length} ${
-        sequence.participants.length === 1 ? "system" : "systems"
-      })`;
-    } else if (sequence.actors.length > 0) {
-      plainTextDescriptionRaw += `${
-        sequence.actors.length === 1 ? "actor" : "actors"
-      }`;
-    } else {
-      plainTextDescriptionRaw += `${participantPlural}`;
-    }
-
-    // Add mention of groups if present
-    if (hasGroups) {
-      plainTextDescriptionRaw += ` in ${sequence.groups.length} ${
-        sequence.groups.length === 1 ? "group" : "groups"
-      }`;
-    }
-
-    plainTextDescriptionRaw += `. The diagram contains ${sequence.messageCount} ${messagePlural}${specialFeaturesText}.`;
-
-    // After building the basic description, add info about notes
-    if (sequence.notes && sequence.notes.length > 0) {
-      const noteWord = sequence.notes.length === 1 ? "note" : "notes";
-      // Don't repeat note info if already mentioned in the main description
-      if (!htmlDescriptionRaw.includes("explanatory notes")) {
-        htmlDescriptionRaw += ` It includes ${sequence.notes.length} explanatory ${noteWord}.`;
-        plainTextDescriptionRaw += ` It includes ${sequence.notes.length} explanatory ${noteWord}.`;
+  /**
+   * A lookup from participant id to DISPLAY NAME.
+   *
+   * Rule S5: participant ids — the part before "as" — are never narrated. The
+   * adapter delivers `id` (the declared key) and `name` (the "as" text, or the
+   * id when the author declared no alias), so the id is only ever reached as
+   * the fallback below.
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {Function} id to display name
+   */
+  function makeNameLookup(diagram) {
+    const byId = {};
+    (diagram.participants || []).forEach((participant) => {
+      byId[participant.id] = participant.name;
+    });
+    return function nameFor(id) {
+      if (Object.prototype.hasOwnProperty.call(byId, id)) {
+        return byId[id];
       }
-    }
-
-    // Both tiers are returned verbatim. The counts above are interpolated as
-    // digits deliberately - an overview total is always digits - and the module
-    // owns its own number style. Rewriting them here also made the two tiers
-    // disagree, because the transform was a no-op on the HTML tier whenever a
-    // title span was present (item 27).
-    return {
-      html: htmlDescriptionRaw,
-      text: plainTextDescriptionRaw,
+      // Mermaid declares an actor implicitly on first use, so this branch is
+      // not expected. Falling back to the id keeps the sentence honest rather
+      // than printing "undefined"; the warning is what makes it visible.
+      logWarn(
+        `[Mermaid Accessibility] Sequence message names an undeclared participant: ${id}`
+      );
+      return typeof id === "string" ? id : "";
     };
   }
+
   /**
-   * Wrapper for the short description generator to maintain backwards compatibility
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {string} The plain text description for backwards compatibility
+   * A display name, quoted and escaped for the HTML sink.
+   * @param {string} name - The display name
+   * @returns {string} The quoted name
    */
-  function shortDescriptionWrapper(svgElement, code) {
-    const descriptions = generateShortDescription(svgElement, code);
+  function quoted(name) {
+    return `"${escapeText(name)}"`;
+  }
+
+  // ---------------------------------------------------------------------
+  // Message sentences (rule S7)
+  // ---------------------------------------------------------------------
+
+  /**
+   * The verb clause of a message, without decoration, activation suffix or
+   * full stop.
+   *
+   * Rule S7 keys the verb on the LINE STYLE and reserves the head for
+   * decoration: solid narrates as "sends", dotted as "replies", and the
+   * bidirectional head as "exchange" (rulings R2 and R3). ARROWHEAD SHAPE —
+   * open against filled — is never narrated, because it carries no agreed
+   * meaning a listener could use.
+   *
+   * RULING R16: A MESSAGE WHOSE TEXT TRIMS TO EMPTY names the absence instead
+   * of quoting nothing — `sends an empty message to`, not `sends "" to`. The
+   * canvas draws a zero-width space for such a message, so the empty pair of
+   * quotation marks was a mark the diagram does not carry (sweep F3). The
+   * substitution is of the TEXT TOKEN ONLY, which is why one branch serves all
+   * three verbs: every S7 sentence puts the text in the same slot. Reachable
+   * only from a whitespace-only text — `A->>B:` with nothing after the colon
+   * is a parse error, so the module never sees it.
+   *
+   * @param {Object} event - A `kind: "message"` event
+   * @param {Function} nameFor - Id to display name
+   * @returns {string} The verb clause
+   */
+  function messageClause(event, nameFor) {
+    const raw = typeof event.text === "string" ? event.text : "";
+    const text = raw.trim() === "" ? EMPTY_MESSAGE_TEXT : quoted(raw);
+    const from = quoted(nameFor(event.from));
+    const to = quoted(nameFor(event.to));
+    const isSelf = event.from === event.to;
+
+    if (event.head === "bidirectional") {
+      return `${from} and ${to} exchange ${text}`;
+    }
+    if (event.line === "dotted") {
+      return isSelf
+        ? `${from} replies to itself with ${text}`
+        : `${from} replies to ${to} with ${text}`;
+    }
+    return isSelf
+      ? `${from} sends ${text} to itself`
+      : `${from} sends ${text} to ${to}`;
+  }
+
+  /**
+   * The decoration a message's arrowHEAD earns (rule S7), placed before the
+   * activation suffix and the full stop.
+   *
+   * A cross and the asynchronous form carry agreed meaning; a dotted
+   * bidirectional line needs its line style spoken because "exchange" — unlike
+   * "sends" and "replies" — does not encode it.
+   *
+   * @param {Object} event - A `kind: "message"` event
+   * @returns {string} The decoration, or ""
+   */
+  function messageDecoration(event) {
+    if (event.head === "cross") return ", marked with a cross";
+    if (event.head === "async") return " asynchronously";
+    if (event.head === "bidirectional" && event.line === "dotted") {
+      return " on a dotted line";
+    }
+    return "";
+  }
+
+  // ---------------------------------------------------------------------
+  // Block, note and activation sentences (rules S9, S10, S11)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Count each block instance's branches, over the whole event list, BEFORE
+   * narration starts (rule S10).
+   *
+   * K — "the first of K alternatives", "the first of K" — is the branch count
+   * plus one, and it has to be known at the block's OPENER, which is narrated
+   * before its branches have been seen. Recovered with the same stack shape the
+   * adapter's surface validated; the adapter has already refused any list whose
+   * blocks do not balance, so no refusal path is needed here.
+   *
+   * @param {Array<Object>} events - The delivered event list
+   * @returns {Object} Event index of each blockStart to its branch count
+   */
+  function countBranchesPerBlock(events) {
+    const totals = {};
+    const stack = [];
+    events.forEach((event, index) => {
+      if (event.kind === "blockStart") {
+        totals[index] = 0;
+        stack.push(index);
+        return;
+      }
+      if (event.kind === "blockBranch") {
+        const top = stack[stack.length - 1];
+        if (top !== undefined) {
+          totals[top] += 1;
+        }
+        return;
+      }
+      if (event.kind === "blockEnd") {
+        stack.pop();
+      }
+    });
+    return totals;
+  }
+
+  /**
+   * A block opener's sentence (rule S10).
+   *
+   * AN EMPTY CONDITION IS A DOCUMENTED EDGE GAP in the gold document, so no
+   * target fixes its wording. The label clause is omitted rather than rendered
+   * as an empty pair of quotation marks, which keeps the spacing single and
+   * adds no claim; it is flagged in the rebuild report for the design seat.
+   *
+   * RULING R13: WHEN K IS ONE the opener DROPS its count clause. An `alt`
+   * with no `else` and a `par` with no `and` both deliver K = 1, and the
+   * K-of-two-or-more wording would read "the first of one alternatives" —
+   * a `one <plural>` that contract clause C8 fires on, and wrong English
+   * about a single branch either way. K of two or more is unchanged.
+   *
+   * @param {Object} event - A `kind: "blockStart"` event
+   * @param {number} branchCount - K, the branch count plus one
+   * @returns {string} The sentence
+   */
+  function blockStartSentence(event, branchCount) {
+    const label = event.label ? ` ${quoted(event.label)}` : "";
+    const single = branchCount <= 1;
+    switch (event.block) {
+      case "loop":
+        return `Loop${label} begins.`;
+      case "alt":
+        return single
+          ? `Branch${label} begins.`
+          : `Branch${label} begins, the first of ${countWord(
+              branchCount
+            )} alternatives.`;
+      case "opt":
+        return `Optional section${label} begins.`;
+      case "par":
+        return single
+          ? `Parallel section${label} begins.`
+          : `Parallel section${label} begins, the first of ${countWord(
+              branchCount
+            )}.`;
+      case "critical":
+        return `Critical section${label} begins.`;
+      case "break":
+        return `Break${label} begins.`;
+      case "rect":
+        // Ruling R6: the colour the author gave the region is never narrated.
+        return "A highlighted region begins.";
+      default:
+        return "";
+    }
+  }
+
+  /**
+   * A block branch's sentence (rule S10). The unlabelled `par` form is the
+   * gold's own; the unlabelled `alt` and `critical` forms follow it, because
+   * neither is fixed by a target and an empty quoted label is worse.
+   * @param {Object} event - A `kind: "blockBranch"` event
+   * @returns {string} The sentence
+   */
+  function blockBranchSentence(event) {
+    const label = event.label ? quoted(event.label) : "";
+    switch (event.block) {
+      case "alt":
+        return label
+          ? `Otherwise, branch ${label} begins.`
+          : "Otherwise, another branch begins.";
+      case "par":
+        return label
+          ? `In parallel, section ${label} begins.`
+          : "In parallel, another section begins.";
+      case "critical":
+        return label
+          ? `If needed, option ${label} begins.`
+          : "If needed, another option begins.";
+      default:
+        return "";
+    }
+  }
+
+  /**
+   * A block closer's sentence (rule S10).
+   *
+   * RULING R13: the closer is SINGULAR when K is one, so it agrees with the
+   * opener that dropped its count clause. K travels from the opener on the
+   * open-block stack rather than being recounted here, because the closer's
+   * own event carries no branch count.
+   *
+   * RULING R20: WHEN A BLOCK NESTS, OR IS NESTED IN, A BLOCK OF ITS OWN KIND,
+   * the closer carries the OPENER'S LABEL. A `par` inside a `par` produced two
+   * items both reading "The parallel sections end.", with the openers that
+   * would disambiguate them three and four items earlier (sweep F10). The
+   * label travels from the opener on the same stack K does, and the caller
+   * passes "" when there is no same-kind relation — so a block with no
+   * same-kind neighbour keeps the plain closer, which is why gold exemplar 3's
+   * alt-inside-a-loop does not move.
+   *
+   * TWO COMBINATIONS R20 DOES NOT DECIDE, both flagged to the design seat
+   * rather than settled here: a same-kind block whose opener carries NO label
+   * falls through to the plain closer, because there is nothing to carry; and
+   * a same-kind `alt` or `par` at K of ONE composes R13's singular with R20's
+   * label clause. Neither is reached by any target or fixture.
+   *
+   * @param {Object} event - A `kind: "blockEnd"` event
+   * @param {number} branchCount - K, as counted at the matching opener
+   * @param {string} openerLabel - The opener's label when R20's same-kind test
+   *   holds and the opener carried one; "" otherwise
+   * @returns {string} The sentence
+   */
+  function blockEndSentence(event, branchCount, openerLabel) {
+    const single = branchCount <= 1;
+    const naming = typeof openerLabel === "string" && openerLabel !== "";
+    const label = naming ? quoted(openerLabel) : "";
+    switch (event.block) {
+      case "loop":
+        return naming ? `Loop ${label} ends.` : "The loop ends.";
+      case "alt":
+        if (single) {
+          return naming
+            ? `The branch that began with ${label} ends.`
+            : "The branch ends.";
+        }
+        return naming
+          ? `The alternatives that began with ${label} end.`
+          : "The alternatives end.";
+      case "opt":
+        return naming
+          ? `Optional section ${label} ends.`
+          : "The optional section ends.";
+      case "par":
+        if (single) {
+          return naming
+            ? `The parallel section that began with ${label} ends.`
+            : "The parallel section ends.";
+        }
+        return naming
+          ? `The parallel sections that began with ${label} end.`
+          : "The parallel sections end.";
+      case "critical":
+        return naming
+          ? `Critical section ${label} ends.`
+          : "The critical section ends.";
+      case "break":
+        return naming ? `Break ${label} ends.` : "The break ends.";
+      case "rect":
+        // Ruling R20 leaves rect unchanged: its opener carries a colour, never
+        // a label, and R6 keeps the colour out of narration.
+        return "The highlighted region ends.";
+      default:
+        return "";
+    }
+  }
+
+  /**
+   * A note's sentence (rule S11).
+   *
+   * The adapter delivers one actor for a single-actor note and two for a
+   * spanning one — the db has no `isSpanning` field, so `from === to` IS the
+   * signal and the surface has already resolved it into the array length.
+   *
+   * @param {Object} event - A `kind: "note"` event
+   * @param {Function} nameFor - Id to display name
+   * @returns {string} The sentence
+   */
+  function noteSentence(event, nameFor) {
+    const text = quoted(event.text);
+    const actors = (event.actors || []).filter(
+      (actor) => actor !== null && actor !== undefined
+    );
+    if (actors.length > 1) {
+      const names = joinNames(actors.map((actor) => quoted(nameFor(actor))));
+      return `Note over ${names}: ${text}.`;
+    }
+    const who = quoted(nameFor(actors[0]));
+    if (event.placement === "left") {
+      return `Note to the left of ${who}: ${text}.`;
+    }
+    if (event.placement === "right") {
+      return `Note to the right of ${who}: ${text}.`;
+    }
+    return `Note over ${who}: ${text}.`;
+  }
+
+  /**
+   * A standalone activation sentence (rule S9) — the form an activation takes
+   * when it does NOT immediately follow the message it belongs to.
+   * @param {Object} event - An `activate` or `deactivate` event
+   * @param {Function} nameFor - Id to display name
+   * @returns {string} The sentence
+   */
+  function activationSentence(event, nameFor) {
+    const who = quoted(nameFor(event.actor));
+    return event.kind === "activate"
+      ? `${who} becomes active.`
+      : `${who} becomes inactive.`;
+  }
+
+  // ---------------------------------------------------------------------
+  // The Messages list (rules S8, S9, R1)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Build one item per message, with every non-message entry attached to one of
+   * them (rule S8).
+   *
+   * RULING R1 IS WHAT THIS FUNCTION EXISTS FOR. The list has EXACTLY
+   * `counts.messages` items, so a listener who hears "item four" and sees the
+   * diagram's own number 4 is looking at the same arrow. A flat list of every
+   * delivered entry would break that correspondence, and a nested list per
+   * block would restart the numbering inside each one.
+   *
+   * ATTACHMENT, in the rule's own terms:
+   *   - block openers and branches attach FORWARD, to the next message item;
+   *   - a block closer attaches BACKWARD, unless its block contains no message
+   *     at all, in which case it joins its opener in the forward queue;
+   *   - notes and standalone activations attach BACKWARD **only when no block
+   *     opener or branch lies between them and the preceding message**, and
+   *     otherwise join the FORWARD queue in source order beside those openers;
+   *   - within an item: forward content in source order, the message sentence,
+   *     then backward content in source order.
+   *
+   * RULING R14 IS THE SECOND CLAUSE, AND IT REPAIRS A REAL DEFECT. Before it,
+   * a note inside an otherwise-empty `loop` was narrated on the message item
+   * BEFORE the block, and the block was then narrated as empty — a listener
+   * heard the note attached to a message it has nothing to do with, and heard
+   * a loop containing nothing (sweep F1). The surface had delivered the note
+   * in the right place, between the block's opener and its closer; the rule
+   * was what was wrong, because S8's closer clause carried an inside-the-block
+   * qualifier its note clause did not. `pendingForward` below is the test, set
+   * by any opener or branch and cleared by the next message: it is a
+   * SOURCE-ORDER test rather than a containment one, so it decides a note that
+   * FOLLOWS a block as well as one INSIDE it, with one comparison.
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @param {Function} nameFor - Id to display name
+   * @returns {Array<Object>} One entry per message
+   */
+  function buildMessageItems(diagram, nameFor) {
+    const events = diagram.events || [];
+    const branchTotals = countBranchesPerBlock(events);
+    const items = [];
+    const forward = [];
+    const openBlocks = [];
+
+    // Set only while the IMMEDIATELY preceding event was a message, which is
+    // what rule S9 turns an activation into a suffix on.
+    let immediatelyAfter = null;
+
+    // RULING R14's test: true from the moment a block opener or branch is seen
+    // until the next message clears it. While it holds, a note or standalone
+    // activation joins the forward queue instead of attaching backward, so it
+    // is narrated in source order beside the openers it follows.
+    let pendingForward = false;
+
+    function lastItem() {
+      return items.length > 0 ? items[items.length - 1] : null;
+    }
+
+    function attachBackward(sentence) {
+      const item = lastItem();
+      if (item) {
+        item.backward.push(sentence);
+        return;
+      }
+      forward.push(sentence);
+    }
+
+    // A note or standalone activation, placed by ruling R14. Before the first
+    // message there is no item to attach to and the forward queue is the only
+    // destination, which the same test reaches.
+    function attachTrailing(sentence) {
+      if (pendingForward) {
+        forward.push(sentence);
+        return;
+      }
+      attachBackward(sentence);
+    }
+
+    events.forEach((event, index) => {
+      if (event.kind === "message") {
+        const item = {
+          event: event,
+          forward: forward.splice(0, forward.length),
+          suffix: "",
+          backward: [],
+        };
+        items.push(item);
+        immediatelyAfter = item;
+        pendingForward = false;
+        return;
+      }
+
+      if (event.kind === "activate" || event.kind === "deactivate") {
+        const previous = immediatelyAfter;
+        immediatelyAfter = null;
+        if (previous && previous.suffix === "") {
+          const matches =
+            event.kind === "activate"
+              ? previous.event.to === event.actor
+              : previous.event.from === event.actor;
+          if (matches) {
+            previous.suffix =
+              event.kind === "activate" ? ACTIVE_SUFFIX : INACTIVE_SUFFIX;
+            return;
+          }
+        }
+        attachTrailing(activationSentence(event, nameFor));
+        return;
+      }
+
+      immediatelyAfter = null;
+
+      if (event.kind === "note") {
+        attachTrailing(noteSentence(event, nameFor));
+        return;
+      }
+      if (event.kind === "blockStart") {
+        // The stack carries K and the opener's LABEL as well as the item
+        // index: ruling R13 makes the CLOSER's wording depend on the count
+        // taken at the opener, and ruling R20 makes it depend on the opener's
+        // label. `sameKind` starts false and is set below, from either
+        // direction, when a block of this kind is found inside or outside it.
+        const k = branchTotals[index] + 1;
+        openBlocks.push({
+          at: items.length,
+          k: k,
+          block: event.block,
+          label: typeof event.label === "string" ? event.label : "",
+          sameKind: false,
+        });
+        pendingForward = true;
+        forward.push(blockStartSentence(event, k));
+        return;
+      }
+      if (event.kind === "blockBranch") {
+        pendingForward = true;
+        forward.push(blockBranchSentence(event));
+        return;
+      }
+      if (event.kind === "blockEnd") {
+        const opened = openBlocks.pop() || {
+          at: -1,
+          k: 1,
+          block: event.block,
+          label: "",
+          sameKind: false,
+        };
+        // RULING R20's test, taken over the WHOLE remaining stack rather than
+        // its top, so it reaches any depth and any intervening block kind: a
+        // loop inside an opt inside a loop names both loops. Marking runs in
+        // both directions at once — the block just closed learns it had a
+        // same-kind ancestor, and every same-kind ancestor learns it held a
+        // same-kind descendant, while it is still open to be told.
+        openBlocks.forEach((ancestor) => {
+          if (ancestor.block === opened.block) {
+            ancestor.sameKind = true;
+            opened.sameKind = true;
+          }
+        });
+        const sentence = blockEndSentence(
+          event,
+          opened.k,
+          opened.sameKind ? opened.label : ""
+        );
+        if (opened.at === items.length) {
+          // An empty block: no message arrived between its opener and its
+          // closer, so both sentences go forward together.
+          forward.push(sentence);
+          return;
+        }
+        attachBackward(sentence);
+      }
+    });
+
+    // A forward queue left over at the end can only be an empty block, or a
+    // block closer, sitting after the last message. Rule S8 says every
+    // non-message entry is narrated inside a message item, and the last item is
+    // the only one available, so it takes them. A diagram with NO messages has
+    // no Messages section at all (rule S3), and its queue is simply dropped.
+    if (forward.length > 0) {
+      const item = lastItem();
+      if (item) {
+        item.backward = item.backward.concat(forward);
+      }
+      forward.length = 0;
+    }
+
+    return items;
+  }
+
+  /**
+   * Render the Messages list items.
+   * @param {Array<Object>} items - From buildMessageItems
+   * @param {Function} nameFor - Id to display name
+   * @returns {Array<string>} The `<li>` lines
+   */
+  function renderMessageItems(items, nameFor) {
+    return items.map((item) => {
+      const sentence = `${messageClause(item.event, nameFor)}${messageDecoration(
+        item.event
+      )}${item.suffix}.`;
+      const content = item.forward
+        .concat([sentence])
+        .concat(item.backward)
+        .join(" ");
+      return `<li>${content}</li>`;
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // The Participants list (rules S5, S6)
+  // ---------------------------------------------------------------------
+
+  /**
+   * One participant's line: the display name quoted, then qualifiers in rule
+   * S5's fixed order — person, created/destroyed, links — then a full stop.
+   *
+   * `createdAt` and `destroyedAt` are MESSAGE ORDINALS, not the db's list
+   * index (ruling R7): the index counts markers and notes, so on gold exemplar
+   * E5 the destroy index is 11 and the ordinal is seven. The adapter does that
+   * conversion; this file narrates the ordinal it is given.
+   *
+   * A link's URL is escaped at this sink like every other author string, and is
+   * delivered VERBATIM by the adapter — a URL is never transformed.
+   *
+   * @param {Object} participant - A participant from the delivery
+   * @returns {string} The line, ending in a full stop
+   */
+  function participantText(participant) {
+    let out = quoted(participant.name);
+
+    // Ruling R5: the author who chose the stick figure over the box was saying
+    // this one is a human, and that is author-declared information.
+    if (participant.kind === "actor") {
+      out += ", shown as a person";
+    }
+
+    const created =
+      typeof participant.createdAt === "number" ? participant.createdAt : null;
+    const destroyed =
+      typeof participant.destroyedAt === "number"
+        ? participant.destroyedAt
+        : null;
+    if (created !== null && destroyed !== null) {
+      out += `, created by message ${countWord(
+        created
+      )} and destroyed by message ${countWord(destroyed)}`;
+    } else if (created !== null) {
+      out += `, created by message ${countWord(created)}`;
+    } else if (destroyed !== null) {
+      out += `, destroyed by message ${countWord(destroyed)}`;
+    }
+
+    // Ruling R8: the diagram offers a menu the listener cannot click, so the
+    // URL is the only way to reach it.
+    const links = Array.isArray(participant.links) ? participant.links : [];
+    if (links.length > 0) {
+      const rendered = links.map(
+        (link) => `${quoted(link.label)} (${escapeText(link.url)})`
+      );
+      out += `, with ${countedNoun(
+        links.length,
+        "link",
+        "links"
+      )}: ${joinNames(rendered)}`;
+    }
+
+    return `${out}.`;
+  }
+
+  /**
+   * The Participants list's inner lines (rules S5, S6).
+   *
+   * Boxes are nested lists. A box takes the position of its FIRST member in
+   * declaration order, so ungrouped participants stay in declaration order
+   * relative to it. Box colours are never narrated.
+   *
+   * MEMBERSHIP COMES FROM `participant.boxIndex` (ruling R15), the surface's
+   * own index into `boxes`. This file used to rebuild the mapping from
+   * `boxes[].members`, because the surface's older `box` field carried the
+   * owning box's NAME and delivered `null` both for a participant in no box
+   * and for a member of an UNNAMED one (sweep F12). The index cannot make that
+   * mistake, and one lookup replaces a reconstruction.
+   *
+   * AN UNNAMED BOX drops its name clause and reads `A box, containing:`
+   * (ruling R15). The canvas draws no label for it, so `Box "", containing:`
+   * was an empty pair of quotation marks the diagram does not carry.
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {Array<string>} The lines between `<ul>` and `</ul>`
+   */
+  function buildParticipantLines(diagram) {
+    const participants = diagram.participants || [];
+    const boxes = diagram.boxes || [];
+
+    const indexOf = (participant) =>
+      typeof participant.boxIndex === "number" ? participant.boxIndex : null;
+
+    const lines = [];
+    const emitted = {};
+
+    participants.forEach((participant) => {
+      if (emitted[participant.id]) return;
+
+      const boxIndex = indexOf(participant);
+      const box = boxIndex === null ? null : boxes[boxIndex];
+
+      if (!box) {
+        emitted[participant.id] = true;
+        lines.push(`<li>${participantText(participant)}</li>`);
+        return;
+      }
+
+      const members = participants.filter(
+        (candidate) => indexOf(candidate) === boxIndex
+      );
+      lines.push(
+        box.name
+          ? `<li>Box ${quoted(box.name)}, containing:`
+          : `<li>${UNNAMED_BOX_OPENER}`
+      );
+      lines.push("<ul>");
+      members.forEach((member) => {
+        emitted[member.id] = true;
+        lines.push(`<li>${participantText(member)}</li>`);
+      });
+      lines.push("</ul>");
+      lines.push("</li>");
+    });
+
+    return lines;
+  }
+
+  // ---------------------------------------------------------------------
+  // The Overview sentences (rules S1, S2, S4, S12)
+  // ---------------------------------------------------------------------
+
+  /**
+   * The messages clause both tiers share: "six messages", or "no messages".
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The clause
+   */
+  function messagesClause(diagram) {
+    const count = diagram.counts ? diagram.counts.messages : 0;
+    return count === 0 ? "no messages" : countedNoun(count, "message", "messages");
+  }
+
+  /**
+   * Rule S2's counts, in the rule's fixed order, non-zero only.
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The joined list, or ""
+   */
+  function structureList(diagram) {
+    const counts = diagram.counts || {};
+    const rendered = [];
+    STRUCTURE_NOUNS.forEach((noun) => {
+      const value = typeof counts[noun.key] === "number" ? counts[noun.key] : 0;
+      if (value > 0) {
+        rendered.push(countedNoun(value, noun.singular, noun.plural));
+      }
+    });
+    return joinNames(rendered);
+  }
+
+  /**
+   * The detailed tier's opening sentence (rule S1).
+   *
+   * NO FALLBACK TITLE EVER. An untitled diagram drops the clause; a frontmatter
+   * `title:` never reaches `getDiagramTitle` and so narrates as untitled
+   * (ruling R9, item 77).
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The sentence
+   */
+  function buildOpeningSentence(diagram) {
+    const title = diagram.title ? ` titled ${quoted(diagram.title)}` : "";
+    const participantCount = (diagram.participants || []).length;
+    return `This sequence diagram${title} shows ${messagesClause(
+      diagram
+    )} between ${countedNoun(
+      participantCount,
+      "participant",
+      "participants"
+    )}.`;
+  }
+
+  /**
+   * The detailed tier's structure sentence (rule S2), or "".
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The sentence
+   */
+  function buildStructureSentence(diagram) {
+    const list = structureList(diagram);
+    return list ? `It includes ${list}.` : "";
+  }
+
+  /**
+   * The numbering sentence (rule S12), or "".
+   *
+   * The AUTONUMBER entry with `visible` true is the ONLY honest signal:
+   * `showSequenceNumbers()` reads false on a diagram that has autonumber, and
+   * `getConfig().showSequenceNumbers` reads true on every diagram because it is
+   * the page's own Mermaid config. Both were measured wrong and rejected at the
+   * surface, so this file never sees them.
+   *
+   * The `<ol>` itself is deliberately never given a `start` attribute.
+   *
+   * RULING R17: THE SURFACE DELIVERS EVERY DIRECTIVE, as an array in source
+   * order, each carrying the ordinal of the first message it governs. A single
+   * directive that is visible and governs from message one is the only case in
+   * which S12's three sentences can be true of the whole diagram; every other
+   * case — an `off`, a mid-diagram start, two directives — reads `Only some
+   * messages are numbered in the diagram.` and says nothing further. This is
+   * what closes sweep F4, where `autonumber` followed by `autonumber off`
+   * overwrote the surface's single object and the description said NOTHING
+   * about numbering while the canvas drew the numbers 1 and 2, and sweep F5,
+   * where a mid-diagram `autonumber` claimed every message was numbered when
+   * the first was not.
+   *
+   * RULING R18: an undefined start or step READS AS ONE, and each clause is
+   * dropped at one. Mermaid supplies `step: 1` for `autonumber 5`, so the
+   * pre-R18 wording asserted a step the author never wrote (sweep F6) and
+   * S12's middle form was unreachable.
+   *
+   * RULING R22 NARROWS R17: the sentence fires only when at least one
+   * DELIVERED directive is VISIBLE. A directive set in which no entry carries
+   * `visible: true` says nothing about numbering at all, because the canvas
+   * draws no numbers — a LONE `autonumber off` is the reachable case, and it
+   * was the EDGE GAP this function's previous comment registered. R17's
+   * second branch is unchanged for every set that HAS a visible directive, so
+   * `autonumber` … `autonumber off` still reads "Only some messages are
+   * numbered", which is true of that diagram: the canvas draws 1 and 2.
+   *
+   * The test is over ANY entry, not the LAST one. Testing the last gives the
+   * same answer on a lone `off` and the WRONG answer on a visible directive
+   * followed by an `off`.
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The sentence
+   */
+  function buildNumberingSentence(diagram) {
+    const directives = Array.isArray(diagram.autonumber)
+      ? diagram.autonumber
+      : [];
+    if (directives.length === 0) return "";
+    if (!directives.some((directive) => directive.visible === true)) return "";
+
+    const only = directives.length === 1 ? directives[0] : null;
+    const governsEveryMessage =
+      only !== null && only.visible === true && only.atOrdinal === 1;
+    if (!governsEveryMessage) {
+      return "Only some messages are numbered in the diagram.";
+    }
+
+    const start = typeof only.start === "number" ? only.start : 1;
+    const step = typeof only.step === "number" ? only.step : 1;
+    const from = start === 1 ? "" : ` from ${countWord(start)}`;
+    const steps = step === 1 ? "" : ` in steps of ${countWord(step)}`;
+    return `Messages are numbered in the diagram${from}${steps}.`;
+  }
+
+  /**
+   * THE ONE SHORT STRING, built once, plain and unescaped (rules S1, S2, S13).
+   *
+   * The HTML short tier is this string escaped exactly once, and nothing else —
+   * so the two tiers cannot disagree about what the diagram says. The module
+   * this replaces computed them separately, wrapping the title in a
+   * `<span class="diagram-title">`; the shell-level presentation pass owns that
+   * treatment, and the gold's HTML-short invariant forbids it here.
+   *
+   * There is no length-discipline branch. The short is a SINGLE sentence
+   * carrying the title, the message count, the participants and the structure
+   * clause — all of it author text or a count of delivered fields — so there is
+   * nothing that could be dropped without dropping a fact. Ruling R4's count
+   * form is what keeps a wide diagram inside the corpus cap.
+   *
+   * @param {Object} diagram - The adapter's normalised sequence delivery
+   * @returns {string} The plain short tier
+   */
+  function buildShortText(diagram) {
+    const title = diagram.title ? ` titled "${diagram.title}"` : "";
+    const participants = diagram.participants || [];
+    const count = participants.length;
+    const between =
+      count >= 1 && count <= NAME_LIST_MAX
+        ? joinNames(participants.map((participant) => `"${participant.name}"`))
+        : countedNoun(count, "participant", "participants");
+    const list = structureList(diagram);
+    const including = list ? `, including ${list}` : "";
+    return `A sequence diagram${title} with ${messagesClause(
+      diagram
+    )} between ${between}${including}.`;
+  }
+
+  // ---------------------------------------------------------------------
+  // The registered tiers
+  // ---------------------------------------------------------------------
+
+  /**
+   * Fetch and verify the diagram, or throw.
+   *
+   * A parse rejection is deliberately NOT caught — the core's catch turns it
+   * into the honest generation-failed fallback. A failed adapter self-check
+   * throws for the same reason: never narrate an unverified diagram. The
+   * adapter's own block-stack refusals arrive here as rejections and are
+   * treated identically, which is the point of refusing rather than repairing:
+   * a mis-paired block would otherwise be narrated as a diagram nobody drew.
+   *
+   * `isSequenceHealthy()` reads `null` until the lazy self-check settles, which
+   * is why the guard tests for `false` rather than falsiness — a `!healthy`
+   * test would refuse every first call on a page.
+   *
+   * A DIAGRAM WITH NO MESSAGES DOES NOT THROW, unlike quadrant's no-points
+   * case: rules S1 and S3 both narrate it, with "no messages" and with the
+   * Messages section omitted.
+   *
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<Object>} The adapter's normalised sequence delivery
+   */
+  async function readSequence(code) {
+    const diagram = await window.MermaidParseAdapter.parseSequence(code);
+    if (window.MermaidParseAdapter.isSequenceHealthy() === false) {
+      logWarn(
+        "[Mermaid Accessibility] Sequence self-check failed; refusing to narrate"
+      );
+      throw new Error(
+        "Parse adapter failed its sequence self-check; refusing to narrate an unverified diagram"
+      );
+    }
+    return diagram;
+  }
+
+  /**
+   * Generate a short description for a sequence diagram.
+   *
+   * The PLAIN form is the tier of record and is never escaped: it reaches a
+   * `textContent` sink and the SVG's `aria-label`, where an entity would be
+   * announced literally. The HTML form is the same sentence escaped exactly
+   * once.
+   *
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<Object>} Resolves to `{ html, text }`
+   */
+  async function generateShortDescription(svgElement, code) {
+    logInfo("[Mermaid Accessibility] Generating sequence short description");
+
+    const diagram = await readSequence(code);
+    const text = buildShortText(diagram);
+    logDebug(`[Mermaid Accessibility] Sequence short: ${text}`);
+
+    return { html: escapeText(text), text: text };
+  }
+
+  /**
+   * Wrapper for the short description generator, returning the plain tier.
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
+   * @param {string} code - The original mermaid code
+   * @returns {Promise<string>} Resolves to the plain text description
+   */
+  async function shortDescriptionWrapper(svgElement, code) {
+    const descriptions = await generateShortDescription(svgElement, code);
     return descriptions.text;
   }
 
   /**
-   * Format a list of items with proper grammar
-   * @param {Array} items - Array of item strings
-   * @returns {string} Formatted list
-   */
-  function formatList(items) {
-    if (!items || items.length === 0) return "";
-
-    if (items.length === 1) return items[0];
-
-    if (items.length === 2) return `${items[0]} and ${items[1]}`;
-
-    // For 3 or more items, use commas and "and" before the last one
-    const lastItem = items[items.length - 1];
-    const otherItems = items.slice(0, -1);
-    return `${otherItems.join(", ")}, and ${lastItem}`;
-  }
-
-  /**
-   * Format a list of participants with proper grammar
-   * @param {Array} participants - Array of participant names
-   * @returns {string} Formatted list (e.g., "Alice and Bob" or "Alice, Bob, and Charlie")
-   */
-  function formatParticipantsList(participants) {
-    return formatList(participants);
-  }
-
-  /**
-   * Try to infer a descriptive title from diagram content
-   * @param {Object} sequence - The parsed sequence diagram data
-   * @returns {string|null} An inferred title or null
-   */
-  function inferTitleFromContent(sequence) {
-    // First check for explicit title in the diagram
-    if (sequence.title) {
-      return sequence.title;
-    }
-
-    // Look for common patterns that might indicate the purpose of the diagram
-
-    // Look for secure communication patterns
-    const hasSecurityTerms = sequence.allMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("secure") ||
-          msg.content.toLowerCase().includes("encrypt") ||
-          msg.content.toLowerCase().includes("key") ||
-          msg.content.toLowerCase().includes("certificate"))
-    );
-
-    // Look for authentication/login messages
-    const hasLogin = sequence.allMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("login") ||
-          msg.content.toLowerCase().includes("auth") ||
-          msg.content.toLowerCase().includes("sign in"))
-    );
-
-    // Look for registration messages
-    const hasRegistration = sequence.allMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("register") ||
-          msg.content.toLowerCase().includes("sign up") ||
-          msg.content.toLowerCase().includes("create account"))
-    );
-
-    // Look for checkout/payment messages
-    const hasCheckout = sequence.allMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("payment") ||
-          msg.content.toLowerCase().includes("checkout") ||
-          msg.content.toLowerCase().includes("purchase"))
-    );
-
-    // Determine if there are API calls
-    const hasApi = sequence.participants.some(
-      (p) =>
-        p.toLowerCase().includes("api") || p.toLowerCase().includes("service")
-    );
-
-    // Look for database interactions
-    const hasDatabase = sequence.participants.some(
-      (p) =>
-        p.toLowerCase().includes("database") || p.toLowerCase().includes("db")
-    );
-
-    // Build an inferred title based on the content
-    if (hasSecurityTerms) {
-      return "Secure Communication Protocol";
-    } else if (hasLogin && hasRegistration) {
-      return "User Authentication and Registration Process";
-    } else if (hasLogin) {
-      return "User Authentication Process";
-    } else if (hasRegistration) {
-      return "User Registration Process";
-    } else if (hasCheckout) {
-      return "Checkout Process";
-    } else if (hasApi && hasDatabase) {
-      return "API and Database Interaction";
-    } else if (hasApi) {
-      return "API Interaction Flow";
-    } else if (hasDatabase) {
-      return "Database Transaction Process";
-    }
-
-    // If we couldn't infer anything specific
-    return "Message Exchange Sequence";
-  }
-
-  /**
-   * Check if a string looks like a colour definition
-   * @param {string} str - The string to check
-   * @returns {boolean} True if the string appears to be a colour
-   */
-  function isColourDefinition(str) {
-    if (!str) return false;
-
-    // Check for common RGB/RGBA patterns
-    if (str.match(/^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i)) return true;
-    if (str.match(/^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/i))
-      return true;
-    if (str.match(/^#[0-9A-F]{3,8}$/i)) return true;
-
-    // Check for a small set of common colour names
-    const commonColours = [
-      "black",
-      "white",
-      "red",
-      "green",
-      "blue",
-      "yellow",
-      "purple",
-      "orange",
-      "pink",
-      "brown",
-      "gray",
-      "grey",
-      "cyan",
-      "magenta",
-      "aqua",
-      "lime",
-      "teal",
-      "navy",
-      "gold",
-      "silver",
-    ];
-
-    return commonColours.includes(str.toLowerCase());
-  }
-  /**
-   * Parse sequence diagram structure from the code
+   * Generate a detailed description for a sequence diagram.
+   *
+   * Three headed sections in a fixed order (rule S3): Overview, Participants,
+   * Messages. No `<section>` wrapper, no Key Insights, no data table, and none
+   * of the old module's "What is a sequence diagram", "Understanding the
+   * Diagram", flow-name or happy-path prose — the shell-level presentation pass
+   * owns section treatment, and rule S14 forbids the rest.
+   *
+   * Gantt G3's rule that a heading introducing no content is omitted entirely
+   * is inherited: a diagram with zero messages has no Messages section.
+   *
+   * @param {HTMLElement} svgElement - Unused; kept for interface stability
    * @param {string} code - The original mermaid code
-   * @returns {Object} Structured sequence diagram data
+   * @returns {Promise<string>} Resolves to the detailed HTML fragment
    */
-  function parseSequenceDiagram(code) {
-    const sequence = {
-      title: "",
-      actors: [],
-      participants: [],
-      messages: [],
-      allMessages: [], // All messages including those in alt/loop blocks
-      messageCount: 0,
-      hasLoops: false,
-      hasAlts: false,
-      hasOpts: false,
-      hasNotes: false,
-      hasBoxes: false,
-      hasActivations: false,
-      hasParallel: false, // Track if diagram has parallel blocks
-      hasCritical: false, // Track if diagram has critical blocks
-      hasBreaks: false, // Track if diagram has break blocks
-      blocks: [], // For alt, loop, opt blocks
-      parallelBlocks: [], // For tracking parallel blocks
-      notes: [], // Store notes for better descriptions
-      activations: [], // Track activations for component lifecycles
-      aliasMap: {}, // Map from IDs to display names
-      creationEvents: [], // Track when participants/actors are created
-      destructionEvents: [], // Track when participants/actors are destroyed
-      groups: [], // Track group boxes
-      participantGroups: {}, // Map participants to their groups
-      comments: [], // Add array to store comments
+  async function generateDetailedDescription(svgElement, code) {
+    logInfo("[Mermaid Accessibility] Generating sequence detailed description");
+
+    const diagram = await readSequence(code);
+    const nameFor = makeNameLookup(diagram);
+
+    // Rule S4's order: the opening, the structure sentence, the numbering
+    // sentence, each present only when it fires.
+    const overview = [
+      buildOpeningSentence(diagram),
+      buildStructureSentence(diagram),
+      buildNumberingSentence(diagram),
+    ]
+      .filter((sentence) => sentence)
+      .join(" ");
+
+    const parts = [];
+    const pushSection = (heading, lines) => {
+      if (!lines || lines.length === 0) return;
+      parts.push(`<h4>${heading}</h4>`);
+      parts.push(...lines);
     };
-
-    // Split the code into lines
-    const lines = code
-      .split("\n")
-      .map((line) => line.trim())
-      // MODIFY THIS LINE to preserve comments for analysis instead of filtering them out
-      // .filter((line) => line && !line.startsWith("%%"));
-      .filter((line) => line);
-
-    // Extract comments from lines
-    lines.forEach((line, lineIndex) => {
-      // Skip theme initialisation directives
-      if (line.includes("%%{init:") || line.includes("%{init:")) {
-        return;
-      }
-
-      // Look for inline comments
-      const commentIndex = line.indexOf("%%");
-      if (commentIndex !== -1) {
-        const messageContent = line.substring(0, commentIndex).trim();
-        const commentContent = line.substring(commentIndex + 2).trim();
-
-        // Skip empty comments
-        if (!commentContent) return;
-
-        // Store the comment with context information
-        sequence.comments.push({
-          lineIndex: lineIndex,
-          content: commentContent,
-          isInline: messageContent.length > 0,
-          messageContent: messageContent.length > 0 ? messageContent : null,
-          // Track if this is a standalone comment (for placement in sequence)
-          isStandalone: messageContent.length === 0,
-        });
-      }
-    });
-
-    // Extract title if explicitly defined
-    const titleMatch = code.match(/^\s*title\s+(.+)$/im);
-    if (titleMatch) {
-      sequence.title = titleMatch[1].trim();
-    }
-
-    // First pass: extract boxes/groups
-    let currentGroup = null;
-    let currentGroupMembers = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-
-      // Check for box start
-      const boxMatch = line.match(/^\s*box\s+(.+)$/i);
-      if (boxMatch) {
-        sequence.hasBoxes = true;
-        let boxContent = boxMatch[1].trim();
-
-        // Extract the group name, handling the case with colour
-        let groupName = boxContent;
-
-        // Handle colour names or RGB values at the beginning
-        // Common colours or transparent keyword before the actual name
-        const colourKeywords = [
-          "transparent",
-          "aqua",
-          "black",
-          "blue",
-          "fuchsia",
-          "gray",
-          "green",
-          "lime",
-          "maroon",
-          "navy",
-          "olive",
-          "orange",
-          "purple",
-          "red",
-          "silver",
-          "teal",
-          "white",
-          "yellow",
-        ];
-
-        // Check for RGB/RGBA pattern
-        const rgbMatch = boxContent.match(
-          /^(rgb\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)|\s*rgba\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d\.]+\s*\))\s+(.+)$/i
-        );
-
-        if (rgbMatch) {
-          // If we have RGB/RGBA format followed by a name
-          groupName = rgbMatch[2].trim();
-        } else {
-          // Check for colour keyword followed by a name
-          for (const colour of colourKeywords) {
-            if (
-              boxContent.toLowerCase().startsWith(colour.toLowerCase() + " ")
-            ) {
-              // Found a colour keyword at the start, extract the remaining content as the name
-              groupName = boxContent.substring(colour.length).trim();
-              break;
-            }
-          }
-        }
-
-        currentGroup = groupName;
-        currentGroupMembers = [];
-      }
-
-      // Check for box end
-      else if (line.match(/^\s*end\s*$/i) && currentGroup) {
-        // Add the group to the sequence
-        sequence.groups.push({
-          name: currentGroup,
-          members: [...currentGroupMembers], // Create a copy of the members array
-        });
-
-        // Add each member to the participantGroups mapping
-        currentGroupMembers.forEach((member) => {
-          sequence.participantGroups[member] = currentGroup;
-        });
-
-        // Reset current group context
-        currentGroup = null;
-        currentGroupMembers = [];
-      }
-
-      // Check for participants or actors within a group
-      else if (currentGroup) {
-        const participantMatch = line.match(
-          /^\s*(?:participant|actor)\s+([A-Za-z0-9_-]+)(?:\s+as\s+(.+))?$/i
-        );
-        if (participantMatch) {
-          const id = participantMatch[1];
-          currentGroupMembers.push(id);
-        }
-      }
-    }
-
-    // FIRST: Extract all explicit actor and participant declarations
-    // This ensures we only consider properly declared entities
-    const actorRegex =
-      /^\s*(?:participant|actor)\s+([A-Za-z0-9_-]+)(?:\s+as\s+(.+))?$/i;
-    // New regex for create participant/actor commands
-    const createRegex =
-      /^\s*create\s+(participant|actor)\s+([A-Za-z0-9_-]+)(?:\s+as\s+(.+))?$/i;
-    // New regex for destroy commands
-    const destroyRegex = /^\s*destroy\s+([A-Za-z0-9_-]+)\s*$/i;
-
-    lines.forEach((line, lineIndex) => {
-      // Check for standard participant/actor declarations with potential "as" alias
-      const participantMatch = line.match(actorRegex);
-      if (participantMatch) {
-        const id = participantMatch[1];
-        let displayName = participantMatch[2] || id;
-
-        // Process potential HTML in alias (like <br/>)
-        if (displayName.includes("<br/>")) {
-          displayName = displayName.replace(/<br\/>/g, " ");
-        }
-
-        // Store the alias mapping
-        sequence.aliasMap[id] = displayName;
-
-        // Determine if this is an actor or participant
-        const isActor = line.toLowerCase().startsWith("actor");
-
-        if (isActor) {
-          if (!sequence.actors.includes(displayName)) {
-            sequence.actors.push(displayName);
-          }
-        } else {
-          if (!sequence.participants.includes(displayName)) {
-            sequence.participants.push(displayName);
-          }
-        }
-      }
-
-      // Check for create participant/actor commands
-      const createMatch = line.match(createRegex);
-      if (createMatch) {
-        const type = createMatch[1].toLowerCase(); // 'participant' or 'actor'
-        const id = createMatch[2];
-        let displayName = createMatch[3] || id;
-
-        // Process potential HTML in alias
-        if (displayName.includes("<br/>")) {
-          displayName = displayName.replace(/<br\/>/g, " ");
-        }
-
-        // Store the alias mapping
-        sequence.aliasMap[id] = displayName;
-
-        // Add the entity to the appropriate list
-        if (type === "actor") {
-          if (!sequence.actors.includes(displayName)) {
-            sequence.actors.push(displayName);
-          }
-        } else {
-          if (!sequence.participants.includes(displayName)) {
-            sequence.participants.push(displayName);
-          }
-        }
-
-        // Record the creation event
-        sequence.creationEvents.push({
-          lineIndex,
-          entityId: id,
-          displayName,
-          type,
-        });
-      }
-
-      // Check for destroy commands
-      const destroyMatch = line.match(destroyRegex);
-      if (destroyMatch) {
-        const id = destroyMatch[1];
-        const displayName = sequence.aliasMap[id] || id;
-
-        // Record the destruction event
-        sequence.destructionEvents.push({
-          lineIndex,
-          entityId: id,
-          displayName,
-        });
-      }
-
-      // Check for notes
-      const noteMatch = line.match(
-        /^\s*Note\s+(right|left|over)\s+(of\s+)?(?:([A-Za-z0-9_-]+)(?:\s*,\s*([A-Za-z0-9_-]+))?)?:\s*(.+)$/i
-      );
-      if (noteMatch) {
-        sequence.hasNotes = true;
-        const position = noteMatch[1].toLowerCase();
-        // Shift indices if 'of' is present
-        const hasOf = noteMatch[2] !== undefined;
-        const participant1 = hasOf ? noteMatch[3] : noteMatch[3];
-        const participant2 = hasOf ? noteMatch[4] : noteMatch[4];
-        let content = noteMatch[5] ? noteMatch[5].trim() : "";
-
-        // Handle line breaks in note content
-        content = content.replace(/<br\s*\/?>/gi, " ");
-
-        // Determine line index for proper placement of the note in the sequence
-        const noteLineIndex = lineIndex;
-
-        // Make sure we have a valid participant array, even for right/left notes
-        const participantArray = [];
-        if (participant1) participantArray.push(participant1);
-        if (participant2) participantArray.push(participant2);
-
-        sequence.notes.push({
-          lineIndex: noteLineIndex,
-          position,
-          participants: participantArray,
-          content,
-          // Track whether this is a spanning note (over multiple participants)
-          isSpanning: position === "over" && participant2 !== undefined,
-        });
-
-        logDebug(
-          `[Mermaid Accessibility] Note detected: ${content} (${position} of ${participantArray.join(
-            ", "
-          )})`
-        );
-      }
-
-      // Check for activations
-      if (line.match(/^\s*activate\s+/i)) {
-        sequence.hasActivations = true;
-        const activateMatch = line.match(/^\s*activate\s+([A-Za-z0-9_-]+)/i);
-        if (activateMatch) {
-          const participant = activateMatch[1];
-          sequence.activations.push({
-            lineIndex,
-            participant,
-            type: "activate",
-          });
-        }
-      }
-
-      // Check for deactivations
-      if (line.match(/^\s*deactivate\s+/i)) {
-        sequence.hasActivations = true;
-        const deactivateMatch = line.match(
-          /^\s*deactivate\s+([A-Za-z0-9_-]+)/i
-        );
-        if (deactivateMatch) {
-          const participant = deactivateMatch[1];
-          sequence.activations.push({
-            lineIndex,
-            participant,
-            type: "deactivate",
-          });
-        }
-      }
-    });
-    // SECOND: Process blocks and messages
-    // Track alt/loop/opt blocks
-    let currentBlock = null;
-    let currentBlockIndent = 0;
-    let blockId = 0;
-
-    // Track current parallel block
-    let currentParallelBlock = null;
-    let currentParallelBranch = null;
-    let parallelBlockStack = []; // For nested parallel blocks
-
-    // Updated message regex to handle the +/- activation/deactivation shortcuts
-    // Improved to handle more message types and activation shortcuts
-    const messageRegex =
-      /^\s*([A-Za-z0-9_-]+)\s*(->>|-->|->|-->>|--x|-x|--\)|-\))(\+|-)?(?:\s*([\w-]+))?(?:\s*(->>|-->|->|-->>|--x|-x|--\)|-\))(\+|-)?)?(?:\s*([A-Za-z0-9_-]+))?(?::\s*(.+))?$/i;
-
-    lines.forEach((line, lineIndex) => {
-      // Check for critical blocks
-      const criticalMatch = line.match(/^\s*critical\s*(.*?)$/i);
-      if (criticalMatch) {
-        const label = criticalMatch[1].trim();
-        sequence.hasCritical = true;
-
-        // Create a new critical block
-        currentBlock = {
-          type: "critical",
-          id: `block-${++blockId}`,
-          label: label,
-          options: [],
-          messages: [],
-          currentOption: -1, // No current option yet
-        };
-        sequence.blocks.push(currentBlock);
-
-        logDebug(`[Mermaid Accessibility] Detected critical block: ${label}`);
-      }
-
-      // Check for option blocks (within critical blocks)
-      const optionMatch = line.match(/^\s*option\s*(.*?)$/i);
-      if (optionMatch && currentBlock && currentBlock.type === "critical") {
-        const condition = optionMatch[1].trim();
-
-        // Add a new option to the critical block
-        currentBlock.options.push({
-          condition: condition,
-          messages: [],
-        });
-
-        // Set current option index
-        currentBlock.currentOption = currentBlock.options.length - 1;
-
-        logDebug(
-          `[Mermaid Accessibility] Detected option in critical block: ${condition}`
-        );
-      }
-
-      // Check for parallel blocks
-      const parMatch = line.match(/^\s*par\s+(.*?)$/i);
-      if (parMatch) {
-        // Carefully sanitise the label to avoid capturing unrelated content
-        const rawLabel = parMatch[1].trim();
-
-        // Check if this is actually a participant declaration mistakenly matched
-        const isParticipantDeclaration = /^participant|actor\s+/i.test(
-          rawLabel
-        );
-
-        // Use a sanitised label or default if it looks suspicious
-        const label = isParticipantDeclaration ? "Parallel actions" : rawLabel;
-
-        sequence.hasParallel = true;
-
-        // Create a new parallel block with the sanitised label
-        const newParallelBlock = {
-          type: "parallel",
-          id: `parallel-${++blockId}`,
-          label: label,
-          branches: [
-            {
-              label: label,
-              messages: [],
-            },
-          ],
-          currentBranch: 0,
-          parentBlock: currentParallelBlock, // For nested parallels
-        };
-
-        // If we're already in a parallel block, store the current one to return to it later
-        if (currentParallelBlock) {
-          parallelBlockStack.push(currentParallelBlock);
-        }
-
-        sequence.parallelBlocks.push(newParallelBlock);
-        currentParallelBlock = newParallelBlock;
-        currentParallelBranch = 0;
-
-        logDebug(`[Mermaid Accessibility] Detected parallel block: ${label}`);
-      }
-
-      // Check for parallel branch
-      const andMatch = line.match(/^\s*and\s*(.*?)$/i);
-      if (andMatch && currentParallelBlock) {
-        const label = andMatch[1].trim();
-
-        // Add new branch to current parallel block
-        currentParallelBlock.branches.push({
-          label: label,
-          messages: [],
-        });
-
-        currentParallelBlock.currentBranch =
-          currentParallelBlock.branches.length - 1;
-        currentParallelBranch = currentParallelBlock.currentBranch;
-
-        logDebug(`[Mermaid Accessibility] Detected parallel branch: ${label}`);
-      }
-
-      // Check for alt blocks
-      const altMatch = line.match(/^\s*(alt|else)\s*(.*?)$/i);
-      if (altMatch) {
-        const altType = altMatch[1].toLowerCase();
-        const condition = altMatch[2].trim();
-
-        if (altType === "alt") {
-          // Start a new alt block
-          sequence.hasAlts = true;
-          currentBlock = {
-            type: "alt",
-            id: `block-${++blockId}`,
-            condition: condition,
-            branches: [
-              {
-                condition: condition,
-                messages: [],
-              },
-            ],
-            currentBranch: 0,
-          };
-          sequence.blocks.push(currentBlock);
-        } else if (
-          altType === "else" &&
-          currentBlock &&
-          currentBlock.type === "alt"
-        ) {
-          // Add else branch to current alt block
-          currentBlock.branches.push({
-            condition: condition || "otherwise",
-            messages: [],
-          });
-          currentBlock.currentBranch = currentBlock.branches.length - 1;
-        }
-      }
-
-      // Check for opt blocks
-      const optMatch = line.match(/^\s*opt\s*(.*?)$/i);
-      if (optMatch && (!currentBlock || currentBlock.type !== "critical")) {
-        const condition = optMatch[1].trim();
-        sequence.hasOpts = true;
-        currentBlock = {
-          type: "opt",
-          id: `block-${++blockId}`,
-          condition: condition,
-          messages: [],
-        };
-        sequence.blocks.push(currentBlock);
-      }
-
-      // Check for loop blocks
-      const loopMatch = line.match(/^\s*loop\s*(.*?)$/i);
-      if (loopMatch) {
-        const label = loopMatch[1].trim();
-        sequence.hasLoops = true;
-        currentBlock = {
-          type: "loop",
-          id: `block-${++blockId}`,
-          label: label,
-          messages: [],
-        };
-        sequence.blocks.push(currentBlock);
-      }
-
-      // Check for break blocks - add this after the loop block check
-      // Check for break blocks
-      const breakMatch = line.match(/^\s*break\s*(.*?)$/i);
-      if (breakMatch) {
-        const condition = breakMatch[1].trim();
-        sequence.hasBreaks = true;
-        logDebug(
-          `[Mermaid Accessibility] Found break block with condition: "${condition}" at line ${lineIndex}`
-        );
-        currentBlock = {
-          type: "break",
-          id: `block-${++blockId}`,
-          condition: condition,
-          messages: [],
-          lineIndex: lineIndex, // Store the line index where break starts
-        };
-        sequence.blocks.push(currentBlock);
-        logDebug(
-          `[Mermaid Accessibility] Added break block to blocks array. Total blocks: ${sequence.blocks.length}`
-        );
-      }
-
-      // Check for end of blocks - handle both parallel and other blocks
-      if (line.match(/^\s*end\s*$/i)) {
-        logDebug(
-          `[Mermaid Accessibility] Found end marker. Current block type: ${
-            currentBlock ? currentBlock.type : "none"
-          }`
-        );
-
-        if (currentParallelBlock) {
-          // If we have a stack of parallel blocks, pop the last one
-          if (parallelBlockStack.length > 0) {
-            currentParallelBlock = parallelBlockStack.pop();
-            currentParallelBranch = currentParallelBlock.currentBranch;
-          } else {
-            currentParallelBlock = null;
-            currentParallelBranch = null;
-          }
-        } else if (currentBlock) {
-          // Store the end line index for break blocks
-          if (currentBlock.type === "break") {
-            currentBlock.endLineIndex = lineIndex;
-            logDebug(
-              `[Mermaid Accessibility] Closing break block with ${currentBlock.messages.length} messages and range ${currentBlock.lineIndex}-${currentBlock.endLineIndex}`
-            );
-          }
-          currentBlock = null;
-        }
-      }
-
-      // Check for messages with activation markers
-      const msgMatch = line.match(messageRegex);
-      if (msgMatch) {
-        // Extract matched groups
-        // [0] = full match
-        // [1] = sender
-        // [2] = arrow type (->>, -->, etc.)
-        // [3] = activation marker (+ or -) for sender-side activation
-        // [4] = optional intermediate node (for more complex messages)
-        // [5] = optional second arrow type for multi-part messages
-        // [6] = activation marker (+ or -) for receiver-side activation
-        // [7] = receiver
-        // [8] = message content
-
-        const sender = msgMatch[1];
-        const arrowType = msgMatch[2];
-        const activationMarker = msgMatch[3] || ""; // '+' or '-' or ''
-        const receiver = msgMatch[7] || msgMatch[4] || ""; // Get receiver from either position
-        let content = msgMatch[8] ? msgMatch[8].trim() : "";
-
-        // Handle activation markers
-        if (activationMarker === "+") {
-          sequence.hasActivations = true;
-          sequence.activations.push({
-            lineIndex,
-            participant: receiver,
-            type: "activate",
-          });
-        } else if (activationMarker === "-") {
-          sequence.hasActivations = true;
-          sequence.activations.push({
-            lineIndex,
-            participant: sender,
-            type: "deactivate",
-          });
-        }
-
-        // Check if this is a bidirectional message
-        const isBidirectional = arrowType === "<<-->>" || arrowType === "<->";
-
-        // Extract message number if present (e.g., "1. Enter login credentials")
-        let messageNumber = null;
-        const numberMatch = content.match(/^(\d+)\.?\s+(.+)$/);
-        if (numberMatch) {
-          messageNumber = parseInt(numberMatch[1], 10);
-          content = numberMatch[2].trim();
-        }
-
-        // Create message object
-        const message = {
-          sender,
-          type: arrowType,
-          receiver,
-          content,
-          messageNumber,
-          lineIndex,
-          isResponse: arrowType.includes("--") && !isBidirectional,
-          isBidirectional: isBidirectional,
-          isAsync: arrowType.includes(")"),
-          isError: arrowType.includes("x"),
-          activationMarker: activationMarker,
-        };
-
-        // Add to all messages list
-        sequence.allMessages.push(message);
-        sequence.messageCount++;
-
-        // Add to the current block or parallel block
-        if (currentParallelBlock) {
-          currentParallelBlock.branches[
-            currentParallelBlock.currentBranch
-          ].messages.push(message);
-          logDebug(
-            `[Mermaid Accessibility] Added message "${content}" to parallel block`
-          );
-        } else if (currentBlock) {
-          logDebug(
-            `[Mermaid Accessibility] Current block type: ${currentBlock.type}`
-          );
-          if (currentBlock.type === "alt") {
-            currentBlock.branches[currentBlock.currentBranch].messages.push(
-              message
-            );
-          } else if (currentBlock.type === "critical") {
-            if (currentBlock.currentOption >= 0) {
-              // Add to current option within critical block
-              currentBlock.options[currentBlock.currentOption].messages.push(
-                message
-              );
-            } else {
-              // Add to main critical block messages
-              currentBlock.messages.push(message);
-            }
-          } else if (
-            currentBlock.type === "loop" ||
-            currentBlock.type === "opt" ||
-            currentBlock.type === "break" // Make sure break is included here
-          ) {
-            // Add to the block messages
-            currentBlock.messages.push(message);
-            logDebug(
-              `[Mermaid Accessibility] Added message "${content}" to ${currentBlock.type} block, now has ${currentBlock.messages.length} messages`
-            );
-          }
-        } else {
-          // Add to main message list
-          sequence.messages.push(message);
-        }
-      }
-    });
-    // THIRD: For any message entities that weren't explicitly declared,
-    // add them to the appropriate category (actors or participants)
-    const allEntities = new Set();
-
-    // Collect all entities used in messages
-    sequence.allMessages.forEach((message) => {
-      if (message.sender) allEntities.add(message.sender);
-      if (message.receiver) allEntities.add(message.receiver);
-    });
-
-    // For each entity, if not already classified, make a best guess
-    allEntities.forEach((entity) => {
-      // Remove any activation markers
-      let cleanEntity = entity;
-      if (cleanEntity && cleanEntity.endsWith("+")) {
-        cleanEntity = cleanEntity.slice(0, -1);
-      }
-      if (cleanEntity && cleanEntity.endsWith("-")) {
-        cleanEntity = cleanEntity.slice(0, -1);
-      }
-
-      // Skip empty entities
-      if (!cleanEntity) return;
-
-      // Check if this entity ID already has an alias mapping
-      if (!sequence.aliasMap[cleanEntity]) {
-        sequence.aliasMap[cleanEntity] = cleanEntity; // Default to using the ID as display name
-      }
-
-      // Check if this entity is already classified
-      const displayName = sequence.aliasMap[cleanEntity];
-      const isClassified =
-        sequence.actors.includes(displayName) ||
-        sequence.participants.includes(displayName);
-
-      if (!isClassified) {
-        // Check if this looks like an actor (convention check)
-        if (
-          cleanEntity.toLowerCase() === "user" ||
-          cleanEntity.toLowerCase().includes("customer") ||
-          cleanEntity.toLowerCase().includes("client") ||
-          cleanEntity.toLowerCase() === "alice" || // Common names in examples
-          cleanEntity.toLowerCase() === "bob" ||
-          cleanEntity.toLowerCase() === "john"
-        ) {
-          sequence.actors.push(displayName);
-        } else {
-          // Add as a participant
-          sequence.participants.push(displayName);
-        }
-      }
-    });
-
-    return sequence;
-  }
-
-  // Add this function just before generateDetailedDescription around line ~1500
-  /**
-   * Organise developer comments into categories for better presentation
-   * @param {Object} sequence - The sequence diagram data
-   * @returns {Object} Comments organised by category
-   */
-  function organiseComments(sequence) {
-    if (!sequence.comments || sequence.comments.length === 0)
-      return {
-        structure: [],
-        flow: [],
-        functionality: [],
-        other: [],
-      };
-
-    // Group comments by category
-    const categories = {
-      structure: [],
-      flow: [],
-      functionality: [],
-      other: [],
-    };
-
-    sequence.comments.forEach((comment) => {
-      const content = comment.content.toLowerCase();
-
-      if (
-        content.includes("box") ||
-        content.includes("group") ||
-        content.includes("title")
-      ) {
-        categories.structure.push(comment);
-      } else if (
-        content.includes("flow") ||
-        content.includes("block") ||
-        content.includes("note")
-      ) {
-        categories.flow.push(comment);
-      } else if (
-        content.includes("activation") ||
-        content.includes("create") ||
-        content.includes("destroy")
-      ) {
-        categories.functionality.push(comment);
-      } else {
-        categories.other.push(comment);
-      }
-    });
-
-    return categories;
-  }
-
-  /**
-   * Generate a detailed description for a sequence diagram
-   * @param {HTMLElement} svgElement - The SVG element of the diagram
-   * @param {string} code - The original mermaid code
-   * @returns {string} HTML description with structured, accessible information
-   */
-  function generateDetailedDescription(svgElement, code) {
-    logInfo("[Mermaid Accessibility] Generating sequence diagram description");
-
-    // Initialise the description variable at the very beginning
-    let description = "";
-
-    // Parse sequence diagram structure
-    const sequence = parseSequenceDiagram(code);
-    logDebug(
-      `[Mermaid Accessibility] Parse Results: hasBreaks=${sequence.hasBreaks}, blocks=${sequence.blocks.length}`
-    );
-    logDebug(
-      `[Mermaid Accessibility] All messages:`,
-      sequence.allMessages.map((m) => m.content)
-    );
-
-    // Add comments tracking for description
-    const hasComments = sequence.comments && sequence.comments.length > 0;
-
-    // Check if break messages are properly assigned to break blocks
-    if (sequence.blocks && sequence.blocks.length > 0) {
-      sequence.blocks.forEach((block, i) => {
-        if (block.type === "break") {
-          logDebug(
-            `[Mermaid Accessibility] Break block ${i} condition: ${block.condition}`
-          );
-          logDebug(
-            `[Mermaid Accessibility] Break block ${i} messages:`,
-            block.messages.map((m) => m.content)
-          );
-        }
-      });
-    }
-    /**
-     * Identify messages that should be part of break blocks based on their position in the code
-     */
-    function identifyMessagesInBreaks() {
-      // Track which messages are inside break blocks
-      const breakMessages = new Map();
-
-      // No break blocks found? Return empty map
-      if (
-        !sequence.hasBreaks ||
-        !sequence.blocks ||
-        sequence.blocks.length === 0
-      ) {
-        return breakMessages;
-      }
-
-      // Reset the messages in all break blocks
-      sequence.blocks.forEach((block) => {
-        if (block.type === "break") {
-          block.messages = [];
-        }
-      });
-
-      // Go through break blocks and find messages that fall between the break and end lines
-      sequence.blocks.forEach((block) => {
-        if (block.type === "break" && block.lineIndex && block.endLineIndex) {
-          const breakLineIndex = block.lineIndex;
-          const endLineIndex = block.endLineIndex;
-
-          logDebug(
-            `[Mermaid Accessibility] Looking for messages between lines ${breakLineIndex} and ${endLineIndex}`
-          );
-
-          // Consider messages that are within this line range to be part of the break block
-          sequence.allMessages.forEach((message) => {
-            if (
-              message.lineIndex > breakLineIndex &&
-              message.lineIndex < endLineIndex
-            ) {
-              logDebug(
-                `[Mermaid Accessibility] Identified message "${message.content}" as part of break condition "${block.condition}" (line ${message.lineIndex})`
-              );
-              breakMessages.set(message, block);
-              block.messages.push(message);
-            }
-          });
-
-          logDebug(
-            `[Mermaid Accessibility] Break block now has ${block.messages.length} messages`
-          );
-        }
-      });
-
-      return breakMessages;
-    }
-
-    // Identify break messages
-    const breakMessages = identifyMessagesInBreaks();
-    logDebug(
-      `[Mermaid Accessibility] Identified ${breakMessages.size} messages in break blocks`
-    );
-
-    // Try to extract logical flows (group of messages that relate to specific functionality)
-    const logicalFlows = extractLogicalFlows(sequence);
-    // When no logical flows are found, try to get the same flow name used in the short description
-    if (
-      logicalFlows.length === 0 &&
-      sequence.allMessages &&
-      sequence.allMessages.length > 0
-    ) {
-      const flowName = inferFlowName(sequence.allMessages, sequence);
-      const flowDescription = generateFlowDescription(
-        flowName,
-        sequence.allMessages,
-        sequence
-      );
-
-      logicalFlows.push({
-        name: flowName,
-        description: flowDescription,
-        messages: sequence.allMessages,
-        blocks: sequence.blocks,
-      });
-    }
-
-    // 1. Overview section - diagram description
-    description += `<section class="mermaid-section sequence-overview" aria-labelledby="diagram-description">
-<h4 class="mermaid-section-heading" id="diagram-description">Diagram Overview</h4>
-<p>This sequence diagram`;
-
-    // Use title if available, otherwise try to infer one
-    if (sequence.title) {
-      description += ` titled "<span class="diagram-title">${Common.escapeHtml(sequence.title)}</span>"`;
-    } else {
-      const inferredTitle = inferTitleFromContent(sequence);
-      if (inferredTitle) {
-        description += ` showing <span class="diagram-title">${Common.escapeHtml(inferredTitle)}</span>`;
-      }
-    }
-
-    // Total participant count (actors + participants)
-    const totalParticipantCount =
-      sequence.actors.length + sequence.participants.length;
-
-    description += ` illustrates the interaction between ${totalParticipantCount} `;
-
-    if (sequence.actors.length > 0 && sequence.participants.length > 0) {
-      description += `entities (${sequence.actors.length} ${
-        sequence.actors.length === 1 ? "actor" : "actors"
-      } and ${sequence.participants.length} ${
-        sequence.participants.length === 1 ? "system" : "systems"
-      })`;
-    } else if (sequence.actors.length > 0) {
-      description += `${sequence.actors.length === 1 ? "actor" : "actors"}`;
-    } else {
-      description += `${
-        sequence.participants.length === 1 ? "participant" : "participants"
-      }`;
-    }
-
-    description += `. The diagram contains ${sequence.messageCount} messages`;
-
-    // Add information about special structures
-    const specialFeatures = [];
-    if (sequence.hasLoops) specialFeatures.push("repeated message loops");
-    if (sequence.hasAlts) specialFeatures.push("conditional paths");
-    if (sequence.hasOpts) specialFeatures.push("optional sequences");
-    if (sequence.hasNotes) specialFeatures.push("explanatory notes");
-    if (sequence.hasActivations) specialFeatures.push("component activations");
-    if (sequence.hasParallel) specialFeatures.push("parallel actions");
-    if (sequence.hasCritical) specialFeatures.push("critical actions");
-    if (hasComments) specialFeatures.push("developer comments");
-
-    if (specialFeatures.length > 0) {
-      description += ` and includes ${formatList(specialFeatures)}`;
-    }
-
-    description += `.</p>`;
-    // Add a summary of any notes if present
-    if (sequence.notes && sequence.notes.length > 0) {
-      description += `<p class="notes-summary">The diagram includes ${
-        sequence.notes.length
-      } explanatory ${sequence.notes.length === 1 ? "note" : "notes"}:`;
-      description += `<ul class="notes-list">`;
-
-      // Show ALL notes, not just the first one
-      sequence.notes.forEach((note) => {
-        // Include participants in note description
-        let participantsText = "";
-        if (note.participants && note.participants.length > 0) {
-          // Escaped per item, so both the formatParticipantsList join below and
-          // the single-name branches escape exactly once.
-          const participantNames = note.participants.map((id) =>
-            Common.escapeHtml(sequence.aliasMap[id] || id)
-          );
-
-          if (note.position === "over" && participantNames.length > 1) {
-            participantsText = ` (spanning ${formatParticipantsList(
-              participantNames
-            )})`;
-          } else if (note.position === "right") {
-            participantsText = ` (right of ${participantNames[0]})`;
-          } else if (note.position === "left") {
-            participantsText = ` (left of ${participantNames[0]})`;
-          } else if (
-            note.position === "over" &&
-            participantNames.length === 1
-          ) {
-            participantsText = ` (over ${participantNames[0]})`;
-          }
-        }
-
-        description += `<li class="note-item">${Common.escapeHtml(note.content)}${participantsText}</li>`;
-      });
-
-      description += `</ul></p>`;
-    }
-
-    description += `</section>`;
-
-    // 2. Actors section (if any)
-    if (sequence.actors.length > 0) {
-      description += `<section class="mermaid-section sequence-actors" aria-labelledby="sequence-actors-heading">
-    <h4 class="mermaid-section-heading" id="sequence-actors-heading">Actors</h4>
-    <ul class="actor-list">`;
-
-      sequence.actors.forEach((actor) => {
-        // Get the group for this actor if it exists
-        let actorId = Object.keys(sequence.aliasMap).find(
-          (key) => sequence.aliasMap[key] === actor
-        );
-        let group = actorId ? sequence.participantGroups[actorId] : null;
-
-        description += `<li class="actor-item"><span class="actor-name">${Common.escapeHtml(actor)}</span>`;
-
-        if (group) {
-          description += ` <span class="actor-group">(in group ${Common.escapeHtml(group)})</span>`;
-        }
-
-        description += `</li>`;
-      });
-
-      description += `</ul></section>`;
-    }
-
-    // 3. Participants section with group information
-    if (sequence.participants.length > 0) {
-      description += `<section class="mermaid-section sequence-participants" aria-labelledby="sequence-participants-heading">
-    <h4 class="mermaid-section-heading" id="sequence-participants-heading">Participants</h4>
-    <ul class="participant-list">`;
-
-      sequence.participants.forEach((participant) => {
-        // Get the group for this participant if it exists
-        let participantId = Object.keys(sequence.aliasMap).find(
-          (key) => sequence.aliasMap[key] === participant
-        );
-        let group = participantId
-          ? sequence.participantGroups[participantId]
-          : null;
-
-        description += `<li class="participant-item"><span class="participant-name">${Common.escapeHtml(participant)}</span>`;
-
-        if (group) {
-          description += ` <span class="participant-group">(in group ${Common.escapeHtml(group)})</span>`;
-        }
-
-        description += `</li>`;
-      });
-
-      description += `</ul></section>`;
-    }
-    // Insert Groups section if we have groups
-    if (sequence.groups && sequence.groups.length > 0) {
-      description += `<section class="mermaid-section sequence-groups" aria-labelledby="sequence-groups-heading">
-      <h4 class="mermaid-section-heading" id="sequence-groups-heading">Groups</h4>
-      <ul class="group-list">`;
-
-      sequence.groups.forEach((group) => {
-        // Escaped per item, before the join below.
-        const memberDisplayNames = group.members.map((memberId) =>
-          Common.escapeHtml(sequence.aliasMap[memberId] || memberId)
-        );
-
-        description += `<li class="group-item">
-        <span class="group-name">${Common.escapeHtml(group.name)}</span>
-        <span class="group-members">contains ${memberDisplayNames.length} ${
-          memberDisplayNames.length === 1 ? "participant" : "participants"
-        }: ${memberDisplayNames.join(", ")}</span>
-      </li>`;
-      });
-
-      description += `</ul></section>`;
-    }
-
-    // 4. Process Flows section with step-by-step description
-    description += `<section class="mermaid-section sequence-processes" aria-labelledby="sequence-processes-heading">
-<h4 class="mermaid-section-heading" id="sequence-processes-heading">Process Flows</h4>`;
-    if (logicalFlows.length > 0) {
-      logicalFlows.forEach((flow, flowIndex) => {
-        description += `<div class="logical-flow">
-  <h5 class="flow-heading" id="flow-${flowIndex + 1}">${Common.escapeHtml(flow.name)}</h5>
-  <p class="flow-description">${flow.description}</p>
-  <ol class="message-list">`;
-
-        let stepNumber = 1;
-
-        // Create a combined timeline of all events
-        const timelineEvents = [];
-
-        // Map to associate comments with the messages they follow
-        const commentsByPrecedingMessage = new Map();
-
-        // First, process messages and build a mapping of line indices to messages
-        const messagesByLineIndex = new Map();
-        flow.messages.forEach((message) => {
-          timelineEvents.push({
-            type: "message",
-            data: message,
-            lineIndex: message.lineIndex,
-          });
-          messagesByLineIndex.set(message.lineIndex, message);
-        });
-
-        // Next, associate comments with the messages that precede them in the code
-        if (sequence.comments && sequence.comments.length > 0) {
-          sequence.comments.forEach((comment) => {
-            // Find the message with the highest line index that's still less than the comment's line index
-            let closestPrecedingMessageLineIndex = -1;
-            let closestMessage = null;
-
-            for (const [lineIndex, message] of messagesByLineIndex.entries()) {
-              if (
-                lineIndex < comment.lineIndex &&
-                lineIndex > closestPrecedingMessageLineIndex
-              ) {
-                closestPrecedingMessageLineIndex = lineIndex;
-                closestMessage = message;
-              }
-            }
-
-            // Add comment to the timeline with a reference to its preceding message
-            timelineEvents.push({
-              type: "comment",
-              data: comment,
-              lineIndex: comment.lineIndex || 0,
-              precedingMessageLineIndex: closestPrecedingMessageLineIndex,
-            });
-
-            // Also store in the map for easier lookup
-            if (closestMessage) {
-              if (!commentsByPrecedingMessage.has(closestMessage)) {
-                commentsByPrecedingMessage.set(closestMessage, []);
-              }
-              commentsByPrecedingMessage.get(closestMessage).push(comment);
-            }
-          });
-        }
-        // Add notes to the timeline
-        sequence.notes.forEach((note) => {
-          timelineEvents.push({
-            type: "note",
-            data: note,
-            lineIndex: note.lineIndex || 0,
-          });
-        });
-
-        // Add creation events that are relevant to this flow
-        sequence.creationEvents.forEach((event) => {
-          // Only include creations that are within the flow's line range
-          const flowFirstLine =
-            flow.messages.length > 0
-              ? Math.min(...flow.messages.map((m) => m.lineIndex))
-              : Infinity;
-          const flowLastLine =
-            flow.messages.length > 0
-              ? Math.max(...flow.messages.map((m) => m.lineIndex))
-              : -Infinity;
-
-          if (
-            event.lineIndex >= flowFirstLine - 3 &&
-            event.lineIndex <= flowLastLine + 3
-          ) {
-            timelineEvents.push({
-              type: "creation",
-              data: event,
-              lineIndex: event.lineIndex,
-            });
-          }
-        });
-
-        // Add destruction events that are relevant to this flow
-        sequence.destructionEvents.forEach((event) => {
-          // Only include destructions that are within the flow's line range
-          const flowFirstLine =
-            flow.messages.length > 0
-              ? Math.min(...flow.messages.map((m) => m.lineIndex))
-              : Infinity;
-          const flowLastLine =
-            flow.messages.length > 0
-              ? Math.max(...flow.messages.map((m) => m.lineIndex))
-              : -Infinity;
-
-          if (
-            event.lineIndex >= flowFirstLine - 3 &&
-            event.lineIndex <= flowLastLine + 3
-          ) {
-            timelineEvents.push({
-              type: "destruction",
-              data: event,
-              lineIndex: event.lineIndex,
-            });
-          }
-        });
-
-        // Add activation events that are relevant to this flow
-        sequence.activations.forEach((event) => {
-          // Only include activations that are within the flow's line range
-          const flowFirstLine =
-            flow.messages.length > 0
-              ? Math.min(...flow.messages.map((m) => m.lineIndex))
-              : Infinity;
-          const flowLastLine =
-            flow.messages.length > 0
-              ? Math.max(...flow.messages.map((m) => m.lineIndex))
-              : -Infinity;
-
-          if (
-            event.lineIndex >= flowFirstLine - 3 &&
-            event.lineIndex <= flowLastLine + 3
-          ) {
-            timelineEvents.push({
-              type: "activation",
-              data: event,
-              lineIndex: event.lineIndex,
-            });
-          }
-        });
-
-        // Sort the timeline by line number
-        timelineEvents.sort((a, b) => a.lineIndex - b.lineIndex);
-        // Process the timeline to generate step-by-step description
-        let index = 0;
-
-        while (index < timelineEvents.length) {
-          const event = timelineEvents[index];
-
-          // Skip comment events - we'll add them with their associated messages
-          if (event.type === "comment") {
-            index++;
-            continue;
-          }
-
-          if (event.type === "message") {
-            const message = event.data;
-
-            // Check if this message belongs to a parallel block
-            const parallelBlockForMessage = findParallelBlockForMessage(
-              message,
-              sequence.parallelBlocks
-            );
-
-            if (parallelBlockForMessage) {
-              // Handle the start of a parallel block
-              description += generateParallelBlockHTML(
-                parallelBlockForMessage,
-                stepNumber,
-                sequence
-              );
-
-              // Skip past all messages in this parallel block
-              const messagesInBlock = countMessagesInParallelBlock(
-                parallelBlockForMessage
-              );
-              index += messagesInBlock;
-              stepNumber++; // The entire parallel block counts as one logical step
-            } else if (findBlockForMessage(message, sequence.blocks)) {
-              // Handle the start of a conditional block
-              const blockForMessage = findBlockForMessage(
-                message,
-                sequence.blocks
-              );
-
-              // Check specifically for break blocks and use improved display
-              if (blockForMessage.type === "break") {
-                description += generateConditionalBlockHTML(
-                  blockForMessage,
-                  stepNumber,
-                  sequence
-                );
-
-                // Skip past all messages in this block
-                const messagesInBlock = countMessagesInBlock(blockForMessage);
-                index += messagesInBlock;
-                stepNumber++; // The entire block counts as one logical step
-              } else {
-                // Handle other conditional blocks
-                description += generateConditionalBlockHTML(
-                  blockForMessage,
-                  stepNumber,
-                  sequence
-                );
-
-                // Skip past all messages in this block
-                const messagesInBlock = countMessagesInBlock(blockForMessage);
-                index += messagesInBlock;
-                stepNumber++; // The entire block counts as one logical step
-              }
-            } else {
-              // Regular message
-              const correctedSender = getCorrectEntityName(
-                message.sender,
-                message.isResponse,
-                sequence
-              );
-              const correctedReceiver = getCorrectEntityName(
-                message.receiver,
-                message.isResponse,
-                sequence
-              );
-
-              // Include message number if available
-              let messageNumberHtml = "";
-              if (message.messageNumber) {
-                messageNumberHtml = `<span class="message-number original-number">${message.messageNumber}.</span> `;
-              } else {
-                messageNumberHtml = `<span class="step-index">(Step ${stepNumber})</span> `;
-              }
-              // Update the message list item generation to maintain original message numbers
-              description += `<li class="process-step">
-          <span class="step-number">`;
-
-              // Add this conditional to include both step number and original message number when available
-              if (message.messageNumber) {
-                description += `<span class="original-message-number">Message ${message.messageNumber}</span> (Step ${stepNumber}):`;
-              } else {
-                description += `Step ${stepNumber}:`;
-              }
-
-              description += `</span>
-          <span class="message-sender ${
-            sequence.actors.includes(correctedSender) ? "actor" : "participant"
-          }">${Common.escapeHtml(correctedSender)}</span>
-          <span class="message-type">${formatMessageType(message.type)}</span>
-          <span class="message-receiver ${
-            sequence.actors.includes(correctedReceiver)
-              ? "actor"
-              : "participant"
-          }">${Common.escapeHtml(correctedReceiver)}</span>`;
-
-              if (message.content) {
-                // Display content without duplicating the message number since we now show it in the step number
-                const contentWithoutNumber = message.messageNumber
-                  ? message.content.replace(/^\d+\.\s*/, "") // Remove leading numbers like "1. "
-                  : message.content;
-                description += `: <span class="message-content">${Common.escapeHtml(contentWithoutNumber)}</span>`;
-              }
-
-              // Add comments associated with this message
-              if (commentsByPrecedingMessage.has(message)) {
-                commentsByPrecedingMessage.get(message).forEach((comment) => {
-                  description += `
-            <div class="message-comment associated-comment">
-                <span class="comment-prefix">- </span>
-                <span class="comment-icon" aria-hidden="true">💬</span>
-                <span class="comment-label">Developer comment: </span>
-                <span class="comment-content">${Common.escapeHtml(comment.content)}</span>
-            </div>`;
-                });
-              }
-
-              description += `</li>`;
-
-              index++;
-              stepNumber++;
-            }
-          } else if (event.type === "creation") {
-            // Handle creation event
-            const creationEvent = event.data;
-            const displayName = creationEvent.displayName;
-            const entityType =
-              creationEvent.type === "actor" ? "actor" : "participant";
-
-            description += `<li class="process-step lifecycle-step creation-step">
-          <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">New ${entityType} <span class="${entityType}-name">${Common.escapeHtml(displayName)}</span> is created</span>
-          </li>`;
-
-            index++;
-            stepNumber++;
-          } else if (event.type === "destruction") {
-            // Handle destruction event
-            const destructionEvent = event.data;
-            const displayName = destructionEvent.displayName;
-            const entityType = sequence.actors.includes(displayName)
-              ? "actor"
-              : "participant";
-
-            description += `<li class="process-step lifecycle-step destruction-step">
-          <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${Common.escapeHtml(displayName)}</span> is removed from the interaction</span>
-          </li>`;
-
-            index++;
-            stepNumber++;
-          } else if (event.type === "note") {
-            // Handle note event
-            const note = event.data;
-
-            // Format participant names with proper display
-            // Escaped per item, so both formatParticipantsList joins below and
-            // the single-name branches escape exactly once.
-            const participantDisplayNames = note.participants.map((id) => {
-              const displayName = getCorrectEntityName(id, false, sequence);
-              return Common.escapeHtml(displayName);
-            });
-
-            // Create a description based on the note position
-            let noteDescription = "";
-            if (note.isSpanning) {
-              noteDescription = `Note spanning ${formatParticipantsList(
-                participantDisplayNames
-              )}`;
-            } else if (note.position === "left") {
-              noteDescription = `Note to the left of ${participantDisplayNames[0]}`;
-            } else if (note.position === "right") {
-              noteDescription = `Note to the right of ${participantDisplayNames[0]}`;
-            } else {
-              noteDescription = `Note regarding ${formatParticipantsList(
-                participantDisplayNames
-              )}`;
-            }
-
-            description += `<li class="process-step note-step">
-            <span class="step-number">Step ${stepNumber}:</span>
-            <span class="note-indicator">${noteDescription}:</span>
-            <span class="note-content">"${Common.escapeHtml(note.content)}"</span>
-          </li>`;
-
-            index++;
-            stepNumber++;
-          } else if (event.type === "activation") {
-            // Handle activation event
-            const activationEvent = event.data;
-            const participant = getCorrectEntityName(
-              activationEvent.participant,
-              false,
-              sequence
-            );
-            const entityType = sequence.actors.includes(participant)
-              ? "actor"
-              : "participant";
-            const actionType =
-              activationEvent.type === "activate" ? "activated" : "deactivated";
-
-            description += `<li class="process-step lifecycle-step ${activationEvent.type}-step">
-          <span class="step-number">Step ${stepNumber}:</span>
-          <span class="lifecycle-event">${entityType} <span class="${entityType}-name">${Common.escapeHtml(participant)}</span> is ${actionType}</span>
-          </li>`;
-
-            index++;
-            stepNumber++;
-          } else {
-            // Unknown event type, skip it
-            index++;
-          }
-        }
-
-        // Process any remaining standalone comments
-        const standaloneComments = timelineEvents.filter(
-          (e) => e.type === "comment" && e.precedingMessageLineIndex === -1
-        );
-
-        if (standaloneComments.length > 0) {
-          description += `<li class="process-note">
-        <div class="standalone-comment-container">
-          <span class="note-prefix">Additional notes: </span>`;
-
-          standaloneComments.forEach((event) => {
-            description += `
-        <div class="message-comment standalone-comment">
-            <span class="comment-icon" aria-hidden="true">💬</span>
-            <span class="comment-label">Developer comment: </span>
-            <span class="comment-content">${Common.escapeHtml(event.data.content)}</span>
-        </div>`;
-          });
-
-          description += `</div></li>`;
-        }
-
-        description += `</ol></div>`;
-      });
-    } else {
-      // Fallback if no logical flows were identified
-      description += `<div class="logical-flow">
-      <h5 class="flow-heading">Message Sequence</h5>
-      <p class="flow-description">This sequence diagram shows the exchange of messages between participants.</p>
-      <ol class="message-list">
-        <li class="process-step">
-          <span class="step-number">Step 1:</span>
-          <span class="message-text">No detailed sequence information available.</span>
-        </li>
-      </ol>
-    </div>`;
-    }
-
-    description += `</section>`;
-
-    // 5. Explanation section with improved explanation and summary
-    description += `<section class="mermaid-section sequence-explanation" aria-labelledby="sequence-explanation-heading">
-  <h4 class="mermaid-section-heading" id="sequence-explanation-heading">Understanding the Diagram</h4>
-  <div class="explanation">`;
-
-    // Generate explanation based on diagram features
-    if (logicalFlows.length > 1) {
-      description += `<p>This sequence diagram depicts ${logicalFlows.length} main processes:</p>
-<ol>`;
-
-      logicalFlows.forEach((flow) => {
-        description += `<li><strong>${Common.escapeHtml(flow.name)}</strong> - ${flow.description}</li>`;
-      });
-
-      description += `</ol>`;
-    } else if (logicalFlows.length === 1) {
-      description += `<p>This sequence diagram depicts a single process: <strong>${Common.escapeHtml(logicalFlows[0].name)}</strong>.</p>
-<p>${logicalFlows[0].description}</p>`;
-    }
-    // Add a summary of key paths through the system
-    description += `<h5 class="sequence-summary-heading">Key Paths Through the System</h5>
-<ul class="sequence-paths">`;
-
-    // Process successful path
-    description += `<li class="sequence-path success-path">
-<strong>Happy Path:</strong> The main successful flow through the system where all validations pass</li>`;
-
-    // Look for conditional blocks to explain alternative paths
-    if (sequence.hasAlts || sequence.hasOpts || sequence.hasCritical) {
-      description += `<li class="sequence-path alternative-path">
-    <strong>Alternative Paths:</strong> The diagram shows ${extractConditionalCount(
-      sequence
-    )} different conditional branches where the flow changes based on:
-    <ul>`;
-
-      // List the key conditions from conditional blocks
-      if (sequence.blocks && sequence.blocks.length > 0) {
-        sequence.blocks.forEach((block) => {
-          if (block.type === "alt") {
-            description += `<li class="condition-point"><strong>${Common.escapeHtml(
-              block.condition || "Condition check"
-            )}</strong> - Leading to different paths based on the outcome</li>`;
-          } else if (block.type === "opt") {
-            description += `<li class="condition-point"><strong>${Common.escapeHtml(
-              block.condition || "Optional step"
-            )}</strong> - Only executed under specific conditions</li>`;
-          } else if (block.type === "critical") {
-            description += `<li class="condition-point"><strong>${Common.escapeHtml(
-              block.label || "Critical action"
-            )}</strong> - A critical action that must be performed with handling for possible circumstances</li>`;
-
-            // List the options if present
-            if (block.options && block.options.length > 0) {
-              description += `<ul>`;
-              block.options.forEach((option) => {
-                description += `<li><strong>${Common.escapeHtml(
-                  option.condition || "Alternative circumstance"
-                )}</strong> - An alternative flow for the critical action</li>`;
-              });
-              description += `</ul>`;
-            }
-          }
-        });
-      }
-
-      description += `</ul></li>`;
-    }
-
-    // Add break conditions if they exist - properly structured inside the paths list
-    if (sequence.hasBreaks) {
-      description += `<li class="sequence-path break-path">
-    <strong>Break Path:</strong> The diagram shows ${extractBreakConditionsCount(
-      sequence
-    )} break condition(s) where the sequence will stop early:
-    <ul>`;
-
-      // List the key break conditions
-      if (sequence.blocks && sequence.blocks.length > 0) {
-        sequence.blocks.forEach((block) => {
-          if (block.type === "break") {
-            description += `<li class="condition-point"><strong>${Common.escapeHtml(
-              block.condition || "Break condition"
-            )}</strong> - When this condition occurs, execution stops at this point and subsequent messages are not processed</li>`;
-          }
-        });
-      }
-
-      description += `</ul></li>`;
-    }
-
-    // Close the list
-    description += `</ul>`;
-
-    // Add explanation about notation with improved arrow type descriptions
-    description += `<h5 class="diagram-notation-heading">Diagram Notation</h5>
-<ul class="notation-list">
-  <li><strong>Solid arrows (<span aria-hidden="true">→</span><span class="sr-only">represented by a right-pointing arrow</span>)</strong> represent synchronous messages or requests from one participant to another</li>
-  <li><strong>Dashed arrows (<span aria-hidden="true">--→</span><span class="sr-only">represented by a dashed right-pointing arrow</span>)</strong> represent return messages or responses to previous requests</li>`;
-
-    if (sequence.allMessages.some((m) => m.isAsync)) {
-      description += `<li><strong>Asynchronous arrows (<span aria-hidden="true">-)</span><span class="sr-only">represented by a half arrow</span>)</strong> represent asynchronous messages that don't wait for a response</li>`;
-    }
-
-    if (sequence.allMessages.some((m) => m.isError)) {
-      description += `<li><strong>Error arrows (<span aria-hidden="true">-x</span><span class="sr-only">represented by an arrow with an X</span>)</strong> represent error messages or failed operations</li>`;
-    }
-
-    // Add a new list item for break blocks when they exist
-    if (sequence.hasBreaks) {
-      description += `<li><strong>Break blocks</strong> indicate conditional exit points in the sequence - when the specified condition occurs, the flow stops immediately and subsequent messages are not executed (typically used for error handling or exception cases)</li>`;
-    }
-
-    if (sequence.allMessages.some((m) => m.isBidirectional)) {
-      description += `<li><strong>Bidirectional arrows (<span aria-hidden="true">←→</span><span class="sr-only">represented by arrows pointing in both directions</span>)</strong> represent two-way communication between participants</li>`;
-    }
-
-    if (sequence.hasActivations) {
-      description += `<li><strong>Activation boxes</strong> show when a participant is active and processing a request</li>`;
-    }
-
-    if (sequence.hasAlts) {
-      description += `<li><strong>Alternative paths (alt/else)</strong> show different possible flows based on conditions, similar to if/else logic in programming</li>`;
-    }
-
-    if (sequence.hasOpts) {
-      description += `<li><strong>Optional paths (opt)</strong> show sequences that may not always execute, similar to if statements without an else clause</li>`;
-    }
-
-    if (sequence.hasCritical) {
-      description += `<li><strong>Critical blocks (critical/option/end)</strong> indicate actions that must be performed with conditional handling of different circumstances</li>`;
-    }
-
-    if (sequence.hasLoops) {
-      description += `<li><strong>Loops</strong> show repeating sequences of messages, similar to while or for loops in programming</li>`;
-    }
-
-    if (sequence.hasParallel) {
-      description += `<li><strong>Parallel blocks (par/and)</strong> show actions that happen simultaneously or concurrently</li>`;
-    }
-
-    if (sequence.hasNotes) {
-      description += `<li><strong>Notes</strong> provide additional context or explanation for specific parts of the diagram</li>`;
-    }
-
-    if (hasComments) {
-      description += `<li><strong>Developer comments</strong> (prefixed with %%) provide additional technical context that doesn't appear in the visual diagram</li>`;
-    }
-
-    description += `</ul>`;
-
-    // Add information about comments if present
-    // Replace the entire comments section with this improved version
-    if (hasComments && sequence.comments.length > 0) {
-      // Filter out init directives in case they somehow got through
-      const filteredComments = sequence.comments.filter(
-        (comment) =>
-          !comment.content.includes("{init:") &&
-          !comment.content.includes("themeVariables")
-      );
-
-      if (filteredComments.length > 0) {
-        const commentCategories = organiseComments({
-          comments: filteredComments,
-        });
-
-        description += `
-        <h5 class="comments-explanation-heading">Developer Comments</h5>
-        <p>This diagram contains ${filteredComments.length} developer ${
-          filteredComments.length === 1 ? "comment" : "comments"
-        } that provide additional context about implementation and design decisions.</p>`;
-
-        if (commentCategories.structure.length > 0) {
-          description += `<h6 class="comment-category">Diagram Structure</h6><ul class="comments-list structure-comments">`;
-          commentCategories.structure.forEach((comment) => {
-            description += `<li class="comment-item">
-          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
-            if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
-            }
-            description += `</li>`;
-          });
-          description += `</ul>`;
-        }
-
-        if (commentCategories.flow.length > 0) {
-          description += `<h6 class="comment-category">Flow Control</h6><ul class="comments-list flow-comments">`;
-          commentCategories.flow.forEach((comment) => {
-            description += `<li class="comment-item">
-          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
-            if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
-            }
-            description += `</li>`;
-          });
-          description += `</ul>`;
-        }
-
-        if (commentCategories.functionality.length > 0) {
-          description += `<h6 class="comment-category">Participant Lifecycle</h6><ul class="comments-list functionality-comments">`;
-          commentCategories.functionality.forEach((comment) => {
-            description += `<li class="comment-item">
-          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
-            if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
-            }
-            description += `</li>`;
-          });
-          description += `</ul>`;
-        }
-
-        if (commentCategories.other.length > 0) {
-          description += `<h6 class="comment-category">Other Notes</h6><ul class="comments-list other-comments">`;
-          commentCategories.other.forEach((comment) => {
-            description += `<li class="comment-item">
-          <span class="comment-content">${Common.escapeHtml(comment.content)}</span>`;
-            if (comment.isInline && comment.messageContent) {
-              description += ` <span class="comment-context">(associated with message: "${Common.escapeHtml(comment.messageContent)}")</span>`;
-            }
-            description += `</li>`;
-          });
-          description += `</ul>`;
-        }
-      }
-    }
-    description += `
-    <h5 class="sequence-reading-heading">How to Read This Diagram</h5>
-    <p>Sequence diagrams are read from top to bottom, with time flowing downward. Each vertical line represents a participant's timeline, and horizontal arrows show messages passed between participants. The diagram shows both the chronological order of interactions and the organisational relationships between components.</p>
-    </div></section>`;
-
-    // Helper function to count break conditions
-    function extractBreakConditionsCount(sequence) {
-      let count = 0;
-      if (sequence.blocks) {
-        sequence.blocks.forEach((block) => {
-          if (block.type === "break") {
-            count++;
-          }
-        });
-      }
-      return count;
-    }
-
-    // Helper function to count conditions
-    function extractConditionalCount(sequence) {
-      let count = 0;
-      if (sequence.blocks) {
-        sequence.blocks.forEach((block) => {
-          if (block.type === "alt") {
-            // Count branches in alt blocks
-            count += block.branches.length;
-          } else if (block.type === "opt") {
-            // Count opt blocks
-            count += 1;
-          } else if (block.type === "critical") {
-            // Count critical blocks and their options
-            count += 1;
-            if (block.options) {
-              count += block.options.length;
-            }
-          }
-        });
-      }
-      return count;
-    }
-
-    return description;
-  }
-
-  /**
-   * Find the conditional block that a message belongs to
-   * @param {Object} message - The message to check
-   * @param {Array} blocks - Array of conditional blocks
-   * @returns {Object|null} The block if found, or null
-   */
-  function findBlockForMessage(message, blocks) {
-    logDebug(
-      `[Mermaid Accessibility] Checking for block containing message: ${message.content}`
-    );
-    logDebug(`[Mermaid Accessibility] Total blocks to check: ${blocks.length}`);
-
-    for (const block of blocks) {
-      logDebug(`[Mermaid Accessibility] Checking block type: ${block.type}`);
-
-      if (block.type === "alt") {
-        for (const branch of block.branches) {
-          if (branch.messages.some((m) => m === message)) {
-            logDebug(`[Mermaid Accessibility] Found message in alt branch`);
-            return block;
-          }
-        }
-      } else if (block.type === "critical") {
-        // Check main critical block messages
-        if (block.messages.some((m) => m === message)) {
-          logDebug(`[Mermaid Accessibility] Found message in critical block`);
-          return block;
-        }
-
-        // Check option messages
-        if (block.options) {
-          for (const option of block.options) {
-            if (option.messages.some((m) => m === message)) {
-              logDebug(
-                `[Mermaid Accessibility] Found message in critical option`
-              );
-              return block;
-            }
-          }
-        }
-      } else if (block.type === "break") {
-        // Added specific logging for break blocks
-        const found = block.messages.some((m) => m === message);
-        logDebug(
-          `[Mermaid Accessibility] Checking break block messages. Found: ${found}`
-        );
-        if (found) {
-          logDebug(
-            `[Mermaid Accessibility] Found message in break block: ${message.content}`
-          );
-          return block;
-        }
-      } else if (block.messages.some((m) => m === message)) {
-        logDebug(
-          `[Mermaid Accessibility] Found message in ${block.type} block`
-        );
-        return block;
-      }
-    }
-    logDebug(
-      `[Mermaid Accessibility] No block found for message: ${message.content}`
-    );
-    return null;
-  }
-  /**
-   * Identify messages that are inside a break block
-   * @param {Object} sequence - The sequence diagram data
-   * @returns {Object} Map of message contents to their containing break block
-   */
-  function identifyBreakMessages(sequence) {
-    const breakMessageMap = new Map();
-
-    if (sequence.blocks) {
-      sequence.blocks.forEach((block) => {
-        if (block.type === "break" && block.messages) {
-          block.messages.forEach((message) => {
-            if (message.content) {
-              breakMessageMap.set(message.content, block);
-            }
-          });
-        }
-      });
-    }
-
-    logDebug(
-      `[Mermaid Accessibility] Identified ${breakMessageMap.size} break messages`
-    );
-    return breakMessageMap;
-  }
-  /**
-   * Find the parallel block that a message belongs to
-   * @param {Object} message - The message to check
-   * @param {Array} parallelBlocks - Array of parallel blocks
-   * @returns {Object|null} The parallel block if found, or null
-   */
-  function findParallelBlockForMessage(message, parallelBlocks) {
-    for (const block of parallelBlocks) {
-      for (const branch of block.branches) {
-        if (branch.messages.some((m) => m === message)) {
-          return block;
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
-   * Count the total number of messages in a block
-   * @param {Object} block - The conditional block
-   * @returns {number} Total message count
-   */
-  function countMessagesInBlock(block) {
-    if (block.type === "alt") {
-      return block.branches.reduce(
-        (count, branch) => count + branch.messages.length,
-        0
-      );
-    } else if (block.type === "critical") {
-      let count = block.messages.length;
-
-      // Add messages from each option
-      if (block.options) {
-        count += block.options.reduce(
-          (subCount, option) => subCount + option.messages.length,
-          0
-        );
-      }
-
-      return count;
-    } else {
-      return block.messages.length;
-    }
-  }
-
-  /**
-   * Count the total number of messages in a parallel block
-   * @param {Object} block - The parallel block
-   * @returns {number} Total message count
-   */
-  function countMessagesInParallelBlock(block) {
-    return block.branches.reduce(
-      (count, branch) => count + branch.messages.length,
-      0
-    );
-  }
-
-  /**
-   * Generate HTML for a conditional block
-   * @param {Object} block - The conditional block
-   * @param {number} stepNumber - The current step number
-   * @param {Object} sequenceData - The sequence diagram data
-   * @returns {string} HTML for the conditional block
-   */
-  function generateConditionalBlockHTML(block, stepNumber, sequenceData) {
-    let html = "";
-
-    // Special case for break blocks with completely different layout
-    if (block.type === "break") {
-      html = `<li class="process-step conditional-step break-step" aria-labelledby="step-${stepNumber}-title">
-      <span class="step-number" id="step-${stepNumber}-title">Step ${stepNumber}:</span>
-      <div class="break-container">
-        <div class="break-condition-header">
-          <span class="break-icon" aria-hidden="true">⚠️</span>
-          <span>Exit Condition: ${Common.escapeHtml(block.condition || "Break condition")}</span>
-        </div>
-        <div class="break-explanation">If this condition occurs, the following action will execute and the sequence will terminate immediately:</div>
-        <ol class="break-action-list">`;
-
-      block.messages.forEach((message) => {
-        // Get entity names
-        const correctedSender = getCorrectEntityName(
-          message.sender,
-          message.isResponse,
-          sequenceData
-        );
-        const correctedReceiver = getCorrectEntityName(
-          message.receiver,
-          message.isResponse,
-          sequenceData
-        );
-
-        html += `<li class="break-action-item">
-        <span class="message-sender ${
-          sequenceData.actors.includes(correctedSender)
-            ? "actor"
-            : "participant"
-        }">${Common.escapeHtml(correctedSender)}</span>
-        <span class="message-type">${formatMessageType(message.type)}</span>
-        <span class="message-receiver ${
-          sequenceData.actors.includes(correctedReceiver)
-            ? "actor"
-            : "participant"
-        }">${Common.escapeHtml(correctedReceiver)}</span>`;
-
-        if (message.content) {
-          html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
-        }
-
-        html += `</li>`;
-      });
-
-      html += `</ol>
-        <div class="break-subsequent-note">All subsequent messages in the diagram will not be executed if this condition occurs.</div>
-      </div>
-    </li>`;
-    } else {
-      // Start with context explanation of what this conditional block represents
-      let contextExplanation = "";
-
-      if (block.type === "alt") {
-        contextExplanation = `<div class="conditional-context">This step branches based on ${Common.escapeHtml(
-          block.condition || "different conditions"
-        )}.</div>`;
-      } else if (block.type === "opt") {
-        contextExplanation = `<div class="conditional-context">This step only executes when ${Common.escapeHtml(
-          block.condition || "the condition is met"
-        )}.</div>`;
-      } else if (block.type === "loop") {
-        // "for " is module furniture and stays outside the escaping call.
-        contextExplanation = `<div class="conditional-context">This step repeats ${
-          block.label
-            ? "for " + Common.escapeHtml(block.label)
-            : "multiple times"
-        }.</div>`;
-      } else if (block.type === "critical") {
-        contextExplanation = `<div class="conditional-context">This is a critical action that must be performed: ${Common.escapeHtml(
-          block.label || "Critical Action"
-        )}.</div>`;
-      }
-
-      html = `<li class="process-step conditional-step ${
-        block.type
-      }-step" aria-labelledby="step-${stepNumber}-title step-${stepNumber}-context">
-    <span class="step-number" id="step-${stepNumber}-title">Step ${stepNumber}:</span>
-    ${contextExplanation}
-    <div class="branch-container">
-      <div class="branch-title" id="step-${stepNumber}-context">${
-        block.type === "alt"
-          ? "Conditional paths"
-          : block.type === "opt"
-          ? `Optional path: ${Common.escapeHtml(block.condition)}`
-          : block.type === "critical"
-          ? `Critical action: ${Common.escapeHtml(block.label)}`
-          : `Loop: ${Common.escapeHtml(block.label || "Repeated sequence")}`
-      }</div>`;
-
-      if (block.type === "alt") {
-        // Handle alt/else blocks
-        block.branches.forEach((branch, index) => {
-          // Add outcome summary for each branch
-          const branchOutcome = determineBranchOutcome(branch);
-
-          html += `<div class="branch">
-              <div class="branch-condition" id="branch-${stepNumber}-${index}-condition">${Common.escapeHtml(
-            branch.condition || "Otherwise"
-          )}:</div>
-              <div class="branch-outcome">${branchOutcome}</div>
-              <ol class="branch-messages" aria-labelledby="branch-${stepNumber}-${index}-condition">`;
-
-          branch.messages.forEach((message) => {
-            // Determine if this is a response message by checking the type
-            const isResponse = message.type && message.type.includes("--");
-
-            // Apply corrections to entity names
-            const correctedSender = getCorrectEntityName(
-              message.sender,
-              isResponse,
-              sequenceData
-            );
-            const correctedReceiver = getCorrectEntityName(
-              message.receiver,
-              isResponse,
-              sequenceData
-            );
-
-            html += `<li class="message-item">
-                <span class="message-sender ${
-                  sequenceData.actors.includes(correctedSender)
-                    ? "actor"
-                    : "participant"
-                }">${Common.escapeHtml(correctedSender)}</span>
-                <span class="message-type">${formatMessageType(
-                  message.type
-                )}</span>
-                <span class="message-receiver ${
-                  sequenceData.actors.includes(correctedReceiver)
-                    ? "actor"
-                    : "participant"
-                }">${Common.escapeHtml(correctedReceiver)}</span>`;
-
-            if (message.content) {
-              html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
-            }
-
-            html += `</li>`;
-          });
-
-          html += `</ol></div>`;
-        });
-      } else if (
-        block.type === "opt" ||
-        block.type === "loop" ||
-        block.type === "critical"
-      ) {
-        // Handle optional and loop blocks
-        html += `<ol class="branch-messages">`;
-
-        block.messages.forEach((message) => {
-          // Determine if this is a response message by checking the type
-          const isResponse = message.type && message.type.includes("--");
-
-          // Apply corrections to entity names
-          const correctedSender = getCorrectEntityName(
-            message.sender,
-            isResponse,
-            sequenceData
-          );
-          const correctedReceiver = getCorrectEntityName(
-            message.receiver,
-            isResponse,
-            sequenceData
-          );
-
-          html += `<li class="message-item">
-          <span class="message-sender ${
-            sequenceData.actors.includes(correctedSender)
-              ? "actor"
-              : "participant"
-          }">${Common.escapeHtml(correctedSender)}</span>
-          <span class="message-type">${formatMessageType(message.type)}</span>
-          <span class="message-receiver ${
-            sequenceData.actors.includes(correctedReceiver)
-              ? "actor"
-              : "participant"
-          }">${Common.escapeHtml(correctedReceiver)}</span>`;
-
-          if (message.content) {
-            html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
-          }
-
-          html += `</li>`;
-        });
-
-        html += `</ol>`;
-      }
-
-      html += `</div></li>`;
-    }
-
-    return html;
-  }
-  /**
-   * Generate HTML for a parallel block
-   * @param {Object} block - The parallel block
-   * @param {number} stepNumber - The current step number
-   * @param {Object} sequenceData - The sequence diagram data
-   * @returns {string} HTML for the parallel block
-   */
-  function generateParallelBlockHTML(block, stepNumber, sequenceData) {
-    // Modify the branch title line
-    let html = `<li class="process-step parallel-step" aria-labelledby="step-${stepNumber}-title step-${stepNumber}-context">
-        <span class="step-number" id="step-${stepNumber}-title">Step ${stepNumber}:</span>
-        <div class="conditional-context">This step contains actions that happen in parallel.</div>
-        <div class="branch-container">
-          <div class="branch-title" id="step-${stepNumber}-context">${
-      block.label && block.label !== "Parallel actions"
-        ? `Parallel actions: ${Common.escapeHtml(block.label)}`
-        : "Parallel actions"
-    }</div>`;
-
-    // Handle parallel branches
-    block.branches.forEach((branch, index) => {
-      html += `<div class="branch">
-                <div class="branch-condition" id="branch-${stepNumber}-${index}-condition">${
-        branch.label
-          ? Common.escapeHtml(branch.label)
-          : `Parallel path ${index + 1}`
-      }:</div>
-                <ol class="branch-messages" aria-labelledby="branch-${stepNumber}-${index}-condition">`;
-
-      branch.messages.forEach((message) => {
-        // Determine if this is a response message by checking the type
-        const isResponse = message.type && message.type.includes("--");
-
-        // Apply corrections to entity names
-        const correctedSender = getCorrectEntityName(
-          message.sender,
-          isResponse,
-          sequenceData
-        );
-        const correctedReceiver = getCorrectEntityName(
-          message.receiver,
-          isResponse,
-          sequenceData
-        );
-
-        html += `<li class="message-item">
-                    <span class="message-sender ${
-                      sequenceData.actors.includes(correctedSender)
-                        ? "actor"
-                        : "participant"
-                    }">${Common.escapeHtml(correctedSender)}</span>
-                    <span class="message-type">${formatMessageType(
-                      message.type
-                    )}</span>
-                    <span class="message-receiver ${
-                      sequenceData.actors.includes(correctedReceiver)
-                        ? "actor"
-                        : "participant"
-                    }">${Common.escapeHtml(correctedReceiver)}</span>`;
-
-        if (message.content) {
-          html += `: <span class="message-content">${Common.escapeHtml(message.content)}</span>`;
-        }
-
-        html += `</li>`;
-      });
-
-      html += `</ol></div>`;
-    });
-
-    html += `</div></li>`;
-
-    return html;
-  }
-
-  // Helper function to determine the outcome summary of a branch
-  function determineBranchOutcome(branch) {
-    // Look for final messages in the branch to determine the outcome
-    if (branch.messages.length === 0) return "";
-
-    // Check the last few messages to determine outcome
-    const lastMessages = branch.messages.slice(-2);
-
-    // Look for success/error indicators in content
-    const hasSuccess = lastMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("success") ||
-          msg.content.toLowerCase().includes("dashboard") ||
-          msg.content.toLowerCase().includes("complete") ||
-          msg.content.toLowerCase().includes("display") ||
-          msg.content.toLowerCase().includes("show "))
-    );
-
-    const hasError = lastMessages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("error") ||
-          msg.content.toLowerCase().includes("fail") ||
-          msg.content.toLowerCase().includes("reject") ||
-          msg.content.toLowerCase().includes("denied"))
-    );
-
-    if (hasSuccess) {
-      return "Outcome: Success path - process completes successfully";
-    } else if (hasError) {
-      return "Outcome: Error path - process handles failure condition";
-    }
-
-    // Generic outcome if we can't determine specifics
-    return "Outcome: Process continues with specific logic for this condition";
-  }
-
-  /**
-   * Group messages into logical flows based on content analysis with improved phase detection
-   * @param {Object} sequence - The parsed sequence diagram data
-   * @returns {Array} Array of logical flow objects
-   */
-  function extractLogicalFlows(sequence) {
-    // For diagrams with a title, prefer to keep everything as a single coherent flow
-    if (sequence.title || sequence.allMessages.length < 15) {
-      const flowName =
-        sequence.title || inferFlowName(sequence.allMessages, sequence);
-      return [
-        {
-          name: flowName,
-          description: generateFlowDescription(
-            flowName,
-            sequence.allMessages,
-            sequence
-          ),
-          messages: sequence.allMessages,
-          blocks: sequence.blocks,
-        },
-      ];
-    }
-
-    // Define key phases to look for in the diagram
-    const phases = [
-      {
-        name: "Authentication Phase",
-        startKeywords: ["login", "authenticate", "credentials"],
-        endKeywords: ["welcome", "dashboard", "invalid login"],
-      },
-      {
-        name: "Password Reset Phase",
-        startKeywords: ["forgot password", "reset password"],
-        endKeywords: ["check your email", "reset sent", "password reset"],
-      },
-      {
-        name: "Payment Processing Phase",
-        startKeywords: ["purchase", "payment", "order"],
-        endKeywords: [
-          "payment completed",
-          "payment failed",
-          "transaction recorded",
-        ],
-      },
-      {
-        name: "Order Tracking Phase",
-        startKeywords: ["check status", "track order"],
-        endKeywords: ["status display", "current status"],
-      },
-    ];
-
-    // Try to identify phase boundaries based on the content of messages
-    const phaseStartIndices = [];
-    const phaseEndIndices = [];
-    const phaseNames = [];
-
-    // Scan through messages to identify phase boundaries
-    sequence.allMessages.forEach((message, index) => {
-      if (!message.content) return;
-
-      const content = message.content.toLowerCase();
-
-      // Check if this message starts a new phase
-      for (const phase of phases) {
-        if (phase.startKeywords.some((keyword) => content.includes(keyword))) {
-          // Check if the phase hasn't already started
-          if (!phaseNames.includes(phase.name)) {
-            phaseStartIndices.push(index);
-            phaseNames.push(phase.name);
-            break;
-          }
-        }
-      }
-
-      // Check if this message ends a phase
-      const currentPhase = phaseNames[phaseNames.length - 1];
-      if (currentPhase) {
-        const phaseData = phases.find((p) => p.name === currentPhase);
-        if (
-          phaseData &&
-          phaseData.endKeywords.some((keyword) => content.includes(keyword))
-        ) {
-          phaseEndIndices.push(index);
-        }
-      }
-    });
-
-    // If we couldn't identify clear phases, return a single flow
-    if (phaseStartIndices.length === 0) {
-      const flowName =
-        sequence.title || inferFlowName(sequence.allMessages, sequence);
-      return [
-        {
-          name: flowName,
-          description: generateFlowDescription(
-            flowName,
-            sequence.allMessages,
-            sequence
-          ),
-          messages: sequence.allMessages,
-          blocks: sequence.blocks,
-        },
-      ];
-    }
-
-    // Add ending index for the last phase if needed
-    if (phaseEndIndices.length < phaseStartIndices.length) {
-      phaseEndIndices.push(sequence.allMessages.length - 1);
-    }
-
-    // Create flows based on the identified phases
-    const flows = [];
-
-    // Handle pre-phase messages if any
-    if (phaseStartIndices[0] > 0) {
-      const initialMessages = sequence.allMessages.slice(
-        0,
-        phaseStartIndices[0]
-      );
-      const initialName = "Initial Setup";
-      flows.push({
-        name: initialName,
-        description: generateFlowDescription(
-          initialName,
-          initialMessages,
-          sequence
-        ),
-        messages: initialMessages,
-        blocks: getBlocksForMessages(initialMessages, sequence.blocks),
-      });
-    }
-
-    // Create phase-based flows
-    for (let i = 0; i < phaseStartIndices.length; i++) {
-      const startIdx = phaseStartIndices[i];
-      const endIdx = phaseEndIndices[i] || sequence.allMessages.length - 1;
-      const phaseName = phaseNames[i];
-
-      if (startIdx <= endIdx) {
-        const phaseMessages = sequence.allMessages.slice(startIdx, endIdx + 1);
-        flows.push({
-          name: phaseName,
-          description: generateFlowDescription(
-            phaseName,
-            phaseMessages,
-            sequence
-          ),
-          messages: phaseMessages,
-          blocks: getBlocksForMessages(phaseMessages, sequence.blocks),
-        });
-      }
-    }
-
-    // If we ended up with nothing, fall back to a single flow
-    if (flows.length === 0) {
-      const flowName =
-        sequence.title || inferFlowName(sequence.allMessages, sequence);
-      return [
-        {
-          name: flowName,
-          description: generateFlowDescription(
-            flowName,
-            sequence.allMessages,
-            sequence
-          ),
-          messages: sequence.allMessages,
-          blocks: sequence.blocks,
-        },
-      ];
-    }
-
-    return flows;
-  }
-
-  /**
-   * Get blocks that contain the given messages
-   * @param {Array} messages - Array of messages
-   * @param {Array} allBlocks - All blocks in the sequence
-   * @returns {Array} Blocks containing these messages
-   */
-  function getBlocksForMessages(messages, allBlocks) {
-    if (!allBlocks || allBlocks.length === 0) return [];
-
-    return allBlocks.filter((block) => {
-      // Check if any message in this block is in our messages array
-      if (
-        block.messages &&
-        block.messages.some((msg) => messages.includes(msg))
-      ) {
-        return true;
-      }
-
-      // Check alt blocks with branches
-      if (block.type === "alt" && block.branches) {
-        return block.branches.some(
-          (branch) =>
-            branch.messages &&
-            branch.messages.some((msg) => messages.includes(msg))
-        );
-      }
-
-      // Check critical blocks with options
-      if (block.type === "critical" && block.options) {
-        return block.options.some(
-          (option) =>
-            option.messages &&
-            option.messages.some((msg) => messages.includes(msg))
-        );
-      }
-
-      return false;
-    });
-  }
-
-  /**
-   * Infer a name for a logical flow based on its messages
-   * @param {Array} messages - The messages in the flow
-   * @param {Object} sequence - The sequence diagram data
-   * @returns {string} An inferred flow name
-   */
-  function inferFlowName(messages, sequence) {
-    // First check for explicit title in the diagram
-    if (sequence.title) {
-      return sequence.title;
-    }
-
-    // Look for common patterns that might indicate the purpose of the diagram
-
-    // Look for secure communication patterns
-    const hasSecurityTerms = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("secure") ||
-          msg.content.toLowerCase().includes("encrypt") ||
-          msg.content.toLowerCase().includes("key exchange"))
-    );
-
-    // Check for login/authentication
-    const hasLogin = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("login") ||
-          msg.content.toLowerCase().includes("auth") ||
-          msg.content.toLowerCase().includes("sign in") ||
-          msg.content.toLowerCase().includes("credentials"))
-    );
-
-    // Check for registration
-    const hasRegistration = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("register") ||
-          msg.content.toLowerCase().includes("sign up") ||
-          msg.content.toLowerCase().includes("create account"))
-    );
-
-    // Check for profile-related actions
-    const hasProfile = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("profile") ||
-          msg.content.toLowerCase().includes("user data") ||
-          msg.content.toLowerCase().includes("account info"))
-    );
-
-    // Check for checkout/payment
-    const hasCheckout = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("payment") ||
-          msg.content.toLowerCase().includes("checkout") ||
-          msg.content.toLowerCase().includes("purchase"))
-    );
-
-    // Check for search/query
-    const hasSearch = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("search") ||
-          msg.content.toLowerCase().includes("query") ||
-          msg.content.toLowerCase().includes("find"))
-    );
-
-    // Check for data operations
-    const hasDataOps = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("query") ||
-          msg.content.toLowerCase().includes("fetch") ||
-          msg.content.toLowerCase().includes("get") ||
-          msg.content.toLowerCase().includes("retrieve"))
-    );
-
-    // Check for initialisation or setup
-    const hasInit = messages.some(
-      (msg) =>
-        msg.content &&
-        (msg.content.toLowerCase().includes("initialise") ||
-          msg.content.toLowerCase().includes("setup") ||
-          msg.content.toLowerCase().includes("establish"))
-    );
-
-    // Return an appropriate flow name based on message content
-    if (hasSecurityTerms) return "Secure Communication Setup";
-    if (hasLogin && hasRegistration) return "Authentication and Registration";
-    if (hasLogin) return "User Authentication";
-    if (hasRegistration) return "User Registration";
-    if (hasProfile) return "Profile Management";
-    if (hasCheckout) return "Checkout Process";
-    if (hasSearch) return "Search Functionality";
-    if (hasDataOps) return "Data Retrieval";
-    if (hasInit) return "Initialisation and Setup";
-
-    // If no specific flow type was detected, create a generic name
-    // based on the participants
-    const uniqueParticipantIds = [
-      ...new Set(
-        messages.map((m) => m.sender).concat(messages.map((m) => m.receiver))
-      ),
-    ];
-
-    // Convert IDs to display names
-    const uniqueParticipants = uniqueParticipantIds.map((id) =>
-      getCorrectEntityName(id, false, sequence)
-    );
-
-    // Check if "User" is one of the participants (by display name or ID)
-    if (uniqueParticipants.some((p) => p && p.toLowerCase().includes("user"))) {
-      return "User Interaction";
-    } else if (
-      uniqueParticipants.some(
-        (p) => p && p.toLowerCase().includes("frontend")
-      ) &&
-      uniqueParticipants.some((p) => p && p.toLowerCase().includes("api"))
-    ) {
-      return "Frontend-Backend Communication";
-    } else if (
-      uniqueParticipants.some(
-        (p) =>
-          (p && p.toLowerCase().includes("database")) ||
-          (p && p.toLowerCase().includes("db"))
-      )
-    ) {
-      return "Database Operations";
-    } else {
-      // Default name
-      return "Message Exchange Process";
-    }
-  }
-
-  /**
-   * Generate a description for a logical flow
-   * @param {string} flowName - The name of the flow
-   * @param {Array} messages - The messages in the flow
-   * @param {Object} sequence - The complete sequence diagram data
-   * @returns {string} A description of the flow
-   */
-  function generateFlowDescription(flowName, messages, sequence) {
-    // Remove "process" from flowName if it already contains it to avoid duplication
-    let processText = flowName.toLowerCase().includes("process")
-      ? ""
-      : " process";
-
-    // Transform first, escape second — escaping before toLowerCase would
-    // lower-case the entity itself and mangle it.
-    description = `This flow illustrates the ${Common.escapeHtml(
-      flowName.toLowerCase()
-    )}${processText}`;
-
-    // Add information about participants
-    const uniqueParticipantIds = [
-      ...new Set(
-        messages.map((m) => m.sender).concat(messages.map((m) => m.receiver))
-      ),
-    ];
-
-    // Convert IDs to display names using aliasMap and ensure uniqueness
-    const displayNameMap = {};
-    uniqueParticipantIds.forEach((id) => {
-      const displayName = getCorrectEntityName(id, false, sequence);
-      if (displayName) {
-        displayNameMap[displayName] = true;
-      }
-    });
-
-    // Get unique display names
-    const uniqueParticipants = Object.keys(displayNameMap);
-
-    // Separate actors and system participants
-    const actors = uniqueParticipants.filter((p) =>
-      sequence.actors.includes(p)
-    );
-    const systems = uniqueParticipants.filter((p) =>
-      sequence.participants.includes(p)
-    );
-
-    // Escaped per item before the join. formatList is shared with the PLAIN
-    // short tier, so it must stay neutral and the escaping belongs here.
-    const safeActors = actors.map((a) => Common.escapeHtml(a));
-    const safeSystems = systems.map((s) => Common.escapeHtml(s));
-
-    if (actors.length > 0 && systems.length > 0) {
-      description += ` involving ${formatList(
-        safeActors
-      )} interacting with ${formatList(safeSystems)}`;
-    } else if (actors.length > 0) {
-      description += ` involving ${formatList(safeActors)}`;
-    } else if (systems.length > 0) {
-      description += ` involving ${formatList(safeSystems)}`;
-    }
-
-    // Add information about message types
-    const hasSolidArrows = messages.some((m) => !m.isResponse);
-    const hasDashedArrows = messages.some((m) => m.isResponse);
-
-    if (hasSolidArrows && hasDashedArrows) {
-      description += `. It shows both requests (solid arrows) and responses (dashed arrows)`;
-    } else if (hasSolidArrows) {
-      description += `. It primarily shows requests or commands`;
-    } else if (hasDashedArrows) {
-      description += `. It primarily shows responses or return messages`;
-    }
-
-    // Look for conditional logic
-    const hasConditions = messages.some((m) => {
-      // Check if the message is part of a conditional block
-      for (const block of sequence.blocks) {
-        if (block.type === "alt") {
-          for (const branch of block.branches) {
-            if (branch.messages.includes(m)) {
-              return true;
-            }
-          }
-        } else if (block.type === "opt" || block.type === "critical") {
-          if (block.messages.includes(m)) {
-            return true;
-          }
-          // For critical blocks, also check options
-          if (block.type === "critical" && block.options) {
-            for (const option of block.options) {
-              if (option.messages.includes(m)) {
-                return true;
-              }
-            }
-          }
-        }
-      }
-      return false;
-    });
-
-    if (hasConditions) {
-      description += `. The flow includes conditional paths based on different criteria`;
-    }
-
-    // Add information about break conditions if present
-    const hasBreaks = sequence.blocks.some((block) => block.type === "break");
-    if (hasBreaks) {
-      description += `. This flow includes break condition(s) where the sequence will stop if specific criteria are met, preventing subsequent messages from being processed`;
-    }
-
-    // Add flow-specific descriptions
-    if (flowName === "User Authentication") {
-      description += `. The flow illustrates how user login credentials are validated and how the system responds based on their validity.`;
-    } else if (flowName === "Profile Management") {
-      description += `. The flow shows how user profile data is requested and delivered between system components.`;
-    }
-
-    // Ensure description ends with a period
-    if (!description.endsWith(".")) {
-      description += ".";
-    }
-
-    return description;
-  }
-
-  /**
-   * Format message type for human-readable description
-   * @param {string} type - The message type symbol
-   * @returns {string} Human-readable description
-   */
-  function formatMessageType(type) {
-    // Handle bidirectional arrows
-    if (type === "<<-->>" || type === "<->") {
-      return "communicates bidirectionally with";
-    }
-
-    // Use clearer detection for response messages
-    const isResponse = type && type.includes("--");
-    const isAsync = type && type.includes(")");
-    const isError = type && type.includes("x");
-
-    if (isResponse) {
-      // Response messages (dashed arrows)
-      if (isError) {
-        return "returns error to";
-      } else if (isAsync) {
-        return "sends async response to";
-      } else {
-        return "responds to";
-      }
-    } else {
-      // Request messages (solid arrows)
-      if (isError) {
-        return "sends error to";
-      } else if (isAsync) {
-        return "sends async message to";
-      } else {
-        return "sends to";
-      }
-    }
-  }
-
-  /**
-   * Get the correct entity name for display, accounting for activation markers and aliases
-   * @param {string} name - The entity ID from the message
-   * @param {boolean} isResponse - Whether this is a response message
-   * @param {Object} sequence - The sequence diagram data with aliasMap
-   * @returns {string} The corrected entity display name
-   */
-  function getCorrectEntityName(name, isResponse, sequence) {
-    // Skip for undefined or null names
-    if (!name) return "";
-
-    // Remove any +/- activation markers from the name
-    let cleanName = name;
-    if (cleanName.endsWith("+")) {
-      cleanName = cleanName.slice(0, -1);
-    }
-    if (cleanName.endsWith("-")) {
-      cleanName = cleanName.slice(0, -1);
-    }
-
-    // Use the alias mapping if available
-    return sequence && sequence.aliasMap[cleanName]
-      ? sequence.aliasMap[cleanName]
-      : cleanName;
-  }
-
-  /**
-   * Log message details for debugging
-   * @param {Object} message - The message object
-   * @param {Object} sequence - The sequence data with aliasMap
-   */
-  function logMessageDetails(message, sequence) {
-    logDebug("------ Message Details ------");
-    logDebug("Sender:", message.sender);
-    logDebug("Type:", message.type);
-    logDebug("Receiver:", message.receiver);
-    logDebug("Content:", message.content);
-    logDebug("IsResponse:", message.type && message.type.includes("--"));
-    logDebug(
-      "Corrected Sender:",
-      getCorrectEntityName(
-        message.sender,
-        message.type && message.type.includes("--"),
-        sequence
+    const wrapList = (tag, inner) =>
+      inner.length === 0 ? [] : [`<${tag}>`].concat(inner).concat([`</${tag}>`]);
+
+    pushSection("Overview", overview ? [`<p>${overview}</p>`] : []);
+    pushSection("Participants", wrapList("ul", buildParticipantLines(diagram)));
+    pushSection(
+      "Messages",
+      wrapList(
+        "ol",
+        renderMessageItems(buildMessageItems(diagram, nameFor), nameFor)
       )
     );
-    logDebug(
-      "Corrected Receiver:",
-      getCorrectEntityName(
-        message.receiver,
-        message.type && message.type.includes("--"),
-        sequence
-      )
-    );
-    logDebug("-------------------------");
+
+    // Newline-joined so text-content extraction stays readable: without them,
+    // list and heading boundaries concatenate with no space.
+    return parts.join("\n");
   }
 
-  // Register with the core module
+  // Register with the core module. `generateShort` returns plain text because
+  // the core assigns its result straight to descriptions.short, which reaches
+  // the figcaption and the SVG aria-label.
+  //
+  // The key is "sequenceDiagram", which is what mermaid-diagram-detection.js
+  // returns for this type. NOTE THAT MERMAID'S OWN `detectType` RETURNS
+  // "sequence": the detection module's MERMAID_TYPE_TO_KEY maps the one to the
+  // other, and registering on the raw Mermaid name would register a generator
+  // nothing ever calls.
+  //
+  // generateShortHTML is the ASYNC shape, and it has to be: this module awaits
+  // the parse adapter, so `generateShortDescription(...).html` on the returned
+  // promise would be `undefined` and the tier would register, be called, and
+  // yield nothing silently (register item 13). The module this replaces used
+  // exactly that synchronous shape, which was safe only because it read the
+  // source synchronously.
   window.MermaidAccessibility.registerDescriptionGenerator("sequenceDiagram", {
     generateShort: shortDescriptionWrapper,
     generateDetailed: generateDetailedDescription,
-    // Add a new property for HTML-formatted short description
-    generateShortHTML: function (svgElement, code) {
-      return generateShortDescription(svgElement, code).html;
+    generateShortHTML: async function (svgElement, code) {
+      const descriptions = await generateShortDescription(svgElement, code);
+      return descriptions.html;
     },
   });
 
   logInfo(
-    "[Mermaid Accessibility] Sequence diagram module loaded and registered"
+    "[Mermaid Accessibility] Sequence diagram module loaded and registered on the parse adapter's sequence surface"
   );
 })();

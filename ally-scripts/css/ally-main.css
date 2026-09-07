@@ -754,6 +754,19 @@
   outline: none;
 }
 
+/* Multi-tenancy Stage 5: API fallback surfaces inside the search container.
+   Hidden by attribute under local data; the global [hidden] rule below wins
+   over the button's inline-flex, so no per-class hidden rule is needed. */
+.ally-course-search-api-note,
+.ally-course-search-api-progress {
+  margin-top: 0.5rem;
+}
+
+.ally-course-search-api-btn {
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+}
+
 .ally-course-search-results {
   position: absolute;
   top: 100%;
@@ -4732,4 +4745,101 @@ span.ally-sp-disclosure-text {
 }
 .ally-iq-nav .ally-iq-back[disabled] {
   visibility: hidden;
+}
+
+/* ==========================================================================
+   Course search: score badge
+   ========================================================================== */
+
+/* The badge is aria-hidden and purely visual - the score and its band are in
+   the option's accessible name, so this never has to carry meaning alone. */
+.ally-course-option-score {
+  margin-left: auto;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Trends view
+   ========================================================================== */
+
+.ally-trends-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ally-trends-controls .ally-form-group {
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+
+.ally-trends-status {
+  margin: 0.5rem 0 1rem 0;
+  font-size: 0.9375rem;
+}
+
+.ally-trends-chart-wrapper {
+  position: relative;
+  height: 24rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 40rem) {
+  .ally-trends-chart-wrapper {
+    height: 18rem;
+  }
+}
+
+.ally-trends-table-wrapper {
+  margin-bottom: 1rem;
+}
+
+.ally-trends-table-wrapper summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+
+/* The table is the chart's accessible alternative, so it stays scrollable and
+   focusable rather than being clipped on a narrow screen. */
+#ally-trends-table {
+  max-height: 20rem;
+  overflow: auto;
+}
+
+.ally-trends-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.ally-trends-data-table caption {
+  text-align: left;
+  padding: 0.5rem 0;
+  font-weight: 600;
+}
+
+.ally-trends-data-table th,
+.ally-trends-data-table td {
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid currentColor;
+}
+
+.ally-trends-data-table tbody th {
+  font-weight: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.ally-trends-data-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.ally-trends-provenance {
+  font-size: 0.8125rem;
+  font-style: italic;
 }

@@ -94,11 +94,45 @@ const MathPixAltTextCloudAdapter = (function () {
   // ---------------------------------------------------------------------------
 
   /**
-   * Default / preferred model id for the resolution ladder. Mirrors the
-   * reference's DEFAULT_MODEL in image-describer-controller-model.js — the
-   * economical Claude Haiku. Used by _resolveModel to prefer it when eligible.
+   * PREFERRED MODEL PER PROVIDER — the measured best on each service (AW-8,
+   * 4 September 2026).
+   *
+   * WHAT CHANGED AND WHY. This was a single `DEFAULT_MODEL` of
+   * `anthropic/claude-haiku-4.5`, mirroring the Image Describer's economical
+   * default. Four measured rounds put that choice at the BOTTOM of the field:
+   * AW-4r ranked eight models on three images, AW-5 held the model still and
+   * varied the configuration, AW-6x widened to six models with a fresh judge,
+   * and **AW-7c (commit `025ecdd`) settled it** — three survivors over all
+   * eleven capacitors images, on the shipped configuration, judged blind by a
+   * judge chosen to share a vendor with none of them. Its result:
+   * `azure-openai/gpt-5.6-sol` first at 18.91 of 20, ahead of
+   * `anthropic/claude-opus-5` and `anthropic/claude-sonnet-5`. The first place
+   * is settled arithmetically — it beats the best case even of the model with
+   * an unjudged cell — while second and third are NOT separated by that round.
+   *
+   * So the openrouter entry is `claude-sonnet-5` rather than `claude-opus-5`:
+   * where the evidence does not separate two models it is not this map's job
+   * to invent a separation, and sonnet is the cheaper and markedly faster of
+   * the pair. The azure entry is the measured winner outright.
+   *
+   * ONLY TWO KEYS ARE NEEDED, and that is measured rather than assumed.
+   * `ProviderSwitcher.KNOWN_PROVIDERS` carries exactly `openrouter` and
+   * `azure-openai`, so `getActive()` returns nothing else. `azure-responses`
+   * needs no key: it is never an ACTIVE provider, and the `PROVIDER_GROUPS`
+   * fold that makes its models eligible under `azure-openai` happens inside
+   * `getEligibleModels`, on the eligible side of the ladder rather than this
+   * one. A key for it would map to an `azure-openai/` id that could never be
+   * eligible under its own provider id, so it would always miss and fall
+   * through — a line that reads like coverage and provides none.
+   *
+   * An entry is a PREFERENCE, never a guarantee: it is used only when the id
+   * is in the vision-filtered eligible list for the active provider, and the
+   * ladder falls through to `eligible[0]` when it is not.
    */
-  const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
+  const PREFERRED_BY_PROVIDER = Object.freeze({
+    openrouter: "anthropic/claude-sonnet-5",
+    "azure-openai": "azure-openai/gpt-5.6-sol",
+  });
 
   /** Exact refuse message for a non-vision resolved model (British spelling). */
   const NON_VISION_REFUSAL =
@@ -198,8 +232,10 @@ const MathPixAltTextCloudAdapter = (function () {
    * Resolve ONE model id to send with. `options.model` wins when supplied;
    * otherwise read the active provider and select a vision model through
    * getEligibleModels({ capabilities: ["vision"] }) (the capability filter is
-   * NOT optional), applying the reference's default-pick: prefer DEFAULT_MODEL
-   * when eligible, else the first eligible model. Reaches ProviderSwitcher and
+   * NOT optional), applying the default-pick: prefer the ACTIVE PROVIDER'S
+   * entry in PREFERRED_BY_PROVIDER when that id is eligible, else the first
+   * eligible model (AW-8; this rung read a single cross-provider DEFAULT_MODEL
+   * before). Reaches ProviderSwitcher and
    * EmbedModelSelector at CALL time with guards; NO embed involved.
    *
    * @param {Object} [options]
@@ -249,8 +285,13 @@ const MathPixAltTextCloudAdapter = (function () {
       return NO_MODEL_RESOLVED;
     }
 
-    // Default-pick ladder: preferred id if eligible, else first available.
-    const preferred = eligible.find((m) => m && m.id === DEFAULT_MODEL);
+    // Default-pick ladder: the ACTIVE PROVIDER'S preferred id if eligible,
+    // else first available. The rung is unchanged in shape and position; only
+    // the id it looks for is now per-provider (AW-8).
+    const preferredId = PREFERRED_BY_PROVIDER[provider];
+    const preferred = preferredId
+      ? eligible.find((m) => m && m.id === preferredId)
+      : undefined;
     const resolved = preferred ? preferred.id : eligible[0].id;
     logDebug(
       `_resolveModel: resolved '${resolved}' for provider '${provider}' (${eligible.length} eligible)`,
@@ -482,7 +523,7 @@ const MathPixAltTextCloudAdapter = (function () {
       const cap = _capability();
       return cap ? cap.KNOWN_VISION_MODELS : EMPTY_VISION_LIST;
     },
-    DEFAULT_MODEL,
+    PREFERRED_BY_PROVIDER,
     NON_VISION_REFUSAL,
   };
 })();
