@@ -61,6 +61,33 @@
   }
 
   // ============================================================================
+  // FOUNDRY PROXY CONFIGURATION
+  // ============================================================================
+  // The proxy host used when the shared `foundryProxyUrl` credential is absent.
+  //
+  // It is REDUNDANT for routing and LOAD-BEARING for construction, and the two
+  // must not be confused. Both adapters carry the identical URL as their own
+  // DEFAULT_PROXY_URL (azure-openai-v1.js, azure-openai-responses.js), so a
+  // request reaching them with no configured host resolves here anyway. But
+  // configureProvider REFUSES an empty proxyUrl, and Set Up stores the
+  // Cloudflare choice by REMOVING the key rather than writing a value — so this
+  // constant is what keeps that choice configurable at all.
+  const FOUNDRY_PROXY_FALLBACK =
+    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+
+  // The two Foundry surfaces this tool configures. Named once, so the build
+  // below and the live re-apply cannot drift into configuring different sets.
+  const FOUNDRY_SURFACE_IDS = ["azure-openai", "azure-responses"];
+
+  /**
+   * Read the shared Foundry proxy host, falling back to the built-in default.
+   * @returns {string} the proxy URL to configure both surfaces with
+   */
+  function readFoundryProxyUrl() {
+    return localStorage.getItem("foundryProxyUrl") || FOUNDRY_PROXY_FALLBACK;
+  }
+
+  // ============================================================================
   // STREAMING FOLLOW-MODE FLAG (parity with Local Chat)
   // ============================================================================
   // true  = scrollable output box + thinking indicator + camera follows tokens
@@ -3527,6 +3554,64 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
+     * Re-read the shared `foundryProxyUrl` credential and re-apply it to BOTH
+     * Foundry surfaces on the LIVE embed, so a host chosen in Set Up takes
+     * effect on the next description without a page reload.
+     *
+     * WHY IT IS NEEDED. getOrCreateEmbed() reads that credential once and
+     * passes it as the constructor's `providers` block. The embed stores it and
+     * injects it as options.providerConfig on every dispatch — precedence tier
+     * 1 in both adapters' readProviderConfig, which WINS over their fresh
+     * per-request localStorage read at tier 3. Because getOrCreateEmbed() is
+     * memoised, the host is pinned at the FIRST description of the page's life:
+     * change the host afterwards and every later description still reaches the
+     * old one.
+     *
+     * WHY NOT SIMPLY STOP PASSING THE BLOCK. Dropping it would let the
+     * adapters' fresh read take effect, but it would also take
+     * isProviderConfigured() false for both surfaces, and this tool asks the
+     * embed that question through _findAlternativeVisionProvider(), which
+     * passes `embed` to EmbedModelSelector.getEligibleProviders(). Re-applying
+     * keeps every such answer intact AND the host current, so it is safe
+     * whatever else comes to depend on the configured flag later.
+     *
+     * SAFE ON A LIVE EMBED, established by reading rather than assumed.
+     * configureProvider validates and writes the instance's own config map and
+     * does nothing else, and buildOptions COPIES that value into a request's
+     * options when the request is built (getProviderConfig returns a copy) — so
+     * an in-flight description holds its own copy and cannot be reached from
+     * here. The model selector is unaffected too: it re-queries on every
+     * credential event and holds no cached list.
+     *
+     * The user token is deliberately not passed, exactly as at build time. Both
+     * adapters resolve it themselves — providerConfig, then the Entra cached
+     * token, then localStorage — and passing nothing leaves that path alone.
+     */
+    refreshFoundryProxyConfig() {
+      if (
+        !this.embedInstance ||
+        typeof this.embedInstance.configureProvider !== "function"
+      ) {
+        logDebug("No live embed yet — Foundry host will be read at first use");
+        return;
+      }
+
+      const proxyUrl = readFoundryProxyUrl();
+
+      try {
+        FOUNDRY_SURFACE_IDS.forEach((id) => {
+          this.embedInstance.configureProvider(id, { proxyUrl: proxyUrl });
+        });
+        logInfo("Foundry proxy host re-read and re-applied to both surfaces");
+      } catch (err) {
+        // Leaving the previous configuration standing is the safer failure. A
+        // stale host still reaches a working proxy, whereas a surface left
+        // unconfigured would start answering isProviderConfigured() false.
+        logError("Could not re-apply the Foundry proxy host:", err);
+      }
+    },
+
+    /**
      * Get or create OpenRouter Embed instance
      * @returns {OpenRouterEmbed}
      */
@@ -3578,26 +3663,22 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         compressionQuality: 0.7, // 70% JPEG quality (optimal from testing)
 
         // STAGE 2 TASK 2.6: Foundry provider configuration.
-        // Reads the proxy URL from localStorage (key: 'foundryProxyUrl')
-        // with a hardcoded fallback for the smoke test. Stage 3 will
-        // replace the hardcoded fallback with a Set Up tool credential
-        // entry that writes to the same localStorage key. The library
-        // ignores this block entirely for OpenRouter-routed models —
-        // it only matters when the selected model id starts with
-        // `azure-openai/` or `azure-responses/` (the two Foundry surfaces,
-        // both reading the shared `foundryProxyUrl` credential — Task 5c).
-        providers: {
-          "azure-openai": {
-            proxyUrl:
-              localStorage.getItem("foundryProxyUrl") ||
-              "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev",
-          },
-          "azure-responses": {
-            proxyUrl:
-              localStorage.getItem("foundryProxyUrl") ||
-              "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev",
-          },
-        },
+        // Reads the proxy URL from the shared `foundryProxyUrl` credential,
+        // which the Set Up tool writes. The library ignores this block
+        // entirely for OpenRouter-routed models — it only matters when the
+        // selected model id starts with `azure-openai/` or `azure-responses/`
+        // (the two Foundry surfaces, both reading that same credential —
+        // Task 5c).
+        //
+        // The credential is read ONCE here, because the guard at the top of
+        // this method makes it idempotent — so this runs on the FIRST
+        // description of the page's life and never again. Keeping the live
+        // handle's copy current after a change in Set Up is
+        // refreshFoundryProxyConfig's job, not this one's.
+        providers: FOUNDRY_SURFACE_IDS.reduce(function (map, id) {
+          map[id] = { proxyUrl: readFoundryProxyUrl() };
+          return map;
+        }, {}),
       };
 
       // STAGE 7: Add retry configuration if handler available

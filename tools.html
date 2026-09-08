@@ -133,6 +133,11 @@
     <link rel="stylesheet" href="local-chat/local-chat.css" />
     <link rel="stylesheet" href="chat/chat.css" />
     <link rel="stylesheet" href="openrouter-embed/transcribe.css" />
+    <!-- Captions Fixer. Layout only — the sheet declares no colour at all, and
+         its header says why. Loaded AFTER ally-main.css above deliberately is
+         not the point: it carries its own `#captions-fixer-app [hidden]` rule
+         so the reveal does not depend on that sheet's global. -->
+    <link rel="stylesheet" href="captions-fixer/captions-fixer.css" />
     <link rel="stylesheet" href="setup-tool/setup-tool.css" />
 
     <link
@@ -961,6 +966,38 @@
               ></span>
               <span class="radio">Transcribe</span>
             </label>
+            <!-- Captions Fixer. Placed AFTER Transcribe deliberately: the two
+                 are a pair, Transcribe produces the subtitle file this tool
+                 corrects, and Release 2 adds a "fix these captions" hand-off
+                 from one to the other.
+
+                 THIS IS THE ELEVENTH OPTION AND THE TENTH VISIBLE ONE
+                 (OpenRouter is hidden: true in js/tool-registry.js). Transcribe
+                 keeps its ninth position, which is what the registry comment
+                 asks for — but a screen reader now says "9 of 10" where the
+                 NVDA sitting of 2 September 2026 heard "9 of 9". The position
+                 is preserved; the group size is not, and cannot be while a
+                 tool is added.
+
+                 The icon comes from the SVG library via data-icon, as
+                 Transcribe's does and as AGENTS.md § Icons requires. `write`
+                 rather than `pencil`: the tool proposes edits to text somebody
+                 else produced, and a pencil is the site's general edit glyph. -->
+            <label class="tool-option-wrapper" for="CaptionsFixer">
+              <input
+                type="radio"
+                id="CaptionsFixer"
+                name="presentation"
+                value="Captions Fixer"
+                onclick="showCaptionsFixerTool()"
+              />
+              <span
+                class="tool-icon"
+                aria-hidden="true"
+                data-icon="write"
+              ></span>
+              <span class="radio">Captions Fixer</span>
+            </label>
           </fieldset>
         </nav>
         <!-- Tool registry — controls which tools appear above, in what order,
@@ -998,6 +1035,7 @@
               "showLocalChat",
               "showChat",
               "showTranscribeTool",
+              "showCaptionsFixerTool",
             ];
             names.forEach(function (name) {
               window[name] = function () {
@@ -1532,9 +1570,8 @@
 
                   <p class="setup-help-text" id="setup-proxy-picker-help">
                     Choose which proxy you go through to reach University AI
-                    services for this session. Changes reach Chat straight away.
-                    Image Describer reads this setting once when the page loads,
-                    so reload the page before describing an image.
+                    services for this session. Changes reach Chat and Image
+                    Describer straight away, with no need to reload the page.
                   </p>
 
                   <div class="setup-proxy-option">
@@ -18878,6 +18915,342 @@ Science,91</pre
                 >
               </p>
             </details>
+
+            <!--
+              Course data (multi-tenancy parcel 1b).
+
+              A SECOND disclosure, a sibling of the credentials one above,
+              rather than more controls inside a disclosure whose heading says
+              API Configuration & Settings. Until this landed, a colleague who
+              opened a shared link and never went to Set Up could enter a token
+              and nothing else — no institution name, no export, no import, no
+              course data at all. Parcel 2b hides Set Up entirely, so this is
+              what makes the Ally page self-sufficient.
+
+              EVERY CONTROL HERE IS THIS PAGE'S OWN ELEMENT, never a node moved
+              from Set Up (AGENTS.md § Never move DOM elements between
+              containers). The two copies share their CSS classes and are kept
+              in step by ALLY_TENANT_UI, which resolves each role to an ARRAY
+              of elements and scopes every READ to the card the gesture came
+              from.
+
+              The ids are prefixed ally-tenant- rather than ally-, because this
+              page already owns a large ally-* id space and a collision would
+              make getElementById return one of two elements with nothing
+              reporting it.
+
+              The buttons call window.allyTenant* — this module's own canonical
+              handlers. Set Up's window.setupXxxAlly five are untouched.
+
+              aria-labelledby beside label[for] throughout: the same
+              accommodation the Set Up card carries and for the same measured
+              reason, that IBM Equal Access fails to resolve label[for] for
+              text, checkbox and file inputs inside a CLOSED details.
+            -->
+            <details class="ally-credentials-details" id="ally-tenant-data">
+              <summary class="ally-credentials-summary">
+                <h2 id="ally-tenant-data-heading">Course data</h2>
+              </summary>
+
+              <div class="setup-credential-body">
+                <p class="setup-help-text">
+                  Which institution this tool is looking at, and where its
+                  course data comes from. These are the same controls as the
+                  Ally card in Set Up, and a change here shows there.
+                </p>
+
+                <div class="setup-input-group">
+                  <label
+                    id="ally-tenant-name-label"
+                    for="ally-tenant-name"
+                    >Institution name (optional)</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="text"
+                      id="ally-tenant-name"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="e.g., University of Southampton"
+                      aria-labelledby="ally-tenant-name-label"
+                      aria-describedby="ally-tenant-name-help"
+                    />
+                  </div>
+                  <!--
+                    THE SECOND SENTENCE IS A KNOWN LIMITATION, NOT A HINT.
+                    Measured: the Ally page's own Save credentials button
+                    (handleSaveCredentials -> saveCredentials in
+                    ally-main-controller.js:507) writes TOKEN, CLIENT_ID, REGION
+                    and SAVE_CREDENTIALS and never TENANT_NAME. That file is on
+                    parcel 1b's halt list, and adding a save-on-blur here would
+                    change Set Up's behaviour, which this parcel may not do — so
+                    the text says what is true rather than what we would like.
+                    Registered in multi-tenancy-build-plan.md § Follow-ups, and
+                    it has to close before parcel 2b hides Set Up.
+                  -->
+                  <p class="setup-help-text" id="ally-tenant-name-help">
+                    Labels this configuration so colleagues can tell which
+                    institution a shared file is for, and it is included when
+                    you export one. It is stored with your Ally credentials in
+                    Set Up: selecting Save credentials above does not store it.
+                  </p>
+                </div>
+
+                <div class="setup-checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="ally-tenant-export-token"
+                    aria-labelledby="ally-tenant-export-token-label"
+                  />
+                  <label
+                    id="ally-tenant-export-token-label"
+                    for="ally-tenant-export-token"
+                    >Include the API token in the exported file</label
+                  >
+                  <p class="setup-help-text">
+                    Off by default. The API token is a credential: anyone who
+                    receives a file containing it can query your Ally data as
+                    you. Leave this unticked and let each colleague enter their
+                    own token.
+                  </p>
+                </div>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="allyTenantExport()"
+                  >
+                    <span aria-hidden="true" data-icon="download"></span> Export
+                    configuration
+                    <span class="visually-hidden"
+                      >&nbsp;— Ally Reporting</span
+                    >
+                  </button>
+                </div>
+
+                <div class="setup-input-group">
+                  <label
+                    id="ally-tenant-import-file-label"
+                    for="ally-tenant-import-file"
+                    >Import a configuration file</label
+                  >
+                  <input
+                    type="file"
+                    id="ally-tenant-import-file"
+                    accept="application/json,.json"
+                    onchange="allyTenantImport(event)"
+                    aria-labelledby="ally-tenant-import-file-label"
+                    aria-describedby="ally-tenant-import-help ally-tenant-import-error"
+                  />
+                  <p
+                    class="credential-field-error"
+                    id="ally-tenant-import-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="ally-tenant-import-help">
+                    Choosing a file replaces the region, Client ID, API token
+                    and proxy worker URL above, so you are asked to confirm
+                    first. Course data and cached reports are never included in
+                    one of these files.
+                  </p>
+                </div>
+
+                <div class="setup-input-group">
+                  <label
+                    id="ally-tenant-data-files-label"
+                    for="ally-tenant-data-files"
+                    >Upload course data from your Ally export</label
+                  >
+                  <input
+                    type="file"
+                    id="ally-tenant-data-files"
+                    multiple
+                    accept=".csv,text/csv"
+                    onchange="allyTenantUpload(event)"
+                    aria-labelledby="ally-tenant-data-files-label"
+                    aria-describedby="ally-tenant-data-help ally-tenant-data-error"
+                  />
+                  <p
+                    class="credential-field-error"
+                    id="ally-tenant-data-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="ally-tenant-data-help">
+                    Choose courses.csv, terms.csv and departments_years.csv
+                    together from the same Ally export. They are read in this
+                    browser and stored here for the Client ID and region above,
+                    so save those first. Nothing is uploaded to a server. Add
+                    years.csv, months.csv and departments_terms.csv as well to
+                    see the Trends view on your own accessibility history; all
+                    three are needed, and the status line below says whether
+                    history is stored.
+                  </p>
+                </div>
+                <div class="setup-checkbox-group">
+                  <input
+                    type="checkbox"
+                    id="ally-tenant-data-exclude-archived"
+                    aria-labelledby="ally-tenant-data-exclude-archived-label"
+                    checked
+                  />
+                  <label
+                    id="ally-tenant-data-exclude-archived-label"
+                    for="ally-tenant-data-exclude-archived"
+                    >Leave out archived courses</label
+                  >
+                  <p class="setup-help-text">
+                    Courses whose name carries [archived] are skipped, which is
+                    roughly two thirds of a typical export. Search results say
+                    when this is in effect.
+                  </p>
+                </div>
+
+                <div class="setup-input-group">
+                  <label
+                    id="ally-tenant-data-url-label"
+                    for="ally-tenant-data-url"
+                    >Fetch course data from a URL</label
+                  >
+                  <div class="setup-input-row">
+                    <input
+                      type="url"
+                      id="ally-tenant-data-url"
+                      autocomplete="off"
+                      spellcheck="false"
+                      placeholder="https://your-institution.github.io/ally/ally-course-payload.json"
+                      aria-labelledby="ally-tenant-data-url-label"
+                      aria-describedby="ally-tenant-data-url-help ally-tenant-data-url-error"
+                    />
+                  </div>
+                  <p
+                    class="credential-field-error"
+                    id="ally-tenant-data-url-error"
+                    hidden
+                  ></p>
+                  <p class="setup-help-text" id="ally-tenant-data-url-help">
+                    The https address of the ally-course-payload.json file the
+                    <a href="ally-scripts/core/convert-ally-csv.html"
+                      >converter</a
+                    >
+                    produces, hosted somewhere that allows this site to read it.
+                    A GitHub repository or GitHub Pages site does; Blackboard
+                    does not, so a file uploaded there cannot be fetched. The
+                    data is fetched once and stored in this browser for the
+                    Client ID and region above, so save those first. Select the
+                    button again to refresh it.
+                  </p>
+                </div>
+                <!--
+                  The radio group NAME differs from the Set Up card's on
+                  purpose. One shared name would make the four radios a single
+                  group document-wide, so only one of the four could be checked
+                  and the two surfaces could never agree.
+                -->
+                <fieldset
+                  class="setup-proxy-picker"
+                  id="ally-tenant-data-url-format"
+                  aria-labelledby="ally-tenant-data-url-format-legend"
+                >
+                  <!--
+                    The visually-hidden suffix is NOT decoration. Both cards
+                    carry a fieldset whose visible legend reads "Format of the
+                    hosted course data", and IBM Equal Access's
+                    fieldset_label_valid reports a violation for two groups
+                    sharing a name in one context — measured on the first build
+                    of this block. The suffix makes the accessible name unique
+                    while the visible legend stays identical to Set Up's, which
+                    is what a person comparing the two surfaces expects.
+                  -->
+                  <legend id="ally-tenant-data-url-format-legend">
+                    Format of the hosted course data<span
+                      class="visually-hidden"
+                    >
+                      — Ally Reporting</span
+                    >
+                  </legend>
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="ally-tenant-data-url-format"
+                      id="ally-tenant-data-url-format-json"
+                      value="json"
+                      aria-labelledby="ally-tenant-data-url-format-json-label"
+                      checked
+                    />
+                    <label
+                      id="ally-tenant-data-url-format-json-label"
+                      for="ally-tenant-data-url-format-json"
+                      >JSON file (default)</label
+                    >
+                    <p class="setup-help-text">
+                      One ally-course-payload.json file. Data only: nothing from
+                      the host runs on this page.
+                    </p>
+                  </div>
+                  <div class="setup-proxy-option">
+                    <input
+                      type="radio"
+                      name="ally-tenant-data-url-format"
+                      id="ally-tenant-data-url-format-script"
+                      value="script"
+                      aria-labelledby="ally-tenant-data-url-format-script-label"
+                      aria-describedby="ally-tenant-data-url-format-script-warning"
+                    />
+                    <label
+                      id="ally-tenant-data-url-format-script-label"
+                      for="ally-tenant-data-url-format-script"
+                      >Scripts from a folder</label
+                    >
+                    <p
+                      class="setup-help-text"
+                      id="ally-tenant-data-url-format-script-warning"
+                    >
+                      Loads ally-lookup-data.js and ally-courses-data.js from
+                      the folder at that address. It works from any host,
+                      including Blackboard, but it runs whoever controls that
+                      address's code inside this site, beside every key this
+                      site has stored for you: your Ally API token, and any
+                      OpenRouter, MathPix or Azure keys. Choose it only for an
+                      address your own institution controls. Nothing is stored;
+                      the scripts are loaded again each time Ally Reporting
+                      opens.
+                    </p>
+                  </div>
+                </fieldset>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    id="ally-tenant-data-fetch-btn"
+                    onclick="allyTenantFetch()"
+                  >
+                    <span aria-hidden="true" data-icon="download"></span> Fetch
+                    course data from URL
+                    <span class="visually-hidden"
+                      >&nbsp;— Ally Reporting</span
+                    >
+                  </button>
+                </div>
+                <!-- Plain text, NOT a live region: the module announces every
+                     change through the shared announcer, and this line is
+                     refreshed when this disclosure opens rather than on page
+                     load, so a plain tools.html load reads no stored payload. -->
+                <p class="setup-help-text" id="ally-tenant-data-status"></p>
+                <div class="setup-button-group">
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    onclick="allyTenantRemove()"
+                  >
+                    <span aria-hidden="true" data-icon="trash"></span> Remove
+                    uploaded course data
+                    <span class="visually-hidden"
+                      >&nbsp;— Ally Reporting</span
+                    >
+                  </button>
+                </div>
+              </div>
+            </details>
           </section>
         </article>
 
@@ -19712,6 +20085,197 @@ Science,91</pre
           </section>
         </article>
 
+        <!-- Captions Fixer (Release 1, Stage 8 iteration 1 — MARKUP ONLY).
+
+             Every control here is inert until iteration 3 lands
+             captions-fixer/captions-fixer-ui.js; the pipeline modules below
+             the UI (cues, chunker, guards, adapter, store, recurring stage,
+             orchestrator) all shipped in Stages 1 to 7b and are already on the
+             page.
+
+             THE FILE PICKER is a <label for> plus a visually-hidden input, the
+             same house pattern as Transcribe above and #imgdesc-file-input
+             before it. The label is also the DROP ZONE: iteration 3 binds the
+             drag handlers to it, following setupDragAndDrop in
+             md-scripts/charts/graph-builder-core.js:717.
+
+             WHAT SPEAKS, AND WHAT DOES NOT. There are exactly four spoken
+             lines in this tool, one per event, all through notify*() from
+             js/universal-notifications.js: the file parsed, the run finished,
+             the run cancelled or failed, and the corrected file downloaded.
+             NOTHING IN THIS MARKUP IS A LIVE REGION. In particular
+             captions-fixer-progress carries no role and no aria-live: progress
+             during a run is visual only, which is the at-most-two-polite-lines
+             pin in mathpix-scripts/docs/alt-text/announcement-placement-contract.md
+             rule C1. A live region here would be a third voice for one run.
+
+             THE EMBED SINK carries aria-live="off" IN THE MARKUP, not merely
+             hidden. CaptionsFixerLLM.init binds the embed with
+             announceContainer: false, and openrouter-embed-core.js's
+             _applyContainerLiveRegion then writes exactly that attribute — its
+             own comment anticipates a host whose markup already says so. Doing
+             it here means the document's live-region count is the same before
+             init, during a run and after it, so the suite's "must not rise" row
+             reads one number rather than two. aria-live="off" is the AGENTS.md
+             silencer: the element stays in the tree and speaks nothing.
+
+             HEADINGS. h1 then h2 per section, matching Transcribe. The two
+             result sections ship hidden and are revealed by the controller
+             toggling the attribute; captions-fixer.css carries its own
+             [hidden] rule so that reveal does not depend on ally-main.css (see
+             the Transcribe register item 57 note in transcribe.css). -->
+        <article
+          id="captions-fixer-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Captions Fixer</h1>
+          <p class="tool-description">
+            Tidy up an automatic caption file. Upload the subtitles from a
+            recording and the tool suggests corrections for words the
+            transcription got wrong. You decide which to apply, and the timings
+            are never changed.
+          </p>
+
+          <div class="captions-fixer-upload-area">
+            <label
+              for="captions-fixer-file-input"
+              class="imgdesc-upload-label"
+              id="captions-fixer-drop-zone"
+            >
+              <span
+                class="imgdesc-upload-icon"
+                aria-hidden="true"
+                data-icon="fileText"
+              ></span>
+              <span class="imgdesc-upload-text"
+                >Choose a captions file or drag and drop</span
+              >
+              <span class="imgdesc-upload-formats"
+                >Supports: SRT, VTT, and plain text holding either</span
+              >
+            </label>
+            <input
+              type="file"
+              id="captions-fixer-file-input"
+              accept=".srt,.vtt,.txt"
+              class="visually-hidden"
+            />
+            <p id="captions-fixer-file-name">No file chosen</p>
+          </div>
+
+          <!-- The cost line. Written once, after a file is parsed and before
+               any send. It is an ESTIMATE and says so in its own text: the
+               provider does not report usage on this path (see the master
+               plan's fabricated-usage row), so no figure here is a
+               measurement. Not a live region — a person reads it before
+               choosing to run. -->
+          <p id="captions-fixer-cost" class="captions-fixer-cost"></p>
+
+          <div class="captions-fixer-actions">
+            <button type="button" id="captions-fixer-run" disabled>
+              <span aria-hidden="true" data-icon="aiSparkle"></span> Find
+              corrections
+            </button>
+            <button type="button" id="captions-fixer-cancel" hidden>
+              <span aria-hidden="true" data-icon="close"></span> Cancel
+            </button>
+          </div>
+
+          <!-- VISUAL ONLY. No role, no aria-live, deliberately. See the note
+               at the top of this article. -->
+          <p id="captions-fixer-progress" class="captions-fixer-progress"></p>
+
+          <section
+            id="captions-fixer-pairs-section"
+            aria-labelledby="captions-fixer-pairs-heading"
+            hidden
+          >
+            <h2 id="captions-fixer-pairs-heading">Suggested corrections</h2>
+            <p id="captions-fixer-pairs-intro">
+              Each line is a word the tool thinks was misheard, and how many
+              captions it appears in. Tick the ones you agree with.
+            </p>
+            <fieldset id="captions-fixer-pairs">
+              <legend>Corrections to apply</legend>
+              <!-- Populated by captions-fixer-ui.js: one native checkbox and
+                   label per pair. The count in each label is measured by
+                   CaptionsFixerStageRecurring.expand on that single pair, never
+                   the model's own count — the model was measured reporting
+                   one-off errors as recurring in rounds cf-1 and cf-2. -->
+            </fieldset>
+            <div class="captions-fixer-actions">
+              <button type="button" id="captions-fixer-apply">
+                <span aria-hidden="true" data-icon="check"></span> Apply ticked
+                corrections
+              </button>
+            </div>
+          </section>
+
+          <!-- NOT aria-labelledby, and the omission is deliberate. The
+               scrollable wrapper INSIDE this section is the named region — a
+               five-column data table cannot reflow to 320px without a
+               horizontal scroll container, and axe's scrollable-region-focusable
+               rule asks that such a container be reachable by keyboard, which
+               means role="region" + tabindex="0" + a name. Naming this
+               <section> as well would put two regions carrying the same name
+               one inside the other. A <section> with no accessible name is
+               generic and is not a landmark, which is what is wanted here.
+
+               The table is the two-dimensional-layout exception to SC 1.4.10:
+               the relation between Was and Now is the information, so the
+               columns cannot be linearised without losing it. -->
+          <section id="captions-fixer-changes-section" hidden>
+            <h2 id="captions-fixer-changes-heading">
+              Changes to your captions
+            </h2>
+            <div
+              class="captions-fixer-table-scroll"
+              role="region"
+              aria-labelledby="captions-fixer-changes-heading"
+              tabindex="0"
+            >
+            <table id="captions-fixer-changes" class="captions-fixer-changes">
+              <caption id="captions-fixer-changes-caption">
+                No changes yet.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Caption</th>
+                  <th scope="col">Was</th>
+                  <th scope="col">Now</th>
+                  <th scope="col">Reason</th>
+                  <th scope="col">Keep</th>
+                </tr>
+              </thead>
+              <!-- One row per changed caption. The Keep checkbox carries its
+                   own visually-hidden <label>, because a bare checkbox in a
+                   table cell has no accessible name of its own and the column
+                   header is not one. Unticking sets status "rejected" and
+                   rejectedBy "person". -->
+              <tbody id="captions-fixer-changes-body"></tbody>
+            </table>
+            </div>
+            <div class="captions-fixer-actions">
+              <button type="button" id="captions-fixer-download">
+                <span aria-hidden="true" data-icon="fileDownload"></span>
+                Download corrected captions
+              </button>
+              <button type="button" id="captions-fixer-copy">
+                <span aria-hidden="true" data-icon="clipboardCopy"></span> Copy
+                corrected captions
+              </button>
+            </div>
+          </section>
+
+          <!-- The embed's output sink. hidden AND aria-live="off" — see the
+               note at the top of this article for why both. Nothing renders
+               here that a person ever sees; CaptionsFixerLLM reads the reply
+               out of the promise, not out of this element. -->
+          <div id="captions-fixer-embed-sink" hidden aria-live="off"></div>
+        </article>
+
         <!-- Local Chat Tool (Phase 11a) -->
         <article id="local-chat-app" style="display: none" aria-hidden="true">
           <h1>Local Chat</h1>
@@ -20127,6 +20691,13 @@ Science,91</pre
          global is published before any tool script (setup-tool, local-chat/*,
          chat/*) can call announceToScreenReader/announce. -->
     <script src="accessibility-announcer.js"></script>
+    <!-- Shared LaTeX protection for markdown-it pipelines (defines
+         window.MathProtect). Plain IIFE, no dependencies; loaded immediately
+         above the markdown-it block below because it exists to guard exactly
+         that pipeline — markdown-it's core backslash-escape rule deletes the
+         \( \) and \[ \] MathJax delimiters, and markdown-it-sup (loaded two
+         lines down) rewrites `^2(n+1)^` inside an equation as <sup>. -->
+    <script src="js/math-protect.js"></script>
     <!-- Load dependencies -->
     <script src="https://matthewdeeprose.github.io/markdownit/markdown-it.min.js"></script>
 
@@ -20650,6 +21221,17 @@ Science,91</pre
     <script src="openrouter-embed/provider-mismatch-notice.js"></script>
     <script src="openrouter-embed/provider-switcher-ui.js"></script>
 
+    <!-- The transcript state module (register item 45 unit 1, 88fe8f9).
+
+         A PLAIN script publishing window.OpenRouterEmbedTranscribeState. Pure
+         state and pure functions: it writes no DOM and announces nothing.
+
+         LOADED AND NOT YET CONSUMED — nothing in this tree calls it. It is
+         tagged here, at the head of the Transcribe group, because
+         openrouter-embed-transcribe-ui.js becomes its first caller in the
+         next unit and this module must already be published by then. -->
+    <script src="openrouter-embed/openrouter-embed-transcribe-state.js"></script>
+
     <!-- Audio transcription client for the Worker's Speech route.
 
          A PLAIN script, not type="module" and not a dev-test tag: it publishes
@@ -20705,6 +21287,95 @@ Science,91</pre
          suite proves they have not drifted. -->
     <script src="captions-fixer/captions-fixer-guards.js"></script>
 
+    <!-- Captions Fixer, Stage 4: the model adapter. The ONE place this tool
+         talks to a model — a stage hands it a system prompt, a user prompt, the
+         JSON shape it expects and the cue ids it sent, and gets back a parsed
+         object carrying only ids the caller named. Publishes
+         window.CaptionsFixerLLM.
+
+         A PLAIN script, and it must stay one. It loads at parse time, well
+         before openrouter-embed-core.js — that tag is type="module" further
+         down this file and therefore runs after every classic script — so
+         window.OpenRouterEmbed does not exist yet and the module never reaches
+         for it at load. init() resolves the embed class, the queue class and
+         the model selector at CALL time, and returns false rather than throwing
+         when any is absent. Do NOT "fix" the ordering by moving this tag below
+         the embed: a plain script cannot be made to run after a module one.
+
+         It renders into a hidden sink with showNotifications: false and
+         announceContainer: false, so it raises no toast and creates no live
+         region; the sink reads ignored: true in the accessibility tree.
+         Until Stage 8 puts the sink in the tool's article, init() creates one. -->
+    <script src="captions-fixer/captions-fixer-llm.js"></script>
+
+    <!-- Captions Fixer, Stage 5: the store. One IndexedDB database keyed by the
+         SHA-256 of the uploaded caption file, so anything this tool has paid
+         for is on disk the instant it arrives and a re-upload of the same file
+         finds its record. persist() is the surgical write every stage calls —
+         a read-modify-write of the named fields only, in one transaction —
+         against save(), which replaces the record wholesale. Publishes
+         window.CaptionsFixerStore.
+
+         A PLAIN script that touches nothing at load: open() is the first thing
+         that reaches IndexedDB, and it returns false rather than throwing where
+         IndexedDB is absent, so a browser without it degrades to a tool that
+         cannot resume rather than one that cannot start. No DOM, no voice. -->
+    <script src="captions-fixer/captions-fixer-store.js"></script>
+
+    <!-- Captions Fixer, Stage 6a: the recurring stage. The one stage Release 1
+         ships, and the only one that spends. Two steps with a person between
+         them: discover() sends the whole transcript ONCE, with no cue ids and
+         no timestamps, and asks for the terms the recogniser got wrong every
+         time; expand() is pure, and turns the pairs a person approved into a
+         change set by whole-word, case-preserving replacement. Publishes
+         window.CaptionsFixerStageRecurring.
+
+         It writes the raw reply through the orchestrator's persist BEFORE it
+         reads a single pair, and again out of the parse-failure path, so a
+         reply nobody can parse is still on disk. It holds no cap: a cap is a
+         stop rather than a throw, so it belongs to the orchestrator below.
+
+         A PLAIN script that resolves window.CaptionsFixerLLM at CALL time and
+         never at load, for the load-order reason recorded on the adapter's own
+         tag above. No DOM, no voice, no live region. -->
+    <script src="captions-fixer/captions-fixer-stage-recurring.js"></script>
+
+    <!-- Captions Fixer, Stage 6b: the orchestrator. Runs the stages in order,
+         guards everything they propose, writes the accumulated change set after
+         every one of them, tallies, and stops cleanly on a spend cap, a cancel
+         or a person who has not approved yet. Publishes
+         window.CaptionsFixerOrchestrator.
+
+         A cap is a STOP and never a throw: a stage that would cross it does not
+         run, the promise resolves, and everything already persisted comes back.
+         A throw would travel past the code that writes down what the money was
+         spent on. The loop's shape — the cancel read at the top of the
+         iteration and nowhere else, continue-on-error, a counted remainder and
+         a per-stage result array — is taken from
+         mathpix-scripts/ai-alt-text/alt-text-batch-runner.js.
+
+         It never applies anything: applyChangeSet in captions-fixer-cues.js is
+         the only writer of cue text. A PLAIN script resolving every sibling
+         module at CALL time. No DOM, no voice, no live region. -->
+    <script src="captions-fixer/captions-fixer-orchestrator.js"></script>
+
+    <!-- Captions Fixer — the CONTROLLER (Stage 8 iteration 3). Every DOM write
+         and every spoken line in this tool is in this one file; the seven
+         modules above it are pure and say nothing.
+
+         It goes AFTER all of them because it addresses every one, and it is a
+         plain script, so its own module-level code runs at parse time. That is
+         safe only because it resolves every sibling and every global at CALL
+         time and captures nothing at load: openrouter-embed-core.js is a
+         type="module" tag and therefore runs after every classic script, so a
+         load-time read of window.OpenRouterEmbed would be undefined.
+
+         Nothing here runs until TOOL_CONFIG["Captions Fixer"].init() calls it
+         on the first switch to the tool. Its init returns FALSE on a missing
+         element or a missing pipeline module, so a wiring fault refuses to
+         open the tool rather than opening one whose controls are dead. -->
+    <script src="captions-fixer/captions-fixer-ui.js"></script>
+
     <!-- DEV-ONLY fixture loader for the Transcribe tool. Replays a real 657-row
          captured transcript through the shipped render path at ZERO SPEND, so
          work on register items 45 to 48 and the owed-listen row 40 sitting need
@@ -20727,10 +21398,74 @@ Science,91</pre
       data-src="js/testing/transcribe-fixture-loader.js"
     ></script>
 
-    <!-- DEV-ONLY Captions Fixer Stage 1 suite: await testCaptionsFixer() on
-         ?dev=1. Builds its synthetic SRT in memory through the real toSrt()
-         from captions-fixer/testing/fixtures/capture-2026-09-04.result.json;
-         zero spend, no storage touched. Inert data block on a normal load. -->
+    <!-- DEV-ONLY Captions Fixer test suite: await testCaptionsFixer() on
+         ?dev=1. One SECTION FILE PER STAGE, then the runner, which iterates
+         window.CaptionsFixerTestSections. The loader at the foot of this file
+         appends these with async = false, so DECLARATION ORDER IS RUN ORDER:
+         every section tag must stay ABOVE the runner tag, and a new stage adds
+         a tag here rather than lines to an existing file.
+
+         The runner builds the synthetic SRT in memory through the real toSrt()
+         from captions-fixer/testing/fixtures/capture-2026-09-04.result.json and
+         hands it to every section; zero spend, no storage touched, every model
+         send stubbed. Inert data blocks on a normal load. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-cues.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-chunker.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-guards.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-llm.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-store.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-recurring.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-orchestrator.js"
+    ></script>
+    <!-- The Stage 7 model harness, and its suite section. The harness is the
+         only thing in this programme that SPENDS: runCaptionsFixerHarness()
+         drives the recurring stage's discover() against several models over a
+         deliberately corrupted fixture and scores each against the injected
+         answer key, with a spend cap that is a stop and never a throw. Its
+         declaration here is the only gate it has — it does not exist on a
+         normal load — and the suite section below it drives the whole thing
+         with every send stubbed, so the section itself sends nothing. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-model-harness.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-harness.js"
+    ></script>
+    <!-- Stage 8's section, and it is the only one that touches the DOM, the
+         tool picker and a person's ears. It switches to the tool through
+         switchToTool (TOOL_CONFIG's init is the controller's only real caller),
+         drives the whole journey with sendRequest stubbed on the bound
+         instance, counts every notify* line, writes two store records and
+         removes both in finalise. Declared here, ABOVE the runner's tag,
+         because the gated loader appends with async = false and declaration
+         order is run order — a section declared after the runner registers too
+         late and simply contributes no rows. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-ui.js"
+    ></script>
     <script
       type="application/dev-test"
       data-src="captions-fixer/testing/captions-fixer-tests.js"
@@ -21622,7 +22357,16 @@ Science,91</pre
           ],
           processEscapes: true,
           processEnvironments: true,
-          // Minimal packages - removed ams to prevent version errors
+          // CORRECTED 7 September 2026. The old comment read "Minimal packages
+          // - removed ams to prevent version errors". It is misleading: "[+]"
+          // is the ADD-TO-DEFAULTS syntax, so this does NOT replace the package
+          // list — the tex-mml-chtml component's defaults (ams, newcommand,
+          // noundefined, autoload, configmacros) are all still loaded, and
+          // \mathbb, \mathfrak, \xrightarrow and align environments all render.
+          // Measured with a two-sided detector: undefined macros surface via
+          // the noundefined extension as red mjx-mtext with an aria-label
+          // starting "backslash ", NOT as mjx-merror — so a probe looking for
+          // merror finds nothing and reads as a clean pass either way.
           packages: { "[+]": ["base"] },
           tags: "none", // Simplified tagging
         },
@@ -23212,6 +23956,47 @@ Science,91</pre
           },
         },
 
+        "Captions Fixer": {
+          articleId: "captions-fixer-app",
+          displayName: "Captions Fixer",
+          announceText: "Switched to Captions Fixer tool",
+          // Copied from the Transcribe entry above, and for its stated reason:
+          // init RETURNS FALSE ON A GENUINE FAILURE. Two failures are possible
+          // and this file answers the first itself — if captions-fixer-ui.js
+          // did not load there is no init to call, and returning true would
+          // open a tool whose every control is dead while telling the person it
+          // opened correctly. The second, a missing element or a missing
+          // pipeline module, is the controller's own init to report.
+          //
+          // A missing MODEL is deliberately NOT a failure here. Somebody with
+          // no API key can still open the tool, load a captions file and read
+          // what it says; Run then names the reason. Refusing to open would
+          // hide the explanation from the one person who needs it.
+          init: function () {
+            if (
+              !window.CaptionsFixerUI ||
+              typeof window.CaptionsFixerUI.init !== "function"
+            ) {
+              console.error(
+                "[CaptionsFixer] captions-fixer/captions-fixer-ui.js did not load",
+              );
+              return false;
+            }
+            return window.CaptionsFixerUI.init();
+          },
+          // Cancels an in-flight run and releases anything waiting on the
+          // person, so a run promise cannot outlive the tool it belongs to.
+          // Guarded rather than assumed, as Transcribe's is.
+          cleanup: function () {
+            if (
+              window.CaptionsFixerUI &&
+              typeof window.CaptionsFixerUI.cleanup === "function"
+            ) {
+              window.CaptionsFixerUI.cleanup();
+            }
+          },
+        },
+
         "Local Chat": {
           articleId: "local-chat-app",
           displayName: "Local Chat",
@@ -23456,6 +24241,9 @@ Science,91</pre
       function showTranscribeTool(isUserInitiated = true) {
         switchToTool("Transcribe", isUserInitiated);
       }
+      function showCaptionsFixerTool(isUserInitiated = true) {
+        switchToTool("Captions Fixer", isUserInitiated);
+      }
 
       function showAllyReporting(isUserInitiated = true) {
         switchToTool("Ally Reporting", isUserInitiated);
@@ -23480,6 +24268,13 @@ Science,91</pre
       window.showAllyReporting = showAllyReporting;
       window.showLocalChat = showLocalChat;
       window.showChat = showChat;
+      // showTranscribeTool has never been exposed here and is left as it is —
+      // it reaches window through the stub-replacement described beside the
+      // picker, which a top-level function declaration performs by itself. This
+      // one is assigned explicitly all the same, because relying on that
+      // replacement is relying on a mechanism whose comment calls itself a
+      // safety net.
+      window.showCaptionsFixerTool = showCaptionsFixerTool;
 
       // Replay a tool selection made while the page was still loading. The stubs
       // near the tool fieldset queue the request; the declarations above have just
@@ -23581,6 +24376,7 @@ Science,91</pre
           "Local Chat": "Local Chat",
           Chat: "Chat",
           Transcribe: "Transcribe",
+          "Captions Fixer": "Captions Fixer",
         };
 
         // MEASURED 2 September 2026, and the omission was NOT cosmetic: with
@@ -24731,6 +25527,12 @@ Science,91</pre
          init below, in place of the bare bundled fetch that used to be there. -->
     <script src="ally-scripts/core/ally-csv-parser.js"></script>
     <script src="ally-scripts/core/ally-tenant-data.js"></script>
+    <!-- Multi-tenancy parcel 1a: the tenant and course-data CONTROLS, lifted
+         out of setup-tool/setup-tool.js so a second surface can be given the
+         same ones. It depends on ALLY_CONFIG and ALLY_TENANT_DATA, so it goes
+         after both; nothing depends on it at parse time, and setup-tool.js
+         (roughly 4,000 lines earlier) resolves it inside each call. -->
+    <script src="ally-scripts/core/ally-tenant-ui.js"></script>
     <!-- Multi-tenancy Stage 5: the ONE shared API fallback for course search,
          used by all three *-search.js modules when no course data is
          installed. After ally-api-client.js, before the search modules. -->

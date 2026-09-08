@@ -65,29 +65,23 @@ window.SetUpTool = (function () {
       allyRememberCheckbox: document.getElementById("setup-ally-remember"),
       allyStatusBadge: document.getElementById("setup-ally-status-badge"),
 
-      // Ally tenant record — export and import (multi-tenancy Stage 3)
-      allyTenantNameInput: document.getElementById("setup-ally-tenant-name"),
-      allyExportTokenCheckbox: document.getElementById(
-        "setup-ally-export-token",
-      ),
-      allyImportFileInput: document.getElementById("setup-ally-import-file"),
-
-      // Ally course data upload (multi-tenancy Stage 4)
-      allyDataFilesInput: document.getElementById("setup-ally-data-files"),
-      allyDataExcludeArchivedCheckbox: document.getElementById(
-        "setup-ally-data-exclude-archived",
-      ),
-      allyDataStatus: document.getElementById("setup-ally-data-status"),
-
-      // Ally course data from a URL (multi-tenancy Stage 6)
-      allyDataUrlInput: document.getElementById("setup-ally-data-url"),
-      allyDataUrlFormatJson: document.getElementById(
-        "setup-ally-data-url-format-json",
-      ),
-      allyDataUrlFormatScript: document.getElementById(
-        "setup-ally-data-url-format-script",
-      ),
-      allyDataFetchBtn: document.getElementById("setup-ally-data-fetch-btn"),
+      // NO TENANT OR COURSE-DATA ELEMENTS ARE CACHED HERE.
+      //
+      // The Stage 3 record controls, the Stage 4 upload controls and the
+      // Stage 6 URL controls all belong to ALLY_TENANT_UI. Multi-tenancy
+      // parcel 1a moved their behaviour there and left nine cache entries
+      // behind that nothing read; parcel 1b removed them, and moved the last
+      // field still handled here — the institution name — across as well.
+      //
+      // They are named rather than silently deleted because the shape is the
+      // trap: each was a getElementById for a SINGLE setup-ally-* element, and
+      // since 1b every one of those roles exists on TWO cards. A cached
+      // single-surface element is exactly how the Ally page's copy would
+      // silently stop being written. Go through callTenantUi instead.
+      // Removed: allyTenantNameInput, allyExportTokenCheckbox,
+      // allyImportFileInput, allyDataFilesInput,
+      // allyDataExcludeArchivedCheckbox, allyDataStatus, allyDataUrlInput,
+      // allyDataUrlFormatJson, allyDataUrlFormatScript, allyDataFetchBtn.
 
       // Foundry credential inputs (Stage 3b, Task 3.2b)
       fdyProxyUrlInput: document.getElementById("setup-fdy-proxy-url"),
@@ -508,13 +502,19 @@ window.SetUpTool = (function () {
   // same reason ALLY_WORKER_URL_KEY is — this card must keep working when
   // ally-config.js has not loaded.
   const ALLY_TENANT_ID_KEY = "ally-tenant-id";
-  const ALLY_TENANT_NAME_KEY = "ally-tenant-name";
+  // The institution name's key is deliberately NOT declared here any more.
+  // Multi-tenancy parcel 1b moved that field's read, write and clear into
+  // ALLY_TENANT_UI, which owns the key; a copy left behind would be a fourth
+  // one, and a fourth copy that nothing reads is worse than three that do.
   const ALLY_TENANT_DATA_SOURCE_KEY = "ally-tenant-data-source";
   // Stage 6: the course-data URL and its format. Same rules as the tenant
   // keys above - not credentials, cleared only by an explicit clear.
   const ALLY_TENANT_DATA_URL_KEY = "ally-tenant-data-url";
   const ALLY_TENANT_DATA_URL_FORMAT_KEY = "ally-tenant-data-url-format";
-  const ALLY_DATA_URL_FORMAT_SCRIPT = "script";
+  // Only the JSON value is still named here, as the default this card writes
+  // back on a load and an explicit clear. The "script" value went with the
+  // format radios to ally-tenant-ui.js in multi-tenancy parcel 1a; nothing
+  // left in this file reads it.
   const ALLY_DATA_URL_FORMAT_JSON = "json";
 
   /**
@@ -649,37 +649,37 @@ window.SetUpTool = (function () {
       elements.allyRememberCheckbox.checked =
         storedRemember === null ? true : storedRemember === "true";
     }
-    if (elements.allyTenantNameInput) {
-      elements.allyTenantNameInput.value =
-        localStorage.getItem(ALLY_TENANT_NAME_KEY) || "";
-    }
-    if (elements.allyExportTokenCheckbox) {
-      // Deliberately NOT remembered. Including a credential in a shared file is
-      // a decision to take once per export, not a preference to inherit from a
-      // previous one — so this resets to off on every load of the card.
-      elements.allyExportTokenCheckbox.checked = false;
-    }
-    setAllyImportError("");
-    setAllyDataError("");
+    callTenantUi("loadTenantName");
 
-    // Stage 6: the course-data URL and format, from storage. A reload
+    // Every field below goes through applyTenantFields so it reaches BOTH
+    // surfaces. Writing elements.allyDataUrlInput.value directly, as this did
+    // before multi-tenancy parcel 1b, leaves the Ally page's copy holding
+    // whatever it held before — including after a clear, which is the case
+    // that matters, since a stale address there reads as configuration.
+    //
+    // The export-token tick is deliberately NOT remembered. Including a
+    // credential in a shared file is a decision to take once per export, not a
+    // preference to inherit — so it resets to off on every load of the card.
+    //
+    // Stage 6: the course-data URL and format come from storage. A reload
     // replaces whatever was in the box, so a previous validation message no
     // longer describes what is on screen.
-    if (elements.allyDataUrlInput) {
-      elements.allyDataUrlInput.value =
-        localStorage.getItem(ALLY_TENANT_DATA_URL_KEY) || "";
-      setAllyDataUrlError("");
-    }
-    setAllyDataUrlFormatChoice(
-      localStorage.getItem(ALLY_TENANT_DATA_URL_FORMAT_KEY) ||
+    callTenantUi("applyTenantFields", {
+      exportToken: false,
+      dataUrl: localStorage.getItem(ALLY_TENANT_DATA_URL_KEY) || "",
+      dataUrlFormat:
+        localStorage.getItem(ALLY_TENANT_DATA_URL_FORMAT_KEY) ||
         ALLY_DATA_URL_FORMAT_JSON,
-    );
+    });
+    callTenantUi("setImportError", "");
+    callTenantUi("setDataError", "");
+    callTenantUi("setDataUrlError", "");
 
     // The stored-data status reads IndexedDB, so it is refreshed only when
     // the card is OPEN (the details toggle handles the first opening) - a
     // plain tools.html load must read no payload.
     const allyCard = document.getElementById("setup-ally");
-    if (allyCard && allyCard.open) refreshAllyDataStatus();
+    if (allyCard && allyCard.open) callTenantUi("refreshDataStatus");
 
     // Ally is configured with a client ID plus ONE transport: a token, or a
     // usable worker. isAllyConfigured() owns that question for both call sites.
@@ -750,14 +750,13 @@ window.SetUpTool = (function () {
     // the same terms as the worker URL above: before the Remember gate, and it
     // survives the fromRememberUncheck branch below. An EXPLICIT clear removes
     // it — see performClearAllyCredentials.
-    if (elements.allyTenantNameInput) {
-      const tenantName = elements.allyTenantNameInput.value.trim();
-      if (tenantName) {
-        localStorage.setItem(ALLY_TENANT_NAME_KEY, tenantName);
-      } else {
-        localStorage.removeItem(ALLY_TENANT_NAME_KEY);
-      }
-    }
+    //
+    // Read from SET UP'S card by name, not from document order. This is Set
+    // Up's Save button, so Set Up's box is the one that was typed in; the
+    // mirroring means the Ally page's copy already holds the same text, but
+    // saying which surface is meant is what stops a third one changing the
+    // answer (multi-tenancy parcel 1b).
+    callTenantUi("saveTenantName", setupAllySurfaceId());
 
     if (!remember) {
       // Unchecking Remember removes ALL Ally credentials, but NOT the worker
@@ -858,7 +857,11 @@ window.SetUpTool = (function () {
       // institution rather than authorising anything, so an unticked Remember
       // box leaves them alone while a button labelled Clear removes them.
       localStorage.removeItem(ALLY_TENANT_ID_KEY);
-      localStorage.removeItem(ALLY_TENANT_NAME_KEY);
+      // The institution name's removal moved into ALLY_TENANT_UI with the rest
+      // of that field, and STAYS TIED TO THE CREDENTIAL CLEAR: this is the one
+      // place that calls it. clearTenantName blanks both surfaces as well as
+      // removing the key, which the two lines it replaced could not do.
+      callTenantUi("clearTenantName");
       localStorage.removeItem(ALLY_TENANT_DATA_SOURCE_KEY);
       localStorage.removeItem(ALLY_TENANT_DATA_URL_KEY);
       localStorage.removeItem(ALLY_TENANT_DATA_URL_FORMAT_KEY);
@@ -889,24 +892,28 @@ window.SetUpTool = (function () {
       if (!fromRememberUncheck && elements.allyWorkerUrlInput) {
         elements.allyWorkerUrlInput.value = "";
       }
-      if (!fromRememberUncheck && elements.allyTenantNameInput) {
-        elements.allyTenantNameInput.value = "";
-      }
+      // The institution name is blanked by clearTenantName() above, on the
+      // same !fromRememberUncheck gate, so it is not repeated here.
+      //
+      // "" is a CLEAR and reaches both surfaces; an absent property is no
+      // opinion. That distinction is why the export-token reset is a separate
+      // call — it happens on BOTH the save and the clear path, where the
+      // course-data URL is cleared only by an explicit clear.
       if (!fromRememberUncheck) {
-        if (elements.allyDataUrlInput) elements.allyDataUrlInput.value = "";
-        setAllyDataUrlError("");
-        setAllyDataUrlFormatChoice(ALLY_DATA_URL_FORMAT_JSON);
+        callTenantUi("applyTenantFields", {
+          dataUrl: "",
+          dataUrlFormat: ALLY_DATA_URL_FORMAT_JSON,
+        });
+        callTenantUi("setDataUrlError", "");
       }
-      if (elements.allyExportTokenCheckbox) {
-        elements.allyExportTokenCheckbox.checked = false;
-      }
-      setAllyImportError("");
+      callTenantUi("applyTenantFields", { exportToken: false });
+      callTenantUi("setImportError", "");
       // The uploaded payload in IndexedDB is DATA, not a credential, and it
       // is keyed by Client ID: it stays, and is found again by the same
       // Client ID. Removing it is the Remove button's job. Only the status
       // line changes, because the identity it describes has.
-      setAllyDataError("");
-      refreshAllyDataStatus();
+      callTenantUi("setDataError", "");
+      callTenantUi("refreshDataStatus");
     }
 
     // The clear removes what the PERSON stored, which is not the same as
@@ -948,902 +955,73 @@ window.SetUpTool = (function () {
   }
 
   // ============================================================
-  // Ally tenant record — export and import (multi-tenancy Stage 3)
+  // Ally tenant and data controls — delegated to ALLY_TENANT_UI
   // ============================================================
-  // One administrator configures Ally once and colleagues import the file
-  // rather than each repeating the setup. ALLY_CONFIG owns the record's shape,
-  // its validation and its application; this section owns the controls, the
-  // download, the confirmation and the messages.
+  // The export, import, upload, URL fetch, remove, the three inline error
+  // messages and the data status line all LIVED HERE until multi-tenancy
+  // parcel 1a. They now live in ally-scripts/core/ally-tenant-ui.js so the
+  // Ally Reporting page can be given the same controls without depending on
+  // this module. Nothing about them changed in the move.
   //
-  // ALLY_CONFIG is read INSIDE each function: ally-config.js is a LATER
-  // <script> than this file (tools.html ~:23900 against ~:19970), so a
-  // module-scope capture would be permanently undefined. Same rule the rest of
-  // this card already follows.
+  // EVERYTHING CREDENTIAL STAYED: load, save, clear, the visibility toggle,
+  // the status badge, the sign-in reconciliation and emitCredentialChange.
+  // Those already mirror between the two surfaces correctly, and a helper
+  // reachable from both modules is the drift the extraction prevents. Where
+  // the moved import needs the credential half, it is PASSED IN — see
+  // afterAllyTenantImport below.
 
   /**
-   * Shows or hides the inline validation message on the import control.
-   * The message element is in the file input's aria-describedby alongside the
-   * help text, so a screen reader reads the error with the field.
-   * @param {string} message - Text to show; "" hides the message and the flag
-   */
-  function setAllyImportError(message) {
-    const input = elements && elements.allyImportFileInput;
-    const errorEl = document.getElementById("setup-ally-import-error");
-
-    if (errorEl) {
-      errorEl.textContent = message;
-      errorEl.hidden = !message;
-    }
-
-    if (!input) return;
-    if (message) {
-      input.setAttribute("aria-invalid", "true");
-    } else {
-      input.removeAttribute("aria-invalid");
-    }
-  }
-
-  /**
-   * Reports whether the tenant-record half of ALLY_CONFIG has loaded.
-   * @returns {boolean} True if the record functions are callable
-   */
-  function allyTenantApiAvailable() {
-    return (
-      typeof ALLY_CONFIG !== "undefined" &&
-      typeof ALLY_CONFIG.getTenantRecord === "function" &&
-      typeof ALLY_CONFIG.parseTenantRecord === "function" &&
-      typeof ALLY_CONFIG.applyTenantRecord === "function"
-    );
-  }
-
-  /**
-   * Turns a display name into something safe for a filename.
-   * @param {string} value - Raw text
-   * @returns {string} Lowercase hyphenated slug, or "" when nothing survives
-   */
-  function slugForFilename(value) {
-    if (!value || typeof value !== "string") return "";
-    return value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .substring(0, 50);
-  }
-
-  /**
-   * Downloads text as a file. The same idiom as ally-result-renderer.js and
-   * ally-course-report.js — there is no shared download helper to import, and
-   * setup-tool.js has no Ally dependency beyond ALLY_CONFIG.
-   * @param {string} content - File content
-   * @param {string} filename - Suggested filename
-   * @param {string} mimeType - MIME type
-   */
-  function downloadTextFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType + ";charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    logInfo("Downloaded Ally configuration: " + filename);
-  }
-
-  /**
-   * Exports the current Ally configuration as a JSON file.
+   * Calls a method on the shared tenant/data UI module.
    *
-   * The token is included ONLY when the opt-in checkbox is ticked, and the
-   * announcement says which of the two happened — a person who ticks it should
-   * hear that the file now carries a credential, and a person who did not
-   * should hear that it does not.
+   * ALLY_TENANT_UI is resolved at CALL time and never captured: its <script>
+   * sits roughly 4,000 lines LATER in tools.html than this file, so a
+   * module-scope reference — or one taken when the window.setup* globals are
+   * assigned — would be permanently undefined. Every caller here runs on a
+   * user gesture or on DOMContentLoaded, long after that script has parsed,
+   * so a call-time read always resolves. This is the same rule the rest of
+   * this card already follows for ALLY_CONFIG.
+   *
+   * @param {string} method - The ALLY_TENANT_UI method to call
+   * @returns {*} Whatever the method returns, or undefined when unavailable
    */
-  function exportAllyTenant() {
-    if (!elements) {
-      logError("Cannot export Ally configuration: elements not cached");
-      return;
+  function callTenantUi(method) {
+    const ui = window.ALLY_TENANT_UI;
+    if (!ui || typeof ui[method] !== "function") {
+      logWarn("ALLY_TENANT_UI." + method + " unavailable; skipping");
+      return undefined;
     }
-    setAllyImportError("");
-
-    if (!allyTenantApiAvailable()) {
-      logWarn("ALLY_CONFIG tenant record API unavailable; export refused");
-      announce(
-        "Ally configuration is not ready yet. Reload the page and try again.",
-      );
-      return;
-    }
-
-    const includeToken = elements.allyExportTokenCheckbox
-      ? elements.allyExportTokenCheckbox.checked
-      : false;
-    const record = ALLY_CONFIG.getTenantRecord({ includeToken: includeToken });
-
-    if (!record.clientId) {
-      announce(
-        "There is nothing to export yet. Enter a Client ID and select Save Credentials first.",
-      );
-      logWarn("Ally export refused: no client id resolved");
-      return;
-    }
-
-    const slug =
-      slugForFilename(record.displayName) ||
-      slugForFilename(record.clientId) ||
-      "tenant";
-    const filename = "ally-configuration-" + slug + ".json";
-
-    downloadTextFile(
-      ALLY_CONFIG.serialiseTenantRecord(record),
-      filename,
-      "application/json",
-    );
-
-    // ONE computed string, ONE output. announce() is this card's single channel
-    // and no toast fires for this event, so nothing else speaks it.
-    const hasToken = Object.prototype.hasOwnProperty.call(record, "token");
-    announce(
-      "Ally configuration exported as " +
-        filename +
-        ". " +
-        (hasToken
-          ? "It contains your API token, so share it only with people who may query as you."
-          : "Your API token was not included."),
-    );
+    return ui[method].apply(ui, Array.prototype.slice.call(arguments, 1));
   }
 
   /**
-   * Handles a file chosen in the import control: read, parse, then confirm.
-   * @param {Event} event - The change event from the file input
+   * The id of THIS card's tenant surface, for the module's surface-aware
+   * reads (multi-tenancy parcel 1b).
+   *
+   * Since 1b the tenant controls exist on two cards, and the module's reads
+   * are scoped to whichever raised the gesture. Set Up's five inline handlers
+   * take no event argument — their markup is deliberately untouched — so the
+   * surface has to be named here instead. Preferred from the module at call
+   * time for the same reason callTenantUi resolves it there; the literal is
+   * the fallback for a page where the module has not loaded.
+   *
+   * @returns {string} The Set Up tenant card's element id
    */
-  function importAllyTenantFile(event) {
-    const input =
-      (event && event.target) ||
-      (elements && elements.allyImportFileInput) ||
-      null;
-    const file = input && input.files && input.files[0];
-
-    // Clearing the control is what lets the SAME file be chosen again after a
-    // failed or declined import — a repeat selection of an unchanged value
-    // fires no change event.
-    function resetInput() {
-      if (input) input.value = "";
-    }
-
-    if (!file) {
-      resetInput();
-      return;
-    }
-    setAllyImportError("");
-
-    if (!allyTenantApiAvailable()) {
-      resetInput();
-      setAllyImportError(
-        "Ally configuration is not ready yet. Reload the page and try again.",
-      );
-      announce(
-        "Import failed. Ally configuration is not ready yet. Reload the page and try again.",
-      );
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onerror = function () {
-      resetInput();
-      const reason = "That file could not be read.";
-      setAllyImportError(reason);
-      announce("Ally configuration import failed. " + reason);
-      logWarn("Ally import failed: FileReader error");
-    };
-
-    reader.onload = function () {
-      const parsed = ALLY_CONFIG.parseTenantRecord(String(reader.result || ""));
-      resetInput();
-
-      if (!parsed.ok) {
-        setAllyImportError(parsed.error);
-        announce("Ally configuration import failed. " + parsed.error);
-        logWarn("Ally import refused: " + parsed.error);
-        return;
-      }
-
-      confirmAllyTenantImport(parsed.record);
-    };
-
-    reader.readAsText(file);
+  function setupAllySurfaceId() {
+    const ui = window.ALLY_TENANT_UI;
+    return (ui && ui.SETUP_SURFACE_ID) || "setup-ally";
   }
 
   /**
-   * Asks before overwriting configured credentials, then applies.
+   * The credential half of an imported tenant record, which stayed here.
    *
-   * A confirmation rather than a notification, because this replaces
-   * credentials the person has already stored — AGENTS.md § Notifications &
-   * Modals.
-   * @param {Object} record - A validated record from parseTenantRecord()
+   * Refills this card from what was actually STORED, so nothing on screen can
+   * come from the file rather than from storage, then tells the Ally tool,
+   * which reloads its own credential form. Passed to ALLY_TENANT_UI rather
+   * than reached for by it.
    */
-  function confirmAllyTenantImport(record) {
-    const who = record.displayName
-      ? record.displayName
-      : "Client ID " + record.clientId;
-    const message =
-      "Import the Ally configuration for " +
-      who +
-      "? This replaces the region, Client ID, API token and proxy worker URL " +
-      "saved in this browser.";
-
-    if (typeof window.safeConfirm === "function") {
-      window
-        .safeConfirm(message, "Import Ally Configuration")
-        .then(function (confirmed) {
-          if (confirmed) applyAllyTenantImport(record);
-        });
-    } else {
-      // Fallback if safeConfirm is not available
-      if (confirm(message)) {
-        applyAllyTenantImport(record);
-      }
-    }
-  }
-
-  /**
-   * Applies an imported record and tells everyone who needs to know.
-   *
-   * REACHED FROM INSIDE A safeConfirm .then, so the outcome is spoken through
-   * the shared notify*() path rather than announce(). window.safeConfirm
-   * resolves BEFORE its modal is gone, and a direct region write in that window
-   * lands in a region the open dialog has removed from the accessibility tree —
-   * measured, and the fault is unrepaired. notify*() is modal-aware and
-   * reroutes into the open dialogue by itself.
-   *
-   * ONE voice: a toast already announces through the shared announcer, so there
-   * is deliberately no announce() call beside it. announce() appears below only
-   * on the branch where no toast system exists to do the speaking.
-   *
-   * @param {Object} record - A validated record from parseTenantRecord()
-   */
-  function applyAllyTenantImport(record) {
-    const applied = ALLY_CONFIG.applyTenantRecord(record);
-
-    if (!applied || !applied.ok) {
-      const reason =
-        (applied && applied.error) ||
-        "That configuration could not be applied.";
-      setAllyImportError(reason);
-      speakImportOutcome("error", "Ally configuration import failed. " + reason);
-      logError("Ally import failed to apply");
-      return;
-    }
-
-    // Refill this card from what was actually STORED, so nothing on screen can
-    // come from the file rather than from storage.
+  function afterAllyTenantImport() {
     loadAllyCredentials();
-
-    // The Ally tool listens for this and reloads its own credential form.
     emitCredentialChange("ally", "saved");
-
-    const who = record.displayName
-      ? record.displayName
-      : "Client ID " + record.clientId;
-    speakImportOutcome(
-      "success",
-      "Ally configuration imported for " +
-        who +
-        ", " +
-        record.region +
-        " region. " +
-        (applied.transport === "direct"
-          ? "An API token was included and is now in use."
-          : "No API token was included, so add one or a proxy worker URL if Ally does not connect."),
-    );
-
-    logInfo(
-      "Ally configuration imported, transport: " +
-        applied.transport +
-        ", live client updated: " +
-        applied.pushedToClient,
-    );
-  }
-
-  /**
-   * Speaks an import outcome exactly once.
-   * @param {string} kind - "success" or "error"
-   * @param {string} message - The already-built sentence
-   */
-  function speakImportOutcome(kind, message) {
-    const notify =
-      kind === "error" ? window.notifyError : window.notifySuccess;
-
-    if (typeof notify === "function") {
-      // The toast announces through the shared announcer itself; adding an
-      // announce() here would speak this twice.
-      notify(message);
-      return;
-    }
-
-    // No toast system on this page: announce() is the remaining voice, and it
-    // is an ELSE rather than an addition for exactly that reason.
-    announce(message);
-  }
-
-  // ============================================================
-  // Ally course data upload (multi-tenancy Stage 4)
-  // ============================================================
-  // The three CSVs of an Ally export are parsed in the browser and the compact
-  // payload is stored in IndexedDB keyed by Client ID and region. ALLY_TENANT_DATA
-  // owns the parsing, the storage, the install and the resolution order; this
-  // section owns the controls, the messages and the status line.
-  //
-  // ALLY_TENANT_DATA is read INSIDE each function, like ALLY_CONFIG above: it is
-  // a later <script> than this file.
-
-  /** Which institution the bundled course data belongs to, for the messages. */
-  const BUNDLED_DATA_INSTITUTION = "University of Southampton";
-
-  /** The three optional files that carry an export's history (multi-tenancy Stage 7). */
-  const ALLY_TREND_FILES = "years.csv, months.csv and departments_terms.csv";
-
-  /**
-   * The history clause of the status line and the upload announcement:
-   * whether a stored record carries trends, and what to do if not.
-   * @param {boolean} hasTrends
-   * @param {boolean} fromUrl - A fetched record is regenerated, not re-uploaded
-   * @returns {string}
-   */
-  function describeAllyTrendsClause(hasTrends, fromUrl) {
-    if (hasTrends) {
-      return "with accessibility history from " + ALLY_TREND_FILES + ", so the Trends view shows your own data";
-    }
-    return (
-      "without history; " +
-      (fromUrl
-        ? "regenerate the hosted payload with " + ALLY_TREND_FILES
-        : "add " + ALLY_TREND_FILES + " to the upload") +
-      " to see Trends"
-    );
-  }
-
-  /**
-   * Shows or hides the inline validation message on the upload control.
-   * @param {string} message - Text to show; "" hides the message and the flag
-   */
-  function setAllyDataError(message) {
-    const input = elements && elements.allyDataFilesInput;
-    const errorEl = document.getElementById("setup-ally-data-error");
-
-    if (errorEl) {
-      errorEl.textContent = message;
-      errorEl.hidden = !message;
-    }
-
-    if (!input) return;
-    if (message) {
-      input.setAttribute("aria-invalid", "true");
-    } else {
-      input.removeAttribute("aria-invalid");
-    }
-  }
-
-  /**
-   * Reports whether the Stage 4 resolver has loaded.
-   * @returns {boolean}
-   */
-  function allyTenantDataApiAvailable() {
-    return (
-      typeof ALLY_TENANT_DATA !== "undefined" &&
-      typeof ALLY_TENANT_DATA.importExportFiles === "function" &&
-      typeof ALLY_TENANT_DATA.fetchRemote === "function" &&
-      typeof ALLY_TENANT_DATA.removeForCurrentTenant === "function" &&
-      typeof ALLY_TENANT_DATA.describeCurrent === "function"
-    );
-  }
-
-  /**
-   * Shows or hides the inline validation message on the course-data URL
-   * field - the worker-URL idiom, on its own field and error element.
-   * @param {string} message - Text to show; "" hides the message and the flag
-   */
-  function setAllyDataUrlError(message) {
-    const input = elements && elements.allyDataUrlInput;
-    const errorEl = document.getElementById("setup-ally-data-url-error");
-
-    if (errorEl) {
-      errorEl.textContent = message;
-      errorEl.hidden = !message;
-    }
-
-    if (!input) return;
-    if (message) {
-      input.setAttribute("aria-invalid", "true");
-    } else {
-      input.removeAttribute("aria-invalid");
-    }
-  }
-
-  /**
-   * Which payload format the radios say. JSON unless the script option is
-   * ticked - the safe direction to default in.
-   * @returns {string} "json" or "script"
-   */
-  function readAllyDataUrlFormatChoice() {
-    const script = elements && elements.allyDataUrlFormatScript;
-    return script && script.checked
-      ? ALLY_DATA_URL_FORMAT_SCRIPT
-      : ALLY_DATA_URL_FORMAT_JSON;
-  }
-
-  /**
-   * Sets the radios from a stored value. Anything but "script" selects JSON.
-   * @param {string} format
-   */
-  function setAllyDataUrlFormatChoice(format) {
-    if (!elements) return;
-    const script = format === ALLY_DATA_URL_FORMAT_SCRIPT;
-    if (elements.allyDataUrlFormatScript) {
-      elements.allyDataUrlFormatScript.checked = script;
-    }
-    if (elements.allyDataUrlFormatJson) {
-      elements.allyDataUrlFormatJson.checked = !script;
-    }
-  }
-
-  /**
-   * The origin of a URL, for messages.
-   * @param {string} url
-   * @returns {string}
-   */
-  function originOfUrl(url) {
-    try {
-      return new URL(url).origin;
-    } catch (e) {
-      return String(url);
-    }
-  }
-
-  /**
-   * Writes the status line, only when it has actually changed.
-   * @param {string} text
-   */
-  function setAllyDataStatusText(text) {
-    const el = elements && elements.allyDataStatus;
-    if (!el || el.textContent === text) return;
-    el.textContent = text;
-  }
-
-  /**
-   * Formats a stored-at timestamp for the status line.
-   * @param {string} iso
-   * @returns {string}
-   */
-  function formatStoredDate(iso) {
-    const date = new Date(iso);
-    if (isNaN(date.getTime())) return "an unknown date";
-    return date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }
-
-  /**
-   * Describes what is stored for the current Client ID and region, and which
-   * data the tool is therefore using. Read from IndexedDB, so it is called
-   * when the card opens and after every change - never on a plain page load.
-   * @returns {Promise<void>}
-   */
-  async function refreshAllyDataStatus() {
-    if (!elements || !elements.allyDataStatus) return;
-
-    if (!allyTenantDataApiAvailable()) {
-      setAllyDataStatusText("");
-      return;
-    }
-
-    try {
-      const info = await ALLY_TENANT_DATA.describeCurrent();
-      const who = info.tenantKey
-        ? "Client ID " + info.clientId + " (" + info.region + ")"
-        : "";
-
-      if (!info.tenantKey) {
-        setAllyDataStatusText(
-          "No Client ID is saved, so uploaded course data cannot be stored yet.",
-        );
-        return;
-      }
-
-      if (info.stored) {
-        const s = info.stored;
-        // A fetched record says where it came from and when it was fetched;
-        // an upload says when it was stored. Same counts, same closing line.
-        const fromUrl = s.source === "remote";
-        setAllyDataStatusText(
-          (fromUrl
-            ? "Course data fetched from " + s.sourceOrigin + " for "
-            : "Uploaded course data for ") +
-            who +
-            ": " +
-            s.courseCount.toLocaleString() +
-            " courses, " +
-            s.termCount.toLocaleString() +
-            " terms and " +
-            s.departmentCount.toLocaleString() +
-            " departments, " +
-            (fromUrl ? "fetched " : "stored ") +
-            formatStoredDate(s.storedAt) +
-            ", " +
-            describeAllyTrendsClause(!!s.trends, fromUrl) +
-            ". " +
-            (s.excludesArchived
-              ? s.archivedExcluded.toLocaleString() + " archived courses were left out. "
-              : "Archived courses were included. ") +
-            "It is used instead of the bundled " +
-            BUNDLED_DATA_INSTITUTION +
-            " data.",
-        );
-        return;
-      }
-
-      const sources =
-        typeof ALLY_CONFIG !== "undefined" && ALLY_CONFIG.DATA_SOURCES
-          ? ALLY_CONFIG.DATA_SOURCES
-          : { BUNDLED: "bundled", REMOTE: "remote" };
-
-      if (info.dataSource === sources.REMOTE) {
-        // Nothing stored, but the source is a URL: either it is fetched on
-        // the next Ally Reporting switch (JSON), loaded as scripts each time
-        // (script), or no address has been fetched yet.
-        setAllyDataStatusText(
-          "No stored course data for " +
-            who +
-            ". " +
-            (!info.dataUrl
-              ? "The data source is set to a URL, but none has been fetched yet, so there is no course data until one is."
-              : info.dataUrlFormat === ALLY_DATA_URL_FORMAT_SCRIPT
-                ? "Course data is loaded as scripts from " +
-                  info.dataUrlOrigin +
-                  " each time Ally Reporting opens."
-                : "Course data is fetched from " +
-                  info.dataUrlOrigin +
-                  " when Ally Reporting opens."),
-        );
-        return;
-      }
-
-      setAllyDataStatusText(
-        "No uploaded course data for " +
-          who +
-          ". " +
-          (info.dataSource === sources.BUNDLED
-            ? "The bundled " + BUNDLED_DATA_INSTITUTION + " course data is in use."
-            : "The data source is set to " +
-              info.dataSource +
-              ", so there is no course data until an export is uploaded."),
-      );
-    } catch (error) {
-      setAllyDataStatusText("Could not read stored course data: " + error.message);
-      logWarn("Ally data status refresh failed: " + error.message);
-    }
-  }
-
-  /**
-   * Handles files chosen in the upload control: parse, store, install.
-   *
-   * Two announcements for two events - one when the read starts, because a
-   * large export takes seconds and silence reads as nothing happening, and
-   * one for the outcome. No toast fires on this path, so announce() is the
-   * single voice.
-   *
-   * @param {Event} event - The change event from the file input
-   */
-  async function uploadAllyData(event) {
-    const input =
-      (event && event.target) ||
-      (elements && elements.allyDataFilesInput) ||
-      null;
-    const files =
-      input && input.files ? Array.prototype.slice.call(input.files) : [];
-
-    // Clearing the control is what lets the SAME files be chosen again after
-    // a refusal - a repeat selection of an unchanged value fires no change.
-    function resetInput() {
-      if (input) input.value = "";
-    }
-
-    if (!files.length) {
-      resetInput();
-      return;
-    }
-    setAllyDataError("");
-
-    if (!allyTenantDataApiAvailable()) {
-      resetInput();
-      const reason =
-        "Course data upload is not ready yet. Reload the page and try again.";
-      setAllyDataError(reason);
-      announce("Course data upload failed. " + reason);
-      return;
-    }
-
-    const excludeArchived = elements && elements.allyDataExcludeArchivedCheckbox
-      ? elements.allyDataExcludeArchivedCheckbox.checked
-      : true;
-
-    if (input) input.disabled = true;
-    announce(
-      "Reading " +
-        files.length +
-        (files.length === 1 ? " file" : " files") +
-        ". A large export takes a few seconds.",
-    );
-    setAllyDataStatusText("Reading your Ally export…");
-
-    try {
-      const result = await ALLY_TENANT_DATA.importExportFiles(files, {
-        excludeArchived: excludeArchived,
-        onProgress: function (bytesRead, totalBytes, rowCount) {
-          const percent = totalBytes
-            ? Math.min(100, Math.round((bytesRead / totalBytes) * 100))
-            : 0;
-          setAllyDataStatusText(
-            "Reading courses.csv: " +
-              percent +
-              "%, " +
-              rowCount.toLocaleString() +
-              " rows so far.",
-          );
-        },
-      });
-
-      resetInput();
-      await refreshAllyDataStatus();
-
-      // ONE computed string, ONE output. The history clause names any
-      // missing file, so a person who chose five of the six hears which.
-      announce(
-        "Course data uploaded for Client ID " +
-          result.clientId +
-          ", " +
-          result.region +
-          " region: " +
-          result.courseCount.toLocaleString() +
-          " courses, " +
-          result.termCount.toLocaleString() +
-          " terms and " +
-          result.departmentCount.toLocaleString() +
-          " departments, " +
-          (result.trends
-            ? describeAllyTrendsClause(true, false)
-            : "without history" +
-              (result.trendsMissingFiles && result.trendsMissingFiles.length &&
-               result.trendsMissingFiles.length < 3
-                ? " because " + result.trendsMissingFiles.join(" and ") + " was not chosen; add it"
-                : "; add " + ALLY_TREND_FILES + " to the upload") +
-              " to see Trends") +
-          ". " +
-          (result.excludesArchived
-            ? result.archivedExcluded.toLocaleString() +
-              " archived courses were left out."
-            : "Archived courses were included."),
-      );
-      logInfo(
-        "Ally course data uploaded for " +
-          result.tenantKey +
-          ": parse " +
-          Math.round(result.timings.parseMs) +
-          "ms, store " +
-          Math.round(result.timings.storeMs) +
-          "ms, install " +
-          Math.round(result.timings.installMs) +
-          "ms",
-      );
-    } catch (error) {
-      resetInput();
-      const reason = error && error.message ? error.message : String(error);
-      setAllyDataError(reason);
-      await refreshAllyDataStatus();
-      announce("Course data upload failed. " + reason);
-      logWarn("Ally course data upload refused: " + reason);
-    } finally {
-      if (input) input.disabled = false;
-    }
-  }
-
-  /** Set while a fetch is in flight, so a second press cannot start another. */
-  let allyDataFetchInFlight = false;
-
-  /**
-   * Fetches course data from the URL in the field: validate, fetch, store,
-   * install. Multi-tenancy Stage 6.
-   *
-   * Same voice as the upload above - two announcements for two events, the
-   * start (a fetch takes seconds and silence reads as nothing happening) and
-   * the outcome. No toast fires on this path, so announce() is the single
-   * voice. A refusal before any request is ONE event and speaks once.
-   *
-   * The button is not disabled while the fetch runs: disabling a focused
-   * button drops keyboard focus to the page. A flag refuses a second press
-   * instead, and the field is disabled as the upload control is.
-   */
-  async function fetchAllyDataFromUrl() {
-    const input = elements && elements.allyDataUrlInput;
-    setAllyDataUrlError("");
-    setAllyDataError("");
-
-    if (allyDataFetchInFlight) {
-      announce("Course data is still being fetched. Please wait.");
-      return;
-    }
-
-    if (!allyTenantDataApiAvailable()) {
-      const reason =
-        "Course data fetch is not ready yet. Reload the page and try again.";
-      setAllyDataUrlError(reason);
-      announce("Course data fetch failed. " + reason);
-      return;
-    }
-
-    const raw = input ? input.value.trim() : "";
-    if (!raw) {
-      const reason = "Enter the address of the course data first.";
-      setAllyDataUrlError(reason);
-      announce("Course data fetch failed. " + reason);
-      return;
-    }
-
-    // Validated HERE as well as in fetchRemote, so a bad paste is refused
-    // on the field before the resolver is asked for anything.
-    const normalised =
-      typeof ALLY_CONFIG !== "undefined" &&
-      typeof ALLY_CONFIG.normaliseDataUrl === "function"
-        ? ALLY_CONFIG.normaliseDataUrl(raw)
-        : raw;
-    if (!normalised) {
-      const reason = ALLY_TENANT_DATA.DATA_URL_REFUSAL;
-      setAllyDataUrlError(reason);
-      announce("Course data fetch failed. " + reason);
-      return;
-    }
-
-    const format = readAllyDataUrlFormatChoice();
-    const origin = originOfUrl(normalised);
-
-    allyDataFetchInFlight = true;
-    if (input) input.disabled = true;
-    announce("Fetching course data from " + origin + ". This takes a few seconds.");
-    setAllyDataStatusText("Fetching course data from " + origin + "…");
-
-    try {
-      const result = await ALLY_TENANT_DATA.fetchRemote({
-        url: raw,
-        format: format,
-      });
-
-      // Show what was actually STORED, not what was typed.
-      if (input) input.value = result.url;
-      await refreshAllyDataStatus();
-
-      // ONE computed string, ONE output.
-      announce(
-        "Course data " +
-          (result.stored ? "fetched from " : "loaded as scripts from ") +
-          result.origin +
-          " for Client ID " +
-          result.clientId +
-          ", " +
-          result.region +
-          " region: " +
-          result.courseCount.toLocaleString() +
-          " courses, " +
-          result.termCount.toLocaleString() +
-          " terms and " +
-          result.departmentCount.toLocaleString() +
-          " departments. " +
-          (result.excludesArchived
-            ? result.archivedExcluded.toLocaleString() +
-              " archived courses were left out."
-            : "Archived courses were included."),
-      );
-      logInfo(
-        "Ally course data fetched for " +
-          result.tenantKey +
-          " from " +
-          result.origin +
-          " (" +
-          result.format +
-          "): fetch " +
-          Math.round(result.timings.fetchMs) +
-          "ms, store " +
-          Math.round(result.timings.storeMs) +
-          "ms, install " +
-          Math.round(result.timings.installMs) +
-          "ms",
-      );
-    } catch (error) {
-      const reason = error && error.message ? error.message : String(error);
-      setAllyDataUrlError(reason);
-      await refreshAllyDataStatus();
-      announce("Course data fetch failed. " + reason);
-      logWarn("Ally course data fetch refused: " + reason);
-    } finally {
-      allyDataFetchInFlight = false;
-      if (input) input.disabled = false;
-    }
-  }
-
-  /**
-   * Asks before removing the stored payload, then removes it.
-   *
-   * A confirmation rather than a notification, because this deletes data the
-   * person took the trouble to upload - AGENTS.md § Notifications & Modals.
-   */
-  function removeAllyData() {
-    setAllyDataError("");
-
-    if (!allyTenantDataApiAvailable()) {
-      announce(
-        "Course data removal is not ready yet. Reload the page and try again.",
-      );
-      return;
-    }
-
-    const message =
-      "Remove the uploaded course data stored in this browser for the current " +
-      "Client ID? The bundled " +
-      BUNDLED_DATA_INSTITUTION +
-      " course data is used again until you upload another export.";
-
-    if (typeof window.safeConfirm === "function") {
-      window
-        .safeConfirm(message, "Remove Uploaded Course Data")
-        .then(function (confirmed) {
-          if (confirmed) performRemoveAllyData();
-        });
-    } else if (confirm(message)) {
-      performRemoveAllyData();
-    }
-  }
-
-  /**
-   * Removes the payload and says what the tool is now running on.
-   *
-   * REACHED FROM INSIDE A safeConfirm .then, so the outcome goes through the
-   * modal-aware notify path (speakImportOutcome) rather than announce() -
-   * the same reasoning as applyAllyTenantImport above.
-   */
-  async function performRemoveAllyData() {
-    try {
-      const result = await ALLY_TENANT_DATA.removeForCurrentTenant();
-      await refreshAllyDataStatus();
-      speakImportOutcome(
-        "success",
-        result.existed
-          ? "Uploaded course data removed. The bundled " +
-              BUNDLED_DATA_INSTITUTION +
-              " course data is in use."
-          : "There was no uploaded course data stored for this Client ID. The bundled " +
-              BUNDLED_DATA_INSTITUTION +
-              " course data is in use.",
-      );
-      logInfo("Ally course data removed for " + result.tenantKey);
-    } catch (error) {
-      const reason = error && error.message ? error.message : String(error);
-      setAllyDataError(reason);
-      speakImportOutcome("error", "Could not remove uploaded course data. " + reason);
-      logError("Ally course data removal failed: " + reason);
-    }
-  }
-
-  /**
-   * Refreshes the status line the first time the Ally card is opened, and on
-   * every later opening, so the IndexedDB read happens on demand only.
-   */
-  function watchAllyCardForDataStatus() {
-    const allyCard = document.getElementById("setup-ally");
-    if (!allyCard) return;
-    allyCard.addEventListener("toggle", function () {
-      if (allyCard.open) refreshAllyDataStatus();
-    });
   }
 
   function toggleAllyVisibility() {
@@ -3319,7 +2497,12 @@ window.SetUpTool = (function () {
     loadOpenRouterKey();
     loadMathPixCredentials();
     loadAllyCredentials();
-    watchAllyCardForDataStatus();
+    // Idempotent, and the module self-initialises on DOMContentLoaded too, so
+    // the Ally page is wired on a load where this card's init never runs.
+    // Since parcel 1b it wires the cross-surface mirroring as well as the
+    // card watchers, which is why the call is initialise rather than the
+    // narrower watchCardForDataStatus it replaces.
+    callTenantUi("initialise");
     loadFoundryCredentials();
     // Not awaited: init() is called synchronously from two places and must
     // stay synchronous. The card renders "Checking" at once and settles when
@@ -3482,24 +2665,53 @@ window.SetUpTool = (function () {
     toggleAllyVisibility();
   };
 
+  // The five below delegate to ALLY_TENANT_UI, whose <script> loads roughly
+  // 4,000 lines after this file. The module is resolved INSIDE each function,
+  // by callTenantUi — a reference taken here, at assignment time, would be
+  // undefined. tools.html calls all five from inline onclick/onchange
+  // attributes, so their names are load-bearing and do not change.
+  //
+  // Since multi-tenancy parcel 1b each one NAMES ITS SURFACE. tools.html calls
+  // them from inline attributes with no event argument, and the module's reads
+  // are now scoped to the card a gesture came from rather than to document
+  // order — so without the id these would read the Ally page's copies on a
+  // page where both cards exist. The markup and the five names are unchanged.
   window.setupExportAlly = function () {
-    exportAllyTenant();
+    callTenantUi("exportTenant", setupAllySurfaceId());
   };
 
   window.setupImportAlly = function (event) {
-    importAllyTenantFile(event);
+    callTenantUi("importTenantFile", event, {
+      surfaceId: setupAllySurfaceId(),
+      onApplied: afterAllyTenantImport,
+    });
   };
 
   window.setupUploadAllyData = function (event) {
-    uploadAllyData(event);
+    callTenantUi("uploadData", event, { surfaceId: setupAllySurfaceId() });
   };
 
   window.setupRemoveAllyData = function () {
-    removeAllyData();
+    callTenantUi("removeData");
   };
 
   window.setupFetchAllyData = function () {
-    fetchAllyDataFromUrl();
+    callTenantUi("fetchDataFromUrl", setupAllySurfaceId());
+  };
+
+  /**
+   * The credential half of an imported record, for the ALLY PAGE's import.
+   *
+   * Set Up's own import passes afterAllyTenantImport as a callback, which it
+   * can because both live in this file. The Ally page's handler is published
+   * by ally-tenant-ui.js and cannot reach a private function here, so the same
+   * callback is exposed as a global and read at call time. It refills this
+   * card from storage and emits credentials:changed exactly as the Set Up
+   * path does — the import must not behave differently for being started on
+   * the other surface.
+   */
+  window.setupReloadAllyCredentials = function () {
+    afterAllyTenantImport();
   };
 
   window.setupSaveFoundry = function () {

@@ -190,10 +190,23 @@ const OpenRouterEmbedTranscribeUI = (function () {
   // the user leaves the tool. Null whenever nothing is in flight.
   let inFlight = null;
 
-  // The last successful result, kept so Copy and the two Downloads have
-  // something to work from without re-sending. Cleared when a new file is
-  // chosen, because a transcript of the previous file is worse than none.
-  let lastResult = null;
+  // THE LAST SUCCESSFUL RESULT IS NOT HELD HERE ANY MORE. It lives in
+  // openrouter-embed-transcribe-state.js, and this file reads it back through
+  // currentResult() below. The superseded module-scope `let` that used to sit
+  // here was a private copy — its name is deliberately not written anywhere in
+  // this file, so a marker gate asserting the old identifier is gone cannot be
+  // satisfied by this very paragraph (AGENTS.md § Testing: a rationale comment
+  // quoting what it removed answers a zero needle in the code's place).
+  // Register item 45 turns the phrase array from render input into state
+  // that several consumers must see the CURRENT version of, and a private copy
+  // is exactly the divergence that makes a correction invisible to the surface
+  // that did not make it. Two copies of one transcript cannot be kept in step
+  // by discipline, so there is only one.
+  //
+  // NOTHING ELSE MOVED WITH IT. `lastFileName` below stays a module-scope
+  // `let`, even though the state module has a `meta.fileName` slot that would
+  // take it: moving it is churn this unit does not need, and the slot is filled
+  // by whichever unit first has a reason to read it back.
 
   // The chosen file's name, for deriving download filenames.
   let lastFileName = "";
@@ -251,6 +264,49 @@ const OpenRouterEmbedTranscribeUI = (function () {
    */
   function moduleOrNull() {
     return window.OpenRouterEmbedTranscribe || null;
+  }
+
+  /**
+   * The transcript state module, resolved at call time for the same reason
+   * moduleOrNull() resolves the client module at call time — read the file
+   * header. A module-scope capture would freeze whatever existed during
+   * parsing, and would stop a harness stubbing the module after load.
+   */
+  function stateOrNull() {
+    return window.OpenRouterEmbedTranscribeState || null;
+  }
+
+  /**
+   * Whether a transcript is held at all.
+   *
+   * THIS IS NOT `currentResult() !== null`, deliberately. `snapshot()` builds a
+   * result-shaped view over every phrase, so asking it a yes/no question means
+   * paying for 657 rows to test the answer for null. Both checkbox handlers ask
+   * exactly that question on a keystroke, so they ask it here instead.
+   *
+   * @returns {boolean}
+   */
+  function haveTranscript() {
+    const state = stateOrNull();
+    return Boolean(state && state.isLoaded());
+  }
+
+  /**
+   * The current transcript, in the shape the renderer and both formatters
+   * already take — `{ text, phrases, durationMs, raw, backend }`. Null when
+   * nothing is held, which is the question every export call site used to ask
+   * of the private copy.
+   *
+   * READ IT AT THE POINT OF USE, never once into a variable that outlives the
+   * handler: a snapshot is a view of the state at the moment it was taken, and
+   * holding one is how a private copy grows back.
+   *
+   * @returns {object|null}
+   */
+  function currentResult() {
+    const state = stateOrNull();
+    if (!state || !state.isLoaded()) return null;
+    return state.snapshot();
   }
 
   /**
@@ -713,9 +769,9 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * Re-render the rows from the result already in hand when the checkbox moves.
    *
    * IT DOES NOT RE-TRANSCRIBE and touches no state beyond the display mode:
-   * `lastResult` is untouched, so Copy and both Downloads keep handing back
-   * exactly what they handed back before — the checkbox governs the SCREEN and
-   * nothing else.
+   * the held transcript is untouched, so Copy and both Downloads keep handing
+   * back exactly what they handed back before — the checkbox governs the SCREEN
+   * and nothing else.
    *
    * NO TOAST AND NO ANNOUNCEMENT, per register item 43 and AGENTS.md
    * § Announcements question 1. The checkbox conveys its own state and the
@@ -727,8 +783,10 @@ const OpenRouterEmbedTranscribeUI = (function () {
     const box = el("transcribe-show-every-speaker");
     showSpeakerOnEveryLine = box ? box.checked : true;
     logDebug(`speaker-label display mode: every line = ${showSpeakerOnEveryLine}`);
-    if (!lastResult) return;
-    renderTranscript(lastResult);
+    // haveTranscript(), not currentResult(): see its doc comment for why the
+    // yes/no question is not asked by building a snapshot and testing it.
+    if (!haveTranscript()) return;
+    renderTranscript(currentResult());
   }
 
   /**
@@ -737,9 +795,9 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * reasons, and register item 54 is where they are recorded.
    *
    * IT DOES NOT RE-TRANSCRIBE and touches no state beyond the display mode:
-   * `lastResult` is untouched, so Copy and both Downloads keep handing back
-   * exactly what they handed back before — the checkbox governs the SCREEN and
-   * nothing else. `toPlainText` happens to take a `timestamps` option of its
+   * the held transcript is untouched, so Copy and both Downloads keep handing
+   * back exactly what they handed back before — the checkbox governs the SCREEN
+   * and nothing else. `toPlainText` happens to take a `timestamps` option of its
    * own; nothing here passes it, and that is item 54's standing constraint,
    * not an oversight.
    *
@@ -756,8 +814,9 @@ const OpenRouterEmbedTranscribeUI = (function () {
     const box = el("transcribe-show-timestamps");
     showTimestamps = box ? box.checked : true;
     logDebug(`timestamps display: shown = ${showTimestamps}`);
-    if (!lastResult) return;
-    renderTranscript(lastResult);
+    // haveTranscript(), not currentResult(): see its doc comment.
+    if (!haveTranscript()) return;
+    renderTranscript(currentResult());
   }
 
   /**
@@ -802,8 +861,12 @@ const OpenRouterEmbedTranscribeUI = (function () {
 
     // Any previous transcript belongs to a different file. Keeping it beside a
     // newly chosen one would let Copy and Download hand back the wrong audio's
-    // words with nothing on screen to say so.
-    lastResult = null;
+    // words with nothing on screen to say so. The transcript now lives in the
+    // state module, so discarding it is that module's reset rather than a local
+    // assignment — and a missing module is not a reason to skip it, because
+    // there is then nothing held to discard.
+    const stateForReset = stateOrNull();
+    if (stateForReset) stateForReset.reset();
     lastFileName = "";
     setResultActionsEnabled(false);
     // Empty the LIST rather than writing an empty string into the host: there
@@ -890,7 +953,33 @@ const OpenRouterEmbedTranscribeUI = (function () {
         signal: inFlight.signal,
       });
 
-      lastResult = result;
+      // HAND THE RESULT TO THE STATE MODULE AND RENDER FROM WHAT IT HOLDS, not
+      // from the result in hand. Rendering the result directly would put the
+      // first paint on a different source from every later one, so a defect in
+      // the state module's copy would not surface until somebody moved a
+      // checkbox — which is a delay, not a saving.
+      //
+      // A REFUSED LOAD MUST NOT BECOME A REPORTED FAILURE. `load` throws
+      // BAD_RESULT on a shape without a phrases array; `normaliseSpeechResponse`
+      // cannot produce one, but `transcribe` is stubbable and the fixture
+      // loader stubs it. Letting that throw run would send a rendered
+      // transcript down the catch below and speak a failure sentence for a run
+      // that succeeded, so it is caught here and the screen keeps HEAD's
+      // behaviour. Copy and the Downloads then have nothing to work from, which
+      // the logged line names.
+      const state = stateOrNull();
+      if (state) {
+        try {
+          state.load(result);
+        } catch (loadError) {
+          logError("the transcript could not be held as state:", loadError);
+        }
+      } else {
+        logError(
+          "window.OpenRouterEmbedTranscribeState is missing — the transcript cannot be held",
+        );
+      }
+      const held = currentResult() || result;
 
       // DOM nodes and text nodes, never innerHTML — the same reason the
       // superseded textContent write had, arriving at a renderer instead. A
@@ -898,15 +987,15 @@ const OpenRouterEmbedTranscribeUI = (function () {
       // would let a spoken phrase that happens to contain angle brackets become
       // elements on the page. renderTranscript builds every string with
       // createTextNode or textContent, so there is no parse step to escape for.
-      renderTranscript(result);
+      renderTranscript(held);
       setDisplayOptionsVisible({
         hasTranscript: true,
-        labelsAreInformative: api.distinctSpeakerCount(result) > 1,
+        labelsAreInformative: api.distinctSpeakerCount(held) > 1,
       });
       setResultActionsEnabled(true);
 
-      const phrases = result.phrases ? result.phrases.length : 0;
-      const speakers = speakerCount(result);
+      const phrases = held.phrases ? held.phrases.length : 0;
+      const speakers = speakerCount(held);
       if (window.notifySuccess) {
         window.notifySuccess(
           `Transcript ready, ${pluralise(phrases, "phrase")}, ${pluralise(
@@ -942,10 +1031,11 @@ const OpenRouterEmbedTranscribeUI = (function () {
 
   async function handleCopy() {
     const api = moduleOrNull();
-    if (!lastResult || !api) return;
+    const transcript = currentResult();
+    if (!transcript || !api) return;
 
     try {
-      await navigator.clipboard.writeText(api.toPlainText(lastResult));
+      await navigator.clipboard.writeText(api.toPlainText(transcript));
       if (window.notifySuccess) window.notifySuccess(COPIED_SENTENCE);
       logInfo("transcript copied to clipboard");
     } catch (error) {
@@ -957,9 +1047,10 @@ const OpenRouterEmbedTranscribeUI = (function () {
 
   function handleDownloadTxt() {
     const api = moduleOrNull();
-    if (!lastResult || !api) return;
+    const transcript = currentResult();
+    if (!transcript || !api) return;
     downloadText(
-      api.toPlainText(lastResult),
+      api.toPlainText(transcript),
       downloadName(".txt"),
       "text/plain;charset=utf-8",
     );
@@ -967,9 +1058,10 @@ const OpenRouterEmbedTranscribeUI = (function () {
 
   function handleDownloadSrt() {
     const api = moduleOrNull();
-    if (!lastResult || !api) return;
+    const transcript = currentResult();
+    if (!transcript || !api) return;
     downloadText(
-      api.toSrt(lastResult),
+      api.toSrt(transcript),
       downloadName(".srt"),
       "application/x-subrip;charset=utf-8",
     );
@@ -998,6 +1090,18 @@ const OpenRouterEmbedTranscribeUI = (function () {
     if (!moduleOrNull()) {
       logError(
         "window.OpenRouterEmbedTranscribe is missing — openrouter-embed-transcribe.js must load before this file",
+      );
+      return false;
+    }
+
+    // The same treatment as the client module above, and for the same reason:
+    // without it the tool cannot hold a transcript at all, so Copy, both
+    // Downloads and every re-render have nothing to read. That is a GENUINE
+    // failure in the sense the doc comment above draws — unlike the structural
+    // ids below, which cost nobody anything they were trying to do.
+    if (!stateOrNull()) {
+      logError(
+        "window.OpenRouterEmbedTranscribeState is missing — openrouter-embed-transcribe-state.js must load before this file",
       );
       return false;
     }

@@ -1105,7 +1105,8 @@
      * Subscribe to provider and credential change events.
      * Re-populates both model selectors when the active provider changes or
      * when credentials are saved/cleared (new vision deployments may have
-     * become available).
+     * become available), and re-applies the Foundry proxy host to the live
+     * embed on a credential change that can have moved it.
      *
      * Both handlers guard on `this._initialized` so that any event arriving
      * before the controller finishes initialising is dropped — selectors
@@ -1141,6 +1142,23 @@
           return;
         }
         const service = event?.detail?.service;
+
+        // The Foundry proxy host FIRST, and deliberately ahead of the selector
+        // filter below — the two jobs are independent and neither subsumes the
+        // other. A host change must reach the live embed even on an event the
+        // selector filter would drop, and the filter's own membership test is
+        // left exactly as it was.
+        //
+        // An event carrying no detail is treated as possibly-Foundry and
+        // refreshes anyway: a redundant re-apply writes the same URL and costs
+        // nothing, where a missed one is the defect this exists to fix. Every
+        // writer of `foundryProxyUrl` in setup-tool.js — the proxy picker, the
+        // Foundry save and the Foundry clear — emits service "foundry", so the
+        // named case covers all three (read 7 September 2026).
+        if (!service || service === "foundry") {
+          this.refreshFoundryProxyConfig();
+        }
+
         // Only re-populate when openrouter or foundry (azure-openai)
         // credentials change. MathPix / Ally don't affect our selectors.
         if (service !== "openrouter" && service !== "azure-openai" && service !== "foundry") {

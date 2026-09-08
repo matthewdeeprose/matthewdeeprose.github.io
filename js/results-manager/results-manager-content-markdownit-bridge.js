@@ -76,6 +76,25 @@ const PROCESSING_CONFIG = {
   TIMEOUT_DURATION: 15000, // milliseconds - processing timeout
 };
 
+// Style for the off-screen container this bridge typesets in.
+//
+// It MUST have a layout box. MathJax's CHTML output measures font metrics, and
+// inside a `display: none` container those measurements come back zero — the
+// maths then renders about 8% undersized relative to its surrounding text
+// (measured: 124.4% against 135.8% for identical TeX on the same page). The
+// container is parented to document.body, so it is laid out regardless of which
+// tool mode is on screen; that matters because #chat-messages itself sits in a
+// display:none subtree whenever Chat is not the active mode, which is exactly
+// the state during session restore.
+//
+// The rest of the declaration keeps it inert: `visibility: hidden` keeps it out
+// of the accessibility tree and unfocusable, `height: 0; overflow: hidden` keeps
+// any IntersectionObserver ratio at 0, and `position: fixed` keeps it out of
+// flow. Measured with a 30-expression payload: zero change to document
+// scrollHeight or scrollWidth.
+const TEMP_CONTAINER_STYLE =
+  "position:fixed;visibility:hidden;pointer-events:none;left:0;top:0;width:800px;height:0;overflow:hidden;";
+
 export class MarkdownItBridge extends ContentProcessorBase {
   /**
    * Create a new MarkdownItBridge instance
@@ -380,9 +399,12 @@ export class MarkdownItBridge extends ContentProcessorBase {
       `📊 Stage 2: Processing content with MarkdownEditor pipeline (ID: ${processingId})`
     );
 
-    // Create a temporary container to capture the output
+    // Create a temporary container to capture the output. See
+    // TEMP_CONTAINER_STYLE — it is hidden but LAID OUT, because MathJax cannot
+    // measure font metrics inside a display:none subtree.
     const tempContainer = document.createElement("div");
-    tempContainer.style.display = "none";
+    tempContainer.style.cssText = TEMP_CONTAINER_STYLE;
+    tempContainer.setAttribute("aria-hidden", "true");
     tempContainer.setAttribute("data-processing-id", processingId);
     document.body.appendChild(tempContainer);
 
@@ -449,8 +471,33 @@ export class MarkdownItBridge extends ContentProcessorBase {
 
         logDebug(`🔧 Rendering markdown content (ID: ${processingId})`);
 
-        // Process the content
-        let htmlResult = md.render(content);
+        // Stash LaTeX behind placeholders BEFORE markdown-it runs, and put it
+        // back afterwards. Without this, markdown-it's core backslash-escape
+        // rule strips the \( \) and \[ \] delimiters and markdown-it-sup (see
+        // addMarkdownItPlugins) rewrites `^2(n+1)^` inside an equation as
+        // <sup>, so the MathJax pass below finds nothing to typeset.
+        //
+        // Guarded rather than assumed: a missing script tag degrades to the old
+        // unprotected render instead of throwing.
+        const mathProtect = window.MathProtect;
+        const canProtect =
+          mathProtect && typeof mathProtect.protect === "function";
+        if (!canProtect) {
+          logWarn(
+            `window.MathProtect unavailable — rendering without maths protection, LaTeX will be corrupted (ID: ${processingId})`
+          );
+        }
+
+        const math = canProtect ? mathProtect.protect(content) : null;
+        let htmlResult = md.render(math ? math.text : content);
+        if (math) {
+          // Restore BEFORE enhanceHeaderAnchors, which rewrites heading markup
+          // and must not have to reason about placeholder comments inside one.
+          htmlResult = math.restore(htmlResult);
+          logDebug(
+            `🔧 Restored ${math.count} protected maths span(s) (ID: ${processingId})`
+          );
+        }
 
         logDebug(`🔧 Enhancing header anchors (ID: ${processingId})`);
 
@@ -768,10 +815,25 @@ export class MarkdownItBridge extends ContentProcessorBase {
 
   /**
    * Create markdown-it instance with the same configuration as MarkdownEditor
-   * @returns {Object} Configured markdown-it instance
+   *
+   * SCOPE, corrected 7 September 2026: this replicates MarkdownEditor's
+   * markdown-it OPTIONS AND PLUGIN LIST, and nothing else. It does NOT
+   * replicate `protectMathBlocks`/`restoreMathBlocks`, which MarkdownEditor
+   * applies AROUND its own `md.render` call — that guard lives at the render
+   * site in processWithMarkdownEditor(), via window.MathProtect.
+   *
+   * The distinction is not pedantry. The comment below used to read simply
+   * "this replicates MarkdownEditor's initializeMarkdownIt() function", and
+   * because the plugin list was faithfully copied — markdown-it-sup included —
+   * the missing maths guard read as covered by that sentence for as long as it
+   * stood. Every `\(...\)` equation reaching Chat or the OpenRouter AI panel
+   * was silently destroyed in the meantime.
+   *
+   * @returns {Object} Configured markdown-it instance (options + plugins only)
    */
   createMarkdownItInstance() {
-    // This replicates MarkdownEditor's initializeMarkdownIt() function
+    // Replicates MarkdownEditor's initializeMarkdownIt() OPTIONS AND PLUGINS.
+    // Maths protection is NOT here — see processWithMarkdownEditor().
     const md = window.markdownit({
       html: true,
       breaks: true,

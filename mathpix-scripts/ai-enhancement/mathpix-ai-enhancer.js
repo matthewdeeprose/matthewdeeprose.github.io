@@ -113,8 +113,40 @@
     /**
      * Maximum output tokens for API response
      * Referenced by initialiseEmbed() — was previously undefined
+     *
+     * RAISED 8,192 → 32,768 on 7 September 2026 (parcel AW-18), on the AW-17
+     * measurement and not on preference. AW-17 drove the same fixture through
+     * `anthropic/claude-sonnet-5` at both ceilings: at 8,192 it returned
+     * `finish_reason: "length"` with 8,192 completion tokens of which ALL 8,192
+     * were reasoning, ZERO characters of content, three times, at $0.136 each;
+     * at 32,768 it returned `stop` / `end_turn` having spent 13,082 reasoning
+     * tokens — 60% more than the entire old ceiling — before writing its first
+     * character, and produced a complete 5,493-character applied document for
+     * $0.221. The three failures were structural, not bad luck.
+     *
+     * Capping the reasoning instead is NOT AVAILABLE from this code. AW-17
+     * proved at the wire that no reasoning option the enhancer can set survives
+     * to the request body, in any state: `js/openrouter-client/
+     * openrouter-client-validator.js` `validateRequestParametersSync` rebuilds
+     * the body from its own allow-list, which has no `reasoning` branch.
+     *
+     * ONE CONSTANT FOR EVERY MODEL — Matthew's decision, 7 September 2026, in
+     * preference to a per-model map. It plays two roles in `initialiseEmbed`'s
+     * `Math.min(Math.max(scaled, FLOOR), modelMaxOutput)`: the FLOOR, and — via
+     * `getModelMaxOutput`'s third source — the model CAP for any model the
+     * prompts JSON and the registry are both silent about. Both move together.
+     *
+     * THE SAFETY NET IS AW-16, NOT THIS NUMBER. A raised ceiling makes a cut
+     * reply less likely; it cannot make one impossible. `isIncompleteReply`
+     * (~:346) still refuses to apply any reply below 0.94 of the original's
+     * character length, so an overrun at 32,768 is refused and announced rather
+     * than silently applied.
+     *
+     * WHAT THIS DOES NOT REACH. The six models named in `mathpix-ai-prompts.json`
+     * each carry their own `maxTokens: 8192`, which is source 1 of
+     * `getModelMaxOutput`'s ladder and therefore still caps them at 8,192.
      */
-    MAX_OUTPUT_TOKENS: 8192,
+    MAX_OUTPUT_TOKENS: 32768,
 
     /**
      * Maximum PDF size for AI enhancement (bytes)
@@ -3692,7 +3724,8 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * Checks three sources in order:
      * 1. Recommended models from prompts.json (this.models)
      * 2. Registry models from OpenRouter API (window.modelRegistry)
-     * 3. Falls back to AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS (8192)
+     * 3. Falls back to AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS (32,768 since
+     *    parcel AW-18, 7 September 2026 — see the constant's own note)
      *
      * @param {string} modelId - The model ID to look up
      * @returns {number} Maximum output tokens for the model

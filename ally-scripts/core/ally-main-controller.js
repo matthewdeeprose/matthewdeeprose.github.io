@@ -517,6 +517,47 @@ const ALLY_MAIN_CONTROLLER = (function () {
       // to the base form so /issues and /query can both be derived from it.
       persistWorkerUrl(formValues.workerUrl);
 
+      // The institution name (multi-tenancy parcel 1c).
+      //
+      // Until this existed the Ally page's name field MIRRORED but could not
+      // PERSIST: a colleague typed the name there, pressed Save credentials,
+      // was told the credentials were saved, and the name was silently not
+      // among them — so getTenantRecord, which reads displayName from storage,
+      // exported a configuration missing a name that was visibly on screen. A
+      // control that mirrors, looks live, and is discarded on Save is worse
+      // than one that is not there.
+      //
+      // PLACED BEFORE THE REMEMBER GATE, exactly as persistWorkerUrl above
+      // is, because it governs BOTH branches and for the same reason: the name
+      // is tenant IDENTITY rather than a credential, so it follows the worker
+      // URL's rules — written outside the Remember gate, and removed only by
+      // an EXPLICIT clear (performClearCredentials, which is not this
+      // function). That is precisely what Set Up's Save already does, and
+      // matching it is what stops one stored value meaning two things.
+      //
+      // ROUTED THROUGH THE TENANT MODULE, which owns the field, its storage
+      // key and its mirroring. ALLY_UI_MANAGER.getFormValues() knows nothing
+      // about it and is deliberately not extended. saveTenantName reads via
+      // readTenantField("tenantName", origin) scoped to the ALLY page's own
+      // card, so what is stored is what was typed on THIS surface, and it
+      // writes a non-empty name and removes an emptied one — Set Up's
+      // semantics, not new ones.
+      //
+      // RESOLVED AT CALL TIME AND OPTIONAL: with the module absent this does
+      // nothing at all and credentials store exactly as they did before.
+      // The presence test is not decoration — with no name field anywhere in
+      // the document the module's read answers "" and saveTenantName would
+      // REMOVE a stored name nobody had touched.
+      const tenantUi = window.ALLY_TENANT_UI;
+      if (
+        tenantUi &&
+        typeof tenantUi.saveTenantName === "function" &&
+        typeof tenantUi.getElements === "function" &&
+        tenantUi.getElements("tenantNameInput").length > 0
+      ) {
+        tenantUi.saveTenantName(tenantUi.ALLY_SURFACE_ID);
+      }
+
       if (formValues.saveCredentials) {
         localStorage.setItem(ALLY_CONFIG.STORAGE_KEYS.TOKEN, formValues.token);
         localStorage.setItem(

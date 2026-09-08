@@ -144,8 +144,20 @@
   // exactly (image-describer-controller-generate.js). The proxy URL is sourced
   // from the shared `foundryProxyUrl` localStorage credential; this is the same
   // hardcoded fallback the app uses when that credential is absent.
+  //
+  // It is REDUNDANT for routing and LOAD-BEARING for construction, and the two
+  // must not be confused. Both adapters carry the identical URL as their own
+  // DEFAULT_PROXY_URL (azure-openai-v1.js, azure-openai-responses.js), so a
+  // request that reached them with no configured host would resolve here
+  // anyway. But configureProvider REFUSES an empty proxyUrl, and Set Up stores
+  // the Cloudflare choice by REMOVING the key rather than writing a value — so
+  // this constant is what keeps that choice configurable at all.
   const FOUNDRY_PROXY_FALLBACK =
     "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+
+  // The two Foundry surfaces this tool configures. Named once, so the build and
+  // the live re-apply below cannot drift into configuring different sets.
+  const FOUNDRY_SURFACE_IDS = ["azure-openai", "azure-responses"];
 
   // Conservative context limit used ONLY when a model id is not found in the
   // picker's list (getContextLimit's error path). This should not occur for a
@@ -498,6 +510,10 @@
    * (via the selector's `embed` argument); it is never used to send in 2b-i.
    * Mirrors the Image Describer's canonical Foundry configuration: BOTH surfaces
    * configured from the shared `foundryProxyUrl` credential.
+   *
+   * The credential is read ONCE here, because the guard below makes this
+   * function idempotent. Keeping the live handle's copy current after a change
+   * in Set Up is refreshFoundryProxyConfig's job, not this one's.
    * @returns {Object|null} the OpenRouterEmbed instance, or null if unavailable
    */
   function buildEngineHandle() {
@@ -529,10 +545,10 @@
         showStreamingProgress: false,
         // Canonical Foundry wiring: configure both surfaces from the shared
         // credential. The library ignores these for OpenRouter-routed models.
-        providers: {
-          "azure-openai": { proxyUrl: proxyUrl },
-          "azure-responses": { proxyUrl: proxyUrl },
-        },
+        providers: FOUNDRY_SURFACE_IDS.reduce(function (map, id) {
+          map[id] = { proxyUrl: proxyUrl };
+          return map;
+        }, {}),
       });
       S.embed = embed;
       Chat._embed = embed;
@@ -1511,20 +1527,104 @@
   }
 
   /**
+   * Re-read the shared `foundryProxyUrl` credential and re-apply it to BOTH
+   * Foundry surfaces on the LIVE engine handle, so a host chosen in Set Up
+   * takes effect on the next send without a page reload.
+   *
+   * WHY IT IS NEEDED. buildEngineHandle reads that credential once and passes
+   * it as the constructor's `providers` block. The embed stores that and
+   * injects it as options.providerConfig on every dispatch — which is
+   * precedence tier 1 in both adapters' readProviderConfig, and it WINS over
+   * their fresh per-request localStorage read at tier 3. Measured 7 September
+   * 2026 on a live page: after the picker wrote the Azure host, the same embed
+   * object still reported the Cloudflare URL, so every send kept reaching the
+   * old host until the page was reloaded.
+   *
+   * WHY NOT SIMPLY STOP PASSING THE BLOCK. Dropping it would let the adapters'
+   * fresh read take effect, and would also take isProviderConfigured
+   * ("azure-openai") to false — which is the gate
+   * EmbedModelSelector.getEligibleModels applies before returning ANY model for
+   * a provider. Measured the same day: 35 azure-openai and 8 azure-responses
+   * models offered with the block against 0 of each without it, from an
+   * unchanged 204 OpenRouter. That is a worse defect than the one being fixed,
+   * and it would present as Foundry missing from the menu. Re-applying keeps
+   * the gate satisfied AND the host current.
+   *
+   * SAFE ON A LIVE HANDLE, established by reading rather than assumed.
+   * configureProvider validates and writes the instance's own config map and
+   * does nothing else, and buildOptions COPIES that value into a request's
+   * options when the request is built — so an in-flight request holds its own
+   * copy and cannot be reached from here. The cached picker list is untouched
+   * too, because this re-writes a config and never removes one, so the gating
+   * answer does not move.
+   *
+   * The user token is deliberately not passed, exactly as at build time. Both
+   * adapters resolve it themselves — providerConfig, then the Entra cached
+   * token, then localStorage — and passing nothing leaves that path alone.
+   */
+  function refreshFoundryProxyConfig() {
+    if (!embed || typeof embed.configureProvider !== "function") return;
+
+    const proxyUrl =
+      localStorage.getItem("foundryProxyUrl") || FOUNDRY_PROXY_FALLBACK;
+
+    try {
+      FOUNDRY_SURFACE_IDS.forEach(function (id) {
+        embed.configureProvider(id, { proxyUrl: proxyUrl });
+      });
+      logInfo("Foundry proxy host re-read and re-applied to both surfaces");
+    } catch (err) {
+      // Leaving the previous configuration standing is the safer failure. A
+      // stale host still reaches a working proxy, whereas a surface left
+      // unconfigured would empty the Foundry group from the picker.
+      logError("could not re-apply the Foundry proxy host:", err);
+    }
+  }
+
+  /**
+   * Handle a credential change. Two independent jobs, in this order:
+   *   1. Re-apply the Foundry proxy host to the live handle, so a change made
+   *      in Set Up reaches the next send (refreshFoundryProxyConfig).
+   *   2. Re-resolve the opening model, exactly as before.
+   *
+   * The two are unrelated and neither subsumes the other: maybeReResolveOpening
+   * re-runs the opening-model policy over the CACHED list and self-guards on a
+   * user pick and on a live thread, so on its own it can decline to do anything
+   * at all — which must not decide whether the host is refreshed.
+   *
+   * Skips the Foundry half for a change that names another service, so saving
+   * an OpenRouter key does not rewrite Foundry's config for no reason. An event
+   * carrying no detail is treated as possibly-Foundry and refreshes anyway: a
+   * redundant re-apply writes the same URL and costs nothing, where a missed
+   * one is the defect this exists to fix.
+   *
+   * @param {Event} event the credentials:changed event; detail is
+   *                      { service, action } (setup-tool.js emitCredentialChange).
+   */
+  function handleCredentialsChange(event) {
+    const service = event && event.detail && event.detail.service;
+    if (!service || service === "foundry") refreshFoundryProxyConfig();
+    maybeReResolveOpening();
+  }
+
+  /**
    * Wire the live re-resolve triggers exactly once. Both fire on `window`:
    * provider changes dispatch "provider:changed" (provider-credential KB §2.4),
    * and credential saves/clears dispatch "credentials:changed" on window too
-   * (setup-tool.js's emitCredentialChange bridges EmbedEventEmitter onto window —
-   * the canonical consumer channel). maybeReResolveOpening self-guards on the
-   * user-pick state, so a model the user actively chose is never overridden.
+   * (setup-tool.js's emitCredentialChange dispatches on window UNCONDITIONALLY —
+   * that dispatch sits outside the EmbedEventEmitter guard, so the window
+   * channel is reached whether or not the emitter is present).
+   * maybeReResolveOpening self-guards on the user-pick state, so a model the
+   * user actively chose is never overridden.
    */
   function wireProviderEvents() {
     if (eventsWired) return;
     window.addEventListener("provider:changed", handleProviderChange);
     // Credentials do not change the SCOPE — which groups are offered follows the
-    // active provider alone — so this one still only re-resolves the opening
-    // model, exactly as before.
-    window.addEventListener("credentials:changed", maybeReResolveOpening);
+    // active provider alone — so the re-resolve half still only re-resolves the
+    // opening model. The handler adds one job beside it: re-applying the Foundry
+    // host, which a credential change genuinely can move.
+    window.addEventListener("credentials:changed", handleCredentialsChange);
     eventsWired = true;
   }
 

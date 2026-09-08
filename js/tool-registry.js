@@ -92,6 +92,16 @@ window.ToolRegistry = (function () {
     // which heard it as "9 of 9". Same position, no longer by accident.
     { value: "Transcribe", status: "alpha", hidden: false },
 
+    // Placed immediately after Transcribe deliberately: the two are a pair,
+    // Transcribe produces the subtitle file this tool corrects, and Release 2
+    // adds a hand-off from one to the other. TRANSCRIBE KEEPS ITS NINTH
+    // POSITION, which is what the note above asks for — but the group is now
+    // ten, so a screen reader says "9 of 10" where the sitting of 2 September
+    // 2026 heard "9 of 9". The position is preserved; the group size cannot be
+    // while a tool is added, and pretending otherwise would mean never adding
+    // one.
+    { value: "Captions Fixer", status: "alpha", hidden: false },
+
     { value: "OpenRouter", status: null, hidden: true },
   ];
 

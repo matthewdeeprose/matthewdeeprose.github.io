@@ -523,8 +523,8 @@
           <p>
             Your files come from Ally's Institutional Report: open Export and
             download the report. Ally gives you one ZIP archive holding seven
-            CSV files. Upload that archive below and this page takes the six
-            files it reads straight out of it —
+            CSV files. Upload that archive in the Ally export archive box and
+            this page takes the six files it reads straight out of it —
             <code>courses.csv</code>, <code>terms.csv</code> and
             <code>departments_years.csv</code>, which it needs, and
             <code>years.csv</code>, <code>months.csv</code> and
@@ -543,7 +543,7 @@
 
           <h3>What to do</h3>
           <ol>
-            <li>Upload the ZIP archive Ally produced. This page fills the six file boxes below from it and says which file went where, so you can change one if you need to. You can choose the six files yourself instead.</li>
+            <li>Upload the ZIP archive Ally produced. This page fills the six CSV file boxes from it and says which file went where, so you can change one if you need to. You can choose those six files yourself instead.</li>
             <li>Select Generate. This page checks everything it builds before it offers you anything to download.</li>
             <li>Download <code>ally-course-payload.json</code>.</li>
             <li>Host that file at an https address your colleagues' browsers can read — a GitHub repository or GitHub Pages site works with no configuration — then enter that address in Set Up, under "Fetch course data from a URL".</li>
@@ -562,11 +562,11 @@
         <div class="form-group">
           <label for="zip-file">
             Your Ally export archive
-            <span class="label-hint">(the .zip Ally produced - this fills the six boxes below)</span>
+            <span class="label-hint">(the .zip Ally produced - this fills the six CSV file boxes for you)</span>
           </label>
           <input type="file" id="zip-file" accept=".zip,application/zip" aria-describedby="zip-hint">
-          <div id="zip-hint" class="visually-hidden">Choose the ZIP archive from your Ally Institutional Report export, exactly as Ally produced it. This page reads six of its seven CSV files and fills the file boxes below, which you can then change one at a time. Opening a ZIP needs an internet connection; choosing the CSV files yourself does not.</div>
-          <div id="zip-info" class="file-info" aria-live="polite"></div>
+          <div id="zip-hint" class="visually-hidden">Choose the ZIP archive from your Ally Institutional Report export, exactly as Ally produced it. This page reads six of its seven CSV files and fills the six CSV file boxes, which you can then change one at a time. Opening a ZIP needs an internet connection; choosing the CSV files yourself does not.</div>
+          <div id="zip-info" class="file-info"></div>
         </div>
 
         <h3>Or choose the six files yourself</h3>
@@ -578,7 +578,7 @@
           </label>
           <input type="file" id="terms-file" accept=".csv" aria-describedby="terms-hint">
           <div id="terms-hint" class="visually-hidden">Choose terms.csv from your Ally export. It is required, and must come from the same export as the other files.</div>
-          <div id="terms-info" class="file-info" aria-live="polite"></div>
+          <div id="terms-info" class="file-info"></div>
         </div>
 
         <div class="form-group">
@@ -588,7 +588,7 @@
           </label>
           <input type="file" id="depts-file" accept=".csv" aria-describedby="depts-hint">
           <div id="depts-hint" class="visually-hidden">Choose departments_years.csv from your Ally export - not departments_terms.csv, which is one of the optional accessibility history files. It is required.</div>
-          <div id="depts-info" class="file-info" aria-live="polite"></div>
+          <div id="depts-info" class="file-info"></div>
         </div>
 
         <div class="form-group">
@@ -598,7 +598,7 @@
           </label>
           <input type="file" id="courses-file" accept=".csv" aria-describedby="courses-hint">
           <div id="courses-hint" class="visually-hidden">Choose courses.csv from your Ally export. It is required: without it there are no courses to search.</div>
-          <div id="courses-info" class="file-info" aria-live="polite"></div>
+          <div id="courses-info" class="file-info"></div>
 
           <div class="checkbox-row">
             <input type="checkbox" id="exclude-archived" checked>
@@ -635,7 +635,7 @@
             </label>
             <input type="file" id="years-file" accept=".csv" aria-describedby="years-hint">
             <div id="years-hint" class="visually-hidden">Select the years.csv file. Optional; needed with months.csv and departments_terms.csv for accessibility history.</div>
-            <div id="years-info" class="file-info" aria-live="polite"></div>
+            <div id="years-info" class="file-info"></div>
           </div>
 
           <div class="form-group">
@@ -645,7 +645,7 @@
             </label>
             <input type="file" id="months-file" accept=".csv" aria-describedby="months-hint">
             <div id="months-hint" class="visually-hidden">Select the months.csv file. Optional; needed with years.csv and departments_terms.csv for accessibility history.</div>
-            <div id="months-info" class="file-info" aria-live="polite"></div>
+            <div id="months-info" class="file-info"></div>
           </div>
 
           <div class="form-group">
@@ -655,7 +655,7 @@
             </label>
             <input type="file" id="dept-terms-file" accept=".csv" aria-describedby="dept-terms-hint">
             <div id="dept-terms-hint" class="visually-hidden">Select the departments_terms.csv file. Optional; needed with years.csv and months.csv for accessibility history.</div>
-            <div id="dept-terms-info" class="file-info" aria-live="polite"></div>
+            <div id="dept-terms-info" class="file-info"></div>
           </div>
         </fieldset>
 
@@ -694,6 +694,39 @@
           it built and checked it works. The first file is the one to host; the
           rest are for the script route described under each of them.
         </p>
+
+        <!-- DECISION REVISITED, 7 September 2026. This control used to sit
+             inside the ally-lookup-data.js tab panel, on the argument that a
+             prominent "download everything" on the first tab would nudge
+             people toward the script route, which carries a security warning.
+             That argument conflated prominence with existence. The panel
+             carries the hidden attribute and the payload tab is the default,
+             so the control was not merely unemphasised, it was unreachable on
+             the ordinary journey: the person who commissioned it reviewed the
+             parcel and walked the page with a screen reader, and still did not
+             know it was there. Concealing the archive never stopped anyone
+             choosing the script route; it only stopped the people who need it
+             finding it. The JSON route already wins on the merits without
+             that: it is the first tab, its Download is the primary-styled
+             button, and its own paragraph explains why it is preferred. So
+             the control lives here, ahead of the tabs, styled secondary, with
+             the route it serves named in the label rather than only the file
+             count. It sits outside every tabpanel and outside the tablist on
+             purpose: a button inside a tablist is announced as a tab. -->
+        <p class="output-purpose" id="download-all-hint">
+          One archive holding all four files - ally-course-payload.json,
+          ally-lookup-data.js, ally-courses-data.js and
+          ally-trends-data.js - so the script route does not need four
+          separate downloads. Building it needs an internet connection,
+          for the same ZIP reader the archive upload uses. Files this run
+          did not generate are left out.
+        </p>
+        <div class="button-group" style="margin: 0.75rem 1rem 1rem 1rem;">
+          <button type="button" class="btn-secondary" onclick="downloadAllFiles()"
+                  id="download-all-btn" aria-describedby="download-all-hint" disabled>
+            <span aria-hidden="true">📦</span> Download all four files (.zip) — for the script route
+          </button>
+        </div>
 
         <div class="output-area">
           <!-- The payload is the FIRST tab and the default because it is the
@@ -775,27 +808,6 @@
             <label for="lookup-output" class="visually-hidden">Generated ally-lookup-data.js code</label>
             <textarea id="lookup-output" class="code-output" readonly
                       placeholder="Generated ally-lookup-data.js will appear here..."></textarea>
-
-            <!-- Deliberately here rather than beside the payload's own
-                 Download button. The payload alone is what the guide's
-                 primary route needs, and a prominent "download everything"
-                 on the first tab nudges people toward the script route, which
-                 carries the warning above. This is the tab where that route
-                 is already explained. -->
-            <p class="output-purpose" id="download-all-hint">
-              One archive holding all four files - ally-course-payload.json,
-              ally-lookup-data.js, ally-courses-data.js and
-              ally-trends-data.js - so the script route does not need four
-              separate downloads. Building it needs an internet connection,
-              for the same ZIP reader the archive upload uses. Files this run
-              did not generate are left out.
-            </p>
-            <div class="button-group" style="margin: 0.75rem 1rem 1rem 1rem;">
-              <button type="button" class="btn-secondary" onclick="downloadAllFiles()"
-                      id="download-all-btn" aria-describedby="download-all-hint" disabled>
-                <span aria-hidden="true">📦</span> Download all four files (.zip)
-              </button>
-            </div>
           </div>
 
           <div role="tabpanel" id="panel-courses" class="output-content"
@@ -2379,8 +2391,16 @@
             trends: !!state.generatedTrendsBlob
           });
 
+          // ONE addStatus, deliberately, however long the sentence gets. The
+          // status panel is a polite live region that re-reads its whole
+          // contents on every append (the open follow-up in the build plan),
+          // so naming the second route in a second call would cost a repeat
+          // of everything before it. Both routes are named here because this
+          // is the moment someone needs to choose between them.
           addStatus('Download ally-course-payload.json, host it at an https address, ' +
-            'and enter that address in Set Up under "Fetch course data from a URL".',
+            'and enter that address in Set Up under "Fetch course data from a URL". ' +
+            'For the script route instead, use "Download all four files (.zip)" ' +
+            'above the tabs to get all four in one archive.',
             'info');
 
           addStatus('Conversion complete!', 'success');
@@ -2521,7 +2541,7 @@
         if (input.files.length !== 1 || input.files[0].name !== file.name) {
           throw new Error('this browser would not let the page put ' + file.name +
             ' into its file box, so the archive route cannot be used here. ' +
-            'Unzip the archive yourself and choose the six CSV files below.');
+            'Unzip the archive yourself and use the six CSV file boxes instead.');
         }
       }
 
@@ -2544,13 +2564,14 @@
        * puts them in the six pickers, so the generate path that follows is
        * the same one a person who chose six files by hand would take.
        *
-       * ONE ANNOUNCEMENT FOR THE WHOLE FILL. Each file-info card carries
-       * aria-live="polite" so a single hand-picked file is confirmed as it is
-       * chosen; six cards populated by one gesture would be six utterances
-       * for one action. They are silenced across the fill and the status
-       * panel carries the one summary line instead. Restoring the attribute
-       * afterwards announces nothing - a live region speaks on a change
-       * inside it, not on a change to it.
+       * ONE ANNOUNCEMENT FOR THE WHOLE FILL, and no per-card silencing is
+       * needed to get it. The seven file-info cards carry no live region at
+       * all, so filling six of them in one gesture says nothing; the status
+       * panel carries the one summary line instead. What confirms a single
+       * hand-picked file is the file input's OWN accessible name changing,
+       * measured on NVDA 7 September 2026 - the card was silent then too,
+       * because displayFileInfo writes into it while it is still
+       * display:none. See the file-info cards in the markup above.
        *
        * @param {File} file - The archive the person chose
        */
@@ -2570,8 +2591,8 @@
             throw new Error('"' + file.name + '" could not be opened as a ZIP ' +
               'archive. Choose the archive Ally produced, exactly as it was ' +
               'downloaded - not one that has been unzipped and zipped again, and ' +
-              'not a single CSV file. You can also choose the six CSV files ' +
-              'yourself below.');
+              'not a single CSV file. You can also use the six CSV file boxes ' +
+              'and choose the files yourself.');
           }
 
           const present = Object.create(null);
@@ -2594,42 +2615,23 @@
               ', which ' + (missing.length === 1 ? 'is' : 'are') + ' required. ' +
               'It contains: ' + listed + '. The files must all come from one Ally ' +
               'Institutional Report export - choose the archive Ally produced, or ' +
-              'choose the six CSV files yourself below.');
+              'use the six CSV file boxes and choose the files yourself.');
           }
 
-          // Silence the six cards for the fill, and put them back afterwards
-          // whatever happens - a live region left at "off" would stay silent
-          // for every later hand-picked file.
-          ZIP_ENTRIES.forEach(function(entry) {
-            elements[entry.info].setAttribute('aria-live', 'off');
-          });
-
           const used = [];
-          try {
-            for (const entry of ZIP_ENTRIES) {
-              const member = present[entry.name];
-              if (!member) {
-                clearFileInput(elements[entry.input], elements[entry.info]);
-                continue;
-              }
-              const blob = await member.async('blob');
-              // A real File, not the Blob: readFileAsText's error path reads
-              // .name, and streamCourses needs .stream() and .size.
-              const extracted = new File([blob], entry.name, { type: 'text/csv' });
-              assignFileToInput(elements[entry.input], extracted);
-              displayFileInfo(extracted, elements[entry.info]);
-              used.push(entry.name);
+          for (const entry of ZIP_ENTRIES) {
+            const member = present[entry.name];
+            if (!member) {
+              clearFileInput(elements[entry.input], elements[entry.info]);
+              continue;
             }
-          } finally {
-            // RESTORED A FRAME LATER, not on the next line. The last card's
-            // write and this restore would otherwise sit in one task, and
-            // whether a reader has already processed that write by then is
-            // not decidable from the DOM - so the restore is put beyond a
-            // rendering opportunity rather than argued about.
-            await nextFrame();
-            ZIP_ENTRIES.forEach(function(entry) {
-              elements[entry.info].setAttribute('aria-live', 'polite');
-            });
+            const blob = await member.async('blob');
+            // A real File, not the Blob: readFileAsText's error path reads
+            // .name, and streamCourses needs .stream() and .size.
+            const extracted = new File([blob], entry.name, { type: 'text/csv' });
+            assignFileToInput(elements[entry.input], extracted);
+            displayFileInfo(extracted, elements[entry.info]);
+            used.push(entry.name);
           }
 
           displayFileInfo(file, elements.zipInfo);
@@ -2652,8 +2654,8 @@
               'Trends view stays unavailable on this data.', 'warning');
           }
 
-          addStatus('Ready to generate. Change any of the six boxes below if you ' +
-            'need to, then select Generate.', 'info');
+          addStatus('Ready to generate. Change any of the six CSV file boxes if ' +
+            'you need to, then select Generate.', 'info');
         } catch (error) {
           clearExportInputs();
           clearFileInput(elements.zipFile, elements.zipInfo);

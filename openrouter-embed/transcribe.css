@@ -146,16 +146,52 @@
 }
 
 /* =========================================================================
-   DISPLAY OPTIONS — the speaker-label checkbox
+   DISPLAY OPTIONS — the speaker-label and timestamp checkboxes
    ========================================================================= */
 
 /*
- * The wrapper carries `hidden` until a transcript with informative speaker
- * labels exists. NO `display` DECLARATION APPEARS HERE, and that is deliberate
- * rather than an omission: a `display` value on this selector would override
- * the user-agent's `[hidden] { display: none }` and put the control into the
- * accessibility tree while the markup still read hidden. The reveal is done by
- * the renderer toggling the attribute, and nothing in CSS may compete with it.
+ * The wrapper carries `hidden` until a transcript exists. The reveal is done
+ * by the renderer toggling that attribute — see setDisplayOptionsVisible in
+ * openrouter-embed-transcribe-ui.js — and nothing in CSS may compete with it.
+ *
+ * TWO WITHDRAWN SENTENCES, QUOTED IN PLACE (register items 56 and 57).
+ *
+ * This comment previously opened:
+ *
+ *   "The wrapper carries `hidden` until a transcript with informative speaker
+ *   labels exists."
+ *
+ * False since `352f8f1`, the item 54 wiring commit: the
+ * `distinctSpeakerCount > 1` predicate moved to the speaker control's own
+ * <div>, and the wrapper now reveals for EVERY transcript.
+ *
+ * It then said:
+ *
+ *   "NO `display` DECLARATION APPEARS HERE, and that is deliberate rather than
+ *   an omission: a `display` value on this selector would override the
+ *   user-agent's `[hidden] { display: none }` and put the control into the
+ *   accessibility tree while the markup still read hidden."
+ *
+ * False from the commit that wrote it, `4c590d6`: `display: flex` sits on the
+ * next line. The reasoning was right and the file did not follow it. The
+ * reveal worked anyway, but only because ally-scripts/css/ally-main.css
+ * carries a global `[hidden] { display: none !important; }` and tools.html
+ * loads that sheet BEFORE this one — a dependency on another lane's stylesheet
+ * that is invisible from this file. That is what item 57 records.
+ *
+ * WHAT REPLACES THEM: the `[hidden]` rule below, added by item 57 (a) on
+ * 7 September 2026. `.transcribe-display-options[hidden]` (0,2,0)
+ * out-specifies `.transcribe-display-options` (0,1,0) in this same file, so it
+ * needs no `!important` and does not depend on source order. The tool now
+ * holds the group out of the accessibility tree on its own.
+ *
+ * MEASURED, not reasoned: with ally-main.css disabled at runtime and no
+ * transcript on screen, the wrapper's computed `display` reads `flex` without
+ * this rule and `none` with it.
+ *
+ * Item 59 registers the alternative — a bare `[hidden]` rule in main.css,
+ * fixing the whole class rather than this instance. That is a site-wide
+ * cascade change belonging to whoever owns main.css, not to this lane.
  */
 .transcribe-display-options {
   display: flex;
@@ -170,6 +206,15 @@
   align-items: baseline;
   gap: 0.5rem;
   margin: 0 0 0.75rem;
+}
+
+/*
+ * The reveal, made self-sufficient by item 57 (a). This is the rule that makes
+ * the sentence above — nothing in CSS may compete with the attribute toggle —
+ * true inside this file.
+ */
+.transcribe-display-options[hidden] {
+  display: none;
 }
 
 /* =========================================================================

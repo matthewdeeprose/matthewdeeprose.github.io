@@ -318,9 +318,20 @@
         M.createUserBubble(msg.content, index);
       } else if (msg.role === "assistant") {
         var bubble = M.createAssistantBubble();
-        // Render markdown the same way the embed does
+        // Render markdown the same way the embed does — INCLUDING its maths
+        // protection. Without it, markdown-it's core backslash-escape rule
+        // strips the \( \) and \[ \] delimiters, so typesetMath below finds
+        // nothing to typeset and the LaTeX stays on screen as raw text. The
+        // live send path does not have this problem because it keeps the
+        // embed's own protected render; only this restore path re-renders.
         if (md) {
-          bubble.innerHTML = md.render(msg.content);
+          var protector = window.MathProtect;
+          var math =
+            protector && typeof protector.protect === "function"
+              ? protector.protect(msg.content)
+              : null;
+          var rendered = md.render(math ? math.text : msg.content);
+          bubble.innerHTML = math ? math.restore(rendered) : rendered;
         } else {
           bubble.textContent = msg.content;
         }
