@@ -32,6 +32,38 @@
     if (state) S = state;
   }
 
+  // ── Announcing after a confirmation modal ────────────────────────────────
+  // window.safeConfirm resolves BEFORE its modal is gone: finishClose — which
+  // releases the inert sweep, closes and removes the dialog, and restores focus
+  // to the opener — is scheduled 200ms after close() under prefers-reduced-
+  // motion: no-preference. The announcer regions sit inside div#start, which the
+  // sweep matches, and the open dialog holds the native top layer, so a write in
+  // the .then lands in a region the accessibility tree reports ignored
+  // (activeModalDialog). Under reduce the region is already exposed and the write
+  // is STILL lost, because it arrives inside the post-close focus change — this
+  // repo's documented drop of a polite write landing on a focus change. So the
+  // delay has to clear both finishClose and the focus-restore.
+  //
+  // 350ms is setup-tool/setup-tool.js's constant, built for this same fault and
+  // measured to make four previously-silent credential clears audible.
+  //
+  // THE ROOT FIX IS ELSEWHERE: safeConfirm should resolve AFTER finishClose.
+  // The day that lands, delete this constant and its two siblings — grep
+  // MODAL_CLOSE_ANNOUNCE_DELAY_MS for all three (here,
+  // chat/chat-persistence.js, setup-tool/setup-tool.js).
+  var MODAL_CLOSE_ANNOUNCE_DELAY_MS = 350;
+
+  /**
+   * Announce once the confirmation modal has finished tearing down. For callers
+   * reached THROUGH window.safeConfirm only — see the note above.
+   * @param {string} message - the already-built announcement string
+   */
+  function announceAfterModalClose(message) {
+    window.setTimeout(function () {
+      S.announceToScreenReader(message);
+    }, MODAL_CLOSE_ANNOUNCE_DELAY_MS);
+  }
+
   // ── Messages module reference (from local-chat-messages.js) ────────────
   var M = window.LocalChatMessages;
 
@@ -708,14 +740,64 @@
       confirmFn(
         "Delete this conversation? This cannot be undone.",
         "Delete Conversation",
+        // DECLARED, and deliberately NOT this delete button. The .then below
+        // calls li.remove(), which takes the opener out of the document — and
+        // under prefers-reduced-motion:reduce the focus restore has already
+        // completed by then, so the manager checks a live, enabled button and
+        // lands on it a moment before the caller destroys it. Naming a
+        // function target does not help either: it too resolves at close time,
+        // which on that arm is still before the delete.
+        //
+        // #local-chat-history is the History control that opened this list. It
+        // survives the list being emptied and re-rendered by refreshHistoryUI().
+        // ONE RESIDUAL, MEASURED RATHER THAN ASSUMED: updateHistoryButton()
+        // DISABLES it when the archive empties, so deleting the LAST archived
+        // conversation is still class 2 on the reduce arm. See
+        // docs/dispatch-rows-30-31-focus-landing.md.
+        { returnFocusTo: "local-chat-history" },
       ).then(function (confirmed) {
         if (!confirmed) return;
         deleteArchived(entry.id);
         li.remove();
-        S.announceToScreenReader("Conversation deleted.");
+        // Reached only through the confirmation modal — see the note on
+        // MODAL_CLOSE_ANNOUNCE_DELAY_MS above.
+        announceAfterModalClose("Conversation deleted.");
         // Refresh history UI — if list is now empty, remove the section
         refreshHistoryUI();
         updateHistoryButton();
+
+        // STRANDED-FOCUS GUARD, and it exists for exactly one case: deleting
+        // the LAST archived conversation under prefers-reduced-motion:reduce.
+        //
+        // On that arm the modal's whole focus restore completes inside close(),
+        // BEFORE this .then runs — so the declared target above was live and
+        // enabled when it was checked, was focused, and then updateHistoryButton()
+        // disabled it a line ago. Disabling a focused control drops focus to the
+        // document, so focus ends on <body> with no event to react to. Nothing
+        // modal-side can see this: at the instant of the decision there was
+        // nothing wrong to detect, and only this handler knows what it was about
+        // to destroy. Measured 10 September 2026 on both arms
+        // (.claude/a11y/sr/modal-focus-landing-drive.mjs, cell 31L).
+        //
+        // Deliberately lands where the no-preference arm already lands — the
+        // History button if it survived, else #main — so the two arms agree
+        // rather than each being separately defensible. Guarded on <body> so it
+        // is a no-op on every path that placed focus successfully, including the
+        // ordinary delete where a conversation survives.
+        if (!document.activeElement || document.activeElement === document.body) {
+          var historyBtn = document.getElementById(S.elId("history"));
+          if (historyBtn && !historyBtn.disabled) {
+            historyBtn.focus();
+          } else {
+            var mainLandmark = document.getElementById("main");
+            if (mainLandmark) {
+              if (!mainLandmark.hasAttribute("tabindex")) {
+                mainLandmark.setAttribute("tabindex", "-1");
+              }
+              mainLandmark.focus({ preventScroll: true });
+            }
+          }
+        }
       });
     });
 

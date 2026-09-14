@@ -97,6 +97,18 @@ const SUPPORTED_PDF_TYPES = ["application/pdf"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 const MAX_PDF_SIZE = 25 * 1024 * 1024; // 25MB
 
+// MODALITY STEP 3. A POLICY CHOICE, NOT A MEASURED API LIMIT — no audio
+// request has been sent at any size but the fixture's ~120KB, so nothing here
+// is evidence about what the provider accepts. It matches the PDF cap because
+// that is the largest already trusted in this file.
+//
+// THE UI PARCEL MUST REVISIT THIS ALONGSIDE PRICING. Audio input bills on a
+// separate rate the cost display does not read, and measured 11 September 2026
+// that rate runs to 1000x the prompt rate on mistralai/voxtral-small-24b-2507.
+// A 25MB cap is harmless while nothing can reach it and is a real money
+// hazard the moment something can.
+const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25MB
+
 // Cost thresholds for warnings
 const COST_THRESHOLDS = {
   YELLOW: 0.05, // Â£0.05+
@@ -170,10 +182,24 @@ class EmbedFileUtils {
   /**
    * Validate a file for attachment (type and size)
    *
+   * AUDIO IS OPT-IN AND DEFAULTS TO REFUSED. `options.allowAudio` exists because
+   * admitting audio unconditionally here is NOT a widening of this function, it
+   * is a widening of every caller — and one of them is chat.
+   *
+   * MEASURED 11 September 2026, and it is the reason this parameter exists.
+   * chat/chat-attach.js's setFromFile calls validateFileType and then reads
+   * `kind = isPDF ? "pdf" : "image"`, so a file that is neither is treated as an
+   * IMAGE. Its drop handler hands the dropped file straight to setFromFile with
+   * no type check of its own (drag-and-drop and paste both bypass the input's
+   * `accept`), so an unconditional widening here would let someone drop a WAV
+   * into chat and have it sent as `data:audio/wav;base64,…` in an image_url
+   * part. This step ships no UI and must not open one by accident.
+   *
    * @param {File} file - The file to validate
    * @param {Object} options - Validation options
    * @param {boolean} options.skipSizeCheck - Skip size validation (for pre-compression check)
-   * @returns {Object} Validation result with isImage and isPDF flags
+   * @param {boolean} options.allowAudio - Recognise audio types (default false)
+   * @returns {Object} Validation result with isImage, isPDF and isAudio flags
    * @throws {Error} If file is invalid
    */
   validateFile(file, options = {}) {
@@ -195,23 +221,43 @@ class EmbedFileUtils {
     const isImage = SUPPORTED_IMAGE_TYPES.includes(file.type);
     const isPDF = SUPPORTED_PDF_TYPES.includes(file.type);
 
-    if (!isImage && !isPDF) {
+    // MODALITY STEP 3. Audio is recognised by asking ModalityCore for a
+    // container format rather than by a SUPPORTED_AUDIO_TYPES list beside the
+    // two above. There is deliberately no second list: the map that decides
+    // what may be attached and the map that names the `format` on the wire are
+    // the same map, so the two cannot drift apart. A sibling implementation
+    // shipping every defect its twin had already cured is the failure AGENTS.md
+    // records for the Graph Builder toast.
+    //
+    // Resolved at CALL TIME and never cached — a module-scope capture of a
+    // window global reads undefined when the plain script has not run.
+    const audioFormat =
+      options.allowAudio === true ? this._audioFormatFor(file.type) : null;
+    const isAudio = audioFormat !== null;
+
+    if (!isImage && !isPDF && !isAudio) {
       const error =
         `Unsupported file type: ${file.type}. ` +
-        `Supported types: JPEG, PNG, WebP, PDF`;
+        `Supported types: JPEG, PNG, WebP, PDF` +
+        (options.allowAudio === true ? ", audio" : "");
       logError(error);
       throw new Error(error);
     }
 
     // Check file size (unless skipped for pre-compression validation)
     if (!options.skipSizeCheck) {
-      const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
+      const maxSize = isImage
+        ? MAX_IMAGE_SIZE
+        : isAudio
+          ? MAX_AUDIO_SIZE
+          : MAX_PDF_SIZE;
       if (file.size > maxSize) {
         const maxMB = maxSize / (1024 * 1024);
         const fileMB = (file.size / (1024 * 1024)).toFixed(2);
+        const kind = isImage ? "images" : isAudio ? "audio" : "PDFs";
         const error =
           `File too large: ${fileMB}MB. ` +
-          `Maximum size for ${isImage ? "images" : "PDFs"}: ${maxMB}MB`;
+          `Maximum size for ${kind}: ${maxMB}MB`;
         logError(error);
         throw new Error(error);
       }
@@ -220,10 +266,11 @@ class EmbedFileUtils {
     logDebug("File validation passed", {
       isImage,
       isPDF,
+      isAudio,
       skipSizeCheck: options.skipSizeCheck,
     });
 
-    return { isImage, isPDF };
+    return { isImage, isPDF, isAudio, audioFormat };
   }
 
   /**
@@ -231,11 +278,12 @@ class EmbedFileUtils {
    * Used before compression when original file may exceed limits
    *
    * @param {File} file - The file to validate
-   * @returns {Object} Validation result with isImage and isPDF flags
+   * @param {Object} [options] - { allowAudio } — audio is opt-in, see validateFile
+   * @returns {Object} Validation result with isImage, isPDF and isAudio flags
    * @throws {Error} If file type is invalid
    */
-  validateFileType(file) {
-    return this.validateFile(file, { skipSizeCheck: true });
+  validateFileType(file, options = {}) {
+    return this.validateFile(file, { ...options, skipSizeCheck: true });
   }
 
   /**
@@ -244,12 +292,17 @@ class EmbedFileUtils {
    *
    * @param {File} file - The file to validate
    * @param {number} originalSize - Original file size (for error message context)
+   * @param {Object} [options] - { allowAudio } — audio is opt-in, see validateFile
    * @returns {boolean} True if size is valid
    * @throws {Error} If file is too large
    */
-  validateFileSize(file, originalSize = null) {
-    const { isImage } = this.validateFileType(file);
-    const maxSize = isImage ? MAX_IMAGE_SIZE : MAX_PDF_SIZE;
+  validateFileSize(file, originalSize = null, options = {}) {
+    const { isImage, isAudio } = this.validateFileType(file, options);
+    const maxSize = isImage
+      ? MAX_IMAGE_SIZE
+      : isAudio
+        ? MAX_AUDIO_SIZE
+        : MAX_PDF_SIZE;
 
     if (file.size > maxSize) {
       const maxMB = maxSize / (1024 * 1024);
@@ -889,6 +942,64 @@ class EmbedFileUtils {
   }
 
   /**
+   * Prepare message content for audio attachment
+   *
+   * THE PAYLOAD IS BARE BASE64. Unlike prepareImageContent immediately above,
+   * there is NO URL form for audio input — `data:audio/wav;base64,…` is
+   * refused. Copying that sibling's shape is the single likeliest way to get
+   * this wrong, which is why the part itself is minted by ModalityCore rather
+   * than written out here a second time.
+   *
+   * PART ORDER MATCHES ITS TWO SIBLINGS: payload first, text second. CHECKED,
+   * NOT ASSUMED, and the two sources disagree — the 10 September capture puts
+   * `text` FIRST and transcribed correctly, so both orders have evidence and
+   * only consistency with the file decides it.
+   *
+   * @param {File} file - The audio file
+   * @param {string} base64Data - Base64 encoded audio data, NO data: prefix
+   * @param {string} prompt - User's text prompt
+   * @returns {Object} Message content for OpenRouter API
+   * @throws {Error} If ModalityCore is absent or file.type names no container
+   */
+  prepareAudioContent(file, base64Data, prompt) {
+    logInfo("Preparing audio message content", { fileName: file.name });
+
+    // Resolved at CALL TIME and never cached — the dead-announcer failure,
+    // where ten call sites across five files logged, reviewed correctly and
+    // announced nothing because a module-scope const had captured undefined.
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    if (!modalityCore) {
+      const error =
+        "ModalityCore is not loaded - cannot build an audio content part";
+      logError(error);
+      throw new Error(error);
+    }
+
+    const format = this._audioFormatFor(file.type);
+    if (!format) {
+      // Refuse rather than defaulting. A guessed container is a request the
+      // provider rejects and the user pays to discover.
+      const error =
+        `Unsupported audio type: ${file.type || "(none)"}. ` +
+        `The file's MIME type names no container format`;
+      logError(error);
+      throw new Error(error);
+    }
+
+    return {
+      role: "user",
+      content: [
+        modalityCore.audioContentPart(base64Data, format),
+        {
+          type: "text",
+          text: prompt,
+        },
+      ],
+    };
+  }
+
+  /**
    * Prepare message content for PDF attachment
    *
    * @param {File} file - The PDF file
@@ -972,7 +1083,32 @@ class EmbedFileUtils {
     if (SUPPORTED_PDF_TYPES.includes(fileType)) {
       return MAX_PDF_SIZE;
     }
+    if (this._audioFormatFor(fileType)) {
+      return MAX_AUDIO_SIZE;
+    }
     return 0;
+  }
+
+  /**
+   * The container format for a MIME type, via ModalityCore, or null.
+   *
+   * A one-line private wrapper so every audio question in this file is asked the
+   * same way and resolves the global at call time. Without it each site would
+   * repeat the guard, and one of them would eventually forget.
+   *
+   * IT ANSWERS WHAT THE VOCABULARY KNOWS, NEVER WHAT A CALLER MAY ATTACH. The
+   * three public type helpers are pure lookups with no gate behind them, so they
+   * report audio honestly; validateFile is the gate, and it refuses audio unless
+   * the caller opts in.
+   *
+   * @param {string} fileType - MIME type to look up
+   * @returns {string|null} container format, or null if not audio
+   * @private
+   */
+  _audioFormatFor(fileType) {
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    return modalityCore ? modalityCore.audioFormatFor(fileType) : null;
   }
 
   /**
@@ -984,7 +1120,8 @@ class EmbedFileUtils {
   isFileTypeSupported(fileType) {
     return (
       SUPPORTED_IMAGE_TYPES.includes(fileType) ||
-      SUPPORTED_PDF_TYPES.includes(fileType)
+      SUPPORTED_PDF_TYPES.includes(fileType) ||
+      this._audioFormatFor(fileType) !== null
     );
   }
 
@@ -992,11 +1129,12 @@ class EmbedFileUtils {
    * Get file type category
    *
    * @param {string} fileType - MIME type
-   * @returns {string} 'image', 'pdf', or 'unknown'
+   * @returns {string} 'image', 'pdf', 'audio', or 'unknown'
    */
   getFileTypeCategory(fileType) {
     if (SUPPORTED_IMAGE_TYPES.includes(fileType)) return "image";
     if (SUPPORTED_PDF_TYPES.includes(fileType)) return "pdf";
+    if (this._audioFormatFor(fileType)) return "audio";
     return "unknown";
   }
 

@@ -1,6 +1,6 @@
 {
   "version": "2.5.0",
-  "lastUpdated": "2026-05-25",
+  "lastUpdated": "2026-09-08",
   "systemPrompt": {
     "role": "You are an expert mathematical document reviewer specialising in correcting OCR errors in LaTeX/MMD (Mathpix Markdown) documents. You are an EDITOR, not a REWRITER \u2014 make minimal, targeted corrections only.",
     "task": "Compare the source PDF with the OCR-generated MMD output and correct any recognition errors. Treat this as a proofreading task: fix errors in place without restructuring, reformatting, or normalising the document.",
@@ -85,61 +85,39 @@
   },
   "models": {
     "openrouter": {
-      "haiku": {
-        "id": "anthropic/claude-haiku-4.5",
-        "description": "Fast and efficient — good for simple corrections and high-volume processing. Pair with native engine only — mistral-OCR causes critical failures.",
-        "maxTokens": 8192,
+      "fable": {
+        "id": "anthropic/claude-fable-5",
+        "label": "Claude Fable 5",
+        "description": "The default. Placed first of five models across five documents in the September 2026 comparison, leading on correction quality and on the blind reading, and completing every run. It is also the most expensive of the three per document, so check the cost estimate below before starting a long one.",
         "recommended": true,
-        "supportsReasoning": true,
-        "reasoningMode": "effort",
-        "label": "Claude Haiku 4.5"
-      },
-      "sonnet": {
-        "id": "anthropic/claude-sonnet-4.6",
-        "description": "Advanced agentic model — can hallucinate content (re-derive calculations instead of reading), so will prompt with anti-hallucination principle.",
-        "maxTokens": 8192,
-        "recommended": false,
-        "supportsReasoning": true,
-        "reasoningMode": "effort",
-        "label": "Claude Sonnet 4.6"
-      },
-      "opus": {
-        "id": "anthropic/claude-opus-4.7",
-        "description": "Frontier reasoning model with adaptive thinking and 1M context. Recommended for quality-critical workflows and complex multi-page documents. Best paired with native engine; mistral-OCR also works well. Note: sampling parameters are ignored — uses adaptive reasoning only.",
-        "maxTokens": 8192,
-        "recommended": false,
-        "supportsReasoning": true,
-        "reasoningMode": "adaptive",
-        "label": "Claude Opus 4.7"
-      }
-    },
-    "azure-openai": {
-      "nano": {
-        "id": "azure-openai/gpt-5.4-nano",
-        "label": "GPT-5.4 Nano",
-        "description": "Fastest and cheapest of the Foundry trio. Good for straightforward corrections and high-volume work.",
-        "maxTokens": 8192,
-        "recommended": true,
-        "supportsReasoning": false,
-        "reasoningMode": null
-      },
-      "mini": {
-        "id": "azure-openai/gpt-5.4-mini",
-        "label": "GPT-5.4 Mini",
-        "description": "Balanced speed and accuracy, and the only tier of the three that supports reasoning. A sensible middle choice for most documents.",
-        "maxTokens": 8192,
-        "recommended": false,
         "supportsReasoning": true,
         "reasoningMode": "effort"
       },
-      "standard": {
-        "id": "azure-openai/gpt-5.4",
-        "label": "GPT-5.4",
-        "description": "Highest accuracy of the three and the slowest. Best for complex or quality-critical documents.",
-        "maxTokens": 8192,
-        "recommended": false,
-        "supportsReasoning": false,
-        "reasoningMode": null
+      "opus": {
+        "id": "anthropic/claude-opus-5",
+        "label": "Claude Opus 5",
+        "description": "Frontier reasoning model with a one-million-token context window. Placed third of five in the same comparison and completed every run, at appreciably lower cost than Fable. A sound choice for long or complex documents.",
+        "recommended": true,
+        "supportsReasoning": true,
+        "reasoningMode": "adaptive"
+      },
+      "sonnet": {
+        "id": "anthropic/claude-sonnet-5",
+        "label": "Claude Sonnet 5",
+        "description": "The cheapest of the three and capable on shorter documents. Note that the shipped 300-second request timeout defeated it on the two largest PDFs of the five tested, so prefer Fable or Opus for a long or scanned document.",
+        "recommended": true,
+        "supportsReasoning": true,
+        "reasoningMode": "effort"
+      }
+    },
+    "azure-openai": {
+      "sol": {
+        "id": "azure-openai/gpt-5.6-sol",
+        "label": "GPT-5.6 Sol",
+        "description": "The default for Microsoft Foundry. Placed joint first of five models across five documents in the September 2026 comparison, leading on net improvement and completing every run. Handwritten material was its weakest document type, so consider an OpenRouter model for handwriting.",
+        "recommended": true,
+        "supportsReasoning": true,
+        "reasoningMode": "effort"
       }
     }
   },

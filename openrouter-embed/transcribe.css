@@ -396,6 +396,66 @@
   max-width: 80ch;
 }
 
+/*
+ * THE EDIT CONTROL'S BOX, ADDED IN UNIT 9 OF ITEM 45.
+ *
+ * The subject is the <input type="text"> buildRow renders in edit mode, which
+ * carries `transcribe-text transcribe-edit`. `.transcribe-edit` is the
+ * control's own class and nothing else in the tree uses it, so this rule
+ * cannot reach the read-only span; the rule above still reaches both.
+ *
+ * BOTH DECLARATIONS OVERRIDE A USER-AGENT DEFAULT, not another author sheet.
+ * That is why there are only two of them — everything the site already decides
+ * about this control is left where it is decided.
+ *
+ * `width: 100%` REPLACES THE UA'S 190px. No author sheet on this page declares
+ * a width for input[type="text"], so the box was the user agent's own
+ * `size`-attribute default: measured 190px, of which 184px was usable inside
+ * the border. Phrases average 85 characters, and the row of exactly that
+ * length needed 549px of scroll width to show itself in that 184px box — under
+ * a third of one phrase visible at a time. 100% resolves against the row's
+ * content box and is then capped by the max-width already on
+ * `.transcribe-text` above.
+ *
+ * THAT CAP WAS A DEAD DECLARATION UNTIL THIS RULE. `max-width: 80ch` computed
+ * 677.955px on the control and could never bind against a 190px box. `ch`
+ * tracks the element's OWN font-size, so the font change below takes the same
+ * 80ch to 813.75px — and the control now measures exactly that, cap and used
+ * width being the same number. The read-only span's 80ch is the same 813.75px,
+ * which is what puts the two modes in one measure rather than merely making
+ * the control bigger. Usable width goes 184px to 808px, and the average row
+ * now fits whole: scroll width 808px against a client width of 808px.
+ *
+ * `font-size: inherit` REPLACES THE UA FORM-CONTROL DEFAULT of 13.3333px with
+ * the transcript's own 16px, so one phrase reads at one size in both modes.
+ * FAMILY IS NOT SET HERE, because it was never adrift: main.css:3394's `*` rule
+ * sets `font-family` and not `font-size`, so the control already measured
+ * `Verdana, sans-serif`, the same stack as the span beside it. Only the size
+ * had to move, and a `font: inherit` shorthand would have restated three
+ * properties that were already right.
+ *
+ * HEIGHT IS NOT TOUCHED. main.css:2350 gives input[type="text"] a 2.5rem
+ * height, measured 40px, and the larger font does not clip inside it: at 16px
+ * the control measures scrollHeight 34 against clientHeight 34.
+ *
+ * NEITHER IS THE BORDER, THE BACKGROUND NOR THE FOCUS RING. light.css:5243 and
+ * dark.css:5993 own the frame; light.css:5266 and dark.css:6003 own the
+ * :focus-visible treatment. Restating either here would put one decision in two
+ * files, which is the same argument the file header makes for declaring no
+ * focus rule at all — and it would be the argument this file already lost once,
+ * when the <textarea> inherited a foreign `min-height`.
+ *
+ * LAYOUT IS UNMOVED BY BOTH DECLARATIONS, measured either side of them at a
+ * 1280px viewport: the control's left edge stays 252.2px, the row stays 57px
+ * tall, and the transcript's scrollHeight stays 37,480px. The control's TEXT
+ * sits 5px right of where the span's text sits, which is the control's own 3px
+ * border and 2px padding and not a change of measure.
+ */
+.transcribe-edit {
+  width: 100%;
+  font-size: inherit;
+}
+
 /* =========================================================================
    THE SPEAKER-LABEL CAVEAT
    ========================================================================= */

@@ -384,7 +384,18 @@ window.ToolRegistry = (function () {
       );
 
       if (!group) {
-        logDebug(`No Quick Start entry for "${name}" — nothing to reorder.`);
+        // A VISIBLE tool with no entry is a real gap — the Set Up guide is
+        // offering a visitor a tool it never describes. Captions Fixer joined
+        // TOOLS at 95ae4c5 (8 September 2026) with no Quick Start entry, and
+        // the omission survived every commit up to this one precisely because
+        // this line reported at DEBUG, below the default WARN level, so it
+        // never announced itself. A person found it, not the code.
+        // A HIDDEN tool with no entry is unremarkable, so it stays at DEBUG.
+        const report = tool.hidden ? logDebug : logWarn;
+        report(
+          `No Quick Start entry for "${name}" — add a <dt>${name}</dt> and ` +
+            `its <dd> to .setup-quick-start-list in tools.html.`,
+        );
         return;
       }
 

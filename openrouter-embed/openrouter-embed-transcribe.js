@@ -249,6 +249,25 @@ const OpenRouterEmbedTranscribe = (function () {
   });
 
   /**
+   * The stem every unnamed speaker prints, in all three surfaces and in the
+   * caption lane's adapter. Hoisted here because unit 2 is the first code to
+   * compose it outside a template literal.
+   *
+   * UNIT 5 HAS NOW ROUTED BOTH FORMATTERS THROUGH `speakerDisplayName`, so the
+   * inline `Speaker ${n}` literals this comment used to defer are gone from
+   * `toPlainText` and `toSrt`. The withdrawn clause read: "the three existing
+   * call sites keep their inline literals until unit 5 routes them through
+   * `speakerDisplayName`, so that this unit cannot move a downloaded byte."
+   * That was true of unit 2 and is no longer the arrangement.
+   *
+   * THE BYTE-IDENTITY IT PROTECTED STILL HOLDS, by a different mechanism:
+   * `speakerDisplayName` returns this exact stem for an absent name, so an
+   * empty names map reproduces the previous output character for character.
+   * Unit 5 measured that on both downloads rather than reasoning it.
+   */
+  const SPEAKER_NAME_PREFIX = "Speaker ";
+
+  /**
    * THE SINGLE PLACE THAT DECIDES WHETHER A PHRASE PRINTS A SPEAKER LABEL.
    *
    * Before this existed the rule was duplicated in `toPlainText` and `toSrt`,
@@ -317,6 +336,76 @@ const OpenRouterEmbedTranscribe = (function () {
       return null;
     }
     return speaker;
+  }
+
+  /**
+   * WHAT A SPEAKER IS CALLED — the name if the slot carries one, otherwise
+   * `Speaker N`.
+   *
+   * Sits IMMEDIATELY AFTER `speakerLabelFor` on purpose: that function decides
+   * WHETHER a label prints, this one decides WHAT IT SAYS, and the two halves
+   * of one question are easier to keep consistent when they are read together.
+   *
+   * IT IS DOWNSTREAM OF THAT DECISION AND NEVER INSIDE IT. `speakerLabelFor`'s
+   * signature is load-bearing across a lane boundary — the other project's
+   * caption tool calls it, and its only protection is a check that the function
+   * exists, so a changed signature would pass that check and quietly produce
+   * wrong caption files. Naming therefore sits beside it and never in it.
+   *
+   * NAMED `speakerDisplayName`, NOT `speakerStemFor`. The design calls the
+   * return value a display stem, but `STEM` already means an id prefix in this
+   * codebase — `ROW_ID_STEM`, `EDIT_ID_STEM` — and a second meaning for one
+   * word in one lane is a collision a later reader has to unpick.
+   *
+   * IT RETURNS NO PUNCTUATION, EVER. `Amira` or `Speaker 5`, never a colon and
+   * never a trailing space. The three consumers punctuate differently —
+   * `Amira:` in plain text, `Amira: ` in SRT, a separate element in the DOM —
+   * so pushing the wording in here would force each of them to unpick it
+   * again. This is the same reasoning `speakerLabelFor` gives for returning a
+   * number rather than a string.
+   *
+   * IT TRIMS NOTHING, AND THAT IS A DECISION. `setSpeakerName` owns the trim
+   * rule and guarantees the map holds trimmed, non-empty strings or no entry at
+   * all. The one route that could put an untrimmed name into the map is
+   * `deserialise`, which accepts a stored map wholesale; nothing writes a
+   * serialised object anywhere yet, so the case is unreachable today, and
+   * sanitising on restore is that function's decision to take. TWO TRIMS IN TWO
+   * FILES WOULD BE TWO RULES, and the second one to change would lose.
+   *
+   * `undefined` AND `null` FALL THROUGH TO "Speaker undefined" AND
+   * "Speaker null", AND THOSE ARE REQUIREMENTS RATHER THAN OVERSIGHTS — this is
+   * the part most likely to be "fixed" by a later reader being helpful.
+   * `speakerLabelFor` above deliberately does not guard `undefined`, so a
+   * phrase with no `speaker` key makes both formatters emit "Speaker
+   * undefined:" today. That is HEAD's shipped behaviour and the downloaded .txt
+   * and .srt are byte-identical to what they have always been. UNIT 5 HAS NOW
+   * ROUTED BOTH FORMATTERS THROUGH THIS FUNCTION — the warning is therefore
+   * LIVE rather than anticipated, and a guard added here WOULD change those
+   * bytes today. The shape is refused at the DOM renderer in the -ui file
+   * instead, where refusing it costs nothing.
+   *
+   * NO LOGGING. It is pure and it is hot — unit 5 calls it once per phrase,
+   * which is 657 calls per download on the committed fixture. `speakerLabelFor`
+   * has none for the same reason.
+   *
+   * THE CAPTION LANE SHOULD ADOPT THIS AT ITS STAGE 12. `fromTranscribeResult`
+   * in `captions-fixer/captions-fixer-cues.js` composes `Speaker N: ` from its
+   * own local constants, and its header claims the adapter reaches the same
+   * resolver so the two cannot drift — a claim that goes false for any NAMED
+   * transcript the moment unit 5 lands. RECORDED, NOT FIXED: it is the other
+   * lane's file and this project does not edit it.
+   *
+   * @param {object} args
+   * @param {number|null|undefined} args.speaker - the slot to name
+   * @param {Object<string, string>} [args.names={}] - the names map, keyed by
+   *   speaker number. Object keys are strings either way, so `{ 5: "Amira" }`
+   *   and `{ "5": "Amira" }` are the same map.
+   * @returns {string} the display stem, unpunctuated
+   */
+  function speakerDisplayName({ speaker, names = {} }) {
+    const name = names ? names[speaker] : undefined;
+    if (typeof name === "string" && name !== "") return name;
+    return `${SPEAKER_NAME_PREFIX}${speaker}`;
   }
 
   /**
@@ -520,11 +609,22 @@ const OpenRouterEmbedTranscribe = (function () {
 
   /**
    * Render a readable transcript. Pure — no DOM, no side effects.
+   *
+   * `names` IS OPTIONAL AND DEFAULTS TO AN EMPTY MAP, so every existing call
+   * site is unaffected and the downloaded bytes are unchanged. With no names
+   * `speakerDisplayName` returns the `Speaker N` stem, which is character for
+   * character what the inline literal here emitted before unit 5 routed this
+   * through it — that byte-identity is the unit's own gate, not a nicety.
+   *
    * @param {object} result - a normalised result
-   * @param {{speakers?: boolean, timestamps?: boolean}} [options]
+   * @param {{speakers?: boolean, timestamps?: boolean,
+   *          names?: Object<string, string>}} [options]
    * @returns {string}
    */
-  function toPlainText(result, { speakers = true, timestamps = true } = {}) {
+  function toPlainText(
+    result,
+    { speakers = true, timestamps = true, names = {} } = {},
+  ) {
     if (!result || !Array.isArray(result.phrases)) return "";
     if (result.phrases.length === 0) return result.text || "";
 
@@ -552,7 +652,14 @@ const OpenRouterEmbedTranscribe = (function () {
               labelsAreInformative,
             })
           : null;
-        if (label !== null) parts.push(`Speaker ${label}:`);
+        // COMPOSED INSIDE THE `label !== null` BRANCH, NEVER BEFORE IT.
+        // speakerLabelFor decides WHETHER a label prints and naming sits
+        // DOWNSTREAM of that decision — its signature is load-bearing across
+        // the lane boundary, so nothing here may reach into it. The colon is
+        // this caller's own punctuation: speakerDisplayName returns none.
+        if (label !== null) {
+          parts.push(`${speakerDisplayName({ speaker: label, names })}:`);
+        }
         parts.push(phrase.text);
         return parts.join(" ").trim();
       })
@@ -561,10 +668,29 @@ const OpenRouterEmbedTranscribe = (function () {
 
   /**
    * Render SubRip subtitles. Pure — no DOM, no side effects.
+   *
+   * IT TAKES AN OPTIONS OBJECT AS OF UNIT 5, AND IT TOOK NONE BEFORE. The
+   * withdrawn doc comment read, in full:
+   *
+   *   "Render SubRip subtitles. Pure — no DOM, no side effects.
+   *    @param {object} result - a normalised result
+   *    @returns {string}"
+   *
+   * THE DEFAULT ON THE WHOLE PARAMETER IS WHAT KEEPS EVERY EXISTING CALLER
+   * WORKING. `toSrt(result)` is the only form anywhere in the tree — three
+   * call sites in the caption lane's test files, one in its model harness and
+   * one in `make-capture-srt.mjs`, all read on 12 September 2026 — and
+   * `{ names = {} } = {}` makes every one of them byte-identical to before.
+   * A bare `{ names = {} }` without the outer default would throw on all five.
+   *
+   * STILL PURE. The options object is read and never written, and nothing here
+   * touches the DOM or any module state.
+   *
    * @param {object} result - a normalised result
+   * @param {{names?: Object<string, string>}} [options]
    * @returns {string}
    */
-  function toSrt(result) {
+  function toSrt(result, { names = {} } = {}) {
     if (!result || !Array.isArray(result.phrases)) return "";
 
     // Hoisted for the reason toPlainText gives, and passed to the shared
@@ -585,7 +711,14 @@ const OpenRouterEmbedTranscribe = (function () {
           previousSpeaker: previousSpeakerAt(result.phrases, index),
           labelsAreInformative,
         });
-        const label = speaker !== null ? `Speaker ${speaker}: ` : "";
+        // Composed INSIDE the `speaker !== null` test and never before it, for
+        // the reason toPlainText's note above gives. The colon AND the trailing
+        // space are this caller's own punctuation — speakerDisplayName returns
+        // neither, which is why the two formatters can differ here at all.
+        const label =
+          speaker !== null
+            ? `${speakerDisplayName({ speaker, names })}: `
+            : "";
         return `${index + 1}\n${start} --> ${end}\n${label}${phrase.text}\n`;
       })
       .join("\n");
@@ -797,7 +930,14 @@ const OpenRouterEmbedTranscribe = (function () {
     distinctSpeakerCount: distinctSpeakerCount,
     speakerLabelFor: speakerLabelFor,
     previousSpeakerAt: previousSpeakerAt,
+    // What a speaker is CALLED, once speakerLabelFor has decided a label prints
+    // at all. Exported for the picker and the renderer in the -ui file, and for
+    // the two formatters below, which unit 5 routes through it. Adding an
+    // export cannot break the caption lane's guard, which tests three named
+    // functions for existence.
+    speakerDisplayName: speakerDisplayName,
     SPEAKER_LABEL_MODE: SPEAKER_LABEL_MODE,
+    SPEAKER_NAME_PREFIX: SPEAKER_NAME_PREFIX,
     MEASURED_MAX_BYTES: MEASURED_MAX_BYTES,
   };
 })();

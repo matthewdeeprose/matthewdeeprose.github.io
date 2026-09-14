@@ -9,6 +9,29 @@ import { DEFAULT_CONFIG } from "./model-registry-config.js";
 import { ModelValidationError } from "./model-registry-errors.js";
 
 /**
+ * The two unit strings a `costs.meters` entry may carry.
+ *
+ * PINNED IN TWO PLACES ON PURPOSE, AND A PROOF ROW HOLDS THEM TOGETHER. The capture side
+ * lives in .claude/model-add/pricing.mjs (METER_UNIT), an ES module in a tool directory the
+ * shipped app must never import; this file is a shipped ES module the tool cannot import
+ * either, because it pulls in the whole registry. Two copies of a vocabulary is two chances
+ * for it to drift, so prove-modality.mjs reads the literal strings out of BOTH files and
+ * reddens when they disagree — a cross-file pin, the prove-wcag22-criteria.mjs arrangement.
+ */
+const KNOWN_METER_UNITS = ["usd-per-million-tokens", "usd-per-request"];
+
+/** The only two cost keys any validator has ever enforced, and the only two every consumer reads. */
+const VALIDATED_COST_KEYS = ["input", "output"];
+
+/**
+ * Cost keys that exist in the registry today and are knowingly tolerated: `image` has one
+ * user-visible reader (js/modules/model-manager.js), `video` is a hard-coded 0 on 150 entries
+ * that nothing reads, and `meters` is validated above. Everything else is reported.
+ */
+const REPORTED_COST_KEYS = ["image", "video", "meters"];
+
+
+/**
  * ModelRegistryValidator class for validating model registry data
  */
 export class ModelRegistryValidator {
@@ -21,6 +44,10 @@ export class ModelRegistryValidator {
     const result = {
       isValid: true,
       issues: [],
+      // Non-fatal findings. `issues` sets isValid:false and makes registerModel throw;
+      // a warning must never do that, because the things worth reporting here are on
+      // hundreds of entries that predate any gate.
+      warnings: [],
     };
 
     // Check for required fields
@@ -63,6 +90,82 @@ export class ModelRegistryValidator {
           type: "invalid_costs",
           message: "Non-free model must have valid cost configuration",
           field: "costs",
+        });
+      }
+    }
+
+    // Validate the unit-tagged meter block, and REPORT any cost key nothing validates.
+    //
+    // WHY EVERY FATAL CHECK BELOW IS GUARDED ON `meters` BEING PRESENT. `registerModel` in
+    // model-registry-core.js THROWS a ModelValidationError when this returns isValid:false,
+    // and js/model-definitions.js is 478 top-level registerModel calls in one module — so a
+    // rule that rejected a single existing entry would abort the module and take the entire
+    // registry, and the app, with it. No entry in the file carries `costs.meters` today, so
+    // the fatal path is reachable only by an entry written after this check existed.
+    //
+    // THE UNRECOGNISED-KEY PATH IS DELIBERATELY NOT FATAL, for the same reason. Measured
+    // 11 September 2026, `costs` across the registry carries sixteen distinct key names —
+    // input, output, image, video, audio, webSearch, requests, file, request, additionalCosts,
+    // images, imageInput, imageOutput, cacheRead, cacheCreation, pdf — of which exactly TWO
+    // are validated and exactly THREE are read by any consumer. Refusing the other thirteen
+    // would refuse 204 entries. They are reported instead, which is what turns "absorbed
+    // silently" into "visible", and that was the hole: a camelCase `imageOutput`, a
+    // "// Per million seconds" comment on a per-token figure, and three `audio: 0.0` entries
+    // all arrived without a single gate objecting.
+    if (config.costs && typeof config.costs === "object") {
+      const meters = config.costs.meters;
+
+      if (meters !== undefined) {
+        if (meters === null || typeof meters !== "object" || Array.isArray(meters)) {
+          result.isValid = false;
+          result.issues.push({
+            type: "invalid_cost_meters",
+            message: "costs.meters must be an object keyed by the catalogue's own meter name",
+            field: "costs.meters",
+          });
+        } else {
+          for (const [meterName, meter] of Object.entries(meters)) {
+            // A BARE NUMBER IS REFUSED, not coerced. The whole point of this block is that a
+            // figure carries its unit; accepting `audio: 100` here would recreate the field
+            // whose unit had to be guessed from a comment that was wrong.
+            if (!meter || typeof meter !== "object" || Array.isArray(meter)) {
+              result.isValid = false;
+              result.issues.push({
+                type: "invalid_cost_meter",
+                message: `costs.meters.${meterName} must be an object of the form { value, unit }`,
+                field: `costs.meters.${meterName}`,
+              });
+              continue;
+            }
+            if (typeof meter.value !== "number" || !Number.isFinite(meter.value)) {
+              result.isValid = false;
+              result.issues.push({
+                type: "invalid_cost_meter_value",
+                message: `costs.meters.${meterName}.value must be a finite number`,
+                field: `costs.meters.${meterName}.value`,
+              });
+            }
+            if (!KNOWN_METER_UNITS.includes(meter.unit)) {
+              result.isValid = false;
+              result.issues.push({
+                type: "invalid_cost_meter_unit",
+                message: `costs.meters.${meterName}.unit must be one of ${KNOWN_METER_UNITS.join(", ")} — got ${JSON.stringify(meter.unit)}`,
+                field: `costs.meters.${meterName}.unit`,
+              });
+            }
+          }
+        }
+      }
+
+      const unrecognised = Object.keys(config.costs).filter(
+        (k) => !VALIDATED_COST_KEYS.includes(k) && !REPORTED_COST_KEYS.includes(k)
+      );
+      if (unrecognised.length > 0) {
+        result.warnings.push({
+          type: "unrecognised_cost_keys",
+          message: `costs carries key(s) nothing validates or renders: ${unrecognised.join(", ")}. A cost key with no reader and no unit is free data.`,
+          field: "costs",
+          keys: unrecognised,
         });
       }
     }

@@ -69,6 +69,18 @@
   const REANALYSE_WARNING_ID = "imgdesc-reanalyse-warning";
   const REANALYSE_BUTTON_ID = "imgdesc-reanalyse-btn";
 
+  // The overlay toolbar revealed at analysis completion. Declared in tools.html.
+  const OVERLAY_TOOLBAR_ID = "imgdesc-overlay-toolbar";
+
+  // What analysis completion says. Two variants, keyed on OCR items present
+  // rather than on classification present, because the Review OCR control is
+  // enabled on that same predicate and naming a disabled control would be a
+  // lie. The count itself is NOT here — it is the control's own description.
+  const COMPLETE_WITH_OCR =
+    "Analysis complete. Review OCR and the analysis overlay controls are now available.";
+  const COMPLETE_WITHOUT_OCR =
+    "Analysis complete. The analysis overlay controls are now available.";
+
   // ============================================================================
   // ANALYSIS PIPELINE METHODS
   // ============================================================================
@@ -840,6 +852,68 @@
     // ========================================================================
 
     /**
+     * The single analysis-completion path: publish the result to the overlay,
+     * reveal the toolbar, refresh the Florence-2 opt-in state, and announce
+     * ONCE that the controls exist (H-6c).
+     *
+     * WHY IT IS SHARED. Two sites complete an analysis and they are mutually
+     * exclusive for any one run — applyFullResult() inside
+     * startBackgroundAnalysis() (cache hit, and the pre-15A single-phase
+     * fallback) and runGatedAnalysis() (the two-phase path). Both carried the
+     * identical block. A fix landing on one of two paths is the fail-open
+     * shape AGENTS.md names "a guard installed but not on the path it
+     * protects", so there is now one path and both call it.
+     *
+     * WHY THE ANNOUNCEMENT IS HERE AND NOT ON THE BADGE. The toolbar carries
+     * hidden in the markup and is cleared only at completion, so no amount of
+     * navigation before this moment reveals the Review OCR control — the
+     * highest-value input this tool accepts. Nothing marked the moment it
+     * appeared. The classification badge is NOT a usable host: it is hidden
+     * until a classification arrives and hidden again in output mode, so it is
+     * in the accessibility tree in some states and not others, and it sits
+     * behind two classification guards that an OCR-keyed line must not inherit.
+     * announceStatus() resolves the shared always-exposed polite region at
+     * call time. See the badge creation site in image-describer-overlay.js,
+     * which is aria-live="off" for this reason.
+     *
+     * EXACTLY ONE CALL PER COMPLETED ANALYSIS. Not per stage, not per render.
+     * The third site that un-hides this toolbar — showConfigUI() in
+     * image-describer-controller-ui.js — is deliberately NOT routed here: it
+     * restores a view the user navigated back to, which is not a completion,
+     * and announcing there would speak on a gesture the user already made.
+     *
+     * @param {Object} result - the completed analysis result
+     * @private
+     */
+    _onAnalysisComplete(result) {
+      // Update overlay with analysis data (Phase 5D-1)
+      if (typeof window.ImageDescriberOverlay !== "undefined") {
+        window.ImageDescriberOverlay.setAnalysis(result);
+        const toolbar = document.getElementById(OVERLAY_TOOLBAR_ID);
+        if (toolbar) toolbar.hidden = false;
+      }
+
+      // Phase 10C-fix: update Florence-2 opt-in button state
+      this._updateFlorenceOptinState();
+
+      // Announce last, so the controls the sentence names already exist.
+      const hasOCRItems = !!(
+        result &&
+        result.ocr &&
+        result.ocr.items &&
+        result.ocr.items.length > 0
+      );
+      this.announceStatus(
+        hasOCRItems ? COMPLETE_WITH_OCR : COMPLETE_WITHOUT_OCR,
+      );
+      logDebug(
+        `Analysis completion announced (OCR items: ${
+          hasOCRItems ? result.ocr.items.length : 0
+        })`,
+      );
+    },
+
+    /**
      * Start background image analysis as soon as preview loads.
      * Runs OCR + colour sampling in parallel, storing results
      * in this.lastAnalysis for later inclusion in the prompt.
@@ -882,15 +956,7 @@
         self.lastAnalysis = result;
         self._analysisPending = null;
 
-        // Update overlay with analysis data (Phase 5D-1)
-        if (typeof window.ImageDescriberOverlay !== "undefined") {
-          window.ImageDescriberOverlay.setAnalysis(result);
-          const toolbar = document.getElementById("imgdesc-overlay-toolbar");
-          if (toolbar) toolbar.hidden = false;
-        }
-
-        // Phase 10C-fix: update Florence-2 opt-in button state
-        self._updateFlorenceOptinState();
+        self._onAnalysisComplete(result);
 
         return result;
       };
@@ -1089,15 +1155,7 @@
         this._immediateResult = null;
         this._immediateCanvasData = null;
 
-        // Update overlay with full analysis data (Phase 5D-1)
-        if (typeof window.ImageDescriberOverlay !== "undefined") {
-          window.ImageDescriberOverlay.setAnalysis(result);
-          const toolbar = document.getElementById("imgdesc-overlay-toolbar");
-          if (toolbar) toolbar.hidden = false;
-        }
-
-        // Phase 10C-fix: update Florence-2 opt-in button state
-        this._updateFlorenceOptinState();
+        this._onAnalysisComplete(result);
 
         logInfo(
           `Gated analysis complete in ${result.totalDuration}ms ` +

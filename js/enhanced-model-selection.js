@@ -311,6 +311,9 @@ const EnhancedModelSelection = (function () {
         isDefault: model.isDefault || false, // ← IMPORTANT: Preserve isDefault
         costs: model.costs,
         capabilities: model.capabilities || ["text"],
+        // The pricing marker, or null. Without this the promotional warning could not reach
+        // any display surface: this projection dropped `metadata` wholesale.
+        pricing: projectPricing(model.metadata),
         disabled: false, // All models in this array are enabled
       }));
 
@@ -445,6 +448,10 @@ const EnhancedModelSelection = (function () {
                   isFree: registryModel.isFree, // ← ACCURATE DATA
                   costs: registryModel.costs, // ← ACCURATE DATA
                   capabilities: registryModel.capabilities || ["text"],
+                  // Marked here too. A model reaching the picker down THIS path with no
+                  // pricing field would silently lose its promotional warning, and the two
+                  // paths produce objects that are consumed identically.
+                  pricing: projectPricing(registryModel.metadata),
                   disabled: false, // Only enabled models reach here
                 };
                 registryLookupCount++;
@@ -575,6 +582,117 @@ const EnhancedModelSelection = (function () {
   }
 
   /**
+   * Project the registry's pricing marker for display, or NULL when the price is not
+   * promotional.
+   *
+   * NULL RATHER THAN A FALSY-BUT-PRESENT OBJECT, deliberately. The registry OMITS
+   * pricingPromotionalSides for a model whose price is not temporary — it does not write
+   * "none" — so a consumer gets exactly one truthy test and cannot accidentally warn about a
+   * model that is priced normally.
+   *
+   * pricingStandard is a LOWER BOUND on the post-promotion price, derived from the cheapest
+   * undiscounted endpoint rate. No OpenRouter route publishes when a promotion ends, so
+   * nothing here may be phrased as a prediction.
+   *
+   * @param {Object|undefined} metadata - a registry entry's metadata block
+   * @returns {{sides: string, standard: Object, checkedAt: string|null, note: string|null}|null}
+   */
+  function projectPricing(metadata) {
+    const sides = metadata && metadata.pricingPromotionalSides;
+    if (!sides) return null;
+
+    // THE PROJECTION KEEPS THE REGISTRY'S OWN KEY NAMES, deliberately. It is a subset of
+    // `metadata`, not a rename of it, so every window.PricingDisplay function works on the
+    // projection and on a raw registry entry alike — one shape, and no adapter to keep in step.
+    const standard = (metadata && metadata.pricingStandard) || {};
+    return {
+      pricingPromotionalSides: sides, // "input" | "output" | "both"
+      pricingStandard: {
+        input: typeof standard.input === "number" ? standard.input : null,
+        output: typeof standard.output === "number" ? standard.output : null,
+      },
+      pricingCheckedAt: (metadata && metadata.pricingCheckedAt) || null,
+      pricingNote: (metadata && metadata.pricingNote) || null,
+    };
+  }
+
+  /**
+   * The short marker for a picker option. Empty string when the price is not promotional.
+   *
+   * THIS IS DELIBERATELY NOT PART OF formatCostForDisplay, AND THE REASON IS THE WHOLE POINT.
+   * The option's visible text is built with `generateOptionText(model, shouldShowCosts)`, and
+   * shouldShowCosts is FALSE unless the user is sorting by cost or filtering by a cost band —
+   * so it is false in the default picker state. The aria-label, by contrast, always includes
+   * the cost. A marker living inside the cost string would therefore be spoken to a screen
+   * reader and invisible to everyone else, by default. It is appended independently instead,
+   * so the visible text and the accessible name carry it together or not at all (SC 2.5.3).
+   *
+   * The wording itself lives in js/pricing-display.js, once. Resolved at call time.
+   *
+   * @param {Object} model - a projected model
+   * @returns {string}
+   */
+  function formatPromotionalMarker(model) {
+    const pricing = window.PricingDisplay;
+    if (!pricing) {
+      // LOUD, not silent — an unmarked promotional price is the defect, not a cosmetic loss.
+      logError(
+        "window.PricingDisplay is unavailable — promotional prices will not be marked"
+      );
+      return "";
+    }
+    return pricing.markerFor(model && model.pricing);
+  }
+  /**
+   * Put the promotional notice into the model-information panel, or TAKE IT OUT AGAIN.
+   *
+   * THE REMOVAL BRANCH IS THE LOAD-BEARING ONE. This panel is updated in place as the user
+   * moves between models, so a notice left behind after switching from a promotional model to
+   * a normally-priced one would warn about the wrong model — worse than not warning at all,
+   * because it is confidently wrong. The element is therefore created on demand and removed
+   * whenever `model.pricing` is null.
+   *
+   * NO LIVE REGION IS CREATED OR ARMED HERE. The model-information panel is deliberately
+   * aria-live="off"; the selection change is already announced once elsewhere, and a second
+   * voice on this content is the duplicate-announcement defect this codebase has spent two
+   * sessions removing.
+   *
+   * @param {Element} costSection - the #modelCostings container
+   * @param {Object} model - a projected model
+   */
+  function renderPromotionNotice(costSection, model) {
+    const existing = costSection.querySelector(".modelPricingPromotion");
+
+    if (!model || !model.pricing) {
+      if (existing) existing.remove();
+      return;
+    }
+
+    const built = window.PricingDisplay
+      ? window.PricingDisplay.noticeElement(model.pricing)
+      : null;
+    if (!built) {
+      logError(
+        "window.PricingDisplay is unavailable — the promotional price notice will not be shown"
+      );
+      if (existing) existing.remove();
+      return;
+    }
+
+    const notice = existing || built;
+    if (existing) existing.replaceChildren(...built.childNodes);
+
+    if (!existing) {
+      const costList = costSection.querySelector("dl.modelCosts");
+      if (costList && costList.parentNode) {
+        costList.parentNode.insertBefore(notice, costList.nextSibling);
+      } else {
+        costSection.appendChild(notice);
+      }
+    }
+  }
+
+  /**
    * Format cost information for display in dropdown options
    * @param {Object} model - Model with cost data
    * @returns {string} Formatted cost text
@@ -668,6 +786,11 @@ const EnhancedModelSelection = (function () {
       const costDisplay = formatCostForDisplay(model);
       optionText += costDisplay;
     }
+
+    // The promotional marker is OUTSIDE the showCosts test on purpose — see
+    // formatPromotionalMarker. Inside it, the warning would be invisible in the default
+    // picker state while still being spoken.
+    optionText += formatPromotionalMarker(model);
 
     // Handle very long text (mobile considerations)
     if (optionText.length > 80) {
@@ -1661,7 +1784,13 @@ const EnhancedModelSelection = (function () {
     // If no cost range specified, show all non-free models
     if (!costRange) return true;
 
-    const inputCost = model.costs.input;
+    // GUARDED. This threw a TypeError on any entry reaching the filter without a costs block,
+    // taking the whole filtered list with it rather than dropping one model. An entry whose
+    // input cost cannot be read is excluded, matching how free models are already treated: a
+    // cost band is a claim about a number, and there is no number.
+    const inputCost =
+      model.costs && typeof model.costs.input === "number" ? model.costs.input : null;
+    if (inputCost === null) return false;
 
     switch (costRange) {
       case "0-1":
@@ -1792,6 +1921,9 @@ const EnhancedModelSelection = (function () {
       modelDetailsSummary.textContent = `More information about ${model.name}`;
     }
 
+    // (see renderPromotionNotice below for why the notice is REMOVED, not merely skipped,
+    //  when the newly selected model is not on a promotional price)
+
     // Update the model description
     const modelP = modelInfoContainer.querySelector(".modelP");
     if (modelP && model.description) {
@@ -1826,6 +1958,8 @@ const EnhancedModelSelection = (function () {
           ? "<strong>Free</strong>"
           : `<strong>$${model.costs.output.toFixed(3)} per 1M tokens</strong>`;
       }
+
+      renderPromotionNotice(costSection, model);
     }
 
     // Update supported parameters if available
@@ -1948,7 +2082,7 @@ const EnhancedModelSelection = (function () {
         const costInfo = formatCostForDisplay(model);
         option.setAttribute(
           "aria-label",
-          `${model.name} from ${model.provider}${costInfo}`
+          `${model.name} from ${model.provider}${costInfo}${formatPromotionalMarker(model)}`
         );
 
         // Add directly to select (no optgroup)
@@ -2000,7 +2134,7 @@ const EnhancedModelSelection = (function () {
           const costInfo = formatCostForDisplay(model);
           option.setAttribute(
             "aria-label",
-            `${model.name} from ${model.provider}${costInfo}`
+            `${model.name} from ${model.provider}${costInfo}${formatPromotionalMarker(model)}`
           );
 
           optgroup.appendChild(option);
@@ -2474,6 +2608,8 @@ const EnhancedModelSelection = (function () {
 
     // Cost display helpers
     formatCostForDisplay,
+    projectPricing,
+    formatPromotionalMarker,
     getCostSortValue,
     sortModelsByCost,
     generateOptionText,

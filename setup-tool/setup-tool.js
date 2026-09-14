@@ -1378,10 +1378,20 @@ window.SetUpTool = (function () {
     // is in the fieldset's help text, where it lands BEFORE a person chooses;
     // appending it would deliver it after the choice and would make the line
     // long enough to be talked over.
+    //
+    // "PROXY", NOT "HOST" — an owner decision, recorded so it is not reverted.
+    // "Host" falsely implies the University hosts the model; what actually
+    // differs between the two options is which network path the request takes.
+    // "Proxy" is less immediately understandable but accurate, and a listener
+    // who does not know the word learns nothing wrong from it. This line must
+    // keep agreeing with the fieldset legend in tools.html ("AI service
+    // proxy"): an NVDA sitting on 8 September 2026 heard the legend say proxy
+    // and this line say host, because the legend was changed and this was not.
+    // Nothing automated compares the two — only a person listening found it.
     announce(
-      "AI service host set to " +
+      "AI service proxy set to " +
         PROXY_HOST_LABELS[choice] +
-        ". New requests will use this host."
+        ". New requests will use this proxy."
     );
 
     logInfo("Foundry proxy host changed to", choice);

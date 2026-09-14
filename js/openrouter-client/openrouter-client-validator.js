@@ -74,6 +74,13 @@ export class OpenRouterValidator {
       "abortSignal",
       "requestId",
       "isModelSwitch",
+      // Modality step 2. ONE namespaced key rather than three loose booleans,
+      // so a call site reads `{ modality: { wantImage: true } }` instead of the
+      // opaque bare-boolean form AGENTS.md warns against — and so the
+      // unsupported-parameter sweep below has one name to skip, not three. It
+      // is internal because it is never a wire parameter: requestAdditions
+      // turns it into `modalities`, and that is what reaches the body.
+      "modality",
     ];
   }
 
@@ -224,6 +231,36 @@ export class OpenRouterValidator {
       }
     });
 
+    // MODALITY STEP 2 — REFUSE BEFORE THE SEND, on two conditions: asking for
+    // an output this model cannot produce, and sending an ordinary text
+    // request to a model whose only output is non-text. Both are ways of
+    // paying for a reply nobody can use.
+    //
+    // PUSHED UNCONDITIONALLY, unlike the unsupported-parameter warnings above,
+    // which are gated on `options.isModelSwitch` because they describe a
+    // consequence of switching. A modality refusal is a property of THIS
+    // request and would be silent on an ordinary send if it inherited that gate.
+    //
+    // AN UNRECORDED MODEL IS NEVER REFUSED — modalityWarnings tests the
+    // `recorded` flag rather than the failed-open outputs list. Measured
+    // 11 September 2026, all 478 registrations are unrecorded, so a predicate
+    // reading the failed-open value would refuse the entire catalogue.
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    if (modalityCore && options.modality) {
+      const modalityIssues = modalityCore.modalityWarnings(modelConfig, {
+        ...options.modality,
+        modelName: modelConfig.name,
+      });
+      for (const issue of modalityIssues) {
+        parameterWarnings.push(issue);
+        openRouterUtils.warn("Modality refused before send", {
+          modelId,
+          message: issue.message,
+        });
+      }
+    }
+
     return {
       validatedOptions,
       parameterWarnings,
@@ -345,6 +382,61 @@ export class OpenRouterValidator {
       const { validatedOptions, parameterWarnings, supportedParams } =
         this.validateModelParameters(options, options.model);
 
+      // MODALITY STEP 3 — REFUSE AN AUDIO ATTACHMENT BEFORE THE SEND.
+      //
+      // READ OFF THE MESSAGES, NOT OFF AN OPTION FLAG. Step 2's refusal asks
+      // what the caller REQUESTED (options.modality.wantImage); this one asks
+      // what the request actually CARRIES, by looking for an input_audio part.
+      // A flag can be forgotten, and a forgotten flag is a silent gate — the
+      // BG-P3 shape, where a guard installed off the path reads exactly like
+      // one that works. A part in the messages array cannot be forgotten
+      // because it IS the thing being sent.
+      //
+      // AN UNRECORDED MODEL IS NEVER REFUSED. modalityOf FAILS OPEN to
+      // text/text for an entry with no metadata.modalities block, and measured
+      // 11 September 2026 that is every one of the 478 registrations. Testing
+      // canAccept alone would therefore refuse every audio request in the
+      // catalogue, so the `recorded` flag is tested first — absence means
+      // UNMEASURED, not text-only.
+      //
+      // IT WARNS AND DOES NOT STRIP. Removing the part would be a user-visible
+      // behaviour change with no proof behind it, and is out of scope here.
+      const modalityCoreIn =
+        typeof window !== "undefined" ? window.ModalityCore : null;
+      if (modalityCoreIn && Array.isArray(messages)) {
+        const carriesAudio = messages.some(
+          (m) =>
+            m &&
+            Array.isArray(m.content) &&
+            m.content.some((p) => p && p.type === "input_audio")
+        );
+        if (carriesAudio) {
+          const target = modelRegistry.getModel(options.model);
+          const recorded = modalityCoreIn.modalityOf(target);
+          const accepts = modalityCoreIn.canAccept(
+            target,
+            modalityCoreIn.MODALITY.AUDIO
+          );
+          if (recorded.recorded && !accepts) {
+            const name = (target && target.name) || options.model;
+            const issue = {
+              parameter: modalityCoreIn.METADATA_KEY,
+              value: modalityCoreIn.MODALITY.AUDIO,
+              message: `${name} does not accept audio input, so the attached audio cannot be read`,
+            };
+            // Pushed UNCONDITIONALLY, like step 2's refusal and unlike the
+            // unsupported-parameter warnings, which are gated on
+            // options.isModelSwitch because they describe a consequence of
+            // switching. This is a property of THIS request.
+            parameterWarnings.push(issue);
+            openRouterUtils.warn("Audio input refused before send", {
+              model: options.model,
+              message: issue.message,
+            });
+          }
+        }
+      }
+
 // Build request body with only supported parameters
       const requestBody = {
         model:
@@ -385,6 +477,43 @@ export class OpenRouterValidator {
         openRouterUtils.debug("Added plugins parameter to request body", {
           pluginCount: options.plugins.length,
           plugins: options.plugins,
+        });
+      }
+
+      // MODALITY STEP 2 — the `modalities` branch. This builder is a CLOSED
+      // ALLOWLIST: a key not named here never reaches the wire, so a new
+      // request field needs an explicit branch. Shaped on the plugins
+      // pass-through immediately above, which is the precedent.
+      //
+      // IDEMPOTENT ACROSS A DOUBLE BUILD, WHICH IS A HARD REQUIREMENT.
+      // buildRequest runs twice per streaming request — once plainly, once
+      // again with stream:true merged — so a field derived from per-call state
+      // corrupts the second body. requestAdditions holds no state and derives
+      // purely from its arguments, so merging its result twice equals merging
+      // it once. This is the bug the max_tokens rename hit and the Responses
+      // adapter had to re-avoid.
+      //
+      // IT ADDS NOTHING WHEN THE MODEL CANNOT DO WHAT WAS ASKED — deliberately.
+      // The refusal is validateModelParameters' job, above; the builder's job
+      // is only to decline to put an ignored field on the wire. That split is
+      // why a text-only model's body is byte-identical to what it is today.
+      const modalityCore =
+        typeof window !== "undefined" ? window.ModalityCore : null;
+      if (modalityCore && options.modality) {
+        const modelConfig = modelRegistry.getModel(requestBody.model);
+        const additions = modalityCore.requestAdditions(
+          modelConfig,
+          options.modality
+        );
+        if (additions.modalities) {
+          requestBody.modalities = additions.modalities;
+        }
+        if (additions.audio) {
+          requestBody.audio = additions.audio;
+        }
+        openRouterUtils.debug("Modality additions considered", {
+          model: requestBody.model,
+          added: Object.keys(additions),
         });
       }
 

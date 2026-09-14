@@ -798,7 +798,8 @@
 #ai-original-content:focus-visible,
 #ai-enhanced-content:focus-visible,
 #ai-pdf-scroll-container:focus-visible,
-.mmd-pdf-scroll-container:focus-visible {
+.mmd-pdf-scroll-container:focus-visible,
+.captions-fixer-table-scroll:focus-visible {
   outline: 3px solid #c1d100;
   outline-offset: -2px;
 }
@@ -814,7 +815,8 @@
   #ai-enhanced-content:focus,
   #ai-preview-content:focus,
   #ai-pdf-scroll-container:focus,
-  .mmd-pdf-scroll-container:focus {
+  .mmd-pdf-scroll-container:focus,
+  .captions-fixer-table-scroll:focus {
     outline: 3px solid #000;
     outline-offset: 2px;
   }
@@ -2377,6 +2379,18 @@ body.resume-focus-mode .mathpix-tab-headers {
 .mathpix-convert-size-readout[data-band="close"] {
   border-left-color: #fcbc00;
   background-color: #3a3320;
+}
+
+/* The promotional-price caution, matching the "close" size band above. A caution rather than
+   an error, so not the --warning-* red pair.
+
+   Measured against this theme's panel text #e1e8ec and the tint below:
+     text   #e1e8ec on #3a3320  = 10.13:1  (SC 1.4.3 needs 4.5:1)
+     rule   #fcbc00 on #3a3320  =  7.37:1  (SC 1.4.11 needs 3:1 for a graphical object) */
+.modelPricingPromotion {
+  border-left-color: #fcbc00;
+  background-color: #3a3320;
+  color: #e1e8ec;
 }
 
 .mathpix-convert-size-readout[data-band="over"] {

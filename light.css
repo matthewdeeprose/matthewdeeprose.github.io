@@ -817,7 +817,8 @@ legend.session-manager-group-header {
 #ai-original-content:focus-visible,
 #ai-enhanced-content:focus-visible,
 #ai-pdf-scroll-container:focus-visible,
-.mmd-pdf-scroll-container:focus-visible {
+.mmd-pdf-scroll-container:focus-visible,
+.captions-fixer-table-scroll:focus-visible {
   outline: 3px solid #005c84;
   outline-offset: -2px;
 }
@@ -833,7 +834,8 @@ legend.session-manager-group-header {
   #ai-enhanced-content:focus,
   #ai-preview-content:focus,
   #ai-pdf-scroll-container:focus,
-  .mmd-pdf-scroll-container:focus {
+  .mmd-pdf-scroll-container:focus,
+  .captions-fixer-table-scroll:focus {
     outline: 3px solid #000;
     outline-offset: 2px;
   }
@@ -2397,6 +2399,19 @@ body.resume-focus-mode .mathpix-tab-headers {
 }
 
 .mathpix-convert-size-readout[data-band="close"] {
+  border-left-color: #946800;
+  background-color: #fff8e6;
+}
+
+/* The promotional-price caution. Deliberately the SAME amber as the "close" size band above
+   rather than a new colour: this is a caution, not an error, and #d63301 on #ffebe8 (the
+   --warning-* pair) reads as something having gone wrong. Nothing has gone wrong — the price is
+   real and correct today, it simply will not last.
+
+   Measured against this theme's body text #00131d and the tint below:
+     text   #00131d on #fff8e6  = 17.84:1  (SC 1.4.3 needs 4.5:1)
+     rule   #946800 on #fff8e6  =  4.68:1  (SC 1.4.11 needs 3:1 for a graphical object) */
+.modelPricingPromotion {
   border-left-color: #946800;
   background-color: #fff8e6;
 }

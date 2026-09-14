@@ -76,17 +76,121 @@ const MathPixContextAI = (function () {
   const EMBED_CONTAINER_ID = "mathpix-context-ai-embed-container";
 
   /**
-   * Default model id for the context round-trip. KEPT — it has a load-bearing
-   * reader in _resolveModel(): when a provider tags PDF as a per-model
-   * capability (Foundry), THIS id is the preferred pick if itself ["pdf"]-
-   * eligible, else the first eligible model. When a provider does NOT tag PDF
-   * per model (OpenRouter reads PDFs at the engine level), THIS id is the
-   * fallback anchor — resolved only when it appears in that provider's
-   * unfiltered eligible list, so it can never be borrowed across providers. Also
-   * the documented last-resort fallback id in initEmbed and the cost preview
-   * when no model has been resolved for the run.
+   * The provider whose default answers when nothing else does. Matches
+   * ProviderSwitcher's own DEFAULT_PROVIDER_ID and _resolveModel's existing
+   * `getActive()` fallback; declared separately because this module has to
+   * work when the switcher has not loaded.
    */
-  const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
+  const DEFAULT_PROVIDER_ID = "openrouter";
+
+  /**
+   * The purpose this seam asks the shared registry about (parcel I5-2).
+   *
+   * Named rather than inlined for the reason the enhancer names its own
+   * (`AI_ENHANCER_CONFIG.RECOMMENDATION_PURPOSE`, I5-1): a bare string at the
+   * call site is a magic value, and the registry REFUSES an unrecognised
+   * purpose, so a typo resolves null and reads as "this provider has no
+   * default" rather than as "this file asked the wrong question".
+   *
+   * It must equal `MathPixModelRegistry.PURPOSES.CONTEXT`. It is NOT read off
+   * that module, because a capture of a global published by another script is
+   * the dead-announcer shape, and because a constant that reads its own
+   * expected value from the thing it is checked against can never disagree
+   * with it — which is the same reason the suite pins the ids as literals.
+   */
+  const RECOMMENDATION_PURPOSE = "context";
+
+  /**
+   * The model this provider defaults to — the ONE resolver over the shared
+   * `window.MathPixModelRegistry`, asking it for the `context` purpose (parcel
+   * I5-2; previously over a local frozen `DEFAULT_BY_PROVIDER` map, AW-29).
+   *
+   * THE LOCAL MAP IS DELETED, NOT LEFT BESIDE THIS. A second copy holding the
+   * same two ids answers identically to the registry, so no behavioural row
+   * anywhere could see one — which is exactly how the third copy drifts. The
+   * absence is asserted against this function's own source text instead.
+   *
+   * Reached from FOUR call sites, each of which once decided for itself: both
+   * rungs of `_resolveModel` (through one read, so the preferred-pick and the
+   * fallback anchor cannot name two different models within a call),
+   * `initEmbed`'s last resort, and the cost preview. Routing them here is what
+   * stops the sent id and the estimated id naming different models.
+   *
+   * THE FOUR ARE THREE STATEMENTS AND ONE SHARED READ, and the count is stated
+   * as call sites rather than as calls: `_resolveModel` calls this ONCE at
+   * `:665` and uses the result on both rungs. Counted against comment-stripped
+   * source at I5-2 rather than inherited from the AW-29 comment, because the
+   * enhancer's equivalent count was found wrong in BOTH directions.
+   *
+   * THE IDS ARE MEASURED, NOT PREFERRED, and they have not changed — parcel
+   * AW-27, 10 September 2026, six documents x five models x three runs,
+   * blinded, key opened at `5f650fd`, re-verified at AW-34 against the prompt
+   * that results once the page-range clause moved into the user half. The
+   * evidence lives in the registry entry beside the ids, together with the
+   * round and the date, rather than in a comment here that a re-point would
+   * leave behind.
+   *
+   * Resolves the ACTIVE provider at CALL time and never captures it —
+   * ProviderSwitcher loads after this file, and the provider is shared mutable
+   * state that a persistent browser profile carries between runs (AW-19).
+   *
+   * AN UNRECOGNISED PROVIDER RETURNS null AND WARNS, unchanged from AW-29 and
+   * now inherited from the registry rather than re-implemented here. The
+   * contract is the one all three seams settled on at AW-36; it is NOT reopened
+   * by this parcel, and no cross-provider borrow may be reintroduced. The
+   * Context tab attaches a PDF, and `_resolveModel`'s provider-membership gate
+   * exists precisely to stop an OpenRouter id being resolved for Foundry — a
+   * silent fallback here would defeat that gate from inside.
+   *
+   * @param {string} [providerId] defaults to the active provider
+   * @returns {string|null} a model id, or null for a provider the registry has
+   *   no entry for under this purpose, and null when the registry is absent
+   */
+  function _defaultModelForProvider(providerId) {
+    const active =
+      providerId ||
+      (window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+        ? window.ProviderSwitcher.getActive()
+        : DEFAULT_PROVIDER_ID);
+
+    // The shared registry, reached at CALL time and never captured — the same
+    // reason the provider is. A module-scope capture of a global published by
+    // another script captures undefined when the script order moves, which is
+    // the shape AGENTS.md records ten dead call sites of.
+    const registry = window.MathPixModelRegistry;
+    const found =
+      registry && typeof registry.recommendedModel === "function"
+        ? registry.recommendedModel(RECOMMENDATION_PURPOSE, active)
+        : null;
+
+    if (!found || typeof found.modelId !== "string") {
+      // FAIL CLOSED, NEVER OPEN. A hardcoded id here would be the private copy
+      // this parcel exists to remove, reinstated one indirection further from
+      // the resolver and therefore harder to find. null flows to the callers'
+      // existing guards: `_resolveModel` returns null and `handleAnalyseClick`
+      // refuses before any embed is built, and the cost preview leaves the
+      // estimate blank rather than naming a model that would not be sent.
+      //
+      // ONE WARNING COVERING BOTH CAUSES, AND IT NAMES WHICH IT IS, on the
+      // I5-1 precedent. The absent-module case is unreachable on a normally
+      // loaded page, because the registry's script tag PRECEDES this file's in
+      // tools.html — stated as an ORDER and deliberately not as two line
+      // numbers, which drift every time another lane edits that file and were
+      // already stale within an hour of being written. So it is reported
+      // loudly rather than silently. Both spellings carry "no default
+      // registered for provider", which is what the suite's rows match on; the
+      // clause in front of it is what tells a reader whether to look at the
+      // registry's contents or at the page's script order.
+      logWarn(
+        registry
+          ? `_defaultModelForProvider: no default registered for provider '${active}'; returning null rather than borrowing another provider's id.`
+          : `_defaultModelForProvider: the shared model registry is absent from the page, so no default registered for provider '${active}'; returning null rather than borrowing another provider's id.`
+      );
+      return null;
+    }
+    return found.modelId;
+  }
 
   // ---------------------------------------------------------------------------
   // Shared capability module (parcel EA-4)
@@ -149,6 +253,31 @@ const MathPixContextAI = (function () {
       ? shared.PROVIDER_REFUSAL
       : CAPABILITY_MODULE_MISSING;
   }
+
+  /**
+   * The system prompt's opening sentence when the request carries ONLY the
+   * document text. Kept BYTE-IDENTICAL to the pre-AW-33 wording, so a
+   * two-argument buildPrompt() call — which is how section 6's fixture
+   * assertions call it — produces exactly the prompt it always produced.
+   */
+  const MMD_ONLY_SENTENCE =
+    "You are given a document in Mathpix Markdown (MMD) form.";
+
+  /**
+   * The system prompt's opening sentence when the full source PDF is attached
+   * alongside the MMD.
+   *
+   * AW-32 measured the defect this closes: handleAnalyseClick attaches
+   * provider.getSourcePDF() — the WHOLE source document — while the prompt
+   * named only the MMD, so the model was never told what it actually held or
+   * which of the two views was which. Telling a model what it has been given is
+   * correct whether or not whole-source knowledge turns out to help, which is
+   * why this change needs no prior ruling on that question.
+   */
+  const PDF_ATTACHED_SENTENCE =
+    "You are given two views of the same document: the full source PDF, " +
+    "attached to this request, and the document's text in Mathpix Markdown " +
+    "(MMD) form.";
 
   /** Approximate characters per token, for the max_tokens scaling below. */
   const CHARS_PER_TOKEN = 4;
@@ -227,6 +356,56 @@ const MathPixContextAI = (function () {
   // ---------------------------------------------------------------------------
 
   /**
+   * What this run has actually been given, read from the bound data provider.
+   *
+   * AW-33 read these two values inline in `initEmbed`, which was correct while
+   * BOTH clauses lived in the system prompt — `initEmbed` builds that half and
+   * discards the other. AW-34 moved the page-range clause into the USER half,
+   * which `handleAnalyseClick` builds from its own `buildPrompt` call, so the
+   * two halves are now assembled at two different call sites and must describe
+   * the SAME run. One helper read by both is how that holds by construction
+   * rather than by two reads happening to agree.
+   *
+   * Both values come from `this.provider` — the same canonical data provider
+   * the enhancer reads — so the Context tab and the enhancer cannot disagree
+   * about which pages the session holds. Reading the range a second way is
+   * exactly how two copies of one fact drift apart.
+   *
+   * `pdfAttached` is read from the provider rather than from `this.embed`,
+   * because `attachPDF()` has not run yet when `initEmbed` asks:
+   * `handleAnalyseClick` establishes a truthy source PDF before it calls
+   * `initEmbed` and attaches it immediately afterwards, so a truthy
+   * `getSourcePDF()` is the live answer to "will a PDF go with this request".
+   *
+   * @param {Object|null} contextProvider — the bound data provider, or null.
+   * @returns {{pdfAttached: boolean, pageRangeContext: string}}
+   */
+  function _readPromptGivens(contextProvider) {
+    const provider = contextProvider || null;
+
+    const pdfAttached = !!(
+      provider &&
+      typeof provider.getSourcePDF === "function" &&
+      provider.getSourcePDF()
+    );
+
+    let pageRangeContext = "";
+    try {
+      if (provider && typeof provider.getPageRangeContext === "function") {
+        pageRangeContext = provider.getPageRangeContext() || "";
+      }
+    } catch (error) {
+      logWarn(
+        "_readPromptGivens: getPageRangeContext threw; continuing without the page-range clause.",
+        error
+      );
+      pageRangeContext = "";
+    }
+
+    return { pdfAttached, pageRangeContext };
+  }
+
+  /**
    * Build the system + user prompt pair for the context auto-fill round-trip.
    *
    * The system prompt sets the task: read the document and propose values for
@@ -236,19 +415,51 @@ const MathPixContextAI = (function () {
    * leave a block empty when the value is unknown, and to use one of the listed
    * allowed values for the two restricted selects.
    *
-   * Pure: no DOM, no network. `mmd` and `schema` are read, never mutated.
+   * Pure: no DOM, no network. `mmd`, `schema` and `options` are read, never
+   * mutated.
+   *
+   * AW-33 added the third parameter. BOTH of its members default to absent, so
+   * a two-argument call produces a prompt carrying NEITHER clause — that is the
+   * back-compatibility contract section 6 leans on, and it is pinned by its own
+   * suite row rather than left to inspection.
+   *
+   * AW-34 moved the page-range clause from the SYSTEM half to the USER half.
+   * The clause's own words are "The MMD content below ONLY covers these pages",
+   * and the MMD is in the user message — so in the system prompt the word
+   * "below" named nothing. It now sits IMMEDIATELY above the MMD fence, which
+   * is where the enhancer's copy of the same string effectively sits, and the
+   * word is true. The PDF sentence stays in the system half deliberately: it is
+   * a statement about the request as a whole, not about what follows it.
    *
    * @param {string} mmd — the document in Mathpix Markdown form.
    * @param {Array<Object>} schema — MathPixContextManager.getSchema() output.
+   * @param {Object} [options] — what this run has actually been given.
+   * @param {boolean} [options.pdfAttached=false] — true when the full source
+   *   PDF is attached to the request alongside the MMD. Reaches the SYSTEM half.
+   * @param {string} [options.pageRangeContext=""] — the data provider's own
+   *   partial-processing clause, passed through VERBATIM. Empty means the
+   *   session holds the whole document, or nothing is known about the range.
+   *   Reaches the USER half, immediately above the MMD fence.
    * @returns {{systemPrompt: string, userPrompt: string}}
    */
-  function buildPrompt(mmd, schema) {
+  function buildPrompt(mmd, schema, options) {
     const fields = Array.isArray(schema) ? schema : [];
     const mmdText = typeof mmd === "string" ? mmd : "";
 
     if (!Array.isArray(schema)) {
       logWarn("buildPrompt called without an array schema; using no fields.");
     }
+
+    // AW-33 — what the model has been given. Both default to absent.
+    const opts = options && typeof options === "object" ? options : {};
+    const pdfAttached = opts.pdfAttached === true;
+    // Held UNTRIMMED and inserted verbatim: the provider's string is the one
+    // source of truth for this wording, shared with the enhancer, and a
+    // reformatted copy here would be a second copy free to drift. Only the
+    // emptiness TEST trims.
+    const pageRangeContext =
+      typeof opts.pageRangeContext === "string" ? opts.pageRangeContext : "";
+    const hasPageRange = pageRangeContext.trim().length > 0;
 
     // One bullet per field — the camelCase tag the model must emit, plus the
     // human label so it understands what each field means.
@@ -275,8 +486,9 @@ const MathPixContextAI = (function () {
 
     const systemPrompt =
       "You are an expert academic-document analyst working within a UK " +
-      "higher-education accessibility tool. You are given a document in Mathpix " +
-      "Markdown (MMD) form. Your task is to read the document and propose values " +
+      "higher-education accessibility tool. " +
+      (pdfAttached ? PDF_ATTACHED_SENTENCE : MMD_ONLY_SENTENCE) +
+      " Your task is to read the document and propose values " +
       "for a fixed set of education-metadata fields that describe it — its " +
       "subject area, specific topic, intended audience, document type, and " +
       "similar descriptive metadata. Base every proposed value strictly on " +
@@ -294,7 +506,18 @@ const MathPixContextAI = (function () {
       audienceValues +
       ".\nFor <documentType>, the value must be exactly one of: " +
       documentValues +
-      ".\n\nDocument (Mathpix Markdown):\n\n" +
+      "." +
+      // AW-34 — the provider's own partial-processing clause, inserted VERBATIM
+      // and positioned IMMEDIATELY above the MMD fence, because the clause says
+      // "The MMD content below ONLY covers these pages" and that word has to be
+      // true where the string sits. The clause already opens and closes with
+      // its own newlines; the one added "\n" separates it from the preceding
+      // sentence without touching the provider's string. When absent this whole
+      // term is the empty string, so the user prompt stays BYTE-IDENTICAL to
+      // the pre-AW-34 one — the contract section 6's 25 fixture assertions and
+      // suite rows 13.1 and 13.6 lean on.
+      (hasPageRange ? "\n" + pageRangeContext : "") +
+      "\n\nDocument (Mathpix Markdown):\n\n" +
       "```mmd\n" +
       mmdText +
       "\n```\n\n" +
@@ -310,6 +533,9 @@ const MathPixContextAI = (function () {
     logDebug("buildPrompt assembled", {
       fields: fields.length,
       mmdLength: mmdText.length,
+      // AW-33 — the two clause states, so a capture says which prompt shipped.
+      pdfAttached,
+      hasPageRangeContext: hasPageRange,
     });
 
     return { systemPrompt, userPrompt };
@@ -473,17 +699,29 @@ const MathPixContextAI = (function () {
       pdfEligible = [];
     }
 
+    // The ACTIVE provider's own default. Read ONCE here and used by both rungs
+    // below, so the preferred-pick and the fallback anchor cannot name two
+    // different models within one call.
+    const providerDefault = _defaultModelForProvider(providerId);
+
     if (Array.isArray(pdfEligible) && pdfEligible.length > 0) {
       // Foundry-first path: the provider tags PDF as a per-model capability.
-      // Default-pick: prefer the documented default id when it is itself
+      // Default-pick: prefer THIS PROVIDER'S default id when it is itself
       // eligible, otherwise the first eligible model (registry order).
-      const preferred = pdfEligible.find(
-        (model) => model && model.id === DEFAULT_MODEL
-      );
+      //
+      // AW-29: this rung previously matched a single cross-provider constant,
+      // which no Foundry model could ever equal — so Foundry resolved
+      // pdfEligible[0] by list position alone, and the "preferred" lookup was
+      // decorative on the only provider that reaches this branch.
+      const preferred = providerDefault
+        ? pdfEligible.find((model) => model && model.id === providerDefault)
+        : null;
       const chosen = preferred || pdfEligible[0];
       logInfo("Context model resolved via ['pdf'] capability gate", {
         providerId,
         model: chosen.id,
+        providerDefault,
+        preferredWasEligible: !!preferred,
         eligibleCount: pdfEligible.length,
       });
       return { id: chosen.id, model: chosen, providerId };
@@ -493,11 +731,11 @@ const MathPixContextAI = (function () {
     // expresses PDF support at the engine / file-upload level (native,
     // mistral-ocr), NOT as a per-model capability token, so NO OpenRouter model
     // passes a ["pdf"] filter. To keep the default provider working, fall back
-    // to the documented DEFAULT_MODEL — but ONLY when DEFAULT_MODEL genuinely
-    // belongs to the ACTIVE provider (its id appears in that provider's
-    // UNFILTERED eligible list). This provider-membership gate is load-bearing:
-    // it stops an OpenRouter model id ever being resolved for Foundry, which —
-    // with an empty ["pdf"] list — correctly refuses rather than borrowing Haiku.
+    // to THIS PROVIDER'S default — but ONLY when that id genuinely belongs to
+    // the ACTIVE provider (it appears in that provider's UNFILTERED eligible
+    // list). The provider-membership gate is kept even though the map is now
+    // per-provider: the map is a declaration, the list is the live registry,
+    // and this gate is what refuses when the two disagree.
     //
     // Follow-up (roadmap, not this parcel): reconcile how the two providers
     // express PDF capability so a single gate serves both without this fallback.
@@ -513,19 +751,20 @@ const MathPixContextAI = (function () {
     }
 
     const fallbackModel =
+      providerDefault &&
       Array.isArray(unfiltered) &&
-      unfiltered.find((model) => model && model.id === DEFAULT_MODEL);
+      unfiltered.find((model) => model && model.id === providerDefault);
 
     if (fallbackModel) {
       logInfo(
-        "Context model resolved via DEFAULT_MODEL fallback (provider has no ['pdf']-tagged model)",
+        "Context model resolved via per-provider default fallback (provider has no ['pdf']-tagged model)",
         { providerId, model: fallbackModel.id }
       );
       return { id: fallbackModel.id, model: fallbackModel, providerId };
     }
 
     logWarn(
-      `_resolveModel: no ['pdf'] model and no DEFAULT_MODEL fallback for provider '${providerId}'.`
+      `_resolveModel: no ['pdf'] model and no per-provider default fallback for provider '${providerId}'.`
     );
     return null;
   }
@@ -595,6 +834,13 @@ const MathPixContextAI = (function () {
    * user halves can never drift, temperature 0.3, and a max_tokens scaled from
    * the source length but clamped between a sensible floor and the model cap.
    *
+   * AW-33 / AW-34: this site supplies the givens for the SYSTEM half — the
+   * PDF-attached sentence. The USER half's page-range clause is supplied at
+   * handleAnalyseClick's own buildPrompt call. Both read the same run through
+   * `_readPromptGivens(this.provider)`; there is no longer a single production
+   * site, and a change to one of the two without the other is exactly the fault
+   * that helper exists to prevent.
+   *
    * @param {string} mmd — the document in Mathpix Markdown form.
    * @param {Array<Object>} schema — MathPixContextManager.getSchema() output.
    * @param {{model?: string, modelMaxOutput?: number}} [options]
@@ -625,7 +871,7 @@ const MathPixContextAI = (function () {
     const model =
       options.model ||
       (this._resolvedModel && this._resolvedModel.id) ||
-      DEFAULT_MODEL;
+      _defaultModelForProvider();
 
     // ---- Send boundary (S2F-D8) ---------------------------------------------
     // The one final id is now resolved, and NOTHING has been constructed or
@@ -634,7 +880,7 @@ const MathPixContextAI = (function () {
     // On the wired UI path this is defence in depth: handleAnalyseClick already
     // refuses when _resolveModel() returns null, so the button cannot reach an
     // incapable model. What this catches is everything the button is not — the
-    // DEFAULT_MODEL last rung of the ladder above, an options.model override,
+    // per-provider-default last rung of the ladder above, an options.model override,
     // and any direct caller of the exported facade. S2F-D8 locks the placement
     // at the send boundary on the resolved model precisely because a picker
     // filters the list and not the send.
@@ -657,9 +903,13 @@ const MathPixContextAI = (function () {
 
     const modelCap = options.modelMaxOutput || DEFAULT_MODEL_MAX_OUTPUT;
 
-    // Single source of truth: the same buildPrompt() that produces the user
-    // prompt produces the system prompt, so the two never diverge.
-    const { systemPrompt } = buildPrompt(mmd, schema);
+    // AW-33 / AW-34 — tell the prompt what this run has actually been given,
+    // read through the ONE helper both prompt halves use.
+    const { systemPrompt } = buildPrompt(
+      mmd,
+      schema,
+      _readPromptGivens(this.provider)
+    );
 
     // Scale the response budget from the source length, then clamp to the floor
     // (the reply is only labelled blocks) and the model's output cap.
@@ -1128,12 +1378,31 @@ const MathPixContextAI = (function () {
     const el = this.elements && this.elements.cost;
     if (!el) return;
 
-    // The SAME id the send path used — never DEFAULT_MODEL directly — so the
-    // estimate always names and prices the model actually sent (send-id ===
-    // estimate-id). Falls back to the documented default only when no model was
-    // resolved for the run (e.g. a direct call outside handleAnalyseClick).
+    // The SAME id the send path used — never the map directly — so the estimate
+    // always names and prices the model actually sent (send-id === estimate-id).
+    // Falls back to the ACTIVE provider's default only when no model was
+    // resolved for the run (e.g. a direct call outside handleAnalyseClick), and
+    // it reads that provider the same way _resolveModel does: through
+    // _defaultModelForProvider(), which resolves getActive() at call time.
     const resolvedId =
-      (this._resolvedModel && this._resolvedModel.id) || DEFAULT_MODEL;
+      (this._resolvedModel && this._resolvedModel.id) ||
+      _defaultModelForProvider();
+
+    // AW-29: the fallback can now be null (a provider absent from the map), and
+    // the "unavailable for …" sentence below interpolates this id. Return
+    // rather than render "…unavailable for null." — NO EXISTING SENTENCE'S
+    // WORDING CHANGES, only whether one is written at all, and the sole caller
+    // (handleAnalyseClick) has already blanked the element one line before it
+    // reaches here. That caller also cannot take this branch: it refuses when
+    // _resolveModel() returns null and only then sets this._resolvedModel, so
+    // the id is always present on the wired journey. This guards the direct
+    // facade call the comment above names.
+    if (!resolvedId) {
+      logWarn(
+        "Cost preview: no model resolved and no default for the active provider; leaving the estimate blank rather than naming a model that would not be sent."
+      );
+      return;
+    }
 
     const inputTokens = Math.ceil(
       (typeof mmd === "string" ? mmd.length : 0) / CHARS_PER_TOKEN
@@ -1329,7 +1598,16 @@ const MathPixContextAI = (function () {
       // Info-only cost preview, now that analyzeFile has produced its figure.
       this._renderCostPreview(mmd);
 
-      const { userPrompt } = this.buildPrompt(mmd, schema);
+      // AW-34 — the page-range clause now lives in the USER half, so this call
+      // must supply the givens too. A two-argument call here would build a user
+      // prompt with no clause at all, which is WORSE than the misplacement it
+      // replaces: the guard would simply stop shipping. Same helper, same
+      // provider, same run as initEmbed's system half.
+      const { userPrompt } = this.buildPrompt(
+        mmd,
+        schema,
+        _readPromptGivens(this.provider)
+      );
 
       this._progressShow("Generating context suggestions…", "loader", {
         spin: true,
@@ -1415,12 +1693,30 @@ const MathPixContextAI = (function () {
   return {
     // Pure prompt/parse/coerce core (P1).
     buildPrompt,
+    // AW-34. Exported so a capture drive reads the SHIPPED givens through the
+    // SAME helper the two production call sites use. A drive that re-read the
+    // provider itself would be a second recipe, and would capture a prompt no
+    // user can receive — which is the one thing a prompt capture must not do.
+    _readPromptGivens,
     parseResponse,
     coerceSelects,
     // Transport (P2). `embed` is the live instance, set by initEmbed(); exposed
     // so it can be inspected and, under test, replaced with a stub.
     embed: null,
     _resolveModel,
+    // Per-provider default (AW-29; repointed at I5-2). The RESOLVER is exported
+    // and the map is NOT — because there is no longer a map here to export.
+    //
+    // `DEFAULT_BY_PROVIDER` WAS EXPORTED HERE UNTIL I5-2 AND HAS BEEN REMOVED
+    // WITH IT. The comment it carried said both were exported "so the suite can
+    // pin the LITERAL ids rather than compare a function against the map it
+    // reads" — which was the right reasoning and did not need the map. A suite
+    // pinning literals never had to read the map at all, and the one row that
+    // did (12.1, asserting the map was frozen) was asserting a property of a
+    // private copy whose whole purpose has now moved to the shared registry.
+    // Section 12 pins the same two ids as literals, unchanged, and asks the
+    // registry the frozen-ness question instead.
+    _defaultModelForProvider,
     // ------------------------------------------------------------------------
     // Send-boundary facade (parcel EA-4). All four MOVED to
     // window.MathPixModelCapability; these are working delegations kept so no

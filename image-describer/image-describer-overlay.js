@@ -41,6 +41,12 @@
     if (shouldLog(LOG_LEVELS.DEBUG)) console.log("[Overlay]", message, ...args);
   }
 
+  // ── Constants ────────────────────────────────────────────────────────
+
+  // The visually-hidden element carrying the OCR item count, used as the
+  // Review OCR control's accessible description (H-6c). Declared in tools.html.
+  const REVIEW_COUNT_ID = "imgdesc-overlay-review-count";
+
   // ── HTML escaping ────────────────────────────────────────────────────
   const esc =
     window.escapeHtml ||
@@ -234,13 +240,27 @@
       this._layers.depth = depthLayer;
 
       // Create classification badge (Phase 5D-4) — inserted before toolbar
+      //
+      // The badge is SILENT by design (H-6c). It is hidden until a
+      // classification arrives, hidden again in output mode, and populated
+      // only when one exists, so it is a channel that is in the accessibility
+      // tree in some states and not others — the property the controller's
+      // announceStatus() JSDoc was written about. Analysis completion is
+      // announced from the controller through the always-exposed shared
+      // polite region instead. Setting aria-live to "off" overrides the
+      // implicit politeness role="status" carries, while the role and the
+      // accessible name survive, so this stays a reachable labelled surface
+      // that nobody is forced to hear. Leaving it live would give two
+      // utterances for one event. Do NOT restore "polite" here without first
+      // reading the write-before-un-hide ordering defect registered against
+      // _renderClassificationBadge.
       let badge = document.getElementById("imgdesc-overlay-classification");
       if (!badge) {
         badge = document.createElement("div");
         badge.id = "imgdesc-overlay-classification";
         badge.className = "imgdesc-overlay-classification";
         badge.setAttribute("role", "status");
-        badge.setAttribute("aria-live", "polite");
+        badge.setAttribute("aria-live", "off");
         badge.hidden = true;
         const toolbar = document.getElementById("imgdesc-overlay-toolbar");
         if (toolbar && toolbar.parentNode) {
@@ -986,6 +1006,49 @@
           result.ocr.items &&
           result.ocr.items.length > 0;
         reviewBtn.disabled = !hasItems;
+        this._setReviewCountDescription(
+          reviewBtn,
+          hasItems ? result.ocr.items.length : 0,
+        );
+      }
+    },
+
+    /**
+     * Describe how much text is available to review, on the control itself
+     * (H-6c). The completion announcement carries only the state change; the
+     * detail belongs on the control, where it is spoken when the user reaches
+     * it — the settled house pattern at setReanalyseWarning in
+     * image-describer-controller-analysis.js.
+     *
+     * It lives HERE, beside reviewBtn.disabled, rather than at the two
+     * analysis-completion sites, so the description and the button's enabled
+     * state are computed from one predicate and cannot disagree. The Florence
+     * OCR merge re-renders through setAnalysis() and changes ocr.items.length
+     * without a fresh completion, so a description written at completion time
+     * alone would go stale and state a count the button no longer matches.
+     *
+     * The attribute is ADDED only while there is something to review and
+     * REMOVED otherwise, so a user with nothing to review is never told about
+     * text that is not there.
+     *
+     * @param {HTMLElement} reviewBtn - the Review OCR control
+     * @param {number} count - OCR items available to review; 0 removes it
+     * @private
+     */
+    _setReviewCountDescription(reviewBtn, count) {
+      const target = document.getElementById(REVIEW_COUNT_ID);
+      if (!target) return;
+
+      if (count > 0) {
+        target.textContent =
+          count === 1
+            ? "1 text item detected in this image, available to review and correct."
+            : count +
+              " text items detected in this image, available to review and correct.";
+        reviewBtn.setAttribute("aria-describedby", REVIEW_COUNT_ID);
+      } else {
+        target.textContent = "";
+        reviewBtn.removeAttribute("aria-describedby");
       }
     },
 

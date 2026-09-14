@@ -718,7 +718,13 @@ class OpenRouterEmbed {
         fileType: this.currentFile.type,
       });
 
-      const { isImage, isPDF } = this.fileUtils.validateFile(this.currentFile);
+      // allowAudio is opt-in at the validator and defaults to REFUSED, because
+      // chat/chat-attach.js calls the same validator and reads anything that is
+      // not a PDF as an image. See validateFile's own note.
+      const { isImage, isPDF, isAudio } = this.fileUtils.validateFile(
+        this.currentFile,
+        { allowAudio: true },
+      );
 
       let userMessage;
 
@@ -738,6 +744,25 @@ class OpenRouterEmbed {
           userPrompt,
         );
         logDebug("Built PDF message");
+      } else if (isAudio) {
+        // MODALITY STEP 3 — audio message format.
+        //
+        // INERT BY DESIGN, AND THAT IS THE DELIVERABLE. This branch is the
+        // only route by which an input_audio part reaches the wire through
+        // the builder the app actually runs, but nothing can reach it today:
+        // every UI path into attachFile is gated upstream by the Image
+        // Describer's own acceptedTypes list, which is image-only, and the
+        // one audio-accepting input on the page (#transcribe-file-input)
+        // belongs to a separate multipart lane that never touches these
+        // functions. Measured 11 September 2026, and a proof row is bound to
+        // that gate so widening it is a deliberate act rather than an
+        // accident.
+        userMessage = this.fileUtils.prepareAudioContent(
+          this.currentFile,
+          this.currentFileBase64,
+          userPrompt,
+        );
+        logDebug("Built audio message");
       }
 
       const messages = [];
@@ -1279,7 +1304,15 @@ class OpenRouterEmbed {
    */
   async sendStreamingRequest(options) {
     // Validation
-    const { userPrompt, onChunk, onComplete, onError, onReasoning } = options;
+    const {
+      userPrompt,
+      onChunk,
+      onComplete,
+      onError,
+      onReasoning,
+      onImage,
+      onAudio,
+    } = options;
 
     if (!userPrompt?.trim()) {
       throw new Error("User prompt is required");
@@ -1501,6 +1534,15 @@ class OpenRouterEmbed {
         // only by transport-owning providers that surface structural events
         // (e.g. azure-responses); other providers never fire it.
         onReasoning: onReasoning || null,
+        // Modality step 2: a non-text payload alongside the answer. Registered
+        // on the same terms as onReasoning — optional, null when not supplied,
+        // and fired by no provider today.
+        onImage: onImage || null,
+        // Modality step 4: the audio half of the same arrangement. Optional,
+        // null when not supplied, and unreachable today — no shipped call site
+        // sets options.modality, so requestAdditions never asks for audio and
+        // no reply can carry delta.audio.
+        onAudio: onAudio || null,
       };
 
       // Reset the per-request reasoning-summary accumulator. onReasoning text
@@ -1508,6 +1550,19 @@ class OpenRouterEmbed {
       // expose response.reasoning (Reasoning Disclosure). Reset before dispatch
       // so a prior request's summary never leaks into this one.
       this.streamReasoningBuffer = "";
+
+      // Modality step 2: the same arrangement for non-text output. onImage
+      // payloads collect here and buildFinalResponse exposes them as
+      // response.images, so the streaming and non-streaming paths hand a
+      // consumer the identical key. Reset for the identical reason.
+      this.streamImageBuffer = [];
+
+      // Modality step 4. NOT an array, unlike streamImageBuffer: images
+      // arrive whole and are collected, whereas audio arrives as fragments
+      // that reduceStreamDelta folds into ONE cumulative object. The last
+      // onAudio snapshot is therefore the complete payload, so this holds the
+      // latest rather than concatenating. Reset for the identical reason.
+      this.streamAudioBuffer = null;
 
       // Phase 4: Store request info for debug data
       this._currentRequestTiming.requestInfo = {
@@ -1656,6 +1711,70 @@ class OpenRouterEmbed {
             }
           }
         },
+
+        // Modality step 2: a typed NON-TEXT payload alongside the answer,
+        // carried exactly the way onReasoning above carries a reasoning
+        // summary — accumulate, emit an event, fan out to the public callback.
+        //
+        // NOTHING FIRES THIS TODAY, AND SAYING SO IS THE POINT. Its source
+        // would be a provider that surfaces `delta.images`, and the only image
+        // capture taken (10 September 2026) is a NON-STREAMING body, so no
+        // recorded traffic exercises this arm. That is the same standing as
+        // onReasoning itself, which the OpenRouter and azure-openai-v1
+        // providers never fire either. The non-streaming half IS proved,
+        // against the real capture, in processResponse.
+        //
+        // js/openrouter-client/openrouter-client-stream.js is deliberately NOT
+        // the emitter: it is under a byte-for-byte golden differential
+        // (.claude/modality/prove-collapse-differential.mjs, 179 observables),
+        // and adding an emission there would move it.
+        onImage: (payload) => {
+          if (payload) {
+            this.streamImageBuffer = (this.streamImageBuffer || []).concat(
+              Array.isArray(payload) ? payload : [payload]
+            );
+          }
+          this._emitEvent("streamImage", payload);
+          if (this.streamingCallbacks && this.streamingCallbacks.onImage) {
+            try {
+              this.streamingCallbacks.onImage(payload);
+            } catch (error) {
+              logWarn("onImage callback failed:", error);
+            }
+          }
+        },
+
+        // Modality step 4: the audio side channel, carried exactly as onImage
+        // above carries an image — accumulate, emit an event, fan out to the
+        // public callback.
+        //
+        // THIS ONE DOES HAVE AN EMITTER, WHICH onImage DOES NOT. The client's
+        // stream loop fires it from the site that used to drop an audio reply
+        // whole (openrouter-client-stream.js, the processLine accumulator).
+        // The step-2 comment above says that file is deliberately not an
+        // emitter because it sits under a byte-for-byte differential — that
+        // reasoning does not reach a NEW callback, which the differential's
+        // options object does not define and therefore cannot observe.
+        //
+        // REPLACES RATHER THAN CONCATENATES. Each payload is a cumulative
+        // snapshot of the whole reply so far, so keeping the latest is right
+        // and concatenating would hold fifteen copies of a growing object.
+        //
+        // NEVER LOGGED. One captured reply carries 160,000 base64 chars and
+        // there is no sanitiser on the response side at all.
+        onAudio: (payload) => {
+          if (payload) {
+            this.streamAudioBuffer = payload;
+          }
+          this._emitEvent("streamAudio", payload);
+          if (this.streamingCallbacks && this.streamingCallbacks.onAudio) {
+            try {
+              this.streamingCallbacks.onAudio(payload);
+            } catch (error) {
+              logWarn("onAudio callback failed:", error);
+            }
+          }
+        },
       };
 
       // Stage 6 Phase 4: Acquire throttle permission if enabled
@@ -1787,6 +1906,25 @@ class OpenRouterEmbed {
       responseKeys: Object.keys(apiResponse || {}),
     });
 
+    // MODALITY STEP 2. The chain below reads only `message.content`. An image
+    // reply carries `message.content: null` with its payload in
+    // `message.images[]`, so every arm missed, rawText stayed "" — the
+    // initialiser, NOT undefined — and the guard below threw "No content
+    // received from API". The user was billed $0.0387 and shown an error.
+    //
+    // Resolved at CALL TIME and never cached: a module-scope capture of a
+    // window global reads undefined when the plain script has not run.
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    const structured =
+      modalityCore && apiResponse?.choices?.[0]?.message
+        ? modalityCore.normaliseMessage(apiResponse.choices[0].message)
+        : null;
+    const hasNonTextPayload = !!(
+      structured &&
+      (structured.images.length > 0 || structured.audio)
+    );
+
     // Extract text content from response - handle both possible structures
     let rawText = "";
 
@@ -1806,8 +1944,15 @@ class OpenRouterEmbed {
       logDebug("Response was a direct string");
     }
 
-    // Validate we got content
-    if (!rawText || typeof rawText !== "string") {
+    // Validate we got content.
+    //
+    // A reply carrying NO TEXT but a real non-text payload is NOT an error —
+    // it is a successful reply this build has no surface for yet, and throwing
+    // on it bills the user and shows them a failure. A reply carrying neither
+    // still throws, unchanged: the guard was not weakened, it was taught the
+    // difference between "nothing arrived" and "something arrived that is not
+    // text".
+    if ((!rawText || typeof rawText !== "string") && !hasNonTextPayload) {
       logError("No valid content in API response", {
         responseType: typeof apiResponse,
         rawTextType: typeof rawText,
@@ -1815,6 +1960,11 @@ class OpenRouterEmbed {
       });
       throw new Error("No content received from API");
     }
+
+    // "" is the contract past this point — never null, never an object. The
+    // markdown renderer and `streamBuffer += chunk` both corrupt silently on a
+    // non-string.
+    if (typeof rawText !== "string") rawText = "";
 
     logDebug("Extracted text content", {
       length: rawText.length,
@@ -1838,12 +1988,19 @@ class OpenRouterEmbed {
       total: apiResponse?.usage?.total_tokens || 0,
     };
 
+    // AW-23: the provider's stop signal, carried through unchanged. Mirrors
+    // buildFinalResponse so a consumer reads the same two fields whichever
+    // path served the reply.
+    const stopSignal = this._readStopSignal(apiResponse);
+
     // Build response object
     const response = {
       text: rawText,
       html: html,
       markdown: rawText,
       raw: apiResponse,
+      finishReason: stopSignal.finishReason,
+      nativeFinishReason: stopSignal.nativeFinishReason,
       metadata: {
         model: apiResponse?.model || "unknown",
         tokens: tokens,
@@ -1861,6 +2018,24 @@ class OpenRouterEmbed {
       apiResponse.reasoning.trim() !== ""
     ) {
       response.reasoning = apiResponse.reasoning;
+    }
+
+    // Modality step 2: non-text output, attached ONLY WHEN PRESENT — the same
+    // key, on the same condition, as buildFinalResponse's streaming half. The
+    // two must stay shape-identical or a consumer has to know which path
+    // served the reply.
+    if (structured && structured.images.length > 0) {
+      response.images = structured.images;
+    }
+
+    // Modality step 4. THIS KEY WAS MISSING, and the streaming half was
+    // specified as "shape-identical to processResponse" — so the reference
+    // implementation did not exist. hasNonTextPayload above has read
+    // structured.audio since step 2, meaning an audio-only reply already
+    // escaped the "No content received from API" throw and was then dropped
+    // silently one screen further down. Same condition, same shape, both paths.
+    if (structured && structured.audio) {
+      response.audio = structured.audio;
     }
 
     logInfo("Response processed successfully", {
@@ -2454,15 +2629,60 @@ class OpenRouterEmbed {
   }
 
   /**
+   * Read the provider's stop signal out of a wire body or a stream's
+   * responseData, without interpreting it.
+   *
+   * AW-23. Two shapes are accepted because the transports differ and neither
+   * is wrong: Foundry v1's streaming path latches the reason across the stream
+   * and carries it at the top level (its `choices` is whatever the last chunk
+   * held, which may be empty), while every non-streaming body and the
+   * OpenRouter streaming path carry it canonically on `choices[0]`. Top level
+   * wins where both are present, because only the latch can be trusted to have
+   * seen the terminal chunk.
+   *
+   * Returns null — never undefined, and never the string "undefined" — when
+   * the wire carried no reason, so a consumer can distinguish "the provider
+   * said nothing" from "the provider said it stopped".
+   *
+   * @param {Object} source - A parsed response body or a stream's responseData
+   * @returns {{ finishReason: string|null, nativeFinishReason: string|null }}
+   * @private
+   */
+  _readStopSignal(source) {
+    const pick = (topLevel, fromChoice) => {
+      if (typeof topLevel === "string" && topLevel) return topLevel;
+      if (typeof fromChoice === "string" && fromChoice) return fromChoice;
+      return null;
+    };
+
+    const choice = source?.choices?.[0];
+
+    return {
+      finishReason: pick(source?.finish_reason, choice?.finish_reason),
+      nativeFinishReason: pick(
+        source?.native_finish_reason,
+        choice?.native_finish_reason,
+      ),
+    };
+  }
+
+  /**
    * Build final response object
    * @private
    */
   buildFinalResponse(text, responseData) {
+    // AW-23: the provider's stop signal, carried through unchanged so a
+    // consumer can refuse a reply the provider cut off. Always present as a
+    // field, null when the wire carried no reason.
+    const stopSignal = this._readStopSignal(responseData);
+
     const response = {
       text: text,
       html: this.processMarkdownWithFallback(text),
       markdown: text,
       raw: responseData,
+      finishReason: stopSignal.finishReason,
+      nativeFinishReason: stopSignal.nativeFinishReason,
       metadata: {
         model: responseData?.model || this.model,
         tokens: responseData?.usage || null,
@@ -2480,6 +2700,23 @@ class OpenRouterEmbed {
       this.streamReasoningBuffer.trim() !== ""
     ) {
       response.reasoning = this.streamReasoningBuffer;
+    }
+
+    // Modality step 2: non-text output accumulated from onImage payloads.
+    // ATTACHED ONLY WHEN PRESENT, matching response.reasoning immediately
+    // above and matching processResponse below — the two paths must expose the
+    // identical key on the identical condition, or every consumer downstream
+    // has to know which one served it.
+    if (this.streamImageBuffer && this.streamImageBuffer.length > 0) {
+      response.images = this.streamImageBuffer.slice();
+    }
+
+    // Modality step 4: the audio payload accumulated from onAudio snapshots,
+    // on the same terms and the same condition as response.images above and
+    // response.audio in processResponse below. Copied rather than aliased so a
+    // consumer holding the response cannot be surprised by a later fold.
+    if (this.streamAudioBuffer) {
+      response.audio = Object.assign({}, this.streamAudioBuffer);
     }
 
     return response;
@@ -2727,8 +2964,10 @@ class OpenRouterEmbed {
 
     try {
       // Validate file TYPE first (size checked after compression)
-      const { isImage } = this.fileUtils.validateFileType(file);
-      logDebug("File type validation passed", { isImage });
+      const { isImage, isAudio } = this.fileUtils.validateFileType(file, {
+        allowAudio: true,
+      });
+      logDebug("File type validation passed", { isImage, isAudio });
 
       // CHECK IF IMAGE SHOULD BE COMPRESSED
       let processedFile = file;
@@ -2782,6 +3021,7 @@ class OpenRouterEmbed {
         this.fileUtils.validateFileSize(
           processedFile,
           compressionResult ? originalSize : null,
+          { allowAudio: true },
         );
         logDebug("File size validation passed", {
           size: processedFile.size,

@@ -844,9 +844,33 @@
         let finalChunkData = null;
         let chunkIndex = 0;
 
+        // AW-23: per-stream latch for the provider's stop signal. finalChunkData
+        // is overwritten by EVERY chunk, so a trailing usage-only chunk (choices
+        // absent or empty, which is what stream_options.include_usage produces)
+        // would leave responseData.choices carrying no finish_reason at all.
+        // Latching as the stream goes past is what makes the signal survive it.
+        let latchedFinishReason = null;
+        let latchedNativeFinishReason = null;
+
         const processParsed = (parsed) => {
           finalChunkData = parsed;
           const choice = parsed && parsed.choices && parsed.choices[0];
+
+          if (choice) {
+            if (
+              typeof choice.finish_reason === "string" &&
+              choice.finish_reason
+            ) {
+              latchedFinishReason = choice.finish_reason;
+            }
+            if (
+              typeof choice.native_finish_reason === "string" &&
+              choice.native_finish_reason
+            ) {
+              latchedNativeFinishReason = choice.native_finish_reason;
+            }
+          }
+
           const delta = choice && choice.delta;
           const contentPiece = delta && delta.content;
 
@@ -934,6 +958,11 @@
             finalChunkData && finalChunkData.choices
               ? finalChunkData.choices
               : null,
+          // AW-23: the latched stop signal, carried beside choices rather than
+          // inside it, because choices here is whatever the last chunk held and
+          // may be empty. Core reads this in preference to the choices copy.
+          finish_reason: latchedFinishReason,
+          native_finish_reason: latchedNativeFinishReason,
           created:
             finalChunkData && finalChunkData.created
               ? finalChunkData.created

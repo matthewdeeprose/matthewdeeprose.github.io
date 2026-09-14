@@ -6302,6 +6302,21 @@ window.MermaidParseAdapter = (function () {
   // the author said so.
   const BLOCK_COLUMNS_UNSET = -1;
 
+  // The db's own `type` string for an empty cell. Named because the width
+  // reconciliation in copyBlock branches on it, and a bare string literal in
+  // that branch would read as an arbitrary choice rather than as the db's own
+  // vocabulary. Delivered verbatim as the block's `shape`.
+  const BLOCK_SHAPE_SPACE = "space";
+
+  // Every delivered space cell spans exactly ONE column. Measured 13 September
+  // 2026 across `space`, `space:1`, `space:2`, `space:3` and `space:2 space`,
+  // the gap width read off the canvas against a control's own column centres
+  // (register item 80, unruled edge U1). The db hands out one cell per column
+  // the gap occupies, so the run's total is the CELL COUNT and never a sum of
+  // the `width` values — which carry the run's declared K on every one of its
+  // cells.
+  const BLOCK_SPACE_COLUMNS_PER_CELL = 1;
+
   // The nine keys a delivered block carries, in order. Named as a constant
   // because the self-check asserts the delivered key set EXACTLY against it:
   // that is the assertion which catches a stray `size` from a render, and any
@@ -6353,22 +6368,35 @@ window.MermaidParseAdapter = (function () {
    * or cloned, so a `size` and a live d3 selection added by a render cannot
    * cross into the delivery even if this runs after one.
    *
-   * THE WIDTH KEYS DIFFER BY KIND, and this is the one place the surface
-   * reconciles them. A block declared `wide["W"]:3` carries `widthInColumns`;
-   * a `space:2` carries `width` and NO `widthInColumns` at all (census § Q3,
-   * re-measured 5 September 2026). Both are the author's declared span in
-   * columns, so both arrive here under the single delivered name
-   * `widthInColumns`. Recorded rather than left to inference: the dispatch for
-   * this session named `widthInColumns` for space blocks, the db names it
-   * `width`, and mapping the two is what closes that gap without adding a
-   * tenth field nobody documented.
+   * A SPACE CELL'S SPAN IS ONE COLUMN, AND `width` IS NOT ITS SPAN.
+   * CORRECTED 13 September 2026 (register item 80, unruled edge U1). This
+   * comment previously read: "Both are the author's declared span in columns,
+   * so both arrive here under the single delivered name `widthInColumns`",
+   * and the code mapped `width` onto `widthInColumns` for a space cell. THAT
+   * WAS WRONG, and surface contradiction C1 recorded the mapping as the
+   * resolution of a field-name gap when it was in fact a value error.
    *
-   * TWO TRAPS THE COPY PRESERVES rather than repairs, because repairing either
-   * would hide the db's own behaviour from a consumer that has to know it.
-   * A `space:2` arrives as TWO sibling entries, each carrying width 2, so
-   * SUMMING widths double-counts — the declared span is the value on one of
-   * them. And a space block's `label` is its OWN GENERATED PARENT ID, which is
-   * machine text, non-deterministic between parses, and must never be spoken.
+   * MEASURED, six sources on the pinned build, the column count read off the
+   * CANVAS against a same-width control's own column centres rather than from
+   * pixels: `space` and `space:1` deliver ONE cell of width 1 and draw a
+   * ONE-column gap; `space:2` delivers TWO cells EACH of width 2 and draws a
+   * TWO-column gap; `space:3` delivers THREE cells each of width 3 and draws a
+   * THREE-column gap; `space:2 space` delivers three cells and draws three
+   * columns. So the db hands out ONE CELL PER COLUMN THE GAP OCCUPIES, and
+   * `width` is the RUN'S declared K repeated on each of the K cells — never
+   * that cell's own span. Mapping it onto `widthInColumns` gave every cell of
+   * a `space:2` a span of two, consumed four columns where the canvas draws
+   * two, and pushed the following block onto a row it is not on.
+   *
+   * A DECLARED BLOCK is unaffected: `wide["W"]:3` carries `widthInColumns: 3`
+   * on the block itself and is read straight through. `width` is now read
+   * NOWHERE — it was only ever present on space cells, and its value is not a
+   * span.
+   *
+   * ONE TRAP THE COPY STILL PRESERVES, because repairing it would hide the
+   * db's own behaviour from a consumer that has to know it: a space block's
+   * `label` is its OWN GENERATED PARENT ID, which is machine text,
+   * non-deterministic between parses, and must never be spoken.
    *
    * @param {Object} raw - A db block object
    * @returns {Object} The delivered block
@@ -6388,11 +6416,17 @@ window.MermaidParseAdapter = (function () {
     const label =
       typeof raw.label === "string" ? decodeAuthorText(raw.label) : id;
 
+    // A SPACE CELL DEFAULTS TO ONE COLUMN when the db gives it no
+    // `widthInColumns`, which on this build is every time. The default is
+    // stated rather than the raw key being read through to null, because a
+    // consumer laying out a grid has to consume SOMETHING for a cell the
+    // canvas draws a column for, and 1 is what the canvas draws. `raw.width`
+    // is deliberately not consulted — see the block comment above.
     const widthInColumns =
       typeof raw.widthInColumns === "number"
         ? raw.widthInColumns
-        : typeof raw.width === "number"
-          ? raw.width
+        : raw.type === BLOCK_SHAPE_SPACE
+          ? BLOCK_SPACE_COLUMNS_PER_CELL
           : null;
 
     return {
@@ -6598,8 +6632,15 @@ window.MermaidParseAdapter = (function () {
 
   /**
    * Self-check fixture: root declaring `columns 2`, three leaf blocks, one
-   * composite carrying one child and declaring NO columns of its own, and one
-   * labelled edge between two of the leaves.
+   * composite carrying one child and declaring NO columns of its own, a
+   * `space:2`, and one labelled edge between two of the leaves.
+   *
+   * THE `space:2` IS THE U1 WITNESS, added 13 September 2026. It is the one
+   * shape in this fixture whose db keys DISAGREE with the delivered ones: the
+   * db hands out two cells each carrying `width: 2` and no `widthInColumns`,
+   * and the delivery must answer ONE column for each. A fixture carrying only
+   * declared blocks passes whether the width reconciliation is right or wrong,
+   * which is why this one does not.
    *
    * THE UNDECLARED COMPOSITE IS THE POINT. `getColumns("scGroup")` returns 1 on
    * this fixture — its child count — which is indistinguishable from an author
@@ -6621,6 +6662,7 @@ window.MermaidParseAdapter = (function () {
     "    block:scGroup",
     '        scDelta["SelfCheck delta"]',
     "    end",
+    "    space:2",
     '    scAlpha -- "SelfCheck edge" --> scBravo',
   ].join("\n");
 
@@ -6682,8 +6724,19 @@ window.MermaidParseAdapter = (function () {
           const rootIsFirst = !!rawRoot && rawRoot.id === "root";
           const getColumnsWouldLie = db.getColumns("scGroup") === 1;
 
+          // The two RAW space cells, read in this same slot. The new space
+          // assertion below needs both halves: that the db really did hand out
+          // two cells carrying `width: 2` and NO `widthInColumns`, and that
+          // the delivery answers 1 for each anyway. Without the raw half, a
+          // build that simply stopped delivering `width` would satisfy the
+          // delivered half for a reason that has nothing to do with the fix.
+          const rawSpaces = (rawRoot && Array.isArray(rawRoot.children)
+            ? rawRoot.children
+            : []
+          ).filter((b) => b && b.type === BLOCK_SHAPE_SPACE);
+
           const delivery = normaliseBlock(diagram);
-          const [alpha, bravo, charlie, group] = delivery.blocks;
+          const [alpha, bravo, charlie, group, space1, space2] = delivery.blocks;
           const child = group && group.children ? group.children[0] : null;
           const edge = delivery.edges[0];
           const keysOf = (b) => (b ? Object.keys(b).join(",") : "");
@@ -6706,14 +6759,34 @@ window.MermaidParseAdapter = (function () {
               rootIsFirst,
             ],
             [
-              "the delivery names its type and carries four top-level blocks " +
-                "in declaration order, with the author's ids",
+              "the delivery names its type and carries six top-level blocks " +
+                "in declaration order, with the author's ids — the last two " +
+                "being the pair of cells a `space:2` delivers",
               delivery.diagramType === "block" &&
-                delivery.blocks.length === 4 &&
+                delivery.blocks.length === 6 &&
                 alpha.id === "scAlpha" &&
                 bravo.id === "scBravo" &&
                 charlie.id === "scCharlie" &&
-                group.id === "scGroup",
+                group.id === "scGroup" &&
+                !!space1 &&
+                space1.shape === BLOCK_SHAPE_SPACE &&
+                !!space2 &&
+                space2.shape === BLOCK_SHAPE_SPACE,
+            ],
+            [
+              "a `space:2` delivers TWO cells of ONE column each, and the db's " +
+                "own `width: 2` on both is NOT read as a span — the U1 " +
+                "correction of 13 September 2026, asserted on both halves so " +
+                "a db that stopped delivering `width` could not satisfy it by " +
+                "accident",
+              rawSpaces.length === 2 &&
+                rawSpaces.every(
+                  (b) =>
+                    b.width === 2 &&
+                    !Object.prototype.hasOwnProperty.call(b, "widthInColumns")
+                ) &&
+                space1.widthInColumns === BLOCK_SPACE_COLUMNS_PER_CELL &&
+                space2.widthInColumns === BLOCK_SPACE_COLUMNS_PER_CELL,
             ],
             [
               "every delivered block carries EXACTLY the nine documented keys " +
@@ -6721,7 +6794,8 @@ window.MermaidParseAdapter = (function () {
                 "and `intersect` crossing into the delivery",
               keysOf(alpha) === expectedKeys &&
                 keysOf(group) === expectedKeys &&
-                keysOf(child) === expectedKeys,
+                keysOf(child) === expectedKeys &&
+                keysOf(space1) === expectedKeys,
             ],
             [
               "labels are the author's text, the composite's is the EMPTY " +

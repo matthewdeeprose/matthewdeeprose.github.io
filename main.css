@@ -1905,6 +1905,30 @@ select#model-select {
   font-size: 0.8rem;
 }
 
+/* The promotional-price caution in the model information panel.
+
+   NOT COLOUR ALONE (SC 1.4.1). The notice opens with the literal words "Promotional price."
+   in <strong>, so the meaning is carried by the text; the tint and the left rule are a second,
+   redundant cue rather than the only one. Someone who cannot distinguish the colour, or who
+   overrides it entirely, still reads the same sentence. The left rule is also a SHAPE, so the
+   block is distinguishable from ordinary prose without relying on hue at all.
+
+   Geometry here, colour in light.css and dark.css — the same split .mathpix-convert-size-readout
+   uses, and the reason dark mode does not inherit a light palette. */
+.modelPricingPromotion {
+  margin: 0.5rem 0 1rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  border-left-width: 4px;
+  border-left-style: solid;
+  font-size: 0.8rem;
+}
+
+.modelPricingPromotion strong {
+  /* The words that carry the meaning, so they lead rather than blend in. */
+  margin-right: 0.25rem;
+}
+
 .modelP,
 .modelLink {
   margin-bottom: 1rem;

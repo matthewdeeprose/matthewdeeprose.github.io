@@ -49,6 +49,61 @@ const UniversalModal = (function () {
       console.log(`[UniversalModal DEBUG]: ${message}`, ...args);
   }
 
+  /**
+   * Why can this element NOT take focus? Returns null when it can.
+   *
+   * THE ONE PLACE THAT ANSWERS THIS QUESTION, and it exists because there were
+   * two places and they had come apart. Added 10 September 2026.
+   *
+   * `resolveReturnFocusTarget` — the path a modal reaches when it DECLARES
+   * returnFocusTo — has refused a disconnected, disabled or layout-box-less
+   * target since 20 August 2026, each clause with its own measured provenance.
+   * `finishClose`'s `openerUsable` — the path every modal that never opted in
+   * is on — checked only the first of the three. So the guarded path was the
+   * one a caller had to ask for, and the unguarded one was the default.
+   *
+   * WHAT THAT COST, measured 10 September 2026 on the Chat clear journey
+   * (.claude/a11y/sr/modal-focus-landing-drive.mjs, row 30, no-preference arm):
+   * #chat-clear is disabled at +567ms and finishClose runs at +782ms, so the
+   * opener passed every clause openerUsable had, tier 1 fired, .focus() was a
+   * SILENT NO-OP, and — because tiers 2 and 3 sit in the else — nothing else
+   * ran. Focus stayed where removeChild left it, on <body>. The recorded case
+   * "opener disabled at close time → main#main" in
+   * docs/universal-modal-focus-return-plan.md was measured on a DECLARED
+   * target, so it was never evidence about this path.
+   *
+   * A PURE FUNCTION OF ITS ARGUMENT, at module scope and reading no `this` —
+   * both callers are methods, and a prototype method would break any drive that
+   * calls them against a plain-object receiver.
+   *
+   * The reason string is returned rather than logged here so each caller can
+   * say what it was doing when it refused; a shared predicate that also owned
+   * the wording would make the two log lines indistinguishable.
+   *
+   * @param {Element|null} el
+   * @returns {string|null} null when the element can take focus, else why not.
+   */
+  function whyCannotTakeFocus(el) {
+    if (!el || typeof el.focus !== "function") {
+      return "not a focusable object";
+    }
+    if (!el.isConnected) {
+      return "not connected to the document";
+    }
+    if (el.disabled) {
+      return "disabled";
+    }
+    // INVISIBLE TO EVERY OTHER CHECK. `hidden`, `display: none`, or ANY hidden
+    // ancestor leaves the element connected and not disabled, so it passes the
+    // clauses above and then .focus() is a silent no-op that drops focus to
+    // <body>. Same reachability test .claude/a11y/sr/modal-focus-baseline.mjs
+    // uses on its triggers, for the same reason.
+    if (el.getClientRects().length === 0) {
+      return "no layout box (hidden, display:none, or a hidden ancestor)";
+    }
+    return null;
+  }
+
   // ====== NEW ROBUST MODAL MANAGER (from working system) ======
   class ModalManager {
     constructor() {
@@ -887,38 +942,23 @@ const UniversalModal = (function () {
         return null;
       }
 
-      if (!target || typeof target.focus !== "function") return null;
-
-      // A disconnected or disabled target cannot take focus, and attempting it
-      // would leave focus wherever removeChild left it — usually <body>.
-      if (!target.isConnected || target.disabled) {
-        logWarn(
-          "returnFocusTo resolved to a target that cannot take focus " +
-            `(connected: ${target.isConnected}, disabled: ${!!target.disabled})`,
-        );
-        return null;
-      }
-
-      // NOR CAN A TARGET WITH NO LAYOUT BOX — and this one is invisible in
-      // every other check. `hidden`, `display: none`, or ANY hidden ancestor
-      // leaves the element connected and not disabled, so it passes the test
-      // above, resolves, satisfies finishClose's openerUsable, and then
-      // .focus() is a SILENT NO-OP that drops focus to <body>. Returning null
-      // instead sends finishClose to its lower tiers, which land on the
-      // surviving modal or #main — worse than the opener, far better than body.
+      // A target that cannot take focus is refused rather than attempted:
+      // attempting it would leave focus wherever removeChild left it — usually
+      // <body> — because the tiers below sit in an else and never get a turn.
       //
-      // MEASURED, not predicted (20 August 2026, session-manager migration).
-      // Deleting every saved session runs updateStorageDashboard(), which
-      // re-hides #resume-storage-dashboard because the count is now zero — and
-      // #resume-manage-sessions-btn lives inside it. Declaring the opener took
-      // that journey from main#main to body: the declaration made the landing
-      // WORSE than no declaration. getClientRects() is the same reachability
-      // test .claude/a11y/sr/modal-focus-baseline.mjs uses on its triggers,
-      // for the same reason.
-      if (target.getClientRects().length === 0) {
+      // The three clauses this used to spell out inline now live in
+      // whyCannotTakeFocus(), shared with finishClose's openerUsable. The
+      // provenance of the layout-box clause, which is the non-obvious one, is
+      // recorded there: MEASURED 20 August 2026 during the session-manager
+      // migration, where deleting every saved session re-hid
+      // #resume-storage-dashboard and took #resume-manage-sessions-btn with it,
+      // so declaring the opener took that journey from main#main to body and
+      // the declaration made the landing WORSE than no declaration.
+      const refusal = whyCannotTakeFocus(target);
+      if (refusal) {
         logWarn(
-          "returnFocusTo resolved to a target with no layout box (hidden, " +
-            "display:none, or a hidden ancestor); falling through to the tiers",
+          `returnFocusTo resolved to a target that cannot take focus: ${refusal}; ` +
+            "falling through to the tiers",
         );
         return null;
       }
@@ -1043,12 +1083,32 @@ const UniversalModal = (function () {
         ? this.resolveReturnFocusTarget(modalData.returnFocusTo)
         : this.originalFocus;
       const skipLink = document.getElementById("skipToContent");
+
+      // SAME GUARDS AS THE DECLARED PATH, AS OF 10 SEPTEMBER 2026. This used to
+      // spell out three clauses of its own — focusable, connected, and not
+      // <body>/skip-link — while resolveReturnFocusTarget applied two more that
+      // this one did not: `disabled`, and "has no layout box". One path was
+      // fully guarded and the other was not, and every caller that had not
+      // opted in was on the unguarded one. See whyCannotTakeFocus() for the
+      // measurement that cost.
+      //
+      // THIS DOES NOT CHANGE THE OPT-IN DESIGN. An undeclared modal still does
+      // not get its opener back; it gets #main instead of <body>, which is what
+      // the proof row "UNDECLARED modal still loses its opener" already
+      // asserts. That row expects main#main and stays green.
+      //
+      // The <body> and skip-link clauses stay HERE rather than moving into the
+      // shared predicate, because they are not about whether an element can
+      // take focus — both can. They detect a modal opened with no focused
+      // trigger at all, where restoring would reproduce the focus-at-top bug,
+      // and they are meaningless on the declared path where a caller named a
+      // target on purpose.
+      const openerRefusal = whyCannotTakeFocus(opener);
+      if (openerRefusal) {
+        logDebug(`Saved opener cannot take focus: ${openerRefusal}; using a lower tier`);
+      }
       const openerUsable =
-        opener &&
-        typeof opener.focus === "function" &&
-        opener.isConnected &&
-        opener !== document.body &&
-        opener !== skipLink;
+        !openerRefusal && opener !== document.body && opener !== skipLink;
 
       // The surviving-modal fallback, defined once and used by both arms so the
       // two cannot drift apart.
@@ -1748,6 +1808,20 @@ const UniversalModal = (function () {
         content: content,
         size: options.size || "small",
         className: options.className || "universal-confirm",
+        // FORWARDED 10 September 2026. Until now this literal named every
+        // option it wanted and silently dropped the rest, so a caller reaching
+        // here through window.safeConfirm(message, title, { returnFocusTo })
+        // had its declaration discarded between the wrapper and the Modal —
+        // measured on the fixture, where a declared target was ignored and the
+        // journey landed identically with and without it. The Modal
+        // constructor and Modal.prototype.open have accepted and forwarded
+        // this key since 20 August 2026; only this hop was missing.
+        //
+        // NOTE the same gap remains in showAlert below, deliberately untouched:
+        // an alert has no destructive .then to outlive, so nothing has yet
+        // needed it, and widening two entry points on one journey's evidence is
+        // how an unproven path gets shipped.
+        returnFocusTo: options.returnFocusTo || null,
         closeOnOverlayClick: false,
         closeOnEscape: true,
         onOpen: function (modalInstance) {

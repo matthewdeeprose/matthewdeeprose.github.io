@@ -1698,6 +1698,277 @@ window.MermaidThemes = (function () {
     return applied;
   }
 
+  // -----------------------------------------------------------------------
+  // BLOCK DIAGRAM ENCODING (register item 80, 15 September 2026)
+  // -----------------------------------------------------------------------
+
+  const BLOCK_ROLEDESCRIPTION = "block";
+
+  /** SC 1.4.11 for every outline and boundary. */
+  const BLOCK_OBJECT_TARGET = 3;
+
+  /**
+   * The OUTLINE INKS OF RECORD, presentation standard § 1.4 — the same pair the
+   * xychart casings and the sequence outlines use. Both are offered to every
+   * derivation rather than being selected by mode: a block inside a pale group
+   * inside a dark diagram wants the light-ground ink, and a mode flag would hand
+   * it the wrong one (standard rule 18).
+   */
+  const BLOCK_OUTLINE_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /**
+   * Fallback ramp, used only where neither ink of record clears the target. 65
+   * steps, matching sequence: a block sitting on a group fill that is itself
+   * mid-grey leaves a narrow admissible band, and a coarse ramp lands on its
+   * edge.
+   */
+  const BLOCK_INK_RAMP = Object.freeze(
+    Array.from({ length: 65 }, (unused, i) => {
+      const v = Math.round((i * 255) / 64);
+      return rgbToHex(v, v, v);
+    })
+  );
+
+  /** Attribute marking an element this pass has painted, for idempotency. */
+  const BLOCK_ENCODING_ATTRIBUTE = "data-block-encoding";
+
+  /** Paint properties this pass writes, and therefore sweeps before re-writing. */
+  const BLOCK_OWNED_PROPERTIES = Object.freeze([
+    "stroke",
+    "stroke-opacity",
+    "stroke-width",
+    "fill",
+  ]);
+
+  /** Minimum boundary width, so a 1px hairline is not the only channel. */
+  const BLOCK_BOUNDARY_WIDTH = 2;
+
+  /**
+   * Apply the accessibility encoding to a rendered block diagram: an outline ink
+   * per element that clears the ground that element actually sits on, applied to
+   * block boundaries, group frames, edge lines and arrowheads. AUTHOR AND THEME
+   * FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS — the measurement, and it is the group frame that forces it.
+   * Swept 15 September 2026 across the nine selectable theme/mode combinations,
+   * both site modes, four exemplars, every value COMPUTED:
+   *
+   *   - the GROUP FRAME boundary is indistinct in ALL NINE cells, 1.11:1 to
+   *     1.91:1. The cause is Mermaid's own `stroke-opacity: 0.2` on the cluster
+   *     rect, so the frame is a fifth of an outline whatever colour it carries;
+   *   - the BLOCK boundary is indistinct in TWO of nine — `neutral` at 2.80:1
+   *     and `accessibleDark` at 1.45:1, the latter painting a black outline on a
+   *     dark ground;
+   *   - EDGE LINES and ARROWHEADS were clean in all nine, which is a measurement
+   *     of absence rather than an untested assumption. They are still written,
+   *     because a theme this repository does not ship could move them and the
+   *     cost of covering them is one selector.
+   *
+   * WHY FILLS ARE LEFT ALONE, when the same sweep found a block's FILL
+   * indistinct from its ground in all nine cells at 1.02:1 to 1.45:1. That is
+   * the design, not a shortfall, and it is standard rule 18's: the fill is the
+   * author's and the theme's, and the outline is the channel that carries
+   * distinguishability. Repainting fills would overwrite an authored choice to
+   * fix something an outline fixes without touching it.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES — the gantt and sequence
+   * argument, unchanged. Four of the nine combinations are Mermaid BUILT-INS
+   * (`default`, `neutral`, `forest`, `dark`), which `applyTheme` reaches as
+   * `{'theme': '<id>'}` with no themeVariables at all, so a variable written
+   * here could never reach them.
+   *
+   * WHICH CASE OF RULE 16 THIS IS: THE SECOND. Mermaid DRAWS every boundary this
+   * pass paints — the block rect, the cluster rect, the edge path, the marker —
+   * and the pass writes style onto the renderer's own elements. NO NODE IS ADDED
+   * TO THE TREE, so nothing here is synthesis and nothing needs `aria-hidden`.
+   *
+   * IDEMPOTENT BY CONSTRUCTION. Every derivation reads only the page background
+   * and the group FILLS — never a property this pass writes — so a re-run cannot
+   * read back its own output. Each painted element is marked, and its owned
+   * properties are cleared before being written again.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyBlockEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === BLOCK_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${BLOCK_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No block SVG in this container - block encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned ------------------------------------
+    svg.querySelectorAll(`[${BLOCK_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      BLOCK_OWNED_PROPERTIES.forEach((property) =>
+        owned.style.removeProperty(property)
+      );
+      owned.removeAttribute(BLOCK_ENCODING_ATTRIBUTE);
+    });
+
+    // --- grounds ------------------------------------------------------------
+    // A block SVG has no background rect of its own (measured: `background` on
+    // the svg computes transparent in all nine cells), so the diagram ground is
+    // the first opaque background above it.
+    const svgGround = resolveHostGround(svg);
+
+    /**
+     * A group frame's composited interior, which is the ground for anything
+     * drawn inside it. Its fill is read from the RENDERER's value, never from
+     * anything this pass wrote.
+     */
+    const groupGroundOf = (frame, outerGround) => {
+      const computed = window.getComputedStyle(frame);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      if (!declared || alpha <= 0) return outerGround;
+      return paintToHex(
+        compositeOver({ ...declared, a: alpha }, parsePaint(outerGround))
+      );
+    };
+
+    // Group frames first, so a block can be told from the frame that holds it:
+    // Mermaid puts `label-container` on BOTH, and a selector that did not
+    // exclude the composite would paint the frame twice and call it a block.
+    const frames = [...svg.querySelectorAll("[class*='composite']")];
+    const frameGrounds = new Map();
+    frames.forEach((frame) => {
+      // An enclosing frame, if this group is nested inside another.
+      const outerFrame = frame.parentElement
+        ? frame.parentElement.closest("[class*='composite']")
+        : null;
+      const outer =
+        outerFrame && frameGrounds.has(outerFrame)
+          ? frameGrounds.get(outerFrame)
+          : svgGround;
+      frameGrounds.set(frame, groupGroundOf(frame, outer));
+    });
+
+    const applied = {
+      svgGround,
+      frames: frames.length,
+      counts: {},
+      elements: [],
+      worst: null,
+    };
+
+    /**
+     * Paint one element's boundary in the ink that best clears its own ground.
+     *
+     * The ink of record is tried first and used wherever it clears the target,
+     * so block reads as one system with xychart and sequence; the ramp is
+     * reached only when neither does.
+     */
+    const paint = (element, kind, ground, options) => {
+      const settings = options || {};
+      const record = pickInkAgainst(BLOCK_OUTLINE_INKS, [ground]);
+      const chosen =
+        record.worst >= BLOCK_OBJECT_TARGET
+          ? record
+          : pickInkAgainst(BLOCK_INK_RAMP, [ground]);
+
+      element.style.setProperty("stroke", chosen.ink, "important");
+      // The 0.2 Mermaid gives a cluster rect is the whole reason a group frame
+      // is invisible, so opacity is written with the ink rather than left to
+      // fight it.
+      element.style.setProperty("stroke-opacity", "1", "important");
+      if (settings.width) {
+        element.style.setProperty(
+          "stroke-width",
+          `${settings.width}px`,
+          "important"
+        );
+      }
+      if (settings.fill) {
+        element.style.setProperty("fill", chosen.ink, "important");
+      }
+      element.setAttribute(BLOCK_ENCODING_ATTRIBUTE, kind);
+
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.elements.push({
+        kind: kind,
+        ink: chosen.ink,
+        ground: ground,
+        ratio: Number(chosen.worst.toFixed(2)),
+        ofRecord: record.worst >= BLOCK_OBJECT_TARGET,
+      });
+      if (applied.worst === null || chosen.worst < applied.worst) {
+        applied.worst = Number(chosen.worst.toFixed(2));
+      }
+    };
+
+    frames.forEach((frame) =>
+      paint(frame, "groupFrame", frameGrounds.get(frame), {
+        width: BLOCK_BOUNDARY_WIDTH,
+      })
+    );
+
+    // Block boundaries, selected by POSITION rather than by class.
+    //
+    // `label-container` looks like the right class and is not enough: Mermaid
+    // puts it on the `<rect>` it draws for a square block and on NOTHING ELSE.
+    // A cylinder, a circle, a rhombus and a flag are each drawn as a CLASSLESS
+    // `<path>` — measured on E3, where a first version of this pass selected on
+    // that class, painted four of six shapes, and left `neutral` at 2.80:1 and
+    // `accessibleDark` at 1.45:1 in a run whose other seven cells read zero.
+    // **A partial selector produces a partial clean and looks like a pass.**
+    //
+    // What every block boundary DOES share is its position: a direct child of
+    // the `g.node` Mermaid wraps each block in. The classless `<rect>` inside
+    // `g.label` is a label backing rather than a boundary and is excluded by the
+    // same test, which is why the selector is a child combinator and not a
+    // descendant one. Composite frames painted above are skipped by their mark.
+    [
+      ...svg.querySelectorAll(
+        "g[class*='node'] > rect, g[class*='node'] > path, g[class*='node'] > circle, g[class*='node'] > ellipse, g[class*='node'] > polygon, [class*='label-container']"
+      ),
+    ].forEach((shape) => {
+      if (shape.hasAttribute(BLOCK_ENCODING_ATTRIBUTE)) return;
+      const frame = shape.parentElement
+        ? shape.parentElement.closest("[class*='composite']")
+        : null;
+      const ground =
+        frame && frameGrounds.has(frame) ? frameGrounds.get(frame) : svgGround;
+      paint(shape, "blockBoundary", ground, { width: BLOCK_BOUNDARY_WIDTH });
+    });
+
+    // Edge lines. Measured clean in all nine cells; written anyway, because a
+    // theme this repository does not ship could move them.
+    [
+      ...svg.querySelectorAll("g.edgePaths path, path.path, path[class*='link']"),
+    ].forEach((line) => {
+      if (line.hasAttribute(BLOCK_ENCODING_ATTRIBUTE)) return;
+      paint(line, "edgeLine", svgGround);
+    });
+
+    // Arrowheads live inside <marker>, are drawn at an arrow end over the
+    // diagram ground, and are FILLED rather than stroked - so this is the one
+    // place the pass writes a fill, and it is a marker's fill and never an
+    // author's.
+    [...svg.querySelectorAll("marker path, marker polygon, marker circle")].forEach(
+      (head) => {
+        if (head.hasAttribute(BLOCK_ENCODING_ATTRIBUTE)) return;
+        paint(head, "arrowhead", svgGround, { fill: true });
+      }
+    );
+
+    logInfo(
+      `Block encoding applied: ${applied.elements.length} objects, worst ${applied.worst}:1 on ground ${svgGround}`
+    );
+    return applied;
+  }
+
   /**
    * Apply non-colour series encoding to a rendered xychart: pattern fills on
    * bars from the second bar onwards, dash arrays on lines from the second line
@@ -1752,6 +2023,14 @@ window.MermaidThemes = (function () {
     // reached FROM the re-render, so calling back into it would recurse.
     const sequenceEncoding = applySequenceEncoding(root);
 
+    // BLOCK DISPATCH, added 15 September 2026, at the same seam and for the same
+    // wiring reason: reapplyAfterRender's encoding limb calls THIS function, and
+    // a second entry point would be a second place for the after-render
+    // invariant to be forgotten. Before this line applySeriesEncoding returned
+    // null for every block diagram, which was measured rather than read off the
+    // source - the probe called it and recorded the null.
+    const blockEncoding = applyBlockEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -1763,8 +2042,9 @@ window.MermaidThemes = (function () {
     if (!svg) {
       if (ganttEncoding) return { gantt: ganttEncoding };
       if (sequenceEncoding) return { sequence: sequenceEncoding };
+      if (blockEncoding) return { block: blockEncoding };
       logDebug(
-        "No xychart, gantt or sequence SVG in this container - series encoding skipped"
+        "No xychart, gantt, sequence or block SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -3441,6 +3721,7 @@ window.MermaidThemes = (function () {
     // it directly and read back the ratios it measured.
     applyGanttEncoding: applyGanttEncoding,
     applySequenceEncoding: applySequenceEncoding,
+    applyBlockEncoding: applyBlockEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

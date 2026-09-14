@@ -1298,7 +1298,7 @@
                      tools visible in the picker, so it cannot go stale when a
                      tool is hidden or added. Edit the surrounding sentence
                      freely; only this span's text is replaced. -->
-                <span data-tool-count>six</span> tools for accessible content
+                <span data-tool-count>ten</span> tools for accessible content
                 creation. Most tools require an API credential to function.
                 Expand a section below to configure your credentials.
               </p>
@@ -1383,6 +1383,24 @@
                   Turn an audio recording into a text transcript with speaker
                   labels and timestamps. Alpha — expect rough edges. Requires
                   signing in with your University account.
+                </dd>
+
+                <!-- Placed after Transcribe to match the pairing in TOOLS —
+                     Transcribe produces the subtitle file this tool corrects.
+                     The position is cosmetic: the registry reorders this list
+                     at runtime, so it is only what a reader of the markup
+                     sees. No "Alpha" badge here either, for the reason given
+                     above the Transcribe entry.
+                     The credential sentence offers no local model on purpose:
+                     PREFERRED_BY_PROVIDER in captions-fixer/captions-fixer-llm.js
+                     carries openrouter and azure-openai only. -->
+                <dt>Captions Fixer</dt>
+                <dd>
+                  Correct the errors in an automatic caption file. Upload the
+                  subtitles from a recording, review the suggested corrections,
+                  and download a corrected file with the original timings
+                  intact. Alpha — expect rough edges. Requires an OpenRouter
+                  API key, or a Microsoft Foundry connection.
                 </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
@@ -15148,6 +15166,20 @@ Science,91</pre
                       Expand Image
                     </button>
                   </div>
+                  <!--
+                    H-6c: the Review OCR control's accessible description.
+                    Populated by ImageDescriberOverlay._setReviewCountDescription
+                    beside the button's own disabled state, and referenced by
+                    aria-describedby only while there is text to review.
+                    It sits OUTSIDE the toolbar so the toolbar's hidden state
+                    cannot reach it, and outside role="toolbar", whose children
+                    are controls. Do not add aria-live here — the completion
+                    announcement goes through announceStatus().
+                  -->
+                  <span
+                    class="visually-hidden"
+                    id="imgdesc-overlay-review-count"
+                  ></span>
                   <!-- Phase 11B: Depth zone legend -->
                   <div
                     id="imgdesc-depth-legend"
@@ -20041,7 +20073,7 @@ Science,91</pre
                   checked
                 />
                 <label for="transcribe-show-every-speaker"
-                  >Show speaker name on every line</label
+                  >Repeat the speaker on every line</label
                 >
               </div>
               <div
@@ -20056,6 +20088,369 @@ Science,91</pre
                 />
                 <label for="transcribe-show-timestamps">Show timestamps</label>
               </div>
+              <!-- Register item 45 unit 6. MARKUP ONLY: this checkbox has NO
+                   handler and is not read anywhere, so ticking it does nothing
+                   at all — that is this unit's correct behaviour, not an
+                   oversight. Unit 7 wires it, and owed-listen row 47 describes
+                   what it will then do; nothing here arms any part of that row,
+                   because every part of it needs the edit surface unit 7 builds.
+
+                   UNTICKED, unlike the two boxes above, because unticked is
+                   exactly what ships today: with this box clear the transcript
+                   is the one listen rows 40 and 42 heard, unaltered.
+
+                   NO hidden attribute, again unlike the timestamps wrapper
+                   above. setDisplayOptionsVisible reveals the wrappers it knows
+                   about and it does not know this one, so a hidden here would
+                   never be lifted. It shows whenever the group shows.
+
+                   Attribute names in this comment are written WITHOUT their
+                   quoted values, matching the note above this group. -->
+              <div
+                id="transcribe-edit-option"
+                class="transcribe-display-option"
+              >
+                <input
+                  type="checkbox"
+                  id="transcribe-edit-transcript"
+                  aria-describedby="transcribe-edit-transcript-hint"
+                />
+                <label for="transcribe-edit-transcript">Edit transcript</label>
+                <!-- Register item 45 unit 10. The keyboard hint for the edit
+                     surface unit 8 wired.
+
+                     DESCRIBED-BY, NOT LABELLED. It reaches the checkbox through
+                     aria-describedby, so the accessible NAME stays "Edit
+                     transcript" and this sentence is offered after it as a
+                     description. Naming the checkbox with it instead would fold
+                     three clauses of keyboard instruction into the control's
+                     own name, spoken every time the control is announced.
+
+                     ONLY THE CHECKBOX CARRIES IT, never the 657 row controls:
+                     one description repeated 657 times is not a hint, and each
+                     row already has its own visually-hidden label.
+
+                     THE WORDING WAS CHECKED CLAUSE BY CLAUSE AGAINST THE CODE
+                     in openrouter-embed-transcribe-ui.js, not written from the
+                     design intent. Enter reaches commitControl through
+                     handleTranscriptKeydown; moving away reaches the SAME
+                     commitControl through the delegated change listener, which
+                     is why one sentence covers both gestures. Escape assigns
+                     the control's value from the state's phrase text and writes
+                     nothing at all, so what it puts back is THE LAST SAVED
+                     TEXT, not the service's original — that is sourceText,
+                     which Escape never touches and which only revert restores.
+                     The hint says "last saved text" for exactly that reason: a
+                     person told it restored the original would expect Escape to
+                     undo a correction already committed, and it does not.
+
+                     Attribute names in this comment are written WITHOUT their
+                     quoted values, matching the note above this group. -->
+                <p
+                  class="transcribe-field-hint"
+                  id="transcribe-edit-transcript-hint"
+                >
+                  In edit mode, press Enter or move away from the box to save a
+                  correction. Escape puts back the last saved text, discarding
+                  anything you have typed since.
+                </p>
+              </div>
+            </div>
+            <!-- Register item 46 unit 1. MARKUP ONLY: nothing here has a
+                 handler, nothing reads it, and no JavaScript reveals it, so the
+                 block is unreachable by pointer, keyboard and screen reader
+                 alike until unit 4 lands. That is this unit's correct
+                 behaviour, and it is the shape register item 45 unit 6 shipped
+                 its own checkbox in.
+
+                 A SIBLING OF THE DISPLAY OPTIONS, DELIBERATELY NOT A FOURTH
+                 CONTROL INSIDE THEM. Naming is not a display option: it changes
+                 both downloaded files, which every control in that group is
+                 forbidden from doing, and setDisplayOptionsVisible carries a
+                 documented three-predicate contract that a fourth predicate
+                 would widen. So this block gets its own reveal in unit 4.
+
+                 NO CSS AND NO display DECLARATION, WHICH IS WHAT MAKES THE
+                 REVEAL SELF-SUFFICIENT. With no rule on this class at all, the
+                 user agent's own [hidden] { display: none } is uncontested.
+                 That is the state register item 57 (a) had to restore for the
+                 display-options wrapper after a display: flex went in without
+                 the matching [hidden] rule and left the reveal depending on
+                 another lane's stylesheet. ANY LATER UNIT THAT ADDS A display
+                 VALUE FOR THIS BLOCK MUST ADD
+                 .transcribe-speaker-names[hidden] { display: none; } IN THE
+                 SAME COMMIT.
+
+                 THE SELECT SHIPS WITH NO OPTIONS. Speaker numbers come from the
+                 transcript, so the options are genuinely data-driven and unit 4
+                 populates them; an empty control is met by nobody while the
+                 block is hidden. Its options will read "Speaker 1" and
+                 "Amira (Speaker 2)" — the number stays visible HERE even though
+                 a named line prints the name alone, because the number is the
+                 handle a person uses to find a slot again (design section 8
+                 answer 1, and section 2 of revision 2).
+
+                 ONE DESCRIPTION, ON THE FIRST CONTROL OF THE GROUP.
+                 aria-describedby sits on the select rather than on the select
+                 and the input both: the instruction covers the pair as one
+                 gesture, and a person tabbing from one to the other would
+                 otherwise hear the same sentence twice. Placing it at the first
+                 control means it arrives before the gesture rather than in the
+                 middle of it. Listen row 49 judges whether that is the right
+                 moment and the right number of times.
+
+                 NO LIVENESS IS ADDED ANYWHERE IN THIS CHAIN, AND THAT HALF
+                 IS UNCHANGED. The transcript below is not a live region, it has
+                 no live ancestor, and nothing here carries aria-live or a live
+                 role. Register items 43 and 45 stay do-not-reopen on that.
+
+                 THE OTHER HALF WENT AT UNIT 8, AND THE WITHDRAWN TEXT IS QUOTED
+                 RATHER THAN DELETED. It read: "NOTHING ANNOUNCES, HERE OR IN
+                 UNIT 4. … Listen row 47 part (c) decides whether register items
+                 45 to 48 speak at all." The 13 September 2026 sitting heard the
+                 silence at every gesture and found it wanting, so APPLYING AND
+                 CLEARING A NAME BOTH ANNOUNCE — through the shared notification
+                 system, never through a region in this chain. Row 47 part (c)
+                 narrows to items 45, 47 and 48; it does not close. Listen row 50
+                 carries the new wording and NOTHING IN IT HAS BEEN HEARD.
+
+                 Attribute names in this comment are written WITHOUT their
+                 quoted values, matching the note above the display options
+                 group. -->
+            <div
+              id="transcribe-speaker-names"
+              class="transcribe-speaker-names"
+              hidden
+            >
+              <label for="transcribe-speaker-picker">Speaker</label>
+              <select
+                id="transcribe-speaker-picker"
+                aria-describedby="transcribe-speaker-name-hint"
+              ></select>
+              <label for="transcribe-speaker-name">Name</label>
+              <input type="text" id="transcribe-speaker-name" />
+              <!-- THE DETAIL SPAN IS EMPTY ON LOAD AND THE CONTROLLER FILLS IT
+                   (register item 46 unit 8). With an empty name box the button
+                   is named "Apply name" and nothing else; with text in the box
+                   the controller writes " Amira as Speaker 1" into the span, so
+                   the button reads "Apply name Amira as Speaker 1".
+
+                   A HIDDEN SPAN, NOT aria-label, and the reason is a rule
+                   rather than a habit. AGENTS.md's first rule of ARIA is native
+                   HTML first; and because the span APPENDS to the visible text
+                   rather than replacing it, the accessible name begins with the
+                   visible label BY CONSTRUCTION, which is what SC 2.5.3 Label
+                   in Name asks for. An aria-label would have had to repeat
+                   "Apply name" correctly and would have been one edit away from
+                   not doing so.
+
+                   IT CARRIES NO LIVE ROLE AND NO aria-live, and nothing in this
+                   chain gains one. The controller writes it on the name field's
+                   input event and on the picker's change, both of which happen
+                   while focus is in the field or on the picker and never while
+                   focus is on the button, so it cannot re-announce underneath
+                   the person. Listen row 50 part (e) reads for exactly that.
+
+                   NO WHITESPACE BETWEEN "Apply name" AND THIS SPAN. The leading
+                   space belongs to the string the controller writes, so the two
+                   cannot be separated by a source reformat.
+
+                   Attribute names in this comment are written WITHOUT their
+                   quoted values, matching the notes above. -->
+              <button type="button" id="transcribe-speaker-apply">
+                <span aria-hidden="true" data-icon="check"></span> Apply name<span
+                  class="visually-hidden"
+                  id="transcribe-speaker-apply-detail"
+                ></span>
+              </button>
+              <p
+                class="transcribe-field-hint"
+                id="transcribe-speaker-name-hint"
+              >
+                Choose a speaker, type their name and apply. Leave the box empty
+                and apply to put that speaker back to its number.
+              </p>
+            </div>
+            <!-- Register item 46 unit 6. MARKUP ONLY: nothing here has a
+                 handler, nothing reads it, and no JavaScript reveals it, so the
+                 block is unreachable by pointer, keyboard and screen reader
+                 alike until the controller lands in the next commit. That is
+                 this commit's correct behaviour, and it is the shape unit 1
+                 shipped the naming block above in.
+
+                 A SIBLING OF THE NAMING BLOCK, AND IT GETS ITS OWN REVEAL for
+                 the same reason that one did: setDisplayOptionsVisible carries
+                 a documented three-predicate contract belonging to register
+                 item 54, and this block's predicate is neither of that
+                 function's nor the naming block's. Selection exists in EDIT
+                 MODE ONLY, so the predicate is hasTranscript AND editMode, and
+                 it is decided in a fourth function beside the other two.
+
+                 NO HINT PARAGRAPH, UNLIKE THE NAMING BLOCK AND THE EDIT
+                 CHECKBOX. A hint here would have to describe applying something
+                 to the selection, and nothing applies anything until unit 7 —
+                 reassignment is that unit's work. Unit 7 adds the sentence when
+                 there is a gesture for it to describe. Shipping a hint for a
+                 capability that does not exist is how a document goes false
+                 against its own artefact, and the hint is what a person would
+                 be entitled to believe.
+
+                 NO CSS AND NO display DECLARATION, WHICH IS WHAT MAKES THE
+                 REVEAL SELF-SUFFICIENT. With no rule on this class at all, the
+                 user agent's own [hidden] { display: none } is uncontested.
+                 That is the state register item 57 (a) had to restore for the
+                 display-options wrapper after a display: flex went in without
+                 the matching [hidden] rule and left the reveal depending on
+                 another lane's stylesheet. ANY LATER UNIT THAT ADDS A display
+                 VALUE FOR THIS BLOCK MUST ADD
+                 .transcribe-selection[hidden] { display: none; } IN THE SAME
+                 COMMIT.
+
+                 THE COUNT IS SILENT TEXT AND ITS ELEMENT IS A <p>, NOT AN
+                 <output> AND NOT A role=status. It is written with textContent
+                 by the controller and carries no liveness by any route: a <p>
+                 is generic, nothing here sets aria-live, and no ancestor is a
+                 live region. A number that changes as a person ticks boxes is
+                 exactly the thing that tempts a live region, and it still
+                 must not become one. THE COUNT ITSELF IS STILL SILENT AT UNIT 8
+                 — ticking a box announces nothing, and only the four gestures
+                 that CHANGE something do. The withdrawn clause read "the
+                 standing decision for this whole chain is silence — listen row
+                 47 part (c) decides whether register items 45 to 48 speak at
+                 all and it has not been heard"; part (c) was heard on
+                 13 September 2026 and decided it for item 46's four gestures
+                 only, of which this is not one. A reader already gets the
+                 checkbox's own
+                 state from the browser, which is native feedback and not an
+                 announcement we make.
+
+                 IT SHIPS READING "No lines selected", WHICH IS THE ZERO STATE
+                 rather than a placeholder. The controller rewrites it, but the
+                 markup default has to be a true sentence: a block revealed
+                 before the first write would otherwise show whatever was typed
+                 here.
+
+                 THE COUNT PRECEDES THE BUTTON. The button is the only
+                 focusable thing in the block, so placement cannot change tab
+                 order; what it changes is the order a reader meets them in
+                 browse mode, and the state reads before the control that acts
+                 on it.
+
+                 Attribute names in this comment are written WITHOUT their
+                 quoted values, matching the notes above the display options
+                 group and the naming block. -->
+            <div id="transcribe-selection" class="transcribe-selection" hidden>
+              <p class="transcribe-selection-count" id="transcribe-selection-count">
+                No lines selected
+              </p>
+              <!-- Register item 46 unit 7b. THE HINT ARRIVES NOW, AND UNIT 6
+                   DEFERRED IT FOR A REASON THAT HAS NOW EXPIRED. Unit 6's own
+                   comment above says: "NO HINT PARAGRAPH ... A hint here would
+                   have to describe applying something to the selection, and
+                   nothing applies anything until unit 7 ... Shipping a hint for
+                   a capability that does not exist is how a document goes false
+                   against its own artefact." This unit supplies the capability,
+                   so the hint is now describing something a person can do.
+
+                   ONE DESCRIPTION, ON THE FIRST INTERACTIVE CONTROL OF THE
+                   GROUP — the same arrangement the naming block above uses and
+                   for the same reason. aria-describedby sits on the SELECT and
+                   not on the select and the two buttons: the instruction covers
+                   the group as one gesture, so a person tabbing through would
+                   otherwise hear the same sentence three times, and placing it
+                   at the first control means it arrives BEFORE the gesture
+                   rather than in the middle of it. Listen row 49 judges whether
+                   that is the right moment and the right number of times.
+
+                   THE COUNT STILL PRECEDES THE HINT, and the hint precedes the
+                   controls. A reader in browse mode meets the state, then the
+                   instruction, then the things that act on both.
+
+                   THE SELECT SHIPS WITH NO OPTIONS, exactly as the naming
+                   picker does: speaker numbers come from the transcript, so the
+                   options are genuinely data-driven and the controller
+                   populates them. Its options will read "Speaker 1" and
+                   "Amira (Speaker 2)" — the number stays visible here for the
+                   naming picker's reason, that it is the handle a person uses
+                   to find a slot again.
+
+                   IT OFFERS THE UNION OF THE SLOTS THE PHRASES CARRY AND THE
+                   KEYS IN THE NAMES MAP, which is wider than the naming
+                   picker's set and is the whole reason addSpeaker writes an
+                   empty-name entry: a slot just created carries no lines yet,
+                   and a picker reading only the phrases would not offer the one
+                   thing the person had just made. It will therefore also offer
+                   an EMPTIED slot, because unit 7b exposes no Remove control —
+                   a decision recorded in design section 5 with a listen
+                   attached, not an oversight.
+
+                   THERE IS NO REMOVE BUTTON. Design section 2 names three
+                   operations — rename, move, create — and Remove is not one of
+                   them. removeSpeaker exists in the state module and is
+                   reachable from the console only.
+
+                   NO aria-live, NO ROLE, NO LIVE ANCESTOR, AND THE
+                   CONTROLLER ADDS NONE. That is unchanged and is the half worth
+                   keeping.
+
+                   "NOTHING HERE ANNOUNCES" IS WITHDRAWN AT UNIT 8, and quoted
+                   here rather than deleted. Changing the speaker on selected
+                   lines, and adding a speaker, BOTH ANNOUNCE — through the
+                   shared notification system, which reaches the shared
+                   announcer, and never through a region inside this block or
+                   the transcript. The 13 September 2026 sitting heard the
+                   silence and found it wanting; listen row 47 part (c) narrows
+                   to register items 45, 47 and 48 and does not close. Ticking a
+                   box is still silent, and so is Clear selection.
+
+                   NO CSS AND NO display DECLARATION, unchanged from unit 6:
+                   with no rule on the wrapper's class the user agent's own
+                   [hidden] { display: none } is uncontested, and the standing
+                   obligation above — add .transcribe-selection[hidden] in the
+                   same commit as any display value — reaches these controls
+                   too, because they are inside that wrapper.
+
+                   CLEAR SELECTION MOVED TO THE END OF THE BLOCK. It is the
+                   gesture a person reaches for when they are DONE, so it sits
+                   after the two that do the work rather than between the hint
+                   and them. Register item 88 records that the tree gate is
+                   blind to a pure sibling reorder, so this move may contribute
+                   nothing to the hash; that is the limitation behaving as
+                   documented and not a measurement failure.
+
+                   Attribute names in this comment are written WITHOUT their
+                   quoted values, matching the notes above. -->
+              <p
+                class="transcribe-field-hint"
+                id="transcribe-selection-move-hint"
+              >
+                Tick the lines you want, choose who said them, then change
+                the speaker. Add speaker makes a new speaker for lines the
+                transcription did not separate.
+              </p>
+              <!-- "CHANGE SPEAKER", NEVER "MOVE" (register item 46 unit 8).
+                   The 13 September 2026 sitting rejected "move" throughout this
+                   block: it reads as moving a line's POSITION IN THE SEQUENCE,
+                   which this tool cannot do and will not do. The row marker
+                   changed with it, so the word a person hears on the row is the
+                   word on the control that put it there. Design section 10.5
+                   carries the whole family and the reasoning. -->
+              <label for="transcribe-selection-target">Change speaker to</label>
+              <select
+                id="transcribe-selection-target"
+                aria-describedby="transcribe-selection-move-hint"
+              ></select>
+              <button type="button" id="transcribe-selection-move">
+                <span aria-hidden="true" data-icon="move"></span> Change speaker
+                for selected lines
+              </button>
+              <button type="button" id="transcribe-selection-add-speaker">
+                <span aria-hidden="true" data-icon="userAdd"></span> Add speaker
+              </button>
+              <button type="button" id="transcribe-selection-clear">
+                <span aria-hidden="true" data-icon="checkboxEmpty"></span> Clear
+                selection
+              </button>
             </div>
             <!-- A <div>, NOT <output>: <output> carries an implicit status
                  role, so it would compute as a polite atomic live region with
@@ -20149,18 +20544,39 @@ Science,91</pre
                 aria-hidden="true"
                 data-icon="fileText"
               ></span>
-              <span class="imgdesc-upload-text"
+              <span
+                class="imgdesc-upload-text"
+                id="captions-fixer-drop-zone-text"
                 >Choose a captions file or drag and drop</span
               >
-              <span class="imgdesc-upload-formats"
+              <span
+                class="imgdesc-upload-formats"
+                id="captions-fixer-drop-zone-formats"
                 >Supports: SRT, VTT, and plain text holding either</span
               >
             </label>
+            <!-- STAGE 8b, DECISION 6. The NAME and the DESCRIPTION are split.
+                 The <label for> above still does the work a label does — it is
+                 the click target and it is the drop zone — but everything
+                 inside it contributes to the accessible name, so the formats
+                 sentence was being read as part of the control's name.
+                 aria-labelledby narrows the name to the first span; the formats
+                 sentence becomes the DESCRIPTION, which a reader announces
+                 after the name and separately. Neither attribute changes the
+                 native semantics: this is still an <input type="file"> named by
+                 text on the page.
+
+                 The chosen file name stays a plain sibling <p>. It was never
+                 part of the name and must not become part of it — a control
+                 whose name changes when its value changes is announced afresh
+                 on every drop. -->
             <input
               type="file"
               id="captions-fixer-file-input"
               accept=".srt,.vtt,.txt"
               class="visually-hidden"
+              aria-labelledby="captions-fixer-drop-zone-text"
+              aria-describedby="captions-fixer-drop-zone-formats"
             />
             <p id="captions-fixer-file-name">No file chosen</p>
           </div>
@@ -20193,18 +20609,53 @@ Science,91</pre
             hidden
           >
             <h2 id="captions-fixer-pairs-heading">Suggested corrections</h2>
+            <!-- STAGE 8b, DECISION 1. NOTHING ARRIVES TICKED, and both the
+                 instruction and the legend say so. On a transcript with no
+                 errors at all the model proposed 23 corrections, most of them
+                 rewrites of text that was already correct and one of them
+                 reversing the meaning of what was said (Matthew's listen,
+                 8 September 2026). A list like that must be opt-in: a person
+                 who presses Apply without reading has changed nothing. -->
             <p id="captions-fixer-pairs-intro">
               Each line is a word the tool thinks was misheard, and how many
-              captions it appears in. Tick the ones you agree with.
+              captions it appears in. Nothing is ticked to start with — tick
+              only the corrections you agree with.
             </p>
             <fieldset id="captions-fixer-pairs">
-              <legend>Corrections to apply</legend>
+              <legend>Corrections to apply — none ticked to start with</legend>
               <!-- Populated by captions-fixer-ui.js: one native checkbox and
                    label per pair. The count in each label is measured by
                    CaptionsFixerStageRecurring.expand on that single pair, never
                    the model's own count — the model was measured reporting
                    one-off errors as recurring in rounds cf-1 and cf-2. -->
             </fieldset>
+
+            <!-- STAGE 8b, DECISION 3. THE CHECKS RUN BEFORE THE LIST, and a
+                 pair every one of whose captions is held ends up in here
+                 instead of in the fieldset above.
+
+                 NATIVE <details> AND <summary>, WHICH NEED NO ARIA. The count
+                 lives in the summary's own text, written by the controller.
+                 A closed group cannot be ticked by accident, which is the
+                 point: a held correction costs one deliberate open, and it is
+                 still tickable for the person who disagrees with the check.
+
+                 It ships `hidden` and the controller reveals it only when
+                 there is something in it. captions-fixer.css carries its own
+                 [hidden] rule, so that reveal does not depend on another
+                 lane's stylesheet. -->
+            <details id="captions-fixer-held" hidden>
+              <summary id="captions-fixer-held-summary">
+                Held back by the checks
+              </summary>
+              <p id="captions-fixer-held-intro">
+                These corrections would change something the tool protects —
+                a number, a speaker label, or the length of a caption. You can
+                still tick one if you disagree.
+              </p>
+              <div id="captions-fixer-held-list"></div>
+            </details>
+
             <div class="captions-fixer-actions">
               <button type="button" id="captions-fixer-apply">
                 <span aria-hidden="true" data-icon="check"></span> Apply ticked
@@ -20223,9 +20674,24 @@ Science,91</pre
                one inside the other. A <section> with no accessible name is
                generic and is not a landmark, which is what is wanted here.
 
-               The table is the two-dimensional-layout exception to SC 1.4.10:
-               the relation between Was and Now is the information, so the
-               columns cannot be linearised without losing it. -->
+               STAGE 8b, DECISION 9 — AND IT WITHDRAWS THE CLAIM THAT USED TO
+               STAND HERE. This comment previously ended: "The table is the
+               two-dimensional-layout exception to SC 1.4.10: the relation
+               between Was and Now is the information, so the columns cannot be
+               linearised without losing it." That was wrong about this site,
+               which already owns a linearising pattern that keeps the relation:
+               `.allyTable` in main.css:2718 stacks each row into a block at
+               1024px and prints each cell's column name in front of its value
+               from `data-label`, so a stacked cell reads "Was: …" then
+               "Now: …" and the pairing survives. It is in use in this very
+               page on the Set Up model-benchmark tables.
+
+               So the table carries `allyTable` and the controller writes a
+               `data-label` on every cell. The scroll container STAYS, because
+               above 1024px the table can still be wider than its column and
+               axe's scrollable-region-focusable wants such a container
+               reachable by keyboard. Below that width nothing overflows and it
+               simply never scrolls. -->
           <section id="captions-fixer-changes-section" hidden>
             <h2 id="captions-fixer-changes-heading">
               Changes to your captions
@@ -20236,7 +20702,10 @@ Science,91</pre
               aria-labelledby="captions-fixer-changes-heading"
               tabindex="0"
             >
-            <table id="captions-fixer-changes" class="captions-fixer-changes">
+            <table
+              id="captions-fixer-changes"
+              class="captions-fixer-changes allyTable"
+            >
               <caption id="captions-fixer-changes-caption">
                 No changes yet.
               </caption>
@@ -21003,6 +21472,8 @@ Science,91</pre
     <script src="mathpix-scripts/core/mathpix-alt-text-integrator.js"></script>
     <!-- Parcel EA-4: shared model-capability module — the ONE home for isModelPdfCapable, isModelVisionCapable, isModelProviderAvailable, PROVIDER_GROUPS, the two refusal sentences and the 27-entry KNOWN_VISION_MODELS list (window.MathPixModelCapability). MUST load before its consumers: mathpix-context-ai.js (the delegating facade), alt-text-cloud-adapter.js and image-describer-controller-model.js all reach it at call time, and mathpix-ai-enhancer.js and mathpix-ai-multipass.js reach it through the facade. -->
     <script src="mathpix-scripts/core/mathpix-model-capability.js"></script>
+    <!-- Parcel I5-1: shared recommended-by-purpose model registry — the ONE map of which model is recommended for which PURPOSE on which provider, with the measuring round and date beside each choice (window.MathPixModelRegistry). MUST load before its consumers: mathpix-ai-enhancer.js reads it today; mathpix-context-ai.js and alt-text-cloud-adapter.js still carry their own maps and are pointed here in their own parcels. Placed beside mathpix-model-capability.js because it is the same kind of thing — pure shared data with no DOM and no network. -->
+    <script src="mathpix-scripts/core/mathpix-model-registry.js"></script>
     <script
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-alt-text-serialiser-tests.js"
@@ -21505,6 +21976,25 @@ Science,91</pre
       src="openrouter-embed/openrouter-embed-core.js"
     ></script>
 
+    <!-- Promotional-price display helpers. ONE implementation of the wording, shared by the
+         three surfaces that show a model price: js/modules/model-manager.js (ES module),
+         js/enhanced-model-selection.js and chat/chat-model-info.js. Must load before them;
+         deferred modules always run after plain scripts, so this position covers all three. -->
+    <script src="js/pricing-display.js"></script>
+
+    <!-- Modality helpers. ONE implementation of "what can this model take in and give out,
+         and what did this response actually carry?", shared by js/openrouter-client/ (ES
+         modules) and openrouter-embed/ (IIFEs on window). Same reasoning and the same
+         position as pricing-display.js above: deferred modules always run after plain
+         scripts, so this covers every consumer.
+
+         LOAD-BEARING, NOT OPTIONAL. js/openrouter-client/openrouter-client-stream.js
+         resolves window.ModalityCore at call time for all four of its choice-extraction
+         sites and has NO inline fallback, deliberately — a fallback would be a fifth copy
+         of the logic this file exists to hold once. Remove this tag and streaming stops
+         extracting content. -->
+    <script src="js/modality/modality-core.js"></script>
+
     <!-- Local Text Model Gateway (Phase 5) + Local Backend Adapter (Phase 7) -->
     <script src="openrouter-embed/local-text-model-registry.js"></script>
     <script src="openrouter-embed/webllm-text-engine.js"></script>
@@ -21822,6 +22312,25 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="image-describer/testing/tests-refactor-controller.js"
+    ></script>
+
+    <!-- Register item 46: the Transcribe speaker-naming sheet, folded into
+         runAllEmbedSuites() at unit 5. Units 2 and 3 each recorded the fold-in
+         as owed rather than doing it, on the ground that it earns its keep
+         where the FORMATTERS change — which is unit 5. -->
+    <script
+      type="application/dev-test"
+      data-src="js/testing/openrouter-embed-transcribe-naming-tests.js"
+    ></script>
+
+    <!-- Capability harness. window.runCapability puts a real generated image,
+         a playable audio element or a transcription on a real page, which a
+         Node proof structurally cannot do. A BARE INVOCATION SENDS NOTHING —
+         send: true is required and makes exactly ONE billable call, which is
+         the owner's to make by hand. It adds no floor suite. -->
+    <script
+      type="application/dev-test"
+      data-src="js/testing/capability-runner.js"
     ></script>
 
     <!-- Initialize the editor -->
@@ -23462,6 +23971,7 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-timeline.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-user-journey.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-sequence.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-block.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>

@@ -1200,10 +1200,35 @@
     if (S.messages.length === 0) return; // nothing to clear
     const ok =
       typeof window.safeConfirm === "function"
-        ? await window.safeConfirm("Clear this conversation? This cannot be undone.")
+        ? await window.safeConfirm(
+            "Clear this conversation? This cannot be undone.",
+            "Confirm",
+            // DECLARED, and deliberately NOT the opener. #chat-clear is the
+            // control that opened this confirmation, and performClear() below
+            // disables it — so naming it reproduces the defect this
+            // declaration exists to cure, on both motion arms and for two
+            // different reasons. Under prefers-reduced-motion:reduce the whole
+            // focus restore completes INSIDE close(), before safeConfirm
+            // resolves and therefore before performClear runs, so the opener is
+            // still enabled at the instant it is checked and is destroyed a
+            // moment later; under no-preference it is already disabled when
+            // finishClose runs 200ms later, .focus() is a silent no-op, and the
+            // lower tiers never get a turn because they sit in the else.
+            //
+            // #chat-input is the message box the person will use next. It is
+            // live before the clear and live after it — performClear focuses it
+            // itself on the arm where that call is not swallowed by the
+            // background inert sweep — so it is the one target that survives
+            // whichever order the two run in.
+            { returnFocusTo: "chat-input" },
+          )
         : window.confirm("Clear this conversation? This cannot be undone.");
     if (!ok) return;
-    window.ChatPersistence.performClear();
+    // afterModalClose: safeConfirm resolves while its modal still holds the top
+    // layer, so an announcement made here lands in an ignored region and is not
+    // spoken — measured silent on both motion arms on this journey. See the note
+    // on MODAL_CLOSE_ANNOUNCE_DELAY_MS in chat/chat-persistence.js.
+    window.ChatPersistence.performClear({ afterModalClose: true });
     updateConversationUI();
   }
 

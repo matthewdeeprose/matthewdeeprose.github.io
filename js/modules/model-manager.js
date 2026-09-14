@@ -5,6 +5,22 @@ import { a11y } from "../accessibility-helpers.js";
 import { modelRegistry } from "../model-definitions.js";
 import { parameterController } from "./parameters/parameter-controller.js";
 
+// --- The promotional-price marker ------------------------------------------------------
+//
+// THIS FILE OWNS BOTH SURFACES ON THE LIVE JOURNEY, which is not obvious from reading it.
+// js/enhanced-model-selection.js also builds picker options and also updates #modelCostings,
+// and both of those paths exist and are correct — but measured on 10 September 2026 by
+// driving tools.html, the options a user actually sees and the panel they actually read are
+// the ones built HERE. Marking only the other file leaves every line looking right and the
+// browser showing nothing.
+//
+// The WORDING lives in js/pricing-display.js, once, because three surfaces show a model price
+// in three module styles and a copy per surface is three chances for them to drift apart.
+// Resolved at call time and never cached: that plain script is loaded before this deferred
+// module, so the global is present, and a cached reference taken at module scope would be the
+// dead-announcement pattern this codebase has already paid for.
+
+
 // The ModelManager class handles everything related to AI model selection and display
 export class ModelManager {
   constructor() {
@@ -332,15 +348,9 @@ export class ModelManager {
                   <dd class="modelCostDD"><strong>$${modelDetails.costs.output.toFixed(
                     3
                   )} per 1M tokens</strong></dd>
-                  ${
-                    modelDetails.costs.image
-                      ? `<dt>Image Cost:</dt>
-                      <dd class="modelCostDD"><strong>$${modelDetails.costs.image.toFixed(
-                        3
-                      )} per 1K images</strong></dd>`
-                      : ""
-                  }
+                  ${this._costLinesHTML(modelDetails.costs)}
                 </dl>
+                ${this._promotionNoticeHTML(modelDetails)}
 
                 <h2 class="genAIGPTHeading">${
                   modelDetails.name
@@ -386,6 +396,72 @@ export class ModelManager {
     }
   }
 
+  /**
+   * The short marker for a picker option, or "". Delegates to js/pricing-display.js.
+   * @param {Object} model - a registry model
+   * @returns {string}
+   */
+  _promotionalMarker(model) {
+    const pricing = window.PricingDisplay;
+    if (!pricing) {
+      // LOUD, not silent. A missing helper means a temporary price is shown as if it were
+      // permanent, which is the defect this whole feature exists to prevent.
+      this.logError(
+        "window.PricingDisplay is unavailable — promotional prices will not be marked in the picker"
+      );
+      return "";
+    }
+    return pricing.markerFor(model && model.metadata);
+  }
+
+  /**
+   * The promotional notice for the information panel as HTML, or "".
+   *
+   * This panel is rebuilt wholesale on every model change, so the stale-notice hazard the
+   * in-place updater has to handle explicitly does not arise here: a model with no promotion
+   * simply renders no notice.
+   *
+   * @param {Object} modelDetails - a registry model
+   * @returns {string}
+   */
+  _promotionNoticeHTML(modelDetails) {
+    const pricing = window.PricingDisplay;
+    if (!pricing) {
+      this.logError(
+        "window.PricingDisplay is unavailable — the promotional price notice will not be shown"
+      );
+      return "";
+    }
+    return pricing.noticeHTML(modelDetails && modelDetails.metadata);
+  }
+
+  /**
+   * The cost lines below Input and Output: the legacy image figure, the unit-tagged meters,
+   * and a short sentence saying what is NOT shown.
+   *
+   * WHAT THIS REPLACED, AND WHY IT MATTERS HERE RATHER THAN IN THE REGISTRY. This panel used
+   * to render `costs.image` as "$X per 1K images". Measured 11 September 2026, that label is
+   * wrong for 10 of the field's 46 non-zero entries and right for about 35 — the field is
+   * mixed-unit, so no single label can be correct, and one enabled entry
+   * (anthropic/claude-sonnet-4.5) was showing "$4800.000 per 1K images" for a rate its own
+   * comment gives as $4.80 per thousand. The wording now lives in js/pricing-display.js so
+   * all three price surfaces answer the question the same way.
+   *
+   * @param {Object} [costs] - a registry entry's costs block
+   * @returns {string}
+   */
+  _costLinesHTML(costs) {
+    const pricing = window.PricingDisplay;
+    if (!pricing) {
+      this.logError(
+        "window.PricingDisplay is unavailable — per-meter costs will not be shown"
+      );
+      return "";
+    }
+    return pricing.costLinesHTML(costs);
+  }
+
+
   // Creates and fills the dropdown menu with all available AI models
   populateModelSelect() {
     const modelSelect = document.getElementById("model-select");
@@ -426,10 +502,18 @@ export class ModelManager {
     this.logInfo("Populating model select dropdown");
     modelSelect.innerHTML = "";
 
+    // WHY THERE IS NO aria-label HERE, AND WHY THAT IS THE RIGHT OUTCOME. Options built on this
+    // path carry no aria-label at all, so the accessible name IS the visible text. Adding one
+    // would create two strings that have to be kept in step (SC 2.5.3 — the visible label must
+    // be contained in the accessible name). Putting the marker in textContent alone means they
+    // cannot diverge, because there is only one of them.
     const createOption = (model) => {
       const option = document.createElement("option");
       option.value = model.id;
-      option.textContent = `${model.name} (${model.provider})`;
+      // A promotional price is temporary and the registry knows it. A picker showing only the
+      // number invites someone to choose on a price that rises on an unpublished date.
+      option.textContent =
+        `${model.name} (${model.provider})` + this._promotionalMarker(model);
       return option;
     };
 

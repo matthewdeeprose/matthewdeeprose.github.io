@@ -169,6 +169,8 @@ window.MermaidDiagramDetection = (function () {
     // consulted for a type Mermaid's own detector produced. The misroute is
     // registered as outstanding rather than fixed here.
     xychart: "xychart",
+    // Item 80: detectType returns "block" for block-beta; one entry suffices.
+    block: "block",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

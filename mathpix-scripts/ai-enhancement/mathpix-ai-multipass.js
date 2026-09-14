@@ -756,6 +756,26 @@
         return null;
       }
 
+      // AW-23: refuse a Pass 2 reply the provider SAID it cut off. Pass 2
+      // REPLACES Pass 1's output wholesale, so a truncated verification would
+      // discard a complete enhancement in favour of a partial one \u2014 the same
+      // silent loss AW-15 measured at Pass 1, arriving one stage later.
+      //
+      // The existing route here is `return null`, which keeps Pass 1's output.
+      // That is deliberately silent: Pass 1 already succeeded, so there is
+      // nothing to tell the person about and no spoken line is added.
+      //
+      // Ordered AFTER the empty check to match startEnhancement, and reached
+      // through the SAME STATIC, so one patch inverts both sites at once.
+      const pass2Cut = window.MathPixAIEnhancer.isProviderCutReply(response);
+      if (pass2Cut.cut) {
+        logWarn(
+          "Pass 2 reply was cut off by the provider \u2014 keeping Pass 1 result",
+          pass2Cut,
+        );
+        return null;
+      }
+
       // 8. Extract MMD content from delimiter tags
       //    Pass 2 wraps output in <verified_mmd>...</verified_mmd>.
       //    Any commentary goes before the opening tag and is discarded.

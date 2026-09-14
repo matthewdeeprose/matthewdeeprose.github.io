@@ -15,6 +15,75 @@ import { openRouterDisplay } from "./openrouter-client-display.js";
 import { tokenCounter } from "../token-counter/token-counter-index.js";
 
 /**
+ * CHOICE EXTRACTION LIVES IN ONE PLACE NOW — js/modality/modality-core.js.
+ *
+ * This file used to hold FOUR copies of it, in TWO different precedence orders:
+ *
+ *   delta-first    processLine, and processBufferLine's SSE branch
+ *   message-first  the processStream done path, and processBufferLine's
+ *                  full-JSON branch — neither of which inspects `delta` at all
+ *
+ * The two orders are NOT interchangeable. On a choice carrying both `text` and
+ * `message.content` the delta-first order yields `text` and the message-first
+ * order yields `message.content`, so unifying them into a single fold would
+ * change shipped behaviour at two of the four sites. Both orders are therefore
+ * preserved, and .claude/modality/prove-collapse-differential.mjs replays
+ * recorded wire captures through the pre-collapse and post-collapse modules and
+ * requires the observable output to be byte-identical.
+ *
+ * WHY THE HELPERS ARE RESOLVED AT CALL TIME AND NEVER CACHED. modality-core.js
+ * is a plain script publishing on `window`, which the HTML spec guarantees runs
+ * before any deferred ES module — but a module-scope `const core =
+ * window.ModalityCore` would capture whatever was there at evaluation time, and
+ * this codebase has already shipped ten dead announcement call sites that way.
+ * The `<script>` tag ships in the same commit as this file.
+ *
+ * There is deliberately NO INLINE FALLBACK. A fallback would be a fifth copy of
+ * the very logic this collapse exists to remove, and it would rot in exactly the
+ * way the four copies did — silently, because nothing would exercise it.
+ */
+function modalityCore() {
+  const core = typeof window !== "undefined" ? window.ModalityCore : null;
+  if (!core) {
+    openRouterUtils.error(
+      "window.ModalityCore is unavailable — choice extraction cannot run. " +
+        "js/modality/modality-core.js must load before this module.",
+    );
+    return null;
+  }
+  return core;
+}
+
+/** Delta-first precedence, for a streaming chunk. */
+function extractDeltaChoice(choice) {
+  const core = modalityCore();
+  return core
+    ? core.extractDeltaChoice(choice)
+    : { kind: "none", content: null, toolCalls: null };
+}
+
+/** Message-first precedence, for a complete body. */
+function extractMessageChoice(choice) {
+  const core = modalityCore();
+  return core
+    ? core.extractMessageChoice(choice)
+    : { kind: "none", content: null, toolCalls: null };
+}
+
+/**
+ * Fold one streaming delta into an accumulator (MODALITY STEP 4).
+ *
+ * Resolved at call time for the same reason the two extractors above are, and
+ * returns null rather than an inline fallback when the core is absent — a
+ * fallback would be a second copy of the fold, which is the duplication this
+ * whole arrangement exists to remove.
+ */
+function reduceStreamDelta(delta, acc) {
+  const core = modalityCore();
+  return core ? core.reduceStreamDelta(delta, acc) : null;
+}
+
+/**
  * Class for handling streaming API requests
  */
 class OpenRouterStream {
@@ -90,6 +159,7 @@ class OpenRouterStream {
         onComplete, // Callback for completion
         onError, // Callback for errors
         onStart, // Callback for stream start
+        onAudio, // Callback for the streamed audio side channel
         abortSignal, // AbortSignal for cancellation
       } = options;
 
@@ -175,6 +245,33 @@ class OpenRouterStream {
                           file: {
                             filename: item.file.filename,
                             file_data: `${header},<BASE64_TRUNCATED: ${dataLength.toLocaleString()} chars>`,
+                          },
+                        };
+                      }
+                    }
+
+                    // MODALITY STEP 4 — input_audio, which the fall-through at
+                    // the bottom of this map would otherwise return WHOLE.
+                    //
+                    // That fall-through is `return item`, so this block has
+                    // only ever truncated what it RECOGNISES, and an audio part
+                    // is precisely the multi-megabyte console freeze it exists
+                    // to prevent: one captured reply carries 160,000 base64
+                    // chars, and this summary is read by both the debug log and
+                    // the dev panel.
+                    //
+                    // NO `data:` HEADER TO PRESERVE, unlike the two arms above.
+                    // input_audio.data is RAW base64 — audioContentPart mints it
+                    // without a prefix, because audio input has no URL form — so
+                    // there is nothing to split on and the whole string is data.
+                    if (item.type === "input_audio" && item.input_audio?.data) {
+                      const audioData = item.input_audio.data;
+                      if (typeof audioData === "string" && audioData.length > 200) {
+                        return {
+                          type: "input_audio",
+                          input_audio: {
+                            format: item.input_audio.format,
+                            data: `<BASE64_TRUNCATED: ${audioData.length.toLocaleString()} chars>`,
                           },
                         };
                       }
@@ -281,6 +378,17 @@ class OpenRouterStream {
         onToolCall,
         onComplete,
         onError,
+        // MODALITY STEP 4. processStream reads options.onAudio (see the audio
+        // block gated on delta.audio); this literal is the only object that
+        // reaches it from the public entry point, so a key absent here is a
+        // callback the consumer can never receive. It was absent until
+        // 12 September 2026: the bytes were accumulated correctly and then
+        // discarded, and only the transcript survived via fullResponse.
+        //
+        // onStart is DELIBERATELY still absent. processStream reads it too, but
+        // sendStreamingRequest already fires it directly at the top of this
+        // method — adding it here would make it fire TWICE.
+        onAudio,
         requestId: this.generateRequestId(),
         model: options.model,
       }).catch((error) => {
@@ -330,7 +438,21 @@ class OpenRouterStream {
     const decoder = new TextDecoder("utf-8");
     let buffer = "";
     let fullResponse = "";
+
+    // MODALITY STEP 4: the per-stream audio accumulator, folded by
+    // ModalityCore.reduceStreamDelta. Null until a chunk carries delta.audio,
+    // so an ordinary text stream never allocates it and never touches this.
+    let streamAudio = null;
     this.hasRecordedChunk = false;
+
+    // AW-23: per-stream latch for the provider's stop signal. The wire carries
+    // finish_reason on a TERMINAL chunk whose delta holds no content, and the
+    // synthesised finalResponseData below is built after the reader has
+    // finished, so the value has to be latched as it goes past rather than read
+    // off the last chunk. Reset here, beside hasRecordedChunk, so one stream's
+    // reason can never be reported for the next.
+    this.lastFinishReason = null;
+    this.lastNativeFinishReason = null;
 
     try {
       openRouterUtils.debug("Stream processing started", {
@@ -376,6 +498,10 @@ class OpenRouterStream {
                 if (response.choices && response.choices.length > 0) {
                   const choice = response.choices[0];
 
+                  // AW-23: a final buffer that parsed as one complete body
+                  // carries the stop signal in the ordinary place.
+                  this.latchFinishReason(choice);
+
                   openRouterUtils.debug("Examining final response choice", {
                     choiceKeys: Object.keys(choice),
                     hasMessage: !!choice.message,
@@ -385,10 +511,10 @@ class OpenRouterStream {
                     hasText: !!choice.text,
                   });
 
-                  if (choice.message?.content) {
-                    extractedContent = choice.message.content;
-                  } else if (choice.text) {
-                    extractedContent = choice.text;
+                  // Message-first: this is a COMPLETE body, not a chunk.
+                  const extracted = extractMessageChoice(choice);
+                  if (extracted.content) {
+                    extractedContent = extracted.content;
                   }
 
                   openRouterUtils.debug(
@@ -464,6 +590,14 @@ class OpenRouterStream {
                   message: {
                     content: fullResponse,
                   },
+                  // AW-23: the provider's stop signal, latched as the stream
+                  // went past. Until this parcel it was read at the chunk and
+                  // then discarded here, so no consumer could tell a reply cut
+                  // off at the token budget from one that finished — AW-15
+                  // measured four such replies applied silently. null when the
+                  // wire carried none; never invented.
+                  finish_reason: this.lastFinishReason || null,
+                  native_finish_reason: this.lastNativeFinishReason || null,
                 },
               ],
               provider: this.getModelFamily(options.model),
@@ -591,6 +725,77 @@ class OpenRouterStream {
                 (processed.content.length > 15 ? "..." : ""),
             });
           }
+          // MODALITY STEP 4 — THE AUDIO REPLY THIS LOOP USED TO DROP WHOLE.
+          //
+          // Measured on .claude/modality/fixtures/audio-out.raw.txt: ALL 17
+          // chunks carry delta.content === "", so the guard above never fires
+          // once, `fullResponse` stayed "", and onComplete was called with an
+          // empty string at the end of a complete, paid-for reply. Fifteen of
+          // the seventeen carry delta.audio.
+          //
+          // THE TEXT CHANNEL ITSELF HAS MOVED, and that is the whole shape of
+          // this block. The human-readable words of an audio reply live in
+          // delta.audio.transcript, NOT in delta.content — so accumulating the
+          // bytes and leaving the text path alone would still render an empty
+          // reply. The transcript is appended to fullResponse because it IS the
+          // reply's text; the base64 audio leaves on its own side channel and
+          // never touches the string.
+          //
+          // GATED ON delta.audio ALONE, so a pure-text stream cannot reach a
+          // line of this. The golden differential over recorded captures is
+          // what holds that claim — not this comment.
+          const audioChoice =
+            processed &&
+            processed.parsedData &&
+            processed.parsedData.choices &&
+            processed.parsedData.choices[0];
+          const audioDelta =
+            audioChoice && audioChoice.delta ? audioChoice.delta.audio : null;
+
+          if (audioDelta && typeof audioDelta === "object") {
+            // Folded through the core rather than reassembled here: `data` and
+            // `transcript` append, `id` and `expires_at` overwrite. Only the
+            // audio key is handed to the fold, so it cannot touch text even if
+            // a chunk ever carried both.
+            streamAudio = reduceStreamDelta({ audio: audioDelta }, streamAudio);
+
+            if (typeof audioDelta.transcript === "string") {
+              fullResponse += audioDelta.transcript;
+            }
+
+            // NEVER LOG THE PAYLOAD. 160,000 base64 chars is what one captured
+            // reply carries, the request sanitiser's fall-through has already
+            // put an untruncated part into the console once, and the RESPONSE
+            // side has no sanitiser at all. A length is the only safe thing to
+            // print here.
+            const acc = streamAudio && streamAudio.audio ? streamAudio.audio : null;
+            openRouterUtils.debug("Accumulated audio:", {
+              transcriptLength: acc ? acc.transcript.length : 0,
+              audioDataLength: acc ? acc.data.length : 0,
+              hasId: !!(acc && acc.id),
+            });
+
+            // The side channel, carrying a CUMULATIVE SNAPSHOT rather than a
+            // fragment: reduceStreamDelta is pure and returns a fresh object
+            // each fold, so every call gets its own snapshot and the LAST one
+            // is the complete payload. A consumer that keeps only the latest is
+            // therefore correct. Deliberately NOT routed through onChunk — that
+            // path does `streamBuffer += chunk` and `chunk.substring(0, 30)`,
+            // and a non-string corrupts the buffer and then throws.
+            if (
+              acc &&
+              options.onAudio &&
+              typeof options.onAudio === "function"
+            ) {
+              try {
+                options.onAudio(acc);
+              } catch (callbackError) {
+                openRouterUtils.error("Error in onAudio callback", {
+                  error: callbackError,
+                });
+              }
+            }
+          }
         }
       }
     } catch (error) {
@@ -663,6 +868,36 @@ class OpenRouterStream {
   }
 
   /**
+   * Latch the provider's stop signal off a choice, if it carries one.
+   *
+   * AW-23. Called from every site that resolves choices[0], because the chunk
+   * carrying finish_reason is not reliably the one carrying content, nor
+   * reliably the last one parsed. Only a non-empty value is latched, so a
+   * stream of `finish_reason: null` deltas cannot erase a reason already seen.
+   *
+   * native_finish_reason is OpenRouter's pass-through of the upstream
+   * provider's own wording, and is recorded unchanged beside the normalised
+   * one — neither is interpreted here.
+   *
+   * @param {Object} choice - A single element of a response `choices` array
+   * @private
+   */
+  latchFinishReason(choice) {
+    if (!choice) return;
+
+    if (typeof choice.finish_reason === "string" && choice.finish_reason) {
+      this.lastFinishReason = choice.finish_reason;
+    }
+
+    if (
+      typeof choice.native_finish_reason === "string" &&
+      choice.native_finish_reason
+    ) {
+      this.lastNativeFinishReason = choice.native_finish_reason;
+    }
+  }
+
+  /**
    * Process a single line from the SSE stream
    * @param {string} line - Line to process
    * @param {Object} options - Callbacks and options
@@ -711,23 +946,60 @@ class OpenRouterStream {
         if (parsedData.choices && parsedData.choices.length > 0) {
           const choice = parsedData.choices[0];
 
-          // Handle content chunks
-          if (choice.delta?.content) {
-            const content = choice.delta.content;
-            openRouterUtils.debug("Extracted content:", {
-              length: content.length,
-              preview:
-                content.substring(0, 20) + (content.length > 20 ? "..." : ""),
-            });
+          // AW-23: latch before any branch below returns, so the stop signal is
+          // captured whichever shape this chunk turns out to be.
+          this.latchFinishReason(choice);
 
-            // Track token usage if not done already
-            this.trackStreamTokens(options, parsedData);
+          // Handle content chunks
+          // Delta-first extraction, in one place. The four arms below are the
+          // same four this chain has always had, and in the same order — what
+          // has gone is the DUPLICATION of the order itself, which lived in
+          // three other places in this file and disagreed with two of them.
+          //
+          // Note the chain is exhaustive-by-precedence, not by shape: a chunk
+          // carrying BOTH delta.content and delta.audio yields only the content,
+          // because content outranks everything. That is deliberately unchanged
+          // here — handling the second payload is a later step, and this parcel
+          // must not alter what a user sees.
+          const extracted = extractDeltaChoice(choice);
+          const isContentKind =
+            extracted.kind === "content" ||
+            extracted.kind === "text" ||
+            extracted.kind === "message";
+
+          if (isContentKind) {
+            const content = extracted.content;
+
+            // Each arm has always logged differently, and token tracking has
+            // always run on the delta.content arm ALONE. Preserved exactly:
+            // a differential over recorded wire captures compares these paths
+            // call for call, so a "tidier" uniform version would redden.
+            if (extracted.kind === "content") {
+              openRouterUtils.debug("Extracted content:", {
+                length: content.length,
+                preview:
+                  content.substring(0, 20) + (content.length > 20 ? "..." : ""),
+              });
+
+              // Track token usage if not done already
+              this.trackStreamTokens(options, parsedData);
+            } else if (extracted.kind === "text") {
+              openRouterUtils.debug("Extracted text:", {
+                length: content.length,
+              });
+            } else {
+              openRouterUtils.debug("Extracted message content:", {
+                length: content.length,
+              });
+            }
 
             // Call the onChunk callback (with error handling for user code)
             if (options.onChunk && typeof options.onChunk === "function") {
-              openRouterUtils.debug("Calling onChunk callback with content:", {
-                contentLength: content.length,
-              });
+              if (extracted.kind === "content") {
+                openRouterUtils.debug("Calling onChunk callback with content:", {
+                  contentLength: content.length,
+                });
+              }
               try {
                 options.onChunk(content, parsedData);
               } catch (callbackError) {
@@ -764,7 +1036,9 @@ class OpenRouterStream {
                   }
                 }
               }
-            } else {
+            } else if (extracted.kind === "content") {
+              // Only the delta.content arm has ever warned about a missing
+              // callback. The other two stayed silent, and still do.
               openRouterUtils.warn(
                 "onChunk callback not available or not a function",
               );
@@ -772,105 +1046,16 @@ class OpenRouterStream {
 
             return { content, parsedData };
           }
-          // Handle text field (for some models)
-          else if (choice.text) {
-            const content = choice.text;
-            openRouterUtils.debug("Extracted text:", {
-              length: content.length,
-            });
 
-            // Call the onChunk callback (with error handling)
-            if (options.onChunk && typeof options.onChunk === "function") {
-              try {
-                options.onChunk(content, parsedData);
-              } catch (callbackError) {
-                const isAbortError =
-                  callbackError.name === "AbortError" ||
-                  callbackError.message?.includes("aborted");
-                if (isAbortError) {
-                  openRouterUtils.debug(
-                    "Callback triggered cancellation (expected)",
-                    {
-                      message: callbackError.message,
-                    },
-                  );
-                  throw callbackError;
-                } else {
-                  openRouterUtils.error("Error in onChunk callback", {
-                    error: callbackError,
-                  });
-                  if (
-                    options.onError &&
-                    typeof options.onError === "function"
-                  ) {
-                    try {
-                      options.onError(callbackError);
-                    } catch (e) {
-                      openRouterUtils.error("Error in onError callback", {
-                        error: e,
-                      });
-                    }
-                  }
-                }
-              }
-            }
-
-            return { content, parsedData };
-          }
-          // Handle complete message field
-          else if (choice.message?.content) {
-            const content = choice.message.content;
-            openRouterUtils.debug("Extracted message content:", {
-              length: content.length,
-            });
-
-            // Call the onChunk callback (with error handling)
-            if (options.onChunk && typeof options.onChunk === "function") {
-              try {
-                options.onChunk(content, parsedData);
-              } catch (callbackError) {
-                const isAbortError =
-                  callbackError.name === "AbortError" ||
-                  callbackError.message?.includes("aborted");
-                if (isAbortError) {
-                  openRouterUtils.debug(
-                    "Callback triggered cancellation (expected)",
-                    {
-                      message: callbackError.message,
-                    },
-                  );
-                  throw callbackError;
-                } else {
-                  openRouterUtils.error("Error in onChunk callback", {
-                    error: callbackError,
-                  });
-                  if (
-                    options.onError &&
-                    typeof options.onError === "function"
-                  ) {
-                    try {
-                      options.onError(callbackError);
-                    } catch (e) {
-                      openRouterUtils.error("Error in onError callback", {
-                        error: e,
-                      });
-                    }
-                  }
-                }
-              }
-            }
-
-            return { content, parsedData };
-          }
           // Handle tool calls
-          else if (choice.delta?.tool_calls) {
+          if (extracted.kind === "toolCalls") {
             if (
               options.onToolCall &&
               typeof options.onToolCall === "function"
             ) {
-              options.onToolCall(choice.delta.tool_calls, parsedData);
+              options.onToolCall(extracted.toolCalls, parsedData);
             }
-            return { toolCalls: choice.delta.tool_calls, parsedData };
+            return { toolCalls: extracted.toolCalls, parsedData };
           }
 
           // Check for finish reason
@@ -937,25 +1122,23 @@ class OpenRouterStream {
           const parsed = JSON.parse(data);
           if (parsed.choices && parsed.choices[0]) {
             const choice = parsed.choices[0];
+
+            // AW-23: the tail drain parses chunks the main loop never saw.
+            this.latchFinishReason(choice);
             let content = null;
 
-            if (choice.delta?.content) {
-              content = choice.delta.content;
-              openRouterUtils.info("Found delta.content in SSE chunk", {
-                contentLength: content.length,
-                preview:
-                  content.substring(0, 30) + (content.length > 30 ? "..." : ""),
-              });
-            } else if (choice.text) {
-              content = choice.text;
-              openRouterUtils.info("Found text in SSE chunk", {
-                contentLength: content.length,
-                preview:
-                  content.substring(0, 30) + (content.length > 30 ? "..." : ""),
-              });
-            } else if (choice.message?.content) {
-              content = choice.message.content;
-              openRouterUtils.info("Found message.content in SSE chunk", {
+            // Delta-first: an SSE chunk. Note this branch has never handled
+            // tool_calls, and still does not — a tool-call-only chunk yields no
+            // content here, exactly as before.
+            const extracted = extractDeltaChoice(choice);
+            if (extracted.content) {
+              content = extracted.content;
+              const FOUND_LABEL = {
+                content: "Found delta.content in SSE chunk",
+                text: "Found text in SSE chunk",
+                message: "Found message.content in SSE chunk",
+              };
+              openRouterUtils.info(FOUND_LABEL[extracted.kind], {
                 contentLength: content.length,
                 preview:
                   content.substring(0, 30) + (content.length > 30 ? "..." : ""),
@@ -1016,6 +1199,9 @@ class OpenRouterStream {
           if (parsed.choices && parsed.choices.length > 0) {
             const choice = parsed.choices[0];
 
+            // AW-23: the non-SSE full-JSON drain reaches consumers too.
+            this.latchFinishReason(choice);
+
             openRouterUtils.info("Examining choice for content", {
               choiceKeys: Object.keys(choice),
               hasMessage: !!choice.message,
@@ -1025,20 +1211,22 @@ class OpenRouterStream {
               hasText: !!choice.text,
             });
 
-            if (choice.message?.content) {
-              content = choice.message.content;
-              openRouterUtils.info("Found message.content in JSON response", {
-                contentLength: content.length,
-                preview:
-                  content.substring(0, 30) + (content.length > 30 ? "..." : ""),
-              });
-            } else if (choice.text) {
-              content = choice.text;
-              openRouterUtils.info("Found text in JSON response", {
-                contentLength: content.length,
-                preview:
-                  content.substring(0, 30) + (content.length > 30 ? "..." : ""),
-              });
+            // Message-first: a complete body. Deliberately does NOT inspect
+            // `delta`, matching what this branch has always done.
+            const extracted = extractMessageChoice(choice);
+            if (extracted.content) {
+              content = extracted.content;
+              openRouterUtils.info(
+                extracted.kind === "message"
+                  ? "Found message.content in JSON response"
+                  : "Found text in JSON response",
+                {
+                  contentLength: content.length,
+                  preview:
+                    content.substring(0, 30) +
+                    (content.length > 30 ? "..." : ""),
+                },
+              );
             } else {
               openRouterUtils.warn("No content found in JSON response choice", {
                 choiceType: typeof choice,

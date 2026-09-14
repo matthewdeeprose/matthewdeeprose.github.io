@@ -1228,7 +1228,18 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 163840,
-    fallbackTo: "deepseek/deepseek-chat-v3.1",
+    // DEAD DEPLOYMENT. Register item 101: a real chat-completion call through the
+    // app's own Worker route returned HTTP 410 `model_deprecated` on 14 September
+    // 2026, with a gpt-4o-mini control answering 200 in the same run. Disabled so
+    // the picker stops offering a model that cannot answer.
+    disabled: true,
+    // Repointed 14 September 2026 (item 106 — never cross the provider streams).
+    // Was "deepseek/deepseek-chat-v3.1", an OpenRouter id a Foundry user cannot
+    // reach. Now the Foundry deployment that this entry's own successor supersedes
+    // it with. NOTE the value is the REGISTRY ID, not the bare deployment name:
+    // getFallbackModel resolves via Map.get on an exact key, and Foundry entries
+    // register under `azure-openai/<deploymentName>`.
+    fallbackTo: "azure-openai/DeepSeek-V3.2",
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "General-purpose model (DeepSeek format) routed via Microsoft Foundry — same upstream as deepseek/deepseek-chat-v3.1, different transport",
@@ -1280,7 +1291,20 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 128000,
-    fallbackTo: "deepseek/deepseek-r1",
+    // DEAD DEPLOYMENT. Register item 101: a real chat-completion call through the
+    // app's own Worker route returned HTTP 410 `model_deprecated` on 14 September
+    // 2026, with a gpt-4o-mini control answering 200 in the same run. Disabled so
+    // the picker stops offering a model that cannot answer.
+    disabled: true,
+    // Repointed 14 September 2026 (item 106 — never cross the provider streams).
+    // Was "deepseek/deepseek-r1", an OpenRouter id a Foundry user cannot reach.
+    // gpt-oss-120b is the closest Foundry reasoning deployment: same 128000
+    // context, text-only, GA with no published retirement date, identical
+    // supportedParams/features, and the same reasoning_content mechanism this
+    // entry's own description already names. NOT DeepSeek-V3.2, which is
+    // registered explicitly non-reasoning. NOTE the value is the REGISTRY ID —
+    // see the equivalent note on DeepSeek-V3.1 above.
+    fallbackTo: "azure-openai/gpt-oss-120b",
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Reasoning model (DeepSeek format) routed via Microsoft Foundry — same upstream as deepseek/deepseek-r1, different transport",

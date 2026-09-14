@@ -459,6 +459,25 @@
           "chat-model-info-cost",
         );
       }
+
+      // A PROMOTIONAL PRICE IS TEMPORARY, AND NO PUBLISHED ROUTE SAYS WHEN IT ENDS. Shown as
+      // a full-width line rather than another dt/dd pair, because it is a caution rather than
+      // a fact about the model, and because it deliberately breaks the pair grid so it cannot
+      // be skimmed past. Wording comes from js/pricing-display.js, the one implementation
+      // shared with the two other surfaces that show a price; resolved at call time.
+      const pricing = window.PricingDisplay;
+      if (!pricing) {
+        logError(
+          "window.PricingDisplay is unavailable — a promotional price will not be flagged here",
+        );
+      } else if (pricing.isPromotional(entry.metadata)) {
+        appendLabelledParagraph(
+          body,
+          "Promotional price",
+          pricing.describe(entry.metadata).trim(),
+          "chat-model-info-promotional",
+        );
+      }
     }
   }
 

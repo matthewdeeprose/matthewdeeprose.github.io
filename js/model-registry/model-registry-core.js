@@ -94,6 +94,20 @@ export class ModelRegistryCore {
   _validateModelConfig(config) {
     const validation = validator.validateModelConfig(config);
 
+    // Non-fatal findings reach the console and nothing else. A cost key nothing validates
+    // and nothing renders is free data, and free data is how a camelCase `imageOutput`, a
+    // wrong "// Per million seconds" comment and three `audio: 0.0` entries all arrived
+    // without a gate objecting. Reporting is the whole repair here: these keys sit on
+    // hundreds of entries that predate any gate, so refusing them would throw on load.
+    if (validation.warnings && validation.warnings.length > 0) {
+      for (const warning of validation.warnings) {
+        logger.warn(
+          `Model configuration warning for ${config.name || "Unknown model"}: ${warning.message}`,
+          { field: warning.field, type: warning.type }
+        );
+      }
+    }
+
     if (!validation.isValid) {
       logger.modelValidationError(
         config.name || "Unknown model",

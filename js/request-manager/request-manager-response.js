@@ -120,6 +120,27 @@ export class RequestManagerResponse {
     let content;
     const choice = response.choices[0];
 
+    // MODALITY STEP 2. A non-text reply carries `message.content: null` and its
+    // payload elsewhere — `message.images[]` for an image. Replayed against the
+    // real capture in .claude/modality/fixtures/image-out.raw.txt, every arm of
+    // the chain below missed and the old final fallback stringified the whole
+    // choice: 880,993 characters, 99.96% of it one base64 data URL, rendered
+    // into the results pane AFTER the user had been billed $0.0387 for it.
+    //
+    // normaliseMessage is resolved at CALL TIME and never cached, because a
+    // module-scope capture of a window global reads undefined when the plain
+    // script has not run — the dead-announcer failure recorded in AGENTS.md.
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    const structured = modalityCore
+      ? modalityCore.normaliseMessage(choice.message)
+      : null;
+
+    // Retained, not rendered. This step ships no UI; keeping the structured
+    // result on the instance is what stops the image the user paid for being
+    // unreachable, and is where the UI parcel will read it from.
+    this.lastStructuredResponse = structured;
+
     if (choice.message?.content) {
       // Standard format
       content = choice.message.content;
@@ -129,14 +150,23 @@ export class RequestManagerResponse {
     } else if (choice.delta?.content) {
       // Streaming format
       content = choice.delta.content;
+    } else if (
+      structured &&
+      (structured.images.length > 0 || structured.audio)
+    ) {
+      // A reply that carried NO TEXT but DID carry a non-text payload is not an
+      // error and is not a diagnostic — it is a successful reply this build has
+      // no surface for yet. "" is the contract: every downstream text consumer
+      // takes it and behaves exactly as it does for an empty answer.
+      content = structured.text;
     } else {
-      console.warn("Unexpected response format:", choice);
-      // Try to extract content in a safe way
-      content =
-        choice.message?.content ||
-        choice.text ||
-        choice.delta?.content ||
-        JSON.stringify(choice, null, 2);
+      // THE STRINGIFY IS NOW A DIAGNOSTIC AND NEVER A CONTENT SOURCE. A response
+      // the normaliser cannot read is something to log, not something to show.
+      console.warn(
+        "Unexpected response format:",
+        JSON.stringify(choice, null, 2).slice(0, 2000)
+      );
+      content = choice.message?.content || choice.text || choice.delta?.content;
     }
 
     if (!content && typeof content !== "string") {

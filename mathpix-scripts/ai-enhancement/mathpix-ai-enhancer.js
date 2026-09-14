@@ -104,11 +104,67 @@
     DEFAULT_PROVIDER_ID: "openrouter",
 
     /**
-     * Fallback model if config loading fails
-     * Note: When config loads successfully, the model with "recommended": true
-     * in mathpix-ai-prompts.json takes precedence (currently Sonnet 4.5)
+     * WHICH PURPOSE THIS SEAM ASKS THE SHARED REGISTRY ABOUT (parcel I5-1).
+     *
+     * THE MAP THAT WAS HERE IS DELETED, NOT MOVED AND LEFT BESIDE ITS
+     * REPLACEMENT. It read:
+     *
+     *     DEFAULT_BY_PROVIDER: Object.freeze({
+     *       openrouter: "anthropic/claude-fable-5",
+     *       "azure-openai": "azure-openai/gpt-5.6-sol",
+     *     })
+     *
+     * and those two ids now live in `window.MathPixModelRegistry` under the
+     * `mmd-correction` purpose, WITH the round that measured them and the date,
+     * which a bare map could not carry. A second copy kept "for safety" is
+     * exactly how the third copy drifts — and this lane has already paid for
+     * that once, with a suite total stale by thirty-four across three parcels.
+     *
+     * THE IDS ARE UNCHANGED AND STILL MEASURED, NOT PREFERRED (AW-21,
+     * 8 September 2026, five documents x five models x three runs).
+     * `claude-fable-5` and `gpt-5.6-sol` lead on mean weighted score, on mean
+     * net improvement and on the side-assist's blind reading, and they lead by
+     * more than the within-model spread on most documents. The registry's own
+     * entry carries that provenance; it is repeated here only so a reader of
+     * this file is not sent elsewhere to learn that the value is measured.
+     *
+     * WHY THE PURPOSE IS A CONSTANT AND NOT A LITERAL AT THE CALL SITE. There
+     * is one call site today and the registry refuses an unrecognised purpose,
+     * so a typo would degrade this seam to "no model at all" rather than to a
+     * wrong model — a loud failure, but one a named constant makes impossible.
+     *
+     * WHAT THE DELETED MAP HAD ITSELF REPLACED, kept because each was a real
+     * defect and none of them should come back:
+     *
+     * 1. `FALLBACK_MODEL: "anthropic/claude-haiku-4.5"` — measured DEAD on
+     *    8 September 2026 against comment-stripped source: exactly ONE
+     *    occurrence in this file, its own declaration, and no reader anywhere
+     *    in the tree. It named the model AW-21 ranked LAST of five.
+     * 2. A constructor seed of the literal `"anthropic/claude-sonnet-4"`,
+     *    which was the LIVE default and is in neither the prompts JSON nor any
+     *    vision list.
+     * 3. "Whichever entry the prompts JSON happens to list first with
+     *    `recommended: true`" — a default decided by JSON key order rather
+     *    than by evidence.
+     *
+     * A provider the registry does not recognise resolves to null rather than
+     * borrowing another provider's id (AW-36, inherited by I5-1). That
+     * behaviour is unchanged by the move: an unrecognised provider IS reachable
+     * (`getActive()` returns any stored string verbatim, measured live at
+     * AW-35), and the borrow sent an OpenRouter id on Foundry's behalf. The
+     * alt-text adapter and the Context tab refuse in the same condition.
      */
-    FALLBACK_MODEL: "anthropic/claude-haiku-4.5",
+    RECOMMENDATION_PURPOSE: "mmd-correction",
+
+    /**
+     * The one model whose pairing with the mistral-OCR engine is warned
+     * against (ME-4, Phase 7.5J — critical failures on 3 of 4 documents).
+     *
+     * Hoisted to a named constant by AW-22 because `updateEngineWarning` now
+     * matches on the MODEL ID rather than on a prompts-JSON key that no longer
+     * exists for this model.
+     */
+    MISTRAL_OCR_WARNING_MODEL: "anthropic/claude-haiku-4.5",
 
     /**
      * Maximum output tokens for API response
@@ -142,9 +198,18 @@
      * character length, so an overrun at 32,768 is refused and announced rather
      * than silently applied.
      *
-     * WHAT THIS DOES NOT REACH. The six models named in `mathpix-ai-prompts.json`
-     * each carry their own `maxTokens: 8192`, which is source 1 of
-     * `getModelMaxOutput`'s ladder and therefore still caps them at 8,192.
+     * WHAT THIS DOES NOT REACH — CORRECTED AT AW-36, AND THE OLD TEXT WAS
+     * WRONG IN BOTH OF ITS NUMBERS. It read: "The six models named in
+     * `mathpix-ai-prompts.json` each carry their own `maxTokens: 8192`, which
+     * is source 1 of `getModelMaxOutput`'s ladder and therefore still caps them
+     * at 8,192." Measured against the shipped file: it carries **four** model
+     * entries (`openrouter.fable`, `.opus`, `.sonnet` and `azure-openai.sol`)
+     * and **zero** occurrences of `maxTokens`. So source 1 of the ladder is
+     * INERT today and nothing is capped at 8,192 — which is what guard row 51.8
+     * already pins from the other side, by handing the ladder a synthetic map
+     * that DOES carry the old cap and reading 8192 back. The ladder is alive;
+     * it is the data that is silent. A prompts JSON that reintroduces
+     * `maxTokens` would silently override this constant again.
      */
     MAX_OUTPUT_TOKENS: 32768,
 
@@ -230,6 +295,59 @@
    */
   function composeFailureLine(message) {
     return `Enhancement failed: ${String(message).trim().replace(/[.!?]+$/, "")}. You can try again or close the dialog.`;
+  }
+
+  /**
+   * The one sentence spoken when the run is refused because NO MODEL ID EXISTS
+   * to assess (parcel RF-1).
+   *
+   * WHY IT IS A THIRD CONSTANT AND NOT A REUSE OF EITHER EXISTING ONE. Since
+   * AW-36 `_defaultModelForProvider` returns null for a provider the shared
+   * registry does not recognise rather than borrowing the OpenRouter default, so
+   * `selectedModel` can legitimately be null. Both existing refusals then
+   * MISDIRECT: `isModelPdfCapable(null)` returns false on its own non-string
+   * guard, so the person was told "The selected model cannot read PDF files.
+   * Choose a different model or provider." They go and choose a vision-capable
+   * model, and it refuses again — the advice in the sentence cannot fix the
+   * condition the sentence reports, because the condition is not about the
+   * model they chose. It is that their PROVIDER has no default set up.
+   *
+   * WHY IT LIVES HERE AND NOT IN mathpix-model-capability.js. That module is
+   * shared with the Image Describer and answers CAPABILITY questions about an
+   * id in hand. This names an ENHANCER fact — that this seam could not resolve
+   * a default for the active provider — and it is decided before any capability
+   * authority is consulted. A capability module has no business holding it.
+   *
+   * MODULE SCOPE, and exposed as a STATIC below, for the same two reasons
+   * `composeFailureLine` and `describeProviderFailure` are: both consumers (the
+   * pre-flight at `_preflightRefusal` and the send boundary in
+   * `initialiseEmbed`) read the static, so ONE patch inverts the product and the
+   * seam rows together. An unpatchable seam is an unprovable one.
+   *
+   * It ends in a full stop, like its two siblings, and `composeFailureLine`
+   * trims one terminal mark before appending, so the line a person hears is:
+   *   Enhancement failed: No AI model is set up for the AI provider you have
+   *   selected. You can try again or close the dialog.
+   */
+  const ABSENT_MODEL_REFUSAL =
+    "No AI model is set up for the AI provider you have selected.";
+
+  /**
+   * Is this id unusable as a model id at all? (parcel RF-1)
+   *
+   * DELIBERATELY THE SAME SHAPE as the guard both capability predicates open
+   * with — `!modelId || typeof modelId !== "string" || !modelId.trim()` in
+   * `isModelPdfCapable` and `isModelProviderAvailable`. That is the whole point:
+   * the set of ids this answers true for is exactly the set those two refuse on
+   * their non-string guard, so every id that used to reach a MISDIRECTING
+   * capability refusal now reaches the honest one, and no id that reaches a
+   * capability answer on its merits is diverted.
+   *
+   * @param {*} modelId the resolved model id, which may be null
+   * @returns {boolean} true when there is no id to assess
+   */
+  function isAbsentModelId(modelId) {
+    return !modelId || typeof modelId !== "string" || !modelId.trim();
   }
 
   /** Shown and spoken when a provider body names a rate limit (HTTP 429). */
@@ -403,6 +521,63 @@
     };
   }
 
+  /**
+   * The stop reasons that mean the provider truncated the reply at the output
+   * budget rather than finishing it.
+   *
+   * GROUNDED 9 September 2026, not assumed. OpenRouter and Azure OpenAI v1 both
+   * emit the OpenAI-canonical `"length"` on `choices[0].finish_reason`. The
+   * Foundry RESPONSES adapter has no entry here on purpose: it never returns a
+   * cut reply to a consumer at all, because both its non-streaming and
+   * streaming paths THROW on `status: "incomplete"`, naming
+   * `incomplete_details.reason` — so a truncation there arrives as a transport
+   * failure and is described by `describeProviderFailure`, not by this.
+   *
+   * Frozen, and compared case-insensitively, because a provider's own casing is
+   * not something this codebase controls.
+   */
+  const PROVIDER_CUT_FINISH_REASONS = Object.freeze(["length"]);
+
+  /**
+   * Decide whether the PROVIDER said it cut the reply off.
+   *
+   * AW-23. This is the direct evidence `isIncompleteReply` was standing in for:
+   * until this parcel the OpenRouter client read `finish_reason` off the wire
+   * and discarded it, so the enhancer could only measure the consequence. It
+   * now reaches here, and this runs FIRST — the ratio check stays as a second
+   * net for the providers and paths that carry no reason.
+   *
+   * WHY BOTH NETS REMAIN. AW-21 measured the ratio proxy failing at both ends
+   * on a real corpus: a reply the wire marked `length` came back LONGER than
+   * its source and so passed the ratio, and three complete replies to a
+   * 1,685-character source were refused by it. The first of those is exactly
+   * what this closes. The second is untouched here and is a stated residual.
+   *
+   * MODULE SCOPE and pure, for the same reason `isIncompleteReply` is: it is
+   * called against plain-object receivers in the seam suite.
+   *
+   * @param {Object} response the object the embed returned, unmodified
+   * @returns {{ cut: boolean, finishReason: string|null,
+   *   nativeFinishReason: string|null }}
+   */
+  function isProviderCutReply(response) {
+    const readReason = (value) =>
+      typeof value === "string" && value ? value : null;
+
+    const finishReason = readReason(response && response.finishReason);
+    const nativeFinishReason = readReason(
+      response && response.nativeFinishReason,
+    );
+
+    return {
+      cut:
+        finishReason !== null &&
+        PROVIDER_CUT_FINISH_REASONS.includes(finishReason.toLowerCase()),
+      finishReason,
+      nativeFinishReason,
+    };
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -480,9 +655,29 @@
 
       /**
        * Currently selected model ID
-       * @type {string}
+       *
+       * AW-22: seeded through `_defaultModelForProvider` rather than from a
+       * literal; I5-1 moved the ids that resolver reads out of this file and
+       * into the shared registry, leaving this line unchanged.
+       * This line previously read "anthropic/claude-sonnet-4" — an id in
+       * neither the prompts JSON nor any vision list, and the LIVE default
+       * whenever the config fetch failed, while the dead `FALLBACK_MODEL`
+       * constant named a third model entirely.
+       *
+       * AW-36: THE SEED IS null UNDER AN UNRECOGNISED PROVIDER, and null is
+       * deliberately the value rather than `""` or a stale literal. A literal
+       * would reintroduce the borrow this parcel removed, one indirection
+       * further away from the resolver and therefore harder to find; `""` is
+       * falsy in the same places null is but reads as "a model id we have",
+       * which is the confusion the sentinel exists to prevent. null then flows
+       * into `_preflightRefusal`, whose `isModelPdfCapable` returns false for a
+       * non-string, so the journey refuses with the existing refusal sentence
+       * rather than dereferencing this property. On every recognised provider
+       * this line is unchanged.
+       *
+       * @type {string|null}
        */
-      this.selectedModel = "anthropic/claude-sonnet-4";
+      this.selectedModel = this._defaultModelForProvider();
 
       /**
        * Selected PDF processing engine (Phase 7.4)
@@ -847,12 +1042,46 @@
         );
         this.models = this.getRecommendedModels();
 
-        // Set default model to recommended one
-        const recommendedModel = Object.entries(this.models || {}).find(
-          ([, model]) => model.recommended,
+        // AW-22: the default is the PROVIDER'S OWN measured best, resolved
+        // through `_defaultModelForProvider` — over the shared registry since
+        // I5-1. This block previously took "whichever
+        // entry carries recommended: true first", so the default was decided
+        // by JSON key order — rename a key or reorder the file and the shipped
+        // default moves silently.
+        //
+        // The first-recommended rule is KEPT as a second rung, because
+        // getRecommendedModels drops any entry failing the provider-membership
+        // or PDF-capability filters: if the preferred id is dropped, falling to
+        // a recommended entry that survived is better than keeping a
+        // constructor seed the picker is not offering.
+        //
+        // AW-36: `preferredId` can now be null (a provider the shared registry
+        // does not recognise). THAT RUNG BELOW MUST STILL RUN, and it does
+        // without a guard here: `model.id === null` is false for every entry,
+        // so the find below simply misses and the first-recommended rung takes
+        // over. Do NOT add an early return on a null preferredId — the whole
+        // point of the second rung is to answer when the preferred id is not
+        // servable, and "no preferred id at all" is that case in its purest
+        // form. The logWarn in the else branch reports `preferred: null`, which
+        // is a log line and not a spoken one.
+        const preferredId = this._defaultModelForProvider();
+        const preferredEntry = Object.values(this.models || {}).find(
+          (model) => model.id === preferredId,
         );
-        if (recommendedModel) {
-          this.selectedModel = recommendedModel[1].id;
+
+        if (preferredEntry) {
+          this.selectedModel = preferredEntry.id;
+        } else {
+          const firstRecommended = Object.values(this.models || {}).find(
+            (model) => model.recommended,
+          );
+          if (firstRecommended) {
+            this.selectedModel = firstRecommended.id;
+            logWarn(
+              "The preferred default is not in this provider's servable set; falling back to the first recommended entry.",
+              { preferred: preferredId, using: firstRecommended.id },
+            );
+          }
         }
 
         this.loadedPromptPath = path;
@@ -884,13 +1113,28 @@
         // EA-2c: the emergency fallback is an OpenRouter model, so it belongs
         // under the openrouter key. Cost fields are gone from here too — the
         // registry is the single source, via calculateCost.
+        // AW-22: this emergency set named "anthropic/claude-sonnet-4" with a
+        // maxTokens of 8192. Both were wrong by the time they were read: that
+        // id is in no vision list and no current catalogue, and the 8,192 cap
+        // is the ceiling AW-17 measured returning zero characters of content
+        // on a reasoning model. It now names the SAME id the rest of the file
+        // defaults to, so the two cannot drift, and carries no maxTokens so
+        // MAX_OUTPUT_TOKENS applies.
+        //
+        // I5-1: THIS WAS THE THIRD READER AND IT READ THE MAP DIRECTLY, not the
+        // resolver — `AI_ENHANCER_CONFIG.DEFAULT_BY_PROVIDER.openrouter`. With
+        // the map deleted it now goes through the resolver like the other two,
+        // which is why the count in `_defaultModelForProvider`'s own comment
+        // moved from two call sites to three. The explicit "openrouter" is
+        // DELIBERATE and not a borrow: this emergency set is an OpenRouter set,
+        // as the sentence above it says, so it must ask for the OpenRouter
+        // recommendation rather than the active provider's.
         this.recommendedByProvider = {
           openrouter: {
-            sonnet: {
-              id: "anthropic/claude-sonnet-4",
-              name: "Claude Sonnet 4",
+            fable: {
+              id: this._defaultModelForProvider("openrouter"),
+              name: "Claude Fable 5",
               description: "Balanced performance",
-              maxTokens: 8192,
               recommended: true,
             },
           },
@@ -1575,6 +1819,41 @@
       // one value rather than two that happen to agree.
       const modelId = this.selectedModel;
 
+      // ---- RF-1: no id to assess, asked BEFORE either capability question ----
+      // THE SENTENCE MUST NAME THE CONDITION THE PERSON CAN ACT ON. Since AW-36
+      // `_defaultModelForProvider` answers null for a provider the shared
+      // registry does not recognise rather than borrowing OpenRouter's id, so a
+      // null
+      // `selectedModel` is a reachable state — `ProviderSwitcher.getActive()`
+      // returns any stored string verbatim, which is how AW-35 measured it live
+      // with `selectedProvider` set to `azure-inference`. Before this branch the
+      // null fell through to the PDF question, `isModelPdfCapable(null)` refused
+      // on its own non-string guard, and the person was told the selected model
+      // could not read PDF files. They would then choose a vision-capable model
+      // and be refused again, because nothing they can do to the MODEL fixes a
+      // missing default for their PROVIDER.
+      //
+      // FIRST, AND AHEAD OF THE FAIL-OPEN BELOW, which is not an oversight.
+      // Fail-open exists because an absent capability module is a
+      // page-configuration fault rather than a capability finding, so refusing
+      // on it would take enhancement down completely. This question is not a
+      // capability question at all and needs no authority to answer: with no id
+      // there is nothing for any authority to assess. Asking it first also means
+      // the two orders below are untouched, which is what row 39.3 pins.
+      if (MathPixAIEnhancer.isAbsentModelId(modelId)) {
+        logWarn(
+          "RF-1 pre-flight: refusing because no model id is resolved for the active provider, before entering the processing state",
+          {
+            provider:
+              typeof window.ProviderSwitcher?.getActive === "function"
+                ? window.ProviderSwitcher.getActive()
+                : "__switcher unavailable__",
+            model: modelId,
+          },
+        );
+        return MathPixAIEnhancer.ABSENT_MODEL_REFUSAL;
+      }
+
       const capability = window.MathPixModelCapability;
       if (!capability) {
         logWarn(
@@ -1902,6 +2181,112 @@
         }
       }
       return out;
+    }
+
+    /**
+     * The model this provider defaults to — the ONE resolver over the shared
+     * `window.MathPixModelRegistry`, asking it for the `mmd-correction` purpose
+     * (parcel I5-1; previously over a local `DEFAULT_BY_PROVIDER` map, AW-22).
+     *
+     * Reached from THREE call sites, each of which once decided for itself: the
+     * constructor seed, the post-config default selection in `loadPromptConfig`,
+     * and — since I5-1 — the config-failure emergency set. Routing all three
+     * here is what stops them naming three different models, which is the state
+     * AW-22 found.
+     *
+     * THE COUNT HAS BEEN WRONG IN BOTH DIRECTIONS AND IS RE-DERIVED HERE.
+     * Before AW-36 it read "three places … and the config-failure emergency
+     * set", which over-counted: the emergency set read
+     * `AI_ENHANCER_CONFIG.DEFAULT_BY_PROVIDER.openrouter` DIRECTLY and never
+     * called this method, so AW-36 corrected it to two. I5-1 deleted that map,
+     * so the emergency set now DOES call this method and the true figure is
+     * three. Measured against comment-stripped source at each correction rather
+     * than adjusted by arithmetic. The distinction matters for null-safety
+     * review, because a reader auditing "every caller" works from this number.
+     *
+     * Resolves the ACTIVE provider at CALL time and never captures it —
+     * `ProviderSwitcher` loads after this file, and the provider is shared
+     * mutable state that the judge and the persistent profile both move
+     * (AW-19's standing trap).
+     *
+     * AW-36 — AN UNRECOGNISED PROVIDER NOW RETURNS null RATHER THAN BORROWING
+     * THE OpenRouter ENTRY. This line was
+     * `map[active] || map[DEFAULT_PROVIDER_ID]`, and AW-35 measured the borrow
+     * FIRING on the live page: with `selectedProvider` set to `azure-inference`
+     * in localStorage, `getActive()` returns that id verbatim and this resolver
+     * answered `anthropic/claude-fable-5` — an OpenRouter model resolved on
+     * behalf of a provider nobody recognises. The alt-text adapter and the
+     * Context tab both refuse under the identical condition, so the borrow was
+     * the odd one of three seams rather than a considered choice.
+     *
+     * THE MEMBERSHIP TEST IS THIS MAP, NOT `ProviderSwitcher.isAvailable`.
+     * That method conflates membership with CONFIGURATION — for `openrouter`
+     * it reads the stored API key and returns false when it is absent — so
+     * using it here would refuse a known provider merely because no key had
+     * been saved, which is a far wider behaviour change than the defect
+     * warrants. `getKnown()` membership would avoid that, but a provider can be
+     * known and still absent from this map, in which case there is no id to
+     * return anyway. Map membership is the local, stricter test, it subsumes
+     * the other two, and it matches what the Context tab's resolver already
+     * does (AW-29) — which is the point, since these two seams are folded
+     * together by roadmap item 5.
+     *
+     * WHY null IS SAFE AT BOTH CALL SITES. The constructor seed becomes null,
+     * and the pre-flight refusal (`_preflightRefusal`, ~:1706) calls
+     * `isModelPdfCapable(null)`, which returns false on its own non-string
+     * guard, so the journey refuses with the EXISTING `NON_PDF_REFUSAL`
+     * sentence BEFORE `showProcessingState` (~:4428) can reach
+     * `this.selectedModel.split("/")` at ~:4821. No sentence's wording changes;
+     * only whether one is written at all. At the ladder, `model.id === null` is
+     * false for every entry, so the preferred-entry rung simply misses and the
+     * first-recommended rung below it still runs.
+     *
+     * @param {string} [providerId] defaults to the active provider
+     * @returns {string|null} a model id, or null for a provider not in the map
+     */
+    _defaultModelForProvider(providerId) {
+      const active =
+        providerId ||
+        (typeof window.ProviderSwitcher?.getActive === "function"
+          ? window.ProviderSwitcher.getActive()
+          : AI_ENHANCER_CONFIG.DEFAULT_PROVIDER_ID);
+
+      // I5-1: the shared registry, reached at CALL time and never captured, for
+      // the same reason the provider is — this file loads before nothing is
+      // guaranteed about, and a module-scope capture of a global published by
+      // another script is the dead-announcer shape AGENTS.md § Announcements
+      // records ten call sites of.
+      const registry = window.MathPixModelRegistry;
+      const entry =
+        registry && typeof registry.recommendedModel === "function"
+          ? registry.recommendedModel(
+              AI_ENHANCER_CONFIG.RECOMMENDATION_PURPOSE,
+              active,
+            )
+          : null;
+
+      if (!entry || typeof entry.modelId !== "string") {
+        // FAIL CLOSED, NEVER OPEN. A hardcoded id here would reinstate exactly
+        // the borrow AW-36 removed, one indirection further from the resolver
+        // and therefore harder to find. null flows into `_preflightRefusal`,
+        // whose `isAbsentModelId` answers true, and the person is told the
+        // condition they can act on (RF-1's ABSENT_MODEL_REFUSAL).
+        //
+        // ONE WARNING COVERING BOTH CAUSES, and it names which it is. The
+        // absent-module case is unreachable on a normally-loaded page — the
+        // registry's script tag precedes this file — so it is reported loudly
+        // rather than silently, on the EA-4 precedent. Both spellings carry
+        // "no default registered for provider", which is what the seam rows
+        // match on; the clause in front of it is what tells a reader whether to
+        // go looking at the registry's contents or at the page's script order.
+        logWarn(
+          registry
+            ? `_defaultModelForProvider: no default registered for provider '${active}'; returning null rather than borrowing another provider's id.`
+            : `_defaultModelForProvider: the shared model registry is absent from the page, so no default registered for provider '${active}'; returning null rather than borrowing another provider's id.`,
+        );
+        return null;
+      }
+      return entry.modelId;
     }
 
     /**
@@ -2745,9 +3130,19 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const warningEl = document.getElementById("ai-engine-warning");
       if (!warningEl) return;
 
-      const modelKey = this.getModelKeyById(this.selectedModel);
+      // AW-22: keyed on the MODEL ID, not on the prompts-JSON key.
+      //
+      // It read `getModelKeyById(this.selectedModel) === "haiku"`, which
+      // resolves a key only for models the prompts JSON lists. AW-22 removed
+      // Haiku from that JSON — it is no longer a recommended radio and is
+      // reached from the advanced select instead — so the key lookup returns
+      // null for it and this warning would have gone permanently silent for
+      // the one combination it exists to warn about. The warning names a
+      // combination that caused critical failures on 3 of 4 documents in 7.5I
+      // testing, so losing it silently is a safety regression, not tidying.
       const isDangerous =
-        modelKey === "haiku" && this.selectedEngine === "mistral-ocr";
+        this.selectedModel === AI_ENHANCER_CONFIG.MISTRAL_OCR_WARNING_MODEL &&
+        this.selectedEngine === "mistral-ocr";
 
       warningEl.hidden = !isDangerous;
     }
@@ -3855,6 +4250,33 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // the constructor sends are provably the same value.
       const resolvedModelId = this.selectedModel;
 
+      // ---- RF-1: no id to send with, asked BEFORE either capability question -
+      // THE HOIST PRINCIPLE, APPLIED TO A THIRD SENTENCE. The pre-flight must
+      // speak the SAME sentence this boundary would, or the hoist changes what a
+      // person hears rather than only when they hear it — the reasoning the PDF
+      // and provider guards already carry. This guard shares the pre-flight's
+      // fault and therefore shares its repair: with `resolvedModelId` null the
+      // facade's `isModelPdfCapable` refuses on the shared module's non-string
+      // guard and this code threw NON_PDF_REFUSAL, so a caller that reached the
+      // send by some path the pre-flight does not cover got the misdirecting
+      // sentence anyway.
+      //
+      // A GUARD APPLIED AT ONE OF TWO SITES IS SILENTLY ABSENT AT THE OTHER, and
+      // nothing that asks only about the pre-flight can see it. Row 43.5 drives
+      // the REAL initialiseEmbed with the pre-flight bypassed, which is the only
+      // way this branch is observable.
+      //
+      // Throws, where the pre-flight returns a sentence, because that is this
+      // layer's existing contract: startEnhancement's catch reaches showError
+      // and its notifyError. No new spoken line and no new channel.
+      if (MathPixAIEnhancer.isAbsentModelId(resolvedModelId)) {
+        logWarn(
+          "initialiseEmbed: refusing because no model id is resolved for the active provider",
+          { model: resolvedModelId },
+        );
+        throw new Error(MathPixAIEnhancer.ABSENT_MODEL_REFUSAL);
+      }
+
       // The predicate lives in MathPixContextAI and is reached at CALL time, not
       // captured at module scope: mathpix-context-ai.js loads AFTER this file in
       // tools.html, so a module-scope capture would be undefined here. There is
@@ -4429,14 +4851,41 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           throw new Error("Empty response from AI");
         }
 
-        // AW-16: refuse a reply the provider cut off. AW-15 measured four such
-        // replies applied without warning, one turning a 5,457-character
-        // document into 1,089 characters in the session. The provider marks
-        // them `finish_reason: "length"`, but the OpenRouter client discards
-        // that before it reaches here, so the consequence is measured instead.
+        // AW-23: refuse a reply the provider SAID it cut off. This is the
+        // direct evidence; it runs first. AW-15 measured four such replies
+        // applied without warning, one turning a 5,457-character document into
+        // 1,089 characters in the session, and the wire marked every one of
+        // them `finish_reason: "length"` — the OpenRouter client simply
+        // discarded it before this parcel carried it through.
         //
-        // Ordered AFTER the empty check on purpose: an empty reply keeps its
-        // own "Empty response from AI" message, which existing rows pin.
+        // Ordered AFTER the empty check on purpose, like the ratio net below:
+        // an empty reply keeps its own "Empty response from AI" message, which
+        // existing rows pin.
+        //
+        // Reached through the STATIC so an inversion moves product and rows
+        // together.
+        const providerCut = MathPixAIEnhancer.isProviderCutReply(response);
+        if (providerCut.cut) {
+          logError("Refusing a reply the provider cut off", providerCut);
+          this.showError(
+            INCOMPLETE_REPLY_LINE,
+            `The provider stopped the reply early and reported ` +
+              `finish_reason "${providerCut.finishReason}"` +
+              (providerCut.nativeFinishReason
+                ? ` (its own wording: "${providerCut.nativeFinishReason}")`
+                : "") +
+              `.\nThat means the reply ran out of output budget before it ` +
+              `finished, so applying it would lose whatever came after.\n` +
+              `The document was not changed.`,
+          );
+          return;
+        }
+
+        // AW-16: the second net, for the providers and paths that carry no stop
+        // reason — the reply is refused on its LENGTH instead. Runs when
+        // finishReason is null or absent. Kept because it is the only cover
+        // there, and stated as a proxy: AW-21 measured it failing at both ends
+        // on a real corpus.
         //
         // Reached through the STATIC so an inversion moves product and rows
         // together.
@@ -6390,6 +6839,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // unprovable one.
   MathPixAIEnhancer.composeFailureLine = composeFailureLine;
 
+  // RF-1: the absent-model refusal sentence and its predicate, published on the
+  // same terms and for the same two reasons. The pre-flight and the send
+  // boundary both read the STATICS, so one patch inverts the product and the
+  // seam rows together, and the rows can assert the sentence BY IDENTITY rather
+  // than by retyping a string that would then only ever agree with itself.
+  MathPixAIEnhancer.ABSENT_MODEL_REFUSAL = ABSENT_MODEL_REFUSAL;
+  MathPixAIEnhancer.isAbsentModelId = isAbsentModelId;
+
   // AW-13: the provider-body describer, published on the same terms and for
   // the same two reasons. showError calls the static, so one patch of it
   // inverts the product and the seam rows together.
@@ -6400,6 +6857,15 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // inverts the product and the seam rows together — an unpatchable seam is an
   // unprovable one.
   MathPixAIEnhancer.isIncompleteReply = isIncompleteReply;
+
+  // AW-23: the provider-stop-signal predicate, published on the same terms and
+  // for the same two reasons. startEnhancement and MathPixMultiPass both call
+  // the STATIC, so one patch of it inverts the product and the seam rows
+  // together.
+  MathPixAIEnhancer.isProviderCutReply = isProviderCutReply;
+
+  /** The stop reasons that mean truncation, so a guard row can pin them. */
+  MathPixAIEnhancer.PROVIDER_CUT_FINISH_REASONS = PROVIDER_CUT_FINISH_REASONS;
 
   /** The literal a person is shown and hears when a reply was cut. */
   MathPixAIEnhancer.INCOMPLETE_REPLY_LINE = INCOMPLETE_REPLY_LINE;
@@ -6996,9 +7462,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       e.getModelKeyById("anthropic/claude-opus-4.6") === "opus",
       "1.7a getModelKeyById finds 'opus'",
     );
+    // AW-22 re-pointed this row from haiku to fable: haiku left the prompts
+    // JSON with this parcel, so getModelKeyById can no longer resolve a key
+    // for it. NOTE 1.7a and the sonnet rows below still name ids this JSON
+    // has not carried since before AW-22 (opus-4.6, sonnet-4.5); those were
+    // ALREADY failing and are deliberately NOT repaired here.
     assert(
-      e.getModelKeyById("anthropic/claude-haiku-4.5") === "haiku",
-      "1.7b getModelKeyById finds 'haiku'",
+      e.getModelKeyById("anthropic/claude-fable-5") === "fable",
+      "1.7b getModelKeyById finds 'fable'",
     );
     assert(
       e.getModelKeyById("unknown/model-xyz") === null,
@@ -7044,14 +7515,18 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       "1.9d sonnet model definition has reasoningMode: 'effort'",
     );
 
-    const haikuDef = e.models?.haiku;
+    // AW-22 re-pointed this pair from haiku to fable for the same reason as
+    // 1.7b: haiku is no longer a prompts-JSON entry, so e.models.haiku is
+    // undefined and both rows would report a missing definition as a missing
+    // reasoning field.
+    const fableDef = e.models?.fable;
     assert(
-      haikuDef?.supportsReasoning === true,
-      "1.9e haiku model definition has supportsReasoning: true",
+      fableDef?.supportsReasoning === true,
+      "1.9e fable model definition has supportsReasoning: true",
     );
     assert(
-      haikuDef?.reasoningMode === "effort",
-      "1.9f haiku model definition has reasoningMode: 'effort'",
+      fableDef?.reasoningMode === "effort",
+      "1.9f fable model definition has reasoningMode: 'effort'",
     );
 
     // Restore original state
@@ -7087,6 +7562,28 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     try {
       // Use Sonnet for the E2E test — it supports effort-based reasoning
       // and is cheaper than Opus
+      //
+      // ⚠ max_tokens: 100 WITH effort: "high" IS A KNOWN TRAP, and this test may return an
+      // EMPTY reply for that reason alone rather than because reasoning is broken.
+      //
+      // Reasoning tokens are drawn from the SAME completion allowance as the visible answer,
+      // so a small cap can be spent entirely on thinking: the request then comes back
+      // HTTP 200 with empty content and finish_reason "length". Measured 9 September 2026
+      // across 23 models whose reasoning cannot be disabled, at a cap of 16: THIRTEEN
+      // returned empty, including openai/gpt-5-nano, gpt-5-mini, gpt-5-pro,
+      // deepseek/deepseek-r1 and google/gemini-3.1-pro-preview. Re-run at 800 tokens, every
+      // one of them answered correctly — qwen/qwen3-next-80b-a3b-thinking spent 160
+      // reasoning tokens to produce a single word. The models were fine; the cap was not.
+      //
+      // 100 with effort "high" is closer to that failing regime than to a realistic budget.
+      // Shipped paths are unaffected — openrouter-embed defaults to 2,000, js/config.js to
+      // 4,096 and AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS to 32,768 — so this is a property of
+      // THIS dev-only harness, not of the product.
+      //
+      // If part 2 fails or the reply is empty, RAISE THE CAP AND RE-RUN BEFORE CONCLUDING
+      // ANYTHING. An empty reply here is not evidence that reasoning is unconfigured; it is
+      // consistent with reasoning working perfectly and having nowhere left to write.
+      // Background and the measurement: .claude/model-add/README.md finding 10.
       const testEmbed = new OpenRouterEmbed({
         containerId: tempContainer.id,
         model: "anthropic/claude-sonnet-4.5",

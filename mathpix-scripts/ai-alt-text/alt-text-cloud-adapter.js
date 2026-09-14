@@ -116,9 +116,31 @@ const MathPixAltTextCloudAdapter = (function () {
    * the pair. The azure entry is the measured winner outright.
    *
    * ONLY TWO KEYS ARE NEEDED, and that is measured rather than assumed.
-   * `ProviderSwitcher.KNOWN_PROVIDERS` carries exactly `openrouter` and
-   * `azure-openai`, so `getActive()` returns nothing else. `azure-responses`
-   * needs no key: it is never an ACTIVE provider, and the `PROVIDER_GROUPS`
+   *
+   * ⚠ THE REASON GIVEN HERE WAS FALSE, AND IS CORRECTED AT AW-36 (comment
+   * only — no behaviour in this file changes). It read: "`ProviderSwitcher.
+   * KNOWN_PROVIDERS` carries exactly `openrouter` and `azure-openai`, so
+   * `getActive()` returns nothing else." `getActive()` reads
+   * `localStorage.getItem("selectedProvider")` and returns ANY non-null string
+   * verbatim, with no membership test anywhere in it — the validation lives in
+   * `setActive` alone, and `setActive` is not the only writer of that key.
+   * AW-35 measured it on the live page: with `selectedProvider` set to
+   * `azure-inference`, `getActive()` returned `"azure-inference"`. Four
+   * ordinary routes reach that state — a profile carried over from a
+   * superseded build (three of the six `RESERVED_PROVIDER_PREFIXES` are never
+   * migrated), another page on the same un-namespaced origin, the `storage`
+   * event handler (which does not validate `event.newValue` either), and the
+   * standing AW-19 persistent-profile trap.
+   *
+   * TWO KEYS REMAIN CORRECT, for a different and stronger reason: this map is
+   * a PREFERENCE consulted only against the vision-filtered eligible list, so
+   * an id absent from it costs nothing. An unrecognised provider yields an
+   * EMPTY eligible list, `_resolveModel` returns `NO_MODEL_RESOLVED` (null),
+   * and `generate` refuses at the send boundary. The refusal is real and was
+   * measured; only the premise above was wrong.
+   *
+   * `azure-responses` needs no key: it is never an ACTIVE provider, and the
+   * `PROVIDER_GROUPS`
    * fold that makes its models eligible under `azure-openai` happens inside
    * `getEligibleModels`, on the eligible side of the ladder rather than this
    * one. A key for it would map to an `azure-openai/` id that could never be

@@ -84,6 +84,35 @@
     if (state) S = state;
   }
 
+  // ── Announcing after a confirmation modal ────────────────────────────────
+  // window.safeConfirm resolves BEFORE its modal is gone: close() only sets a
+  // "closing" attribute, and finishClose — which runs cleanupModalInert, the
+  // dialog close, the removeChild and the opener focus-restore — is scheduled
+  // 200ms later under prefers-reduced-motion: no-preference. Every announcer
+  // region sits inside div#start, which the inert sweep matches, and the open
+  // dialog holds the native top layer, so a write in the .then lands in a
+  // region the accessibility tree reports ignored (activeModalDialog).
+  //
+  // Measured on this exact site, DINING, 10 September 2026: under no-preference
+  // the write landed at +22677ms with the region ignored and the dialog still
+  // :modal, and NOTHING was spoken. Under reduce the region was already exposed
+  // and it was STILL not spoken — what NVDA speaks in that window is the
+  // post-close re-orientation, this repo's documented drop of a polite write
+  // landing within milliseconds of a focus change. So the delay has to clear
+  // BOTH finishClose and the opener focus-restore, not just the inert release.
+  //
+  // 350ms is setup-tool/setup-tool.js's constant, built for this same fault and
+  // measured to make four previously-silent credential clears audible: it clears
+  // the modal's own 200ms timer and the focus-restore at ~244ms with margin. It
+  // is a DIFFERENTIAL between two timers scheduled on the same event loop, so a
+  // loaded machine delays both together and the gap survives.
+  //
+  // THE ROOT FIX IS ELSEWHERE: safeConfirm should resolve AFTER finishClose.
+  // The day that lands, delete this constant and its two siblings — grep
+  // MODAL_CLOSE_ANNOUNCE_DELAY_MS for all three (here,
+  // local-chat/local-chat-persistence.js, setup-tool/setup-tool.js).
+  const MODAL_CLOSE_ANNOUNCE_DELAY_MS = 350;
+
   // ── Byte-free serialisation (Unified Chat attachments, checkpoint 1) ────────
 
   /**
@@ -316,8 +345,17 @@
    * Clear the live thread and discard its saved session. Chat does not archive
    * (Decision 1), so there is no archiveConversation / welcome-card / _updateAllUI
    * call here. Mirrors the fresh-load UI state: empty list, focus the input.
+   *
+   * @param {{afterModalClose?: boolean}} [options] - set afterModalClose when the
+   *   caller reached here through window.safeConfirm, so the announcement is held
+   *   until the confirmation modal has finished tearing down (see the note on
+   *   MODAL_CLOSE_ANNOUNCE_DELAY_MS). The default is the immediate announcement,
+   *   because the restore banner's Start-fresh button reaches this with no modal
+   *   in play and follows it with its own line — delaying here would reorder the
+   *   two on a path that is currently correct.
    */
-  function performClear() {
+  function performClear(options) {
+    const afterModalClose = Boolean(options && options.afterModalClose);
     const els = S.els;
     // Stop Chat's own read-aloud before the thread is torn down. The helper is
     // guarded on Chat owning the current speaker, so clearing here never cuts off
@@ -334,7 +372,13 @@
     S.messages = [];
     if (els.messageList) els.messageList.innerHTML = "";
     if (els.input) els.input.focus();
-    S.announceToScreenReader("Conversation cleared.");
+    if (afterModalClose) {
+      window.setTimeout(function () {
+        S.announceToScreenReader("Conversation cleared.");
+      }, MODAL_CLOSE_ANNOUNCE_DELAY_MS);
+    } else {
+      S.announceToScreenReader("Conversation cleared.");
+    }
   }
 
   // ── Restore banner ──────────────────────────────────────────────────────
