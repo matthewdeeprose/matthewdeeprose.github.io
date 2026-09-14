@@ -23,13 +23,14 @@
  * part (b) exists to listen for. There is no announcer call in this file and
  * there must never be one.
  *
- * IT GAINED FOUR VOICES AT REGISTER ITEM 46 UNIT 8, and every one of them obeys
- * the paragraph above — see THE FOUR SPOKEN GESTURES below, which is the one
- * place they are composed and the one place they reach the outside world. The
- * silence they replaced was overturned by EAR, at the sitting of 13 September
- * 2026, and the half of that decision which is UNCHANGED is the load-bearing
- * one: no aria-live and no live role is added anywhere in this chain, and the
- * transcript is not a live region and must not become one.
+ * IT GAINED FOUR VOICES AT REGISTER ITEM 46 UNIT 8 AND A FIFTH AT UNIT 10, and
+ * every one of them obeys the paragraph above — see THE SPOKEN GESTURES below,
+ * which is the one place they are composed and the one place they reach the
+ * outside world. The silence they replaced was overturned by EAR, at the
+ * sittings of 13 and 14 September 2026, and the half of that decision which is
+ * UNCHANGED is the load-bearing one: no aria-live and no live role is added
+ * anywhere in this chain, and the transcript is not a live region and must not
+ * become one.
  *
  * THE MODULE IS RESOLVED AT CALL TIME, NEVER AT LOAD. Same discipline the
  * module itself applies to the Entra token, for the same reason: a module-scope
@@ -186,7 +187,7 @@ const OpenRouterEmbedTranscribeUI = (function () {
   const COPIED_SENTENCE = "Transcript copied to clipboard.";
 
   // ==========================================================================
-  // THE FOUR SPOKEN GESTURES (register item 46 unit 8)
+  // THE SPOKEN GESTURES (register item 46 units 8 and 10)
   // ==========================================================================
   //
   // THE SILENCE WAS OVERTURNED BY EAR, AND NOTHING ELSE COULD HAVE DONE IT.
@@ -198,11 +199,24 @@ const OpenRouterEmbedTranscribeUI = (function () {
   // that EXISTS reaches a reader correctly; not one of them can ask whether an
   // announcement that does not exist is MISSED.
   //
-  // THE SCOPE IS FOUR GESTURES AND NOTHING ELSE. Register item 45's text
-  // correction still announces nothing on commit, items 47 and 48 are still
-  // unheard, and the three display checkboxes, the selection tick boxes and
-  // Clear selection are all still silent. Listen row 47 part (c) NARROWS to
-  // items 45, 47 and 48; it does not close.
+  // AND A FIFTH JOINED THEM AT UNIT 10, FROM THE SITTING OF 14 SEPTEMBER 2026.
+  // The withdrawn sentence is quoted rather than deleted, per register items 51
+  // and 56, because it recorded a scope that was true when written:
+  //
+  //   "THE SCOPE IS FOUR GESTURES AND NOTHING ELSE. Register item 45's text
+  //    correction still announces nothing on commit, items 47 and 48 are still
+  //    unheard, and the three display checkboxes, the selection tick boxes and
+  //    Clear selection are all still silent."
+  //
+  // CLEAR SELECTION NOW ANNOUNCES. The sitting heard the four and accepted
+  // them, and the owner's observation was that four gestures spoke and the
+  // fifth stayed silent for no reason other than that nobody had asked for it.
+  // Design section 10. The rest of that sentence STANDS UNCHANGED: item 45's
+  // text correction still announces nothing on commit, items 47 and 48 are
+  // still unheard, and the three display checkboxes and the selection tick
+  // boxes are still silent — a tick box conveys its own state through the
+  // browser, which is native feedback and not an announcement this file makes.
+  // Listen row 47 part (c) NARROWS to items 45, 47 and 48; it does not close.
   //
   // THEY GO THROUGH notify*() AND NEVER THROUGH A REGION IN THE TRANSCRIPT.
   // That half of the original decision is UNCHANGED and is load-bearing: no
@@ -225,7 +239,16 @@ const OpenRouterEmbedTranscribeUI = (function () {
   // suppressor exists to stop exactly the chatter a person re-attributing a
   // run of lines would otherwise get. Recorded against listen row 50.
   //
-  // NOTHING BELOW HAS BEEN HEARD. Listen row 50 carries all four.
+  // IT REACHES CLEAR SELECTION THE SAME WAY, and the reachable case is the same
+  // shape: clearing the same NUMBER of lines twice inside five seconds produces
+  // one byte-identical sentence. It takes a re-tick between the two, because a
+  // second clear with nothing selected is a no-op and says nothing at all.
+  // Recorded against listen row 51, not engineered around, for the reason
+  // above.
+  //
+  // THE FOUR OF UNIT 8 HAVE BEEN HEARD AND ACCEPTED (14 September 2026, listen
+  // row 50); THE FIFTH HAS NOT. Listen row 51 carries it, along with the
+  // marker's fuller wording below.
 
   /**
    * A name was applied: the slot is now called that name.
@@ -297,6 +320,38 @@ const OpenRouterEmbedTranscribeUI = (function () {
    */
   function speakerAddedSentence(display) {
     return `${display} added.`;
+  }
+
+  /**
+   * The selection was emptied: how many lines stopped being selected
+   * (register item 46 unit 10).
+   *
+   * THE FIFTH VOICE, AND IT EXISTS BECAUSE FOUR GESTURES SPOKE AND THIS ONE DID
+   * NOT. The sitting of 14 September 2026 accepted the four of unit 8 as built
+   * and observed that Clear selection had stayed silent for no reason other
+   * than that nobody had asked for it. Its own JSDoc had already named the
+   * argument for a voice — a gesture whose whole visible effect is remote from
+   * the control — and pointed at listen row 49 to judge it. This is that
+   * judgement arriving.
+   *
+   * IT REPORTS THE COUNT AND NOT THE NEW STATE, deliberately. "Nothing is
+   * selected" is what the visible count text already says, and a sentence
+   * repeating it would be saying twice what a person can read once; the count
+   * of what just STOPPED being selected is the part nothing else carries. Same
+   * reasoning speakerAddedSentence gives for reporting the slot and not the
+   * picker's selection.
+   *
+   * "unticked" IS THE ROW'S OWN VERB. The controls are tick boxes and the
+   * block's visible hint says "Tick the lines you want", so a person hearing
+   * this has already met the word. "Deselected" would introduce a second word
+   * for one gesture, which is the divergence the one-display-stem rule exists
+   * to prevent, arriving through prose.
+   *
+   * @param {number} cleared - how many rows were ticked before the clear
+   * @returns {string}
+   */
+  function selectionClearedSentence(cleared) {
+    return `Selection cleared, ${pluralise(cleared, "line")} unticked.`;
   }
 
   /**
@@ -921,18 +976,36 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * held in reverse: the visible controls changed too, so the row and the
    * control that put it there still say the same thing.
    *
-   * IT NAMES WHERE THE LINE CAME FROM AND NOT WHERE IT WENT. `<previous>` is
-   * the display name of `sourceSpeaker`, so a named source slot reads "Speaker
-   * changed from Amira." and an unnamed one "Speaker changed from Speaker 2."
-   * The owner offered the fuller "from Speaker X to Speaker Y" and it was not
-   * taken: THE "to" HALF IS THE LABEL THE ROW ALREADY CARRIES whenever a label
-   * prints, so including it would be the doubling the one-marker-per-row-per-
-   * mode rule above exists to prevent. The sitting's own note on the old marker
-   * was that it said the line is not where the transcription put it WITHOUT
-   * SAYING WHERE IT CAME FROM; naming the source is what answers that.
+   * IT NAMES BOTH HALVES — WHERE THE LINE CAME FROM AND WHERE IT WENT
+   * (register item 46 unit 10). It reads "Speaker changed from Speaker 2 to
+   * Amira.", both sides through `speakerDisplayName`, so a named slot reads as
+   * its name on either side.
    *
-   * LISTEN ROW 50 PART (d) CAN OVERTURN THIS TOO, and the fuller form is a
-   * one-line change. Nothing here has been heard.
+   * THE DESK'S OBJECTION IS WITHDRAWN, AND IS QUOTED IN PLACE RATHER THAN
+   * DELETED, per register items 51 and 56:
+   *
+   *   "IT NAMES WHERE THE LINE CAME FROM AND NOT WHERE IT WENT. `<previous>` is
+   *    the display name of `sourceSpeaker` … The owner offered the fuller
+   *    \"from Speaker X to Speaker Y\" and it was not taken: THE \"to\" HALF IS
+   *    THE LABEL THE ROW ALREADY CARRIES whenever a label prints, so including
+   *    it would be the doubling the one-marker-per-row-per-mode rule above
+   *    exists to prevent."
+   *
+   * THE SITTING OF 14 SEPTEMBER 2026 OVERRULED IT, AND THE CASE THE DESK HAD
+   * MISSED IS THE SUPPRESSED-LABEL STATE. "whenever a label prints" was doing
+   * all the work in that argument and was never tested. With "Repeat the
+   * speaker on every line" UNTICKED, a changed row that prints no label carries
+   * NEITHER half — not the "to" the desk was economising on, and not a "from"
+   * that means anything without it. So the shorter form left the reader with
+   * nothing at all on exactly the rows where the marker mattered most. The
+   * fuller form is unconditional and costs nothing on the rows that do print a
+   * label, where the doubling the withdrawn text feared is a confirmation
+   * rather than a repetition: the row says who is speaking NOW, and the marker
+   * says the transcription disagreed.
+   *
+   * ONE MARKER PER ROW PER MODE IS UNCHANGED. What grew is the marker's
+   * SENTENCE, not the number of markers, and the selection checkbox's label
+   * still carries neither. That rule was heard correct at both sittings.
    *
    * THE MARKER IS DERIVED, SO A ROUND TRIP CLEARS IT WITH NO BOOKKEEPING. It
    * comes from `phrase.speaker !== phrase.sourceSpeaker`, so moving a line back

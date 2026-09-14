@@ -94,67 +94,109 @@ const MathPixAltTextCloudAdapter = (function () {
   // ---------------------------------------------------------------------------
 
   /**
-   * PREFERRED MODEL PER PROVIDER — the measured best on each service (AW-8,
-   * 4 September 2026).
+   * The purpose this seam asks the shared registry about (parcel I5-3).
    *
-   * WHAT CHANGED AND WHY. This was a single `DEFAULT_MODEL` of
-   * `anthropic/claude-haiku-4.5`, mirroring the Image Describer's economical
-   * default. Four measured rounds put that choice at the BOTTOM of the field:
-   * AW-4r ranked eight models on three images, AW-5 held the model still and
-   * varied the configuration, AW-6x widened to six models with a fresh judge,
-   * and **AW-7c (commit `025ecdd`) settled it** — three survivors over all
-   * eleven capacitors images, on the shipped configuration, judged blind by a
-   * judge chosen to share a vendor with none of them. Its result:
-   * `azure-openai/gpt-5.6-sol` first at 18.91 of 20, ahead of
-   * `anthropic/claude-opus-5` and `anthropic/claude-sonnet-5`. The first place
-   * is settled arithmetically — it beats the best case even of the model with
-   * an unjudged cell — while second and third are NOT separated by that round.
+   * Named rather than inlined for the reason the enhancer and the Context tab
+   * each name their own (`AI_ENHANCER_CONFIG.RECOMMENDATION_PURPOSE` at I5-1,
+   * `RECOMMENDATION_PURPOSE` in mathpix-context-ai.js at I5-2): a bare string
+   * at the call site is a magic value, and the registry REFUSES an
+   * unrecognised purpose, so a typo resolves null and reads as "this provider
+   * has no preference" rather than as "this file asked the wrong question".
    *
-   * So the openrouter entry is `claude-sonnet-5` rather than `claude-opus-5`:
-   * where the evidence does not separate two models it is not this map's job
-   * to invent a separation, and sonnet is the cheaper and markedly faster of
-   * the pair. The azure entry is the measured winner outright.
-   *
-   * ONLY TWO KEYS ARE NEEDED, and that is measured rather than assumed.
-   *
-   * ⚠ THE REASON GIVEN HERE WAS FALSE, AND IS CORRECTED AT AW-36 (comment
-   * only — no behaviour in this file changes). It read: "`ProviderSwitcher.
-   * KNOWN_PROVIDERS` carries exactly `openrouter` and `azure-openai`, so
-   * `getActive()` returns nothing else." `getActive()` reads
-   * `localStorage.getItem("selectedProvider")` and returns ANY non-null string
-   * verbatim, with no membership test anywhere in it — the validation lives in
-   * `setActive` alone, and `setActive` is not the only writer of that key.
-   * AW-35 measured it on the live page: with `selectedProvider` set to
-   * `azure-inference`, `getActive()` returned `"azure-inference"`. Four
-   * ordinary routes reach that state — a profile carried over from a
-   * superseded build (three of the six `RESERVED_PROVIDER_PREFIXES` are never
-   * migrated), another page on the same un-namespaced origin, the `storage`
-   * event handler (which does not validate `event.newValue` either), and the
-   * standing AW-19 persistent-profile trap.
-   *
-   * TWO KEYS REMAIN CORRECT, for a different and stronger reason: this map is
-   * a PREFERENCE consulted only against the vision-filtered eligible list, so
-   * an id absent from it costs nothing. An unrecognised provider yields an
-   * EMPTY eligible list, `_resolveModel` returns `NO_MODEL_RESOLVED` (null),
-   * and `generate` refuses at the send boundary. The refusal is real and was
-   * measured; only the premise above was wrong.
-   *
-   * `azure-responses` needs no key: it is never an ACTIVE provider, and the
-   * `PROVIDER_GROUPS`
-   * fold that makes its models eligible under `azure-openai` happens inside
-   * `getEligibleModels`, on the eligible side of the ladder rather than this
-   * one. A key for it would map to an `azure-openai/` id that could never be
-   * eligible under its own provider id, so it would always miss and fall
-   * through — a line that reads like coverage and provides none.
-   *
-   * An entry is a PREFERENCE, never a guarantee: it is used only when the id
-   * is in the vision-filtered eligible list for the active provider, and the
-   * ladder falls through to `eligible[0]` when it is not.
+   * It must equal `MathPixModelRegistry.PURPOSES.ALT_TEXT`. It is NOT read off
+   * that module, because a capture of a global published by another script is
+   * the dead-announcer shape, and because a constant that reads its own
+   * expected value from the thing it is checked against can never disagree
+   * with it — which is the same reason the suite pins the ids as literals.
    */
-  const PREFERRED_BY_PROVIDER = Object.freeze({
-    openrouter: "anthropic/claude-sonnet-5",
-    "azure-openai": "azure-openai/gpt-5.6-sol",
-  });
+  const RECOMMENDATION_PURPOSE = "alt-text";
+
+  /**
+   * The model this provider PREFERS for alt text — the ONE read of the shared
+   * `window.MathPixModelRegistry` in this file, asking it for the `alt-text`
+   * purpose (parcel I5-3; previously a local frozen `PREFERRED_BY_PROVIDER`
+   * map, AW-8).
+   *
+   * THE LOCAL MAP IS DELETED, NOT LEFT BESIDE THIS, and so is the entry that
+   * exported it from this module's public API. A second copy holding the same
+   * two ids answers identically to the registry, so no behavioural row
+   * anywhere could see one — which is exactly how the third copy drifts. The
+   * absence is asserted against this file's own source text instead.
+   *
+   * THE IDS ARE MEASURED, NOT PREFERRED, AND THEY HAVE NOT CHANGED.
+   * `anthropic/claude-sonnet-5` on openrouter and `azure-openai/gpt-5.6-sol`
+   * on azure-openai, settled across AW-4r to AW-7ck on 3 September 2026 —
+   * three survivors over all eleven capacitors images, on the shipped
+   * configuration, judged blind by a judge sharing a vendor with none of them,
+   * `gpt-5.6-sol` first outright at 18.91 of 20. The openrouter entry is
+   * sonnet rather than opus because that round did not separate second from
+   * third and sonnet is the cheaper and markedly faster of the pair. The
+   * evidence now lives in the registry entry beside the ids, together with the
+   * round and the date, rather than in a comment here that a re-point would
+   * leave behind.
+   *
+   * THE DIVERGENCE IS CORRECT AND MUST SURVIVE. Alt text prefers sonnet-5 on
+   * openrouter where the `mmd-correction` and `context` purposes both prefer
+   * `anthropic/claude-fable-5` on the same provider. Different tasks, measured
+   * in different rounds, with different winners. The purpose dimension is what
+   * makes that EXPRESSIBLE rather than accidental, and a later parcel must not
+   * collapse the three to one value on the grounds that it looks like a
+   * tidy-up.
+   *
+   * AN ENTRY IS A PREFERENCE, NEVER A GUARANTEE. The id it names is used only
+   * when it appears in the vision-filtered eligible list for the active
+   * provider; `_resolveModel` falls through to `eligible[0]` when it does not.
+   * That is unchanged by this parcel.
+   *
+   * AN UNRECOGNISED PROVIDER RETURNS null, and no cross-provider borrow may be
+   * reintroduced here or in the registry. The contract is the one all three
+   * seams settled on at AW-36 and it is NOT reopened by this parcel. The
+   * refusal a person meets is unchanged in shape too: an unrecognised provider
+   * yields an EMPTY eligible list, so `_resolveModel` returns
+   * `NO_MODEL_RESOLVED` at the eligible-list gate BEFORE this preference is
+   * ever consulted, and `generate` refuses at the send boundary.
+   *
+   * Reached at CALL time and never captured — the same reason the provider is.
+   * A module-scope capture of a global published by another script captures
+   * undefined when the script order moves, which is the shape AGENTS.md
+   * records ten dead call sites of.
+   *
+   * @param {string} providerId the ACTIVE provider, passed in by the caller
+   * @returns {string|null} a model id, or null for a provider the registry has
+   *   no entry for under this purpose, and null when the registry is absent
+   */
+  function _preferredModelForProvider(providerId) {
+    // FAIL CLOSED, NEVER OPEN. A hardcoded id in either branch below would be
+    // the private copy this parcel exists to remove, reinstated one
+    // indirection further from the resolver and therefore harder to find.
+    // null flows into the existing ladder, whose next rung is `eligible[0]` —
+    // which is precisely what an absent preference has always meant here.
+    const registry = window.MathPixModelRegistry;
+    const found =
+      registry && typeof registry.recommendedModel === "function"
+        ? registry.recommendedModel(RECOMMENDATION_PURPOSE, providerId)
+        : null;
+
+    if (!found || typeof found.modelId !== "string") {
+      // ONE WARNING COVERING BOTH CAUSES, AND IT NAMES WHICH IT IS, on the
+      // I5-1 and I5-2 precedent. The absent-module case is unreachable on a
+      // normally loaded page, because the registry's script tag PRECEDES this
+      // file's in tools.html — stated as an ORDER and deliberately not as two
+      // line numbers, which drift every time another lane edits that file and
+      // were already stale within an hour of being written at I5-2. So it is
+      // reported loudly rather than silently. Both spellings carry "no
+      // preference registered for provider", which is what the suite's rows
+      // match on; the clause in front of it is what tells a reader whether to
+      // look at the registry's contents or at the page's script order.
+      logWarn(
+        registry
+          ? `_preferredModelForProvider: no preference registered for provider '${providerId}'; returning null rather than borrowing another provider's id.`
+          : `_preferredModelForProvider: the shared model registry is absent from the page, so no preference registered for provider '${providerId}'; returning null rather than borrowing another provider's id.`,
+      );
+      return null;
+    }
+    return found.modelId;
+  }
 
   /** Exact refuse message for a non-vision resolved model (British spelling). */
   const NON_VISION_REFUSAL =
@@ -255,10 +297,11 @@ const MathPixAltTextCloudAdapter = (function () {
    * otherwise read the active provider and select a vision model through
    * getEligibleModels({ capabilities: ["vision"] }) (the capability filter is
    * NOT optional), applying the default-pick: prefer the ACTIVE PROVIDER'S
-   * entry in PREFERRED_BY_PROVIDER when that id is eligible, else the first
-   * eligible model (AW-8; this rung read a single cross-provider DEFAULT_MODEL
-   * before). Reaches ProviderSwitcher and
-   * EmbedModelSelector at CALL time with guards; NO embed involved.
+   * preference for the `alt-text` purpose when that id is eligible, else the
+   * first eligible model (AW-8 made the rung per-provider; I5-3 moved the
+   * lookup onto the shared registry and deleted this file's own map). Reaches
+   * ProviderSwitcher and EmbedModelSelector at CALL time with guards; NO embed
+   * involved.
    *
    * @param {Object} [options]
    * @param {string} [options.model] - Explicit model id override.
@@ -308,9 +351,14 @@ const MathPixAltTextCloudAdapter = (function () {
     }
 
     // Default-pick ladder: the ACTIVE PROVIDER'S preferred id if eligible,
-    // else first available. The rung is unchanged in shape and position; only
-    // the id it looks for is now per-provider (AW-8).
-    const preferredId = PREFERRED_BY_PROVIDER[provider];
+    // else first available. THE RUNG IS UNCHANGED IN SHAPE AND POSITION. AW-8
+    // made the id it looks for per-provider; I5-3 moved WHERE that id is read
+    // from onto the shared registry, and `preferredId` can now be null for a
+    // provider the registry has no alt-text entry for. Do NOT add an early
+    // return on a null `preferredId` — the falsy guard below already skips the
+    // find, and the fall-through to `eligible[0]` is what an absent preference
+    // has always meant here.
+    const preferredId = _preferredModelForProvider(provider);
     const preferred = preferredId
       ? eligible.find((m) => m && m.id === preferredId)
       : undefined;
@@ -545,7 +593,18 @@ const MathPixAltTextCloudAdapter = (function () {
       const cap = _capability();
       return cap ? cap.KNOWN_VISION_MODELS : EMPTY_VISION_LIST;
     },
-    PREFERRED_BY_PROVIDER,
+    // THE PER-PROVIDER PREFERENCE (AW-8; repointed at I5-3). The RESOLVER is
+    // exported and the map is NOT — because there is no longer a map here to
+    // export.
+    //
+    // `PREFERRED_BY_PROVIDER` WAS EXPORTED HERE UNTIL I5-3 AND HAS BEEN
+    // REMOVED WITH IT. The one suite row that read it (runOrchestratorTests'
+    // AW-8 block) compared the resolver against the map beside the literal ids
+    // it pins, and the literal half is the half that could ever fail: a row
+    // comparing a function against the constant that function reads moves both
+    // sides together. The rows now pin the same two literals, unchanged, and
+    // ask the registry the agreement question instead.
+    _preferredModelForProvider,
     NON_VISION_REFUSAL,
   };
 })();

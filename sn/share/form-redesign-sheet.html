@@ -1,0 +1,1785 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Form redesign sheet — ServiceNow form review</title>
+<!--
+  Takes a capture JSON from sn/scripts/capture-form.mjs and shows how the form
+  could be rebuilt. One editable row per question, prefilled with a mechanical
+  proposal, plus a live preview in the style of computer-loan-prototype.html.
+
+  Self-contained on purpose: no build step, no npm, no CDN. It has to open from
+  a USB stick on a locked-down meeting room machine.
+
+  The split it exists to serve: roughly 70% of a prototype is boilerplate a
+  transformer can emit, and all of the value is in the other 30%, which is
+  judgement. This records the judgement where it can be reviewed and reused,
+  instead of it being made by editing HTML.
+-->
+<script>
+  /* Applied before first paint, deliberately. Reading the choice in the main
+     script means the light default paints first and a reader who chose dark
+     gets a white flash on every load. Kept to one statement and wrapped,
+     because a page that cannot read localStorage must still render. */
+  try {
+    var saved = localStorage.getItem("sn-redesign-theme");
+    if (saved === "light" || saved === "dark") {
+      document.documentElement.setAttribute("data-theme", saved);
+    }
+  } catch (err) { /* private mode, or storage disabled — the default stands */ }
+</script>
+<style>
+  /* Each palette's VALUES are declared once, under their own prefix, and the
+     live variables are MAPPED onto one of them. A theme toggle needs the dark
+     values in two places — under the media query for "follow the system" and
+     under the attribute for "the reader chose dark" — and writing the hex
+     codes out twice is how the two drift. Only the mapping is duplicated, and
+     test-redesign-sheet.mjs asserts the two mappings name the same set. */
+  :root {
+    --l-ink: #1a1a1a; --l-muted: #4a4a4a; --l-line: #b8b8b8; --l-card: #ffffff;
+    --l-page: #f4f4f2; --l-accent: #005c84; --l-accent-ink: #ffffff;
+    --l-error: #b10e1e; --l-ok: #00703c; --l-warn: #594d00; --l-warn-bg: #fff7bf;
+
+    --d-ink: #e9edf0; --d-muted: #b9c2c8; --d-line: #4a5760; --d-card: #10202a;
+    --d-page: #071820; --d-accent: #7fd0f0; --d-accent-ink: #04141c;
+    --d-error: #ff8a8a; --d-ok: #6fdc9a; --d-warn: #ffe27a; --d-warn-bg: #33300a;
+
+    /* Light is the default, and stays the default when the attribute says
+       "light" or is absent.
+
+       color-scheme is NOT decoration: it is what tells the browser to paint
+       its OWN widgets to match. Without it a native control renders light
+       whatever the page does — measured on the one-box date, which stayed
+       #ffffff on a #071820 page while every styled field went dark. It also
+       reaches the parts CSS cannot: the date picker's calendar popup, the
+       select dropdown, the scrollbars. */
+    color-scheme: light;
+    --ink: var(--l-ink); --muted: var(--l-muted); --line: var(--l-line);
+    --card: var(--l-card); --page: var(--l-page); --accent: var(--l-accent);
+    --accent-ink: var(--l-accent-ink); --error: var(--l-error);
+    --ok: var(--l-ok); --warn: var(--l-warn); --warn-bg: var(--l-warn-bg);
+
+    /* The focus pair is deliberately the same in both themes: yellow on near
+       black clears 3:1 against every surface either palette uses. */
+    --focus: #ffdd00; --focus-ink: #0b0c0c;
+  }
+
+  /* Follow the system, unless the reader has said otherwise. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ink: var(--d-ink); --muted: var(--d-muted); --line: var(--d-line);
+      --card: var(--d-card); --page: var(--d-page); --accent: var(--d-accent);
+      --accent-ink: var(--d-accent-ink); --error: var(--d-error);
+      --ok: var(--d-ok); --warn: var(--d-warn); --warn-bg: var(--d-warn-bg);
+    }
+  }
+
+  /* The reader chose dark, whatever the system says. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: var(--d-ink); --muted: var(--d-muted); --line: var(--d-line);
+    --card: var(--d-card); --page: var(--d-page); --accent: var(--d-accent);
+    --accent-ink: var(--d-accent-ink); --error: var(--d-error);
+    --ok: var(--d-ok); --warn: var(--d-warn); --warn-bg: var(--d-warn-bg);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font: 1rem/1.55 system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  }
+  .wrap { max-width: 78rem; margin: 0 auto; padding: 1.5rem 1rem 5rem; }
+  header.site { background: var(--card); border-bottom: 3px solid var(--accent); }
+  header.site .wrap { padding: 1.25rem 1rem; }
+  h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+  h2 { font-size: 1.25rem; margin: 2rem 0 .75rem; }
+  h3 { font-size: 1.05rem; margin: 1.25rem 0 .5rem; }
+  p.lede { margin: 0; color: var(--muted); }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; box-shadow: 0 0 0 5px var(--focus-ink); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1rem 1.15rem; margin-bottom: 1.25rem; }
+  .visually-hidden {
+    position: absolute !important; width: 1px; height: 1px; margin: -1px;
+    padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .skiplink { position: absolute; left: -9999px; }
+  .skiplink:focus { left: .5rem; top: .5rem; z-index: 10; background: var(--card); padding: .5rem .75rem; border: 2px solid var(--accent); border-radius: 4px; }
+  textarea.paste { width: 100%; min-height: 8rem; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; padding: .6rem; border: 2px solid var(--line); border-radius: 4px; background: var(--card); color: var(--ink); }
+  button {
+    font: inherit; padding: .5rem .95rem; border-radius: 4px; cursor: pointer;
+    border: 2px solid var(--accent); background: var(--accent); color: var(--accent-ink);
+  }
+  button.secondary { background: var(--card); color: var(--accent); }
+  button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  button[aria-pressed="false"] { background: var(--card); color: var(--accent); }
+  .btnrow { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .75rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  caption { text-align: left; font-weight: 600; padding-bottom: .5rem; }
+  th, td { border: 1px solid var(--line); padding: .45rem .55rem; text-align: left; vertical-align: top; }
+  th { background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+  td select, td input[type="text"] { width: 100%; font: inherit; padding: .3rem; border: 1px solid var(--line); border-radius: 3px; background: var(--card); color: var(--ink); }
+  .flag { display: inline-block; font-size: .78rem; padding: .1rem .4rem; border-radius: 3px; background: var(--warn-bg); color: var(--warn); border: 1px solid currentColor; margin: 0 .2rem .2rem 0; }
+  .status { padding: .6rem .8rem; border-radius: 4px; border: 2px solid; margin-top: .75rem; }
+  .status.ok { border-color: var(--ok); color: var(--ok); }
+  .status.bad { border-color: var(--error); color: var(--error); }
+  /* Neutral, for "loading" — which is neither good news nor bad. The meaning
+     is carried by the words; the colour only has to be legible, so it uses the
+     ordinary ink rather than a third signal colour nobody has audited. */
+  .status.info { border-color: var(--muted); color: var(--ink); }
+
+  /* The share bar. THE NUMBER IS ALWAYS PRESENT IN TEXT beside it, so the bar
+     is a redundant rendering of an adjacent value and is aria-hidden — exposing
+     it would make every cell announce twice. It is painted in var(--accent),
+     the one colour in this palette already audited against both card surfaces
+     (7.6:1 light, about 9:1 dark), so it clears the 3:1 that SC 1.4.11 asks of
+     a graphical object with room to spare. A count of zero draws no bar element
+     at all: min-width would otherwise render a lie. */
+  /* A FIXED TRACK, BECAUSE A BAR SIZED BY ITS OWN VALUE LEAVES THE NUMBER
+     SOMEWHERE DIFFERENT IN EVERY ROW. The bar used to be the only element, so
+     a 6% row put its "6%" a few pixels along and a 50% row put its "50%" half
+     a column further, and the figures — the part that carries the meaning —
+     read as scattered. The track is the 0-100% scale; the fill is the value.
+     Drawing the scale is not a claim about the data, which is what lets a
+     count of zero keep its honest empty cell: THE FILL IS STILL OMITTED
+     ENTIRELY at zero rather than given a min-width, because a sliver of colour
+     where there is nothing to show is a lie the number would have to argue
+     with. aria-hidden sits on the track so the whole graphic leaves the
+     accessibility tree in one piece — the number beside it says the same thing
+     in text, and exposing both would make every cell announce twice. */
+  .bar-cell { white-space: nowrap; text-align: right; }
+  .bar-track { display: inline-block; width: 2.75rem; height: .6rem;
+               background: var(--line); border-radius: 2px;
+               vertical-align: middle; margin-right: .45rem; }
+  .bar { display: block; height: 100%; width: var(--bar, 0%);
+         background: var(--accent); border-radius: 2px; }
+  .num { font-variant-numeric: tabular-nums; display: inline-block;
+         min-width: 2.4rem; text-align: right; }
+  /* Counts line up under counts. Left-aligned digits of different lengths are
+     the other half of the same raggedness the track fixes. */
+  .num-cell { text-align: right; font-variant-numeric: tabular-nums;
+              white-space: nowrap; }
+  /* STACKED, ALWAYS, AT EVERY WIDTH. Side by side saved vertical space and
+     cost more than it bought: tables with three, four and five columns sharing
+     equal tracks never lined up with one another, the five-column one had to
+     be handed two tracks to stop its last column being clipped, and at every
+     width between the breakpoints something was cramped. One table per row,
+     full width, is the arrangement where a table can simply be as wide as its
+     own content needs — and where "uniform" means the figures line up rather
+     than the containers being the same size. */
+  .stats-stack { display: grid; grid-template-columns: 1fr; gap: 1.8rem; }
+  /* `min-width: 0` IS WHAT MAKES THE SCROLL CONTAINER WORK AT ALL, and without
+     it the whole responsive arrangement is decorative. A grid item defaults to
+     `min-width: auto`, which refuses to shrink below its content's own minimum
+     — so the track grew to fit the widest table, the table never overflowed
+     its container, `overflow-x: auto` had nothing to do, and THE PAGE scrolled
+     sideways instead. Measured at 380px before the fix: five containers, none
+     overflowing, none focusable, and `documentElement.scrollWidth` past the
+     viewport. Everything looked implemented and nothing was working. */
+  .stats-stack > * { min-width: 0; }
+
+  /* RESPONSIVE, AND KEYBOARD-OPERABLE ON THE WIDTHS WHERE IT SCROLLS. A table
+     that cannot shrink past its own content has to be allowed to scroll
+     sideways; a box that scrolls and only a mouse can reach fails SC 2.1.1.
+     BOTH HALVES MATTER, and so does the third: a box that is focusable when it
+     does NOT scroll is a tab stop leading nowhere, with no name and nothing to
+     do. So the tabindex, the role and the label are applied by script to the
+     boxes actually overflowing and removed from the rest — see
+     markScrollableTables(), which runs after every render and on resize. */
+  /* `contain: paint` IS WHAT STOPS THE PAGE SCROLLING SIDEWAYS, and without it
+     the whole arrangement clips correctly and still fails SC 1.4.10 Reflow.
+     MEASURED at 320px: the container clipped the table exactly as intended —
+     a screenshot showed only the first column — and `documentElement.scrollWidth`
+     was still 758 against a 320 viewport, so the page scrolled 438px into
+     BLANK SPACE. An overflow container clips what it paints; it does not, on
+     its own, stop its contents contributing to the document's scrollable area.
+
+     Found by disable-and-remeasure rather than by reading: of seven candidates
+     tried live, only this and `table-layout: fixed` on the one table moved the
+     number, and the second would have changed how every column is sized to fix
+     something that is not about column sizing.
+
+     PRE-EXISTING, not introduced here — the committed page at 9d64f7d scrolls
+     to exactly the same 438px, measured side by side. */
+  .table-scroll { overflow-x: auto; contain: paint; }
+  /* A <select> takes its width from its longest option, and 129 catalogue form
+     names include some very long ones — measured 549px inside a 320px viewport,
+     which scrolls the PAGE sideways rather than truncating the control. */
+  #form-picker { max-width: 100%; }
+  .table-scroll:focus-visible { outline: 3px solid var(--accent);
+                                outline-offset: 3px; }
+  #step-stats table { margin-bottom: .3rem; }
+  /* Column headings sit on a common baseline whether they wrap to two lines or
+     not, which is most of what made three tables side by side look mismatched.
+
+     A FIXED WIDTH ON THE ROW HEADER WAS TRIED HERE AND REVERTED, because it
+     made things worse in a way that only showed up on the real data: at 40%
+     it left "What the estate uses now" — the one table with five columns —
+     too little room, and its last column was pushed outside the table border
+     and clipped. Uniform column widths across tables with different column
+     counts is not a thing to want; what matters is that the figures line up,
+     and the bar track and .num-cell do that without constraining the layout. */
+  /* THE TABLES SIZE TO THEIR OWN CONTENT, and the white space goes to the
+     right of them rather than inside. Two arrangements were tried first and
+     both misplaced the gap: stretched to 100% the Share column right-aligned
+     its bar against the table edge, half a screen from the count it belongs
+     to; shrinking the data columns with `width: 1%` moved the same gap into
+     the label column and wrapped every heading to two or three lines. A data
+     table has a natural width, and letting it take that is what puts the bar
+     beside its number and the number beside its count. `max-width: 100%` plus
+     the scroll container is what keeps it responsive. */
+  #step-stats table { width: auto; max-width: 100%; }
+  /* Headings stay on one line, so a column's width is set by its data rather
+     than by where a two-word heading happens to break. Safe because the
+     scroll container catches anything that no longer fits. */
+  #step-stats th[scope="col"] { vertical-align: bottom; white-space: nowrap; }
+  #step-stats th[scope="row"] { font-weight: 600; }
+  /* REAL TEXT SAYING THE TWO ROUTES ARE ALTERNATIVES, which is the one thing a
+     plain border cannot say. The rules either side are decorative and are
+     drawn with ::before/::after so nothing empty lands in the accessibility
+     tree; what a screen reader reaches is the word. */
+  .or-rule { display: flex; align-items: center; gap: .75rem;
+             color: var(--muted); margin: 1.5rem 0; }
+  .or-rule::before, .or-rule::after { content: ""; flex: 1 1 auto;
+             height: 1px; background: var(--line); }
+  #stats-verdict { font-weight: 600; }
+  .is-hidden { display: none; }
+  /* ---- preview, mirroring computer-loan-prototype.html ---- */
+  .preview { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 1.25rem 1.4rem; }
+  .preview .field { margin: 0 0 1.4rem; }
+  .preview .label { display: block; font-weight: 600; margin-bottom: .2rem; }
+  .preview .hint { margin: .1rem 0 .4rem; color: var(--muted); font-size: .95rem; }
+  .preview details.tip { margin: .1rem 0 .5rem; font-size: .95rem; }
+  .preview details.tip > summary { cursor: pointer; color: var(--accent); width: fit-content; }
+  .preview details.tip > p { margin: .3rem 0 0; padding-left: .9rem;
+    border-left: 3px solid var(--line); color: var(--muted); }
+  .preview .no-suggestions { margin: .2rem 0 .4rem; color: var(--muted);
+    font-size: .9rem; font-style: italic; }
+  .theme-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; margin-top: .8rem; }
+  .theme-row p { margin: 0; font-size: .95rem; }
+
+  /* The disclosure carries the section heading, so the card's own padding
+     would double up. The summary keeps the card's horizontal rhythm and the
+     open panel sits inside it. */
+  .card > details > summary { cursor: pointer; }
+  .card > details > summary h2 { display: inline; }
+  .card > details > summary::marker { color: var(--accent); }
+  .card > details > summary:focus-visible {
+    outline: 3px solid var(--focus); outline-offset: 2px; background: var(--focus); color: var(--focus-ink);
+  }
+  .card > details > summary:focus-visible h2 { color: var(--focus-ink); }
+  .card > details[open] > summary { margin-bottom: .6rem; }
+
+  .preview .conditional { border-left: 4px solid var(--line); padding-left: 1rem; margin: 1rem 0; }
+  .preview .condition-note { font-style: italic; color: var(--ink); margin: 0 0 .6rem; }
+  /* Not a styling flourish: this group is the one the capture CANNOT explain,
+     and a reader skimming must not take it for an ordinary condition. */
+  .preview .conditional.unexplained { border-left-color: var(--warn); background: var(--warn-bg); }
+  .preview .conditional.unexplained .condition-note { color: var(--warn); font-style: normal; font-weight: 600; }
+  .preview .omitted { border-top: 1px solid var(--line); padding-top: .75rem; margin-top: 1.5rem; color: var(--ink); }
+  .preview input[type="text"], .preview input[type="tel"], .preview input[type="date"],
+  .preview textarea, .preview select {
+    font: inherit; padding: .45rem .5rem; border: 2px solid var(--ink); border-radius: 3px;
+    background: var(--card); color: var(--ink); max-width: 34rem; width: 100%;
+  }
+  /* A date is short, and it sizes itself. Left on the shared width it would
+     stretch to 34rem, which is a worse comparison against the three-part
+     control than the unstyled native box it replaced. */
+  .preview input[type="date"] { width: auto; }
+  .preview input.short { max-width: 7rem; }
+  .preview fieldset { border: 0; padding: 0; margin: 0 0 1.4rem; }
+  .preview legend { font-weight: 600; padding: 0; margin-bottom: .3rem; }
+  .preview .choice { display: flex; align-items: center; gap: .5rem; margin: .35rem 0; }
+  .preview .choice input { width: 1.35rem; height: 1.35rem; }
+  .preview .date-parts { display: flex; gap: .75rem; }
+  .preview .date-part label { display: block; font-size: .9rem; }
+  .preview .date-part input { width: 3.5rem; }
+  .preview .date-part-year input { width: 5rem; }
+  .req-mark { color: var(--error); font-weight: 700; }
+  .marking-optional .req-mark { display: none; }
+  .marking-optional .optional-tag { color: var(--muted); font-weight: 400; }
+  .marking-asterisk .optional-tag { display: none; }
+  .preview .notice { border-left: 5px solid var(--accent); padding: .1rem 0 .1rem .9rem; margin-bottom: 1.5rem; }
+  .preview .notice .emphasis { color: var(--error); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<a class="skiplink" href="#main">Skip to main content</a>
+
+<header class="site">
+  <div class="wrap">
+    <h1>Form redesign sheet</h1>
+    <p class="lede">Paste a capture, review the proposals, see how the form could be.</p>
+    <div class="theme-row" role="group" aria-labelledby="theme-label">
+      <p id="theme-label">Theme</p>
+      <button type="button" id="btn-theme-auto" aria-pressed="true"
+              onclick="setTheme('auto')">Match my system</button>
+      <button type="button" id="btn-theme-light" aria-pressed="false"
+              onclick="setTheme('light')">Light</button>
+      <button type="button" id="btn-theme-dark" aria-pressed="false"
+              onclick="setTheme('dark')">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+
+  <nav aria-label="On this page">
+    <ul>
+      <li><a id="nav-step1" href="#step-paste">1. Paste the capture</a></li>
+      <li><a href="#step-decisions">2. Review the proposals</a></li>
+      <li><a href="#step-preview">3. See how it could be</a></li>
+      <li id="nav-stats" class="is-hidden"><a href="#step-stats">How this form compares</a></li>
+    </ul>
+  </nav>
+
+  <!-- ONE STEP WITH TWO ROUTES INTO IT, not a facility card and a step.
+       The picker used to be its own unnumbered section above step 1, kept
+       unnumbered because a numbered step that disappears when the estate data
+       is absent leaves the sequence reading 2, 3, 4. Folding it INSIDE step 1
+       answers that better than a separate card did: step 1 is always present
+       and always numbered 1, and what varies is how many ways there are to
+       complete it.
+
+       THE HEADING TELLS THE TRUTH IN BOTH STATES, which is why it is set in
+       JS rather than written here twice. With no estate data beside the page
+       the only route is the paste box, and a heading offering a picker that
+       is not there would be a promise the page cannot keep. initEstate() sets
+       the heading AND its nav link from one constant, so the two cannot drift;
+       a row asserts they agree in both states. -->
+  <section id="step-paste" class="card" aria-labelledby="paste-heading">
+    <h2 id="paste-heading">1. Paste the capture</h2>
+
+    <div id="pick-block" class="is-hidden">
+      <!-- "the box below" was the first wording, and IBM flagged it as a
+           sensory-characteristic instruction (SC 1.3.3) — correctly. A control
+           identified by where it happens to sit on screen is no use to someone
+           who cannot see the screen, or on a narrow viewport where it is not
+           below anything. Named instead. -->
+      <p>Choosing a form fills the <strong>Capture JSON</strong> box with its
+         capture and loads it, so you can see exactly what was loaded.</p>
+      <label class="label" for="form-picker">Form</label>
+      <select id="form-picker" aria-describedby="picker-help"></select>
+      <!-- "sitting beside this page" was also flagged. That one describes where
+           files are ON DISK rather than how to operate anything, so it is not
+           the same fault — but "in the same folder" says it without leaning on
+           position at all, and costs nothing. -->
+      <p id="picker-help" class="hint">Grouped by catalogue category; a form in more
+         than one category is listed under each. Nothing is downloaded — the captures
+         are files in the same folder as this page.</p>
+      <div class="btnrow">
+        <button type="button" id="btn-load-form" onclick="loadPickedForm()">Load this form</button>
+      </div>
+      <div id="pick-status" class="status is-hidden" role="status"></div>
+      <!-- REAL TEXT, not a decorative rule. It says the two routes are
+           alternatives, which is the one thing a border cannot say. Hidden
+           with the picker, because with no picker there is no "or". -->
+      <p id="pick-or" class="or-rule"><span>or</span></p>
+    </div>
+
+    <p>Run <code>node sn/scripts/capture-form.mjs --url=&lt;form&gt;</code> and paste the JSON it writes.
+       Optionally paste a toggle-tip report too, to fold in what the tips reveal.</p>
+    <label class="label" for="json-input">Capture JSON</label>
+    <textarea id="json-input" class="paste" spellcheck="false"
+              aria-describedby="json-help"></textarea>
+    <p id="json-help" class="hint">The whole file. Nothing leaves this page — it is parsed in your browser.</p>
+    <div class="btnrow">
+      <button type="button" onclick="loadPasted()">Load capture</button>
+      <button type="button" class="secondary" onclick="loadSample()">Load the worked example</button>
+    </div>
+    <div id="load-status" class="status is-hidden" role="status"></div>
+  </section>
+
+  <section id="step-decisions" class="card is-hidden" aria-labelledby="decisions-heading">
+    <details id="details-decisions" open>
+    <summary><h2 id="decisions-heading">2. Review the proposals</h2></summary>
+    <p>Every row is prefilled with the mechanical proposal. Change anything you disagree with —
+       the preview updates when you do.</p>
+    <!-- WAS style="overflow-x:auto", WHICH SCROLLS FOR A MOUSE AND NOBODY
+         ELSE. The class carries the same overflow plus the script that makes
+         an overflowing box keyboard-reachable and named — the SC 2.1.1 half
+         an inline overflow style silently leaves out. -->
+    <div class="table-scroll">
+      <table id="decisions">
+        <caption>One row per question. <span id="row-count"></span></caption>
+        <thead>
+          <tr>
+            <th scope="col">Question</th>
+            <th scope="col">Now</th>
+            <th scope="col">Shown when</th>
+            <th scope="col">Proposed control</th>
+            <th scope="col">Guidance</th>
+            <th scope="col">Keep?</th>
+            <th scope="col">Rewritten label</th>
+            <th scope="col">Flags</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="btnrow">
+      <button type="button" onclick="renderPreview()">Update the preview</button>
+      <button type="button" class="secondary" onclick="exportDecisions()">Copy decisions as JSON</button>
+    </div>
+    <div id="export-status" class="status is-hidden" role="status"></div>
+    </details>
+  </section>
+
+  <section id="step-preview" class="card is-hidden" aria-labelledby="preview-heading">
+    <details id="details-preview" open>
+    <summary><h2 id="preview-heading">3. See how it could be</h2></summary>
+
+    <h3 id="controls-heading">Presentation choices</h3>
+    <p id="marking-label">How required fields are marked</p>
+    <div class="btnrow" role="group" aria-labelledby="marking-label">
+      <!-- RED ASTERISK IS THE DEFAULT. Three places have to agree or the page
+           contradicts itself on first paint: the button's aria-pressed, the
+           class on #preview, and state.options.marking. -->
+      <button type="button" id="btn-asterisk" aria-pressed="true"
+              onclick="setOption('marking','asterisk')">Red asterisk</button>
+      <button type="button" id="btn-optional" aria-pressed="false"
+              onclick="setOption('marking','optional')">Mark the optional ones</button>
+    </div>
+
+    <p id="dates-label">How dates are asked for</p>
+    <div class="btnrow" role="group" aria-labelledby="dates-label">
+      <button type="button" id="btn-dateparts" aria-pressed="true"
+              onclick="setOption('dates','parts')">Day, month, year</button>
+      <button type="button" id="btn-datesingle" aria-pressed="false"
+              onclick="setOption('dates','single')">One box</button>
+    </div>
+
+    <p id="hints-label">Where guidance sits</p>
+    <div class="btnrow" role="group" aria-labelledby="hints-label">
+      <button type="button" id="btn-hint-above" aria-pressed="true"
+              onclick="setOption('hints','above')">Above the control</button>
+      <button type="button" id="btn-hint-below" aria-pressed="false"
+              onclick="setOption('hints','below')">Below the control</button>
+    </div>
+
+    <h3>Preview</h3>
+    <div id="preview" class="preview marking-asterisk"></div>
+    </details>
+  </section>
+
+  <!-- Unnumbered, like the picker, and for the same reason. -->
+  <section id="step-stats" class="card is-hidden" aria-labelledby="stats-heading">
+    <details id="details-stats" open>
+    <summary><h2 id="stats-heading">How this form compares</h2></summary>
+    <!-- MARKUP, and deliberately OUTSIDE #stats-body. A live region destroyed
+         and recreated by innerHTML does not announce reliably, and #stats-body
+         is rewritten in one assignment on every render. -->
+    <p id="stats-verdict" role="status"></p>
+    <div id="stats-body"></div>
+    </details>
+  </section>
+</main>
+
+<!-- THE ESTATE DATA, IF IT IS BESIDE THIS PAGE. A classic <script src> is the
+     only way to read a local file from a file:// document — fetch() is refused
+     outright, because Chromium rejects the file: scheme before CORS is even a
+     question. It sits after </main> so it cannot block first paint, and before
+     the IIFE so it has run by the time anything reads it.
+
+     IT WILL 404 FOR ANYONE EMAILED ONLY THIS HTML, and that is fine and
+     expected: the picker and the statistics stay hidden, and every other part
+     of the page behaves exactly as it always has. -->
+<script src="estate-stats.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  var LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+  var DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  var ENABLE_ALL_LOGGING = false;
+  var DISABLE_ALL_LOGGING = false;
+
+  function shouldLog(level) {
+    if (DISABLE_ALL_LOGGING) return false;
+    if (ENABLE_ALL_LOGGING) return true;
+    return level <= DEFAULT_LOG_LEVEL;
+  }
+  function logError() { if (shouldLog(LOG_LEVELS.ERROR)) console.error.apply(console, arguments); }
+  function logWarn()  { if (shouldLog(LOG_LEVELS.WARN))  console.warn.apply(console, arguments); }
+  function logInfo()  { if (shouldLog(LOG_LEVELS.INFO))  console.log.apply(console, arguments); }
+
+  // Above this many options a radio group stops being kinder than a menu.
+  var RADIO_MAX_OPTIONS = 6;
+  /* Named, because the preview now KEYS ON IT rather than on the measured
+     flag it defaults from. Two spellings of the same string in two files
+     is how a decision silently stops being acted on. */
+  var OMIT_CHOICE = "Never shown — check why";
+  var KEEP_CHOICES = ["Keep", "Read it back", "Cut", OMIT_CHOICE];
+  /* A tip whose title the live form did not carry still needs a control
+     to open it, and an unnamed disclosure is unusable. */
+  var TIP_FALLBACK_SUMMARY = "More information";
+
+  var state = { capture: null, rows: [], options: { marking: "asterisk", dates: "parts", hints: "above" } };
+
+  function esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+  function slug(s) {
+    return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "field";
+  }
+  function byId(id) { return document.getElementById(id); }
+
+  function status(el, message, ok) {
+    el.textContent = message;
+    el.className = "status " + (ok ? "ok" : "bad");
+    el.classList.remove("is-hidden");
+  }
+
+  /* ---------------- the mechanical proposal ---------------- */
+
+  // Everything here is derived, and every rule is one a transformer can apply
+  // without judgement. Anything needing judgement becomes an editable cell
+  // rather than a silent decision.
+  /* Which rules govern a question, and what they say about when it appears.
+     A form's UI policies declare their own conditions and actions, so this is
+     read from the capture rather than inferred from the load state.
+
+     WHY IT MATTERS HERE, measured on the IT Equipment Collection form: 14 of
+     its 16 questions are hidden on load. Rendered flat, the preview shows a
+     16-question form where a person sees 2 — and the decisions table asked
+     for a keep/cut verdict on each with nothing said about the condition it
+     sits behind. */
+  /* Maps a policy action's IO: reference back to the question it names. Built
+     once per capture from the questions' own ioReference, because pairing an
+     action to a question by ARRAY INDEX — which an earlier version of this did
+     — is wrong the moment a rule's `governs` list is deduplicated or reordered
+     against its actions. */
+  function refIndex(capture) {
+    var byRef = {};
+    (capture.questions || []).forEach(function (q) {
+      if (q.ioReference) byRef[q.ioReference] = q.name;
+    });
+    return byRef;
+  }
+
+  /* Does a set of OR'd conditions on one field cover every value that field
+     can take? If so a "hide when" rule hides the question on every path, and
+     saying "hidden when A or B or C" invites someone to look for the path
+     where it appears. There is none. */
+  function coversEveryChoice(conditions, capture) {
+    if (!conditions.length) return false;
+    var field = conditions[0].field;
+    var allSame = conditions.every(function (c, i) {
+      return c.field === field && (i === 0 || c.orWithPrevious);
+    });
+    if (!allSame) return false;
+
+    var source = (capture.questions || []).filter(function (q) {
+      return q.ioReference === field;
+    })[0];
+    if (!source || !(source.choices || []).length) return false;
+
+    var covered = {};
+    conditions.forEach(function (c) { covered[String(c.value)] = true; });
+    return source.choices.every(function (ch) {
+      return ch.value === "" || covered[String(ch.value)];
+    });
+  }
+
+  /* When a question appears, and on whose say-so.
+
+     A rule's condition is only a SHOW condition if its action makes the
+     question visible. The first version of this treated every condition as a
+     show condition, so a policy that HIDES `user_type` whenever the requester
+     is myself, someone else or unknown was rendered as "shown when" exactly
+     those three — the precise opposite of the truth, in the column a person
+     would rely on most.
+
+     WHY THE COLUMN EXISTS, measured on IT Equipment Collection: 14 of its 16
+     questions are hidden on load. Rendered flat, the preview shows a
+     16-question form where a person sees 2. */
+  function branchFor(q, capture, byRef) {
+    var logic = capture.logic || {};
+    var rules = []
+      .concat(logic.uiPolicies || [], logic.clientScripts || [],
+              logic.validationScripts || [], logic.uiScripts || []);
+
+    var showWhen = [];
+    var hideWhen = [];
+    var otherEffects = [];
+    var hiddenAlways = false;
+    var governedBy = 0;
+
+    rules.forEach(function (rule) {
+      var mine = (rule.actions || []).filter(function (a) {
+        return (byRef[a.field] || a.field) === q.name;
+      });
+      if (!mine.length) {
+        if ((rule.governs || []).indexOf(q.name) !== -1) governedBy += 1;
+        return;
+      }
+      governedBy += 1;
+
+      mine.forEach(function (a) {
+        if (a.visible === "true") {
+          if (rule.when) showWhen.push(rule.when); else hiddenAlways = false;
+          return;
+        }
+        if (a.visible === "false") {
+          if (!rule.when) { hiddenAlways = true; return; }
+          if (coversEveryChoice(rule.conditions || [], capture)) { hiddenAlways = true; return; }
+          hideWhen.push(rule.when);
+          return;
+        }
+        /* Not a visibility action. A rule that only makes a question required
+           is still worth naming, but it is not the answer to "when does this
+           appear". */
+        var what = [];
+        if (a.mandatory === "true") what.push("required");
+        if (a.mandatory === "false") what.push("optional");
+        if (a.disabled === "true") what.push("read only");
+        if (what.length && rule.when) otherEffects.push(what.join(", ") + " when " + rule.when);
+      });
+    });
+
+    return {
+      showWhen: showWhen,
+      hideWhen: hideWhen,
+      otherEffects: otherEffects,
+      neverShown: hiddenAlways && !showWhen.length,
+      governedBy: governedBy
+    };
+  }
+
+  /* The column's text, kept here so the table and any export agree. */
+  function branchText(row) {
+    if (row.neverShown) return "Never shown";
+    if (row.showWhen.length) return "Shown when " + row.showWhen.join("; ");
+    if (row.hideWhen.length) return "Hidden when " + row.hideWhen.join("; ");
+    if (row.visible) return row.otherEffects.length ? row.otherEffects.join("; ") : "Always";
+    return "Hidden on load, no rule found";
+  }
+
+  /* ONE SOURCE OF TRUTH FOR THE MAPPING, and a way to ASK whether a rule
+     exists. It was a switch with a silent `default: return "Text input"`, and
+     the estate view is what made that visible: measured across the four
+     committed captures, the default was swallowing 21 of 141 questions —
+     `radio group` (21), `date and time` (2) and `attachment` (2) — and
+     reporting every one of them as a confident proposal of a text box.
+
+     `radio group` was simply a missing case. It already had an option in the
+     decisions table and a renderer in the preview; it is fixed here.
+
+     `attachment` and `date and time` are NOT given proposals, deliberately.
+     Each would need a new value in controlOptions and a new renderField
+     branch, and a proposedControl absent from controlOptions makes selectCell
+     show the wrong option while the row's stored value says something else.
+     They are reported as GAPS instead, which is the honest answer: the rule
+     has no case for them. hasRuleFor() is how the estate view asks, rather
+     than keeping a second list that drifts from this one — the same reason
+     OMIT_CHOICE is a named constant. */
+  var CONTROL_RULES = {
+    "choice list (select2)": function (n) {
+      return n > 0 && n <= RADIO_MAX_OPTIONS ? "Radio buttons" : "Select menu";
+    },
+    "radio group": function (n) {
+      return n > 0 && n <= RADIO_MAX_OPTIONS ? "Radio buttons" : "Select menu";
+    },
+    "reference lookup": function () { return "Text input with suggestions"; },
+    "date": function () { return "Date, three parts"; },
+    "textarea": function () { return "Textarea"; },
+    "text": function () { return "Text input"; }
+  };
+  var CONTROL_FALLBACK = "Text input";
+
+  function hasRuleFor(control) {
+    return Object.prototype.hasOwnProperty.call(CONTROL_RULES, control);
+  }
+  function proposeControl(q) {
+    var rule = CONTROL_RULES[q.control];
+    return rule ? rule((q.choices || []).length) : CONTROL_FALLBACK;
+  }
+  /* The estate data holds a COUNT of choices, not the choices themselves, so
+     the statistics view cannot call proposeControl directly. This keeps both
+     going through the same rule table rather than reimplementing it. */
+  function proposedFor(control, choices) {
+    var rule = CONTROL_RULES[control];
+    return rule ? rule(choices || 0) : CONTROL_FALLBACK;
+  }
+
+  function proposeGuidance(q) {
+    if (q.helpText) return "Visible hint, tied to the control";
+    if (q.placeholder) return "Promote the placeholder to a visible hint";
+    return "None needed";
+  }
+
+  function proposeKeep(q, branch) {
+    // A question no path ever shows is not a redesign decision, it is a
+    // question for whoever owns the form. Proposing to read it back was the
+    // measured defect: `user_type` on the IT Equipment Collection form is
+    // hidden by a policy on every path, arrives prefilled "Staff", and the
+    // sheet recommended showing it to the user.
+    if (branch && branch.neverShown) return "Never shown — check why";
+    // A read-back shows the value to the person. Proposing one for a question
+    // the live form hides under some condition is a decision nobody has made
+    // yet, so the default stays Keep and the condition is in the next column.
+    if (branch && branch.hideWhen.length && q.originalValue) return "Keep";
+
+    // A question that arrives already answered is a candidate for reading back
+    // rather than asking. That is a judgement, so it is only a default.
+    if (q.originalValue) return "Read it back";
+    return "Keep";
+  }
+
+  function flagsFor(q, capture) {
+    var flags = [];
+    (capture.observations || []).forEach(function (o) {
+      if (o.question === q.name) flags.push(o.note);
+    });
+    // Whether a prefilled answer can be traced decides whether "do we still
+    // need to ask this?" is answerable at all, so it belongs beside the
+    // keep/cut verdict rather than buried in the JSON.
+    if (q.prefill && q.prefill.value && !q.prefill.dotWalk && !q.prefill.dynamicField) {
+      flags.push("Arrives answered and the page does not say from where");
+    }
+    return flags;
+  }
+
+  function buildRows(capture) {
+    var byRef = refIndex(capture);
+    return (capture.questions || []).map(function (q) {
+      var branch = branchFor(q, capture, byRef);
+      return {
+        name: q.name,
+        label: q.label || q.name,
+        currentControl: q.control || "",
+        proposedControl: proposeControl(q),
+        guidance: proposeGuidance(q),
+        keep: proposeKeep(q, branch),
+        visible: q.visible !== false,
+        showWhen: branch.showWhen,
+        hideWhen: branch.hideWhen,
+        otherEffects: branch.otherEffects,
+        neverShown: branch.neverShown,
+        governedBy: branch.governedBy,
+        prefillSource: (q.prefill && q.prefill.source) || "",
+        newLabel: "",
+        mandatory: !!q.mandatory,
+        helpText: q.helpText || "",
+        helpTitle: q.helpTitle || "",
+        placeholder: q.placeholder || "",
+        choices: (q.choices || []).map(function (c) { return c.label; })
+                  .filter(function (l) { return l && l !== "-- None --"; }),
+        section: q.section || "",
+        originalValue: q.originalValue || "",
+        flags: flagsFor(q, capture)
+      };
+    });
+  }
+
+  /* ---------------- decisions table ---------------- */
+
+  function renderDecisions() {
+    var tbody = document.querySelector("#decisions tbody");
+    tbody.innerHTML = "";
+
+    state.rows.forEach(function (row, i) {
+      var tr = document.createElement("tr");
+      var controlOptions = ["Radio buttons", "Select menu", "Text input",
+                            "Text input with suggestions", "Textarea",
+                            "Date, three parts", "Date, one box", "Checkboxes"];
+      var guidanceOptions = ["Visible hint, tied to the control",
+                             "Promote the placeholder to a visible hint",
+                             "Keep it in a toggle tip", "None needed"];
+
+      tr.innerHTML =
+        '<th scope="row">' + esc(row.label) + '<br><small>' + esc(row.name) + '</small></th>' +
+        '<td>' + esc(row.currentControl) + (row.mandatory ? '<br><small>required</small>' : '') + '</td>' +
+        '<td>' + (row.neverShown
+            ? '<strong>' + esc(branchText(row)) + '</strong>'
+            : esc(branchText(row))) + '</td>' +
+        '<td>' + selectCell("control", i, controlOptions, row.proposedControl, "Proposed control for " + row.label) + '</td>' +
+        '<td>' + selectCell("guidance", i, guidanceOptions, row.guidance, "Guidance for " + row.label) + '</td>' +
+        '<td>' + selectCell("keep", i, KEEP_CHOICES, row.keep, "Keep or cut " + row.label) + '</td>' +
+        '<td><input type="text" data-kind="newLabel" data-row="' + i + '" value="' + esc(row.newLabel) +
+          '" aria-label="Rewritten label for ' + esc(row.label) + '" placeholder="' + esc(row.label) + '"></td>' +
+        '<td>' + (row.flags.length
+            ? row.flags.map(function (f) { return '<span class="flag">' + esc(f.slice(0, 58)) + '</span>'; }).join(" ")
+            : '<span class="visually-hidden">No flags</span>—') + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    byId("row-count").textContent = state.rows.length + " question" + (state.rows.length === 1 ? "" : "s") + ".";
+    /* The change/input listeners are bound ONCE at init, not here. See
+       bindDecisionsTable() at the foot of this file for why the old
+       re-binding was harmless and why it still had to move. */
+  }
+
+  function selectCell(kind, i, options, selected, label) {
+    var opts = options.map(function (o) {
+      return '<option value="' + esc(o) + '"' + (o === selected ? " selected" : "") + ">" + esc(o) + "</option>";
+    }).join("");
+    return '<select data-kind="' + kind + '" data-row="' + i + '" aria-label="' + esc(label) + '">' + opts + "</select>";
+  }
+
+  function onCellChange(ev) {
+    var el = ev.target;
+    var kind = el.getAttribute("data-kind");
+    var i = Number(el.getAttribute("data-row"));
+    if (!kind || Number.isNaN(i) || !state.rows[i]) return;
+    if (kind === "control") state.rows[i].proposedControl = el.value;
+    else if (kind === "guidance") state.rows[i].guidance = el.value;
+    else if (kind === "keep") state.rows[i].keep = el.value;
+    else if (kind === "newLabel") state.rows[i].newLabel = el.value;
+    renderPreview();
+  }
+
+  /* ---------------- preview ---------------- */
+
+  function requiredMark(row) {
+    if (!row.mandatory) {
+      return ' <span class="optional-tag">(optional)</span>';
+    }
+    return ' <span class="req-mark" aria-hidden="true">*</span>';
+  }
+
+  /* A toggle tip is a real disclosure, and it deliberately carries NO
+     aria-describedby. A collapsed <details> reads as notRendered, so a
+     describedby pointing into one resolves to nothing — and tying it anyway
+     would draw a tip BETTER than the one on the live form, which is the
+     opposite of what a comparison is for. "Help text is not tied to the
+     control" is the capture's own observation about these tips; the preview
+     has to show that, not correct it silently.
+
+     Until this existed, choosing "Keep it in a toggle tip" rendered exactly
+     what "None needed" rendered. The two were indistinguishable, so the
+     preview showed the guidance being DELETED when the reviewer had asked
+     for it to be kept behind a control. */
+  function hintFor(row, id) {
+    if (row.guidance === "Keep it in a toggle tip") {
+      var body = row.helpText || row.placeholder;
+      if (!body) return { html: "", id: "" };
+      return {
+        html: '<details class="tip"><summary>' +
+              esc(row.helpTitle || TIP_FALLBACK_SUMMARY) + "</summary><p>" +
+              esc(body) + "</p></details>",
+        id: "",
+      };
+    }
+    var text = "";
+    if (row.guidance === "Visible hint, tied to the control") text = row.helpText;
+    else if (row.guidance === "Promote the placeholder to a visible hint") text = row.placeholder;
+    if (!text) return { html: "", id: "" };
+    return { html: '<p class="hint" id="' + id + '">' + esc(text) + "</p>", id: id };
+  }
+
+  function renderField(row) {
+    if (row.keep === "Cut") return "";
+    var id = "p-" + slug(row.name);
+    var hintId = id + "-hint";
+    var hint = hintFor(row, hintId);
+    var describedby = hint.id ? ' aria-describedby="' + hint.id + '"' : "";
+    var req = row.mandatory ? ' aria-required="true"' : "";
+    var labelText = esc(row.newLabel || row.label) + requiredMark(row);
+    var control = row.proposedControl;
+
+    if (row.keep === "Read it back") {
+      return '<div class="field">' +
+        '<p class="label">' + esc(row.newLabel || row.label) + "</p>" +
+        '<p>' + esc(row.originalValue || "(no value)") + " " +
+        '<a href="#">Change</a></p>' +
+        (hint.html || "") + "</div>";
+    }
+
+    if (control === "Radio buttons" || control === "Checkboxes") {
+      var type = control === "Radio buttons" ? "radio" : "checkbox";
+      var items = (row.choices.length ? row.choices : ["Yes", "No"]).map(function (c, n) {
+        var cid = id + "-" + n;
+        return '<div class="choice"><input type="' + type + '" id="' + cid + '" name="' + id + '"' + req + ">" +
+               '<label for="' + cid + '">' + esc(c) + "</label></div>";
+      }).join("");
+      return '<fieldset class="field">' +
+        "<legend class=\"label\">" + labelText + "</legend>" +
+        (state.options.hints === "above" ? hint.html : "") + items +
+        (state.options.hints === "below" ? hint.html : "") + "</fieldset>";
+    }
+
+    /* "Date, one box" is its own control and always renders one box; the
+       global dates toggle only decides what "Date, three parts" becomes.
+       Before this it fell through to the plain-text branch and produced
+       byte-identical markup to "Text input", so two different decisions
+       drew the same field. */
+    var isDate = control === "Date, three parts" || control === "Date, one box";
+
+    if (control === "Date, three parts" && state.options.dates === "parts") {
+      var parts = ["Day", "Month", "Year"].map(function (p) {
+        var pid = id + "-" + p.toLowerCase();
+        var cls = p === "Year" ? " date-part-year" : "";
+        var len = p === "Year" ? 4 : 2;
+        return '<span class="date-part' + cls + '"><label for="' + pid + '">' + p + "</label>" +
+               '<input type="text" id="' + pid + '" inputmode="numeric" maxlength="' + len + '"' + req + "></span>";
+      }).join("");
+      return '<fieldset class="field">' +
+        "<legend class=\"label\">" + labelText + "</legend>" +
+        (state.options.hints === "above" ? hint.html : "") +
+        '<div class="date-parts">' + parts + "</div>" +
+        (state.options.hints === "below" ? hint.html : "") + "</fieldset>";
+    }
+
+    var input;
+    if (control === "Textarea") {
+      input = '<textarea id="' + id + '" rows="4"' + req + describedby + "></textarea>";
+    } else if (control === "Select menu") {
+      var opts = (row.choices.length ? row.choices : ["Yes", "No"]).map(function (c) {
+        return "<option>" + esc(c) + "</option>";
+      }).join("");
+      input = '<select id="' + id + '"' + req + describedby + "><option value=\"\">Choose one</option>" + opts + "</select>";
+    } else if (control === "Text input with suggestions") {
+      /* The datalist was always empty, so this drew the same visible field as
+         "Text input". Where the capture holds options, they are the
+         suggestions. Where it does not — a reference lookup queries the
+         instance as you type and has no list to capture — the preview SAYS
+         that, rather than showing an autocomplete that suggests nothing. */
+      var sugg = row.choices.map(function (c) {
+        return '<option value="' + esc(c) + '">';
+      }).join("");
+      input = '<input type="text" id="' + id + '" list="' + id + '-list"' + req + describedby + ">" +
+              '<datalist id="' + id + '-list">' + sugg + "</datalist>" +
+              (sugg ? "" : '<p class="no-suggestions">The live form looks this up as you ' +
+                           "type. The capture holds no list, so none is shown here.</p>");
+    } else if (isDate) {
+      input = '<input type="date" id="' + id + '"' + req + describedby + ">";
+    } else {
+      var short = /quantity|how many|number/i.test(row.label) ? " short" : "";
+      input = '<input type="text" class="' + short.trim() + '" id="' + id + '"' + req + describedby + ">";
+    }
+
+    return '<div class="field">' +
+      '<label class="label" for="' + id + '">' + labelText + "</label>" +
+      (state.options.hints === "above" ? hint.html : "") + input +
+      (state.options.hints === "below" ? hint.html : "") + "</div>";
+  }
+
+  function renderNotice(capture) {
+    var blocks = (capture.item && capture.item.descriptionBlocks) || [];
+    if (!blocks.length) return "";
+    var items = blocks.map(function (b) {
+      var cls = b.colour || b.emphasised ? ' class="emphasis"' : "";
+      return "<li" + cls + ">" + esc(b.text) + "</li>";
+    }).join("");
+    return '<section class="notice" aria-labelledby="notice-heading">' +
+      '<h3 id="notice-heading">Before you start</h3><ul>' + items + "</ul></section>";
+  }
+
+  /* A QUESTION THE FORM HIDES MUST NOT BE DRAWN AS ONE IT ALWAYS SHOWS, and
+     until this existed only SHOW conditions were grouped. Measured against
+     the estate's outliers on 13 September 2026:
+
+       URL Redirect          71 questions,  1 visible on load
+                             -> 61 drawn as always visible, 60 of them with
+                                "Hidden on load, no rule found" in the very
+                                column beside them
+       iSolutions comms      45 questions,  6 visible on load, 39 hide rules
+                             -> ALL 45 drawn flat, not one group
+       Data Breach Form      42 questions, 10 visible, 32 show rules
+                             -> correct, which is why this went unnoticed
+
+     So the sheet drew a 71-question form where a person sees ONE. That is
+     the exact defect the branch work was built to remove, still present on
+     the two shapes it was never fed, and the decisions TABLE was right about
+     every one of them the whole time — only the preview lied.
+
+     Three states, three treatments. A hide rule is a condition and groups
+     like a show rule. A question hidden on load that no rule explains is
+     REAL and must appear, but it cannot be presented as ordinary: the
+     capture cannot say when it appears, and the reader has to know that. */
+  var UNEXPLAINED_NOTE = "Hidden when the form loads, and no rule in the " +
+    "capture explains what reveals them. Ask the form owner.";
+
+  function groupOf(row) {
+    if (row.showWhen.length) {
+      return { key: "show:" + row.showWhen.join("; "),
+               note: "Only if " + row.showWhen.join("; ") };
+    }
+    if (row.hideWhen.length) {
+      return { key: "hide:" + row.hideWhen.join("; "),
+               note: "Shown unless " + row.hideWhen.join("; ") };
+    }
+    if (!row.visible) {
+      return { key: "unexplained", note: UNEXPLAINED_NOTE, unexplained: true };
+    }
+    return null;
+  }
+
+  function omitNote(list, reason) {
+    if (!list.length) return "";
+    var one = list.length === 1;
+    return '<p class="omitted">' + list.length + " question" + (one ? " is" : "s are") +
+      " not in this preview because " + reason(one) + ": " +
+      esc(list.map(function (r) { return r.label; }).join(", ")) + "</p>";
+  }
+
+  function renderPreview() {
+    if (!state.capture) return;
+    var host = byId("preview");
+    var bySection = {};
+    var order = [];
+    state.rows.forEach(function (r) {
+      var s = r.section || "Your request";
+      if (!bySection[s]) { bySection[s] = []; order.push(s); }
+      bySection[s].push(r);
+    });
+
+    // Only promise "we will tell you which are optional" if an optional
+    // question is actually RENDERED AS A QUESTION. A read-back is not asked,
+    // so it carries no marker — and without this the legend promised a
+    // marking that never appeared anywhere on the form. Found by walking the
+    // journey rather than by a check, which is the argument for walking it.
+    var anyOptional = state.rows.some(function (r) {
+      return !r.mandatory && r.keep === "Keep";
+    });
+    var legend = state.options.marking === "asterisk"
+      ? '<p>Fields marked <span class="req-mark" aria-hidden="true">*</span>' +
+        '<span class="visually-hidden">with a red asterisk</span> are required.</p>'
+      : (anyOptional ? "<p>We will tell you which questions are optional.</p>" : "");
+
+    /* A question no path shows is not part of the form a person sees, so it
+       is not in the preview. Its absence is STATED rather than silent —
+       three of the sixteen on IT Equipment Collection are in this state, and
+       a preview that quietly dropped them would be as misleading as one that
+       showed them as ordinary questions.
+
+       THE PREVIEW FOLLOWS THE DECISION, NOT THE MEASUREMENT. Rows default to
+       the omit choice when no path shows them, so the ordinary case is
+       unchanged — but a reviewer who marks another question now sees it
+       leave, and one who overrides a measured never-shown row back to Keep
+       now sees it arrive. Keyed on the measured flag, the select was
+       decoration in both directions. */
+    var omittedRows = state.rows.filter(function (r) { return r.keep === OMIT_CHOICE; });
+
+    var sections = order.map(function (s) {
+      var live = bySection[s].filter(function (r) { return r.keep !== OMIT_CHOICE; });
+      if (!live.length) return "";
+
+      /* Conditional questions are grouped by the condition that reveals them,
+         in the order they appear, so the preview shows a form that unfolds
+         rather than a flat wall. Rendering them flat is what made the preview
+         claim a 16-question form where a person sees 2. */
+      var out = "<h3>" + esc(s) + "</h3>";
+      var runCondition = null;
+      var run = [];
+
+      var flush = function () {
+        if (!run.length) return;
+        var fields = run.map(renderField).join("");
+        out += runCondition
+          ? '<div class="conditional' + (runCondition.unexplained ? " unexplained" : "") +
+            '"><p class="condition-note">' + esc(runCondition.note) + "</p>" + fields + "</div>"
+          : fields;
+        run = [];
+      };
+
+      live.forEach(function (r) {
+        var g = groupOf(r);
+        var key = g ? g.key : null;
+        var prev = runCondition ? runCondition.key : null;
+        if (key !== prev) { flush(); runCondition = g; }
+        run.push(r);
+      });
+      flush();
+      return out;
+    }).join("");
+
+    /* Two reasons, said apart. "No path shows it" is a MEASUREMENT of the
+       live form; "this review marked it" is somebody's judgement. Merged into
+       one sentence, a reader would take the second in the voice of the
+       first. */
+    var omitted =
+      omitNote(omittedRows.filter(function (r) { return r.neverShown; }),
+               function (one) {
+                 return "no path on the live form shows " + (one ? "it" : "them");
+               }) +
+      omitNote(omittedRows.filter(function (r) { return !r.neverShown; }),
+               function (one) {
+                 return "this review marked " + (one ? "it" : "them") + " for a check";
+               });
+
+    /* ONE SEAM. The comparison follows the reviewer's decisions because it is
+       recomputed wherever the preview is, so it cannot go stale against the
+       table it is describing. */
+    if (ESTATE && state.capture) renderStats();
+    /* Also called from renderStats, and needed HERE as well: renderStats
+       returns early with no estate data, and the decisions table changes width
+       on every load regardless. */
+    markScrollableTables();
+
+    host.className = "preview marking-" + state.options.marking;
+    host.innerHTML =
+      "<h2>" + esc(state.capture.formName || "Form") + "</h2>" +
+      renderNotice(state.capture) + legend + sections +
+      '<p><button type="button">Send request</button></p>' + omitted;
+
+    logInfo("Preview rendered:", state.rows.length, "rows");
+  }
+
+  /* ---------------- presentation controls ---------------- */
+
+  /* ---------------- theme ---------------- */
+
+  var THEME_KEY = "sn-redesign-theme";
+  var THEME_BUTTONS = { auto: "btn-theme-auto", light: "btn-theme-light", dark: "btn-theme-dark" };
+
+  /* "auto" REMOVES the attribute rather than setting data-theme="auto",
+     because the media query is written as :not([data-theme="light"]) and an
+     explicit value would have to be excluded there too. One state, one
+     representation. */
+  function setTheme(choice) {
+    var root = document.documentElement;
+    if (choice === "light" || choice === "dark") {
+      root.setAttribute("data-theme", choice);
+    } else {
+      choice = "auto";
+      root.removeAttribute("data-theme");
+    }
+
+    try {
+      if (choice === "auto") localStorage.removeItem(THEME_KEY);
+      else localStorage.setItem(THEME_KEY, choice);
+    } catch (err) {
+      logWarn("Theme choice could not be saved:", err && err.message);
+    }
+
+    Object.keys(THEME_BUTTONS).forEach(function (k) {
+      var b = byId(THEME_BUTTONS[k]);
+      if (b) b.setAttribute("aria-pressed", String(k === choice));
+    });
+    logInfo("Theme set to", choice);
+  }
+
+  /* The buttons are markup, so their pressed state has to be reconciled with
+     what the head script already applied — otherwise the page can be dark
+     while the row claims "Match my system" is pressed. */
+  function syncThemeButtons() {
+    var attr = document.documentElement.getAttribute("data-theme");
+    var current = attr === "light" || attr === "dark" ? attr : "auto";
+    Object.keys(THEME_BUTTONS).forEach(function (k) {
+      var b = byId(THEME_BUTTONS[k]);
+      if (b) b.setAttribute("aria-pressed", String(k === current));
+    });
+  }
+
+  var OPTION_BUTTONS = {
+    marking: { optional: "btn-optional", asterisk: "btn-asterisk" },
+    dates: { parts: "btn-dateparts", single: "btn-datesingle" },
+    hints: { above: "btn-hint-above", below: "btn-hint-below" }
+  };
+
+  function setOption(group, value) {
+    state.options[group] = value;
+    var map = OPTION_BUTTONS[group] || {};
+    Object.keys(map).forEach(function (k) {
+      var b = byId(map[k]);
+      if (b) b.setAttribute("aria-pressed", String(k === value));
+    });
+    renderPreview();
+  }
+
+  /* ---------------- load / export ---------------- */
+
+  function loadCapture(capture) {
+    if (!capture || !Array.isArray(capture.questions)) {
+      throw new Error("That JSON has no questions array — is it a capture file?");
+    }
+    state.capture = capture;
+    state.rows = buildRows(capture);
+    renderDecisions();
+    renderPreview();
+    byId("step-decisions").classList.remove("is-hidden");
+    byId("step-preview").classList.remove("is-hidden");
+    /* AFTER the sections are shown, not before. A display:none box measures
+       zero by zero, so scrollWidth and clientWidth are equal and the decisions
+       table reads as "fits" however wide it really is — which is exactly what
+       happened: five of six containers were marked and the biggest one, the
+       only one that scrolls at any ordinary width, was not. */
+    markScrollableTables();
+  }
+
+  function loadPasted() {
+    var el = byId("json-input");
+    var out = byId("load-status");
+    var text = el.value.trim();
+    if (!text) { status(out, "Paste a capture first — the box is empty.", false); return; }
+    try {
+      var parsed = JSON.parse(text);
+      // Accept either a bare capture or a pair file with a stash.
+      var capture = parsed.questions ? parsed
+        : (parsed.stash && parsed.stash[0] && parsed.stash[0].payload) ? parsed.stash[0].payload
+        : null;
+      if (!capture) throw new Error("No capture found in that JSON.");
+      loadCapture(capture);
+      status(out, "Loaded " + capture.questions.length + " questions from " +
+                  (capture.formName || "the capture") + ".", true);
+    } catch (err) {
+      logError(err);
+      status(out, "Could not read that: " + err.message, false);
+    }
+  }
+
+  function loadSample() {
+    byId("json-input").value = JSON.stringify(SAMPLE, null, 2);
+    loadPasted();
+  }
+
+  function exportDecisions() {
+    var out = byId("export-status");
+    var payload = {
+      form: state.capture ? state.capture.formName : "",
+      decidedAt: new Date().toISOString(),
+      presentation: state.options,
+      decisions: state.rows.map(function (r) {
+        return {
+          name: r.name, originalLabel: r.label, newLabel: r.newLabel || null,
+          currentControl: r.currentControl, proposedControl: r.proposedControl,
+          guidance: r.guidance, keep: r.keep
+        };
+      })
+    };
+    var text = JSON.stringify(payload, null, 2);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        status(out, "Decisions copied to the clipboard.", true);
+      }, function () {
+        byId("json-input").value = text;
+        status(out, "Clipboard refused — the decisions are in the paste box instead.", true);
+      });
+    } else {
+      byId("json-input").value = text;
+      status(out, "Clipboard unavailable — the decisions are in the paste box instead.", true);
+    }
+  }
+
+  /* ---------------- the estate ----------------
+     Everything here is inert unless sn/estate-stats.js loaded. That file is
+     produced by sn/scripts/emit-corpus.mjs from a sweep of the live catalogue;
+     the per-form captures sit in corpus/<sysId>.js beside it and are fetched
+     one at a time, by injecting a script tag, when a form is picked. */
+
+  var ESTATE = null;
+  var CORPUS_DIR = "corpus/";
+  /* A key becomes a path, so it is checked BEFORE it becomes one. */
+  var KEY_OK = /^[0-9a-f]{32}$/;
+  var CORPUS_TIMEOUT_MS = 10000;
+  var corpusToken = 0;
+  var pendingScript = null;
+  var pendingTimer = null;
+
+  function readEstate() {
+    var e = window.SN_ESTATE;
+    if (!e || !Array.isArray(e.forms) || !e.forms.length) return null;
+    var usable = e.forms.filter(function (f) {
+      if (KEY_OK.test(f.sysId)) return true;
+      logWarn("Estate: dropped a form whose key is not a plain sys_id:", f.sysId);
+      return false;
+    });
+    if (!usable.length) return null;
+    return { raw: e, forms: usable };
+  }
+
+  function optionsHtml(forms) {
+    var byCategory = {};
+    forms.forEach(function (f) {
+      var cats = (f.categories && f.categories.length) ? f.categories : ["Uncategorised"];
+      cats.forEach(function (c) {
+        (byCategory[c] = byCategory[c] || []).push(f);
+      });
+    });
+    /* The placeholder is BUILT HERE rather than written in the markup, so that
+       "no options were built" is a measurable degraded state rather than an
+       absence nothing can distinguish from a working empty list. */
+    var html = '<option value="">Choose a form</option>';
+    Object.keys(byCategory).sort().forEach(function (cat) {
+      html += '<optgroup label="' + esc(cat) + '">';
+      byCategory[cat].slice().sort(function (a, b) { return a.name.localeCompare(b.name); })
+        .forEach(function (f) {
+          var n = f.questions.length;
+          html += '<option value="' + esc(f.sysId) + '">' + esc(f.name) +
+                  " — " + n + " question" + (n === 1 ? "" : "s") + "</option>";
+        });
+      html += "</optgroup>";
+    });
+    return html;
+  }
+
+  function pickStatus(message, kind) {
+    var el = byId("pick-status");
+    if (!message) { el.textContent = ""; el.className = "status is-hidden"; return; }
+    el.textContent = message;
+    el.className = "status " + (kind || "info");
+  }
+
+  /* ONE NAMED HELPER, because the inversion that kills it needs a unique anchor
+     and an inline `token !== corpusToken` appears twice. */
+  function stale(token) { return token !== corpusToken; }
+
+  function clearPending() {
+    if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; }
+    pendingScript = null;
+  }
+
+  function applyCapture(sysId, name, token) {
+    if (stale(token)) return;
+    var capture = window.SN_CORPUS[sysId];
+    pickStatus("");
+    /* THE PICKER ADDS NO SECOND INGEST SEAM. It fills the paste box and runs
+       the same loadPasted() a person would, so the reviewer can see exactly
+       what was loaded and the two routes cannot drift apart. */
+    byId("json-input").value = JSON.stringify(capture, null, 2);
+    loadPasted();
+  }
+
+  function requestCapture(sysId, name) {
+    corpusToken += 1;
+    var token = corpusToken;
+    if (pendingScript && pendingScript.parentNode) {
+      pendingScript.parentNode.removeChild(pendingScript);
+    }
+    clearPending();
+
+    /* Already here: picking the same form twice must not ask the disk again.
+       Repeated loads are the ORDINARY case once a picker exists. */
+    if (window.SN_CORPUS && window.SN_CORPUS[sysId]) { applyCapture(sysId, name, token); return; }
+
+    var s = document.createElement("script");
+    s.setAttribute("data-corpus-key", sysId);
+    s.src = CORPUS_DIR + encodeURIComponent(sysId) + ".js";
+    s.onload = function () {
+      if (stale(token)) return;
+      clearPending();
+      /* THE NET onerror CANNOT GIVE YOU. A truncated file, a syntax error, or a
+         file whose internal key does not match its filename all load "fine" and
+         fire window.onerror rather than this tag's handler — so the only way to
+         know the capture arrived is to look for it. */
+      if (!window.SN_CORPUS || !window.SN_CORPUS[sysId]) {
+        pickStatus("Loaded " + CORPUS_DIR + sysId + ".js, but it defined no capture for " +
+                   name + ".", "bad");
+        return;
+      }
+      applyCapture(sysId, name, token);
+    };
+    s.onerror = function () {
+      if (stale(token)) return;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      clearPending();
+      pickStatus("Could not load " + name + ". " + CORPUS_DIR + sysId +
+                 ".js is not beside this page.", "bad");
+    };
+    pendingScript = s;
+    /* Neither handler firing is a real state — a stalled USB read gives no
+       event at all — and a picker frozen with no explanation is worse than a
+       failure message. */
+    pendingTimer = setTimeout(function () {
+      if (stale(token)) return;
+      pickStatus("Still loading " + name + "… the file may be slow to read.", "info");
+    }, CORPUS_TIMEOUT_MS);
+    pickStatus("Loading " + name + "…", "info");
+    document.head.appendChild(s);
+  }
+
+  function loadPickedForm() {
+    if (!ESTATE) return;
+    var sysId = byId("form-picker").value;
+    if (!sysId) { pickStatus("Choose a form from the list first.", "bad"); return; }
+    var form = null;
+    ESTATE.forms.forEach(function (f) { if (f.sysId === sysId) form = f; });
+    if (!form) { pickStatus("That form is not in the estate data.", "bad"); return; }
+    requestCapture(form.sysId, form.name);
+  }
+
+  /* ---------------- the statistics ----------------
+     Two vocabularies, and they are NOT the same thing. What the estate uses
+     TODAY is the captured control — "text", "choice list (select2)",
+     "radio group". What this sheet would turn each into is the proposed
+     control — "Text input", "Radio buttons". Both are shown, and kept apart,
+     because a reader asking "what do our forms use" and a reader asking "what
+     would this change them to" are asking different questions. */
+
+  var OUTLIER_FACTOR = 2;
+  /* Named once, because flagsFor() pushes it and MEASURES reads it back. Two
+     spellings of one string in two places is how a decision silently stops
+     being acted on. */
+  var PREFILL_NO_SOURCE_FLAG = "Arrives answered and the page does not say from where";
+
+  /* THE TWO SIDES OF EVERY MEASURE SIT TOGETHER, ON PURPOSE. `ofQuestion`
+     reads an estate row, `ofRow` reads a loaded form's row. A comparison whose
+     two columns are computed by two definitions in two places is not a
+     comparison, and the verdict it produces is noise a form owner would act
+     on. Adding a measure means adding both halves here or neither. */
+  var MEASURES = [
+    { key: "hidden", label: "Hidden when the form loads",
+      ofQuestion: function (q) { return q.hidden === true; },
+      ofRow: function (r) { return !r.visible; } },
+    { key: "tip", label: "Guidance in a toggle tip",
+      ofQuestion: function (q) { return q.tip === true; },
+      ofRow: function (r) { return !!r.helpText; } },
+    { key: "prefilled", label: "Arrives answered, no source in the page",
+      ofQuestion: function (q) { return q.prefilledNoSource === true; },
+      ofRow: function (r) { return r.flags.indexOf(PREFILL_NO_SOURCE_FLAG) !== -1; } },
+    { key: "governed", label: "Governed by at least one rule",
+      ofQuestion: function (q) { return q.governed === true; },
+      ofRow: function (r) { return r.governedBy > 0; } },
+    { key: "mandatory", label: "Required",
+      ofQuestion: function (q) { return q.mandatory === true; },
+      ofRow: function (r) { return !!r.mandatory; } }
+  ];
+
+  function pct(n, total) { return total ? Math.round((n * 100) / total) : 0; }
+
+  function median(values) {
+    if (!values.length) return 0;
+    var s = values.slice().sort(function (a, b) { return a - b; });
+    var mid = Math.floor(s.length / 2);
+    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+  }
+
+  function barCell(n, total) {
+    var share = pct(n, total);
+    /* No FILL element at all when there is nothing to draw. The track is the
+       scale and is always drawn; only the fill makes a claim. */
+    var fill = n ? '<span class="bar" style="--bar:' + share + '%"></span>' : "";
+    return '<td class="bar-cell"><span class="bar-track" aria-hidden="true">' + fill +
+      '</span><span class="num">' + share + "%</span></td>";
+  }
+
+  /* Every table in the comparison goes in one of these. See .table-scroll. */
+  function scrollable(tableHtml) {
+    return '<div class="table-scroll">' + tableHtml + "</div>";
+  }
+
+  /* THREE THINGS HAVE TO BE TRUE AT ONCE, and doing two of them is the usual
+     mistake. A table that cannot shrink must be allowed to scroll sideways.
+     A box that scrolls must be reachable from the keyboard, or SC 2.1.1 fails
+     for anyone not using a mouse. And a box that does NOT scroll must not be
+     focusable, because a tab stop with no name and nothing to do is its own
+     defect — which is why this is measured rather than applied to everything.
+
+     The name comes from the table's own caption, so a reader who lands in one
+     of these is told which table they are in and why they are stopped here. */
+  function markScrollableTables() {
+    var boxes = document.querySelectorAll(".table-scroll");
+    for (var i = 0; i < boxes.length; i += 1) {
+      var box = boxes[i];
+      if (box.scrollWidth > box.clientWidth) {
+        var caption = box.querySelector("caption");
+        box.setAttribute("tabindex", "0");
+        box.setAttribute("role", "region");
+        box.setAttribute("aria-label",
+          (caption ? caption.textContent : "Table") + ", scrollable");
+      } else {
+        box.removeAttribute("tabindex");
+        box.removeAttribute("role");
+        box.removeAttribute("aria-label");
+      }
+    }
+  }
+
+  function tally(map, key) { map[key] = (map[key] || 0) + 1; }
+
+  function estateTallies() {
+    var controls = {};
+    var proposed = {};
+    var classes = {};
+    var mapping = {};
+    var gaps = {};
+    var counts = [];
+    var measures = {};
+    var total = 0;
+    MEASURES.forEach(function (m) { measures[m.key] = 0; });
+
+    ESTATE.forms.forEach(function (f) {
+      counts.push(f.questions.length);
+      f.questions.forEach(function (q) {
+        total += 1;
+        tally(controls, q.control || "(not recorded)");
+        var p = proposedFor(q.control, q.choices);
+        tally(proposed, p);
+        tally(classes, (q.variableClass || "(not recorded)") + "" + (q.control || ""));
+        mapping[q.control] = mapping[q.control] || {};
+        tally(mapping[q.control], p);
+        if (!hasRuleFor(q.control)) gaps[q.control] = true;
+        MEASURES.forEach(function (m) { if (m.ofQuestion(q)) measures[m.key] += 1; });
+      });
+    });
+    return {
+      controls: controls, proposed: proposed, classes: classes, mapping: mapping,
+      gaps: Object.keys(gaps).sort(), counts: counts, measures: measures, total: total
+    };
+  }
+
+  function formTallies() {
+    var controls = {};
+    var proposed = {};
+    var measures = {};
+    MEASURES.forEach(function (m) { measures[m.key] = 0; });
+    state.rows.forEach(function (r) {
+      tally(controls, r.currentControl || "(not recorded)");
+      /* THE REVIEWER'S DECISION, NOT THE MEASUREMENT. r.proposedControl is what
+         the table currently says, so changing a row's control moves this
+         column. Same principle the preview already follows: it keys on the
+         decision, not on the flag the decision defaulted from. */
+      tally(proposed, r.proposedControl);
+      MEASURES.forEach(function (m) { if (m.ofRow(r)) measures[m.key] += 1; });
+    });
+    return { controls: controls, proposed: proposed, measures: measures, total: state.rows.length };
+  }
+
+  function sortedEntries(map) {
+    return Object.keys(map).map(function (k) { return [k, map[k]]; })
+      .sort(function (a, b) { return b[1] - a[1] || a[0].localeCompare(b[0]); });
+  }
+
+  function statsVerdict(est, form) {
+    var m = MEASURES[0];
+    var here = form.measures[m.key];
+    return esc(state.capture.formName || "This form") + " hides " + here + " of its " +
+      form.total + " questions when it loads (" + pct(here, form.total) + "%). " +
+      "Across the estate the figure is " + pct(est.measures[m.key], est.total) + "%.";
+  }
+
+  function renderStats() {
+    if (!ESTATE) return;
+    var est = estateTallies();
+    var form = state.capture ? formTallies() : null;
+    var thisCol = form ? '<th scope="col">This form</th>' : "";
+
+    /* --- A. the estate, and this form beside it --- */
+    var summary = scrollable(
+      '<table id="estate-summary"><caption>The estate, and this form beside it</caption>' +
+      '<thead><tr><th scope="col">Measure</th><th scope="col">Across the estate</th>' +
+      thisCol + "</tr></thead><tbody>" +
+      "<tr><th scope=\"row\">Forms surveyed</th><td class=\"num-cell\">" + ESTATE.forms.length + "</td>" +
+      (form ? "<td class=\"num-cell\">1</td>" : "") + "</tr>" +
+      "<tr><th scope=\"row\">Questions</th><td class=\"num-cell\">" + est.total + "</td>" +
+      (form ? "<td class=\"num-cell\">" + form.total + "</td>" : "") + "</tr>" +
+      /* MEAN AND MEDIAN, because the estate is skewed — a 71-question form
+         against a median in single figures — and a mean on its own is the
+         misleading number. */
+      "<tr><th scope=\"row\">Questions per form</th><td>mean " +
+        Math.round(est.total / ESTATE.forms.length) + ", median " + median(est.counts) +
+        ", range " + Math.min.apply(null, est.counts) + " to " +
+        Math.max.apply(null, est.counts) + "</td>" +
+      (form ? "<td class=\"num-cell\">" + form.total + "</td>" : "") + "</tr>" +
+      MEASURES.map(function (m) {
+        return '<tr><th scope="row">' + esc(m.label) + "</th>" +
+          barCell(est.measures[m.key], est.total) +
+          (form ? barCell(form.measures[m.key], form.total) : "") + "</tr>";
+      }).join("") + "</tbody></table>");
+
+    /* --- B. what the estate uses now, in words as well as a table --- */
+    var now = sortedEntries(est.controls);
+    var most = now[0];
+    var least = now[now.length - 1];
+    var inWords =
+      '<p id="estate-most">Most used: <strong>' + esc(most[0]) + "</strong> — " +
+        most[1] + " of " + est.total + " questions (" + pct(most[1], est.total) + "%).</p>" +
+      '<p id="estate-least">Least used: <strong>' + esc(least[0]) + "</strong> — " +
+        least[1] + " of " + est.total + " questions (" + pct(least[1], est.total) + "%).</p>";
+
+    var formsUsing = {};
+    ESTATE.forms.forEach(function (f) {
+      var seen = {};
+      f.questions.forEach(function (q) { seen[q.control] = true; });
+      Object.keys(seen).forEach(function (c) { formsUsing[c] = (formsUsing[c] || 0) + 1; });
+    });
+    var nowTable = scrollable(
+      '<table id="estate-now"><caption>What the estate uses now</caption>' +
+      '<thead><tr><th scope="col">Component</th><th scope="col">Questions</th>' +
+      '<th scope="col">Share</th><th scope="col">Forms using it</th>' + thisCol +
+      "</tr></thead><tbody>" +
+      now.map(function (e) {
+        return '<tr><th scope="row">' + esc(e[0]) + '</th><td class="num-cell">' + e[1] + "</td>" +
+          barCell(e[1], est.total) + '<td class="num-cell">' + (formsUsing[e[0]] || 0) + "</td>" +
+          (form ? '<td class="num-cell">' + (form.controls[e[0]] || 0) + "</td>" : "") + "</tr>";
+      }).join("") + "</tbody></table>");
+
+    /* --- C. the finer classes, behind their own disclosure --- */
+    var classRows = sortedEntries(est.classes).map(function (e) {
+      var parts = e[0].split("");
+      return '<tr><th scope="row">' + esc(parts[0]) + "</th><td>" + esc(parts[1]) +
+        '</td><td class="num-cell">' + e[1] + "</td></tr>";
+    }).join("");
+    var classes =
+      '<details id="details-classes"><summary>The finer classes behind these</summary>' +
+      scrollable('<table id="estate-classes"><caption>Two classes can flatten to one control</caption>' +
+      '<thead><tr><th scope="col">Variable class</th><th scope="col">Captured as</th>' +
+      '<th scope="col">Questions</th></tr></thead><tbody>' + classRows +
+      "</tbody></table>") + "</details>";
+
+    /* --- D. what this sheet would propose instead --- */
+    var proposedTable = scrollable(
+      '<table id="estate-proposed"><caption>What this sheet would propose instead</caption>' +
+      '<thead><tr><th scope="col">Component</th><th scope="col">Questions</th>' +
+      '<th scope="col">Share</th>' + thisCol + "</tr></thead><tbody>" +
+      sortedEntries(est.proposed).map(function (e) {
+        return '<tr><th scope="row">' + esc(e[0]) + '</th><td class="num-cell">' + e[1] + "</td>" +
+          barCell(e[1], est.total) +
+          (form ? '<td class="num-cell">' + (form.proposed[e[0]] || 0) + "</td>" : "") + "</tr>";
+      }).join("") + "</tbody></table>");
+
+    /* --- E. what each control turns into --- */
+    var mappingTable = scrollable(
+      '<table id="estate-mapping"><caption>What each control turns into</caption>' +
+      '<thead><tr><th scope="col">Captured control</th><th scope="col">Questions</th>' +
+      '<th scope="col">Becomes</th></tr></thead><tbody>' +
+      now.map(function (e) {
+        var into = sortedEntries(est.mapping[e[0]] || {})
+          /* BRACKETS, BECAUSE "Text input 460" READS AS ONE LABEL. The count
+             ran straight on from the component name with nothing between them,
+             so a control called "Date, three parts 81" looked like a component
+             whose name ended in a number. */
+          .map(function (p) { return esc(p[0]) + " (" + p[1] + ")"; }).join(", ");
+        return '<tr><th scope="row">' + esc(e[0]) + '</th><td class="num-cell">' + e[1] + "</td><td>" +
+          into + "</td></tr>";
+      }).join("") + "</tbody></table>");
+
+    /* --- F. the gaps, said as gaps rather than shown as proposals --- */
+    var gaps = est.gaps.length
+      ? '<p id="estate-gaps">The rule has no case for these, so they fall back to a text ' +
+        "input: " + est.gaps.map(esc).join(", ") + ".</p>"
+      : '<p id="estate-gaps">Every control the estate uses has a rule.</p>';
+
+    /* --- G. outliers, named in words --- */
+    var outliers = "";
+    if (form) {
+      var items = MEASURES.filter(function (m) {
+        var mine = pct(form.measures[m.key], form.total);
+        var theirs = pct(est.measures[m.key], est.total);
+        return theirs > 0 && mine >= theirs * OUTLIER_FACTOR;
+      }).map(function (m) {
+        return "<li>" + esc(m.label) + ": " + pct(form.measures[m.key], form.total) +
+          "% here, " + pct(est.measures[m.key], est.total) + "% across the estate.</li>";
+      });
+      outliers = items.length
+        ? '<ul id="stats-outliers">' + items.join("") + "</ul>"
+        : '<p id="stats-outliers">Nothing on this form stands out against the estate.</p>';
+    }
+
+    byId("stats-body").innerHTML =
+      '<div class="stats-stack"><div>' + summary + outliers +
+      "</div><div>" +
+      inWords + nowTable + classes + "</div><div>" + proposedTable + gaps +
+      "</div><div>" + mappingTable + "</div></div>";
+    /* Measured AFTER the write, because it reads scrollWidth against
+       clientWidth and neither exists until the markup is in the document. */
+    markScrollableTables();
+
+    /* WRITE IF CHANGED, and this is not an optimisation. renderStats() is
+       called from renderPreview(), which is called from onCellChange() — so
+       without this guard a screen-reader user hears the whole comparison
+       re-announced on EVERY KEYSTROKE in the rewritten-label box. That is the
+       worst thing this feature could ship. */
+    var verdict = byId("stats-verdict");
+    var line = form ? statsVerdict(est, form) : "";
+    if (verdict.textContent !== line) verdict.textContent = line;
+  }
+
+  /* The heading step 1 takes once a picker exists to offer. The paste-only
+     wording is the one written in the HTML, so it is never assigned here — a
+     page with no estate data keeps exactly what it shipped with. */
+  var STEP1_WITH_ESTATE = "1. Pick a form from the estate, or paste a capture";
+
+  function initEstate() {
+    ESTATE = readEstate();
+    if (!ESTATE) {
+      logInfo("No estate data beside the page — the picker stays hidden.");
+      return;
+    }
+    byId("form-picker").innerHTML = optionsHtml(ESTATE.forms);
+    byId("pick-block").classList.remove("is-hidden");
+    /* ONE CONSTANT, TWO PLACES, WRITTEN FROM THE SAME LINE. The heading and
+       its nav entry are the same claim shown twice, and two literals would be
+       free to drift the moment one of them was reworded. */
+    byId("paste-heading").textContent = STEP1_WITH_ESTATE;
+    byId("nav-step1").textContent = STEP1_WITH_ESTATE;
+    byId("step-stats").classList.remove("is-hidden");
+    byId("nav-stats").classList.remove("is-hidden");
+    renderStats();
+  }
+
+  // A small worked example so the page demonstrates itself with no file to hand.
+  var SAMPLE = {
+    formName: "Computer Loan Equipment Request",
+    item: { descriptionBlocks: [
+      { text: "Loan equipment can be provided for staff use at no charge for a maximum of six months.", colour: "" },
+      { text: "If you need more than 10 units, we need five working days' notice.", colour: "#ff0000" }
+    ] },
+    questions: [
+      { name: "agresso_code", label: "Please enter an Agresso Subproject Code", control: "reference lookup",
+        mandatory: true, section: "Charging Details", helpTitle: "Charging Criteria",
+        helpText: "There is no charge if the equipment comes back on time and undamaged.",
+        placeholder: "", choices: [], originalValue: "" },
+      { name: "loan_equipment", label: "Type of Equipment Required", control: "choice list (select2)",
+        mandatory: true, section: "Loan Equipment Requirements", helpTitle: "More information",
+        helpText: "All equipment comes with a standard Windows build. No data is backed up.",
+        placeholder: "", originalValue: "",
+        choices: [{ label: "-- None --" }, { label: "Standard Laptop" }, { label: "Standard Desktop" }] },
+      { name: "loan_quantity", label: "How many devices are required?", control: "text",
+        mandatory: true, section: "Loan Equipment Requirements", helpText: "", helpTitle: "",
+        placeholder: "e.g. 1 or 16", choices: [], originalValue: "" },
+      { name: "loan_date_from", label: "Date from which you require the equipment", control: "date",
+        mandatory: true, section: "Loan Equipment Requirements", helpTitle: "Use the Calendar Button",
+        helpText: "Dates must be entered in the correct format.", placeholder: "", choices: [], originalValue: "" },
+      { name: "department", label: "Department", control: "text", mandatory: false,
+        section: "Loan Equipment Requirements", helpText: "", helpTitle: "", placeholder: "",
+        choices: [], originalValue: "iSolutions" }
+    ],
+    observations: [
+      { question: "agresso_code", note: "Guidance sits in a toggle tip rather than beside the question" },
+      { question: "agresso_code", note: "Help text is not tied to the control" },
+      { question: "loan_quantity", note: "Placeholder carries guidance that vanishes on typing" },
+      { question: "department", note: "Arrives already answered. Does the question need to exist?" }
+    ]
+  };
+
+  // Exposed for the inline handlers in the markup above.
+  window.loadPasted = loadPasted;
+  window.loadSample = loadSample;
+  window.renderPreview = renderPreview;
+  window.exportDecisions = exportDecisions;
+  window.setOption = setOption;
+  window.setTheme = setTheme;
+  window.loadPickedForm = loadPickedForm;
+  syncThemeButtons();
+  /* Bound ONCE, on a tbody that is markup and is never replaced —
+     renderDecisions only empties it. It used to be re-bound on every render,
+     which was HARMLESS: addEventListener discards a duplicate registration
+     (same type, same callback, same capture) and onCellChange is a single
+     closure. Measured at exactly ONE render per keystroke after four loads,
+     so nothing was ever slow.
+
+     It is here now so the next edit cannot break that by accident. A
+     per-render `function (e) { onCellChange(e); }` is a NEW callback each
+     time, and with a picker making repeated loads ordinary that would be N
+     renders a keystroke. The row "one edit renders the preview once, however
+     many captures have been loaded" is what holds it. */
+  (function bindDecisionsTable() {
+    var tbody = document.querySelector("#decisions tbody");
+    tbody.addEventListener("change", onCellChange);
+    tbody.addEventListener("input", onCellChange);
+  }());
+  /* WHETHER A TABLE OVERFLOWS IS A PROPERTY OF THE WIDTH, NOT OF THE DATA, so
+     it cannot be settled once at render time. Resizing the window — or turning
+     a phone — changes which boxes scroll, and with it which of them should be
+     a tab stop. Debounced because resize fires continuously and each pass
+     reads layout. */
+  var RESIZE_SETTLE_MS = 150;
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(markScrollableTables, RESIZE_SETTLE_MS);
+  });
+  initEstate();
+
+  logInfo("Form redesign sheet ready.");
+}());
+</script>
+</body>
+</html>
