@@ -47,6 +47,14 @@
   // Review OCR control's accessible description (H-6c). Declared in tools.html.
   const REVIEW_COUNT_ID = "imgdesc-overlay-review-count";
 
+  // The skip link past the box layers (H-13). The OCR layer alone can hold
+  // dozens of tab stops, all of them between the image and the toolbar that
+  // carries Review OCR. The link exists only while a layer below holds one.
+  const SKIP_LINK_ID = "imgdesc-overlay-skip";
+  const SKIP_LINK_TEXT = "Skip text boxes to analysis controls";
+  const TOOLBAR_ID = "imgdesc-overlay-toolbar";
+  const BOX_LAYER_TYPES = Object.freeze(["ocr", "objects"]);
+
   // ── HTML escaping ────────────────────────────────────────────────────
   const esc =
     window.escapeHtml ||
@@ -142,6 +150,8 @@
     _selectedAdditionIndex: null, // Phase 5D-3: currently selected addition index
     _reviewKeyHandler: null, // Phase 5D-2: bound keydown handler reference
     _reviewClickHandler: null, // Phase 5D-2: bound click handler reference
+    _skipLink: null, // H-13: the one skip link, created once per container
+    _skipLinkObserver: null, // H-13: safety net for box changes made in the review file
 
     // Phase 5D-3: Add new items — draw mode state
     _inDrawMode: false,
@@ -268,6 +278,9 @@
         }
       }
 
+      this._watchBoxLayers();
+      this._syncSkipLink();
+
       logInfo("Overlay container initialised");
 
       // If analysis data already exists (e.g. re-init after profile change), render
@@ -281,6 +294,13 @@
      */
     destroy() {
       if (!this._container) return;
+
+      // Stop watching and drop the skip link with the container (H-13)
+      if (this._skipLinkObserver) {
+        this._skipLinkObserver.disconnect();
+        this._skipLinkObserver = null;
+      }
+      this._skipLink = null;
 
       // Clean up toggletips
       this._cleanupToggletips();
@@ -466,6 +486,7 @@
       }
 
       this._updateToolbarState();
+      this._syncSkipLink();
 
       logDebug("Analysis cleared");
     },
@@ -492,6 +513,8 @@
       if (type === "depth") {
         this._updateDepthLegend();
       }
+
+      this._syncSkipLink();
     },
 
     /**
@@ -513,6 +536,8 @@
         const legend = document.getElementById("imgdesc-depth-legend");
         if (legend) legend.hidden = true;
       }
+
+      this._syncSkipLink();
     },
 
     /**
@@ -629,6 +654,105 @@
       if (result.classification) {
         this._renderClassificationBadge(result.classification);
       }
+
+      this._syncSkipLink();
+    },
+
+    // ══════════════════════════════════════════════════════════════════
+    // Skip link past the box layers (H-13)
+    // ══════════════════════════════════════════════════════════════════
+
+    /**
+     * Is there a reason for the skip link to exist right now? True while at
+     * least one box layer is shown AND holds a tab stop. This is the single
+     * predicate: every path that can change either half calls
+     * _syncSkipLink(), which asks it.
+     * @returns {boolean}
+     * @private
+     */
+    _skipLinkWanted() {
+      return BOX_LAYER_TYPES.some((type) => {
+        const layer = this._layers[type];
+        return !!layer && !layer.hidden && !!layer.querySelector('[tabindex="0"]');
+      });
+    },
+
+    /**
+     * The first enabled, un-hidden button in the toolbar (OCR Labels today).
+     * A native button takes focus with no tabindex change.
+     * @returns {HTMLElement|null}
+     * @private
+     */
+    _skipLinkTarget() {
+      const toolbar = document.getElementById(TOOLBAR_ID);
+      if (!toolbar) return null;
+      return (
+        Array.from(toolbar.querySelectorAll("button")).find(
+          (button) => !button.disabled && !button.hidden,
+        ) || null
+      );
+    },
+
+    /**
+     * Create the link once per container, immediately before the first box
+     * layer in document order, so its identity is stable for focus. It is an
+     * <a href> so it still does something without script. Activating it moves
+     * focus and says nothing: the target button names itself.
+     * @returns {HTMLAnchorElement|null}
+     * @private
+     */
+    _ensureSkipLink() {
+      if (this._skipLink && this._container && this._container.contains(this._skipLink)) {
+        return this._skipLink;
+      }
+      if (!this._container || !this._layers.ocr) return null;
+
+      const link = document.createElement("a");
+      link.id = SKIP_LINK_ID;
+      link.className = "skip-link imgdesc-overlay-skip";
+      link.setAttribute("href", "#" + TOOLBAR_ID);
+      link.textContent = SKIP_LINK_TEXT;
+      link.hidden = true;
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        const target = this._skipLinkTarget();
+        if (target) target.focus();
+      });
+
+      this._container.insertBefore(link, this._layers.ocr);
+      this._skipLink = link;
+      return link;
+    },
+
+    /**
+     * Show or hide the skip link to match _skipLinkWanted(). Safe to call at
+     * any time and from any path; it writes nothing when nothing changed.
+     * @private
+     */
+    _syncSkipLink() {
+      if (!this._container) return;
+      const link = this._ensureSkipLink();
+      if (!link) return;
+      const hidden = !this._skipLinkWanted();
+      if (link.hidden !== hidden) link.hidden = hidden;
+    },
+
+    /**
+     * Keep the link right when boxes are added or removed by code outside
+     * this file (review mode adds and removes boxes in
+     * image-describer-overlay-review.js). One observer, one predicate.
+     * @private
+     */
+    _watchBoxLayers() {
+      if (this._skipLinkObserver) this._skipLinkObserver.disconnect();
+      if (typeof MutationObserver === "undefined" || !this._container) return;
+      this._skipLinkObserver = new MutationObserver(() => this._syncSkipLink());
+      this._skipLinkObserver.observe(this._container, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["hidden", "tabindex"],
+      });
     },
 
     /**

@@ -255,19 +255,44 @@ window.ImageDescriberModelManager = (function () {
     }
 
     /**
+     * Why a state changed. Carried on model:stateChange so the UI can tell a
+     * change the person asked for (Download, Load, Unload, Remove in the Model
+     * Manager) from one that happened as a side effect (the analyser loading a
+     * model to do its work, a cache sync). The first is worth announcing, with
+     * the model's name, because it is what they just clicked. The second is
+     * not: the person asked for an analysis, not for a model load.
+     */
+    var STATE_CAUSE = Object.freeze({
+        USER: 'user',
+        ANALYSIS: 'analysis'
+    });
+
+    /**
      * Update state for a model and emit an event.
+     *
+     * The cause defaults to ANALYSIS, which is the SILENT one: a caller that
+     * does not say why the state changed does not get announced. The user
+     * operations below go through setUserState() and so declare themselves.
+     *
      * @param {string} modelKey
      * @param {string} newState
+     * @param {string} [cause] one of STATE_CAUSE; defaults to ANALYSIS
      */
-    function setState(modelKey, newState) {
+    function setState(modelKey, newState, cause) {
         var oldState = modelStates[modelKey];
         modelStates[modelKey] = newState;
         logDebug('State: ' + modelKey + ' ' + oldState + ' → ' + newState);
         emitEvent('model:stateChange', {
             modelKey: modelKey,
             oldState: oldState,
-            newState: newState
+            newState: newState,
+            cause: cause || STATE_CAUSE.ANALYSIS
         });
+    }
+
+    /** State change made by a user operation (Download, Load, Unload, Remove, Cancel). */
+    function setUserState(modelKey, newState) {
+        setState(modelKey, newState, STATE_CAUSE.USER);
     }
 
     // ========================================================================
@@ -577,7 +602,7 @@ window.ImageDescriberModelManager = (function () {
         if (!model.enabled) {
             throw new Error('Model "' + modelKey + '" is not enabled');
         }
-        setState(modelKey, 'downloading');
+        setUserState(modelKey, 'downloading');
 
         try {
             // Text model routing — delegate to LocalTextModelGateway
@@ -587,7 +612,7 @@ window.ImageDescriberModelManager = (function () {
                     throw new Error('LocalTextModelGateway not available for text model: ' + modelKey);
                 }
                 await textGateway.preDownloadModel(modelKey, onProgress);
-                setState(modelKey, 'cached');
+                setUserState(modelKey, 'cached');
                 return;
             }
 
@@ -604,38 +629,38 @@ window.ImageDescriberModelManager = (function () {
                 // After download+load, unload from memory (we only wanted to cache)
                 // The pipeline is now cached by the gateway — leave it loaded
                 // (no point unloading just to reload later)
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
             } else if (modelKey === 'florence2' && typeof gateway.ensureFlorence === 'function') {
                 // Florence-2 uses ensureFlorence() from Phase 10A gateway
                 await gateway.ensureFlorence({
                     progressCallback: onProgress || null,
                 });
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
             } else if (modelKey === 'fastvlm' && typeof gateway.ensureFastVLM === 'function') {
                 // FastVLM uses ensureFastVLM() from Phase 13A gateway
                 await gateway.ensureFastVLM({
                     progressCallback: onProgress || null,
                 });
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
             } else if (modelKey === 'qwen35' && typeof gateway.ensureQwen === 'function') {
                 // Qwen3.5 uses ensureQwen() from Phase 14A gateway
                 await gateway.ensureQwen({
                     progressCallback: onProgress || null,
                 });
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
             } else if (modelKey === 'lfm2vl' && typeof gateway.ensureLfm2Vl === 'function') {
                 // LFM2-VL uses ensureLfm2Vl() from Phase 15A gateway
                 await gateway.ensureLfm2Vl({
                     progressCallback: onProgress || null,
                 });
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
             } else {
                 logWarn('Pre-download for "' + modelKey + '" — no download method available');
-                setState(modelKey, 'not-downloaded');
+                setUserState(modelKey, 'not-downloaded');
             }
         } catch (err) {
             logError('Pre-download failed for "' + modelKey + '":', err.message || err);
-            setState(modelKey, 'download-error');
+            setUserState(modelKey, 'download-error');
             throw err;
         }
     }
@@ -649,7 +674,7 @@ window.ImageDescriberModelManager = (function () {
         if (controller) {
             controller.abort();
             delete downloadAbortControllers[modelKey];
-            setState(modelKey, 'not-downloaded');
+            setUserState(modelKey, 'not-downloaded');
             logInfo('Download cancelled for "' + modelKey + '"');
         } else {
             logWarn('No active download to cancel for "' + modelKey + '"');
@@ -681,7 +706,7 @@ window.ImageDescriberModelManager = (function () {
                 return { removedCount: 0, removedBytes: 0 };
             }
             var result = await textGateway.removeCachedModel(modelKey);
-            setState(modelKey, 'not-downloaded');
+            setUserState(modelKey, 'not-downloaded');
             logInfo('Removed cached text model "' + modelKey + '"');
             return result;
         }
@@ -711,7 +736,7 @@ window.ImageDescriberModelManager = (function () {
                 }
             }
 
-            setState(modelKey, 'not-downloaded');
+            setUserState(modelKey, 'not-downloaded');
             logInfo('Removed ' + removedCount + ' cached files for "' + modelKey +
                 '" (' + Math.round(removedBytes / (1024 * 1024)) + ' MB)');
         } catch (err) {
@@ -739,7 +764,7 @@ window.ImageDescriberModelManager = (function () {
             throw new Error('Model "' + modelKey + '" is not enabled');
         }
 
-        setState(modelKey, 'loading');
+        setUserState(modelKey, 'loading');
 
         try {
             // Text model routing — delegate to LocalTextModelGateway
@@ -749,7 +774,7 @@ window.ImageDescriberModelManager = (function () {
                     throw new Error('LocalTextModelGateway not available for text model: ' + modelKey);
                 }
                 await textGateway.ensureModel(modelKey);
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Text model "' + modelKey + '" loaded into memory');
                 return;
             }
@@ -761,31 +786,31 @@ window.ImageDescriberModelManager = (function () {
 
             if (model.task) {
                 await gateway.loadPipeline(model.task, model.modelId);
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Model "' + modelKey + '" loaded into memory');
             } else if (modelKey === 'florence2' && typeof gateway.ensureFlorence === 'function') {
                 await gateway.ensureFlorence();
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Model "' + modelKey + '" loaded into memory');
             } else if (modelKey === 'fastvlm' && typeof gateway.ensureFastVLM === 'function') {
                 await gateway.ensureFastVLM();
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Model "' + modelKey + '" loaded into memory');
             } else if (modelKey === 'qwen35' && typeof gateway.ensureQwen === 'function') {
                 await gateway.ensureQwen();
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Model "' + modelKey + '" loaded into memory');
             } else if (modelKey === 'lfm2vl' && typeof gateway.ensureLfm2Vl === 'function') {
                 await gateway.ensureLfm2Vl();
-                setState(modelKey, 'loaded');
+                setUserState(modelKey, 'loaded');
                 logInfo('Model "' + modelKey + '" loaded into memory');
             } else {
                 logWarn('loadModel for "' + modelKey + '" — no load method available');
-                setState(modelKey, 'cached');
+                setUserState(modelKey, 'cached');
             }
         } catch (err) {
             logError('Failed to load "' + modelKey + '":', err.message || err);
-            setState(modelKey, 'load-error');
+            setUserState(modelKey, 'load-error');
             throw err;
         }
     }
@@ -811,7 +836,7 @@ window.ImageDescriberModelManager = (function () {
                 return;
             }
             await textGateway.unloadModel(modelKey);
-            setState(modelKey, 'cached');
+            setUserState(modelKey, 'cached');
             logInfo('Text model "' + modelKey + '" unloaded');
             return;
         }
@@ -832,7 +857,7 @@ window.ImageDescriberModelManager = (function () {
         for (var i = 0; i < MODEL_REGISTRY.length; i++) {
             var entry = MODEL_REGISTRY[i];
             if (modelStates[entry.key] === 'loaded' && entry.type !== 'text') {
-                setState(entry.key, 'cached');
+                setUserState(entry.key, 'cached');
             }
         }
 
@@ -913,7 +938,15 @@ window.ImageDescriberModelManager = (function () {
             var modelKey = LIBRARY_TO_KEY[data.library];
             if (!modelKey) return;
             if (data.status === 'ready' && modelStates[modelKey] !== 'loaded') {
-                setState(modelKey, 'loaded');
+                // The analyser loading a model is analysis-caused. But the
+                // gateway also reports ready while loadModel() is in flight, and
+                // then the person did ask for it: a state of 'loading' can only
+                // have been set by a user Load, so the completion is theirs too.
+                // Without this, "Loaded" would go silent after a Load click.
+                var cause = modelStates[modelKey] === 'loading'
+                    ? STATE_CAUSE.USER
+                    : STATE_CAUSE.ANALYSIS;
+                setState(modelKey, 'loaded', cause);
             }
         });
     }
@@ -928,6 +961,9 @@ window.ImageDescriberModelManager = (function () {
         // Registry access
         getRegisteredModels: getRegisteredModels,
         getModelState: getModelState,
+
+        // Why a state changed: carried as `cause` on model:stateChange (H-13)
+        STATE_CAUSE: STATE_CAUSE,
 
         // Storage inspection
         getStorageStatus: getStorageStatus,

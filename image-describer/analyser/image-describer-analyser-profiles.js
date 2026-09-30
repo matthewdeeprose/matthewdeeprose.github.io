@@ -193,11 +193,15 @@
         sampleInterval: 4,
         deriveGradientDirection: true,
       },
+      // Phase H-3b: the keys the suppressor in image-describer-analyser-ocr.js
+      // actually reads, with default's values. The previous keys
+      // (shortTextThreshold, punctuationOnly, duplicateThreshold) were never
+      // read, so this profile filtered no noise at all.
       suppression: {
         enabled: true,
-        shortTextThreshold: 1,
-        punctuationOnly: true,
-        duplicateThreshold: 0.9,
+        shortTextMinConfidence: { 1: 0.7, 2: 0.5 },
+        punctuationFilter: true,
+        duplicateProximity: 0.1,
       },
       objects: {
         enabled: true,
@@ -367,11 +371,13 @@
         sampleInterval: 2,
         deriveGradientDirection: true,
       },
+      // Phase H-3b: same repair as photograph. Inert while this profile's OCR
+      // is off; it removes the trap for anyone who later turns that OCR on.
       suppression: {
         enabled: true,
-        shortTextThreshold: 1,
-        punctuationOnly: true,
-        duplicateThreshold: 0.9,
+        shortTextMinConfidence: { 1: 0.7, 2: 0.5 },
+        punctuationFilter: true,
+        duplicateProximity: 0.1,
       },
       objects: {
         enabled: true,

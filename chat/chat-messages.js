@@ -1907,6 +1907,18 @@
       return;
     }
 
+    // No model chosen: refuse BEFORE anything below cuts the thread, removes the
+    // later bubbles or saves the shortened session. The person stays in edit mode
+    // with their text in the box and focus on Re-send; the refusal's toast is the
+    // one voice, so no EDIT_ANNOUNCE_COMMIT follows.
+    if (
+      window.ChatCore &&
+      typeof window.ChatCore._refuseIfNoModel === "function" &&
+      window.ChatCore._refuseIfNoModel("commitEdit")
+    ) {
+      return;
+    }
+
     // These two lines mirror the front-half send-setup dispatchSend deliberately
     // does not own. "off" silences the message-list live log for the DOM surgery
     // below and the streamed reply that follows.
@@ -1963,7 +1975,8 @@
     // Regenerate through the shared send back half: disableSend, the assistant
     // bubble, the token window over the truncated thread, the send, and
     // postGeneration (pushes the assistant turn, renders the badge from the
-    // CURRENT S.currentModel, re-enables and refocuses the input, saves, announces).
+    // CURRENT S.currentModel, releases the busy hold on the input and Send,
+    // saves, announces). The release does not move focus off the Edit button.
     window.ChatCore._dispatchSend({ userPrompt: newText });
 
     // Placed AFTER _dispatchSend deliberately: the last write to the shared
@@ -1971,7 +1984,9 @@
     S.announceToScreenReader(EDIT_ANNOUNCE_COMMIT);
 
     // Commit focus target (easy to change): the edited bubble's fresh Edit button.
-    // The input is refocused on completion by enableSend.
+    // Focus STAYS here when the reply lands: enableSend releases a BusyControl
+    // hold, which restores focus only if it was lost to <body>, and never takes
+    // it from a control the person is on.
     const editBtn = bubble.querySelector(".local-chat-edit-btn");
     if (editBtn) editBtn.focus();
 

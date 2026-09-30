@@ -738,12 +738,6 @@
     },
 
     /**
-     * Currency conversion rate (USD to GBP)
-     * Model costs are in USD, we display in GBP
-     */
-    USD_TO_GBP: 0.8,
-
-    /**
      * Update cost estimate display based on selected model
      * Calculates cost from data attributes and formats appropriately
      */
@@ -778,17 +772,45 @@
         (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
       const totalCostUSD = inputCostUSD + outputCostUSD;
 
-      // Convert to GBP
-      const totalCostGBP = totalCostUSD * this.USD_TO_GBP;
+      // CU-1 (17 September 2026): NO CONVERSION. Every input above is a US
+      // dollar figure taken from the OpenRouter catalogue, and the application
+      // shows US dollars on every cost surface. The hard-coded USD_TO_GBP rate
+      // that used to sit here was stale, and it made this the only surface in
+      // the application whose numbers disagreed with the rest.
 
       // Store for debug panel
-      this.lastEstimatedCost = totalCostGBP;
+      this.lastEstimatedCost = totalCostUSD;
 
       // Format the display text
-      const formattedCost = this.formatCostDisplay(totalCostGBP);
+      const formattedCost = this.formatCostDisplay(totalCostUSD);
       const tierNote = this.getCostTierNote(costTier);
 
-      costDisplay.textContent = `Estimated cost: ${formattedCost}${tierNote}`;
+      // ID-2 (22 September 2026): THE MODEL NAME LEADS THE SENTENCE. Matthew
+      // took decision 3 on ID-1's costed table and chose the third
+      // arrangement: reword only, touching NEITHER association. This element
+      // stays a polite live region AND stays the accessible description of
+      // #imgdesc-model, so both announcement opportunities survive and the
+      // doubling is NOT fixed here. That was accepted knowingly — repetition
+      // is a price an ear can judge, and silence is not.
+      //
+      // The complaint this answers is an ORDER complaint, and ID-1 measured
+      // that an order exists on exactly ONE of the five routes that write this
+      // element: the select's own change, the only route where both the region
+      // and the control speak. On that route the option label read at the
+      // instant of the write is the NEWLY chosen model, so the first words
+      // heard after the gesture name the model just picked.
+      //
+      // THE FALLBACK IS THE OLD SENTENCE, UNCHANGED, AND IT IS NOT DEAD CODE.
+      // A label can be absent where a value is present, and a sentence reading
+      // ": estimated cost ..." would be a fifth wording nobody has costed. The
+      // separate no-selection branch above is untouched for the same reason —
+      // it is what the model Search box route reaches, where the picker holds
+      // a single placeholder option and no model name exists to lead with.
+      const modelLabel = (selectedOption.text || "").trim();
+
+      costDisplay.textContent = modelLabel
+        ? `${modelLabel}: estimated cost ${formattedCost}${tierNote}`
+        : `Estimated cost: ${formattedCost}${tierNote}`;
 
       // Apply tier-based styling
       this.applyCostTierStyling(costDisplay, costTier);
@@ -797,36 +819,34 @@
         inputCostPer1M,
         outputCostPer1M,
         totalCostUSD: totalCostUSD.toFixed(6),
-        totalCostGBP: totalCostGBP.toFixed(6),
         costTier,
       });
     },
 
     /**
-     * Format cost for display in appropriate units (pence or pounds)
-     * @param {number} costGBP - Cost in British Pounds
+     * Format a cost for display, in US dollars.
+     *
+     * CU-1 (17 September 2026): THE UNIT IS US DOLLARS, AND THIS FUNCTION USED
+     * TO SAY PENCE AND POUNDS. The pence ladder could not be relabelled in
+     * place, because pence is a British unit and the figure is a dollar
+     * figure. The three-rung shape is kept and the rungs are expressed the way
+     * every other cost surface in the application expresses them, matching
+     * MathPixContextAI._formatCostUSD.
+     *
+     * @param {number} costUSD - Cost in US dollars
      * @returns {string} Formatted cost string
      */
-    formatCostDisplay(costGBP) {
-      if (costGBP === 0) {
+    formatCostDisplay(costUSD) {
+      if (costUSD === 0) {
         return "Free";
       }
 
-      // Convert to pence for easier threshold comparisons
-      const costPence = costGBP * 100;
-
-      if (costPence < 0.1) {
-        // Very cheap: show decimal pence (e.g., "~0.05p per description")
-        return `~${costPence.toFixed(2)}p per description`;
-      } else if (costPence < 1) {
-        // Cheap: show pence with one decimal (e.g., "~0.5p per description")
-        return `~${costPence.toFixed(1)}p per description`;
-      } else if (costPence < 10) {
-        // Moderate: show whole pence (e.g., "~4p per description")
-        return `~${Math.round(costPence)}p per description`;
+      if (costUSD < 0.01) {
+        return "< $0.01 per description";
+      } else if (costUSD < 0.1) {
+        return `~$${costUSD.toFixed(3)} per description`;
       } else {
-        // Expensive: show pounds (e.g., "~£0.15 per description")
-        return `~£${costGBP.toFixed(2)} per description`;
+        return `~$${costUSD.toFixed(2)} per description`;
       }
     },
 
@@ -896,7 +916,6 @@
       const outputCostUSD =
         (outputCostPer1M / 1_000_000) * this.TOKEN_ESTIMATES.OUTPUT;
       const totalCostUSD = inputCostUSD + outputCostUSD;
-      const totalCostGBP = totalCostUSD * this.USD_TO_GBP;
 
       return {
         model: {
@@ -920,11 +939,9 @@
           inputCostUSD: inputCostUSD,
           outputCostUSD: outputCostUSD,
           totalCostUSD: totalCostUSD,
-          totalCostGBP: totalCostGBP,
-          totalCostPence: totalCostGBP * 100,
+          totalCostCents: totalCostUSD * 100,
         },
-        formatted: this.formatCostDisplay(totalCostGBP),
-        conversionRate: this.USD_TO_GBP,
+        formatted: this.formatCostDisplay(totalCostUSD),
       };
     },
 

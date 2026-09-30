@@ -84,6 +84,34 @@ import PDFVisualiserOverlays from "./pdf-visualiser-overlays.js";
 import PDFVisualiserRenderer from "./pdf-visualiser-renderer.js";
 
 // =============================================================================
+// SVG Icons - from the shared icon library (icon-library.js)
+// =============================================================================
+
+let libraryMissingWarned = false;
+
+/**
+ * @function getIcon
+ * @description Returns an SVG icon with accessibility attributes and optional CSS class
+ * @param {string} name - Icon name from the shared icon library
+ * @param {Object} [options={}] - Configuration options
+ * @param {string} [options.className] - Additional CSS class to apply
+ * @returns {string} SVG markup with aria-hidden and class attributes, or empty string if not found
+ */
+function getIcon(name, options = {}) {
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
+    return "";
+  }
+
+  return library.getIcon(name, options);
+}
+
+// =============================================================================
 // MAIN CLASS
 // =============================================================================
 
@@ -383,7 +411,7 @@ class PDFConfidenceVisualiser {
 <!-- Phase H.4: No data message for unprocessed pages (above viewer) -->
       <div id="pdf-vis-no-data-message" class="pdf-vis-no-data-message" hidden
            role="status" aria-live="polite">
-        <span class="pdf-vis-no-data-icon"><svg aria-hidden="true" class="icon" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg></span>
+        <span class="pdf-vis-no-data-icon">${getIcon("warning")}</span>
         <span class="pdf-vis-no-data-text">No confidence data for this page. This page was not included in OCR processing.</span>
       </div>
 

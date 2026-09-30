@@ -39,32 +39,6 @@
   /* display: none !important; */
 }
 
-/* Auto-crop styles */
-.mermaid-container.auto-cropped {
-  transition: height 0.3s ease-in-out;
-  overflow: hidden;
-}
-
-.mermaid-container.auto-cropped svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-/* Ensure cropped diagrams still display properly across devices */
-@media (max-width: 1024px) {
-  .mermaid-container.auto-cropped {
-    min-height: 150px;
-  }
-}
-
-/* For better color contrast in auto-cropped mode */
-@media (prefers-reduced-motion: reduce) {
-  .mermaid-container.auto-cropped {
-    transition: none;
-  }
-}
-
 .mermaid-container {
   position: relative;
   margin: 1.5rem 0;
@@ -76,6 +50,43 @@
 .mermaid-container > div > svg {
   height: auto !important; /* Force auto height to respect content */
   overflow: visible;
+}
+
+/* F22 (parcel 9d): a diagram drawn wider than its box, so that its text
+   stays at least 10 px, scrolls sideways inside .mermaid, and
+   mermaid-view-controls.js makes the box a named, focusable group while it
+   does. Not in full screen, where pan and zoom reach the whole diagram. The
+   indicator is the site theme's own accent (--accent-color: #005c84 light,
+   #fcbc00 dark), inset so it sits on the box's own ground; on focus the box
+   otherwise shows only main.css's transparent *:focus outline. */
+.mermaid-container:not(.fullscreen-mode) > .mermaid {
+  overflow-x: auto;
+}
+
+.mermaid-container > .mermaid:focus-visible {
+  outline: 3px solid var(--accent-color, currentColor);
+  outline-offset: -3px;
+}
+
+/* Parcel 9e: the note in a scroll box (mermaid-view-controls.js), hidden
+   from screen readers. Since parcel 9e-2 (Matthew, 29 September 2026) it is
+   the box's last child, so the box's own ground and side borders contain it,
+   and sticky at the box's left edge, so it stays in view however far the
+   diagram is scrolled. Size, spacing and place only: no colour of its own,
+   so it takes the page's text colour and contrast. The hidden attribute is
+   restated because a site rule giving p a display would otherwise beat the
+   browser's [hidden]; never shown in full screen. */
+.mermaid-container > .mermaid > .mermaid-scroll-note {
+  position: sticky;
+  left: 0;
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8em;
+}
+
+.mermaid-container > .mermaid > .mermaid-scroll-note[hidden],
+.mermaid-container.fullscreen-mode > .mermaid > .mermaid-scroll-note {
+  display: none;
 }
 
 .mermaid-controls {
@@ -105,58 +116,6 @@
   width: 16px;
   height: 16px;
 }
-/* Slider styles */
-.mermaid-slider-group {
-  display: flex;
-
-  /* Zoom controls group */
-  .mermaid-zoom-controls-group {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-right: 0.5rem;
-  }
-
-  /* Fit options group */
-  .mermaid-fit-options-group {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-right: 0.5rem;
-  }
-
-  /* Preset sizes group */
-  .mermaid-preset-sizes-group {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-right: 0.5rem;
-  }
-
-  /* Advanced controls container */
-  .mermaid-advanced-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-    width: 100%;
-  }
-
-  /* Responsive design for small screens */
-  @media (max-width: 1024px) {
-    .mermaid-zoom-controls-group,
-    .mermaid-fit-options-group,
-    .mermaid-preset-sizes-group {
-      width: 100%;
-      margin-bottom: 0.5rem;
-      justify-content: center;
-    }
-  }
-  display: flex;
-  align-items: center;
-  margin-right: auto; /* Push other controls to the right */
-  gap: 0.5rem;
-}
 
 .sliders-container {
   display: flex;
@@ -172,68 +131,6 @@
   gap: 1rem;
   align-items: center;
   width: 100%;
-}
-
-.mermaid-width-slider-group,
-.mermaid-height-slider-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  position: relative;
-}
-
-.mermaid-slider-label {
-  font-size: 0.85rem;
-}
-
-.mermaid-size-slider {
-  width: 100px;
-  height: 8px;
-  -webkit-appearance: none;
-  appearance: none;
-  border-radius: 4px;
-  outline: none;
-}
-
-.mermaid-size-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.mermaid-size-slider::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.mermaid-size-slider:focus {
-  outline-offset: 5px;
-}
-
-/* Aspect ratio container */
-.aspect-ratio-container {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-left: 0.5rem;
-}
-
-/* Aspect ratio checkbox styling */
-.aspect-ratio-checkbox {
-  margin: 0;
-  cursor: pointer;
-}
-
-/* Aspect ratio label styling */
-.aspect-ratio-label {
-  font-size: 0.85rem;
-  cursor: pointer;
-  user-select: none;
 }
 
 /* Orientation control group */
@@ -264,110 +161,12 @@
   cursor: not-allowed;
 }
 
-/* Auto-fit button */
-button.mermaid-auto-fit-button {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-left: 0.5rem;
-}
-
-button.mermaid-auto-fit-button svg {
-  margin-right: 0.25rem;
-}
-
-/* Auto-fit on load checkbox */
-.mermaid-auto-fit-on-load-label {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  margin-left: 0.5rem;
-  cursor: pointer;
-  user-select: none;
-}
-
-.mermaid-auto-fit-on-load-checkbox {
-  margin: 0;
-  cursor: pointer;
-}
-
-/* Visual indicator for linked sliders */
-.sliders-linked::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 2px;
-  z-index: 1;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.slider-adjusting::-webkit-slider-thumb {
-  animation: slider-highlight 0.5s ease-out;
-}
-
-.slider-adjusting::-moz-range-thumb {
-  animation: slider-highlight 0.5s ease-out;
-}
-
-/* Padding control group */
-.mermaid-padding-control-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.mermaid-padding-label {
-  font-size: 0.85rem;
-  min-width: 60px;
-}
-
-/* Responsive mode checkbox */
-.mermaid-responsive-mode-label {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.85rem;
-  margin-left: 0.5rem;
-  cursor: pointer;
-}
-
-.mermaid-responsive-mode-checkbox {
-  margin: 0;
-}
-
-.mermaid-zoom-controls-group,
-.mermaid-fit-options-group,
-.mermaid-preset-sizes-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  width: 100%;
-}
-
-button[aria-label="Apply content-aware scaling"] {
-  float: left;
-}
-
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .sliders-container {
     flex-direction: column;
     /* gap: 0.5rem; */
     width: 100%;
-  }
-
-  .mermaid-zoom-controls-group .mermaid-control-button,
-  .mermaid-fit-options-group .mermaid-control-button,
-  .mermaid-preset-sizes-group .mermaid-control-button {
-    width: auto !important;
-    display: inline-block;
   }
 
   .mermaid-controls-row {
@@ -377,8 +176,6 @@ button[aria-label="Apply content-aware scaling"] {
     align-items: stretch;
   }
 
-  .mermaid-width-slider-group,
-  .mermaid-height-slider-group,
   .mermaid-orientation-group {
     width: 100%;
   }
@@ -387,38 +184,9 @@ button[aria-label="Apply content-aware scaling"] {
     flex-direction: column;
     align-items: stretch;
   }
-
-  .mermaid-padding-control-group {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .mermaid-responsive-mode-label {
-    margin-left: 0;
-    margin-top: 0.5rem;
-  }
-
-  /* Adjust linked indicator for vertical layout */
-  .sliders-linked::after {
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    right: auto;
-    width: 2px;
-    height: auto;
-  }
-
-  .slider-group-linked::after {
-    right: auto;
-    top: auto;
-    bottom: -15px;
-    left: 50%;
-    transform: translateX(-50%) rotate(90deg);
-  }
 }
 
-/* Normal viewport styling for reset button */
-button[aria-label="Reset diagram to default size"],
+/* Normal viewport styling for buttons in a toolbar row */
 .mermaid-controls-row button.mermaid-control-button {
   width: auto;
   justify-content: center;
@@ -427,8 +195,7 @@ button[aria-label="Reset diagram to default size"],
 
 /* Override mobile styles for normal viewport */
 @media (min-width: 767px) {
-  .mermaid-control-button,
-  button[aria-label="Reset diagram to default size"] {
+  .mermaid-control-button {
     width: auto !important;
     max-width: none !important;
     justify-content: center !important;
@@ -454,10 +221,7 @@ button[aria-label="Reset diagram to default size"],
   }
 
   /* Make all control groups stretch full width */
-  .mermaid-orientation-group,
-  .mermaid-width-slider-group,
-  .mermaid-height-slider-group,
-  .aspect-ratio-container {
+  .mermaid-orientation-group {
     width: 100%;
     /* margin-bottom: 0.5rem; */
     justify-content: flex-start;
@@ -479,8 +243,7 @@ button[aria-label="Reset diagram to default size"],
   }
 
   /* Ensure all buttons have exactly the same width and styling in mobile view */
-  .mermaid-control-button,
-  button[aria-label="Reset diagram to default size"] {
+  .mermaid-control-button {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0.25rem 0 !important;
@@ -503,33 +266,11 @@ button[aria-label="Reset diagram to default size"],
     margin: 0 !important;
   }
 
-  /* Ensure sliders take full width on small screens */
-  .mermaid-size-slider {
-    width: 100%;
-    flex-grow: 1;
-    max-width: none;
-  }
-
-  /* Adjust width/height slider groups to fill width */
-  .mermaid-width-slider-group,
-  .mermaid-height-slider-group {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-  }
-
   /* Make labels and controls layout better on mobile */
-  .mermaid-slider-label,
   .mermaid-orientation-label {
     display: block;
     width: auto;
     margin-bottom: 0.25rem;
-  }
-
-  /* Make aspect ratio container stretch and align better */
-  .aspect-ratio-container {
-    /* justify-content: center; */
-    padding: 0.5rem 0;
   }
 }
 @media (max-width: 1024px) {

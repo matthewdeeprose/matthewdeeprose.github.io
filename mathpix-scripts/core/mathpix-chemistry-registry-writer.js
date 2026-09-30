@@ -459,7 +459,8 @@
    * working MMD string, keyed by registry image ID. Mirrors the module-private
    * mathpix-alt-text-mmd-serialiser.js _parseAppendixEntries: each
    * `<!-- img-desc:ID -->` marker anchors an entry whose text is the prose
-   * between its heading line (if any) and the next marker (or end-of-document),
+   * between its heading line (if any) and the first of: the serialiser's
+   * text-in-image marker (TC-1), the next marker, or end-of-document,
    * with leading / trailing blank lines trimmed and internal blank lines
    * preserved. Duplicate IDs keep the first occurrence. Empty Map for falsy /
    * non-string input.
@@ -478,6 +479,17 @@
       if (m) markers.push({ line: i, id: m[1] });
     }
     if (markers.length === 0) return map;
+
+    // TC-1. The body ends at the serialiser's text-in-image marker, read from
+    // the serialiser at call time (this file loads before it) rather than
+    // copied, so the two readers cannot drift apart on the marker's form.
+    const textMarkerRe =
+      window.MathPixAltTextMMDSerialiser?.TEXT_IN_IMAGE_MARKER_RE || null;
+    if (!textMarkerRe) {
+      logWarn(
+        "extractWorkingLongById(): serialiser TEXT_IN_IMAGE_MARKER_RE unavailable — a text-in-image subsection would be read as body",
+      );
+    }
 
     for (let mi = 0; mi < markers.length; mi++) {
       const { line: markerLine, id } = markers[mi];
@@ -504,7 +516,20 @@
       }
 
       const textStart = headingLine === -1 ? markerLine + 1 : headingLine + 1;
-      const textLines = lines.slice(textStart, nextMarkerLine);
+
+      // TC-1. Stop at the first text-in-image marker before the next entry;
+      // the subsection after it is not long-description prose.
+      let textEnd = nextMarkerLine;
+      if (textMarkerRe) {
+        for (let i = textStart; i < nextMarkerLine; i++) {
+          if (textMarkerRe.test(lines[i])) {
+            textEnd = i;
+            break;
+          }
+        }
+      }
+
+      const textLines = lines.slice(textStart, textEnd);
       while (textLines.length > 0 && textLines[0].trim() === "")
         textLines.shift();
       while (

@@ -198,9 +198,163 @@ const MathPixAltTextCloudAdapter = (function () {
     return found.modelId;
   }
 
+  /**
+   * Is the shared model registry MODULE absent from the page?
+   *
+   * PARCEL CF-1, 14 September 2026. THE TWO CONDITIONS THIS SEPARATES ARE NOT
+   * THE SAME FAULT, AND UNTIL THIS HELPER EXISTED THE RESOLVER COULD NOT TELL
+   * THEM APART.
+   *
+   *   CONDITION A — an absent PREFERENCE for a provider whose eligible list is
+   *   healthy. The registry is there and has no alt-text entry for this
+   *   provider. Falling through to `eligible[0]` is long-standing behaviour,
+   *   it is what an absent preference has always meant here, and CF-1 leaves it
+   *   EXACTLY as it was. `_preferredModelForProvider` still returns null for
+   *   it, the find below still misses, and `eligible[0]` still wins.
+   *
+   *   CONDITION B — an absent or unreadable REGISTRY MODULE. The system does
+   *   not know what it prefers for ANY purpose on ANY provider. Falling through
+   *   is wrong: the measured choice is not merely missing for this provider,
+   *   the whole record of measured choices is gone.
+   *
+   * BOTH ARRIVE AT `_preferredModelForProvider` AS A BARE `null`, which is why
+   * the rung could not distinguish them and why this is a SEPARATE predicate
+   * rather than a widened return. That helper's signature is unchanged and its
+   * two-clause warning is unchanged — three suite rows and one measurement
+   * probe read it, and a wider return type would have reached all of them.
+   *
+   * WHAT IT COST, MEASURED. With the registry deleted from the page,
+   * `_resolveModel` resolved `amazon/nova-lite-v1` — the first of 154
+   * vision-eligible models — and generation proceeded on it, writing
+   * descriptions into the MMD. A person saw and heard NOTHING: no refusal, no
+   * toast, no status line, only a console warning. Alt text is the
+   * accessibility-critical output of this toolset, so a model nobody measured
+   * writing it unannounced is the worst shape this seam can fail in.
+   *
+   * Reached at CALL time and never captured — the same reason the provider and
+   * the registry itself are.
+   *
+   * @returns {boolean} true when nothing on the page can answer a preference
+   */
+  function _modelRegistryIsAbsent() {
+    const registry = window.MathPixModelRegistry;
+    return !registry || typeof registry.recommendedModel !== "function";
+  }
+
   /** Exact refuse message for a non-vision resolved model (British spelling). */
   const NON_VISION_REFUSAL =
     "The selected model cannot process images. Choose a vision-capable model.";
+
+  /**
+   * Exact refuse message for an ABSENT REGISTRY MODULE (parcel WL-1,
+   * 14 September 2026; British spelling).
+   *
+   * A SECOND CONSTANT, NOT A REPLACEMENT, AND THAT IS THE WHOLE POINT.
+   * `NON_VISION_REFUSAL` is reached by THREE conditions — a caller-supplied
+   * non-vision `options.model`, a provider whose eligible vision list is empty,
+   * and CF-1's absent registry module — and it is CORRECT for the first two.
+   * Replacing its text would have made the vision case start lying, so the
+   * sharing is separated at `generate` instead and each condition keeps the
+   * sentence that is true of it.
+   *
+   * WHY THE TAIL IS NOT DROPPED to share one sentence with the Context tab.
+   * The first clause is RF-1's, shipped and heard at RF-2, and it names the
+   * condition a person can act on. The tail names WHICH workflow stopped, and
+   * that is the half that tells someone whether to go and look at their
+   * description or at their context fields. A shared sentence would have to
+   * lose it.
+   *
+   * WHAT IT REPLACES, AND WHY CF-1 DID NOT REPLACE IT ITSELF. CF-1 reused
+   * `NON_VISION_REFUSAL` for this condition and recorded in its own comment
+   * that the wording was KNOWN WRONG — it sends a person hunting for a
+   * vision-capable model when no model was selected at all and nothing they can
+   * do to the MODEL fixes a page-configuration fault. Correcting it owed a
+   * screen-reader listen, which is this parcel.
+   */
+  const ABSENT_REGISTRY_REFUSAL =
+    "No AI model is set up for the AI provider you have selected, so no description can be written.";
+
+  /**
+   * The provider stop signals that mean the reply was CUT OFF (parcel PB-3,
+   * 27 September 2026). Matched case-insensitively against the embed's
+   * top-level `finishReason`, which AW-23 carries through unchanged from the
+   * wire on both the streaming and the non-streaming path. OpenRouter
+   * normalises every provider's own reason to the OpenAI-canonical "length"
+   * (Anthropic's native "max_tokens" arrives as "length"), so one value is the
+   * whole list — the same list the enhancer refuses on
+   * (PROVIDER_CUT_FINISH_REASONS in mathpix-ai-enhancer.js). A local copy
+   * rather than a reach into that module, which sits in another layer.
+   *
+   * WHY THE ADAPTER AND NOT THE ORCHESTRATOR. The parser never fails: a cut
+   * reply parses to whatever sections arrived, and the write stage writes
+   * them. Measured at PB-3 by replaying PB-2 cell 11 (190 characters, 1,918 of
+   * its 2,000 tokens spent reasoning) through the shipped path: a 41-character
+   * title and a 120-character alt text cut mid-word were written to the
+   * registry and "Two descriptions written." was spoken as a success. Only the
+   * adapter holds the stop signal, so only the adapter can refuse on it.
+   */
+  const PROVIDER_CUT_FINISH_REASONS = Object.freeze(["length"]);
+
+  /**
+   * The `reason` a refused cut-off reply carries on its failed result (PB-3).
+   * A field ADDED to the finalised contract result, because the contract's
+   * `error` slot is the SPOKEN line and must not carry a new sentence here:
+   * the refusal speaks the contract's existing DEFAULT_ERROR_MESSAGE through
+   * the orchestrator's existing error path, unchanged. Whether a line is
+   * written changed, not its wording (the AW-29 precedent).
+   */
+  const TRUNCATED_REASON = "truncated";
+
+  /**
+   * The `reason` codes the two fixed refusals carry on their failed results
+   * (parcel MA-5c-2, 28 September 2026). Added beside PB-3's, for the same
+   * reason: the `error` slot is the sentence and must not be parsed to find
+   * out which condition refused. The orchestrator maps a failed result to the
+   * sentence a person hears by these codes and by `httpStatus`, never by the
+   * text. Neither refusal's sentence changes.
+   */
+  const ABSENT_REGISTRY_REASON = "absent-registry";
+  const NON_VISION_REASON = "non-vision";
+
+  /**
+   * The HTTP status a thrown send failure carried, or null (MA-5c-2).
+   *
+   * The two providers throw different shapes, measured in the live tree:
+   * the OpenRouter stream client throws an OpenRouterClientError with the
+   * status at `metadata.status` (its API_ERROR site), and the Foundry
+   * provider throws a plain Error with the status at `status` (both its
+   * streaming and its non-streaming request). A dropped connection throws a
+   * TypeError with neither. Only an integer of 400 or more counts: anything
+   * else is not an HTTP failure and the result carries no status at all.
+   *
+   * @param {*} error - whatever the send threw
+   * @returns {number|null}
+   */
+  function _httpStatusOf(error) {
+    const status =
+      error && error.metadata && error.metadata.status != null
+        ? error.metadata.status
+        : error && error.status;
+    return Number.isInteger(status) && status >= 400 ? status : null;
+  }
+
+  /**
+   * Did the provider say it cut this reply off?
+   *
+   * An absent, null or non-string reason is NOT a cut: the embed reports null
+   * when the wire carried no reason, and refusing on that would refuse every
+   * reply from a transport that sends none.
+   *
+   * @param {Object|null} response - the object `embed.sendRequest` resolved
+   * @returns {boolean}
+   */
+  function _replyWasCutOff(response) {
+    const reason = response ? response.finishReason : null;
+    return (
+      typeof reason === "string" &&
+      PROVIDER_CUT_FINISH_REASONS.includes(reason.toLowerCase())
+    );
+  }
 
   /**
    * Sentinel returned by _resolveModel when nothing resolves. Chosen as `null`
@@ -208,6 +362,29 @@ const MathPixAltTextCloudAdapter = (function () {
    * non-string), and generate then refuses via the standard send-boundary path.
    */
   const NO_MODEL_RESOLVED = null;
+
+  // ===========================================================================
+  // MP-2 — THE USER'S OWN MODEL CHOICE (module scope, not persisted)
+  // ===========================================================================
+  //
+  // MIRRORS mathpix-context-ai.js's MP-1 arrangement exactly, and for the same
+  // reasons — module scope rather than a property of an instance, because this
+  // module is `"use strict"` and both `_resolveModel` and `generate` are called
+  // in ways a `this`-bound read would not survive; and NOT PERSISTED, because
+  // the alt-text workflow writes no localStorage key today (confirmed empty at
+  // MP-2) and a choice that does not outlive the page cannot be restored under
+  // a provider that does not serve it — the strongest available form of the
+  // fail-safe the picker owes. The ACTIVE provider itself IS carried between
+  // page loads by the browser profile (AGENTS.md § Testing), which is exactly
+  // why every check below reads the live predicates rather than trusting
+  // anything stored.
+
+  /** The user's own pick, or null. Set only through _setUserModelChoice. */
+  let _userModelChoice = null;
+
+  // ---------------------------------------------------------------------------
+  // Adapter changes below continue in the RESOLUTION section (_resolveModel).
+  // ---------------------------------------------------------------------------
 
   /**
    * Returned in place of the shared list when the capability module is absent.
@@ -288,6 +465,186 @@ const MathPixAltTextCloudAdapter = (function () {
     return cap.isModelVisionCapable(modelId);
   }
 
+  /**
+   * Is this model served by the provider the user currently has selected?
+   *
+   * MP-2's own reach into the shared module, on the SAME facade shape as
+   * `isModelVisionCapable` above: reached at CALL time, guarded, false when
+   * the authority is absent. Needed for `_resolveUserChoice` and
+   * `_setUserModelChoice` — a picker's override list is filtered by
+   * `isModelVisionCapable` alone (matching `getEligibleModels`'s own
+   * per-provider scoping), but a STORED choice must be re-validated against
+   * BOTH predicates on every resolve, because the active provider can change
+   * after the choice was made.
+   *
+   * @param {string} modelId
+   * @returns {boolean}
+   */
+  function _isModelProviderAvailable(modelId) {
+    const shared = window.MathPixModelCapability;
+    if (!shared || typeof shared.isModelProviderAvailable !== "function") {
+      return false;
+    }
+    return shared.isModelProviderAvailable(modelId);
+  }
+
+  /**
+   * May the resolved model be sent the reasoning off switch? (parcel MA-5b)
+   *
+   * Asks the shared module's reasoningOffAccepted, reached at CALL time like
+   * every other predicate here, because the capability module may load after
+   * this file. If the module or the predicate is absent the answer is false
+   * and ONE warning is logged for this send: no switch is the body this adapter
+   * sent before PB-5b, so an absent authority costs tokens and never costs the
+   * request, which is what sending the switch to a model that requires
+   * reasoning does (anthropic/claude-fable-5, HTTP 400, MA-4).
+   *
+   * @param {string} modelId - the resolved id about to be sent.
+   * @returns {boolean}
+   */
+  function _reasoningOffAccepted(modelId) {
+    const shared = window.MathPixModelCapability;
+    if (!shared || typeof shared.reasoningOffAccepted !== "function") {
+      logWarn(
+        "generate(): MathPixModelCapability.reasoningOffAccepted is unavailable, so the reasoning off switch is not sent.",
+        { model: modelId },
+      );
+      return false;
+    }
+    return shared.reasoningOffAccepted(modelId) === true;
+  }
+
+  /**
+   * The embed's provider ids, mapped to the two the shared module's
+   * outputBudgetFor speaks. Both Foundry surfaces fold to "foundry"; any other
+   * id passes through unchanged and earns the 2000 default there.
+   */
+  const OUTPUT_BUDGET_PROVIDER = Object.freeze({
+    openrouter: "openrouter",
+    "azure-openai": "foundry",
+    "azure-responses": "foundry",
+  });
+
+  /**
+   * The ceiling this adapter sent before MA-12a, and the one it sends when the
+   * shared module cannot name a budget. Written to the embed explicitly rather
+   * than left to it, because a reused embed can carry a stale value from an
+   * earlier send.
+   */
+  const HISTORICAL_OUTPUT_BUDGET = 2000;
+
+  /**
+   * Write the ceiling onto the embed. setMaxTokens when it exists, an
+   * assignment otherwise, the same split as setModel.
+   *
+   * @param {object} embed - the embed about to send.
+   * @param {number} value - the completion-token ceiling.
+   */
+  function _applyMaxTokens(embed, value) {
+    if (typeof embed.setMaxTokens === "function") {
+      embed.setMaxTokens(value);
+    } else {
+      embed.max_tokens = value;
+    }
+  }
+
+  /**
+   * The completion-token ceiling for the resolved model (parcel MA-12a), or
+   * null when the shared module cannot say.
+   *
+   * Reached at CALL time like every other predicate here. If the module or
+   * outputBudgetFor is absent the answer is null and ONE warning is logged for
+   * this send: the caller then writes HISTORICAL_OUTPUT_BUDGET explicitly.
+   *
+   * @param {string} modelId - the resolved id about to be sent.
+   * @param {object|null} routed - the embed's provider, read after setModel.
+   * @returns {number|null}
+   */
+  function _outputBudget(modelId, routed) {
+    const shared = window.MathPixModelCapability;
+    if (!shared || typeof shared.outputBudgetFor !== "function") {
+      logWarn(
+        "generate(): MathPixModelCapability.outputBudgetFor is unavailable, so max_tokens is set to the historical 2000.",
+        { model: modelId },
+      );
+      return null;
+    }
+    const routedId = routed && typeof routed.id === "string" ? routed.id : null;
+    const providerId = Object.prototype.hasOwnProperty.call(
+      OUTPUT_BUDGET_PROVIDER,
+      routedId,
+    )
+      ? OUTPUT_BUDGET_PROVIDER[routedId]
+      : routedId;
+    const budget = shared.outputBudgetFor(modelId, providerId);
+    return Number.isFinite(budget) && budget > 0 ? budget : null;
+  }
+
+  /**
+   * The user's pick, re-validated against the live predicates — or null.
+   *
+   * THE SECOND OF TWO INDEPENDENT GUARDS (MP-2, mirroring MP-1). The first is
+   * the picker's own provider-change rebuild in mathpix-image-manager-ui.js,
+   * which clears the pick outright; this one re-asks both send-boundary
+   * predicates on every resolve, so the discard does not depend on that
+   * handler having fired, having been subscribed, or having run before the
+   * click. A single guard that silently stops running is indistinguishable
+   * from one that is working.
+   *
+   * @returns {string|null}
+   */
+  function _resolveUserChoice() {
+    const chosen = _userModelChoice;
+    if (!chosen) return null;
+
+    if (!isModelVisionCapable(chosen) || !_isModelProviderAvailable(chosen)) {
+      logWarn(
+        `_resolveUserChoice: the chosen model '${chosen}' is not served by the active provider or cannot process images; discarding the choice and falling back to the measured preference.`,
+      );
+      _userModelChoice = null;
+      return null;
+    }
+    return chosen;
+  }
+
+  /**
+   * Record the user's pick, refusing anything the send would refuse.
+   *
+   * VALIDATES AT THE CONTROL AS WELL AS AT THE RESOLVER, matching MP-1. The
+   * picker only ever offers ids that pass both predicates, so a refusal here
+   * means the page state moved underneath the control.
+   *
+   * @param {string|null} modelId null or "" clears the pick
+   * @returns {boolean} true when the choice was recorded or cleared
+   */
+  function _setUserModelChoice(modelId) {
+    if (!modelId) {
+      _userModelChoice = null;
+      logDebug("Alt-text model choice cleared; the measured preference applies.");
+      return true;
+    }
+    if (typeof modelId !== "string" || !modelId.trim()) {
+      logWarn("_setUserModelChoice: refusing a model id that is not a string.", {
+        modelId,
+      });
+      return false;
+    }
+    if (!isModelVisionCapable(modelId) || !_isModelProviderAvailable(modelId)) {
+      logWarn(
+        `_setUserModelChoice: refusing '${modelId}' — the active provider does not serve it, or it cannot process images.`,
+      );
+      return false;
+    }
+    _userModelChoice = modelId;
+    logInfo("Alt-text model choice set by the user", { model: modelId });
+    return true;
+  }
+
+  /** The user's current pick, or null. Exported so a row can read it. */
+  function _getUserModelChoice() {
+    return _userModelChoice;
+  }
+
   // ===========================================================================
   // MODEL RESOLUTION (F2 selection — one resolved id, no picker UI)
   // ===========================================================================
@@ -303,6 +660,10 @@ const MathPixAltTextCloudAdapter = (function () {
    * ProviderSwitcher and EmbedModelSelector at CALL time with guards; NO embed
    * involved.
    *
+   * CF-1 added ONE rung and moved none: an absent registry MODULE returns the
+   * sentinel rather than falling through. An absent PREFERENCE on a present
+   * registry is untouched and still takes `eligible[0]`.
+   *
    * @param {Object} [options]
    * @param {string} [options.model] - Explicit model id override.
    * @returns {string|null} A resolved model id, or NO_MODEL_RESOLVED (null) if
@@ -315,6 +676,20 @@ const MathPixAltTextCloudAdapter = (function () {
     if (typeof opts.model === "string" && opts.model.trim()) {
       logDebug("_resolveModel: using explicit model option:", opts.model);
       return opts.model;
+    }
+
+    // MP-2: THE USER'S OWN PICK OUTRANKS THE MEASURED PREFERENCE, and it is
+    // the FIRST rung after an explicit override rather than a filter applied
+    // to a later one — mirrors mathpix-context-ai.js's MP-1 placement exactly.
+    // It can still return null (nothing chosen, or a stale choice the active
+    // provider no longer serves), in which case every rung below runs exactly
+    // as it did before this parcel. FAIL SAFE, not fail open: the discard
+    // narrows the choice back to the measured preference, never widens it to
+    // a model nobody checked.
+    const userPick = _resolveUserChoice();
+    if (userPick) {
+      logDebug("_resolveModel: using the user's own pick:", userPick);
+      return userPick;
     }
 
     // Active provider (default 'openrouter' when the switcher is absent).
@@ -350,6 +725,58 @@ const MathPixAltTextCloudAdapter = (function () {
       return NO_MODEL_RESOLVED;
     }
 
+    // ---- CF-1: AN ABSENT REGISTRY MODULE REFUSES, IT DOES NOT FALL THROUGH --
+    //
+    // KEYED ON THE MODULE, NEVER ON A NULL PREFERENCE. That distinction is the
+    // whole parcel: a null preference means "this provider has no measured
+    // winner", which has always meant take the first eligible model, and an
+    // absent module means "nothing on this page knows what any provider
+    // prefers". Both reach `_preferredModelForProvider` as a bare null, so a
+    // guard written on the preference would refuse for BOTH and silently
+    // retire condition A's long-standing behaviour. `_modelRegistryIsAbsent`
+    // asks the question the rung actually needs answering.
+    //
+    // ORDERING, DELIBERATE ON BOTH SIDES. It sits BELOW the explicit
+    // `options.model` override, because a caller-supplied id is a deliberate
+    // choice that owes the registry nothing. It sits BELOW the eligible-list
+    // gate, so that gate's refusal — the shipped one, which row 7 pins — fires
+    // first and unchanged when both conditions hold at once.
+    //
+    // THE SENTINEL, NOT A NEW SURFACE. Returning NO_MODEL_RESOLVED puts this
+    // refusal on the path the eligible-list gate already uses:
+    // `isModelVisionCapable(null)` is false, `generate` refuses at the send
+    // boundary with NO ATTACH AND NO SEND, and the existing status line is
+    // written. CF-1 introduces no wording of its own.
+    //
+    // THE WORDING IS CORRECTED AT WL-1 (14 September 2026), and the correction
+    // is made HERE rather than by re-asking the predicate in `generate`.
+    // Re-asking would answer the wrong question when BOTH conditions hold at
+    // once: the empty-eligible-list gate above returns first and its refusal is
+    // the shipped one, so a predicate consulted afterwards would overwrite a
+    // correct sentence with this one. Recording the reason on the rung that
+    // fired preserves CF-1's deliberate ordering by construction.
+    //
+    // `opts.reason` IS AN OPTIONAL OUT-PARAMETER AND CHANGES NO SIGNATURE.
+    // `_resolveModel` is EXPORTED and read by at least six measurement drives
+    // plus the suite, all of which treat the return as a string id or null and
+    // pass either `{}` or `{ model }`. Its arity, its return type and every one
+    // of those call sites are untouched: a caller that supplies no `reason`
+    // simply has nothing written back, which is what all of them do.
+    if (_modelRegistryIsAbsent()) {
+      if (opts.reason && typeof opts.reason === "object") {
+        opts.reason.registryAbsent = true;
+      }
+      // logError, NOT the logWarn `_preferredModelForProvider` uses for an
+      // absent preference. THE TWO PATHS MUST NOT PRODUCE THE SAME MESSAGE:
+      // one is a data gap in a module that is present and working, the other
+      // is the module missing from the page altogether, and only the second is
+      // a page-configuration fault that stops generation.
+      logError(
+        `_resolveModel: the shared model registry module is absent from the page, so no measured preference can be read for any provider — refusing to generate rather than falling through to the first eligible model. This is a page-configuration fault: check the script order in tools.html.`,
+      );
+      return NO_MODEL_RESOLVED;
+    }
+
     // Default-pick ladder: the ACTIVE PROVIDER'S preferred id if eligible,
     // else first available. THE RUNG IS UNCHANGED IN SHAPE AND POSITION. AW-8
     // made the id it looks for per-provider; I5-3 moved WHERE that id is read
@@ -357,7 +784,9 @@ const MathPixAltTextCloudAdapter = (function () {
     // provider the registry has no alt-text entry for. Do NOT add an early
     // return on a null `preferredId` — the falsy guard below already skips the
     // find, and the fall-through to `eligible[0]` is what an absent preference
-    // has always meant here.
+    // has always meant here. CF-1's refusal above is keyed on the MODULE and
+    // deliberately not on this value, so this rung is reached exactly as often
+    // as it was before.
     const preferredId = _preferredModelForProvider(provider);
     const preferred = preferredId
       ? eligible.find((m) => m && m.id === preferredId)
@@ -406,6 +835,9 @@ const MathPixAltTextCloudAdapter = (function () {
      *      so the send provably goes out on the id the result reports,
      *   3. attach the image,
      *   4. time + await the send,
+     *   4b. a reply the provider cut off (finishReason "length") → finalise
+     *      (SOURCE.CLOUD, error) with reason "truncated" and the raw text kept
+     *      (PB-3),
      *   5. success → finalise(SOURCE.CLOUD, success),
      *   6. catch  → finalise(SOURCE.CLOUD, error).
      *
@@ -419,35 +851,54 @@ const MathPixAltTextCloudAdapter = (function () {
       const g = genOptions || {};
       const contract = _contract();
 
-      // 1. Resolve the single model id to use.
-      const resolvedId = _resolveModel({ model: g.model });
+      // 1. Resolve the single model id to use. The `reason` object is WL-1's
+      //    out-parameter: `_resolveModel` writes into it on the rung that
+      //    fired, so the sentence below names the condition that actually
+      //    refused rather than one re-derived afterwards.
+      const reason = {};
+      const resolvedId = _resolveModel({ model: g.model, reason });
 
       // 2. Send-boundary re-check on the RESOLVED model (F6). Refuse a
       //    non-vision model deterministically — no attach, no send.
       if (!isModelVisionCapable(resolvedId)) {
+        // WL-1: ONE OF TWO SENTENCES, chosen by which rung refused. An absent
+        // registry module gets the honest sentence; everything else keeps the
+        // shipped one, so a genuinely non-vision model is still told exactly
+        // what it was told before and the vision advice stays true.
+        const refusal = reason.registryAbsent
+          ? ABSENT_REGISTRY_REFUSAL
+          : NON_VISION_REFUSAL;
+        // MA-5c-2: the code travels beside the sentence, chosen by the same
+        // rung, so the two can never disagree.
+        const refusalReason = reason.registryAbsent
+          ? ABSENT_REGISTRY_REASON
+          : NON_VISION_REASON;
         logWarn(
-          `generate(): refusing non-vision resolved model '${String(
+          `generate(): refusing resolved model '${String(
             resolvedId,
           )}' at the send boundary`,
+          { registryAbsent: !!reason.registryAbsent },
         );
-        if (contract) {
-          return contract.finalise(contract.SOURCE.CLOUD, {
-            status: contract.STATUS.ERROR,
-            error: NON_VISION_REFUSAL,
-            model: resolvedId,
-          });
-        }
-        // Defensive last resort only — the contract sibling loads before this
-        // adapter, so it is present in practice. Shape matches an error result.
-        return {
-          text: null,
-          status: "error",
-          duration: null,
-          model: resolvedId,
-          source: "cloud-llm",
-          reasoning: null,
-          error: NON_VISION_REFUSAL,
-        };
+        const refused = contract
+          ? contract.finalise(contract.SOURCE.CLOUD, {
+              status: contract.STATUS.ERROR,
+              error: refusal,
+              model: resolvedId,
+            })
+          : {
+              // Defensive last resort only — the contract sibling loads before
+              // this adapter, so it is present in practice. Shape matches an
+              // error result.
+              text: null,
+              status: "error",
+              duration: null,
+              model: resolvedId,
+              source: "cloud-llm",
+              reasoning: null,
+              error: refusal,
+            };
+        refused.reason = refusalReason;
+        return refused;
       }
 
       // A resolved, vision-capable model — proceed to attach + send.
@@ -501,6 +952,59 @@ const MathPixAltTextCloudAdapter = (function () {
           via: typeof embed.setModel === "function" ? "setModel" : "assignment",
         });
 
+        // ---- PB-5b: reasoning OFF on OpenRouter, never on Foundry ------------
+        // With no reasoning field, anthropic/claude-sonnet-5 reasoned on 5 of 6
+        // alt-text cells and ran out of tokens on 4 (PB-4); with reasoning off
+        // it reasoned on none. So an OpenRouter send asks for it off, through
+        // the embed's sendReasoningOff opt-in.
+        //
+        // Keyed on the provider the RESOLVED model routes to, read off the embed
+        // after the model is applied. That is the active provider on every
+        // resolved path (the picker and the ladder only offer the active
+        // provider's models), and it stays correct for an explicit model
+        // override. Assigned on EVERY send, true or false, because the edit view
+        // reuses one embed across provider switches. An injected stub with no
+        // provider getter is left untouched.
+        //
+        // MA-5b: AND only when the resolved model accepts the switch. 42 of
+        // the 154 OpenRouter ids the picker offers declare reasoning mandatory,
+        // and anthropic/claude-fable-5 answered the switch with HTTP 400
+        // (MA-4, MA-5). The shared module holds the list of ids that may
+        // receive it; every other id is sent no reasoning field.
+        if ("provider" in embed) {
+          const routed = embed.provider;
+          const routedToOpenRouter = !!routed && routed.id === "openrouter";
+          const offAccepted = routedToOpenRouter
+            ? _reasoningOffAccepted(resolvedId)
+            : false;
+          const sendOff = routedToOpenRouter && offAccepted;
+          embed.sendReasoningOff = sendOff;
+          logDebug("generate(): reasoning off switch", {
+            provider: routed ? routed.id : null,
+            model: resolvedId,
+            sendReasoningOff: sendOff,
+          });
+
+          // ---- MA-12a: the output budget ---------------------------------------
+          // A mandatory-reasoning model spends completion tokens on reasoning that
+          // cannot be switched off, and the embed's shipped 2000 counts them:
+          // anthropic/claude-opus-5.5 finished `length` on 4 of 33 cells at
+          // exactly 2000 (MA-10). The shared module says 3000 for those and for
+          // every Foundry id, 2000 otherwise. Assigned on EVERY send for the
+          // reason sendReasoningOff is: the edit view reuses one embed across
+          // model and provider switches, so a 3000 must not outlive its model.
+          // Reaches the wire as max_tokens on OpenRouter and as
+          // max_completion_tokens on Foundry, through buildOptions and each
+          // provider's buildRequest. When the module cannot name a budget the
+          // historical 2000 is written explicitly, never left to the embed.
+          const budget = _outputBudget(resolvedId, routed);
+          _applyMaxTokens(
+            embed,
+            budget !== null ? budget : HISTORICAL_OUTPUT_BUDGET,
+          );
+          logDebug("generate(): output budget", { model: resolvedId, budget });
+        }
+
         // 3. Attach the image.
         logDebug("generate(): attaching image to embed");
         await embed.attachFile(g.image);
@@ -516,6 +1020,48 @@ const MathPixAltTextCloudAdapter = (function () {
         sendStart = Date.now();
         const response = await embed.sendRequest(g.prompt);
         duration = Date.now() - sendStart;
+
+        // 4b. PB-3 — a reply the provider CUT OFF is refused, not written. It
+        //     returns the contract's ordinary failed-result shape, so the
+        //     orchestrator takes its existing error path: nothing is parsed,
+        //     nothing reaches the registry, and ONE error line is spoken — the
+        //     contract's existing DEFAULT_ERROR_MESSAGE, so no new sentence.
+        //     The raw reply is KEPT in `text` (the contract allows text on an
+        //     error result) for anyone diagnosing the refusal, and `reason`
+        //     names why. No interface surface shows it: the alt-text lane has
+        //     no disclosure for a raw reply, and adding one is a new surface.
+        if (_replyWasCutOff(response)) {
+          logWarn(
+            "generate(): the provider cut the reply off — refusing it rather than writing a partial description",
+            {
+              finishReason: response.finishReason,
+              nativeFinishReason: response.nativeFinishReason ?? null,
+              chars: typeof response.text === "string" ? response.text.length : null,
+            },
+          );
+          const refused = contract
+            ? contract.finalise(contract.SOURCE.CLOUD, {
+                status: contract.STATUS.ERROR,
+                error: contract.DEFAULT_ERROR_MESSAGE,
+                text: response.text,
+                reasoning: response.reasoning,
+                duration,
+                model: resolvedId,
+              })
+            : {
+                // Defensive last resort (contract absent), matching the
+                // catch below.
+                text: response.text ?? null,
+                status: "error",
+                duration,
+                model: resolvedId,
+                source: "cloud-llm",
+                reasoning: response.reasoning ?? null,
+                error: "Unknown generation error",
+              };
+          refused.reason = TRUNCATED_REASON;
+          return refused;
+        }
 
         // 5. Success — map the confirmed raw fields into the contract. `text`
         //    and `reasoning` are top-level on the raw response; `duration` and
@@ -548,24 +1094,29 @@ const MathPixAltTextCloudAdapter = (function () {
         }
         const message = error && error.message ? error.message : "";
         logError("generate(): send failed", message || error);
-        if (contract) {
-          return contract.finalise(contract.SOURCE.CLOUD, {
-            status: contract.STATUS.ERROR,
-            error: message,
-            model: resolvedId,
-            duration,
-          });
-        }
-        // Defensive last resort (contract absent).
-        return {
-          text: null,
-          status: "error",
-          duration,
-          model: resolvedId,
-          source: "cloud-llm",
-          reasoning: null,
-          error: message || "Unknown generation error",
-        };
+        const failed = contract
+          ? contract.finalise(contract.SOURCE.CLOUD, {
+              status: contract.STATUS.ERROR,
+              error: message,
+              model: resolvedId,
+              duration,
+            })
+          : {
+              // Defensive last resort (contract absent).
+              text: null,
+              status: "error",
+              duration,
+              model: resolvedId,
+              source: "cloud-llm",
+              reasoning: null,
+              error: message || "Unknown generation error",
+            };
+        // MA-5c-2: the HTTP status, when there was one. Without it nothing
+        // downstream can tell a refusal from a dropped connection, because
+        // both arrive here as a bare message. No status, no field.
+        const httpStatus = _httpStatusOf(error);
+        if (httpStatus !== null) failed.httpStatus = httpStatus;
+        return failed;
       }
     }
 
@@ -605,7 +1156,33 @@ const MathPixAltTextCloudAdapter = (function () {
     // sides together. The rows now pin the same two literals, unchanged, and
     // ask the registry the agreement question instead.
     _preferredModelForProvider,
+    // CF-1: the module-presence predicate the refusal rung is keyed on,
+    // exported so the suite can assert the rung and the predicate separately.
+    // A row driving only `_resolveModel` cannot say WHICH question refused.
+    _modelRegistryIsAbsent,
     NON_VISION_REFUSAL,
+    // PB-3: the cut-off refusal's reason value and its predicate, exported so
+    // a row can drive the predicate directly and match the reason by identity.
+    TRUNCATED_REASON,
+    _replyWasCutOff,
+    // MA-5c-2: the two refusal reason codes, exported so the orchestrator and
+    // the rows match them by identity.
+    ABSENT_REGISTRY_REASON,
+    NON_VISION_REASON,
+    // WL-1: the honest sentence for the absent-registry condition, exported so
+    // a row can match the spoken line BY IDENTITY rather than by retyping it,
+    // and so one patch inverts the product and the rows together.
+    ABSENT_REGISTRY_REFUSAL,
+    // MP-2: the picker's own write/read pair, exported so
+    // mathpix-image-manager-ui.js can record a pick without reaching into
+    // module-scope state, and so a suite row can drive the resolver end to end
+    // rather than only asserting on the DOM.
+    _setUserModelChoice,
+    _getUserModelChoice,
+    // MP-2: the provider-membership predicate, exported for the same reason
+    // isModelVisionCapable already is — the picker's override list is
+    // filtered through it so it cannot offer a model the send would refuse.
+    _isModelProviderAvailable,
   };
 })();
 

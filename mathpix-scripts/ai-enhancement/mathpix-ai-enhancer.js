@@ -228,6 +228,15 @@
     API_TIMEOUT_MS: 300000, // 5 minutes
 
     /**
+     * Parcel 38: the embed retry layer's attempt ceiling, named once so the
+     * spoken cue and the configured limit cannot drift apart. Equal to the
+     * embed's own default (DEFAULT_CONFIG.retry.maxRetries in
+     * openrouter-embed-core.js). The retry's worst case (about 1 + 2 + 4 s of
+     * backoff plus jitter) sits well inside API_TIMEOUT_MS.
+     */
+    EMBED_RETRY_MAX_ATTEMPTS: 3,
+
+    /**
      * PDF processing engine for OpenRouter file-parser plugin
      *
      * Options:
@@ -348,6 +357,47 @@
    */
   function isAbsentModelId(modelId) {
     return !modelId || typeof modelId !== "string" || !modelId.trim();
+  }
+
+  /**
+   * Is the shared model registry MODULE absent from the page? (parcel WL-1,
+   * 14 September 2026)
+   *
+   * WHY RF-1's PREDICATE IS NOT ENOUGH, AND THIS IS A DIFFERENT QUESTION.
+   * `isAbsentModelId` asks whether there is an id to assess. With the registry
+   * gone there IS one — `loadPromptConfiguration`'s ladder finds
+   * `_defaultModelForProvider` null, the preferred-entry rung misses, and the
+   * FIRST RECOMMENDED entry in the prompt config wins by JSON key order. So
+   * `selectedModel` is a non-empty string, `isAbsentModelId` answers false,
+   * RF-1's refusal never fires, and enhancement proceeds on a model nobody
+   * measured, saying NOTHING. That fall-through is correct for its own
+   * condition — a preferred id that is not in this provider's servable set —
+   * and AW-36's comment on it is explicit that the rung must keep running. It
+   * is left exactly as it was; this question is asked earlier instead.
+   *
+   * ITS OWN COPY, NOT A REACH INTO A SIBLING. `MathPixAltTextCloudAdapter`
+   * exports an identical predicate, and it loads AFTER this file — so a
+   * call-time read would resolve during a run. It is refused anyway: that
+   * module belongs to the alt-text lane, nothing makes it a dependency of the
+   * enhancer, and if it were absent this guard would vanish with it and the
+   * defect would return silently. `mathpix-model-capability.js` was also
+   * refused as a home, on RF-1's own boundary: every export there takes a model
+   * id and answers about that id, and this takes nothing and asks about a
+   * different module. There is no DATA here to drift, and a suite row compares
+   * all three copies under both registry states.
+   *
+   * MODULE SCOPE and exposed as a STATIC below, for the same reason
+   * `composeFailureLine` and `ABSENT_MODEL_REFUSAL` are: both consumers — the
+   * pre-flight and the send boundary — read the static, so ONE patch inverts
+   * the product and the seam rows together.
+   *
+   * Reached at CALL time and never captured.
+   *
+   * @returns {boolean} true when nothing on the page can answer a preference
+   */
+  function _modelRegistryIsAbsent() {
+    const registry = window.MathPixModelRegistry;
+    return !registry || typeof registry.recommendedModel !== "function";
   }
 
   /** Shown and spoken when a provider body names a rate limit (HTTP 429). */
@@ -1840,6 +1890,30 @@
       // capability question at all and needs no authority to answer: with no id
       // there is nothing for any authority to assess. Asking it first also means
       // the two orders below are untouched, which is what row 39.3 pins.
+      // ---- WL-1: AN ABSENT REGISTRY MODULE REFUSES, asked FIRST of all ------
+      // AHEAD OF RF-1's QUESTION, because RF-1's cannot see this condition. The
+      // ladder in loadPromptConfiguration fills `selectedModel` with the first
+      // `recommended: true` entry when no preferred id resolves, so the id is a
+      // non-empty string and `isAbsentModelId` answers false. Before this
+      // branch the run proceeded on that model, unannounced — the same shape
+      // CF-1 measured in the alt-text lane and the worst way this seam can
+      // fail, because the person is told nothing at all.
+      //
+      // IT REUSES RF-1's CONSTANT UNCHANGED. "No AI model is set up for the AI
+      // provider you have selected." is already true of this condition, it is
+      // already shipped and it was already HEARD at RF-2. A fourth sentence
+      // would be a second way of saying one thing, and one of them would drift.
+      //
+      // THE HEALTHY PATH IS UNTOUCHED: a page carrying the registry answers
+      // false here and reaches exactly the rungs it reached before.
+      if (MathPixAIEnhancer._modelRegistryIsAbsent()) {
+        logWarn(
+          "WL-1 pre-flight: refusing because the shared model registry module is absent from the page, so no measured choice can be read for any provider. This is a page-configuration fault: check the script order in tools.html.",
+          { model: modelId },
+        );
+        return MathPixAIEnhancer.ABSENT_MODEL_REFUSAL;
+      }
+
       if (MathPixAIEnhancer.isAbsentModelId(modelId)) {
         logWarn(
           "RF-1 pre-flight: refusing because no model id is resolved for the active provider, before entering the processing state",
@@ -2548,6 +2622,14 @@
     // 25 August 2026 heard "Estimated ~£0.053" from the Mini radio and then
     // "~£0.027" from the region, seconds apart, with nothing saying they
     // measured different things.
+    //
+    // THE TWO FIGURES ABOVE ARE QUOTED AS THEY WERE HEARD, under the pound
+    // sign the application showed at the time. CU-1 (17 September 2026) settled
+    // the currency as US dollars and corrected every rendering surface, so the
+    // same estimate is spoken today with a dollar sign and the SAME digits --
+    // the arithmetic never changed, only the symbol. The quotation is left
+    // exactly as heard rather than rewritten, because editing it would falsify
+    // another parcel listen record.
     //
     // NO GUARD ROW COULD HAVE SEEN THIS. Each figure passed its own assertion
     // in isolation; the defect existed only in the pair, and only when spoken.
@@ -3285,7 +3367,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       let cost = this.calculateCost(this.selectedModel, estimatedTokens);
 
       if (cost !== null) {
-        // Add Mistral OCR engine surcharge (£2 per 1000 pages, estimate 1 page minimum)
+        // Add Mistral OCR engine surcharge ($2 per 1000 pages, estimate 1 page minimum)
         if (this.selectedEngine === "mistral-ocr") {
           const estimatedPages = Math.max(
             1,
@@ -3331,7 +3413,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // honoured. It is now guarded on the fields being NUMBERS: without the
       // guard an entry without them multiplies by undefined and returns NaN,
       // which is worse than falling through, because NaN is not null and would
-      // sail past every degradation check downstream and render as "£NaN".
+      // sail past every degradation check downstream and render as "$NaN".
       const hasPromptCosts =
         promptsModel &&
         typeof promptsModel.costPer1kInput === "number" &&
@@ -4269,6 +4351,22 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // Throws, where the pre-flight returns a sentence, because that is this
       // layer's existing contract: startEnhancement's catch reaches showError
       // and its notifyError. No new spoken line and no new channel.
+      // ---- WL-1: the SAME question at the SAME position, at this layer ------
+      // A GUARD APPLIED AT ONE OF TWO SITES IS SILENTLY ABSENT AT THE OTHER —
+      // the sentence RF-1 wrote three lines above, and it reaches this parcel
+      // unchanged. The pre-flight covers one entry point; this covers the send
+      // itself, whatever path reached it. Throws rather than returning a
+      // sentence, because that is this layer's existing contract: the catch in
+      // startEnhancement reaches showError and its notifyError. No new spoken
+      // line and no new channel.
+      if (MathPixAIEnhancer._modelRegistryIsAbsent()) {
+        logWarn(
+          "initialiseEmbed: refusing because the shared model registry module is absent from the page, so no measured choice can be read for any provider",
+          { model: resolvedModelId },
+        );
+        throw new Error(MathPixAIEnhancer.ABSENT_MODEL_REFUSAL);
+      }
+
       if (MathPixAIEnhancer.isAbsentModelId(resolvedModelId)) {
         logWarn(
           "initialiseEmbed: refusing because no model id is resolved for the active provider",
@@ -4349,6 +4447,23 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         top_p: 0.9,
         reasoning: reasoningConfig,
         showNotifications: false, // We handle notifications ourselves
+        // Parcel 38: the embed's own retry layer — same model, up to
+        // EMBED_RETRY_MAX_ATTEMPTS resends with exponential backoff, pre-stream
+        // failures only. The core's built-in retry announcement only logs and
+        // its toast is gated on showNotifications (false above), so the toast
+        // below is the ONLY voice a retry has. A toast announces itself
+        // through the shared announcer, so nothing is announced beside it.
+        retry: {
+          enabled: true,
+          maxRetries: AI_ENHANCER_CONFIG.EMBED_RETRY_MAX_ATTEMPTS,
+          onRetry: (attempt) => {
+            if (typeof window.notifyWarning === "function") {
+              window.notifyWarning(
+                `Retrying, attempt ${attempt} of ${AI_ENHANCER_CONFIG.EMBED_RETRY_MAX_ATTEMPTS}.`,
+              );
+            }
+          },
+        },
         enableLogging: true,
       });
 
@@ -6846,6 +6961,12 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // than by retyping a string that would then only ever agree with itself.
   MathPixAIEnhancer.ABSENT_MODEL_REFUSAL = ABSENT_MODEL_REFUSAL;
   MathPixAIEnhancer.isAbsentModelId = isAbsentModelId;
+
+  // WL-1: the module-presence predicate, published on exactly the same terms.
+  // BOTH the pre-flight and the send boundary read this static, so a single
+  // patch reaches both rungs — which is what makes the inversion bind them
+  // together rather than leaving one silently un-inverted.
+  MathPixAIEnhancer._modelRegistryIsAbsent = _modelRegistryIsAbsent;
 
   // AW-13: the provider-body describer, published on the same terms and for
   // the same two reasons. showError calls the static, so one patch of it

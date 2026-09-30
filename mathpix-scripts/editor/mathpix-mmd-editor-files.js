@@ -424,25 +424,6 @@ class MMDEditorFiles {
   }
 
   // ==========================================================================
-  // Keyboard Handler for Upload Label
-  // ==========================================================================
-
-  /**
-   * Handle keyboard activation of upload label
-   * @param {KeyboardEvent} event - Keyboard event
-   */
-  handleUploadLabelKeydown(event) {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      const { uploadInput } = this.elements;
-      if (uploadInput) {
-        uploadInput.click();
-        logDebug("Upload input triggered via keyboard");
-      }
-    }
-  }
-
-  // ==========================================================================
   // Notifications & Accessibility
   // ==========================================================================
 
@@ -616,19 +597,6 @@ window.handleMMDFileUpload = function (fileList) {
 };
 
 /**
- * Handle keyboard activation of upload label
- * Called by onkeydown handler on upload label
- * @param {KeyboardEvent} event - Keyboard event
- */
-window.handleUploadLabelKeydown = function (event) {
-  const files = getMathPixMMDFiles();
-  if (!files.isInitialised) {
-    files.init();
-  }
-  files.handleUploadLabelKeydown(event);
-};
-
-/**
  * Global accessor for MMD Files instance
  */
 window.getMathPixMMDFiles = getMathPixMMDFiles;
@@ -776,16 +744,6 @@ function downloadResumeMMD() {
 }
 
 /**
- * Handle keyboard navigation for Resume upload label
- */
-function handleResumeUploadLabelKeydown(event) {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    document.getElementById("resume-mmd-upload-input")?.click();
-  }
-}
-
-/**
  * Handle MMD file upload in Resume mode
  * Loads file content, updates preview, and registers with session restorer
  * for proper ZIP integration and filename tracking.
@@ -871,6 +829,5 @@ function updateResumeFileControlsVisibility() {
 
 // Expose functions globally
 window.downloadResumeMMD = downloadResumeMMD;
-window.handleResumeUploadLabelKeydown = handleResumeUploadLabelKeydown;
 window.handleResumeMMDFileUpload = handleResumeMMDFileUpload;
 window.updateResumeFileControlsVisibility = updateResumeFileControlsVisibility;

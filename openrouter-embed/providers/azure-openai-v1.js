@@ -81,14 +81,34 @@
   // "foundry" key in SCOPES in auth/entra-auth.js.
   const ENTRA_SCOPE_NAME = "foundry";
 
-  // Built-in last-resort proxy URL. Matches the project's deployed Worker
-  // (see image-describer/image-describer-controller-generate.js where the
-  // same URL was historically the only fallback). Hits this when neither
+  // Built-in last-resort proxy URL. Hits this when neither
   // providerConfig.proxyUrl nor localStorage.getItem('foundryProxyUrl')
   // yields a non-empty string. Kept here so direct OpenRouterEmbed
   // instantiation works out of the box for the project author.
+  //
+  // THIS IS THE AZURE UK SOUTH CONTAINER APP AS OF 21 SEPTEMBER 2026, NOT THE
+  // CLOUDFLARE WORKER. Owner decision, taken for tester reach: the whole
+  // service is beta, and a beta host nobody selects finds no bugs. The two
+  // hosts run the same foundry-proxy/worker.js logic, so this is a change of
+  // network path rather than of behaviour.
+  //
+  // THE CONSEQUENCE, ACCEPTED RATHER THAN ENGINEERED AROUND: Cloudflare used
+  // to be stored as ABSENCE, so "chose Cloudflare" and "never chose" were
+  // indistinguishable and BOTH now arrive here at Azure. That trade still
+  // exists and simply runs the other way — "chose Azure" and "never chose" are
+  // now the ones stored identically. No migration, no second key, no version
+  // flag: a second persisted key that can disagree with this one is the
+  // wrong-host bug the proxy picker exists to prevent.
+  //
+  // KEEP IN STEP with the five other copies of this value — the sibling
+  // DEFAULT_PROXY_URL in azure-openai-responses.js and
+  // openrouter-embed-transcribe.js, the FOUNDRY_PROXY_FALLBACK in chat/chat.js
+  // and image-describer/image-describer-controller-generate.js, and
+  // FOUNDRY_AZURE_PROXY_URL in setup-tool/setup-tool.js. The host itself is
+  // recorded in .claude/appservice/README.md, which is the record of what is
+  // actually deployed.
   const DEFAULT_PROXY_URL =
-    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
 
   // SSE [DONE] terminator marker per OpenAI streaming convention.
   const SSE_DONE_MARKER = "[DONE]";
@@ -105,12 +125,19 @@
   // a Provider-contract field; until then, single source of truth lives at
   // the wire-format layer.
   const REASONING_MODEL_PATTERNS = [
-    /^gpt-5.*-mini.*$/i, // gpt-5.4-mini, gpt-5.4-mini-2026-03-17, etc.
+    // EVERY ENTRY IS ANCHORED TO A DEPLOYMENT THAT EXISTS. No family
+    // wildcards (parcel 9, 16 September 2026) — see "WHY ENUMERATED AND NOT
+    // REGISTRY-DERIVED" below for the measurement that settled it, and for
+    // what would have to change before the registry could drive this table.
+    /^gpt-5\.4-mini$/i, // was inside /^gpt-5.*-mini.*$/i
+    /^gpt-5-mini$/i, // was inside /^gpt-5.*-mini.*$/i
     /^gpt-5$/i, // gpt-5 (bare) rejects temperature/top_p — NOT 5.1/5.2/5.4 which accept them
-    /^gpt-oss.*$/i, // gpt-oss-120b, gpt-oss-20b, etc. — reasoning family, reject temperature/top_p
-    /^o1.*$/i, // o1, o1-mini, o1-preview, etc.
-    /^o3.*$/i, // o3, o3-mini, etc.
-    /^o4.*$/i, // o4, o4-mini, etc.
+    /^gpt-oss-120b$/i, // was /^gpt-oss.*$/i; the only gpt-oss deployment that exists
+    /^o3$/i, // was /^o3.*$/i; the only o3-family deployment that exists
+    /^o4-mini$/i, // was /^o4.*$/i; the only o4-family deployment that exists
+    // /^o1.*$/i was RETIRED here: it matched ZERO of the 43 deployments on
+    // accesstools-foundry-uk (measured against discover-2026-09-14.json), so
+    // it only ever spoke about models nobody has deployed or probed.
 
     // Added 29 August 2026. Each of the five below was measured REFUSING all
     // four sampling parameters (temperature, top_p, frequency_penalty,
@@ -130,6 +157,45 @@
     /^gpt-5\.6-terra$/i,
     /^gpt-5\.6-luna$/i,
     /^gpt-5\.6-sol$/i,
+
+    // Added 17 September 2026, parcel 11-foundry-add-sweep. Deployed and then
+    // PROBED BEFORE REGISTRATION, which is the order the closing note below
+    // made mandatory. Measured refusing all four sampling parameters
+    // (results/probe-gpt-6-astra-2026-09-17.json): temperature returns
+    // unsupported_value "Only the default (1) value is supported", the other
+    // three return unsupported_parameter.
+    //
+    // ANCHORED EXACTLY, for the rule parcel 9 established rather than for any
+    // property of this model's name.
+    //
+    // CORRECTED 17 September 2026, parcel 12. This comment previously justified
+    // the anchor by saying "the catalogue also carries gpt-6-astra-pro, a
+    // DIFFERENT model never deployed or probed on this resource". THERE IS NO
+    // SUCH MODEL. `.claude/foundry-catalogue/results/discover-2026-09-17.json`,
+    // committed in the very commit that added these two entries, holds exactly
+    // ONE row matching /gpt-6/i: `gpt-6-astra` at version 2026-09-03. The
+    // sibling was invented, and an invented reason is worse than no reason —
+    // it is a factual claim about the catalogue that a later reader would have
+    // had no cause to doubt and every cause to repeat.
+    //
+    // The real reason is stronger and needs no sibling. Parcel 9 (35fbd73,
+    // "every wildcard goes") removed EVERY family wildcard from this file on
+    // purpose: /^gpt-oss.*$/i, /^o3.*$/i, /^o4.*$/i and /^gpt-5.*-mini.*$/i all
+    // became exact anchors, and /^o1.*$/i was retired outright for matching
+    // nothing. A family pattern claims a capability reading for deployments
+    // nobody has probed, which is exactly the evidence-free generalisation this
+    // lane exists to refuse. So an exact anchor is the house rule here, and a
+    // new entry needs no local justification to earn one — it would need a
+    // justification to DEPART from one.
+    /^gpt-6-astra$/i,
+
+    // Added 27 September 2026, parcel 46. Both deployed by the owner that day
+    // and PROBED BEFORE REGISTRATION. Each measured refusing all four sampling
+    // parameters (results/probe-gpt-6-luna-2026-09-27.json and
+    // results/probe-gpt-6-sol-2026-09-27.json), with the same code pair as
+    // astra. Anchored exactly, per the parcel-9 rule above.
+    /^gpt-6-luna$/i,
+    /^gpt-6-sol$/i,
   ];
 
   // Deployment-name patterns for models whose strict MaaS schema rejects
@@ -151,7 +217,7 @@
   const REASONING_BUDGET_FLOOR = 1024;
   const REASONING_BUDGET_FLOOR_PATTERNS = [
     /^Kimi-K2\.5$/i,
-    /^gpt-oss.*$/i,
+    /^gpt-oss-120b$/i, // was /^gpt-oss.*$/i; enumerated with the table above
 
     // Added 29 August 2026. Hidden reasoning spend measured on an image task
     // by .claude/foundry-catalogue/probe.mjs, three runs each (27-28 August
@@ -166,6 +232,22 @@
     /^gpt-5\.6-terra$/i,
     /^gpt-5\.6-luna$/i,
     /^gpt-5\.6-sol$/i,
+
+    // Added 17 September 2026, parcel 11-foundry-add-sweep. Hidden reasoning
+    // spend measured on the same image task, three runs: 37 / 50 / 44
+    // completion tokens, and NOT empty at a high cap on any run. That sits
+    // comfortably under 1024, so the standard floor is sufficient and the HIGH
+    // floor is deliberately not used — the same reading that placed the five
+    // above. Anchored exactly, per the parcel-9 no-wildcards rule set out in
+    // REASONING_MODEL_PATTERNS above — NOT for the gpt-6-astra-pro reason this
+    // line used to cite, which was invented; there is no such catalogue row.
+    /^gpt-6-astra$/i,
+
+    // Added 27 September 2026, parcel 46. gpt-6-sol's hidden reasoning spend on
+    // the same image task was 222 / 267 / 162 completion tokens, not empty at a
+    // high cap on any run, so the standard floor is sufficient. gpt-6-luna is
+    // NOT here: it measured 1460 / 471 / 1161 and belongs to the HIGH list below.
+    /^gpt-6-sol$/i,
   ];
 
   // Raised floor for chat models whose hidden reasoning spend EXCEEDS
@@ -187,8 +269,108 @@
   // close enough to the 2000-token app default that it barely inflates a
   // normal call. Both patterns anchored exactly — gpt-5.4-nano and the
   // other o-series deployments are deliberately not matched.
+  //
+  // gpt-6-luna added 27 September 2026, parcel 46: 1460 / 471 / 1161 completion
+  // tokens on the image task across three runs (results/probe-gpt-6-luna-
+  // 2026-09-27.json), never empty at a high cap. Two of three runs exceed 1024,
+  // so the standard floor would be insufficient; its observed maximum sits under
+  // 2048 with headroom, the same reading that placed o3 here.
   const REASONING_BUDGET_FLOOR_HIGH = 2048;
-  const REASONING_BUDGET_FLOOR_HIGH_PATTERNS = [/^o3$/i, /^gpt-5-mini$/i];
+  const REASONING_BUDGET_FLOOR_HIGH_PATTERNS = [
+    /^o3$/i,
+    /^gpt-5-mini$/i,
+    /^gpt-6-luna$/i,
+  ];
+
+  // ==========================================================================
+  // WHY ENUMERATED AND NOT REGISTRY-DERIVED (parcel 9, 16 September 2026)
+  // ==========================================================================
+  //
+  // The four tables above decide wire-format behaviour by matching a model's
+  // NAME. The obvious improvement is to stop asking what a model is CALLED and
+  // ask what the registry says it CAN DO — which is what the Responses adapter
+  // does (providers/azure-openai-responses.js, isReasoningModel at ~:345 reads
+  // capabilities from the registry in silent mode).
+  //
+  // THAT WAS MEASURED AND IT DOES NOT WORK HERE. The registry describes the
+  // UPSTREAM MODEL'S FEATURE SET, inherited from its OpenRouter sibling. These
+  // tables describe the FOUNDRY DEPLOYMENT'S WIRE CONTRACT. They are different
+  // things, and the registry has no field for the second. Measured against all
+  // 43 registered Foundry entries:
+  //
+  //   1. "reasoning" is not "rejects sampling". The registry carries exactly
+  //      ONE reasoning bit, spelled three redundant ways — capabilities
+  //      includes "reasoning", parameterSupport.supported includes "reasoning",
+  //      and metadata.accessibility.reasoningCapabilities — which agree on all
+  //      43 entries with zero disagreements. That bit disagrees with this table
+  //      on FOUR chat deployments: grok-4-1-fast-reasoning, Phi-4-reasoning,
+  //      Phi-4-mini-reasoning (all enabled) and DeepSeek-R1 (disabled). Driving
+  //      the sampling drop from it would silently strip temperature and top_p
+  //      from three live MaaS deployments that have never been probed and are
+  //      not known to reject them.
+  //
+  //   2. parameterSupport.supported is WRONG on the token field, in the
+  //      direction that reads as good news. All 43 entries list "max_tokens";
+  //      NONE lists "max_completion_tokens". Yet all seven probed chat
+  //      deployments were measured returning HTTP 400 "Unsupported parameter:
+  //      'max_tokens' is not supported with this model. Use
+  //      'max_completion_tokens' instead" (probe artefacts, 27-28 August 2026).
+  //      A reader consulting that field to choose the token field would invert
+  //      this table for every model in it.
+  //
+  //   3. The registry cannot SEE the distinctions this file makes. NINE chat
+  //      deployments carry a byte-identical capabilities[] AND a byte-identical
+  //      parameterSupport.supported[] — grok-4-1-fast-non-reasoning,
+  //      DeepSeek-V3.1, cohere-command-a, Llama-3.3-70B-Instruct, Phi-4,
+  //      Phi-4-mini-instruct, DeepSeek-V3.2, Kimi-K2.5 and Mistral-Large-3 —
+  //      and this file gives them THREE different treatments: Mistral-Large-3
+  //      takes plain max_tokens, Kimi-K2.5 takes a 1024 budget floor, the other
+  //      seven take neither. No function of those fields can separate them.
+  //
+  //   4. Kimi-K2.5 refutes a registry-driven FLOOR specifically. It does NOT
+  //      carry "reasoning", yet it is the deployment the floor was originally
+  //      measured on (completed-but-empty answer at a 60-token cap, 19 June
+  //      2026). Deriving the floor from the reasoning bit would remove it.
+  //
+  //   5. parameterSupport.statistics is boilerplate. temperature reads
+  //      p10 0.1 / p50 0.7 / p90 1.1 identically on o3 and gpt-5.5, both of
+  //      which were measured refusing temperature outright.
+  //
+  // WHAT WOULD HAVE TO CHANGE BEFORE THE REGISTRY COULD DRIVE THIS.
+  // A per-deployment, PROBE-DERIVED field describing the Foundry wire contract
+  // rather than the upstream feature set — minimally: which token field the
+  // deployment accepts, whether it accepts the four sampling parameters, and
+  // its measured hidden-reasoning spend. It must be written from probe
+  // artefacts, must record the probe date, and must be ABSENT rather than
+  // guessed for an unprobed deployment, so that absence is readable. Until
+  // such a field exists, a derivation from the fields listed above would look
+  // principled and be wrong — which is worse than these tables.
+  //
+  // WHY ENUMERATION RATHER THAN WILDCARDS, GIVEN THE TABLES STAY.
+  // The two designs fail in opposite directions for an UNPROBED model: a
+  // wildcard captures it and may needlessly cripple it; an enumeration misses
+  // it and may send a parameter it rejects (HTTP 400). Neither is free. This
+  // file had already chosen enumeration by hand for the five deployments added
+  // on 29 August 2026, recording that a gpt-5.6 family pattern "would also
+  // capture deployments nobody has probed" — so the boundary between the two
+  // styles was drawn by hand and sat mid-table. It is now enumeration
+  // throughout, for consistency and because the wildcards were not earning
+  // their breadth: measured against the 43 real deployments in
+  // discover-2026-09-14.json, the o1 wildcard matched NOTHING, and the gpt-oss,
+  // o3 and o4 wildcards matched exactly ONE deployment each. The only wildcard
+  // that reached more than one was the gpt-5-mini pattern, and its third match
+  // was gpt-5.1-codex-mini — a RESPONSES-surface deployment this adapter never
+  // serves, which is the breadth problem in miniature: a name-based rule
+  // reaching across a surface boundary it knows nothing about.
+  //
+  // CONSEQUENCE, STATED PLAINLY: no deployment that exists today changes
+  // behaviour (proved by prove-wire-format.mjs, which compares the retired
+  // wildcards against these enumerations over all 43 real deployment names).
+  // The change is entirely about FUTURE deployments, which now fall through to
+  // the standard path instead of being captured on a family guess. That is
+  // safe only if a new deployment is probed before it is registered — which is
+  // the next parcel's job. ADDING A DEPLOYMENT WITHOUT PROBING IT IS NOW THE
+  // FAILURE MODE; it was previously a silent mis-classification instead.
 
   // ============================================================================
   // INTERNAL HELPERS
@@ -560,6 +742,9 @@
      *     `top_p` dropped from the wire body when the consumer passed them
      *     (Task 2.4). Reasoning families reject these parameters; their
      *     internal sampling policy ignores caller hints.
+     *   - `reasoning_effort` sent top-level when the instance's reasoning
+     *     option carries a non-empty effort (stage ro); see
+     *     readReasoningEffort. Absent otherwise, so the body is unchanged.
      *
      * Streaming-specific:
      *   - Adds `stream_options: { include_usage: true }` whenever
@@ -688,6 +873,16 @@
         }
       }
 
+      // Reasoning effort (stage ro, 28 September 2026). Read through the
+      // registered provider object, not a private function, so a check can
+      // patch the reader. Only a non-empty string is sent; unset leaves the body as it
+      // was before the stage, byte for byte.
+      const reasoningEffort = provider.readReasoningEffort(options);
+      if (reasoningEffort !== null) {
+        body.reasoning_effort = reasoningEffort;
+        logDebug(`Reasoning effort sent: ${reasoningEffort}`);
+      }
+
       if (options.stream === true) {
         body.stream = true;
         // Critical: ensures Azure returns usage stats in the final chunk.
@@ -696,6 +891,33 @@
 
       logDebug("Foundry request body built", { keys: Object.keys(body) });
       return body;
+    },
+
+    /**
+     * The reasoning effort to send, or null for none (stage ro).
+     *
+     * First pass: the core's canonical options carry the instance's reasoning
+     * configuration as `options.reasoning`, and only while it is enabled
+     * (openrouter-embed-core.js buildOptions). Second pass: streamRequest and
+     * request rebuild the body from the first body minus `messages`, where
+     * `reasoning` is absent and the effort already sits as `reasoning_effort`,
+     * so it is passed through exactly as max_completion_tokens is (Task 2.5b).
+     * The registry is never read here. Value checking belongs to the core's
+     * configureReasoning; this reader only refuses a non-string or "".
+     *
+     * @param {Object} options - canonical options, or a first-pass body
+     * @returns {string|null}
+     */
+    readReasoningEffort(options) {
+      const opts = options || {};
+      const reasoning = opts.reasoning;
+      if (reasoning && typeof reasoning.effort === "string" && reasoning.effort !== "") {
+        return reasoning.effort;
+      }
+      if (typeof opts.reasoning_effort === "string" && opts.reasoning_effort !== "") {
+        return opts.reasoning_effort;
+      }
+      return null;
     },
 
     /**

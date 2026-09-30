@@ -99,6 +99,13 @@ import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 import MathPixImageTransformer from "../../core/mathpix-image-transformer.js";
 
+// Static cost notice in tools.html that describes "Process with MathPix"
+const IMAGE_COST_NOTICE_ID = "mathpix-image-cost-notice";
+
+// Visible label and icon-library key for the image "Process with MathPix" button
+const PROCESS_BUTTON_LABEL = "Process with MathPix";
+const PROCESS_BUTTON_ICON = "upload";
+
 /**
  * @class MathPixFileHandler
  * @extends MathPixBaseModule
@@ -277,7 +284,7 @@ class MathPixFileHandler extends MathPixBaseModule {
       }
 
       // Use confirmation workflow for user control over processing
-      if (MATHPIX_CONFIG.PHASE_4?.REQUIRE_FILE_CONFIRMATION !== false) {
+      if (MATHPIX_CONFIG.USER_EXPERIENCE?.REQUIRE_FILE_CONFIRMATION !== false) {
         logInfo("File uploaded successfully - waiting for user confirmation", {
           fileName: file.name,
           fileSize: file.size,
@@ -425,7 +432,7 @@ class MathPixFileHandler extends MathPixBaseModule {
       `;
 
       // Configure buttons based on confirmation workflow settings
-      if (MATHPIX_CONFIG.PHASE_4?.SHOW_CONFIRMATION_BUTTON !== false) {
+      if (MATHPIX_CONFIG.USER_EXPERIENCE?.SHOW_CONFIRMATION_BUTTON !== false) {
         // Hide original view button initially - shown after confirmation
         openOriginalBtn.style.display = "none";
 
@@ -435,10 +442,9 @@ class MathPixFileHandler extends MathPixBaseModule {
         // Legacy behaviour - immediate original view availability
         openOriginalBtn.style.display = "inline-block";
         openOriginalBtn.onclick = () => this.openOriginalInNewWindow(file);
-        openOriginalBtn.setAttribute(
-          "aria-label",
-          `Open original ${file.name} in new window`,
-        );
+        // No aria-label: the visible text is the name (WCAG 2.5.3 Label in
+        // Name), and the file name is already shown in #mathpix-file-info.
+        openOriginalBtn.removeAttribute("aria-label");
       }
 
       // Display preview container with responsive layout
@@ -487,7 +493,7 @@ class MathPixFileHandler extends MathPixBaseModule {
         previewUrl: imageUrl,
         fileName: file.name,
         confirmationWorkflow:
-          MATHPIX_CONFIG.PHASE_4?.SHOW_CONFIRMATION_BUTTON !== false,
+          MATHPIX_CONFIG.USER_EXPERIENCE?.SHOW_CONFIRMATION_BUTTON !== false,
       });
     } catch (error) {
       logError("Failed to display responsive image preview", error);
@@ -592,7 +598,8 @@ class MathPixFileHandler extends MathPixBaseModule {
    * this.addProcessConfirmationButton(previewContainer, uploadedFile);
    *
    * @accessibility
-   * - Provides descriptive aria-label for screen readers
+   * - Accessible name starts with the visible label, then a visually hidden
+   *   file name (WCAG 2.5.3 Label in Name); no aria-label override
    * - Maintains keyboard navigation compatibility
    * - Uses semantic button element with proper type
    * @since 1.0.0
@@ -627,22 +634,39 @@ class MathPixFileHandler extends MathPixBaseModule {
       }
     }
 
-    // Configure button with accessibility and functionality
+    // Build the content from nodes rather than an aria-label, so the
+    // accessible name starts with the visible label (WCAG 2.5.3 Label in
+    // Name) and still names the file for screen-reader users. The file
+    // name goes in via textContent so it is never parsed as HTML.
+    // The hidden span is absolutely positioned, so Chromium inserts a space
+    // before its text; a trailing space on the label and a "for" phrase keep
+    // the name reading "Process with MathPix for <file>" in every browser.
+    const iconSpan = document.createElement("span");
+    iconSpan.setAttribute("aria-hidden", "true");
+    iconSpan.dataset.icon = PROCESS_BUTTON_ICON;
 
-    confirmBtn.innerHTML = `
-<svg aria-hidden="true" height="21" width="21" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
-  <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)">
-    <path d="m11.5779891 4.55941656c1.1699828.91516665 1.9220109 2.34005226 1.9220109 3.94058344 0 .48543539-.0691781.95471338-.1982137 1.39851335.3339576-.25026476.748773-.39851335 1.1982137-.39851335 1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2c-1.104407 0-10.16182706 0-11 0-1.65685425 0-3-1.3431458-3-3 0-1.65685425 1.34314575-3 3-3 .03335948 0 .06659179.00054449.09968852.00162508.242805-1.19819586.9140534-2.24091357 1.84691265-2.96132058"/>
-    <path d="m6.5 2.5 2-2 2 2"/>
-    <path d="m8.5.5v9"/>
-  </g>
-</svg>
-Process with MathPix
-`;
-    confirmBtn.setAttribute(
-      "aria-label",
-      `Process ${file.name} with MathPix OCR`,
+    const fileNameSpan = document.createElement("span");
+    fileNameSpan.className = "visually-hidden";
+    fileNameSpan.textContent = `for ${file.name}`;
+
+    confirmBtn.removeAttribute("aria-label");
+    confirmBtn.replaceChildren(
+      iconSpan,
+      ` ${PROCESS_BUTTON_LABEL} `,
+      fileNameSpan,
     );
+    window.IconLibrary?.populateIcons(iconSpan);
+
+    // Tie the image cost notice to the button, appending so any existing
+    // description survives. Images only: PDFs use #mathpix-pdf-process-btn.
+    const describedBy = (confirmBtn.getAttribute("aria-describedby") || "")
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!describedBy.includes(IMAGE_COST_NOTICE_ID)) {
+      describedBy.push(IMAGE_COST_NOTICE_ID);
+      confirmBtn.setAttribute("aria-describedby", describedBy.join(" "));
+    }
+
     confirmBtn.onclick = (e) => {
       e.preventDefault();
       this.controller.confirmAndProcessFile(file);

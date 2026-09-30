@@ -80,9 +80,20 @@ const OpenRouterEmbedTranscribe = (function () {
   // localStorage, then this default. Kept identical so a colleague who has
   // pointed one adapter at a staging Worker does not find the other still on
   // production.
+  //
+  // THIS IS THE AZURE UK SOUTH CONTAINER APP AS OF 21 SEPTEMBER 2026, NOT THE
+  // CLOUDFLARE WORKER. Owner decision, taken for tester reach. "Kept identical"
+  // above is the load-bearing half: this adapter is reached by a different
+  // route from the other two — resolveProxyUrl reads storage inside the
+  // per-request path rather than at configure time — so a copy left behind here
+  // would route Transcribe to a host the rest of the app had left, and nothing
+  // in the page would say so.
+  //
+  // The accepted consequence, and the keep-in-step obligation covering all six
+  // copies, are in the sibling comment in providers/azure-openai-v1.js.
   const LS_PROXY_URL_KEY = "foundryProxyUrl";
   const DEFAULT_PROXY_URL =
-    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
 
   // The EntraAuth scope name, matching SCOPES in auth/entra-auth.js and
   // ENTRA_SCOPE_NAME in azure-openai-v1.js:82.
@@ -423,6 +434,407 @@ const OpenRouterEmbedTranscribe = (function () {
     if (index <= 0) return undefined;
     const previous = phrases[index - 1];
     return previous ? previous.speaker : undefined;
+  }
+
+  // ==========================================================================
+  // REGISTER ITEM 47 — REVIEW SURFACE (pure, no DOM, no announcements)
+  // ==========================================================================
+
+  /**
+   * MIRRORED, NEVER IMPORTED, from `SPEAKER_LABEL_PREFIX` and
+   * `SPEAKER_LABEL_SUFFIX` in captions-fixer/captions-fixer-cues.js
+   * (`fromTranscribeResult`), the same convention that file's own header
+   * already uses in the other direction for `toSrtTimestamp`. This is a
+   * cross-lane coupling, recorded as owed in the register item 47 design
+   * document's § 3 and § 10.
+   *
+   * TRANSITIONAL. Owed item (b) of the Captions Fixer lane's seam row at
+   * `dd15a4d` commits that lane to stopping `fromTranscribeResult` inlining
+   * this prefix at its Stage 12, passing `speaker` as a structured field and
+   * adopting `speakerDisplayName` instead. When that lands, `entry.original`
+   * stops carrying this prefix for change sets produced afterwards and rule 1
+   * of `suggestionTextFor` below becomes the only path a fresh change set
+   * ever takes — rule 2 stays correct for any change set produced before the
+   * hand-off, so it is not removed, only no longer reached by new input.
+   *
+   * GROUNDED 15 September 2026 against `captions-fixer-cues.js` at HEAD:
+   * `fromTranscribeResult` calls `speakerLabelFor` with no `mode` argument, so
+   * the default `SPEAKER_LABEL_MODE.EVERY_LINE` applies and the label is
+   * inlined on EVERY phrase whose resolved speaker is non-null — not only on
+   * the opening line of a speaker run, which is how the register item 47
+   * design document's § 3 introduces the phenomenon. That framing is
+   * corrected here rather than in the design document, which is committed
+   * unaltered by this project's own convention (see register item 115,
+   * finding (3)). It does not change the rule below: `suggestionTextFor`
+   * takes the row's already-resolved `speakerLabel` as an argument and knows
+   * nothing about runs either way.
+   */
+  const SUGGESTION_SPEAKER_LABEL_PREFIX = "Speaker ";
+  const SUGGESTION_SPEAKER_LABEL_SUFFIX = ": ";
+
+  /**
+   * Resolve the text a row should render for a proposed suggestion, and the
+   * prefix it had to strip to get there.
+   *
+   * PURE. No DOM, no announcement, no knowledge of display options — a caller
+   * decides what a person sees and hears, this function only decides what the
+   * suggestion resolves to. Never throws; every failure is a refused result
+   * with a machine-readable `reason` token, matching `validateFile`'s shape
+   * above. `reason` is a TOKEN, not a sentence: the design document's § 3
+   * quotes human wording for two of these, but composing a sentence is
+   * display and belongs to the caller that renders one, in a later unit.
+   *
+   * Three rules, in order:
+   *
+   *   1. `original === currentText` — the bare-text world and the
+   *      post-hand-off world both. Prefix is "", text is `proposed` as sent.
+   *   2. Otherwise, compose the expected prefix from `speakerLabel`, mirroring
+   *      `fromTranscribeResult`'s own composition above. If the composed
+   *      prefix is non-empty and `original` equals it followed by
+   *      `currentText` EXACTLY — never a suffix test, which would fire on any
+   *      phrase whose current text happens to end a longer original — then:
+   *      `proposed` carrying the same prefix resolves to `proposed` with the
+   *      prefix removed; `proposed` not carrying it refuses `label-changed`.
+   *   3. Otherwise, where `sourceSpeaker` is an integer DIFFERENT from
+   *      `speakerLabel`, compose the prefix from it instead and apply the
+   *      same exact test: a match means the row's SPEAKER was changed after
+   *      the change set was produced while its WORDS were not, and refuses
+   *      `speaker-changed`. Added at design § 12's D5.
+   *   4. Anything else refuses `stale-base` — including a row whose speaker
+   *      was reassigned AND whose words also changed, which is the intended
+   *      outcome and not a defect: the expected prefix no longer matches, so
+   *      the row is honestly stale rather than silently wrong.
+   *
+   * RULE 3's ACCOUNT OF WHAT RULE 4 USED TO COVER IS WITHDRAWN AND QUOTED, per
+   * register items 51 and 56. Rule 3 formerly read: "Anything else refuses
+   * `stale-base` — including a row whose speaker was reassigned after the
+   * change set was produced". That is now true only of a row whose words
+   * ALSO changed. The refusal was never wrong; the single token was, because
+   * the caller's sentence for `stale-base` says the line has changed, which
+   * is false when only the speaker moved.
+   *
+   * `sourceSpeaker` IS OPTIONAL AND ITS ABSENCE IS NOT `bad-input`. A caller
+   * that does not pass it simply never reaches rule 3 and gets the behaviour
+   * this function had before D5 — which is what makes the argument additive
+   * and lets the controller adopt it in its own commit.
+   *
+   * @param {object} args
+   * @param {string} args.original - the change set entry's recorded original
+   * @param {string} args.proposed - the change set entry's proposed text
+   * @param {string} args.currentText - the phrase's current text, live
+   * @param {number|null|undefined} args.speakerLabel - the row's resolved
+   *   speaker number, or null/undefined when no label applies to this row
+   * @param {number|null|undefined} [args.sourceSpeaker] - the phrase's
+   *   speaker BEFORE any move, i.e. the number the adapter would have inlined
+   *   when the change set was built. Optional; anything but an integer
+   *   differing from `speakerLabel` disables rule 3 and nothing else.
+   * @returns {{ok: true, prefix: string, text: string}|{ok: false, reason: "stale-base"|"label-changed"|"speaker-changed"|"bad-input"}}
+   */
+  function suggestionTextFor({
+    original,
+    proposed,
+    currentText,
+    speakerLabel,
+    sourceSpeaker,
+  }) {
+    const labelIsUsable =
+      speakerLabel === null ||
+      speakerLabel === undefined ||
+      Number.isInteger(speakerLabel);
+    if (
+      typeof original !== "string" ||
+      typeof proposed !== "string" ||
+      typeof currentText !== "string" ||
+      !labelIsUsable
+    ) {
+      return { ok: false, reason: "bad-input" };
+    }
+
+    if (original === currentText) {
+      return { ok: true, prefix: "", text: proposed };
+    }
+
+    const prefix =
+      speakerLabel === null || speakerLabel === undefined
+        ? ""
+        : `${SUGGESTION_SPEAKER_LABEL_PREFIX}${speakerLabel}${SUGGESTION_SPEAKER_LABEL_SUFFIX}`;
+
+    if (prefix !== "" && original === `${prefix}${currentText}`) {
+      if (proposed.startsWith(prefix)) {
+        return { ok: true, prefix, text: proposed.slice(prefix.length) };
+      }
+      return { ok: false, reason: "label-changed" };
+    }
+
+    // RULE 3, ADDED AT DESIGN § 12's D5. The row's speaker was changed AFTER
+    // the change set was produced, and the WORDS are untouched.
+    //
+    // WHY IT NEEDS ITS OWN TOKEN. Before this rule such a row refused
+    // `stale-base`, and the caller's sentence for `stale-base` says the line
+    // has changed since the suggestion was made — which is FALSE when the
+    // words are identical and only the speaker moved. The refusal was right
+    // and the reason given for it was not, so the fix belongs here rather
+    // than in the wording.
+    //
+    // THE MECHANISM IS THE ONE RULE 2 ALREADY USES, COMPOSED FROM THE OTHER
+    // SPEAKER. `sourceSpeaker` is the phrase's speaker before any move, which
+    // is the number the adapter would have inlined when it built the entry.
+    // So compose the prefix from THAT and test the same exact equality rule 2
+    // tests — never a suffix or a pattern match, for the reason rule 2's own
+    // comment gives, and never the digits-only `SPEAKER_LABEL_PATTERN` the
+    // other lane carries, which § 3 of the design refuses to copy.
+    //
+    // IT IS EXACT ABOUT THE WORDS AND SAYS NOTHING ELSE. A row whose speaker
+    // moved AND whose words also changed does not match this test, falls
+    // through, and refuses `stale-base` — correctly, because the sentence
+    // about the line having changed is then true and is the more useful of
+    // the two things that happened.
+    //
+    // `sourceSpeaker` EQUAL TO `speakerLabel` IS NOT A SPEAKER CHANGE, and is
+    // excluded rather than left to rule 2: rule 2 has already tested that
+    // exact prefix and failed, so re-testing it here would be a second
+    // computation that cannot ever succeed.
+    const sourceIsUsable =
+      Number.isInteger(sourceSpeaker) && sourceSpeaker !== speakerLabel;
+    if (sourceIsUsable) {
+      const sourcePrefix = `${SUGGESTION_SPEAKER_LABEL_PREFIX}${sourceSpeaker}${SUGGESTION_SPEAKER_LABEL_SUFFIX}`;
+      if (original === `${sourcePrefix}${currentText}`) {
+        return { ok: false, reason: "speaker-changed" };
+      }
+    }
+
+    return { ok: false, reason: "stale-base" };
+  }
+
+  /**
+   * A ceiling on the WORD count of either side of a diff, above which
+   * `diffSpansOrWhole` skips the comparison entirely rather than running an
+   * O(m*n) longest-common-subsequence over a pathological input. Measured
+   * against the 657-phrase fixture: the longest phrase is 514 characters and
+   * the mean is 85, so 200 words is generous rather than tight — this is a
+   * guard against a pathological input, not a value tuned against real data,
+   * and it has its own harness row.
+   */
+  const MAX_DIFF_WORDS = 200;
+
+  /**
+   * `MAX_DIFF_SPANS` WAS HERE AND IS WITHDRAWN (design § 12's D7, heard at
+   * listen row 52 part (h) on 21 September 2026). The withdrawn text is quoted
+   * rather than deleted, per register items 51 and 56:
+   *
+   *   "A ceiling on the number of CHANGED spans (removed plus added, never
+   *    the total) a rendered diff may carry before the caller falls back to
+   *    one whole-phrase `<del>`/`<ins>` pair. THIS IS A GUESS, unmeasured —
+   *    listen row 52 part (h) is what tests it, per the register item 47
+   *    design document's § 5.
+   *
+   *    const MAX_DIFF_SPANS = 4;"
+   *
+   * IT WAS TESTED EXACTLY AS IT SAID IT WOULD BE, AND THE MEASURE WAS WRONG
+   * RATHER THAN THE NUMBER. A span count says how many PLACES changed and
+   * nothing about how much of the sentence SURVIVED, so five small
+   * single-word replacements in a twenty-one-word sentence scored worse than
+   * one replacement of half of it. The fixture's cueId 3 is that case: five
+   * approved pairs, 10 changed spans, and 16 of its 21 words untouched. It
+   * fell back to two whole-phrase readings of a sentence a reader could have
+   * followed word by word.
+   *
+   * THIS IS A SUPERSESSION AND NOT A CORRECTION. The threshold was written
+   * down as a guess with the part that would test it named in the same
+   * sentence; it was tested and found wanting, which is the mechanism working.
+   */
+
+  /**
+   * The share of the ORIGINAL's words that must survive unchanged in the
+   * proposal for a word-level diff to be worth reading (design § 12's D7).
+   * Below it, the caller falls back to one whole-phrase `<del>`/`<ins>` pair,
+   * because a sentence that has mostly been rewritten reads better as two
+   * clean readings than as a diff of a sentence that is no longer there.
+   *
+   * MEASURED AGAINST THE FIXTURE BEFORE IT WAS CHOSEN, which is what
+   * distinguishes it from the span count it replaces. All eight entries of
+   * the inlined change set, surviving words over original words:
+   *
+   *   cue 90  1.000   cue 2  0.971   cue 5  0.941   cue 109 0.929
+   *   cue 30  0.923   cue 93 0.833   cue 3  0.762   cue 6   0.667
+   *
+   * So NO fixture entry falls back at one half, and cueId 3 — the case the
+   * sitting judged — clears it by a wide margin at 0.762. A genuine rewrite,
+   * which the fixture does not contain, still falls back and has its own
+   * harness row built from a constructed input.
+   *
+   * THE PROPORTION IS PROVISIONAL and is heard again at session 2. It is a
+   * named constant rather than a literal so that the sitting has one number
+   * to move.
+   *
+   * WORDS, NOT SPANS OR CHARACTERS. `tokenize` already splits on exactly the
+   * boundary the diff itself uses, so the ratio is computed over the same
+   * units the spans are made of and cannot disagree with them.
+   */
+  const MIN_SURVIVING_WORD_RATIO = 0.5;
+
+  /**
+   * Split text into tokens that losslessly reconstruct it: each token is a
+   * run of non-whitespace plus the whitespace immediately following it, so
+   * `tokens.join("") === text` always. A leading whitespace-only run (no
+   * preceding non-whitespace) is its own token, which is what keeps the
+   * reconstruction exact even for text starting with a space.
+   *
+   * @param {string} text
+   * @returns {string[]}
+   */
+  function tokenize(text) {
+    return text.match(/\S+\s*|\s+/g) || [];
+  }
+
+  /**
+   * Word-level diff of two strings, as one linear sequence of spans — never
+   * two sequences, never nested. Longest common subsequence over tokens from
+   * `tokenize`, so a single mis-heard word reads as that word alone rather
+   * than the whole phrase twice.
+   *
+   * PURE, and it applies no threshold of its own: `diffSpansOrWhole` decides
+   * when the result is too shredded to render, which keeps that policy out
+   * of this function's semantics.
+   *
+   * LOSSLESS BY CONSTRUCTION: joining every span whose type is not "added"
+   * reproduces `original` exactly, and joining every span whose type is not
+   * "removed" reproduces `proposed` exactly — both are harness rows, because
+   * `tokenize` carries trailing whitespace precisely so this holds.
+   *
+   * DETERMINISTIC: the same inputs always produce the same sequence, and a
+   * tie in the backtrack (a token could equally be read as removed-then-added
+   * or added-then-removed) is always resolved as removed before added.
+   *
+   * @param {string} original
+   * @param {string} proposed
+   * @returns {Array<{type: "same"|"removed"|"added", text: string}>}
+   */
+  function diffSpans(original, proposed) {
+    const a = tokenize(original);
+    const b = tokenize(proposed);
+    const m = a.length;
+    const n = b.length;
+
+    // Longest-common-subsequence length table, filled from the bottom-right
+    // corner so the backtrack below can walk forward from (0, 0).
+    const table = [];
+    for (let i = 0; i <= m; i += 1) table.push(new Array(n + 1).fill(0));
+    for (let i = m - 1; i >= 0; i -= 1) {
+      for (let j = n - 1; j >= 0; j -= 1) {
+        table[i][j] =
+          a[i] === b[j]
+            ? table[i + 1][j + 1] + 1
+            : Math.max(table[i + 1][j], table[i][j + 1]);
+      }
+    }
+
+    const spans = [];
+    const push = (type, text) => {
+      const last = spans[spans.length - 1];
+      // Adjacent spans of the same type are merged as they are produced, so
+      // the sequence handed back is always minimal.
+      if (last && last.type === type) {
+        last.text += text;
+      } else {
+        spans.push({ type, text });
+      }
+    };
+
+    let i = 0;
+    let j = 0;
+    while (i < m && j < n) {
+      if (a[i] === b[j]) {
+        push("same", a[i]);
+        i += 1;
+        j += 1;
+      } else if (table[i + 1][j] >= table[i][j + 1]) {
+        // Tie broken towards "removed" first, which is what makes the
+        // ordering deterministic rather than an artefact of table layout.
+        push("removed", a[i]);
+        i += 1;
+      } else {
+        push("added", b[j]);
+        j += 1;
+      }
+    }
+    while (i < m) {
+      push("removed", a[i]);
+      i += 1;
+    }
+    while (j < n) {
+      push("added", b[j]);
+      j += 1;
+    }
+
+    return spans;
+  }
+
+  /**
+   * `diffSpans`, guarded: skips the comparison for a pathological input
+   * (either side over `MAX_DIFF_WORDS`) or for a sentence that has mostly
+   * been rewritten (fewer than `MIN_SURVIVING_WORD_RATIO` of the original's
+   * words surviving unchanged), and reports whether it fell back so the
+   * harness can test the diff and the fallback independently.
+   *
+   * THE SECOND GUARD'S MEASURE CHANGED AT DESIGN § 12's D7. It was a count of
+   * CHANGED SPANS against `MAX_DIFF_SPANS`; it is now a proportion of
+   * SURVIVING WORDS. See the withdrawn `MAX_DIFF_SPANS` block above for why —
+   * in one line, a span count says how many places changed and nothing about
+   * how much of the sentence is still there.
+   *
+   * A fallback is always the whole-phrase pair — one "removed" span carrying
+   * `original`, one "added" span carrying `proposed` — which is what a
+   * caller renders as one `<del>` and one `<ins>` when a diff of a sentence
+   * that is no longer there would read worse than two clean readings.
+   *
+   * @param {string} original
+   * @param {string} proposed
+   * @returns {{spans: Array<{type: "same"|"removed"|"added", text: string}>, fellBack: boolean}}
+   */
+  function diffSpansOrWhole(original, proposed) {
+    const wholePhraseFallback = () => ({
+      spans: [
+        { type: "removed", text: original },
+        { type: "added", text: proposed },
+      ],
+      fellBack: true,
+    });
+
+    if (typeof original !== "string" || typeof proposed !== "string") {
+      return wholePhraseFallback();
+    }
+    if (
+      tokenize(original).length > MAX_DIFF_WORDS ||
+      tokenize(proposed).length > MAX_DIFF_WORDS
+    ) {
+      return wholePhraseFallback();
+    }
+
+    const spans = diffSpans(original, proposed);
+
+    // THE ORIGINAL'S OWN WORD COUNT IS THE DENOMINATOR, never the proposal's
+    // and never the union. The question D7 asks is how much of the sentence a
+    // person already read is still there — so a proposal that adds twenty
+    // words to a sentence it otherwise leaves alone is NOT a rewrite, and a
+    // denominator counting the proposal would call it one.
+    const originalWords = tokenize(original).length;
+
+    // AN EMPTY ORIGINAL CANNOT BE REWRITTEN, so it never falls back on this
+    // test. Guarded explicitly rather than left to produce NaN, which would
+    // compare false against the threshold and reach the same answer by
+    // accident — the distinction matters because a later change to the
+    // comparison's direction would silently invert an accident.
+    if (originalWords > 0) {
+      const surviving = spans
+        .filter((span) => span.type === "same")
+        .reduce((total, span) => total + tokenize(span.text).length, 0);
+      if (surviving / originalWords < MIN_SURVIVING_WORD_RATIO) {
+        return wholePhraseFallback();
+      }
+    }
+
+    return { spans, fellBack: false };
   }
 
   /**
@@ -939,6 +1351,17 @@ const OpenRouterEmbedTranscribe = (function () {
     SPEAKER_LABEL_MODE: SPEAKER_LABEL_MODE,
     SPEAKER_NAME_PREFIX: SPEAKER_NAME_PREFIX,
     MEASURED_MAX_BYTES: MEASURED_MAX_BYTES,
+    // Register item 47, unit 2. Pure review-surface helpers, no DOM, no
+    // announcements — see the section comment above previousSpeakerAt.
+    suggestionTextFor: suggestionTextFor,
+    diffSpans: diffSpans,
+    diffSpansOrWhole: diffSpansOrWhole,
+    // MAX_DIFF_SPANS WAS EXPORTED HERE AND IS WITHDRAWN (design § 12 D7).
+    // See the withdrawn constant block above. MIN_SURVIVING_WORD_RATIO takes
+    // its place on the export list so the harness can read the threshold
+    // rather than typing a second copy of it.
+    MIN_SURVIVING_WORD_RATIO: MIN_SURVIVING_WORD_RATIO,
+    MAX_DIFF_WORDS: MAX_DIFF_WORDS,
   };
 })();
 

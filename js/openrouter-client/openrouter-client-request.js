@@ -116,10 +116,15 @@ class OpenRouterRequest {
     openRouterDisplay.updateCodeDisplay("original-request", requestBody);
 
     try {
+      // The caller's abort signal reaches the fetch, so a cancel stops the
+      // request itself. `abortSignal` is an internal option the validator keeps
+      // off the wire; it is undefined when no signal was given, which fetch
+      // treats as no signal.
       const response = await fetch(openRouterConfig.getEndpoint(), {
         method: "POST",
         headers: openRouterConfig.getHeaders(),
         body: JSON.stringify(requestBody),
+        signal: options.abortSignal,
       });
 
       const data = await response.json();
@@ -152,6 +157,12 @@ class OpenRouterRequest {
 
       return data;
     } catch (error) {
+      // An abort keeps its name: callers recognise a cancel by
+      // error.name === "AbortError", which the wrapping below would lose.
+      if (error && error.name === "AbortError") {
+        throw error;
+      }
+
       // Handle network errors
       if (!(error instanceof OpenRouterClientError)) {
         const networkError = new OpenRouterClientError(

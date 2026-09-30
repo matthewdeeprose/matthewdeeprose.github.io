@@ -61,15 +61,9 @@ function logDebug(message, ...args) {
 }
 
 // =============================================================================
-// SVG Icon Registry - Centralised icons for DOM elements
-// Standard icons use currentColor for theme compatibility
+// SVG Icons - single-colour icons come from the shared icon library
+// (icon-library.js); the flags below stay here with their official colours
 // =============================================================================
-const ICONS = {
-  warning:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>',
-  checkCircle:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m5.5 9.5 2 2 5-5"/></g></svg>',
-};
 
 // Flag icons - retain official country colours (not currentColor)
 const FLAG_ICONS = {
@@ -78,24 +72,28 @@ const FLAG_ICONS = {
   ASIA: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="sgClip"><rect x="2" y="4" width="17" height="13" rx="2"/></clipPath></defs><g clip-path="url(#sgClip)"><rect x="2" y="4" width="17" height="13" fill="#fff"/><rect x="2" y="4" width="17" height="6.5" fill="#ed2939"/><circle cx="6.5" cy="7.25" r="2.5" fill="#fff"/><circle cx="7.5" cy="7.25" r="2.5" fill="#ed2939"/><g fill="#fff"><path d="M9.5 5.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M11.5 6.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M11.5 8.5l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M9.5 9.2l-.35 1.08.92-.67h-1.14l.92.67z"/><path d="M8 8.5l-.35 1.08.92-.67h-1.14l.92.67z"/></g></g></svg>',
 };
 
+let libraryMissingWarned = false;
+
 /**
  * @function getIcon
  * @description Returns an SVG icon with accessibility attributes and optional CSS class
- * @param {string} name - Icon name from ICONS registry
+ * @param {string} name - Icon name from the shared icon library
  * @param {Object} [options={}] - Configuration options
  * @param {string} [options.className] - Additional CSS class to apply
  * @returns {string} SVG markup with aria-hidden and class attributes, or empty string if not found
  */
 function getIcon(name, options = {}) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon requested: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
-  const className = options.className
-    ? ` class="icon ${options.className}"`
-    : ' class="icon"';
-  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+
+  return library.getIcon(name, options);
 }
 
 /**
@@ -1528,13 +1526,15 @@ class MathPixUIManager extends MathPixBaseModule {
       modal.setAttribute("aria-labelledby", `${modalId}-title`);
       modal.setAttribute("tabindex", "-1");
 
+      // The close icon keeps the old literal's 21px size through
+      // mathpix-inline-icon (rules in mathpix-main.css).
       modal.innerHTML = `
       <div class="mathpix-fullscreen-backdrop"></div>
       <div class="mathpix-fullscreen-container">
         <div class="mathpix-fullscreen-header">
           <h2 id="${modalId}-title" class="mathpix-fullscreen-title">Mathematical Content - Full Screen</h2>
           <button type="button" class="mathpix-fullscreen-close" aria-label="Close full screen view">
-            <svg height="21" viewBox="0 0 21 21" width="21" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 5)"><path d="m10.5 10.5-10-10z"/><path d="m10.5.5-10 10"/></g></svg>
+            ${getIcon("close", { className: "mathpix-inline-icon" })}
           </button>
         </div>
         <div class="mathpix-fullscreen-content">

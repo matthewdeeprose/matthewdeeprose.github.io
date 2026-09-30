@@ -142,7 +142,7 @@ export class PDFEngineParameter extends ParameterBase {
         cost: "Token-based",
       },
       { value: "pdf-text", label: "Text Extraction (Free)", cost: "Free" },
-      { value: "mistral-ocr", label: "OCR Processing", cost: "£2/1000 pages" },
+      { value: "mistral-ocr", label: "OCR Processing", cost: "$2/1000 pages" },
     ];
 
     engines.forEach((engine) => {
@@ -266,7 +266,7 @@ export class PDFEngineParameter extends ParameterBase {
       "pdf-text": { cost: 0, display: "Free" },
       "mistral-ocr": {
         cost: (estimatedPages / 1000) * costs["mistral-ocr"],
-        display: `£${((estimatedPages / 1000) * costs["mistral-ocr"]).toFixed(
+        display: `$${((estimatedPages / 1000) * costs["mistral-ocr"]).toFixed(
           3
         )} (~${estimatedPages} pages)`,
       },

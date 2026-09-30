@@ -72,23 +72,6 @@ function logDebug(message, ...args) {
 }
 
 // =============================================================================
-// SVG ICONS (inline, aria-hidden by default)
-// =============================================================================
-
-const MENU_ICONS = {
-  latex:
-    '<svg aria-hidden="true" class="menu-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><text x="2" y="12" font-size="10" font-family="serif" font-style="italic" fill="currentColor" stroke="none">L</text><text x="8" y="12" font-size="7" font-family="serif" fill="currentColor" stroke="none">T</text></svg>',
-  mathml:
-    '<svg aria-hidden="true" class="menu-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 8 3-8"/><path d="M12 4v8"/><path d="M10 12h4"/></svg>',
-  asciimath:
-    '<svg aria-hidden="true" class="menu-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V5a3 3 0 013-3h0a3 3 0 013 3v7"/><path d="M3 9h6"/><circle cx="12.5" cy="9" r="1.5"/></svg>',
-  plainText:
-    '<svg aria-hidden="true" class="menu-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h10"/><path d="M3 7h7"/><path d="M3 11h10"/></svg>',
-  clipboard:
-    '<svg aria-hidden="true" class="menu-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="8" height="11" rx="1"/><path d="M6 1h4v3H6z"/></svg>',
-};
-
-// =============================================================================
 // CONTAINER IDS — where the menu should activate
 // =============================================================================
 

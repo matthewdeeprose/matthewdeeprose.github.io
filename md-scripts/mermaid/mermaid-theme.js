@@ -1969,6 +1969,2243 @@ window.MermaidThemes = (function () {
     return applied;
   }
 
+  // -----------------------------------------------------------------------
+  // C4 DIAGRAM ENCODING (register item 86, 18 September 2026)
+  // -----------------------------------------------------------------------
+
+  const C4_ROLEDESCRIPTION = "c4";
+
+  /** SC 1.4.11 for every outline, boundary, line and arrowhead. */
+  const C4_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const C4_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD, presentation standard § 1.4 — the same pair the
+   * xychart casings and the sequence and block outlines use. Both are offered to
+   * every derivation rather than being selected by mode, because a c4 label sits
+   * on a dark element fill inside a light diagram and a mode flag would hand it
+   * the wrong one (standard rule 18).
+   */
+  const C4_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /**
+   * Fallback ramp, reached only where neither ink of record clears the target.
+   * 65 steps, matching sequence and block: a c4 relationship label crossing a
+   * mid-blue element box leaves a narrow admissible band, and a coarse ramp
+   * lands on its edge.
+   */
+  const C4_INK_RAMP = Object.freeze(
+    Array.from({ length: 65 }, (unused, i) => {
+      const v = Math.round((i * 255) / 64);
+      return rgbToHex(v, v, v);
+    })
+  );
+
+  /** Attribute marking an element this pass has painted, for idempotency. */
+  const C4_ENCODING_ATTRIBUTE = "data-c4-encoding";
+
+  /**
+   * The properties written to a given element, recorded on the element itself.
+   *
+   * A SWEEP MUST REMOVE ONLY WHAT IT WROTE. Clearing a fixed list of "owned"
+   * properties from every marked element removes the RENDERER's own inline
+   * declarations too, and the failure is silent and delayed: Mermaid writes
+   * `style="fill:none"` on a relationship `<line>`, a blanket sweep deleted it
+   * on the second application, the line's computed fill fell back to inherited
+   * white, and the ground resolver then composited a 100x10 white rectangle
+   * under anything crossing that line. The first run looked perfect; the second
+   * quietly changed the diagram AND the numbers derived from it.
+   */
+  const C4_OWNED_LIST_ATTRIBUTE = "data-c4-encoding-owned";
+
+  /** Minimum boundary width, so a 0.5px hairline is not the only channel. */
+  const C4_BOUNDARY_WIDTH = 2;
+
+  /**
+   * Apply the accessibility encoding to a rendered c4 diagram: an outline ink
+   * per element that clears every ground that element actually sits on, applied
+   * to element-shape boundaries, boundary frames, relationship lines and
+   * arrowheads, plus a text ink WHERE AND ONLY WHERE the text fails.
+   * AUTHOR AND THEME FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS — the measurement, nine theme cells times two site modes times
+   * four exemplars, 160 painted objects per cell and 2,880 in all, every value
+   * COMPUTED (register item 86, 18 September 2026):
+   *
+   *   - 1,566 of 2,880 objects are indistinct before this pass;
+   *   - RELATIONSHIP LINES fail in all eighteen cells, 135 of 198, worst 1.48:1;
+   *   - ARROWHEADS fail in twelve of eighteen, 144 of 288, worst 1.02:1 — and
+   *     that class read `0 of 0` until the instrument stopped treating "inside
+   *     <defs>" as off stage, which is where Mermaid keeps every <marker>;
+   *   - BOUNDARY FRAMES are clean in all nine light-site-mode cells and fail in
+   *     all nine dark ones, 54 of 108;
+   *   - TEXT fails 1,053 of 1,620, worst 1.02:1.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES — the gantt, sequence and
+   * block argument, and here it is a step stronger. Across all eighteen cells
+   * the c4 paint takes FOUR distinct fingerprints where a flowchart driven
+   * through the identical code path takes NINE within each site mode: every
+   * element fill, shape boundary, boundary frame and relationship line is
+   * byte-identical in all nine themes, and only the arrowhead and text inks move
+   * between the light and dark theme families. A theme variable could not reach
+   * the four built-ins; here it would not reach the other five either.
+   *
+   * WHY FILLS ARE LEFT ALONE, when the same sweep found 63 of 288 element fills
+   * indistinct from their ground. That is standard rule 18's design, arriving at
+   * a fifth type: the fill is the author's and the renderer's, and the outline
+   * is the channel that carries distinguishability. The unmoved count is
+   * reported rather than omitted.
+   *
+   * WHICH CASE OF RULE 16 THIS IS: THE SECOND. Mermaid DRAWS every boundary,
+   * line and arrowhead this pass paints, so the pass writes style onto the
+   * renderer's own elements and ADDS NO NODE TO THE TREE. Nothing here is
+   * synthesis and nothing needs `aria-hidden`.
+   *
+   * THE SELECTOR IS BUILT ON ELEMENT KIND AND STRUCTURE, NEVER ON A CLASS
+   * (standard rule 19). A c4 diagram classes almost nothing: a boundary frame is
+   * a classless `<rect>`, a relationship line a classless `<path>` or `<line>`,
+   * and the only class in the tree is `person-man`, which the renderer puts on
+   * the group wrapping EVERY element — a person, a system, a container and a
+   * database alike — so a selector built on it would be both misleadingly named
+   * and silently partial the day the renderer stops applying it. What the
+   * subjects share is what they ARE: a shape that carries a fill is an element
+   * glyph and its stroke is its boundary; one that carries none is a frame if it
+   * is a `<rect>` and a relationship line otherwise, except where its own group
+   * also holds a filled shape, which makes it a glyph's internal rim. The pass
+   * counts what the selector reached against what the walk found and returns
+   * both.
+   *
+   * GROUNDS ARE RESOLVED GEOMETRICALLY, NEVER FROM AN INHERITED `<g>` FILL.
+   * `fill` is an inherited SVG property, so a `<g>` reports a fill it merely
+   * inherited and anything measured against it reads 1.00:1 against itself. Only
+   * an element that actually paints can be a ground. An outline is resolved at
+   * its four EDGE midpoints, because a frame's centre is full of what it
+   * encloses; a text at five points across its box, because a c4 relationship
+   * label really is drawn over the element box it points at — measured, not
+   * assumed — and an ink must then clear both grounds.
+   *
+   * IDEMPOTENT BY CONSTRUCTION. The sweep runs first, so every derivation reads
+   * the RENDERER's values and never this pass's own output; each painted element
+   * is marked, and its owned properties are cleared before being written again.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyC4Encoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === C4_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${C4_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No c4 SVG in this container - c4 encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and ONLY that ----------------------
+    svg.querySelectorAll(`[${C4_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(C4_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      owned.removeAttribute(C4_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(C4_OWNED_LIST_ATTRIBUTE);
+    });
+
+    // --- the walk, and the reach it is compared against ---------------------
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line"];
+    const all = [...svg.querySelectorAll("*")];
+
+    // "Off stage" is NOT "inside <defs>". Mermaid keeps its arrowhead <marker>
+    // blocks there, and a marker's content IS painted, at every arrow end.
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      try {
+        const box = element.getBBox();
+        return box && box.width > 0 && box.height > 0 ? box : null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    // The diagram ground: a c4 SVG paints no background rect of its own, so it
+    // is the first opaque background above it.
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    /**
+     * Shapes that can present a ground: they have an area to fill and a fill to
+     * present. A `<line>` is in SHAPE_TAGS because it is a subject — it carries
+     * a stroke — but it is NOT a ground: a line has no fillable region, and
+     * `getComputedStyle` nevertheless reports a `fill` for it, inherited white
+     * in a dark theme. Reading that as paint turns a 100x10 relationship line
+     * into a white rectangle under everything that crosses it. Only an element
+     * that actually paints an area can be a ground.
+     */
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    /** Painted shapes in document order, with their box and composited fill. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      if (!declared || alpha <= 0.05) return;
+      const box = boxOf(element);
+      if (!box) return;
+      painted.push({ element, index, box, paint: { ...declared, a: alpha } });
+    });
+
+    /** The composite actually shown at a point, counting only what precedes it. */
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        const box = shape.box;
+        if (x < box.x || x > box.x + box.width) continue;
+        if (y < box.y || y > box.y + box.height) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+
+    /** Every DISTINCT ground a subject sits on, as hex. */
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+    const edgePoints = (box) => [
+      [box.x + box.width / 2, box.y + 0.5],
+      [box.x + box.width / 2, box.y + box.height - 0.5],
+      [box.x + 0.5, box.y + box.height / 2],
+      [box.x + box.width - 0.5, box.y + box.height / 2],
+    ];
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      // Every distinct ground the diagram can present, reported so a reading
+      // that names an unexpected colour can be chased to the shape that paints
+      // it rather than argued about.
+      paintedFills: [...new Set(painted.map((shape) => `${shape.element.tagName}:${paintToHex(shape.paint)}`))],
+      worst: null,
+    };
+
+    /**
+     * Choose the ink that maximises the WORST ratio across every ground this
+     * subject sits on, and write it. The inks of record are tried first and used
+     * wherever they clear the target, so c4 reads as one system with xychart,
+     * sequence and block; the ramp is reached only when neither does.
+     *
+     * A shortfall is RECORDED rather than swallowed: where no candidate clears
+     * the target the best available is still written — it is strictly better
+     * than what the renderer had — and the reading is returned so the session
+     * can report it with its reason instead of it passing unnoticed.
+     */
+    const paint = (element, kind, grounds, target, options) => {
+      const settings = options || {};
+      const record = pickInkAgainst(C4_INKS, grounds);
+      const chosen =
+        record.worst >= target ? record : pickInkAgainst(C4_INK_RAMP, grounds);
+
+      const written = [];
+      if (settings.fill) {
+        element.style.setProperty("fill", chosen.ink, "important");
+        written.push("fill");
+      } else {
+        element.style.setProperty("stroke", chosen.ink, "important");
+        element.style.setProperty("stroke-opacity", "1", "important");
+        written.push("stroke", "stroke-opacity");
+        if (settings.width) {
+          element.style.setProperty(
+            "stroke-width",
+            `${settings.width}px`,
+            "important"
+          );
+          written.push("stroke-width");
+        }
+      }
+      element.setAttribute(C4_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(C4_OWNED_LIST_ATTRIBUTE, written.join(","));
+
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      const reading = {
+        kind: kind,
+        ink: chosen.ink,
+        grounds: grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target: target,
+        ofRecord: record.worst >= target,
+      };
+      applied.elements.push(reading);
+      if (chosen.worst < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || chosen.worst < applied.worst) {
+        applied.worst = Number(chosen.worst.toFixed(2));
+      }
+    };
+
+    all.forEach((element, index) => {
+      const inMarker = !!element.closest("marker");
+      if (offstage(element) && !inMarker) return;
+
+      // ARROWHEADS. A marker's content has no box in page space, so its ground
+      // is the diagram ground and that is said rather than implied. It is the
+      // one place this pass writes a fill, and it is a marker's fill and never
+      // an author's.
+      if (inMarker) {
+        if (!SHAPE_TAGS.includes(element.tagName)) return;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.fill);
+        const alpha =
+          (declared ? declared.a : 0) *
+          opacityValue(computed.fillOpacity) *
+          opacityValue(computed.opacity);
+        if (!declared || alpha <= 0.05) return;
+        paint(element, "arrowhead", [svgGround], C4_OBJECT_TARGET, {
+          fill: true,
+        });
+        return;
+      }
+
+      // TEXT, and ONLY where it fails. A label the renderer already got right
+      // is left exactly as it is: rewriting it would overwrite a correct choice
+      // and make every later reading a reading of this pass rather than of the
+      // page.
+      if (element.tagName === "text") {
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.fill);
+        const alpha =
+          (declared ? declared.a : 0) *
+          opacityValue(computed.fillOpacity) *
+          opacityValue(computed.opacity);
+        const box = boxOf(element);
+        if (!declared || alpha <= 0.05 || !box) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = grounds.reduce(
+          (lowest, ground) =>
+            Math.min(
+              lowest,
+              calculateContrastRatio(
+                paintToHex(
+                  compositeOver({ ...declared, a: alpha }, parsePaint(ground))
+                ),
+                ground
+              )
+            ),
+          Infinity
+        );
+        if (worstNow >= C4_TEXT_TARGET) return;
+        paint(element, "textInk", grounds, C4_TEXT_TARGET, { fill: true });
+        return;
+      }
+
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      const box = boxOf(element);
+      if (!box) return;
+
+      const computed = window.getComputedStyle(element);
+      const fillPaint = parsePaint(computed.fill);
+      const fillAlpha =
+        (fillPaint ? fillPaint.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      const strokePaint = parsePaint(computed.stroke);
+      const strokeAlpha =
+        (strokePaint ? strokePaint.a : 0) *
+        opacityValue(computed.strokeOpacity) *
+        opacityValue(computed.opacity);
+      // A <line> is never a filled shape however its `fill` computes, so it can
+      // never be an element glyph; see GROUND_TAGS.
+      const hasFill =
+        GROUND_TAGS.includes(element.tagName) && !!fillPaint && fillAlpha > 0.05;
+      const hasStroke = !!strokePaint && strokeAlpha > 0.05;
+      if (!hasStroke) return;
+
+      // A shape carrying a fill is an element glyph and its stroke is that
+      // glyph's boundary. One carrying none is a boundary frame if it is a
+      // <rect>; otherwise it is a relationship line, UNLESS its own group also
+      // holds a filled shape, which makes it a glyph's internal rim — a
+      // database cylinder's lid and a queue's end cap are exactly that, and
+      // classifying them by tag alone would put a glyph's detail in a class
+      // named for arrows.
+      const groupHoldsFill = painted.some(
+        (shape) => shape.element.parentElement === element.parentElement
+      );
+      const kind = hasFill
+        ? "elementBoundary"
+        : element.tagName === "rect"
+        ? "boundaryFrame"
+        : groupHoldsFill
+        ? "elementBoundary"
+        : "relationshipLine";
+
+      paint(element, kind, groundsOver(edgePoints(box), index), C4_OBJECT_TARGET, {
+        width: kind === "relationshipLine" ? null : C4_BOUNDARY_WIDTH,
+      });
+    });
+
+    logInfo(
+      `C4 encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // KANBAN DIAGRAM ENCODING (register item 88 step 7b, 21 September 2026)
+  // -----------------------------------------------------------------------
+
+  const KANBAN_ROLEDESCRIPTION = "kanban";
+
+  /** SC 1.4.11 for every boundary and every priority line. */
+  const KANBAN_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const KANBAN_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD, presentation standard § 1.4 — the same pair
+   * xychart's casings and the sequence, block and c4 outlines use. Both are
+   * offered to every derivation rather than being selected by mode, because a
+   * kanban card boundary sits on a light column inside a dark page and a mode
+   * flag would hand it the wrong one (standard rule 18).
+   */
+  const KANBAN_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /** Fallback ramp, reached only where neither ink of record clears. */
+  const KANBAN_INK_RAMP = Object.freeze(
+    Array.from({ length: 65 }, (unused, i) => {
+      const v = Math.round((i * 255) / 64);
+      return rgbToHex(v, v, v);
+    })
+  );
+
+  /** Attribute marking an element this pass has painted, for idempotency. */
+  const KANBAN_ENCODING_ATTRIBUTE = "data-kanban-encoding";
+
+  /**
+   * The properties written to a given element, recorded on the element itself
+   * (standard rule 20). A sweep must remove only what it wrote: the kanban
+   * renderer does not write inline paint today, but c4's did and the failure
+   * was silent, delayed, and changed every number derived from the diagram.
+   */
+  const KANBAN_OWNED_LIST_ATTRIBUTE = "data-kanban-encoding-owned";
+
+  /**
+   * THE PRIORITY STAMP, and why it cannot be left out.
+   *
+   * The canvas's ONLY witness to a card's priority is the colour the renderer
+   * strokes its line with — there is no class, no data attribute and no text.
+   * This pass overwrites that stroke. So the priority must be read on FIRST
+   * SIGHT and recorded on the element, or a second application and every theme
+   * flip would be reading the ink the pass itself wrote and would re-derive the
+   * wrong priority from its own output.
+   *
+   * The stamp deliberately SURVIVES the idempotency sweep, unlike everything
+   * else this pass writes.
+   */
+  const KANBAN_PRIORITY_ATTRIBUTE = "data-kanban-priority";
+
+  /**
+   * The four DRAWN priority colours, exactly as the renderer paints them —
+   * measured across all eighteen theme cells on 21 September 2026 and found
+   * byte-identical in every one, because they are hard-coded in the kanban
+   * renderer and are not theme variables.
+   *
+   * A fifth case exists and is deliberately absent: a priority the canvas does
+   * not draw computes `stroke: none`, and this pass never paints it. The
+   * picture stays as the renderer drew it and the description already discloses
+   * the undrawn value in words (gold rules KR9 and KR10).
+   */
+  const KANBAN_PRIORITY_BY_STROKE = Object.freeze({
+    "rgb(255, 0, 0)": "veryHigh",
+    "rgb(255, 165, 0)": "high",
+    "rgb(0, 0, 255)": "low",
+    "rgb(173, 216, 230)": "veryLow",
+  });
+
+  /**
+   * THE NON-COLOUR CHANNEL, ordered so that MORE INK MEANS MORE URGENT.
+   *
+   * WHY IT EXISTS — the measurement, eighteen cells times four exemplars, every
+   * value COMPUTED (register item 88, 21 September 2026): the four priority
+   * inks are **not distinguishable from each other** without hue. Taking the
+   * contrast ratio between each pair, which is the arithmetic SC 1.4.11 uses
+   * applied to two foregrounds, FOUR OF THE SIX PAIRS FALL BELOW 3:1 — Very
+   * High against High at 2.02, against Low at 2.15 and against Very Low at
+   * 2.62, and High against Very Low at **1.29**. No ink assignment repairs
+   * that while the hue families are kept, because the failure is in the
+   * CHANNEL and not in any colour value.
+   *
+   * THE DASH VOCABULARY IS THE PROJECT'S OWN, not a new one: `SERIES_DASHES`
+   * above, the Chart.js `borderDash` list the xychart pass already uses, first
+   * two entries — `5,5` for dashed and `2,2` for dotted.
+   *
+   * THE CAP IS `butt`, AND THAT REFUTES PART OF THE RULING THAT COMMISSIONED
+   * THIS. The ruling asked for the dotted arm as "short dash, round cap". A
+   * round cap extends every dash by HALF THE STROKE WIDTH AT EACH END, so on
+   * this 4px stroke a 2-unit gap is over-run by 4 units and the pattern
+   * collapses. Measured rather than reasoned: rasterised down a real rendered
+   * line, `2,2` with a round cap paints 200 of 200 samples in ONE run — a
+   * SOLID line, which would have made Very Low indistinguishable from High,
+   * the exact defect this channel exists to remove. With a butt cap the same
+   * array reads 13 runs. `5,5` reads 6 runs with either cap.
+   */
+  const KANBAN_PRIORITY_CHANNEL = Object.freeze({
+    veryHigh: { widthMultiple: 2, dash: null, cap: "butt", rank: 4 },
+    high: { widthMultiple: 1, dash: null, cap: "butt", rank: 3 },
+    low: { widthMultiple: 1, dash: SERIES_DASHES[0], cap: "butt", rank: 2 },
+    veryLow: { widthMultiple: 1, dash: SERIES_DASHES[1], cap: "butt", rank: 1 },
+  });
+
+  /** Steps in the per-hue lightness ramp each priority ink may be moved along. */
+  const KANBAN_HUE_RAMP_STEPS = 128;
+
+  /**
+   * Convert a hex colour to HSL, so an ink can be moved in LIGHTNESS while its
+   * HUE FAMILY is kept. The design seat's ruling keeps red, orange, blue and
+   * light blue and moves each only as far as its grounds require.
+   *
+   * @param {string} hex - `#rrggbb`
+   * @returns {{h: number, s: number, l: number}} h in [0,360), s and l in [0,1]
+   */
+  function kanbanHexToHsl(hex) {
+    // `hexToRgb` RETURNS AN ARRAY `[r, g, b]`, NOT an object `{r, g, b}`.
+    // Reading `.r` off it yields `undefined`, every arithmetic result downstream
+    // is NaN, and `rgbToHex(NaN, NaN, NaN)` produces the string `#NaNNaNNaN` —
+    // which `calculateContrastRatio` then scores as NaN, so every `>` and `>=`
+    // comparison in the ramp search is FALSE and the search silently returns the
+    // colour it started with. Nothing throws and nothing logs; the pass reports
+    // its shortfalls honestly and simply never moves an ink. It was caught only
+    // because the after sweep's priority readings were byte-identical to the
+    // before ones while the pass claimed to have applied a channel — two parts
+    // of one instrumentation disagreeing about the same construct.
+    const rgb = hexToRgb(hex) || [0, 0, 0];
+    const r = rgb[0] / 255;
+    const g = rgb[1] / 255;
+    const b = rgb[2] / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+
+    if (d === 0) return { h: 0, s: 0, l: l };
+
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h;
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (max === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+
+    return { h: h, s: s, l: l };
+  }
+
+  /**
+   * The inverse, back to this module's `#rrggbb`.
+   *
+   * @param {number} h - Hue in [0,360)
+   * @param {number} s - Saturation in [0,1]
+   * @param {number} l - Lightness in [0,1]
+   * @returns {string} `#rrggbb`
+   */
+  function kanbanHslToHex(h, s, l) {
+    if (s === 0) {
+      const v = Math.round(l * 255);
+      return rgbToHex(v, v, v);
+    }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    const channel = (t) => {
+      let value = t;
+      if (value < 0) value += 1;
+      if (value > 1) value -= 1;
+      if (value < 1 / 6) return p + (q - p) * 6 * value;
+      if (value < 1 / 2) return q;
+      if (value < 2 / 3) return p + (q - p) * (2 / 3 - value) * 6;
+      return p;
+    };
+    const hk = h / 360;
+    return rgbToHex(
+      Math.round(channel(hk + 1 / 3) * 255),
+      Math.round(channel(hk) * 255),
+      Math.round(channel(hk - 1 / 3) * 255)
+    );
+  }
+
+  /**
+   * Move an ink along its OWN hue's lightness ramp, outward from where the
+   * renderer put it, and stop at the FIRST value clearing every ground.
+   *
+   * "Moved only as far as 3:1 needs" is taken literally: the candidates are
+   * generated in order of increasing distance from the original lightness, so
+   * the first acceptable one is the nearest acceptable one. Where nothing on
+   * the ramp clears, the candidate maximising the WORST ratio is returned with
+   * `cleared: false` and the caller records a shortfall — a maximum over a ramp
+   * is not a proof of insolubility, which is rule 22's separate job.
+   *
+   * @param {string} hex - The renderer's own ink
+   * @param {string[]} grounds - Every ground this ink must clear
+   * @param {number} target - The ratio to clear
+   * @returns {{ink: string, worst: number, cleared: boolean, moved: boolean}}
+   */
+  function pickKanbanHueInk(hex, grounds, target) {
+    // A non-finite reading is treated as the WORST possible rather than
+    // propagated: a NaN compares false against everything, so it cannot be
+    // rejected by a `<` test and instead makes every candidate silently
+    // unselectable. Returning -1 makes a malformed candidate lose outright and
+    // keeps the failure inside this function.
+    const worstOf = (candidate) => {
+      const worst = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(lowest, calculateContrastRatio(candidate, ground)),
+        Infinity
+      );
+      return Number.isFinite(worst) ? worst : -1;
+    };
+
+    const original = worstOf(hex);
+    if (original >= target) {
+      return { ink: hex, worst: original, cleared: true, moved: false };
+    }
+
+    const hsl = kanbanHexToHsl(hex);
+    let best = hex;
+    let bestWorst = original;
+
+    for (let step = 1; step <= KANBAN_HUE_RAMP_STEPS; step += 1) {
+      const delta = step / KANBAN_HUE_RAMP_STEPS;
+      const candidates = [hsl.l - delta, hsl.l + delta].filter(
+        (l) => l >= 0 && l <= 1
+      );
+
+      for (const lightness of candidates) {
+        const candidate = kanbanHslToHex(hsl.h, hsl.s, lightness);
+        const worst = worstOf(candidate);
+        if (worst > bestWorst) {
+          bestWorst = worst;
+          best = candidate;
+        }
+        if (worst >= target) {
+          return { ink: candidate, worst: worst, cleared: true, moved: true };
+        }
+      }
+    }
+
+    return { ink: best, worst: bestWorst, cleared: false, moved: best !== hex };
+  }
+
+  /**
+   * Apply the accessibility encoding to a rendered kanban board: an outline ink
+   * per column frame and per card that clears the ground it sits on, a text ink
+   * WHERE AND ONLY WHERE a text fails, and — the reason this pass exists — a
+   * NON-COLOUR CHANNEL on the four drawn priority lines.
+   * AUTHOR AND THEME FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS — the measurement, nine selectable themes times two site
+   * modes times four exemplars, 149 painted objects per cell and 2,682 in all,
+   * every value COMPUTED (register item 88, 21 September 2026):
+   *
+   *   - 970 of 2,682 objects are indistinct before this pass;
+   *   - THE PRIORITY LINE fails in all eighteen cells against BOTH of its
+   *     grounds — 60 of 144 against the card at worst 1.47:1, and 82 of 144
+   *     against the column at worst 1.01:1;
+   *   - and the four priority inks are not distinguishable FROM EACH OTHER
+   *     without hue: four of the six pairs fall below 3:1, High against Very
+   *     Low at 1.29:1. See KANBAN_PRIORITY_CHANNEL above;
+   *   - COLUMN FRAMES fail 87 of 180 in ten of eighteen cells, worst 1.06:1;
+   *   - CARD BOUNDARIES fail 154 of 540 in six of eighteen, worst 1.00:1;
+   *   - COLUMN TITLE TEXT fails 14 of 180 in four cells, worst 3.38:1, and
+   *     every other text class passes in every cell.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES, and the argument is NOT
+   * c4's. A theme DOES reach a kanban diagram: measured, the paint takes NINE
+   * distinct fingerprints across the nine themes in each site mode, matching a
+   * flowchart control driven through the identical code path. What no theme
+   * variable can reach is the thing that is actually broken — the four priority
+   * colours are hard-coded in the renderer, and the failure is a CHANNEL
+   * failure that no colour value of any kind repairs.
+   *
+   * WHY FILLS ARE LEFT ALONE, when the same sweep found 486 of 540 card fills
+   * and 87 of 180 column frame fills indistinct from their ground. That is
+   * standard rule 18's design arriving at a sixth type: the fill is the
+   * renderer's and the theme's, and the outline is the channel that carries
+   * distinguishability. The unmoved counts are reported rather than omitted.
+   *
+   * WHICH CASE OF RULE 16 THIS IS: THE SECOND. Mermaid DRAWS every frame, card
+   * and priority line this pass paints, so the pass writes style onto the
+   * renderer's own elements and ADDS NO NODE TO THE TREE. Nothing here is
+   * synthesis and nothing needs `aria-hidden`.
+   *
+   * THE SELECTOR IS BUILT ON STRUCTURE AND POSITION, NEVER ON A CLASS
+   * (standard rule 19). A kanban column frame is a CLASSLESS `<rect>` whose
+   * parent group carries `cluster`; a card is the `label-container` rect inside
+   * a `node` group; a priority line is the `<line>` in that same group. And the
+   * three texts on a card are told apart by POSITION — topmost is the label,
+   * then left is the ticket and right the assignee — because the renderer's DOM
+   * ORDER IS NOT STABLE: a linked ticket is wrapped in `a.kanban-ticket-link`,
+   * which is emitted BEFORE the label, while an unlinked card emits the label
+   * first. Measured on E6 against E4.
+   *
+   * GEOMETRY IS RESOLVED IN CLIENT SPACE, NEVER BY `getBBox`. A kanban node
+   * group carries its own `transform`, so a card rect reports `x=-92.5` in its
+   * own user space while its column rect reports `x=100` in the diagram's.
+   * Comparing those two numbers is silently wrong and produces a completely
+   * plausible result. `getBoundingClientRect` is ONE space for every element in
+   * the tree.
+   *
+   * IDEMPOTENT BY CONSTRUCTION. Every derivation reads the RENDERER's values
+   * and never this pass's own output: each painted element is marked, its owned
+   * properties are cleared before being written again, and a priority line's
+   * identity comes from a STAMP taken on first sight rather than from the
+   * stroke this pass overwrote.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyKanbanEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === KANBAN_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${KANBAN_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No kanban SVG in this container - kanban encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and ONLY that ----------------------
+    // The PRIORITY STAMP is deliberately not swept: it is the only surviving
+    // witness to what the renderer drew, and this pass has overwritten the ink
+    // it was derived from.
+    svg.querySelectorAll(`[${KANBAN_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(KANBAN_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      owned.removeAttribute(KANBAN_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(KANBAN_OWNED_LIST_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+
+    const offstage = (element) =>
+      !!(
+        element.closest("defs") ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    /** Client-space box, the ONE space every element in this tree shares. */
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, w: rect.width, h: rect.height }
+        : null;
+    };
+
+    const hostGround = resolveHostGround(svg);
+    const hostGroundPaint = parsePaint(hostGround);
+
+    /**
+     * Shapes that can present a ground. A `<line>` is a SUBJECT and never a
+     * ground (standard rule 21): it has no fillable region, and
+     * `getComputedStyle` still reports a `fill` for it.
+     */
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName) || offstage(element)) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      if (!declared || alpha <= 0.05) return;
+      const box = boxOf(element);
+      if (!box) return;
+      painted.push({ element, index, box, paint: { ...declared, a: alpha } });
+    });
+
+    /** The composite actually shown at a client point, counting only what precedes it. */
+    const groundAt = (x, y, before) => {
+      let colour = hostGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        const box = shape.box;
+        if (x < box.x || x > box.x + box.w) continue;
+        if (y < box.y || y > box.y + box.h) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+    const edgePoints = (box) => [
+      [box.x + box.w / 2, box.y + 0.5],
+      [box.x + box.w / 2, box.y + box.h - 0.5],
+      [box.x + 0.5, box.y + box.h / 2],
+      [box.x + box.w - 0.5, box.y + box.h / 2],
+    ];
+    const spreadPoints = (box) => [
+      [box.x + box.w / 2, box.y + box.h / 2],
+      [box.x + box.w * 0.15, box.y + box.h * 0.5],
+      [box.x + box.w * 0.85, box.y + box.h * 0.5],
+      [box.x + box.w * 0.5, box.y + box.h * 0.15],
+      [box.x + box.w * 0.5, box.y + box.h * 0.85],
+    ];
+
+    const applied = {
+      hostGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      priorities: [],
+      subjects: { columnFrames: 0, cards: 0, priorityLines: 0, undrawnLines: 0, texts: 0 },
+      worst: null,
+    };
+
+    /** Write a derived value and record the reading that justified it. */
+    const write = (element, kind, properties, reading) => {
+      const written = [];
+      Object.keys(properties).forEach((property) => {
+        if (properties[property] === null) return;
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(KANBAN_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(KANBAN_OWNED_LIST_ATTRIBUTE, written.join(","));
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < reading.target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    /** The inks of record first, the grey ramp only where neither clears. */
+    const pickOutline = (grounds, target) => {
+      const record = pickInkAgainst(KANBAN_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(KANBAN_INK_RAMP, grounds);
+    };
+
+    // --- the subjects, derived from structure -------------------------------
+    const columnRects = all.filter(
+      (element) =>
+        element.tagName === "rect" &&
+        element.parentElement &&
+        /(^|\s)cluster(\s|$)/.test(element.parentElement.getAttribute("class") || "")
+    );
+    const cardRects = all.filter(
+      (element) =>
+        element.tagName === "rect" &&
+        (element.getAttribute("class") || "").includes("label-container")
+    );
+    const nodeGroups = all.filter(
+      (element) =>
+        element.tagName === "g" &&
+        /(^|\s)node(\s|$)/.test(element.getAttribute("class") || "")
+    );
+
+    /** The column whose rect encloses this card, in client space. */
+    const columnFor = (cardBox) =>
+      columnRects
+        .map((rect) => ({ rect, box: boxOf(rect) }))
+        .find(
+          (entry) =>
+            entry.box &&
+            cardBox.x >= entry.box.x - 1 &&
+            cardBox.x + cardBox.w <= entry.box.x + entry.box.w + 1 &&
+            cardBox.y >= entry.box.y - 1 &&
+            cardBox.y + cardBox.h <= entry.box.y + entry.box.h + 1
+        );
+
+    // --- COLUMN FRAMES: the boundary, never the fill ------------------------
+    columnRects.forEach((rect) => {
+      const index = all.indexOf(rect);
+      const box = boxOf(rect);
+      if (!box) return;
+      applied.subjects.columnFrames += 1;
+      const grounds = groundsOver(edgePoints(box), index);
+      const chosen = pickOutline(grounds, KANBAN_OBJECT_TARGET);
+      write(
+        rect,
+        "columnFrameBoundary",
+        { stroke: chosen.ink, "stroke-opacity": "1", "stroke-width": "2px" },
+        {
+          kind: "columnFrameBoundary",
+          ink: chosen.ink,
+          grounds: grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: KANBAN_OBJECT_TARGET,
+        }
+      );
+    });
+
+    // --- CARDS: the boundary, never the fill --------------------------------
+    cardRects.forEach((rect) => {
+      const index = all.indexOf(rect);
+      const box = boxOf(rect);
+      if (!box) return;
+      applied.subjects.cards += 1;
+      const grounds = groundsOver(edgePoints(box), index);
+      const chosen = pickOutline(grounds, KANBAN_OBJECT_TARGET);
+      write(
+        rect,
+        "cardBoundary",
+        { stroke: chosen.ink, "stroke-opacity": "1", "stroke-width": "2px" },
+        {
+          kind: "cardBoundary",
+          ink: chosen.ink,
+          grounds: grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: KANBAN_OBJECT_TARGET,
+        }
+      );
+    });
+
+    // --- PRIORITY LINES: the non-colour channel, plus an ink for both grounds
+    all.forEach((element, index) => {
+      if (element.tagName !== "line" || offstage(element)) return;
+
+      const computed = window.getComputedStyle(element);
+
+      // IDENTIFY FROM THE STAMP FIRST. On a first sight the renderer's stroke
+      // is the only witness there is; on a second application this pass has
+      // already overwritten it, so re-deriving from the ink would be reading
+      // this pass's own output.
+      let priority = element.getAttribute(KANBAN_PRIORITY_ATTRIBUTE);
+      if (!priority) {
+        priority = KANBAN_PRIORITY_BY_STROKE[computed.stroke] || null;
+        if (priority) element.setAttribute(KANBAN_PRIORITY_ATTRIBUTE, priority);
+      }
+
+      // AN UNDRAWN LINE IS NEVER PAINTED. A priority the canvas does not draw
+      // computes `stroke: none`, and the picture stays exactly as the renderer
+      // left it; the description discloses the value in words instead.
+      const declared = parsePaint(computed.stroke);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.strokeOpacity) *
+        opacityValue(computed.opacity);
+      if (!priority || !declared || alpha <= 0.05) {
+        applied.subjects.undrawnLines += 1;
+        return;
+      }
+
+      applied.subjects.priorityLines += 1;
+      const channel = KANBAN_PRIORITY_CHANNEL[priority];
+
+      // BOTH GROUNDS. The line is drawn flush with the card's left edge and the
+      // card carries rx=5, so its ends lie over the column showing through the
+      // rounded corner; and at the doubled width the Very High line overhangs
+      // the card's left edge by 2 user units onto the column outright. One ink
+      // has to clear both, and that is measured rather than assumed.
+      const group = element.parentElement;
+      const card = group
+        ? group.querySelector("rect[class*='label-container']")
+        : null;
+      const cardBox = card ? boxOf(card) : null;
+      const cardGround = cardBox
+        ? paintToHex(groundAt(cardBox.x + cardBox.w / 2, cardBox.y + cardBox.h / 2, index))
+        : hostGround;
+      const column = cardBox ? columnFor(cardBox) : null;
+      const columnGround =
+        column && column.box
+          ? paintToHex(
+              groundAt(
+                column.box.x + column.box.w / 2,
+                column.box.y + 2,
+                all.indexOf(column.rect) + 1
+              )
+            )
+          : hostGround;
+
+      const grounds = [...new Set([cardGround, columnGround])];
+
+      // THE INK KEEPS ITS HUE FAMILY and moves only as far as 3:1 needs.
+      const rendererInk = paintToHex({ ...declared, a: 1 });
+      const chosen = pickKanbanHueInk(rendererInk, grounds, KANBAN_OBJECT_TARGET);
+
+      const baseWidth = parseFloat(computed.strokeWidth) || 4;
+      const reading = {
+        kind: "priorityLine",
+        priority: priority,
+        rendererInk: rendererInk,
+        ink: chosen.ink,
+        moved: chosen.moved,
+        grounds: grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target: KANBAN_OBJECT_TARGET,
+        width: baseWidth * channel.widthMultiple,
+        dash: channel.dash,
+        cap: channel.cap,
+        rank: channel.rank,
+      };
+      applied.priorities.push(reading);
+
+      write(
+        element,
+        "priorityLine",
+        {
+          stroke: chosen.ink,
+          "stroke-opacity": "1",
+          "stroke-width": `${baseWidth * channel.widthMultiple}px`,
+          "stroke-dasharray": channel.dash,
+          "stroke-linecap": channel.cap,
+        },
+        reading
+      );
+    });
+
+    // --- TEXT, and ONLY where it fails --------------------------------------
+    // Every label, ticket and assignee is HTML inside a <foreignObject>; a
+    // kanban diagram contains NO SVG <text> at all, so the ink is `color` and
+    // an instrument or a pass reading `fill` here would find nothing and read
+    // as clean. The paint channel is `color`, which is why the export's
+    // INLINED_HTML_PAINT_PROPERTIES branch is the one that carries it.
+    const textLeafOf = (host) => {
+      const candidates = [...host.querySelectorAll("*")].filter(
+        (element) => (element.textContent || "").trim().length > 0
+      );
+      return candidates.length ? candidates[candidates.length - 1] : null;
+    };
+
+    const considerText = (host, kind) => {
+      if (!host) return;
+      const leaf = textLeafOf(host);
+      const box = boxOf(host);
+      if (!leaf || !box) return;
+      applied.subjects.texts += 1;
+      const index = all.indexOf(host);
+      const computed = window.getComputedStyle(leaf);
+      const declared = parsePaint(computed.color);
+      if (!declared) return;
+      const alpha = declared.a * opacityValue(computed.opacity);
+      const grounds = groundsOver(spreadPoints(box), index);
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(
+                compositeOver({ ...declared, a: alpha }, parsePaint(ground))
+              ),
+              ground
+            )
+          ),
+        Infinity
+      );
+      // A label the renderer already got right is left exactly as it is:
+      // rewriting it would overwrite a correct choice and make every later
+      // reading a reading of this pass rather than of the page.
+      if (worstNow >= KANBAN_TEXT_TARGET) return;
+      const chosen = pickOutline(grounds, KANBAN_TEXT_TARGET);
+      write(
+        leaf,
+        kind,
+        { color: chosen.ink },
+        {
+          kind: kind,
+          ink: chosen.ink,
+          grounds: grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: KANBAN_TEXT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        }
+      );
+    };
+
+    [...svg.querySelectorAll("foreignObject")].forEach((host) => {
+      if (!host.closest("g.cluster-label")) return;
+      considerText(host, "columnTitleText");
+    });
+
+    nodeGroups.forEach((group) => {
+      const hosts = [...group.querySelectorAll("foreignObject")]
+        .map((host) => ({ host, box: boxOf(host) }))
+        .filter((entry) => entry.box);
+      if (!hosts.length) return;
+      hosts.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
+      const rest = hosts.slice(1).sort((a, b) => a.box.x - b.box.x);
+      considerText(hosts[0].host, "cardLabelText");
+      if (rest[0]) {
+        considerText(
+          rest[0].host,
+          rest[0].host.closest("a") ? "ticketLinkText" : "ticketText"
+        );
+      }
+      if (rest[1]) considerText(rest[1].host, "assigneeText");
+    });
+
+    logInfo(
+      `Kanban encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `${applied.subjects.priorityLines} priority lines given a non-colour channel, ` +
+        `${applied.subjects.undrawnLines} undrawn lines left alone, worst ${applied.worst}:1 on ground ${hostGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // RADAR DIAGRAM ENCODING (register item 93 session 7b, 30 September 2026)
+  // -----------------------------------------------------------------------
+
+  const RADAR_ROLEDESCRIPTION = "radar";
+
+  /** SC 1.4.11 for every curve, ring, axis and legend swatch. */
+  const RADAR_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for the title, the axis labels and the legend text. */
+  const RADAR_TEXT_TARGET = 4.5;
+
+  /** The outline inks of record (standard § 1.4), for text only. */
+  const RADAR_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /** Attribute marking an element this pass has painted, for idempotency. */
+  const RADAR_ENCODING_ATTRIBUTE = "data-radar-encoding";
+
+  /** The properties written to an element, recorded on it (standard rule 20). */
+  const RADAR_OWNED_LIST_ATTRIBUTE = "data-radar-encoding-owned";
+
+  /**
+   * THE SERIES STAMP. The renderer's own witness to a series is the index in
+   * its class — `radarCurve-N` on the curve and `radarLegendBox-N` on the
+   * legend swatch, N being the DECLARATION index. That is the pairing key, and
+   * colour is not: measured 30 September 2026, the renderer paints every curve
+   * pure black under accessibleDark and highContrastDark, and two of three the
+   * same grey under neutral, so a pairing by colour is ambiguous in six of the
+   * eighteen theme cells. And the index is not the DOM position of the curve:
+   * a curve whose value count differs from the axis count is not drawn at all
+   * (census Q3), so the legend can hold `radarLegendBox-2` while the plot has
+   * only curves 0 and 1. Read on first sight and never rewritten; it survives
+   * the idempotency sweep (standard rule 24).
+   */
+  const RADAR_SERIES_ATTRIBUTE = "data-radar-series";
+
+  /**
+   * THE NON-COLOUR CHANNEL, one per series in declaration order (standard rule
+   * 24). The dash arrays are the project's own — `SERIES_DASHES`, the Chart.js
+   * `borderDash` list — so a radar series and an xychart line read as one
+   * system. Chart.js names `15,3,3,3` "dash-dot" and `10,5,2,5`
+   * "long-dash-short-dash"; the sixth is a DOUBLED width, the shape kanban's
+   * Very High line takes. EVERY CAP IS `butt` (standard rule 25). A seventh
+   * series CYCLES back to the first, and the pass reports that it did: with
+   * seven or more series two of them share a channel, and only hue then
+   * separates them.
+   */
+  const RADAR_SERIES_CHANNEL = Object.freeze([
+    Object.freeze({ name: "solid", widthMultiple: 1, dash: null }),
+    Object.freeze({ name: "dashed", widthMultiple: 1, dash: SERIES_DASHES[0] }),
+    Object.freeze({ name: "dotted", widthMultiple: 1, dash: SERIES_DASHES[1] }),
+    Object.freeze({ name: "dash-dot", widthMultiple: 1, dash: SERIES_DASHES[2] }),
+    Object.freeze({ name: "long-dash-short-dash", widthMultiple: 1, dash: SERIES_DASHES[3] }),
+    Object.freeze({ name: "double", widthMultiple: 2, dash: null }),
+  ]);
+
+  /**
+   * THE WORKING MARGINS a DERIVED ink is taken to (standard § 2): 3.2:1 and
+   * 4.7:1 rather than 3:1 and 4.5:1. A renderer ink already clearing the
+   * target is kept as it is — the margin is not a raised bar for judging a
+   * colour this project did not choose.
+   */
+  const RADAR_OBJECT_MARGIN = 3.2;
+  const RADAR_TEXT_MARGIN = 4.7;
+
+  /** Mermaid's own curve width, `themeVariables.radar.curveStrokeWidth`. */
+  const RADAR_DEFAULT_CURVE_WIDTH = 2;
+
+  /**
+   * Stroke sampling: at least this many points, and at least one per
+   * `RADAR_SAMPLE_SPACING` user units. A fixed count is NOT enough — the
+   * renderer smooths each curve with Béziers that OVERSHOOT the outer ring in
+   * short slivers lying on the page itself, and 48 points along a 1,262-unit
+   * curve stepped straight over one (measured 30 September 2026, gold E6); a
+   * spacing of 4 then stepped over a shorter one on gold E1. One per unit.
+   */
+  const RADAR_STROKE_SAMPLES = 48;
+  const RADAR_SAMPLE_SPACING = 1;
+
+  /**
+   * The curve fill-opacities the pass may step down to, in order, and ONLY
+   * where a later curve's fill hides an earlier curve's stroke that some ink
+   * could otherwise reveal. The first value at which every such stroke clears
+   * is taken, so the fill moves only as far as it has to.
+   */
+  const RADAR_FILL_OPACITY_LADDER = Object.freeze([0.35, 0.25, 0.15, 0.1, 0.05, 0]);
+
+  /**
+   * THE GRATICULE DISCS' FILL, written to `none` (design ruling RR31, 28
+   * September 2026). Each disc is `#DEDEDE` at 0.3 whatever the theme and is
+   * drawn in increasing radius, so it covers every smaller ring's stroke and
+   * every axis. It carries no information — the rings' strokes carry the
+   * scale — so it is removed, and the rings and axes are then read against
+   * the page itself. It is written BEFORE the grounds are gathered, so no
+   * disc is ever a ground or a cover in anything this pass derives.
+   */
+  const RADAR_GRATICULE_FILL = "none";
+
+  /**
+   * Points along an element's outline, in its OWN user units, at most
+   * `spacing` apart, read from the element's geometry rather than from
+   * `getPointAtLength`. Measured 30 September 2026: on the ten-by-five chart
+   * `getPointAtLength` took 315 of the pass's 457 ms, because on a Bézier path
+   * the browser walks from the path's start on every call. Circles, rects,
+   * lines, polygons and paths made of M, L, C and Z are evaluated directly;
+   * anything else falls back to `getPointAtLength`.
+   *
+   * @param {SVGGeometryElement} element
+   * @param {number} spacing - The largest gap between samples, in user units
+   * @param {number} minimum - The fewest samples to take
+   * @returns {Array<{x: number, y: number}>}
+   */
+  function radarOutlinePoints(element, spacing, minimum) {
+    const number = (name) => parseFloat(element.getAttribute(name)) || 0;
+    const segments = [];
+    const line = (a, b) => segments.push({ kind: "L", a, b });
+
+    const tag = element.tagName;
+    if (tag === "circle") {
+      const cx = number("cx");
+      const cy = number("cy");
+      const r = number("r");
+      const count = Math.max(minimum, Math.ceil((2 * Math.PI * r) / spacing));
+      return Array.from({ length: count }, (unused, i) => {
+        const angle = ((i + 0.5) / count) * 2 * Math.PI;
+        return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+      });
+    }
+    if (tag === "line") {
+      line({ x: number("x1"), y: number("y1") }, { x: number("x2"), y: number("y2") });
+    } else if (tag === "rect") {
+      const x = number("x");
+      const y = number("y");
+      const w = number("width");
+      const h = number("height");
+      line({ x, y }, { x: x + w, y });
+      line({ x: x + w, y }, { x: x + w, y: y + h });
+      line({ x: x + w, y: y + h }, { x, y: y + h });
+      line({ x, y: y + h }, { x, y });
+    } else if (tag === "polygon") {
+      const values = (element.getAttribute("points") || "").trim().split(/[\s,]+/).map(Number);
+      const vertices = [];
+      for (let i = 0; i + 1 < values.length; i += 2) vertices.push({ x: values[i], y: values[i + 1] });
+      vertices.forEach((vertex, i) => line(vertex, vertices[(i + 1) % vertices.length]));
+    } else if (tag === "path") {
+      const tokens = (element.getAttribute("d") || "").match(/[A-Za-z]|-?[\d.]+(?:e-?\d+)?/g) || [];
+      let command = null;
+      let start = null;
+      let current = null;
+      let i = 0;
+      let supported = true;
+      while (i < tokens.length && supported) {
+        if (/[A-Za-z]/.test(tokens[i])) command = tokens[i++];
+        const take = (n) => tokens.slice(i, (i += n)).map(Number);
+        if (command === "M") {
+          const [x, y] = take(2);
+          current = start = { x, y };
+          command = "L";
+        } else if (command === "L") {
+          const [x, y] = take(2);
+          line(current, { x, y });
+          current = { x, y };
+        } else if (command === "C") {
+          const [x1, y1, x2, y2, x, y] = take(6);
+          segments.push({ kind: "C", a: current, c1: { x: x1, y: y1 }, c2: { x: x2, y: y2 }, b: { x, y } });
+          current = { x, y };
+        } else if (command === "Z" || command === "z") {
+          if (start && current) line(current, start);
+          current = start;
+          command = null;
+        } else {
+          supported = false;
+        }
+      }
+      if (!supported || !segments.length) segments.length = 0;
+    }
+
+    if (!segments.length) {
+      if (typeof element.getTotalLength !== "function") return [];
+      const length = element.getTotalLength();
+      const count = Math.max(minimum, Math.ceil(length / spacing));
+      return Array.from({ length: count }, (unused, i) =>
+        element.getPointAtLength(((i + 0.5) / count) * length)
+      );
+    }
+
+    const distance = (p, q) => Math.hypot(q.x - p.x, q.y - p.y);
+    const points = [];
+    const perSegment = Math.max(1, Math.ceil(minimum / segments.length));
+    segments.forEach((segment) => {
+      // A Bézier is never longer than its control polygon, so this bound on
+      // its length gives at least one sample per `spacing` along it.
+      const bound =
+        segment.kind === "C"
+          ? distance(segment.a, segment.c1) + distance(segment.c1, segment.c2) + distance(segment.c2, segment.b)
+          : distance(segment.a, segment.b);
+      const count = Math.max(perSegment, Math.ceil(bound / spacing));
+      for (let k = 0; k < count; k += 1) {
+        const t = (k + 0.5) / count;
+        if (segment.kind === "L") {
+          points.push({ x: segment.a.x + (segment.b.x - segment.a.x) * t, y: segment.a.y + (segment.b.y - segment.a.y) * t });
+        } else {
+          const u = 1 - t;
+          const w0 = u * u * u;
+          const w1 = 3 * u * u * t;
+          const w2 = 3 * u * t * t;
+          const w3 = t * t * t;
+          points.push({
+            x: w0 * segment.a.x + w1 * segment.c1.x + w2 * segment.c2.x + w3 * segment.b.x,
+            y: w0 * segment.a.y + w1 * segment.c1.y + w2 * segment.c2.y + w3 * segment.b.y,
+          });
+        }
+      }
+    });
+    return points;
+  }
+
+  /**
+   * Normalise any CSS colour Mermaid writes into a config — `hsl(…)` above all
+   * — to `#rrggbb`, so a config value can be compared with a computed paint.
+   *
+   * @param {string} value - A CSS colour
+   * @returns {string|null} `#rrggbb`, or null when the value does not parse
+   */
+  function radarNormaliseColour(value) {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext && canvas.getContext("2d");
+    if (!context || typeof value !== "string") return null;
+    const sentinel = "#010203";
+    context.fillStyle = sentinel;
+    context.fillStyle = value;
+    const out = String(context.fillStyle).toLowerCase();
+    if (out === sentinel && value.trim().toLowerCase() !== sentinel) return null;
+    return /^#[0-9a-f]{6}$/.test(out) ? out : null;
+  }
+
+  /**
+   * The theme's own SERIES palette, for a diagram whose renderer inks carry no
+   * series information at all.
+   *
+   * WHICH PALETTE, AND WHY IT IS READ RATHER THAN NAMED. The palette a theme
+   * gives its series is `themeVariables.xyChart.plotColorPalette` — for
+   * accessibleDark `XYCHART_PALETTES.dark` and for highContrastDark
+   * `darkHighContrast` — and the only place this pass can learn which theme
+   * drew the SVG is Mermaid's live config. That config is GLOBAL, so it is
+   * trusted only after it has been shown to be THIS diagram's: every series's
+   * `cScaleN` in it must normalise to exactly the ink the renderer painted
+   * series N with. Every caller reaches this pass immediately after the
+   * diagram's own render (applyTheme, reapplyAfterRender, the export's second
+   * copy), so the check holds in practice; where it does not, the pass falls
+   * back to the palette of record for the ground's family and says so.
+   *
+   * @param {string[]} rendererInks - Hex ink per series index
+   * @param {string} hostGround - Hex ground behind the diagram
+   * @returns {{palette: string[], source: string}}
+   */
+  function readRadarSeriesPalette(rendererInks, hostGround) {
+    let themeVariables = null;
+    try {
+      const config =
+        window.mermaid && window.mermaid.mermaidAPI && window.mermaid.mermaidAPI.getConfig
+          ? window.mermaid.mermaidAPI.getConfig()
+          : null;
+      themeVariables = config ? config.themeVariables : null;
+    } catch (error) {
+      logWarn("Radar encoding could not read the Mermaid config", error);
+    }
+
+    const verified =
+      !!themeVariables &&
+      rendererInks.every((ink, index) => {
+        if (!ink) return true;
+        const configured = radarNormaliseColour(themeVariables[`cScale${index}`]);
+        return configured !== null && configured === ink.toLowerCase();
+      });
+    const declared =
+      themeVariables && themeVariables.xyChart && themeVariables.xyChart.plotColorPalette;
+    const palette = String(declared || "")
+      .split(",")
+      .map((entry) => radarNormaliseColour(entry.trim()))
+      .filter(Boolean);
+
+    if (verified && palette.length) return { palette, source: "theme config" };
+
+    const [r, g, b] = hexToRgb(hostGround);
+    const darkGround = calculateLuminance([r, g, b]) < 0.18;
+    return {
+      palette: (darkGround ? XYCHART_PALETTES.dark : XYCHART_PALETTES.light).split(","),
+      source: verified ? "fallback: the config carries no series palette" : "fallback: the config is not this diagram's",
+    };
+  }
+
+  /**
+   * The contrast of an ink against its ground AS SEEN: every fill painted
+   * LATER that covers the point is composited over BOTH the ink and the
+   * ground, because that is what the page shows. A radar paints later fills
+   * over earlier strokes — each curve at fill-opacity 0.5 over the rings, the
+   * axes and every earlier curve — so a ratio taken against the ground alone
+   * describes a picture nobody is shown.
+   *
+   * @param {string} ink - Hex ink
+   * @param {{ground: string, cover: Array}} context - The ground below, and the covering paints in order
+   * @returns {number} The ratio
+   */
+  function radarSeenRatio(ink, context) {
+    // Numeric throughout: this runs for every candidate ink against every
+    // context, and a hex round trip per step cost most of the pass's time.
+    let shown = typeof ink === "string" ? parsePaint(ink) : ink;
+    let ground = context.groundPaint || parsePaint(context.ground);
+    context.cover.forEach((paint) => {
+      shown = compositeOver(paint, shown);
+      ground = compositeOver(paint, ground);
+    });
+    const a = radarLuminance(shown);
+    const b = radarLuminance(ground);
+    const value = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    // A non-finite reading LOSES outright (standard rule 26).
+    return Number.isFinite(value) ? value : -1;
+  }
+
+  /**
+   * WCAG relative luminance of a parsed paint, channels rounded as `#rrggbb`
+   * would round them, so the figure matches calculateContrastRatio's.
+   *
+   * @param {{r: number, g: number, b: number}} paint
+   * @returns {number}
+   */
+  function radarLuminance(paint) {
+    return calculateLuminance([
+      Math.min(255, Math.max(0, Math.round(paint.r))),
+      Math.min(255, Math.max(0, Math.round(paint.g))),
+      Math.min(255, Math.max(0, Math.round(paint.b))),
+    ]);
+  }
+
+  /**
+   * Move an ink along its OWN hue's lightness ramp, outward from where the
+   * renderer or the palette put it, and stop at the FIRST value clearing
+   * every context — kanban's pickKanbanHueInk, scored as SEEN rather than
+   * against bare grounds, and reusing its HSL helpers rather than a copy.
+   *
+   * The starting ink is KEPT where it already clears `target`; a moved ink is
+   * taken to `margin` where the ramp reaches it, and otherwise the ramp's best.
+   *
+   * @param {string} hex - The starting ink
+   * @param {Array} contexts - `{ground, cover}` per distinct place the ink sits
+   * @param {number} target - The ratio to clear
+   * @param {number} margin - The ratio a moved ink is taken to
+   * @returns {{ink: string, worst: number, cleared: boolean, moved: boolean}}
+   */
+  function pickRadarHueInk(hex, contexts, target, margin) {
+    // `floor`: once a candidate's running worst is at or below the best found
+    // so far it can neither win nor clear, so the scan stops there. Exact.
+    const worstOf = (candidate, floor = -Infinity) => {
+      const paint = parsePaint(candidate);
+      let lowest = Infinity;
+      for (const context of contexts) {
+        lowest = Math.min(lowest, radarSeenRatio(paint, context));
+        if (lowest <= floor) return lowest;
+      }
+      return lowest;
+    };
+
+    const original = contexts.length ? worstOf(hex) : Infinity;
+    if (original >= target) {
+      return { ink: hex, worst: original, cleared: true, moved: false };
+    }
+
+    const hsl = kanbanHexToHsl(hex);
+    let best = hex;
+    let bestWorst = original;
+
+    for (let step = 1; step <= KANBAN_HUE_RAMP_STEPS; step += 1) {
+      const delta = step / KANBAN_HUE_RAMP_STEPS;
+      const candidates = [hsl.l - delta, hsl.l + delta].filter((l) => l >= 0 && l <= 1);
+
+      for (const lightness of candidates) {
+        const candidate = kanbanHslToHex(hsl.h, hsl.s, lightness);
+        const worst = worstOf(candidate, bestWorst);
+        if (worst > bestWorst) {
+          bestWorst = worst;
+          best = candidate;
+        }
+        if (worst >= margin) {
+          return { ink: candidate, worst: worst, cleared: true, moved: true };
+        }
+      }
+    }
+
+    return { ink: best, worst: bestWorst, cleared: bestWorst >= target, moved: best !== hex };
+  }
+
+  /**
+   * Apply the accessibility encoding to a rendered radar chart: a NON-COLOUR
+   * CHANNEL per series on its curve and its legend swatch, an outline ink per
+   * curve, ring, axis and swatch that clears the ground it sits on, and a text
+   * ink WHERE AND ONLY WHERE a text fails.
+   *
+   * WHY IT EXISTS — the measurement, nine selectable themes times two site
+   * modes times seven sources, every value COMPUTED (register item 93,
+   * 30 September 2026). Before this pass the series were separated by HUE
+   * AND NOTHING ELSE — every curve `stroke-width: 2px`, no dash, butt cap,
+   * `fill-opacity: 0.5`, no marker, in all eighteen cells (census Q9) — and
+   * in six cells not even by hue: accessibleDark and highContrastDark paint
+   * every curve pure black, and neutral paints two of three the same grey.
+   * Curve strokes failed 3:1 against their own ground in most cells, rings in
+   * every light-site cell, and title, axis and legend text in every cell where
+   * the theme's family and the site mode disagree.
+   *
+   * WHY AN AFTER-RENDER PASS. A theme DOES reach a radar chart — nine distinct
+   * fingerprints per site mode, matching a flowchart control — but no theme
+   * variable reaches the defect that matters: the absence of any channel but
+   * colour. And every radar paint is a CLASS RULE in Mermaid's in-SVG
+   * `<style>`, so a presentation attribute would be inert (standard rule 5):
+   * everything here is written as an inline style at `important` priority,
+   * which `cloneNode(true)` carries into an export by construction.
+   *
+   * GROUNDS ARE RESOLVED AS SEEN. A radar paints LATER FILLS OVER EARLIER
+   * STROKES, so a curve's ink is chosen against the ground below it AND with
+   * every later curve's fill composited over both. Containment is exact —
+   * `isPointInFill` in each shape's own user space, reached from a client
+   * point through its screen matrix (standard rule 27) — because the bounding
+   * box of a circle or a polygon contains points the shape does not.
+   *
+   * FILLS. The renderer's fills are left alone and reported, with ONE
+   * exception the design ruling names: where a later curve's fill hides an
+   * earlier curve's stroke that some ink could otherwise reveal, every curve
+   * fill-opacity — and its legend swatch, so the key still matches — steps
+   * down `RADAR_FILL_OPACITY_LADDER` to the first value at which every such
+   * stroke clears. The graticule's own fills, which covered the inner rings'
+   * strokes and the axes, are written to `none` (ruling RR31): they carry no
+   * information, and nothing else could clear what they hid.
+   *
+   * WHICH CASE OF RULE 16 THIS IS: THE SECOND. Mermaid draws every curve,
+   * swatch, ring, axis and text this pass paints; it adds no node.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: every derivation reads the renderer's values,
+   * restored by sweeping exactly the properties the previous run recorded,
+   * and the series identity comes from the stamp.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyRadarEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === RADAR_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${RADAR_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No radar SVG in this container - radar encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and ONLY that ----------------------
+    // The series stamp is not swept: it is the identity this pass keys on.
+    svg.querySelectorAll(`[${RADAR_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(RADAR_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      owned.removeAttribute(RADAR_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(RADAR_OWNED_LIST_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const offstage = (element) =>
+      !!(
+        element.closest("defs") ||
+        element.closest("symbol") ||
+        element.closest("clipPath") ||
+        element.closest("marker")
+      );
+    const classOf = (element) => element.getAttribute("class") || "";
+    const classIndex = (element, prefix) => {
+      const match = classOf(element).match(new RegExp(`(?:^|\\s)${prefix}-(\\d+)(?:\\s|$)`));
+      return match ? Number(match[1]) : null;
+    };
+
+    // --- the subjects, by the renderer's own classes ------------------------
+    const curves = all.filter(
+      (element) =>
+        (element.tagName === "path" || element.tagName === "polygon") &&
+        classIndex(element, "radarCurve") !== null
+    );
+    const swatches = all.filter(
+      (element) => element.tagName === "rect" && classIndex(element, "radarLegendBox") !== null
+    );
+    const rings = all.filter((element) => /(^|\s)radarGraticule(\s|$)/.test(classOf(element)));
+    const axes = all.filter(
+      (element) => element.tagName === "line" && /(^|\s)radarAxisLine(\s|$)/.test(classOf(element))
+    );
+    const texts = all.filter(
+      (element) => element.tagName === "text" && (element.textContent || "").trim().length > 0
+    );
+
+    // --- THE STAMP, on first sight ------------------------------------------
+    [...curves, ...swatches].forEach((element) => {
+      if (element.hasAttribute(RADAR_SERIES_ATTRIBUTE)) return;
+      const index = classIndex(element, element.tagName === "rect" ? "radarLegendBox" : "radarCurve");
+      element.setAttribute(RADAR_SERIES_ATTRIBUTE, String(index));
+    });
+    const seriesOf = (element) => Number(element.getAttribute(RADAR_SERIES_ATTRIBUTE));
+
+    const hostGround = resolveHostGround(svg);
+    const hostPaint = parsePaint(hostGround);
+
+    // --- RR31: the graticule discs lose their fill, BEFORE any ground is read.
+    // Recorded on the element by paintOutline below, so the next run sweeps it.
+    rings.forEach((element) => element.style.setProperty("fill", RADAR_GRATICULE_FILL, "important"));
+
+    // --- the areas that can be a ground, and the geometry to reach them -----
+    // A <line> and a <text> are never grounds (standard rule 21).
+    const AREA_TAGS = ["circle", "polygon", "path", "rect", "ellipse"];
+    const areas = [];
+    all.forEach((element, index) => {
+      if (!AREA_TAGS.includes(element.tagName) || offstage(element)) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      if (!declared || alpha <= 0.02) return;
+      areas.push({
+        element,
+        index,
+        paint: declared,
+        opacity: opacityValue(computed.opacity),
+        rendererFillOpacity: opacityValue(computed.fillOpacity),
+        isCurve: curves.includes(element),
+      });
+    });
+
+    // Screen matrices are read ONCE per element: nothing this pass writes
+    // moves a shape, and reading them per sample cost most of the geometry.
+    const geometryResolved = !!svg.getScreenCTM();
+    const forward = new Map();
+    const inverse = new Map();
+    const forwardOf = (element) => {
+      if (!forward.has(element)) forward.set(element, element.getScreenCTM());
+      return forward.get(element);
+    };
+    const inverseOf = (element) => {
+      if (!inverse.has(element)) {
+        const matrix = forwardOf(element);
+        inverse.set(element, matrix ? matrix.inverse() : null);
+      }
+      return inverse.get(element);
+    };
+    const toClient = (element, point) =>
+      new DOMPoint(point.x, point.y).matrixTransform(forwardOf(element));
+    // A shape never paints outside its own client box, so the box rejects
+    // most points before the exact (and far dearer) isPointInFill test.
+    const boxes = new Map();
+    const contains = (element, x, y) => {
+      if (!boxes.has(element)) boxes.set(element, element.getBoundingClientRect());
+      const box = boxes.get(element);
+      if (x < box.left - 1 || x > box.right + 1 || y < box.top - 1 || y > box.bottom + 1) return false;
+      const m = inverseOf(element);
+      if (!m) return false;
+      return element.isPointInFill({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
+    };
+
+    /** Points along a stroke's centreline, in client space, dense by length. */
+    const strokePoints = (element, minimum) => {
+      if (!geometryResolved) return [];
+      return radarOutlinePoints(element, RADAR_SAMPLE_SPACING, minimum).map((point) =>
+        toClient(element, point)
+      );
+    };
+
+    /**
+     * Points over a text's box, in client space: a 5 x 3 grid reaching the
+     * box's own ends. An axis label can overhang the outer graticule disc at
+     * one end only, and a grid stopping short of the end stepped over it
+     * twice — five central points, then a grid to within 5% of each end
+     * (measured 30 September 2026, `dark` on the dark site).
+     */
+    const boxPoints = (element) => {
+      if (!geometryResolved) return [];
+      const box = element.getBBox();
+      const points = [];
+      [0, 0.25, 0.5, 0.75, 1].forEach((fx) =>
+        [0.25, 0.5, 0.75].forEach((fy) =>
+          points.push(toClient(element, { x: box.x + box.width * fx, y: box.y + box.height * fy }))
+        )
+      );
+      return points;
+    };
+
+    /**
+     * Where a subject sits: per sample, the areas painted BELOW it and the
+     * areas painted OVER it, its own fill excluded. Resolved once; the ladder
+     * below only changes the curve fills' alpha, never the geometry.
+     */
+    const placesOf = (subject, points) => {
+      const own = all.indexOf(subject);
+      // Many samples sit on the same stack of areas; keep one place per stack.
+      const unique = new Map();
+      points.forEach((point) => {
+        const below = [];
+        const cover = [];
+        areas.forEach((area) => {
+          if (area.element === subject) return;
+          if (!contains(area.element, point.x, point.y)) return;
+          (area.index < own ? below : cover).push(area);
+        });
+        const key = below.map((a) => a.index).join(",") + "|" + cover.map((a) => a.index).join(",");
+        if (!unique.has(key)) unique.set(key, { below, cover });
+      });
+      return [...unique.values()];
+    };
+
+    /** The alpha an area paints with, given the curve fill-opacity in force. */
+    const alphaOf = (area, curveFillOpacity) =>
+      area.paint.a *
+      area.opacity *
+      (area.isCurve && curveFillOpacity !== null ? curveFillOpacity : area.rendererFillOpacity);
+
+    /** Distinct `{ground, cover}` contexts for a set of places. */
+    const contextsOf = (places, curveFillOpacity, withCover) => {
+      const seen = new Map();
+      places.forEach((place) => {
+        const groundPaint = place.below.reduce(
+          (colour, area) => compositeOver({ ...area.paint, a: alphaOf(area, curveFillOpacity) }, colour),
+          hostPaint
+        );
+        const ground = paintToHex(groundPaint);
+        const cover = withCover
+          ? place.cover.map((area) => ({ ...area.paint, a: alphaOf(area, curveFillOpacity) }))
+          : [];
+        const key = ground + "|" + cover.map((paint) => paintToHex(paint) + paint.a).join(",");
+        if (!seen.has(key)) seen.set(key, { ground, groundPaint, cover });
+      });
+      if (!places.length) {
+        seen.set(hostGround, { ground: hostGround, groundPaint: hostPaint, cover: [] });
+      }
+      return [...seen.values()];
+    };
+
+    const applied = {
+      hostGround,
+      geometryResolved,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      series: [],
+      palette: null,
+      fill: null,
+      subjects: {
+        curves: curves.length,
+        swatches: swatches.length,
+        rings: rings.length,
+        axes: axes.length,
+        texts: texts.length,
+      },
+      worst: null,
+    };
+
+    /** Write a derived value and record the reading that justified it. */
+    const write = (element, kind, properties, reading) => {
+      const written = [];
+      Object.keys(properties).forEach((property) => {
+        if (properties[property] === null) return;
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(RADAR_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(RADAR_OWNED_LIST_ATTRIBUTE, written.join(","));
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      if (reading && reading.ratio < reading.target) applied.shortfalls.push(reading);
+      if (reading && (applied.worst === null || reading.ratio < applied.worst)) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    const strokeHex = (element) => {
+      const paint = parsePaint(window.getComputedStyle(element).stroke);
+      return paint ? paintToHex({ ...paint, a: 1 }) : null;
+    };
+
+    // --- THE SERIES: identity, renderer ink, places -------------------------
+    const indices = [...new Set([...curves, ...swatches].map(seriesOf))].sort((a, b) => a - b);
+    const series = indices.map((index) => {
+      const curve = curves.find((element) => seriesOf(element) === index) || null;
+      const swatch = swatches.find((element) => seriesOf(element) === index) || null;
+      const rendererInk = (curve && strokeHex(curve)) || (swatch && strokeHex(swatch)) || null;
+      const curvePlaces = curve ? placesOf(curve, strokePoints(curve, RADAR_STROKE_SAMPLES)) : [];
+      const swatchPlaces = swatch ? placesOf(swatch, strokePoints(swatch, 16)) : [];
+      const baseWidth = curve
+        ? parseFloat(window.getComputedStyle(curve).strokeWidth) || RADAR_DEFAULT_CURVE_WIDTH
+        : RADAR_DEFAULT_CURVE_WIDTH;
+      return { index, curve, swatch, rendererInk, curvePlaces, swatchPlaces, baseWidth };
+    });
+
+    // --- WHERE THE RENDERER'S INKS CARRY NO SERIES INFORMATION --------------
+    // Every series one ink: the theme's own series palette instead.
+    const rendererInks = [];
+    series.forEach((entry) => (rendererInks[entry.index] = entry.rendererInk));
+    const distinctInks = new Set(series.map((entry) => entry.rendererInk).filter(Boolean));
+    const collapsed = series.length >= 2 && distinctInks.size === 1;
+    const palette = collapsed ? readRadarSeriesPalette(rendererInks, hostGround) : null;
+    applied.palette = {
+      collapsed,
+      source: palette ? palette.source : "the renderer's own inks",
+      entries: palette ? palette.palette : null,
+    };
+    series.forEach((entry) => {
+      entry.baseInk = palette
+        ? palette.palette[entry.index % palette.palette.length]
+        : entry.rendererInk || RADAR_INKS[0];
+    });
+
+    /**
+     * Derive every series ink with the curve fills at a given opacity.
+     *
+     * ONE INK FOR A CURVE AND ITS SWATCH WHERE ONE EXISTS, TWO WHERE IT DOES
+     * NOT. Measured in the dark site mode: the graticule's discs are
+     * `#DEDEDE` at 0.3 whatever the theme, so they stack into a LIGHT
+     * bullseye on the dark page — a curve crosses grounds from `#635F60` to
+     * `#C0BFC0` and only a near-black ink clears it, while its swatch sits on
+     * the page itself and only a light ink clears that. No single colour
+     * satisfies both. So a shared ink is tried first; where none clears, the
+     * curve and the swatch are each moved from the SAME base hue, only as far
+     * as their own grounds need, and the split is reported. The dash, the cap
+     * and the width still pair them.
+     */
+    const deriveSeries = (curveFillOpacity) =>
+      series.map((entry) => {
+        const curveContexts = entry.curve ? contextsOf(entry.curvePlaces, curveFillOpacity, true) : [];
+        const swatchContexts = entry.swatch ? contextsOf(entry.swatchPlaces, curveFillOpacity, true) : [];
+        const pick = (contexts) =>
+          pickRadarHueInk(entry.baseInk, contexts, RADAR_OBJECT_TARGET, RADAR_OBJECT_MARGIN);
+        const joint = pick([...curveContexts, ...swatchContexts]);
+        if (joint.cleared || !entry.curve || !entry.swatch) {
+          return { curve: joint, swatch: joint, split: false };
+        }
+        return { curve: pick(curveContexts), swatch: pick(swatchContexts), split: true };
+      });
+
+    // --- THE FILL DECISION: does a later curve's fill hide a stroke? --------
+    // Only a curve stroke that CAN clear once nothing covers it is being
+    // hidden; one that cannot clear even then fails for another reason, and
+    // moving a fill would not help it.
+    const atRenderer = deriveSeries(null);
+    const uncovered = deriveSeries(0);
+    const hideable = series.filter(
+      (entry, i) => entry.curve && uncovered[i].curve.cleared && !atRenderer[i].curve.cleared
+    );
+    let chosen = atRenderer;
+    let fillOpacity = null;
+    if (hideable.length) {
+      for (const step of RADAR_FILL_OPACITY_LADDER) {
+        const trial = deriveSeries(step);
+        const allClear = series.every(
+          (entry, i) => !entry.curve || !uncovered[i].curve.cleared || trial[i].curve.cleared
+        );
+        if (allClear) {
+          chosen = trial;
+          fillOpacity = step;
+          break;
+        }
+      }
+    }
+    applied.fill = {
+      rendererFillOpacity: curves.length
+        ? opacityValue(window.getComputedStyle(curves[0]).fillOpacity)
+        : null,
+      chosen: fillOpacity,
+      hidden: hideable.map((entry) => entry.index),
+      reason:
+        fillOpacity === null
+          ? hideable.length
+            ? "a later curve's fill hides a stroke and no step on the ladder frees it"
+            : "no curve's fill hides another curve's stroke; the renderer's fills are untouched"
+          : `a later curve's fill hid series ${hideable.map((entry) => entry.index).join(", ")}; every curve and swatch fill-opacity stepped to ${fillOpacity}`,
+    };
+
+    // --- WRITE the series: curve, swatch, channel, ink ----------------------
+    series.forEach((entry, i) => {
+      const channel = RADAR_SERIES_CHANNEL[entry.index % RADAR_SERIES_CHANNEL.length];
+      const picks = chosen[i];
+      const width = `${entry.baseWidth * channel.widthMultiple}px`;
+      const reading = (pick, kind) => ({
+        kind,
+        series: entry.index,
+        drawn: !!entry.curve,
+        legend: !!entry.swatch,
+        rendererInk: entry.rendererInk,
+        baseInk: entry.baseInk,
+        ink: pick.ink,
+        moved: pick.moved,
+        split: picks.split,
+        ratio: Number(pick.worst.toFixed(2)),
+        target: RADAR_OBJECT_TARGET,
+        channel: channel.name,
+        cycled: entry.index >= RADAR_SERIES_CHANNEL.length,
+        width,
+        dash: channel.dash,
+      });
+      const properties = (pick) => ({
+        stroke: pick.ink,
+        "stroke-opacity": "1",
+        "stroke-width": width,
+        "stroke-dasharray": channel.dash,
+        "stroke-linecap": "butt",
+        "fill-opacity": fillOpacity === null ? null : String(fillOpacity),
+      });
+      if (entry.curve) {
+        const curveReading = reading(picks.curve, "curve");
+        applied.series.push(curveReading);
+        write(entry.curve, "curve", properties(picks.curve), curveReading);
+      }
+      if (entry.swatch) {
+        const swatchReading = reading(picks.swatch, "swatch");
+        applied.series.push(swatchReading);
+        write(entry.swatch, "swatch", properties(picks.swatch), swatchReading);
+      }
+    });
+    if (series.some((entry) => entry.index >= RADAR_SERIES_CHANNEL.length)) {
+      logWarn(
+        `Radar encoding: ${series.length} series, more than the ${RADAR_SERIES_CHANNEL.length} channels; the channel cycles and hue alone separates the repeats`
+      );
+    }
+
+    // --- RINGS and AXES: an ink against the ground below --------------------
+    // `extra` carries properties already set earlier in this run (the ring
+    // fill), so they are recorded with the rest and swept by the next run.
+    const paintOutline = (element, kind, count, extra = {}) => {
+      const ink = strokeHex(element);
+      if (!ink) {
+        if (Object.keys(extra).length) write(element, kind, extra, null);
+        return;
+      }
+      const contexts = contextsOf(
+        placesOf(element, strokePoints(element, count)),
+        fillOpacity,
+        false
+      );
+      const pick = pickRadarHueInk(ink, contexts, RADAR_OBJECT_TARGET, RADAR_OBJECT_MARGIN);
+      write(
+        element,
+        kind,
+        { ...extra, stroke: pick.ink, "stroke-opacity": "1" },
+        {
+          kind,
+          rendererInk: ink,
+          ink: pick.ink,
+          moved: pick.moved,
+          ratio: Number(pick.worst.toFixed(2)),
+          target: RADAR_OBJECT_TARGET,
+        }
+      );
+    };
+    rings.forEach((element) =>
+      paintOutline(element, "ring", RADAR_STROKE_SAMPLES, { fill: RADAR_GRATICULE_FILL })
+    );
+    axes.forEach((element) => paintOutline(element, "axis", 24));
+
+    // --- TEXT, and ONLY where it fails, AS SEEN -----------------------------
+    texts.forEach((element) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      if (!declared) return;
+      const contexts = contextsOf(placesOf(element, boxPoints(element)), fillOpacity, true);
+      const shownInk = paintToHex(
+        compositeOver({ ...declared, a: declared.a * opacityValue(computed.opacity) }, hostPaint)
+      );
+      const now = contexts.reduce(
+        (lowest, context) => Math.min(lowest, radarSeenRatio(shownInk, context)),
+        Infinity
+      );
+      // A text the renderer already got right is left exactly as it is.
+      if (now >= RADAR_TEXT_TARGET) return;
+      const score = (candidate) =>
+        contexts.reduce((lowest, context) => Math.min(lowest, radarSeenRatio(candidate, context)), Infinity);
+      const pool = score(RADAR_INKS[0]) >= score(RADAR_INKS[1]) ? RADAR_INKS[0] : RADAR_INKS[1];
+      const ink =
+        score(pool) >= RADAR_TEXT_MARGIN
+          ? pool
+          : KANBAN_INK_RAMP.reduce((best, candidate) => (score(candidate) > score(best) ? candidate : best), pool);
+      const kind = /radarTitle/.test(classOf(element))
+        ? "titleText"
+        : /radarLegendText/.test(classOf(element))
+          ? "legendText"
+          : "axisLabelText";
+      write(
+        element,
+        kind,
+        { fill: ink },
+        {
+          kind,
+          ink,
+          ratio: Number(score(ink).toFixed(2)),
+          target: RADAR_TEXT_TARGET,
+          wasAt: Number(now.toFixed(2)),
+        }
+      );
+    });
+
+    logInfo(
+      `Radar encoding applied: ${series.length} series given a non-colour channel ` +
+        `(palette: ${applied.palette.source}), ${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `curve fill-opacity ${fillOpacity === null ? "untouched" : fillOpacity}, worst ${applied.worst}:1 on ground ${hostGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+
+  // -----------------------------------------------------------------------
+  // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
+  // -----------------------------------------------------------------------
+
+  const QUADRANT_ROLEDESCRIPTION = "quadrantChart";
+
+  /** Attribute marking an element this pass has painted, for idempotency. */
+  const PAGE_INK_ATTRIBUTE = "data-page-ink-encoding";
+
+  /**
+   * What each kind of marked element owns, and therefore what is swept before
+   * re-writing. Per kind, not one list: a quadrant border line also carries
+   * Mermaid's own inline stroke-width, which a blanket sweep would delete.
+   */
+  const PAGE_INK_OWNED_PROPERTIES = Object.freeze({
+    root: Object.freeze(["color"]),
+    bar: Object.freeze(["stroke", "stroke-width"]),
+    line: Object.freeze(["stroke-width"]),
+    border: Object.freeze(["stroke"]),
+  });
+
+  /** A bar's outline width. Mermaid hard-codes 0. */
+  const XYCHART_BAR_OUTLINE_WIDTH = "2px";
+
+  /** A line series' width, for legibility. Mermaid hard-codes 2. */
+  const XYCHART_LINE_WIDTH = "3px";
+
+  /**
+   * Write onto the SVG itself the paint the PAGE used to supply, so a diagram
+   * paints the same detached — an export, a copied SVG, a re-rendered
+   * interactive export — as it does on tools.html. Runs for EVERY diagram.
+   *
+   * WHAT THE PAGE SUPPLIED, measured by the fifth design seat's probe and the
+   * UI guard's PT rows (26 September 2026): the same svg.outerHTML in an
+   * iframe with no site CSS differed from the page in exactly 45 element-
+   * properties on five diagrams, in every one of the nine theme/mode cells,
+   * and every page value was one of the two outline inks of record:
+   *
+   *   - the INHERITED ink: gantt axis and tick lines are `stroke:
+   *     currentColor`, and the state and class HTML labels inherit `color`,
+   *     both from the page's text colour. One write — the root's `color` —
+   *     carries all of them;
+   *   - the XYCHART rules (light.css / dark.css, until parcel 10 step 2): a
+   *     2px outline on every bar and a 3px line series. Mermaid hard-codes the
+   *     bar outline to `strokeWidth: 0` and the line to `2`, no theme variable
+   *     reaches either, and it paints them with d3 `.attr()` — PRESENTATION
+   *     ATTRIBUTES, the weakest source in the cascade — so an author rule beat
+   *     them (disable-and-remeasure, 25 August 2026). A line's colour IS its
+   *     palette colour and is left alone; only its width is written;
+   *   - the QUADRANT rule: the six `g.border` lines are the only thing marking
+   *     where one quadrant ends and the next begins — the four fills differ
+   *     from each other and from the card by 1.00-1.66:1 in every theme — and
+   *     Mermaid's own border measured 1.27-1.91:1 in four of nine cells,
+   *     `accessibleDark`, the dark-mode default, among them (1 September
+   *     2026). Mermaid writes that border as an INLINE STYLE, not an attribute,
+   *     so the plain stylesheet rule was inert and it needed `!important`
+   *     (disable-and-remeasure). An inline write replaces Mermaid's value in
+   *     place. The stroke WIDTH is Mermaid's and is untouched.
+   *
+   * WHY AN AFTER-RENDER PASS AND NOT THEME VARIABLES: no theme variable
+   * reaches any of these properties, and four of the nine cells are Mermaid
+   * built-ins that applyTheme reaches with no themeVariables at all — the
+   * gantt, sequence and block passes' argument, unchanged.
+   *
+   * WHY THE INK IS DERIVED AND NOT READ FROM THE SITE MODE: the two inks of
+   * record are both offered to every derivation, and each element takes the
+   * one that best clears the ground it sits on (standard rule 18, as the block
+   * pass does) — the page's ground for the root colour, the chart's own
+   * background for a bar, and for a quadrant border every surface the line
+   * touches, the four quadrant fills and the page, maximising the WORST ratio
+   * (rule 12: a quadrant chart is banded). In all nine cells that reproduces
+   * what the stylesheets wrote: #00131D on every light ground (18.9:1 against
+   * the white every light theme uses; 13.63-18.90:1 across the quadrant
+   * surfaces) and #E1E8EC on every dark one (10.2:1, 13.46:1, 16.96:1 against
+   * dark, accessibleDark and highContrastDark; 7.03-16.96:1 across the
+   * quadrant surfaces). There is no fallback ramp, unlike the block pass: no
+   * selectable cell presents a ground neither ink clears.
+   *
+   * WHY THE SELECTOR IS THE ROLEDESCRIPTION: every toolbar button carries an
+   * inline icon <svg>, and a container-scoped query can reach those — that
+   * trap once reported a diagram empty when the probe had read a button icon.
+   * Mermaid sets aria-roledescription on the diagram root only.
+   *
+   * WRITTEN AS INLINE STYLE, which survives cloneNode(true) and innerHTML
+   * serialisation, so every export path carries it without inlining computed
+   * paint. It NEVER calls applyTheme: it is reached FROM the re-render
+   * (register item 56). Idempotent: every derivation reads only backgrounds
+   * and fills this pass never writes, and each marked element's owned
+   * properties are swept before being written again.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was written, or null if no diagram was found
+   */
+  function applyPageInkEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" && root.hasAttribute("aria-roledescription")
+        ? root
+        : root.querySelector("svg[aria-roledescription]");
+
+    if (!svg) {
+      logDebug("No diagram SVG in this container - page ink encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, kind by kind ----------------------
+    const owned = [
+      ...(svg.hasAttribute(PAGE_INK_ATTRIBUTE) ? [svg] : []),
+      ...svg.querySelectorAll(`[${PAGE_INK_ATTRIBUTE}]`),
+    ];
+    owned.forEach((element) => {
+      const kind = element.getAttribute(PAGE_INK_ATTRIBUTE);
+      (PAGE_INK_OWNED_PROPERTIES[kind] || []).forEach((property) =>
+        element.style.removeProperty(property)
+      );
+      element.removeAttribute(PAGE_INK_ATTRIBUTE);
+    });
+
+    const hostGround = resolveHostGround(svg);
+    const inkOn = (grounds) => pickInkAgainst(BLOCK_OUTLINE_INKS, grounds).ink;
+    const mark = (element, kind) =>
+      element.setAttribute(PAGE_INK_ATTRIBUTE, kind);
+    const applied = { type: svg.getAttribute("aria-roledescription"), hostGround };
+
+    // --- the inherited ink: one write on the root ---------------------------
+    applied.rootInk = inkOn([hostGround]);
+    svg.style.setProperty("color", applied.rootInk, "important");
+    mark(svg, "root");
+
+    const type = applied.type;
+
+    // --- xychart: bar outlines and line widths ------------------------------
+    if (type === XYCHART_ROLEDESCRIPTION) {
+      const chartPaint = parsePaint(resolveGroundColour(svg));
+      const chartGround = chartPaint
+        ? paintToHex(compositeOver(chartPaint, parsePaint(hostGround)))
+        : hostGround;
+      applied.barInk = inkOn([chartGround]);
+
+      const bars = svg.querySelectorAll('g[class^="bar-plot"] rect');
+      bars.forEach((bar) => {
+        bar.style.setProperty("stroke", applied.barInk, "important");
+        bar.style.setProperty("stroke-width", XYCHART_BAR_OUTLINE_WIDTH, "important");
+        mark(bar, "bar");
+      });
+
+      // Mermaid's own paths only: a previous series pass's casings are
+      // swept and rebuilt after this runs, and must keep their own width.
+      const lines = svg.querySelectorAll(
+        `g[class^="line-plot"] path:not([${CASING_ATTRIBUTE}])`
+      );
+      lines.forEach((line) => {
+        line.style.setProperty("stroke-width", XYCHART_LINE_WIDTH, "important");
+        mark(line, "line");
+      });
+
+      applied.bars = bars.length;
+      applied.lines = lines.length;
+    }
+
+    // --- quadrant: the border lines, against every surface they touch -------
+    if (type === QUADRANT_ROLEDESCRIPTION) {
+      const pageGround = parsePaint(hostGround);
+      const surfaces = [hostGround];
+      svg.querySelectorAll("g.quadrant rect").forEach((rect) => {
+        const computed = window.getComputedStyle(rect);
+        const declared = parsePaint(computed.fill);
+        const alpha =
+          (declared ? declared.a : 0) *
+          opacityValue(computed.fillOpacity) *
+          opacityValue(computed.opacity);
+        if (!declared || alpha <= 0) return;
+        surfaces.push(
+          paintToHex(compositeOver({ ...declared, a: alpha }, pageGround))
+        );
+      });
+      applied.borderInk = inkOn(surfaces);
+
+      const borders = svg.querySelectorAll("g.border line");
+      borders.forEach((line) => {
+        line.style.setProperty("stroke", applied.borderInk, "important");
+        mark(line, "border");
+      });
+      applied.borders = borders.length;
+    }
+
+    logDebug("Page ink encoding applied:", applied);
+    return applied;
+  }
+
   /**
    * Apply non-colour series encoding to a rendered xychart: pattern fills on
    * bars from the second bar onwards, dash arrays on lines from the second line
@@ -2003,6 +4240,13 @@ window.MermaidThemes = (function () {
   function applySeriesEncoding(root) {
     if (!root) return null;
 
+    // PAGE INK DISPATCH, added 26 September 2026 (Mermaid UI review parcel
+    // 10), FIRST and for every diagram type, at this seam for the gantt
+    // dispatch's wiring reason below. First, because the xychart work at the
+    // end of this function reads each line's COMPUTED width to size its
+    // casing, and that width is now written here rather than by the page.
+    applyPageInkEncoding(root);
+
     // GANTT DISPATCH, added 30 August 2026. `applySeriesEncoding` is the one
     // named after-render encoding step: mermaid-controls.js's
     // reapplyAfterRender calls it, and applyTheme's own fallback calls it. A
@@ -2031,6 +4275,30 @@ window.MermaidThemes = (function () {
     // source - the probe called it and recorded the null.
     const blockEncoding = applyBlockEncoding(root);
 
+    // C4 DISPATCH, added 18 September 2026, at the same seam and for the same
+    // wiring reason as gantt, sequence and block: reapplyAfterRender's encoding
+    // limb calls THIS function, and a second entry point would be a second
+    // place for the after-render invariant to be forgotten. Before this line
+    // applySeriesEncoding returned null for every c4 diagram, which was
+    // measured by calling it rather than read off the source.
+    const c4Encoding = applyC4Encoding(root);
+
+    // KANBAN DISPATCH, added 21 September 2026, at the same seam and for the
+    // same wiring reason as gantt, sequence, block and c4: mermaid-controls.js's
+    // reapplyAfterRender calls THIS function and nothing else, so a second entry
+    // point would be a second place for the after-render invariant to be
+    // forgotten. Before this line applySeriesEncoding returned null for every
+    // kanban diagram, which was measured by calling it rather than read off the
+    // source. applyKanbanEncoding never calls applyTheme — it is reached FROM
+    // the re-render, so calling back into it would recurse.
+    const kanbanEncoding = applyKanbanEncoding(root);
+
+    // RADAR DISPATCH, added 30 September 2026 (register item 93 session 7b),
+    // at the same seam and for the same wiring reason as the five above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyRadarEncoding never calls applyTheme, so it cannot recurse.
+    const radarEncoding = applyRadarEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -2043,8 +4311,11 @@ window.MermaidThemes = (function () {
       if (ganttEncoding) return { gantt: ganttEncoding };
       if (sequenceEncoding) return { sequence: sequenceEncoding };
       if (blockEncoding) return { block: blockEncoding };
+      if (c4Encoding) return { c4: c4Encoding };
+      if (kanbanEncoding) return { kanban: kanbanEncoding };
+      if (radarEncoding) return { radar: radarEncoding };
       logDebug(
-        "No xychart, gantt, sequence or block SVG in this container - series encoding skipped"
+        "No xychart, gantt, sequence, block, c4, kanban or radar SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -2969,6 +5240,128 @@ window.MermaidThemes = (function () {
     },
   ];
   /**
+   * Place an `%%{init: …}%%` directive in a source so that a YAML frontmatter
+   * block, where the source carries one, keeps the very first line.
+   *
+   * Mermaid requires the opening `---` fence to be the FIRST thing in the
+   * source. A directive prepended ahead of it makes the fence an ordinary body
+   * line and the whole render throws — measured 17 September 2026 on c4,
+   * flowchart and block, and isolated two-sided: frontmatter alone renders, a
+   * prepended directive alone renders, the two together throw. See
+   * docs/mermaid-item-84-sweep-6-2026-09-17.md § F1.
+   *
+   * The directive is therefore inserted on the line AFTER the closing fence
+   * where a frontmatter block opens the source, and prepended as before where
+   * it does not. Both positions are line-starts, so applyTheme's existing
+   * removal regex reaches a previously-inserted directive at either one.
+   *
+   * @param {string} code - The Mermaid source, with no init directive in it
+   * @param {string} directive - The directive to insert, ending in a newline
+   * @returns {string} The source carrying the directive
+   */
+  function insertInitDirective(code, directive) {
+    const lines = code.split("\n");
+
+    // An opening fence is `---` alone on the FIRST line. Anything else — a
+    // blank line first, a fence with trailing text — is not frontmatter to
+    // Mermaid, so the prepend stays correct for it.
+    if (!/^---\s*$/.test(lines[0] || "")) {
+      logDebug("No frontmatter fence; prepending the init directive");
+      return directive + code;
+    }
+
+    // The closing fence is the next `---` alone on a line. An unterminated
+    // block is not valid frontmatter, so prepending is the honest fallback:
+    // it leaves the source exactly as this function found it plus a directive,
+    // rather than inventing a position inside an incomplete block.
+    for (let i = 1; i < lines.length; i++) {
+      if (/^---\s*$/.test(lines[i])) {
+        logDebug(`Frontmatter closes at line ${i + 1}; inserting after it`);
+        const head = lines.slice(0, i + 1).join("\n");
+        const tail = lines.slice(i + 1).join("\n");
+        return head + "\n" + directive + tail;
+      }
+    }
+
+    logWarn("Frontmatter fence never closes; prepending the init directive");
+    return directive + code;
+  }
+
+  /**
+   * Build a diagram's source carrying the `%%{init}%%` directive for a theme.
+   *
+   * The one place that builds it. applyTheme uses it for the page, and the
+   * static export (Mermaid UI parcel 11a-3) uses it to paint each diagram a
+   * second time for the other site mode. So it reads the FULL theme lists,
+   * never getAllThemes(), which is filtered to the current mode: a light page
+   * must be able to build the dark theme's source.
+   *
+   * @param {string} code - The Mermaid source, with or without an init directive
+   * @param {string} themeId - A built-in or custom theme id
+   * @returns {string|null} The source carrying that theme's directive, after
+   *   any frontmatter block; null for an unknown id
+   */
+  function buildThemedSource(code, themeId) {
+    // The body below is applyTheme's former branch, moved here verbatim.
+    let newCode = code;
+
+    // Check if it's a built-in theme or custom theme
+    const customTheme = customThemes.find((theme) => theme.id === themeId);
+
+    if (customTheme) {
+      // For custom themes, we need to use the 'base' theme and apply theme variables
+      const initDirective = `%%{init: {'theme': 'base', 'themeVariables': ${JSON.stringify(
+        customTheme.variables
+      )}}}%%\n`;
+
+      // Remove any existing init directive
+      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
+
+      // Add new init directive, after any frontmatter block
+      newCode = insertInitDirective(newCode, initDirective);
+      logDebug(`Applied custom theme variables for "${themeId}"`);
+    } else if (builtInThemes.find((theme) => theme.id === themeId)) {
+      // For built-in themes, we just need to specify the theme name
+      const initDirective = `%%{init: {'theme': '${themeId}'}}%%\n`;
+
+      // Remove any existing init directive
+      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
+
+      // Add new init directive, after any frontmatter block
+      newCode = insertInitDirective(newCode, initDirective);
+      logDebug(`Applied built-in theme "${themeId}"`);
+    } else {
+      return null;
+    }
+
+    return newCode;
+  }
+
+  /**
+   * The theme a diagram showing `themeId` should show in `targetMode`, by the
+   * rule the site's own light/dark flip follows (resolveThemeForCurrentMode):
+   * a theme the target mode offers stays; a paired theme becomes its pair
+   * (THEME_PAIRS); anything else becomes the target mode's default.
+   *
+   * @param {string} themeId - The theme applied now
+   * @param {"light"|"dark"} targetMode - The site mode to resolve for
+   * @returns {string} A theme id the target mode offers
+   */
+  function getCounterpartTheme(themeId, targetMode) {
+    const offered = themeConfig.modeVisibleThemes
+      ? themeConfig.modeVisibleThemes[targetMode]
+      : null;
+    const isOffered = (id) => !offered || offered.includes(id);
+
+    if (isOffered(themeId)) return themeId;
+
+    const pair = THEME_PAIRS[themeId];
+    if (pair && isOffered(pair)) return pair;
+
+    return themeConfig.defaultThemes[targetMode];
+  }
+
+  /**
    * Apply a theme to a Mermaid diagram
    * @param {HTMLElement} container - The container with the Mermaid diagram
    * @param {string} themeId - The ID of the theme to apply
@@ -2990,35 +5383,10 @@ window.MermaidThemes = (function () {
       decodeURIComponent(container.getAttribute("data-diagram-code")) ||
       mermaidDiv.textContent;
 
-    // Create new code with the theme directive
-    let newCode = originalCode;
-
-    // Check if it's a built-in theme or custom theme
-    const customTheme = customThemes.find((theme) => theme.id === themeId);
-
-    if (customTheme) {
-      // For custom themes, we need to use the 'base' theme and apply theme variables
-      const initDirective = `%%{init: {'theme': 'base', 'themeVariables': ${JSON.stringify(
-        customTheme.variables
-      )}}}%%\n`;
-
-      // Remove any existing init directive
-      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
-
-      // Add new init directive
-      newCode = initDirective + newCode;
-      logDebug(`Applied custom theme variables for "${themeId}"`);
-    } else if (builtInThemes.find((theme) => theme.id === themeId)) {
-      // For built-in themes, we just need to specify the theme name
-      const initDirective = `%%{init: {'theme': '${themeId}'}}%%\n`;
-
-      // Remove any existing init directive
-      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
-
-      // Add new init directive
-      newCode = initDirective + newCode;
-      logDebug(`Applied built-in theme "${themeId}"`);
-    }
+    // Create new code with the theme directive, built in one place. An
+    // unknown id leaves the source as it was.
+    const themedCode = buildThemedSource(originalCode, themeId);
+    const newCode = themedCode === null ? originalCode : themedCode;
 
     // Update the container with the new code
     container.setAttribute("data-diagram-code", encodeURIComponent(newCode));
@@ -3319,6 +5687,85 @@ window.MermaidThemes = (function () {
   }
   // Find the updateDiagramsForThemeChange function and replace it with this updated version:
 
+  /** The site's two theme stylesheet links (tools.html), found by id at call time. */
+  const SITE_THEME_LINK_IDS = Object.freeze(["lightCSS", "darkCSS"]);
+
+  /**
+   * The longest a site flip waits for its swapped stylesheets before it
+   * re-renders anyway. Measured 26 September 2026 (headless, preview server):
+   * the gap from the flip handler's entry to the new sheet loading was 39-55 ms
+   * in both directions; 2000 ms is over thirty times the slowest.
+   */
+  const SITE_THEME_STYLESHEET_WAIT_MS = 2000;
+
+  /** How often the wait re-reads the links. */
+  const SITE_THEME_STYLESHEET_POLL_MS = 10;
+
+  /**
+   * Resolve once every site theme link has finished loading its CURRENT href.
+   *
+   * WHY THE FLIP WAITS (Mermaid UI review parcel 10, 26 September 2026). The
+   * site toggle swaps both links' hrefs and calls updateDiagramsForThemeChange
+   * in the same task. Until the new sheet loads, neither sheet applies — the
+   * body computes transparent — so every after-render pass that derives an ink
+   * against the page ground (the block, gantt and series passes) fell back to
+   * its light assumption, and a line's computed width was Mermaid's own 2px
+   * rather than the stylesheet's 3px. A flip to dark therefore left dark ink
+   * on the dark page and a narrower xychart casing, unlike a page loaded
+   * straight into dark mode (the UI guard's PT4 row measures exactly that).
+   *
+   * THE READINESS TEST IS THE SHEET, NOT THE LOAD EVENT. Measured: during the
+   * gap each link's `sheet` is still the OLD sheet, so `sheet.href` differs
+   * from the link's resolved `href` until the new one lands. The `load` event
+   * cannot be used: on the first flip to dark, #darkCSS's href does not change
+   * (dark.css to dark.css) and it fires none.
+   *
+   * Never rejects: missing links are logged and the wait proceeds at once; a
+   * timeout is logged and the wait proceeds, which is exactly today's
+   * behaviour.
+   *
+   * @returns {Promise<void>}
+   */
+  function waitForSiteThemeStylesheets() {
+    const links = SITE_THEME_LINK_IDS.map((id) =>
+      document.getElementById(id)
+    ).filter(Boolean);
+
+    if (links.length !== SITE_THEME_LINK_IDS.length) {
+      logWarn(
+        "Site theme stylesheet link(s) not found; re-rendering without waiting for",
+        SITE_THEME_LINK_IDS.filter((id) => !document.getElementById(id))
+      );
+    }
+
+    const loaded = () =>
+      links.every((link) => link.sheet && link.sheet.href === link.href);
+
+    return new Promise((resolve) => {
+      const started = Date.now();
+
+      const check = () => {
+        if (loaded()) {
+          logDebug("Site theme stylesheets loaded after", Date.now() - started, "ms");
+          resolve();
+          return;
+        }
+
+        if (Date.now() - started >= SITE_THEME_STYLESHEET_WAIT_MS) {
+          logWarn(
+            `Site theme stylesheets not loaded after ${SITE_THEME_STYLESHEET_WAIT_MS} ms; re-rendering diagrams anyway`
+          );
+          resolve();
+          return;
+        }
+
+        setTimeout(check, SITE_THEME_STYLESHEET_POLL_MS);
+      };
+
+      check();
+    });
+  }
+
   /**
    * Update mermaid diagrams when site theme changes
    * This function should be called when the site theme is toggled
@@ -3326,6 +5773,20 @@ window.MermaidThemes = (function () {
   function updateDiagramsForThemeChange() {
     logInfo("Theme change detected, updating diagrams");
 
+    // Wait for the swapped site stylesheet first, so every after-render pass
+    // reads the ground the page is actually changing to (see the helper).
+    return waitForSiteThemeStylesheets()
+      .then(rerenderDiagramsForThemeChange)
+      .catch((error) =>
+        logError("Updating diagrams after the theme change failed:", error)
+      );
+  }
+
+  /**
+   * The re-render itself, unchanged from before the wait was added: run once
+   * the site theme stylesheets have loaded.
+   */
+  function rerenderDiagramsForThemeChange() {
     // Get all mermaid containers
     const mermaidContainers = document.querySelectorAll(".mermaid-container");
     logDebug("Found", mermaidContainers.length, "mermaid containers");
@@ -3715,6 +6176,10 @@ window.MermaidThemes = (function () {
     init: init,
     addThemeSelector: addThemeSelector,
     applyTheme: applyTheme,
+    // The static export's second copy (Mermaid UI parcel 11a-3) builds its
+    // source and chooses its theme through these, as applyTheme does.
+    buildThemedSource: buildThemedSource,
+    getCounterpartTheme: getCounterpartTheme,
     applySeriesEncoding: applySeriesEncoding,
     // Exported for MEASUREMENT, not as a second wiring route. Every production
     // path reaches it through applySeriesEncoding above; a probe needs to call
@@ -3722,6 +6187,9 @@ window.MermaidThemes = (function () {
     applyGanttEncoding: applyGanttEncoding,
     applySequenceEncoding: applySequenceEncoding,
     applyBlockEncoding: applyBlockEncoding,
+    applyC4Encoding: applyC4Encoding,
+    applyKanbanEncoding: applyKanbanEncoding,
+    applyRadarEncoding: applyRadarEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

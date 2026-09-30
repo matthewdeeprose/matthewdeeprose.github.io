@@ -704,7 +704,10 @@
   border: 0.2rem solid #231f20;
 }
 
-#resume-context-ai-analyse:disabled {
+/* Held busy with aria-disabled rather than native disabled (BusyControl,
+   parcel 42), so it keeps focus while it looks disabled. */
+#resume-context-ai-analyse:disabled,
+#resume-context-ai-analyse[aria-disabled="true"] {
   background: #161415;
   color: #9fb1bd;
   border: 0.2rem solid #495961;
@@ -729,6 +732,19 @@
 .context-ai-summary-row {
   border-left-color: #74c9e5;
   background-color: #00131d;
+}
+
+/* MathPix cost notices (shape in mathpix-main.css). The fill is the page
+   surface, not the panel tint, because three notices sit on #00131d panels. */
+.help-text.mathpix-cost-notice {
+  border-color: #9fb1bd;
+  border-left-color: #74c9e5;
+  background-color: #231f20;
+  color: #e1e8ec;
+}
+
+.mathpix-cost-notice [data-icon] {
+  color: #74c9e5;
 }
 
 .context-ai-summary-before {
@@ -2712,7 +2728,7 @@ input#resume-mmd-split-show-pdf:focus-visible {
 
 .upload-preview-display {
   border: 1px solid currentcolor;
-  background: #231f20 !important;
+  background: #231f20;
 }
 /* ============================================
    COLOUR PROPERTIES
@@ -3145,13 +3161,20 @@ pre[class*="language-"] {
   border: 1px solid currentcolor;
 }
 
+/* article.standard h4 outranks this rule and already paints #9fb1bd; the
+   value matches it so the rule says what the page shows. */
 .mathpix-html-preview h4 {
-  color: #6c757d;
+  color: #9fb1bd;
 }
 
 .preview-content {
   background: white;
   border: 1px solid currentcolor;
+}
+
+/* MathPix HTML output uses the page's light text, so its box takes a dark surface; white gave 1.24:1. */
+.mathpix-html-preview .preview-content {
+  background: #231f20;
 }
 
 /* Processing Metadata – colour */
@@ -3172,7 +3195,7 @@ pre[class*="language-"] {
 
 /* Empty content styling – colour */
 .empty-content {
-  color: #6c757d;
+  color: #9fb1bd;
   background: #00131d;
 }
 
@@ -3427,16 +3450,6 @@ pre[class*="language-"] {
   color: #e1e8ec;
 }
 
-.cancel-btn {
-  background: #dc3545;
-  color: #ffffff;
-  border: none;
-}
-
-.cancel-btn:hover {
-  background: #c82333;
-}
-
 .progress-container-enhanced .progress-bar {
   background: #231f20;
   box-shadow: 0 2px 4px rgba(235, 214, 28, 0.932);
@@ -3485,16 +3498,18 @@ pre[class*="language-"] {
 }
 
 .progress-stages::before {
-  background: #e9ecef;
+  background: #9fb1bd;
 }
 
 .stage-indicator {
   background: #00131d;
 }
 
+/* A pending stage is a hollow ring; the active and completed rules below
+   fill it. */
 .stage-dot {
-  background: #e9ecef;
-  border: 3px solid #e9ecef;
+  background: #00131d;
+  border: 3px solid #9fb1bd;
 }
 
 .stage-indicator.active .stage-dot {
@@ -3540,12 +3555,6 @@ pre[class*="language-"] {
   color: #e1e8ec;
 }
 
-.processing-time {
-  background: #231f20;
-  outline: 1px solid currentcolor;
-  color: #e1e8ec;
-}
-
 @media (prefers-contrast: high) {
   .progress-container-enhanced,
   .html-preview-controls,
@@ -3553,8 +3562,7 @@ pre[class*="language-"] {
     border-width: 3px;
   }
 
-  .preview-toggle-btn,
-  .cancel-btn {
+  .preview-toggle-btn {
     border: 2px solid currentColor;
   }
 
@@ -3564,32 +3572,6 @@ pre[class*="language-"] {
 }
 
 /* Phase 2.1: PDF Document Processing Colours */
-.mathpix-pdf-upload-container {
-  border: 1px solid currentcolor;
-}
-
-.mathpix-pdf-drop-zone {
-  border: 2px dashed #00131d;
-  background: #00131d;
-}
-
-.mathpix-pdf-drop-zone:hover {
-  border-color: #74c9e5;
-  background: #00131d;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.15);
-}
-
-.mathpix-pdf-drop-zone:focus {
-  border-color: #74c9e5;
-  background: #00131d;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.mathpix-pdf-drop-zone.drag-over {
-  border-color: #74c9e5;
-  background: #00131d;
-}
-
 .mathpix-pdf-options {
   border: 1px solid currentcolor;
   background: #00131d;
@@ -3670,15 +3652,15 @@ pre[class*="language-"] {
 }
 
 .mathpix-progress-text {
-  color: #00131d;
+  color: #e1e8ec;
 }
 
 .mathpix-status-text {
-  color: #00131d;
+  color: #e1e8ec;
 }
 
 .mathpix-timing-text {
-  color: #6c757d;
+  color: #9fb1bd;
 }
 
 .mathpix-pdf-results {
@@ -3758,9 +3740,11 @@ pre[class*="language-"] {
   color: #00131d;
 }
 
+/* MathPix HTML output is shown in the page's own text colours, so the
+   frame takes a dark surface; white left the text at 1.24:1. */
 .mathpix-preview-frame {
-  background: white;
-  border: 2px solid #00131d;
+  background: #231f20;
+  border: 2px solid currentcolor;
 }
 
 .mathpix-docx-info {
@@ -3770,7 +3754,7 @@ pre[class*="language-"] {
 }
 
 .mathpix-docx-info p {
-  color: #00131d;
+  color: #e1e8ec;
 }
 
 .stat-item {
@@ -3779,34 +3763,34 @@ pre[class*="language-"] {
 
 /* Page Navigation Colours */
 .mathpix-page-navigation {
-  background-color: #f8f9fa;
-  border: 1px solid #e1e5e9;
+  background-color: #00131d;
+  border: 1px solid currentcolor;
 }
 
 .mathpix-nav-button {
-  background-color: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #374151;
+  background-color: #00131d;
+  color: #e1e8ec;
 }
 
+/* The layout sheet sets border: none on .mathpix-nav-button and loads after
+   this file, so the border needs the extra specificity to show. Without it the
+   button fill matches the panel and the button has no visible edge. */
+.mathpix-page-navigation .mathpix-nav-button {
+  border: 0.2rem solid currentcolor;
+}
+
+/* Matches the global dark button hover: fill and text invert. */
 .mathpix-nav-button:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
+  background-color: #e1e8ec;
+  color: #00131d;
 }
 
 .mathpix-nav-button:disabled {
-  background-color: #f9fafb;
-  color: #9ca3af;
+  background-color: #00131d;
 }
 
 .mathpix-page-info {
-  color: #4b5563;
-}
-
-.mathpix-page-placeholder {
-  background-color: #f8f9fa;
-  border: 2px dashed #dee2e6;
-  color: #6c757d;
+  color: #e1e8ec;
 }
 
 .mathpix-option-group {
@@ -3828,106 +3812,12 @@ pre[class*="language-"] {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Main PDF Preview Colours */
-.mathpix-pdf-preview {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-}
-
-.pdf-preview-display {
-  border: 1px solid #dee2e6;
-  background: #ffffff;
-}
-
 #pdf-preview-canvas {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Statistics Panel Colours */
-.pdf-preview-stats {
-  background: rgba(255, 255, 255, 0.8);
-  border-left: 4px solid #0d6efd;
-}
-
-.pdf-preview-stats h3 {
-  color: #212529;
-}
-
-.pdf-content-summary dt {
-  color: #6c757d;
-}
-
-.pdf-content-summary dd {
-  color: #212529;
-}
-
-/* Navigation Controls Colours */
-.pdf-nav-button {
-  background: #ffffff;
-  border: 1px solid #dee2e6;
-  color: #212529;
-}
-
-.pdf-nav-button:hover:not(:disabled) {
-  background: #e9ecef;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.pdf-nav-button:disabled {
-  background: #f8f9fa;
-}
-
-.pdf-nav-button:focus-visible {
-  outline: 3px solid #0d6efd;
-}
-
-/* Legend Colours */
-.pdf-preview-legend {
-  background: rgba(255, 255, 255, 0.8);
-}
-
-.pdf-preview-legend h4 {
-  color: #212529;
-}
-
-.legend-math {
-  color: #3b82f6;
-}
-
-.legend-handwritten {
-  color: #22c55e;
-}
-
-.legend-table {
-  color: #f97316;
-}
-
-.legend-diagram {
-  color: #a855f7;
-}
-
-.legend-low-confidence {
-  color: #eab308;
-}
-
-/* Action Buttons Colours */
-
-/* Page Navigation with Integrated Statistics */
-.mathpix-page-navigation {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-}
-
 .mathpix-status-indicator {
   border: 0px solid #e1e8ec;
-}
-.mathpix-nav-button {
-  background: #0066cc;
-  color: white;
-}
-
-.mathpix-nav-button:hover:not(:disabled) {
-  background: #0052a3;
 }
 
 /* Page Statistics Panel */
@@ -3937,37 +3827,20 @@ pre[class*="language-"] {
 }
 
 .stats-heading {
-  color: #e1e8ec;
+  color: #9fb1bd;
 }
 
 .page-content-summary dt {
-  color: #e1e8ec;
+  color: #9fb1bd;
 }
 
 .page-content-summary dd {
-  color: #333;
-  background: white;
-}
-
-/* Simplified PDF Preview */
-.pdf-preview-description {
   color: #e1e8ec;
-}
-
-.pdf-preview-display {
-  background: #f5f5f5;
+  background: #00131d;
 }
 
 #pdf-preview-canvas {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.pdf-preview-controls {
-  background: #f8f9fa;
-}
-
-.zoom-indicator {
-  color: #e1e8ec;
 }
 
 /* Mathpix debug code */
@@ -4027,6 +3900,14 @@ pre[class*="language-"] {
 }
 
 .file-upload-label:focus-within {
+  outline-color: #c1d100;
+}
+
+.imgdesc-upload-area:hover {
+  border-color: #c1d100;
+}
+
+.imgdesc-upload-area:focus-within {
   outline-color: #c1d100;
 }
 
@@ -5875,6 +5756,115 @@ del {
   color: #a3a3a3;
 }
 
+/* Transcribe suggestion wrapper, register item 47 unit 12, mirroring light.css.
+ *
+ * THESE TINTS REINFORCE AND NEVER CARRY. Every distinction they touch is
+ * already carried by a border width, a border STYLE, a box metric, a font
+ * weight or a column count in openrouter-embed/transcribe.css, all of which
+ * survive forced colours. Delete this block and the wrapper is still legible.
+ *
+ * BORDERS ONLY. NO TEXT COLOUR IS DECLARED HERE. Dark theme could afford a
+ * tinted conflict sentence -- the house --warning-color here is #ff6b6b at
+ * 5.48:1, which clears the 4.5:1 body-text bar with room -- and it is left off
+ * anyway, because light theme cannot (its #d63301 reads 4.51:1, clearing the
+ * same bar by 0.01) and a distinction that exists in one theme and not the
+ * other is worse than one that exists in neither. The two sheets are kept
+ * symmetrical on purpose: a reader who learns the surface in dark should not
+ * have to relearn it in light.
+ *
+ * THE REASON SPAN IS DELIBERATELY NOT MUTED, for the reason light.css records
+ * at greater length: a dimmed explanatory sentence passes in dark and fails in
+ * light, which is the direction that hides the fault from whoever is working
+ * on it.
+ *
+ * MEASURED ON THE PAGE 20 September 2026, headless chromium-1223, against the
+ * COMPOSITED surface read off the live ancestor chain -- rgba(35,31,32,1) with
+ * transcribe.css's rgba(127,127,127,0.06) panel over it = rgb(41,37,38) -- and
+ * never off `body`. A black-on-white canary read 21 in the same run.
+ *
+ *   applicable wrapper rule   #74c9e5 on rgb(41,37,38)  8.13:1  (bar 3:1)
+ *   column seam               #9fb1bd on rgb(41,37,38)  6.87:1  (bar 3:1)
+ *   conflict wrapper rule     #ff6b6b on rgb(41,37,38)  5.48:1  (bar 3:1)
+ *   conflict sentence seam    #ff6b6b on rgb(41,37,38)  5.48:1  (bar 3:1)
+ *
+ * #74c9e5 RATHER THAN #c1d100, which measures a higher 8.97:1 and is still the
+ * wrong choice: it is already on the same row, on .transcribe-speaker, so a
+ * rule in that hue would read as an extension of the speaker label rather than
+ * as a marker for the suggestion. #74c9e5 is also the hue that mirrors light's
+ * #005c84, which is what keeps the two themes teaching the same lesson.
+ *
+ * BLUE AGAINST RED, NEVER RED AGAINST GREEN -- and note that #c1d100 against
+ * #ff6b6b would have been exactly the red-against-green pairing to avoid, so
+ * the speaker-collision argument above and this one point the same way.
+ *
+ * LITERALS, NOT var(--warning-color), although #ff6b6b is exactly what that
+ * token holds today. A measured ratio recorded beside a literal stays true; the
+ * same ratio recorded beside a token silently stops being true the day someone
+ * retunes the token.
+ *
+ * Under forced-colors every value here is replaced by CanvasText. The widths,
+ * the styles and the geometry are in transcribe.css and are what survive. */
+.transcribe-suggestion {
+  border-inline-start-color: #74c9e5;
+}
+
+/* EACH HALF'S OWN RULE -- register item 47 unit 18, § 2, kept symmetrical
+ * with light.css, which carries the reasoning. Grey for the original and
+ * blue for the proposal, the capsules' own edge colours. The seam tint this
+ * replaces, withdrawn and quoted per register items 51 and 56:
+ *
+ *   .transcribe-suggestion-was + .transcribe-suggestion-proposed {
+ *     border-inline-start-color: #9fb1bd;
+ *   }
+ *
+ * Measured 23 September 2026 with a black-on-white canary reading 21 in the
+ * same run; figures in the unit 18 report. Under forced colours both become
+ * CanvasText and the capsule is what tells the halves apart. */
+.transcribe-suggestion-was {
+  border-inline-start-color: #9fb1bd;
+}
+
+.transcribe-suggestion-proposed {
+  border-inline-start-color: #74c9e5;
+}
+
+.transcribe-suggestion:has(.transcribe-suggestion-conflict) {
+  border-inline-start-color: #ff6b6b;
+}
+
+.transcribe-suggestion-conflict {
+  border-block-start-color: #ff6b6b;
+}
+
+/* THE LABEL CAPSULES -- register item 47 unit 16, § 3, kept symmetrical with
+ * light.css, which carries the reasoning at greater length. transcribe.css
+ * draws the shape and declares no colour; this is the tint and the edge.
+ *
+ * Grey for the original, blue for the proposal. The blue edge is the
+ * applicable wrapper's own #74c9e5 and the grey edge is the column seam's
+ * #9fb1bd, mirroring light's #005c84 and #495961.
+ *
+ * MEASURED ON THE PAGE 23 September 2026, headless chromium-1223, against the
+ * composited ancestor chain -- rgb(41,37,38) -- with a black-on-white canary
+ * reading 21 in the same run:
+ *
+ *   original label text    rgb(225,232,236) on #3a3f43        8.60:1   (bar 4.5:1)
+ *   suggested label text   rgb(225,232,236) on #173a4a        9.74:1   (bar 4.5:1)
+ *   original edge          #9fb1bd on rgb(41,37,38)           6.87:1   (bar 3:1)
+ *   suggested edge         #74c9e5 on rgb(41,37,38)           8.13:1   (bar 3:1)
+ *
+ * Under forced-colors both tints are dropped and both edges become
+ * CanvasText; the shape is what survives. */
+.transcribe-suggestion-label[data-suggestion-half="original"] {
+  background-color: #3a3f43;
+  border-color: #9fb1bd;
+}
+
+.transcribe-suggestion-label[data-suggestion-half="suggested"] {
+  background-color: #173a4a;
+  border-color: #74c9e5;
+}
+
 .results-content pre {
   background-color: #231f20;
 }
@@ -6170,8 +6160,17 @@ figcaption.borders {
   color: #e1e8ec !important;
 }
 
+/* #chat-send (parcel 41), #resume-context-ai-analyse (parcel 42) and Image
+   Describer's four run buttons (parcel 43) are HELD busy with aria-disabled
+   rather than native disabled (BusyControl), so they are named here too. */
 button:disabled,
-button[disabled] {
+button[disabled],
+#chat-send[aria-disabled="true"],
+#resume-context-ai-analyse[aria-disabled="true"],
+#imgdesc-generate[aria-disabled="true"],
+#imgdesc-generate-local[aria-disabled="true"],
+#imgdesc-regenerate[aria-disabled="true"],
+#imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #758d9a !important;
   border: dotted 2px #e1e8ec !important;
@@ -6179,6 +6178,29 @@ button[disabled] {
   background-image: none;
   background-repeat: repeat;
   z-index: 1;
+}
+
+/* Image Describer's four run buttons, HELD and FOCUSED (parcel 43b). A held
+   button can keep focus, unlike a natively disabled one. `background-color:
+   none` above is invalid and dropped, so the focus fill (#e1e8ec) showed under
+   the grey label: 2.81:1. This gives the held state the resting background, as
+   the unfocused held state already shows (4.68:1). The global rule is left
+   alone: correcting it would move every disabled button in this theme. */
+#imgdesc-generate[aria-disabled="true"],
+#imgdesc-generate-local[aria-disabled="true"],
+#imgdesc-regenerate[aria-disabled="true"],
+#imgdesc-redescribe[aria-disabled="true"] {
+  background-color: #231f20;
+}
+
+/* Chat's message box HELD busy: readOnly, not disabled, so it keeps focus
+   (BusyControl, parcel 41). Without this the held box looks editable — and a
+   natively disabled box never looked disabled in this theme either. The
+   textarea counterpart of the rule above. */
+#chat-input[readonly] {
+  color: #758d9a !important;
+  border-style: dotted !important;
+  border-color: #e1e8ec !important;
 }
 
 lite-youtube {
@@ -7303,78 +7325,4 @@ pre.language-json {
 .tool-flag[data-flag="beta"] {
   color: #c1d100;
   border-color: #c1d100;
-}
-
-/* xychart-beta series outlines — dark mode.
-
-   The reasoning is the light-mode block's, in light.css, and is not repeated
-   here beyond what differs. In short: Mermaid hard-codes the bar outline to
-   `strokeWidth: 0` and the line stroke to `2` with no theme variable reaching
-   either, but paints through d3 `.attr()`, so these are presentation attributes
-   and an ordinary author rule beats them — measured by disable-and-remeasure on
-   25 August 2026. The selector is the diagram root's own
-   `aria-roledescription="xychart"` rather than a container, because every
-   control button carries an inline icon <svg> that a container-scoped selector
-   can reach.
-
-   WHY ONE COLOUR SERVES EVERY DARK THEME. themeConfig.modeVisibleThemes.dark
-   offers exactly three: dark (ground #333), accessibleDark (#1E1E1E) and
-   highContrastDark (#000000). #E1E8EC — already this file's own light ink, 283
-   uses — measures 10.2:1, 13.46:1 and 16.96:1 against those three respectively,
-   so one value clears 3:1 on all of them with margin.
-
-   A NOTE ON WHAT THE OUTLINE IS FOR ON DARK, BECAUSE THE READING LOOKS WRONG.
-   Against a pale fill this outline is nearly invisible — #E1E8EC against the
-   dark builtin's white series measures 1.24:1, and against Paul Tol's palest
-   entry 1.48:1. That is not a defect. On dark themes a pale fill already clears
-   3:1 against the ground on its own, so the boundary is carried by the fill and
-   the outline is redundant. Where the outline earns its place is the opposite
-   case: the `dark` builtin's #34495e series sits at 1.36:1 against #333, and it
-   is this light outline at 10.2:1 that gives that bar an edge at all. The two
-   mechanisms cover each other, which is why one outline colour is safe across
-   fills of every lightness.
-
-   As in light mode this lifts BARS only. A line's palette colour is its stroke
-   and is untouched; the width goes to 3px for legibility. */
-
-svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
-  stroke: #e1e8ec;
-  stroke-width: 2px;
-}
-
-svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
-  stroke-width: 3px;
-}
-
-/* quadrantChart quadrant boundaries — dark mode.
-
-   The reasoning is the light-mode block's, in light.css, and is not repeated
-   here beyond what differs. In short: the six <line> elements in `g.border` are
-   the only thing marking where one quadrant ends and the next begins, because
-   the four fills differ from each other and from the card by 1.00:1 to 1.66:1
-   in every theme; and the rule needs `!important` because Mermaid writes the
-   quadrant border as an INLINE STYLE rather than as a presentation attribute,
-   so the plain form is inert — established by disable-and-remeasure, not
-   inherited from the xychart block above it.
-
-   THE DARK-MODE CASE IS THE ONE THAT FORCED THIS WORK. `accessibleDark` is the
-   DEFAULT dark theme, and it renders the border `rgb(0, 0, 0)` on quadrant
-   fills of #2C3E50 to #3B4D5F — measured at 1.91:1 to 2.41:1 on 1 September
-   2026. Black on dark blue-grey: the quadrant divisions were effectively
-   invisible in the theme a dark-mode user is handed by default, and the two
-   built-in dark themes were clean, so nothing else in the record would have
-   pointed at it.
-
-   WHY ONE COLOUR SERVES ALL THREE DARK THEMES. Derived rule 12's way, by
-   maximising the WORST ratio across every surface the line touches — all four
-   quadrant fills and the card behind the plot area — in `dark`,
-   `accessibleDark` and `highContrastDark`. #E1E8EC, already this file's own
-   light ink, clears every one of those twelve surfaces at 7.03:1 to 16.96:1.
-   The worst of those, 7.03:1, is `accessibleDark`'s palest band and is still
-   more than twice the 3:1 the criterion asks.
-
-   The stroke WIDTH is deliberately untouched, as in light mode. */
-
-svg[aria-roledescription="quadrantChart"] g.border line {
-  stroke: #e1e8ec !important;
 }

@@ -92,7 +92,15 @@ window.MermaidAccessibility = (function () {
     ariaLiveRegionId: "mermaid-sr-announcer",
     descriptionClass: "mermaid-description",
     detailsClass: "mermaid-details",
-    captionsVisibleByDefault: true,
+    // The figcaption carries the short description. It is hidden visually and
+    // left in the accessibility tree, which is what the Graph Builder charts
+    // already do to their own `.chart-figcaption` — the diagram's SVG points at
+    // it with `aria-describedby` either way, so nothing is lost to a reader.
+    // False since 21 September 2026: the caption was shown while the
+    // description engine was being built and is no longer wanted on screen.
+    // Setting this true restores the visible caption; there is no user-facing
+    // toggle, so this flag is the only control.
+    captionsVisibleByDefault: false,
     // Maximum number of actors to list in sequence diagram descriptions
     maxActors: 5,
     // NEW: Retry and error recovery settings
@@ -1055,6 +1063,32 @@ window.MermaidAccessibility = (function () {
     mindmap: "a mindmap",
     timeline: "a timeline",
     "architecture-beta": "an architecture diagram",
+    // Item 88, 21 September 2026. The bare key, added WITH the kanban
+    // generator, because this map is read on BOTH fallback paths and the two
+    // need different keys. Before the generator existed a kanban source
+    // resolved to `unsupported:kanban` and the entry above named it; with the
+    // generator registered it resolves to `kanban`, and a generation FAILURE
+    // reads this key instead. Without this row that failure would say "A
+    // diagram" — a step backwards from the unsupported message it replaces.
+    // The `unsupported:kanban` entry is kept and is now unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    kanban: "a Kanban board",
+    // Item 89, 22 September 2026. The same bare-key gap, measured for the
+    // three remaining generator types. Their `unsupported:` twins above are
+    // kept and are unreachable while the MERMAID_TYPE_TO_KEY rows stand.
+    block: "a block diagram",
+    c4: "a C4 architecture diagram",
+    xychart: "an XY chart",
+    // Item 93, 28 September 2026. The same bare-key row, added WITH the radar
+    // generator so a generation failure still names the chart. The
+    // `unsupported:radar` twin above is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    radar: "a radar chart",
+    // Item 96, 29 September 2026. The same bare-key row, added WITH the info
+    // generator (ruling IS2: one phrase for the short, this row and the
+    // fallback). The `unsupported:info` twin above is kept and is unreachable
+    // while the MERMAID_TYPE_TO_KEY row stands.
+    info: "a Mermaid information panel",
   });
 
   /** Last-resort phrase when the type is genuinely unknown to us. */
@@ -1207,13 +1241,18 @@ window.MermaidAccessibility = (function () {
       // node is the same node, still connected, with non-empty innerHTML, so
       // every conventional staleness check reads healthy. The one token that
       // separates that window from any other cause of a miss is the
-      // `%%{init:` directive applyTheme prefixes to the source, which nothing
+      // `%%{init:` directive applyTheme writes into the source, which nothing
       // else on the page writes. Both readings are taken synchronously at the
       // instant of the miss; the text itself is deliberately never logged.
       // See docs/mermaid-item25-firstlook-2026-08-12.md.
-      const directivePresent = mermaidDiv.textContent
-        .trim()
-        .startsWith("%%{init");
+      //
+      // The test is LINE-START ANYWHERE, matching applyTheme's own removal
+      // regex, and NOT `startsWith`. Since the frontmatter fix of 18 September
+      // 2026 applyTheme inserts the directive AFTER a YAML frontmatter block
+      // rather than ahead of it, so a themed frontmatter source begins with
+      // `---`. A `startsWith` reading would go false on exactly the diagrams
+      // that fix repairs — the ones most likely to reach this diagnostic.
+      const directivePresent = /^%%{init:/m.test(mermaidDiv.textContent);
       logInfo(
         `[Mermaid Accessibility] No SVG found initially for diagram ${diagramId}, starting retry sequence (directivePresent: ${directivePresent}, innerHTML length: ${mermaidDiv.innerHTML.length})`
       );

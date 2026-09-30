@@ -41,9 +41,26 @@
   transition: border-style 0.2s ease;
 }
 
-.imgdesc-upload-area.drag-over {
+.imgdesc-upload-area:hover {
+  border-style: solid;
+}
+
+/* The controller adds imgdesc-drag-over (image-describer-controller.js) */
+.imgdesc-upload-area.imgdesc-drag-over {
   border-style: solid;
   border-width: 3px;
+}
+
+/*
+ * The real control is #imgdesc-file-input, which is .visually-hidden (its own
+ * focus ring is clipped away) and follows the label, so no sibling selector
+ * can reach the visible box. The wrapper carries the indicator instead.
+ * Colour comes from light.css / dark.css.
+ */
+.imgdesc-upload-area:focus-within {
+  outline-width: 3px;
+  outline-style: solid;
+  outline-offset: 2px;
 }
 
 /* Collapsed state after image is uploaded */
@@ -2417,6 +2434,38 @@
   max-height: 300px;
 }
 
+/* ── Skip link past the OCR / object boxes (H-13) ──
+   Colours and the focus border come from the theme sheets' .skip-link rules.
+   The shared class slides in from a fixed offset above its own position, which
+   only makes sense at the top of the page: inside the overlay it would sit
+   visibly over the content above the image. So it is clipped away until it has
+   focus, then appears over the top-left of the image. The container does not
+   clip overflow; the layers do, and the link is a child of the container. */
+.skip-link.imgdesc-overlay-skip {
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  transform: none;
+  transition: none;
+  z-index: 20;
+}
+
+.skip-link.imgdesc-overlay-skip:focus {
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  overflow: visible;
+  clip-path: none;
+  transform: none;
+  transition: none !important;
+}
+
 /* ── Overlay Layers ── */
 
 .imgdesc-overlay-layer {
@@ -3233,6 +3282,24 @@
 .imgdesc-workspace--fullscreen .imgdesc-depth-legend,
 .imgdesc-workspace--fullscreen .imgdesc-file-info,
 .imgdesc-workspace--fullscreen .imgdesc-florence-ocr-prompt {
+  display: none;
+}
+
+/* Fullscreen shows the image and the tools that act on it, and nothing else.
+   Every DIRECT child of the workspace is hidden in fullscreen unless it is one of
+   the four boxes the review grid places (see "Desktop sidebar grid" above) or
+   the visually-hidden count span. A new strip added to #imgdesc-workspace is
+   therefore page-only by default; to show one in fullscreen, add its class here
+   AND give it a grid cell in the review-active layout. Hidden now: the
+   cache-recall banner and the re-analyse warning. Hiding the banner also removes
+   its role="status" region while fullscreen is open — nothing writes to it
+   there, since loading and re-analysing happen on the page. The rule above is
+   still needed: file info and the Florence prompt sit INSIDE the preview, which
+   a direct-child rule cannot reach. */
+.imgdesc-workspace--fullscreen
+  > :not(.imgdesc-preview):not(.imgdesc-analysis-status):not(
+    .imgdesc-overlay-toolbar
+  ):not(.imgdesc-review-sidebar):not(.visually-hidden) {
   display: none;
 }
 

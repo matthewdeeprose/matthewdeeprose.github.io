@@ -146,6 +146,38 @@ const MathPixContextAI = (function () {
    * @returns {string|null} a model id, or null for a provider the registry has
    *   no entry for under this purpose, and null when the registry is absent
    */
+  /**
+   * Is the shared model registry MODULE absent from the page? (parcel WL-1)
+   *
+   * ITS OWN COPY, NOT A REACH INTO A SIBLING, and the reason is not tidiness.
+   * `MathPixAltTextCloudAdapter._modelRegistryIsAbsent` exists and is exported,
+   * and this file loads BEFORE it in tools.html — so a call-time read would in
+   * fact resolve. It is refused anyway: that module belongs to the ALT-TEXT
+   * lane, nothing makes it a dependency of the Context tab, and if it were ever
+   * absent from the page this guard would VANISH WITH IT and the defect would
+   * come back silently. A guard that disappears when an unrelated file does is
+   * not a guard.
+   *
+   * THE SHARED CAPABILITY MODULE WAS ALSO REFUSED AS A HOME. Every export in
+   * `mathpix-model-capability.js` takes a model id and answers a question about
+   * that id; this takes nothing and asks about a DIFFERENT module. RF-1 named
+   * that same boundary when it refused to put `ABSENT_MODEL_REFUSAL` there.
+   *
+   * THERE IS NO DATA HERE TO DRIFT. All three copies read the same global and
+   * test the same method name, and the three are compared against one another
+   * in a suite row under both registry states, so a divergence reddens rather
+   * than hiding.
+   *
+   * Reached at CALL time and never captured — the same reason the provider and
+   * the registry itself are.
+   *
+   * @returns {boolean} true when nothing on the page can answer a preference
+   */
+  function _modelRegistryIsAbsent() {
+    const registry = window.MathPixModelRegistry;
+    return !registry || typeof registry.recommendedModel !== "function";
+  }
+
   function _defaultModelForProvider(providerId) {
     const active =
       providerId ||
@@ -311,6 +343,23 @@ const MathPixContextAI = (function () {
    */
   const CONTEXT_TIMEOUT_MS = 120000;
 
+  /**
+   * Parcel 38: the embed retry layer's attempt ceiling, named once so the
+   * spoken cue and the configured limit cannot drift apart. Equal to the
+   * embed's own default (DEFAULT_CONFIG.retry.maxRetries in
+   * openrouter-embed-core.js). The retry's worst case (about 1 + 2 + 4 s of
+   * backoff plus jitter) sits well inside CONTEXT_TIMEOUT_MS.
+   */
+  const EMBED_RETRY_MAX_ATTEMPTS = 3;
+
+  /**
+   * `CONFIG.FILE_UPLOAD.PDF_ENGINE_COSTS` is denominated PER 1,000 PAGES — the
+   * `mistral-ocr: 2.0` entry is $2 per 1,000 pages, i.e. $0.002 per page, which
+   * is the figure OC-2b measured at the wire to six decimal places. Named rather
+   * than written inline so the division cannot be read as arbitrary.
+   */
+  const PAGES_PER_RATE_UNIT = 1000;
+
   /** P3 element IDs for the resume Context AI control (init() caches these). */
   const RESUME_ELEMENT_IDS = {
     analyseBtn: "resume-context-ai-analyse",
@@ -321,8 +370,84 @@ const MathPixContextAI = (function () {
     announce: "resume-context-ai-announce",
   };
 
+  /**
+   * MP-1 element IDs for the model picker. A SECOND map rather than six more
+   * entries in the one above, because `init()` treats a missing
+   * `RESUME_ELEMENT_IDS.analyseBtn` as "the control is not on this page" and
+   * refuses to wire anything at all. The picker must not be able to take the
+   * whole workflow down by being absent, so it is looked up separately and
+   * every consumer of it is null-guarded.
+   */
+  const PICKER_ELEMENT_IDS = {
+    pickerRoot: "resume-context-model-picker",
+    pickerFieldset: "resume-context-model-recommended",
+    pickerOptions: "resume-context-model-options",
+    pickerMeasured: "resume-context-model-measured",
+    pickerNone: "resume-context-model-none",
+    pickerUnavailable: "resume-context-model-unavailable",
+    pickerAdvanced: "resume-context-model-advanced",
+    pickerOverride: "resume-context-model-override",
+  };
+
+  /** The radio group's shared name — one constant, used by build and by reset. */
+  const PICKER_RADIO_NAME = "resume-context-model";
+
+  /** The override <select>'s placeholder value: "use the recommendation". */
+  const PICKER_OVERRIDE_PLACEHOLDER = "";
+
+  /**
+   * THE USER'S OWN MODEL CHOICE — module scope, NOT a property of the exported
+   * singleton, and NOT persisted anywhere.
+   *
+   * WHY MODULE SCOPE. `_resolveModel` is `this`-free by construction and is
+   * called both as `this._resolveModel()` (the wired journey) and, in the
+   * suite, on the facade. This module is `"use strict"`, so a bare internal
+   * call would see `this === undefined`; reading the choice from module scope
+   * removes that whole class of binding hazard from the one function that
+   * decides what gets sent.
+   *
+   * WHY NOTHING IS PERSISTED, STATED SO IT IS NOT READ AS AN OVERSIGHT. The
+   * Context tab writes NO localStorage key today — measured at MP-1, zero
+   * `localStorage` occurrences in this file before this parcel — and MP-1 does
+   * not add the first one. A choice that does not outlive the page cannot be
+   * restored under a provider that does not serve it, which is the strongest
+   * available form of the fail-safe the parcel asks for. The provider itself IS
+   * carried between page loads by the browser profile (AGENTS.md § Testing
+   * records the trap), which is precisely why the picker reads the ACTIVE
+   * provider on every build rather than trusting anything it stored.
+   *
+   * IT IS STILL RE-VALIDATED AT RESOLVE TIME. `_resolveUserChoice` re-asks both
+   * send-boundary predicates for the ACTIVE provider on every run, so the
+   * discard does not depend on the provider-change handler having fired. Two
+   * independent guards, because a single one that stops running is silent.
+   */
+  let _userModelChoice = null;
+
   /** How long an announcement lingers before the region is cleared (ms). */
   const ANNOUNCE_CLEAR_MS = 3000;
+
+  /**
+   * Exact refuse message for an ABSENT REGISTRY MODULE (parcel WL-1,
+   * 14 September 2026; British spelling).
+   *
+   * A SECOND SENTENCE, NOT A REPLACEMENT. The shipped refusal — "This provider
+   * cannot read PDF files. Choose a different provider to run context
+   * auto-fill." — is reached whenever `_resolveModel()` returns null, and it is
+   * CORRECT for the condition it was written for: a provider that genuinely
+   * serves no PDF-capable model and has no default in its own unfiltered list.
+   * It is WRONG for an absent registry module, where it sends a person to
+   * another provider and the auto-fill then proceeds there SILENTLY on a model
+   * nobody measured — measured 14 September 2026: with the registry deleted,
+   * OpenRouter refuses with this sentence while Foundry resolves
+   * `pdfEligible[0]` and runs.
+   *
+   * THE FIRST CLAUSE IS RF-1's, shipped and heard at RF-2. The tail names which
+   * workflow stopped, which is why this is not the same string as the alt-text
+   * lane's: a person needs to know whether their description or their context
+   * fields is the thing that did not happen.
+   */
+  const ABSENT_REGISTRY_REFUSAL =
+    "No AI model is set up for the AI provider you have selected, so context auto-fill cannot run.";
 
   // ---------------------------------------------------------------------------
   // Internal helpers (pure)
@@ -688,6 +813,20 @@ const MathPixContextAI = (function () {
       return null;
     }
 
+    // MP-1: THE USER'S OWN PICK OUTRANKS THE MEASURED DEFAULT, and it is the
+    // FIRST rung rather than a filter applied to the last one. Placed here, at
+    // the top and before either existing rung reads anything, so both of those
+    // rungs stay byte-identical and their four AW-29 / I5-2 rows keep asserting
+    // exactly what they asserted before this parcel.
+    //
+    // It can still return null — a pick the ACTIVE provider no longer serves is
+    // discarded here rather than sent — in which case the two rungs below run
+    // unchanged and the person gets the measured default. FAIL SAFE, not fail
+    // open: the discard narrows the choice back to the measured one, never
+    // widens it to a model nobody checked.
+    const userPick = _resolveUserChoice(providerId);
+    if (userPick) return userPick;
+
     let pdfEligible = [];
     try {
       pdfEligible = window.EmbedModelSelector.getEligibleModels({
@@ -767,6 +906,484 @@ const MathPixContextAI = (function () {
       `_resolveModel: no ['pdf'] model and no per-provider default fallback for provider '${providerId}'.`
     );
     return null;
+  }
+
+  // ===========================================================================
+  // MP-1 — THE MODEL PICKER
+  // ===========================================================================
+  //
+  // THE CONTEXT TAB HAD NO MODEL CONTROL AT ALL BEFORE THIS PARCEL. That is a
+  // feature never built rather than a regression — AW-31's capture reads
+  // `modelControls: []` for both context panels under both providers, inside
+  // panels carrying 8 and 10 controls, so the empty result is an absence and
+  // not a dead selector. There is no prior behaviour to restore.
+  //
+  // IT IS BUILT IN THE RESUME PANEL ONLY, AND THAT IS NOT AN OVERSIGHT.
+  // `#panel-context`, the upload-mode panel, carries the eight context fields
+  // and NO AI journey — no analyse button, no cost element, no progress
+  // element, no announce region. Measured at MP-1: every `context-ai-*` id in
+  // tools.html is `resume-`-prefixed. A picker there would be a control with
+  // nothing to control.
+  //
+  // THIS BLOCK ADDS NO SPOKEN LINE. Nothing here calls `_announce`, and the
+  // markup carries no live region and no live role. Every string it writes is
+  // visible text, read when a person reaches it — the arrangement the enhancer
+  // already uses for its own empty-state message. What a change WOULD say, if a
+  // later parcel decides it should, is recorded in `_handleModelRadioChange`.
+
+  /**
+   * The ACTIVE provider id, resolved at CALL time and never captured.
+   *
+   * A NEW HELPER USED ONLY BY NEW CODE. `_defaultModelForProvider` and
+   * `_resolveModel` each inline this same three-line read, and neither is
+   * repointed here: both are load-bearing for rows in sections 12 and 14 that
+   * assert their behaviour, and rewriting a shared resolver to save two lines
+   * is a change whose blast radius is larger than its benefit.
+   *
+   * @returns {string}
+   */
+  function _activeProviderId() {
+    return window.ProviderSwitcher &&
+      typeof window.ProviderSwitcher.getActive === "function"
+      ? window.ProviderSwitcher.getActive()
+      : DEFAULT_PROVIDER_ID;
+  }
+
+  /**
+   * The WHOLE registry entry for a provider — id, round and measured date.
+   *
+   * `_defaultModelForProvider` returns the bare id and cannot answer the other
+   * two, which the picker surfaces as visible text. The registry exports the
+   * entry rather than the id precisely so a caller wanting the provenance does
+   * not need a second lookup that could disagree with the first.
+   *
+   * @param {string} providerId
+   * @returns {{modelId: string, round: string, measured: string}|null}
+   */
+  function _recommendedEntryFor(providerId) {
+    const registry = window.MathPixModelRegistry;
+    if (!registry || typeof registry.recommendedModel !== "function") {
+      return null;
+    }
+    return registry.recommendedModel(RECOMMENDATION_PURPOSE, providerId) || null;
+  }
+
+  /** Month names for the British long date the measured note carries. */
+  const MEASURED_MONTHS = Object.freeze([
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ]);
+
+  /**
+   * "2026-09-11" to "11 September 2026".
+   *
+   * Formatted here rather than through `toLocaleDateString`, which would render
+   * in whatever locale the browser happens to be set to — so the date a British
+   * reader sees would depend on their machine rather than on the record.
+   * Returns the input unchanged when it is not the expected shape, so a
+   * malformed registry date degrades to something readable instead of "NaN".
+   *
+   * @param {string} iso
+   * @returns {string}
+   */
+  function _formatMeasuredDate(iso) {
+    if (typeof iso !== "string") return "";
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+    if (!match) return iso;
+    const month = MEASURED_MONTHS[Number(match[2]) - 1];
+    if (!month) return iso;
+    return `${Number(match[3])} ${month} ${match[1]}`;
+  }
+
+  /**
+   * Every model the ACTIVE provider serves that can read a PDF.
+   *
+   * THE FILTER IS `isModelPdfCapable` ITSELF, asked once per id, rather than a
+   * re-implementation of its two rungs. That predicate is the SAME one the send
+   * boundary in `initEmbed` applies, so the picker cannot offer a model the
+   * send would then refuse — the dead-end-one-layer-in the enhancer's EA-2b
+   * comment records measuring on six Foundry ids. Re-deriving its logic here
+   * would be a second copy of a predicate whose two rungs are asymmetric for a
+   * load-bearing reason, and the copy would drift.
+   *
+   * Its cost is two `getEligibleModels` calls per candidate. That is paid once
+   * per picker build, not per render and not in a loop, which is why
+   * correctness is preferred to hoisting the lists.
+   *
+   * @param {string} providerId
+   * @returns {Array<Object>} possibly empty, sorted by display name
+   */
+  function _pdfCapableModelsFor(providerId) {
+    const selector = window.EmbedModelSelector;
+    if (!selector || typeof selector.getEligibleModels !== "function") {
+      logWarn(
+        "_pdfCapableModelsFor: EmbedModelSelector unavailable; the override list is offered empty rather than fabricated."
+      );
+      return [];
+    }
+
+    let all = [];
+    try {
+      all = selector.getEligibleModels({ providerId, capabilities: [] });
+    } catch (error) {
+      logWarn("_pdfCapableModelsFor: getEligibleModels([]) threw:", error);
+      return [];
+    }
+    if (!Array.isArray(all)) return [];
+
+    const kept = all.filter(
+      (model) =>
+        model && typeof model.id === "string" && isModelPdfCapable(model.id)
+    );
+    kept.sort((a, b) =>
+      String(a.name || a.id).localeCompare(String(b.name || b.id))
+    );
+    return kept;
+  }
+
+  /**
+   * The user's pick, re-validated for the ACTIVE provider — or null.
+   *
+   * THE SECOND OF TWO INDEPENDENT GUARDS. The first is the provider-change
+   * rebuild, which clears the pick outright; this one re-asks both
+   * send-boundary predicates on every resolve, so the discard does not depend
+   * on that handler having fired, having been subscribed, or having run before
+   * the click. A single guard that silently stops running is indistinguishable
+   * from one that is working.
+   *
+   * It returns the FULL `{id, model, providerId}` shape both existing rungs
+   * return, and falls back rather than returning a half-resolved one when the
+   * id clears both predicates but cannot be found in the provider's list — a
+   * state that should be unreachable, since both predicates consult that list.
+   *
+   * @param {string} providerId the provider `_resolveModel` is resolving for
+   * @returns {{id: string, model: Object, providerId: string}|null}
+   */
+  function _resolveUserChoice(providerId) {
+    const chosen = _userModelChoice;
+    if (!chosen) return null;
+
+    if (!isModelPdfCapable(chosen) || !isModelProviderAvailable(chosen)) {
+      logWarn(
+        `_resolveUserChoice: the chosen model '${chosen}' is not served by provider '${providerId}' or cannot read a PDF; discarding the choice and falling back to the measured default.`
+      );
+      _userModelChoice = null;
+      return null;
+    }
+
+    let model = null;
+    try {
+      const all = window.EmbedModelSelector.getEligibleModels({
+        providerId,
+        capabilities: [],
+      });
+      if (Array.isArray(all)) {
+        model = all.find((entry) => entry && entry.id === chosen) || null;
+      }
+    } catch (error) {
+      logWarn("_resolveUserChoice: the membership lookup threw:", error);
+    }
+
+    if (!model) {
+      logWarn(
+        `_resolveUserChoice: '${chosen}' cleared both predicates but is absent from provider '${providerId}' unfiltered list; falling back rather than returning a half-resolved model.`
+      );
+      _userModelChoice = null;
+      return null;
+    }
+
+    logInfo("Context model resolved from the user's own pick", {
+      providerId,
+      model: chosen,
+    });
+    return { id: chosen, model, providerId };
+  }
+
+  /**
+   * Record the user's pick, refusing anything the send would refuse.
+   *
+   * VALIDATES AT THE CONTROL AS WELL AS AT THE RESOLVER. The picker only ever
+   * offers ids that pass both predicates, so a refusal here means the page
+   * state moved underneath the control — which is worth a warning rather than a
+   * silent correction.
+   *
+   * @param {string|null} modelId null or "" clears the pick
+   * @returns {boolean} true when the choice was recorded or cleared
+   */
+  function _setUserModelChoice(modelId) {
+    if (!modelId) {
+      _userModelChoice = null;
+      logDebug("Context model choice cleared; the measured default applies.");
+      return true;
+    }
+    if (typeof modelId !== "string" || !modelId.trim()) {
+      logWarn("_setUserModelChoice: refusing a model id that is not a string.", {
+        modelId,
+      });
+      return false;
+    }
+    if (!isModelPdfCapable(modelId) || !isModelProviderAvailable(modelId)) {
+      logWarn(
+        `_setUserModelChoice: refusing '${modelId}' — the active provider does not serve it, or it cannot read a PDF.`
+      );
+      return false;
+    }
+    _userModelChoice = modelId;
+    logInfo("Context model choice set by the user", { model: modelId });
+    return true;
+  }
+
+  /** The user's current pick, or null. Exported so a row can read it. */
+  function _getUserModelChoice() {
+    return _userModelChoice;
+  }
+
+  /**
+   * One recommended radio, as DOM rather than as an HTML string.
+   *
+   * BUILT WITH createElement AND textContent, NOT innerHTML. This module has no
+   * escaping helper, and a model name reaching innerHTML unescaped is a defect
+   * waiting for a catalogue entry to contain a bracket. Building nodes removes
+   * the question rather than answering it.
+   *
+   * The accessible name comes from the WRAPPING LABEL's visible text — the
+   * model's display name, the recommended marker, and the id beneath it — which
+   * is the enhancer's own arrangement. No aria-label, no title.
+   *
+   * @param {Object} model a catalogue entry
+   * @param {boolean} checked
+   * @returns {HTMLLabelElement}
+   */
+  function _buildRecommendedRadio(model, checked) {
+    const label = document.createElement("label");
+    label.className = "model-option";
+
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = PICKER_RADIO_NAME;
+    input.value = model.id;
+    if (checked) {
+      // BOTH, deliberately. `defaultChecked` writes the content attribute, so
+      // the recommendation survives a native form reset — this picker lives
+      // inside #resume-context-form, and a reset would otherwise leave the
+      // group with nothing checked and no way to get back to it.
+      input.defaultChecked = true;
+      input.checked = true;
+    }
+
+    const content = document.createElement("span");
+    content.className = "model-option-content";
+
+    const name = document.createElement("span");
+    name.className = "model-option-name";
+    name.textContent = `${model.name || model.id} (Recommended)`;
+
+    const description = document.createElement("span");
+    description.className = "model-option-description";
+    description.textContent = model.id;
+
+    content.appendChild(name);
+    content.appendChild(description);
+    label.appendChild(input);
+    label.appendChild(content);
+    return label;
+  }
+
+  /**
+   * Fill the override select with every PDF-capable model for this provider.
+   *
+   * @param {HTMLSelectElement|null} select
+   * @param {Array<Object>} candidates
+   */
+  function _populateOverrideSelect(select, candidates) {
+    if (!select) return;
+    select.textContent = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = PICKER_OVERRIDE_PLACEHOLDER;
+    placeholder.textContent = "Use the recommended model above";
+    select.appendChild(placeholder);
+
+    for (const model of candidates) {
+      const option = document.createElement("option");
+      option.value = model.id;
+      const providerPrefix = String(model.id).split("/")[0] || "";
+      option.textContent = `${model.name || model.id} (${providerPrefix})`;
+      select.appendChild(option);
+    }
+    select.value = PICKER_OVERRIDE_PLACEHOLDER;
+  }
+
+  /**
+   * Build (or rebuild) the picker for the ACTIVE provider.
+   *
+   * THREE STATES, AND EXACTLY ONE RENDERS. Two-sided by construction, so the
+   * empty state cannot show a radio and the populated state cannot show the
+   * empty message — the shape `buildRecommendedModelSection` uses in the
+   * enhancer.
+   *
+   *   1. a measured recommendation this provider can use — the radio group,
+   *      preselected, with the round and the date as visible text, plus the
+   *      override list;
+   *   2. no such recommendation — no radio group, no fabricated default, the
+   *      override list still offered, because `_resolveModel` can still resolve
+   *      `pdfEligible[0]` and the run does proceed;
+   *   3. the shared registry MODULE absent — the WL-1 refusal sentence, read by
+   *      identity from `ABSENT_REGISTRY_REFUSAL` so there is one copy of it,
+   *      and the override disclosure HIDDEN. `handleAnalyseClick` refuses on
+   *      that condition before any model is resolved, so an override there
+   *      would be a control whose value is discarded — which would contradict
+   *      the refusal rather than agree with it.
+   *
+   * EVERY BUILD CLEARS THE USER'S PICK. That is the provider-change fail-safe:
+   * a pick made under one provider cannot survive into another, whether or not
+   * the new provider happens to serve it.
+   *
+   * @returns {boolean} true when the picker markup was found and rendered
+   */
+  function _buildModelPicker() {
+    const els = this.elements;
+    if (!els || !els.pickerRoot || !els.pickerOptions) {
+      logDebug("_buildModelPicker: no picker markup on this page.");
+      return false;
+    }
+
+    // Every build starts from a clean slate, so no state can be left over from
+    // the provider that was active a moment ago.
+    _userModelChoice = null;
+    els.pickerOptions.textContent = "";
+    if (els.pickerMeasured) els.pickerMeasured.textContent = "";
+    if (els.pickerFieldset) els.pickerFieldset.hidden = true;
+    if (els.pickerNone) els.pickerNone.hidden = true;
+    if (els.pickerUnavailable) els.pickerUnavailable.hidden = true;
+    if (els.pickerAdvanced) els.pickerAdvanced.hidden = false;
+    els.pickerRoot.hidden = false;
+
+    // --- STATE 3: the registry module is absent -----------------------------
+    if (_modelRegistryIsAbsent()) {
+      if (els.pickerUnavailable) {
+        // BY IDENTITY, never retyped — the same constant WL-1's rows match on,
+        // so the sentence the picker shows and the sentence the refusal speaks
+        // cannot drift apart.
+        els.pickerUnavailable.textContent = ABSENT_REGISTRY_REFUSAL;
+        els.pickerUnavailable.hidden = false;
+      }
+      if (els.pickerAdvanced) els.pickerAdvanced.hidden = true;
+      logWarn(
+        "_buildModelPicker: the shared model registry module is absent from the page, so the picker offers no default and no override. This is a page-configuration fault: check the script order in tools.html."
+      );
+      return true;
+    }
+
+    const providerId = _activeProviderId();
+    const candidates = _pdfCapableModelsFor(providerId);
+    _populateOverrideSelect(els.pickerOverride, candidates);
+
+    const entry = _recommendedEntryFor(providerId);
+    const recommendedId =
+      entry && typeof entry.modelId === "string" ? entry.modelId : null;
+    const recommended = recommendedId
+      ? candidates.find((model) => model.id === recommendedId) || null
+      : null;
+
+    // --- STATE 2: no measured recommendation this provider can use ----------
+    if (!recommended) {
+      if (els.pickerNone) els.pickerNone.hidden = false;
+      logWarn(
+        `_buildModelPicker: no measured recommendation is available for provider '${providerId}' that it can also use to read a PDF; offering the override list with nothing preselected rather than fabricating a default.`,
+        { registryId: recommendedId, pdfCapableCount: candidates.length }
+      );
+      return true;
+    }
+
+    // --- STATE 1: the measured recommendation -------------------------------
+    if (els.pickerFieldset) els.pickerFieldset.hidden = false;
+    els.pickerOptions.appendChild(_buildRecommendedRadio(recommended, true));
+    if (els.pickerMeasured) {
+      els.pickerMeasured.textContent = `Chosen by measurement round ${entry.round}, measured ${_formatMeasuredDate(entry.measured)}.`;
+    }
+    logDebug("_buildModelPicker: built", {
+      providerId,
+      recommended: recommended.id,
+      overrideOptions: candidates.length,
+    });
+    return true;
+  }
+
+  /**
+   * A recommended radio was chosen.
+   *
+   * IT DOES NOT ANNOUNCE, AND THAT IS A DECISION RATHER THAN AN OMISSION.
+   * Parcel MP-1 carries no screen-reader listen, and AGENTS.md § Announcements
+   * is explicit that a silent event is a worse outcome than a doubled one — so
+   * a line added here without being heard could be the defect it was meant to
+   * prevent. A radio reports its own new state when the person moves it, which
+   * is what a reader already speaks. WERE one added, the wording would be
+   * "Context auto-fill will use <model name>." and it would owe a sitting on
+   * both motion arms before it shipped.
+   *
+   * @param {string} modelId the radio's value
+   */
+  function _handleModelRadioChange(modelId) {
+    const recommendedId = _defaultModelForProvider();
+    if (modelId === recommendedId) {
+      // Choosing the recommendation CLEARS the pick, so the run resolves down
+      // the measured-default rung exactly as it did before MP-1 — the pre-MP-1
+      // path is preserved rather than re-created by a pick that happens to
+      // agree with it. The general branch below is what keeps this correct if a
+      // later parcel puts more than one radio in the group.
+      _setUserModelChoice(null);
+    } else {
+      _setUserModelChoice(modelId);
+    }
+
+    const els = this.elements;
+    if (els && els.pickerOverride) {
+      els.pickerOverride.value = PICKER_OVERRIDE_PLACEHOLDER;
+    }
+  }
+
+  /**
+   * The advanced override select changed. Also does not announce, for the same
+   * reason as the radio handler above.
+   *
+   * @param {string} modelId a model id, or "" for the placeholder
+   */
+  function _handleModelOverrideChange(modelId) {
+    const els = this.elements;
+
+    if (!modelId) {
+      _setUserModelChoice(null);
+      if (els && els.pickerOptions) {
+        const first = els.pickerOptions.querySelector('input[type="radio"]');
+        if (first) first.checked = true;
+      }
+      return;
+    }
+
+    if (!_setUserModelChoice(modelId)) {
+      // Refused. Put the control back where it was rather than leaving it
+      // showing a model that will not be sent.
+      if (els && els.pickerOverride) {
+        els.pickerOverride.value = PICKER_OVERRIDE_PLACEHOLDER;
+      }
+      return;
+    }
+
+    if (els && els.pickerOptions) {
+      const radios = els.pickerOptions.querySelectorAll('input[type="radio"]');
+      for (const radio of radios) radio.checked = false;
+    }
   }
 
   // ===========================================================================
@@ -928,6 +1545,24 @@ const MathPixContextAI = (function () {
       // #resume-context-ai-progress and announce milestones ourselves. This
       // also stops the embed core appending its own off-screen SR live region.
       showStreamingProgress: false,
+      // Parcel 38: the embed's own retry layer — same model, up to
+      // EMBED_RETRY_MAX_ATTEMPTS resends with exponential backoff, pre-stream
+      // failures only. The core's built-in retry announcement only logs and its
+      // toast is gated on showNotifications (false above), so the write below
+      // is the ONLY voice a retry has: once per retry, into this tool's own
+      // existing region (#resume-context-ai-announce) through _announce. No
+      // region is created and nothing is announced beside it.
+      retry: {
+        enabled: true,
+        maxRetries: EMBED_RETRY_MAX_ATTEMPTS,
+        onRetry: (attempt) => {
+          if (typeof this._announce === "function") {
+            this._announce(
+              `Retrying, attempt ${attempt} of ${EMBED_RETRY_MAX_ATTEMPTS}.`,
+            );
+          }
+        },
+      },
       enableLogging: true,
     });
 
@@ -996,12 +1631,77 @@ const MathPixContextAI = (function () {
       this.embed.currentFileAnalysis.engine = "native";
     }
 
+    // PC-1 — REPLACE THE SIZE GUESS WITH THE REAL PAGE COUNT, AND PRICE THE
+    // FILE PARSER BY ENGINE. Runs AFTER the engine is final, because the fee
+    // depends on it. See _applyRealPageCount.
+    await _applyRealPageCount.call(this, blob);
+
     logInfo("PDF attached to context embed", {
       filename,
       size: blob && blob.size,
-      base64Length: base64Data.length,
       engine: this.embed.currentFileAnalysis.engine,
+      pages: this.embed.currentFileAnalysis.pages,
+      cost: this.embed.currentFileAnalysis.cost,
+      base64Length: base64Data.length,
     });
+  }
+
+  /**
+   * Overwrite the embed's file analysis with a page count READ FROM THE PDF, and
+   * a file-parser fee priced from the engine actually selected.
+   *
+   * WHAT THIS DISPLACES. `analyzeFile` returns `pages` from
+   * `js/file-handler/file-handler-core.js`'s `estimatedPages`, which is
+   * `file.size / estimatePageSize(file)` and reads nothing whatever from inside
+   * the document. Measured at OC-1 B5 against all six corpus fixtures it is
+   * wrong about every one, always upward — 164 pages reported for a 6-page
+   * document, 27.3 times over — and the Context tab multiplied that guess by a
+   * flat per-page rate to produce a figure a person is shown.
+   *
+   * WHEN THE COUNT CANNOT BE HAD, NOTHING IS SHOWN. `pages` and `cost` are set
+   * to null and the surface renders its existing "Cost estimate unavailable"
+   * sentence. It NEVER falls back to the heuristic: a person acting on a wrong
+   * number is worse off than a person told the figure is unavailable.
+   *
+   * @param {Blob} blob — the source PDF.
+   * @returns {Promise<void>}
+   */
+  async function _applyRealPageCount(blob) {
+    const analysis = this.embed.currentFileAnalysis;
+    const counter = window.MathPixPDFPageCount;
+
+    if (!counter || typeof counter.countPages !== "function") {
+      analysis.pages = null;
+      analysis.cost = null;
+      analysis.pageCountReason = "counter-absent";
+      logWarn(
+        "MathPixPDFPageCount is not loaded — no page count and no cost figure will be shown."
+      );
+      return;
+    }
+
+    let count;
+    try {
+      count = await counter.countPages(blob);
+    } catch (error) {
+      analysis.pages = null;
+      analysis.cost = null;
+      analysis.pageCountReason = "threw";
+      logWarn("The page counter threw; no cost figure will be shown.", error);
+      return;
+    }
+
+    analysis.pageCount = count;
+    analysis.pageCountReason = count.reason;
+
+    if (typeof count.pages !== "number") {
+      analysis.pages = null;
+      analysis.cost = null;
+      return;
+    }
+
+    analysis.pages = count.pages;
+    analysis.cost = _fileParserFee(analysis.engine, count.pages);
   }
 
   /**
@@ -1196,14 +1896,87 @@ const MathPixContextAI = (function () {
     );
   }
 
-  /** Format a GBP estimate (mirrors MathPixAIEnhancer.formatCost thresholds). */
-  function _formatCostGBP(cost) {
+  /** Format a US dollar estimate (mirrors MathPixAIEnhancer.formatCost thresholds). */
+  /**
+   * THE UNIT IS US DOLLARS, AND THIS FUNCTION USED TO SAY POUNDS.
+   *
+   * Settled from the tree at PC-1, not chosen. Every input to the sum this
+   * formats is a US-dollar figure:
+   *
+   *   - the model prices come from `registryModel.costs`, whose own comments in
+   *     `js/model-definitions.js` read `input: 3.0, // $3.0/M tokens` and which
+   *     are populated from the OpenRouter catalogue, and OpenRouter bills in US
+   *     dollars;
+   *   - the file-parser fee comes from `CONFIG.FILE_UPLOAD.PDF_ENGINE_COSTS`,
+   *     whose `mistral-ocr: 2.0` was measured at OC-2b at the wire as exactly
+   *     $0.002000 per real page — the same digits in a different currency, which
+   *     is why the disagreement went unnoticed for so long.
+   *
+   * So the arithmetic was always in dollars and the symbol was always wrong. The
+   * SYMBOL is corrected here, on the one surface this parcel owns; `£` on a
+   * dollar figure survives on other surfaces across the application and is
+   * reported as a separate, wider defect rather than swept into this parcel.
+   *
+   * @param {number|null} cost
+   * @returns {string}
+   */
+  function _formatCostUSD(cost) {
     if (cost === null || cost === undefined || Number.isNaN(cost)) {
       return "Cost estimate unavailable";
     }
-    if (cost < 0.01) return "< £0.01";
-    if (cost < 0.1) return `~£${cost.toFixed(3)}`;
-    return `~£${cost.toFixed(2)}`;
+    if (cost < 0.01) return "< $0.01";
+    if (cost < 0.1) return `~$${cost.toFixed(3)}`;
+    return `~$${cost.toFixed(2)}`;
+  }
+
+  /**
+   * The file-parser fee for a document, in US dollars — ENGINE-AWARE.
+   *
+   * The engine decides the price, not the file size. Measured at OC-2b and
+   * confirmed against AW-26 on a different task and a different model: exactly
+   * $0.022000 for `mistral-ocr` over 11 real pages, and exactly $0.000000 for
+   * `native`. A native document must never be quoted an OCR fee, which is what
+   * the displaced arithmetic did — it multiplied a size-guessed page count by a
+   * flat per-page rate whatever engine had been chosen.
+   *
+   * The rate is READ from `CONFIG.FILE_UPLOAD.PDF_ENGINE_COSTS` rather than
+   * restated here, so there is one source for it. That map carries a NUMBER for
+   * the engines that charge per page and the string "Charged as input tokens"
+   * for `native` — so a non-numeric entry means no separate file-parser fee, and
+   * the document's cost is already inside the input-token half of the estimate.
+   *
+   * @param {string} engine
+   * @param {number|null} pages — the REAL page count, or null.
+   * @returns {number|null} dollars, or null when it cannot be known.
+   */
+  function _fileParserFee(engine, pages) {
+    const costs =
+      window.CONFIG &&
+      window.CONFIG.FILE_UPLOAD &&
+      window.CONFIG.FILE_UPLOAD.PDF_ENGINE_COSTS;
+    if (!costs) {
+      logWarn(
+        "No PDF_ENGINE_COSTS on CONFIG — the file-parser fee cannot be priced, so no cost figure will be shown."
+      );
+      return null;
+    }
+
+    const rate = costs[engine];
+    if (typeof rate !== "number") return 0;
+    if (rate === 0) return 0;
+
+    // Only a per-page engine needs a page count, and only here does an absent
+    // count matter. NO FALLBACK TO THE SIZE HEURISTIC: a wrong number a person
+    // acts on is worse than an absent one.
+    if (typeof pages !== "number" || !(pages > 0)) {
+      logWarn(
+        "The real page count is unavailable and the engine '" +
+          engine +
+          "' charges per page, so no cost figure will be shown rather than one built on a size guess."
+      );
+      return null;
+    }
+    return (pages / PAGES_PER_RATE_UNIT) * rate;
   }
 
   /** Human-facing display value for the summary; selects map value → label. */
@@ -1231,6 +2004,13 @@ const MathPixContextAI = (function () {
     for (const [name, id] of Object.entries(RESUME_ELEMENT_IDS)) {
       elements[name] = document.getElementById(id);
     }
+    // MP-1: looked up AFTER the analyse-button gate below is decided, but into
+    // the SAME elements object, so every existing reader is untouched and the
+    // picker cannot make `init` refuse. A page without the picker markup wires
+    // the workflow exactly as it did before this parcel.
+    for (const [name, id] of Object.entries(PICKER_ELEMENT_IDS)) {
+      elements[name] = document.getElementById(id);
+    }
 
     if (!elements.analyseBtn) {
       logWarn("init: #resume-context-ai-analyse not found; control not wired.");
@@ -1251,6 +2031,50 @@ const MathPixContextAI = (function () {
       elements.undoBtn.addEventListener("click", () => self.handleUndoClick());
       elements.undoBtn.dataset.contextAiBound = "true";
     }
+
+    // MP-1 — the picker: delegated change binding, one provider subscription,
+    // one build. Bound with addEventListener and a dataset guard, matching the
+    // two bindings above rather than the enhancer's inline `onchange` — that
+    // form reaches a global accessor (`window.getMathPixAIEnhancer`) which this
+    // module has no equivalent of, so copying it would mean publishing one.
+    //
+    // DELEGATED ON THE PICKER ROOT rather than on each control, because the
+    // radios and the options are REBUILT on every provider change: a listener
+    // bound to a node the rebuild replaces stops firing, silently, and a picker
+    // that has quietly stopped responding looks exactly like one nobody used.
+    if (elements.pickerRoot && !elements.pickerRoot.dataset.contextAiBound) {
+      elements.pickerRoot.addEventListener("change", (event) => {
+        const target = event && event.target;
+        if (!target) return;
+        if (
+          target.type === "radio" &&
+          target.name === PICKER_RADIO_NAME
+        ) {
+          self._handleModelRadioChange(target.value);
+          return;
+        }
+        if (target.id === PICKER_ELEMENT_IDS.pickerOverride) {
+          self._handleModelOverrideChange(target.value);
+        }
+      });
+      elements.pickerRoot.dataset.contextAiBound = "true";
+    }
+
+    if (!this._providerChangedHandler) {
+      this._providerChangedHandler = (event) => {
+        logInfo("provider:changed — rebuilding the Context model picker", {
+          oldProvider: event && event.detail && event.detail.oldProvider,
+          newProvider: event && event.detail && event.detail.newProvider,
+        });
+        self._buildModelPicker();
+      };
+      window.addEventListener(
+        "provider:changed",
+        this._providerChangedHandler
+      );
+    }
+
+    this._buildModelPicker();
 
     this.refreshAvailability();
     logInfo("Context AI control wired", { hasProvider: !!this.provider });
@@ -1367,10 +2191,16 @@ const MathPixContextAI = (function () {
   }
 
   /**
-   * Render the info-only cost preview into -cost: the PDF's analyzeFile cost
-   * (from the embed's file analysis) plus an MMD-length input-token estimate at
-   * the model's registry price. Mirrors the AI Enhancer's preview — info only,
-   * never a gate. Degrades to a token count when no registry price is found.
+   * Render the info-only cost preview into -cost: the PDF's ENGINE-AWARE
+   * file-parser fee, priced over the REAL page count read from the document
+   * (PC-1), plus an MMD-length input-token estimate at the model's registry
+   * price. Mirrors the AI Enhancer's preview — info only, never a gate.
+   *
+   * Degrades to a token count when no registry price is found OR when the
+   * file-parser fee cannot be known, using the SAME sentence in both cases. No
+   * new wording is introduced, so nothing here owes a screen-reader listen; the
+   * element is a plain div carrying no live role, so neither branch is spoken by
+   * itself in any event.
    *
    * @param {string} mmd
    */
@@ -1407,12 +2237,13 @@ const MathPixContextAI = (function () {
     const inputTokens = Math.ceil(
       (typeof mmd === "string" ? mmd.length : 0) / CHARS_PER_TOKEN
     );
-    const pdfCost =
-      this.embed &&
-      this.embed.currentFileAnalysis &&
-      typeof this.embed.currentFileAnalysis.cost === "number"
-        ? this.embed.currentFileAnalysis.cost
-        : 0;
+    // PC-1 — A MISSING FILE-PARSER FEE IS NOT A ZERO ONE. This used to default
+    // to 0, so a document whose fee could not be priced was quoted a total that
+    // silently omitted it. Now an unknown fee makes the whole total unknown, and
+    // the surface says so using the sentence it already had for that case.
+    const analysis = this.embed && this.embed.currentFileAnalysis;
+    const pdfCost = analysis ? analysis.cost : null;
+    const pdfCostKnown = typeof pdfCost === "number" && !Number.isNaN(pdfCost);
 
     let registryModel = null;
     try {
@@ -1430,7 +2261,7 @@ const MathPixContextAI = (function () {
       registryModel = null;
     }
 
-    if (registryModel && registryModel.costs) {
+    if (registryModel && registryModel.costs && pdfCostKnown) {
       // Registry prices are per 1,000,000 tokens (per the AI Enhancer).
       const inputCost =
         (inputTokens / 1_000_000) * (registryModel.costs.input || 0);
@@ -1439,7 +2270,7 @@ const MathPixContextAI = (function () {
         (MAX_TOKENS_FLOOR / 1_000_000) * (registryModel.costs.output || 0);
       const total = inputCost + outputCost + pdfCost;
       el.textContent =
-        `Estimated cost: ${_formatCostGBP(total)} ` +
+        `Estimated cost: ${_formatCostUSD(total)} ` +
         `(about ${inputTokens.toLocaleString()} input tokens). ` +
         "This is an estimate; the actual cost depends on the document and the reply.";
     } else {
@@ -1552,6 +2383,45 @@ const MathPixContextAI = (function () {
       return;
     }
 
+    // ---- WL-1: AN ABSENT REGISTRY MODULE REFUSES WITH ITS OWN SENTENCE ------
+    //
+    // ASKED BEFORE `_resolveModel`, NOT AFTER, and that ordering is the whole
+    // separation. Both conditions arrive at the rung below as a bare null: a
+    // provider that genuinely serves no PDF-capable model, and a page with no
+    // registry at all. Asking here means the shipped sentence below keeps
+    // EXACTLY the condition it was written for, and no public signature moves —
+    // `_resolveModel` is exported and read by four measurement drives, and it
+    // is untouched.
+    //
+    // MEASURED 14 September 2026, and the two providers failed DIFFERENTLY,
+    // which is why a wording change alone would not have been enough. With the
+    // registry deleted, `_defaultModelForProvider` returns null for both. On
+    // OpenRouter no model carries a ['pdf'] token, so the fallback anchor is
+    // null, `_resolveModel` returns null and the person got the misdirecting
+    // sentence. On Foundry the ['pdf'] list is NON-EMPTY, so `pdfEligible[0]`
+    // won by list position and auto-fill RAN, silently, on a model nobody
+    // measured. This rung refuses both.
+    //
+    // SPOKEN AND SEEN. `_announce` writes `#resume-context-ai-announce`, which
+    // is `sr-only` — position absolute, 1px, clip-rect — so a sighted person
+    // was told NOTHING by any refusal on this tab. `_progressShow` paints the
+    // EXISTING house-style error row, `#resume-context-ai-progress` with
+    // `data-state="error"`: a left-accent callout already themed in light.css
+    // and dark.css, already collapsing when empty, and carrying NO role and NO
+    // aria-live — so it cannot double-speak with the announcement beside it.
+    // NO NEW CSS IS INTRODUCED. It is deliberately NOT `_progressFail`, whose
+    // `_scheduleProgressClear` would wipe the box after 1800ms; a refusal a
+    // person has to act on must stay on screen until the next run clears it.
+    if (this._modelRegistryIsAbsent()) {
+      logWarn(
+        "Context auto-fill refused: the shared model registry module is absent from the page, so no measured choice can be read for any provider. This is a page-configuration fault: check the script order in tools.html."
+      );
+      this._announce(ABSENT_REGISTRY_REFUSAL);
+      this._progressShow(ABSENT_REGISTRY_REFUSAL, "error", { state: "error" });
+      this.refreshAvailability();
+      return;
+    }
+
     // Resolve ONE model for this run from the global provider switch (S2F-D8).
     // The Context tab always attaches a PDF, so a provider that serves no
     // PDF-capable model cannot run auto-fill — refuse cleanly before any embed
@@ -1577,7 +2447,21 @@ const MathPixContextAI = (function () {
 
     this._busy = true;
     const btn = this.elements.analyseBtn;
-    btn.disabled = true;
+    // Parcel 42: HOLD Analyse rather than natively disabling it. Native
+    // `disabled` on the button the person just pressed blurred it to <body>,
+    // and nothing ever put focus back (parcel 39, the worst of nine drops).
+    // BusyControl sets aria-disabled and aria-busy, refuses activation, and
+    // leaves focus on the button. Resolved at call time, never cached; if the
+    // helper is absent the old native line runs, drop and all.
+    const busyControl = window.BusyControl;
+    if (busyControl && typeof busyControl.hold === "function") {
+      this._busyHold = busyControl.hold(btn);
+    } else {
+      logWarn(
+        "handleAnalyseClick: window.BusyControl is absent; disabling Analyse natively, which drops keyboard focus."
+      );
+      btn.disabled = true;
+    }
     this._clearSummary();
     if (this.elements.cost) this.elements.cost.textContent = "";
     if (this.elements.undoBtn) this.elements.undoBtn.hidden = true;
@@ -1655,6 +2539,13 @@ const MathPixContextAI = (function () {
           : "Context auto-fill failed. Please try again."
       );
     } finally {
+      // Release BEFORE refreshAvailability, which returns early while `_busy`
+      // and otherwise writes the standing no-PDF state exactly as before.
+      // Focus still on Analyse stays there; the helper never moves it.
+      if (this._busyHold) {
+        this._busyHold.release();
+        this._busyHold = null;
+      }
       this._busy = false;
       this.refreshAvailability();
     }
@@ -1717,6 +2608,13 @@ const MathPixContextAI = (function () {
     // Section 12 pins the same two ids as literals, unchanged, and asks the
     // registry the frozen-ness question instead.
     _defaultModelForProvider,
+    // WL-1: the module-presence predicate the refusal rung is keyed on, and the
+    // sentence it speaks. Both exported so a row can assert the rung and the
+    // predicate separately — a row driving only `handleAnalyseClick` cannot say
+    // WHICH question refused — and so the line is matched BY IDENTITY rather
+    // than retyped.
+    _modelRegistryIsAbsent,
+    ABSENT_REGISTRY_REFUSAL,
     // ------------------------------------------------------------------------
     // Send-boundary facade (parcel EA-4). All four MOVED to
     // window.MathPixModelCapability; these are working delegations kept so no
@@ -1741,6 +2639,13 @@ const MathPixContextAI = (function () {
     },
     initEmbed,
     attachPDF,
+    // PC-1 — exported so a row can assert the fee and the count SEPARATELY. A
+    // row driving only attachPDF cannot say whether a zero fee came from the
+    // engine being native or from the page count being unavailable, and those
+    // are different states with the same total.
+    _applyRealPageCount,
+    _fileParserFee,
+    _formatCostUSD,
     readFileAsBase64,
     sendWithTimeout,
     _bridgeError,
@@ -1751,8 +2656,31 @@ const MathPixContextAI = (function () {
     _snapshot: null,
     _resolvedModel: null,
     _busy: false,
+    // Parcel 42: the BusyControl handle holding Analyse for one run; null
+    // between runs and on the native fallback.
+    _busyHold: null,
     _progressTimer: null,
+    // MP-1: the provider:changed subscriber handle, so init() is idempotent and
+    // cannot stack a second listener on a re-init.
+    _providerChangedHandler: null,
     init,
+    // ------------------------------------------------------------------------
+    // MP-1 — the model picker. Exported so the suite can drive the picker and
+    // read the choice WITHOUT reaching into module scope, and so a row can
+    // assert the control and the resolver separately: a row driving only
+    // `_resolveModel` cannot say whether the PICKER offered the id it resolved.
+    // ------------------------------------------------------------------------
+    _buildModelPicker,
+    _handleModelRadioChange,
+    _handleModelOverrideChange,
+    _setUserModelChoice,
+    _getUserModelChoice,
+    _pdfCapableModelsFor,
+    _recommendedEntryFor,
+    _formatMeasuredDate,
+    _resolveUserChoice,
+    PICKER_ELEMENT_IDS,
+    PICKER_RADIO_NAME,
     refreshAvailability,
     handleAnalyseClick,
     handleUndoClick,

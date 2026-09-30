@@ -133,6 +133,21 @@
 
         body.reasoning = reasoning;
         logDebug("Added reasoning parameter", reasoning);
+      } else if (
+        options.reasoning &&
+        typeof options.reasoning === "object" &&
+        !Array.isArray(options.reasoning) &&
+        Object.keys(options.reasoning).length === 1 &&
+        options.reasoning.enabled === false
+      ) {
+        // PB-5b (27 September 2026): the explicit OFF switch. Sent only when the
+        // options carry EXACTLY { enabled: false }, the shape the shared
+        // validator admits (PB-5) and the one the embed core forwards on its
+        // sendReasoningOff opt-in. An embed's own default config
+        // ({ enabled: false, effort: null, max_tokens: null }) is not that
+        // shape, so every default body stays byte-identical.
+        body.reasoning = { enabled: false };
+        logDebug("Added reasoning off switch");
       }
 
       // PDF engine via the official OpenRouter plugins format

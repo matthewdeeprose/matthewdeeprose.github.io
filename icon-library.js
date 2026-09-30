@@ -21,6 +21,110 @@
  *   window.refreshIcons(scopeElement);                // backwards-compat shim
  * Calling either with no argument rescans the whole document.
  *
+ * Sources and licences
+ * --------------------
+ * Most icons are System UIcons by Corey Ginnivan (https://systemuicons.com),
+ * released into the public domain under the Unlicense. No notice is
+ * required; this credit is a courtesy.
+ *
+ * Twelve icons are derived from Lucide (https://lucide.dev), with width and
+ * height dropped and most at stroke-width 1.5: bookOpenText, brain, fileText,
+ * handHeart, keyboardOutline, lifebuoy, messageSquare, milestone, monitor,
+ * playCircle, plus and wrench. Lucide's licence, copied verbatim from the
+ * LICENSE file of lucide-icons/lucide at commit
+ * 66d8f9fc394b8530377e5f6112f0b8908ba01280:
+ *
+ *   ISC License
+ *
+ *   Copyright (c) 2026 Lucide Icons and Contributors
+ *
+ *   Permission to use, copy, modify, and/or distribute this software for any
+ *   purpose with or without fee is hereby granted, provided that the above
+ *   copyright notice and this permission notice appear in all copies.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ *   WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ *   MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ *   ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ *   WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ *   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ *   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * Six of those twelve also derive from Feather: lifebuoy, monitor and plus
+ * are on Lucide's own list of Feather-derived icons ("life-buoy", "monitor",
+ * "plus"), and messageSquare, playCircle and wrench draw exactly Feather's
+ * "message-square", "play-circle" and "tool". Feather's licence, copied
+ * verbatim from the same Lucide LICENSE file:
+ *
+ *   The MIT License (MIT) (for the icons listed above)
+ *
+ *   Copyright (c) 2013-present Cole Bemis
+ *
+ *   Permission is hereby granted, free of charge, to any person obtaining a copy
+ *   of this software and associated documentation files (the "Software"), to deal
+ *   in the Software without restriction, including without limitation the rights
+ *   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *   copies of the Software, and to permit persons to whom the Software is
+ *   furnished to do so, subject to the following conditions:
+ *
+ *   The above copyright notice and this permission notice shall be included in all
+ *   copies or substantial portions of the Software.
+ *
+ *   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *   SOFTWARE.
+ *
+ * Six icons are Font Awesome Free solid icons, path data unchanged:
+ * magnifyingGlassChart ("magnifying-glass-chart", 6.2.1 to 6.5.2),
+ * peopleGroup ("people-line", 6.3.0 to 6.5.2), and personWaving ("hand"),
+ * books ("book-open"), lightbulbGear ("lightbulb") and universalAccess
+ * ("universal-access"), all four 6.7.2. Each root drops the embedded comment
+ * and adds fill="currentColor". The source files' own attribution comment
+ * reads, for 6.7.2:
+ *
+ *   Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License
+ *   - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL
+ *   1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.
+ *
+ * Font Awesome Free's licence, copied verbatim (icon terms only) from
+ * LICENSE.txt of FortAwesome/Font-Awesome at commit
+ * 840c215f894f429b26b8c1402a65da835dc5a450:
+ *
+ *   Fonticons, Inc. (https://fontawesome.com)
+ *
+ *   --------------------------------------------------------------------------------
+ *
+ *   Font Awesome Free License
+ *
+ *   Font Awesome Free is free, open source, and GPL friendly. You can use it for
+ *   commercial projects, open source projects, or really almost whatever you want.
+ *   Full Font Awesome Free license: https://fontawesome.com/license/free.
+ *
+ *   --------------------------------------------------------------------------------
+ *
+ *   # Icons: CC BY 4.0 License (https://creativecommons.org/licenses/by/4.0/)
+ *
+ *   The Font Awesome Free download is licensed under a Creative Commons
+ *   Attribution 4.0 International License and applies to all icons packaged
+ *   as SVG and JS file types.
+ *
+ *   --------------------------------------------------------------------------------
+ *
+ *   # Attribution
+ *
+ *   Attribution is required by MIT, SIL OFL, and CC BY licenses. Downloaded Font
+ *   Awesome Free files already contain embedded comments with sufficient
+ *   attribution, so you shouldn't need to do anything additional when using these
+ *   files normally.
+ *
+ *   We've kept attribution comments terse, so we ask that you do not actively work
+ *   to remove them from files, especially code. They're a great way for folks to
+ *   learn about Font Awesome.
+ *
  * @version 1.1.0
  * @author Matthew Deeprose
  */
@@ -30,7 +134,9 @@
 
   /**
    * SVG icons registry
-   * All icons are 21x21 viewBox for consistent sizing
+   * Most icons use a 21x21 viewBox (453 of 482 on 25 September 2026). The
+   * Lucide icons use 24x24; the Font Awesome ones are 512 high (384, 512, 576
+   * or 640 wide); one uses 95.633 square and ten have no viewBox
    * All use currentColor for theming support
    * @constant {Object.<string, string>}
    */
@@ -85,7 +191,9 @@
     search:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m17.571 17.5-5.571-5.5"/></g></svg>',
 
-    // Magnifying glass with a bar chart (data insight) - solid fill (FontAwesome-style)
+    // Magnifying glass with a bar chart (data insight). Font Awesome Free
+    // "magnifying-glass-chart" (solid): path data equal to versions 6.2.1 to
+    // 6.5.2. Fill inherits currentColor. Licence: see the header.
     magnifyingGlassChart:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zm-312 8v64c0 13.3 10.7 24 24 24s24-10.7 24-24l0-64c0-13.3-10.7-24-24-24s-24 10.7-24 24zm80-96V280c0 13.3 10.7 24 24 24s24-10.7 24-24V120c0-13.3-10.7-24-24-24s-24 10.7-24 24zm80 64v96c0 13.3 10.7 24 24 24s24-10.7 24-24V184c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>',
 
@@ -96,6 +204,7 @@
     returnArrow:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 6)"><path d="m1.378 1.376 4.243.003v4.242" transform="matrix(-.70710678 .70710678 .70710678 .70710678 3.500179 -1.449821)"/><path d="m5.5 9.49998326h5c2 .00089417 3-.99910025 3-2.99998326s-1-3.00088859-3-3.00001674h-10"/></g></svg>',
     // Plus
+    // Lucide "plus" (2020-2023 versions), the same drawing as Feather "plus". Licences: see the header.
     plus: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>',
 
     // Settings (alias for gear - ⚙️)
@@ -124,6 +233,11 @@
     // Arrow Right (→)
     arrowRight:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 8.5 4-4-4-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(9 6)"/></svg>',
+
+    // Arrow Right, long (⟶): mathpix-scripts/core/session-restorer/session-restorer-core.js :115–:116 (arrowRight).
+    // System UIcons `arrow_right`, public domain (Unlicense).
+    arrowRightLong:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 6)"><path d="m9.5.497 4 4.002-4 4.001"/><path d="m.5 4.5h13"/></g></svg>',
 
     // Arrow Left (←)
     arrowLeft:
@@ -155,6 +269,10 @@
     // Inbox/Import (📥/📂)
     inbox:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2.5 1.5)"><path d="m10 3h2.3406038c.4000282 0 .7615663.23839685.9191451.6060807l2.7402511 6.3939193v4c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2v-4l2.74025113-6.3939193c.15757879-.36768385.51911692-.6060807.91914503-.6060807h2.34060384"/><path d="m11 6.086-3 2.914-3-2.914"/><path d="m8 0v9"/><path d="m0 10h4c.55228475 0 1 .4477153 1 1v1c0 .5522847.44771525 1 1 1h4c.5522847 0 1-.4477153 1-1v-1c0-.5522847.4477153-1 1-1h4"/></g></svg>',
+
+    // Tray (an inbox with no arrow): mathpix-scripts/ui/components/mathpix-convert-ui.js :122–:123 (inbox).
+    tray:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m.5 10.5h3l1.5 2h4l1.5-2h3.5"/></g></svg>',
 
     // Clipboard/List (📋)
     clipboard:
@@ -233,6 +351,10 @@
     camera:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"><path d="m.5 10.5v-6c0-1.1045695.8954305-2 2-2h2l2.07861328-2h3.92016602l1.9194336 2h2.0817871c1.1045695 0 2 .8954305 2 2v6c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2z"/><path d="m11.5 7.5c0-1.65685425-1.3431458-3-3-3-1.65685425 0-3 1.34314575-3 3s1.34314575 3 3 3c1.6568542 0 3-1.34314575 3-3z"/></g></svg>',
 
+    // Switch Camera (a phone between two turn arrows): tools.html :6541–:6564, the Switch Camera button; root 18 → 21.
+    cameraSwitch:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m3.5 5.5c0-1.1045695.8954305-2 2-2h4c1.1045695 0 2 .8954305 2 2v6c0 1.1045695-.8954305 2-2 2h-4c-1.1045695 0-2-.8954305-2-2z"/><path d="m7.5 1.5v-1"/><path d="m.5 8.5 2-2 2 2"/><path d="m14.5 6.5-2 2-2-2"/></g></svg>',
+
     // Image/Picture (🖼️)
     image:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(3 3)"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m14.5 10.5-3-3-3 2.985"/><path d="m12.5 14.5-9-9-3 3"/></g><circle cx="11" cy="4" fill="currentColor" r="1"/></g></svg>',
@@ -291,6 +413,7 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"><path d="m4.5 0c.55228475 0 1 .44771525 1 1v2c0 .55228475-.44771525 1-1 1s-1-.44771525-1-1v-2c0-.55228475.44771525-1 1-1z"/><path d="m16.5 2h-11"/><path d="m3.5 2h-3"/><path d="m4.5 10c.55228475 0 1 .4477153 1 1v2c0 .5522847-.44771525 1-1 1s-1-.4477153-1-1v-2c0-.5522847.44771525-1 1-1z"/><path d="m16.5 12h-11"/><path d="m3.5 12h-3"/><path d="m12.5 5c.5522847 0 1 .44771525 1 1v2c0 .55228475-.4477153 1-1 1s-1-.44771525-1-1v-2c0-.55228475.4477153-1 1-1z"/><path d="m11.5 7h-11"/><path d="m16.5 7h-3"/></g></svg>',
 
     // Brain (🧠)
+    // Lucide "brain" (version of 28 February 2024). Licence: see the header.
     brain:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>',
 
@@ -314,6 +437,7 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 3)"><path d="m14.5.5c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2l-2.999-.001-2.29389322 2.2938932c-.36048396.360484-.92771502.3882135-1.32000622.0831886l-.09420734-.0831886-2.29389322-2.2938932-2.999.001c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m13.5 5.5h-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m4.49884033 6.5c.5 0 1-.5 1-1s-.5-1-1-1-.99884033.5-.99884033 1 .49884033 1 .99884033 1zm0 4c.5 0 1-.5 1-1s-.5-1-1-1-.99884033.5-.99884033 1 .49884033 1 .99884033 1z" fill="currentColor"/><path d="m13.5 9.5h-6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
 
     // Message Square (speech bubble with a squared tail)
+    // Lucide "message-square" (2020-2022 versions), the same drawing as Feather "message-square". Licences: see the header.
     messageSquare:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
 
@@ -321,23 +445,25 @@
     // People & Identity
     // ═══════════════════════════════════════════════════════════════════════
 
-    // People Group (a row of people — community / everyone). Solid FontAwesome
-    // "people-group" glyph, matching the other solid icons (magnifyingGlassChart,
-    // userCard); fill inherits currentColor.
+    // People Group (a row of people — community / everyone). Font Awesome Free
+    // "people-line" (solid), not "people-group": path data equal to versions
+    // 6.3.0 to 6.5.2. Fill inherits currentColor. Licence: see the header.
     peopleGroup:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512" fill="currentColor"><path d="M360 72a40 40 0 1 0 -80 0 40 40 0 1 0 80 0zM144 208a40 40 0 1 0 0-80 40 40 0 1 0 0 80zM32 416c-17.7 0-32 14.3-32 32s14.3 32 32 32H608c17.7 0 32-14.3 32-32s-14.3-32-32-32H32zM496 208a40 40 0 1 0 0-80 40 40 0 1 0 0 80zM200 313.5l26.9 49.9c6.3 11.7 20.8 16 32.5 9.8s16-20.8 9.8-32.5l-36.3-67.5c1.7-1.7 3.2-3.6 4.3-5.8L264 217.5V272c0 17.7 14.3 32 32 32h48c17.7 0 32-14.3 32-32V217.5l26.9 49.9c1.2 2.2 2.6 4.1 4.3 5.8l-36.3 67.5c-6.3 11.7-1.9 26.2 9.8 32.5s26.2 1.9 32.5-9.8L440 313.5V352c0 17.7 14.3 32 32 32h48c17.7 0 32-14.3 32-32V313.5l26.9 49.9c6.3 11.7 20.8 16 32.5 9.8s16-20.8 9.8-32.5l-37.9-70.3c-15.3-28.5-45.1-46.3-77.5-46.3H486.2c-16.3 0-31.9 4.5-45.4 12.6l-33.6-62.3c-15.3-28.5-45.1-46.3-77.5-46.3H310.2c-32.4 0-62.1 17.8-77.5 46.3l-33.6 62.3c-13.5-8.1-29.1-12.6-45.4-12.6H134.2c-32.4 0-62.1 17.8-77.5 46.3L18.9 340.6c-6.3 11.7-1.9 26.2 9.8 32.5s26.2 1.9 32.5-9.8L88 313.5V352c0 17.7 14.3 32 32 32h48c17.7 0 32-14.3 32-32V313.5z"/></svg>',
 
     // Universal Access (a person with arms out in a circle — the accessibility
-    // symbol). Solid FontAwesome "universal-access" glyph, matching the other
-    // solid icons (peopleGroup, magnifyingGlassChart); fill inherits currentColor.
+    // symbol): a filled disc with the figure cut out. Font Awesome Free
+    // "universal-access" (solid, 6.7.2), path data unchanged; replaces a
+    // probably-Pro glyph, 25 September 2026. Fill inherits currentColor.
+    // Licence: see the header.
     universalAccess:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm161.5-86.1l11.9 5.1c26.1 11.2 54.2 17 82.7 17s56.5-5.8 82.7-17l11.9-5.1c12.2-5.2 26.3 .4 31.5 12.6s-.4 26.3-12.6 31.5l-11.9 5.1c-17.3 7.4-35.2 12.9-53.6 16.3v50.1c0 4.3 .7 8.6 2.1 12.6l28.7 86.1c4.2 12.6-2.6 26.2-15.2 30.4s-26.2-2.6-30.4-15.2l-24.4-73.2c-1.3-3.8-4.8-6.4-8.8-6.4s-7.6 2.6-8.8 6.4l-24.4 73.2c-4.2 12.6-17.8 19.4-30.4 15.2s-19.4-17.8-15.2-30.4l28.7-86.1c1.4-4.1 2.1-8.3 2.1-12.6V235.5c-18.4-3.5-36.3-8.9-53.6-16.3l-11.9-5.1c-12.2-5.2-17.8-19.3-12.6-31.5s19.3-17.8 31.5-12.6zM256 80a40 40 0 1 1 0 80 40 40 0 1 1 0-80z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm161.5-86.1c-12.2-5.2-26.3 .4-31.5 12.6s.4 26.3 12.6 31.5l11.9 5.1c17.3 7.4 35.2 12.9 53.6 16.3l0 50.1c0 4.3-.7 8.6-2.1 12.6l-28.7 86.1c-4.2 12.6 2.6 26.2 15.2 30.4s26.2-2.6 30.4-15.2l24.4-73.2c1.3-3.8 4.8-6.4 8.8-6.4s7.6 2.6 8.8 6.4l24.4 73.2c4.2 12.6 17.8 19.4 30.4 15.2s19.4-17.8 15.2-30.4l-28.7-86.1c-1.4-4.1-2.1-8.3-2.1-12.6l0-50.1c18.4-3.5 36.3-8.9 53.6-16.3l11.9-5.1c12.2-5.2 17.8-19.3 12.6-31.5s-19.3-17.8-31.5-12.6L338.7 175c-26.1 11.2-54.2 17-82.7 17s-56.5-5.8-82.7-17l-11.9-5.1zM256 160a40 40 0 1 0 0-80 40 40 0 1 0 0 80z"/></svg>',
 
-    // Person Waving (a figure with a raised arm and sparkles — a friendly
-    // greeting / personal message). Solid FontAwesome glyph, matching the other
-    // solid icons (peopleGroup, universalAccess); fill inherits currentColor.
+    // Person Waving (a greeting / personal message): a raised open hand. Font
+    // Awesome Free "hand" (solid, 6.7.2), path data unchanged; replaces a Pro
+    // glyph, 25 September 2026. Fill inherits currentColor. Licence: see the header.
     personWaving:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M438.1 32.2c4.5-12.5-1.9-26.2-14.3-30.8S397.5 3.3 393 15.8l-4.6 12.7L328.7 6.7c-12.5-4.5-26.2 1.9-30.8 14.3L259.6 126.3c-4.5 12.5 1.9 26.2 14.3 30.8l59.7 21.7L316.5 226l-19.3-7.2c-12.1-4.6-22.8-12.3-30.9-22.4L238 161c-16.7-20.9-42-33-68.7-33H129.6c-34.8 0-66.3 20.5-80.4 52.3L2.1 286.3c-5.4 12.1 .1 26.3 12.2 31.7s26.3-.1 31.7-12.2L80 229.1V488c0 13.3 10.7 24 24 24s24-10.7 24-24V352h52.2l27.1 59.6c.5 1 .7 2.2 .7 3.3V488c0 13.3 10.7 24 24 24s24-10.7 24-24V414.9c0-8-1.7-15.9-5-23.2l-35-77V210.4l12.7 15.9c13.5 16.9 31.3 29.8 51.6 37.4l19.7 7.4-11 30.3c-4.5 12.5 1.9 26.2 14.3 30.8s26.2-1.9 30.8-14.3l44.6-122.6 60.6 22c12.5 4.5 26.2-1.9 30.8-14.3L508.4 97.7c4.5-12.5-1.9-26.2-14.3-30.8l-60.6-22 4.6-12.7zM334.8 60l120.3 43.8L433.2 164 312.9 120.2 334.8 60zM144 96a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm-14.4 80H168V304H128V176c.5 0 1.1 0 1.6 0z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 208c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 272c0 1.5 0 3.1 .1 4.6L67.6 283c-16-15.2-41.3-14.6-56.6 1.4s-14.6 41.3 1.4 56.6L124.8 448c43.1 41.1 100.4 64 160 64l19.2 0c97.2 0 176-78.8 176-176l0-208c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 112c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-176c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 176c0 8.8-7.2 16-16 16s-16-7.2-16-16l0-208z"/></svg>',
 
     // User Male (👤)
     userMale:
@@ -475,13 +601,14 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 5)"><path d="m16.5 1.59090909c-1.3333333-.72727273-2.6666667-1.09090909-4-1.09090909s-2.66666667.36363636-4 1.09090909v9.90909091c1.33333333-.6666667 2.6666667-1 4-1s2.6666667.3333333 4 1z"/><path d="m14.5559265 2.78819322c-.6853088-.19212881-1.3706177-.28819322-2.0559265-.28819322s-1.3706177.09606441-2.0559265.28819322m4.111853 2c-.6853088-.19212881-1.3706177-.28819322-2.0559265-.28819322s-1.3706177.09606441-2.0559265.28819322m4.111853 2c-.6853088-.19212881-1.3706177-.28819322-2.0559265-.28819322s-1.3706177.09606441-2.0559265.28819322m4.111853 2c-.6853088-.19212881-1.3706177-.28819322-2.0559265-.28819322s-1.3706177.09606441-2.0559265.28819322m-3.88814699-6c-.68530883-.19212881-1.37061767-.28819322-2.05592651-.28819322s-1.37061768.09606441-2.05592651.28819322m4.11185302 2c-.68530883-.19212881-1.37061767-.28819322-2.05592651-.28819322s-1.37061768.09606441-2.05592651.28819322m4.11185302 2c-.68530883-.19212881-1.37061767-.28819322-2.05592651-.28819322s-1.37061768.09606441-2.05592651.28819322m4.11185302 2c-.68530883-.19212881-1.37061767-.28819322-2.05592651-.28819322s-1.37061768.09606441-2.05592651.28819322"/><path d="m8.5 1.59090909c-1.33333333-.72727273-2.66666667-1.09090909-4-1.09090909s-2.66666667.36363636-4 1.09090909v9.90909091c1.33333333-.6666667 2.66666667-1 4-1s2.66666667.3333333 4 1z"/></g></svg>',
     book:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m16.5 1.59090909c-1.3333333-.72727273-2.6666667-1.09090909-4-1.09090909s-2.66666667.36363636-4 1.09090909v9.90909091c1.33333333-.6666667 2.6666667-1 4-1s2.6666667.3333333 4 1zm-8 0c-1.33333333-.72727273-2.66666667-1.09090909-4-1.09090909s-2.66666667.36363636-4 1.09090909v9.90909091c1.33333333-.6666667 2.66666667-1 4-1s2.66666667.3333333 4 1z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 5)"/></svg>',
+    // Lucide "book-open-text" (version of 6 September 2024). Licence: see the header.
     bookOpenText:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M16 12h2"/><path d="M16 8h2"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/><path d="M6 12h2"/><path d="M6 8h2"/></svg>',
-    // Books (a small shelf of books — a reading list / library). Solid
-    // FontAwesome "books" glyph, matching the other solid icons (lightbulbGear,
-    // peopleGroup); fill inherits currentColor.
+    // Books (a reading list / something to read or write): an open book. Font
+    // Awesome Free "book-open" (solid, 6.7.2), path data unchanged; replaces a
+    // Pro glyph, 25 September 2026. Fill inherits currentColor. Licence: see the header.
     books:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M0 32C0 14.3 14.3 0 32 0H96c17.7 0 32 14.3 32 32V96H0V32zm0 96H128V384H0V128zM0 416H128v64c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V416zM160 32c0-17.7 14.3-32 32-32h64c17.7 0 32 14.3 32 32V96H160V32zm0 96H288V384H160V128zm0 288H288v64c0 17.7-14.3 32-32 32H192c-17.7 0-32-14.3-32-32V416zm203.6-19.9L320 232.6V142.8l100.4-26.9 66 247.4L363.6 396.1zM412.2 85L320 109.6V11l36.9-9.9c16.9-4.6 34.4 5.5 38.9 22.6L412.2 85zM371.8 427l122.8-32.9 16.3 61.1c4.5 17-5.5 34.5-22.5 39.1l-61.4 16.5c-16.9 4.6-34.4-5.5-38.9-22.6L371.8 427z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" fill="currentColor"><path d="M249.6 471.5c10.8 3.8 22.4-4.1 22.4-15.5l0-377.4c0-4.2-1.6-8.4-5-11C247.4 52 202.4 32 144 32C93.5 32 46.3 45.3 18.1 56.1C6.8 60.5 0 71.7 0 83.8L0 454.1c0 11.9 12.8 20.2 24.1 16.5C55.6 460.1 105.5 448 144 448c33.9 0 79 14 105.6 23.5zm76.8 0C353 462 398.1 448 432 448c38.5 0 88.4 12.1 119.9 22.6c11.3 3.8 24.1-4.6 24.1-16.5l0-370.3c0-12.1-6.8-23.3-18.1-27.6C529.7 45.3 482.5 32 432 32c-58.4 0-103.4 20-123 35.6c-3.3 2.6-5 6.8-5 11L304 456c0 11.4 11.7 19.3 22.4 15.5z"/></svg>',
     bookmarkBook:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m2.5.5h8c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m3.5.5h4v5.012l-2-2.012-2 2.012z"/></g></svg>',
     bookmark:
@@ -596,6 +723,9 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m8.5.5.027 16" transform="matrix(-1 0 0 1 17.027 0)"/></g></svg>',
     circle:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" fill="none" r="8" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    // Bullet (a filled dot, radius 3): mathpix-scripts/ui/components/mathpix-result-renderer.js :55–:56 (bullet).
+    bullet:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="3" fill="currentColor"/></svg>',
     clipboardAdd:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m3.5 1.5c-.42139382 0-1.08806048 0-2 0-.55228475 0-1 .44771525-1 1v11c0 .5522848.44771525 1 1 1h10c.5522847 0 1-.4477152 1-1v-11c0-.55228475-.4477153-1-1-1-.8888889 0-1.55555556 0-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m6.5 5.5v6.056"/><path d="m6.5 5.5v6" transform="matrix(0 1 -1 0 15 2)"/></g></svg>',
     clipboardCheck:
@@ -716,6 +846,7 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(2 2)"><path d="m8.5 16.5c4.418278 0 8-3.581722 8-8s-3.581722-8-8-8-8 3.581722-8 8 3.581722 8 8 8z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="6" fill="currentColor" r="1"/><circle cx="11" cy="6" fill="currentColor" r="1"/><path d="m5.5 11.5c.60286458-1.3333333 1.60286458-2 3-2s2.3971354.6666667 3 2" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
     fileDownload:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 2)"><path d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"/><path d="m9.5 8.586-3 2.914-3-2.914"/><path d="m6.5.5v11"/></g></svg>',
+    // Lucide "file-text" (version of 16 January 2024). Licence: see the header.
     fileText:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
     fileUpload:
@@ -828,10 +959,12 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5.5 6.5)"><path d="m0 8v-2c0-1.65685425 1.34314575-3 3-3h8"/><path d="m7.999 6 3.001-3-3.001-3"/></g></svg>',
     keyboard:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 5)"><path d="m18.5 8.5v-6c0-1.1045695-.8954305-2-2-2h-14c-1.1045695 0-2 .8954305-2 2v6c0 1.1045695.8954305 2 2 2h14c1.1045695 0 2-.8954305 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><g fill="currentColor"><circle cx="3.5" cy="2.5" r="1"/><circle cx="6.5" cy="2.5" r="1"/><circle cx="9.5" cy="2.5" r="1"/><circle cx="12.5" cy="2.5" r="1"/><circle cx="15.5" cy="2.5" r="1"/><circle cx="3.5" cy="4.5" r="1"/><circle cx="6.5" cy="4.5" r="1"/><circle cx="9.5" cy="4.5" r="1"/><circle cx="12.5" cy="4.5" r="1"/><circle cx="15.5" cy="4.5" r="1"/><circle cx="3.5" cy="6.5" r="1"/><circle cx="6.5" cy="6.5" r="1"/><circle cx="9.5" cy="6.5" r="1"/><circle cx="12.5" cy="6.5" r="1"/><circle cx="15.5" cy="6.5" r="1"/><circle cx="3.5" cy="8.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/></g><path d="m6.5 8.5h6" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></g></svg>',
+    // Lucide "keyboard" (versions of March 2024). Licence: see the header.
     keyboardOutline:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></svg>',
     laptop:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m2.5.48528137h11c.5522847 0 1 .44771525 1 1v8.01471863h-13v-8.01471863c0-.55228475.44771525-1 1-1zm-1.38196601 13.01471863h13.76393201c.5522848 0 1-.4477153 1-1 0-.1552451-.0361451-.3083582-.1055728-.4472136l-1.2763932-2.5527864h-13l-1.2763932 2.5527864c-.24698925.4939785-.0467649 1.0946515.44721359 1.3416408.13885544.0694277.2919685.1055728.4472136.1055728z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 4)"/></svg>',
+    // Lucide "life-buoy" (2023 version, from Feather) with one of its five lines dropped. Licences: see the header.
     lifebuoy:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="4.93" x2="9.17" y1="4.93" y2="9.17"/><line x1="14.83" x2="19.07" y1="14.83" y2="19.07"/><line x1="14.83" x2="18.36" y1="9.17" y2="5.64"/><line x1="4.93" x2="9.17" y1="19.07" y2="14.83"/></svg>',
     lightbulbOn:
@@ -839,11 +972,11 @@
     lightbulb:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(6 5)"><path d="m2.5 13.5h4"/><path d="m4.5 0c2.48528137 0 4.5 2.01471863 4.5 4.5 0 1.76637512-1.01772197 3.29504854-2.49877863 4.03163297l-.00122137.96836703c0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2l-.00021218-.96786527c-1.48160351-.73639182-2.49978782-2.26535843-2.49978782-4.03213473 0-2.48528137 2.01471863-4.5 4.5-4.5z"/></g></svg>',
 
-    // Lightbulb with a gear (understanding / working something out). Solid
-    // FontAwesome "lightbulb-gear" glyph, matching the other solid icons
-    // (peopleGroup, universalAccess); fill inherits currentColor.
+    // Lightbulb Gear (understanding / working something out): a lightbulb. Font
+    // Awesome Free "lightbulb" (solid, 6.7.2), path data unchanged; replaces a
+    // Pro glyph, 25 September 2026. Fill inherits currentColor. Licence: see the header.
     lightbulbGear:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="currentColor"><path d="M314.4 213.6c3.6-11.9 5.6-24.5 5.6-37.6c0-70.7-57.3-128-128-128S64 105.3 64 176c0 27.2 8.4 52.3 22.8 72.9c3.7 5.3 8.1 11.3 12.8 17.7l0 0c12.9 17.7 28.3 38.9 39.8 59.8c10.4 19 15.7 38.8 18.3 57.5H109c-2.2-12-5.9-23.7-11.8-34.5c-9.9-18-22.2-34.9-34.5-51.8l0 0 0 0c-5.2-7.1-10.4-14.2-15.4-21.4C27.6 247.9 16 213.3 16 176C16 78.8 94.8 0 192 0c97 0 175.6 78.4 176 175.3c-17.8 7.7-28 25.6-28 43.3v.9c-7.7-4.3-16.7-6.4-25.6-5.9zM245.6 416c3.5 9.2 7.7 18.3 12.8 27c2.9 5 6 9.9 9.4 14.6C257.1 489.2 227.2 512 192 512c-44.2 0-80-35.8-80-80V416H245.6zM144 176c0 8.8-7.2 16-16 16s-16-7.2-16-16c0-44.2 35.8-80 80-80c8.8 0 16 7.2 16 16s-7.2 16-16 16c-26.5 0-48 21.5-48 48zm228 42.2c0-7 4.5-13.3 11.3-14.8c10.5-2.4 21.5-3.7 32.7-3.7s22.2 1.3 32.7 3.7c6.8 1.5 11.3 7.8 11.3 14.8v17.7c0 7.8 4.8 14.8 11.6 18.7c6.8 3.9 15.1 4.5 21.8 .6l13.8-7.9c6.1-3.5 13.7-2.7 18.5 2.4c7.6 8.1 14.3 17.2 20.1 27.2s10.3 20.4 13.5 31c2.1 6.7-1.1 13.7-7.2 17.2l-14.4 8.3c-6.5 3.7-10 10.9-10 18.4s3.5 14.7 10 18.4l14.4 8.3c6.1 3.5 9.2 10.5 7.2 17.2c-3.3 10.6-7.8 21-13.5 31s-12.5 19.1-20.1 27.2c-4.8 5.1-12.5 5.9-18.5 2.4l-13.8-7.9c-6.7-3.9-15.1-3.3-21.8 .6c-6.8 3.9-11.6 10.9-11.6 18.7l0 17.7c0 7-4.5 13.3-11.3 14.8c-10.5 2.4-21.5 3.7-32.7 3.7s-22.2-1.3-32.7-3.7c-6.8-1.5-11.3-7.8-11.3-14.8V467.8c0-7.9-4.9-14.9-11.7-18.9c-6.8-3.9-15.2-4.5-22-.6l-13.5 7.8c-6.1 3.5-13.7 2.7-18.5-2.4c-7.6-8.1-14.3-17.2-20.1-27.2s-10.3-20.4-13.5-31c-2.1-6.7 1.1-13.7 7.2-17.2l14-8.1c6.5-3.8 10.1-11.1 10.1-18.6s-3.5-14.8-10.1-18.6l-14-8.1c-6.1-3.5-9.2-10.5-7.2-17.2c3.3-10.6 7.7-21 13.5-31s12.5-19.1 20.1-27.2c4.8-5.1 12.4-5.9 18.5-2.4l13.6 7.8c6.8 3.9 15.2 3.3 22-.6c6.9-3.9 11.7-11 11.7-18.9V218.2zm92.1 133.5a48.1 48.1 0 1 0 -96.1 0 48.1 48.1 0 1 0 96.1 0z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor"><path d="M272 384c9.6-31.9 29.5-59.1 49.2-86.2c0 0 0 0 0 0c5.2-7.1 10.4-14.2 15.4-21.4c19.8-28.5 31.4-63 31.4-100.3C368 78.8 289.2 0 192 0S16 78.8 16 176c0 37.3 11.6 71.9 31.4 100.3c5 7.2 10.2 14.3 15.4 21.4c0 0 0 0 0 0c19.8 27.1 39.7 54.4 49.2 86.2l160 0zM192 512c44.2 0 80-35.8 80-80l0-16-160 0 0 16c0 44.2 35.8 80 80 80zM112 176c0 8.8-7.2 16-16 16s-16-7.2-16-16c0-61.9 50.1-112 112-112c8.8 0 16 7.2 16 16s-7.2 16-16 16c-44.2 0-80 35.8-80 80z"/></svg>',
     lightningAlt:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m5.5 6.5h5l-6 8.997v-5.997h-4l2-9h5z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 2)"/></svg>',
     lightning:
@@ -910,6 +1043,7 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 3)"><path d="m8 16c4.4380025 0 8-3.5262833 8-7.96428571 0-4.43800246-3.5619975-8.03571429-8-8.03571429-4.43800245 0-8 3.59771183-8 8.03571429 0 4.43800241 3.56199755 7.96428571 8 7.96428571z"/><path d="m4 8h8"/></g></svg>',
     minus:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m5.5 10.5h10" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    // Lucide "monitor" (version of 28 May 2023; Feather-derived by Lucide's list). Licences: see the header.
     monitor:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>',
     moon:
@@ -978,6 +1112,7 @@
       '<svg width="21" height="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd"><g stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 7.5v5.817M3.5 10.5a3 3 0 003 3h8a3 3 0 000-6h-8a3 3 0 00-3 3z"/></g></g></svg>',
     playButton:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 5)"><path d="m2.49368982.53498937 11.99999998-.03787142c1.0543566-.00331643 1.9207298.80983192 2.0003436 1.84444575l.0059666.15555425v6.00288205c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2v-5.96502059c0-1.10210602.89158929-1.9965128 1.99368982-1.99999004z"/><path d="m7.5 7.5 3-2-3-2z" fill="currentColor"/></g></svg>',
+    // Lucide "play-circle", now "circle-play" (2020-2024 versions), the same drawing as Feather "play-circle". Licences: see the header.
     playCircle:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>',
     plusCircle:
@@ -1205,6 +1340,7 @@
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 6)"><path d="m1.378 1.376 4.243.003v4.242" transform="matrix(-.70710678 .70710678 .70710678 .70710678 3.500179 -1.449821)"/><path d="m5.5 9.49998326h5c2 .00089417 3-.99910025 3-2.99998326s-1-3.00088859-3-3.00001674h-10"/></g></svg>',
     wrapForward:
       '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 6)"><path d="m8.378 1.376 4.243.003v4.242" transform="matrix(.70710678 -.70710678 -.70710678 -.70710678 5.549155 13.396845)"/><path d="m5.5 9.49996362h5c2 .00090726 3-.99908061 3-2.99996362s-1-3.00089514-3-3.00003638h-10" transform="matrix(-1 0 0 1 14 0)"/></g></svg>',
+    // Lucide "wrench", first named "tool" (2020-2022 versions), the same drawing as Feather "tool". Licences: see the header.
     wrench:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
     write:

@@ -222,20 +222,37 @@
     hasSettledInitialStates = true;
   }
 
+  // The last state each model's cards were rendered in, by model key.
+  var lastStateByModel = {};
+
+  // Same values as ImageDescriberModelManager.STATE_CAUSE, which is the source.
+  var STATE_CAUSE =
+    (window.ImageDescriberModelManager &&
+      window.ImageDescriberModelManager.STATE_CAUSE) ||
+    Object.freeze({ USER: "user", ANALYSIS: "analysis" });
+
   /**
-   * Announce a model's new state, naming the model.
+   * Announce a model's new state, naming the model — for a change the person
+   * made, and only that.
    *
    * The card's status wrapper used to carry aria-live, which announced the bare
    * label — "Cached", with nothing to say which of a dozen models it described —
-   * and did so once per card on load. The markup is no longer live; this is the
-   * channel, it names the model, and it stays silent until the initial states have
-   * settled.
+   * and did so once per card on load. The wrappers carry no aria-live now
+   * (H-13; the Setup cards never did), so the text they hold is silent and this
+   * is the channel: it names the model, it stays silent until the initial
+   * states have settled, and it speaks only for a USER-caused change. A model
+   * the analyser loads to do its work is not something the person asked for,
+   * and naming it mid-wait said "CLIP ViT-B/32: Loaded" with no way to know what
+   * that meant. The default cause is the silent one, so a caller that does not
+   * say why a state changed is not announced.
    *
    * @param {HTMLElement} item the model card
    * @param {string} modelKey
    * @param {string} label human-readable state label
+   * @param {string} [cause] one of STATE_CAUSE; anything but USER is silent
    */
-  function announceState(item, modelKey, label) {
+  function announceState(item, modelKey, label, cause) {
+    if (cause !== STATE_CAUSE.USER) return;
     if (!hasSettledInitialStates) return;
     var announcer = window.accessibilityHelpers;
     if (!announcer || typeof announcer.announce !== "function") return;
@@ -247,11 +264,28 @@
 
   /**
    * Update a single model item's UI.
+   *
+   * getModelElements() returns the Image Describer card AND the Setup card, and
+   * both are updated here. A state change is ONE event, so it is announced once,
+   * from the first card whose text actually changed, not once per card and left
+   * to the announcer's repeat suppressor to drop the second.
+   *
    * @param {string} modelKey
    * @param {string} state
+   * @param {string} [cause] one of STATE_CAUSE; omitted means silent
    */
-  function updateModelUI(modelKey, state) {
+  function updateModelUI(modelKey, state, cause) {
     var items = getModelElements(modelKey);
+    var announceFrom = null;
+    var announceLabel = null;
+
+    // A repeat of the state this model is already in is not news, however the
+    // card text got there. Measured H-13: updateLibraryStatus() in
+    // image-describer-controller-debug.js also writes this card's state text
+    // ("Ready"), so a user Load fired the state change twice with the text
+    // knocked off in between, and the text guard below alone announced both.
+    var stateChanged = lastStateByModel[modelKey] !== state;
+    lastStateByModel[modelKey] = state;
     for (var idx = 0; idx < items.length; idx++) {
       var item = items[idx];
 
@@ -269,14 +303,19 @@
       // Update state text, only when it actually changes. The status wrapper was a
       // live region until 2 August 2026, so an unconditional rewrite announced the
       // label again even when nothing had changed — and the label alone ("Cached")
-      // never said which model it meant. Both are fixed: the markup is no longer
-      // live, and announceState() names the model.
+      // never said which model it meant. The Setup cards were made silent then;
+      // the Image Describer cards kept aria-live until H-13, so this comment was
+      // only true of half of them. Now it is true of all: the markup is not live,
+      // and announceState() names the model.
       var stateText = item.querySelector(".imgdesc-mm-state-text");
       if (stateText) {
         var label = STATE_LABELS[state] || state;
         if (stateText.textContent !== label) {
           stateText.textContent = label;
-          announceState(item, modelKey, label);
+          if (!announceFrom) {
+            announceFrom = item;
+            announceLabel = label;
+          }
         }
       }
 
@@ -288,6 +327,10 @@
       if (progressContainer) {
         progressContainer.hidden = state !== "downloading";
       }
+    }
+
+    if (announceFrom && stateChanged) {
+      announceState(announceFrom, modelKey, announceLabel, cause);
     }
   }
 
@@ -881,7 +924,7 @@
     if (window.EmbedEventEmitter) {
       window.EmbedEventEmitter.on("model:stateChange", function (data) {
         logDebug("State change event:", data.modelKey, data.newState);
-        updateModelUI(data.modelKey, data.newState);
+        updateModelUI(data.modelKey, data.newState, data.cause);
       });
     }
   }

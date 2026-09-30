@@ -65,15 +65,29 @@
   // ============================================================================
   // The proxy host used when the shared `foundryProxyUrl` credential is absent.
   //
+  // THIS IS THE AZURE UK SOUTH CONTAINER APP AS OF 21 SEPTEMBER 2026, NOT THE
+  // CLOUDFLARE WORKER. Owner decision, taken for tester reach; the accepted
+  // consequence and the six-copy keep-in-step obligation are written out in
+  // openrouter-embed/providers/azure-openai-v1.js.
+  //
   // It is REDUNDANT for routing and LOAD-BEARING for construction, and the two
   // must not be confused. Both adapters carry the identical URL as their own
   // DEFAULT_PROXY_URL (azure-openai-v1.js, azure-openai-responses.js), so a
   // request reaching them with no configured host resolves here anyway. But
-  // configureProvider REFUSES an empty proxyUrl, and Set Up stores the
+  // configureProvider REFUSES an empty proxyUrl, so this constant is what keeps
+  // the absent-key case constructible at all.
+  //
+  // WHY IT IS STILL LOAD-BEARING CHANGED ON 21 SEPTEMBER 2026, AND THE OLD
+  // REASON IS NOW FALSE. This comment used to end: "and Set Up stores the
   // Cloudflare choice by REMOVING the key rather than writing a value — so this
-  // constant is what keeps that choice configurable at all.
+  // constant is what keeps that choice configurable at all." Set Up now stores
+  // the CLOUDFLARE choice by WRITING the Worker URL, and the AZURE choice by
+  // removing the key. So an absent key no longer means "chose Cloudflare"; it
+  // means "chose Azure, or never opened Set Up at all". The constant survives
+  // for that second population — a person who has never opened Set Up — and
+  // for the first, whose choice is now expressed as absence.
   const FOUNDRY_PROXY_FALLBACK =
-    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
 
   // The two Foundry surfaces this tool configures. Named once, so the build
   // below and the live re-apply cannot drift into configuring different sets.
@@ -176,6 +190,13 @@
   // on testing: at 20s a typical 8-11s cloud generation finished before the
   // first ping was ever due, so the keep-alive went unheard through two listens.
   const GENERATING_ANNOUNCE_INTERVAL_S = 10;
+
+  // Images larger than this are compressed by the embed before sending (below
+  // it they perform acceptably). Named once: the embed is configured with it,
+  // the COMPRESSING stage is shown on it, and _notifyCompressionOutcome() reads
+  // it to tell "compression failed" from "no compression was needed" — the
+  // embed reports both as null metrics, so all three must agree.
+  const COMPRESSION_THRESHOLD_BYTES = 200 * 1024; // 200KB
 
   // ============================================================================
   // PROGRESS STAGES (moved from core — only used by generate methods)
@@ -299,6 +320,10 @@
     // and sending someone round that loop is worse than saying nothing.
     403: "Your account is not permitted to use this service.",
     503: "The service could not check your sign-in just now. Please try again shortly.",
+    // Parcel 52: a 429 that outlasted every retry. Without this entry the
+    // fallback below read the provider's raw message aloud — "Foundry request
+    // failed: HTTP 429 —" and the whole Azure JSON body.
+    429: "The model is busy right now. Please try again shortly.",
   });
 
   /**
@@ -1351,11 +1376,20 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         embedConfig.retry = {
           enabled: true,
           maxRetries: 2,
-          baseDelay: 1000,
+          initialDelay: 1000,
           maxDelay: 5000,
           backoffMultiplier: 2,
           jitter: true,
           retryableStatuses: [408, 429, 500, 502, 503, 504],
+          // Parcel 52: a retry here used to pause silently (this embed shows no
+          // toasts of its own). The same one cue as the main pass, with this
+          // embed's own count. The instance is read when a retry fires, by
+          // which time the assignment below has run.
+          onRetry: (attempt, delay, error) => {
+            this.handleRetryAttempt(attempt, delay, error, {
+              embed: this.verificationEmbedInstance,
+            });
+          },
         };
       }
 
@@ -2028,16 +2062,121 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
-     * Hide progress indicator and clean up
+     * Hide progress indicator and clean up. Every caller is the end of a run,
+     * so this also ends the run's holds and decides where focus lands.
      * @param {boolean} showFinalTime - Whether to display completion time
+     * @param {Object} [options]
+     * @param {boolean} [options.focusDescription=false] - The run succeeded:
+     *   end it on the description rather than on Regenerate.
      */
-    hideProgress(showFinalTime = false) {
+    hideProgress(showFinalTime = false, { focusDescription = false } = {}) {
       // Capture final elapsed time before clearing
       const finalSeconds = this.getElapsedSeconds();
 
-      // Hide progress container
+      // Where focus lands when a run ends (parcel 43b, owner ruling of
+      // 26 September 2026): success on the description, cancel and failure on
+      // Regenerate, and never on a control that is still held. Parcel 43 moved
+      // focus to Regenerate a millisecond before the finally released it, so
+      // NVDA said "Regenerate button unavailable busy" and the silent release
+      // never corrected it. No caller awaits between here and its finally, so
+      // the release below is the finally's own, moved earlier.
       if (this.elements.progress) {
-        this.elements.progress.hidden = true;
+        const progress = this.elements.progress;
+        const output = this.elements.output;
+        const runButtons = [
+          this.elements.generateBtn,
+          this.elements.generateLocalBtn,
+          this.elements.regenerateBtn,
+          this.elements.redescribeBtn,
+        ];
+
+        // 1. Success: the description, if focus is still where the run left it.
+        //    It is not held, so it may go before the release; the release then
+        //    finds focus elsewhere and restores nothing. Under reduced motion
+        //    the embed has already focused it, so this does nothing there.
+        if (focusDescription && output && output.offsetParent !== null) {
+          const active = document.activeElement;
+          const focusIsTheRuns =
+            !active ||
+            active === document.body ||
+            progress.contains(active) ||
+            runButtons.includes(active);
+          if (focusIsTheRuns) {
+            if (!output.hasAttribute("tabindex")) {
+              output.setAttribute("tabindex", "-1");
+            }
+            output.focus();
+          }
+        }
+
+        // 2. Release the holds, so nothing below focuses a held control.
+        if (this.isGenerating) {
+          this.isGenerating = false;
+          this.updateButtonStates();
+        }
+
+        // 3a. Cancel and failure (parcel 43c): let the page render the release
+        //    before focus moves. Parcel 43b released and focused Regenerate in
+        //    one task, 1-2 ms apart; the DOM was unheld at focusin and NVDA
+        //    still said "Regenerate button unavailable busy". So Cancel stays
+        //    visible and focused (nothing is blurred, nothing drops to <body>)
+        //    until a full rendering update has run, and only then does focus
+        //    move and the area hide. ONE requestAnimationFrame is not enough:
+        //    its callback runs inside the very update being waited for, before
+        //    style and layout. The nested one runs in the NEXT update. Frames
+        //    are suspended in a hidden tab, so there the step waits until the
+        //    tab is shown. A later end of run replaces the token, and a run
+        //    started in between owns the progress area, so neither is touched.
+        const deferEnd = !focusDescription;
+        const endToken = {};
+        this._endOfRunToken = deferEnd ? endToken : null;
+        if (deferEnd) {
+          const finishEnd = () => {
+            if (this._endOfRunToken !== endToken) return;
+            this._endOfRunToken = null;
+            if (this.isGenerating) return;
+            const now = document.activeElement;
+            if (!now || now === document.body || progress.contains(now)) {
+              const target = [
+                this.elements.generateBtn,
+                this.elements.regenerateBtn,
+                this.elements.newImageBtn,
+              ].find((el) => el && el.offsetParent !== null);
+              if (target) {
+                target.focus();
+              } else {
+                logWarn(
+                  "hideProgress: focus is in the progress area and no control is visible to move it to; focus left alone",
+                );
+              }
+            }
+            progress.hidden = true;
+          };
+          requestAnimationFrame(() => requestAnimationFrame(finishEnd));
+        }
+
+        // 3. Move focus off Cancel BEFORE the hide (parcel 43). Hiding the
+        //    focused Cancel does not blur it at the assignment: Chromium blurs
+        //    it later, after every synchronous caller has run, so focus fell to
+        //    <body> at the end of every run (measured). The destination is
+        //    cancelGeneration()'s chain. Visibility is the only test.
+        //    Since parcel 43c only a success takes this synchronous path.
+        const active = document.activeElement;
+        if (!deferEnd && active && progress.contains(active)) {
+          const target = [
+            this.elements.generateBtn,
+            this.elements.regenerateBtn,
+            this.elements.newImageBtn,
+          ].find((el) => el && el.offsetParent !== null);
+          if (target) {
+            target.focus();
+          } else {
+            logWarn(
+              "hideProgress: focus is in the progress area and no control is visible to move it to; focus left alone",
+            );
+          }
+        }
+        if (!deferEnd) this.elements.progress.hidden = true;
       }
 
       // Clear timer
@@ -2081,16 +2220,38 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     cancelGeneration() {
       logInfo("Generation cancelled by user");
 
-      // Abort any in-flight request
+      // Abort any in-flight request. Nulling the controller is also how the
+      // run learns it no longer owns the page (parcel 43e-2): its catch and
+      // finally compare this.abortController with the controller they created.
       if (this.abortController) {
         this.abortController.abort();
         this.abortController = null;
       }
 
-      // Hide progress (don't show completion time for cancellation)
+      // Stop the cloud request itself (parcel 43e-2), without a toast. The
+      // run's own controller is never handed to the embed, so aborting it
+      // alone left the request running and the reply landing as a success.
+      // Streaming: cancelStreaming() aborts the request's fetch and resolves
+      // the pending send with `cancelled: true`. Reduced motion: aborting the
+      // embed's controller makes its non-streaming fallback return
+      // `cancelled: true` instead of writing the reply (whether the fetch
+      // itself stops there is the shared client's concern, parcel 43f).
+      // Never cancelRequest(): on the non-streaming path it raises a
+      // "Request cancelled" toast beside our own "Generation cancelled".
+      const embed = this.embedInstance;
+      if (embed?.isStreaming) {
+        embed.cancelStreaming("User cancelled");
+      } else {
+        embed?.getAbortController?.()?.abort();
+      }
+
+      // Hide progress (don't show completion time for cancellation). This
+      // releases the holds now, but since parcel 43c it does NOT move focus or
+      // hide the area here: it leaves Cancel visible and focused and registers
+      // a deferred step that does both after a rendering update.
       this.hideProgress(false);
 
-      // Reset generating state
+      // Reset generating state (already done by hideProgress; kept as defence)
       this.isGenerating = false;
       this.updateButtonStates();
 
@@ -2109,6 +2270,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       // on — a second focus drop (SC 2.4.3). Cancel does NOT restore the
       // config layout, so the Generate button is usually still hidden; fall
       // through to the first focusable of the ready-state controls.
+      // Parcel 43d: skipped while hideProgress()'s deferred step is pending,
+      // which is always the case when the progress area exists. Moving focus
+      // here would do it in the release's own task, and NVDA was heard saying
+      // "Regenerate button unavailable" for exactly that (parcel 43c). The
+      // deferred step moves focus after a rendering update instead. This chain
+      // only acts where hideProgress() set no token (no progress area).
+      if (this._endOfRunToken) return;
       const active = document.activeElement;
       if (
         !active ||
@@ -2273,10 +2441,16 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       // Access config values via exposed _controllerConfig
       const cfg = this._controllerConfig || {};
 
-      try {
-        // Create abort controller for cancellation
-        this.abortController = new AbortController();
+      // Create abort controller for cancellation. The run keeps its OWN
+      // controller and signal (parcel 43e-2): cancelGeneration() nulls
+      // this.abortController and a later run replaces it, so reading it back
+      // says nothing about this run. Created before the try so the catch and
+      // finally can tell whether this run still owns the page.
+      const runController = new AbortController();
+      const runSignal = runController.signal;
+      this.abortController = runController;
 
+      try {
         // Stage 1: Validating
         this.showProgress("VALIDATING");
         this._resetReasoningDisclosure();
@@ -2290,9 +2464,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
         // Stage 2: Compressing (for large files)
         // Note: compression happens inside attachFile(), but we show the stage
-        const fileSizeKB = this.currentFile.size / 1024;
-        if (fileSizeKB > 200) {
-          // Match compression threshold
+        if (this.currentFile.size > COMPRESSION_THRESHOLD_BYTES) {
           this.showProgress("COMPRESSING");
           // Small delay to ensure user sees stage
           await new Promise((r) => setTimeout(r, 100));
@@ -2310,7 +2482,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             await this._analysisPending;
 
             // Check if cancelled while waiting
-            if (this.abortController?.signal?.aborted) {
+            if (runSignal.aborted) {
               logInfo("Generation cancelled during analysis");
               throw new DOMException("Aborted", "AbortError");
             }
@@ -2348,7 +2520,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
                   profile,
                 );
 
-              if (this.abortController?.signal?.aborted) {
+              if (runSignal.aborted) {
                 logInfo("Generation cancelled during analysis");
                 throw new DOMException("Aborted", "AbortError");
               }
@@ -2437,6 +2609,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
         // Attach the image (compression happens here for large files)
         await embed.attachFile(this.currentFile);
+        this._notifyCompressionOutcome(embed);
 
         // Stage 4: Generating
         this.showProgress("GENERATING");
@@ -2492,7 +2665,21 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
         } else {
           logInfo("Using non-streaming mode (reduced motion)");
-          response = await embed.sendRequest(userPrompt);
+          // sendStreamingRequest, not sendRequest (parcel 43e-2). Under
+          // reduced motion both reach the embed's non-streaming fallback;
+          // sendRequest only wraps it in its own "Processing request..." and
+          // "Request completed successfully" toasts, which the fallback
+          // already raises, and it raised the success one on a cancelled send.
+          response = await embed.sendStreamingRequest({ userPrompt });
+        }
+
+        // Cancel was pressed while the request was out (parcel 43e-2). A
+        // stopped stream RESOLVES with `cancelled: true` and whatever text had
+        // arrived; the reduced-motion fallback returns `cancelled: true` and
+        // no text. Neither is a result. Leave through the catch, which says
+        // and does nothing, because this run no longer owns the page.
+        if (runSignal.aborted || response?.cancelled) {
+          throw new DOMException("Aborted", "AbortError");
         }
 
         // Store raw markdown for plain text copying (preserves original markdown with H1)
@@ -2596,7 +2783,8 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         const finalTime = this.getElapsedSeconds();
 
         // Hide progress and show completion time
-        this.hideProgress(true); // true = show completion time
+        // true = show completion time; the run ends on the description
+        this.hideProgress(true, { focusDescription: true });
 
         // Show success status with time
         this.showStatus(
@@ -2639,6 +2827,15 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Update verification debug info
         this.updateVerificationDebug(verificationResult);
       } catch (error) {
+        // A run that no longer owns the page leaves it alone (parcel 43e-2).
+        // Cancel nulled the controller and has already hidden the progress,
+        // released the holds and said "Generation cancelled"; or a newer run
+        // replaced it and owns the progress, the holds and the status now.
+        if (this.abortController !== runController) {
+          logInfo("Generation settled after it was cancelled; page left alone");
+          return;
+        }
+
         // Hide progress on error (don't show completion time)
         this.hideProgress(false);
 
@@ -2668,9 +2865,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // removing.
         this.showError(composeGenerationErrorText(error));
       } finally {
-        this.isGenerating = false;
-        this.abortController = null;
-        this.updateButtonStates();
+        // Only the run that still owns the page resets it (see the catch).
+        if (this.abortController === runController) {
+          this.isGenerating = false;
+          this.abortController = null;
+          this.updateButtonStates();
+        }
       }
     },
 
@@ -2731,9 +2931,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       );
       if (suggestionBanner) suggestionBanner.hidden = true;
 
+      // Create abort controller for cancellation: this run's own controller
+      // and signal, before the try (parcel 43e-2; see generate()).
+      const runController = new AbortController();
+      const runSignal = runController.signal;
+      this.abortController = runController;
+
       try {
-        // Create abort controller for cancellation
-        this.abortController = new AbortController();
         this.updateButtonStates();
 
         // Stage: Loading model
@@ -2750,7 +2954,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         }
 
         // Check for cancellation
-        if (this.abortController?.signal?.aborted) {
+        if (runSignal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
 
@@ -2802,6 +3006,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             prompt: promptText,
             maxTokens: 512,
             onChunk: (tokenText) => {
+              // After Cancel the gateway runs on to its end (it takes no
+              // signal); nothing more is written (parcel 43e-2).
+              if (runSignal.aborted) return;
+
               // Update progress message on first token
               if (!firstTokenReceived) {
                 firstTokenReceived = true;
@@ -2824,7 +3032,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -2865,7 +3073,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -2901,7 +3109,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         await new Promise((r) => setTimeout(r, 200));
 
         // Hide progress and show completion time
-        this.hideProgress(true);
+        this.hideProgress(true, { focusDescription: true });
 
         // Show success status
         const durationStr = (result.duration / 1000).toFixed(1) + "s";
@@ -2946,6 +3154,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Clear verification (not applicable for local)
         this.clearVerification();
       } catch (error) {
+        // A run that no longer owns the page leaves it alone (parcel 43e-2;
+        // see generate()'s catch).
+        if (this.abortController !== runController) {
+          logInfo("Local generation settled after it was cancelled; page left alone");
+          return;
+        }
+
         // Hide progress on error
         this.hideProgress(false);
 
@@ -2958,9 +3173,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         this.showError(`Local generation failed: ${error.message}`);
         this.showStatus("Local generation failed", "error");
       } finally {
-        this.isGenerating = false;
-        this.abortController = null;
-        this.updateButtonStates();
+        // Only the run that still owns the page resets it (see the catch).
+        if (this.abortController === runController) {
+          this.isGenerating = false;
+          this.abortController = null;
+          this.updateButtonStates();
+        }
       }
     },
 
@@ -2994,9 +3212,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       );
       if (suggestionBanner) suggestionBanner.hidden = true;
 
+      // Create abort controller for cancellation: this run's own controller
+      // and signal, before the try (parcel 43e-2; see generate()).
+      const runController = new AbortController();
+      const runSignal = runController.signal;
+      this.abortController = runController;
+
       try {
-        // Create abort controller for cancellation
-        this.abortController = new AbortController();
         this.updateButtonStates();
 
         // Stage: Loading model
@@ -3012,7 +3234,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         }
 
         // Check for cancellation
-        if (this.abortController?.signal?.aborted) {
+        if (runSignal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
 
@@ -3065,6 +3287,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             prompt: promptText,
             maxTokens: 512,
             onChunk: (tokenText) => {
+              // After Cancel the gateway runs on to its end (it takes no
+              // signal); nothing more is written (parcel 43e-2).
+              if (runSignal.aborted) return;
+
               // Update progress message on first token
               if (!firstTokenReceived) {
                 firstTokenReceived = true;
@@ -3087,7 +3313,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -3128,7 +3354,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -3164,7 +3390,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         await new Promise((r) => setTimeout(r, 200));
 
         // Hide progress and show completion time
-        this.hideProgress(true);
+        this.hideProgress(true, { focusDescription: true });
 
         // Show accuracy warning (Phase 14E)
         if (this.elements.outputAccuracyWarning) {
@@ -3214,6 +3440,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Clear verification (not applicable for local)
         this.clearVerification();
       } catch (error) {
+        // A run that no longer owns the page leaves it alone (parcel 43e-2;
+        // see generate()'s catch).
+        if (this.abortController !== runController) {
+          logInfo("Local generation settled after it was cancelled; page left alone");
+          return;
+        }
+
         // Hide progress on error
         this.hideProgress(false);
 
@@ -3226,9 +3459,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         this.showError(`Qwen3.5 generation failed: ${error.message}`);
         this.showStatus("Qwen3.5 generation failed", "error");
       } finally {
-        this.isGenerating = false;
-        this.abortController = null;
-        this.updateButtonStates();
+        // Only the run that still owns the page resets it (see the catch).
+        if (this.abortController === runController) {
+          this.isGenerating = false;
+          this.abortController = null;
+          this.updateButtonStates();
+        }
       }
     },
 
@@ -3260,9 +3496,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       );
       if (suggestionBanner) suggestionBanner.hidden = true;
 
+      // Create abort controller for cancellation: this run's own controller
+      // and signal, before the try (parcel 43e-2; see generate()).
+      const runController = new AbortController();
+      const runSignal = runController.signal;
+      this.abortController = runController;
+
       try {
-        // Create abort controller for cancellation
-        this.abortController = new AbortController();
         this.updateButtonStates();
 
         // Stage: Loading model
@@ -3278,7 +3518,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         }
 
         // Check for cancellation
-        if (this.abortController?.signal?.aborted) {
+        if (runSignal.aborted) {
           throw new DOMException("Aborted", "AbortError");
         }
 
@@ -3330,6 +3570,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             prompt: promptText,
             maxTokens: 512,
             onChunk: (tokenText) => {
+              // After Cancel the gateway runs on to its end (it takes no
+              // signal); nothing more is written (parcel 43e-2).
+              if (runSignal.aborted) return;
+
               // Update progress message on first token
               if (!firstTokenReceived) {
                 firstTokenReceived = true;
@@ -3352,7 +3596,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -3393,7 +3637,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           });
 
           // Check for cancellation after inference
-          if (this.abortController?.signal?.aborted) {
+          if (runSignal.aborted) {
             throw new DOMException("Aborted", "AbortError");
           }
 
@@ -3429,7 +3673,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         await new Promise((r) => setTimeout(r, 200));
 
         // Hide progress and show completion time
-        this.hideProgress(true);
+        this.hideProgress(true, { focusDescription: true });
 
         // Show success status
         const durationStr = (result.duration / 1000).toFixed(1) + "s";
@@ -3474,6 +3718,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Clear verification (not applicable for local)
         this.clearVerification();
       } catch (error) {
+        // A run that no longer owns the page leaves it alone (parcel 43e-2;
+        // see generate()'s catch).
+        if (this.abortController !== runController) {
+          logInfo("Local generation settled after it was cancelled; page left alone");
+          return;
+        }
+
         // Hide progress on error
         this.hideProgress(false);
 
@@ -3486,9 +3737,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         this.showError(`LFM2-VL generation failed: ${error.message}`);
         this.showStatus("LFM2-VL generation failed", "error");
       } finally {
-        this.isGenerating = false;
-        this.abortController = null;
-        this.updateButtonStates();
+        // Only the run that still owns the page resets it (see the catch).
+        if (this.abortController === runController) {
+          this.isGenerating = false;
+          this.abortController = null;
+          this.updateButtonStates();
+        }
       }
     },
 
@@ -3612,6 +3866,52 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
+     * Parcel 52b: say what the embed's compression did to the image just
+     * attached, in the embed's own words.
+     *
+     * The embed used to raise these two toasts itself; its pop-ups are now off
+     * (getOrCreateEmbed), so without this they would go unsaid. The embed
+     * reports success as compressionMetrics and reports BOTH "compression
+     * failed" and "no compression needed" as null, so the file size against
+     * the same threshold the embed was given tells those two apart.
+     *
+     * @param {Object} embed - The embed that has just attached this.currentFile
+     */
+    _notifyCompressionOutcome(embed) {
+      // Parcel 52b: the embed's pop-ups are off, so this tool says the attach
+      // outcome itself. The toast announces through the shared announcer, so
+      // nothing else is added. Wording and rounding copied from attachFile()
+      // in openrouter-embed-core.js, so a sighted user sees no change.
+      const metrics = embed?.currentFileAnalysis?.compressionMetrics || null;
+
+      if (metrics) {
+        const originalKB = (metrics.originalSize / 1024).toFixed(0);
+        const compressedKB = (metrics.compressedSize / 1024).toFixed(0);
+        logInfo(`Image optimised: ${originalKB}KB → ${compressedKB}KB`);
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess(
+            `Image optimised: ${originalKB}KB → ${compressedKB}KB. ` +
+              `Estimated ${metrics.estimatedTimeSavings}s faster!`,
+          );
+        }
+        return;
+      }
+
+      // No metrics and at or below the threshold: nothing was tried, nothing to say.
+      if (!this.currentFile || this.currentFile.size <= COMPRESSION_THRESHOLD_BYTES) {
+        return;
+      }
+
+      // Over the threshold with no metrics: the embed tried and fell back.
+      logWarn("Image compression failed; the original file was sent");
+      if (typeof window.notifyWarning === "function") {
+        window.notifyWarning(
+          "Image compression failed. Using original file (processing may be slower).",
+        );
+      }
+    },
+
+    /**
      * Get or create OpenRouter Embed instance
      * @returns {OpenRouterEmbed}
      */
@@ -3649,7 +3949,18 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         model: selectedModel,
         temperature: cfg.temperature,
         max_tokens: cfg.maxTokens,
-        showNotifications: true,
+        // Parcel 52: OFF, as in Chat and the verification embed below. The
+        // embed's own toasts ("Processing request...", "Request failed,
+        // retrying in Ns", "Request completed successfully", "Request failed:"
+        // with the raw provider message) each spoke BESIDE this tool's own line
+        // for the same event, so every retry, success and failure was heard
+        // twice. This tool's own messages are now the only voice: completion
+        // and failure from generate(), each retry from handleRetryAttempt(),
+        // and "Image optimised" / "Image compression failed" from
+        // _notifyCompressionOutcome() (parcel 52b). The embed's "File
+        // attached: …" and "Processing request..." go unsaid, by the owner's
+        // decision of 28 September 2026.
+        showNotifications: false,
         showStreamingProgress: false, // Disabled - we have Phase 2A progress indicator
         progressStyle: "minimal", // Minimal style as fallback
 
@@ -3657,7 +3968,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Based on performance testing: 92.17 ms/KB latency
         // Enable automatic image compression for optimal performance
         enableCompression: true,
-        compressionThreshold: 200 * 1024, // 200KB (images below this perform acceptably)
+        compressionThreshold: COMPRESSION_THRESHOLD_BYTES,
         compressionMaxWidth: 1200, // Max dimensions for AI analysis
         compressionMaxHeight: 900,
         compressionQuality: 0.7, // 70% JPEG quality (optimal from testing)
@@ -3687,7 +3998,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         embedConfig.retry = {
           enabled: true,
           maxRetries: 3,
-          baseDelay: 1000, // 1 second initial delay
+          initialDelay: 1000, // 1 second initial delay — the key the retry handler reads (openrouter-embed-retry.js); `baseDelay` was inert
           maxDelay: 10000, // 10 second maximum delay
           backoffMultiplier: 2, // Exponential: 1s, 2s, 4s, 8s...
           jitter: true, // Add randomness to prevent thundering herd

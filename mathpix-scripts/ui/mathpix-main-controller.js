@@ -87,8 +87,6 @@ const ICONS = {
     '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><rect height="14" rx="2" width="14" x=".5" y=".5"/><path d="m4.5 7.5 2 2 4-4"/></g></svg>',
   checkboxUnchecked:
     '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><rect height="14" rx="2" width="14" x=".5" y=".5"/></g></svg>',
-  refresh:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 1)"><path d="m1.5 5.5c1.37786776-2.41169541 4.02354835-4 7-4 4.418278 0 8 3.581722 8 8m-1 4c-1.4081018 2.2866288-4.1175492 4-7 4-4.418278 0-8-3.581722-8-8"/><path d="m6.5 5.5h-5v-5"/><path d="m10.5 13.5h5v5"/></g></svg>',
 };
 
 /**
@@ -1975,71 +1973,9 @@ class MathPixController {
   // FILE PROCESSING WORKFLOW METHODS
   // =============================================================================
 
-  /**
-   * @method addProcessConfirmationButton
-   * @description Adds confirmation button to file preview for user workflow control
-   *
-   * Creates and configures a confirmation button that allows users to explicitly
-   * consent to file processing after preview. Supports accessibility with proper
-   * ARIA labels and keyboard interaction.
-   *
-   * @param {HTMLElement} previewContainer - Container element for the button
-   * @param {File} file - File to be processed upon confirmation
-   * @returns {void}
-   *
-   * @example
-   * controller.addProcessConfirmationButton(previewContainer, uploadedFile);
-   *
-   * @accessibility Button includes ARIA label with file name and processing action
-   * @since 1.0.0
-   */
-  addProcessConfirmationButton(previewContainer, file) {
-    logDebug("Adding process confirmation button", {
-      fileName: file.name,
-      fileSize: file.size,
-    });
-
-    // Check if button already exists
-    let confirmBtn = previewContainer.querySelector(
-      ".mathpix-process-confirm-btn",
-    );
-
-    if (!confirmBtn) {
-      // Create new confirmation button
-      confirmBtn = document.createElement("button");
-      confirmBtn.className =
-        "mathpix-process-confirm-btn mathpix-open-original-btn"; // Reuse styling
-      confirmBtn.type = "button";
-
-      // Find the preview actions container
-      const actionsContainer = previewContainer.querySelector(
-        ".mathpix-preview-actions",
-      );
-      if (actionsContainer) {
-        actionsContainer.appendChild(confirmBtn);
-      } else {
-        // Fallback - add directly to container
-        previewContainer.appendChild(confirmBtn);
-      }
-    }
-
-    // Configure button
-    confirmBtn.innerHTML = `${getIcon("refresh")} Process with MathPix`;
-    confirmBtn.setAttribute(
-      "aria-label",
-      `Process ${file.name} with MathPix OCR`,
-    );
-    confirmBtn.onclick = (e) => {
-      e.preventDefault();
-      this.confirmAndProcessFile(file);
-    };
-    confirmBtn.style.display = "inline-flex";
-
-    logDebug("Process confirmation button added successfully", {
-      fileName: file.name,
-      buttonText: confirmBtn.textContent.trim(),
-    });
-  }
+  // The confirmation button itself is built by
+  // MathPixFileHandler.addProcessConfirmationButton, which calls
+  // confirmAndProcessFile below.
 
   /**
    * @method confirmAndProcessFile

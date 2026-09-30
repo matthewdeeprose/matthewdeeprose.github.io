@@ -116,24 +116,10 @@ function logDebug(message, ...args) {
 const ENABLE_MMD_SCORM_EXPORT = false;
 
 // ============================================================================
-// SVG Icon Registry
+// SVG Icons (from the shared icon library, icon-library.js)
 // ============================================================================
 
-/**
- * @constant {Object} ICONS
- * @description SVG icon registry for consistent cross-platform rendering
- * All icons use currentColor for theme inheritance
- */
-const ICONS = {
-  pencil:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"/><path d="m12.5 3.5 1 1"/></g></svg>',
-  check:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>',
-  fullscreenEnter:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m16.5 5.5v-4.978l-5.5.014"/><path d="m16.5.522-6 5.907"/><path d="m11 16.521 5.5.002-.013-5.5"/><path d="m16.5 16.429-6-5.907"/><path d="m.5 5.5v-5h5.5"/><path d="m6.5 6.429-6-5.907"/><path d="m6 16.516-5.5.007v-5.023"/><path d="m6.5 10.5-6 6"/></g></svg>',
-  fullscreenExit:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m.5 4.5 4.5-.013-.013-4.5"/><path d="m5 4.5-4.5-4"/><path d="m.5 8.5 4.5.014.013 4.5"/><path d="m5 8.5-4.5 4"/><path d="m12.5 4.5-4.5-.013.013-4.5"/><path d="m8 4.5 4.5-4"/><path d="m12.5 8.5-4.5.014-.013 4.5"/><path d="m8 8.5 4.5 4"/></g></svg>',
-};
+let libraryMissingWarned = false;
 
 /**
  * Get an SVG icon by name with accessibility attributes
@@ -143,16 +129,17 @@ const ICONS = {
  * @returns {string} SVG HTML string with aria-hidden
  */
 function getIcon(name, options = {}) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
 
-  const className = options.className
-    ? ` class="icon ${options.className}"`
-    : ' class="icon"';
-  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+  return library.getIcon(name, options);
 }
 
 // ============================================================================

@@ -111,9 +111,9 @@ const MAX_AUDIO_SIZE = 25 * 1024 * 1024; // 25MB
 
 // Cost thresholds for warnings
 const COST_THRESHOLDS = {
-  YELLOW: 0.05, // Â£0.05+
-  ORANGE: 0.5, // Â£0.50+
-  RED: 2.0, // Â£2.00+
+  YELLOW: 0.05, // $0.05+
+  ORANGE: 0.5, // $0.50+
+  RED: 2.0, // $2.00+
 };
 
 // ============================================================================
@@ -813,9 +813,9 @@ class EmbedFileUtils {
         if (cost === undefined || cost === null) {
           // Fallback cost calculation
           if (analysis.isImage) {
-            cost = 0.001; // ~Â£0.001 for images
+            cost = 0.001; // ~$0.001 for images
           } else if (analysis.isPDF && analysis.estimatedPages) {
-            cost = analysis.estimatedPages * 0.002; // ~Â£0.002 per page for PDFs
+            cost = analysis.estimatedPages * 0.002; // ~$0.002 per page for PDFs
           } else {
             cost = 0; // Unknown cost
           }
@@ -1035,7 +1035,7 @@ class EmbedFileUtils {
   /**
    * Determine if cost warning should be shown
    *
-   * @param {number} cost - Estimated cost in GBP
+   * @param {number} cost - Estimated cost in US dollars
    * @returns {string} Warning level: 'none', 'yellow', 'orange', 'red'
    */
   shouldWarnAboutCost(cost) {
@@ -1058,12 +1058,12 @@ class EmbedFileUtils {
   /**
    * Format cost for display
    *
-   * @param {number} cost - Cost in GBP
+   * @param {number} cost - Cost in US dollars
    * @returns {string} Formatted cost string
    */
   formatCost(cost) {
-    if (cost < 0.01) return "< Â£0.01";
-    return `Â£${cost.toFixed(2)}`;
+    if (cost < 0.01) return "< $0.01";
+    return `$${cost.toFixed(2)}`;
   }
 
   // ==========================================================================

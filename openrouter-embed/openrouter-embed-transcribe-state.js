@@ -109,6 +109,48 @@ const OpenRouterEmbedTranscribeState = (function () {
     // apart without parsing a message. Added at register item 46 unit 7a for
     // `removeSpeaker`, which is the only thrower of it.
     SPEAKER_IN_USE: "speaker-in-use",
+    // Added at register item 47 for `setSuggestionStatus`. Distinct from the
+    // per-entry `bad-status` reason `loadSuggestions` puts in its `refused`
+    // array (see SUGGESTION_REFUSAL below): that check asks whether a status
+    // is anywhere in the frozen vocabulary, and `proposed` passes it; this one
+    // asks whether the CALLER is trying to write a status this function is
+    // willing to write, and `proposed` is refused here on purpose — this
+    // writer never puts a suggestion back to proposed.
+    BAD_STATUS: "bad-status",
+    // The phrase index is valid but carries no suggestion. A separate code
+    // from BAD_INDEX for the reason SPEAKER_IN_USE is separate from
+    // BAD_SPEAKER: a caller must be able to tell "no such phrase" from "that
+    // phrase has no suggestion loaded" without parsing a message.
+    NO_SUGGESTION: "no-suggestion",
+  });
+
+  /**
+   * The suggestion status vocabulary. MIRRORED, NEVER IMPORTED, from the
+   * Captions Fixer lane's own `STATUS` in captions-fixer-cues.js — this
+   * module reads no file under captions-fixer/, per its own "writes to
+   * nothing" boundary, so the three strings are typed here and kept in step
+   * by eye. Register item 47 design § 4: "a status outside their frozen
+   * vocabulary of `proposed`, `accepted` and `rejected`" is refused by
+   * `loadSuggestions`.
+   */
+  const SUGGESTION_STATUS = Object.freeze({
+    PROPOSED: "proposed",
+    ACCEPTED: "accepted",
+    REJECTED: "rejected",
+  });
+
+  /**
+   * Per-entry refusal reasons `loadSuggestions` puts in its `refused` array.
+   * A frozen const object rather than bare strings, for `ERRORS`'s reason:
+   * a caller comparing a reason cannot misspell the literal.
+   */
+  const SUGGESTION_REFUSAL = Object.freeze({
+    NOT_AN_OBJECT: "not-an-object",
+    BAD_CUE_ID: "bad-cue-id",
+    UNKNOWN_CUE_ID: "unknown-cue-id",
+    DUPLICATE_CUE_ID: "duplicate-cue-id",
+    BAD_TEXT: "bad-text",
+    BAD_STATUS: "bad-status",
   });
 
   /**
@@ -140,7 +182,10 @@ const OpenRouterEmbedTranscribeState = (function () {
    * A CHARACTER-CODE SCAN RATHER THAN A REGEX TEST, for the reason the range
    * constants above give. It reads every code unit rather than stopping at the
    * first non-control one, because a control character in the MIDDLE of a name
-   * is the dangerous case — an interior line break splits an SRT cue.
+   * is the dangerous case — CORRECTED 15 September 2026: it is not that a
+   * single interior line break splits an SRT cue (one newline makes a legal
+   * two-line subtitle), it is that a BLANK line does, and a name is the one
+   * string in this chain that could plausibly contain one.
    *
    * @param {string} value
    * @returns {boolean}
@@ -191,7 +236,7 @@ const OpenRouterEmbedTranscribeState = (function () {
    *       }
    *     ],
    *     speakerNames: {},   // item 46 unit 3 fills it; "" is a real entry
-   *     suggestions: [],    // register item 47 fills it
+   *     suggestions: [],    // register item 47 fills it — see below
    *     meta: { fileName, backend, durationMs },
    *     raw,                // the service's own payload, untouched
    *     serviceCombinedText, // `result.text` as it arrived — never written after load
@@ -209,8 +254,20 @@ const OpenRouterEmbedTranscribeState = (function () {
    * `speakerNames()`, both added at register item 46 unit 3 (12 September 2026).
    * It is ALSO written by `addSpeaker` and `removeSpeaker`, added at unit 7a, so
    * `setSpeakerName` is the only writer of a NAME and no longer the only writer of
-   * the map. `suggestions` IS STILL DECLARED AND WRITTEN BY NOTHING, awaiting
-   * item 47.
+   * the map. `suggestions` IS NOW WRITTEN TOO — by `loadSuggestions`, added at
+   * register item 47 — and read by `suggestionAt`, `setSuggestionStatus` and
+   * `suggestionCounts`. See SUGGESTIONS below for the shape of an entry and the
+   * one index conversion.
+   *
+   * A FOURTH, UNSERIALISED KEY LIVES ON `state` FOR THE SAME REASON —
+   * `suggestionsIndex`, a phrase-index-to-entry lookup built by `loadSuggestions`
+   * and rebuilt by `deserialise` through the same internal indexer. It is not
+   * listed in the shape above because it is never part of the persisted object:
+   * `serialise` does not carry it, for the reason it does not carry a computed
+   * `speakerDisplayName` either — a caller derives it, or in this case
+   * `loadSuggestions`/`deserialise` derive it, from data that IS carried
+   * (`suggestions[].cueId`), so storing a second copy would be a copy that could
+   * disagree with the first.
    *
    * `sourceSpeaker` IS THE SECOND ARRIVAL RECORD AND IT MIRRORS `sourceText`
    * EXACTLY, added at register item 46 unit 7a (13 September 2026). It is the
@@ -252,7 +309,8 @@ const OpenRouterEmbedTranscribeState = (function () {
    *
    * THE CLOSING INSTRUCTION IS DISCHARGED, NOT BROKEN. "None should be added
    * here until the item that needs it is being built" was a condition, and item
-   * 46 is that item. It still holds for `suggestions`.
+   * 46 is that item for `speakerNames`. Item 47 is now that item for
+   * `suggestions` too, so nothing below this note is still an open condition.
    *
    * AN ENTRY MAY BE THE EMPTY STRING. A slot created by `addSpeaker` carries an
    * empty name, and clearing a name writes the empty string back, so the map
@@ -464,10 +522,14 @@ const OpenRouterEmbedTranscribeState = (function () {
       // Loading REPLACES the names map rather than carrying one over: a name
       // belongs to the transcript it was given for, and a new result is a
       // different recording whose speaker numbers mean something else. Written
-      // by `setSpeakerName`; `suggestions` is still written by nothing, awaiting
-      // register item 47.
+      // by `setSpeakerName`. `suggestions` is the same story for the same
+      // reason — a change set was made against THIS transcript's cue ids, and a
+      // new result renders a different one — written by `loadSuggestions`.
       speakerNames: {},
       suggestions: [],
+      // The unserialised lookup, reset alongside `suggestions` for the reason
+      // given at the SHAPE note above. Empty until `loadSuggestions` is called.
+      suggestionsIndex: {},
       meta: {
         fileName: fileName,
         backend: result.backend !== undefined ? result.backend : null,
@@ -1082,10 +1144,12 @@ const OpenRouterEmbedTranscribeState = (function () {
    *
    * TRIMMING DOES NOT MAKE THE CONTROL-CHARACTER REFUSAL REDUNDANT, and the
    * order matters: `trim()` touches the ENDS only, so `"Ami\nra"` survives it
-   * intact — and an interior newline is precisely the dangerous one. A speaker
-   * name is the first string a person authors that reaches the SRT file, where
-   * a newline splits a cue, and 0 of the 657 committed fixture phrases contain
-   * one, so nothing upstream has ever had to guard it.
+   * intact — and an interior control character is precisely the dangerous one.
+   * A speaker name is the first string a person authors that reaches the SRT
+   * file. CORRECTED 15 September 2026: it is not a bare newline that splits a
+   * cue (one makes a legal two-line subtitle) — it is a BLANK line, which
+   * terminates the cue and breaks everything after it. 0 of the 657 committed
+   * fixture phrases contain one, so nothing upstream has ever had to guard it.
    *
    * A REFUSED NAME WRITES NOTHING. The guard runs before the assignment, so a
    * caller that catches the refusal is looking at the map it had before —
@@ -1160,6 +1224,350 @@ const OpenRouterEmbedTranscribeState = (function () {
       logDebug(`speaker ${speaker} named ${trimmed === "" ? "(cleared)" : trimmed}`);
     }
     return { changed: changed, previous: previous };
+  }
+
+  // ==========================================================================
+  // SUGGESTIONS — register item 47
+  // ==========================================================================
+  //
+  // WHAT IS STORED. `suggestions` holds the other lane's change-set entries,
+  // SHALLOW-COPIED AT LOAD AND OTHERWISE UNTOUCHED — every field they send is
+  // carried through unchanged, including `source`, `reason`, `confidence` and
+  // `rejectedBy`, mirroring the discipline their own `applyChangeSet` follows
+  // in the other direction (captions-fixer-cues.js). This lane adds no field
+  // of its own to their record and mutates only `status`, and only through
+  // `setSuggestionStatus`.
+  //
+  // `state.suggestionsIndex` IS A SEPARATE, UNSERIALISED LOOKUP from phrase
+  // index to entry, built ONLY by `loadSuggestions` and `deserialise` and never
+  // mutated afterwards — safe because entries are never added or removed after
+  // load and only `status` changes on an entry already in the map. See the
+  // SHAPE note above for why it is not part of the persisted object.
+
+  /**
+   * The one place `cueId - 1` is computed. `fromTranscribeResult` in
+   * captions-fixer/captions-fixer-cues.js returns `{ id: index + 1, … }`, so a
+   * cue id is one-based and a phrase index is zero-based; this is the inverse.
+   * Grepping the file for the literal `cueId - 1` finds this line and no other
+   * — `loadSuggestions`'s validation and `buildSuggestionsIndex` (used by both
+   * `loadSuggestions` and `deserialise`) both call it rather than repeating the
+   * arithmetic themselves.
+   *
+   * @param {number} cueId
+   * @returns {number} the corresponding phrase index, NOT range-checked here
+   */
+  function cueIdToPhraseIndex(cueId) {
+    return cueId - 1;
+  }
+
+  /**
+   * Build the phrase-index-to-entry lookup from an array of suggestion
+   * entries, keyed by `cueIdToPhraseIndex(entry.cueId)`.
+   *
+   * TRUSTS ITS INPUT. It does not validate `cueId` or check for a collision —
+   * `loadSuggestions` calls it only after its own validation loop has already
+   * refused anything that would make it disagree with itself, and
+   * `deserialise` calls it deliberately WITHOUT re-validating, per register
+   * item 75's ownership of persistence sanitising (see `deserialise`'s own
+   * JSDoc). A later entry with the same computed index overwrites an earlier
+   * one in the object it returns, which cannot happen from `loadSuggestions`'s
+   * own output (duplicates are refused there) and is accepted here as the
+   * honest reading of whatever a stored object actually contains.
+   *
+   * @param {Array<object>} entries
+   * @returns {object} phrase index (as an object key) -> entry
+   */
+  function buildSuggestionsIndex(entries) {
+    const index = {};
+    entries.forEach((entry) => {
+      index[cueIdToPhraseIndex(entry.cueId)] = entry;
+    });
+    return index;
+  }
+
+  /**
+   * Load a change set. THE ONLY WRITER OF `suggestions`.
+   *
+   * REPLACES ANY PREVIOUSLY LOADED SET WHOLESALE, matching `load`'s own rule
+   * for `speakerNames` and for the same reason: a change set was made against
+   * cue ids meaningful for the transcript loaded at the time, and there is no
+   * safe way to merge one set into another.
+   *
+   * A DECISION ON A REPLACED ENTRY IS CARRIED FORWARD WHEN THE ENTRY IS
+   * UNCHANGED, ANSWERING THE QUESTION THE PARAGRAPH ABOVE USED TO LEAVE OPEN.
+   * The desk's ruling: no warning, and no loss either. A dialogue is the wrong
+   * instrument — this module writes no DOM and cannot warn, and a modal in the
+   * controller would be for a case that mostly arises when a person re-runs
+   * the pass, at which point the old decisions are about text that may have
+   * changed underneath them. Carrying forward where an incoming entry is
+   * IDENTICAL to one already loaded is exact, silent, and loses nothing.
+   *
+   * "IDENTICAL" MEANS THE SAME `cueId` AND THE SAME `original` AND THE SAME
+   * `proposed`, ALL THREE. Any one differing makes the incoming entry a
+   * different suggestion, which starts at whatever status it arrived with —
+   * ordinarily `proposed`, though a change set is free to load pre-decided,
+   * per the field's own frozen vocabulary. ONLY `accepted` AND `rejected` ARE
+   * CARRIED. A carried `proposed` would be a no-op (the incoming entry starts
+   * there already) and is not worth a branch.
+   *
+   * IT COMPARES AGAINST THE SET HELD BEFORE THIS CALL, READ ONCE BEFORE
+   * `state.suggestions` IS OVERWRITTEN. On a FIRST load there is nothing to
+   * compare against — `load()` seeds `suggestions: []` — so every entry
+   * starts at its own status and `carried` reads 0.
+   *
+   * IT LOADS THE GOOD ENTRIES AND REPORTS THE BAD ONES, RATHER THAN REFUSING
+   * THE WHOLE SET — mirroring `applyChangeSet`, which skips a stale entry and
+   * reports it in a `conflicts` array instead of refusing the set. A NON-ARRAY
+   * ARGUMENT IS THE ONE EXCEPTION: the whole call is a caller mistake in the
+   * shape `load`'s own BAD_RESULT already covers, so nothing loads and the
+   * refusal is thrown rather than returned per-entry.
+   *
+   * SIX REFUSAL REASONS, EACH A TOKEN — see SUGGESTION_REFUSAL. Checked in
+   * this order, so an entry wrong in several ways always reports the same
+   * reason, mirroring `setText`'s stated rule that check order is part of the
+   * contract:
+   *
+   *   1. not-an-object     — the entry itself is not an object
+   *   2. bad-cue-id         — `cueId` is not a positive integer
+   *   3. unknown-cue-id     — `cueId - 1` falls outside the phrase range
+   *   4. duplicate-cue-id   — a second entry for a `cueId` already loaded in
+   *                           THIS call; the first wins, the second is refused
+   *   5. bad-text           — `original` or `proposed` is not a string
+   *   6. bad-status         — `status` is outside SUGGESTION_STATUS
+   *
+   * DUPLICATE DETECTION IS SCOPED TO THIS CALL ONLY, on the ids that pass the
+   * three checks before it — an entry refused for bad-cue-id or unknown-cue-id
+   * never reaches the duplicate check, so it cannot itself be reported as a
+   * duplicate of anything.
+   *
+   * EVERY LOADED ENTRY IS A SHALLOW COPY of the entry the caller sent, for
+   * `load`'s own reason: the change set belongs to whoever produced it and may
+   * be read elsewhere, so a status change reaching back into it would mutate a
+   * value under a consumer that never asked to be written to.
+   *
+   * @param {Array<object>} changeSet
+   * @returns {{loaded: number, refused: Array<{cueId: *, reason: string}>,
+   *   carried: number}}
+   *   `loaded` is a COUNT, matching `setSpeaker`'s `changed` — the loaded
+   *   entries themselves are read back through `suggestionAt` /
+   *   `suggestionCounts` rather than duplicated in this return. `carried` is
+   *   how many loaded entries had a decision carried forward from the set
+   *   this call replaced — see CARRY-FORWARD above.
+   * @throws {Error} code ERRORS.NOT_LOADED or ERRORS.BAD_RESULT
+   */
+  function loadSuggestions(changeSet) {
+    assertLoaded();
+    if (!Array.isArray(changeSet)) {
+      throw refusal(
+        ERRORS.BAD_RESULT,
+        `A change set must be an array; got ${typeof changeSet}.`,
+      );
+    }
+
+    // READ BEFORE ANYTHING IS OVERWRITTEN. Keyed by cueId, which is what an
+    // incoming entry is matched against — see CARRY-FORWARD above. On a first
+    // load this is empty (`load()` seeds `suggestions: []`), so nothing below
+    // ever matches and every entry starts at its own status.
+    const previousByCueId = new Map();
+    state.suggestions.forEach((entry) => {
+      previousByCueId.set(entry.cueId, entry);
+    });
+
+    const loaded = [];
+    const refused = [];
+    const seenCueIds = new Set();
+    let carried = 0;
+
+    changeSet.forEach((entry) => {
+      if (!entry || typeof entry !== "object") {
+        refused.push({
+          cueId: entry && typeof entry === "object" ? entry.cueId : undefined,
+          reason: SUGGESTION_REFUSAL.NOT_AN_OBJECT,
+        });
+        return;
+      }
+
+      const cueId = entry.cueId;
+      if (!Number.isInteger(cueId) || cueId < 1) {
+        refused.push({ cueId: cueId, reason: SUGGESTION_REFUSAL.BAD_CUE_ID });
+        return;
+      }
+
+      const phraseIndex = cueIdToPhraseIndex(cueId);
+      if (phraseIndex < 0 || phraseIndex >= state.phrases.length) {
+        refused.push({ cueId: cueId, reason: SUGGESTION_REFUSAL.UNKNOWN_CUE_ID });
+        return;
+      }
+
+      if (seenCueIds.has(cueId)) {
+        refused.push({ cueId: cueId, reason: SUGGESTION_REFUSAL.DUPLICATE_CUE_ID });
+        return;
+      }
+
+      if (typeof entry.original !== "string" || typeof entry.proposed !== "string") {
+        refused.push({ cueId: cueId, reason: SUGGESTION_REFUSAL.BAD_TEXT });
+        return;
+      }
+
+      if (
+        entry.status !== SUGGESTION_STATUS.PROPOSED &&
+        entry.status !== SUGGESTION_STATUS.ACCEPTED &&
+        entry.status !== SUGGESTION_STATUS.REJECTED
+      ) {
+        refused.push({ cueId: cueId, reason: SUGGESTION_REFUSAL.BAD_STATUS });
+        return;
+      }
+
+      seenCueIds.add(cueId);
+      const copy = Object.assign({}, entry);
+
+      // CARRY-FORWARD. Same cueId, same original, same proposed — an
+      // UNCHANGED suggestion — and the previous status was a real decision
+      // (accepted/rejected, never a carried proposed). See the JSDoc above
+      // for the ruling this answers.
+      const previous = previousByCueId.get(cueId);
+      if (
+        previous &&
+        previous.original === copy.original &&
+        previous.proposed === copy.proposed &&
+        (previous.status === SUGGESTION_STATUS.ACCEPTED ||
+          previous.status === SUGGESTION_STATUS.REJECTED)
+      ) {
+        copy.status = previous.status;
+        carried += 1;
+      }
+
+      loaded.push(copy);
+    });
+
+    state.suggestions = loaded;
+    state.suggestionsIndex = buildSuggestionsIndex(loaded);
+
+    logInfo(
+      `loaded ${loaded.length} suggestion(s), refused ${refused.length}, carried ${carried} decision(s) forward`,
+    );
+    return { loaded: loaded.length, refused: refused, carried: carried };
+  }
+
+  /**
+   * One suggestion entry, or null.
+   *
+   * MATCHES `phraseAt`'S CONVENTIONS EXACTLY, for the reasons given there: an
+   * out-of-range or unloaded index returns null rather than throwing, and the
+   * returned entry is the LIVE object held in `suggestionsIndex` — NOT a copy
+   * — so a caller reads the current `status` without a second call, and
+   * `setSuggestionStatus` writing it is immediately visible here. This mirrors
+   * `phraseAt` returning `state.phrases[index]` directly rather than a copy.
+   *
+   * @param {number} index - a 0-based phrase index
+   * @returns {object|null}
+   * @throws {Error} code ERRORS.NOT_LOADED
+   */
+  function suggestionAt(index) {
+    assertLoaded();
+    if (!Number.isInteger(index) || index < 0 || index >= state.phrases.length) {
+      return null;
+    }
+    return Object.prototype.hasOwnProperty.call(state.suggestionsIndex, index)
+      ? state.suggestionsIndex[index]
+      : null;
+  }
+
+  /**
+   * Write a suggestion's status. THE ONLY WRITER OF AN ENTRY'S `status`.
+   *
+   * WRITES `accepted` OR `rejected` ONLY. It never writes `proposed` back, so
+   * a decision cannot be silently undone through this writer — there is no
+   * "un-accept", only a fresh change set replacing this one through
+   * `loadSuggestions`. A `status` argument outside {accepted, rejected}
+   * refuses with ERRORS.BAD_STATUS, which is a DIFFERENT check from
+   * `loadSuggestions`'s per-entry `bad-status` refusal: that one accepts
+   * `proposed` as a legitimate starting value on the way in, this one refuses
+   * it as a value this function is willing to write.
+   *
+   * VALIDATION ORDER IS INDEX, THEN STATUS, THEN EXISTENCE, mirroring
+   * `setText`'s stated rule that the first parameter is checked first:
+   *
+   *   1. `assertIndex(index)` — ERRORS.BAD_INDEX if the phrase index itself is
+   *      out of range. THIS THROWS, UNLIKE `suggestionAt` — the asymmetry
+   *      matches `phraseAt`/`setText`: a reader is lenient, a writer refuses.
+   *   2. `status` must be `accepted` or `rejected` — ERRORS.BAD_STATUS
+   *      otherwise.
+   *   3. The phrase index must carry an entry — ERRORS.NO_SUGGESTION
+   *      otherwise, a phrase-index equivalent of BAD_SPEAKER's "not a slot
+   *      that exists".
+   *
+   * A NO-OP RETURNS FALSE, MATCHING AGENTS.md's "write if changed". Setting a
+   * status the entry already carries changes nothing and says so, which is
+   * what lets a caller in the announcement layer stay silent on a no-op
+   * without asking a second question.
+   *
+   * @param {number} index - a 0-based phrase index
+   * @param {string} status - `accepted` or `rejected`
+   * @returns {boolean} true when the status actually changed
+   * @throws {Error} code ERRORS.NOT_LOADED, ERRORS.BAD_INDEX, ERRORS.BAD_STATUS
+   *   or ERRORS.NO_SUGGESTION
+   */
+  function setSuggestionStatus(index, status) {
+    assertLoaded();
+    assertIndex(index);
+
+    if (
+      status !== SUGGESTION_STATUS.ACCEPTED &&
+      status !== SUGGESTION_STATUS.REJECTED
+    ) {
+      throw refusal(
+        ERRORS.BAD_STATUS,
+        `Status must be "${SUGGESTION_STATUS.ACCEPTED}" or ` +
+          `"${SUGGESTION_STATUS.REJECTED}"; got ${JSON.stringify(status)}.`,
+      );
+    }
+
+    const entry = Object.prototype.hasOwnProperty.call(
+      state.suggestionsIndex,
+      index,
+    )
+      ? state.suggestionsIndex[index]
+      : null;
+    if (!entry) {
+      throw refusal(
+        ERRORS.NO_SUGGESTION,
+        `Phrase ${String(index)} carries no suggestion.`,
+      );
+    }
+
+    if (entry.status === status) return false;
+    entry.status = status;
+    logDebug(`suggestion at phrase ${index} set to ${status}`);
+    return true;
+  }
+
+  /**
+   * How many loaded suggestions are in each status, plus the total.
+   *
+   * A DERIVED ANSWER, NEVER STORED, matching `editedCount` and
+   * `reassignedCount` exactly: counted over `state.suggestions` on every call
+   * rather than tracked alongside the writes.
+   *
+   * @returns {{proposed: number, accepted: number, rejected: number, total: number}}
+   * @throws {Error} code ERRORS.NOT_LOADED
+   */
+  function suggestionCounts() {
+    assertLoaded();
+    let proposed = 0;
+    let accepted = 0;
+    let rejected = 0;
+    state.suggestions.forEach((entry) => {
+      if (entry.status === SUGGESTION_STATUS.PROPOSED) proposed += 1;
+      else if (entry.status === SUGGESTION_STATUS.ACCEPTED) accepted += 1;
+      else if (entry.status === SUGGESTION_STATUS.REJECTED) rejected += 1;
+    });
+    return {
+      proposed: proposed,
+      accepted: accepted,
+      rejected: rejected,
+      total: state.suggestions.length,
+    };
   }
 
   /**
@@ -1326,6 +1734,14 @@ const OpenRouterEmbedTranscribeState = (function () {
       suggestions: Array.isArray(stored.suggestions)
         ? stored.suggestions.slice()
         : [],
+      // Rebuilt through the SAME internal indexer `loadSuggestions` uses —
+      // see `buildSuggestionsIndex`'s own JSDoc for why this is deliberately
+      // NOT re-validated. An object without a `suggestions` array at all
+      // falls through to the `[]` above and indexes to `{}`, which is the
+      // correct empty reading.
+      suggestionsIndex: buildSuggestionsIndex(
+        Array.isArray(stored.suggestions) ? stored.suggestions.slice() : [],
+      ),
       meta: {
         fileName: meta.fileName !== undefined ? meta.fileName : null,
         backend: meta.backend !== undefined ? meta.backend : null,
@@ -1387,6 +1803,15 @@ const OpenRouterEmbedTranscribeState = (function () {
     removeSpeaker: removeSpeaker,
     isReassigned: isReassigned,
     reassignedCount: reassignedCount,
+    // SUGGESTIONS — register item 47. Four entries, and `cueIdToPhraseIndex`
+    // and `buildSuggestionsIndex` are deliberately NOT exported, for the
+    // reason `speakerSlotExists` is not: they are this module's own reading
+    // of the lookup, and a caller answering that question for itself is how
+    // two answers come to exist.
+    loadSuggestions: loadSuggestions,
+    suggestionAt: suggestionAt,
+    setSuggestionStatus: setSuggestionStatus,
+    suggestionCounts: suggestionCounts,
     serialise: serialise,
     deserialise: deserialise,
     reset: reset,

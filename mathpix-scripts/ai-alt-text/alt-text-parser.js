@@ -403,6 +403,73 @@ const MathPixAltTextParser = (function () {
     return reparsed;
   }
 
+  /**
+   * Matches a markdown heading LINE in the preamble and captures its text,
+   * dropping any closing run of hashes (`# Foo #` gives `Foo`). Unlike
+   * HEADER_LINE it demands a space after the hashes and does no numbering or
+   * name matching: a preamble heading is never one of the four section names,
+   * because the first recognised header always opens a section and so never
+   * reaches the preamble.
+   */
+  const PREAMBLE_HEADING = /^#{1,6}\s+(.+?)\s*#*\s*$/;
+
+  /**
+   * THE PREAMBLE TITLE FALLBACK (PT-1).
+   *
+   * Recovers a title the model wrote as a lone leading heading instead of
+   * under a Title section — `# Some Title`, a blank line, then `## Alt Text`
+   * and the rest. Two of 36 real replies in CX-2 and AT-2 took this shape,
+   * both otherwise conforming, and both arrived with an empty title because
+   * the preamble is ignored (see the preamble comment in `parse`).
+   *
+   * It arms only when ALL of these hold, and each refusal is deliberate:
+   *
+   * 1. A recognised header was seen. With none, the F8 rule owns the reply
+   *    and the whole text is the long description.
+   * 2. NO Title header was recognised at any level. A Title section always
+   *    wins, and that includes an EMPTY one: an empty Title section is the
+   *    model's own answer, not a missing one, so it is never overwritten.
+   * 3. The preamble holds EXACTLY ONE heading line. Two are ambiguous, and
+   *    picking one would be a guess.
+   * 4. Preamble prose beside that one heading is still ignored; only the
+   *    heading's text is taken.
+   *
+   * It writes `title` and nothing else — never `alt`, `long` or `text`.
+   *
+   * It runs against the state of the pass that produced the result. When the
+   * mixed-level fallback re-parses, that re-parse is itself a full `parse`
+   * and applies this fallback against its OWN bodies; `parse` returns it
+   * as-is rather than applying this a second time with the first pass's
+   * bodies, which could overwrite a Title the re-parse recovered. So the two
+   * fallbacks compose, and the recovery is logged once.
+   *
+   * @param {{title: string, alt: string, long: string, text: string}} result
+   * @param {{sectionLevel: number|null, preamble: string[]}} state
+   * @param {Object<string, string[]>} bodies
+   * @returns {{title: string, alt: string, long: string, text: string}} result
+   */
+  function preambleTitleFallback(result, state, bodies) {
+    // 1. A header was seen: the first recognised header always sets the level.
+    if (state.sectionLevel === null) return result;
+
+    // 2. No Title header at any level — an empty Title bucket still counts.
+    if (bodies.title !== undefined) return result;
+
+    // 3. Exactly one heading line in the preamble.
+    const headings = state.preamble
+      .map((line) => PREAMBLE_HEADING.exec(line))
+      .filter(Boolean);
+    if (headings.length !== 1) return result;
+
+    result.title = headings[0][1].trim();
+    logWarn(
+      "no Title section: took the title from the lone heading before the " +
+        "first section (PT-1)",
+      { title: result.title },
+    );
+    return result;
+  }
+
   // ---------------------------------------------------------------------------
   // PARSE — the pure four-field stage (S2F-D5)
   // ---------------------------------------------------------------------------
@@ -453,6 +520,9 @@ const MathPixAltTextParser = (function () {
       levelBlind: levelBlind === true,
       deeperRefusals: [],
       headerLevels: [],
+      // Lines before the first section boundary, read only by
+      // preambleTitleFallback (PT-1).
+      preamble: [],
     };
 
     for (const line of lines) {
@@ -471,8 +541,17 @@ const MathPixAltTextParser = (function () {
       // A body line before any header (preamble) is ignored — the conforming
       // format has no content above ## 1. Title. Once a section is open, the
       // line belongs to it verbatim.
+      //
+      // The preamble is still COLLECTED, for one purpose only (PT-1): a model
+      // that skips the Title section sometimes writes the title as a lone
+      // heading up here instead. preambleTitleFallback takes that heading's
+      // text as the title when no Title header was recognised at any level
+      // (an empty Title section counts as recognised), and refuses two
+      // preamble headings as ambiguous. Preamble prose never reaches any field.
       if (current) {
         bodies[current].push(line);
+      } else if (!sawHeader) {
+        state.preamble.push(line);
       }
     }
 
@@ -498,8 +577,12 @@ const MathPixAltTextParser = (function () {
       }
     }
 
+    // The mixed-level re-parse is itself a full parse and has already applied
+    // the preamble title fallback against its own bodies, so it is returned
+    // as-is. See preambleTitleFallback for why it is not applied twice.
     const fallback = mixedLevelFallback(rawText, result, state);
-    return fallback || result;
+    if (fallback) return fallback;
+    return preambleTitleFallback(result, state, bodies);
   }
 
   logInfo("MathPixAltTextParser ready (pure four-field parse)");

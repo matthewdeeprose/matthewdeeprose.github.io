@@ -575,7 +575,7 @@ export class RequestManagerParameters {
     const result = {
       ...costBreakdown,
       warningLevel,
-      currency: "GBP",
+      currency: "USD",
     };
 
     logInfo("Request cost estimation completed:", result);

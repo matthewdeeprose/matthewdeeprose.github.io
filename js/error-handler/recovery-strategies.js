@@ -401,16 +401,41 @@ export class RecoveryStrategies {
         "Switching to fallback model..."
       );
 
-      // Use existing model registry fallback logic
+      // Use existing model registry fallback logic.
+      //
+      // `modelRegistry.getFallbackModel` returns a model OBJECT or null — its
+      // documented `{Object|null}` contract at model-registry-core.js:445, which
+      // parcel 20 deliberately left alone because the registry is right and the
+      // consumers are what promised an id and then failed to take one. This
+      // consumer used to pass that object straight to `updateModel` and
+      // interpolate it into the sentence, which rendered the literal string
+      // "Switched to [object Object]". Item 130.
+      //
+      // The object is kept in a local, announced from, and only its id leaves —
+      // the same shape as js/request-handler/request-handler-model-fallback.js's
+      // branch 1. That shape is DUPLICATED here rather than hoisted into a shared
+      // helper, on the argument the embed's `httpStatusOf` was duplicated on:
+      // this is js/error-handler/, that is js/request-handler/, and a shared
+      // helper would be a new cross-subsystem edge for one `typeof` test. The
+      // wording is deliberately the same idea as branch 1's, and it is the canary
+      // that the object was READ rather than discarded: the sentence names the
+      // model, not its id.
       if (window.modelRegistry?.getFallbackModel) {
-        const fallbackModel = window.modelRegistry.getFallbackModel(
+        const declared = window.modelRegistry.getFallbackModel(
           context.currentModel
         );
-        if (fallbackModel) {
-          await context.modelManager.updateModel(fallbackModel);
+
+        // SHAPE GUARD, not an assumption. An object with no usable string `id`
+        // is not a fallback: handing it to `updateModel` is the defect above
+        // wearing a different hat, and a truthy non-string id is REFUSED rather
+        // than coerced. A decline falls through to the throw below, which is
+        // already what "no fallback" means here — and says NOTHING, because a
+        // switch that will not happen must not be announced.
+        if (declared && typeof declared.id === "string") {
+          await context.modelManager.updateModel(declared.id);
           this.updateRecoveryProgress(
             recoveryRecord,
-            `Switched to ${fallbackModel}`
+            `Switched to ${declared.name}`
           );
 
           if (context.retryFunction) {

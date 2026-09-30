@@ -19,6 +19,83 @@
   /* space between icon and text */
 }
 
+/* Library icons that replaced 21px inline SVG literals (parcel 9g).
+   icon-library.css sizes .icon to 1em and loads after this sheet, so two
+   classes are needed to outrank it (and h4 .icon). This restores the
+   literals' own size; the context rules above keep their alignment. */
+.icon.mathpix-inline-icon {
+  width: 21px;
+  height: 21px;
+}
+
+/* The table export buttons had no alignment rule, so their icons sat on
+   the baseline; .icon would centre them. */
+.table-export-options > .action-button > .icon.mathpix-inline-icon {
+  vertical-align: baseline;
+}
+
+/* Library icons that replaced inline SVG literals in tools.html through a
+   data-icon span (parcel 9j). The span is now the flex item, so the icon is
+   block-level to leave the span's line box, and label .icon's 0.25em right
+   margin (icon-library.css) is removed, as the literals had none. */
+[data-icon] > .icon.mathpix-inline-icon {
+  margin-right: 0;
+  display: block;
+}
+
+/* An icon inside a sentence, or inside a button that is not a flex
+   container, sits in the text's line like the literal did; display: block
+   above would put it on a line of its own (parcel 9k). */
+[data-icon] > .icon.mathpix-inline-icon.mathpix-icon-in-text {
+  display: inline-block;
+}
+
+/* .mathpix-process-btn svg gave the literal a 5px right margin, which the
+   margin-right: 0 above would remove (parcel 9k). */
+.mathpix-process-btn > [data-icon] > .icon.mathpix-inline-icon {
+  margin-right: 5px;
+}
+
+/* mathpix-ai-enhancer.css's .ai-enhance-btn [data-icon] fixes this wrapper
+   at 21px, while the export actions' 768px rule draws the icon at 20px, so
+   the span stayed 1px wider than its icon. auto lets it take the icon's
+   size at every width (parcel 9o). */
+.mathpix-export-actions .ai-enhance-btn > [data-icon] {
+  width: auto;
+  height: auto;
+}
+
+/* main.css gives every button a margin, which the label this button
+   replaced never had. In the resume toolbar's flex row it would push the
+   three buttons after it right, so it is removed here (parcel 9q). */
+#resume-mmd-upload-label {
+  margin: 0;
+}
+
+/* The paste tip's clipboard literal carried a 0.25rem right margin in its
+   style attribute; .icon has none outside a button, label or link, so the
+   text would sit against the icon (parcel 9r). */
+#paste-instructions > [data-icon] > .icon {
+  margin-right: 0.25rem;
+}
+
+/* The drop zone's folder literal was 40px; .icon would draw it at 1em
+   (parcel 9s). */
+#upload-instructions > [data-icon] > .icon {
+  width: 40px;
+  height: 40px;
+}
+
+/* The progress heading's icon host was an <svg>, so every stage icon was
+   drawn inside it. As a span the icon needs the literal's 21px, not
+   .progress-icon .icon's 1.1em (parcel 9u). */
+#pdf-progress-icon > .icon {
+  display: block;
+  width: 21px;
+  height: 21px;
+  margin: 0;
+}
+
 /* Structure (color-agnostic) */
 .mathpix-download-section {
   margin: 1.5rem 0;
@@ -396,7 +473,7 @@ input#custom-height {
   margin-top: 0.5rem;
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .drop-zone {
     border-width: 3px;
   }
@@ -540,7 +617,7 @@ input#custom-height {
   }
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-format-option {
     border-width: 2px;
   }
@@ -766,7 +843,7 @@ input#custom-height {
   line-height: 1.4;
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .consent-section h3 {
     text-decoration: underline;
   }
@@ -828,7 +905,7 @@ input#custom-height {
   line-height: 1.4;
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .consent-testing-options {
     border-width: 3px;
   }
@@ -1123,7 +1200,7 @@ input#custom-height {
 }
 
 /* High Contrast Mode Support */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-transform-btn {
     border-width: 3px;
   }
@@ -1291,7 +1368,7 @@ input#custom-height {
   }
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-image-preview-container,
   .mathpix-progress-container,
   .mathpix-comparison-container,
@@ -1488,22 +1565,6 @@ input#custom-height {
   font-size: 0.95rem;
   font-weight: 500;
   margin: 0;
-}
-
-.cancel-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.cancel-btn:hover {
-  transform: translateY(-1px);
 }
 
 .progress-bar-section {
@@ -1778,8 +1839,7 @@ input#custom-height {
 @media (prefers-reduced-motion: reduce) {
   .preview-toggle-btn,
   .progress-fill,
-  .stage-dot,
-  .cancel-btn {
+  .stage-dot {
     transition: none;
   }
 
@@ -1807,7 +1867,6 @@ input#custom-height {
     page-break-inside: avoid;
   }
 
-  .cancel-btn,
   .preview-toggle-btn {
     display: none;
   }
@@ -1818,36 +1877,6 @@ input#custom-height {
 }
 
 /* Phase 2.1: PDF Document Processing Layout */
-.mathpix-pdf-upload-container {
-  margin-bottom: 2rem;
-  padding: 1rem;
-  border-radius: 8px;
-}
-
-.mathpix-pdf-drop-zone {
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.mathpix-pdf-drop-zone p {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.mathpix-pdf-drop-zone .help-text {
-  display: block;
-  margin-top: 0.5rem;
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
-
 .mathpix-pdf-options {
   margin: 2rem 0;
   padding: 1.5rem;
@@ -2435,7 +2464,6 @@ input#custom-height {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mathpix-pdf-drop-zone,
   .mathpix-option,
   .mathpix-format-checkbox,
   .mathpix-view-option,
@@ -2465,7 +2493,7 @@ input#custom-height {
   }
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-option,
   .mathpix-format-checkbox,
   .mathpix-view-option,
@@ -2557,13 +2585,6 @@ input#custom-height {
   min-width: 200px;
 }
 
-.mathpix-page-placeholder {
-  padding: 2rem;
-  text-align: center;
-  border-radius: 8px;
-  font-style: italic;
-}
-
 #upload-instructions svg {
   vertical-align: middle; /* aligns with text baseline */
   margin-right: 0.5rem; /* space between icon and text */
@@ -2597,7 +2618,7 @@ input#custom-height {
    =========================================== */
 
 /* High contrast support */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-draw-canvas {
     border-width: 3px;
   }
@@ -3137,7 +3158,7 @@ input#custom-height {
 }
 /* Debug panel */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-debug-panel {
     border-width: 2px;
   }
@@ -3278,7 +3299,7 @@ input#custom-height {
   }
 }
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .debug-panel-summary {
     font-weight: 700;
   }
@@ -3553,7 +3574,7 @@ input#custom-height {
 }
 
 /* High contrast mode support */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-camera-controls .mathpix-button {
     border-width: 2px;
   }
@@ -5174,7 +5195,7 @@ input#custom-height {
 }
 
 /* High contrast mode - ensure icons remain visible */
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .mathpix-privacy-consent .icon {
     stroke-width: 2;
   }
@@ -5256,4 +5277,63 @@ mjx-container[data-mathpix-enhanced]:focus-visible {
   mjx-container[data-mathpix-enhanced]:hover {
     transform: none;
   }
+}
+
+/* ============================================
+     Cost notices (layout only)
+     ============================================
+   The house left-accent callout, as used by the Document Context cost preview
+   (#resume-context-ai-cost in mathpix-context.css). Colour is theme-owned in
+   light.css / dark.css. Borders are longhands so this file, which loads after
+   the theme files, never resets their colours. `.help-text.mathpix-cost-notice`
+   out-ranks file-upload.css's `.help-text` whatever the load order.
+
+   Three notices sit on tinted panels and four on the page surface, so the box
+   carries a thin outline as well as the accent bar: the fill separates it on a
+   panel, the outline on the page. */
+
+.help-text.mathpix-cost-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  align-self: stretch;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-style: solid;
+  border-width: 1px 1px 1px 4px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.mathpix-cost-notice [data-icon] {
+  display: inline-flex;
+  flex: none;
+  margin-top: 0.1rem;
+}
+
+.mathpix-cost-notice [data-icon] .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.mathpix-cost-notice strong {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (prefers-contrast: more) {
+  .help-text.mathpix-cost-notice {
+    border-width: 2px 2px 2px 6px;
+  }
+}
+
+/* Upload's PDF workspace and upload check sit outside the Upload container,
+   so hide them while another mode is showing (parcel 10b). !important beats
+   the PDF handler's inline display. Before the first mode switch the
+   attribute is absent and this rule matches nothing. */
+#mathpix-app[data-mathpix-mode]:not([data-mathpix-mode="upload"]) #mathpix-pdf-interface,
+#mathpix-app[data-mathpix-mode]:not([data-mathpix-mode="upload"]) #mathpix-upload-preview {
+  display: none !important;
 }

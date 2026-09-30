@@ -86,6 +86,11 @@
   // load, mirroring the Local Chat orchestrator's discipline.
   const S = window.ChatState;
 
+  // Parcel 38: the embed retry layer's attempt ceiling, named once so the spoken
+  // cue and the configured limit cannot drift apart. Equal to the embed's own
+  // default (DEFAULT_CONFIG.retry.maxRetries in openrouter-embed-core.js).
+  const EMBED_RETRY_MAX_ATTEMPTS = 3;
+
   // Distinguishes an AUTO-selected opening model from a real USER pick. The
   // opening policy commits its auto-pick to S.currentModel via reflectSelection(),
   // so currentModel alone cannot tell the two apart. This flag is TRUE while the
@@ -119,6 +124,26 @@
   // an unchanged status — only a real model or state change speaks.
   let lastStatusSignature = null;
 
+  // Parcel 53: the one sentence spoken when a saved model is no longer offered
+  // and Chat has moved the thread to another model (see replaceWithdrawnModel).
+  // Held as { model, base, text } and rendered by updateModelStatus as part of
+  // that model's status, in the same single write, so the calm-live-region guard
+  // covers it: an unchanged refresh neither clears nor re-speaks it. `base` is
+  // the model-and-state pair it was first rendered with; once the shown model or
+  // its state moves on, the sentence is stale and is dropped.
+  let replacementNotice = null;
+
+  // Status-line signature for the no-replacement case, where nothing is chosen
+  // and the menu is not showing the model the sentence is about.
+  const WITHDRAWN_NONE_SIGNATURE = "withdrawn-none";
+
+  // The withdrawn id a no-replacement case left behind. With nothing chosen,
+  // the next open would otherwise take the first-load path, whose opening policy
+  // picks from the ACTIVE provider — moving an on-device thread onto a cloud
+  // model with no word said. Holding the id sends that open back through the
+  // withdrawn-model check instead, until the person picks a model themselves.
+  let withdrawnSavedModel = null;
+
   // The four sampling controls the ignored-parameter notice covers, each as its
   // wire param name, the visible label shown in the Parameters panel, and the
   // element-id suffix of its slider (fed to S.elId so the id-prefix stays in one
@@ -145,15 +170,29 @@
   // from the shared `foundryProxyUrl` localStorage credential; this is the same
   // hardcoded fallback the app uses when that credential is absent.
   //
+  // THIS IS THE AZURE UK SOUTH CONTAINER APP AS OF 21 SEPTEMBER 2026, NOT THE
+  // CLOUDFLARE WORKER. Owner decision, taken for tester reach; the accepted
+  // consequence and the six-copy keep-in-step obligation are written out in
+  // openrouter-embed/providers/azure-openai-v1.js.
+  //
   // It is REDUNDANT for routing and LOAD-BEARING for construction, and the two
   // must not be confused. Both adapters carry the identical URL as their own
   // DEFAULT_PROXY_URL (azure-openai-v1.js, azure-openai-responses.js), so a
   // request that reached them with no configured host would resolve here
-  // anyway. But configureProvider REFUSES an empty proxyUrl, and Set Up stores
-  // the Cloudflare choice by REMOVING the key rather than writing a value — so
-  // this constant is what keeps that choice configurable at all.
+  // anyway. But configureProvider REFUSES an empty proxyUrl, so this constant
+  // is what keeps the absent-key case constructible at all.
+  //
+  // WHY IT IS STILL LOAD-BEARING CHANGED ON 21 SEPTEMBER 2026, AND THE OLD
+  // REASON IS NOW FALSE. This comment used to end: "and Set Up stores the
+  // Cloudflare choice by REMOVING the key rather than writing a value — so this
+  // constant is what keeps that choice configurable at all." Set Up now stores
+  // the CLOUDFLARE choice by WRITING the Worker URL, and the AZURE choice by
+  // removing the key. So an absent key no longer means "chose Cloudflare"; it
+  // means "chose Azure, or never opened Set Up at all". The constant survives
+  // for that second population — a person who has never opened Set Up — and
+  // for the first, whose choice is now expressed as absence.
   const FOUNDRY_PROXY_FALLBACK =
-    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
 
   // The two Foundry surfaces this tool configures. Named once, so the build and
   // the live re-apply below cannot drift into configuring different sets.
@@ -543,6 +582,28 @@
         respectReducedMotion: true,
         // The embed's built-in streaming progress indicator carries its own role="status"/aria-live, which a screen reader voices over the reply; Chat suppresses it and uses its own "Generating response." / "Response ready." cues instead.
         showStreamingProgress: false,
+        // Parcel 38: the embed's own retry layer — same model, up to
+        // EMBED_RETRY_MAX_ATTEMPTS resends with exponential backoff, pre-stream
+        // failures only (the core stamps a mid-stream failure _noRetry). The
+        // core's built-in retry announcement only logs, and its toast is gated
+        // on showNotifications (false above), so this onRetry is the ONLY voice
+        // a retry has: one write per retry through Chat's own announcer, the
+        // surface "Generating response." and "Response ready." already use.
+        retry: {
+          enabled: true,
+          maxRetries: EMBED_RETRY_MAX_ATTEMPTS,
+          onRetry: function (attempt) {
+            if (typeof S.announceToScreenReader === "function") {
+              S.announceToScreenReader(
+                "Retrying, attempt " +
+                  attempt +
+                  " of " +
+                  EMBED_RETRY_MAX_ATTEMPTS +
+                  ".",
+              );
+            }
+          },
+        },
         // Canonical Foundry wiring: configure both surfaces from the shared
         // credential. The library ignores these for OpenRouter-routed models.
         providers: FOUNDRY_SURFACE_IDS.reduce(function (map, id) {
@@ -667,8 +728,7 @@
    * When an image or a PDF is attached AND the selected model does NOT accept it,
    * name the block in #chat-attachment-notice (role="status") and gate the Send
    * button OFF until an image- or PDF-capable model is chosen or the attachment is
-   * removed. Otherwise stay SILENT and restore Send to its generation-appropriate
-   * state.
+   * removed. Otherwise stay SILENT and clear Send's native `disabled`.
    *
    * The attachment is kept across the switch (never dropped). The message is spoken
    * ONCE per change via S.announceToScreenReader (change-detected), mirroring
@@ -676,8 +736,8 @@
    * and then revealed (as the sampling notice is), so the role="status" live region
    * does not add a second announcement. A held attachment and an in-flight
    * generation are mutually exclusive (send clears the attachment), so gating the
-   * button here never fights chat-core's generation lock — the unblocked branch
-   * restores `disabled` to S.isGenerating.
+   * button here never fights chat-core's generation lock — which is a BusyControl
+   * hold (aria-disabled), not native `disabled`, so the unblocked branch writes false.
    *
    * Called from reflectSelection (model change) and from chat-attach.js (attach /
    * remove), so the gate tracks BOTH the model and the attachment.
@@ -713,7 +773,12 @@
         noticeEl.textContent = "";
       }
       lastAttachmentNoticeKey = null;
-      if (sendBtn) sendBtn.disabled = !!S.isGenerating;
+      // Always false here. The busy period is carried by chat-core's BusyControl
+      // hold (aria-disabled plus the helper's guard), and sendMessage refuses
+      // re-entry on S.isGenerating by itself. A native `disabled` written here
+      // mid-reply — a model or attachment change during a send — would outlive
+      // the reply, because enableSend no longer clears it.
+      if (sendBtn) sendBtn.disabled = false;
       return;
     }
 
@@ -777,6 +842,8 @@
     if (!select) return;
     const opt = select.options[select.selectedIndex] || null;
     S.currentModel = (opt && opt.value) || null;
+    // A committed model ends any held withdrawn id (parcel 53).
+    if (S.currentModel) withdrawnSavedModel = null;
     updateModelStatus();
     // Refresh the Model information panel for the newly-selected model (covers
     // first-open auto-pick, manual switch, and live re-resolve — all route here).
@@ -830,11 +897,13 @@
     const shortKey = localKeyFromId(shownModel);
 
     // Cloud model — silent. Clear the line, but only re-render (and reset the
-    // signature) when something actually changed.
+    // signature) when something actually changed. The one exception is a
+    // replacement sentence for this model, which the line then carries instead.
     if (shortKey === null) {
-      const signature = shownModel + "|cloud";
+      const notice = replacementNoticeFor(shownModel, shownModel + "|cloud");
+      const signature = shownModel + "|cloud" + (notice ? "|replaced" : "");
       if (signature === lastStatusSignature) return;
-      els.status.textContent = "";
+      els.status.textContent = notice || "";
       lastStatusSignature = signature;
       return;
     }
@@ -848,13 +917,17 @@
       state = window.LocalTextModelManager.getModelState(shortKey);
     }
 
-    const signature = shownModel + "|" + state;
+    // A replacement sentence for this model leads the line, in the same write as
+    // the download state, so the two are spoken as one utterance.
+    const notice = replacementNoticeFor(shownModel, shownModel + "|" + state);
+    const prefix = notice ? notice + " " : "";
+    const signature = shownModel + "|" + state + (notice ? "|replaced" : "");
     if (signature === lastStatusSignature) return;
 
     const label = S.STATUS_LABELS[state] || S.STATUS_LABELS.unknown;
 
     if (state === "not-downloaded") {
-      els.status.innerHTML = "Not downloaded — ";
+      els.status.textContent = prefix + "Not downloaded — ";
       const setupLink = document.createElement("a");
       setupLink.href = "#setup-tm-model-" + shortKey;
       setupLink.textContent = "download in Set Up";
@@ -864,7 +937,7 @@
       });
       els.status.appendChild(setupLink);
     } else {
-      els.status.textContent = label;
+      els.status.textContent = prefix + label;
     }
 
     lastStatusSignature = signature;
@@ -973,6 +1046,165 @@
 
     lastStatusSignature = "configure";
     logDebug("configure notice shown — nothing usable");
+  }
+
+  // ── A saved model that is no longer offered (parcel 53) ──────────────────
+  // A restored session can name a model the eligible list no longer carries —
+  // one Microsoft has retired, or one the registry has disabled. The picker
+  // cannot show it, so without this Chat displays one model while Send reads
+  // another. The replacement stays inside the saved model's OWN provider: a
+  // person who chose Foundry is never moved onto OpenRouter's per-token billing,
+  // and an on-device thread is never moved off the device.
+
+  // The provider a model id belongs to, from the id alone — needed because a
+  // withdrawn model has no entry in allModels to read it from. Mirrors
+  // providerIdFromModel in chat-core.js: both Foundry surfaces fold into
+  // "azure-openai", "local/" is on-device, and anything else is OpenRouter.
+  function providerIdOfModelId(id) {
+    if (localKeyFromId(id) !== null) return "local";
+    const isFoundry =
+      typeof id === "string" &&
+      FOUNDRY_SURFACE_IDS.some((surface) => id.indexOf(surface + "/") === 0);
+    return isFoundry ? "azure-openai" : "openrouter";
+  }
+
+  // Whether a saved model has been withdrawn, as opposed to merely filtered out.
+  // allModels is the eligible list before any filter, so absence from it is the
+  // test. It judges only against a list that has models for that provider at
+  // all: an empty provider group (the on-device registry not yet read, or a
+  // Foundry surface not configured) says nothing about this model.
+  function isNoLongerOffered(id) {
+    if (allModels.some((m) => m.id === id)) return false;
+    const provider = providerIdOfModelId(id);
+    return allModels.some((m) => m.providerId === provider);
+  }
+
+  // The replacement, from the saved model's provider only: that provider's
+  // opening default when eligible, else its first eligible model; for an
+  // on-device model, the first ready on-device model. Null when there is none.
+  function pickReplacementModel(savedId) {
+    const provider = providerIdOfModelId(savedId);
+    if (provider === "local") {
+      const ready = firstReadyTextModel();
+      const readyId = ready ? "local/" + ready.key : null;
+      return readyId && allModels.some((m) => m.id === readyId) ? readyId : null;
+    }
+    const wanted = DEFAULT_CLOUD_MODEL[provider];
+    if (wanted && allModels.some((m) => m.id === wanted)) return wanted;
+    const first = allModels.find((m) => m.providerId === provider);
+    return first ? first.id : null;
+  }
+
+  // The withdrawn model's name as the picker used to show it. A disabled cloud
+  // model is still registered, so the registry has its name; a stored turn
+  // carries only the model id, so the id is the last resort.
+  function withdrawnModelName(id) {
+    let entry = null;
+    if (localKeyFromId(id) !== null) {
+      const local = window.LocalTextModelRegistry;
+      const found =
+        local && typeof local.getModelByLocalId === "function"
+          ? local.getModelByLocalId(id)
+          : null;
+      if (found && found.userInfo && found.userInfo.displayName) {
+        entry = { name: found.userInfo.displayName };
+      }
+    } else if (
+      window.modelRegistry &&
+      typeof window.modelRegistry.getModel === "function"
+    ) {
+      entry = window.modelRegistry.getModel(id, true);
+    }
+    return entry && entry.name ? formatOptionLabel(entry) : id;
+  }
+
+  // The replacement sentence for the model the status line is about to show, or
+  // null. The first render claims it for that model-and-state pair; a different
+  // model or a moved state drops it for good, so it is spoken once.
+  function replacementNoticeFor(shownModel, base) {
+    if (!replacementNotice) return null;
+    if (replacementNotice.base === null && replacementNotice.model === shownModel) {
+      replacementNotice.base = base;
+    }
+    if (replacementNotice.base !== base) {
+      replacementNotice = null;
+      return null;
+    }
+    return replacementNotice.text;
+  }
+
+  // Persist the replacement, so the next reload restores it rather than
+  // repeating the switch. Guarded: chat-persistence.js loads after this file.
+  function saveReplacedSession() {
+    if (
+      window.ChatPersistence &&
+      typeof window.ChatPersistence.saveSession === "function"
+    ) {
+      window.ChatPersistence.saveSession();
+    }
+  }
+
+  /**
+   * Move a thread whose saved model is no longer offered onto a replacement from
+   * the same provider, once, and say so in the status line beside the picker —
+   * a polite live region that is already this journey's voice for the chosen
+   * model, so nothing new is announced through a second channel.
+   *
+   * The replacement is committed through reflectSelection(). It is staged into
+   * ChatState.currentModel first only so the in-use exemption can render it
+   * when its provider is not the active one (a Foundry thread restored while
+   * OpenRouter is selected in Set Up).
+   * @param {string} savedId the withdrawn model id the session restored
+   */
+  function replaceWithdrawnModel(savedId) {
+    const select = S.els.select;
+    const oldName = withdrawnModelName(savedId);
+    const replacement = pickReplacementModel(savedId);
+
+    if (!replacement) {
+      // Nothing in that provider to move to: the "nothing chosen" state, with
+      // the reason in the status line instead of the configure notice. The
+      // session is NOT re-saved, so a reload keeps the withdrawn id and asks
+      // again rather than opening on another provider's default.
+      S.currentModel = null;
+      S.openingAuto = false;
+      replacementNotice = null;
+      withdrawnSavedModel = savedId;
+      if (S.els.status && lastStatusSignature !== WITHDRAWN_NONE_SIGNATURE) {
+        S.els.status.textContent =
+          oldName + " is no longer available. Choose another model to continue.";
+      }
+      lastStatusSignature = WITHDRAWN_NONE_SIGNATURE;
+      logInfo("saved model " + savedId + " is no longer offered; no replacement");
+      return;
+    }
+
+    withdrawnSavedModel = null;
+    S.currentModel = replacement;
+    const rendered = renderForCurrentScope();
+    if (!rendered.some((m) => m.id === replacement)) {
+      // A filter hides the replacement. Unreachable on a page load, where every
+      // filter is at its default; kept like any filtered-out choice.
+      saveReplacedSession();
+      logWarn("replacement " + replacement + " is filtered out; kept, not shown");
+      return;
+    }
+
+    select.value = replacement;
+    replacementNotice = {
+      model: replacement,
+      base: null,
+      text:
+        oldName +
+        " is no longer available. Switched to " +
+        formatOptionLabel(getModelEntry(replacement)) +
+        ". Your conversation continues.",
+    };
+    reflectSelection();
+    // An AUTO pick, so a later provider change may still move it.
+    S.openingAuto = true;
+    saveReplacedSession();
+    logInfo("saved model " + savedId + " is no longer offered; now " + replacement);
   }
 
   /**
@@ -1169,7 +1401,15 @@
 
     renderFiltered(rendered);
 
-    if (previousModel) {
+    // The saved model, or one an earlier open found withdrawn with nothing to
+    // replace it (held while nothing is chosen; see withdrawnSavedModel).
+    const savedModel = previousModel || withdrawnSavedModel;
+
+    if (savedModel && isNoLongerOffered(savedModel)) {
+      // The saved model is not merely filtered out: the eligible list no longer
+      // carries it at all. Replace it within its own provider (parcel 53).
+      replaceWithdrawnModel(savedModel);
+    } else if (previousModel) {
       // Keep the user's choice. Restore the menu to it when still visible;
       // restoring is programmatic (select.value) and does NOT fire 'change', so
       // ChatState.currentModel is left exactly as it was. When the choice is

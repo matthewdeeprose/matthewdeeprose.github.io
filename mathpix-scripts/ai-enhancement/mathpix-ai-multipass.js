@@ -80,6 +80,15 @@
     /** Timeout for Pass 2 API call (same as Pass 1) */
     TIMEOUT_MS: 300000, // 5 minutes
 
+    /**
+     * Parcel 38: the embed retry layer's attempt ceiling, named once so the
+     * spoken cue and the configured limit cannot drift apart. Equal to the
+     * embed's own default (DEFAULT_CONFIG.retry.maxRetries in
+     * openrouter-embed-core.js). The retry's worst case (about 1 + 2 + 4 s of
+     * backoff plus jitter) sits well inside TIMEOUT_MS.
+     */
+    EMBED_RETRY_MAX_ATTEMPTS: 3,
+
     /** Chars per token estimate (matches enhancer) */
     CHARS_PER_TOKEN: 4,
   };
@@ -665,6 +674,23 @@
         top_p: MULTIPASS_CONFIG.TOP_P,
         reasoning: null, // No reasoning for Pass 2 \u2014 contraindicated for Haiku
         showNotifications: false,
+        // Parcel 38: the embed's own retry layer \u2014 same model, up to
+        // EMBED_RETRY_MAX_ATTEMPTS resends with exponential backoff, pre-stream
+        // failures only. The core's built-in retry announcement only logs and
+        // its toast is gated on showNotifications (false above), so the toast
+        // below is the ONLY voice a retry has. A toast announces itself
+        // through the shared announcer, so nothing is announced beside it.
+        retry: {
+          enabled: true,
+          maxRetries: MULTIPASS_CONFIG.EMBED_RETRY_MAX_ATTEMPTS,
+          onRetry: (attempt) => {
+            if (typeof window.notifyWarning === "function") {
+              window.notifyWarning(
+                `Retrying, attempt ${attempt} of ${MULTIPASS_CONFIG.EMBED_RETRY_MAX_ATTEMPTS}.`,
+              );
+            }
+          },
+        },
         enableLogging: true,
       });
 

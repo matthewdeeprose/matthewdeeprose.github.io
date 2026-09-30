@@ -1,0 +1,424 @@
+/*
+ * captions-fixer/captions-fixer.css — the Captions Fixer tool's own styling.
+ *
+ * Release 1, Stage 8 iteration 2. The one-sheet-per-tool convention puts a
+ * tool's sheet in the tool's own folder — image-describer/image-describer.css,
+ * chat/chat.css, local-chat/local-chat.css, setup-tool/setup-tool.css,
+ * openrouter-embed/transcribe.css — each a plain unconditional <link> in
+ * tools.html's <head>. This is the same shape.
+ *
+ * =========================================================================
+ * COLOUR: NO HUE IS DECLARED HERE, AND NONE MAY BE.
+ * =========================================================================
+ *
+ * NO `color` AND NO `background` OF ANY KIND IS DECLARED IN THIS FILE, and no
+ * hue is declared anywhere in it — no hex, no named colour, no rgb() with
+ * unequal channels. Colour belongs in light.css and dark.css and nowhere else,
+ * and a tool sheet that declares one is a tool that is wrong in one of the two
+ * themes.
+ *
+ * THE HEADING SAYS "NO HUE" RATHER THAN "NO COLOUR VALUE" BECAUSE A COLOUR
+ * CANARY MEASURED THIS FILE AND THE STRONGER CLAIM WAS FALSE. Read out of the
+ * CSSOM on 7 September 2026, the sheet declares exactly six colour-valued
+ * properties, and they are:
+ *
+ *   outline-color: currentcolor                  (the drag-active state)
+ *   border-*-color: rgba(128, 128, 128, 0.35)    (the fieldset, four sides)
+ *   border-bottom-color: rgba(128, 128, 128, 0.35)  (the table rules)
+ *
+ * Every one is either currentColor or an ACHROMATIC grey at low alpha, so each
+ * composites over whatever surface the theme supplies and carries no hue of its
+ * own. That is the arrangement transcribe.css's own header records for its two
+ * achromatic surface tints, and it is the same rule: THEY TOUCH SURFACES,
+ * NEVER TEXT. Text here inherits, always.
+ *
+ * The stronger sentence is not merely imprecise; it is the shape AGENTS.md
+ * § Diagnosis Discipline warns about, where a comment answers for the code and
+ * a later reader trusts the comment. It was corrected against a measurement in
+ * the same iteration that wrote it.
+ *
+ * Two consequences worth stating rather than leaving to be rediscovered:
+ *
+ *   - The drag-active state on the drop zone is an OUTLINE in `currentColor`,
+ *     not a tint. An outline in the text colour is guaranteed to reach the
+ *     3:1 that SC 1.4.11 asks of a non-text indicator, because the text it
+ *     borrows from already clears 4.5:1 against the same surface.
+ *   - The table's rules and the fieldset's separators are `currentColor` at a
+ *     stated alpha, so they composite over whatever surface the theme
+ *     supplies. They are SURFACE marks and never text.
+ *
+ * If a state here ever genuinely needs a colour of its own, that is a halt and
+ * a request for a token in light.css and dark.css — not a value added here.
+ *
+ * =========================================================================
+ * FOCUS: THIS FILE DECLARES NO FOCUS STYLE.
+ * =========================================================================
+ *
+ * Buttons already receive an app-wide focus treatment from the theme sheets —
+ * the fill and text colours invert, plus a coloured glow, measured at 7.3:1 in
+ * light and 11.2:1 in dark (AGENTS.md § Focus indicators). A component-level
+ * `box-shadow` here would REPLACE that glow rather than add to it, because
+ * box-shadow is a single property with no merging, and the usual result is
+ * less prominence than doing nothing plus one control that signals focus
+ * differently from every other button in the app. So nothing here touches
+ * :focus or :focus-visible.
+ *
+ * STAGE 8b, DECISION 8 — AND THE SENTENCE THAT USED TO END THIS BLOCK IS
+ * WITHDRAWN. It read: "The one exception is not an exception:
+ * .captions-fixer-table-scroll is a focusable non-control, and it takes the
+ * user-agent outline unmodified." The scroll region now takes the SITE'S OWN
+ * focus treatment for a focusable scrollable region, which is declared in
+ * light.css and dark.css beside #ai-original-content, #ai-enhanced-content,
+ * #ai-pdf-scroll-container and .mmd-pdf-scroll-container — one rule, three
+ * pre-existing selectors and now a fourth, `outline: 3px solid` in the theme's
+ * focus colour at `outline-offset: -2px`, with a prefers-contrast: more block
+ * beside it.
+ *
+ * THIS FILE STILL DECLARES NO FOCUS STYLE, and that is the point rather than
+ * an oversight. Joining the theme sheets' existing selector list invents no
+ * colour value, keeps the region signalling focus exactly like every other
+ * scroll region in the app, and leaves the two theme sheets the only files
+ * that know what the focus colour is.
+ *
+ * WHAT WAS GROUNDED BEFORE CHOOSING THAT ROUTE, because the dispatch named a
+ * different one: Transcribe's list region has NO :focus-visible pattern to
+ * follow — transcribe.css declares none, deliberately, and .transcribe-list is
+ * neither focusable nor scrollable. There is also no CSS custom property for
+ * the focus colour anywhere in the tree; --accent-color is a different colour
+ * in dark theme (#fcbc00) from the focus hue (#c1d100), so it is not the token
+ * it looks like. The selector list was the only existing pattern to reuse.
+ */
+
+/* =========================================================================
+   THE [hidden] REVEAL, MADE SELF-SUFFICIENT
+   ========================================================================= */
+
+/*
+ * Two sections and one button in this tool ship with the `hidden` attribute
+ * and are revealed by the controller toggling it. `hidden` is a MARKUP state,
+ * and nothing in CSS may compete with it.
+ *
+ * This rule is here because of register item 57 in the Transcribe lane, which
+ * measured the failure. `ally-scripts/css/ally-main.css` carries a global
+ * `[hidden] { display: none !important; }` and tools.html loads it before every
+ * tool sheet — so a tool whose own `display` declaration overrides the user
+ * agent's `[hidden] { display: none }` still hides correctly, but ONLY because
+ * of another lane's stylesheet. That is a dependency invisible from the tool's
+ * own file, and it would break silently if ally-main.css ever moved.
+ *
+ * `#captions-fixer-app [hidden]` is (1,0,1). Every rule in this file that sets
+ * a `display` is a class selector at (0,1,0) or lower, so this wins on
+ * specificity and needs no `!important` and no source-order dependency.
+ *
+ * It is scoped to this tool rather than written bare, because a bare `[hidden]`
+ * rule fixing the whole class is a site-wide cascade change belonging to
+ * whoever owns main.css. Transcribe's item 59 registers that alternative.
+ */
+#captions-fixer-app [hidden] {
+  display: none;
+}
+
+/* =========================================================================
+   UPLOAD
+   ========================================================================= */
+
+.captions-fixer-upload-area {
+  margin-bottom: 1rem;
+}
+
+/*
+ * The label IS the drop zone — the drag handlers in captions-fixer-ui.js bind
+ * to it, following setupDragAndDrop in md-scripts/charts/graph-builder-core.js.
+ * Its resting appearance comes from .imgdesc-upload-label, which this tool
+ * shares with the Image Describer and Transcribe; only the drag state is
+ * declared here.
+ */
+.captions-fixer-upload-area .imgdesc-upload-label {
+  cursor: pointer;
+}
+
+/*
+ * DRAG-ACTIVE. An outline rather than a tint, in currentColor, for the reason
+ * given in the header. `outline-offset` keeps it clear of the label's own
+ * border so the two read as separate marks rather than a thickened edge.
+ */
+.captions-fixer-upload-area .imgdesc-upload-label.captions-fixer-drag-active {
+  outline: 3px dashed currentColor;
+  outline-offset: 3px;
+}
+
+#captions-fixer-file-name {
+  margin: 0.5rem 0 0;
+}
+
+/* =========================================================================
+   COST, PROGRESS, ACTIONS
+   ========================================================================= */
+
+/*
+ * The cost line and the progress line are ordinary paragraphs. NEITHER IS A
+ * LIVE REGION and nothing here could make one — this note is present so that a
+ * later reader reaching for `display` on the progress line knows the silence is
+ * deliberate, not an omission. See the article comment in tools.html.
+ */
+.captions-fixer-cost,
+.captions-fixer-progress {
+  margin: 0.5rem 0;
+  min-height: 1.5em; /* reserve the line so revealing text moves nothing */
+}
+
+.captions-fixer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+/* =========================================================================
+   THE PAIR LIST
+   ========================================================================= */
+
+/*
+ * A native fieldset of native checkboxes. The border is currentColor at low
+ * alpha so it composites over either theme; it is a surface mark, never text.
+ */
+#captions-fixer-pairs {
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  border-radius: 0.25rem;
+  padding: 0.75rem 1rem 1rem;
+  margin: 0.5rem 0;
+}
+
+#captions-fixer-pairs legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.captions-fixer-pair {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+}
+/* make corrections table look better in mobile view */
+
+@media screen and (max-width: 1024px) {
+  .captions-fixer-changes td::before {
+    content: attr(data-label);
+    font-weight: bold;
+    margin-right: 10px;
+  }
+}
+
+/* label of glossary was clipped, fixed by */
+#captions-fixer-glossary {
+  margin-top: 10px;
+}
+
+/*
+ * SC 2.5.8 target size. A native checkbox is typically 13px square, which is
+ * under the 24 by 24 CSS pixel minimum. Growing the box itself is unreliable
+ * across engines, so the LABEL carries the target: it is the checkbox's own
+ * activation area, and a padded label of full row width comfortably clears it.
+ */
+.captions-fixer-pair label {
+  display: inline-block;
+  min-height: 24px;
+  padding: 0.15rem 0;
+  cursor: pointer;
+}
+
+.captions-fixer-pair input[type="checkbox"] {
+  min-width: 24px;
+  min-height: 24px;
+  flex: 0 0 auto;
+}
+
+/*
+ * The measured count beside each pair. It is a separate element so the two
+ * halves of the label can be styled apart without either becoming a colour.
+ */
+.captions-fixer-pair-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* =========================================================================
+   THE CHANGE TABLE
+   ========================================================================= */
+
+/*
+ * THE SCROLL CONTAINER, AND THE CLAIM IT USED TO CARRY IS WITHDRAWN.
+ *
+ * It read: "A five-column table of caption text cannot linearise to 320px
+ * without destroying the Was/Now relation, which is the information — the
+ * two-dimensional-layout exception to SC 1.4.10." That was wrong about this
+ * site. `.allyTable` in main.css:2718 linearises a table WITHOUT losing the
+ * relation: below 1024px each row becomes a block and each cell prints its own
+ * column name in front of its value from `data-label`, so a stacked row reads
+ * "Caption: 41", "Was: …", "Now: …" in order and the pairing survives. It is
+ * the site's own pattern and this page already uses it on the Set Up
+ * model-benchmark tables. The change table carries the class and the
+ * controller writes the labels — Stage 8b, decision 9.
+ *
+ * THE CONTAINER STAYS ANYWAY. Above 1024px the table does not stack and can
+ * still be wider than its column, so the scroll is real there and axe's
+ * scrollable-region-focusable rule wants it reachable by keyboard. Below that
+ * width nothing overflows and it simply never scrolls.
+ *
+ * NO PADDING AND NO NEGATIVE MARGIN. Both used to be here to keep the user
+ * agent's focus ring off the container's own edge. The theme sheets draw this
+ * region's ring INSET (`outline-offset: -2px`), so there is nothing to make
+ * room for — and a negative horizontal margin is exactly the sort of thing
+ * that puts a page 6px wider than its viewport at 320px, which is the width
+ * decision 9 is measured at.
+ */
+.captions-fixer-table-scroll {
+  overflow-x: auto;
+}
+
+.captions-fixer-changes {
+  width: 100%;
+  border-collapse: collapse;
+  /*
+   * Auto rather than fixed: the Was and Now cells hold caption text of very
+   * different lengths and the browser distributes the width better than any
+   * number written here could.
+   */
+  table-layout: auto;
+}
+
+.captions-fixer-changes caption {
+  text-align: left;
+  padding: 0 0 0.5rem;
+}
+
+.captions-fixer-changes th,
+.captions-fixer-changes td {
+  /* Surface marks in currentColor at low alpha, never text. */
+  border-bottom: 1px solid rgba(128, 128, 128, 0.35);
+  padding: 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.captions-fixer-changes thead th {
+  border-bottom-width: 2px;
+  white-space: nowrap;
+}
+
+/* The caption id column holds a small integer and should not take width. */
+.captions-fixer-changes td:first-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The Was and Now cells. A minimum width stops the browser collapsing them to
+ * one word per line inside the scroll container; a maximum stops one long cue
+ * pushing the Keep column off screen on a wide display.
+ *
+ * `pre-line` renders the caption's own line breaks. A caption is written in
+ * lines, and those lines are in the cell's text already — the break is in
+ * `textContent` and the default `normal` collapses it to a space, so the
+ * person reading Was against Now sees one run-on line where the caption file
+ * and the recording both have two. It keeps the collapsing of runs of spaces
+ * and it keeps wrapping, so nothing about the cells' width behaviour moves;
+ * `pre` or `pre-wrap` would change both, and neither is wanted here.
+ *
+ * It is declared HERE and deliberately not repeated at the stacked
+ * breakpoint below. That media block withdraws the width floor and cap
+ * because a stacked cell is not a column any more; the break still belongs
+ * to the caption at every width, so the declaration above carries through
+ * unopposed rather than being restated where it could drift.
+ */
+.captions-fixer-cell-was,
+.captions-fixer-cell-now {
+  min-width: 14rem;
+  max-width: 26rem;
+  white-space: pre-line;
+}
+
+/* =========================================================================
+   THE STACKED TABLE (Stage 8b, decision 9)
+   ========================================================================= */
+
+/*
+ * WHAT THIS BLOCK IS AND IS NOT. The stacking itself is main.css's
+ * `.allyTable` rule and nothing here reproduces it — this is the two
+ * declarations that would otherwise fight it, withdrawn at the same breakpoint
+ * the site's own pattern uses.
+ *
+ * `min-width: 14rem` is 224px. Once the rows stack, a cell is a full-width
+ * block inside a 320px viewport that has already spent width on the article's
+ * padding and the cell's own, so a 224px floor is a width the browser must
+ * find somewhere — and where it cannot, the page grows sideways. The maximum
+ * is withdrawn with it because a capped block in a stacked row is a column
+ * that is not there any more.
+ *
+ * THE BREAKPOINT IS main.css's 1024px, deliberately not a value of this file's
+ * choosing: a mismatch would leave a band of widths where the rows had stacked
+ * and the floor was still in force, which is precisely the overflow this
+ * removes.
+ */
+@media screen and (max-width: 1024px) {
+  .captions-fixer-cell-was,
+  .captions-fixer-cell-now {
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+/*
+ * WAS / NOW MARKING. <del> and <ins> keep their user-agent line-through and
+ * underline; there is deliberately no colour distinction, because colour alone
+ * would be the SC 1.4.1 failure this pairing exists to avoid, and adding one
+ * would break the rule at the top of this file besides.
+ *
+ * THE SENTENCE THAT FOLLOWED IS WITHDRAWN — Stage 8b, decision 7. It read:
+ * "Each carries a visually-hidden 'deleted'/'inserted' prefix in the markup,
+ * so a screen reader announces the distinction that the line-through and the
+ * underline convey visually. NVDA does not announce del/ins by default."
+ * NVDA DOES announce them: Matthew heard "deleted" three times before a single
+ * deleted word on 8 September 2026, the hidden span being the middle one. The
+ * spans are gone and the elements carry the meaning by themselves, so what is
+ * declared below is now the whole of the visual distinction.
+ */
+.captions-fixer-changes del,
+.captions-fixer-changes ins {
+  /* Explicit rather than inherited, so a theme reset cannot remove the one
+     visual difference between the two. */
+  text-decoration-thickness: 2px;
+}
+
+.captions-fixer-changes del {
+  text-decoration-line: line-through;
+}
+
+.captions-fixer-changes ins {
+  text-decoration-line: underline;
+}
+
+/*
+ * The Keep checkbox. Same target-size reasoning as the pair list above; here
+ * the visually-hidden label cannot carry the target, so the checkbox does.
+ */
+.captions-fixer-changes td input[type="checkbox"] {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* =========================================================================
+   THE EMBED SINK
+   ========================================================================= */
+
+/*
+ * Belt and braces. The element carries `hidden` in the markup and the rule at
+ * the top of this file honours it, so this declaration changes nothing today.
+ * It is here because the sink is the one element in this tool whose becoming
+ * visible would be a defect rather than a cosmetic surprise: the embed renders
+ * a model reply into it, and a person must never see raw JSON.
+ */
+#captions-fixer-embed-sink {
+  display: none;
+}

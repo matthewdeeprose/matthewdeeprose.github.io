@@ -878,6 +878,27 @@
   };
 
   /**
+   * Clear the previous session's converted files and their on-screen
+   * status, keeping the ticked formats (parcel 10c). Takes back from the
+   * shared store only the copies this session put there, so Upload's own
+   * conversions are left alone.
+   * @private
+   */
+  proto.clearConversionResults = function () {
+    const store = window.getMathPixConvertUI?.()?.completedDownloads;
+    if (store && this.conversionResults) {
+      this.conversionResults.forEach((blob, format) => {
+        if (store.get(format) === blob) store.delete(format);
+      });
+    }
+    this.conversionResults = new Map();
+    this.hideConvertProgress();
+    this.hideConvertDownloads();
+    this.hideConvertErrors();
+    logDebug("Previous session's conversions cleared");
+  };
+
+  /**
    * Download a converted file
    * @param {string} format - Format type
    * @param {Object} result - Conversion result with blob and filename

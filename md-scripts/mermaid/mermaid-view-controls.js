@@ -22,7 +22,6 @@ const MermaidViewControls = (function () {
   const state = {
     fullscreenEnabled: false,
     activeFullscreenContainer: null,
-    eventDelegationInstalled: false,
   };
 
   // DOM element references
@@ -64,197 +63,444 @@ const MermaidViewControls = (function () {
   }
 
   // ============================================================================
-  // MODE DETECTION AND EVENT DELEGATION
+  // ATTACH / DETACH — the per-figure runtime (parcel 3+4)
   // ============================================================================
 
+  // One record per attached root — its two buttons and their click handlers —
+  // keyed on the NODE. A class cannot decide this: .view-controls-added
+  // serialises with the markup, so the bridge's live copy of a container
+  // carried the marker from the scratch container it was bound in, and was
+  // skipped (parcel 3+4 grounding, 25 September 2026).
+  const records = new WeakMap();
+
+  // Roots attached and not yet detached. The first attach installs the global
+  // listeners and the last detach removes them. A root removed from the DOM
+  // without detach — every page re-render does this — stays counted, which
+  // only means the global listeners stay installed. No sweeper, on purpose.
+  let attachedCount = 0;
+  let globalListenersInstalled = false;
+
+  // Counter for container ids minted when the figure carries none
+  let containerIdCounter = 0;
+
+  const FULLSCREEN_CHANGE_EVENTS = Object.freeze([
+    "fullscreenchange",
+    "webkitfullscreenchange",
+    "mozfullscreenchange",
+    "MSFullscreenChange",
+  ]);
+
+  const MERMAID_CONTAINER_CLASS = "mermaid-container";
+
+  // Full-screen timings, in ms (F11). The fits chase the browser's full-screen
+  // transition; the retries run relative to the first fit, not to entry.
+  const FULLSCREEN_DELAYS_MS = Object.freeze({
+    nativeFirstFit: 100, // native entry: first fit after activation
+    nativeFitRetries: Object.freeze([300, 600]), // then two more
+    cssFit: 300, // CSS entry: one fit after activation
+    changeActivate: 50, // fullscreenchange: activate pan/zoom after the DOM settles
+    changeFirstFit: 100, // then fit
+    changeFitRetry: 200, // and fit again
+  });
+
+  // Kept although nothing in this file decides anything on it:
+  // chart-view-controls.js:161 reads it document-wide in its own
+  // setupGlobalEventListeners, and mermaid-accessibility-core.js removes it on
+  // its retry path.
+  const LEGACY_ATTACHED_CLASS = "view-controls-added";
+
+  // F22 (parcel 9d): a diagram drawn at its 10 px text floor can be wider than
+  // its .mermaid box, which then scrolls sideways (mermaid-controls.css).
+  // While it scrolls the box is a named, focusable group, so a keyboard can
+  // reach it and scroll it with the arrow keys; the three attributes go when
+  // it stops. Nothing announces. In full screen the box does not scroll — pan
+  // and zoom reach the whole diagram — so it is never a stop there.
+  const SCROLL_BOX_LABEL = "Diagram, scrolls sideways";
+  const SCROLL_BOX_ROLE = "group";
+  const SCROLL_OVERFLOW_TOLERANCE_PX = 1;
+
+  // Parcel 9e, Matthew's two rulings of 28 September 2026 (item 94). (A) On
+  // focus a stop should say only the diagram's short description: once the
+  // description engine has cached it on the container
+  // (data-svg-accessible-name), the stop is an image named with it and its
+  // SVG leaves the accessibility tree; until then it keeps the group and
+  // label above. (B) A visible note, hidden from screen readers — inside the
+  // stop's box, after the SVG, since parcel 9e-2 (Matthew, 29 September).
+  // mermaid-export-utils.js carries the same words for the export.
+  //
+  // The engine names a container only once it has been scrolled into view,
+  // usually long after the box became a stop, and nothing tells this module
+  // when it does. So while a stop is unnamed it is re-checked every
+  // SCROLL_NAME_RETRY_MS, and again whenever focus enters the container.
+  const SCROLL_BOX_NAMED_ROLE = "img";
+  const SCROLL_NOTE_CLASS = "mermaid-scroll-note";
+  const SCROLL_NOTE_TEXT = "Scroll sideways to see the whole diagram.";
+  const SCROLL_NAME_RETRY_MS = 500;
+  const ACCESSIBILITY_FAILED_STATE = "error";
+  // The diagram SVG in a .mermaid box: its direct child, or inside pan/zoom's
+  // wrapper while in full screen (mermaid-pan-zoom.js panZoomContainerClass).
+  const DIAGRAM_SVG_IN_BOX =
+    ":scope > svg, :scope > .mermaid-pan-zoom-container > svg";
+
   /**
-   * Detect if we're in OpenRouter mode
-   * @returns {boolean} True if in OpenRouter mode
+   * Work out whether native full screen is supported and make sure the
+   * announcer exists. Idempotent; run by init and by every attach.
    */
-  function isOpenRouterMode() {
-    const openRouterRadio = document.getElementById("OpenRouter");
-    return openRouterRadio && openRouterRadio.checked;
+  function prepareModule() {
+    state.fullscreenEnabled =
+      document.fullscreenEnabled ||
+      document.webkitFullscreenEnabled ||
+      document.mozFullScreenEnabled ||
+      document.msFullscreenEnabled;
+
+    createScreenReaderAnnouncer();
   }
 
   /**
-   * Check if MermaidViewControls is available during runtime
-   * @returns {boolean} True if MermaidViewControls is available
+   * Install the document-level full-screen change and Escape handlers, once
    */
-  function isMermaidViewControlsAvailable() {
+  function installGlobalListeners() {
+    if (globalListenersInstalled) return;
+
+    FULLSCREEN_CHANGE_EVENTS.forEach((type) => {
+      document.addEventListener(type, handleFullscreenChange);
+    });
+    document.addEventListener("keydown", handleEscapeKey);
+
+    globalListenersInstalled = true;
+    logDebug("[Mermaid View Controls] Global event listeners installed");
+  }
+
+  /**
+   * Remove the document-level handlers installGlobalListeners added
+   */
+  function removeGlobalListeners() {
+    if (!globalListenersInstalled) return;
+
+    FULLSCREEN_CHANGE_EVENTS.forEach((type) => {
+      document.removeEventListener(type, handleFullscreenChange);
+    });
+    document.removeEventListener("keydown", handleEscapeKey);
+
+    globalListenersInstalled = false;
+    logDebug("[Mermaid View Controls] Global event listeners removed");
+  }
+
+  /**
+   * An id for a container that has none: derived from the figure (the inner
+   * .mermaid div's id) when there is one, else a module counter — never a
+   * timestamp. Skips any id already in the document.
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {string} A fresh id
+   */
+  function mintContainerId(root) {
+    const figure = root.querySelector(".mermaid[id]");
+    const fromFigure = figure ? `mermaid-container-${figure.id}` : null;
+    if (fromFigure && !document.getElementById(fromFigure)) return fromFigure;
+
+    let candidate;
+    do {
+      containerIdCounter++;
+      candidate = `mermaid-container-${containerIdCounter}`;
+    } while (document.getElementById(candidate));
+    return candidate;
+  }
+
+  /**
+   * Remove one record's two click handlers from its buttons
+   * @param {Object} record - The root's record
+   */
+  function unbindRecord(record) {
+    record.widthButton.removeEventListener("click", record.onWidth);
+    record.fullscreenButton.removeEventListener("click", record.onFullscreen);
+    if (record.scrollObserver) record.scrollObserver.disconnect();
+  }
+
+  /**
+   * Set an attribute, or remove it when the value is null — only when that
+   * changes something, so an observer that calls this cannot feed itself.
+   * @param {Element} element - The element to write
+   * @param {string} name - The attribute
+   * @param {string|null} value - The value, or null for absent
+   */
+  function writeAttribute(element, name, value) {
+    if (value === null) {
+      if (element.hasAttribute(name)) element.removeAttribute(name);
+    } else if (element.getAttribute(name) !== value) {
+      element.setAttribute(name, value);
+    }
+  }
+
+  /**
+   * Show the scroll note inside the box, as its last child after the SVG, or
+   * hide it (parcel 9e-2: inside, so the box's own ground and side borders
+   * contain it; mermaid-controls.css keeps it at the box's left edge while
+   * the box scrolls). Built the first time it is needed and kept, hidden,
+   * after that. Every render replaces the box's content and takes the note
+   * with it; the box's height then changes, the root's ResizeObserver runs
+   * and this builds it again. A note left directly in the root (parcel 9e's
+   * place) is taken back into the box.
+   * @param {HTMLElement} root - The mermaid container
+   * @param {HTMLElement} box - The root's .mermaid
+   * @param {boolean} show - Whether the box is a stop
+   */
+  function showScrollNote(root, box, show) {
+    let note =
+      box.querySelector(`:scope > .${SCROLL_NOTE_CLASS}`) ||
+      root.querySelector(`:scope > .${SCROLL_NOTE_CLASS}`);
+    if (!note) {
+      if (!show) return;
+      note = document.createElement("p");
+      note.className = SCROLL_NOTE_CLASS;
+      note.setAttribute("aria-hidden", "true");
+      note.textContent = SCROLL_NOTE_TEXT;
+    }
+    if (box.lastElementChild !== note) box.append(note);
+    if (note.hidden === show) note.hidden = !show;
+  }
+
+  /**
+   * Make the root's diagram box a focusable stop while it overflows sideways,
+   * and a plain box when it does not. A stop is named with the diagram's
+   * short description, its SVG hidden, once the description engine has
+   * cached one; otherwise it is the named group. Writes only on a change.
+   * Every render replaces the SVG, so the current one is found each time.
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {boolean} True while the box is a stop still waiting for a name
+   */
+  function updateScrollBox(root) {
+    const box = root.querySelector(":scope > .mermaid");
+    if (!box) return false;
+
+    const scrolls =
+      !root.classList.contains(config.fullscreenClass) &&
+      box.scrollWidth > box.clientWidth + SCROLL_OVERFLOW_TOLERANCE_PX;
+    const cachedName = root.dataset.svgAccessibleName || "";
+    const named = scrolls && cachedName.trim() !== "";
+
+    let role = null;
+    let label = null;
+    if (scrolls) {
+      role = named ? SCROLL_BOX_NAMED_ROLE : SCROLL_BOX_ROLE;
+      label = named ? cachedName : SCROLL_BOX_LABEL;
+    }
+    writeAttribute(box, "tabindex", scrolls ? "0" : null);
+    writeAttribute(box, "role", role);
+    writeAttribute(box, "aria-label", label);
+
+    // In full screen pan/zoom wraps the SVG, and the box is no stop there, so
+    // the wrapped SVG must be found too or it would stay hidden, unnamed.
+    box
+      .querySelectorAll(DIAGRAM_SVG_IN_BOX)
+      .forEach((svg) => writeAttribute(svg, "aria-hidden", named ? "true" : null));
+
+    showScrollNote(root, box, scrolls);
+
     return (
-      typeof window.MermaidViewControls !== "undefined" &&
-      window.MermaidViewControls !== null &&
-      typeof window.MermaidViewControls.init === "function"
+      scrolls &&
+      !named &&
+      root.getAttribute("data-accessibility-initialized") !==
+        ACCESSIBILITY_FAILED_STATE
     );
   }
 
   /**
-   * Install document-level event delegation for OpenRouter compatibility
+   * Watch one root for its diagram box starting or stopping to scroll. The
+   * root resizes on Expand Width, full screen and the window; the diagram
+   * resizes when its size is applied. Every render replaces the SVG, so the
+   * current one is re-found on each callback. While the box is a stop with no
+   * name yet, it is re-checked on a timer and on focus (parcel 9e).
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {{disconnect: Function}|null} Disconnected by unbindRecord
    */
-  function installEventDelegation() {
-    if (state.eventDelegationInstalled) {
-      logDebug("[Mermaid View Controls] Event delegation already installed");
+  function watchScrollBox(root) {
+    if (typeof ResizeObserver !== "function") return null;
+
+    let watchedSvg = null;
+    let nameTimer = null;
+    const reconcile = () => {
+      if (nameTimer !== null) {
+        clearTimeout(nameTimer);
+        nameTimer = null;
+      }
+      if (updateScrollBox(root)) {
+        nameTimer = setTimeout(reconcile, SCROLL_NAME_RETRY_MS);
+      }
+    };
+    const observer = new ResizeObserver(() => {
+      reconcile();
+      const svg = root.querySelector(":scope > .mermaid > svg");
+      if (svg && svg !== watchedSvg) {
+        if (watchedSvg) observer.unobserve(watchedSvg);
+        observer.observe(svg);
+        watchedSvg = svg;
+      }
+    });
+    observer.observe(root);
+    root.addEventListener("focusin", reconcile);
+
+    return {
+      disconnect() {
+        observer.disconnect();
+        root.removeEventListener("focusin", reconcile);
+        if (nameTimer !== null) clearTimeout(nameTimer);
+        nameTimer = null;
+      },
+    };
+  }
+
+  /**
+   * Find the root's existing view toolbar and its two buttons, if complete
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {Object|null} The toolbar and buttons, or null
+   */
+  function findExistingToolbar(root) {
+    const toolbar = root.querySelector(`.${config.viewControlsClass}`);
+    if (!toolbar) return null;
+
+    const widthButton = toolbar.querySelector('button[id^="toggle-width-"]');
+    const fullscreenButton = toolbar.querySelector(
+      'button[id^="toggle-fullscreen-"]'
+    );
+    if (!widthButton || !fullscreenButton) {
+      logWarn(
+        "[Mermaid View Controls] Incomplete view toolbar found; replacing it",
+        root.id
+      );
+      toolbar.remove();
+      return null;
+    }
+    return { toolbar, widthButton, fullscreenButton };
+  }
+
+  /**
+   * Build the view toolbar and insert it as the root's first child
+   * @param {HTMLElement} root - The mermaid container
+   * @returns {Object} The two new buttons
+   */
+  function buildToolbar(root) {
+    const viewControls = document.createElement("div");
+    viewControls.className = config.viewControlsClass;
+    viewControls.setAttribute("role", "toolbar");
+    viewControls.setAttribute("aria-label", "Diagram view controls");
+
+    // Create expand/collapse button
+    const widthButton = createButton(
+      getExpandIcon(),
+      config.expandText,
+      `toggle-width-${root.id}`,
+      "Toggle diagram width"
+    );
+
+    // Create fullscreen button
+    const fullscreenButton = createButton(
+      getFullscreenIcon(),
+      config.fullscreenText,
+      `toggle-fullscreen-${root.id}`,
+      "Toggle fullscreen mode"
+    );
+
+    viewControls.appendChild(widthButton);
+    viewControls.appendChild(fullscreenButton);
+
+    // Insert view controls at the beginning of the container
+    if (root.firstChild) {
+      root.insertBefore(viewControls, root.firstChild);
+    } else {
+      root.appendChild(viewControls);
+    }
+
+    return { widthButton, fullscreenButton };
+  }
+
+  /**
+   * Attach the view controls to one diagram container. Idempotent, keyed on
+   * the node: a second call is a no-op while the buttons it bound are still in
+   * the root. A toolbar already in the root (the bridge's markup copy) is
+   * ADOPTED — its buttons are bound — rather than built beside.
+   * @param {HTMLElement} root - One .mermaid-container
+   */
+  function attach(root) {
+    if (
+      !root ||
+      !root.classList ||
+      !root.classList.contains(MERMAID_CONTAINER_CLASS)
+    ) {
+      logWarn("[Mermaid View Controls] attach needs a .mermaid-container");
       return;
     }
 
-    logInfo(
-      "[Mermaid View Controls] Installing event delegation for OpenRouter mode"
+    prepareModule();
+
+    const existing = records.get(root);
+    if (existing) {
+      if (
+        root.contains(existing.widthButton) &&
+        root.contains(existing.fullscreenButton)
+      ) {
+        return;
+      }
+      // The toolbar this record bound has left the root (the accessibility
+      // core's retry path removes it): release the record and attach afresh.
+      unbindRecord(existing);
+      records.delete(root);
+      attachedCount--;
+    }
+
+    if (!root.id) {
+      root.id = mintContainerId(root);
+      logDebug(`[Mermaid View Controls] Added ID to container: ${root.id}`);
+    }
+
+    const found = findExistingToolbar(root);
+    const buttons = found || buildToolbar(root);
+
+    // An adopted toolbar's button ids must name this root: the exit paths
+    // find the full-screen button by `toggle-fullscreen-${container.id}`.
+    buttons.widthButton.id = `toggle-width-${root.id}`;
+    buttons.fullscreenButton.id = `toggle-fullscreen-${root.id}`;
+
+    const record = {
+      widthButton: buttons.widthButton,
+      fullscreenButton: buttons.fullscreenButton,
+      onWidth: () => toggleWidth(root, buttons.widthButton),
+      onFullscreen: () => toggleFullscreen(root, buttons.fullscreenButton),
+    };
+    record.widthButton.addEventListener("click", record.onWidth);
+    record.fullscreenButton.addEventListener("click", record.onFullscreen);
+    record.scrollObserver = watchScrollBox(root);
+    records.set(root, record);
+
+    root.classList.add(LEGACY_ATTACHED_CLASS);
+    attachedCount++;
+    installGlobalListeners();
+
+    logDebug(
+      `[Mermaid View Controls] Attached to ${root.id} (${
+        found ? "adopted toolbar" : "built toolbar"
+      })`
     );
-
-    // Document-level click handler for width toggle buttons
-    document.addEventListener("click", function (event) {
-      const widthButton = event.target.closest(
-        '.mermaid-view-button[id*="toggle-width-"]'
-      );
-      if (widthButton) {
-        event.preventDefault();
-        const container = widthButton.closest(".mermaid-container");
-        if (container) {
-          fallbackToggleWidth(container, widthButton);
-        }
-      }
-    });
-
-    // Document-level click handler for fullscreen toggle buttons
-    document.addEventListener("click", function (event) {
-      const fullscreenButton = event.target.closest(
-        '.mermaid-view-button[id*="toggle-fullscreen-"]'
-      );
-      if (fullscreenButton) {
-        event.preventDefault();
-        const container = fullscreenButton.closest(".mermaid-container");
-        if (container) {
-          fallbackToggleFullscreen(container, fullscreenButton);
-        }
-      }
-    });
-
-    // Document-level keyboard handler for accessibility
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Enter" || event.key === " ") {
-        const button = event.target;
-        if (button && button.classList.contains("mermaid-view-button")) {
-          event.preventDefault();
-          const container = button.closest(".mermaid-container");
-          if (container) {
-            if (button.id.includes("toggle-width-")) {
-              fallbackToggleWidth(container, button);
-            } else if (button.id.includes("toggle-fullscreen-")) {
-              fallbackToggleFullscreen(container, button);
-            }
-          }
-        }
-      }
-    });
-
-    state.eventDelegationInstalled = true;
-    logInfo("[Mermaid View Controls] Event delegation successfully installed");
   }
 
   /**
-   * Fallback function to toggle width using direct DOM manipulation
-   * @param {HTMLElement} container - The mermaid container
-   * @param {HTMLElement} button - The toggle button
+   * Detach the view controls from one container: remove its two button
+   * listeners and its record, and the global listeners with the last root.
+   * The markup stays.
+   * @param {HTMLElement} root - One .mermaid-container
    */
-  function fallbackToggleWidth(container, button) {
-    try {
-      // Use the existing toggleWidth function which has all the proper logic
-      toggleWidth(container, button);
-      logDebug(
-        "[Mermaid View Controls] Width toggled via fallback using existing system"
-      );
-    } catch (error) {
-      logError(
-        "[Mermaid View Controls] Error in fallback width toggle:",
-        error
-      );
-      // Only if the main function fails, use direct DOM manipulation
-      const isExpanded = container.classList.contains(config.expandedClass);
-      const buttonText = button.querySelector(".button-text");
+  function detach(root) {
+    const record = root ? records.get(root) : null;
+    if (!record) return;
 
-      if (isExpanded) {
-        container.classList.remove(config.expandedClass);
-        if (buttonText) {
-          buttonText.textContent = config.expandText;
-        }
-        button.innerHTML = `${getExpandIcon()} <span class="button-text">${
-          config.expandText
-        }</span>`;
-        button.setAttribute("aria-label", "Expand diagram width");
-        announceToScreenReader("Diagram width collapsed");
-      } else {
-        container.classList.add(config.expandedClass);
-        if (buttonText) {
-          buttonText.textContent = config.collapseText;
-        }
-        button.innerHTML = `${getCollapseIcon()} <span class="button-text">${
-          config.collapseText
-        }</span>`;
-        button.setAttribute("aria-label", "Collapse diagram width");
-        announceToScreenReader("Diagram width expanded");
-      }
-
-      // Trigger resize event to help diagrams adjust
-      window.dispatchEvent(new Event("resize"));
+    unbindRecord(record);
+    records.delete(root);
+    attachedCount--;
+    if (attachedCount <= 0) {
+      attachedCount = 0;
+      removeGlobalListeners();
     }
-  }
 
-  /**
-   * Fallback function to toggle fullscreen using direct DOM manipulation
-   * @param {HTMLElement} container - The mermaid container
-   * @param {HTMLElement} button - The toggle button
-   */
-  function fallbackToggleFullscreen(container, button) {
-    try {
-      // Use the existing toggleFullscreen function which has all the sophisticated logic
-      toggleFullscreen(container, button);
-      logDebug(
-        "[Mermaid View Controls] Fullscreen toggled via fallback using existing system"
-      );
-    } catch (error) {
-      logError(
-        "[Mermaid View Controls] Error in fallback fullscreen toggle, attempting direct approach:",
-        error
-      );
-
-      // If the main function fails, try to use the existing enterFullscreen/exitFullscreen functions
-      try {
-        const isInFullscreen =
-          document.fullscreenElement === container ||
-          container.classList.contains(config.fullscreenClass);
-
-        if (isInFullscreen) {
-          // Use existing exitFullscreen function
-          exitFullscreen(container);
-          logDebug(
-            "[Mermaid View Controls] Fullscreen exited via fallback using existing exitFullscreen"
-          );
-        } else {
-          // Use existing enterFullscreen function
-          enterFullscreen(container, button);
-          logDebug(
-            "[Mermaid View Controls] Fullscreen entered via fallback using existing enterFullscreen"
-          );
-        }
-      } catch (innerError) {
-        logError(
-          "[Mermaid View Controls] Both fallback methods failed:",
-          innerError
-        );
-        // Last resort: basic fullscreen API (this is what was causing the issue)
-        const isInFullscreen = document.fullscreenElement === container;
-
-        if (isInFullscreen) {
-          if (document.exitFullscreen) {
-            document.exitFullscreen();
-          }
-        } else {
-          if (container.requestFullscreen) {
-            container.requestFullscreen();
-          }
-        }
-      }
-    }
+    logDebug(`[Mermaid View Controls] Detached from ${root.id}`);
   }
 
   /**
@@ -289,27 +535,6 @@ const MermaidViewControls = (function () {
       console.log(
         "[Mermaid View Controls] MermaidPanZoom not available, checking for script..."
       );
-
-      // Check if the script exists
-      const scriptExists = Array.from(document.scripts).some((script) =>
-        script.src.includes("mermaid-pan-zoom.js")
-      );
-
-      if (!scriptExists) {
-        console.error(
-          "[Mermaid View Controls] mermaid-pan-zoom.js script not found!"
-        );
-
-        // Try to load the script dynamically as a last resort
-        const script = document.createElement("script");
-        script.src = "mermaid-pan-zoom.js";
-        script.async = true;
-        document.head.appendChild(script);
-
-        console.log(
-          "[Mermaid View Controls] Attempted to load mermaid-pan-zoom.js dynamically"
-        );
-      }
 
       // Listen for the custom event
       const eventListener = (e) => {
@@ -381,82 +606,28 @@ const MermaidViewControls = (function () {
   }
 
   /**
-   * Initialize controls on all Mermaid diagrams
-   * @param {HTMLElement} container - Container element (defaults to document)
+   * Attach the view controls to `root` itself if it is a .mermaid-container,
+   * then to every .mermaid-container inside it. Kept on the API as a wrapper
+   * round attach: the accessibility core's retry path calls
+   * MermaidViewControls.init(container) with the container it means.
+   * @param {HTMLElement|Document} root - Where to look (defaults to document)
    */
-  function init(container = document) {
-    if (!container) {
+  function init(root = document) {
+    if (!root) {
       console.warn("[Mermaid View Controls] No container provided");
       return;
     }
 
-    // Check if fullscreen is supported
-    state.fullscreenEnabled =
-      document.fullscreenEnabled ||
-      document.webkitFullscreenEnabled ||
-      document.mozFullScreenEnabled ||
-      document.msFullscreenEnabled;
+    prepareModule();
 
-    // Create screen reader announcer
-    createScreenReaderAnnouncer();
-
-    // Find all Mermaid containers without view controls
-    const mermaidContainers = container.querySelectorAll(
-      ".mermaid-container:not(.view-controls-added)"
-    );
-
-    if (mermaidContainers.length === 0) {
-      return;
+    if (root.classList && root.classList.contains(MERMAID_CONTAINER_CLASS)) {
+      attach(root);
     }
 
-    console.log(
-      `[Mermaid View Controls] Adding controls to ${mermaidContainers.length} diagrams`
-    );
-
-    // Add controls to each diagram
-    mermaidContainers.forEach((container, index) => {
-      addViewControlsToContainer(container, index);
-    });
-
-    // Set up global event listeners for fullscreen changes and escape key
-    setupGlobalEventListeners();
-
-    // Check if we need event delegation for OpenRouter mode
-    if (isOpenRouterMode() && !isMermaidViewControlsAvailable()) {
-      logInfo(
-        "[Mermaid View Controls] OpenRouter mode detected with unavailable MermaidViewControls - installing event delegation"
-      );
-      installEventDelegation();
-    } else {
-      logDebug("[Mermaid View Controls] Event delegation not needed", {
-        openRouterMode: isOpenRouterMode(),
-        mermaidViewControlsAvailable: isMermaidViewControlsAvailable(),
-      });
-    }
-  }
-
-  /**
-   * Set up global event listeners
-   */
-  function setupGlobalEventListeners() {
-    // Only add these listeners once
-    if (document.querySelector(".view-controls-added")) {
-      return;
-    }
-
-    // Listen for fullscreen change events
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
-    document.addEventListener("mozfullscreenchange", handleFullscreenChange);
-    document.addEventListener("MSFullscreenChange", handleFullscreenChange);
-
-    // Listen for escape key to exit fullscreen
-    document.addEventListener("keydown", handleEscapeKey);
-
-    // Set a periodic check to ensure buttons reflect correct state
-    setInterval(resetAllFullscreenButtons, 2000); // Check every 2 seconds
-
-    console.log("[Mermaid View Controls] Global event listeners set up");
+    if (typeof root.querySelectorAll !== "function") return;
+    root
+      .querySelectorAll(`.${MERMAID_CONTAINER_CLASS}`)
+      .forEach((container) => attach(container));
   }
 
   /**
@@ -497,73 +668,6 @@ const MermaidViewControls = (function () {
     setTimeout(() => {
       elements.announcer.textContent = "";
     }, 3000);
-  }
-
-  /**
-   * Add view controls to a specific container
-   * @param {HTMLElement} container - The mermaid container
-   * @param {number} index - Container index for unique IDs
-   */
-  function addViewControlsToContainer(container, index) {
-    // Skip if already processed
-    if (container.classList.contains("view-controls-added")) {
-      return;
-    }
-
-    // Mark as processed
-    container.classList.add("view-controls-added");
-
-    // Create unique ID for this container if not present
-    const containerId =
-      container.id || `mermaid-container-${index}-${Date.now()}`;
-    if (!container.id) {
-      container.id = containerId;
-      console.log(
-        `[Mermaid View Controls] Added ID to container: ${containerId}`
-      );
-    }
-
-    // Create view controls container
-    const viewControls = document.createElement("div");
-    viewControls.className = config.viewControlsClass;
-    viewControls.setAttribute("role", "toolbar");
-    viewControls.setAttribute("aria-label", "Diagram view controls");
-
-    // Create expand/collapse button
-    const expandButton = createButton(
-      getExpandIcon(),
-      config.expandText,
-      `toggle-width-${containerId}`,
-      "Toggle diagram width"
-    );
-
-    // Create fullscreen button
-    const fullscreenButton = createButton(
-      getFullscreenIcon(),
-      config.fullscreenText,
-      `toggle-fullscreen-${containerId}`,
-      "Toggle fullscreen mode"
-    );
-
-    // Add event listeners
-    expandButton.addEventListener("click", function () {
-      toggleWidth(container, expandButton);
-    });
-
-    fullscreenButton.addEventListener("click", function () {
-      toggleFullscreen(container, fullscreenButton);
-    });
-
-    // Add buttons to controls
-    viewControls.appendChild(expandButton);
-    viewControls.appendChild(fullscreenButton);
-
-    // Insert view controls at the beginning of the container
-    if (container.firstChild) {
-      container.insertBefore(viewControls, container.firstChild);
-    } else {
-      container.appendChild(viewControls);
-    }
   }
 
   /**
@@ -665,71 +769,14 @@ const MermaidViewControls = (function () {
       console.log(
         "[Mermaid View Controls] Using native fullscreen (forced by configuration)"
       );
-      // Native fullscreen code
-      // Hide the width toggle button immediately
-      toggleWidthButtonVisibility(container, false);
-
-      // Hide mermaid-controls div for more diagram space
-      toggleMermaidControlsVisibility(container, false);
-
-      // Mark this container as the active fullscreen element and add class for CSS styling
-      state.activeFullscreenContainer = container;
-      container.classList.add(config.fullscreenClass);
-
-      // Different vendor prefixes
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
-      } else if (container.webkitRequestFullscreen) {
-        container.webkitRequestFullscreen();
-      } else if (container.mozRequestFullScreen) {
-        container.mozRequestFullScreen();
-      } else if (container.msRequestFullscreen) {
-        container.msRequestFullscreen();
-      } else {
-        // If none of the above worked, fall back to CSS
+      // No request method at all: fall back to CSS. A throw is NOT caught
+      // here, exactly as before — only the auto branch below catches.
+      if (!enterNativeFullscreen(container)) {
         console.log(
           "[Mermaid View Controls] Native fullscreen API failed, falling back to CSS fullscreen"
         );
         enableCssFullscreen(container, button);
-        return;
       }
-
-      // Update button appearance right away
-      updateFullscreenButtonInContainer(container, true);
-
-      // Check and wait for MermaidPanZoom to be available
-      ensurePanZoomAvailable()
-        .then((panZoom) => {
-          console.log(
-            "[Mermaid View Controls] Activating pan-zoom for container:",
-            container.id
-          );
-          panZoom.activateForContainer(container);
-
-          // Auto-fit the diagram after a short delay - use a longer delay to ensure everything is ready
-          setTimeout(() => {
-            if (panZoom.fitDiagramToScreen) {
-              // Call fitDiagramToScreen multiple times with increasing delays
-              // to ensure proper scaling as the fullscreen transition completes
-              panZoom.fitDiagramToScreen(container.id);
-
-              setTimeout(() => {
-                panZoom.fitDiagramToScreen(container.id);
-              }, 300);
-
-              setTimeout(() => {
-                panZoom.fitDiagramToScreen(container.id);
-              }, 600);
-            }
-          }, 100);
-        })
-        .catch((error) => {
-          console.warn("[Mermaid View Controls] MermaidPanZoom error:", error);
-        });
-
-      announceToScreenReader(
-        "Entered fullscreen mode with pan and zoom controls"
-      );
       return;
     }
 
@@ -739,69 +786,10 @@ const MermaidViewControls = (function () {
       console.log("[Mermaid View Controls] Using native fullscreen API");
 
       try {
-        // Hide the width toggle button immediately
-        toggleWidthButtonVisibility(container, false);
-
-        // Hide mermaid-controls div for more diagram space
-        toggleMermaidControlsVisibility(container, false);
-
-        // Mark this container as the active fullscreen element and add class for CSS styling
-        state.activeFullscreenContainer = container;
-        container.classList.add(config.fullscreenClass);
-
-        // Different vendor prefixes
-        if (container.requestFullscreen) {
-          container.requestFullscreen();
-        } else if (container.webkitRequestFullscreen) {
-          container.webkitRequestFullscreen();
-        } else if (container.mozRequestFullScreen) {
-          container.mozRequestFullScreen();
-        } else if (container.msRequestFullscreen) {
-          container.msRequestFullscreen();
-        } else {
-          // If none of the above worked, fall back to CSS
+        if (!enterNativeFullscreen(container)) {
+          // If none of the vendor methods exists, fall back to CSS
           throw new Error("No requestFullscreen method available");
         }
-
-        // Update button appearance right away
-        updateFullscreenButtonInContainer(container, true);
-
-        // Check and wait for MermaidPanZoom to be available
-        ensurePanZoomAvailable()
-          .then((panZoom) => {
-            console.log(
-              "[Mermaid View Controls] Activating pan-zoom for container:",
-              container.id
-            );
-            panZoom.activateForContainer(container);
-
-            // Auto-fit the diagram after a short delay - use a longer delay to ensure everything is ready
-            setTimeout(() => {
-              if (panZoom.fitDiagramToScreen) {
-                // Call fitDiagramToScreen multiple times with increasing delays
-                // to ensure proper scaling as the fullscreen transition completes
-                panZoom.fitDiagramToScreen(container.id);
-
-                setTimeout(() => {
-                  panZoom.fitDiagramToScreen(container.id);
-                }, 300);
-
-                setTimeout(() => {
-                  panZoom.fitDiagramToScreen(container.id);
-                }, 600);
-              }
-            }, 100);
-          })
-          .catch((error) => {
-            console.warn(
-              "[Mermaid View Controls] MermaidPanZoom error:",
-              error
-            );
-          });
-
-        announceToScreenReader(
-          "Entered fullscreen mode with pan and zoom controls"
-        );
       } catch (err) {
         console.warn("[Mermaid View Controls] Fullscreen API error:", err);
         enableCssFullscreen(container, button);
@@ -811,6 +799,89 @@ const MermaidViewControls = (function () {
       console.log("[Mermaid View Controls] Using CSS-based fullscreen");
       enableCssFullscreen(container, button);
     }
+  }
+
+  /**
+   * Ask the browser for native full screen on the container, through
+   * whichever vendor method exists
+   * @param {HTMLElement} container - The mermaid container
+   * @returns {boolean} False when no request method exists at all
+   */
+  function requestNativeFullscreen(container) {
+    // Different vendor prefixes
+    if (container.requestFullscreen) {
+      container.requestFullscreen();
+    } else if (container.webkitRequestFullscreen) {
+      container.webkitRequestFullscreen();
+    } else if (container.mozRequestFullScreen) {
+      container.mozRequestFullScreen();
+    } else if (container.msRequestFullscreen) {
+      container.msRequestFullscreen();
+    } else {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Enter native full screen — the one path for both the forced-native and
+   * the auto branch of enterFullscreen (F11). Hides the width toggle and the
+   * diagram toolbar, marks the container, requests full screen, then updates
+   * the button, activates pan/zoom with fits at FULLSCREEN_DELAYS_MS, and
+   * announces. When no request method exists it returns false having done
+   * only the first four of those, as both old blocks did; each caller keeps
+   * its own fallback to CSS. A throw propagates to the caller.
+   * @param {HTMLElement} container - The mermaid container
+   * @returns {boolean} False when no request method exists
+   */
+  function enterNativeFullscreen(container) {
+    // Hide the width toggle button immediately
+    toggleWidthButtonVisibility(container, false);
+
+    // Hide mermaid-controls div for more diagram space
+    toggleMermaidControlsVisibility(container, false);
+
+    // Mark this container as the active fullscreen element and add class for CSS styling
+    state.activeFullscreenContainer = container;
+    container.classList.add(config.fullscreenClass);
+
+    if (!requestNativeFullscreen(container)) return false;
+
+    // Update button appearance right away
+    updateFullscreenButtonInContainer(container, true);
+
+    // Check and wait for MermaidPanZoom to be available
+    ensurePanZoomAvailable()
+      .then((panZoom) => {
+        console.log(
+          "[Mermaid View Controls] Activating pan-zoom for container:",
+          container.id
+        );
+        panZoom.activateForContainer(container);
+
+        // Auto-fit the diagram after a short delay - use a longer delay to ensure everything is ready
+        setTimeout(() => {
+          if (panZoom.fitDiagramToScreen) {
+            // Call fitDiagramToScreen multiple times with increasing delays
+            // to ensure proper scaling as the fullscreen transition completes
+            panZoom.fitDiagramToScreen(container.id);
+
+            FULLSCREEN_DELAYS_MS.nativeFitRetries.forEach((delay) => {
+              setTimeout(() => {
+                panZoom.fitDiagramToScreen(container.id);
+              }, delay);
+            });
+          }
+        }, FULLSCREEN_DELAYS_MS.nativeFirstFit);
+      })
+      .catch((error) => {
+        console.warn("[Mermaid View Controls] MermaidPanZoom error:", error);
+      });
+
+    announceToScreenReader(
+      "Entered fullscreen mode with pan and zoom controls"
+    );
+    return true;
   }
 
   /**
@@ -891,7 +962,7 @@ const MermaidViewControls = (function () {
               );
               panZoom.fitDiagramToScreen(container.id);
             }
-          }, 300);
+          }, FULLSCREEN_DELAYS_MS.cssFit);
         }
       })
       .catch((error) => {
@@ -1106,11 +1177,11 @@ const MermaidViewControls = (function () {
               // Call again after a delay to ensure accurate dimensions
               setTimeout(() => {
                 window.MermaidPanZoom.fitDiagramToScreen(container.id);
-              }, 200);
+              }, FULLSCREEN_DELAYS_MS.changeFitRetry);
             }
-          }, 100);
+          }, FULLSCREEN_DELAYS_MS.changeFirstFit);
         }
-      }, 50);
+      }, FULLSCREEN_DELAYS_MS.changeActivate);
     } else {
       // We've exited fullscreen mode
       const container = state.activeFullscreenContainer;
@@ -1471,31 +1542,25 @@ const MermaidViewControls = (function () {
         </svg>`;
   }
 
-  // Initialize when DOM is fully loaded
-  document.addEventListener("DOMContentLoaded", function () {
-    init();
-
-    // Also observe changes to handle dynamically added diagrams
-    const observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        if (mutation.type === "childList") {
-          init(document.body);
-        }
-      });
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
-  });
+  // No page scan and no body-wide observer (F4): figures are attached from
+  // the render, through MermaidControls.addControlsToContainer. The
+  // announcer is still created at DOMContentLoaded, as it always was, so it
+  // exists long before anything is written to it (parcel 5 owns announcers).
+  document.addEventListener("DOMContentLoaded", prepareModule);
 
   // Public API
   return {
     init: init,
+    attach: attach,
+    detach: detach,
     toggleWidth: toggleWidth,
     toggleFullscreen: toggleFullscreen,
     exitFullscreen: exitFullscreen,
     toggleMermaidControlsVisibility: toggleMermaidControlsVisibility,
   };
 })();
+
+// On window (F1): a top-level const is a global binding but not a window
+// property, so every `window.MermaidViewControls` check — this file's own
+// and mermaid-accessibility-core.js's — used to read undefined.
+window.MermaidViewControls = MermaidViewControls;

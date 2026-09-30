@@ -1189,6 +1189,10 @@ window.MermaidParseAdapter = (function () {
     "    Animal <|-- Duck",
     "    Animal : +int age",
     "    Car o-- Wheel",
+    // Two notes, one unattached and one attached, so the self-check can pin
+    // the notes container and its declaration order (11.17.2 made it a Map).
+    '    note "first note"',
+    '    note for Animal "second note"',
   ].join("\n");
 
   /**
@@ -1257,6 +1261,32 @@ window.MermaidParseAdapter = (function () {
     }
 
     return { kind: kind, markerAt: markerAt, dashed: dashed };
+  }
+
+  /**
+   * Turn the class db's notes container into an Array.
+   *
+   * Mermaid 11.6.0 returns getNotes() as an Array; 11.17.2 returns a Map
+   * keyed "note0", "note1" … whose values() run in declaration order (both
+   * measured, register item 99 session 3). Any other shape THROWS: an empty
+   * list would read as a diagram with no notes and every note would vanish
+   * from the description without a sound.
+   *
+   * @param {*} notes - The value db.getNotes() returned
+   * @returns {Array} The note objects, in declaration order
+   */
+  function classNotesToArray(notes) {
+    if (Array.isArray(notes)) {
+      return notes;
+    }
+    if (notes instanceof Map) {
+      return Array.from(notes.values());
+    }
+    const shape = notes === null ? "null" : typeof notes;
+    logError(`Class db getNotes() returned an unreadable shape (${shape})`);
+    throw new Error(
+      `Class db getNotes() returned neither an Array nor a Map (${shape})`
+    );
   }
 
   /**
@@ -1386,7 +1416,7 @@ window.MermaidParseAdapter = (function () {
     // Item 19, verdict C-FULL (8 August 2026) for `text`. `attachedTo` stays
     // RAW: it is a join key the consumer looks up in a Map built on the raw
     // classes[].name.
-    const notes = db.getNotes().map((note) => ({
+    const notes = classNotesToArray(db.getNotes()).map((note) => ({
       text: decodeAuthorText(note.text),
       attachedTo: typeof note.class === "string" ? note.class : "",
     }));
@@ -1544,6 +1574,17 @@ window.MermaidParseAdapter = (function () {
           const first = Array.isArray(relations) ? relations[0] : undefined;
           const second = Array.isArray(relations) ? relations[1] : undefined;
 
+          // Notes go through the SAME helper normaliseClass uses. An
+          // unreadable shape makes the helper throw; that is caught here so
+          // the assertion below reads false instead of the check falling
+          // into the generic "parse resolves" branch.
+          let notes = null;
+          try {
+            notes = classNotesToArray(db.getNotes());
+          } catch (error) {
+            notes = null;
+          }
+
           // Each entry: [assertion name, predicate]. The first false predicate
           // fails the check and is named in the single ERROR line. The
           // predicates are EVALUATED HERE, inside the slot, so the verdict
@@ -1591,6 +1632,15 @@ window.MermaidParseAdapter = (function () {
                 typeof db.getAccTitle() === "string" &&
                 typeof db.getAccDescription() === "string" &&
                 typeof db.getDiagramTitle() === "string",
+            ],
+            [
+              "notes container is readable as two notes in declaration order (first note, then second note attached to Animal)",
+              Array.isArray(notes) &&
+                notes.length === 2 &&
+                notes[0].text === "first note" &&
+                typeof notes[0].class !== "string" &&
+                notes[1].text === "second note" &&
+                notes[1].class === "Animal",
             ],
           ];
         });
@@ -6908,6 +6958,3413 @@ window.MermaidParseAdapter = (function () {
     return blockHealthy;
   }
 
+  // ---------------------------------------------------------------------
+  // C4 — the eleventh surface, and the fourth read entirely from the db
+  //
+  // ONE SURFACE FOR FIVE DIAGRAM KINDS. `C4Context`, `C4Container`,
+  // `C4Component`, `C4Dynamic` and `C4Deployment` all detect as `c4` and all
+  // share one grammar, one db and one renderer (census
+  // docs/mermaid-item-84-census-1-2026-09-16.md § Q1). The kind is recoverable
+  // ONLY from the db, through getC4Type(), and is delivered here as
+  // `diagramType`. Nothing may read it off a detection key — `unsupported:c4`
+  // is identical for all five.
+  //
+  // WHY THERE IS NO SOURCE READER HERE. Everything the canvas draws about
+  // elements, boundaries and relationships is in the db in declaration order
+  // with the author's own aliases (census § Q9). Three facts live only in the
+  // source and a sighted reader is given none of them either: a frontmatter
+  // `title:` reaches neither getTitle() nor the canvas; the four directional
+  // spellings `Rel_U`/`_D`/`_L`/`_R` draw identically to a plain `Rel`; and
+  // which of `title` and `accTitle:` supplied the title is unrecoverable,
+  // because both write one slot and the last writer wins. This is the SEQUENCE
+  // and BLOCK answer, not the quadrant one.
+  //
+  // THE DECODE IS decodePlaceholders, ON EVERY AUTHOR STRING, AND IT IS THE
+  // OPPOSITE OF BLOCK'S ANSWER. Census § Q7 rendered five probes at
+  // securityLevel "strict" and found ZERO <foreignObject> elements on every
+  // one — c4 draws into SVG <text> — then ran both candidate transforms
+  // against the delivered bytes on eight references spanning block labels, rel
+  // labels and a rel technology: decodePlaceholders agrees with the canvas on
+  // all eight, and decodeAuthorText DISAGREES ON FOUR. The block census
+  // reached the opposite verdict by the same method on the same day's
+  // template. Do not inherit a decode from a neighbouring surface.
+  //
+  // NO accTitle FIELD AND NO accDescr FIELD — a MEASURED REFUSAL, not an
+  // omission, and for two DIFFERENT measured reasons (census § Q6
+  // CONTRADICTION 2 and § Q8 CONTRADICTION 4).
+  //   - getAccTitle() returned "" on every one of the census's fourteen parsed
+  //     sources, INCLUDING the three that declare an `accTitle:`. The
+  //     directive parses on this grammar — unlike block, where it is a hard
+  //     parse error — and its text lands in the TITLE slot instead. A field
+  //     here would be permanently empty and would imply an author route that
+  //     does not reach it.
+  //   - getAccDescription() is Mermaid's SHARED store, and a c4 parse does NOT
+  //     clear it though a foreign parse does. So a second c4 diagram whose
+  //     author wrote no description inherits the FIRST one's, and a field here
+  //     would attach one author's description to another author's diagram with
+  //     nothing in the value to say so. An absence gets noticed; a plausible
+  //     sentence about the wrong diagram does not.
+  // CLAUSE X3 IS UNAFFECTED AND MUST NOT BE "FIXED" BY READING THE DB. The
+  // core reaches the author's own accTitle and accDescr by a regex over the
+  // RAW SOURCE (mermaid-accessibility-utils.js), never through this db, which
+  // is exactly why the broken getter and the leaking store cannot damage it.
+  //
+  // THE TITLE IS DELIVERED, AND THE RULING IS RECORDED RATHER THAN INFERRED.
+  // Design-seat ruling of 16 September 2026, written into census § Q9: the
+  // `title` field stays, sourced from getTitle(), and a generator narrates it
+  // as the diagram's title whoever wrote it. The canvas draws that string as
+  // the visible title either way and a sighted reader is shown it with no
+  // provenance; clause X3 lifts an author's accTitle onto the short tier by
+  // the raw-source route, so a title sentence is at worst a repetition and
+  // never a contradiction; and the db cannot report which statement won, so a
+  // qualified delivery would be qualified from a guess.
+  //
+  // THE GETTER IS getTitle, NOT getDiagramTitle (census § Q6). getDiagramTitle
+  // is `undefined` on this db, so a presence check written in the other
+  // surfaces' spelling reports c4 as carrying no title at all, which is wrong.
+  // The self-check pins both halves.
+  //
+  // THE DB IS A SHARED SINGLETON AND THE WHOLE PAYLOAD CROSSES (census § Q8):
+  // `dbA === dbB` measured true across two parses, with the first handle's
+  // getters afterwards returning the SECOND diagram's type, shapes and title.
+  // Every read below therefore happens inside this parse's own queue slot and
+  // is copied into this adapter's own objects in the SAME TICK. The
+  // concurrency lane asserts the PAYLOAD for the same reason.
+  //
+  // `null` AND `""` ARE DIFFERENT ANSWERS HERE, AND THE DIFFERENCE IS THE DB'S
+  // RATHER THAN THIS SURFACE'S. `null` means the db carried NO SUCH KEY — a
+  // three-argument element has no `techn` key at all, and a boundary that is
+  // not a deployment node has no technology to give, and no boundary but a
+  // deployment node has a `descr` key at all. `""` means the db handed
+  // out a wrapper holding the empty string, which is what an undeclared
+  // relationship technology or description does, and what a deployment node
+  // with no fourth argument does. A consumer that treats the
+  // two alike will say "no technology" for both, which is right; one that
+  // needs to know whether the author could have written one has the
+  // distinction available and is not asked to infer it.
+  //
+  // FOUR ACCESSORS TAKE AN ARGUMENT AND RETURN EVERYTHING WHEN GIVEN
+  // `undefined` — getC4ShapeArray and getBoundarys are the element and
+  // boundary accessors, and a tool whose safety rule declines one-argument
+  // getters sees NONE of this type's payload. `getBoundaries` and
+  // `getBoundarys` are the SAME ARRAY by identity; this surface picks
+  // getBoundarys and says so.
+  const C4_DEPLOYMENT_TYPE = "C4Deployment";
+
+  // The synthetic boundary Mermaid manufactures at index 0 of every parse,
+  // whose alias, label and type are all the machine string "global". It is NOT
+  // drawn on the canvas, every top-level shape's parentBoundary points at it,
+  // and a diagram with no author boundaries still delivers it (census § Q4).
+  // IT IS DELIVERED RATHER THAN HIDDEN, because a consumer resolving a
+  // parentBoundary needs it to resolve to something — but it must never be
+  // spoken and never be counted as an author's boundary, and naming it here is
+  // what lets a consumer exclude it deliberately rather than by a string
+  // literal of its own.
+  const C4_SYNTHETIC_ROOT_ALIAS = "global";
+
+  // The three control vocabularies, delivered VERBATIM and never decoded: a
+  // shape's kind (`person`, `system_db`, `container`…), an ordinary boundary's
+  // kind (`global`, `ENTERPRISE`, `SYSTEM`, `CONTAINER`) and a relationship's
+  // type (`rel`, `birel`, `rel_u`, `rel_d`, `rel_l`, `rel_r`, `rel_b`). They
+  // are machine tokens a consumer switches on, so a transform there would be a
+  // transform on a control value; every OTHER delivered string is author text
+  // and is decoded. Naming the vocabulary — deciding how `system_db` is spoken
+  // — is a later session's table, and inventing one here would put a wording
+  // decision in the adapter where no fixture could reach it.
+  const C4_DELIVERED_KEYS = Object.freeze([
+    "diagramType",
+    "title",
+    "shapes",
+    "boundaries",
+    "rels",
+  ]);
+  const C4_DELIVERED_SHAPE_KEYS = Object.freeze([
+    "alias",
+    "kind",
+    "label",
+    "descr",
+    "techn",
+    "parentBoundary",
+    "sprite",
+    "tags",
+    "link",
+  ]);
+  // SIX KEYS SINCE 16 SEPTEMBER 2026, NOT FIVE. `descr` was added by the gold
+  // document's ruling CR10, which is the only case in this arc where a GOLD
+  // RULING obliged the SURFACE to grow: measurement M1 found that a deployment
+  // node's FOURTH argument is drawn by the canvas as its own <text> element and
+  // was reachable by no generator, so a sighted reader was shown a sentence a
+  // listener could not be given. The ruling required the key to land BEFORE any
+  // c4 module registered, so the module could be built against a complete
+  // surface rather than against a target it could not emit.
+  const C4_DELIVERED_BOUNDARY_KEYS = Object.freeze([
+    "alias",
+    "label",
+    "kind",
+    "techn",
+    "descr",
+    "parentBoundary",
+  ]);
+  const C4_DELIVERED_REL_KEYS = Object.freeze([
+    "type",
+    "from",
+    "to",
+    "label",
+    "techn",
+    "descr",
+  ]);
+
+  let c4MemoCode = null;
+  let c4MemoPromise = null;
+  let c4Healthy = null;
+  let c4SelfCheckStarted = false;
+  let c4SelfCheckPromise = null;
+
+  /**
+   * Read one WRAPPED author string off a db object and decode it.
+   *
+   * `label`, `descr`, `techn` and `typeC4Shape` on a shape, `label` and `type`
+   * on a boundary, and `label`, `techn` and `descr` on a relationship are each
+   * `{ text: … }` and never a bare string (census §§ Q3, Q4, Q5). An
+   * unlabelled field delivers `{ text: "" }` rather than undefined — but
+   * `techn` is an ABSENT KEY on every three-argument shape, which is the case
+   * this guard exists for.
+   *
+   * @param {Object|undefined} wrapped - A db wrapper, or undefined
+   * @returns {string|null} The decoded text, or null when the key is absent
+   */
+  function c4WrappedText(wrapped) {
+    if (!wrapped || typeof wrapped.text !== "string") {
+      return null;
+    }
+    return decodePlaceholders(wrapped.text);
+  }
+
+  /**
+   * Read one BARE author string off a db object and decode it.
+   *
+   * `sprite`, `tags` and `link` are own keys holding `undefined` when the
+   * author declares none — invisible to JSON.stringify, which is why the
+   * census read them with Object.keys — and bare strings when declared.
+   *
+   * @param {*} value - A db value
+   * @returns {string|null} The decoded string, or null when not a string
+   */
+  function c4BareText(value) {
+    return typeof value === "string" ? decodePlaceholders(value) : null;
+  }
+
+  /**
+   * Copy ONE db element into this surface's own object.
+   *
+   * `techn` IS NULL ON A THREE-ARGUMENT SHAPE BECAUSE THE KEY IS ABSENT, NOT
+   * EMPTY (census § Q3). A `Person` in a container diagram carries no `techn`
+   * key at all while every `Container*` beside it does, so a consumer reading
+   * `shape.techn.text` unguarded throws on the first person in exactly the
+   * diagram where technology is expected to be present. One absent case per
+   * field is delivered here so no consumer has to know that.
+   *
+   * @param {Object} raw - A db shape object
+   * @returns {Object} The delivered element
+   */
+  function copyC4Shape(raw) {
+    return {
+      alias: c4BareText(raw.alias) || "",
+      // VERBATIM, never decoded — see the control-vocabulary note above. The
+      // canvas draws this token as a stereotype, `<<person>>`, so a sighted
+      // reader IS told the kind and a description that omits it withholds
+      // something the canvas gives (census § Q3).
+      kind:
+        raw.typeC4Shape && typeof raw.typeC4Shape.text === "string"
+          ? raw.typeC4Shape.text
+          : "",
+      label: c4WrappedText(raw.label),
+      descr: c4WrappedText(raw.descr),
+      techn: c4WrappedText(raw.techn),
+      // The author's own alias of the containing boundary, or the synthetic
+      // root's. Never "" on a parsed shape.
+      parentBoundary: c4BareText(raw.parentBoundary) || "",
+      // NONE OF THESE THREE IS DRAWN, measured (census § Q3): a named sprite
+      // draws nothing — the one <image> per person is the person glyph — tags
+      // appear in no <text>, and there are ZERO <a> elements at strict. They
+      // are delivered because they are the author's own declarations, not
+      // because a reader is owed them.
+      sprite: c4BareText(raw.sprite),
+      tags: c4BareText(raw.tags),
+      link: c4BareText(raw.link),
+    };
+  }
+
+  /**
+   * Copy ONE db boundary into this surface's own object.
+   *
+   * `type.text` MEANS TWO DIFFERENT THINGS AND THE FIELD CARRIES NO FLAG —
+   * census § Q4, CONTRADICTION 1. On an `Enterprise_Boundary`, a
+   * `System_Boundary`, a `Container_Boundary` and the synthetic root it is an
+   * upper-case machine token naming what SORT of boundary this is. On a
+   * DEPLOYMENT NODE the same slot holds the author's own second argument, a
+   * technology string — `"Ubuntu 16.04 LTS"`, `"Apache Tomcat 8.x"` — and the
+   * canvas agrees, drawing it bracketed exactly as it draws a container's
+   * technology and drawing no stereotype at all.
+   *
+   * IT FAILS IN THE DIRECTION THAT PRODUCES CONFIDENT NONSENSE. A surface that
+   * mapped `type.text` through a kind vocabulary would narrate "a boundary of
+   * type Ubuntu 16.04 LTS", or drop the technology entirely, and both read as
+   * ordinary output. So the slot is split here into TWO delivered fields,
+   * exactly one of which is ever non-null, and the discriminator is the
+   * sibling `nodeType` key, present only on deployment nodes. getC4Type() is
+   * checked first, as the census instructs, so the per-boundary key test is
+   * never the only thing standing between a kind and a technology.
+   *
+   * THE DECODE FOLLOWS THE MEANING, not the slot: a kind is a control token
+   * and is verbatim, a technology is author text and is decoded.
+   *
+   * `descr` IS THE SIXTH KEY AND IS READ UNCONDITIONALLY, NOT GATED ON THE
+   * DISCRIMINATOR (gold ruling CR10, 16 September 2026). Measured on this
+   * build, 16 September 2026, across the six gold exemplars and the S1 source:
+   * the key is PRESENT on every deployment node — carrying `{ text: "" }` when
+   * the author wrote no fourth argument and their text when they did — and
+   * ABSENT on the synthetic root and on every `Enterprise_Boundary`,
+   * `System_Boundary`, `Container_Boundary`, bare `Boundary` and
+   * custom-kind `Boundary` read.
+   *
+   * SO AN ABSENT KEY DELIVERS null AND AN EMPTY WRAPPER DELIVERS "", which is
+   * this surface's standing convention applied unchanged rather than a new one
+   * — `c4WrappedText` supplies both by construction. The distinction is worth
+   * keeping: "" says the author declared a deployment node and left its fourth
+   * argument empty, and null says this sort of boundary carries no such slot at
+   * all. Reading it WITHOUT the `nodeType` gate is deliberate: if a later
+   * Mermaid starts carrying a description on an ordinary boundary, the surface
+   * delivers it rather than dropping it silently, and a gated read would have
+   * to be found and changed by someone who knew to look.
+   *
+   * @param {Object} raw - A db boundary object
+   * @param {boolean} isDeploymentDiagram - getC4Type() === "C4Deployment"
+   * @returns {Object} The delivered boundary
+   */
+  function copyC4Boundary(raw, isDeploymentDiagram) {
+    const isDeploymentNode =
+      isDeploymentDiagram &&
+      Object.prototype.hasOwnProperty.call(raw, "nodeType");
+    const slot =
+      raw.type && typeof raw.type.text === "string" ? raw.type.text : null;
+
+    return {
+      alias: c4BareText(raw.alias) || "",
+      label: c4WrappedText(raw.label),
+      kind: isDeploymentNode ? null : slot,
+      techn: isDeploymentNode ? decodePlaceholders(slot) : null,
+      // CR10's sixth key. null where the db carries no such key, "" where it
+      // hands out an empty wrapper — see the note above.
+      descr: c4WrappedText(raw.descr),
+      // "" on the synthetic root, and the parent's alias on everything else.
+      parentBoundary: c4BareText(raw.parentBoundary) || "",
+    };
+  }
+
+  /**
+   * Copy ONE db relationship into this surface's own object.
+   *
+   * THE FOUR-ARGUMENT FORM IS TECHNOLOGY, NOT DESCRIPTION (census § Q5).
+   * `Rel(a, b, "Uses", "HTTPS")` delivers label "Uses", techn "HTTPS" and
+   * descr ""; the description is the FIFTH argument. A surface that read the
+   * fourth as a description would narrate a protocol as prose.
+   *
+   * THERE IS NO ID ON A RELATIONSHIP, so two identical rels are
+   * indistinguishable except by index, and `from`/`to` are the AUTHOR'S OWN
+   * aliases — quotable against the elements above with no lookup table.
+   *
+   * `type` IS DELIVERED VERBATIM AND ALL SEVEN SPELLINGS ARE DISTINGUISHED.
+   * WHAT THE SEVEN MEAN IS A GOLD QUESTION AND IS DELIBERATELY NOT DECIDED
+   * HERE, but the census measured the canvas and a consumer must read it
+   * before narrating a direction: `birel` draws TWO heads; `rel_b` draws its
+   * ONE head at the SOURCE, so `Rel_Back(A, B)` is an arrow from B to A and a
+   * surface narrating from → to states it backwards in an authoritative voice;
+   * and `rel_u`, `rel_d`, `rel_l` and `rel_r` draw IDENTICALLY to a plain
+   * `rel`, being layout hints a reader is given nothing by.
+   *
+   * @param {Object} raw - A db relationship object
+   * @returns {Object} The delivered relationship
+   */
+  function copyC4Rel(raw) {
+    return {
+      type: typeof raw.type === "string" ? raw.type : "",
+      from: c4BareText(raw.from) || "",
+      to: c4BareText(raw.to) || "",
+      label: c4WrappedText(raw.label),
+      techn: c4WrappedText(raw.techn),
+      descr: c4WrappedText(raw.descr),
+    };
+  }
+
+  /**
+   * Normalise one Mermaid c4 diagram into the eleventh surface's delivery.
+   *
+   * EAGER SNAPSHOT (the singleton defence, census § Q8): every db accessor is
+   * called ONCE here, inside the parse's own .then and behind the adapter-wide
+   * queue, and each result is mapped into this adapter's own objects in the
+   * same tick. Nothing in the returned object references a db-owned object,
+   * and no consumer may ever go back to the db later — on this type a second
+   * parse replaces the WHOLE payload, not merely the shared scalars.
+   *
+   * THE KEY LISTS ARE CLOSED, and nothing is spread or cloned wholesale. The
+   * census measured post-render mutation on this type too — a rendered shape
+   * gains `image`, `width`, `height`, `margin`, `x` and `y` — and none of that
+   * may ever reach a narration.
+   *
+   * SOURCE ORDER IS KEPT AND IS NOT THE CANVAS'S ORDER. Elements, boundaries
+   * and relationships all come back in declaration order (census § Q2), while
+   * the canvas draws elements GROUPED BY BOUNDARY. The db's order is the
+   * honest traversal for a narration; that the two differ is an order-fidelity
+   * question for a later session, not a defect to repair here.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @returns {Object} The normalised c4 delivery
+   */
+  function normaliseC4(diagram) {
+    const db = diagram.db;
+
+    // The four reads. getC4ShapeArray and getBoundarys are called with
+    // `undefined` deliberately: both declare one parameter and both return
+    // EVERYTHING when given none.
+    const diagramType = typeof db.getC4Type() === "string" ? db.getC4Type() : "";
+    const rawShapes = db.getC4ShapeArray(undefined);
+    const rawBoundaries = db.getBoundarys(undefined);
+    const rawRels = db.getRels();
+
+    const isDeploymentDiagram = diagramType === C4_DEPLOYMENT_TYPE;
+
+    return {
+      diagramType: diagramType,
+      // getTitle(), NOT getDiagramTitle — which is undefined on this db. It
+      // may be the author's `accTitle:` text rather than their body title,
+      // last writer wins, and the design seat has ruled that a generator
+      // narrates it as the title regardless; see the surface comment above.
+      title: decodePlaceholders(
+        typeof db.getTitle() === "string" ? db.getTitle() : ""
+      ),
+      shapes: (Array.isArray(rawShapes) ? rawShapes : []).map(copyC4Shape),
+      boundaries: (Array.isArray(rawBoundaries) ? rawBoundaries : []).map(
+        (raw) => copyC4Boundary(raw, isDeploymentDiagram)
+      ),
+      rels: (Array.isArray(rawRels) ? rawRels : []).map(copyC4Rel),
+    };
+  }
+
+  /**
+   * Parse a c4 diagram and deliver the normalised shape.
+   *
+   * Same contract as the other ten surfaces: the PROMISE is memoised on the
+   * code string, the memo sits in front of the adapter-wide queue, and every
+   * db read happens inside this call's own queue slot. On this type the queue
+   * is load-bearing for the payload itself and not only for the shared
+   * scalars — the db is a singleton whose whole contents a concurrent parse
+   * replaces.
+   *
+   * @param {string} code - The Mermaid c4 source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseC4(code) {
+    if (!c4SelfCheckStarted) {
+      runC4SelfCheck();
+    }
+
+    if (code === c4MemoCode && c4MemoPromise) {
+      logDebug("Returning memoised c4 parse for identical code string");
+      return c4MemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`C4 parse entering its queue slot, ${code.length} characters`);
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `C4 parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const c4 = normaliseC4(diagram);
+          logDebug(
+            `C4 parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${c4.diagramType}, ${c4.shapes.length} element(s), ` +
+              `${c4.boundaries.length} boundary/boundaries including the synthetic root, ` +
+              `${c4.rels.length} relationship(s)`
+          );
+          return c4;
+        })
+        .catch((error) => {
+          logDebug(
+            `C4 parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    c4MemoCode = code;
+    c4MemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Self-check fixture: a `C4Context` carrying an `accTitle:` AND a body
+   * title, one `System_Boundary`, two elements and one four-argument `Rel`.
+   *
+   * THE accTitle IS THE POINT AND IS NOT DECORATION. It is declared FIRST and
+   * the body title SECOND, so getTitle() must answer the BODY title —
+   * last writer wins — while getAccTitle() must still answer "". That pins
+   * CONTRADICTION 2 two-sided on a source that really does declare the
+   * directive: a Mermaid upgrade which starts honouring `accTitle:` reddens
+   * here rather than silently reopening this surface's refusal to carry an
+   * accTitle field. A fixture declaring no accTitle would satisfy the same
+   * assertion for a reason that has nothing to do with the finding.
+   *
+   * THE BOUNDARY IS THE SECOND POINT. getBoundarys returns TWO entries on this
+   * one-boundary source, because the synthetic root is always index 0, and a
+   * fixture with no author boundary at all would pass whether or not the root
+   * is delivered. The person sits at the root and the system inside the
+   * boundary, so parentBoundary is exercised on both sides.
+   *
+   * ONE THING THIS FIXTURE CANNOT REACH, stated rather than left to be
+   * discovered: every element on a `C4Context` is a three-argument shape, so
+   * the ABSENT `techn` key is covered and the PRESENT one is not, and neither
+   * is the deployment-node branch of copyC4Boundary. Both need a
+   * `C4Container` and a `C4Deployment`, which is two more fixture parses than
+   * this check runs; they are covered by the session's console test instead,
+   * and that is a weaker instrument because it runs when someone runs it.
+   *
+   * ASCII only, every string distinctive and prefixed SelfCheck, so a
+   * cross-delivery from another diagram NAMES ITS SOURCE rather than merely
+   * looking wrong.
+   */
+  const C4_SELF_CHECK_FIXTURE = [
+    "C4Context",
+    "    accTitle: SelfCheck c4 accessible title",
+    "    title SelfCheck c4 title",
+    '    Person(scPerson, "SelfCheck person", "SelfCheck person descr.")',
+    '    System_Boundary(scBoundary, "SelfCheck boundary") {',
+    '        System(scSystem, "SelfCheck system", "SelfCheck system descr.")',
+    "    }",
+    '    Rel(scPerson, scSystem, "SelfCheck uses", "SelfCheck protocol")',
+  ].join("\n");
+
+  /**
+   * Parse the embedded fixture and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the c4 surface unhealthy, and resolves
+   * false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the c4 health verdict
+   */
+  function runC4SelfCheck() {
+    if (c4SelfCheckPromise) {
+      return c4SelfCheckPromise;
+    }
+    c4SelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          return window.mermaid.mermaidAPI.getDiagramFromText(
+            C4_SELF_CHECK_FIXTURE
+          );
+        })
+        .then((diagram) => {
+          const db = diagram.db;
+          const accessorsPresent =
+            typeof db.getC4Type === "function" &&
+            typeof db.getC4ShapeArray === "function" &&
+            typeof db.getBoundarys === "function" &&
+            typeof db.getRels === "function" &&
+            typeof db.getTitle === "function";
+
+          // THE SPELLING TRAP, PINNED. getDiagramTitle — the name every other
+          // surface's title read uses — is undefined on this db, and getTitle
+          // is the one that answers. A check written in the other spelling
+          // reports c4 as carrying no title at all.
+          const titleGetterSpelling =
+            typeof db.getDiagramTitle === "undefined" &&
+            typeof db.getTitle === "function";
+
+          // CONTRADICTION 2, two-sided, on a fixture that DOES declare an
+          // accTitle: the directive parsed, its text is NOT in getAccTitle,
+          // and the body title written after it is what getTitle answers.
+          const accTitleStillLies =
+            typeof db.getAccTitle === "function" &&
+            db.getAccTitle() === "" &&
+            db.getTitle() === "SelfCheck c4 title";
+
+          // Raw reads, taken in this same slot, for the structural facts the
+          // delivery cannot itself expose: that the person really carries NO
+          // `techn` key (so the delivered null is the absent-key guard firing
+          // rather than an empty wrapper passed through), and that an ordinary
+          // boundary carries no `nodeType` discriminator.
+          const rawShapes = db.getC4ShapeArray(undefined);
+          const rawBoundaries = db.getBoundarys(undefined);
+          const rawTechnAbsent =
+            Array.isArray(rawShapes) &&
+            rawShapes.length === 2 &&
+            rawShapes.every(
+              (s) => !Object.prototype.hasOwnProperty.call(s, "techn")
+            );
+          const rawNoNodeType =
+            Array.isArray(rawBoundaries) &&
+            rawBoundaries.every(
+              (b) => !Object.prototype.hasOwnProperty.call(b, "nodeType")
+            );
+          // CR10's sixth key, asserted on BOTH halves for the same reason the
+          // absent `techn` is: a build that started handing out an empty
+          // wrapper on an ordinary boundary would deliver "" where this fixture
+          // expects null, and could not satisfy the raw half by accident. This
+          // fixture is a C4Context, so it reaches the ABSENT arm only; the
+          // PRESENT arm needs a C4Deployment and is covered by the harness's
+          // concurrency row CC1, which is a weaker instrument because it runs
+          // when someone runs it.
+          const rawDescrAbsentOnOrdinaryBoundaries =
+            Array.isArray(rawBoundaries) &&
+            rawBoundaries.length === 2 &&
+            rawBoundaries.every(
+              (b) => !Object.prototype.hasOwnProperty.call(b, "descr")
+            );
+          const boundariesAreOneArray =
+            db.getBoundaries(undefined) === rawBoundaries;
+
+          const delivery = normaliseC4(diagram);
+          const [person, system] = delivery.shapes;
+          const [root, boundary] = delivery.boundaries;
+          const rel = delivery.rels[0];
+          const keysOf = (o) => (o ? Object.keys(o).join(",") : "");
+
+          return [
+            [
+              "the five db accessors this surface reads exist by name",
+              accessorsPresent,
+            ],
+            [
+              "the title getter is still spelt getTitle and getDiagramTitle " +
+                "is still undefined on this db — the spelling a check " +
+                "inherited from another surface gets wrong",
+              titleGetterSpelling,
+            ],
+            [
+              "getAccTitle STILL answers \"\" on a source that DECLARES an " +
+                "accTitle:, and that directive's text still lands in the " +
+                "title slot with the later body title winning — the measured " +
+                "lie this surface's refusal to carry an accTitle field rests on",
+              accTitleStillLies,
+            ],
+            [
+              "getBoundaries and getBoundarys are still ONE array by identity, " +
+                "so picking either spelling reads the same boundaries",
+              boundariesAreOneArray,
+            ],
+            [
+              "the delivery carries EXACTLY the five documented top-level keys, " +
+                "names its own c4 kind from the db rather than a detection " +
+                "key, and delivers the body title decoded",
+              keysOf(delivery) === C4_DELIVERED_KEYS.join(",") &&
+                delivery.diagramType === "C4Context" &&
+                delivery.title === "SelfCheck c4 title",
+            ],
+            [
+              "every delivered element, boundary and relationship carries " +
+                "EXACTLY its documented key set and no other — the assertion " +
+                "that catches a render's post-layout x, y and image crossing " +
+                "into the delivery",
+              keysOf(person) === C4_DELIVERED_SHAPE_KEYS.join(",") &&
+                keysOf(system) === C4_DELIVERED_SHAPE_KEYS.join(",") &&
+                keysOf(root) === C4_DELIVERED_BOUNDARY_KEYS.join(",") &&
+                keysOf(boundary) === C4_DELIVERED_BOUNDARY_KEYS.join(",") &&
+                keysOf(rel) === C4_DELIVERED_REL_KEYS.join(","),
+            ],
+            [
+              "the two elements arrive in DECLARATION order with the author's " +
+                "own aliases, their labels and descriptions decoded, and their " +
+                "kinds the db's own lower-case tokens verbatim",
+              delivery.shapes.length === 2 &&
+                person.alias === "scPerson" &&
+                person.label === "SelfCheck person" &&
+                person.descr === "SelfCheck person descr." &&
+                person.kind === "person" &&
+                system.alias === "scSystem" &&
+                system.label === "SelfCheck system" &&
+                system.kind === "system",
+            ],
+            [
+              "a three-argument element delivers techn NULL because the db " +
+                "carries NO techn KEY on it — asserted on both halves, so a " +
+                "build that started delivering an empty wrapper could not " +
+                "satisfy it by accident — and sprite, tags and link are null " +
+                "rather than absent on a fixture declaring none",
+              rawTechnAbsent &&
+                person.techn === null &&
+                system.techn === null &&
+                person.sprite === null &&
+                person.tags === null &&
+                person.link === null,
+            ],
+            [
+              "the SYNTHETIC ROOT is delivered rather than hidden, at index 0, " +
+                "with its machine label and no parent, and the author's own " +
+                "boundary follows it carrying its kind token",
+              delivery.boundaries.length === 2 &&
+                root.alias === C4_SYNTHETIC_ROOT_ALIAS &&
+                root.label === C4_SYNTHETIC_ROOT_ALIAS &&
+                root.kind === C4_SYNTHETIC_ROOT_ALIAS &&
+                root.parentBoundary === "" &&
+                boundary.alias === "scBoundary" &&
+                boundary.label === "SelfCheck boundary" &&
+                boundary.kind === "SYSTEM" &&
+                boundary.parentBoundary === C4_SYNTHETIC_ROOT_ALIAS,
+            ],
+            [
+              "on a NON-deployment diagram every boundary delivers a kind and " +
+                "NO technology, and the db confirms it by carrying no nodeType " +
+                "discriminator on either of them",
+              rawNoNodeType &&
+                delivery.boundaries.every((b) => b.techn === null) &&
+                delivery.boundaries.every((b) => typeof b.kind === "string"),
+            ],
+            [
+              "CR10's SIXTH boundary key is delivered, and on an ordinary " +
+                "boundary it is NULL because the db carries no descr key there " +
+                "- asserted on both halves, so a build that began handing out " +
+                "an empty wrapper could not satisfy it by accident",
+              rawDescrAbsentOnOrdinaryBoundaries &&
+                delivery.boundaries.every((b) => b.descr === null),
+            ],
+            [
+              "containment is delivered as the author's alias on each element, " +
+                "the person at the synthetic root and the system inside the " +
+                "declared boundary",
+              person.parentBoundary === C4_SYNTHETIC_ROOT_ALIAS &&
+                system.parentBoundary === "scBoundary",
+            ],
+            [
+              "the one relationship carries its spelling verbatim, the " +
+                "author's own aliases at both ends, and reads its FOURTH " +
+                "argument as a TECHNOLOGY with the description left empty — " +
+                "the four-argument trap",
+              delivery.rels.length === 1 &&
+                rel.type === "rel" &&
+                rel.from === "scPerson" &&
+                rel.to === "scSystem" &&
+                rel.label === "SelfCheck uses" &&
+                rel.techn === "SelfCheck protocol" &&
+                rel.descr === "",
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    c4SelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `C4 self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's c4 internals no longer " +
+              "match the 16 September 2026 census, or this surface's mapping " +
+              "has drifted; do not trust c4 adapter output."
+          );
+          c4Healthy = false;
+          return false;
+        }
+
+        logInfo(
+          "C4 self-check passed: accessor, title-spelling, accTitle-lie, " +
+            "key-set, absent-techn, synthetic-root and four-argument-rel " +
+            "assertions all hold"
+        );
+        c4Healthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "C4 self-check FAILED at assertion: the fixture parses and " +
+            `reads. The fixture run rejected: ${error && error.message}`
+        );
+        c4Healthy = false;
+        return false;
+      });
+
+    return c4SelfCheckPromise;
+  }
+
+  /**
+   * Report the c4 surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the c4 self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isC4Healthy() {
+    return c4Healthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // KANBAN — the twelfth surface, and the fifth read entirely from the db
+  //
+  // WHY THERE IS NO SOURCE READER HERE. Everything the canvas draws about
+  // columns and cards is in the db, in declaration order, with the author's
+  // own text: labels, the column pointer, tickets, assignees, priorities and
+  // the column-or-card distinction. Four facts live in the source or the
+  // grammar and NOT in the db, and a sighted reader is given none of them
+  // either — a frontmatter `title:` reaches neither the db, the canvas nor the
+  // description; the mindmap card spellings `((…))`, `(…)` and `{{…}}` all
+  // parse and the canvas draws them BYTE-IDENTICALLY; `::icon(fa fa-book)`
+  // reaches the db and draws NOTHING AT ALL; and a third indentation level is
+  // flattened to the column in `parentId` and drawn flat. So there is nothing
+  // for a source reader to recover. Measured in
+  // docs/mermaid-item-88-census-1-2026-09-18.md §§ Q6, Q9 and Q10. This is the
+  // SEQUENCE, BLOCK and C4 answer, not the quadrant one.
+  //
+  // NO title, accTitle OR accDescr FIELD — a MEASURED ABSENCE, 18 September
+  // 2026, and this type's reason is WORSE THAN BLOCK'S rather than the same.
+  // All four of `getDiagramTitle`, `getAccTitle`, `getAccDescription` and
+  // `getTitle` are undefined on the kanban db, on every one of the census's
+  // probes, with the channel positively controlled in the same page (the same
+  // probe reports three of the four PRESENT on a c4 db). But the sharper fact
+  // is that on this grammar THE DIRECTIVES ARE NOT DIRECTIVES: an `accTitle:`
+  // or `accDescr:` line, and a body `title X` line, are each swallowed as a
+  // COLUMN LABEL and DRAWN as a spurious column, carrying the raw directive
+  // text including its prefix and colon (census § Q6, CONTRADICTION 3).
+  // Clause X3's raw-source regex still lifts the author's text onto the
+  // description tiers, so following the fallback's own advice improves the
+  // description AND silently corrupts the board. A `title` field here would
+  // therefore deliver THE DEFECT RATHER THAN THE DATA. Do not "complete" the
+  // shape by adding one; the disposition of the advice itself is register
+  // item 81, not this surface's question.
+  //
+  // THE DECODE IS decodeAuthorText, ON LABELS AND ON `ticket` AND `assigned`
+  // ALIKE, and each half was measured rather than inherited. Labels: the
+  // census's § Q7 read five probes at securityLevel "strict" and found
+  // <foreignObject> on every one with ZERO <text> elements, then ran both
+  // candidate transforms against the delivered bytes — decodeAuthorText agreed
+  // with the canvas on all seven author-text constructs and decodePlaceholders
+  // disagreed on two, on BOTH label kinds. `ticket` and `assigned` were
+  // measured SEPARATELY in this session, 18 September 2026, because the label
+  // answer does not transfer — block's edge labels needed the same separate
+  // reading. Five sources, one construct each, the SAME construct written into
+  // BOTH fields inside the `@{ }` block: `Tom &amp; Jerry`, `a #quot;b#quot;
+  // pair`, `less than &lt; here`, `a bare & here` and `apostrophe &#39; here`.
+  // decodeAuthorText reproduced the canvas on 5 of 5 in both fields;
+  // decodePlaceholders disagreed on the two HTML-entity constructs. So kanban
+  // is in the block / flowchart / ER / class family and is the OPPOSITE of c4
+  // and git-graph. None of the five was rejected by the YAML-ish `@{ }` block,
+  // including the one carrying `#`.
+  //
+  // `priority` TAKES decodeAuthorText TOO, SINCE 21 SEPTEMBER 2026, AND FOR
+  // THREE SESSIONS IT TOOK NO TRANSFORM AT ALL. The reversal is ruling KS9,
+  // which amends KS3 of 18 September 2026. KS3 reasoned that the field is
+  // never drawn as text — the canvas encodes it as a 4px vertical <line> at
+  // the card's left edge and in NO other way — so there is no drawn string for
+  // a transform to agree with, and delivered the db's bytes. THE REASONING IS
+  // SOUND AND THE PREMISE UNDER IT WAS FALSE: the db does not hold the
+  // author's string either. It holds Mermaid's parse-time encoding, in which
+  // `#quot;` is already a private sentinel and `&amp;` is undecoded. Before
+  // Matthew's ruling MR1 an undrawn priority was silent and those bytes never
+  // reached anybody; MR1 made the field spoken, and what was being spoken was
+  // machine tokens. So the alternative to agreeing with the canvas is not
+  // "deliver the raw bytes" but "deliver what the author wrote", which is what
+  // the sibling fields in the same `@{ }` block already do. Finding F1 of
+  // docs/mermaid-item-88-sweep-6-2026-09-21.md.
+  //
+  // WHICH LEAVES THE DRAWN/UNDRAWN TEST WITHOUT A STRING TO READ, and that is
+  // why `priorityDrawn` is delivered beside it. THE RENDERER COMPARES THE RAW
+  // BYTES, measured 21 September 2026 (M1): a priority authored `H#105;gh`
+  // decodes to the exact string `High` and draws a line whose COMPUTED stroke
+  // is `none`, while a plain `High` card in the same source draws
+  // `rgb(255, 165, 0)`. Three entity spellings, one fresh browser context
+  // each, that control beside every one. So the decoded string cannot answer
+  // the question and the two keys are not redundant.
+  //
+  // Two consequences worth knowing before narrating any of it: the channel is
+  // HUE ALONE — no shape, dash or width difference and no text — so a
+  // description is the ONLY non-colour route to a card's priority; and
+  // `Default` and an undocumented value such as `Urgent` BOTH draw a
+  // `stroke: none` line, so the canvas cannot distinguish a value it
+  // understood from an author's typo while the db can (census § Q5,
+  // CONTRADICTION 2). Measured in the surface session on the census's P03:
+  // High orange, Very High red, Low blue, Very Low light blue, Urgent none.
+  //
+  // A NUMBER OR A BOOLEAN IS DELIVERED AS ITS String() FORM, since the same
+  // day and ruling KS10, which amends KS4. See kanbanMetadata for what can
+  // actually arrive and which of its arms are defences; the short of it is
+  // that Mermaid drops every FALSY value on all three keys, coerces a truthy
+  // one to a string on `ticket` and `assigned`, and does NOT coerce on
+  // `priority` — so `priority` is the only key this arm has ever fired on, and
+  // an author who wrote `@{ priority: 1 }` was previously told nothing while
+  // the canvas recorded that they had declared one. Finding F2 of the same
+  // sweep.
+  //
+  // THE COLUMN-OR-CARD DISCRIMINATOR IS `shape`, NEVER `isGroup`. The census's
+  // CONTRADICTION 1 measured `isGroup` as `true` on a column through
+  // `getData()` and `false` on the SAME column through `getSections()`, in one
+  // parse, on six probes, with no flag on either. `false` is an ordinary value
+  // for a boolean, so a surface built on it reports every column as an item
+  // and tells a reader the board has no columns at all. `level` encodes the
+  // same distinction a third time and is not read either — it is the only one
+  // of the three that survives a third indentation level, which is exactly why
+  // it must not be used to decide what something IS.
+  //
+  // THE DB IS A SHARED SINGLETON AND IT CARRIES NO SCALAR HALF WHATEVER, so
+  // this is the register item 21 hazard in its strongest form — stronger than
+  // block's, because block at least has nothing to lose beyond payload and
+  // this type has nothing BUT payload. Census § Q8 measured `dbA === dbB` true
+  // across two parses with the first handle's accessors afterwards returning
+  // the SECOND diagram's columns and cards. Every read below therefore happens
+  // inside this parse's own queue slot and is copied into this adapter's own
+  // objects in the same tick. A lost race here loses everything rather than
+  // degrading, which is what concurrency row CK1 exists to see.
+  //
+  // `getData()` IS A BUILDER, NOT AN ACCESSOR — it returns fresh objects on
+  // every call, and a render adds NO keys to the objects already handed out
+  // (census § Q8, the opposite of block, whose render attaches a pixel `size`
+  // and a live d3 selection). So no structured clone is needed. The copy below
+  // is still key by key, for the reason the block surface gives: a closed key
+  // list cannot be made to carry a field a later Mermaid build starts adding.
+  //
+  // THE ID FILTER IS THE DELIVERY RULE AND A POSITIONAL WALK IS NOT, AND THE
+  // TWO DISAGREE ON REAL SOURCES. A column's cards are EVERY card node whose
+  // `parentId` equals that column's id — a filter by id, never "the cards that
+  // follow this column in the flat list". Measured 18 September 2026 across
+  // five sources, canvas against both predictions, one fresh browser context
+  // each: on a duplicate column id the id filter reproduced the canvas
+  // EXACTLY and the positional walk did not. Two columns sharing an id, with
+  // three cards declared between them, deliver six card nodes and draw six
+  // cards IN EACH COLUMN; three columns sharing an id deliver nine and draw
+  // nine in each. THE DB ITSELF MULTIPLIES THE CARDS BY THE NUMBER OF
+  // COLLIDING COLUMNS, in every parse — proved not to be accumulation by four
+  // sequential parses per source reading an identical figure each time, with a
+  // non-duplicate control in the same shape. The id filter tracks that
+  // multiplication and the positional walk halves it.
+  //
+  // SO THE CENSUS'S CONTRADICTION 4 IS CORRECTED HERE, having been an artefact
+  // of the positional reading rather than a fault in the db. It recorded that a
+  // duplicate column id makes the db "UNDER-REPORT the canvas by half" — six
+  // nodes delivered against eight cards drawn. Both digits were reproduced
+  // exactly in this session, on a source declaring ONE card per column, and
+  // the per-column arithmetic was then taken both ways: the id filter answers
+  // FOUR cards per column and the canvas draws FOUR, while the positional walk
+  // answers two. The db and the canvas AGREE; it is the positional reading
+  // that disagrees with both. A generator built on this surface therefore
+  // states a card count a sighted reader can confirm.
+  //
+  // WHAT IS DELIBERATELY NOT DELIVERED, each for a measured reason:
+  //   `icon` — `::icon(fa fa-book)` reaches the db and the canvas draws no
+  //     <i>, <use> or <image> of any kind, proved by control in the same page
+  //     (the identical construct on a MINDMAP renders an <i>). Delivering it
+  //     would hand a generator something to narrate that no sighted reader is
+  //     given. Census § Q10.
+  //   `isGroup`, `level`, `look`, `rx`, `ry`, `cssStyles`, `shape` spellings,
+  //     `width`, `padding` — layout, or the same distinction triplicated. The
+  //     three mindmap card shapes draw byte-identically, so narrating one
+  //     would describe something no sighted reader can see.
+  //   `edges` and `other` — `Array(0)` and `{}` on every probe in the census
+  //     and every source in this session. There are no relationships on a
+  //     board and nothing has ever populated `other`.
+  //   a `cardCount` field — the count is `cards.length`, computed once by the
+  //     consumer. Two computations of one fact are how defects hide. Ruling
+  //     KS7.
+  //
+  // THE BUILT TICKET URL IS DELIVERED, SINCE 20 SEPTEMBER 2026, AND FOR THREE
+  // SESSIONS IT WAS NOT. The reversal is ruling KS8, which enacts Matthew's
+  // review ruling MR2 — where the picture draws a ticket as a hyperlink, the
+  // description carries a working hyperlink — and it SUPERSEDES ruling KS6 of
+  // 18 September 2026, whose own re-open trigger was "a ruled, measured way to
+  // carry an author URL into the description panel". Both halves of that
+  // trigger are now measured, and the two records are
+  // docs/mermaid-item-88-gold-3c-2026-09-20.md (the panel, the export routes,
+  // the build rule and the hostile bases) and
+  // docs/mermaid-item-88-gold-3d-2026-09-20.md (the route, the contamination
+  // readings and the slot order).
+  //
+  // WHAT HELD IT UP FOR THREE SESSIONS WAS NOT THE RULING BUT THE READING. Six
+  // routes to the base URL were measured on 20 September 2026 and every one
+  // read the EMPTY STRING at parse time on every source, including sources
+  // whose anchors the canvas then built correctly; the only route that ever
+  // yielded a value yielded it after a RENDER, and was contaminated — an
+  // unbased board read the PREVIOUS board's base. The seventh route,
+  // `mermaid.parse(text)`'s own resolved `config`, is the one this surface
+  // uses: it is Mermaid's own reader of the source's frontmatter and
+  // `%%{init}%%` directives, it needs no render, and it is per-source by
+  // construction. See readKanbanTicketBase.
+  //
+  // THE ALLOW-LIST IS IN ONE PLACE, buildKanbanTicketUrl, and `ticketUrl` is
+  // null wherever it refuses — the ticket is then narrated as plain text, and
+  // the board is never withheld for want of a link.
+  //
+  // `id` IS DELIVERED FOR DERIVATION CHECKS AND MUST NEVER BE NARRATED. A
+  // no-id card takes its own LABEL as its id and so does a bare-text column,
+  // and Mermaid permits duplicates at both kinds — this surface's own
+  // self-check fixture contains two columns with one id. Ruling KS7.
+  //
+  // NO TRIM ON ANY LABEL. The census's `y[ ]` probe delivers a label of ONE
+  // SPACE rather than the empty string, and it is delivered as one space; how
+  // a narration speaks it is the gold document's question, not this file's.
+  const KANBAN_SHAPE_COLUMN = "kanbanSection";
+  const KANBAN_SHAPE_CARD = "kanbanItem";
+
+  // The two keys a delivered kanban carries, in order. Named as a constant
+  // because the self-check asserts the delivered key set EXACTLY against it.
+  const KANBAN_DELIVERED_KEYS = Object.freeze(["diagramType", "columns"]);
+
+  // The three keys a delivered COLUMN carries, in order.
+  const KANBAN_COLUMN_KEYS = Object.freeze(["id", "label", "cards"]);
+
+  // The seven keys a delivered CARD carries, in order. `ticketUrl` was added
+  // 20 September 2026 by ruling KS8; `priorityDrawn` on 21 September 2026 by
+  // ruling KS9, seated beside `priority` because the two answer one question
+  // between them. The five before them are unmoved.
+  const KANBAN_CARD_KEYS = Object.freeze([
+    "id",
+    "label",
+    "ticket",
+    "assigned",
+    "priority",
+    "priorityDrawn",
+    "ticketUrl",
+  ]);
+
+  // THE FOUR PRIORITY STRINGS THE RENDERER DRAWS A VISIBLE MARK FOR, matched
+  // on the RAW db string and never on the decoded one. Ruling KS9, and the
+  // measurement behind it is M1 in
+  // docs/mermaid-item-88-fix-7-2026-09-21.md: a priority authored
+  // `H#105;gh` sits in the db as `H<sentinel>105<sentinel>gh`, decodes to the
+  // exact string `High`, and the canvas draws its line with a COMPUTED
+  // `stroke: none` — invisible — while a plain `High` card in the same source
+  // draws `rgb(255, 165, 0)`. Three entity spellings were measured, each in
+  // its own fresh browser context with that positive control beside it, and
+  // every one was invisible. So the renderer compares the RAW bytes, and a
+  // string that merely READS `High` after decoding is NOT drawn.
+  //
+  // WHY A SECOND COPY OF THIS VOCABULARY EXISTS. The generator also holds the
+  // four, with the word each is spoken as, because it must say "high" rather
+  // than "High". The two copies are not a duplicated computation: this one
+  // decides whether the canvas DREW anything, which only the raw bytes can
+  // answer, and the generator's decides what to CALL it. The generator throws
+  // when it is handed `priorityDrawn: true` for a value its own list does not
+  // carry, so a divergence between the two is loud rather than silent.
+  const KANBAN_DRAWN_PRIORITIES = Object.freeze([
+    "Very High",
+    "High",
+    "Low",
+    "Very Low",
+  ]);
+
+  // The token the canvas substitutes the ticket into, and the ONLY two URL
+  // schemes this surface will deliver. Both are named constants because the
+  // self-check asserts against them and a literal in two places is a copy.
+  const KANBAN_TICKET_TOKEN = "#TICKET#";
+  const KANBAN_TICKET_URL_SCHEMES = Object.freeze(["http:", "https:"]);
+
+  let kanbanMemoCode = null;
+  let kanbanMemoPromise = null;
+  let kanbanHealthy = null;
+  let kanbanSelfCheckStarted = false;
+  let kanbanSelfCheckPromise = null;
+
+  /**
+   * Read one of the three card metadata strings.
+   *
+   * GUARD FOR AN ABSENT KEY, NOT AN EMPTY ONE, and the distinction is measured
+   * rather than defensive. On a CARD all three of `ticket`, `assigned` and
+   * `priority` are OWN KEYS HOLDING undefined when the author declares none —
+   * invisible to JSON.stringify, which is why the census read them with
+   * Object.keys. On a COLUMN, `assigned` and `priority` are ABSENT ENTIRELY
+   * while `ticket` is present and holds undefined; `parentId` is absent too.
+   * So a reader that tests emptiness sees one case where there are two, and a
+   * reader that dereferences a column's `parentId` throws on the first column.
+   *
+   * null FOR BOTH ABSENT CASES, never undefined, so a consumer has ONE absent
+   * case per field. An EMPTY STRING the db really holds is delivered as "" —
+   * the author wrote something and it is not this surface's business to decide
+   * that it meant nothing.
+   *
+   * A NUMBER OR A BOOLEAN IS DELIVERED AS ITS String() FORM, per ruling KS10
+   * of 21 September 2026, which amends KS4. It used to return null for
+   * anything that was not a string, and that was a SILENT DROP: an author who
+   * wrote `@{ priority: 1 }` had the canvas record that they declared a
+   * priority — the mark is drawn, with `stroke: none` — while the words said
+   * nothing at all. Matthew's ruling MR1 is that what is in the code is read
+   * out, and a value is no less in the code for having been typed without
+   * quotes. The generator's own `requireStringOrNull` could not catch it,
+   * because by the time the field reached that guard it was already null,
+   * which the guard is required to accept: the guard sat off the path the drop
+   * happened on.
+   *
+   * WHAT CAN ACTUALLY ARRIVE HERE, measured 21 September 2026 (M2, in
+   * docs/mermaid-item-88-fix-7-2026-09-21.md), on all three keys against
+   * `true`, `false`, `0`, `1`, `null` and `''`:
+   *
+   *   Mermaid DROPS EVERY FALSY VALUE on all three keys — `false`, `0`, `null`
+   *   and `''` each arrive as an own key holding `undefined`, exactly as an
+   *   undeclared key does, so this function never sees them.
+   *
+   *   On `ticket` and `assigned` Mermaid COERCES a truthy non-string to a
+   *   string itself: `1` arrives as `"1"` and `true` as `"true"`. So the
+   *   coercion below is a DEFENCE on those two keys and not a live path.
+   *
+   *   On `priority` alone Mermaid does NOT coerce: `1` arrives as a `number`
+   *   and `true` as a `boolean`. That asymmetry is UPSTREAM and not ours, and
+   *   `priority` is the only key on which this arm has ever fired.
+   *
+   *   An ARRAY never arrives: `@{ assigned: [sam, kim] }` is flattened by
+   *   Mermaid's own block reader to the string `"sam,kim"`. A MAP cannot be
+   *   authored at all — `@{ assigned: { a: 1 } }` is a hard parse error. So
+   *   the final null is a defence too, held because a later Mermaid build
+   *   could start handing either over and a shape this surface does not
+   *   understand must become an absence rather than a stringified `[object
+   *   Object]`.
+   *
+   * ONE HELPER FOR ALL THREE KEYS, so the three cannot drift apart. KS10 asks
+   * for exactly that, and the fact that two of the three can only reach the
+   * defence arms is a reason to share the helper rather than to special-case
+   * the one that cannot.
+   *
+   * @param {Object} raw - A db node object
+   * @param {string} key - "ticket", "assigned" or "priority"
+   * @returns {string|null} The author's value as a string, or null
+   */
+  function kanbanMetadata(raw, key) {
+    if (!raw || !Object.prototype.hasOwnProperty.call(raw, key)) {
+      return null;
+    }
+    const value = raw[key];
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    return null;
+  }
+
+  /**
+   * Did the canvas draw a visible priority mark for this card? - ruling KS9.
+   *
+   * READ OFF THE RAW DB STRING AND NOTHING ELSE. The renderer compares the
+   * bytes the db holds, which carry Mermaid's own placeholder sentinels and
+   * the author's undecoded entities, so a priority written `H#105;gh` is NOT
+   * drawn even though it decodes to the exact string `High`. Measured in M1;
+   * see KANBAN_DRAWN_PRIORITIES above for the readings.
+   *
+   * IT IS DELIVERED AS ITS OWN KEY RATHER THAN LEFT TO THE GENERATOR because
+   * the generator is given the DECODED priority, by the same ruling, and the
+   * decoded string cannot answer this question: `H#105;gh` and `High` deliver
+   * the identical `priority` and differ here. A consumer that tested the
+   * delivered string would narrate an invisible mark as a drawn one.
+   *
+   * @param {Object} raw - A db card node
+   * @returns {boolean} True when the canvas draws a visible mark
+   */
+  function kanbanPriorityDrawn(raw) {
+    if (!raw || !Object.prototype.hasOwnProperty.call(raw, "priority")) {
+      return false;
+    }
+    return KANBAN_DRAWN_PRIORITIES.indexOf(raw.priority) !== -1;
+  }
+
+  /**
+   * Build the address the canvas links a ticket to, or null.
+   *
+   * THIS IS THE ONE PLACE THE ALLOW-LIST LIVES, per ruling KS8 of
+   * 20 September 2026, which enacts Matthew's review ruling MR2: where the
+   * picture draws a ticket as a hyperlink, the description carries a working
+   * hyperlink. A second copy of a scheme test is how one of them goes stale.
+   *
+   * THE BUILD RULE IS THE CANVAS'S OWN, SCORED RATHER THAN ASSERTED. Session
+   * 3c put three candidate rules against the rendered `xlink:href` on nine
+   * sources — five ticket constructs at one base and four base shapes at one
+   * ticket. The FIRST occurrence of `#TICKET#` replaced by
+   * `decodePlaceholders(the db's RAW ticket)` scored 9 of 9; the raw db bytes
+   * scored 8 and the DRAWN ticket text scored 8. The two separating rows are
+   * worth knowing, because a single-candidate check could not have found
+   * either: a ticket written `'A&amp;B-1'` is drawn `A&B-1` but linked
+   * `A&amp;B-1`, and a ticket written `'say #quot;hi#quot;'` sits in the db as
+   * Mermaid's own placeholder sentinels and is linked `say "hi"`. So the
+   * DELIVERED `ticket` (decodeAuthorText) is the wrong string for a URL and
+   * the raw db bytes are the wrong string too.
+   *
+   * A BASE WITH NO TOKEN IS USED VERBATIM and the ticket is NOT appended, so
+   * every card on such a board links to the same address — measured, not
+   * assumed. A base carrying the token TWICE has only its first replaced; the
+   * second is left literal.
+   *
+   * WHY `document.baseURI` IS PASSED TO `new URL`. A relative base such as
+   * `/browse/#TICKET#` is kept by the canvas and drawn as a live relative
+   * href, and Matthew's rule is that a link in the picture is a link in the
+   * words — so refusing it here would withhold a link a sighted reader is
+   * given. Resolving it still refuses `javascript:` and `data:`, because those
+   * resolve to their own protocol whatever the base is, and the canvas refuses
+   * them too: at `securityLevel: "strict"` Mermaid draws the anchor carrying
+   * NO href at all.
+   *
+   * THE DELIVERED STRING IS `built`, VERBATIM — never `url.href`, which
+   * normalises, percent-encodes and resolves. A URL is never transformed by
+   * this adapter; the sequence surface's link handling is the precedent. The
+   * resolved URL exists only to be tested.
+   *
+   * @param {string|null} base - The source's own ticketBaseUrl, or null
+   * @param {string|null} rawTicket - The db's RAW ticket string, or null
+   * @returns {string|null} The address, or null when any clause refuses
+   */
+  function buildKanbanTicketUrl(base, rawTicket) {
+    if (typeof rawTicket !== "string" || rawTicket.trim() === "") {
+      return null;
+    }
+    if (typeof base !== "string" || base === "") {
+      return null;
+    }
+    const decoded = decodePlaceholders(rawTicket);
+    const at = base.indexOf(KANBAN_TICKET_TOKEN);
+    const built =
+      at === -1
+        ? base
+        : base.slice(0, at) + decoded + base.slice(at + KANBAN_TICKET_TOKEN.length);
+
+    let resolved = null;
+    try {
+      resolved = new URL(built, document.baseURI);
+    } catch (error) {
+      logDebug(
+        `Kanban ticket URL refused, unparseable: ${JSON.stringify(built)} (${error && error.message})`
+      );
+      return null;
+    }
+    if (KANBAN_TICKET_URL_SCHEMES.indexOf(resolved.protocol) === -1) {
+      logDebug(
+        `Kanban ticket URL refused, scheme ${JSON.stringify(resolved.protocol)} is not in the allow-list`
+      );
+      return null;
+    }
+    return built;
+  }
+
+  /**
+   * Read THIS source's own `kanban.ticketBaseUrl`, through `mermaid.parse`.
+   *
+   * THE ROUTE, AND WHY IT IS THIS ONE. `mermaid.parse(text)` resolves to
+   * `{ diagramType, config }`, where `config` holds the configuration THE
+   * SOURCE ITSELF declares — frontmatter and `%%{init}%%` directives, merged
+   * by Mermaid's own rule, with the directive winning where both set a value.
+   * Measured 20 September 2026 on five sources, each in its own fresh browser
+   * context, against the rendered `xlink:href` in a separate context: the
+   * route and the canvas AGREE ON ALL FIVE, the both-set winner included.
+   *
+   * SIX OTHER ROUTES WERE MEASURED ON 20 SEPTEMBER 2026 AND ALL SIX FAILED,
+   * which is why this one is not an obvious choice arrived at cheaply.
+   * `mermaidAPI.getConfig().kanban`, `getSiteConfig().kanban`, the Diagram
+   * object's own `config` and `getConfig`, `db.getConfig` and
+   * `db.getData().config.kanban` all read the EMPTY STRING at parse time on
+   * every source — including sources whose anchors the canvas then builds
+   * correctly — because the base reaches the RENDERER and not the config the
+   * db hands over. The value appears on those routes only AFTER a render, and
+   * a post-render read is CONTAMINATED: a board with no base at all read the
+   * PREVIOUS board's base, so a rule built on one would have linked tickets on
+   * boards whose author set no link.
+   *
+   * THIS ROUTE IS NOT CONTAMINATED, measured in six arrangements in one page
+   * each: after a based board was RENDERED, an unbased source still read no
+   * kanban config; the reverse order the same; and two calls in flight at once
+   * each read their own source's answer, in both issue orders. Every absence
+   * was printed as an explicit marker rather than as a dropped JSON key,
+   * because `JSON.stringify` discards a key holding `undefined` and an absence
+   * reported by omission cannot be told from a reading never taken.
+   *
+   * IT RUNS INSIDE THE CALLER'S OWN QUEUE SLOT AND BEFORE
+   * `getDiagramFromText`, which is the order measured to be safe. This IS a
+   * parse: it clears Mermaid's shared common store and it replaces the kanban
+   * db singleton's contents like any other. Running it FIRST means the db read
+   * is the last thing in the slot and nothing can come between them — measured
+   * with a positive control, a FOREIGN source parsed after the diagram handle
+   * was taken, which replaced that handle's nodes entirely. The cost on gold
+   * E6, mean of twelve runs after three warm-ups, is about 0.85ms on top of a
+   * 1.16ms `getDiagramFromText`.
+   *
+   * IT NEVER REJECTS. A source Mermaid can diagram but this route refuses
+   * yields a null base, and every card then delivers `ticketUrl: null` with
+   * the rest of the board unchanged — ruling KS8. A missing link must never
+   * cost the reader the description.
+   *
+   * @param {string} code - The Mermaid kanban source
+   * @returns {Promise<string|null>} The source's own base URL, or null
+   */
+  function readKanbanTicketBase(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      logDebug("mermaid.parse is unavailable; kanban ticket URLs will be null");
+      return Promise.resolve(null);
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => {
+        if (!parsed || typeof parsed !== "object") {
+          return null;
+        }
+        const config = parsed.config;
+        if (!config || typeof config !== "object") {
+          return null;
+        }
+        const kanbanConfig = config.kanban;
+        if (!kanbanConfig || typeof kanbanConfig !== "object") {
+          return null;
+        }
+        const base = kanbanConfig.ticketBaseUrl;
+        return typeof base === "string" ? base : null;
+      })
+      .catch((error) => {
+        logDebug(
+          `Kanban ticket base read failed, delivering null: ${error && error.message}`
+        );
+        return null;
+      });
+  }
+
+  /**
+   * Copy ONE db card into this surface's own object.
+   *
+   * THE KEY LIST IS CLOSED AND THAT IS THE POINT. Only the seven keys in
+   * KANBAN_CARD_KEYS are produced, from the six db keys this surface reads;
+   * nothing is spread, assigned wholesale or cloned, so the eight db keys this
+   * surface refuses — `isGroup`, `level`, `icon`, `shape`, `rx`, `ry`,
+   * `cssStyles` and `parentId` — cannot cross into the delivery, and neither
+   * can a ninth a later Mermaid build adds. TWO of the seven are COMPUTED
+   * rather than copied, and both are computed from a RAW db value rather than
+   * from a delivered one: `ticketUrl` from the raw ticket (see
+   * buildKanbanTicketUrl) and `priorityDrawn` from the raw priority (see
+   * kanbanPriorityDrawn). In both cases the delivered string has been decoded
+   * and the decode destroys the distinction the computation needs.
+   *
+   * @param {Object} raw - A db card node
+   * @param {string|null} ticketBase - This source's own ticketBaseUrl, or null
+   * @returns {Object} The delivered card
+   */
+  function copyKanbanCard(raw, ticketBase) {
+    const rawTicket = kanbanMetadata(raw, "ticket");
+    const id = typeof raw.id === "string" ? raw.id : "";
+    return {
+      id: id,
+      // decodeAuthorText, per the ruling above. A card whose db label is absent
+      // delivers the id, which is what the db itself would have put there — a
+      // no-id card's id IS its label — so the fallback is a defence rather
+      // than a live path.
+      label: typeof raw.label === "string" ? decodeAuthorText(raw.label) : id,
+      // decodeAuthorText on both, measured in this session on five constructs
+      // in each field, 5 of 5 against the canvas. NOTE that the URL below is
+      // built from `rawTicket` and NOT from this decoded string: the two
+      // disagree on a real construct, and the canvas uses the other one.
+      ticket: rawTicket === null ? null : decodeAuthorText(rawTicket),
+      assigned: (() => {
+        const value = kanbanMetadata(raw, "assigned");
+        return value === null ? null : decodeAuthorText(value);
+      })(),
+      // decodeAuthorText, SINCE 21 SEPTEMBER 2026 AND RULING KS9, which
+      // REVERSES the no-transform arm of KS3. That ruling reasoned that there
+      // is no drawn string for a transform to agree with, which is true and
+      // led to the wrong answer: the alternative to agreeing with the canvas
+      // is not "deliver the raw bytes" but "deliver what the author wrote".
+      // The db does NOT hold the author's string — it holds Mermaid's own
+      // parse-time encoding of it, in which `#quot;` has already become a
+      // private sentinel and `&amp;` has not been decoded at all — so a
+      // listener was being read machine tokens. Measured as finding F1 of the
+      // hostile sweep, docs/mermaid-item-88-sweep-6-2026-09-21.md, where a
+      // card declaring the SAME construct in every field delivered its label,
+      // ticket and assigned equal to the canvas byte for byte and its priority
+      // as `P&amp;&lt;&gt;<sentinel>quot<sentinel>…`.
+      priority: (() => {
+        const value = kanbanMetadata(raw, "priority");
+        return value === null ? null : decodeAuthorText(value);
+      })(),
+      // WHETHER THE CANVAS DREW A MARK, read off the RAW string. Ruling KS9.
+      // It must be delivered separately because the decode above destroys the
+      // distinction: `H#105;gh` and `High` deliver the identical `priority`.
+      priorityDrawn: kanbanPriorityDrawn(raw),
+      // THE ADDRESS THE CANVAS LINKS THIS TICKET TO, or null. Ruling KS8.
+      ticketUrl: buildKanbanTicketUrl(ticketBase, rawTicket),
+    };
+  }
+
+  /**
+   * Normalise one Mermaid kanban board into the twelfth surface's delivery.
+   *
+   * EAGER SNAPSHOT (the singleton defence, census § Q8): `getData()` is called
+   * ONCE here, inside the parse's own .then and behind the adapter-wide queue,
+   * and every value is mapped into this adapter's own objects in the same tick.
+   * Nothing in the returned object references a db-owned object, and no
+   * consumer may ever go back to the db later — on this type a second parse
+   * replaces the WHOLE payload, and there is no scalar half to survive it.
+   *
+   * `getSections()` IS NOT READ HERE, AND THAT IS A RULING. It is the other
+   * payload accessor and it carries nothing a narration wants that
+   * `getData()` lacks — four of its six keys are shared and the other two are
+   * the layout numbers `width` and `padding`. It also disagrees with
+   * `getData()` about `isGroup` on the same column in the same parse. It is
+   * read in the SELF-CHECK ONLY, as a cross-check that the column count and
+   * order agree, which is the one thing it can honestly corroborate.
+   *
+   * AN UNKNOWN `shape` IS A STOP, NOT A SILENT DROP. The vocabulary is two
+   * words and a third would mean this surface no longer knows what the db is
+   * handing it — so it throws, the parse rejects, and the consumer reaches the
+   * honest-unsupported fallback rather than a board with things missing from
+   * it. A dropped node would be invisible: a column short of a card looks
+   * exactly like a column with fewer cards.
+   *
+   * THE TICKET BASE IS PASSED IN, NOT READ HERE, and that is deliberate. It
+   * comes from `readKanbanTicketBase`, which runs earlier in the same queue
+   * slot; taking it as a parameter keeps this function a pure mapping over one
+   * diagram and lets the self-check exercise every arm of the allow-list
+   * without needing a source per arm. It DEFAULTS to null, so a caller that
+   * knows of no base delivers `ticketUrl: null` on every card rather than
+   * throwing — which is also ruling KS8's fallback.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @param {string|null} [ticketBase] - This source's own ticketBaseUrl
+   * @returns {Object} The normalised kanban delivery
+   * @throws {Error} When a node carries a shape this surface does not know
+   */
+  function normaliseKanban(diagram, ticketBase = null) {
+    const db = diagram.db;
+
+    // THE ONE READ. Everything below maps this and nothing else.
+    const data = db.getData();
+    const rawNodes = data && Array.isArray(data.nodes) ? data.nodes : [];
+
+    const rawColumns = [];
+    const rawCards = [];
+    for (const node of rawNodes) {
+      const shape = node && node.shape;
+      if (shape === KANBAN_SHAPE_COLUMN) {
+        rawColumns.push(node);
+      } else if (shape === KANBAN_SHAPE_CARD) {
+        rawCards.push(node);
+      } else {
+        throw new Error(
+          "Kanban node carries an unknown shape " +
+            JSON.stringify(shape) +
+            "; this surface knows only " +
+            JSON.stringify(KANBAN_SHAPE_COLUMN) +
+            " and " +
+            JSON.stringify(KANBAN_SHAPE_CARD) +
+            ". Refusing to deliver a partial board."
+        );
+      }
+    }
+
+    return {
+      // `diagramType` rather than `type`, matching block and c4. Kanban has no
+      // per-node `type` key of its own, but the two surfaces before it settled
+      // the spelling and a third name for one fact would be worse than a
+      // consistent one.
+      diagramType: "kanban",
+      columns: rawColumns.map((rawColumn) => {
+        const id = typeof rawColumn.id === "string" ? rawColumn.id : "";
+        return {
+          id: id,
+          label:
+            typeof rawColumn.label === "string"
+              ? decodeAuthorText(rawColumn.label)
+              : id,
+          // THE ID FILTER, per ruling KS2 and the measurement above. Never a
+          // positional walk: the two disagree wherever two columns share an
+          // id, and it is the walk that disagrees with the canvas.
+          cards: rawCards
+            .filter((rawCard) => rawCard.parentId === id)
+            .map((rawCard) => copyKanbanCard(rawCard, ticketBase)),
+        };
+      }),
+    };
+  }
+
+  /**
+   * Parse a kanban board and deliver the normalised shape.
+   *
+   * Same contract as the other eleven surfaces: the PROMISE is memoised on the
+   * code string, the memo sits in front of the adapter-wide queue, and every
+   * db read happens inside this call's own queue slot. On this type the queue
+   * is load-bearing for the whole delivery — the db is a singleton with no
+   * per-instance half at all.
+   *
+   * @param {string} code - The Mermaid kanban source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseKanban(code) {
+    if (!kanbanSelfCheckStarted) {
+      runKanbanSelfCheck();
+    }
+
+    if (code === kanbanMemoCode && kanbanMemoPromise) {
+      logDebug("Returning memoised kanban parse for identical code string");
+      return kanbanMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Kanban parse entering its queue slot, ${code.length} characters`);
+      // THE BASE READ COMES FIRST, INSIDE THIS SAME SLOT. `mermaid.parse` is
+      // itself a parse — it replaces this singleton db's contents — so taking
+      // it BEFORE `getDiagramFromText` leaves the db read last, with nothing
+      // able to come between the handle and the read. Measured 20 September
+      // 2026; the reverse order also delivered correctly on the same source,
+      // and this one is chosen because it does not depend on that.
+      return readKanbanTicketBase(code)
+        .then((ticketBase) => {
+          logDebug(
+            `Kanban ticket base for this source: ${JSON.stringify(ticketBase)}`
+          );
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(code)
+            .then((diagram) => ({ diagram, ticketBase }));
+        })
+        .then(({ diagram, ticketBase }) => {
+          logDebug(
+            `Kanban parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const kanban = normaliseKanban(diagram, ticketBase);
+          const cardTotal = kanban.columns.reduce(
+            (total, column) => total + column.cards.length,
+            0
+          );
+          logDebug(
+            `Kanban parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${kanban.columns.length} column(s), ${cardTotal} card(s)`
+          );
+          return kanban;
+        })
+        .catch((error) => {
+          logDebug(
+            `Kanban parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    kanbanMemoCode = code;
+    kanbanMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Self-check fixture: two ordinary columns, an EMPTY column between them, a
+   * card carrying all three metadata keys, a card carrying none, an HTML
+   * entity in a column label, and a DUPLICATE COLUMN ID pair at the end.
+   *
+   * THE DUPLICATE PAIR IS THE POINT, and without it this fixture would pass
+   * whether the delivery used the id filter or a positional walk — the two
+   * rules agree on every source where no two columns share an id, which is
+   * every ordinary board. Measured 18 September 2026: the pair delivers FOUR
+   * card nodes all pointing at `scDup`, the canvas draws FOUR cards in EACH of
+   * the two columns, the id filter answers four and a positional walk answers
+   * two. The collision is LOCAL — `scTodo`, `scEmpty` and `scDone` are
+   * unaffected by it — which is what makes it safe to carry in a fixture whose
+   * other assertions are about ordinary columns.
+   *
+   * THE EMPTY COLUMN IS THE SECOND POINT. The canvas draws it, with its own
+   * rect and its own heading, so a delivery that omitted it would withhold
+   * something a sighted reader is given; and an empty `cards` array is the one
+   * shape a consumer must never have to test for absence.
+   *
+   * ASCII only, every string distinctive and prefixed SelfCheck, so a
+   * cross-delivery from another diagram NAMES ITS SOURCE rather than merely
+   * looking wrong.
+   */
+  const KANBAN_SELF_CHECK_FIXTURE = [
+    "kanban",
+    "    scTodo[SelfCheck todo &amp; more]",
+    "        scOne[SelfCheck one]@{ ticket: 'SC-1', assigned: 'scsam', priority: 'High' }",
+    "        scTwo[SelfCheck two]",
+    "    scEmpty[SelfCheck empty]",
+    "    scDone[SelfCheck done]",
+    "        scThree[SelfCheck three]",
+    "    scDup[SelfCheck dup first]",
+    "        scFour[SelfCheck four]",
+    "    scDup[SelfCheck dup second]",
+    "        scFive[SelfCheck five]",
+  ].join("\n");
+
+  /**
+   * The SECOND self-check fixture, added 20 September 2026 with ruling KS8.
+   *
+   * IT IS A SEPARATE SOURCE RATHER THAN A FRONTMATTER BLOCK ON THE FIRST ONE,
+   * for two reasons. The concurrency lane quotes the first fixture VERBATIM to
+   * settle the surface before CK2, so a change to it is a change in two files
+   * and the copy would drift. And a base URL is a property of a SOURCE, so the
+   * only honest way to exercise the real route is to parse a source that
+   * declares one — a synthetic base handed to `normaliseKanban` would prove
+   * the allow-list and say nothing whatever about whether the base is
+   * READABLE, which is the half three sessions could not previously obtain.
+   *
+   * THE THREE CARDS ARE THE THREE ARMS THIS SOURCE CAN REACH: a ticket that
+   * links, a WHITESPACE-ONLY ticket that must not, and a card with no ticket
+   * at all. The allow-list's refusing arms are exercised below through
+   * `normaliseKanban` directly, because a `javascript:` base cannot be told
+   * from a working one by looking at the board.
+   */
+  const KANBAN_SELF_CHECK_URL_FIXTURE = [
+    "---",
+    "config:",
+    "  kanban:",
+    "    ticketBaseUrl: 'https://selfcheck.example.org/browse/#TICKET#'",
+    "---",
+    "kanban",
+    "    scuCol[SelfCheck url column]",
+    "        scuOne[SelfCheck url one]@{ ticket: 'SCU-1' }",
+    "        scuTwo[SelfCheck url two]@{ ticket: ' ' }",
+    "        scuThree[SelfCheck url three]",
+  ].join("\n");
+
+  /**
+   * The THIRD self-check fixture, added 21 September 2026 with rulings KS9 and
+   * KS10.
+   *
+   * IT IS A REAL PARSE RATHER THAN A STUB, for the reason the URL fixture
+   * gives: a synthetic sentinel string handed to `normaliseKanban` would prove
+   * the decode and say nothing whatever about whether Mermaid really encodes
+   * `#105;` that way, and a synthetic `1` would say nothing about whether the
+   * db really hands a NUMBER over on this key. Both halves are the premise the
+   * two rulings rest on, and both were false in the rulings they replace.
+   *
+   * THE FIVE CARDS ARE THE FIVE ARMS. `scpDrawn` and `scpEntity` are the pair
+   * that matters: they deliver the IDENTICAL `priority` string `High` and
+   * DIFFER on `priorityDrawn`, which is the whole of KS9 in one row and cannot
+   * be shown by either card alone. `scpNumber` and `scpBoolean` are KS10's
+   * live arm, the only key on which Mermaid declines to coerce. `scpEscapable`
+   * is finding F1's own source, cut to one card.
+   *
+   * It is a SEPARATE source rather than cards added to the first fixture,
+   * because the concurrency lane quotes that one VERBATIM and a change to it
+   * is a change in two files.
+   */
+  const KANBAN_SELF_CHECK_PRIORITY_FIXTURE = [
+    "kanban",
+    "    scpCol[SelfCheck priority column]",
+    "        scpDrawn[SelfCheck priority drawn]@{ priority: 'High' }",
+    "        scpEntity[SelfCheck priority entity]@{ priority: 'H#105;gh' }",
+    "        scpNumber[SelfCheck priority number]@{ priority: 1 }",
+    "        scpBoolean[SelfCheck priority boolean]@{ priority: true }",
+    "        scpEscapable[SelfCheck priority escapable]@{ priority: 'A&amp;B #quot;c#quot; &lt;d&gt;' }",
+  ].join("\n");
+
+  /**
+   * A minimal synthetic diagram carrying ONE card with one ticket, for the
+   * allow-list rows. It is deliberately not a parse: the arms it exercises
+   * differ only in the BASE, and a source per arm would make the rows about
+   * Mermaid's config handling rather than about this surface's allow-list.
+   *
+   * @param {string} ticket - The raw ticket string
+   * @returns {Object} A stand-in with the one accessor normaliseKanban reads
+   */
+  function kanbanStubDiagram(ticket) {
+    return {
+      db: {
+        getData: () => ({
+          nodes: [
+            { id: "stubCol", label: "Stub", shape: KANBAN_SHAPE_COLUMN },
+            {
+              id: "stubCard",
+              label: "Stub card",
+              shape: KANBAN_SHAPE_CARD,
+              parentId: "stubCol",
+              ticket: ticket,
+            },
+          ],
+        }),
+      },
+    };
+  }
+
+  /**
+   * The delivered ticketUrl for one base, through the REAL delivery path.
+   * @param {string|null} base - The base under test
+   * @param {string} [ticket] - The raw ticket string
+   * @returns {string|null} The delivered ticketUrl
+   */
+  function kanbanStubTicketUrl(base, ticket = "ABC-1") {
+    return normaliseKanban(kanbanStubDiagram(ticket), base).columns[0].cards[0]
+      .ticketUrl;
+  }
+
+  /**
+   * Parse the embedded fixture and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the kanban surface unhealthy, and
+   * resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the kanban health verdict
+   */
+  function runKanbanSelfCheck() {
+    if (kanbanSelfCheckPromise) {
+      return kanbanSelfCheckPromise;
+    }
+    kanbanSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          // THE URL FIXTURE RUNS FIRST AND IS READ TO COMPLETION BEFORE THE
+          // MAIN FIXTURE IS PARSED. The db is a singleton, so the second parse
+          // replaces the first's nodes entirely; the delivery is copied into
+          // this adapter's own objects by normaliseKanban, so it survives.
+          return readKanbanTicketBase(KANBAN_SELF_CHECK_URL_FIXTURE).then(
+            (urlBase) =>
+              window.mermaid.mermaidAPI
+                .getDiagramFromText(KANBAN_SELF_CHECK_URL_FIXTURE)
+                .then((urlDiagram) => ({
+                  urlBase: urlBase,
+                  urlDelivery: normaliseKanban(urlDiagram, urlBase),
+                }))
+          );
+        })
+        .then((urlResult) =>
+          // THE PRIORITY FIXTURE RUNS SECOND, on the same reasoning: it is read
+          // to completion, and both its DELIVERY and the RAW db values it was
+          // built from are copied out before the next parse replaces the
+          // singleton. The raw values are carried because two of the rows
+          // below are two-sided — they assert what Mermaid handed over AND
+          // what this surface did with it, so a build where Mermaid had
+          // started coercing could not satisfy them by accident.
+          window.mermaid.mermaidAPI
+            .getDiagramFromText(KANBAN_SELF_CHECK_PRIORITY_FIXTURE)
+            .then((priDiagram) => {
+              const rawPriorities = {};
+              for (const node of priDiagram.db.getData().nodes || []) {
+                if (node.shape === KANBAN_SHAPE_CARD) {
+                  rawPriorities[node.id] = {
+                    type: typeof node.priority,
+                    value: node.priority,
+                  };
+                }
+              }
+              return {
+                urlResult: urlResult,
+                priResult: {
+                  raw: rawPriorities,
+                  delivery: normaliseKanban(priDiagram),
+                },
+              };
+            })
+        )
+        .then(({ urlResult, priResult }) =>
+          window.mermaid.mermaidAPI
+            .getDiagramFromText(KANBAN_SELF_CHECK_FIXTURE)
+            .then((diagram) => ({
+              diagram: diagram,
+              urlResult: urlResult,
+              priResult: priResult,
+            }))
+        )
+        .then(({ diagram, urlResult, priResult }) => {
+          const db = diagram.db;
+          const accessorsPresent =
+            typeof db.getData === "function" &&
+            typeof db.getSections === "function";
+
+          // THE MEASURED ABSENCE, PINNED. The kanban db has no common trio and
+          // no `getTitle` either, and this surface's decision to deliver no
+          // title fields rests on that together with the directives being
+          // drawn as columns. A Mermaid upgrade that ADDS any of the four
+          // should fail here loudly, because it reopens the decision.
+          const trioStillAbsent =
+            typeof db.getDiagramTitle === "undefined" &&
+            typeof db.getAccTitle === "undefined" &&
+            typeof db.getAccDescription === "undefined" &&
+            typeof db.getTitle === "undefined";
+
+          // Raw reads, taken in this same slot, for the structural facts the
+          // delivery cannot itself expose.
+          const rawData = db.getData();
+          const rawNodes = Array.isArray(rawData.nodes) ? rawData.nodes : [];
+          const rawColumns = rawNodes.filter(
+            (n) => n.shape === KANBAN_SHAPE_COLUMN
+          );
+          const rawCards = rawNodes.filter((n) => n.shape === KANBAN_SHAPE_CARD);
+          const rawTwo = rawCards.find((n) => n.id === "scTwo");
+
+          // The ABSENCE pattern this surface guards for, read on both kinds so
+          // a db that started handing out every key on every node could not
+          // satisfy the delivered half by accident.
+          const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+          const absenceShapeHolds =
+            rawColumns.every(
+              (c) =>
+                !has(c, "parentId") &&
+                !has(c, "assigned") &&
+                !has(c, "priority") &&
+                has(c, "ticket") &&
+                c.ticket === undefined
+            ) &&
+            !!rawTwo &&
+            has(rawTwo, "ticket") &&
+            has(rawTwo, "assigned") &&
+            has(rawTwo, "priority") &&
+            rawTwo.ticket === undefined &&
+            rawTwo.assigned === undefined &&
+            rawTwo.priority === undefined;
+
+          // `isGroup` DISAGREES BETWEEN THE TWO ACCESSORS, which is why this
+          // surface reads `shape`. Pinned so an upgrade that reconciled them
+          // — or that changed which one lies — is visible here rather than
+          // being discovered by a generator narrating a board with no columns.
+          const rawSections = db.getSections();
+          const isGroupStillDisagrees =
+            Array.isArray(rawSections) &&
+            rawSections.length > 0 &&
+            rawSections.every((s) => s.isGroup === false) &&
+            rawColumns.every((c) => c.isGroup === true);
+
+          // THE POSITIONAL WALK, computed here so the id-filter assertion below
+          // is a COMPARISON rather than a restatement of the delivery.
+          const positionalCounts = [];
+          for (const node of rawNodes) {
+            if (node.shape === KANBAN_SHAPE_COLUMN) {
+              positionalCounts.push(0);
+            } else if (
+              node.shape === KANBAN_SHAPE_CARD &&
+              positionalCounts.length > 0
+            ) {
+              positionalCounts[positionalCounts.length - 1] += 1;
+            }
+          }
+
+          const delivery = normaliseKanban(diagram);
+          const [todo, empty, done, dupOne, dupTwo] = delivery.columns;
+          const one = todo && todo.cards ? todo.cards[0] : null;
+          const two = todo && todo.cards ? todo.cards[1] : null;
+          const keysOf = (o) => (o ? Object.keys(o).join(",") : "");
+          const expectedTop = KANBAN_DELIVERED_KEYS.join(",");
+          const expectedColumn = KANBAN_COLUMN_KEYS.join(",");
+          const expectedCard = KANBAN_CARD_KEYS.join(",");
+
+          return [
+            [
+              "the two db accessors this surface reads exist by name",
+              accessorsPresent,
+            ],
+            [
+              "the kanban db still carries NO getDiagramTitle, getAccTitle, " +
+                "getAccDescription or getTitle — the measured absence this " +
+                "surface's missing title fields rest on",
+              trioStillAbsent,
+            ],
+            [
+              "`isGroup` still disagrees between getSections() (false) and " +
+                "getData() (true) on the SAME columns, which is why this " +
+                "surface discriminates on `shape` — pinned so a reconciliation " +
+                "upstream is seen here rather than by a reader",
+              isGroupStillDisagrees,
+            ],
+            [
+              "the delivery carries EXACTLY the two documented top-level keys " +
+                "and names its type",
+              keysOf(delivery) === expectedTop && delivery.diagramType === "kanban",
+            ],
+            [
+              "five columns in DECLARATION ORDER with the author's own ids, " +
+                "the two duplicates included rather than collapsed",
+              delivery.columns.length === 5 &&
+                todo.id === "scTodo" &&
+                empty.id === "scEmpty" &&
+                done.id === "scDone" &&
+                dupOne.id === "scDup" &&
+                dupTwo.id === "scDup",
+            ],
+            [
+              "every delivered column carries EXACTLY the three documented " +
+                "keys, and every delivered card EXACTLY the seven",
+              keysOf(todo) === expectedColumn &&
+                keysOf(empty) === expectedColumn &&
+                keysOf(dupOne) === expectedColumn &&
+                keysOf(one) === expectedCard &&
+                keysOf(two) === expectedCard,
+            ],
+            [
+              "labels are decoded with decodeAuthorText on BOTH kinds — the " +
+                "column's `&amp;` arrives as the character the canvas draws",
+              todo.label === "SelfCheck todo & more" &&
+                empty.label === "SelfCheck empty" &&
+                one.label === "SelfCheck one" &&
+                two.label === "SelfCheck two",
+            ],
+            [
+              "a card declaring all three metadata keys carries the author's " +
+                "own strings, and a DRAWN priority carries priorityDrawn true",
+              one.ticket === "SC-1" &&
+                one.assigned === "scsam" &&
+                one.priority === "High" &&
+                one.priorityDrawn === true,
+            ],
+            [
+              "a card declaring NONE of the three carries null on all three " +
+                "rather than undefined, and the db really does hand out those " +
+                "keys holding undefined — asserted on both halves, so a db " +
+                "that stopped delivering them could not satisfy it by accident",
+              two.ticket === null &&
+                two.assigned === null &&
+                two.priority === null &&
+                two.priorityDrawn === false &&
+                absenceShapeHolds,
+            ],
+            [
+              "RULING KS9, THE PAIR THAT IS THE WHOLE OF IT: a priority " +
+                "written `H#105;gh` and one written `High` deliver the " +
+                "IDENTICAL `priority` string and DIFFER on `priorityDrawn` — " +
+                "so the decode is applied and the drawn test is NOT taken on " +
+                "the decoded string. Two-sided on the db as well as on the " +
+                "delivery: the entity card's RAW db value must still carry " +
+                "Mermaid's sentinels, or a build that had stopped encoding " +
+                "them would satisfy this row while proving nothing",
+              (() => {
+                const cards = priResult.delivery.columns[0].cards;
+                const drawn = cards.find((c) => c.id === "scpDrawn");
+                const entity = cards.find((c) => c.id === "scpEntity");
+                const rawEntity = priResult.raw.scpEntity;
+                return (
+                  !!drawn &&
+                  !!entity &&
+                  drawn.priority === "High" &&
+                  entity.priority === "High" &&
+                  drawn.priorityDrawn === true &&
+                  entity.priorityDrawn === false &&
+                  rawEntity.type === "string" &&
+                  rawEntity.value !== "High" &&
+                  rawEntity.value.indexOf("#105;") === -1
+                );
+              })(),
+            ],
+            [
+              "RULING KS9, THE ESCAPABLE VALUE: finding F1's own construct " +
+                "delivers the characters the author typed rather than " +
+                "Mermaid's placeholder sentinels and undecoded entities, and " +
+                "is not drawn",
+              (() => {
+                const card = priResult.delivery.columns[0].cards.find(
+                  (c) => c.id === "scpEscapable"
+                );
+                return (
+                  !!card &&
+                  card.priority === 'A&B "c" <d>' &&
+                  card.priorityDrawn === false
+                );
+              })(),
+            ],
+            [
+              "RULING KS10: a NUMBER and a BOOLEAN priority are delivered as " +
+                "their String() forms rather than silently dropped, and both " +
+                "are undrawn. Two-sided on the db: Mermaid must still be " +
+                "handing over a real `number` and a real `boolean` here, " +
+                "because if it started coercing them itself this row would " +
+                "pass while KS10's arm had gone dead",
+              (() => {
+                const cards = priResult.delivery.columns[0].cards;
+                const num = cards.find((c) => c.id === "scpNumber");
+                const bool = cards.find((c) => c.id === "scpBoolean");
+                return (
+                  !!num &&
+                  !!bool &&
+                  priResult.raw.scpNumber.type === "number" &&
+                  priResult.raw.scpBoolean.type === "boolean" &&
+                  num.priority === "1" &&
+                  bool.priority === "true" &&
+                  num.priorityDrawn === false &&
+                  bool.priorityDrawn === false
+                );
+              })(),
+            ],
+            [
+              "RULING KS10's DEFENCE ARMS, which no authorable source can " +
+                "reach and which are therefore asserted through a stub: an " +
+                "ARRAY and an OBJECT deliver null rather than a stringified " +
+                "`sam,kim` or `[object Object]`, while a string and a number " +
+                "in the same run do not — the two-sided form, so a build that " +
+                "returned null for everything could not satisfy it. Measured " +
+                "21 September 2026: a source CANNOT produce either shape, " +
+                "because Mermaid flattens `[sam, kim]` to a string before this " +
+                "surface sees it and a nested map is a hard parse error",
+              (() => {
+                const at = (value) =>
+                  kanbanMetadata({ assigned: value }, "assigned");
+                return (
+                  at(["sam", "kim"]) === null &&
+                  at({ a: 1 }) === null &&
+                  at(undefined) === null &&
+                  at("scsam") === "scsam" &&
+                  at(7) === "7" &&
+                  at(true) === "true"
+                );
+              })(),
+            ],
+            [
+              "the DRAWN vocabulary is exactly the four strings the renderer " +
+                "marks, matched on the RAW bytes and never re-cased or " +
+                "trimmed — asserted in both directions, so a build that " +
+                "matched loosely could not satisfy it",
+              (() => {
+                const drawn = (value) => kanbanPriorityDrawn({ priority: value });
+                return (
+                  KANBAN_DRAWN_PRIORITIES.length === 4 &&
+                  KANBAN_DRAWN_PRIORITIES.every((v) => drawn(v)) &&
+                  !drawn("high") &&
+                  !drawn("HIGH") &&
+                  !drawn("Very High ") &&
+                  !drawn("Urgent") &&
+                  !drawn(1) &&
+                  !drawn(true) &&
+                  kanbanPriorityDrawn({}) === false
+                );
+              })(),
+            ],
+            [
+              "the EMPTY column delivers an empty cards array rather than no " +
+                "key, and the two ordinary columns deliver their own cards",
+              Array.isArray(empty.cards) &&
+                empty.cards.length === 0 &&
+                todo.cards.length === 2 &&
+                done.cards.length === 1 &&
+                done.cards[0].label === "SelfCheck three",
+            ],
+            [
+              "a column's cards come from the ID FILTER and not from a " +
+                "positional walk: the two duplicate `scDup` columns each " +
+                "deliver all FOUR cards pointing at that id, where the walk " +
+                "would answer two — the assertion no ordinary board can make",
+              rawCards.filter((c) => c.parentId === "scDup").length === 4 &&
+                dupOne.cards.length === 4 &&
+                dupTwo.cards.length === 4 &&
+                positionalCounts.length === 5 &&
+                positionalCounts[3] === 2 &&
+                positionalCounts[4] === 2 &&
+                dupOne.cards.map((c) => c.label).join(",") ===
+                  "SelfCheck four,SelfCheck five,SelfCheck four,SelfCheck five",
+            ],
+            [
+              "getSections() corroborates the column COUNT and ORDER — the one " +
+                "thing it can honestly confirm, and the only reason this " +
+                "surface calls it at all",
+              Array.isArray(rawSections) &&
+                rawSections.length === delivery.columns.length &&
+                rawSections.every((s, i) => s.id === delivery.columns[i].id),
+            ],
+            [
+              "THE BASE URL IS READABLE AT PARSE TIME, through mermaid.parse's " +
+                "own resolved config, and it is THIS source's base — the " +
+                "reading six other routes could not deliver, and the whole " +
+                "precondition ruling KS8 rests on",
+              urlResult.urlBase ===
+                "https://selfcheck.example.org/browse/#TICKET#",
+            ],
+            [
+              "a card whose ticket links delivers the EXACT address the canvas " +
+                "links it to, built by the canvas's own first-token rule, and " +
+                "delivered VERBATIM rather than as a resolved URL",
+              (() => {
+                const cards = urlResult.urlDelivery.columns[0].cards;
+                return (
+                  cards.length === 3 &&
+                  cards[0].ticket === "SCU-1" &&
+                  cards[0].ticketUrl ===
+                    "https://selfcheck.example.org/browse/SCU-1"
+                );
+              })(),
+            ],
+            [
+              "a WHITESPACE-ONLY ticket delivers a null ticketUrl while the " +
+                "ticket itself is delivered untrimmed, and a card with NO " +
+                "ticket delivers null on both — the two absent cases kept " +
+                "apart, on a source with a working base beside them",
+              (() => {
+                const cards = urlResult.urlDelivery.columns[0].cards;
+                return (
+                  cards[1].ticket === " " &&
+                  cards[1].ticketUrl === null &&
+                  cards[2].ticket === null &&
+                  cards[2].ticketUrl === null
+                );
+              })(),
+            ],
+            [
+              "the ticket-URL allow-list refuses `javascript:` and `data:` and " +
+                "admits `http:`, `https:` and a RELATIVE base the canvas draws " +
+                "— asserted in BOTH directions, so a build that refused " +
+                "everything could not satisfy it",
+              kanbanStubTicketUrl("javascript:alert(1)//#TICKET#") === null &&
+                kanbanStubTicketUrl("data:text/html,#TICKET#") === null &&
+                kanbanStubTicketUrl("https://example.org/browse/#TICKET#") ===
+                  "https://example.org/browse/ABC-1" &&
+                kanbanStubTicketUrl("http://example.org/browse/#TICKET#") ===
+                  "http://example.org/browse/ABC-1" &&
+                kanbanStubTicketUrl("/browse/#TICKET#") === "/browse/ABC-1",
+            ],
+            [
+              "NO base delivers null, an EMPTY base delivers null, a base with " +
+                "no #TICKET# token is used VERBATIM with the ticket NOT " +
+                "appended, and a base carrying the token TWICE replaces only " +
+                "the first — every one of them the canvas's measured behaviour",
+              kanbanStubTicketUrl(null) === null &&
+                kanbanStubTicketUrl("") === null &&
+                kanbanStubTicketUrl("https://example.org/browse/") ===
+                  "https://example.org/browse/" &&
+                kanbanStubTicketUrl(
+                  "https://example.org/#TICKET#/also/#TICKET#"
+                ) === "https://example.org/ABC-1/also/#TICKET#",
+            ],
+            [
+              "the URL is built from the RAW db ticket through " +
+                "decodePlaceholders and NOT from the DELIVERED `ticket`, on " +
+                "the construct that separates the two decoders: a ticket " +
+                "written `A&amp;B-1` is DRAWN `A&B-1` and LINKED `A&amp;B-1`, " +
+                "so a build that reused the delivered string would link to the " +
+                "wrong address — asserted with the disagreement itself as a " +
+                "canary, so a build where the two decoders agreed could not " +
+                "satisfy this row by accident",
+              (() => {
+                const rawTicket = "A&amp;B-1";
+                return (
+                  decodeAuthorText(rawTicket) !== decodePlaceholders(rawTicket) &&
+                  decodeAuthorText(rawTicket) === "A&B-1" &&
+                  kanbanStubTicketUrl(
+                    "https://example.org/#TICKET#",
+                    rawTicket
+                  ) === "https://example.org/A&amp;B-1"
+                );
+              })(),
+            ],
+            [
+              "an unknown `shape` is a STOP rather than a silent drop, so a " +
+                "board is never delivered short of a card",
+              (() => {
+                try {
+                  normaliseKanban({
+                    db: {
+                      getData: () => ({
+                        nodes: [{ id: "x", label: "x", shape: "kanbanUnknown" }],
+                      }),
+                    },
+                  });
+                  return false;
+                } catch (e) {
+                  return /unknown shape/.test((e && e.message) || "");
+                }
+              })(),
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    kanbanSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Kanban self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's kanban internals no longer " +
+              "match the 18 September 2026 census, or this surface's mapping " +
+              "has drifted; do not trust kanban adapter output."
+          );
+          kanbanHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Kanban self-check passed: accessor, absent-trio, isGroup-disagreement, " +
+            "key-set, decode, metadata-null, priority-decode-pair, " +
+            "priority-escapable, priority-number-and-boolean, " +
+            "metadata-defence-arms, drawn-vocabulary, empty-column, " +
+            "id-filter, section-cross-check, ticket-base-readable, " +
+            "ticket-URL-exact, ticket-URL-absent-cases, allow-list, " +
+            "base-shapes, raw-decoder and unknown-shape assertions all hold"
+        );
+        kanbanHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Kanban self-check FAILED at assertion: the fixture parses and " +
+            `reads. The fixture run rejected: ${error && error.message}`
+        );
+        kanbanHealthy = false;
+        return false;
+      });
+
+    return kanbanSelfCheckPromise;
+  }
+
+  /**
+   * Report the kanban surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the kanban self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isKanbanHealthy() {
+    return kanbanHealthy;
+  }
+
+  // RADAR — the thirteenth surface, and the sixth read entirely from the db
+  //
+  // WHY THERE IS NO SOURCE READER HERE. The db delivers the AUTHOR'S OWN
+  // NUMBERS, in AXIS ORDER, whichever of the two curve forms the author used:
+  // `curve x{ c: 30, a: 10, b: 20 }` against `axis a, b, c` delivers
+  // `entries: [10, 20, 30]`, re-ordered to the axis declaration order rather
+  // than to the writing order (census
+  // docs/mermaid-item-93-census-1-2026-09-22.md § Q2, source G39). So this is
+  // the SEQUENCE, BLOCK, C4 and KANBAN answer and NOT the quadrant one: there
+  // are no pixels to undo and no ordering to recover. Ruling RS1.
+  //
+  // NO getConfig() READ, AND THAT IS A RULING RATHER THAN AN OMISSION. Radar's
+  // db carries a `getConfig()` beside `getOptions()`, and it is WRONG TWICE
+  // OVER (census § Q7, four arms, each in its own fresh context). It NEVER
+  // sees its own source's frontmatter — a source declaring
+  // `config.radar.axisScaleFactor: 0.5` reads back the build default `1`, byte
+  // identical to a virgin control. And it LEAKS the previously RENDERED
+  // source's frontmatter, which is the kanban `ticketBaseUrl` leak exactly. A
+  // surface reading it would therefore deliver a confident wrong answer about
+  // the chart in front of it, and would sometimes deliver another chart's. The
+  // clean per-source route measured on this type is `mermaid.parse(source)`'s
+  // own resolved `config` — the KS8 route kanban uses — and NOTHING THIS
+  // SURFACE DELIVERS NEEDS IT, so it is not called. Ruling RS8.
+  //
+  // THE TRIO IS DELIVERED, AND THE CONDITION ON IT WAS DISCHARGED BY
+  // MEASUREMENT RATHER THAN ASSUMED. The dispatch made `title`, `accTitle` and
+  // `accDescr` conditional on the shared store being CLEARED per parse, on the
+  // c4 precedent where it is not and a late read FABRICATES another diagram's
+  // words. The census asked it directly, with a positive control in the same
+  // page: a flowchart carrying `accTitle: FOREIGN TITLE` really did set the
+  // store, and a radar parse afterwards read `""`, `""`, `""`. Every parse and
+  // every render clears it. So on radar the failure mode is LOSS and never
+  // fabrication, and the trio may be delivered. Ruling RS4.
+  //
+  // BUT THE TRIO AND THE PAYLOAD COME FROM TWO DIFFERENT STORES WITH DIFFERENT
+  // LIFETIMES, which is the sequence shape rather than the block one. After a
+  // FOREIGN parse, a live radar handle's `getDiagramTitle`, `getAccTitle` and
+  // `getAccDescription` all read `""` while its `getAxes()` and `getCurves()`
+  // are UNCHANGED (census § Q5). So both halves are read here, in ONE queue
+  // slot, in the same tick — and concurrency rows CR1 and CR2 assert BOTH,
+  // because a lane asserting only the scalars would miss a payload
+  // cross-delivery and one asserting only the payload would pass while the
+  // titles crossed.
+  //
+  // THE DECODE IS decodePlaceholders, AND THIS IS THE OPPOSITE OF KANBAN.
+  // Census § Q4 ran seven author-text constructs in FIVE positions — the
+  // title, an axis label, a curve label, `accTitle:` and `accDescr:` — with
+  // the `Tom &amp; Jerry` calibration firing in every one of the 35 readings
+  // to prove the two decoders had not collapsed into each other.
+  // `decodePlaceholders` reproduced the canvas on 35 of 35 and
+  // `decodeAuthorText` on 25 of 35, disagreeing on exactly the two
+  // pre-escaped-entity constructs in all five positions. That is the SVG-TEXT
+  // answer, and § Q3 supplies its mechanism: ZERO `foreignObject` on every
+  // radar render taken, six `<text>` elements on the canonical source. An
+  // author's `&amp;` is DRAWN as the five characters `&amp;`, so a surface
+  // that decoded it to `&` would narrate something no sighted reader is shown.
+  // Ruling RS3. It is easy to inherit kanban's answer here and it is wrong.
+  //
+  // accTitle AND accDescr TAKE NO TRANSFORM, which is the standing carve-out
+  // and NOT an inconsistency with the paragraph above. Ruling RS9, 23
+  // September 2026, overruling the census's recommendation that
+  // decodePlaceholders apply to all three. The reason is the same one the
+  // sequence surface records at ruling R11 and gantt repeats: clause X3 owns
+  // the author override, it reads the RAW DIAGRAM SOURCE rather than this db,
+  // and THAT is the text a reader actually hears (census § Q8, measured on
+  // four sources through capture.mjs). A transform applied here would describe
+  // a string nobody is given. `title` is different and IS decoded, because it
+  // is drawn on the canvas as `<text class="radarTitle">` and a narration of
+  // it is a narration of drawn text.
+  //
+  // THE IDS ARE DELIVERED FOR DERIVATION CHECKS AND MUST NEVER BE NARRATED,
+  // on both kinds. `axes[i].id` and `curves[i].id` are the db's `name`, and
+  // they are delivered VERBATIM — no decode of any kind — because they are
+  // identifiers rather than author prose. Mermaid permits DUPLICATES on both
+  // (census § Q1, G33 and G34, both accepted and both drawn), and a curve or
+  // axis written with no quoted label takes its own id AS its label (G37), so
+  // an id is neither unique nor distinguishable from a label. Ruling RS8.
+  //
+  // `drawn` IS COMPUTED ONCE, HERE, AND IT ANSWERS THE LARGEST DIVERGENCE THIS
+  // TYPE HAS. A curve whose value count differs from the axis count is
+  // DELIVERED IN FULL by the db, NAMED AND COLOUR-SWATCHED IN THE LEGEND, and
+  // ABSENT FROM THE PLOT. Census § Q3 reproduced it three independent ways —
+  // a class-prefix scan, a `.radarCurve-<i>` selector and a shape-tag count —
+  // with an exact-length control in the same cell that DREW, and row C4 shows
+  // the failure is PER CURVE rather than per chart: a short curve is omitted
+  // while a sound one beside it is drawn, and the legend advertises both. This
+  // is the MR1 class one size larger — a whole series rather than a field —
+  // and WHAT THE GOLD DOES WITH IT IS NOT DECIDED HERE. What is decided is
+  // that the fact is computed in ONE place, from the two lengths the db
+  // already carries, so a generator cannot re-derive it and disagree. Ruling
+  // RS7a: `drawn === (values.length === axes.length)`, so a curve on a chart
+  // with NO axes is `drawn: false`.
+  //
+  // AMENDED TO RS7b, 29 September 2026 (gold ruling RR21 on the item 93
+  // sweep's RO-3): `drawn === (values.length === axes.length && axes.length
+  // >= 2)`. A series on ONE axis has one vertex, and the renderer's closed
+  // curve through one point is a zero-length path: the sweep's pixel test
+  // found the chart PIXEL-IDENTICAL to the same chart with no curve, in both
+  // grid modes, against a two-axis control that differed. So a one-axis series
+  // is not in the picture, and `drawn` now says so. The spoke and its label
+  // ARE drawn, which is why this changes the curve's fact and not the axes.
+  //
+  // THE SCALE IS THE ONE PLACE THIS SURFACE COMPUTES A NUMBER THE DB DOES NOT
+  // HOLD, and the rule was MEASURED before it was written. `getOptions().max`
+  // is `null` whenever the author declares none — four of the five options are
+  // defaulted by the db and that one is not — while the RENDERER derives a
+  // maximum from the data and draws to it, so a narration reading the db alone
+  // would report "no maximum" for a picture drawn against a real one. Six
+  // sources were rendered on 23 September 2026, each with a control, geometry
+  // read off the drawn vertex radius against the outermost graticule ring in
+  // SCREEN space (so the reading does not depend on which group a coordinate
+  // belongs to), and the derivation is
+  //     scaleMax = min + (value - min) * outerRadius / vertexRadius .
+  // The readings:
+  //   (a) two drawn curves, the largest value 90 on the SECOND — derived 90.0,
+  //       control peaking at 60 derived 60.0. So the scale is the maximum over
+  //       ALL curves, not over the first one.
+  //   (b) an UNDRAWN curve (two values on three axes) holding 200 beside a
+  //       drawn curve peaking at 90 — derived 200.0, control without it
+  //       derived 90.0. SO A CURVE THE PICTURE DOES NOT DRAW STILL SETS THE
+  //       SCALE THE PICTURE IS DRAWN AGAINST.
+  //   (c) a curve with FOUR values on three axes whose fourth is 500 — derived
+  //       500.0, control whose fourth is 4 derived 90.0. SO AN ENTRY BEYOND
+  //       THE AXIS COUNT COUNTS TOO.
+  //   (d) author `max 50` with values 10, 50 and 90 — the three vertices land
+  //       at radii 60, 300 and 300 against an outer ring of 300, so the author's
+  //       number IS the scale and the 90 is CLIPPED AT THE OUTER RING rather
+  //       than drawn past it or growing the scale. Control with no max drew
+  //       33.33 / 166.67 / 300.
+  //   (e) all values 0 and no max — the derived maximum is 0, and the renderer
+  //       emits a curve path reading `MNaN,NaN C…`, so NOTHING IS DRAWN while
+  //       the legend still names the curve. With `max 10` the same curve draws
+  //       a degenerate point at the centre (`M0,0 C0,0 …`). Recorded; the
+  //       surface delivers the derived 0 rather than inventing a fallback.
+  //   (f) a FRONTMATTER `title:` — see the contradiction below.
+  // EVERY ROW FITS ONE SENTENCE: the scale is the author's `max` when they
+  // declared one, and otherwise the maximum over the values of EVERY curve the
+  // db delivers — drawn or not, and including entries beyond the axis count.
+  // Ruling RS6a. `min` is db-delivered throughout and defaults to 0, so only
+  // the maximum was ever in question.
+  //
+  // SO THREE KEYS SIT WHERE ONE DID. `max` is the author's number or null,
+  // exactly as the db hands it over; `scaleMax` is the number the renderer
+  // draws to; `scaleMaxSource` is `"author"` or `"data"` and says which. A
+  // consumer that wants to narrate a declared maximum reads `max`, one that
+  // wants to narrate the picture's own scale reads `scaleMax`, and neither has
+  // to know the derivation. There is deliberately no fourth key for "the
+  // author declared one", because `scaleMaxSource === "author"` already is it.
+  //
+  // TWO EDGES WHERE THE DELIVERED scaleMax IS NOT WHAT THE PICTURE DREW, both
+  // named rather than smoothed over:
+  //   AN INVERTED PAIR. `min 100` with `max 0` parses and the db delivers both
+  //     verbatim (census § Q1, G35). Measured 23 September 2026 with values
+  //     10, 20 and 30: every vertex lands at the OUTER RING, radius 300 of
+  //     300, which fits no simple reading of a 100..0 domain — 0.9, 0.8 and
+  //     0.7 of the radius would be 270, 240 and 210. THE MECHANISM WAS NOT
+  //     ISOLATED and nothing here should be read as one. The surface delivers
+  //     the author's 0 with source `"author"`, which is ruling RS6a applied
+  //     unchanged; that it disagrees with the geometry on this pathological
+  //     source is recorded, not repaired.
+  //   NO VALUES AT ALL. A chart with axes and no curve, or `radar-beta` and
+  //     nothing else, has nothing to derive from, so `scaleMax` is null with
+  //     source `"data"`. Null here says "the picture has no scale because it
+  //     plots nothing", which is true of exactly that chart.
+  //
+  // A FRONTMATTER `title:` REACHES THE CANVAS AND NOT THIS SURFACE, and the
+  // census marked the question OWED. Measured here, 23 September 2026, with
+  // the body `title` keyword as the control: a source whose only title is a
+  // frontmatter one draws `<text class="radarTitle">Frontmatter radar
+  // title</text>` while `getDiagramTitle()` reads `""`, so this surface
+  // delivers `title: null` for a chart that visibly carries one. The control
+  // delivered `Body radar title` through both routes. THIS IS NOT REPAIRED
+  // HERE: the only per-source route to it is a non-db read, which ruling RS8
+  // and this session's dispatch both exclude, and the disposition belongs with
+  // register item 77, which already carries the frontmatter-title question for
+  // other types. It is recorded so a later reader does not discover it as a
+  // surface defect.
+  //
+  // THE DB IS A SHARED SINGLETON, so this is the register item 21 hazard in
+  // the kanban shape. Census § Q5 measured `dbA === dbB` true across two
+  // parses, with the first handle's accessors afterwards returning the SECOND
+  // source's axes, curves, options and title — there is no per-parse payload
+  // on radar. And § Q5 measured one thing kanban's did not: A RENDER OF AN
+  // UNRELATED SOURCE CLOBBERS A LIVE HANDLE, a handle holding axes `a, b, c`
+  // reading back `b1, b2, b3` afterwards. So every read below happens inside
+  // this parse's own queue slot and is copied into this adapter's own objects
+  // in the same tick, and NOTHING MAY RENDER BETWEEN THE HANDLE AND THE READ.
+  //
+  // A RENDER ADDS NO KEYS, which is the kanban answer and the opposite of
+  // block's. Census § Q6 took `Object.keys` in page, before any stringify, on
+  // the db, the diagram wrapper, the first axis, the first curve and the
+  // options object, before and after a render of the same source: every key
+  // set identical, every option value identical. So no structured clone is
+  // needed. The copy below is still key by key, for the reason the block
+  // surface gives — a closed key list cannot be made to carry a field a later
+  // Mermaid build starts adding. Note the second identity reading in the same
+  // census: `getAxes()` returns the SAME array object on repeated calls within
+  // one parse, and that reference does NOT survive a render. Hold no reference
+  // across one.
+  //
+  // A NON-NUMBER VALUE IS A STOP, AND SO IS A MISSING KEY ON ANY DB OBJECT
+  // THIS SURFACE READS. The census measured `entries` holding `number`s per
+  // element rather than assuming it, the grammar REJECTS a negative outright
+  // (G23/G27) and an empty value list with it (G29), and every axis carries
+  // exactly `name` and `label` while every curve carries exactly `name`,
+  // `label` and `entries`. A silent coercion would put a string into a scale
+  // derivation and produce a confident wrong maximum; a silently dropped axis
+  // or curve would be invisible, because a chart short of an axis looks
+  // exactly like a chart with fewer axes. So both throw, the parse rejects,
+  // and the consumer reaches the honest-unsupported fallback — which on THIS
+  // type gives advice that is actually true, radar accepting `accTitle:`,
+  // `accDescr:` and the `accDescr { }` block as first-class grammar (census
+  // § Q1 and § Q8, and register item 81's fourth case does not arise here).
+  //
+  // WHAT IS DELIBERATELY NOT DELIVERED, each for a measured reason:
+  //   `getConfig()`'s whole object — wrong about its own source and leaky
+  //     (§ Q7). See above.
+  //   a `curveCount` or `axisCount` field — the counts are `curves.length` and
+  //     `axes.length`, computed once by the consumer. Two computations of one
+  //     fact are how defects hide; kanban's ruling KS7 applied unchanged.
+  //   any geometry — no radius, no vertex, no colour. The census measured the
+  //     three curves of an exemplar distinguished by HUE AND NOTHING ELSE in
+  //     18 of 18 theme cells, and in six of those cells two or three curves
+  //     share one colour outright. That is a theming finding and a rule 24
+  //     question, and a surface delivering paint would invite a narration to
+  //     name colours a reader cannot see.
+  //
+  // NO TRIM ON ANY LABEL, and no trim on the title. What the db holds is what
+  // is delivered, decoded; how a narration speaks a label that is one space is
+  // the gold document's question and not this file's.
+  const RADAR_SCALE_MAX_AUTHOR = "author";
+  const RADAR_SCALE_MAX_DATA = "data";
+
+  // The fewest axes on which a curve is drawn at all — ruling RS7b. One axis
+  // gives one vertex and a zero-length path, measured pixel-identical to no
+  // curve (item 93 sweep, F4).
+  const RADAR_MIN_DRAWN_AXES = 2;
+
+  // The seven keys a delivered radar carries, in order. Named as a constant
+  // because the self-check asserts the delivered key set EXACTLY against it.
+  const RADAR_DELIVERED_KEYS = Object.freeze([
+    "diagramType",
+    "title",
+    "accTitle",
+    "accDescr",
+    "axes",
+    "curves",
+    "options",
+  ]);
+
+  // The two keys a delivered AXIS carries, in order.
+  const RADAR_AXIS_KEYS = Object.freeze(["id", "label"]);
+
+  // The four keys a delivered CURVE carries, in order. `drawn` is COMPUTED
+  // rather than copied — see ruling RS7a above.
+  const RADAR_CURVE_KEYS = Object.freeze(["id", "label", "values", "drawn"]);
+
+  // The seven keys a delivered OPTIONS object carries, in order. Five are the
+  // db's own; `scaleMax` and `scaleMaxSource` are computed, ruling RS6a.
+  const RADAR_OPTION_KEYS = Object.freeze([
+    "showLegend",
+    "ticks",
+    "graticule",
+    "min",
+    "max",
+    "scaleMax",
+    "scaleMaxSource",
+  ]);
+
+  // The db-side key sets the census recorded, pinned so a build that changed
+  // any of them STOPS here rather than delivering a chart with something
+  // missing from it.
+  const RADAR_DB_AXIS_KEYS = Object.freeze(["name", "label"]);
+  const RADAR_DB_CURVE_KEYS = Object.freeze(["name", "label", "entries"]);
+  const RADAR_DB_OPTION_KEYS = Object.freeze([
+    "showLegend",
+    "ticks",
+    "max",
+    "min",
+    "graticule",
+  ]);
+
+  let radarMemoCode = null;
+  let radarMemoPromise = null;
+  let radarHealthy = null;
+  let radarSelfCheckStarted = false;
+  let radarSelfCheckPromise = null;
+
+  /**
+   * Assert that a db object carries every key the census recorded on its kind.
+   *
+   * A MISSING KEY IS A STOP rather than a null, and the distinction matters
+   * here in a way it does not on kanban. There, three metadata keys are OWN
+   * KEYS HOLDING undefined when the author declares none, so absence is an
+   * ordinary state with a delivered meaning. On radar the census found NO
+   * member delivered as undefined at all — the in-page sweep over every axis
+   * key, every curve key and every option key returned zero — so an absent key
+   * is not a state this type has, and meeting one means the db is no longer
+   * the db this surface was measured against.
+   *
+   * @param {Object} raw - The db object
+   * @param {ReadonlyArray<string>} keys - The keys the census recorded
+   * @param {string} kind - The word used in the message: axis, curve, options
+   * @param {number|null} index - Position, for the message; null where the
+   *   kind is a singleton and a position would be noise
+   * @throws {Error} When the object is not an object or a key is absent
+   */
+  function radarRequireDbKeys(raw, keys, kind, index) {
+    const where = "Radar " + kind + (index === null ? "" : " at index " + index);
+    if (!raw || typeof raw !== "object") {
+      throw new Error(
+        where + " is not an object. Refusing to deliver a partial chart."
+      );
+    }
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(raw, key)) {
+        throw new Error(
+          where +
+            " carries no `" +
+            key +
+            "` key; this surface was measured against a db that carries " +
+            JSON.stringify(keys) +
+            ". Refusing to deliver a partial chart."
+        );
+      }
+    }
+  }
+
+  /**
+   * Copy ONE db axis into this surface's own object.
+   *
+   * @param {Object} raw - A db axis
+   * @param {number} index - Declaration position
+   * @returns {Object} The delivered axis
+   * @throws {Error} When the axis is missing a key the census recorded
+   */
+  function copyRadarAxis(raw, index) {
+    radarRequireDbKeys(raw, RADAR_DB_AXIS_KEYS, "axis", index);
+    const id = typeof raw.name === "string" ? raw.name : "";
+    return {
+      id: id,
+      // decodePlaceholders, per ruling RS3. An axis whose db label is not a
+      // string delivers the id, which is what the db itself would have put
+      // there — a label-less axis's label IS its id (census G37) — so the
+      // fallback is a defence rather than a live path.
+      label: typeof raw.label === "string" ? decodePlaceholders(raw.label) : id,
+    };
+  }
+
+  /**
+   * Copy ONE db curve into this surface's own object.
+   *
+   * THE VALUES ARE ALREADY IN AXIS ORDER and are not re-ordered here (ruling
+   * RS2). `drawn` is computed from the two lengths and nowhere else.
+   *
+   * @param {Object} raw - A db curve
+   * @param {number} index - Declaration position
+   * @param {number} axisCount - How many axes this chart declares
+   * @returns {Object} The delivered curve
+   * @throws {Error} When a key is missing or a value is not a finite number
+   */
+  function copyRadarCurve(raw, index, axisCount) {
+    radarRequireDbKeys(raw, RADAR_DB_CURVE_KEYS, "curve", index);
+    if (!Array.isArray(raw.entries)) {
+      throw new Error(
+        "Radar curve at index " +
+          index +
+          " carries an `entries` that is not an array. Refusing to deliver a " +
+          "partial chart."
+      );
+    }
+
+    const values = [];
+    for (let i = 0; i < raw.entries.length; i++) {
+      const value = raw.entries[i];
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new Error(
+          "Radar curve at index " +
+            index +
+            " carries a non-numeric value at position " +
+            i +
+            " (" +
+            JSON.stringify(value) +
+            "). A silent coercion would feed the scale derivation a string " +
+            "and produce a confident wrong maximum. Refusing to deliver."
+        );
+      }
+      values.push(value);
+    }
+
+    const id = typeof raw.name === "string" ? raw.name : "";
+    return {
+      id: id,
+      label: typeof raw.label === "string" ? decodePlaceholders(raw.label) : id,
+      values: values,
+      // RULING RS7b (RS7a amended by RR21). A curve with no axes is `drawn:
+      // false`, which is what the canvas does with it (census § Q3, row C5),
+      // and so is a curve on ONE axis, which the canvas draws as nothing.
+      drawn: values.length === axisCount && axisCount >= RADAR_MIN_DRAWN_AXES,
+    };
+  }
+
+  /**
+   * Derive the scale the renderer draws to.
+   *
+   * MEASURED, NOT INFERRED — the six rows are in the surface note above. The
+   * author's `max` wins whenever they declared one, INCLUDING a zero and
+   * including a max below the data, which the renderer honours by CLIPPING
+   * the over-range vertices at the outer ring. Otherwise it is the maximum
+   * over the values of every curve the db delivers: an undrawn curve counts,
+   * and so does an entry beyond the axis count.
+   *
+   * IT READS THE DELIVERED CURVES, not the db's, so every value it sees has
+   * already been through copyRadarCurve's numeric STOP.
+   *
+   * @param {Object} rawOptions - The db's own options object
+   * @param {Array<Object>} curves - The delivered curves
+   * @returns {{scaleMax: number|null, scaleMaxSource: string}} The scale
+   */
+  function radarScale(rawOptions, curves) {
+    if (typeof rawOptions.max === "number" && Number.isFinite(rawOptions.max)) {
+      return {
+        scaleMax: rawOptions.max,
+        scaleMaxSource: RADAR_SCALE_MAX_AUTHOR,
+      };
+    }
+
+    let derived = null;
+    for (const curve of curves) {
+      for (const value of curve.values) {
+        if (derived === null || value > derived) {
+          derived = value;
+        }
+      }
+    }
+    return { scaleMax: derived, scaleMaxSource: RADAR_SCALE_MAX_DATA };
+  }
+
+  /**
+   * Copy the db's options and seat the two computed scale keys beside them.
+   *
+   * EVERY TYPE IS CHECKED AND A WRONG ONE IS A STOP, on the reasoning the
+   * missing-key guard gives: the census measured all five with their types,
+   * none of them ever undefined, so a departure means this is no longer the
+   * db that was measured. `max` is the one key whose null is a real state.
+   *
+   * @param {Object} raw - The db's options object
+   * @param {Array<Object>} curves - The delivered curves
+   * @returns {Object} The delivered options
+   * @throws {Error} When a key is missing or carries an unexpected type
+   */
+  function copyRadarOptions(raw, curves) {
+    radarRequireDbKeys(raw, RADAR_DB_OPTION_KEYS, "options", null);
+
+    const wrong = [];
+    if (typeof raw.showLegend !== "boolean") wrong.push("showLegend");
+    if (typeof raw.ticks !== "number" || !Number.isFinite(raw.ticks)) {
+      wrong.push("ticks");
+    }
+    if (typeof raw.graticule !== "string") wrong.push("graticule");
+    if (typeof raw.min !== "number" || !Number.isFinite(raw.min)) {
+      wrong.push("min");
+    }
+    if (
+      raw.max !== null &&
+      (typeof raw.max !== "number" || !Number.isFinite(raw.max))
+    ) {
+      wrong.push("max");
+    }
+    if (wrong.length) {
+      throw new Error(
+        "Radar options carry an unexpected type on " +
+          JSON.stringify(wrong) +
+          "; this surface was measured against showLegend boolean, ticks " +
+          "number, graticule string, min number and max number-or-null. " +
+          "Refusing to deliver."
+      );
+    }
+
+    const scale = radarScale(raw, curves);
+    return {
+      showLegend: raw.showLegend,
+      ticks: raw.ticks,
+      graticule: raw.graticule,
+      min: raw.min,
+      // The AUTHOR'S number or null, exactly as the db delivers it. Ruling
+      // RS6a — this key is never quietly replaced by the derived one.
+      max: raw.max,
+      scaleMax: scale.scaleMax,
+      scaleMaxSource: scale.scaleMaxSource,
+    };
+  }
+
+  /**
+   * Normalise one Mermaid radar chart into the thirteenth surface's delivery.
+   *
+   * EAGER SNAPSHOT (the singleton defence, census § Q5 and § Q6): all six
+   * accessors are called ONCE here, inside the parse's own .then and behind
+   * the adapter-wide queue, and every value is mapped into this adapter's own
+   * objects in the same tick. Nothing in the returned object references a
+   * db-owned object, and no consumer may go back to the db later — a second
+   * parse replaces the whole payload and a RENDER of an unrelated source
+   * clobbers a live handle.
+   *
+   * THE TWO STORES ARE READ TOGETHER, FIRST. The trio comes from the one
+   * module-scoped store every diagram type shares and the payload from radar's
+   * own module scope; they have different lifetimes and only a single slot
+   * makes reading both safe.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @returns {Object} The normalised radar delivery
+   * @throws {Error} When the db hands over a shape this surface does not know
+   */
+  function normaliseRadar(diagram) {
+    const db = diagram.db;
+
+    // THE SIX READS, together, before anything else can yield.
+    const rawTitle = db.getDiagramTitle();
+    const rawAccTitle = db.getAccTitle();
+    const rawAccDescr = db.getAccDescription();
+    const rawAxes = db.getAxes();
+    const rawCurves = db.getCurves();
+    const rawOptions = db.getOptions();
+
+    if (!Array.isArray(rawAxes) || !Array.isArray(rawCurves)) {
+      throw new Error(
+        "Radar getAxes() and getCurves() must both return arrays; this build " +
+          "returned " +
+          Object.prototype.toString.call(rawAxes) +
+          " and " +
+          Object.prototype.toString.call(rawCurves) +
+          ". Refusing to deliver."
+      );
+    }
+
+    const axes = rawAxes.map(copyRadarAxis);
+    const curves = rawCurves.map((raw, index) =>
+      copyRadarCurve(raw, index, axes.length)
+    );
+
+    return {
+      // `diagramType` rather than `type`, matching block, c4 and kanban.
+      diagramType: "radar",
+      // decodePlaceholders, ruling RS3: the title is drawn as
+      // `<text class="radarTitle">` and a narration of it narrates drawn text.
+      // The db delivers "" and never null when the author wrote none (census
+      // § Q2), and "" is collapsed to null here so a consumer has ONE absent
+      // case. NOTE the measured divergence recorded above: a FRONTMATTER
+      // title draws on the canvas and never reaches this accessor.
+      title: rawTitle === "" || typeof rawTitle !== "string"
+        ? null
+        : decodePlaceholders(rawTitle),
+      // NO TRANSFORM on either, ruling RS9 and the standing carve-out: clause
+      // X3 owns author override and reads the raw source, which is the text a
+      // reader actually receives.
+      accTitle:
+        rawAccTitle === "" || typeof rawAccTitle !== "string"
+          ? null
+          : rawAccTitle,
+      accDescr:
+        rawAccDescr === "" || typeof rawAccDescr !== "string"
+          ? null
+          : rawAccDescr,
+      axes: axes,
+      curves: curves,
+      options: copyRadarOptions(rawOptions, curves),
+    };
+  }
+
+  /**
+   * Parse a radar chart and deliver the normalised shape.
+   *
+   * Same contract as the other twelve surfaces: the PROMISE is memoised on the
+   * code string, the memo sits in front of the adapter-wide queue, and every
+   * db read happens inside this call's own queue slot. On this type the queue
+   * is load-bearing for the whole delivery — the payload half has no
+   * per-instance store, and the trio half is the one every diagram type
+   * shares.
+   *
+   * @param {string} code - The Mermaid radar source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseRadar(code) {
+    if (!radarSelfCheckStarted) {
+      runRadarSelfCheck();
+    }
+
+    if (code === radarMemoCode && radarMemoPromise) {
+      logDebug("Returning memoised radar parse for identical code string");
+      return radarMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Radar parse entering its queue slot, ${code.length} characters`);
+      return window.mermaid.mermaidAPI
+        .getDiagramFromText(code)
+        .then((diagram) => {
+          logDebug(
+            `Radar parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
+          );
+          const radar = normaliseRadar(diagram);
+          const drawnCount = radar.curves.filter((c) => c.drawn).length;
+          logDebug(
+            `Radar parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${radar.axes.length} axis/axes, ${radar.curves.length} curve(s), ` +
+              `${drawnCount} drawn, scaleMax ${JSON.stringify(radar.options.scaleMax)} ` +
+              `from the ${radar.options.scaleMaxSource}`
+          );
+          return radar;
+        })
+        .catch((error) => {
+          logDebug(
+            `Radar parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    radarMemoCode = code;
+    radarMemoPromise = result;
+    return result;
+  }
+
+  /**
+   * Self-check fixture: three axes, two curves, all five options, the common
+   * trio, the axis:value curve form written OUT OF ORDER, and a curve whose
+   * value count is SHORT of the axis count.
+   *
+   * THE OUT-OF-ORDER CURVE IS THE POINT, and without it this fixture would
+   * pass whether or not the db resolved the axis:value form — the bare list
+   * form delivers in writing order, which for that form IS axis order, so it
+   * cannot tell the two apart. `{ scC: 30, scA: 10, scB: 20 }` against
+   * `axis scA, scB, scC` must deliver `[10, 20, 30]`.
+   *
+   * THE SHORT CURVE IS THE SECOND POINT. It is the only way `drawn` gets a
+   * FALSE beside a TRUE in one delivery, which is the whole of ruling RS7a in
+   * one row and cannot be shown by either curve alone. It is written in the
+   * BARE LIST form deliberately: the axis:value form with an axis missing is a
+   * HARD PARSE REJECTION (census G07), so a short curve can only be authored
+   * this way.
+   *
+   * THE `&amp;` IN AN AXIS LABEL AND THE `#quot;` IN THE TITLE ARE THE THIRD.
+   * They are the pair that separates the two decoders: `#quot;` is a
+   * placeholder both resolve, while `&amp;` is the construct on which
+   * decodePlaceholders agrees with the canvas and decodeAuthorText does not.
+   * The row below asserts the disagreement itself as a canary, so a build
+   * where the two decoders had collapsed into each other could not satisfy it
+   * by accident.
+   *
+   * ASCII only, every string distinctive and prefixed SelfCheck, so a
+   * cross-delivery from another diagram NAMES ITS SOURCE rather than merely
+   * looking wrong.
+   */
+  const RADAR_SELF_CHECK_FIXTURE = [
+    "radar-beta",
+    "  title SelfCheck radar #quot;title#quot;",
+    "  accTitle: SelfCheck radar acc title",
+    "  accDescr: SelfCheck radar acc descr",
+    "  showLegend true",
+    "  min 0",
+    "  max 100",
+    "  ticks 4",
+    "  graticule polygon",
+    '  axis scA["SelfCheck axis &amp; one"], scB["SelfCheck axis two"], scC["SelfCheck axis three"]',
+    '  curve scX["SelfCheck curve one"]{ scC: 30, scA: 10, scB: 20 }',
+    '  curve scY["SelfCheck curve two"]{40, 50}',
+  ].join("\n");
+
+  /**
+   * The SECOND self-check fixture: no `max`, no trio, no quoted labels.
+   *
+   * IT IS A SEPARATE SOURCE rather than a second reading of the first, because
+   * `scaleMaxSource` has exactly two values and one source can only ever
+   * exercise one of them. A one-sided row here would pass on a build that
+   * hard-coded either answer.
+   *
+   * IT ALSO CARRIES THE "" → null ARM. The db returns the EMPTY STRING and
+   * never null for an absent title, accTitle or accDescr (census § Q2), and
+   * the surface collapses all three to null; this is the only fixture where
+   * that is visible, the first one declaring all three.
+   */
+  const RADAR_SELF_CHECK_NO_MAX_FIXTURE = [
+    "radar-beta",
+    "  axis scnA, scnB, scnC",
+    "  curve scnX{10, 20, 90}",
+  ].join("\n");
+
+  /**
+   * A minimal synthetic diagram, for the scale-derivation arms and the STOP
+   * arms. It is deliberately NOT a parse: the derivation rows differ only in
+   * which curves exist, and the STOP rows exercise shapes the GRAMMAR CANNOT
+   * PRODUCE at all — a negative is rejected at parse (census G23/G27) and no
+   * source can make the db hand over a string in `entries` or drop a key off
+   * an axis. A source per arm would be testing Mermaid rather than this
+   * surface, and for three of the arms no such source exists.
+   *
+   * THE OPTIONS ARE OVERRIDDEN BY MERGE AND REPLACED WHOLESALE BY A SECOND
+   * PARAMETER, and the two are not interchangeable. A merge can only ever set
+   * a key, so `{ graticule: undefined }` leaves the key PRESENT holding
+   * undefined and `hasOwnProperty` still answers true — which would make the
+   * missing-option-key row pass without the guard ever firing. `rawOptions`
+   * replaces the object outright, so a key can genuinely be absent.
+   *
+   * @param {Array<Object>} axes - Stand-in db axes
+   * @param {Array<Object>} curves - Stand-in db curves
+   * @param {Object} [options] - Option overrides merged onto the db defaults
+   * @param {Object} [rawOptions] - An options object used VERBATIM instead
+   * @returns {Object} A stand-in with the six accessors normaliseRadar reads
+   */
+  function radarStubDiagram(axes, curves, options, rawOptions) {
+    const base = {
+      showLegend: true,
+      ticks: 5,
+      max: null,
+      min: 0,
+      graticule: "circle",
+    };
+    const resolved = rawOptions || Object.assign({}, base, options || {});
+    return {
+      db: {
+        getDiagramTitle: () => "",
+        getAccTitle: () => "",
+        getAccDescription: () => "",
+        getAxes: () => axes,
+        getCurves: () => curves,
+        getOptions: () => resolved,
+      },
+    };
+  }
+
+  /**
+   * Three stand-in axes, for the stub rows.
+   * @returns {Array<Object>} Db-shaped axes
+   */
+  function radarStubAxes() {
+    return [
+      { name: "sA", label: "sA" },
+      { name: "sB", label: "sB" },
+      { name: "sC", label: "sC" },
+    ];
+  }
+
+  /**
+   * The delivered scale for one stub arrangement, through the REAL delivery
+   * path rather than by calling radarScale directly.
+   *
+   * @param {Array<Object>} curves - Db-shaped curves
+   * @param {Object} [options] - Option overrides
+   * @returns {Object} The delivered options object
+   */
+  function radarStubOptions(curves, options) {
+    return normaliseRadar(radarStubDiagram(radarStubAxes(), curves, options))
+      .options;
+  }
+
+  /**
+   * The delivered options for a VERBATIM options object, so a row can present
+   * one with a key genuinely absent.
+   *
+   * @param {Object} rawOptions - The options object, used as-is
+   * @returns {Object} The delivered options object
+   */
+  function radarStubRawOptions(rawOptions) {
+    return normaliseRadar(
+      radarStubDiagram(
+        radarStubAxes(),
+        [{ name: "c", label: "c", entries: [1, 2, 3] }],
+        null,
+        rawOptions
+      )
+    ).options;
+  }
+
+  /**
+   * True when normaliseRadar refuses the given stub, with a message matching
+   * the pattern. Used by the STOP rows, so a refusal for the WRONG reason
+   * cannot satisfy them.
+   *
+   * @param {Function} thunk - A call that must refuse
+   * @param {RegExp} pattern - What the refusal must say
+   * @returns {boolean} Whether it refused, for that reason
+   */
+  function radarRefuses(thunk, pattern) {
+    try {
+      thunk();
+      return false;
+    } catch (e) {
+      return pattern.test((e && e.message) || "");
+    }
+  }
+
+  /**
+   * True when normaliseRadar refuses a stub built from these axes and curves.
+   *
+   * @param {Array<Object>} axes - Db-shaped axes
+   * @param {Array<Object>} curves - Db-shaped curves
+   * @param {RegExp} pattern - What the refusal must say
+   * @param {Object} [options] - Option overrides merged onto the defaults
+   * @returns {boolean} Whether it refused, for that reason
+   */
+  function radarStubRefuses(axes, curves, pattern, options) {
+    return radarRefuses(
+      () => normaliseRadar(radarStubDiagram(axes, curves, options)),
+      pattern
+    );
+  }
+
+  /**
+   * Parse the embedded fixtures and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the radar surface unhealthy, and
+   * resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the radar health verdict
+   */
+  function runRadarSelfCheck() {
+    if (radarSelfCheckPromise) {
+      return radarSelfCheckPromise;
+    }
+    radarSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          // THE NO-MAX FIXTURE RUNS FIRST AND IS READ TO COMPLETION BEFORE THE
+          // MAIN FIXTURE IS PARSED. The db is a singleton, so the second parse
+          // replaces the first's axes, curves, options AND trio entirely; the
+          // delivery is copied into this adapter's own objects by
+          // normaliseRadar, so it survives.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(RADAR_SELF_CHECK_NO_MAX_FIXTURE)
+            .then((noMaxDiagram) => normaliseRadar(noMaxDiagram));
+        })
+        .then((noMax) =>
+          window.mermaid.mermaidAPI
+            .getDiagramFromText(RADAR_SELF_CHECK_FIXTURE)
+            .then((diagram) => ({ diagram: diagram, noMax: noMax }))
+        )
+        .then(({ diagram, noMax }) => {
+          const db = diagram.db;
+
+          // The six accessors this surface reads, by name — and the SEVENTH
+          // the dispatch expected and the census refuted. `getTitle` is the
+          // spelling c4 uses and the one a reader copying another surface
+          // would reach for; on radar it is undefined and would deliver no
+          // title at all, with no throw. Pinned in BOTH directions so a build
+          // that ADDED it is seen here rather than by a reader.
+          const accessorsPresent =
+            typeof db.getDiagramTitle === "function" &&
+            typeof db.getAccTitle === "function" &&
+            typeof db.getAccDescription === "function" &&
+            typeof db.getAxes === "function" &&
+            typeof db.getCurves === "function" &&
+            typeof db.getOptions === "function";
+          const noGetTitle = typeof db.getTitle === "undefined";
+
+          // Raw reads, in this same slot, so the rows below are COMPARISONS
+          // rather than restatements of the delivery.
+          const rawAxes = db.getAxes();
+          const rawCurves = db.getCurves();
+          const rawOptions = db.getOptions();
+          const rawFirstLabel = rawAxes[0] && rawAxes[0].label;
+          const rawTitle = db.getDiagramTitle();
+
+          const delivery = normaliseRadar(diagram);
+          const [axisOne, axisTwo, axisThree] = delivery.axes;
+          const [curveOne, curveTwo] = delivery.curves;
+          const keysOf = (o) => (o ? Object.keys(o).join(",") : "");
+          const sameList = (a, b) =>
+            Array.isArray(a) && a.length === b.length && a.every((v, i) => v === b[i]);
+
+          return [
+            [
+              "the six db accessors this surface reads exist by name, and " +
+                "there is still NO getTitle — the spelling c4 uses, which on " +
+                "this db would deliver undefined with no throw",
+              accessorsPresent && noGetTitle,
+            ],
+            [
+              "the delivery carries EXACTLY the seven documented top-level " +
+                "keys, in order, and names its type",
+              keysOf(delivery) === RADAR_DELIVERED_KEYS.join(",") &&
+                delivery.diagramType === "radar",
+            ],
+            [
+              "three axes in DECLARATION ORDER with the author's own ids, and " +
+                "every delivered axis carries EXACTLY the two documented keys",
+              delivery.axes.length === 3 &&
+                axisOne.id === "scA" &&
+                axisTwo.id === "scB" &&
+                axisThree.id === "scC" &&
+                keysOf(axisOne) === RADAR_AXIS_KEYS.join(",") &&
+                keysOf(axisTwo) === RADAR_AXIS_KEYS.join(",") &&
+                keysOf(axisThree) === RADAR_AXIS_KEYS.join(","),
+            ],
+            [
+              "labels are decoded with decodePlaceholders and NOT with " +
+                "decodeAuthorText — the axis label's `&amp;` is delivered as " +
+                "the five characters the canvas draws, asserted with the two " +
+                "decoders' DISAGREEMENT as a canary so a build where they had " +
+                "collapsed could not satisfy this row",
+              typeof rawFirstLabel === "string" &&
+                decodeAuthorText(rawFirstLabel) !==
+                  decodePlaceholders(rawFirstLabel) &&
+                decodeAuthorText(rawFirstLabel) === "SelfCheck axis & one" &&
+                axisOne.label === "SelfCheck axis &amp; one" &&
+                axisTwo.label === "SelfCheck axis two" &&
+                curveOne.label === "SelfCheck curve one" &&
+                curveTwo.label === "SelfCheck curve two",
+            ],
+            [
+              "the title is DECODED — a `#quot;` pair the db holds as private " +
+                "sentinels is delivered as the real quote characters the " +
+                "canvas draws, with the undecoded db string as the canary",
+              rawTitle !== 'SelfCheck radar "title"' &&
+                delivery.title === 'SelfCheck radar "title"',
+            ],
+            [
+              "accTitle and accDescr take NO transform and are delivered " +
+                "verbatim — ruling RS9, the standing carve-out, because " +
+                "clause X3 reads the RAW SOURCE and that is what a reader hears",
+              delivery.accTitle === "SelfCheck radar acc title" &&
+                delivery.accDescr === "SelfCheck radar acc descr" &&
+                delivery.accTitle === db.getAccTitle() &&
+                delivery.accDescr === db.getAccDescription(),
+            ],
+            [
+              "curve values arrive in AXIS ORDER from the axis:value form — " +
+                "`{ scC: 30, scA: 10, scB: 20 }` against `axis scA, scB, scC` " +
+                "delivers [10, 20, 30] — asserted against the db's own " +
+                "entries so this row compares rather than restates",
+              sameList(curveOne.values, [10, 20, 30]) &&
+                sameList(rawCurves[0].entries, [10, 20, 30]) &&
+                sameList(curveTwo.values, [40, 50]),
+            ],
+            [
+              "`drawn` is TRUE on the exact-length curve and FALSE on the " +
+                "short one in the SAME delivery — the per-curve divergence the " +
+                "canvas makes, where the legend names both and the plot draws " +
+                "one — and every delivered curve carries EXACTLY the four " +
+                "documented keys",
+              curveOne.drawn === true &&
+                curveTwo.drawn === false &&
+                keysOf(curveOne) === RADAR_CURVE_KEYS.join(",") &&
+                keysOf(curveTwo) === RADAR_CURVE_KEYS.join(","),
+            ],
+            [
+              "ruling RS7b: a curve on ONE axis is `drawn: false` even though " +
+                "its value count equals the axis count — the canvas draws it " +
+                "as a zero-length path, pixel-identical to no curve — asserted " +
+                "beside a TWO-axis exact-length control that must stay drawn, " +
+                "so a build that dropped the axis floor, or refused every " +
+                "short chart, fails on one arm and not the other",
+              (() => {
+                const oneAxis = normaliseRadar(
+                  radarStubDiagram(
+                    [{ name: "sOne", label: "sOne" }],
+                    [{ name: "c", label: "c", entries: [5] }]
+                  )
+                ).curves[0];
+                const twoAxes = normaliseRadar(
+                  radarStubDiagram(
+                    [
+                      { name: "sA", label: "sA" },
+                      { name: "sB", label: "sB" },
+                    ],
+                    [{ name: "c", label: "c", entries: [5, 8] }]
+                  )
+                ).curves[0];
+                return (
+                  !!oneAxis &&
+                  oneAxis.values.length === 1 &&
+                  oneAxis.drawn === false &&
+                  !!twoAxes &&
+                  twoAxes.drawn === true
+                );
+              })(),
+            ],
+            [
+              "the options object carries EXACTLY the seven documented keys, " +
+                "the five db values as the author declared them, and a " +
+                "scaleMax taken from the AUTHOR's own max",
+              keysOf(delivery.options) === RADAR_OPTION_KEYS.join(",") &&
+                delivery.options.showLegend === true &&
+                delivery.options.ticks === 4 &&
+                delivery.options.graticule === "polygon" &&
+                delivery.options.min === 0 &&
+                delivery.options.max === 100 &&
+                delivery.options.scaleMax === 100 &&
+                delivery.options.scaleMaxSource === RADAR_SCALE_MAX_AUTHOR &&
+                rawOptions.max === 100,
+            ],
+            [
+              "on a source declaring NO max the db reports `max: null` and " +
+                "the surface derives the DATA maximum instead — the reading " +
+                "the renderer's own geometry gave, and the other half of a " +
+                "key that has exactly two sources",
+              !!noMax &&
+                noMax.options.max === null &&
+                noMax.options.scaleMax === 90 &&
+                noMax.options.scaleMaxSource === RADAR_SCALE_MAX_DATA &&
+                noMax.options.min === 0 &&
+                noMax.options.ticks === 5 &&
+                noMax.options.graticule === "circle",
+            ],
+            [
+              "the db's EMPTY STRING for an absent title, accTitle and " +
+                "accDescr is delivered as null, so a consumer has ONE absent " +
+                "case — with the titled fixture's three strings beside it, so " +
+                "a build that nulled everything could not satisfy both rows",
+              !!noMax &&
+                noMax.title === null &&
+                noMax.accTitle === null &&
+                noMax.accDescr === null &&
+                delivery.title !== null &&
+                delivery.accTitle !== null &&
+                delivery.accDescr !== null,
+            ],
+            [
+              "the derived maximum counts a curve the picture does NOT DRAW " +
+                "and an entry BEYOND THE AXIS COUNT — both measured off the " +
+                "rendered geometry on 23 September 2026 — asserted against a " +
+                "control arrangement without them, so a build ignoring either " +
+                "fails on one arm and not the other",
+              (() => {
+                const drawnOnly = [
+                  { name: "a", label: "a", entries: [10, 20, 90] },
+                ];
+                const withUndrawn = [
+                  { name: "a", label: "a", entries: [10, 20, 90] },
+                  { name: "b", label: "b", entries: [5, 200] },
+                ];
+                const withSurplus = [
+                  { name: "a", label: "a", entries: [10, 20, 90] },
+                  { name: "b", label: "b", entries: [1, 2, 3, 500] },
+                ];
+                const control = radarStubOptions(drawnOnly);
+                const undrawn = radarStubOptions(withUndrawn);
+                const surplus = radarStubOptions(withSurplus);
+                const noValues = radarStubOptions([]);
+                const authored = radarStubOptions(drawnOnly, { max: 50 });
+                return (
+                  control.scaleMax === 90 &&
+                  control.scaleMaxSource === RADAR_SCALE_MAX_DATA &&
+                  undrawn.scaleMax === 200 &&
+                  surplus.scaleMax === 500 &&
+                  // No curve at all: nothing to derive from, so null with the
+                  // DATA source — "this picture plots nothing".
+                  noValues.scaleMax === null &&
+                  noValues.scaleMaxSource === RADAR_SCALE_MAX_DATA &&
+                  // An author max BELOW the data still wins, which is what the
+                  // renderer does: it clips the over-range vertices at the
+                  // outer ring rather than growing the scale.
+                  authored.scaleMax === 50 &&
+                  authored.scaleMaxSource === RADAR_SCALE_MAX_AUTHOR
+                );
+              })(),
+            ],
+            [
+              "a NON-NUMERIC value is a STOP rather than a silent coercion, " +
+                "and so is a non-finite one — a coerced string would feed the " +
+                "scale derivation and produce a confident wrong maximum",
+              radarStubRefuses(
+                radarStubAxes(),
+                [{ name: "a", label: "a", entries: [1, "2", 3] }],
+                /non-numeric value/
+              ) &&
+                radarStubRefuses(
+                  radarStubAxes(),
+                  [{ name: "a", label: "a", entries: [1, Infinity, 3] }],
+                  /non-numeric value/
+                ) &&
+                radarStubRefuses(
+                  radarStubAxes(),
+                  [{ name: "a", label: "a", entries: "10,20,30" }],
+                  /not an array/
+                ),
+            ],
+            [
+              "a db object MISSING a key the census recorded is a STOP on " +
+                "every kind — an axis, a curve and the options — because a " +
+                "chart short of an axis looks exactly like a chart with fewer " +
+                "axes, and a dropped option would be invisible",
+              radarStubRefuses(
+                [{ name: "a" }],
+                [{ name: "c", label: "c", entries: [1, 2, 3] }],
+                /axis at index 0 carries no `label`/
+              ) &&
+                radarStubRefuses(
+                  radarStubAxes(),
+                  [{ name: "c", label: "c" }],
+                  /curve at index 0 carries no `entries`/
+                ) &&
+                radarRefuses(
+                  () =>
+                    radarStubRawOptions({
+                      showLegend: true,
+                      ticks: 5,
+                      max: null,
+                      min: 0,
+                    }),
+                  /options carries no `graticule`/
+                ),
+            ],
+            [
+              "an option of the WRONG TYPE is a STOP, and `max: null` is not " +
+                "one — the one key whose null is a real state, asserted in " +
+                "both directions so a build refusing every null could not pass",
+              radarStubRefuses(
+                radarStubAxes(),
+                [{ name: "c", label: "c", entries: [1, 2, 3] }],
+                /unexpected type on \["ticks"\]/,
+                { ticks: "5" }
+              ) &&
+                radarStubRefuses(
+                  radarStubAxes(),
+                  [{ name: "c", label: "c", entries: [1, 2, 3] }],
+                  /unexpected type on \["showLegend"\]/,
+                  { showLegend: "true" }
+                ) &&
+                radarStubOptions([{ name: "c", label: "c", entries: [1, 2, 3] }], {
+                  max: null,
+                }).max === null,
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    radarSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Radar self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's radar internals no longer " +
+              "match the 22 September 2026 census, or this surface's mapping " +
+              "has drifted; do not trust radar adapter output."
+          );
+          radarHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Radar self-check passed: accessor-and-no-getTitle, key-set, " +
+            "axis-order, decode-pair, title-decode, trio-verbatim, " +
+            "axis-value-ordering, drawn-pair, one-axis-undrawn, options-author-scale, " +
+            "options-data-scale, empty-to-null, derivation-arms, " +
+            "non-numeric-stop, missing-key-stop and option-type-stop " +
+            "assertions all hold"
+        );
+        radarHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Radar self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        radarHealthy = false;
+        return false;
+      });
+
+    return radarSelfCheckPromise;
+  }
+
+  /**
+   * Report the radar surface's health, independently of the other surfaces.
+   * @returns {boolean|null} True or false once the radar self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isRadarHealthy() {
+    return radarHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -6939,6 +10396,15 @@ window.MermaidParseAdapter = (function () {
     parseBlock: parseBlock,
     runBlockSelfCheck: runBlockSelfCheck,
     isBlockHealthy: isBlockHealthy,
+    parseC4: parseC4,
+    runC4SelfCheck: runC4SelfCheck,
+    isC4Healthy: isC4Healthy,
+    parseKanban: parseKanban,
+    runKanbanSelfCheck: runKanbanSelfCheck,
+    isKanbanHealthy: isKanbanHealthy,
+    parseRadar: parseRadar,
+    runRadarSelfCheck: runRadarSelfCheck,
+    isRadarHealthy: isRadarHealthy,
     // Register item 78: the ONE decoder exported from this module, for the
     // core's author-override route, which reads the raw diagram source.
     decodeSourcePlaceholders: decodeSourcePlaceholders,

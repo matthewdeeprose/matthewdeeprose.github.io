@@ -12,8 +12,21 @@ import { ErrorCodes } from "./model-registry-errors.js";
 /**
  * Enable or disable all logging
  * Set to false to completely disable all logging output
+ *
+ * THIS WAS `false`, AND THAT SILENCED EVERY LEVEL INCLUDING `error`, because
+ * `_shouldLog` returns on this flag BEFORE it compares severities. Measured 22
+ * September 2026 on a normal `tools.html` load: zero `[ModelRegistry]` lines at
+ * any level, against 27 call sites — among them the fallback corrector's own
+ * "No suitable fallback found" and the four `error` paths that report a refused
+ * registration. AGENTS.md § Diagnosis Discipline records that as the programme's
+ * own sharpest self-inflicted wound: a check that reports nothing is
+ * indistinguishable from a check that is inert.
+ *
+ * It is `true` with `LOG_LEVEL` at `"warn"` — the level the house convention
+ * ships — rather than at the `"info"` this file used to declare. See the note
+ * on LOG_LEVEL below for the measurement that decided that.
  */
-const LOGGING_ENABLED = false;
+const LOGGING_ENABLED = true;
 
 /**
  * Set the minimum log level to display
@@ -22,8 +35,15 @@ const LOGGING_ENABLED = false;
  * - "info": Show info, warnings and errors
  * - "warn": Show warnings and errors only
  * - "error": Show errors only (least verbose)
+ *
+ * `"warn"`, matching the repo-wide `DEFAULT_LOG_LEVEL`. It read `"info"` while
+ * the channel was dead, so nothing had ever paid for it. Measured 22 September
+ * 2026 with the channel forced on in a browser: at `"info"` a normal
+ * `tools.html` load emits 544 `[ModelRegistry]` lines — 524 of them one
+ * `Model registered: <id>` per model across 515 models — against 20 at `"warn"`
+ * before this parcel aggregated the validation loop, and 1 after it.
  */
-const LOG_LEVEL = "info";
+const LOG_LEVEL = "warn";
 
 /**
  * Enable or disable console output

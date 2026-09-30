@@ -34,6 +34,16 @@
   proto.downloadUpdatedZIP = async function () {
     logInfo("Creating updated ZIP archive");
 
+    // Parcel 10f: the Convert UI's store is shared with Upload. Hand the
+    // downloader exactly this session's conversions, then give Upload's own
+    // files and base filename back, whatever happens below.
+    const convertUI = window.getMathPixConvertUI?.();
+    const uploadDownloads = convertUI?.completedDownloads
+      ? new Map(convertUI.completedDownloads)
+      : null;
+    const uploadBaseFilename = convertUI?.baseFilename;
+    convertUI?.completedDownloads?.clear();
+
     try {
       // Check if MathPixTotalDownloader class is available
       if (typeof window.MathPixTotalDownloader === "undefined") {
@@ -207,6 +217,15 @@
     } catch (error) {
       logError("Failed to create updated ZIP:", error);
       this.showNotification(`Failed to create ZIP: ${error.message}`, "error");
+    } finally {
+      // Parcel 10f: give Upload's own conversions and base filename back.
+      if (convertUI && uploadDownloads) {
+        convertUI.completedDownloads.clear();
+        uploadDownloads.forEach((blob, format) =>
+          convertUI.completedDownloads.set(format, blob),
+        );
+        convertUI.baseFilename = uploadBaseFilename;
+      }
     }
   };
 

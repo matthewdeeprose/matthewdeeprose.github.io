@@ -44,6 +44,18 @@ function logDebug(message, ...args) {
     console.log(`[PDFUploadVerification] ${message}`, ...args);
 }
 
+import {
+  MATHPIX_PRICING,
+  formatMathPixCost,
+  estimateMathPixPdfCost,
+} from "../core/mathpix-config.js";
+import { writeCostNotice } from "../core/mathpix-cost-notice.js";
+
+// Cost line beside "Pages detected". Optional: kept out of this.elements so a
+// missing notice never stops the preview. Not a live region.
+const UPLOAD_COST_NOTICE_ID = "mathpix-upload-preview-cost-notice";
+const COST_NOTICE_PRICE_BASIS = "(MathPix list price, US dollars)";
+
 /**
  * PDFUploadVerification Class
  * Handles the upload preview workflow
@@ -182,6 +194,7 @@ export class PDFUploadVerification {
     this.elements.filename.textContent = file.name;
     this.elements.size.textContent = this.formatFileSize(file.size);
     this.elements.pages.textContent = "Detecting...";
+    this.updateCostNotice(null);
 
     logDebug("File info displayed", {
       name: file.name,
@@ -219,9 +232,41 @@ export class PDFUploadVerification {
     // Update page count
     const pageText = this.pdfDocument.numPages === 1 ? "page" : "pages";
     this.elements.pages.textContent = `${this.pdfDocument.numPages} ${pageText}`;
+    this.updateCostNotice(this.pdfDocument.numPages);
 
     // Render first page
     await this.renderFirstPage();
+  }
+
+  /**
+   * Write the list-price estimate for processing every page of the PDF.
+   * Falls back to the per-page rate while the page count is unknown.
+   * Writes only when the text changes.
+   * @param {number|null} numPages - Pages detected by PDF.js, or null
+   * @returns {string|null} The notice text, or null if the notice is absent
+   */
+  updateCostNotice(numPages) {
+    const cost = estimateMathPixPdfCost(numPages);
+
+    // Unknown page count: fall back to the per-page rate on its own
+    let segments = [
+      "Processing costs about ",
+      { figure: formatMathPixCost(MATHPIX_PRICING.PDF_PER_PAGE) },
+      ` per page ${COST_NOTICE_PRICE_BASIS}.`,
+    ];
+    if (cost !== null) {
+      const pagePhrase = numPages === 1 ? "the 1 page" : `all ${numPages} pages`;
+      segments = [
+        `Processing ${pagePhrase} would cost about `,
+        { figure: formatMathPixCost(cost) },
+        ` ${COST_NOTICE_PRICE_BASIS}. You can choose fewer pages in the next step.`,
+      ];
+    }
+
+    // Figures are emphasised; writes only when the text changes
+    const { text } = writeCostNotice(UPLOAD_COST_NOTICE_ID, segments);
+    if (text === null) logDebug("Upload cost notice not in DOM, skipping");
+    return text;
   }
 
   /**

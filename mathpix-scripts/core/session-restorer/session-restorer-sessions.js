@@ -1628,9 +1628,18 @@ if (context.eagerDiff) {
         if (normalisedContent.includes("blob:")) {
           const rawZipMMD = this.restoredSession.results?.mmd || "";
           const cdnUrls = [];
-          const cdnRegex = /https:\/\/cdn\.mathpix\.com\/[^\s)}"\\]+/g;
+          // MX-2: the host pattern is the registry's, so an eu-cdn document is
+          // recognised too. Resolved here, at call time, because the registry
+          // script loads after this mixin.
+          const cdnRegex =
+            window.MathPixImageRegistry?.createCdnUrlRegex?.() || null;
+          if (!cdnRegex) {
+            logWarn(
+              "applyRecoveredSession: image registry not loaded; stale-blob fallback skipped",
+            );
+          }
           let match;
-          while ((match = cdnRegex.exec(rawZipMMD)) !== null) {
+          while (cdnRegex && (match = cdnRegex.exec(rawZipMMD)) !== null) {
             cdnUrls.push(match[0]);
           }
 

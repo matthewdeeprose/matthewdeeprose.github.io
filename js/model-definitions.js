@@ -197,9 +197,9 @@ modelRegistry.registerModel("meta-llama/llama-3.3-70b-instruct", {
       scriptSupport: ["latin", "devanagari", "thai"],
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 13 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 11 endpoint(s).",
   },
   // New parameter support data
   parameterSupport: {
@@ -547,7 +547,7 @@ modelRegistry.registerModel("microsoft/phi-4", {
       "quick responses",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -887,7 +887,7 @@ modelRegistry.registerModel("amazon/nova-lite-v1", {
       mediaHandling: "concurrent",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -1688,7 +1688,19 @@ modelRegistry.registerModel("nousresearch/hermes-2-pro-llama-3-8b", {
   },
   capabilities: ["text", "function-calling", "json-mode", "structured-output"],
   maxContext: 131000,
-  fallbackTo: "nousresearch/hermes-4-70b", // auto-repointed 2026-08-13: was "meta-llama/llama-3.2-3b-instruct:free" (target retired/disabled)
+  // Repointed by hand 2026-09-14: was "nousresearch/hermes-4-70b", which
+  // .claude/model-health auto-repointed here on 2026-08-13 and then auto-DISABLED on
+  // 2026-09-10 ("not on OpenRouter (/parameters 404)"). Neither action was wrong; the
+  // pair of them manufactures a stale authored fallback as a matter of course, and
+  // the runtime corrector papered over it silently on every page load.
+  // hermes-4-405b is chosen on its own merits — same stream, no guarded capability
+  // lost (this entry declares none of vision/pdf/reasoning/tool_calling), and
+  // 131072 >= this entry's 131000 context floor. VENDOR LINEAGE WAS THE TIEBREAK, NOT
+  // THE REASON: the runtime matcher elects mistralai/mistral-nemo here, which is
+  // equally eligible and scores a higher symmetric capability overlap (0.500 against
+  // 0.100), and a same-vendor candidate that failed the capability or context test
+  // would have been the wrong answer whatever its lineage.
+  fallbackTo: "nousresearch/hermes-4-405b",
   isFree: false,
   metadata: {
     categoryDescription:
@@ -1817,7 +1829,7 @@ modelRegistry.registerModel("meta-llama/llama-3.2-3b-instruct", {
       lastUpdated: "2025-01-20",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -1916,7 +1928,7 @@ modelRegistry.registerModel("meta-llama/llama-3.2-1b-instruct", {
       lastUpdated: "2025-01-20",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -2205,7 +2217,7 @@ modelRegistry.registerModel("amazon/nova-pro-v1", {
       "multimodal tasks",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -2656,7 +2668,7 @@ modelRegistry.registerModel("deepseek/deepseek-chat", {
       seo: 2,
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.1,
     pricingStandard: { input: 0.286, output: 0.89 },
     pricingPromotionalSides: "input",
@@ -2865,9 +2877,9 @@ modelRegistry.registerModel("mistralai/mistral-nemo", {
       },
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -3006,7 +3018,7 @@ modelRegistry.registerModel("openai/gpt-4o-mini", {
     technicalNotes:
       "Optimized for balance of performance and cost-effectiveness",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -3145,7 +3157,7 @@ modelRegistry.registerModel("qwen/qwen-2.5-72b-instruct", {
     specializations: ["coding", "mathematics", "structured_data"],
     license: "Tongyi Qianwen LICENSE AGREEMENT",
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -3466,7 +3478,7 @@ modelRegistry.registerModel("minimax/minimax-01", {
       "Uses novel Lightning Attention mechanism for efficient processing of ultra-long contexts",
     releaseDate: "2025-01-15",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -3915,7 +3927,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-distill-llama-70b", {
   provider: "deepseek",
   name: "DeepSeek R1 Distill Llama 70B",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true, // auto-disabled 2026-09-28: not on OpenRouter (/parameters 404)
   description:
     "A distilled large language model based on Llama-3.3-70B-Instruct, using outputs from DeepSeek R1. Features competitive performance on mathematical and coding benchmarks.",
   costs: {
@@ -4211,7 +4223,7 @@ modelRegistry.registerModel("perplexity/sonar", {
       efficiency: "Optimized for rapid processing",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -4752,7 +4764,7 @@ modelRegistry.registerModel("mistralai/mistral-small-24b-instruct-2501", {
       "balanced performance tasks",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -5064,7 +5076,7 @@ modelRegistry.registerModel("qwen/qwen-plus", {
     },
     releaseDate: "2025-02-01", // "Created Feb 1, 2025"
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -5356,7 +5368,7 @@ modelRegistry.registerModel("aion-labs/aion-rp-llama-3.1-8b", {
     },
     releaseDate: "2025-02-04",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -5739,7 +5751,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1", {
     },
     license: "MIT",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -6724,7 +6736,7 @@ modelRegistry.registerModel("perplexity/sonar-deep-research", {
       structuredOutput: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -6866,7 +6878,7 @@ modelRegistry.registerModel("perplexity/sonar-pro", {
       scriptSupport: ["latin"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -6995,7 +7007,7 @@ modelRegistry.registerModel("perplexity/sonar-reasoning-pro", {
       citationSupport: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -7283,7 +7295,7 @@ modelRegistry.registerModel("thedrummer/skyfall-36b-v2", {
       scriptSupport: ["latin"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -7651,7 +7663,11 @@ modelRegistry.registerModel("google/gemma-3-27b-it", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "google/gemma-3-12b-it", // Similar model from same provider
+  // Item 109 (14 Sep 2026): was "google/gemma-3-12b-it", the link that closed a
+  // three-model ring. That target also dropped "reasoning", which this entry declares.
+  // gemma-4-31b-it is the same vendor and the next gemma generation, declares vision and
+  // reasoning, carries 262144 context against this entry's 131072, and terminates.
+  fallbackTo: "google/gemma-4-31b-it",
   isFree: false,
   metadata: {
     modalities: {
@@ -7696,7 +7712,7 @@ modelRegistry.registerModel("google/gemma-3-27b-it", {
       imageDescriptionCapability: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -8471,7 +8487,7 @@ modelRegistry.registerModel("cohere/command-a", {
       languageDetection: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -9860,7 +9876,7 @@ modelRegistry.registerModel("mistralai/mistral-small-3.1-24b-instruct", {
       languageDetection: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -9956,7 +9972,7 @@ modelRegistry.registerModel("mistralai/mistral-small-3.1-24b-instruct:free", {
     "long_context",
   ],
   maxContext: 128000,
-  fallbackTo: "anthropic/claude-3-haiku", // Similar performance free model
+  fallbackTo: "mistralai/mistral-nemo", // auto-repointed 2026-09-28: was "anthropic/claude-3-haiku" (target retired/disabled)
   isFree: true,
   metadata: {
     categoryDescription:
@@ -10308,9 +10324,9 @@ modelRegistry.registerModel("deepseek/deepseek-chat-v3-0324", {
       multilingualSupport: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -11579,7 +11595,7 @@ modelRegistry.registerModel("meta-llama/llama-4-scout", {
       imageDescriptions: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -11686,8 +11702,8 @@ modelRegistry.registerModel("meta-llama/llama-4-maverick", {
   description:
     "A high-capacity multimodal language model with mixture-of-experts architecture supporting text and image input across multiple languages.",
   costs: {
-    input: 0.2, // auto-corrected 2026-09-09: was 0.18
-    output: 0.696, // auto-corrected 2026-09-09: was 0.6
+    input: 0.1875, // auto-corrected 2026-09-28: was 0.2
+    output: 0.6525, // auto-corrected 2026-09-28: was 0.696
     image: 0.6684,
   },
   capabilities: [
@@ -11770,10 +11786,10 @@ modelRegistry.registerModel("meta-llama/llama-4-maverick", {
         "devanagari",
       ],
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -12188,7 +12204,7 @@ modelRegistry.registerModel("nvidia/llama-3.1-nemotron-nano-8b-v1:free", {
     "long_context",
   ],
   maxContext: 131072,
-  fallbackTo: "openai/gpt-oss-20b:free", // manually re-pointed 2026-08-13 (cross-provider): was "nvidia/llama-3.3-nemotron-super-49b-v1.5" (target retired)
+  fallbackTo: "nvidia/nemotron-3-nano-30b-a3b", // auto-repointed 2026-09-28: was "openai/gpt-oss-20b:free" (target retired/disabled)
   isFree: true,
   metadata: {
     categoryDescription: "Free compact model with reasoning capabilities",
@@ -12939,7 +12955,7 @@ modelRegistry.registerModel("openai/gpt-4.1-nano", {
       responseSpeed: "Very Fast",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13033,7 +13049,7 @@ modelRegistry.registerModel("openai/gpt-4.1-mini", {
     "long_context",
   ],
   maxContext: 1047576,
-  fallbackTo: "anthropic/claude-3-haiku", // Similar performance tier model
+  fallbackTo: "openai/gpt-5-mini", // auto-repointed 2026-09-29: was "openai/gpt-3.5-turbo" (it closed a fallback cycle)
   isFree: false,
   metadata: {
     modalities: {
@@ -13082,7 +13098,7 @@ modelRegistry.registerModel("openai/gpt-4.1-mini", {
       scriptSupport: ["latin", "multilingual"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13236,7 +13252,7 @@ modelRegistry.registerModel("openai/gpt-4.1", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13331,7 +13347,7 @@ modelRegistry.registerModel("qwen/qwen2.5-coder-7b-instruct", {
     "long_context",
   ],
   maxContext: 32768,
-  fallbackTo: "anthropic/claude-3-haiku", // Similar performance code model - adjust as needed
+  fallbackTo: "qwen/qwen3-30b-a3b-thinking-2507", // auto-repointed 2026-09-28: was "anthropic/claude-3-haiku" (target retired/disabled)
   isFree: false,
   metadata: {
     categoryDescription: "Specialized code generation and reasoning model",
@@ -13531,7 +13547,7 @@ modelRegistry.registerModel("openai/o4-mini", {
       visionCapabilities: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13657,7 +13673,7 @@ modelRegistry.registerModel("openai/o4-mini-high", {
       reasoningCapability: "high",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13785,7 +13801,7 @@ modelRegistry.registerModel("qwen/qwen3-235b-a22b", {
       reasoningMode: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -13964,7 +13980,7 @@ modelRegistry.registerModel("qwen/qwen3-32b", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -14070,8 +14086,8 @@ modelRegistry.registerModel("qwen/qwen3-14b", {
   description:
     "Dense 14.8B parameter model with dual thinking/non-thinking modes for complex reasoning and efficient dialogue, supporting 100+ languages and tool use capabilities.",
   costs: {
-    input: 0.2275, // auto-corrected 2026-09-09: was 0.08
-    output: 0.91, // auto-corrected 2026-09-09: was 0.24
+    input: 0.12, // auto-corrected 2026-09-28: was 0.2275
+    output: 0.24, // auto-corrected 2026-09-28: was 0.91
   },
   capabilities: [
     "text",
@@ -14140,10 +14156,10 @@ modelRegistry.registerModel("qwen/qwen3-14b", {
         "greek",
       ],
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -14304,7 +14320,7 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -15381,7 +15397,7 @@ modelRegistry.registerModel("mistralai/mistral-medium-3", {
       languageDetection: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -15959,9 +15975,9 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4", {
       reasoningTransparency: true, // Has reasoning parameters
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -16037,7 +16053,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4", {
   provider: "anthropic",
   name: "Claude Opus 4",
   category: "Code", // auto-repaired 2026-09-09: was "Programming"
-  disabled: false,
+  disabled: true, // auto-disabled 2026-09-28: not on OpenRouter (/parameters 404)
   description:
     "The world's best coding model at time of release, excelling at complex problem-solving, long-running tasks, and agentic workflows with sustained performance for hours.",
   costs: {
@@ -16539,7 +16555,7 @@ modelRegistry.registerModel("deepseek/deepseek-r1-0528", {
       explainableAI: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -17502,8 +17518,8 @@ modelRegistry.registerModel("mistralai/mistral-small-3.2-24b-instruct", {
   description:
     "Updated 24B parameter model from Mistral optimized for instruction following, repetition reduction, and improved function calling with vision capabilities.",
   costs: {
-    input: 0.075, // auto-corrected 2026-09-09: was 0.1
-    output: 0.2, // auto-corrected 2026-09-09: was 0.3
+    input: 0.09375, // auto-corrected 2026-09-28: was 0.075
+    output: 0.25, // auto-corrected 2026-09-28: was 0.2
   },
   capabilities: [
     "text",
@@ -17515,7 +17531,14 @@ modelRegistry.registerModel("mistralai/mistral-small-3.2-24b-instruct", {
     "tool_use",
   ],
   maxContext: 32768,
-  fallbackTo: "mistralai/mistral-small-3.2-24b-instruct", // Similar Mistral model
+  // Item 109 (14 Sep 2026): was a self-reference to this entry.
+  // mistral-large-2512 is the only same-vendor, non-disabled candidate that declares
+  // every capability this entry declares under any spelling - vision, plus tool_calling
+  // covering this entry's "tool_use"/"function_calling" - carries 262144 context against
+  // this entry's 32768, and whose own chain terminates. It costs more (0.5/1.5 against
+  // 0.075/0.2 per M tokens); the nearer-cost mistral-small-3.1-24b-instruct was rejected
+  // because it declares no tool-calling capability at all.
+  fallbackTo: "mistralai/mistral-large-2512",
   isFree: false,
   metadata: {
     modalities: {
@@ -17559,10 +17582,10 @@ modelRegistry.registerModel("mistralai/mistral-small-3.2-24b-instruct", {
       structuredOutputs: true,
       toolCalling: true,
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -18883,7 +18906,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2", {
       scriptSupport: ["latin", "chinese"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -19366,7 +19389,7 @@ modelRegistry.registerModel("google/gemini-2.5-flash-lite", {
       scriptSupport: ["latin", "multilingual"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -19503,7 +19526,7 @@ modelRegistry.registerModel("qwen/qwen3-coder", {
       scriptSupport: ["latin", "chinese"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -19809,7 +19832,7 @@ modelRegistry.registerModel("qwen/qwen3-235b-a22b-thinking-2507", {
       thinkingModeSupport: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -19984,7 +20007,7 @@ modelRegistry.registerModel("z-ai/glm-4.5-air", {
       hybridModes: ["thinking", "non-thinking"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -20261,7 +20284,7 @@ modelRegistry.registerModel("z-ai/glm-4.5", {
       scriptSupport: ["latin", "chinese"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -20338,8 +20361,8 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b-instruct-2507", {
   description:
     "Qwen3-30B-A3B-Instruct-2507 is a 30.5B-parameter mixture-of-experts language model with 3.3B active parameters per inference. Designed for high-quality instruction following, multilingual understanding, and agentic tool use with competitive performance across reasoning, coding, and alignment benchmarks.",
   costs: {
-    input: 0.09, // auto-corrected 2026-09-10: was 0.2
-    output: 0.3, // auto-corrected 2026-09-10: was 0.8
+    input: 0.04815, // auto-corrected 2026-09-29: was 0.1
+    output: 0.19305, // auto-corrected 2026-09-29: was 0.3
   },
   capabilities: [
     "text",
@@ -20407,10 +20430,12 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b-instruct-2507", {
       languageDetection: true,
       scriptSupport: ["latin", "chinese", "multilingual"],
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.55,
+    pricingStandard: { input: 0.09, output: 0.3 },
+    pricingPromotionalSides: "both",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.09 in / 0.3 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -20543,7 +20568,7 @@ modelRegistry.registerModel("mistralai/codestral-2508", {
       scriptSupport: ["latin"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -20699,9 +20724,9 @@ modelRegistry.registerModel("anthropic/claude-opus-4.1", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -20772,8 +20797,8 @@ modelRegistry.registerModel("openai/gpt-oss-20b", {
   description:
     "GPT OSS 20B is an open-weight 21B parameter model with Mixture-of-Experts architecture and 3.6B active parameters per forward pass. Optimised for lower-latency inference and consumer hardware deployment, featuring reasoning level configuration and agentic capabilities.",
   costs: {
-    input: 0.03, // auto-corrected 2026-09-09: was 0.05
-    output: 0.13, // auto-corrected 2026-09-09: was 0.2
+    input: 0.018, // auto-corrected 2026-09-28: was 0.03
+    output: 0.09, // auto-corrected 2026-09-28: was 0.13
   },
   capabilities: [
     "text",
@@ -20832,10 +20857,10 @@ modelRegistry.registerModel("openai/gpt-oss-20b", {
       scriptSupport: ["latin"],
       openSourceBenefits: true,
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 13 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 12 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -20948,8 +20973,8 @@ modelRegistry.registerModel("openai/gpt-oss-120b", {
   description:
     "GPT OSS 120B is an open-weight, 117B-parameter Mixture-of-Experts (MoE) language model optimised for high-reasoning, agentic, and general-purpose production use cases. It activates 5.1B parameters per forward pass and supports configurable reasoning depth with full chain-of-thought access.",
   costs: {
-    input: 0.037, // auto-corrected 2026-09-09: was 0.1
-    output: 0.17, // auto-corrected 2026-09-09: was 0.5
+    input: 0.037, // auto-corrected 2026-09-29: was 0.15
+    output: 0.17, // auto-corrected 2026-09-29: was 0.6
   },
   capabilities: [
     "text",
@@ -21009,10 +21034,10 @@ modelRegistry.registerModel("openai/gpt-oss-120b", {
       scriptSupport: ["latin", "multilingual"],
       openWeight: true,
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 22 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 24 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -21311,7 +21336,7 @@ modelRegistry.registerModel("openai/gpt-5-nano", {
       scriptSupport: ["latin", "cyrillic", "chinese", "arabic"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -21445,7 +21470,7 @@ modelRegistry.registerModel("openai/gpt-5-mini", {
       scriptSupport: ["latin", "cyrillic", "chinese", "arabic", "devanagari"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -21988,7 +22013,7 @@ modelRegistry.registerModel("z-ai/glm-4.5v", {
       altTextGeneration: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -22155,7 +22180,7 @@ modelRegistry.registerModel("mistralai/mistral-medium-3.1", {
       hybridDeployment: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -22617,9 +22642,9 @@ modelRegistry.registerModel("deepseek/deepseek-chat-v3.1", {
       scriptSupport: ["latin", "chinese"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -22775,7 +22800,7 @@ modelRegistry.registerModel("nousresearch/hermes-4-405b", {
       scriptSupport: ["latin"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -23256,7 +23281,7 @@ modelRegistry.registerModel("qwen/qwen3-30b-a3b-thinking-2507", {
       reasoningSupport: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -23448,7 +23473,7 @@ modelRegistry.registerModel("qwen/qwen3-max", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -23602,7 +23627,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-0905", {
       scriptSupport: ["latin", "chinese"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -23728,7 +23753,7 @@ modelRegistry.registerModel("nvidia/nemotron-nano-9b-v2", {
     "unified_tasks",
   ],
   maxContext: 128000,
-  fallbackTo: "openai/gpt-oss-20b:free", // manually re-pointed 2026-08-13 (cross-provider): was "nvidia/llama-3.3-nemotron-super-49b-v1.5" (target retired)
+  fallbackTo: "nvidia/nemotron-3-nano-30b-a3b", // auto-repointed 2026-09-28: was "openai/gpt-oss-20b:free" (target retired/disabled)
   isFree: true,
   metadata: {
     categoryDescription:
@@ -23895,7 +23920,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28", {
       scriptSupport: ["latin", "chinese", "multilingual"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -24284,7 +24309,7 @@ modelRegistry.registerModel("qwen/qwen3-next-80b-a3b-instruct", {
   description:
     "Qwen3-Next-80B-A3B-Instruct is an instruction-tuned chat model optimised for fast, stable responses without 'thinking' traces. Excels at complex reasoning, code generation, knowledge QA, and multilingual tasks with high throughput and stability on ultra-long inputs and multi-turn dialogues.",
   costs: {
-    input: 0.09, // auto-corrected 2026-09-09: was 0.14
+    input: 0.1, // auto-corrected 2026-09-28: was 0.09
     output: 1.1, // auto-corrected 2026-09-09: was 1.4
   },
   capabilities: [
@@ -24367,10 +24392,10 @@ modelRegistry.registerModel("qwen/qwen3-next-80b-a3b-instruct", {
         "thai",
       ],
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -24535,7 +24560,7 @@ modelRegistry.registerModel("qwen/qwen-plus-2025-07-28", {
       scriptSupport: ["latin", "chinese", "multilingual"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -24829,7 +24854,7 @@ modelRegistry.registerModel("qwen/qwen3-next-80b-a3b-thinking", {
       reasoningSupport: true, // Special feature for this model
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -25165,7 +25190,7 @@ modelRegistry.registerModel("qwen/qwen3-max", {
       complexInstructionHandling: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -25297,7 +25322,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-235b-a22b-instruct", {
       documentParsing: "Excellent for parsing and describing visual documents",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -25443,7 +25468,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-235b-a22b-thinking", {
       codeAssistance: "Visual debugging and UI accessibility auditing",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -25522,7 +25547,7 @@ modelRegistry.registerModel("deepseek/deepseek-v3.1-terminus", {
   description:
     "Advanced hybrid reasoning model with 671B parameters (37B active) that supports both thinking and non-thinking modes. Optimised for coding, tool calling, and agentic workflows with enhanced language consistency and reasoning efficiency. Features structured tool calling, code agents, and search agents, making it suitable for research, development, and complex reasoning tasks.",
   costs: {
-    input: 0.27,
+    input: 0.3, // auto-corrected 2026-09-29: was 0.27
     output: 1.0,
   },
   capabilities: [
@@ -25574,10 +25599,10 @@ modelRegistry.registerModel("deepseek/deepseek-v3.1-terminus", {
       toolUse: 9,
       research: 8,
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -25716,7 +25741,7 @@ modelRegistry.registerModel("thedrummer/cydonia-24b-v4.1", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -25845,9 +25870,9 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2-exp", {
       optimisations: ["sparse attention", "efficiency focused"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -25997,7 +26022,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4.5", {
       progressTracking: "fact-based",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -26132,9 +26157,9 @@ modelRegistry.registerModel("z-ai/glm-4.6", {
         "Optimised for sustained reasoning across extended interactions",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -26263,7 +26288,7 @@ modelRegistry.registerModel("openai/gpt-5-pro", {
       followsInstructions: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -26382,7 +26407,7 @@ modelRegistry.registerModel("google/gemini-2.5-flash-image", {
       visualDescriptionCapable: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -26794,7 +26819,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-8b-instruct", {
       ocrSupport: "Supports text extraction from images in 32 languages",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -26941,7 +26966,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-8b-thinking", {
       multimodalAccessibility: "enhanced",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -27032,7 +27057,12 @@ modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
     "mathematics",
   ],
   maxContext: 200000,
-  fallbackTo: "anthropic/claude-haiku-4.5",
+  // Item 109 (14 Sep 2026): was a self-reference to "anthropic/claude-haiku-4.5",
+  // the terminus of 349 fallback chains. Every non-disabled Anthropic sibling falls
+  // back to this entry directly or transitively, so no same-vendor target exists that
+  // does not re-enter the loop: this is the bottom of the Anthropic ladder and null is
+  // the honest answer.
+  fallbackTo: null,
   isFree: false,
   metadata: {
     modalities: {
@@ -27076,7 +27106,7 @@ modelRegistry.registerModel("anthropic/claude-haiku-4.5", {
       suitableForRealTime: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -27215,7 +27245,7 @@ modelRegistry.registerModel("openai/gpt-5-image-mini", {
       structuredOutputs: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -27512,7 +27542,7 @@ modelRegistry.registerModel("ibm-granite/granite-4.0-h-micro", {
       multilingualSupport: "extensive",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -27878,7 +27908,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-32b-instruct", {
       documentParsingAid: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -28129,7 +28159,7 @@ modelRegistry.registerModel("openai/gpt-oss-safeguard-20b", {
       ],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -28406,7 +28436,7 @@ modelRegistry.registerModel("mistralai/voxtral-small-24b-2507", {
       speechProcessing: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -28531,7 +28561,7 @@ modelRegistry.registerModel("perplexity/sonar-pro-search", {
       structuredOutput: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -28755,7 +28785,7 @@ modelRegistry.registerModel("amazon/nova-premier-v1", {
       keyboardNavigable: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -28888,7 +28918,7 @@ modelRegistry.registerModel("moonshotai/kimi-k2-thinking", {
       processingTime: "extended",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -29276,7 +29306,7 @@ modelRegistry.registerModel("openai/gpt-5.1", {
       adaptiveComplexity: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -29908,7 +29938,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.5", {
       reliableExecution: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -30296,9 +30326,9 @@ modelRegistry.registerModel("deepseek/deepseek-v3.2", {
       sparseAttention: "Optimised for efficient long-context processing",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 13 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -30717,9 +30747,9 @@ modelRegistry.registerModel("mistralai/mistral-large-2512", {
       enterprise: "Designed for professional accessibility standards",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -30853,7 +30883,7 @@ modelRegistry.registerModel("amazon/nova-2-lite-v1", {
       multimodalProcessing: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -31103,7 +31133,7 @@ modelRegistry.registerModel("z-ai/glm-4.6v", {
       visualContentDependent: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -31352,7 +31382,7 @@ modelRegistry.registerModel("mistralai/devstral-2512", {
         "Supports structured JSON responses for IDE integration",
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -31487,7 +31517,7 @@ modelRegistry.registerModel("openai/gpt-5.2", {
         "Adaptive reasoning may result in variable response times",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -31631,7 +31661,7 @@ modelRegistry.registerModel("openai/gpt-5.2-pro", {
       complexityHandling: "Excellent for users requiring detailed explanations",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -31761,7 +31791,7 @@ modelRegistry.registerModel("openai/gpt-5.2-chat", {
       conversationalTone: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -32170,8 +32200,8 @@ modelRegistry.registerModel("z-ai/glm-4.7", {
   description:
     "Z.AI's latest flagship model featuring enhanced programming capabilities and stable multi-step reasoning. Demonstrates significant improvements in executing complex agent tasks, tool calling, and code generation with superior front-end aesthetics. Optimised for agentic coding, web UI generation, and high-quality dialogue with structured output support.",
   costs: {
-    input: 0.4, // auto-corrected 2026-09-10: was 0.44
-    output: 1.75, // auto-corrected 2026-09-10: was 1.74
+    input: 0.6, // auto-corrected 2026-09-28: was 0.4
+    output: 2.2, // auto-corrected 2026-09-28: was 1.75
   },
   capabilities: [
     "text",
@@ -32230,8 +32260,8 @@ modelRegistry.registerModel("z-ai/glm-4.7", {
       streamingSupport:
         "Real-time response streaming for better user experience",
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
@@ -32370,7 +32400,7 @@ modelRegistry.registerModel("minimax/minimax-m2.1", {
       optimisedForLatency: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -32512,7 +32542,7 @@ modelRegistry.registerModel("bytedance-seed/seed-1.6", {
       cognitiveLoad: "Adaptive thinking reduces unnecessary complexity",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -32641,7 +32671,7 @@ modelRegistry.registerModel("bytedance-seed/seed-1.6-flash", {
       largeContext: "Extended context window for comprehensive responses",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -33101,9 +33131,9 @@ modelRegistry.registerModel("z-ai/glm-4.7-flash", {
       taskBreakdown: "Excels at breaking complex tasks into manageable steps",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -33449,7 +33479,7 @@ modelRegistry.registerModel("writer/palmyra-x5", {
       largeContextSupport: "Optimised for extended document processing",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -33571,9 +33601,9 @@ modelRegistry.registerModel("moonshotai/kimi-k2.5", {
       structuredOutputs: true,
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -33817,7 +33847,7 @@ modelRegistry.registerModel("qwen/qwen3-coder-next", {
       agentIntegration: "Simplified integration without thinking blocks",
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -33963,7 +33993,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.6", {
         "Designed to reduce cognitive overhead through comprehensive single-pass outputs",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -34089,7 +34119,7 @@ modelRegistry.registerModel("qwen/qwen3-max-thinking", {
       includedReasoningOutput: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -34217,11 +34247,11 @@ modelRegistry.registerModel("z-ai/glm-5", {
         "Supports extended reasoning for complex problem decomposition",
     },
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.4,
-    pricingStandard: { input: 0.6, output: 2.08 },
-    pricingPromotionalSides: "output",
-    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises on OUTPUT to at least 2.08 per million (the input price is not promotional). No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 9 endpoint(s).",
+    pricingStandard: { input: 0.7, output: 2.24 },
+    pricingPromotionalSides: "both",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.7 in / 2.24 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -34301,8 +34331,8 @@ modelRegistry.registerModel("minimax/minimax-m2.5", {
   description:
     "A state-of-the-art large language model optimised for real-world productivity across diverse digital working environments. Extends coding expertise to general office work, with fluency in generating and operating Word, Excel, and PowerPoint files. Demonstrates exceptional performance on software engineering benchmarks (80.2% SWE-Bench Verified, 51.3% Multi-SWE-Bench) and web browsing tasks (76.3% BrowseComp). Trained for token efficiency through action planning and optimisation.",
   costs: {
-    input: 0.3, // Per million tokens
-    output: 1.2, // Per million tokens
+    input: 0.27, // auto-corrected 2026-09-28: was 0.3
+    output: 1.08, // auto-corrected 2026-09-28: was 1.2
   },
   capabilities: [
     "text",
@@ -34358,10 +34388,10 @@ modelRegistry.registerModel("minimax/minimax-m2.5", {
       supportsSimplifiedLanguage: false,
       tokenEfficiency: "High - optimised for efficient token usage",
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.1,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -34493,7 +34523,7 @@ modelRegistry.registerModel("qwen/qwen3.5-397b-a17b", {
         "Native vision capabilities for comprehensive content understanding",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -34625,7 +34655,7 @@ modelRegistry.registerModel("qwen/qwen3.5-plus-02-15", {
       longContext: 10,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -34758,7 +34788,7 @@ modelRegistry.registerModel("anthropic/claude-sonnet-4.6", {
       codeQuality: 10,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 9 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -34906,7 +34936,7 @@ modelRegistry.registerModel("google/gemini-3.1-pro-preview", {
       workflowAutomation: 8,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -35030,7 +35060,7 @@ modelRegistry.registerModel("aion-labs/aion-2.0", {
         "Model handles mature and darker themes; may produce content addressing sensitive narratives",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -35250,7 +35280,7 @@ modelRegistry.registerModel("qwen/qwen3.5-flash-02-23", {
       efficientProcessing: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -35382,7 +35412,7 @@ modelRegistry.registerModel("qwen/qwen3.5-122b-a10b", {
       "Mathematical problem-solving",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
@@ -35513,7 +35543,7 @@ modelRegistry.registerModel("qwen/qwen3.5-27b", {
       toolIntegration: 8,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -35588,8 +35618,8 @@ modelRegistry.registerModel("qwen/qwen3.5-35b-a3b", {
   description:
     "A native vision-language model featuring hybrid architecture with linear attention mechanisms and sparse mixture-of-experts optimisation for enhanced inference efficiency. Delivers performance comparable to Qwen3.5-27B whilst maintaining superior computational efficiency through specialised architectural design.",
   costs: {
-    input: 0.3125, // auto-corrected 2026-09-09: was 0.25
-    output: 1.25, // auto-corrected 2026-09-09: was 2
+    input: 0.1625, // auto-corrected 2026-09-28: was 0.3125
+    output: 1.3, // auto-corrected 2026-09-28: was 1.25
   },
   capabilities: [
     "text",
@@ -35635,10 +35665,10 @@ modelRegistry.registerModel("qwen/qwen3.5-35b-a3b", {
       "tool-augmented reasoning",
       "high-performance applications",
     ],
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -35761,7 +35791,7 @@ modelRegistry.registerModel("bytedance-seed/seed-2.0-mini", {
       supportedLanguages: "Multiple languages with multilingual capability",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -35889,7 +35919,7 @@ modelRegistry.registerModel("google/gemini-3.1-flash-lite-preview", {
         "Native audio input/ASR support for accessibility-friendly interactions",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36141,7 +36171,7 @@ modelRegistry.registerModel("inception/mercury-2", {
       note: "Optimised for responsive interactions in production systems",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36276,7 +36306,7 @@ modelRegistry.registerModel("openai/gpt-5.4", {
       tokenEfficiency: "high",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36325,9 +36355,9 @@ modelRegistry.registerModel("openai/gpt-5.4", {
       "vision-integration",
     ],
     warnings: [
-      "Higher output token costs (£15/M) compared to general-purpose alternatives",
+      "Higher output token costs ($15/M) compared to general-purpose alternatives",
       "Requires careful token budgeting for large-scale deployments",
-      "Web search feature incurs additional costs (£10/K)",
+      "Web search feature incurs additional costs ($10/K)",
     ],
     ariaLabels: {
       modelSelect:
@@ -36414,7 +36444,7 @@ modelRegistry.registerModel("openai/gpt-5.4-pro", {
       outputFormats: ["text", "JSON"],
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36559,7 +36589,7 @@ modelRegistry.registerModel("qwen/qwen3.5-9b", {
       multilingual: 7,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36685,7 +36715,7 @@ modelRegistry.registerModel("z-ai/glm-5-turbo", {
       "persistent execution",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36809,7 +36839,7 @@ modelRegistry.registerModel("mistralai/mistral-small-2603", {
       multimodal: 9,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -36938,7 +36968,7 @@ modelRegistry.registerModel("openai/gpt-5.4-mini", {
       toolIntegrationSupport: true,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -37068,7 +37098,7 @@ modelRegistry.registerModel("openai/gpt-5.4-nano", {
       visionUnderstanding: 7,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -37144,8 +37174,8 @@ modelRegistry.registerModel("minimax/minimax-m2.7", {
   description:
     "Next-generation large language model designed for autonomous, real-world productivity with advanced agentic capabilities. Excels at multi-agent collaboration, complex task planning and execution, live debugging, root cause analysis, financial modelling, and document generation across Word, Excel, and PowerPoint. Delivers production-grade performance with strong benchmark results including 56.2% on SWE-Pro and 57.0% on Terminal Bench 2.",
   costs: {
-    input: 0.3, // Per million tokens
-    output: 1.2, // Per million tokens
+    input: 0.21, // auto-corrected 2026-09-29: was 0.3
+    output: 0.84, // auto-corrected 2026-09-29: was 1.2
   },
   capabilities: [
     "text",
@@ -37196,10 +37226,12 @@ modelRegistry.registerModel("minimax/minimax-m2.7", {
       reasoningCapabilities:
         "Advanced built-in reasoning for transparent decision-making",
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.3,
+    pricingStandard: { input: 0.3, output: 1.2 },
+    pricingPromotionalSides: "both",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.3 in / 1.2 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 9 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -37559,7 +37591,7 @@ modelRegistry.registerModel("x-ai/grok-4.20", {
       "Reasoning-enabled analysis",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -37684,7 +37716,7 @@ modelRegistry.registerModel("arcee-ai/trinity-large-thinking", {
       mathematics: 7,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -37941,7 +37973,7 @@ modelRegistry.registerModel("google/gemma-4-31b-it", {
       mathematics: 8,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -38066,9 +38098,9 @@ modelRegistry.registerModel("z-ai/glm-5.1", {
       "Multi-step algorithmic development",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.31,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s).",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.311,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 14 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -38210,7 +38242,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.7", {
     migrationNotes:
       "Upgrade from Opus 4.6 requires removing sampling parameter configurations and adopting verbosity control",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -38291,8 +38323,8 @@ modelRegistry.registerModel("moonshotai/kimi-k2.6", {
   description:
     "Kimi K2.6 is Moonshot AI's next-generation multimodal model designed for long-horizon coding, coding-driven UI/UX generation, and multi-agent orchestration. It excels at complex end-to-end coding tasks across Python, Rust, and Go, and converts prompts and visual inputs into production-ready interfaces. Features an advanced agent swarm architecture that scales to hundreds of parallel sub-agents for autonomous task decomposition, delivering fully-formed documents, websites, and spreadsheets in a single run without human intervention. Exceptionally strong across academia, finance, healthcare, SEO, and programming domains.",
   costs: {
-    input: 0.95, // auto-corrected 2026-09-10: was 0.75
-    output: 4, // auto-corrected 2026-09-10: was 3.5
+    input: 0.65, // auto-corrected 2026-09-28: was 0.95
+    output: 3.41, // auto-corrected 2026-09-28: was 4
   },
   capabilities: [
     "text",
@@ -38359,10 +38391,10 @@ modelRegistry.registerModel("moonshotai/kimi-k2.6", {
       "Healthcare data processing",
       "SEO content and technical optimisation",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 21 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 18 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -38517,7 +38549,7 @@ modelRegistry.registerModel("xiaomi/mimo-v2.5", {
       "Long-context document comprehension",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
@@ -38658,9 +38690,9 @@ modelRegistry.registerModel("xiaomi/mimo-v2.5-pro", {
       "Multi-tool workflows",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -38741,8 +38773,8 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash", {
   description:
     "DeepSeek V4 Flash is an efficiency-optimised Mixture-of-Experts model from DeepSeek featuring 284B total parameters with only 13B activated per token. It supports a groundbreaking 1M-token context window with hybrid attention mechanisms for efficient long-context processing. Designed for fast inference and high-throughput workloads, it maintains strong reasoning and coding performance whilst reducing computational costs. Includes configurable reasoning modes and is particularly well-suited for coding assistants, chat systems, and agent workflows where responsiveness and cost efficiency are paramount.",
   costs: {
-    input: 0.088606, // auto-corrected 2026-09-10: was 0.14
-    output: 0.177212, // auto-corrected 2026-09-10: was 0.28
+    input: 0.07308, // auto-corrected 2026-09-28: was 0.088606
+    output: 0.14616, // auto-corrected 2026-09-28: was 0.177212
   },
   capabilities: [
     "text",
@@ -38798,10 +38830,12 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash", {
       "Multi-turn dialogue systems",
       "Knowledge base retrieval and synthesis",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.3671,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s).",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.465,
+    pricingStandard: { input: 0.012, output: 0.1652 },
+    pricingPromotionalSides: "output",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises on OUTPUT to at least 0.1652 per million (the input price is not promotional). No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -38885,8 +38919,8 @@ modelRegistry.registerModel("deepseek/deepseek-v4-pro", {
   description:
     "DeepSeek V4 Pro is a large-scale Mixture-of-Experts model with 1.6T total parameters and 49B activated parameters per token. Designed for advanced reasoning, coding, and long-horizon agent workflows with exceptional performance across knowledge, mathematics, and software engineering benchmarks. Features a 1M-token context window and hybrid attention system for efficient long-context processing. Supports multiple reasoning modes to balance speed and depth. Ideal for complex workloads including full-codebase analysis, multi-step automation, and large-scale information synthesis.",
   costs: {
-    input: 0.95526, // auto-corrected 2026-09-10: was 1.74
-    output: 1.91052, // auto-corrected 2026-09-10: was 3.48
+    input: 0.936294, // auto-corrected 2026-09-29: was 0.783
+    output: 1.872588, // auto-corrected 2026-09-29: was 1.566
   },
   capabilities: [
     "text",
@@ -38952,10 +38986,12 @@ modelRegistry.registerModel("deepseek/deepseek-v4-pro", {
       longContextUnderstanding: 10,
       agentBehavior: 8,
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.451,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 16 endpoint(s).",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.4619,
+    pricingStandard: { input: 0.25, output: 2.088 },
+    pricingPromotionalSides: "output",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises on OUTPUT to at least 2.088 per million (the input price is not promotional). No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -39109,7 +39145,7 @@ modelRegistry.registerModel("openai/gpt-5.5", {
       "Enhanced multimodal processing",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -39258,7 +39294,7 @@ modelRegistry.registerModel("openai/gpt-5.5-pro", {
       totalTokens: 1050000,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -39339,8 +39375,8 @@ modelRegistry.registerModel("qwen/qwen3.6-27b", {
   description:
     "Qwen3.6 27B is a dense 27-billion-parameter language model from the Qwen Team at Alibaba, released in April 2026. It features hybrid multimodal capabilities accepting text, image, and video inputs with a 256K token context window. Designed for agentic coding and reasoning tasks, with particular strength in repository-level code comprehension, front-end development workflows, and multi-step problem solving. Includes built-in thinking mode for extended reasoning with persistent thinking context across conversation history. Supports 201 languages and dialects. Released under Apache 2.0 licence.",
   costs: {
-    input: 0.3, // auto-corrected 2026-09-09: was 0.325
-    output: 2, // auto-corrected 2026-09-09: was 3.25
+    input: 0.32, // auto-corrected 2026-09-28: was 0.3
+    output: 3.2, // auto-corrected 2026-09-28: was 2
     image: 0.0,
     video: 0.0,
   },
@@ -39398,10 +39434,10 @@ modelRegistry.registerModel("qwen/qwen3.6-27b", {
       multilingual: 9,
       videoUnderstanding: 7,
     },
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -39497,8 +39533,8 @@ modelRegistry.registerModel("qwen/qwen3.6-35b-a3b", {
   description:
     "Qwen 3.6 35B A3B is an open-weight multimodal model from Alibaba Cloud featuring 35 billion total parameters with 3 billion active per token. Utilises a hybrid sparse Mixture-of-Experts architecture combining Gated DeltaNet linear attention with standard gated attention layers for efficient inference. Supports a 262K token native context window (extensible to 1M via YaRN) and accepts text, image, and video inputs. Includes integrated thinking mode with reasoning traces preserved across multi-turn conversations, function calling, and structured output support. Released under Apache 2.0 licence.",
   costs: {
-    input: 0.1, // auto-corrected 2026-09-10: was 0.1612
-    output: 0.9, // auto-corrected 2026-09-10: was 0.9653
+    input: 0.15, // auto-corrected 2026-09-28: was 0.1
+    output: 1, // auto-corrected 2026-09-28: was 0.9
     image: 0.0,
     video: 0.0,
   },
@@ -39571,8 +39607,8 @@ modelRegistry.registerModel("qwen/qwen3.6-35b-a3b", {
       "Cross-lingual information retrieval",
     ],
     modelLicense: "Apache 2.0",
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s).",
   },
@@ -39729,7 +39765,7 @@ modelRegistry.registerModel("qwen/qwen3.6-flash", {
       tieredPricingThreshold: 256000,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -39876,7 +39912,7 @@ modelRegistry.registerModel("qwen/qwen3.5-plus-20260420", {
       "Structured data extraction",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40168,7 +40204,7 @@ modelRegistry.registerModel("x-ai/grok-4.3", {
       note: "Verify current pricing on xAI platform",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40337,7 +40373,7 @@ modelRegistry.registerModel("google/gemini-3.1-flash-lite", {
       high: "Comprehensive reasoning at increased latency cost",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40466,7 +40502,7 @@ modelRegistry.registerModel("perceptron/perceptron-mk1", {
     ],
     weeklyTokenVolume: "121M",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40613,7 +40649,7 @@ modelRegistry.registerModel("google/gemini-3.5-flash", {
     ],
     weeklyTokenUsage: "37.1B",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40755,7 +40791,7 @@ modelRegistry.registerModel("qwen/qwen3.7-max", {
     ],
     weeklyTokenUsage: "2.92B",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -40911,7 +40947,7 @@ modelRegistry.registerModel("anthropic/claude-opus-4.8", {
       projectOrchestration: 9,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 11 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -41041,7 +41077,7 @@ modelRegistry.registerModel("stepfun/step-3.7-flash", {
     ],
     weeklyTokenVolume: "155M",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -41185,9 +41221,9 @@ modelRegistry.registerModel("minimax/minimax-m3", {
       "Native multimodal training on interleaved data with interactive user-simulator tuning",
     weeklyTokensProcessed: "33.7B",
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.5,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 12 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 13 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -41333,7 +41369,7 @@ modelRegistry.registerModel("qwen/qwen3.7-plus", {
       weeklyTokens: "2.92B",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -41479,7 +41515,7 @@ modelRegistry.registerModel("anthropic/claude-fable-5", {
       selfCorrection: 9,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -41565,8 +41601,8 @@ modelRegistry.registerModel("moonshotai/kimi-k2.7-code", {
   description:
     "Kimi K2.7 Code is a coding-focused model in Moonshot AI's Kimi K2 family, purpose-built to complete end-to-end programming tasks reliably over extended contexts. It features a native multimodal Mixture-of-Experts architecture that accepts text, image, and video input. The model operates in continuous thinking mode, preserving full reasoning content across multi-turn conversations. With a 256K-token context window, it targets long-horizon coding projects, agentic task decomposition, and complex multi-turn dialogue. Activates 32B parameters from a total of approximately 1 trillion.",
   costs: {
-    input: 0.71, // auto-corrected 2026-09-10: was 0.95
-    output: 3.5, // auto-corrected 2026-09-10: was 4
+    input: 0.6562, // auto-corrected 2026-09-28: was 0.71
+    output: 3.3, // auto-corrected 2026-09-28: was 3.5
     image: 0.0,
     video: 0.0,
   },
@@ -41629,10 +41665,10 @@ modelRegistry.registerModel("moonshotai/kimi-k2.7-code", {
       "debugging-analysis": 8,
       "mathematical-coding": 8,
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 15 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 12 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -41719,8 +41755,8 @@ modelRegistry.registerModel("z-ai/glm-5.2", {
   description:
     "GLM 5.2 is a large-scale reasoning model from Z.ai optimised for complex multi-step tasks and long-horizon agent workflows. With a 1M-token context window, it excels at project-level software engineering, maintaining engineering context and following development standards consistently through entire workflows — from requirements gathering to multi-platform deployment. Supports configurable reasoning efforts (high and xhigh, with xhigh mapping to maximum reasoning). Particularly strong at coding, tool use, and long-running automation tasks.",
   costs: {
-    input: 0.966, // auto-corrected 2026-09-10: was 1.4
-    output: 3.036, // auto-corrected 2026-09-10: was 4.4
+    input: 0.2339, // auto-corrected 2026-09-29: was 0.6496
+    output: 4.4, // auto-corrected 2026-09-29: was 2.0416
   },
   capabilities: [
     "text",
@@ -41785,10 +41821,10 @@ modelRegistry.registerModel("z-ai/glm-5.2", {
       "project-management": 8,
       mathematics: 8,
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 33 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 31 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -41873,7 +41909,7 @@ modelRegistry.registerModel("sakana/fugu-ultra", {
   provider: "sakana",
   name: "Fugu Ultra",
   category: "LargeContext",
-  disabled: false,
+  disabled: true, // region-blocked from the UK: HTTP 403 "not available in your region", measured 2026-09-29 (MR-4/MR-5)
   description:
     "Fugu Ultra is the higher-performance model in Sakana AI's Fugu family, representing a paradigm shift from traditional monolithic architectures. Rather than a single model, Fugu is a learned multi-agent orchestration system: a language model trained to intelligently route tasks across a swappable pool of underlying models and to recursively call instances of itself. This dynamic routing enables optimised performance across diverse task types whilst maintaining flexibility and cost efficiency. Supports text and image input, with a 1M token context window and advanced reasoning capabilities.",
   costs: {
@@ -41932,7 +41968,7 @@ modelRegistry.registerModel("sakana/fugu-ultra", {
       "Recursive problem decomposition",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -42079,9 +42115,9 @@ modelRegistry.registerModel("anthropic/claude-sonnet-5", {
       "High-risk activity blocking",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 9 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -42165,8 +42201,8 @@ modelRegistry.registerModel("tencent/hy3", {
   description:
     "Hy3 is a 295B-parameter Mixture-of-Experts model from Tencent designed for reasoning, agentic workflows, and production-scale applications. With 21B active parameters across 192 experts using top-8 routing, it delivers exceptional performance on complex tasks. Supports configurable reasoning modes: direct no-think mode by default, plus low and high chain-of-thought modes for intricate mathematics, coding, and multi-step problem solving. Features a 256K token context window optimised for long-horizon tasks, improved coreference resolution, multi-turn constraint tracking, and reliable tool calling across agent scaffoldings. Emphasises grounded reasoning with anti-hallucination behaviour — answers with evidence or transparently flags missing information.",
   costs: {
-    input: 0.132, // auto-corrected 2026-09-09: was 0.2
-    output: 0.528, // auto-corrected 2026-09-09: was 0.8
+    input: 0.0825, // auto-corrected 2026-09-28: was 0.132
+    output: 0.33, // auto-corrected 2026-09-28: was 0.528
   },
   capabilities: [
     "text",
@@ -42224,10 +42260,10 @@ modelRegistry.registerModel("tencent/hy3", {
       "Evidence-grounded question answering",
       "Multi-turn constraint tracking",
     ],
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -42354,7 +42390,7 @@ modelRegistry.registerModel("aion-labs/aion-3.0-mini", {
       "Multi-character dialogue",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -42476,7 +42512,7 @@ modelRegistry.registerModel("aion-labs/aion-3.0", {
       worldBuilding: 8,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -42603,7 +42639,7 @@ modelRegistry.registerModel("openai/gpt-5.6-sol", {
       "Advanced tool integration",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.5,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
@@ -42684,8 +42720,8 @@ modelRegistry.registerModel("openai/gpt-5.6-sol-pro", {
   description:
     "GPT-5.6 Sol Pro is OpenAI's advanced reasoning model, based on the same underlying GPT-5.6 Sol architecture but configured with reasoning.mode set to 'pro' for enhanced performance on complex tasks. Supports multimodal input including images and files alongside text. Features a 1M token context window, enabling comprehensive document analysis and extended conversations. Particularly effective for complex reasoning, problem-solving, and detailed analytical tasks requiring deep logical inference.",
   costs: {
-    input: 2, // auto-corrected 2026-09-10: was 5
-    output: 10, // auto-corrected 2026-09-10: was 30
+    input: 4, // auto-corrected 2026-09-29: was 2
+    output: 20, // auto-corrected 2026-09-29: was 10
     image: 0.0,
     file: 0.0,
   },
@@ -42754,8 +42790,8 @@ modelRegistry.registerModel("openai/gpt-5.6-sol-pro", {
       multimodal: 8,
       longContext: 9,
     },
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.5,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
@@ -42909,7 +42945,7 @@ modelRegistry.registerModel("openai/gpt-5.6-terra", {
       analysis: 8,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -43055,7 +43091,7 @@ modelRegistry.registerModel("openai/gpt-5.6-terra-pro", {
     ],
     knowledgeCutoff: "2026-02-01",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -43203,7 +43239,7 @@ modelRegistry.registerModel("openai/gpt-5.6-luna", {
       sources: "Web, books, academic publications",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -43349,7 +43385,7 @@ modelRegistry.registerModel("openai/gpt-5.6-luna-pro", {
       "Structured data extraction from documents",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -43472,7 +43508,7 @@ modelRegistry.registerModel("kwaipilot/kat-coder-pro-v2.5", {
       "End-to-end development pipelines",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -43733,9 +43769,9 @@ modelRegistry.registerModel("moonshotai/kimi-k3", {
         "Currently supports maximum level only; additional levels planned for future release",
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 19 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 20 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -43886,9 +43922,9 @@ modelRegistry.registerModel("thinkingmachines/inkling", {
     ],
     modelLicense: "Open weights",
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -44023,7 +44059,7 @@ modelRegistry.registerModel("meituan/longcat-2.0", {
       "Complex documentation comprehension",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.6,
     pricingStandard: { input: 0.75, output: 3 },
     pricingPromotionalSides: "both",
@@ -44173,7 +44209,7 @@ modelRegistry.registerModel("google/gemini-3.5-flash-lite", {
     contextWindow: "1M tokens",
     multimodalSupport: ["text", "video", "audio", "files", "images"],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -44313,7 +44349,7 @@ modelRegistry.registerModel("google/gemini-3.6-flash", {
       "Token-efficient applications",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -44453,9 +44489,9 @@ modelRegistry.registerModel("anthropic/claude-opus-5", {
       "Parallel subagent coordination",
     ],
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 11 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -44600,7 +44636,7 @@ modelRegistry.registerModel("qwen/qwen3.7-flash", {
       realWorldPerception: 9,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
@@ -44757,9 +44793,9 @@ modelRegistry.registerModel("thinkingmachines/inkling-small", {
       rag: 9,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
     supported: [
@@ -44849,8 +44885,8 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash-0731", {
   description:
     "DeepSeek V4 Flash 0731 is a sparse Mixture-of-Experts model from DeepSeek featuring 13B active parameters out of 284B total. This re-post-trained revision delivers exceptional efficiency whilst maintaining high-quality output for coding, reasoning, and agent workflows. With a 1M token context window, it excels at handling extended documentation, codebases, and complex multi-turn reasoning tasks. Optimised for cost-effective inference at scale.",
   costs: {
-    input: 0.065, // auto-corrected 2026-09-10: was 0.09
-    output: 0.18,
+    input: 0.018, // auto-corrected 2026-09-29: was 0.021
+    output: 0.32, // auto-corrected 2026-09-28: was 0.18
   },
   capabilities: [
     "text",
@@ -44905,10 +44941,10 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash-0731", {
       "Multi-turn complex reasoning",
       "Cost-optimised enterprise applications",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 28 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 30 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -44997,8 +45033,8 @@ modelRegistry.registerModel("upstage/solar-pro4", {
   description:
     "Solar Pro 4 is a large language model from Upstage optimised for agentic workflows, office productivity, document-intensive work, and coding tasks. With a 524K token context window, it excels at processing extensive documents and maintaining conversation context across complex multi-turn interactions. Features native reasoning capabilities, structured output support, and tool integration for sophisticated agent-based applications. Currently available at 90% discount pricing.",
   costs: {
-    input: 0.03,
-    output: 0.12,
+    input: 0.09, // auto-corrected 2026-09-28: was 0.03
+    output: 0.36, // auto-corrected 2026-09-28: was 0.12
   },
   capabilities: [
     "text",
@@ -45039,9 +45075,9 @@ modelRegistry.registerModel("upstage/solar-pro4", {
       "Multi-turn complex conversations",
       "Structured data extraction",
     ],
-    pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.9,
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.7,
     pricingStandard: { input: 0.3, output: 1.2 },
     pricingPromotionalSides: "both",
     pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.3 in / 1.2 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
@@ -45123,8 +45159,8 @@ modelRegistry.registerModel("deepseek/deepseek-v4-pro-0813", {
   description:
     "DeepSeek V4 Pro 0813 is a large-scale Mixture-of-Experts model from DeepSeek, representing the general availability release of DeepSeek V4 Pro. This advanced model excels at complex reasoning tasks and long-context processing with a 1M token context window. Features native tool calling, structured output support, and configurable reasoning mode for nuanced problem-solving across diverse domains.",
   costs: {
-    input: 1.0494, // auto-corrected 2026-09-10: was 0.435
-    output: 3.1482, // auto-corrected 2026-09-10: was 0.87
+    input: 0.4721, // auto-corrected 2026-09-29: was 0.3995
+    output: 4.2, // auto-corrected 2026-09-28: was 3.1482
   },
   capabilities: [
     "text",
@@ -45177,12 +45213,10 @@ modelRegistry.registerModel("deepseek/deepseek-v4-pro-0813", {
       "Tool integration workflows",
     ],
     releaseStatus: "General Availability",
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.205,
-    pricingStandard: { input: 1.1, output: 2.6 },
-    pricingPromotionalSides: "input",
-    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises on INPUT to at least 1.1 per million (the output price is not promotional). No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 20 endpoint(s).",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 21 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -45331,8 +45365,8 @@ modelRegistry.registerModel("qwen/qwen3.8-2.4t-a95b", {
       multimodal: 5,
     },
     pricingCapturedAt: null,
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0,
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.2,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s). Captured before this toolchain existed, so the capture date is unknown.",
   },
   parameterSupport: {
@@ -45598,7 +45632,7 @@ modelRegistry.registerModel("anthropic/claude-fable-5.1", {
       "Visual tasks and front-end development",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -45722,9 +45756,9 @@ modelRegistry.registerModel("openai/gpt-6-astra", {
       "Document creation and editing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -45847,7 +45881,7 @@ modelRegistry.registerModel("openai/gpt-6-astra-pro", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
@@ -45972,7 +46006,7 @@ modelRegistry.registerModel("qwen/qwen3.8-max-0902", {
       "Reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -46107,7 +46141,7 @@ modelRegistry.registerModel("ibm-granite/granite-4.2-8b", {
       "Agentic workflows",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -46242,9 +46276,9 @@ modelRegistry.registerModel("tencent/hy4-preview", {
       "Productivity tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -46369,9 +46403,9 @@ modelRegistry.registerModel("qwen/qwen3.8-flash", {
       "Desktop interaction and automation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -46499,7 +46533,7 @@ modelRegistry.registerModel("tencent/hy-mt2-1.8b", {
       "Glossary-based translation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -46615,7 +46649,7 @@ modelRegistry.registerModel("tencent/hy-mt2-30b-a3b", {
       "Contextual translation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -46734,7 +46768,7 @@ modelRegistry.registerModel("tencent/hy-mt2-7b", {
       "Style-guided translation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -46822,8 +46856,8 @@ modelRegistry.registerModel("qwen/qwen3.8-27b", {
   disabled: false,
   description: "Qwen3.8 27B is an open-weight dense vision-language model designed for various applications including coding, professional workflows, research, and multimodal interaction. It supports long-running agent tasks and exhibits flexible thinking capabilities.",
   costs: {
-    input: 0.42,
-    output: 3,
+    input: 0.0249, // auto-corrected 2026-09-29: was 0.42
+    output: 4.4, // auto-corrected 2026-09-29: was 3
     image: 0,
     video: 0,
   },
@@ -46856,10 +46890,10 @@ modelRegistry.registerModel("qwen/qwen3.8-27b", {
       "Research and analysis",
       "Multimodal interaction",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 14 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 16 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -46994,7 +47028,7 @@ modelRegistry.registerModel("bytedance-seed/seed-2-1-turbo", {
       "Visual understanding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -47121,7 +47155,7 @@ modelRegistry.registerModel("bytedance-seed/seed-2.0-code", {
       "Coding-agent workflows",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -47248,9 +47282,9 @@ modelRegistry.registerModel("x-ai/grok-4.6", {
       "STEM-related problem solving",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -47341,7 +47375,7 @@ modelRegistry.registerModel("sakana/sakana-namazu", {
   provider: "sakana",
   name: "Sakana Namazu",
   category: "Specialized",
-  disabled: false,
+  disabled: true, // every serving endpoint trains on paid prompts: HTTP 404 "No endpoints found matching your data policy (Paid model training)", measured 2026-09-29 (MR-5)
   description: "Sakana Namazu is a reasoning model specifically designed for Japanese language and business contexts. It is based on Kimi K2.6 and has undergone additional training to enhance its performance in these areas. The model supports reasoning and can handle various input modalities, including text, images, and files.",
   costs: {
     input: 0.95,
@@ -47377,7 +47411,7 @@ modelRegistry.registerModel("sakana/sakana-namazu", {
       "Reasoning in Japanese",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -47499,7 +47533,7 @@ modelRegistry.registerModel("x-ai/grok-4.5", {
       "STEM problem-solving",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -47625,7 +47659,7 @@ modelRegistry.registerModel("google/gemini-3.1-flash-lite-image", {
       "High-velocity development",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -47746,7 +47780,7 @@ modelRegistry.registerModel("google/gemini-3.1-flash-image", {
       "Fast processing of visual tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -47869,7 +47903,7 @@ modelRegistry.registerModel("google/gemini-3-pro-image", {
       "Real-world grounding applications",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -47995,7 +48029,7 @@ modelRegistry.registerModel("x-ai/grok-build-0.1", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -48120,7 +48154,7 @@ modelRegistry.registerModel("openai/gpt-chat-latest", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -48240,7 +48274,7 @@ modelRegistry.registerModel("mistralai/mistral-medium-3-5", {
       "Complex task execution",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -48368,7 +48402,7 @@ modelRegistry.registerModel("qwen/qwen3.6-max-preview", {
       "Reasoning support for coding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -48497,7 +48531,7 @@ modelRegistry.registerModel("tencent/hy3-preview", {
       "Configurable reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -48619,7 +48653,7 @@ modelRegistry.registerModel("openai/gpt-5.4-image-2", {
       "Complex task workflows",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -48713,8 +48747,8 @@ modelRegistry.registerModel("google/gemma-4-26b-a4b-it", {
   disabled: false,
   description: "Gemma 4 26B A4B IT is an instruction-tuned Mixture-of-Experts model developed by Google DeepMind. It features a large number of parameters, with a portion activating per token during inference to optimise performance. This model supports various input modalities, including text, image, and video, while providing text as output.",
   costs: {
-    input: 0.07,
-    output: 0.34,
+    input: 0.09, // auto-corrected 2026-09-28: was 0.07
+    output: 0.3, // auto-corrected 2026-09-28: was 0.34
     image: 0,
     video: 0,
   },
@@ -48725,7 +48759,12 @@ modelRegistry.registerModel("google/gemma-4-26b-a4b-it", {
     "reasoning",
   ],
   maxContext: 262144,
-  fallbackTo: "google/gemma-3-27b-it",
+  // Item 109 (14 Sep 2026): was "google/gemma-3-27b-it", the middle link of a
+  // three-model ring. That target also broke the context floor - 131072 against this
+  // entry's 262144. gemma-4-31b-it is the same vendor and the same gemma-4 generation,
+  // declares vision, reasoning and tool_calling, matches the 262144 floor, and its own
+  // chain terminates.
+  fallbackTo: "google/gemma-4-31b-it",
   isFree: false,
   metadata: {
     modalities: {
@@ -48745,10 +48784,10 @@ modelRegistry.registerModel("google/gemma-4-26b-a4b-it", {
       "Visual understanding",
       "Tool interaction",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 9 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 14 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -48879,7 +48918,7 @@ modelRegistry.registerModel("qwen/qwen3.6-plus", {
       "Reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49009,7 +49048,7 @@ modelRegistry.registerModel("x-ai/grok-4.20-multi-agent", {
       "Agent-based workflows",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -49132,7 +49171,7 @@ modelRegistry.registerModel("google/lyria-3-pro-preview", {
       "Songwriting assistance",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49213,7 +49252,13 @@ modelRegistry.registerModel("google/lyria-3-pro-preview", {
 modelRegistry.registerModel("google/lyria-3-clip-preview", {
   provider: "google",
   name: "Lyria 3 Clip Preview",
-  category: "GeneralPurpose",
+  // Item 108 (14 Sep 2026): was "GeneralPurpose". This entry is a music generation
+  // model - its own description and categoryDescription both say so - and its sibling
+  // google/lyria-3-pro-preview is registered "Specialized". Left as GeneralPurpose it was
+  // the registry's ONLY free GeneralPurpose entry, which made it the automatic fallback
+  // corrector's first choice for ten chat models: same category plus isFree beat every
+  // paid candidate that could actually hold a conversation.
+  category: "Specialized",
   disabled: false,
   description: "Lyria 3 Clip Preview is a music generation model that allows users to create audio clips of up to 30 seconds in duration. It is part of Google's Lyria 3 family and is accessible through the Gemini API. The model supports both text and image inputs, producing audio outputs.",
   costs: {
@@ -49248,7 +49293,7 @@ modelRegistry.registerModel("google/lyria-3-clip-preview", {
       "Creative audio projects",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49330,7 +49375,7 @@ modelRegistry.registerModel("kwaipilot/kat-coder-pro-v2", {
   provider: "kwaipilot",
   name: "KAT-Coder-Pro V2",
   category: "Code",
-  disabled: false,
+  disabled: true, // auto-disabled 2026-09-28: not on OpenRouter (/parameters 404)
   description: "KAT-Coder-Pro V2 is a high-performance model designed for complex enterprise-grade software engineering and SaaS integration. It builds on the coding strengths of earlier versions, focusing on enhancing productivity in software development tasks.",
   costs: {
     input: 0.3,
@@ -49494,7 +49539,7 @@ modelRegistry.registerModel("bytedance-seed/seed-2.0-lite", {
       "Production workloads",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49620,7 +49665,7 @@ modelRegistry.registerModel("google/gemini-3.1-flash-image-preview", {
       "Rapid image processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49743,7 +49788,7 @@ modelRegistry.registerModel("google/gemini-3.1-pro-preview-customtools", {
       "Multi-modal input handling",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -49868,7 +49913,7 @@ modelRegistry.registerModel("openai/gpt-5.3-codex", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -49990,7 +50035,7 @@ modelRegistry.registerModel("stepfun/step-3.5-flash", {
       "Text generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50111,7 +50156,7 @@ modelRegistry.registerModel("upstage/solar-pro-3", {
       "Reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50234,7 +50279,7 @@ modelRegistry.registerModel("minimax/minimax-m2-her", {
       "Expressive dialogue",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50349,7 +50394,7 @@ modelRegistry.registerModel("openai/gpt-audio", {
       "Voice consistency",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50475,7 +50520,7 @@ modelRegistry.registerModel("openai/gpt-audio-mini", {
       "Cost-effective audio processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50604,7 +50649,7 @@ modelRegistry.registerModel("openai/gpt-5.2-codex", {
       "Complex engineering tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50728,7 +50773,7 @@ modelRegistry.registerModel("google/gemini-3-flash-preview", {
       "Coding assistance",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
@@ -50856,7 +50901,7 @@ modelRegistry.registerModel("openai/gpt-5.1-codex-max", {
       "Tool integration and automation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -50978,7 +51023,7 @@ modelRegistry.registerModel("mistralai/ministral-14b-2512", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -51102,7 +51147,7 @@ modelRegistry.registerModel("mistralai/ministral-8b-2512", {
       "Tool integration for enhanced functionality",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -51225,7 +51270,7 @@ modelRegistry.registerModel("mistralai/ministral-3b-2512", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -51348,7 +51393,7 @@ modelRegistry.registerModel("google/gemini-3-pro-image-preview", {
       "Visual content creation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -51472,7 +51517,7 @@ modelRegistry.registerModel("openai/gpt-5.1-codex", {
       "Complex engineering tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -51596,7 +51641,7 @@ modelRegistry.registerModel("openai/gpt-5.1-codex-mini", {
       "Visual understanding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -51718,7 +51763,7 @@ modelRegistry.registerModel("openai/gpt-5-image", {
       "Enhanced user interaction",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -51846,7 +51891,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-30b-a3b-thinking", {
       "Visual understanding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -51974,7 +52019,7 @@ modelRegistry.registerModel("qwen/qwen3-vl-30b-a3b-instruct", {
       "Visual understanding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -52105,7 +52150,7 @@ modelRegistry.registerModel("qwen/qwen3-coder-plus", {
       "Complex coding solutions",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -52232,7 +52277,7 @@ modelRegistry.registerModel("qwen/qwen3-coder-flash", {
       "Efficient code generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -52358,7 +52403,7 @@ modelRegistry.registerModel("openai/gpt-5", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -52481,7 +52526,7 @@ modelRegistry.registerModel("qwen/qwen3-coder-30b-a3b-instruct", {
       "Tool-assisted programming",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -52608,7 +52653,7 @@ modelRegistry.registerModel("tencent/hunyuan-a13b-instruct", {
       "Conversational applications",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -52697,7 +52742,7 @@ modelRegistry.registerModel("minimax/minimax-m1", {
   disabled: false,
   description: "MiniMax M1 is a large-scale reasoning model designed for extended context and efficient inference. It employs a hybrid Mixture-of-Experts architecture with a custom attention mechanism, optimising its performance for complex tasks.",
   costs: {
-    input: 0.55,
+    input: 0.4, // auto-corrected 2026-09-28: was 0.55
     output: 2.2,
     image: 0,
     video: 0,
@@ -52728,8 +52773,8 @@ modelRegistry.registerModel("minimax/minimax-m1", {
       "High-efficiency inference",
       "Complex task handling",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -52858,7 +52903,7 @@ modelRegistry.registerModel("google/gemini-2.5-flash", {
       "Scientific analysis",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
@@ -52987,7 +53032,7 @@ modelRegistry.registerModel("google/gemini-2.5-pro", {
       "Scientific analysis",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
@@ -53113,7 +53158,7 @@ modelRegistry.registerModel("openai/o3-pro", {
       "Visual interpretation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -53237,7 +53282,7 @@ modelRegistry.registerModel("google/gemini-2.5-pro-preview", {
       "Scientific research assistance",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
   },
@@ -53490,7 +53535,7 @@ modelRegistry.registerModel("meta-llama/llama-guard-4-12b", {
       "Media moderation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -53616,7 +53661,7 @@ modelRegistry.registerModel("qwen/qwen3-8b", {
       "Mathematical problem solving",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -53745,7 +53790,7 @@ modelRegistry.registerModel("openai/o3", {
       "Visual reasoning and analysis",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -53868,7 +53913,7 @@ modelRegistry.registerModel("openai/o1-pro", {
       "Visual input interpretation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -53989,7 +54034,7 @@ modelRegistry.registerModel("google/gemma-3-4b-it", {
       "Vision-language tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54117,7 +54162,7 @@ modelRegistry.registerModel("google/gemma-3-12b-it", {
       "Vision-language tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54185,8 +54230,8 @@ modelRegistry.registerModel("google/gemma-3-12b-it", {
       "multilingual-tasks",
     ],
     warnings: [
-      "Cost per million input tokens is £0.05",
-      "Cost per million output tokens is £0.15",
+      "Cost per million input tokens is $0.05",
+      "Cost per million output tokens is $0.15",
     ],
     ariaLabels: {
       modelSelect: "Gemma 3 12B - model with 131K context window",
@@ -54244,7 +54289,7 @@ modelRegistry.registerModel("mistralai/mistral-saba", {
       "Efficient text processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -54369,7 +54414,7 @@ modelRegistry.registerModel("openai/o3-mini-high", {
       "Mathematical problem solving",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54491,7 +54536,7 @@ modelRegistry.registerModel("qwen/qwen2.5-vl-72b-instruct", {
       "Text analysis",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54621,7 +54666,7 @@ modelRegistry.registerModel("openai/o3-mini", {
       "Coding assistance",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54744,7 +54789,7 @@ modelRegistry.registerModel("openai/o1", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54863,7 +54908,7 @@ modelRegistry.registerModel("cohere/command-r7b-12-2024", {
       "Agent-based tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -54985,7 +55030,7 @@ modelRegistry.registerModel("amazon/nova-micro-v1", {
       "Cost-effective text processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -55103,7 +55148,7 @@ modelRegistry.registerModel("openai/gpt-4o-2024-11-20", {
       "Tailored text output",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -55232,7 +55277,7 @@ modelRegistry.registerModel("mistralai/mistral-large-2407", {
       "JSON processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -55354,7 +55399,7 @@ modelRegistry.registerModel("qwen/qwen-2.5-coder-32b-instruct", {
       "Code reasoning",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -55476,9 +55521,9 @@ modelRegistry.registerModel("thedrummer/unslopnemo-12b", {
       "Narrative generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -55604,7 +55649,7 @@ modelRegistry.registerModel("qwen/qwen-2.5-7b-instruct", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -55733,7 +55778,7 @@ modelRegistry.registerModel("cohere/command-r-08-2024", {
       "Code generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -55857,7 +55902,7 @@ modelRegistry.registerModel("cohere/command-r-plus-08-2024", {
       "High-throughput applications",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -55979,7 +56024,7 @@ modelRegistry.registerModel("nousresearch/hermes-3-llama-3.1-70b", {
       "Long context interactions",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -56103,7 +56148,7 @@ modelRegistry.registerModel("nousresearch/hermes-3-llama-3.1-405b", {
       "Long context interactions",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -56229,7 +56274,7 @@ modelRegistry.registerModel("openai/gpt-4o-2024-08-06", {
       "Text output generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -56357,7 +56402,7 @@ modelRegistry.registerModel("meta-llama/llama-3.1-70b-instruct", {
       "Tool-assisted responses",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -56483,7 +56528,7 @@ modelRegistry.registerModel("meta-llama/llama-3.1-8b-instruct", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
@@ -56614,7 +56659,7 @@ modelRegistry.registerModel("openai/gpt-4o-mini-2024-07-18", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -56741,7 +56786,7 @@ modelRegistry.registerModel("google/gemma-2-27b-it", {
       "Conversational applications",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -56864,7 +56909,7 @@ modelRegistry.registerModel("openai/gpt-4o", {
       "Tool integration and automation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -56994,7 +57039,7 @@ modelRegistry.registerModel("openai/gpt-4o-2024-05-13", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -57125,7 +57170,7 @@ modelRegistry.registerModel("mistralai/mixtral-8x22b-instruct", {
       "Instruction following",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -57245,7 +57290,7 @@ modelRegistry.registerModel("microsoft/wizardlm-2-8x22b", {
       "Text generation and analysis",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -57366,7 +57411,7 @@ modelRegistry.registerModel("openai/gpt-4-turbo", {
       "Text generation from visual inputs",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -57458,7 +57503,7 @@ modelRegistry.registerModel("anthropic/claude-3-haiku", {
   provider: "anthropic",
   name: "Claude 3 Haiku",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true, // auto-disabled 2026-09-28: not on OpenRouter (/parameters 404)
   description: "Claude 3 Haiku is a compact model designed for quick and accurate performance, providing near-instant responsiveness. It supports both text and image inputs, as well as tool calling capabilities.",
   costs: {
     input: 0.25,
@@ -57614,7 +57659,7 @@ modelRegistry.registerModel("mistralai/mistral-large", {
       "JSON handling",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -57737,7 +57782,7 @@ modelRegistry.registerModel("openai/gpt-3.5-turbo-0613", {
       "Chat-based interactions",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -57829,7 +57874,7 @@ modelRegistry.registerModel("openai/gpt-4-turbo-preview", {
   provider: "openai",
   name: "GPT-4 Turbo Preview",
   category: "GeneralPurpose",
-  disabled: false,
+  disabled: true, // auto-disabled 2026-09-28: not on OpenRouter (/parameters 404)
   description: "The GPT-4 Turbo Preview is an advanced AI model designed for improved instruction following and tool calling capabilities. It supports reproducible outputs and operates in a JSON mode, optimising its performance for specific tasks. The model is trained on data up to December 2023 and has a large context token limit.",
   costs: {
     input: 10,
@@ -57932,8 +57977,8 @@ modelRegistry.registerModel("openai/gpt-4-turbo-preview", {
     warnings: [
       "Heavily rate limited by OpenAI",
       "Not suitable for reasoning tasks",
-      "Cost per million inputs is £10",
-      "Cost per million outputs is £30",
+      "Cost per million inputs is $10",
+      "Cost per million outputs is $30",
     ],
     ariaLabels: {
       modelSelect: "GPT-4 Turbo Preview - model with 128K context window",
@@ -57990,7 +58035,7 @@ modelRegistry.registerModel("openai/gpt-3.5-turbo-instruct", {
       "Conversational prompt responses",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -58114,7 +58159,7 @@ modelRegistry.registerModel("openai/gpt-3.5-turbo-16k", {
       "Long-form content generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -58242,7 +58287,7 @@ modelRegistry.registerModel("openai/gpt-3.5-turbo", {
       "Chat applications",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -58369,7 +58414,7 @@ modelRegistry.registerModel("openai/gpt-4", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -58498,7 +58543,7 @@ modelRegistry.registerModel("meta/muse-spark-1.3-contributor", {
       "Coding tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -58625,7 +58670,7 @@ modelRegistry.registerModel("meta/muse-spark-1.3", {
       "Complex reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -58750,9 +58795,9 @@ modelRegistry.registerModel("inclusionai/ling-3.0-flash-fin", {
       "Tool-assisted financial tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -58881,7 +58926,7 @@ modelRegistry.registerModel("meta/muse-spark-1.2-contributor", {
       "Tool calling",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -58973,8 +59018,8 @@ modelRegistry.registerModel("nvidia/nemotron-3.5-lightning", {
   disabled: false,
   description: "NVIDIA Nemotron 3.5 Lightning is an open mixture-of-experts model featuring 3 billion active parameters from a total of 30 billion. It is designed for high-throughput workloads and specialised tasks, with capabilities for reasoning and tool calling.",
   costs: {
-    input: 0.08,
-    output: 0.2,
+    input: 0.06, // auto-corrected 2026-09-29: was 0.08
+    output: 0.16, // auto-corrected 2026-09-29: was 0.2
     image: 0,
     video: 0,
   },
@@ -59004,10 +59049,10 @@ modelRegistry.registerModel("nvidia/nemotron-3.5-lightning", {
       "Agentic workloads",
       "Specialised task execution",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -59107,7 +59152,7 @@ modelRegistry.registerModel("meta/muse-glimmer-30b", {
   description: "Muse Glimmer 30B is a dense, open-weight multimodal model designed for use in autonomous agents on consumer hardware. It is capable of processing both text and image inputs, and it supports reasoning as a mandatory feature. This model is optimised for long-horizon tasks and can call external tools.",
   costs: {
     input: 0.3,
-    output: 1.1,
+    output: 1.2, // auto-corrected 2026-09-28: was 1.1
     image: 0,
     video: 0,
   },
@@ -59138,10 +59183,10 @@ modelRegistry.registerModel("meta/muse-glimmer-30b", {
       "Autonomous agent tasks",
       "Long-horizon reasoning",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -59273,7 +59318,7 @@ modelRegistry.registerModel("meta/muse-spark-1.2", {
       "Agentic task execution",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -59399,7 +59444,7 @@ modelRegistry.registerModel("meta/muse-spark-1.1", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -59524,7 +59569,7 @@ modelRegistry.registerModel("nvidia/nemotron-3.5-content-safety", {
       "Ensuring safe interactions with AI models",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -59619,8 +59664,8 @@ modelRegistry.registerModel("nvidia/nemotron-3-ultra-550b-a55b", {
   disabled: false,
   description: "NVIDIA Nemotron 3 Ultra is an open frontier-reasoning and orchestration model featuring a hybrid Transformer-Mamba mixture-of-experts architecture. It has 55 billion active parameters and supports reasoning and tool calling capabilities.",
   costs: {
-    input: 0.625,
-    output: 3.125,
+    input: 0.6, // auto-corrected 2026-09-28: was 0.625
+    output: 2.4, // auto-corrected 2026-09-28: was 3.125
     image: 0,
     video: 0,
   },
@@ -59650,8 +59695,8 @@ modelRegistry.registerModel("nvidia/nemotron-3-ultra-550b-a55b", {
       "Tool calling and integration",
       "Complex decision-making",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -59783,7 +59828,7 @@ modelRegistry.registerModel("rekaai/reka-edge", {
       "Text generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -59877,8 +59922,8 @@ modelRegistry.registerModel("nvidia/nemotron-3-super-120b-a12b", {
   disabled: false,
   description: "NVIDIA Nemotron 3 Super is a 120 billion parameter open hybrid MoE model designed for complex multi-agent applications. It activates only 12 billion parameters to optimise compute efficiency and accuracy. The model supports reasoning and tool calling capabilities, making it suitable for advanced tasks.",
   costs: {
-    input: 0.085,
-    output: 0.4,
+    input: 0.08, // auto-corrected 2026-09-28: was 0.085
+    output: 0.45, // auto-corrected 2026-09-28: was 0.4
     image: 0,
     video: 0,
   },
@@ -59908,10 +59953,10 @@ modelRegistry.registerModel("nvidia/nemotron-3-super-120b-a12b", {
       "Tool calling and integration",
       "Advanced reasoning tasks",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -60039,7 +60084,7 @@ modelRegistry.registerModel("nvidia/nemotron-3-nano-30b-a3b", {
       "Reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
@@ -60171,7 +60216,7 @@ modelRegistry.registerModel("relace/relace-search", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60290,7 +60335,7 @@ modelRegistry.registerModel("relace/relace-apply-3", {
       "Enhancing source file management",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60405,7 +60450,7 @@ modelRegistry.registerModel("bytedance/ui-tars-1.5-7b", {
       "Text generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60529,7 +60574,7 @@ modelRegistry.registerModel("cognitivecomputations/dolphin-mistral-24b-venice-ed
       "Creative writing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60649,7 +60694,7 @@ modelRegistry.registerModel("morph/morph-v3-large", {
       "High-speed code processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60766,7 +60811,7 @@ modelRegistry.registerModel("morph/morph-v3-fast", {
       "High-speed code application",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -60881,7 +60926,7 @@ modelRegistry.registerModel("baidu/ernie-4.5-vl-424b-a47b", {
       "Complex task processing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -61005,7 +61050,7 @@ modelRegistry.registerModel("rekaai/reka-flash-3", {
       "Instruction-following and task execution",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -61130,7 +61175,7 @@ modelRegistry.registerModel("sao10k/l3.3-euryale-70b", {
       "Text generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -61252,7 +61297,7 @@ modelRegistry.registerModel("anthracite-org/magnum-v4-72b", {
       "Creative writing",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -61377,7 +61422,7 @@ modelRegistry.registerModel("sao10k/l3-lunaris-8b", {
       "Roleplaying scenarios",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
@@ -61503,7 +61548,7 @@ modelRegistry.registerModel("mancer/weaver", {
       "Narrative generation",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
   },
@@ -61630,7 +61675,7 @@ modelRegistry.registerModel("undi95/remm-slerp-l2-13b", {
       "Language understanding",
     ],
     pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -61727,8 +61772,8 @@ modelRegistry.registerModel("gryphe/mythomax-l2-13b", {
   disabled: false,
   description: "MythoMax 13B is a fine-tuned model based on Llama 2 13B, designed for generating rich descriptions and engaging in roleplay scenarios. It operates with a context window of 8192 tokens, allowing for detailed interactions within its text-based outputs.",
   costs: {
-    input: 0.06,
-    output: 0.06,
+    input: 0.08, // auto-corrected 2026-09-28: was 0.06
+    output: 0.11, // auto-corrected 2026-09-28: was 0.06
     image: 0,
     video: 0,
   },
@@ -61756,10 +61801,10 @@ modelRegistry.registerModel("gryphe/mythomax-l2-13b", {
       "Roleplay scenarios",
       "Creative writing",
     ],
-    pricingCapturedAt: "2026-09-09",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -61886,7 +61931,7 @@ modelRegistry.registerModel("inception/mercury-2.5", {
       "Efficient text generation",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.8,
     pricingStandard: { input: 0.2, output: 0.75 },
     pricingPromotionalSides: "both",
@@ -62011,7 +62056,7 @@ modelRegistry.registerModel("google/gemini-3.8-flash", {
       "Software engineering support",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.5,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
@@ -62104,8 +62149,8 @@ modelRegistry.registerModel("z-ai/glm-5.3-flash", {
   disabled: false,
   description: "GLM-5.3-Flash is a native multimodal model designed for efficient coding and long-horizon agent tasks. It employs a hybrid sparse and linear attention architecture to maintain accurate long-context behaviour. The model supports reasoning and tool calling capabilities.",
   costs: {
-    input: 0.075,
-    output: 0.25,
+    input: 0.15, // auto-corrected 2026-09-28: was 0.075
+    output: 0.5, // auto-corrected 2026-09-28: was 0.25
     image: 0,
     video: 0,
   },
@@ -62137,12 +62182,10 @@ modelRegistry.registerModel("z-ai/glm-5.3-flash", {
       "Long-horizon agent tasks",
       "Tool calling and integration",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.5,
-    pricingStandard: { input: 0.09, output: 0.3 },
-    pricingPromotionalSides: "both",
-    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.09 in / 0.3 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 26 endpoint(s).",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 34 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -62241,8 +62284,8 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash-vision-exp", {
   disabled: false,
   description: "DeepSeek V4 Flash Vision Exp is an experimental model that integrates image understanding capabilities alongside its text processing features. It is designed to handle both text and image inputs, while also supporting reasoning and tool calling functionalities.",
   costs: {
-    input: 0.22,
-    output: 0.66,
+    input: 0.2156, // auto-corrected 2026-09-29: was 0.44
+    output: 0.6468, // auto-corrected 2026-09-29: was 1.32
     image: 0,
     video: 0,
   },
@@ -62273,10 +62316,12 @@ modelRegistry.registerModel("deepseek/deepseek-v4-flash-vision-exp", {
       "Text processing and generation",
       "Tool integration and calling",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCapturedAt: "2026-09-29",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.51,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
+    pricingStandard: { input: 0.44, output: 1.32 },
+    pricingPromotionalSides: "both",
+    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.44 in / 1.32 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 4 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -62407,9 +62452,9 @@ modelRegistry.registerModel("z-ai/glm-5.3", {
       "Text-based reasoning",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0,
-    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 28 endpoint(s).",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0.2,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 39 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -62543,7 +62588,7 @@ modelRegistry.registerModel("google/gemini-3.7-flash", {
       "Coding tasks",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.5,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
   },
@@ -62668,7 +62713,7 @@ modelRegistry.registerModel("inclusionai/ling-3.0-flash", {
       "Reasoning tasks",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.65,
     pricingStandard: { input: 0.06, output: 0.18 },
     pricingPromotionalSides: "both",
@@ -62802,7 +62847,7 @@ modelRegistry.registerModel("poolside/laguna-s-2.1", {
       "Tool integration",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.1,
     pricingStandard: { input: 0.1, output: 0.2 },
     pricingPromotionalSides: "both",
@@ -62924,7 +62969,7 @@ modelRegistry.registerModel("poolside/laguna-xs-2.1", {
       "Complex programming tasks",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0.4,
     pricingStandard: { input: 0.1, output: 0.2 },
     pricingPromotionalSides: "both",
@@ -63013,8 +63058,8 @@ modelRegistry.registerModel("minimax/minimax-m2", {
   disabled: false,
   description: "MiniMax M2 is a compact and efficient large language model designed for coding and agentic workflows. It features 10 billion activated parameters and is capable of supporting reasoning tasks. The model is optimised for general reasoning and tool calling, making it suitable for a variety of applications.",
   costs: {
-    input: 0.255,
-    output: 1.02,
+    input: 0.3, // auto-corrected 2026-09-28: was 0.255
+    output: 1.2, // auto-corrected 2026-09-28: was 1.02
     image: 0,
     video: 0,
   },
@@ -63045,12 +63090,10 @@ modelRegistry.registerModel("minimax/minimax-m2", {
       "Agentic workflows",
       "General reasoning applications",
     ],
-    pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
-    pricingDiscount: 0.15,
-    pricingStandard: { input: 0.3, output: 1.2 },
-    pricingPromotionalSides: "both",
-    pricingNote: "PROMOTIONAL PRICE — temporary. When the promotion ends this rises to at least 0.3 in / 1.2 out per million. No API route exposes an end date, so the figure is a lower bound derived from the cheapest undiscounted endpoint rate. costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
   },
   parameterSupport: {
     supported: [
@@ -63178,7 +63221,7 @@ modelRegistry.registerModel("sao10k/l3.1-euryale-70b", {
       "Character development",
     ],
     pricingCapturedAt: "2026-09-10",
-    pricingCheckedAt: "2026-09-10",
+    pricingCheckedAt: "2026-09-29",
     pricingDiscount: 0,
     pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 2 endpoint(s).",
   },
@@ -63267,6 +63310,2543 @@ modelRegistry.registerModel("sao10k/l3.1-euryale-70b", {
     errorMessage: null,
   },
 });
-modelRegistry.validateAllFallbacks();
+// THE validateAllFallbacks() CALL THAT USED TO SIT HERE NOW LIVES IN js/config.js,
+// moved 14 September 2026 (register item 108). It ran on this file's last-but-one
+// line, which meant it ran BEFORE js/foundry-model-definitions.js had registered a
+// single entry — static imports evaluate in source order and config.js imports this
+// file first — so the 43 Foundry registrations had never been validated by anything.
+// Do not restore it here: a second pass would re-walk a graph the first pass has
+// already rewritten.
+modelRegistry.registerModel("anthropic/claude-sonnet-5.5", {
+  provider: "anthropic",
+  name: "Claude Sonnet 5.5",
+  category: "LargeContext",
+  disabled: false,
+  description: "Claude Sonnet 5.5 is a model designed for well-scoped everyday tasks, serving as an upgrade to Claude Sonnet 5. It is capable of handling a variety of tasks, including building features and fixing bugs.",
+  costs: {
+    input: 2,
+    output: 10,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+    "code",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-sonnet-5",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Model designed for well-scoped everyday tasks with strong capabilities in feature development and debugging.",
+    releaseDate: "2026-09-28",
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/legal/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.anthropic.com/legal/commercial-terms",
+      lastUpdated: "2026-09-28",
+    },
+    bestFor: [
+      "Feature development",
+      "Bug fixing",
+      "Everyday task automation",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 8 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "verbosity",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "feature-development",
+      "bug-fixing",
+      "tool-calling",
+    ],
+    warnings: [
+      "Premium pricing model - ensure cost controls are configured appropriately",
+      "Reasoning mode is mandatory - configure application accordingly",
+    ],
+    ariaLabels: {
+      modelSelect: "Claude Sonnet 5.5 - model with 1M context window",
+      parameterSection: "Parameter controls for Claude Sonnet 5.5 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Claude Sonnet 5.5 model",
+        complete: "Response ready from Claude Sonnet 5.5",
+        reasoning: "Generating reasoning output with Claude Sonnet 5.5",
+        analysis: "Analysing input with Claude Sonnet 5.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("perceptron/perceptron-mk1.5", {
+  provider: "perceptron",
+  name: "Perceptron Mk1.5",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Perceptron Mk1.5 is an embodied reasoning model designed for physical agents, capable of processing various input types including text, image, video, and audio. It provides responses in text format, with the option for structured annotations such as points, boxes, polygons, and tracks.",
+  costs: {
+    input: 0.15,
+    output: 1.5,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 36864,
+  fallbackTo: "perceptron/perceptron-mk1",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Embodied reasoning model for physical agents with multi-modal input capabilities",
+    releaseDate: "2026-09-25",
+    policyLinks: {
+      privacyPolicy: "https://www.perceptron.inc/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://www.perceptron.inc/terms-of-use",
+      lastUpdated: "2026-09-25",
+    },
+    bestFor: [
+      "Multi-modal reasoning",
+      "Physical agent interaction",
+      "Structured data annotation",
+    ],
+    modalities: {
+      inputs: [
+        "audio",
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "embodied-reasoning-tasks",
+      "multi-modal-input-processing",
+      "structured-data-annotation",
+    ],
+    warnings: [
+      "Cost per million output is significantly higher than input",
+      "Not a free tier model",
+    ],
+    ariaLabels: {
+      modelSelect: "Perceptron Mk1.5 - model with 37K context window",
+      parameterSection: "Parameter controls for Perceptron Mk1.5 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Perceptron Mk1.5 model",
+        complete: "Response ready from Perceptron Mk1.5",
+        reasoning: "Generating reasoning output with Perceptron Mk1.5",
+        analysis: "Analysing input with Perceptron Mk1.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("z-ai/glm-5.3-prime", {
+  provider: "z-ai",
+  name: "GLM 5.3 Prime",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GLM-5.3-Prime is a high-speed variant of Z.ai's GLM-5.3, designed to deliver accelerated output throughput while maintaining its full capabilities. It supports text input and output, with a context capacity of 1 million tokens, and includes support for tool calling and reasoning tasks.",
+  costs: {
+    input: 2.8,
+    output: 8.8,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "z-ai/glm-5.3",
+  isFree: false,
+  metadata: {
+    categoryDescription: "High-speed model optimised for text processing and reasoning tasks",
+    releaseDate: "2026-09-23",
+    policyLinks: {
+      privacyPolicy: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service-v-3-8-0",
+      lastUpdated: "2026-09-23",
+    },
+    bestFor: [
+      "Text processing",
+      "Reasoning tasks",
+      "Tool integration",
+    ],
+    modalities: {
+      inputs: [
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "stop",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-processing",
+      "reasoning-tasks",
+      "tool-calling",
+    ],
+    warnings: [
+      "Premium pricing model - ensure cost controls are configured appropriately",
+      "Reasoning mode is mandatory - consider implications for application design",
+    ],
+    ariaLabels: {
+      modelSelect: "GLM 5.3 Prime - model with 1M context window",
+      parameterSection: "Parameter controls for GLM 5.3 Prime reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GLM 5.3 Prime model",
+        complete: "Response ready from GLM 5.3 Prime",
+        reasoning: "Generating reasoning output with GLM 5.3 Prime",
+        analysis: "Analysing input with GLM 5.3 Prime",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("qwen/qwen3.8-max-prime", {
+  provider: "qwen",
+  name: "Qwen3.8 Max Prime",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Qwen3.8 Max Prime is a variant of Qwen3.8 Max, designed for higher throughput. It supports various input modalities including text, image, and video, and is capable of reasoning tasks. This model is offered at a higher price point compared to its predecessor.",
+  costs: {
+    input: 4,
+    output: 12,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "qwen/qwen3.8-2.4t-a95b",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Higher-throughput model for multi-modal input and reasoning tasks",
+    releaseDate: "2026-09-23",
+    policyLinks: {
+      privacyPolicy: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service-v-3-8-0",
+      lastUpdated: "2026-09-23",
+    },
+    bestFor: [
+      "Multi-modal input handling",
+      "Reasoning tasks",
+      "Tool calling",
+    ],
+    modalities: {
+      inputs: [
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "multi-modal-input",
+      "reasoning-tasks",
+      "tool-calling",
+    ],
+    warnings: [
+      "Higher pricing model - ensure budget management is in place",
+      "Reasoning mode is mandatory - consider application design accordingly",
+    ],
+    ariaLabels: {
+      modelSelect: "Qwen3.8 Max Prime - model with 1M context window",
+      parameterSection: "Parameter controls for Qwen3.8 Max Prime reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Qwen3.8 Max Prime model",
+        complete: "Response ready from Qwen3.8 Max Prime",
+        reasoning: "Generating reasoning output with Qwen3.8 Max Prime",
+        analysis: "Analysing input with Qwen3.8 Max Prime",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("cohere/command-a-plus", {
+  provider: "cohere",
+  name: "Command A+",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Command A+ is designed for enterprise agentic workflows, capable of processing both text and image inputs. It features a large context window of 192,000 tokens and supports native tool calling with strict schemas.",
+  costs: {
+    input: 0.3,
+    output: 1.5,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 192000,
+  fallbackTo: "cohere/command-r-08-2024",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Enterprise-grade model for agentic workflows with extensive context and tool integration",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://cohere.com/privacy",
+      acceptableUse: "",
+      termsOfService: "https://cohere.com/terms-of-use",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Enterprise workflow automation",
+      "Tool integration",
+      "Complex reasoning tasks",
+    ],
+    modalities: {
+      inputs: [
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tools",
+      "top_k",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "agentic-workflows",
+      "tool-calling",
+      "complex-reasoning-tasks",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Potential latency due to extensive context processing",
+    ],
+    ariaLabels: {
+      modelSelect: "Command A+ - model with 192K context window",
+      parameterSection: "Parameter controls for Command A+ reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Command A+ model",
+        complete: "Response ready from Command A+",
+        reasoning: "Generating reasoning output with Command A+",
+        analysis: "Analysing input with Command A+",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("openai/gpt-6-luna-pro", {
+  provider: "openai",
+  name: "GPT-6 Luna Pro",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GPT-6 Luna Pro is an advanced AI model designed to provide higher-quality responses for complex tasks by utilising a specific reasoning mode. It supports various input modalities, including text, images, and files, while generating text outputs. This model is intended for users who require enhanced reasoning capabilities in their applications.",
+  costs: {
+    input: 0.1,
+    output: 0.5,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1050000,
+  fallbackTo: "openai/gpt-4.1-nano",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced AI model for complex task reasoning and analysis",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://openai.com/policies/privacy-policy/",
+      acceptableUse: "",
+      termsOfService: "https://openai.com/policies/row-terms-of-use/",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Complex task analysis",
+      "Visual understanding",
+      "Tool integration",
+      "Text generation",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "visual-analysis",
+      "tool-calling",
+    ],
+    warnings: [
+      "Premium pricing model - ensure cost controls are configured appropriately",
+      "Reasoning mode may increase response latency - configure application timeouts accordingly",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-6 Luna Pro - model with 1M context window",
+      parameterSection: "Parameter controls for GPT-6 Luna Pro reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GPT-6 Luna Pro model",
+        complete: "Response ready from GPT-6 Luna Pro",
+        reasoning: "Generating reasoning output with GPT-6 Luna Pro",
+        analysis: "Analysing input with GPT-6 Luna Pro",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("openai/gpt-6-luna", {
+  provider: "openai",
+  name: "GPT-6 Luna",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GPT-6 Luna is a model designed for high-volume and latency-sensitive workloads, including chat and classification tasks. It is part of OpenAI's GPT-6 series and offers cost-efficient performance. The model supports reasoning and tool calling capabilities, making it versatile for various applications.",
+  costs: {
+    input: 0.1,
+    output: 0.5,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1050000,
+  fallbackTo: "openai/gpt-4.1-nano",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Model designed for high-volume and latency-sensitive workloads",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://openai.com/policies/privacy-policy/",
+      acceptableUse: "",
+      termsOfService: "https://openai.com/policies/row-terms-of-use/",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Chat applications",
+      "Classification tasks",
+      "Lightweight agentic tasks",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "chat",
+      "classification",
+      "lightweight-agentic-tasks",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Latency may vary depending on workload",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-6 Luna - model with 1M context window",
+      parameterSection: "Parameter controls for GPT-6 Luna reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GPT-6 Luna model",
+        complete: "Response ready from GPT-6 Luna",
+        reasoning: "Generating reasoning output with GPT-6 Luna",
+        analysis: "Analysing input with GPT-6 Luna",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("openai/gpt-6-sol-pro", {
+  provider: "openai",
+  name: "GPT-6 Sol Pro",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GPT-6 Sol Pro is an advanced AI model designed to provide higher-quality responses on complex tasks by utilising a specific reasoning mode. It supports various input modalities including text, images, and files, and is capable of reasoning and tool calling. This model is not free and is intended for users requiring enhanced performance on intricate tasks.",
+  costs: {
+    input: 2,
+    output: 10,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1050000,
+  fallbackTo: "openai/gpt-4.1",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Advanced AI model for complex task resolution with enhanced reasoning capabilities",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://openai.com/policies/privacy-policy/",
+      acceptableUse: "",
+      termsOfService: "https://openai.com/policies/row-terms-of-use/",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Complex task resolution",
+      "Enhanced reasoning",
+      "Tool integration",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 6 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "visual-analysis",
+      "tool-calling",
+    ],
+    warnings: [
+      "Not a free tier model - consider budget implications",
+      "Potential latency due to reasoning mode",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-6 Sol Pro - model with 1M context window",
+      parameterSection: "Parameter controls for GPT-6 Sol Pro reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GPT-6 Sol Pro model",
+        complete: "Response ready from GPT-6 Sol Pro",
+        reasoning: "Generating reasoning output with GPT-6 Sol Pro",
+        analysis: "Analysing input with GPT-6 Sol Pro",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("openai/gpt-6-sol", {
+  provider: "openai",
+  name: "GPT-6 Sol",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GPT-6 Sol is a high-end model in OpenAI's GPT-6 series, designed for demanding professional applications. It supports various input modalities including text and image, and is capable of reasoning and tool calling. This model is positioned to provide a balance between performance and cost efficiency.",
+  costs: {
+    input: 2,
+    output: 10,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1050000,
+  fallbackTo: "openai/gpt-4.1",
+  isFree: false,
+  metadata: {
+    categoryDescription: "High-end model designed for demanding professional applications",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://openai.com/policies/privacy-policy/",
+      acceptableUse: "",
+      termsOfService: "https://openai.com/policies/row-terms-of-use/",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Professional applications",
+      "Text analysis",
+      "Visual understanding",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 7 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "visual-analysis",
+      "tool-calling",
+    ],
+    warnings: [
+      "Cost per million input is £2",
+      "Cost per million output is £10",
+      "Not a free tier model",
+    ],
+    ariaLabels: {
+      modelSelect: "GPT-6 Sol - model with 1M context window",
+      parameterSection: "Parameter controls for GPT-6 Sol reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GPT-6 Sol model",
+        complete: "Response ready from GPT-6 Sol",
+        reasoning: "Generating reasoning output with GPT-6 Sol",
+        analysis: "Analysing input with GPT-6 Sol",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("anthropic/claude-opus-5.5", {
+  provider: "anthropic",
+  name: "Claude Opus 5.5",
+  category: "LargeContext",
+  disabled: false,
+  description: "Claude Opus 5.5 is a model designed for demanding reasoning tasks and coding, with capabilities for long-horizon agentic work. It excels at managing multi-step changes in large codebases and supports reasoning as a mandatory feature.",
+  costs: {
+    input: 4,
+    output: 20,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+    "code",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-sonnet-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Model designed for complex coding and reasoning tasks",
+    releaseDate: "2026-09-22",
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/legal/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.anthropic.com/legal/commercial-terms",
+      lastUpdated: "2026-09-22",
+    },
+    bestFor: [
+      "Complex coding tasks",
+      "Multi-step reasoning",
+      "Long-horizon agentic work",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 11 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "verbosity",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "code-generation",
+      "complex-reasoning-tasks",
+    ],
+    warnings: [
+      "Premium pricing model - ensure cost controls are configured appropriately",
+      "Reasoning mode may increase response latency - configure application timeouts accordingly",
+    ],
+    ariaLabels: {
+      modelSelect: "Claude Opus 5.5 - model with 1M context window",
+      parameterSection: "Parameter controls for Claude Opus 5.5 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Claude Opus 5.5 model",
+        complete: "Response ready from Claude Opus 5.5",
+        reasoning: "Generating reasoning output with Claude Opus 5.5",
+        analysis: "Analysing input with Claude Opus 5.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("xiaomi/mimo-v2.6-pro-ultraspeed", {
+  provider: "xiaomi",
+  name: "MiMo-V2.6-Pro-UltraSpeed",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "MiMo-V2.6-Pro-UltraSpeed is a high-speed edition of Xiaomi's flagship foundation model, designed to deliver quality performance while optimising for speed. It supports a variety of input modalities including text, image, video, and audio, and is capable of reasoning and tool calling.",
+  costs: {
+    input: 4.35,
+    output: 8.7,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1048576,
+  fallbackTo: "xiaomi/mimo-v2.5-pro",
+  isFree: false,
+  metadata: {
+    categoryDescription: "High-speed foundation model optimised for diverse input modalities",
+    releaseDate: "2026-09-21",
+    policyLinks: {
+      privacyPolicy: "https://platform.xiaomimimo.com/#/docs/terms/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://platform.xiaomimimo.com/#/docs/terms/user-agreement",
+      lastUpdated: "2026-09-21",
+    },
+    bestFor: [
+      "Fast processing of diverse inputs",
+      "Reasoning tasks",
+      "Tool integration",
+    ],
+    modalities: {
+      inputs: [
+        "audio",
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-analysis",
+      "visual-analysis",
+      "tool-calling",
+      "reasoning-tasks",
+    ],
+    warnings: [
+      "Premium pricing model - ensure cost controls are configured appropriately",
+    ],
+    ariaLabels: {
+      modelSelect: "MiMo-V2.6-Pro-UltraSpeed - model with 1M context window",
+      parameterSection: "Parameter controls for MiMo-V2.6-Pro-UltraSpeed reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with MiMo-V2.6-Pro-UltraSpeed model",
+        complete: "Response ready from MiMo-V2.6-Pro-UltraSpeed",
+        reasoning: "Generating reasoning output with MiMo-V2.6-Pro-UltraSpeed",
+        analysis: "Analysing input with MiMo-V2.6-Pro-UltraSpeed",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("xiaomi/mimo-v2.6-flash", {
+  provider: "xiaomi",
+  name: "MiMo-V2.6-Flash",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "MiMo-V2.6-Flash is an open-source foundation model developed by Xiaomi, featuring a Mixture-of-Experts architecture with a total of 309 billion parameters. It employs a hybrid attention mechanism and supports various input modalities including text, image, video, and audio, while producing text outputs.",
+  costs: {
+    input: 0.14,
+    output: 0.28,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1048576,
+  fallbackTo: "xiaomi/mimo-v2.5",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Open-source foundation model with a Mixture-of-Experts architecture for diverse tasks",
+    releaseDate: "2026-09-21",
+    policyLinks: {
+      privacyPolicy: "https://platform.xiaomimimo.com/#/docs/terms/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://platform.xiaomimimo.com/#/docs/terms/user-agreement",
+      lastUpdated: "2026-09-21",
+    },
+    bestFor: [
+      "Text generation and analysis",
+      "Visual understanding",
+      "Tool integration",
+      "Reasoning tasks",
+    ],
+    modalities: {
+      inputs: [
+        "audio",
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-generation",
+      "visual-analysis",
+      "tool-calling",
+      "reasoning-tasks",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Reasoning is optional and may affect performance",
+    ],
+    ariaLabels: {
+      modelSelect: "MiMo-V2.6-Flash - model with 1M context window",
+      parameterSection: "Parameter controls for MiMo-V2.6-Flash reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with MiMo-V2.6-Flash model",
+        complete: "Response ready from MiMo-V2.6-Flash",
+        reasoning: "Generating reasoning output with MiMo-V2.6-Flash",
+        analysis: "Analysing input with MiMo-V2.6-Flash",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("xiaomi/mimo-v2.6-pro", {
+  provider: "xiaomi",
+  name: "MiMo-V2.6-Pro",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "MiMo-V2.6-Pro is a foundation model developed by Xiaomi, featuring over 1 trillion parameters. It is designed to handle a variety of tasks across different modalities, including text and vision, while also supporting reasoning and tool calling capabilities.",
+  costs: {
+    input: 0.435,
+    output: 0.87,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1050000,
+  fallbackTo: "xiaomi/mimo-v2.5-pro",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Foundation model designed for versatile multi-modal tasks",
+    releaseDate: "2026-09-21",
+    policyLinks: {
+      privacyPolicy: "https://platform.xiaomimimo.com/#/docs/terms/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://platform.xiaomimimo.com/#/docs/terms/user-agreement",
+      lastUpdated: "2026-09-21",
+    },
+    bestFor: [
+      "Text and vision tasks",
+      "Tool calling and integration",
+      "Reasoning and analysis",
+    ],
+    modalities: {
+      inputs: [
+        "audio",
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 3 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-analysis",
+      "visual-analysis",
+      "tool-calling",
+      "reasoning-tasks",
+    ],
+    warnings: [
+      "Not a free tier model - consider budget implications",
+      "Reasoning mode is optional and may affect performance",
+    ],
+    ariaLabels: {
+      modelSelect: "MiMo-V2.6-Pro - model with 1M context window",
+      parameterSection: "Parameter controls for MiMo-V2.6-Pro reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with MiMo-V2.6-Pro model",
+        complete: "Response ready from MiMo-V2.6-Pro",
+        reasoning: "Generating reasoning output with MiMo-V2.6-Pro",
+        analysis: "Analysing input with MiMo-V2.6-Pro",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("x-ai/grok-4.7", {
+  provider: "x-ai",
+  name: "Grok 4.7",
+  category: "Code",
+  disabled: false,
+  description: "Grok 4.7 is a model designed for coding and agentic tasks, with a focus on long-running software engineering activities. It has the capability to verify its own work, making it suitable for knowledge work as well.",
+  costs: {
+    input: 2,
+    output: 6,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+    "code",
+  ],
+  maxContext: 500000,
+  fallbackTo: "x-ai/grok-4.6",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Model designed for coding and software engineering tasks",
+    releaseDate: "2026-09-21",
+    policyLinks: {
+      privacyPolicy: "https://x.ai/legal/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://x.ai/legal/terms-of-service-enterprise",
+      lastUpdated: "2026-09-21",
+    },
+    bestFor: [
+      "Software engineering tasks",
+      "Code verification",
+      "Agentic task management",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 5 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_logprobs",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "long-running-software-engineering-tasks",
+      "code-verification",
+      "knowledge-work",
+    ],
+    warnings: [
+      "Not a free tier model - consider budget implications",
+      "Cost per million output is higher than input",
+    ],
+    ariaLabels: {
+      modelSelect: "Grok 4.7 - model with 500K context window",
+      parameterSection: "Parameter controls for Grok 4.7 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Grok 4.7 model",
+        complete: "Response ready from Grok 4.7",
+        reasoning: "Generating reasoning output with Grok 4.7",
+        analysis: "Analysing input with Grok 4.7",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("qwen/qwen3.8-omni-flash", {
+  provider: "qwen",
+  name: "Qwen3.8 Omni Flash",
+  category: "LargeContext",
+  disabled: false,
+  description: "Qwen3.8 Omni Flash is an omni-modal reasoning model designed for audio-video analysis and summarisation. It features native understanding of both audio and video inputs, making it suitable for tasks that require integration of these modalities. The model supports reasoning capabilities and can utilise tools to enhance its functionality.",
+  costs: {
+    input: 0.15,
+    output: 0.47,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "qwen/qwen3.8-flash",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Omni-modal reasoning model with native audio-video understanding",
+    releaseDate: "2026-09-21",
+    policyLinks: {
+      privacyPolicy: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://www.alibabacloud.com/help/en/legal/latest/alibaba-cloud-international-website-product-terms-of-service-v-3-8-0",
+      lastUpdated: "2026-09-21",
+    },
+    bestFor: [
+      "Audio and video analysis",
+      "Summarisation of multimedia content",
+      "Integration of multiple input modalities",
+    ],
+    modalities: {
+      inputs: [
+        "audio",
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logprobs",
+      "max_tokens",
+      "presence_penalty",
+      "reasoning",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "audio-video-analysis",
+      "summarisation",
+      "reasoning-tasks",
+    ],
+    warnings: [
+      "Non-free model - consider budget implications",
+      "Potential latency in processing audio-video inputs",
+    ],
+    ariaLabels: {
+      modelSelect: "Qwen3.8 Omni Flash - model with 1M context window",
+      parameterSection: "Parameter controls for Qwen3.8 Omni Flash reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Qwen3.8 Omni Flash model",
+        complete: "Response ready from Qwen3.8 Omni Flash",
+        reasoning: "Generating reasoning output with Qwen3.8 Omni Flash",
+        analysis: "Analysing input with Qwen3.8 Omni Flash",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("z-ai/glm-5.3-flashx", {
+  provider: "z-ai",
+  name: "GLM 5.3 FlashX",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "GLM 5.3 FlashX is a high-speed variant of Z.ai's GLM-5.3-Flash, designed for multimodal tasks with fast inference speeds. It utilises a hybrid sparse and linear attention architecture, enabling it to process a large context of up to 1,048,576 tokens. The model supports reasoning and tool calling, making it suitable for complex tasks.",
+  costs: {
+    input: 0.37,
+    output: 1.25,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1048576,
+  fallbackTo: "z-ai/glm-4.6",
+  isFree: false,
+  metadata: {
+    categoryDescription: "High-speed multimodal model for complex tasks",
+    releaseDate: "2026-09-18",
+    policyLinks: {
+      privacyPolicy: "https://chat.z.ai/legal-agreement/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://chat.z.ai/legal-agreement/terms-of-service",
+      lastUpdated: "2026-09-18",
+    },
+    bestFor: [
+      "Multimodal reasoning",
+      "Fast inference tasks",
+      "Tool integration",
+    ],
+    modalities: {
+      inputs: [
+        "image",
+        "text",
+        "video",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "complex-reasoning-tasks",
+      "tool-calling",
+      "multimodal-analysis",
+    ],
+    warnings: [
+      "Non-free model - consider budget implications",
+      "Reasoning mode may impact response times",
+    ],
+    ariaLabels: {
+      modelSelect: "GLM 5.3 FlashX - model with 1M context window",
+      parameterSection: "Parameter controls for GLM 5.3 FlashX reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with GLM 5.3 FlashX model",
+        complete: "Response ready from GLM 5.3 FlashX",
+        reasoning: "Generating reasoning output with GLM 5.3 FlashX",
+        analysis: "Analysing input with GLM 5.3 FlashX",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("sakana/fugu-ultra-v2", {
+  provider: "sakana",
+  name: "Fugu Ultra v2",
+  category: "GeneralPurpose",
+  disabled: true, // region-blocked from the UK: HTTP 403 "not available in your region", measured 2026-09-29 (MR-4/MR-5)
+  description: "Fugu Ultra v2 is a higher-performance model within the Fugu family, designed as a multi-agent orchestration system. It is capable of handling both text and visual inputs, and it supports reasoning as a mandatory feature. This model is not free and incurs costs based on input and output usage.",
+  costs: {
+    input: 5,
+    output: 30,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "sakana/fugu-ultra",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Higher-performance multi-agent orchestration model for text and visual tasks",
+    releaseDate: "2026-09-11",
+    policyLinks: {
+      privacyPolicy: "https://console.sakana.ai/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://console.sakana.ai/terms-of-service",
+      lastUpdated: "2026-09-11",
+    },
+    bestFor: [
+      "Text and visual input processing",
+      "Reasoning tasks",
+      "Tool calling and integration",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "reasoning",
+      "reasoning_effort",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "web_search_options",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-analysis",
+      "visual-analysis",
+      "reasoning-tasks",
+      "tool-calling",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Reasoning is mandatory - ensure appropriate handling in applications",
+    ],
+    ariaLabels: {
+      modelSelect: "Fugu Ultra v2 - model with 1M context window",
+      parameterSection: "Parameter controls for Fugu Ultra v2 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Fugu Ultra v2 model",
+        complete: "Response ready from Fugu Ultra v2",
+        reasoning: "Generating reasoning output with Fugu Ultra v2",
+        analysis: "Analysing input with Fugu Ultra v2",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("sakana/fugu-max", {
+  provider: "sakana",
+  name: "Fugu Max",
+  category: "GeneralPurpose",
+  disabled: true, // region-blocked from the UK: HTTP 403 "not available in your region", measured 2026-09-29 (MR-4/MR-5)
+  description: "Fugu Max is a cost-performance model from Sakana AI, designed as a multi-agent orchestration system rather than a single monolithic model. It is capable of handling both text and visual inputs, and it supports reasoning as a mandatory feature.",
+  costs: {
+    input: 2,
+    output: 6,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "sakana/sakana-namazu",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Cost-performance model designed for multi-agent orchestration and reasoning tasks",
+    releaseDate: "2026-09-11",
+    policyLinks: {
+      privacyPolicy: "https://console.sakana.ai/privacy-policy",
+      acceptableUse: "",
+      termsOfService: "https://console.sakana.ai/terms-of-service",
+      lastUpdated: "2026-09-11",
+    },
+    bestFor: [
+      "General purpose tasks",
+      "Multi-agent orchestration",
+      "Text and visual input handling",
+      "Reasoning tasks",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "reasoning",
+      "reasoning_effort",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "web_search_options",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "multi-agent-orchestration",
+      "reasoning-tasks",
+      "text-and-visual-inputs",
+    ],
+    warnings: [
+      "Cost per million inputs and outputs may require budget considerations",
+      "Reasoning mode is mandatory and may affect performance",
+    ],
+    ariaLabels: {
+      modelSelect: "Fugu Max - model with 1M context window",
+      parameterSection: "Parameter controls for Fugu Max reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Fugu Max model",
+        complete: "Response ready from Fugu Max",
+        reasoning: "Generating reasoning output with Fugu Max",
+        analysis: "Analysing input with Fugu Max",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("deepseek/deepseek-v4.1-flash", {
+  provider: "deepseek",
+  name: "DeepSeek V4.1 Flash",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "DeepSeek V4.1 Flash is a sparse mixture-of-experts model that utilises the Causal Encoder-Decoder architecture. It is designed to handle both text and image inputs, activating a significant number of parameters for processing. The model supports reasoning and tool calling capabilities, making it versatile for various applications.",
+  costs: {
+    input: 0.3,
+    output: 1.2,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 1048576,
+  fallbackTo: "deepseek/deepseek-chat-v3-0324",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Versatile model for handling text and image inputs with reasoning capabilities",
+    releaseDate: "2026-09-10",
+    policyLinks: {
+      privacyPolicy: "https://chat.deepseek.com/downloads/DeepSeek%20Privacy%20Policy.html",
+      acceptableUse: "",
+      termsOfService: "https://chat.deepseek.com/downloads/DeepSeek%20Terms%20of%20Use.html",
+      lastUpdated: "2026-09-10",
+    },
+    bestFor: [
+      "Text and image processing",
+      "Reasoning tasks",
+      "Tool integration",
+    ],
+    modalities: {
+      inputs: [
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-09-28",
+    pricingCheckedAt: "2026-09-29",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 31 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "frequency_penalty",
+      "include_reasoning",
+      "logit_bias",
+      "logprobs",
+      "max_tokens",
+      "min_p",
+      "presence_penalty",
+      "reasoning",
+      "reasoning_effort",
+      "repetition_penalty",
+      "response_format",
+      "seed",
+      "stop",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_k",
+      "top_logprobs",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "text-analysis",
+      "image-analysis",
+      "reasoning-tasks",
+      "tool-calling",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Reasoning mode is optional - configure as needed",
+    ],
+    ariaLabels: {
+      modelSelect: "DeepSeek V4.1 Flash - model with 1M context window",
+      parameterSection: "Parameter controls for DeepSeek V4.1 Flash reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with DeepSeek V4.1 Flash model",
+        complete: "Response ready from DeepSeek V4.1 Flash",
+        reasoning: "Generating reasoning output with DeepSeek V4.1 Flash",
+        analysis: "Analysing input with DeepSeek V4.1 Flash",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

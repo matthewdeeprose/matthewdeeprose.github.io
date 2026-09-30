@@ -81,6 +81,13 @@
   const COMPLETE_WITHOUT_OCR =
     "Analysis complete. The analysis overlay controls are now available.";
 
+  // What the start of a slow analysis says (H-13). The wait used to be voiced by
+  // the Model Manager naming each model the analyser happened to load, which
+  // told the person nothing they could use. One plain line now gives the wait a
+  // beginning, and the completion line above is its end. It speaks only on a run
+  // that will take time, never on a cache hit, where completion follows at once.
+  const ANALYSING_START = "Analysing the picture. This can take up to a minute.";
+
   // ============================================================================
   // ANALYSIS PIPELINE METHODS
   // ============================================================================
@@ -1039,7 +1046,12 @@
               }
             }
 
-            // No usable cache — run two-phase analysis
+            // No usable cache — the slow path. Say so once (H-13): this point is
+            // reached by a first analysis, a Re-analyse and a profile mismatch,
+            // and not by a cache hit, which returned above.
+            this.announceStatus(ANALYSING_START);
+
+            // Run two-phase analysis
             const analyser = window.ImageDescriberAnalyser;
 
             // Check if two-phase API is available (Phase 15A)

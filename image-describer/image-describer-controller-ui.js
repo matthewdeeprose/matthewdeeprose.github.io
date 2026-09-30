@@ -242,6 +242,14 @@
         // Show preview
         this.showPreview(file);
 
+        // Phase H-3b: every new picture starts on the Default profile. A profile
+        // chosen for one picture must not silently decide what is analysed on
+        // the next, and Painting switches text detection off. Only a new picture
+        // resets it: a profile change or a re-analysis of the same picture keeps
+        // the choice. setSelectedProfile fires no change event, so this neither
+        // re-runs analysis nor persists anything; the banner names the profile.
+        this.setSelectedProfile("default");
+
         // Start background analysis immediately (runs while user fills in form)
         this.startBackgroundAnalysis();
 

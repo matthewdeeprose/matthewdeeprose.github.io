@@ -101,32 +101,22 @@ import MATHPIX_CONFIG, {
   getEndpointFeatures,
   isFeatureAvailable,
   getFormatInfo,
+  MATHPIX_PRICING,
+  formatMathPixCost,
+  estimateMathPixPdfCost,
 } from "../../core/mathpix-config.js";
 // Phase 3.4: PDF Preview imports
 import { PDFUploadVerification } from "../../pdf-preview/pdf-preview-upload-verification.js";
 import { PDFPreviewAccessibility } from "../../pdf-preview/pdf-preview-accessibility.js";
+import { writeCostNotice } from "../../core/mathpix-cost-notice.js";
 
-/**
- * SVG Icon Registry for PDF Handler
- * Uses currentColor to inherit text colour from parent elements
- * All icons are 21x21 for consistent sizing
- * @constant {Object}
- */
-const ICONS = {
-  upload:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m11.5 4.5-3.978-4-4.022 4"/><path d="m7.522.521v11.979"/><path d="m.5 9v4.5c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-4.5"/></g></svg>',
-  search:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8.5" r="5"/><path d="m17.571 17.5-5.571-5.5"/></g></svg>',
-  hourglass:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="matrix(-1 0 0 1 19 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m8.5 5.5v4h-3.5"/></g></svg>',
-  gear: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z" stroke-width=".933"/><circle cx="7.5" cy="7.5" r="3"/></g></svg>',
-  inbox:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2.5 1.5)"><path d="m10 3h2.3406038c.4000282 0 .7615663.23839685.9191451.6060807l2.7402511 6.3939193v4c0 1.1045695-.8954305 2-2 2h-12c-1.1045695 0-2-.8954305-2-2v-4l2.74025113-6.3939193c.15757879-.36768385.51911692-.6060807.91914503-.6060807h2.34060384"/><path d="m11 6.086-3 2.914-3-2.914"/><path d="m8 0v9"/><path d="m0 10h4c.55228475 0 1 .4477153 1 1v1c0 .5522847.44771525 1 1 1h4c.5522847 0 1-.4477153 1-1v-1c0-.5522847.4477153-1 1-1h4"/></g></svg>',
-  checkCircle:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><circle cx="8.5" cy="8.5" r="8"/><path d="m5.5 9.5 2 2 5-5"/></g></svg>',
-  document:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m2.5 7.5h5"/><path d="m2.5 9.5h7"/><path d="m2.5 11.5h3"/><path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3"/></g></svg>',
-};
+// Cost notice tied to #mathpix-pdf-process-btn by aria-describedby in tools.html
+const PDF_COST_NOTICE_ID = "mathpix-pdf-cost-notice";
+const COST_NOTICE_PRICE_BASIS = "(MathPix list price, US dollars)";
+const PDF_FORMATS_INCLUDED_SENTENCE = "All selected output formats are included.";
+
+// SVG icons come from the shared icon library, icon-library.js.
+let libraryMissingWarned = false;
 
 /**
  * Get an SVG icon by name with accessibility attributes
@@ -136,16 +126,17 @@ const ICONS = {
  * @returns {string} SVG HTML string with aria-hidden
  */
 function getIcon(name, options = {}) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon requested: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
 
-  const className = options.className
-    ? ` class="icon ${options.className}"`
-    : ' class="icon"';
-  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+  return library.getIcon(name, options);
 }
 
 /**
@@ -191,6 +182,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
      * @description Currently selected PDF file awaiting processing
      */
     this.currentPDFFile = null;
+
+    /**
+     * @member {string|null} _dropZoneInitialHTML
+     * @description The drop zone's own instructions HTML, captured before the
+     * handler first writes to it, so a reset restores the page's own words
+     */
+    this._dropZoneInitialHTML = null;
 
     /**
      * @member {PDFUploadVerification} uploadVerification
@@ -742,13 +740,12 @@ class MathPixPDFHandler extends MathPixBaseModule {
       // Add new text node with format-aware content
       const textNode = document.createTextNode(`Process ${formatName}`);
 
-      // Insert text AFTER SVG icon (icon comes first)
-      const svg = processBtn.querySelector("svg");
-      if (svg) {
-        processBtn.insertBefore(textNode, svg.nextSibling);
-      } else {
-        processBtn.appendChild(textNode);
-      }
+      // Insert text AFTER the button's own icon child (icon comes first).
+      // Anchors on the direct [data-icon] span, never the SVG inside it, so
+      // the icon's inner structure cannot make insertBefore throw. With no
+      // icon, insertBefore(node, null) appends.
+      const icon = processBtn.querySelector(":scope > [data-icon]");
+      processBtn.insertBefore(textNode, icon ? icon.nextSibling : null);
 
       logDebug(`Process button text updated to: Process ${formatName}`);
     }
@@ -796,6 +793,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // OFF). Pass force:true so a fresh upload always re-applies even if
     // the user overrode the previous upload's default.
     this.applyPageBreakSmartDefault({ force: true });
+    this.updatePdfCostNotice();
 
     // ✅ Feature 3: Sync processing options with actual HTML checkbox states
     // This ensures HTML defaults (all formats checked) are respected
@@ -836,50 +834,28 @@ class MathPixPDFHandler extends MathPixBaseModule {
   updatePDFFileInfo(pdfFile) {
     // UNIFIED DROP ZONE: Use main drop zone instead of PDF-specific drop zone
     const mainDropZone = document.getElementById("mathpix-drop-zone");
-    const pdfUploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container",
-    );
-
-    // Hide the entire PDF upload container to eliminate duplication
-    if (pdfUploadContainer) {
-      pdfUploadContainer.style.display = "none";
-      logDebug("PDF upload container hidden for unified UX");
-    }
-
     // Update main drop zone to show PDF state
     if (mainDropZone) {
       const instructions = mainDropZone.querySelector("p");
       if (instructions) {
-        instructions.innerHTML = `
-        <svg
-                  aria-hidden="true"
-                  height="40"
-                  width="40"
-                  viewBox="0 0 21 21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(2 4)"
-                  >
-                    <path
-                      d="m15.5 4.5c.000802-1.10737712-.8946285-2.00280762-1.999198-2.00280762l-5.000802.00280762-2-2h-4c-.55228475 0-1 .44771525-1 1v.99719238 2.00280762"
-                    />
-                    <path
-                      d="m.81056316 5.74177845 1.31072322 5.24326075c.22257179.8903496 1.02254541 1.5149608 1.94029301 1.5149608h8.87667761c.9177969 0 1.7178001-.6246768 1.9403251-1.5150889l1.3108108-5.24508337c.1339045-.53580596-.1919011-1.07871356-.727707-1.21261805-.079341-.0198283-.1608148-.02983749-.2425959-.02983749l-13.43852073.00188666c-.55228474.00007754-.99985959.44785564-.99985959 1.00014038 0 .08170931.01003737.16310922.02985348.24237922z"
-                    />
-                  </g>
-                </svg>
-        Selected Document: ${pdfFile.name}
-        <br />
-        <span class="help-text">Size: ${this.formatFileSize(
+        this._captureDropZoneInitialHTML(instructions);
+
+        // Keep the drop zone's own icon and write the words after it. The
+        // file name goes in as text, so a name containing "<" is never parsed.
+        const icon = instructions.querySelector(
+          ":scope > [data-icon], :scope > svg",
+        );
+        const helpText = document.createElement("span");
+        helpText.className = "help-text";
+        helpText.textContent = `Size: ${this.formatFileSize(
           pdfFile.size,
-        )} | Select to choose a different file</span>
-      `;
+        )} | Select to choose a different file`;
+        instructions.replaceChildren(
+          ...(icon ? [icon] : []),
+          document.createTextNode(` Selected Document: ${pdfFile.name}`),
+          document.createElement("br"),
+          helpText,
+        );
         logDebug("Main drop zone updated with document file information", {
           fileName: pdfFile.name,
           fileSize: pdfFile.size,
@@ -960,6 +936,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     if (customRangeInput) {
       const handler = () => {
         this.applyPageBreakSmartDefault();
+        this.updatePdfCostNotice();
       };
       customRangeInput._pdfCustomRangeHandler = handler;
       customRangeInput.addEventListener("change", handler);
@@ -1356,6 +1333,29 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method _getPreviewedPageCount
+   * @description Returns the PDF.js page count, but only when the upload
+   * preview was of the current file.
+   *
+   * pdfDocument is populated by PDF.js during the upload-verification
+   * preview (pdf-preview-upload-verification.js::loadAndRenderFirstPage).
+   * DOCX and PPTX skip that preview, so pdfDocument can still hold an
+   * earlier PDF's count; this guard stops them inheriting it.
+   *
+   * @returns {number|null} Page count, or null if unknown for this file
+   * @private
+   * @since 24 September 2026
+   */
+  _getPreviewedPageCount() {
+    const previewedThisFile =
+      !!this.currentPDFFile &&
+      this.uploadVerification?.pdfFile === this.currentPDFFile;
+    return previewedThisFile
+      ? (this.uploadVerification?.pdfDocument?.numPages ?? null)
+      : null;
+  }
+
+  /**
    * @method applyPageBreakSmartDefault
    * @description Applies a context-aware default to the page-break checkbox
    * based on the uploaded PDF's page count.
@@ -1366,9 +1366,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * Multi-page PDFs benefit from preserving boundaries in DOCX/LaTeX
    * exports.
    *
-   * Reads page count from this.uploadVerification.pdfDocument.numPages,
-   * which is populated by PDF.js during the upload-verification preview
-   * (pdf-preview-upload-verification.js::loadAndRenderFirstPage).
+   * Reads page count via _getPreviewedPageCount(), which trusts the
+   * PDF.js count only for the file it previewed. DOCX and PPTX skip that
+   * preview, so they get null (default OFF) rather than an earlier PDF's
+   * count.
    *
    * Safe to call when the checkbox is absent (e.g. fieldset removed) —
    * the function exits silently.
@@ -1391,7 +1392,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
       };
     }
 
-    const numPages = this.uploadVerification?.pdfDocument?.numPages ?? null;
+    const numPages = this._getPreviewedPageCount();
     const effectivePages = this._computeEffectivePageCount(numPages);
     const wouldDefaultOn =
       typeof effectivePages === "number" && effectivePages >= 2;
@@ -1472,6 +1473,48 @@ class MathPixPDFHandler extends MathPixBaseModule {
   }
 
   /**
+   * @method updatePdfCostNotice
+   * @description Writes the list-price estimate for the pages that will be
+   * sent to MathPix into the notice that describes the Process PDF button.
+   *
+   * Deliberately NOT a live region: the button's aria-describedby carries the
+   * figure to a screen reader when focus lands on it, so a range change stays
+   * silent. Writes only when the text changes.
+   *
+   * @returns {Object} Diagnostic info: { effectivePages, cost, text, written }
+   * @since 24 September 2026
+   */
+  updatePdfCostNotice() {
+    const numPages = this._getPreviewedPageCount();
+    const effectivePages = this._computeEffectivePageCount(numPages);
+    const cost = estimateMathPixPdfCost(effectivePages);
+    const rate = formatMathPixCost(MATHPIX_PRICING.PDF_PER_PAGE);
+
+    const tail = ` ${COST_NOTICE_PRICE_BASIS}. ${PDF_FORMATS_INCLUDED_SENTENCE}`;
+
+    // Unknown page count: fall back to the per-page rate on its own
+    let segments = ["Processing costs about ", { figure: rate }, ` per page${tail}`];
+    if (cost !== null) {
+      const pagePhrase =
+        effectivePages === 1 ? "1 page at " : `${effectivePages} pages at `;
+      const each = effectivePages === 1 ? "" : " each";
+      segments = [
+        pagePhrase,
+        { figure: rate },
+        `${each}: about `,
+        { figure: formatMathPixCost(cost) },
+        tail,
+      ];
+    }
+
+    // Figures are emphasised; writes only when the text changes
+    const { text, written } = writeCostNotice(PDF_COST_NOTICE_ID, segments);
+
+    logDebug("PDF cost notice evaluated", { effectivePages, cost, written });
+    return { effectivePages, cost, text, written };
+  }
+
+  /**
    * @method _parsePageRangeCount
    * @description Counts the unique pages described by a MathPix-style
    * page-range string ("1-3,5,7-9"). Pages outside [1,maxPages] are
@@ -1539,6 +1582,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
     // suppresses re-application if the user has manually toggled the
     // checkbox since the last upload.
     this.applyPageBreakSmartDefault();
+    this.updatePdfCostNotice();
   }
 
   /**
@@ -2292,13 +2336,6 @@ class MathPixPDFHandler extends MathPixBaseModule {
         } else if (index === this.progressState.stageIndex) {
           indicator.classList.add("active");
         }
-
-        // Update stage name and icon
-        const nameElement = indicator.querySelector(".stage-name");
-        const iconElement = indicator.querySelector(".stage-icon");
-
-        if (nameElement) nameElement.textContent = stage.name;
-        if (iconElement) iconElement.innerHTML = getIcon(stage.icon);
       }
     });
   }
@@ -2535,6 +2572,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
     this.currentPDFFile = null;
     this.currentProcessingOptions = null;
     this.currentPDFId = null;
+
+    // Hide the PDF interface as resetPreviousSession does, so the reset below
+    // cannot bring its second drop zone into view
+    const pdfInterface = document.getElementById("mathpix-pdf-interface");
+    if (pdfInterface) {
+      pdfInterface.style.display = "none";
+      logDebug("PDF interface hidden on cancel");
+    }
 
     // UNIFIED DROP ZONE: Reset main drop zone to initial state
     this.resetDropZoneToInitial();
@@ -3581,53 +3626,33 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   resetDropZoneToInitial() {
     const mainDropZone = document.getElementById("mathpix-drop-zone");
-    const pdfUploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container",
-    );
-
-    // Show the PDF upload container again when resetting
-    if (pdfUploadContainer) {
-      pdfUploadContainer.style.display = "block";
-      logDebug("PDF upload container shown for reset");
-    }
-
     // Reset main drop zone to initial state
     if (mainDropZone) {
       const instructions = mainDropZone.querySelector("p");
       if (instructions) {
-        // FIXED: No outer <p> wrapper - we're already setting innerHTML of the <p> element
-        instructions.innerHTML = `
-                <svg
-                  aria-hidden="true"
-                  height="40"
-                  width="40"
-                  viewBox="0 0 21 21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(2 4)"
-                  >
-                    <path
-                      d="m15.5 4.5c.000802-1.10737712-.8946285-2.00280762-1.999198-2.00280762l-5.000802.00280762-2-2h-4c-.55228475 0-1 .44771525-1 1v.99719238 2.00280762"
-                    />
-                    <path
-                      d="m.81056316 5.74177845 1.31072322 5.24326075c.22257179.8903496 1.02254541 1.5149608 1.94029301 1.5149608h8.87667761c.9177969 0 1.7178001-.6246768 1.9403251-1.5150889l1.3108108-5.24508337c.1339045-.53580596-.1919011-1.07871356-.727707-1.21261805-.079341-.0198283-.1608148-.02983749-.2425959-.02983749l-13.43852073.00188666c-.55228474.00007754-.99985959.44785564-.99985959 1.00014038 0 .08170931.01003737.16310922.02985348.24237922z"
-                    />
-                  </g>
-                </svg>
-                Drop image or PDF here, or click to select
-                <br />
-                <span class="help-text">Supports: JPEG, PNG, WebP, PDF (max 10MB)</span>
-      `;
+        // Put back the page's own words and icon, as captured before the
+        // handler first wrote here
+        this._captureDropZoneInitialHTML(instructions);
+        instructions.innerHTML = this._dropZoneInitialHTML;
         logDebug("Main drop zone reset to initial state");
       }
     } else {
       logWarn("Main drop zone not found for reset");
+    }
+  }
+
+  /**
+   * @method _captureDropZoneInitialHTML
+   * @description Records the drop zone instructions' HTML the first time it is
+   * called, before the handler writes to them; later calls do nothing
+   *
+   * @param {HTMLElement} instructions - The drop zone's instructions paragraph
+   * @returns {void}
+   * @private
+   */
+  _captureDropZoneInitialHTML(instructions) {
+    if (this._dropZoneInitialHTML === null) {
+      this._dropZoneInitialHTML = instructions.innerHTML;
     }
   }
   /**
@@ -4036,15 +4061,6 @@ class MathPixPDFHandler extends MathPixBaseModule {
     const pdfInterface = document.getElementById("mathpix-pdf-interface");
     if (pdfInterface) {
       pdfInterface.style.display = "block";
-    }
-
-    // Phase 4: Hide upload container during confirmation (use class selector)
-    const uploadContainer = document.querySelector(
-      ".mathpix-pdf-upload-container",
-    );
-    if (uploadContainer) {
-      uploadContainer.style.display = "none";
-      logDebug("Upload container hidden during confirmation");
     }
 
     // Get confirmation section

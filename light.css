@@ -749,7 +749,10 @@ legend.session-manager-group-header {
   border: 0.2rem solid #00131d;
 }
 
-#resume-context-ai-analyse:disabled {
+/* Held busy with aria-disabled rather than native disabled (BusyControl,
+   parcel 42), so it keeps focus while it looks disabled. */
+#resume-context-ai-analyse:disabled,
+#resume-context-ai-analyse[aria-disabled="true"] {
   background: #9fb1bd;
   color: #00131d;
   border: 0.2rem solid #495961;
@@ -774,6 +777,19 @@ legend.session-manager-group-header {
 .context-ai-summary-row {
   border-left-color: #005c84;
   background-color: #e1e8ec;
+}
+
+/* MathPix cost notices (shape in mathpix-main.css). The fill is the page
+   surface, not the panel tint, because three notices sit on #e1e8ec panels. */
+.help-text.mathpix-cost-notice {
+  border-color: #495961;
+  border-left-color: #005c84;
+  background-color: #fffff4;
+  color: #00131d;
+}
+
+.mathpix-cost-notice [data-icon] {
+  color: #005c84;
 }
 
 .context-ai-summary-before {
@@ -3364,16 +3380,6 @@ pre[class*="language-"] {
   color: #495961;
 }
 
-.cancel-btn {
-  background: #dc3545;
-  color: #ffffff;
-  border: none;
-}
-
-.cancel-btn:hover {
-  background: #c82333;
-}
-
 .progress-container-enhanced .progress-bar {
   background: #e9ecef;
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -3426,9 +3432,11 @@ pre[class*="language-"] {
   background: #fffff4;
 }
 
+/* A pending stage is a hollow ring; the active and completed rules below
+   fill it. */
 .stage-dot {
-  background: #e9ecef;
-  border: 3px solid #e9ecef;
+  background: #fffff4;
+  border: 3px solid #495961;
 }
 
 .stage-indicator.active .stage-dot {
@@ -3478,8 +3486,7 @@ pre[class*="language-"] {
     border-width: 3px;
   }
 
-  .preview-toggle-btn,
-  .cancel-btn {
+  .preview-toggle-btn {
     border: 2px solid currentColor;
   }
 
@@ -3489,32 +3496,6 @@ pre[class*="language-"] {
 }
 
 /* Phase 2.1: PDF Document Processing Colours */
-.mathpix-pdf-upload-container {
-  border: 1px solid #00131d;
-}
-
-.mathpix-pdf-drop-zone {
-  border: 2px dashed #00131d;
-  background: #e1e8ec;
-}
-
-.mathpix-pdf-drop-zone:hover {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 2px 8px rgba(0, 92, 132, 0.15);
-}
-
-.mathpix-pdf-drop-zone:focus {
-  border-color: #005c84;
-  background: #fffff4;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-}
-
-.mathpix-pdf-drop-zone.drag-over {
-  border-color: #005c84;
-  background: #fffff4;
-}
-
 .mathpix-pdf-options {
   border: 1px solid #00131d;
   background: #e1e8ec;
@@ -3603,7 +3584,7 @@ pre[class*="language-"] {
 }
 
 .mathpix-timing-text {
-  color: #6c757d;
+  color: #495961;
 }
 
 .mathpix-pdf-results {
@@ -3695,7 +3676,6 @@ pre[class*="language-"] {
 }
 
 @media (prefers-contrast: high) {
-  .mathpix-pdf-drop-zone,
   .mathpix-option,
   .mathpix-format-checkbox,
   .mathpix-view-option {
@@ -3715,25 +3695,10 @@ pre[class*="language-"] {
   }
 }
 
-/* Page Navigation Colours */
-.mathpix-page-navigation {
-  background-color: #f8f9fa;
-  border: 1px solid #e1e5e9;
-}
-
+/* Page Navigation Colours (the container and button base colours are in the
+   PDF preview block below) */
 .mathpix-status-indicator {
   border: 0px solid #495961;
-}
-
-.mathpix-nav-button {
-  background-color: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #374151;
-}
-
-.mathpix-nav-button:hover:not(:disabled) {
-  background-color: #f3f4f6;
-  border-color: #9ca3af;
 }
 
 .mathpix-nav-button:disabled {
@@ -3745,10 +3710,62 @@ pre[class*="language-"] {
   color: #4b5563;
 }
 
-.mathpix-page-placeholder {
-  background-color: #f8f9fa;
-  border: 2px dashed #dee2e6;
-  color: #6c757d;
+/* ==========================================
+   MathPix PDF preview colours
+   Moved from mathpix-pdf-preview.css, which now holds layout only. The
+   earlier .mathpix-page-navigation and .mathpix-nav-button duplicates never
+   won a property and were removed; the button border is none from the
+   layout sheet.
+   ========================================== */
+
+.upload-preview-display {
+  border: 1px solid #e1e8ec;
+  background: #e1e8ec;
+}
+
+#upload-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+#pdf-preview-canvas {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.mathpix-page-navigation {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.mathpix-nav-button {
+  background: #0066cc;
+  color: white;
+}
+
+/* The global button:hover rule sets dark text, and it outranks the plain
+   class selector above, so the hover has to restate the text colour. The
+   border colour came from an earlier duplicate of this rule, now removed. */
+.mathpix-nav-button:hover:not(:disabled) {
+  background: #0052a3;
+  border-color: #9ca3af;
+  color: #ffffff;
+}
+
+.mathpix-page-statistics {
+  background: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.stats-heading {
+  color: #666;
+}
+
+.page-content-summary dt {
+  color: #666;
+}
+
+.page-content-summary dd {
+  color: #333;
+  background: white;
 }
 
 /* Mathpix debug code */
@@ -3808,6 +3825,14 @@ pre[class*="language-"] {
 }
 
 .file-upload-label:focus-within {
+  outline-color: #005c84;
+}
+
+.imgdesc-upload-area:hover {
+  border-color: #005c84;
+}
+
+.imgdesc-upload-area:focus-within {
   outline-color: #005c84;
 }
 
@@ -5137,6 +5162,126 @@ del {
   color: #6b6b60;
 }
 
+/* Transcribe suggestion wrapper, register item 47 unit 12.
+ *
+ * THESE TINTS REINFORCE AND NEVER CARRY. Every distinction they touch is
+ * already carried by a border width, a border STYLE, a box metric, a font
+ * weight or a column count in openrouter-embed/transcribe.css, all of which
+ * survive forced colours. Delete this block and the wrapper is still legible;
+ * that is the test it was designed against, and unit 12 ran it.
+ *
+ * BORDERS ONLY. NO TEXT COLOUR IS DECLARED HERE, and the reason is a measured
+ * one rather than a preference. The obvious candidate for the conflict
+ * sentence was the house --warning-color, #d63301, which reads 4.51:1 against
+ * this surface -- clearing the 4.5:1 body-text bar by 0.01. A margin of one
+ * hundredth is not a margin: a later change to the 6% panel tint, or to
+ * --warning-color itself, sinks it with nothing to say so. So the warning hue
+ * is spent on BORDERS, where the bar is 3:1 and 4.51 is comfortable, and the
+ * conflict sentence keeps the body colour at 17.58:1. The distinction it
+ * loses by that is none, because weight 700, a dashed seam above it and a
+ * one-column wrapper were already carrying it.
+ *
+ * THE REASON SPAN IS DELIBERATELY NOT MUTED. It is subordinated by weight 400
+ * and an indent in transcribe.css instead. A dimmed explanatory sentence is
+ * the exact failure transcribe.css's own header records for the timestamp --
+ * opacity 0.5 reads 3.46:1 in light and 4.51:1 in dark, so it looks right to
+ * anyone working in dark theme and fails for everyone else.
+ *
+ * MEASURED ON THE PAGE 20 September 2026, headless chromium-1223, against the
+ * COMPOSITED surface read off the live ancestor chain -- rgba(255,255,244,1)
+ * with transcribe.css's rgba(127,127,127,0.06) panel over it = rgb(247,247,237)
+ * -- and never off `body`. A black-on-white canary read 21 in the same run.
+ *
+ *   applicable wrapper rule   #005c84 on rgb(247,247,237)  6.82:1  (bar 3:1)
+ *   column seam               #495961 on rgb(247,247,237)  6.77:1  (bar 3:1)
+ *   conflict wrapper rule     #d63301 on rgb(247,247,237)  4.51:1  (bar 3:1)
+ *   conflict sentence seam    #d63301 on rgb(247,247,237)  4.51:1  (bar 3:1)
+ *
+ * #005c84 RATHER THAN THE SPEAKER'S OWN #8d3970, which measures a comfortable
+ * 6.62:1 and is still the wrong choice: it is already on the same row, on
+ * .transcribe-speaker, so a rule in that hue would read as an extension of the
+ * speaker label rather than as a marker for the suggestion.
+ *
+ * BLUE AGAINST RED, NEVER RED AGAINST GREEN. The applicable and conflict rules
+ * have to be told apart, and that axis stays separable under the common forms
+ * of colour vision deficiency. It is belt and braces either way -- solid
+ * against dashed already answers it without any hue at all.
+ *
+ * LITERALS, NOT var(--warning-color), although #d63301 is exactly what that
+ * token holds today. A measured ratio recorded beside a literal stays true; the
+ * same ratio recorded beside a token silently stops being true the day someone
+ * retunes the token, and nothing in this file would report it.
+ *
+ * Under forced-colors every value here is replaced by CanvasText. The widths,
+ * the styles and the geometry are in transcribe.css and are what survive. */
+.transcribe-suggestion {
+  border-inline-start-color: #005c84;
+}
+
+/* EACH HALF'S OWN RULE -- register item 47 unit 18, § 2. transcribe.css
+ * gives both halves a 0.125rem solid left rule and declares no colour; this
+ * tints the two apart, the same pair the capsules' edges already use: the
+ * column seam's grey for the original and the applicable wrapper's blue for
+ * the proposal. The seam tint this replaces, withdrawn and quoted per
+ * register items 51 and 56:
+ *
+ *   .transcribe-suggestion-was + .transcribe-suggestion-proposed {
+ *     border-inline-start-color: #495961;
+ *   }
+ *
+ * MEASURED ON THE PAGE 23 September 2026, headless chromium-1223, against the
+ * composited ancestor chain with a black-on-white canary reading 21 in the
+ * same run -- the figures are in the unit 18 report and in the design
+ * document's § 17. Under forced colours both become CanvasText and the
+ * capsule is what tells the halves apart. */
+.transcribe-suggestion-was {
+  border-inline-start-color: #495961;
+}
+
+.transcribe-suggestion-proposed {
+  border-inline-start-color: #005c84;
+}
+
+.transcribe-suggestion:has(.transcribe-suggestion-conflict) {
+  border-inline-start-color: #d63301;
+}
+
+.transcribe-suggestion-conflict {
+  border-block-start-color: #d63301;
+}
+
+/* THE LABEL CAPSULES -- register item 47 unit 16, § 3. transcribe.css draws
+ * the shape (a solid 1px border, padding, rounded ends) and declares no
+ * colour; this is the tint behind the word and the colour of its edge.
+ *
+ * THE TWO HALVES ARE TINTED APART, keyed on data-suggestion-half rather than
+ * on a second class: a neutral grey for the original, a light blue for the
+ * proposal. The blue edge is the applicable wrapper's own #005c84, so the
+ * suggested capsule reads as part of the suggestion; the grey edge is the
+ * column seam's #495961. Neither is the only carrier -- position, the word
+ * itself and the border shape all survive without colour.
+ *
+ * MEASURED ON THE PAGE 23 September 2026, headless chromium-1223, against the
+ * composited ancestor chain -- the wrapper's panel over the page gives
+ * rgb(247,247,237) -- with a black-on-white canary reading 21 in the same run:
+ *
+ *   original label text    #00131d on #eef1f3                 16.66:1  (bar 4.5:1)
+ *   suggested label text   #00131d on #e0eef4                 15.94:1  (bar 4.5:1)
+ *   original edge          #495961 on rgb(247,247,237)        6.77:1   (bar 3:1)
+ *   suggested edge         #005c84 on rgb(247,247,237)        6.82:1   (bar 3:1)
+ *
+ * Under forced-colors both tints are dropped and both edges become
+ * CanvasText; the shape is what survives. */
+.transcribe-suggestion-label[data-suggestion-half="original"] {
+  background-color: #eef1f3;
+  border-color: #495961;
+}
+
+.transcribe-suggestion-label[data-suggestion-half="suggested"] {
+  background-color: #e0eef4;
+  border-color: #005c84;
+}
+
 /* Dependency list*/
 .module-list li {
   background-color: #e1e8ec;
@@ -5430,9 +5575,18 @@ lite-youtube {
   border: 0.3rem solid #495961 !important;
 }
 
-/* Style inactive buttons */
+/* Style inactive buttons. #chat-send (parcel 41),
+   #resume-context-ai-analyse (parcel 42) and Image Describer's four run
+   buttons (parcel 43) are HELD busy with aria-disabled rather than native
+   disabled (BusyControl), so they are named here too. */
 button:disabled,
-button[disabled] {
+button[disabled],
+#chat-send[aria-disabled="true"],
+#resume-context-ai-analyse[aria-disabled="true"],
+#imgdesc-generate[aria-disabled="true"],
+#imgdesc-generate-local[aria-disabled="true"],
+#imgdesc-regenerate[aria-disabled="true"],
+#imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #00131d !important;
   border: dotted 2px !important;
@@ -5440,6 +5594,17 @@ button[disabled] {
   background-image: none;
   background-repeat: repeat;
   z-index: 1;
+}
+
+/* Chat's message box HELD busy: readOnly, not disabled, so it keeps focus
+   (BusyControl, parcel 41). A readOnly textarea gets no browser default look,
+   so without this the held box would look editable. The textarea counterpart
+   of the rule above. */
+#chat-input[readonly] {
+  color: #00131d !important;
+  border-style: dotted !important;
+  border-color: #00131d !important;
+  background-color: #fefef3 !important;
 }
 
 /* Infographic */
@@ -6529,97 +6694,4 @@ pre.language-json {
 
 #resume-context-ai-summary {
   background: #9fb1bd;
-}
-
-/* xychart-beta series outlines — light mode.
-
-   WHY THIS IS CSS AND NOT A THEME VARIABLE. Mermaid's xychart renderer
-   hard-codes the bar outline to `strokeWidth: 0` with `strokeFill` set to the
-   bar's own fill, and the line stroke width to the literal `2`. No theme
-   variable reaches any of the three. But the renderer paints every colour with
-   d3 `.attr()` and never `.style()`, so they are PRESENTATION ATTRIBUTES — the
-   weakest source in the cascade — and an ordinary author rule beats them.
-   Measured 25 August 2026 by disable-and-remeasure: injecting these rules moved
-   the bar's computed stroke-width 0px -> 2px and its computed stroke to the
-   value below, and removing them returned both to the original reading exactly.
-   No !important is needed: nothing else in this repo's CSS targets an xychart
-   element, and Mermaid's own in-SVG <style> block does not either.
-
-   WHY THE SELECTOR IS THE ROLEDESCRIPTION AND NOT THE CONTAINER. Every control
-   button in md-scripts/mermaid/mermaid-controls.js carries an inline 16x16 icon
-   <svg>, and a container-scoped selector can reach those — that trap cost a
-   false measurement during the grounding session, where a probe reported the
-   diagram SVG empty when it had in fact read a button icon. `svg[
-   aria-roledescription="xychart"]` is set by Mermaid on the diagram root only,
-   so a button icon cannot match it by construction rather than by exclusion,
-   and the rule does not depend on the container's shape.
-
-   WHY ONE COLOUR SERVES EVERY LIGHT THEME. The selector in
-   mermaid-theme.js only offers light-mode users the six themes in
-   themeConfig.modeVisibleThemes.light, and every one of them renders its chart
-   on a white ground (default, neutral and forest on the `white` keyword;
-   accessibleLight, highContrastLight and wcagLight on #FFFFFF). So one dark
-   outline is sufficient, and #00131D — already this file's own dark neutral,
-   267 uses — measures 18.9:1 against that ground in all six.
-
-   WHAT THIS DOES AND DOES NOT LIFT. It gives every BAR a boundary against the
-   ground, which is what carries the four Mermaid builtin palettes: those are not
-   editable through themeVariables and their fills sit as low as 1.14:1. It does
-   NOT lift a LINE, because a line has no fill and its palette colour IS its
-   stroke — the width goes to 3px for legibility but the colour is untouched.
-   The six custom themes therefore carry their own compliant palettes (see
-   XYCHART_PALETTES in mermaid-theme.js); the builtins' line series remain below
-   3:1 and are registered in docs/mermaid-outstanding.md. */
-
-svg[aria-roledescription="xychart"] g[class^="bar-plot"] rect {
-  stroke: #00131d;
-  stroke-width: 2px;
-}
-
-svg[aria-roledescription="xychart"] g[class^="line-plot"] path {
-  stroke-width: 3px;
-}
-
-/* quadrantChart quadrant boundaries — light mode.
-
-   WHAT WAS WRONG. The six <line> elements in `g.border` draw the plot area's
-   outer edge and the two internal dividers, and they are the ONLY thing that
-   marks where one quadrant ends and the next begins: the four quadrant fills
-   differ from one another by as little as 1.00:1 and from the card behind them
-   by 1.00-1.66:1 in every one of the nine selectable theme/mode combinations.
-   Measured 1 September 2026 on rendered pages, computed values throughout: the
-   border cleared 3:1 in five cells and failed in four — `default` 1.40:1,
-   `neutral` 1.27:1, `forest` 1.55:1 here, and `accessibleDark` 1.91:1 in dark
-   mode, which is the DARK-MODE DEFAULT theme.
-
-   WHY IT NEEDS `!important`, WHICH THE XYCHART BLOCK ABOVE DOES NOT.
-   PRESENTATION STANDARD RULE 5 CUTS BOTH WAYS, and this is its other edge.
-   Mermaid's quadrant renderer does NOT paint the border with d3 `.attr()` as
-   the xychart renderer paints bars: it writes an INLINE STYLE, and the elements
-   carry no `stroke` attribute at all (measured — `getAttribute("stroke")` is
-   null while `getAttribute("style")` is set). An inline style beats every
-   author rule that is not `!important`, so the plain form of this rule is
-   INERT. That was established by disable-and-remeasure rather than reasoned
-   from the xychart block: injecting the plain rule left the computed stroke at
-   `rgb(0, 0, 0)`, unchanged, and the `!important` form moved it on all six
-   lines, with the page restored exactly afterwards. Copying the precedent
-   without measuring would have shipped a rule that looked right in review and
-   did nothing — the inert-casing failure this file's xychart comment warns
-   about, arriving from the opposite direction.
-
-   WHY ONE COLOUR SERVES EVERY LIGHT THEME, MEASURED AND NOT ASSUMED. Rule 12
-   of the presentation standard says the one-outline-per-mode ruling does NOT
-   transfer to a BANDED chart, and a quadrant chart is banded — four fills, not
-   one ground. So the ink was derived rule 12's way, by maximising the WORST
-   ratio across every surface the line touches: all four quadrant fills AND the
-   card behind the plot area, in all six light-mode themes. #00131D — this
-   file's own dark neutral, already in heavy use, so no new colour enters the
-   palette — clears every one of those surfaces at 13.63:1 to 18.90:1.
-
-   The stroke WIDTH is deliberately untouched. Mermaid's own 2px is sufficient
-   once the colour carries, and changing a geometry the renderer chose would
-   alter the chart's proportions for no accessibility gain. */
-
-svg[aria-roledescription="quadrantChart"] g.border line {
-  stroke: #00131d !important;
 }

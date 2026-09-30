@@ -1114,12 +1114,19 @@ window.SetUpTool = (function () {
   // ENTRA_SCOPE_NAME constant in both provider adapters.
   const FOUNDRY_ENTRA_SCOPE_NAME = "foundry";
 
-  // Built-in Foundry proxy URL.
+  // THE TWO HOSTS AND THE BUILT-IN DEFAULT — all three declared together, and
+  // deliberately so. They were previously ~70 lines apart, which was tolerable
+  // while the default was simply one of them; it stopped being tolerable on
+  // 21 September 2026, when the default moved and the question "which host is
+  // the default today" became one a reader has to answer before touching
+  // either derivation or storage.
   //
-  // THIS IS A DUPLICATE AND MUST BE KEPT IN STEP with the DEFAULT_PROXY_URL
-  // constant in BOTH provider adapters:
-  //   openrouter-embed/providers/azure-openai-v1.js
-  //   openrouter-embed/providers/azure-openai-responses.js
+  // The Cloudflare Worker. ONE COPY IN SHIPPED ROUTING CODE AS OF 21 SEPTEMBER
+  // 2026, AND THIS IS IT — before the default flipped, the same URL was the
+  // built-in fallback in five other files, and all five now carry the Azure
+  // host instead. So this constant no longer has a keep-in-step obligation
+  // towards anything; it is the Worker's only remaining appearance outside
+  // tests, demos and example text.
   //
   // Copied rather than read because no seam exposes it. Measured 6 August 2026:
   // a provider object's public surface is id, capabilities, buildRequest,
@@ -1132,8 +1139,47 @@ window.SetUpTool = (function () {
   // than this copy, because a path change would silently yield a wrong base
   // instead of failing loudly. Giving the providers a real export is the proper
   // fix and is deliberately out of scope for this stage.
-  const FOUNDRY_DEFAULT_PROXY_URL =
+  const FOUNDRY_CLOUDFLARE_PROXY_URL =
     "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+
+  // The Azure Container Apps host: the same foundry-proxy/worker.js logic
+  // behind a Node adapter, in UK South, running in parallel with the Cloudflare
+  // Worker. Read out of .claude/appservice/README.md, which is the record of
+  // what is actually deployed.
+  //
+  // MOVED HERE FROM THE PICKER SECTION ON 21 SEPTEMBER 2026 so that it can be
+  // declared before FOUNDRY_DEFAULT_PROXY_URL below, which now aliases it. A
+  // `const` referring to a later `const` in the same scope is a temporal dead
+  // zone error at module init, so the order is load-bearing rather than
+  // cosmetic.
+  //
+  // IT IS NOW A DUPLICATE AND MUST BE KEPT IN STEP with the five other copies
+  // of this value: DEFAULT_PROXY_URL in openrouter-embed/providers/
+  // azure-openai-v1.js, providers/azure-openai-responses.js and
+  // openrouter-embed-transcribe.js, and FOUNDRY_PROXY_FALLBACK in chat/chat.js
+  // and image-describer/image-describer-controller-generate.js. Its own comment
+  // used to say the opposite — that it was "NOT a fourth copy of the value
+  // FOUNDRY_DEFAULT_PROXY_URL warns about" — which was true while Cloudflare
+  // was the default and is false now that Azure is.
+  const FOUNDRY_AZURE_PROXY_URL =
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
+
+  // THE BUILT-IN DEFAULT: what applies when the key is ABSENT.
+  //
+  // AN ALIAS, NOT A THIRD LITERAL. "The default is Azure" is then stated once
+  // and cannot drift from the host it names — if the default ever moves again,
+  // this line moves and no copy of a URL is left behind pointing the old way.
+  //
+  // THE ACCEPTED CONSEQUENCE OF THE 21 SEPTEMBER 2026 FLIP, recorded rather
+  // than engineered around: Cloudflare used to be stored as ABSENCE, so
+  // "chose Cloudflare" and "never chose" were indistinguishable — and both
+  // therefore move to Azure. The trade has not been removed, only mirrored:
+  // "chose Azure" and "never chose" are now the pair stored identically. The
+  // owner accepts this for a tester population. Do NOT add a migration, a
+  // second key or a version flag to tell them apart; a second persisted key
+  // that can disagree with this one is the silent wrong-host bug this picker
+  // exists to prevent.
+  const FOUNDRY_DEFAULT_PROXY_URL = FOUNDRY_AZURE_PROXY_URL;
 
   /**
    * The proxy URL that will ACTUALLY be used: the stored override when it is a
@@ -1188,19 +1234,11 @@ window.SetUpTool = (function () {
   // proxy-URL field holds — so derivation stays one-way and that field stays
   // authoritative for custom URLs.
 
-  // The Azure Container Apps host: the same foundry-proxy/worker.js logic
-  // behind a Node adapter, in UK South, running in parallel with the Cloudflare
-  // Worker. Read out of .claude/appservice/README.md, which is the record of
-  // what is actually deployed.
-  //
-  // NOT a fourth copy of the value FOUNDRY_DEFAULT_PROXY_URL warns about — that
-  // constant is the CLOUDFLARE host and this is a different one, so the
-  // keep-in-step obligation on that constant does not reach this. It is still a
-  // hostname that would go false silently if the container app were redeployed
-  // under another name, at which point .claude/appservice/README.md and this
-  // line would disagree and nothing would say so.
-  const FOUNDRY_AZURE_PROXY_URL =
-    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
+  // The two host constants and the built-in default are declared together
+  // further up this file, above effectiveFoundryProxyUrl. FOUNDRY_AZURE_PROXY_URL
+  // was declared here until 21 September 2026 and moved for a reason that is
+  // load-bearing rather than tidy: FOUNDRY_DEFAULT_PROXY_URL now aliases it, and
+  // a `const` referring to a later `const` in the same scope throws at init.
 
   /** The three states the picker can derive. @readonly */
   const PROXY_CHOICE = Object.freeze({
@@ -1209,10 +1247,19 @@ window.SetUpTool = (function () {
     CUSTOM: "custom",
   });
 
-  // Host names for the spoken line, deliberately WITHOUT the "(default)" and
-  // "(beta)" qualifiers the visible labels carry: a reader has just spoken the
-  // label, so repeating the qualifier only lengthens a line whose job is to
-  // carry the consequence.
+  // Host names for the spoken line, deliberately WITHOUT the qualifiers the
+  // visible labels carry: a reader has just spoken the label, so repeating the
+  // qualifier only lengthens a line whose job is to carry the consequence.
+  //
+  // WHICH LABEL CARRIES WHICH QUALIFIER MOVED ON 21 SEPTEMBER 2026, and these
+  // values did not have to move with it, which is the point of keeping them
+  // separate from the markup. Cloudflare read "Cloudflare (default)" and now
+  // reads "Cloudflare"; Azure read "Azure UK South (beta)" and now reads
+  // "Azure UK South (default, beta)". The spoken line has said plain
+  // "Cloudflare" and plain "Azure UK South" throughout and still does — so it
+  // announces "AI service proxy set to Azure UK South", never "...set to Azure
+  // UK South (default, beta)", which is what a naive read of the label would
+  // have produced.
   const PROXY_HOST_LABELS = Object.freeze({
     cloudflare: "Cloudflare",
     azure: "Azure UK South",
@@ -1242,9 +1289,18 @@ window.SetUpTool = (function () {
    * Which of the three states the STORED value currently means.
    *
    * Derived on every call rather than tracked in a flag, so the picker cannot
-   * drift from the key the provider adapters read. An unreadable store yields
-   * Cloudflare, matching effectiveFoundryProxyUrl above: fail towards the host
-   * that still works rather than towards "nothing configured".
+   * drift from the key the provider adapters read.
+   *
+   * AN UNREADABLE STORE YIELDS AZURE, AND THE REASONING CHANGED ON 21 SEPTEMBER
+   * 2026 ALONG WITH THE ANSWER. It used to yield Cloudflare, justified as "fail
+   * towards the host that still works rather than towards 'nothing
+   * configured'". That reason was weaker than the real one and would have gone
+   * on sounding right while producing the wrong answer. THE DERIVATION'S JOB IS
+   * TO PREDICT WHAT THE ADAPTER WILL ACTUALLY DO, and an unreadable store is
+   * exactly the case where the adapter falls back to its own built-in default —
+   * which is now Azure. A derivation that disagrees with the adapter's real
+   * fallback is the silent wrong-host bug this picker exists to prevent: the
+   * picker would name one host while every request went to another.
    *
    * @returns {string} One of the PROXY_CHOICE values.
    */
@@ -1253,22 +1309,30 @@ window.SetUpTool = (function () {
     try {
       stored = localStorage.getItem("foundryProxyUrl");
     } catch (err) {
-      logWarn("Could not read foundryProxyUrl; deriving Cloudflare", err);
-      return PROXY_CHOICE.CLOUDFLARE;
+      logWarn("Could not read foundryProxyUrl; deriving Azure", err);
+      return PROXY_CHOICE.AZURE;
     }
 
     const normalised = normaliseProxyUrl(stored);
 
     // Nothing stored: the adapters fall back to their own built-in default,
-    // which is the Cloudflare Worker.
-    if (!normalised) return PROXY_CHOICE.CLOUDFLARE;
+    // which since 21 September 2026 is the Azure UK South container app.
+    if (!normalised) return PROXY_CHOICE.AZURE;
 
+    // An explicitly saved copy of the built-in default is still Azure. This
+    // branch is not dead: the proxy-URL field in the Foundry credentials
+    // section can write the Azure host by hand, and the picker's own Azure
+    // branch removed the key rather than writing it.
     if (normalised === normaliseProxyUrl(FOUNDRY_AZURE_PROXY_URL)) {
       return PROXY_CHOICE.AZURE;
     }
 
-    // An explicitly saved copy of the built-in default is still Cloudflare.
-    if (normalised === normaliseProxyUrl(FOUNDRY_DEFAULT_PROXY_URL)) {
+    // The Cloudflare Worker is now an EXPLICIT write rather than an absence,
+    // so this is the branch the picker's own Cloudflare selection lands in.
+    // The line it replaces read "An explicitly saved copy of the built-in
+    // default is still Cloudflare", which stopped being true when the default
+    // moved: the Worker URL is no longer any file's built-in default.
+    if (normalised === normaliseProxyUrl(FOUNDRY_CLOUDFLARE_PROXY_URL)) {
       return PROXY_CHOICE.CLOUDFLARE;
     }
 
@@ -1339,14 +1403,32 @@ window.SetUpTool = (function () {
 
     const choice = target.value;
 
+    // THE TWO BRANCHES SWAPPED ROLES ON 21 SEPTEMBER 2026, and the property
+    // that justified the old arrangement moved with them rather than being
+    // lost. The withdrawn comment sat on the Cloudflare branch and read:
+    // "REMOVE the override rather than writing the default. Falling back to the
+    // adapters' own built-in value is self-healing if that value ever moves —
+    // and it is duplicated in both adapters and in this file, so it can move in
+    // one place without the others following." That argument was never about
+    // Cloudflare; it was about whichever host is the DEFAULT. It is false of
+    // Cloudflare now and true of Azure, so it has moved to the Azure branch.
     if (choice === PROXY_CHOICE.CLOUDFLARE) {
+      // WRITE the Worker URL explicitly. Cloudflare is now the deliberate
+      // departure from the default, and a departure has to be recorded as a
+      // value: an absence would be read back as the default, which is the
+      // other host.
+      localStorage.setItem("foundryProxyUrl", FOUNDRY_CLOUDFLARE_PROXY_URL);
+    } else if (choice === PROXY_CHOICE.AZURE) {
       // REMOVE the override rather than writing the default. Falling back to
       // the adapters' own built-in value is self-healing if that value ever
-      // moves — and it is duplicated in both adapters and in this file, so it
-      // can move in one place without the others following.
+      // moves — it is duplicated across five files besides this one, so it can
+      // move in one place without the others following, and anyone who chose
+      // the default moves with it instead of being pinned to a stale URL.
+      //
+      // The cost, accepted: this stores "chose Azure" identically to "never
+      // chose". That is the same trade Cloudflare carried before the flip,
+      // running the other way. See FOUNDRY_DEFAULT_PROXY_URL above.
       localStorage.removeItem("foundryProxyUrl");
-    } else if (choice === PROXY_CHOICE.AZURE) {
-      localStorage.setItem("foundryProxyUrl", FOUNDRY_AZURE_PROXY_URL);
     } else {
       // Custom is derived, never written. It is unreachable here while it stays
       // disabled unless current; this guard exists so that stops being an

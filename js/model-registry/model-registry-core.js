@@ -15,6 +15,92 @@ import {
   InvalidFallbackError,
 } from "./model-registry-errors.js";
 
+// ---------------------------------------------------------------------------
+// NON-FATAL CONFIGURATION WARNINGS — ACCUMULATED, THEN REPORTED ONCE PER BURST
+// ---------------------------------------------------------------------------
+// These used to be one `logger.warn` per warning per registration. Measured in a
+// headless browser on 22 September 2026 with the logger forced on in the browser
+// only: that shape emits 20 warn lines on a normal `tools.html` load, and ALL 20
+// are this loop — no other warn in the registry fires on a clean load. Twenty
+// near-identical lines every time the page opens is the sort of volume that gets
+// a channel switched off again, and a switched-off channel is the defect this
+// repair exists to close.
+//
+// So the granularity was the defect, not the flag. The warnings are collected by
+// `type` and reported as ONE line per registration burst. THE SUMMARY KEEPS WHAT
+// YOU WOULD NEED TO ACT ON — the field names, the offending keys, and the model
+// names — in the log entry's data object; a summary that loses those is a count,
+// not a report.
+//
+// The flush is scheduled on a macrotask rather than tied to `initialize()`,
+// because registration runs at module-evaluation time from the definition files
+// and is not bounded by any lifecycle hook here. A later burst (a model
+// registered after load) correctly produces its own summary.
+const CONFIG_WARNING_FLUSH_DELAY_MS = 0;
+const pendingConfigWarnings = new Map();
+let configWarningFlushScheduled = false;
+
+/**
+ * Record one non-fatal model-configuration warning for the next summary.
+ * @param {string} modelName - Name of the model the warning came from
+ * @param {Object} warning - A `validator` warning: { type, field, message, keys? }
+ * @private
+ */
+function recordConfigWarning(modelName, warning) {
+  const type = warning.type || "unknown";
+  let bucket = pendingConfigWarnings.get(type);
+  if (!bucket) {
+    bucket = { count: 0, fields: new Set(), keys: new Set(), models: new Set() };
+    pendingConfigWarnings.set(type, bucket);
+  }
+
+  bucket.count += 1;
+  if (warning.field) bucket.fields.add(warning.field);
+  if (Array.isArray(warning.keys)) {
+    for (const k of warning.keys) bucket.keys.add(k);
+  }
+  bucket.models.add(modelName);
+
+  if (configWarningFlushScheduled) return;
+  configWarningFlushScheduled = true;
+  setTimeout(flushConfigWarnings, CONFIG_WARNING_FLUSH_DELAY_MS);
+}
+
+/**
+ * Emit the accumulated configuration warnings as a single summary line.
+ * @private
+ */
+function flushConfigWarnings() {
+  configWarningFlushScheduled = false;
+  if (pendingConfigWarnings.size === 0) return;
+
+  const byType = {};
+  const affected = new Set();
+  let total = 0;
+
+  for (const [type, bucket] of pendingConfigWarnings) {
+    total += bucket.count;
+    for (const name of bucket.models) affected.add(name);
+    byType[type] = {
+      count: bucket.count,
+      fields: [...bucket.fields],
+      keys: [...bucket.keys],
+      models: [...bucket.models],
+    };
+  }
+
+  const shape = Object.entries(byType)
+    .map(([type, d]) => `${type} x${d.count}`)
+    .join(", ");
+
+  pendingConfigWarnings.clear();
+
+  logger.warn(
+    `Model configuration warnings: ${total} across ${affected.size} model(s) — ${shape}`,
+    byType
+  );
+}
+
 /**
  * ModelRegistryCore class implementing the main model registry functionality
  */
@@ -101,10 +187,7 @@ export class ModelRegistryCore {
     // hundreds of entries that predate any gate, so refusing them would throw on load.
     if (validation.warnings && validation.warnings.length > 0) {
       for (const warning of validation.warnings) {
-        logger.warn(
-          `Model configuration warning for ${config.name || "Unknown model"}: ${warning.message}`,
-          { field: warning.field, type: warning.type }
-        );
+        recordConfigWarning(config.name || "Unknown model", warning);
       }
     }
 
@@ -284,8 +367,16 @@ export class ModelRegistryCore {
   }
 
   /**
-   * Validate all model fallbacks
-   * Should be called after all models are registered
+   * Validate all model fallbacks.
+   *
+   * CALLED FROM js/config.js, NOT from the end of js/model-definitions.js — moved
+   * there on 14 September 2026 (register item 108) so the 43 Foundry registrations
+   * are inside the pool. They never had been: static imports evaluate in source
+   * order, config.js imports model-definitions.js first and
+   * foundry-model-definitions.js second, and the call used to sit on the
+   * second-to-last line of the first of those.
+   *
+   * @returns {Object} `{ isValid, invalidFallbacks, cycles, cyclicSourceCount }`
    */
   validateAllFallbacks() {
     const models = state.getAllModels();
@@ -331,6 +422,33 @@ export class ModelRegistryCore {
           }
         });
       }
+    }
+
+    // CYCLES ARE REPORTED HERE AND ARE NOT ENROLLED FOR CORRECTION, and the
+    // arrangement above is what guarantees it rather than this comment: the
+    // auto-corrector runs inside `if (!validation.isValid)`, and `isValid` is keyed
+    // on `invalidFallbacks` alone. A ring therefore cannot reach
+    // `findBestFallbackMatch`, which has never been exercised on one. See the note
+    // over `validateAllFallbacks` in model-registry-validator.js for why that is a
+    // decision rather than an omission.
+    //
+    // Reported OUTSIDE the isValid branch on purpose: a registry with a ring and no
+    // three-condition fault is `isValid: true`, and the ring would otherwise be
+    // silent — which is exactly the state parcel 5 measured, 411 chains into a
+    // terminal loop with the validator reporting clean.
+    if (validation.cycles && validation.cycles.length > 0) {
+      logger.warn(
+        `Fallback cycles found: ${validation.cycles.length} ring(s) reached by ` +
+          `${validation.cyclicSourceCount} source(s). Reported only — not auto-corrected.`,
+        validation.cycles
+          .map(
+            (ring) =>
+              `[${ring.members.join(" -> ")} -> ${ring.members[0]}] reached by ${
+                ring.sources
+              } source(s)`
+          )
+          .join("\n")
+      );
     }
 
     return validation;

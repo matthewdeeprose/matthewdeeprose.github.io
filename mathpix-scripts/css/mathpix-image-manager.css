@@ -15,15 +15,14 @@
 
 /* — High contrast colour overrides — */
 
-@media (prefers-contrast: high) {
+/* currentColor, not black: this sheet loads after dark.css, so a literal
+   black would put dark borders on the dark theme's dark surfaces.
+   No .image-manager-btn rule: the global button styles already give it a
+   3px border, so a 2px override here could only thin it. */
+@media (prefers-contrast: more) {
   .image-manager-card {
     border-width: 2px;
-    border-color: black;
-  }
-
-  .image-manager-btn {
-    border-width: 2px;
-    border-color: black;
+    border-color: currentColor;
   }
 
   .image-manager-header {
@@ -31,7 +30,7 @@
   }
 
   .image-manager-close-btn:hover {
-    border-color: black;
+    border-color: currentColor;
   }
 
   .mmd-image-manager-edit-form .field-provenance {
@@ -1267,4 +1266,63 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
   body.mathpix-manager-open .mmd-image-manager-ai-spinner {
     display: none;
   }
+}
+
+/* ============================================================================
+   MODEL PICKER (MP-2) — layout only
+   The picker sits inside the AI-run block, ahead of the Generate button, so
+   the reading and tab order is "choose a model, then run" — matching
+   mathpix-context.css's MP-1 block, which this section mirrors line for line.
+
+   COLOUR IS DELIBERATELY ABSENT, for the same reason as MP-1: the theme
+   files load BEFORE this one, so any shorthand here that carries a colour
+   would reset what they set. The radio card treatment itself comes from
+   `.model-option` in mathpix-ai-enhancer.css, which is a global class and
+   loads earlier still — reused rather than re-declared, so this picker and
+   the Context tab's picker cannot drift apart visually.
+
+   `display` is set only via `:not([hidden])` throughout. The picker root,
+   the recommended fieldset and the two empty-state paragraphs are all
+   toggled with the `hidden` attribute, and an unconditional `display` would
+   override it.
+   ============================================================================ */
+
+#edit-alt-model-picker:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* The wrapping radio label carries the accessible name, so its text must
+   stay readable rather than inherit the form's bold label weight wholesale:
+   the model name is emphasised and the id beneath it is not. */
+.mmd-image-manager-edit-form #edit-alt-model-picker .model-option {
+  font-weight: 400;
+}
+
+.mmd-image-manager-edit-form #edit-alt-model-picker .model-option .model-option-name {
+  font-weight: 600;
+}
+
+/* The advanced disclosure. `summary` keeps its native marker and native
+   keyboard behaviour — it is a real disclosure, not a div with a role. */
+.mathpix-alt-model-advanced > summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-weight: 600;
+}
+
+.mathpix-alt-model-advanced[open] > .field-group {
+  margin-top: 0.5rem;
+}
+
+/* The override select sizes to the block so a long model name does not
+   force horizontal overflow at 320px. */
+#edit-alt-model-override {
+  max-width: 100%;
 }

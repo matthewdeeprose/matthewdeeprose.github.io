@@ -104,6 +104,303 @@ const UniversalModal = (function () {
     return null;
   }
 
+  // ==========================================================================
+  // THE DIALOGUE BODY'S ACCESSIBLE DESCRIPTION (parcel UM-1, 18 September 2026)
+  // ==========================================================================
+  //
+  // THE DEFECT, heard at a real NVDA sitting on 18 September 2026 and measured
+  // two-sided. A person reaching the spend-approval dialogue by keyboard hears,
+  // in full:
+  //   "Confirm dialog" / "heading level 1 Confirm" / "Close modal dialog button"
+  //   / "Cancel button" / "OK button"
+  // The sentence carrying the sum — "This request will cost approximately
+  // $3.00. This is a high cost. Continue?" — is NEVER SPOKEN. It is present in
+  // the accessibility tree as StaticText; it is simply not associated with the
+  // dialogue, so nothing signals that it is there, and the natural Tab walk
+  // goes straight to the three buttons.
+  //
+  // MEASURED TWO WAYS, so this is a fact about the dialogue and not about the
+  // instrument (.claude/a11y/sr/cl-1-currency-listen/dialog-description-result.json):
+  //   the shipped dialogue                 aria-describedby none, description NONE
+  //   the same dialogue pointed at its body  attribute present, description the
+  //                                          full sentence
+  //
+  // THE CAUSE. createBody built `div.universal-modal-body` with NO id, so
+  // nothing could point at it. The heading has had a derived id since this file
+  // was written; the body did not. The body's id therefore follows the heading's
+  // existing convention exactly — `${modalId}-heading` alongside
+  // `${modalId}-status` and `${modalId}-input` — rather than inventing a second.
+  //
+  // WHY AN ALLOW-LIST AND NOT A DENY-LIST, and it is the whole of the judgement
+  // in this parcel. An accessible description is FLATTENED to a single string.
+  // That is right for a one-sentence confirm and wrong for a rich body: a body
+  // carrying headings, lists or controls would produce one long flat utterance,
+  // and the controls inside it would be announced as text. So the association
+  // is made only where every descendant element is a plain-text element, and
+  // ANY tag not on the list refuses — a body is described by being provably
+  // simple, never by failing to look complicated. A deny-list would silently
+  // describe the next element nobody thought of.
+  //
+  // WHAT THAT BOUNDARY REACHES AND REFUSES, read off the tree rather than
+  // predicted. REACHED: `confirm()` and `alert()` with a plain string (the
+  // spend-approval dialogue is one of these — `body.textContent = content`,
+  // zero element children), and `showAlert`, whose content is a `<div><p>`
+  // wrapper. REFUSED: `prompt()`, because createBody appends an `<input>` to
+  // its body; `showConfirm` — and therefore `window.safeConfirm` — because its
+  // content carries two `<button>` elements; and any `custom()` or `new Modal()`
+  // body carrying markup beyond plain text. Those want a separate host for
+  // their message and that is a decision, not a judgement to make here.
+  //
+  // TWO MECHANISMS AGREE ON THE PROMPT CASE, deliberately: `templateConfig
+  // .hasInput` would identify it, and the allow-list catches the `<input>` it
+  // appends. The allow-list alone is relied on, because it is the one that also
+  // catches a control a caller put in its own content.
+  //
+  // A CALLER-SUPPLIED VALUE IS NEVER OVERWRITTEN. Only an attribute this code
+  // could itself have written — one whose value IS the derived id — is ever
+  // re-decided. No caller in the tree sets one today (swept 18 September 2026,
+  // zero hits on a UniversalModal dialogue), so the guard is defensive rather
+  // than load-bearing, and it is here so that solving this per-caller stays
+  // possible.
+
+  /**
+   * Tags a described body may contain. Plain text and inline emphasis only.
+   *
+   * FAIL-CLOSED BY CONSTRUCTION: an element whose tag is absent refuses the
+   * whole body. `DIV` is present because `showAlert` wraps its paragraph in one;
+   * that is safe precisely because the test runs over EVERY descendant, so a DIV
+   * containing a button is still refused on the button.
+   */
+  const DESCRIBABLE_BODY_TAGS = new Set([
+    "P",
+    "SPAN",
+    "DIV",
+    "BR",
+    "STRONG",
+    "B",
+    "EM",
+    "I",
+    "U",
+    "S",
+    "SMALL",
+    "CODE",
+    "ABBR",
+    "SUP",
+    "SUB",
+    "WBR",
+  ]);
+
+  /**
+   * Why must this body NOT become the dialogue's accessible description?
+   * Returns null when it may.
+   *
+   * The reason string is returned rather than logged so the caller can say what
+   * it was doing when it refused, matching `whyCannotTakeFocus` above.
+   *
+   * @param {Element|null} body
+   * @returns {string|null} null when the body is describable, else why not.
+   */
+  function whyBodyIsNotDescribable(body) {
+    if (!body) return "there is no body element";
+
+    // AN EMPTY DESCRIPTION IS NOISE, not a neutral default: it makes the
+    // dialogue claim a description it does not have.
+    if ((body.textContent || "").trim().length === 0) {
+      return "the body carries no text";
+    }
+
+    const descendants = body.querySelectorAll("*");
+    for (const element of descendants) {
+      if (!DESCRIBABLE_BODY_TAGS.has(element.tagName)) {
+        return `the body contains <${String(
+          element.tagName,
+        ).toLowerCase()}>, which a flattened description would read as text`;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Point a dialogue at its own body, where the body is simple enough to be
+   * read as one flat sentence.
+   *
+   * Idempotent, and safe to call again after the body's children have been
+   * replaced — which is why `setContent` calls it. The element is never
+   * replaced by any path in this file, so the derived id survives; what can
+   * change is whether the NEW children are still describable, and that is
+   * re-decided here rather than assumed.
+   *
+   * At module scope and reading no `this`, for the reason `whyCannotTakeFocus`
+   * is: one caller is a class method and the other a prototype method.
+   *
+   * @param {Element|null} modal the dialog element
+   * @param {Element|null} body its `.universal-modal-body`
+   * @returns {void}
+   */
+  function applyBodyDescription(modal, body) {
+    if (!modal || !body || !modal.id) return;
+
+    const derivedId = `${modal.id}-body`;
+    const existing = modal.getAttribute("aria-describedby");
+
+    // A value THIS CODE WROTE is re-decided; anything else belongs to a caller.
+    // Both derived ids count as ours (parcel SC-2): once `applyMessageDescription`
+    // below can leave `${modal.id}-message` here, a test against the body id
+    // alone would read the message pointer as a caller's and refuse to
+    // re-decide — so a rebuild that removed the message would leave the
+    // dialogue pointing at an element that no longer exists.
+    if (existing && !isOwnDerivedDescription(modal, existing)) {
+      logDebug(
+        `aria-describedby is already "${existing}" on ${modal.id}; a caller owns it, leaving it alone`,
+      );
+      return;
+    }
+
+    // Set unconditionally, so the body is addressable whether or not it is
+    // described. The ATTRIBUTE is what carries the meaning, and only it is
+    // gated below.
+    body.id = derivedId;
+
+    const refusal = whyBodyIsNotDescribable(body);
+    if (refusal) {
+      if (existing) modal.removeAttribute("aria-describedby");
+      logDebug(`${modal.id} has no accessible description: ${refusal}`);
+      return;
+    }
+
+    modal.setAttribute("aria-describedby", derivedId);
+    logDebug(`${modal.id} described by its own body, ${derivedId}`);
+  }
+
+  // ==========================================================================
+  // THE CONFIRMATION MESSAGE'S ACCESSIBLE DESCRIPTION (parcel SC-2,
+  // 18 September 2026)
+  // ==========================================================================
+  //
+  // THE DEFECT, counted at SC-1 and unreached by UM-1. 23 call sites across 17
+  // files open a `window.safeConfirm` dialogue whose sentence is on screen and
+  // never announced — "Delete this saved session? This cannot be undone." is
+  // read by nobody, because the dialogue announces its name, its role and its
+  // two buttons and nothing else. It is the defect UM-1 closed, on the
+  // dialogues UM-1's boundary correctly refused.
+  //
+  // WHY UM-1 REFUSED THEM, and why that judgement stands. An accessible
+  // description is FLATTENED to one string, and `showConfirm` builds a body
+  // carrying two BUTTON elements — so describing the BODY would announce
+  // "Delete this saved session? This cannot be undone. Yes No" as prose and
+  // read the controls as text. The allow-list refuses on the BUTTON, correctly.
+  //
+  // THE TARGET ALREADY EXISTED. `showConfirm` has always built exactly one
+  // `<p>` carrying the whole message and nothing else — measured on the live
+  // dialogue at SC-1, with the control count inside it as the canary. So the
+  // description points at THE PARAGRAPH, one level below the body, and nothing
+  // is flattened. Same shape as UM-1, one level down.
+  //
+  // THE PARAGRAPH IS MARKED, NOT FOUND BY CLASS. `showConfirm` stamps
+  // `data-modal-message` on it. A class such as `.universal-confirm-content > p`
+  // would be a styling hook doing structural duty, and it would silently
+  // acquire meaning the day someone restyles the dialogue; the attribute is a
+  // declared contract that says what it is for. It is also fail-closed: a body
+  // with no marked message is simply not reached by this function.
+  //
+  // THE MARKED MESSAGE IS STILL TESTED, never trusted for being marked. It goes
+  // through the SAME `whyBodyIsNotDescribable` allow-list, so a message that
+  // ever carried a control would refuse exactly as a rich body does. Today it
+  // cannot: `showConfirm` passes the message through `escapeHtml`, so the
+  // paragraph holds text and never an element — which is what makes the
+  // paragraph safe to describe where its parent is not.
+  //
+  // WHAT THIS DELIBERATELY DOES NOT DO. It does not name the exits. Matthew's
+  // decision of 18 September 2026: the description carries the MESSAGE ALONE,
+  // because a person tabbing the dialogue meets `Yes` and `No` as buttons a
+  // moment later and an utterance that recites them first is longer for no
+  // gain. Nothing about the wording, the heading, the buttons, the focus
+  // behaviour or any dismissal value is touched here.
+
+  /** The attribute marking the one element that carries a dialogue's message. */
+  const MESSAGE_MARKER_ATTRIBUTE = "data-modal-message";
+
+  /**
+   * Is this `aria-describedby` value one THIS code wrote?
+   *
+   * Only such a value is ever re-decided; anything else is a caller's and is
+   * left alone. Two ids qualify — the body's and the message's — and the test
+   * must know about both, or a rebuild leaves whichever one it does not
+   * recognise standing over an element that has gone.
+   *
+   * @param {Element} modal the dialog element
+   * @param {string|null} value the current attribute value
+   * @returns {boolean}
+   */
+  function isOwnDerivedDescription(modal, value) {
+    if (!modal || !modal.id || !value) return false;
+    return value === `${modal.id}-body` || value === `${modal.id}-message`;
+  }
+
+  /**
+   * Point a dialogue at the ONE element carrying its message, where the body
+   * itself is too rich to be described.
+   *
+   * Called immediately after `applyBodyDescription` on both of that function's
+   * paths, so the message pointer wins where a message is marked and the body
+   * decision stands where one is not. Idempotent, and re-decided rather than
+   * re-asserted after a rebuild: `setContent` replaces the body's CHILDREN, so
+   * unlike the body element the marked paragraph does NOT survive one, and a
+   * pointer left standing would address an element that no longer exists.
+   *
+   * At module scope and reading no `this`, for the same reason its two
+   * neighbours are.
+   *
+   * @param {Element|null} modal the dialog element
+   * @param {Element|null} body its `.universal-modal-body`
+   * @returns {void}
+   */
+  function applyMessageDescription(modal, body) {
+    if (!modal || !body || !modal.id) return;
+
+    const derivedId = `${modal.id}-message`;
+    const existing = modal.getAttribute("aria-describedby");
+    const message = body.querySelector(`[${MESSAGE_MARKER_ATTRIBUTE}]`);
+
+    if (existing && !isOwnDerivedDescription(modal, existing)) {
+      logDebug(
+        `aria-describedby is already "${existing}" on ${modal.id}; a caller owns it, leaving the message alone`,
+      );
+      return;
+    }
+
+    if (!message) {
+      // No marked message in these children. Anything this code wrote pointing
+      // at one is now stale and must go; the body decision made a moment ago
+      // stands.
+      if (existing === derivedId) {
+        modal.removeAttribute("aria-describedby");
+        logDebug(
+          `${modal.id} no longer carries a marked message, so its message description was withdrawn`,
+        );
+      }
+      return;
+    }
+
+    // Set unconditionally, so the paragraph is addressable whether or not it is
+    // described — the same arrangement as the body, and what lets an absence row
+    // prove the code RAN and declined rather than never ran.
+    message.id = derivedId;
+
+    const refusal = whyBodyIsNotDescribable(message);
+    if (refusal) {
+      if (existing === derivedId) modal.removeAttribute("aria-describedby");
+      logDebug(
+        `${modal.id} is not described by its message: ${refusal}`,
+      );
+      return;
+    }
+
+    modal.setAttribute("aria-describedby", derivedId);
+    logDebug(`${modal.id} described by its own message, ${derivedId}`);
+  }
+
   // ====== NEW ROBUST MODAL MANAGER (from working system) ======
   class ModalManager {
     constructor() {
@@ -486,6 +783,14 @@ const UniversalModal = (function () {
       container.appendChild(header);
 
       const body = this.createBody(content, templateConfig, modalId);
+      // AFTER createBody, never inside it: the prompt template's <input> is
+      // appended in there, and a body read before that would be judged simple
+      // and described with the control in it.
+      applyBodyDescription(modal, body);
+      // AFTER the body decision, never instead of it (parcel SC-2): a marked
+      // message wins where one exists, and where none does the body's own
+      // decision is what stands.
+      applyMessageDescription(modal, body);
       container.appendChild(body);
 
       if (finalButtons.length > 0) {
@@ -1397,6 +1702,41 @@ const UniversalModal = (function () {
       size: options.size || "medium",
       closeOnOverlayClick: options.closeOnOverlayClick !== false,
       closeOnEscape: options.closeOnEscape !== false,
+      // ------------------------------------------------------------------
+      // AND STILL DROPPED ON PURPOSE FOR A DECISION DIALOGUE — Matthew's
+      // ruling, 18 September 2026, recorded so the next reader does not file
+      // it as a bug (parcel SC-2).
+      //
+      // SC-1 measured the consequence exactly: a `window.safeConfirm` dialogue
+      // does NOT close on Escape, three seconds after a real key press, and its
+      // promise never settles. It has no close cross either, so the only two
+      // ways out are `Yes` and `No`.
+      //
+      // THAT IS THE INTENDED BEHAVIOUR HERE. An ambiguous dismissal of a
+      // DECISION could be read as an answer, and 19 of these call sites decide
+      // on truthiness — several of them guarding a destructive action: clearing
+      // credentials, deleting a saved session, discarding unsaved work. A
+      // dialogue that asks a question should be answered, not waved away.
+      //
+      // IT IS NOT A KEYBOARD TRAP, and that framing was WITHDRAWN on the
+      // measurement rather than on the argument: UM-2 measured focus as
+      // CONTAINED with zero escapes, so a person can always reach both buttons.
+      //
+      // So `closeOnEscape` stays unforwarded and no dismissal value changes.
+      // Anyone revisiting it should read SC-1 finding F first, and should note
+      // that a repair lands on all 19 truthiness sites at once.
+      //
+      // EXTENDED TO `UniversalModal.confirm` BY MATTHEW ON 22 SEPTEMBER 2026
+      // (parcel DC-1, DC1_CONFIRM_DISMISSAL). The same rule now covers that
+      // entry point, because its close cross and its Escape key resolved the
+      // TRUTHY STRINGS `"close"` and `"escape"` — and a backdrop click resolved
+      // `"background"`, a fifth route CL-1 finding C had not enumerated — while
+      // every caller reads the result with `if (result)`. So three of its five
+      // dismissals answered YES, and on two dialogues that meant reloading the
+      // page. It reaches the SAME mechanism as this one rather than a second:
+      // `allowBackgroundClose: false`, forced after the caller's own options.
+      // The full account and the measurements are beside that function.
+      // ------------------------------------------------------------------
       // STILL DROPPED, deliberately (20 August 2026): closeOnEscape and
       // focusElement are accepted here and never reach modalManager, because
       // neither has manager-side support — the escape handler keys off
@@ -1671,6 +2011,18 @@ const UniversalModal = (function () {
     const bodyElement = this.modal.querySelector(".universal-modal-body");
     if (bodyElement) {
       bodyElement.innerHTML = content;
+      // RE-DECIDED, not merely re-asserted (parcel UM-1). This call replaces the
+      // body's CHILDREN and never the element, so the derived id survives and a
+      // pointer cannot go stale — but the new children may be rich where the old
+      // were simple, or empty where they were not, and a description that was
+      // right before the rebuild can be wrong after it.
+      applyBodyDescription(this.modal, bodyElement);
+      // RE-DECIDED HERE TOO, and for a sharper reason than the body's (parcel
+      // SC-2). The body ELEMENT survives this write and a marked message does
+      // NOT: these children are new, so a message pointer left standing from
+      // before the rebuild would address an element that has gone. Withdrawing
+      // it is part of the same decision as setting it.
+      applyMessageDescription(this.modal, bodyElement);
       logDebug("Modal content updated");
     }
     return this;
@@ -1717,14 +2069,118 @@ const UniversalModal = (function () {
     });
   }
 
-  function confirm(message, options = {}) {
+  /**
+   * The second argument of `confirm()` where a caller passed a plain STRING.
+   *
+   * PARCEL FB-1, 19 September 2026 — CL-1 finding B. `confirm(message, options)`
+   * reads `options.title`. Three call sites in files `tools.html` loads pass a
+   * plain string instead, so `"High Cost Warning".title` is `undefined`, the
+   * literal fallback wins, and every one of those dialogues announces its
+   * accessible NAME as the single word `Confirm`. Matthew heard it at SC-3
+   * sitting 2 as "heading level 1 Confirm" on the spend-approval dialogue, and
+   * the two high-cost asks in a row are indistinguishable by name because of it.
+   *
+   * WHY A STRING IS ACCEPTED RATHER THAN THE THREE CALL SITES BEING EDITED.
+   * A repair at the call sites leaves the trap armed for the next caller, and
+   * the shape a caller reaches for is the one `window.safeConfirm` and
+   * `FileHandler.safeConfirm` both already document — `(message, title)`. Every
+   * caller enumerated in the tree that passes a string means it as a TITLE, so
+   * there is no shape to collide with; a string is not an options object and
+   * `typeof` separates them outright.
+   *
+   * IT ALSO CLOSES A SECOND FAULT NOBODY HAD NAMED. `{ ...options }` over a
+   * string spreads its CHARACTERS, so `"High Cost Warning"` handed the manager
+   * seventeen indexed keys as modal options. Normalising first means a string
+   * can no longer reach the spread at all.
+   *
+   * @param {Object|string|null|undefined} options the second argument as passed
+   * @param {Object} [extraOptions] a third argument, where a caller used the
+   *   `(message, title, options)` shape
+   * @returns {Object} always an options object, never a string
+   */
+  function normaliseConfirmOptions(options, extraOptions) {
+    if (typeof options === "string") {
+      // The explicit title wins over any `title` inside the third argument,
+      // because the caller named it in the position reserved for it.
+      return { ...(extraOptions || {}), title: options };
+    }
+    return options || {};
+  }
+
+  /**
+   * A CONFIRMATION DIALOGUE CANNOT BE DISMISSED WITHOUT AN ANSWER.
+   *
+   * DC1_CONFIRM_DISMISSAL — parcel DC-1, 22 September 2026. Matthew's rule of
+   * 18 September 2026, recorded beside the legacy `Modal` constructor below for
+   * `window.safeConfirm`, EXTENDED BY HIM ON 22 SEPTEMBER 2026 to cover
+   * `UniversalModal.confirm`: on a DECISION dialogue Escape must not close it,
+   * because an ambiguous dismissal could be read as an answer.
+   *
+   * WHY, AND IT IS NOT A TIDINESS ARGUMENT. `close(modalId, result)` resolves
+   * the promise with whatever the route hands it, so this dialogue used to
+   * resolve FIVE values: `true` for OK, `false` for Cancel, and the STRINGS
+   * `"close"` (the close cross, announced *Close modal dialog*), `"escape"` and
+   * `"background"`. Every caller in the tree is written `if (result)`, and a
+   * non-empty string is truthy — so THREE of the five dismissals took the same
+   * branch as OK. Measured 22 September 2026 by driving each route and reading
+   * what it resolved:
+   *
+   *   - on `RecoveryStrategies.tokenRefresh` (*Session Expired*) and
+   *     `.domRefresh` (*Interface Issue*), a trusted Escape press, two of them,
+   *     or a backdrop click each RELOADED THE PAGE. Not inferred from the
+   *     `if (refresh) window.location.reload()` line — the reload was observed,
+   *     through a per-load token that the reload wiped.
+   *   - on the first high-cost ask, each of those three ADVANCED TO THE SECOND
+   *     ASK instead of cancelling, observed as a new dialogue id appearing.
+   *   - `"background"` was a FIFTH route nobody had named. CL-1 finding C
+   *     enumerated four.
+   *
+   * THE MECHANISM IS THE ONE `window.safeConfirm` ALREADY USES, deliberately
+   * rather than a second one: `allowBackgroundClose: false`. One key drives all
+   * three behaviours, because `createHeader` takes its `showClose` argument from
+   * it, the manager's global Escape handler gates on it, and `open()`'s backdrop
+   * listener is only attached when it is not false. So there is no close cross
+   * to press, Escape is ignored, and a backdrop click does nothing — leaving OK
+   * and Cancel as the only routes, and `true`/`false` as the only values.
+   *
+   * IT IS FORCED AFTER THE SPREAD, not before. A caller passing
+   * `allowBackgroundClose: true` would otherwise reinstate all three routes,
+   * which is exactly the trap FB-1 found in the old `{ ...options }` over a
+   * string. Nothing in the tree passes that key to `confirm`, so this narrows no
+   * caller — enumerated 22 September 2026: six call sites, three of them in
+   * `js/modal-integration-examples.js`, which no page references.
+   *
+   * ESCAPE SURVIVES TWO CONSECUTIVE PRESSES, MEASURED AND NOT ARGUED. Current
+   * Chromium can close a dialog on a second close signal arriving with no user
+   * activation in between, so one press proving nothing about two is a real
+   * possibility rather than a pedantic one. Driven with TRUSTED key presses —
+   * Group 11's synthetic `KeyboardEvent` drives no default action and therefore
+   * says nothing about the native `<dialog>` cancel path — `safeConfirm` held
+   * open and unsettled after both, with Cancel settling `false` on the same
+   * dialogue afterwards as the positive control.
+   *
+   * NOT CHANGED, and each is a deliberate boundary: `alert`, `prompt`, `custom`
+   * and `create` keep the behaviour they had, the `confirm` TEMPLATE's own
+   * `allowBackgroundClose: true` is left alone so `create({ template:
+   * "confirm" })` is untouched, and no title, body, button label or focus order
+   * moves. The header is `display: flex` with the heading at `flex: 1`, so
+   * removing the cross cannot shift the title.
+   *
+   * @param {string} message the question
+   * @param {Object|string} [options] options, or a plain string title
+   * @param {Object} [extraOptions] a third argument, for `(message, title, options)`
+   * @returns {Promise<boolean>} `true` for OK, `false` for Cancel, nothing else
+   */
+  function confirm(message, options = {}, extraOptions) {
+    const settings = normaliseConfirmOptions(options, extraOptions);
+
     return show({
-      title: options.title || "Confirm",
+      title: settings.title || "Confirm",
       content: message,
-      type: options.type || "confirmation",
-      size: options.size || "medium",
+      type: settings.type || "confirmation",
+      size: settings.size || "medium",
       template: "confirm",
-      options: { allowBackgroundClose: true, ...options },
+      options: { ...settings, allowBackgroundClose: false },
     });
   }
 
@@ -1791,7 +2247,7 @@ const UniversalModal = (function () {
     return new Promise(function (resolve) {
       const content = `
         <div class="universal-confirm-content confirmation-content">
-          <p>${escapeHtml(message)}</p>
+          <p ${MESSAGE_MARKER_ATTRIBUTE}>${escapeHtml(message)}</p>
           <div class="universal-confirm-actions confirmation-actions">
             <button type="button" class="universal-confirm-yes modal-confirm-yes" autofocus>${escapeHtml(
               confirmText,
@@ -1823,6 +2279,12 @@ const UniversalModal = (function () {
         // how an unproven path gets shipped.
         returnFocusTo: options.returnFocusTo || null,
         closeOnOverlayClick: false,
+        // A DEAD OPTION, and deliberately left dead. The Modal constructor
+        // accepts `closeOnEscape` and never forwards it, and the manager's
+        // Escape handler keys off `allowBackgroundClose`, which the line above
+        // sets false — so Escape does not close this dialogue. The decision to
+        // keep it that way, and the measurement behind it, are recorded beside
+        // that constructor (parcel SC-2, 18 September 2026).
         closeOnEscape: true,
         onOpen: function (modalInstance) {
           const yesButton = modalInstance.modal.querySelector(

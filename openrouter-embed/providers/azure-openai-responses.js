@@ -94,11 +94,22 @@
   // "foundry" key in SCOPES in auth/entra-auth.js.
   const ENTRA_SCOPE_NAME = "foundry";
 
-  // Built-in last-resort proxy URL. Matches the project's deployed Worker, the
-  // same default the v1 provider carries. Hits this only when neither
-  // providerConfig.proxyUrl nor localStorage yields a non-empty string.
+  // Built-in last-resort proxy URL — the same default the v1 provider carries.
+  // Hits this only when neither providerConfig.proxyUrl nor localStorage
+  // yields a non-empty string.
+  //
+  // THIS IS THE AZURE UK SOUTH CONTAINER APP AS OF 21 SEPTEMBER 2026, NOT THE
+  // CLOUDFLARE WORKER. Owner decision, taken for tester reach: the whole
+  // service is beta, and a beta host nobody selects finds no bugs. Both hosts
+  // run the same foundry-proxy/worker.js logic, so this changes the network
+  // path rather than the behaviour.
+  //
+  // The accepted consequence, and the keep-in-step obligation covering all six
+  // copies of this value, are written out once in the sibling comment in
+  // azure-openai-v1.js rather than repeated here — a rule stated in two places
+  // goes false in one of them silently.
   const DEFAULT_PROXY_URL =
-    "https://openrouter-embed-foundry-proxy.matthewdeeprose.workers.dev";
+    "https://accesstools-proxy-staging.politebeach-5f8ce065.uksouth.azurecontainerapps.io";
 
   // SSE [DONE] terminator marker — harmless if the Responses surface never
   // emits it; kept for symmetry with the v1 SSE reader.

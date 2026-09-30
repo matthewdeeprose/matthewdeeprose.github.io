@@ -124,13 +124,21 @@
   //   - Both Foundry adapters (providers/azure-openai-v1.js and
   //     providers/azure-openai-responses.js) fall back to a hardcoded
   //     production proxy URL when `foundryProxyUrl` is absent, so a person who
-  //     has never opened the Foundry card still reaches the live Worker.
+  //     has never opened the Foundry card still reaches a live proxy.
+  //   - WHICH proxy that is CHANGED ON 21 SEPTEMBER 2026. This line used to end
+  //     "still reaches the live Worker", and the absent-key case now resolves to
+  //     the AZURE UK SOUTH container app instead, by owner decision. Nothing in
+  //     this module changes: the reasoning below turns on a default EXISTING,
+  //     never on which host it names — which is why the sentence went false
+  //     without any behaviour here going wrong, and why only a sweep found it.
   //   - Measured after F2-18a armed production: with no stored key, 34 Foundry
   //     models were listed, were selectable, and a send returned 401 from the
   //     production Worker — proof the request arrived, not that it was blocked.
-  //   - The Worker holds the Azure credential server-side, so there is nothing
-  //     for a person to configure. The proxy URL field is an OVERRIDE for
-  //     pointing at something else, not a prerequisite.
+  //     That measurement was taken against the Worker and is kept as the record
+  //     of what was measured; it is not a claim about where a request goes now.
+  //   - Whichever host serves, it holds the Azure credential server-side, so
+  //     there is nothing for a person to configure. The proxy URL field is an
+  //     OVERRIDE for pointing at something else, not a prerequisite.
   //   - Reporting these two as unavailable told colleagues a working tool was
   //     unavailable. That is the defect this corrects.
   //

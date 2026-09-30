@@ -101,12 +101,26 @@ function warningProxyRequired(providerId) {
   );
 }
 
+// Every fallbackTo in this file is now either null or another Foundry
+// deployment (register item 107 — never cross the streams), so this warning
+// can no longer say "via OpenRouter". It said exactly that until 14 September
+// 2026, in two ways that were both wrong: a repaired entry read "falls back to
+// (azure-openai/DeepSeek-V3.2 via OpenRouter)", naming a Foundry deployment as
+// an OpenRouter one, and an entry with no fallback at all read "falls back to
+// (the OpenRouter sibling via OpenRouter)", inventing one. This is a THIRD
+// copy of the sentence item 107 tracks, alongside model-registry-accessibility
+// .js and model-registry-utils.js, and it is the copy those two do not cover
+// because it is built here rather than from the stored field.
 function warningProxyMissing(fallbackTo) {
-  const target = fallbackTo || "the OpenRouter sibling";
+  const base =
+    "If proxy URL is missing, the adapter throws 'providerConfig.proxyUrl is required'";
+  if (!fallbackTo) {
+    return `${base} — no fallback model is registered for this deployment.`;
+  }
   return (
-    "If proxy URL is missing, the adapter throws 'providerConfig.proxyUrl is required' — " +
-    `falls back to fallbackTo (${target} via OpenRouter) only if the consumer wires that fallback ` +
-    "explicitly; the registry's fallback is informational only."
+    `${base} — falls back to ${fallbackTo}, itself a Microsoft Foundry ` +
+    "deployment, only if the consumer wires that fallback explicitly; the " +
+    "registry's fallback is informational only."
   );
 }
 
@@ -154,6 +168,19 @@ function warningProxyMissing(fallbackTo) {
  *                                         "chat" → azure-openai provider (/openai/v1/chat/completions);
  *                                         "responses" → azure-responses provider (/openai/v1/responses).
  *                                         Drives the id prefix, routing.provider, and the proxy-required warning.
+ * @param {string}   [p.reasoningEffort]   The reasoning effort this model's requests should carry.
+ *                                         Stored at metadata.reasoningEffort; absent when not given.
+ * @param {number}   [p.maxOutputTokens]   The output limit (integer) this model's requests should carry.
+ *                                         Stored at metadata.maxOutputTokens; absent when not given.
+ *                                         Both live under metadata because registerModel keeps a fixed
+ *                                         list of top-level keys and spreads metadata whole (stage ro).
+ * @param {string}   [p.retiresOn]         The date Microsoft retires this model, "YYYY-MM-DD".
+ *                                         Stored at metadata.retiresOn; absent when not given. From
+ *                                         that date (UTC) the model registers DISABLED, so the pickers
+ *                                         stop offering it with no human act. An explicit
+ *                                         `disabled: true` still wins. Set it only where the catalogue
+ *                                         status is Deprecating: a GenerallyAvailable model's date can
+ *                                         still move out, and discover.mjs's drift row checks it (parcel 51).
  * @returns {{ id: string, config: Object }}
  */
 function createFoundryModel({
@@ -187,6 +214,11 @@ function createFoundryModel({
   },
   policyLinks = MICROSOFT_POLICY_LINKS,
   apiSurface = "chat",
+
+  // Optional with NO default: a registration that omits them gains no key.
+  reasoningEffort,
+  maxOutputTokens,
+  retiresOn,
 }) {
   if (!deploymentName || !displayName) {
     logError(
@@ -218,11 +250,21 @@ function createFoundryModel({
   // Context label for aria text: 400000 -> "400K", 1050000 -> "1050K".
   const contextLabel = `${Math.round(maxContext / 1000)}K`;
 
+  // A model past its retirement date registers disabled, so nothing offers a
+  // deployment Microsoft has switched off. Today is read in UTC, the same clock
+  // discover.mjs uses for the catalogue's dates.
+  const retired =
+    retiresOn !== undefined &&
+    FoundryModelFactory.isRetiredOn(retiresOn, todayUtcIso());
+  if (retired) {
+    logInfo(`${id} retired on ${retiresOn}; registered disabled`);
+  }
+
   const config = {
     provider: upstreamProvider,
     name,
     category,
-    disabled,
+    disabled: disabled || retired,
     description,
     costs,
     capabilities: caps,
@@ -276,7 +318,68 @@ function createFoundryModel({
     },
   };
 
+  // Per-model request options go on metadata, the one block registerModel
+  // keeps whole. Reached through the exported object so a proof can patch it.
+  FoundryModelFactory.copyRequestOptions(config.metadata, {
+    reasoningEffort,
+    maxOutputTokens,
+  });
+
+  // Only a date actually supplied is stored, so every other registration
+  // stores exactly what it stored before parcel 51.
+  if (retiresOn !== undefined) config.metadata.retiresOn = retiresOn;
+
   return { id, config };
+}
+
+// The shape a retirement date must take. ISO dates in this form compare
+// correctly as strings, which is why isRetiredOn needs no Date parsing.
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Today's date in UTC, "YYYY-MM-DD".
+ *
+ * @returns {string}
+ */
+function todayUtcIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Has a model reached its retirement date? The date to compare against is a
+ * parameter, not read from the clock here, so a check can test both sides of
+ * a retirement date without faking the clock.
+ *
+ * A malformed date is logged and treated as NOT retired: the model stays
+ * offered, and discover.mjs's drift row reports the mismatch. Throwing instead
+ * would abort the whole Foundry list, because the list is built in one array
+ * literal outside registerFoundryModels' per-model try.
+ *
+ * @param {string} retiresOn The retirement date, "YYYY-MM-DD".
+ * @param {string} todayIso  The date to compare against, "YYYY-MM-DD".
+ * @returns {boolean} true when todayIso is on or after retiresOn.
+ */
+function isRetiredOn(retiresOn, todayIso) {
+  if (!ISO_DATE_PATTERN.test(retiresOn) || !ISO_DATE_PATTERN.test(todayIso)) {
+    logError("isRetiredOn: dates must be YYYY-MM-DD", { retiresOn, todayIso });
+    return false;
+  }
+  return todayIso >= retiresOn;
+}
+
+/**
+ * Copy a registration's declared request options onto its metadata. Only a
+ * value actually supplied is copied, so a registration declaring neither
+ * stores exactly what it stored before stage ro.
+ *
+ * @param {Object} metadata The config.metadata block being built.
+ * @param {{ reasoningEffort?: string, maxOutputTokens?: number }} options
+ * @returns {Object} The same metadata object.
+ */
+function copyRequestOptions(metadata, { reasoningEffort, maxOutputTokens }) {
+  if (reasoningEffort !== undefined) metadata.reasoningEffort = reasoningEffort;
+  if (maxOutputTokens !== undefined) metadata.maxOutputTokens = maxOutputTokens;
+  return metadata;
 }
 
 // ============================================================================
@@ -299,7 +402,34 @@ function createFoundryModel({
 // js/model-definitions.js (which encode OpenAI public pricing). Foundry billing
 // may differ; treat as a proxy until reconciled against Foundry invoices.
 
-const FOUNDRY_MODELS = [
+// REQUEST OPTIONS FOR gpt-5.6-sol (stage ro, 28 September 2026). These two are
+// CHOICES for round cf-9 to MEASURE, not probe readings, so they break the
+// adapter's rule that a registry field driving the wire be probe-derived
+// (openrouter-embed/providers/azure-openai-v1.js, "WHY ENUMERATED AND NOT
+// REGISTRY-DERIVED") on purpose and say so here. Round cf-8 (27 September
+// 2026) stopped at sol's first chunk: both sends hit the 4,000-token reply
+// limit with 3,678 and 4,000 of those tokens spent on reasoning. The probe sent
+// the effort omitted, "medium" and "high", never "low"; cf-9's first chunk is
+// the first send of "low". Treat both as unmeasured until cf-9 reports.
+const GPT_5_6_SOL_REASONING_EFFORT = "low";
+const GPT_5_6_SOL_MAX_OUTPUT_TOKENS = 16000;
+
+// REQUEST OPTIONS FOR gpt-6-sol (stage ro-2, 30 September 2026). The same two
+// values as gpt-5.6-sol above, and the same standing: CHOICES for round cf-10 to
+// MEASURE, not probe readings. The one thing the probe did read is that
+// gpt-6-sol's probe of 27 September 2026 (results/probe-gpt-6-sol-2026-09-27.json,
+// 13 requests) accepted the effort omitted, explicit-default and explicit-high,
+// and saw 0 reasoning tokens on every effort row, on a trivial prompt. "low" has
+// never been sent to gpt-6-sol; cf-10's first chunk is the first send of it, and
+// a 400 there costs nothing. Without them gpt-6-sol would go out at the 4,000
+// token default with no effort, the shape that stopped cf-8 at its first chunk.
+const GPT_6_SOL_REASONING_EFFORT = "low";
+const GPT_6_SOL_MAX_OUTPUT_TOKENS = 16000;
+
+// Built by a function, not held as a literal, so that
+// FoundryModelFactory.registerFoundryModels() can rebuild every registration
+// through the factory (stage ro's proof, prove-request-options.mjs).
+const buildFoundryModels = () => [
   // ── gpt-5.4-mini (migrated unchanged from model-definitions.js; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4-mini",
@@ -320,7 +450,11 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5.4-mini",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.4-mini". Same-vendor Foundry peer at the same 400K
+    // context with an identical behaviour-capability set (vision, pdf,
+    // reasoning, tool_calling).
+    fallbackTo: "azure-openai/gpt-5",
     releaseDate: "2026-03-17",
     categoryDescription:
       "Efficient general-purpose model routed via Microsoft Foundry — same upstream as openai/gpt-5.4-mini, different transport",
@@ -376,7 +510,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 128000,
-    fallbackTo: "openai/gpt-4o-mini",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-4o-mini". Its own successor in the same OpenAI mini tier -
+    // 8x the context, adds pdf, keeps vision and tool_calling.
+    fallbackTo: "azure-openai/gpt-4.1-mini",
     releaseDate: "2024-07-18",
     categoryDescription:
       "Cost-effective multimodal model routed via Microsoft Foundry — same upstream as openai/gpt-4o-mini, different transport",
@@ -421,7 +558,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.4-nano",
     displayName: "GPT-5.4 Nano",
     description:
-      "The most lightweight, cost-efficient GPT-5.4 variant, routed via Microsoft Foundry. Optimised for speed-critical, high-volume tasks (classification, extraction, ranking). Empirically verified to support vision and text generation (31 May 2026). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.4-nano for OpenRouter routing.",
+      "The most lightweight, cost-efficient GPT-5.4 variant, routed via Microsoft Foundry. Optimised for speed-critical, high-volume tasks (classification, extraction, ranking). Empirically verified to support vision and text generation (31 May 2026). Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: OpenAI public pricing as of 2026-05-31; Foundry billing may vary
     costs: { input: 0.2, output: 1.25 },
     capabilities: [
@@ -435,7 +572,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5.4-nano",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.4-nano". Same generation one tier up, same 400K context,
+    // strict capability superset.
+    fallbackTo: "azure-openai/gpt-5.4-mini",
     releaseDate: "2026-03-17",
     categoryDescription:
       "Lightweight, cost-efficient model routed via Microsoft Foundry — same upstream as openai/gpt-5.4-nano, different transport",
@@ -494,7 +634,11 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1050000,
-    fallbackTo: "openai/gpt-5.4",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.4". No Foundry deployment pairs tool_calling with a
+    // context at or above 1050000. gpt-5.5 matches the context but is
+    // registered without tool_calling, so it would silently drop tool use.
+    fallbackTo: null,
     releaseDate: "2026-03-05",
     categoryDescription:
       "Frontier-class general-purpose model routed via Microsoft Foundry — same upstream as openai/gpt-5.4, different transport",
@@ -660,7 +804,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.1",
     displayName: "GPT-5.1",
     description:
-      "OpenAI's GPT-5.1 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.1 for OpenRouter routing.",
+      "OpenAI's GPT-5.1 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.1 sibling costs
     costs: { input: 1.25, output: 10.0 },
     capabilities: [
@@ -674,7 +818,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5.1",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.1". Its direct successor - same 400K context, identical
+    // capabilities.
+    fallbackTo: "azure-openai/gpt-5.2",
     releaseDate: "2025-11-13",
     categoryDescription:
       "Frontier-class general-purpose model routed via Microsoft Foundry — same upstream as openai/gpt-5.1, different transport",
@@ -722,7 +869,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.2",
     displayName: "GPT-5.2",
     description:
-      "OpenAI's GPT-5.2 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.2 for OpenRouter routing.",
+      "OpenAI's GPT-5.2 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.2 sibling costs
     costs: { input: 1.75, output: 14.0 },
     capabilities: [
@@ -736,7 +883,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5.2",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.2". Its direct successor - 2.6x the context, identical
+    // capabilities.
+    fallbackTo: "azure-openai/gpt-5.4",
     releaseDate: "2025-12-11",
     categoryDescription:
       "Frontier-class general-purpose model routed via Microsoft Foundry — same upstream as openai/gpt-5.2, different transport",
@@ -784,7 +934,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-4.1",
     displayName: "GPT-4.1",
     description:
-      "OpenAI's GPT-4.1 flagship model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Optimised for instruction following, software engineering, and long-context reasoning. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-4.1 for OpenRouter routing.",
+      "OpenAI's GPT-4.1 flagship model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Optimised for instruction following, software engineering, and long-context reasoning. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-4.1 sibling costs
     costs: { input: 2.0, output: 8.0 },
     capabilities: [
@@ -798,7 +948,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1047576,
-    fallbackTo: "openai/gpt-4.1",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-4.1". Next-generation OpenAI flagship on Foundry -
+    // identical capabilities, marginally larger context.
+    fallbackTo: "azure-openai/gpt-5.4",
     releaseDate: "2025-04-14",
     categoryDescription:
       "Flagship general-purpose model routed via Microsoft Foundry — same upstream as openai/gpt-4.1, different transport",
@@ -845,7 +998,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-4.1-mini",
     displayName: "GPT-4.1 Mini",
     description:
-      "OpenAI's GPT-4.1 Mini model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Mid-sized, delivering strong performance at lower latency and cost. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-4.1-mini for OpenRouter routing.",
+      "OpenAI's GPT-4.1 Mini model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Mid-sized, delivering strong performance at lower latency and cost. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-4.1-mini sibling costs
     costs: { input: 0.4, output: 1.6 },
     capabilities: [
@@ -859,7 +1012,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1047576,
-    fallbackTo: "openai/gpt-4.1-mini",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-4.1-mini". Same family and generation one tier up, same
+    // context and capabilities.
+    fallbackTo: "azure-openai/gpt-4.1",
     releaseDate: "2025-04-14",
     categoryDescription:
       "Mid-sized, cost-effective model routed via Microsoft Foundry — same upstream as openai/gpt-4.1-mini, different transport",
@@ -906,7 +1062,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-4.1-nano",
     displayName: "GPT-4.1 Nano",
     description:
-      "OpenAI's GPT-4.1 Nano model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. The fastest, most cost-efficient GPT-4.1 variant, ideal for low-latency classification and extraction. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-4.1-nano for OpenRouter routing.",
+      "OpenAI's GPT-4.1 Nano model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. The fastest, most cost-efficient GPT-4.1 variant, ideal for low-latency classification and extraction. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-4.1-nano sibling costs
     costs: { input: 0.1, output: 0.4 },
     capabilities: [
@@ -920,7 +1076,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1047576,
-    fallbackTo: "openai/gpt-4.1-nano",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-4.1-nano". Same family and generation one tier up, same
+    // context and capabilities.
+    fallbackTo: "azure-openai/gpt-4.1-mini",
     releaseDate: "2025-04-14",
     categoryDescription:
       "Fastest, most cost-efficient GPT-4.1 variant routed via Microsoft Foundry — same upstream as openai/gpt-4.1-nano, different transport",
@@ -1031,7 +1190,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "o4-mini",
     displayName: "o4 Mini",
     description:
-      "OpenAI's o4-mini compact reasoning model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Rejects temperature/top_p — treated as a reasoning model (matched by the existing o4 pattern in the adapter). Optimised for fast, cost-efficient multi-step reasoning. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/o4-mini for OpenRouter routing.",
+      "OpenAI's o4-mini compact reasoning model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Rejects temperature/top_p — treated as a reasoning model (matched by the existing o4 pattern in the adapter). Optimised for fast, cost-efficient multi-step reasoning. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Microsoft retires this model on 19 November 2026, after which it is no longer offered here.",
     // Source: in-repo openai/o4-mini sibling costs
     costs: { input: 1.1, output: 4.4 },
     capabilities: [
@@ -1046,7 +1205,13 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 200000,
-    fallbackTo: "openai/o4-mini",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/o4-mini". The current OpenAI mini-tier reasoning deployment on
+    // Foundry - 2x the context, identical capabilities.
+    fallbackTo: "azure-openai/gpt-5.4-mini",
+    // Catalogue: Deprecating, no newer version (discover.mjs, 28 September
+    // 2026). Parcel 51: from this date the model registers disabled.
+    retiresOn: "2026-11-19",
     releaseDate: "2025-04-16",
     categoryDescription:
       "Compact reasoning model routed via Microsoft Foundry — same upstream as openai/o4-mini, different transport",
@@ -1111,7 +1276,7 @@ const FOUNDRY_MODELS = [
     displayName: "Grok 4.1 Fast (Reasoning)",
     upstreamProvider: "xAI",
     description:
-      "xAI's Grok 4.1 Fast (reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey), so it needs no separate transport. Accepts temperature/top_p. Text-only reasoning model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use x-ai/grok-4.1-fast for OpenRouter routing.",
+      "xAI's Grok 4.1 Fast (reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey), so it needs no separate transport. Accepts temperature/top_p. Text-only reasoning model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo x-ai/grok-4.1-fast sibling costs
     costs: { input: 0.0, output: 0.0 },
     capabilities: [
@@ -1123,7 +1288,11 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 2000000,
-    fallbackTo: "x-ai/grok-4.1-fast",
+    // Repointed for register item 107 (never cross the streams): was
+    // "x-ai/grok-4.1-fast". Nothing else on Foundry reaches its 2000000
+    // context. Its non-reasoning sibling matches the context but drops
+    // reasoning, so it fails the superset test.
+    fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Fast reasoning model (xAI format) routed via Microsoft Foundry — same upstream as x-ai/grok-4.1-fast, different transport",
@@ -1166,7 +1335,7 @@ const FOUNDRY_MODELS = [
     displayName: "Grok 4.1 Fast (Non-Reasoning)",
     upstreamProvider: "xAI",
     description:
-      "xAI's Grok 4.1 Fast (non-reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use x-ai/grok-4.1-fast for OpenRouter routing.",
+      "xAI's Grok 4.1 Fast (non-reasoning variant), routed via Microsoft Foundry. Format 'xAI' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo x-ai/grok-4.1-fast sibling costs
     costs: { input: 0.0, output: 0.0 },
     capabilities: [
@@ -1177,7 +1346,12 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 2000000,
-    fallbackTo: "x-ai/grok-4.1-fast",
+    // Repointed for register item 107 (never cross the streams): was
+    // "x-ai/grok-4.1-fast". The reasoning variant of the same xAI deployment
+    // pair - same 2000000 context, strict capability superset. Note it emits
+    // reasoning tokens this variant does not, so a substitution costs more;
+    // that is accepted because no closer peer exists.
+    fallbackTo: "azure-openai/grok-4-1-fast-reasoning",
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Fast general-purpose model (xAI format) routed via Microsoft Foundry — same upstream as x-ai/grok-4.1-fast, different transport",
@@ -1217,7 +1391,7 @@ const FOUNDRY_MODELS = [
     displayName: "DeepSeek V3.1",
     upstreamProvider: "deepseek",
     description:
-      "DeepSeek's V3.1 model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-chat-v3.1 for OpenRouter routing.",
+      "DeepSeek's V3.1 model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo deepseek/deepseek-chat-v3.1 sibling costs
     costs: { input: 0.2, output: 0.8 },
     capabilities: [
@@ -1279,7 +1453,7 @@ const FOUNDRY_MODELS = [
     displayName: "DeepSeek R1",
     upstreamProvider: "deepseek",
     description:
-      "DeepSeek's R1 reasoning model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only reasoning model; emits chain-of-thought in a separate reasoning_content field (empirically verified, same as gpt-oss-120b). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-r1 for OpenRouter routing.",
+      "DeepSeek's R1 reasoning model, routed via Microsoft Foundry. Format 'DeepSeek' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only reasoning model; emits chain-of-thought in a separate reasoning_content field (empirically verified, same as gpt-oss-120b). Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo deepseek/deepseek-r1 sibling costs
     costs: { input: 0.8, output: 2.4 },
     capabilities: [
@@ -1347,7 +1521,7 @@ const FOUNDRY_MODELS = [
     displayName: "Cohere Command A",
     upstreamProvider: "cohere",
     description:
-      "Cohere's Command A model, routed via Microsoft Foundry. Format 'Cohere' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use cohere/command-a for OpenRouter routing.",
+      "Cohere's Command A model, routed via Microsoft Foundry. Format 'Cohere' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo cohere/command-a sibling costs
     costs: { input: 2.5, output: 10.0 },
     capabilities: [
@@ -1358,7 +1532,11 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 256000,
-    fallbackTo: "cohere/command-a",
+    // Repointed for register item 107 (never cross the streams): was
+    // "cohere/command-a". The only Cohere deployment on Foundry. Every
+    // capability-and-context match is another vendor's model, which is a
+    // substitution the user did not choose.
+    fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Enterprise general-purpose model (Cohere format) routed via Microsoft Foundry — same upstream as cohere/command-a, different transport",
@@ -1398,7 +1576,7 @@ const FOUNDRY_MODELS = [
     displayName: "Llama 3.3 70B Instruct",
     upstreamProvider: "meta-llama",
     description:
-      "Meta's Llama 3.3 70B Instruct model, routed via Microsoft Foundry. Format 'Meta' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use meta-llama/llama-3.3-70b-instruct for OpenRouter routing.",
+      "Meta's Llama 3.3 70B Instruct model, routed via Microsoft Foundry. Format 'Meta' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo meta-llama/llama-3.3-70b-instruct sibling costs
     costs: { input: 0.12, output: 0.3 },
     capabilities: [
@@ -1409,7 +1587,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 131072,
-    fallbackTo: "meta-llama/llama-3.3-70b-instruct",
+    // Repointed for register item 107 (never cross the streams): was
+    // "meta-llama/llama-3.3-70b-instruct". Meta's next-generation Foundry
+    // deployment - 8x the context and adds vision.
+    fallbackTo: "azure-openai/Llama-4-Maverick-17B-128E-Instruct-FP8",
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "General-purpose model (Meta format) routed via Microsoft Foundry — same upstream as meta-llama/llama-3.3-70b-instruct, different transport",
@@ -1449,7 +1630,7 @@ const FOUNDRY_MODELS = [
     displayName: "Phi-4",
     upstreamProvider: "microsoft",
     description:
-      "Microsoft's Phi-4 model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use microsoft/phi-4 for OpenRouter routing.",
+      "Microsoft's Phi-4 model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo microsoft/phi-4 sibling costs
     costs: { input: 0.07, output: 0.14 },
     capabilities: [
@@ -1460,7 +1641,11 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 16384,
-    fallbackTo: "microsoft/phi-4",
+    // Repointed for register item 107 (never cross the streams): was
+    // "microsoft/phi-4". Same Microsoft Phi-4 family, 8x the context, strict
+    // capability superset, and the only Phi sibling carrying a measured
+    // price rather than the unpriced 0/0 of item 89.
+    fallbackTo: "azure-openai/Phi-4-multimodal-instruct",
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Small efficient general-purpose model (Microsoft format) routed via Microsoft Foundry — same upstream as microsoft/phi-4, different transport",
@@ -1555,7 +1740,7 @@ const FOUNDRY_MODELS = [
     displayName: "Phi-4 Multimodal Instruct",
     upstreamProvider: "microsoft",
     description:
-      "Microsoft's Phi-4 Multimodal Instruct model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Multimodal by specification, but registered TEXT-ONLY here pending real-image vision verification (see imageSupportNote). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use microsoft/phi-4-multimodal-instruct for OpenRouter routing.",
+      "Microsoft's Phi-4 Multimodal Instruct model, routed via Microsoft Foundry. Format 'Microsoft' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Multimodal by specification, but registered TEXT-ONLY here pending real-image vision verification (see imageSupportNote). Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo microsoft/phi-4-multimodal-instruct sibling costs (text input/output only)
     costs: { input: 0.05, output: 0.1 },
     capabilities: [
@@ -1567,7 +1752,11 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 131072,
-    fallbackTo: "microsoft/phi-4-multimodal-instruct",
+    // Repointed for register item 107 (never cross the streams): was
+    // "microsoft/phi-4-multimodal-instruct". The only Phi deployment with
+    // vision, so no same-vendor target satisfies the superset test; every
+    // alternative is another vendor's model.
+    fallbackTo: null,
     releaseDate: null, // not authoritatively known — null per factory unknown-date handling
     categoryDescription:
       "Small multimodal-by-spec model (Microsoft format) routed via Microsoft Foundry — same upstream as microsoft/phi-4-multimodal-instruct, registered text-only pending vision verification",
@@ -1739,7 +1928,7 @@ const FOUNDRY_MODELS = [
     displayName: "Llama 4 Maverick 17B 128E Instruct FP8",
     upstreamProvider: "meta-llama",
     description:
-      "Meta's Llama 4 Maverick (17B active / 400B total, 128-expert MoE, FP8), routed via Microsoft Foundry. Format 'Meta' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered vision-capable as a HYPOTHESIS (Llama 4 Maverick is multimodal by specification and the OpenRouter sibling meta-llama/llama-4-maverick supports image input) — NOT yet empirically verified on this Foundry deployment. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use meta-llama/llama-4-maverick for OpenRouter routing.",
+      "Meta's Llama 4 Maverick (17B active / 400B total, 128-expert MoE, FP8), routed via Microsoft Foundry. Format 'Meta' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered vision-capable as a HYPOTHESIS (Llama 4 Maverick is multimodal by specification and the OpenRouter sibling meta-llama/llama-4-maverick supports image input) — NOT yet empirically verified on this Foundry deployment. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo meta-llama/llama-4-maverick sibling costs (input/output only; the sibling's image cost is omitted per the Foundry entry shape)
     costs: { input: 0.18, output: 0.6 },
     capabilities: [
@@ -1751,7 +1940,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 1048576,
-    fallbackTo: "meta-llama/llama-4-maverick",
+    // Repointed for register item 107 (never cross the streams): was
+    // "meta-llama/llama-4-maverick". Meta's largest Foundry deployment - no
+    // same-vendor peer reaches its 1048576 context.
+    fallbackTo: null,
     releaseDate: "2025-04-05",
     categoryDescription:
       "Multimodal MoE model (Meta format) routed via Microsoft Foundry — same upstream as meta-llama/llama-4-maverick, different transport",
@@ -1792,7 +1984,7 @@ const FOUNDRY_MODELS = [
     displayName: "DeepSeek V3.2",
     upstreamProvider: "deepseek",
     description:
-      "DeepSeek's V3.2 model, routed via Microsoft Foundry. Format 'DeepSeek' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Supersedes the Deprecating DeepSeek-V3.1 Foundry deployment. Registered text-only and non-reasoning for this integration (the upstream model also offers reasoning and tool use — NOT claimed here pending verification). Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use deepseek/deepseek-v3.2 for OpenRouter routing.",
+      "DeepSeek's V3.2 model, routed via Microsoft Foundry. Format 'DeepSeek' — serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Supersedes the Deprecating DeepSeek-V3.1 Foundry deployment. Registered text-only and non-reasoning for this integration (the upstream model also offers reasoning and tool use — NOT claimed here pending verification). Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo deepseek/deepseek-v3.2 sibling costs
     costs: { input: 0.28, output: 0.4 },
     capabilities: [
@@ -1803,7 +1995,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 163840,
-    fallbackTo: "deepseek/deepseek-v3.2",
+    // Repointed for register item 107 (never cross the streams): was
+    // "deepseek/deepseek-v3.2". The only enabled DeepSeek deployment; its
+    // two siblings are disabled, and a disabled target is not a repair.
+    fallbackTo: null,
     releaseDate: "2025-12-01",
     categoryDescription:
       "General-purpose model (DeepSeek format) routed via Microsoft Foundry — same upstream as deepseek/deepseek-v3.2, different transport",
@@ -1843,7 +2038,7 @@ const FOUNDRY_MODELS = [
     displayName: "Kimi K2.5",
     upstreamProvider: "moonshotai",
     description:
-      "MoonshotAI's Kimi K2.5 model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling moonshotai/kimi-k2.5 is natively multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use moonshotai/kimi-k2.5 for OpenRouter routing.",
+      "MoonshotAI's Kimi K2.5 model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling moonshotai/kimi-k2.5 is natively multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo moonshotai/kimi-k2.5 sibling costs
     costs: { input: 0.6, output: 3.0 },
     capabilities: [
@@ -1854,7 +2049,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 262144,
-    fallbackTo: "moonshotai/kimi-k2.5",
+    // Repointed for register item 107 (never cross the streams): was
+    // "moonshotai/kimi-k2.5". The only Moonshot deployment on Foundry. Every
+    // capability-and-context match is another vendor's model.
+    fallbackTo: null,
     releaseDate: "2026-01-27",
     categoryDescription:
       "General-purpose model (MoonshotAI format) routed via Microsoft Foundry — same upstream as moonshotai/kimi-k2.5, different transport",
@@ -1894,7 +2092,7 @@ const FOUNDRY_MODELS = [
     displayName: "Mistral Large 3",
     upstreamProvider: "mistralai",
     description:
-      "Mistral AI's Mistral Large 3 frontier model (41B active / 675B total, granular MoE), routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling mistralai/mistral-large-2512 'Mistral Large 3 2512' is multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use mistralai/mistral-large-2512 for OpenRouter routing.",
+      "Mistral AI's Mistral Large 3 frontier model (41B active / 675B total, granular MoE), routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (no transport change). Accepts temperature/top_p. Registered text-only and non-reasoning for this integration. (The OpenRouter sibling mistralai/mistral-large-2512 'Mistral Large 3 2512' is multimodal upstream, but vision is NOT claimed here until verified on the Foundry deployment.) Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo mistralai/mistral-large-2512 ("Mistral Large 3 2512") sibling costs
     costs: { input: 0.5, output: 1.5 },
     capabilities: [
@@ -1905,7 +2103,10 @@ const FOUNDRY_MODELS = [
       "multilingual",
     ],
     maxContext: 262144,
-    fallbackTo: "mistralai/mistral-large-2512",
+    // Repointed for register item 107 (never cross the streams): was
+    // "mistralai/mistral-large-2512". The only Mistral deployment on
+    // Foundry. Every capability-and-context match is another vendor's model.
+    fallbackTo: null,
     releaseDate: "2025-12-01",
     categoryDescription:
       "Frontier general-purpose model (Mistral AI format) routed via Microsoft Foundry — same upstream as mistralai/mistral-large-2512, different transport",
@@ -1950,7 +2151,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5-mini",
     displayName: "GPT-5 Mini",
     description:
-      "Compact GPT-5 family model balancing capability and cost. Reads images and PDF attachments. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5-mini for OpenRouter routing.",
+      "Compact GPT-5 family model balancing capability and cost. Reads images and PDF attachments. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5-mini sibling costs
     costs: { input: 0.25, output: 2.0 },
     capabilities: [
@@ -1961,7 +2162,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5-mini",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5-mini". Same generation one tier up, same 400K context,
+    // adds tool_calling.
+    fallbackTo: "azure-openai/gpt-5",
     releaseDate: "2025-08-07",
     categoryDescription:
       "Compact GPT-5 family model routed via Microsoft Foundry — same upstream as openai/gpt-5-mini, different transport",
@@ -2010,7 +2214,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5-nano",
     displayName: "GPT-5 Nano",
     description:
-      "Smallest GPT-5 family model; fast and inexpensive. Strong image and PDF reading for its size. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5-nano for OpenRouter routing.",
+      "Smallest GPT-5 family model; fast and inexpensive. Strong image and PDF reading for its size. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5-nano sibling costs
     costs: { input: 0.05, output: 0.4 },
     capabilities: [
@@ -2021,7 +2225,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 400000,
-    fallbackTo: "openai/gpt-5-nano",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5-nano". Same generation one tier up, same context and
+    // capabilities.
+    fallbackTo: "azure-openai/gpt-5-mini",
     releaseDate: "2025-08-07",
     categoryDescription:
       "Smallest GPT-5 family model routed via Microsoft Foundry — same upstream as openai/gpt-5-nano, different transport",
@@ -2072,7 +2279,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "o3",
     displayName: "o3",
     description:
-      "Reasoning specialist. Handles PDFs well; image understanding present but text inside images reads unreliably. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: engages with images but transcribes small text in them unreliably; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
+      "Reasoning specialist. Handles PDFs well; image understanding present but text inside images reads unreliably. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: engages with images but transcribes small text in them unreliably; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry. Microsoft retires this model on 19 November 2026, after which it is no longer offered here.",
     // provisional — Foundry MaaS pricing not reconciled (no in-repo sibling)
     costs: { input: 0, output: 0 },
     capabilities: [
@@ -2085,6 +2292,9 @@ const FOUNDRY_MODELS = [
     ],
     maxContext: 200000, // o-series family value (matches the o4-mini entry)
     fallbackTo: null,
+    // Catalogue: Deprecating, no newer version (discover.mjs, 28 September
+    // 2026). Parcel 51: from this date the model registers disabled.
+    retiresOn: "2026-11-19",
     releaseDate: "2025-04-16",
     categoryDescription:
       "Reasoning model routed via Microsoft Foundry — no OpenRouter sibling registered, Foundry-only transport",
@@ -2133,7 +2343,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.5",
     displayName: "GPT-5.5",
     description:
-      "Previous-generation flagship; strong all-round capability including image and PDF reading. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.5 for OpenRouter routing.",
+      "Previous-generation flagship; strong all-round capability including image and PDF reading. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.5 sibling costs
     costs: { input: 5.0, output: 30.0 },
     capabilities: [
@@ -2144,7 +2354,11 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1050000,
-    fallbackTo: "openai/gpt-5.5",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.5". Nothing on Foundry pairs vision, pdf and reasoning
+    // with a context at or above 1050000. gpt-5.4 matches the context but is
+    // registered without reasoning.
+    fallbackTo: null,
     releaseDate: "2026-04-24",
     categoryDescription:
       "Previous-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.5, different transport",
@@ -2195,7 +2409,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.6-terra",
     displayName: "GPT-5.6 Terra",
     description:
-      "Current flagship family. Full image reading; PDF handling present but weaker than its siblings in testing. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-terra for OpenRouter routing.",
+      "Current flagship family. Full image reading; PDF handling present but weaker than its siblings in testing. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.6-terra sibling costs
     costs: { input: 2.5, output: 15.0 },
     capabilities: [
@@ -2206,7 +2420,12 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1000000,
-    fallbackTo: "openai/gpt-5.6-terra",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.6-terra". Largest member of the same 5.6 flagship
+    // family, same context and capabilities. Its own description records
+    // weaker PDF handling than its siblings, so sol is the upgrade rather
+    // than the sideways move.
+    fallbackTo: "azure-openai/gpt-5.6-sol",
     releaseDate: "2026-07-09",
     categoryDescription:
       "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-terra, different transport",
@@ -2257,7 +2476,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.6-luna",
     displayName: "GPT-5.6 Luna",
     description:
-      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-luna for OpenRouter routing.",
+      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.6-luna sibling costs
     costs: { input: 1.0, output: 6.0 },
     capabilities: [
@@ -2268,7 +2487,11 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1000000,
-    fallbackTo: "openai/gpt-5.6-luna",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.6-luna". Largest member of the same 5.6 flagship family,
+    // same context and capabilities. Chosen over terra, whose entry records
+    // weaker PDF handling.
+    fallbackTo: "azure-openai/gpt-5.6-sol",
     releaseDate: "2026-07-09",
     categoryDescription:
       "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-luna, different transport",
@@ -2319,7 +2542,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.6-sol",
     displayName: "GPT-5.6 Sol",
     description:
-      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.6-sol for OpenRouter routing.",
+      "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.6-sol sibling costs
     costs: { input: 5.0, output: 30.0 },
     capabilities: [
@@ -2330,7 +2553,10 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1000000,
-    fallbackTo: "openai/gpt-5.6-sol",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.6-sol". The previous OpenAI flagship on Foundry at the
+    // same capability set and a marginally larger context.
+    fallbackTo: "azure-openai/gpt-5.5",
     releaseDate: "2026-07-09",
     categoryDescription:
       "Current-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-5.6-sol, different transport",
@@ -2366,6 +2592,307 @@ const FOUNDRY_MODELS = [
     ],
     imageSupportNote:
       "Vision measured on this deployment 27-28 August 2026: median accepted-reads over three sampled runs (spread 1.00-1.00).",
+    // Stage ro: choices for round cf-9 to measure; see the two constants above
+    // the list. One of two registrations that declare either; gpt-6-sol is the
+    // other (stage ro-2).
+    reasoningEffort: GPT_5_6_SOL_REASONING_EFFORT,
+    maxOutputTokens: GPT_5_6_SOL_MAX_OUTPUT_TOKENS,
+  }),
+
+  // ── gpt-6-astra (chat — reasoning; deployed AND registered 17 September 2026) ──
+  // Parcel 11-foundry-add-sweep. Deployed by this parcel, then probed BEFORE
+  // registration — the order parcel 9 made mandatory when it retired the family
+  // wildcards ("ADDING A DEPLOYMENT WITHOUT PROBING IT IS NOW THE FAILURE MODE").
+  // Measured 17 September 2026 by .claude/foundry-catalogue/probe.mjs, 13
+  // requests, artefact results/probe-gpt-6-astra-2026-09-17.json:
+  //   token field : max_completion_tokens (max_tokens refused,
+  //                 unsupported_parameter)
+  //   sampling    : ALL FOUR refused — temperature unsupported_value ("Only the
+  //                 default (1) value is supported"), top_p / presence_penalty /
+  //                 frequency_penalty unsupported_parameter. The mixed code pair
+  //                 is the same shape the rest of the estate shows.
+  //   image       : accepted-reads, 3 of 3 runs, sentinel named, spread 1.00-1.00
+  //   pdf         : accepted-reads
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted, so
+  //                 it needs no forced effort value.
+  // Hidden reasoning spend on the image task was 37 / 50 / 44 completion tokens
+  // across the three runs and never returned empty at a high cap, so the
+  // STANDARD REASONING_BUDGET_FLOOR (1024) is sufficient and the HIGH floor
+  // (2048) is deliberately not used — same reasoning as the five added on
+  // 29 August 2026.
+  // "reasoning" capability: INDIRECT, on the v1 adapter's own signature (all
+  // four sampling parameters refused), not on observed reasoning tokens.
+  createFoundryModel({
+    deploymentName: "gpt-6-astra",
+    displayName: "GPT-6 Astra",
+    description:
+      "Newest flagship on this resource, for demanding end-to-end work — advanced analysis, software engineering, deep research and document creation. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 17 September 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: Azure retail price list (prices.azure.com/api/retail/prices),
+    // serviceName "Foundry Models", product "Azure OpenAI GPT6", meters
+    // "6-astra ShortCo Inp Std Gl 1M Tokens" / "6-astra ShortCo Opt Std Gl 1M
+    // Tokens", Global Standard, USD per 1M, effective 2026-09-01, read 27
+    // September 2026 (parcel 46's price-rerun.json). RE-SOURCED 27 September
+    // 2026, parcel 47: this comment previously cited the in-repo OpenRouter
+    // sibling openai/gpt-6-astra, which crossed the provider streams (register
+    // item 107). The figure is unchanged — Azure's list and the sibling agree.
+    // LongCo rates also exist (20 / 75); this entry records the ShortCo rate.
+    costs: { input: 10.0, output: 50.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    // Source: OpenAI's model page, https://developers.openai.com/api/docs/models/gpt-6-astra,
+    // read 27 September 2026 ("1,050,000 context window"; "Maximum input
+    // tokens: 922,000"; "128,000 max output tokens"). The Foundry catalogue row
+    // carries no context field. RE-SOURCED 27 September 2026, parcel 47: this
+    // comment previously cited the OpenRouter sibling; the figure is unchanged.
+    maxContext: 1050000,
+    // Never cross the provider streams (register item 107): a Foundry entry
+    // falls back to a Foundry sibling, never to the OpenRouter one.
+    // CHANGED 27 September 2026, parcel 47, from azure-openai/gpt-5.6-sol, which
+    // the shipped fallback suitability rule REFUSES on the context floor:
+    // gpt-5.6-sol declares 1000000 against astra's 1050000. The corrector did
+    // not replace it, so the authored fallback had been dead since this entry
+    // was registered. Of the 35 enabled Foundry chat entries other than astra,
+    // exactly three pass the rule: gpt-5.5, gpt-6-luna and gpt-6-sol. gpt-6-sol
+    // is the same generation and reads images and PDFs fully on its own probe
+    // (luna's PDF read is partial). Chain: gpt-6-astra -> gpt-6-sol -> gpt-5.5
+    // -> (end). Measured by .claude/measurements/p47-foundry-provenance-pin-and-
+    // astra/astra-fallback-check.mjs.
+    fallbackTo: "azure-openai/gpt-6-sol",
+    releaseDate: "2026-09-03",
+    categoryDescription:
+      "Newest-generation flagship routed via Microsoft Foundry — same upstream as openai/gpt-6-astra, different transport",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "the most demanding general-purpose work",
+      "advanced analysis and deep research",
+      "mixed image and document tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 17 September 2026: median accepted-reads over three sampled runs (spread 1.00-1.00), sentinel named in all three.",
+  }),
+
+  // ── gpt-6-luna (chat — reasoning; deployed 27 September 2026 by the owner, registered the same day) ──
+  // Parcel 46. Probed BEFORE registration. Measured 27 September 2026 by
+  // .claude/foundry-catalogue/probe.mjs, 13 requests, artefact
+  // results/probe-gpt-6-luna-2026-09-27.json:
+  //   token field : max_completion_tokens (max_tokens refused,
+  //                 unsupported_parameter)
+  //   sampling    : ALL FOUR refused — temperature unsupported_value ("Only the
+  //                 default (1) value is supported"), top_p / presence_penalty /
+  //                 frequency_penalty unsupported_parameter.
+  //   image       : median accepted-reads over 3 runs (partial / reads / reads,
+  //                 ratio spread 0.67-0.83, sentinel named)
+  //   pdf         : accepted-PARTIAL, one run, ratio 0.50 ("HELLO" for HEPDOC).
+  //                 Kept as "pdf" on the probe's own rule (partial or better is
+  //                 capable) and the gpt-5.6-terra precedent; the description
+  //                 says it reads PDFs less reliably.
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted.
+  // Hidden reasoning spend on the image task was 1460 / 471 / 1161 completion
+  // tokens and never returned empty at a high cap. TWO OF THREE RUNS EXCEED the
+  // standard REASONING_BUDGET_FLOOR (1024), so this deployment takes the HIGH
+  // floor (2048), unlike astra and sol.
+  // "reasoning" capability: on the v1 adapter's own signature (all four sampling
+  // parameters refused), and here ALSO observed directly — 6 reasoning tokens
+  // on the explicit-high row.
+  createFoundryModel({
+    deploymentName: "gpt-6-luna",
+    displayName: "GPT-6 Luna",
+    description:
+      "OpenAI's most efficient GPT-6 model, for focused, high-volume tasks. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 September 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: Azure retail price list (prices.azure.com/api/retail/prices),
+    // serviceName "Foundry Models", product "Azure OpenAI GPT6", meters
+    // "6-luna ShortCo Inp Std Gl 1M Tokens" / "6-luna ShortCo Opt Std Gl 1M
+    // Tokens", Global Standard, USD per 1M, effective 2026-09-01, read 27
+    // September 2026. THE FIRST ENTRY IN THIS FILE PRICED FROM AZURE rather than
+    // from an OpenRouter sibling or OpenAI's list. LongCo rates also exist
+    // (0.2 / 0.75), applying above 272K input tokens per OpenAI's model page;
+    // this entry records the ShortCo rate only.
+    costs: { input: 0.1, output: 0.5 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    // Source: OpenAI's model page, https://developers.openai.com/api/docs/models/gpt-6-luna,
+    // read 27 September 2026 ("1,050,000 context window"). The Foundry
+    // catalogue row carries no context field.
+    maxContext: 1050000,
+    // Never cross the provider streams (register item 107): a Foundry entry
+    // falls back to a Foundry sibling, never to the OpenRouter one.
+    // CHANGED 28 September 2026, parcel 48, from azure-openai/gpt-5.5. The
+    // comment here then said gpt-5.5 was the only eligible target; that was
+    // false once gpt-6-sol and gpt-6-astra were registered. Of the 35 enabled
+    // Foundry chat entries other than luna, exactly three pass the shipped
+    // fallback suitability rule: gpt-6-sol ($2 / $10, 20x luna's input price),
+    // gpt-5.5 ($5 / $30, 50x) and gpt-6-astra ($10 / $50, 100x). The gpt-5.6
+    // family sits at 1000000 and is refused on the context floor. gpt-6-sol is
+    // the cheapest eligible target and the same generation, and reads PDFs fully
+    // where luna's read is partial. Chain: gpt-6-luna -> gpt-6-sol -> gpt-5.5
+    // -> (end). Measured by .claude/measurements/p48-foundry-descriptions-and-
+    // luna-fallback/luna-fallback-check.mjs.
+    // REACHABILITY, measured the same day (that folder's drive-foundry-429.mjs):
+    // a rate limit on luna in Chat does NOT reach this fallback on either motion
+    // setting — with motion on the embed retries luna itself, with reduced motion
+    // the send fails with no retry and no fallback — because the fallback walk
+    // is entered only from the OpenRouter client, which a Foundry send never calls.
+    fallbackTo: "azure-openai/gpt-6-sol",
+    releaseDate: "2026-09-22",
+    categoryDescription:
+      "Newest-generation efficient model routed via Microsoft Foundry",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "efficiency-at-scale",
+    },
+    bestFor: [
+      "focused, high-volume tasks",
+      "low-cost image reading",
+      "everyday work where cost matters most",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "cost-efficiency",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27 September 2026: median accepted-reads over three sampled runs (spread 0.67-0.83), sentinel named.",
+  }),
+
+  // ── gpt-6-sol (chat — reasoning; deployed 27 September 2026 by the owner, registered the same day) ──
+  // Parcel 46. Probed BEFORE registration. Measured 27 September 2026 by
+  // .claude/foundry-catalogue/probe.mjs, 13 requests, artefact
+  // results/probe-gpt-6-sol-2026-09-27.json:
+  //   token field : max_completion_tokens (max_tokens refused,
+  //                 unsupported_parameter)
+  //   sampling    : ALL FOUR refused — temperature unsupported_value ("Only the
+  //                 default (1) value is supported"), top_p / presence_penalty /
+  //                 frequency_penalty unsupported_parameter.
+  //   image       : accepted-reads, 3 of 3 runs, ratio 0.83 each, sentinel named
+  //   pdf         : accepted-reads, ratio 1.00
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted.
+  // Hidden reasoning spend on the image task was 222 / 267 / 162 completion
+  // tokens and never returned empty at a high cap, so the STANDARD
+  // REASONING_BUDGET_FLOOR (1024) is sufficient.
+  // "reasoning" capability: INDIRECT, on the v1 adapter's own signature (all
+  // four sampling parameters refused), not on observed reasoning tokens (0 on
+  // every effort row).
+  createFoundryModel({
+    deploymentName: "gpt-6-sol",
+    displayName: "GPT-6 Sol",
+    description:
+      "GPT-6 model built for complex coding and agentic workflows, at a fraction of Astra's price. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 September 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: Azure retail price list (prices.azure.com/api/retail/prices),
+    // serviceName "Foundry Models", product "Azure OpenAI GPT6", meters
+    // "6-sol ShortCo Inp Std Gl 1M Tokens" / "6-sol ShortCo Opt Std Gl 1M
+    // Tokens", Global Standard, USD per 1M, effective 2026-09-01, read 27
+    // September 2026. Priced from Azure, as gpt-6-luna above. LongCo rates also
+    // exist (4 / 15), applying above 272K input tokens per OpenAI's model page;
+    // this entry records the ShortCo rate only.
+    costs: { input: 2.0, output: 10.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    // Source: OpenAI's model page, https://developers.openai.com/api/docs/models/gpt-6-sol,
+    // read 27 September 2026 ("1,050,000 context window"; the same page gives
+    // 922,000 max input tokens). The Foundry catalogue row carries no context
+    // field.
+    maxContext: 1050000,
+    // Never cross the provider streams (register item 107). CORRECTED 28
+    // September 2026, parcel 48: this comment said gpt-5.5 was the only Foundry
+    // chat entry the fallback suitability rule accepts here. It is not: gpt-5.5,
+    // gpt-6-luna and gpt-6-astra all pass. gpt-5.5 is kept, because luna's PDF
+    // read is partial and astra is 5x this entry's price. gpt-5.5 declares no
+    // onward fallback, so the chain terminates.
+    fallbackTo: "azure-openai/gpt-5.5",
+    releaseDate: "2026-09-22",
+    categoryDescription:
+      "Newest-generation mid-tier model routed via Microsoft Foundry",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "complex coding and agentic workflows",
+      "demanding mixed-content work",
+      "document-heavy tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27 September 2026: median accepted-reads over three sampled runs (spread 0.83-0.83), sentinel named in all three.",
+    // Stage ro-2: choices for round cf-10 to measure; see the two constants above
+    // the list.
+    reasoningEffort: GPT_6_SOL_REASONING_EFFORT,
+    maxOutputTokens: GPT_6_SOL_MAX_OUTPUT_TOKENS,
   }),
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -2714,7 +3241,7 @@ const FOUNDRY_MODELS = [
     deploymentName: "gpt-5.4-pro",
     displayName: "GPT-5.4 Pro",
     description:
-      "Pro-tier reasoning model on the Responses surface. Reads images and PDFs. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images. PDF RESOLVED 30 August 2026 — accepted-reads, 6/6 sentinel characters on an image-only fixture, 363 input and 2935 output tokens. The two earlier attempts were TRANSPORT TIMEOUTS, not refusals: re-running at a 600s ceiling returned a clean 200 well inside the standing token budget, so latency was the whole cause. Attribution is unattributed — this surface preprocesses the attachment, so the read cannot be assigned to the model rather than the platform. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use openai/gpt-5.4-pro for OpenRouter routing.",
+      "Pro-tier reasoning model on the Responses surface. Reads images and PDFs. Routed via Microsoft Foundry on the Responses API surface (/openai/v1/responses) through the azure-responses adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images. PDF RESOLVED 30 August 2026 — accepted-reads, 6/6 sentinel characters on an image-only fixture, 363 input and 2935 output tokens. The two earlier attempts were TRANSPORT TIMEOUTS, not refusals: re-running at a 600s ceiling returned a clean 200 well inside the standing token budget, so latency was the whole cause. Attribution is unattributed — this surface preprocesses the attachment, so the read cannot be assigned to the model rather than the platform. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo openai/gpt-5.4-pro sibling costs
     costs: { input: 30.0, output: 180.0 },
     capabilities: [
@@ -2732,7 +3259,12 @@ const FOUNDRY_MODELS = [
       "pdf",
     ],
     maxContext: 1050000,
-    fallbackTo: "openai/gpt-5.4-pro",
+    // Repointed for register item 107 (never cross the streams): was
+    // "openai/gpt-5.4-pro". No Responses deployment matches its 1050000
+    // context, and no Foundry deployment on either surface offers the pro
+    // tier's extended reasoning. A non-pro substitute would silently remove
+    // exactly what the tier is chosen for.
+    fallbackTo: null,
     releaseDate: "2026-03-05",
     categoryDescription:
       "Pro-tier reasoning model (Responses API) routed via Microsoft Foundry — same upstream as openai/gpt-5.4-pro, different transport",
@@ -2847,19 +3379,40 @@ const FOUNDRY_MODELS = [
 // REGISTRATION
 // ============================================================================
 
-let registered = 0;
-FOUNDRY_MODELS.forEach(({ id, config }) => {
-  try {
-    modelRegistry.registerModel(id, config);
-    registered += 1;
-    logDebug(`Registered Foundry model: ${id}`);
-  } catch (error) {
-    logError(`Failed to register Foundry model ${id}:`, error);
-  }
-});
+/**
+ * Build the list through the factory and register every entry. Runs once at
+ * load; a proof may run it again after patching FoundryModelFactory.
+ *
+ * @returns {number} How many registrations succeeded.
+ */
+function registerFoundryModels() {
+  const models = buildFoundryModels();
+  let registered = 0;
+  models.forEach(({ id, config }) => {
+    try {
+      modelRegistry.registerModel(id, config);
+      registered += 1;
+      logDebug(`Registered Foundry model: ${id}`);
+    } catch (error) {
+      logError(`Failed to register Foundry model ${id}:`, error);
+    }
+  });
 
-logInfo(
-  `Foundry model registration complete: ${registered}/${FOUNDRY_MODELS.length} registered`
-);
+  logInfo(
+    `Foundry model registration complete: ${registered}/${models.length} registered`
+  );
+  return registered;
+}
 
-export { createFoundryModel };
+// The seam object. The factory reaches its field copy through it, so a patch
+// here changes what the next registration stores.
+const FoundryModelFactory = {
+  createFoundryModel,
+  copyRequestOptions,
+  isRetiredOn,
+  registerFoundryModels,
+};
+
+FoundryModelFactory.registerFoundryModels();
+
+export { createFoundryModel, FoundryModelFactory };

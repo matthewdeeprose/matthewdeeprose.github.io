@@ -140,6 +140,15 @@ const DEFAULT_CONFIG = {
     effort: null, // 'minimal' | 'low' | 'medium' | 'high' | null (null = adaptive/model default)
     max_tokens: null, // Explicit reasoning token budget (null = let model/provider decide)
   },
+  // Send reasoning OFF explicitly (PB-5b, 27 September 2026). `reasoning.enabled
+  // false` above means "send no reasoning field", which leaves the choice to the
+  // model: anthropic/claude-sonnet-5 reasoned on 5 of 6 alt-text cells with the
+  // field absent (PB-4). When TRUE, and reasoning is not enabled, buildOptions
+  // forwards exactly { enabled: false } and the OpenRouter provider sends it.
+  // Default false, so every existing embed's request is byte-identical. May be
+  // set in config or on the instance (embed.sendReasoningOff = true) before a
+  // send. The alt-text cloud adapter sets it for OpenRouter sends only.
+  sendReasoningOff: false,
   // Stage 2 Task 2.2: Provider configuration map.
   // Keyed by provider id; each value is a free-form config object the provider's
   // adapter reads at request time. Default is empty — providers configure
@@ -212,6 +221,8 @@ class OpenRouterEmbed {
       ...DEFAULT_CONFIG.reasoning,
       ...(config.reasoning || {}),
     };
+    // PB-5b: explicit reasoning-off opt-in (see DEFAULT_CONFIG.sendReasoningOff).
+    this.sendReasoningOff = this.config.sendReasoningOff === true;
 
     // Get container reference
     this.container = document.getElementById(this.containerId);
@@ -898,8 +909,24 @@ class OpenRouterEmbed {
       // transport. Foundry's adapter implements request; OpenRouter's does
       // not (its transport remains with window.openRouterClient). The
       // function-type check keeps the OpenRouter path bytewise unchanged.
+      //
+      // Parcel 49: a Foundry provider gets the same-model retry here that the
+      // streaming door gives it, under the streaming door's own condition, so a
+      // reduced-motion user on a Foundry model is not left with no recovery on a
+      // rate limit. Foundry only: on this path OpenRouter recovers through the
+      // fallback walk inside its client (the owner's ruling, 23 September 2026),
+      // and wrapping it too would stack two recoveries. No _noRetry latch is
+      // needed: a non-streaming request returns the whole reply or fails, so
+      // there is never a partial reply on screen to re-send over.
+      const sendFoundry = () => provider.request(wireMessages, requestOptions);
+      const shouldRetryFoundry = this._retryHandler && this._retryConfig.enabled;
       const apiResponse = typeof provider.request === "function"
-        ? await provider.request(wireMessages, requestOptions)
+        ? await (shouldRetryFoundry
+            ? this._executeWithRetry(
+                sendFoundry,
+                this._requestAbortController?.signal,
+              )
+            : sendFoundry())
         : await this.client.sendRequest(wireMessages, requestOptions);
 
       // Check if cancelled during request
@@ -1025,6 +1052,10 @@ class OpenRouterEmbed {
     // budget) that the inline implementation used to apply.
     if (this._reasoningConfig && this._reasoningConfig.enabled) {
       canonicalOptions.reasoning = this._reasoningConfig;
+    } else if (this.sendReasoningOff === true) {
+      // PB-5b: the explicit off switch, only on the opt-in. Keying on
+      // `enabled: false` instead would put it on every embed's request.
+      canonicalOptions.reasoning = { enabled: false };
     }
 
     // PDF engine selection — promote to a clean canonical string.

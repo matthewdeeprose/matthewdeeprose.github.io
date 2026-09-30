@@ -2,6 +2,21 @@ html {
   overflow-y: scroll;
 }
 
+/* input */
+input[type="checkbox"]:not(.default-checkbox) {
+  width: 36px;
+  height: 36px;
+  vertical-align: middle;
+}
+
+label {
+  vertical-align: middle;
+}
+
+label[for] {
+  cursor: pointer;
+}
+
 /* =============================================
    LAYOUT & STRUCTURE
    ============================================= */

@@ -10,12 +10,48 @@
  */
 
 import { modelRegistry } from "./model-definitions.js";
-// Foundry (azure-openai/*) routed model variants. Imported AFTER
-// model-definitions.js so the registry, categories, and the OpenRouter sibling
-// ids used as fallbackTo all exist before these register. model-definitions.js
-// is an ES module (not a <script> tag), so wiring lives here rather than in
-// tools.html. See js/foundry-model-definitions.js.
+// Foundry (azure-openai/* and azure-responses/*) routed model variants.
+// Imported AFTER model-definitions.js so the registry singleton and its
+// categories exist before these register — that part of the ordering is still
+// load-bearing. model-definitions.js is an ES module (not a <script> tag), so
+// wiring lives here rather than in tools.html.
+//
+// A third reason used to be given here and was removed on 14 September 2026:
+// "and the OpenRouter sibling ids used as fallbackTo". Under register item 107
+// no Foundry entry falls back to an OpenRouter model any more — every
+// fallbackTo in that file is null or another Foundry deployment — so
+// cross-stream resolution is no longer a reason for this import order, and
+// leaving the clause here would go on justifying an arrangement that has been
+// removed. See js/foundry-model-definitions.js.
 import "./foundry-model-definitions.js";
+
+// FALLBACK VALIDATION RUNS HERE, AFTER BOTH IMPORTS ABOVE — moved out of
+// js/model-definitions.js on 14 September 2026 (register item 108).
+//
+// WHY IT MOVED. It used to be the second-to-last line of model-definitions.js, which
+// is imported first, so it ran before a single Foundry model existed. The 43 Foundry
+// registrations had therefore never been validated by anything, and the three-node
+// ring parcel 5 found could not have been seen from either file alone.
+//
+// WHAT THE MOVE COSTS, AND THE MEASUREMENT THAT SAYS IT COSTS NOTHING. Seven modules
+// import `modelRegistry` directly from model-definitions.js rather than through this
+// file, and while the call sat inside the module they import, every one of them was
+// guaranteed a validated registry by construction. Moving it turns that guarantee
+// into an ES-graph evaluation-order question, so the order was measured rather than
+// assumed: across every local ES module entry point in tools.html, with and without
+// following dynamic imports, js/main.js is the ONLY entry that reaches any of the
+// seven, and in its graph this file evaluates at index 11 while the other six
+// evaluate at 14 and later. None of the six touches the registry at
+// module-evaluation time in any case — every use is inside a function body. Zero
+// entry points reach one of them early.
+//
+// A SECOND CALL AT THE END OF foundry-model-definitions.js WAS THE OBVIOUS
+// ALTERNATIVE AND WAS REJECTED: the first pass AUTO-CORRECTS, writing new values into
+// `fallbackTo`, so a second pass does not re-check the authored data — it checks the
+// first pass's output, and a `null` the first pass wrote reads as "no fallback" and
+// is skipped. Two passes over a graph one of them has already rewritten is a harder
+// thing to reason about than one pass over the whole pool.
+modelRegistry.validateAllFallbacks();
 
 /**
  * Get API key from localStorage
@@ -92,7 +128,16 @@ export const CONFIG = {
     // PDF processing engines and costs - Validated by testing
     PDF_ENGINE_COSTS: {
       "pdf-text": 0, // Free, confirmed in testing
-      "mistral-ocr": 2.0, // £2/1000 pages, exactly as tested
+      // PC-1, 17 September 2026 — THE CURRENCY IS US DOLLARS AND THIS COMMENT
+      // SAID POUNDS. The VALUE is correct and unchanged: OC-2b measured the
+      // file-parser fee at the wire at exactly $0.022000 over 11 REAL pages,
+      // which is $0.002000 per page, which is $2 per 1,000 pages. The digits
+      // agreed with the old comment and the currencies did not, which is why
+      // the disagreement went unnoticed. Settled from the tree: OpenRouter
+      // bills in US dollars and every registry price beside this one is
+      // denominated the same way (js/model-definitions.js: `input: 3.0, //
+      // $3.0/M tokens`). Only the comment moved.
+      "mistral-ocr": 2.0, // $2 per 1,000 pages — $0.002 per REAL page
       native: "Charged as input tokens", // Most economical for text PDFs
     },
 
@@ -113,9 +158,9 @@ export const CONFIG = {
 
     // Tiered cost warning system - New feature based on testing insights
     COST_WARNING_THRESHOLDS: {
-      YELLOW: 0.05, // £0.05+ - Basic warning
-      ORANGE: 0.5, // £0.50+ - Confirmation required
-      RED: 2.0, // £2.00+ - Double confirmation required
+      YELLOW: 0.05, // $0.05+ - Basic warning
+      ORANGE: 0.5, // $0.50+ - Confirmation required
+      RED: 2.0, // $2.00+ - Double confirmation required
     },
 
     // Response processing options - Critical new feature
@@ -168,7 +213,7 @@ export const CONFIG = {
       NETWORK_ERROR:
         "Network error during upload. Please check your connection.",
       MODEL_INCOMPATIBLE: "Selected model does not support file uploads.",
-      COST_EXCEEDED: "Estimated cost (£{cost}) exceeds your threshold.",
+      COST_EXCEEDED: "Estimated cost (${cost}) exceeds your threshold.",
       RESPONSE_TOO_LARGE:
         "Response too large to display ({size}). Showing summary instead.",
     },

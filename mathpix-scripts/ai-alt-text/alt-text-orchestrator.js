@@ -16,8 +16,9 @@
  *   3. branches on `result.status` — the orchestrator does NOT finalise,
  *   4. on success: FINALISING → parse → write → hideProgress(true) → ONE
  *      showStatus success line,
- *   5. on error: hideProgress(false) → ONE showError with the VERBATIM contract
- *      error (S2F option 1).
+ *   5. on error: hideProgress(false) → ONE showError with the plain sentence
+ *      failureSentence maps the result's reason and HTTP status to (MA-5c-2;
+ *      until then the VERBATIM contract error, S2F option 1).
  *
  * ── What it deliberately does NOT do ────────────────────────────────────────
  * It constructs NO embed and injects NO real DOM — that is 5.1c. It does NOT
@@ -228,6 +229,53 @@ const MathPixAltTextOrchestrator = (function () {
   /** Error line when a collaborator throws unexpectedly (the catch tail). */
   const UNEXPECTED_ERROR_MESSAGE = "AI description failed unexpectedly.";
 
+  // ---------------------------------------------------------------------------
+  // MA-5c-2 — ONE PLAIN SENTENCE PER FAILURE CLASS, NEVER THE PROVIDER'S TEXT
+  //
+  // Until MA-5c-2 a failed run spoke `result.error` verbatim, so the status
+  // line read out whatever a provider or an exception said (measured at MA-5c
+  // iteration 0: a provider's 400 body and a dropped connection's TypeError
+  // text both reached #edit-alt-ai-status). The adapter now carries a `reason`
+  // code and, when there was one, the HTTP status, and failureSentence maps
+  // those to one of the sentences below. The raw error is still logged at
+  // WARN by run(), so nothing is lost to a person diagnosing the failure.
+  // ---------------------------------------------------------------------------
+
+  /** A reply the provider cut off (reason "truncated"). */
+  const TRUNCATED_ERROR_MESSAGE =
+    "The reply was cut off and was not saved. Try again or choose another model.";
+
+  /** HTTP 429, or 500 and above: the service, not the request. */
+  const UNAVAILABLE_ERROR_MESSAGE =
+    "The service is busy or unavailable. Try again in a moment.";
+
+  /** HTTP 400 to 499, except 429: the request itself was refused. */
+  const REFUSED_ERROR_MESSAGE =
+    "The model refused this request. Choose another model and try again.";
+
+  /** Anything else, a dropped connection above all: no status, no reason. */
+  const INCOMPLETE_ERROR_MESSAGE =
+    "The request did not complete. Check your connection and try again.";
+
+  /**
+   * The adapter's reason codes. A NECESSARY COPY, matched by VALUE, on the
+   * pattern of the DISPOSITION strings above: this module is headless and
+   * takes its adapter by injection, so it cannot import them. They must equal
+   * the adapter's ABSENT_REGISTRY_REASON, NON_VISION_REASON and
+   * TRUNCATED_REASON; the suite drives the real adapter through this module,
+   * so a drift on either end reddens there.
+   */
+  const FAILURE_REASON = Object.freeze({
+    ABSENT_REGISTRY: "absent-registry",
+    NON_VISION: "non-vision",
+    TRUNCATED: "truncated",
+  });
+
+  /** The HTTP status boundaries failureSentence reads. */
+  const HTTP_CLIENT_ERROR_MIN = 400;
+  const HTTP_TOO_MANY_REQUESTS = 429;
+  const HTTP_SERVER_ERROR_MIN = 500;
+
   /**
    * Fallback STATUS vocabulary when the 2.1 contract is unavailable at call
    * time. Mirrors STATUS.SUCCESS / STATUS.ERROR exactly.
@@ -266,11 +314,26 @@ const MathPixAltTextOrchestrator = (function () {
    * and the B-addendum in the plan document says so rather than implying a
    * provenance it does not have.
    *
-   * NO HEADING LEVEL IS SPECIFIED ANYWHERE HERE, on purpose. Levels are owned by
-   * `demoteEntryHeadings` in `mathpix-alt-text-mmd-serialiser.js`, which
-   * normalises whatever the model emits at serialise time by rank compaction. A
-   * level named here would go stale the moment the appendix level moved (plan
-   * decision A4).
+   * PB-1, 26 September 2026: rewritten from the image describer's prompt a
+   * second time, taking its context, accuracy and screen-reader guidance and
+   * leaving its MathJax notation guide and definition lists behind, so every
+   * construct asked for renders in MathPix Markdown (PB-0 measured it).
+   * Sections 1 and 4 changed with it; the "No text content." sentinel did not.
+   * The builder's copy in `alt-text-prompt-builder.js` was changed in the same
+   * parcel and the parity row holds the two byte-identical.
+   *
+   * THE FOUR SECTION HEADINGS ARE NOW PINNED AT LEVEL 2, AND NOTHING ELSE IS.
+   * PB-3, 27 September 2026: PB-2 measured heading drift in 8 of 17 replies,
+   * so the second line asks for exactly these four headings, each a level-2
+   * heading with its number, and no other level-2 heading. That pins the
+   * PARSER'S convention (the `## N.` shape above), which is a reply format,
+   * not a document level. This sentence previously read "NO HEADING LEVEL IS
+   * SPECIFIED ANYWHERE HERE, on purpose", which PB-3 made false. What it
+   * protected still holds: document levels are owned by `demoteEntryHeadings`
+   * in `mathpix-alt-text-mmd-serialiser.js`, which normalises whatever the
+   * model emits at serialise time by rank compaction, so no DOCUMENT level is
+   * named here and none should be (plan decision A4). Subheadings inside the
+   * long description stay unpinned for the same reason.
    *
    * The reserved-name sentence in section 3 is a MEASURED mitigation, not
    * politeness: a subheading whose name normalises to one of the four section
@@ -285,17 +348,22 @@ const MathPixAltTextOrchestrator = (function () {
    * is sent.
    */
   const DESCRIPTION_PROMPT = `Describe this image for accessibility using these sections:
+Use exactly these four headings, each a level-2 heading with its number, and no other level-2 heading.
 
 Write all output in British English.
 
+Before you write, look at the whole image: note its overall layout, every labelled part and how the parts relate, and any text. Describe what is drawn, not what a similar diagram usually contains. Where you are inferring rather than seeing, say so, and where an element is unclear, say it is unclear rather than guessing.
+
 ## 1. Title
-A brief descriptive title under 10 words.
+A brief descriptive title under 10 words that says what the image is for. Do not use a generic title such as "Diagram" or "Figure".
 
 ## 2. Alt Text
 One or two sentences, concise enough to serve as an HTML alt attribute: what the image shows, then why it matters educationally. It must stand alone when the image fails to load. Do not open with "Image of", "Picture of", "A photograph of" or any similar phrase — the reader already knows this is an image.
 
 ## 3. Long Description
 Describe the visual content and its educational purpose in full. Write for someone listening to this description rather than looking at the image, and put the important information first.
+
+Write so that it reads well aloud: use commas where a listener needs a pause, write "equals", "plus" and "minus" as words inside prose, name each part the same way every time once you have named it, and give positions in words, such as top left, centre, or along the bottom edge.
 
 Use markdown structure wherever it aids comprehension, rather than as decoration:
 
@@ -306,12 +374,12 @@ Use markdown structure wherever it aids comprehension, rather than as decoration
 
 Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
 
-Write mathematical expressions as inline LaTeX between dollar signs, matching the notation used in the surrounding document. This applies to the long description only: the alt text stays plain prose, with no LaTeX and no markdown.
+Write mathematical expressions as inline LaTeX between dollar signs, and display equations between double dollar signs, matching the notation used in the surrounding document. This description is written into the same MathPix Markdown document as the surrounding text, so every expression must be valid there. This applies to the long description and the text content only: the alt text stays plain prose, with no LaTeX and no markdown.
 
 Do not reuse "Title", "Alt Text", "Long Description" or "Text Content" as a heading inside this section.
 
 ## 4. Text Content
-List every word, number, and label visible in the image. If none, write "No text content."`;
+List every word, number and label visible in the image as a numbered list, one item per line, in reading order, each followed by its position in the image in words. Write mathematical labels as inline LaTeX between dollar signs, matching the surrounding document. If none, write "No text content."`;
 
   // ---------------------------------------------------------------------------
   // Global reach helpers (reached at CALL time, guarded)
@@ -342,6 +410,74 @@ List every word, number, and label visible in the image. If none, write "No text
         ? window.getMathPixSessionRestorer()
         : null;
     return restorer ? restorer.imageRegistry : null;
+  }
+
+  /**
+   * One of the adapter's two fixed refusal sentences, reached at CALL time
+   * from window.MathPixAltTextCloudAdapter (MA-5c-2).
+   *
+   * Read from the adapter rather than copied, so the sentence a person hears
+   * is the one the adapter owns and a listen already heard (RF-2, WL-1). It
+   * is deliberately NOT read off `result.error`: an injected adapter could put
+   * anything there, and the point of this parcel is that nothing a result
+   * carries as text is spoken. If the adapter module is absent the refusal
+   * cannot be named, so the general line is spoken with a WARN.
+   *
+   * @param {string} name - "ABSENT_REGISTRY_REFUSAL" or "NON_VISION_REFUSAL"
+   * @returns {string}
+   */
+  function _refusalSentence(name) {
+    const adapter = window.MathPixAltTextCloudAdapter;
+    const sentence = adapter ? adapter[name] : null;
+    if (typeof sentence !== "string" || !sentence) {
+      logWarn(
+        `${name} unavailable from MathPixAltTextCloudAdapter at call time — speaking the general failure line`,
+      );
+      return FALLBACK_ERROR_MESSAGE;
+    }
+    return sentence;
+  }
+
+  /**
+   * The ONE sentence a failed result is spoken as (MA-5c-2).
+   *
+   * | The result carries | Spoken |
+   * | --- | --- |
+   * | reason "absent-registry" | the adapter's ABSENT_REGISTRY_REFUSAL |
+   * | reason "non-vision" | the adapter's NON_VISION_REFUSAL |
+   * | reason "truncated" | TRUNCATED_ERROR_MESSAGE |
+   * | httpStatus 429, or 500 and above | UNAVAILABLE_ERROR_MESSAGE |
+   * | httpStatus 400 to 499 | REFUSED_ERROR_MESSAGE |
+   * | anything else | INCOMPLETE_ERROR_MESSAGE |
+   *
+   * The reason is read first, because a reason names the condition exactly
+   * and a status only classifies it. `result.error` is never read here.
+   *
+   * @param {Object|null} result - a finalised failed contract result.
+   * @returns {string}
+   */
+  function failureSentence(result) {
+    const r = result || {};
+
+    switch (r.reason) {
+      case FAILURE_REASON.ABSENT_REGISTRY:
+        return _refusalSentence("ABSENT_REGISTRY_REFUSAL");
+      case FAILURE_REASON.NON_VISION:
+        return _refusalSentence("NON_VISION_REFUSAL");
+      case FAILURE_REASON.TRUNCATED:
+        return TRUNCATED_ERROR_MESSAGE;
+      default:
+        break;
+    }
+
+    const status = r.httpStatus;
+    if (!Number.isInteger(status) || status < HTTP_CLIENT_ERROR_MIN) {
+      return INCOMPLETE_ERROR_MESSAGE;
+    }
+    if (status === HTTP_TOO_MANY_REQUESTS || status >= HTTP_SERVER_ERROR_MIN) {
+      return UNAVAILABLE_ERROR_MESSAGE;
+    }
+    return REFUSED_ERROR_MESSAGE;
   }
 
   // ---------------------------------------------------------------------------
@@ -870,14 +1006,14 @@ List every word, number, and label visible in the image. If none, write "No text
           return { status: "success", result, fields, writeResult };
         }
 
-        // 4b. Error — the contract's only other status. Speak the VERBATIM
-        //     contract error once (S2F option 1).
+        // 4b. Error — the contract's only other status. Speak ONE plain
+        //     sentence for the failure's class (MA-5c-2), never the contract
+        //     error text, which carries whatever the provider or the exception
+        //     said. That text is logged here and nowhere else.
         progress.hideProgress(false);
         logWarn("generation failed", result && result.error);
         // The ONE error line.
-        progress.showError(
-          (result && result.error) || FALLBACK_ERROR_MESSAGE,
-        );
+        progress.showError(failureSentence(result));
 
         return { status: "error", result };
       } catch (err) {
@@ -908,6 +1044,16 @@ List every word, number, and label visible in the image. If none, write "No text
     // module's necessary copy against the manager's FIELD_LABELS at runtime.
     buildCoreSentence,
     CORE_FIELD_LABELS,
+    // MA-5c-2 — the failure mapping and its four sentences, exposed so rows
+    // can drive the mapping with no page and match the spoken line by
+    // identity.
+    failureSentence,
+    FAILURE_SENTENCES: Object.freeze({
+      TRUNCATED: TRUNCATED_ERROR_MESSAGE,
+      UNAVAILABLE: UNAVAILABLE_ERROR_MESSAGE,
+      REFUSED: REFUSED_ERROR_MESSAGE,
+      INCOMPLETE: INCOMPLETE_ERROR_MESSAGE,
+    }),
     // Exposed for tests / callers that need the constants literally.
     SUCCESS_ANNOUNCEMENT,
     DESCRIPTION_PROMPT,

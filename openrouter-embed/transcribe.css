@@ -63,9 +63,12 @@
  * That last row is the trap in its most dangerous form: a dimmed timestamp
  * looks correct to anyone working in dark theme and is a real failure for
  * everyone else. So the timestamp is distinguished by TYPOGRAPHY AND POSITION
- * — tabular figures, a hanging indent — and never by dimming. Do not add an
- * opacity, a grey, or a --muted token to anything in this file without
- * recomputing both themes and writing the numbers here.
+ * — tabular figures, a monospace stack, and a reserved column of its own — and
+ * never by dimming. (The phrase "a hanging indent" stood here until unit 11 of
+ * item 46 replaced that indent with a flex row; the mechanism changed and the
+ * principle did not.) Do not add an opacity, a grey, or a --muted token to
+ * anything in this file without recomputing both themes and writing the numbers
+ * here.
  *
  * NO :focus OR :focus-visible RULE APPEARS IN THIS FILE, deliberately. The app
  * already gives every control an inverted fill plus a coloured glow, measured
@@ -74,10 +77,30 @@
  * prominent than doing nothing, plus one control that signals focus unlike
  * every other. See AGENTS.md § Focus indicators.
  *
- * NOTHING HERE CHANGES THE ACCESSIBILITY TREE. No display:none, no
- * visibility, no `content` that inserts text, nothing that folds or unfolds a
- * node. The single rule that touches semantics at all is `list-style: none` —
- * see the note on .transcribe-list.
+ * NOTHING HERE CHANGES THE ACCESSIBILITY TREE — WITHDRAWN AT UNIT 11 OF ITEM
+ * 46, AND QUOTED IN PLACE per register items 51 and 56. It read:
+ *
+ *   "NOTHING HERE CHANGES THE ACCESSIBILITY TREE. No display:none, no
+ *    visibility, no `content` that inserts text, nothing that folds or unfolds
+ *    a node. The single rule that touches semantics at all is `list-style:
+ *    none` — see the note on .transcribe-list."
+ *
+ * EVERY CLAUSE OF IT IS STILL TRUE OF THE DECLARATIONS IT NAMES, and the
+ * conclusion is false anyway. `display: flex` on .transcribe-row is the
+ * counter-example: a text run of NOTHING BUT WHITE SPACE is not rendered in a
+ * flex container and produces no anonymous flex item, so it leaves the
+ * accessibility tree — 1,314 of them, two per row across 657 rows. The
+ * renderer deletes those text nodes itself rather than leaving markup that
+ * claims to do something it no longer does, so the two changes land together;
+ * but the point for a reader of THIS file is that a layout property reached the
+ * tree, which the withdrawn paragraph said could not happen here.
+ *
+ * WHAT REPLACES IT: no rule in this file may fold, unfold, hide or reveal a
+ * node — no `display: none`, no `visibility`, no `content` that inserts text —
+ * and any rule that changes a BOX TYPE must say what it does to whitespace,
+ * because that is the route this file did not know it had. `list-style: none`
+ * and `display: flex` are the two rules touching semantics; both are
+ * documented where they stand.
  */
 
 /* =========================================================================
@@ -275,20 +298,65 @@
 }
 
 /*
- * A hanging indent, so a phrase that wraps aligns under its own text rather
- * than under its timestamp — the timestamp stays the leftmost thing on the row
- * and the eye can run down the column of them.
+ * THE ROW IS A FLEX CONTAINER SINCE UNIT 11 OF ITEM 46, AND THE HANGING INDENT
+ * IT REPLACES IS QUOTED IN PLACE per register items 51 and 56. The withdrawn
+ * paragraph read:
  *
- * REFLOW (SC 1.4.10): this is normal inline flow with a negative text-indent,
- * NOT a two-column grid or flex row. That is the whole reflow strategy. The
- * timestamp and the phrase sit side by side while there is room and the phrase
- * simply wraps beneath when there is not; nothing is clipped, nothing scrolls
- * sideways, and there is no fixed column to squash. A grid with a fixed
- * timestamp column would look tidier at desktop width and would crush the
- * phrase into a few characters at 320px.
+ *   "A hanging indent, so a phrase that wraps aligns under its own text rather
+ *    than under its timestamp — the timestamp stays the leftmost thing on the
+ *    row and the eye can run down the column of them.
  *
- * The indent is in `ch` so it tracks the font rather than the viewport, which
- * keeps it correct at 200% zoom.
+ *    REFLOW (SC 1.4.10): this is normal inline flow with a negative
+ *    text-indent, NOT a two-column grid or flex row. That is the whole reflow
+ *    strategy. The timestamp and the phrase sit side by side while there is
+ *    room and the phrase simply wraps beneath when there is not; nothing is
+ *    clipped, nothing scrolls sideways, and there is no fixed column to squash.
+ *    A grid with a fixed timestamp column would look tidier at desktop width
+ *    and would crush the phrase into a few characters at 320px.
+ *
+ *    The indent is in `ch` so it tracks the font rather than the viewport,
+ *    which keeps it correct at 200% zoom."
+ *
+ * WHAT IT GOT RIGHT AND WHAT IT MISSED. The indent aligned a WRAPPED phrase
+ * under its own text, and the flex row does that better — the phrase is its own
+ * flex item and wraps inside its own box, so no negative indent is needed for
+ * it. What the indent could not do is align phrases ACROSS rows, because the
+ * point each one starts at was still the sum of whatever preceded it. That is
+ * both of the sitting's presentation findings, measured on this fixture at
+ * 1280px: the timecode gains a character at the hour and pushes the phrase
+ * 17.58px right; and with labels suppressed the labelled rows sit in a
+ * different place from the unlabelled ones.
+ *
+ * ITS REFLOW WARNING IS ANSWERED RATHER THAN IGNORED — the fixed columns it
+ * refused to have at 320px are dropped at the 30rem breakpoint below, where the
+ * phrase takes a line of its own. See that block.
+ *
+ * `padding-left` AND `text-indent` ARE BOTH GONE, AND BOTH HAD TO GO. A flex
+ * container's items are blockified, and `text-indent` inherits into them, so a
+ * negative indent left in place would have indented the first line of EVERY
+ * item by -8ch.
+ *
+ * THE GAP IS THE MEASURED ADVANCE OF THE SEPARATOR IT REPLACES, not a chosen
+ * spacing. The renderer used to emit a literal " " text node between each pair
+ * of parts; measured on the pristine tree at 1280px that space is 5.625px in
+ * the row's own Verdana at 16px, so the gap is written as the exact fraction
+ * 5.625/16 = 0.3515625em. `em` rather than `px` so it tracks the font at 200%
+ * zoom, exactly as the withdrawn indent's `ch` did. The only visible change
+ * this unit makes is the alignment; the spacing is deliberately unmoved.
+ *
+ * `align-items: baseline` REPRODUCES THE INLINE FLOW the separators sat in —
+ * the timecode's first-line baseline on the phrase's first-line baseline. The
+ * default `stretch` would leave the text in the same place and make the
+ * timecode's box as tall as a three-line phrase, which nothing wants.
+ *
+ * AN ABSOLUTELY-POSITIONED CHILD IS NOT A FLEX ITEM, and three of this row's
+ * children are exactly that — the selection <label>, the Corrected. marker and
+ * the Moved. marker all carry `.visually-hidden`, which main.css:2097 declares
+ * `position: absolute`. So none of them takes a column or consumes a `gap`, and
+ * a corrected row lines up with an uncorrected one by construction. THIS RULE
+ * DEPENDS ON THAT CLASS STAYING OUT OF FLOW: if `.visually-hidden` ever became
+ * statically positioned, those three would become flex items and every row
+ * carrying one would gain a column of nothing.
  */
 /*
  * THE ROW SEPARATOR, ADDED IN UNIT 2 OF ITEM 55. Same achromatic-rgba
@@ -297,7 +365,9 @@
  *
  * `border-bottom`, NOT the panel's `outline`, because a border is per-row and
  * an outline would draw all four sides. It costs 1px of layout per row, which
- * the hanging indent does not depend on.
+ * nothing else on the row depends on. (It read "which the hanging indent does
+ * not depend on" until unit 11 of item 46 retired that indent; the claim is the
+ * same one about the flex row that replaced it.)
  *
  * MEASURED 1.32:1 IN LIGHT AND 1.38:1 IN DARK against the composited panel.
  * That is below SC 1.4.11's 3:1 deliberately, and it is not a target of it:
@@ -310,12 +380,38 @@
  * pre-existing `margin: 0 0 0.5rem` is now `margin: 0`, so the vertical
  * padding alone sets the gap and it is equal on both sides of the rule.
  */
+/*
+ * `flex-wrap: wrap` ADDED IN UNIT 8 OF ITEM 47, AND IT IS A CHANGE TO THE
+ * ROW'S OWN FLEX BEHAVIOUR, NOT MERELY TO THE SUGGESTION WRAPPER. Design § 5
+ * (revision 4) carries the measurement: an unstyled `.transcribe-suggestion`
+ * appended as the row's last child is a flex child whose `flex-basis: auto`
+ * resolves to the width of a whole unwrapped sentence, and `.transcribe-text`
+ * / `.transcribe-edit` — both `flex: 1 1 0`, a scaled shrink factor of zero —
+ * take none of the resulting negative free space and collapse to their own
+ * basis instead. Measured: the read-only phrase text force-wrapped to
+ * roughly one token per line (~190 boxes for a single sentence, five stable
+ * `color-contrast` incompletes on the resulting zero-width spans) and the
+ * edit control collapsed to 10px. `flex-wrap: wrap` plus the suggestion
+ * wrapper's own full-width basis below is what puts the wrapper on its own
+ * line instead of forcing every other item on the row to give up its space
+ * to it.
+ *
+ * SIX STATES WERE MEASURED WITHOUT A SUGGESTION WRAPPER PRESENT AT ALL
+ * (design § 5, revision 3) and read as untouched — because with nothing to
+ * force a second line, `flex-wrap: wrap` changes nothing observable on a row
+ * that never needs to wrap. It is still a real change to the row's flex
+ * properties, and any state that DOES move because of it must be explained
+ * from a `--dump` diff before the tree gate is re-pinned over it — see that
+ * file's own register-item-47 unit-8 entry.
+ */
 .transcribe-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
-  padding-left: 8ch;
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-  text-indent: -8ch;
   line-height: 1.5;
   border-bottom: 1px solid rgba(127, 127, 127, 0.25);
 }
@@ -325,33 +421,613 @@
 }
 
 /*
- * NARROW WIDTHS: THE HANGING INDENT IS DROPPED, ADDED IN UNIT 2b OF ITEM 55.
+ * THE SUGGESTION WRAPPER, ADDED IN UNIT 8 OF ITEM 47. It is the row's last
+ * child (openrouter-embed-transcribe-ui.js's buildSuggestionWrapper) and is
+ * grouped into two halves — `.transcribe-suggestion-was` and
+ * `.transcribe-suggestion-proposed` — for the reason design § 5 gives: a flat
+ * list of spans, <del>s, <ins>s and bare text nodes as direct children of a
+ * grid container would each become its own anonymous grid item, breaking the
+ * line each half is meant to read as one piece of. Grouping into two real
+ * elements is what lets `display: grid` size two columns rather than however
+ * many fragments a given diff happens to produce.
  *
- * The indent is 8ch, and unit 2 measured what that leaves for the phrase at a
- * 320px viewport: a text column of 16.28ch WITH this file's panel padding, and
- * 19.43ch WITHOUT it. So the indent costs more than half the available column
- * — the panel made it worse, but it was already under 20ch on the bare page,
- * which is why the fix is here rather than in the panel padding alone.
+ * `flex-basis: 100%` PUTS THE WRAPPER ON ITS OWN LINE, THE SAME MECHANISM THE
+ * NARROW-WIDTH BREAKPOINT BELOW ALREADY USES FOR `.transcribe-text`: a flex
+ * item's basis resolves against the CONTAINER's content box, not against
+ * whatever space happens to be left on the current line, so a 100% basis
+ * forces a wrap onto a fresh line regardless of how much of the row the
+ * earlier columns (checkbox, time, speaker, text or input) have already
+ * used. `flex-grow` is left at its default (0): the wrapper does not need to
+ * grow past its own basis to fill a line it already has to itself.
  *
- * Below 30rem the timestamp and speaker therefore run INLINE with the phrase
- * instead of sitting in their own column. That is the same trade the rule's
- * own comment above describes refusing at desktop width — a fixed timestamp
- * column would crush the phrase — arriving at the width where the column
- * itself becomes the thing doing the crushing.
+ * `minmax(0, 1fr) minmax(0, 1fr)` RATHER THAN A BARE `1fr 1fr`, matching the
+ * `min-width: 0` pattern this file already uses on `.transcribe-option` and
+ * `.transcribe-text`: a bare `1fr` track has an implicit `auto` minimum, which
+ * refuses to shrink a track below its content's own minimum width and would
+ * let one long, unbreakable run of proposed text push the whole row wider
+ * than the viewport. `minmax(0, 1fr)` releases that floor so long phrases
+ * wrap inside their own column instead.
  *
- * NOTHING HERE TOUCHES THE ACCESSIBILITY TREE. `padding`, `padding-left` and
- * `text-indent` are all layout; the reading order, the roles and the text are
- * unchanged, which is why the tree gate is taken at 320px as well as at
- * desktop width and both readings must match.
+ * `gap`, NEVER LITERAL WHITESPACE, matching every other spacing decision in
+ * this file. Values are `rem`, not `ch` — see the timecode column's own
+ * comment above for why `ch` is a font metric rather than a rendered advance
+ * and is the wrong unit wherever the goal is a gap rather than a fit.
+ *
+ * THE REASON SPANS BOTH COLUMNS, because it is a single explanation of the
+ * whole suggestion and not a property of either half alone.
+ *
+ * NO COLOUR HERE, matching the file header's rule; the two halves and the
+ * reason all inherit `currentColor` exactly as every other piece of a row
+ * does.
+ */
+/*
+ * THE WRAPPER'S VISUAL IDENTITY, ADDED IN UNIT 12 OF ITEM 47. Unit 8 gave this
+ * wrapper a LAYOUT and nothing else, and unit 9's three arms found nothing to
+ * change, so until now it rendered as ordinary body text: measured on the page
+ * before this rule landed, `.transcribe-suggestion`, both halves, the reason
+ * and the conflict sentence all computed `16px / weight 500 / rgb(0, 19, 29)`
+ * — identical to `.transcribe-text` beside them. On a dry run the owner found
+ * six of the eight suggestions by eye and reached a conflict row only with
+ * Ctrl+F.
+ *
+ * FOUR DISTINCTIONS, AND NOT ONE OF THEM IS CARRIED BY COLOUR. Every carrier
+ * below is a border, a box metric, a text decoration or a font weight, so all
+ * four survive `forced-colors: active` — which replaces colours and leaves
+ * geometry, `text-decoration` and `font-weight` alone. The per-theme tints in
+ * light.css and dark.css REINFORCE these and are never the only carrier of
+ * anything; that split is this file's standing rule, not a unit-12 decision.
+ *
+ *   1. A ROW CARRIES A SUGGESTION — `border-inline-start`, the indent it
+ *      pays for, and the block margin that detaches the wrapper from the
+ *      phrase text above it. A bare wrapper flush with the row's left edge
+ *      reads as a second paragraph of transcript; a ruled, indented one reads
+ *      as an annotation attached to the line above.
+ *
+ *   2. WHICH HALF IS WHICH — the `<del>` / `<ins>` decorations the renderer
+ *      already emits (unit 9 measured both surviving forced colours), the
+ *      weight split below, the grid position, and the seam between the two
+ *      columns. FOUR CARRIERS RATHER THAN ONE BECAUSE THE DECORATIONS CAN BE
+ *      ABSENT: the fixture's phrase 90 is the no-op case, where the proposal
+ *      equals the original, so `diffSpans` returns unchanged spans only and
+ *      the wrapper renders with NO `<del>` and NO `<ins>` at all. On that row
+ *      the weight split and the seam are the whole distinction, which is why
+ *      neither is decoration on top of a decoration.
+ *
+ *   3. THE REASON IS SUBORDINATE — by WEIGHT AND INDENT, never by size.
+ *      `font-size` on the root computes `16px` and the row's text computes
+ *      `16px`, so the body scale IS 1rem here and there is no room beneath it:
+ *      a reason at `0.875rem` would be 14px, below the body scale the dispatch
+ *      sets as the floor. Weight 400 against the inherited 500, plus its own
+ *      indent inside an already-indented wrapper, does the same work without
+ *      spending a size step this file does not have.
+ *
+ *   4. A CONFLICT LOOKS DIFFERENT FROM AN APPLICABLE SUGGESTION — see the
+ *      conflict rules below, which change the wrapper's COLUMN COUNT and its
+ *      rule STYLE, not its colour.
+ *
+ * BORDER WIDTH AND STYLE AS LONGHANDS, AND NO BORDER COLOUR AT ALL. This is
+ * the second draft of these rules and the first one was WRONG in a way that
+ * failed silently, so the mechanism is recorded rather than the conclusion.
+ *
+ * The first draft wrote `border-inline-start: 0.1875rem solid currentColor`,
+ * on the precedent of `.transcribe-upload-area`'s `border: 2px dashed
+ * currentColor`. A BORDER SHORTHAND SETS ALL THREE LONGHANDS, so that
+ * declared `border-inline-start-color: currentColor` — a colour, declared in
+ * the file whose entire rule is that it declares none. Measured consequence,
+ * on the page: THREE OF THE FOUR TINTS light.css AND dark.css SUPPLY WERE
+ * INERT. `.transcribe-suggestion`'s rule and the theme's are both one class,
+ * specificity (0,1,0), so the tie breaks on source order — and tools.html
+ * loads this sheet AFTER both theme sheets, so this file won and the tint
+ * did nothing. Only the conflict rule landed, because
+ * `:has(.transcribe-suggestion-conflict)` is (0,2,0) and outranks it.
+ *
+ * NOTHING ABOUT THE FAILURE WAS VISIBLE. Three borders painted in the text
+ * colour, which is a perfectly plausible design, and the theme sheets carried
+ * four correct declarations and four correctly measured contrast figures
+ * describing colours that never reached the screen.
+ *
+ * DECLARING NOTHING BEATS DECLARING `currentColor`. The initial value of
+ * `border-color` IS `currentcolor`, so leaving it undeclared gives this file
+ * exactly the theme-free rendering it wanted, while leaving the theme sheets
+ * with nothing to outrank — a declaration beats an initial value whatever the
+ * source order. That is why `.transcribe-speaker` and `.transcribe-time` have
+ * always worked: this file never declares `color` on them either.
+ *
+ * `.transcribe-upload-area` IS LEFT ALONE. Its shorthand has the same
+ * property and no theme sheet tints it, so it is inert-by-luck rather than
+ * wrong; changing it is not this unit's to do, and it is named here so the
+ * next reader knows it was considered rather than missed.
+ *
+ * `rem`, NEVER `ch`, for every metric — the timecode column's own comment
+ * above carries why, and nine `ch` came out 0.0078px short once already.
+ * NO FIXED HEIGHT AND NO FIXED LINE COUNT anywhere, so unit 9's arm 3 (text
+ * spacing, SC 1.4.12) keeps passing when a user agent stylesheet enlarges the
+ * line box.
+ *
+ * `box-sizing: border-box` IS GLOBAL HERE — measured, not assumed — so the
+ * border and the inline padding come OUT of the `flex-basis: 100%` box rather
+ * than adding to it, and the wrapper cannot push the row past the viewport.
+ *
+ * NO ICON. An icon needs an element to hang on, this unit changes no markup,
+ * and a decorative icon would need `aria-hidden` plus visible text beside it
+ * to be worth anything. Recorded as a recommendation in the unit report
+ * rather than smuggled in as a `content` string — and note this file may not
+ * use `content` to insert text at all (see the header's replacement rule).
+ */
+.transcribe-suggestion {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.5rem 1rem;
+  margin-block-start: 0.375rem;
+  padding-block: 0.375rem;
+  padding-inline-start: 0.75rem;
+  border-inline-start-width: 0.1875rem;
+  border-inline-start-style: solid;
+}
+
+/*
+ * THE WEIGHT SPLIT IS WITHDRAWN — register item 47 unit 18, § 2, the owner's
+ * ruling after reviewing unit 16's screenshots before session 2b: "the whole
+ * Suggested half stops being bold", not only its label. The capsules now
+ * identify each half, and at 320px the bold half was ten lines of solid
+ * weight that read harder than the Original half above it. The withdrawn
+ * rules are quoted per register items 51 and 56:
+ *
+ *   .transcribe-suggestion-was { font-weight: 400; }
+ *   .transcribe-suggestion-proposed { font-weight: 700; }
+ *
+ * with the comment "THE WEIGHT SPLIT, distinction 2. The row inherits weight
+ * 500, so 400 reads as stepped back and 700 as stepped forward against the
+ * text beside it — and the direction is deliberate: the ORIGINAL is the
+ * thing being left behind and the PROPOSAL is the thing being offered, which
+ * is the same direction `<del>` and `<ins>` already point." Unit 15 had
+ * already measured the first half of that argument describing a step that
+ * does not exist in this font (Verdana has two faces, so 500 renders as
+ * 400); the second half is what this unit gives up, deliberately.
+ *
+ * WHAT REPLACES IT: EACH HALF CARRIES ITS OWN LEFT RULE AND INDENT. The
+ * weight was the only thing distinguishing the second block from the first
+ * when the halves stack below 30rem, where position no longer says which is
+ * which. A rule and an indent on each half make the stacked halves read as
+ * two distinct blocks rather than one passage read twice, and at the standard
+ * width the proposed half's rule is also the seam between the two columns
+ * (see the withdrawn seam rule below). WIDTH AND STYLE ONLY, NO COLOUR, per
+ * this file's first rule; light.css and dark.css tint the two rules apart,
+ * grey for the original and blue for the proposal, matching the capsules'
+ * own edges.
+ *
+ * UNDER FORCED COLOURS both rules become the system text colour at the same
+ * width and style, so they no longer tell the halves APART — what they still
+ * do is mark each half as a block. The capsule carrying "Original:" or
+ * "Suggested:" is what says which is which with colour removed, and it
+ * survives (unit 16 measured it). Said plainly rather than implied.
+ *
+ * `font-weight: 400` IS DECLARED ON BOTH, not inherited, so the two halves
+ * compute the same weight by rule rather than by the accident of the row's
+ * 500 rendering as 400 in this font — the harness reads the two computed
+ * weights and asserts them equal.
+ *
+ * `rem`, NEVER `ch`; and the rule width is deliberately narrower than the
+ * wrapper's own 0.1875rem so the wrapper still reads as the outer frame.
+ */
+.transcribe-suggestion-was,
+.transcribe-suggestion-proposed {
+  font-weight: 400;
+  padding-inline-start: 0.625rem;
+  border-inline-start-width: 0.125rem;
+  border-inline-start-style: solid;
+}
+
+/*
+ * THE INSERTION'S UNDERLINE — register item 47 unit 18, § 3.
+ *
+ * A PLAIN UNDERLINE READS AS A LINK, and with the weight gone from the
+ * proposal `<ins>` carries more of the work of saying "this word is new".
+ * A DOUBLE rule is not a link convention. `<del>` keeps its line-through,
+ * which the theme sheets' global `del` rule already declares.
+ *
+ * NOT WAVY. Wavy was considered and rejected: it is the browser's own
+ * spelling-error convention, so it would mean the opposite of what this mark
+ * says, and it generally defeats `text-decoration-skip-ink`, which is the
+ * mechanism protecting the descenders.
+ *
+ * `text-decoration-skip-ink` IS LEFT ON (`auto`), which is what keeps a rule
+ * out of the descenders of "y", "g" and "p". A double rule sits lower than a
+ * single one, so `text-underline-offset` is TUNED BY MEASUREMENT, not by eye:
+ * the unit's report carries the clearance between the lower rule and the
+ * descenders, and between the rule and the line below, at 1280 and 320 and
+ * under the SC 1.4.12 text-spacing metrics where the line height goes to
+ * 1.5. `em`, so a user's own text size takes the offset with it.
+ *
+ * SCOPED TO THE WRAPPER, because `<ins>` has no global rule in this app and
+ * a bare `ins` selector here would style every insertion on the page.
+ *
+ * NO COLOUR, per this file's first rule; the rule takes `currentColor`.
+ */
+.transcribe-suggestion ins {
+  text-decoration-line: underline;
+  text-decoration-style: double;
+  text-underline-offset: 0.3em;
+  text-decoration-skip-ink: auto;
+}
+
+/*
+ * 0.3em WAS CHOSEN BY MEASUREMENT, 23 September 2026, headless chromium-1223
+ * at device scale 2, reading pixel rows off a screenshot of a probe line
+ * carrying an <ins> "examine" (no descender, to find the rule rows) beside an
+ * <ins> "gyp" (to find the descender bottom) with a line of "HHHH" beneath.
+ * The reader was proved on a solid underline (one band) and a double one (two
+ * bands) before any figure was believed. At 1280 and 320, with and without
+ * the SC 1.4.12 text-spacing override — which moves nothing vertically here,
+ * because the row's line-height already computes 24px, i.e. 1.5:
+ *
+ *   offset   upper rule against the descenders     lower rule against the line below
+ *   auto     CROSSES them by 2px (skip-ink gaps)    7–8px clear
+ *   0.15em   touching, 0px clear                    6–7px clear
+ *   0.2em    touching, 0px clear                    5–6px clear
+ *   0.25em   1px clear                              4–5px clear
+ *   0.3em    2px clear                              3–4px clear
+ *
+ * Each rule is 1px and the gap between them 2px, so the double mark is 4px
+ * deep. 0.3em puts it 2px under the deepest descender and 3px above the cap
+ * height of the line below at the standard width, 4px at 320. DOUBLE HELD;
+ * the fallback the dispatch named — a single thicker rule with an offset —
+ * was not needed and is not used.
+ */
+
+.transcribe-suggestion del {
+  text-decoration-line: line-through;
+}
+
+/*
+ * THE HALF'S LABEL — register item 47 unit 15, design section 12's D1 and D2.
+ *
+ * WHAT IT ANSWERS. "Original" and "Suggested" became visible text at unit 13,
+ * and they inherited their half's weight, so on the PROPOSAL the label and the
+ * words after it were the same 700 and the owner read "SuggestedThis is a
+ * podcast" off a screenshot as one run. The colon and the separator after it
+ * (openrouter-embed-transcribe-ui.js's SUGGESTION_LABEL_COLON) end the label in
+ * the text; this rule is what ends it to the eye.
+ *
+ * NO COLOUR, per this file's first rule, and it would not help anyway — under
+ * `forced-colors` the user agent replaces it. Both declarations below survive
+ * forced colours untouched, which is why they were chosen over a tint.
+ *
+ * NO SIZE. `font-size` is not declared here, so the label stays at the row's
+ * own 16px. This item's own floor is that nothing on this surface drops below
+ * the body scale, and a label at 13.6px would be the first thing to.
+ *
+ * THE TABLE'S COLUMN HEADERS WERE THE DESK'S SUGGESTED MODEL AND ARE NOT
+ * COPIED, FOR A MEASURED REASON. They compute to 13.6px against the row's
+ * 16px — BELOW the body scale — so matching them would breach the floor above
+ * in the course of satisfying the request. Their other carrier is the theme's
+ * `thead th` colour band, which this file may not declare. Reported rather
+ * than copied.
+ *
+ * `font-weight: 700` IS HALF A CARRIER AND THAT IS SAID PLAINLY. Measured at
+ * unit 15 on the resolved stack — `Verdana, sans-serif` — by rendering one
+ * fixed string at four weights: 400 and 500 measure 251.094px, 600 and 700
+ * measure 281.359px. VERDANA HAS TWO FACES, so no weight exists that differs
+ * from BOTH the original half's 400 and the proposal's 700. The canary in that
+ * probe is the 400-against-700 delta, 30.265px, which is non-zero and is what
+ * makes the two zeros readable as "same face" rather than as a dead
+ * instrument. Consequence, stated rather than glossed: on the ORIGINAL half
+ * the weight separates the label from 400 text; on the PROPOSAL it is inert,
+ * and `letter-spacing` is the whole of the distinction there.
+ *
+ * NOTE IN PASSING, NOT FIXED HERE. The same two-face finding means the row's
+ * declared `font-weight: 500` renders as 400, so the weight-split comment
+ * above — "the row inherits weight 500, so 400 reads as stepped back" — is
+ * describing a step that does not exist in this font. The 700 proposal still
+ * steps forward, which is the half of that argument the design depends on.
+ *
+ * `letter-spacing` IS THE CARRIER THAT WORKS IN BOTH HALVES, and it is the
+ * only one in the list that is independent of how many faces the font ships.
+ * 0.1em over the nine characters of "Original:" is 1.6px a character, measured
+ * visible rather than asserted. It is a RELATIVE unit, so a user's own
+ * font-size change takes it along; and SC 1.4.12's 0.12em override simply
+ * replaces it, widening the tracking rather than removing the distinction.
+ *
+ * NOT SMALL CAPITALS, though the dispatch offered them. `font-variant-caps`
+ * renders lowercase as reduced capitals, which lowers the effective glyph
+ * height even though `font-size` is untouched — the floor above again. NOT
+ * `text-transform: uppercase` either: Chromium applies text transforms to the
+ * text it exposes to the accessibility tree, and an all-capital label is the
+ * shape some readers spell out letter by letter.
+ */
+/*
+ * THE CAPSULE — register item 47 unit 16, § 3, from listen row 52 session 2a.
+ * The owner, on the proposal half: "the bold is overwhelming, let's try a
+ * capsule style presentation for those labels first".
+ *
+ * A BORDER ROUND THE WORD AND ITS COLON, WITH PADDING AND ROUNDED ENDS. It is
+ * what distinguishes the label on the PROPOSAL, where the weight above is
+ * inert (Verdana has two faces, 400 and 700) and letter-spacing was the only
+ * carrier left. A box is a shape, not a weight and not a colour, so it works
+ * the same in both halves.
+ *
+ * NO COLOUR HERE, per this file's first rule. The border colour is
+ * `currentColor` until light.css and dark.css give it a measured one, and the
+ * tint behind the word is theirs too. UNDER FORCED COLOURS the tint is
+ * dropped and the border becomes the system text colour, so the border and
+ * the padding are what is left — which is why the border is solid and a full
+ * pixel, not a hairline or a dotted rule.
+ *
+ * NO SIZE, AND THE BODY-SIZE FLOOR STANDS. `font-size` is still not declared,
+ * so the capsule's text stays at the row's own size. Every metric is `rem` or
+ * `em`, so a user's own text size takes the capsule with it.
+ *
+ * `display` STAYS INLINE. An inline-block would be an atomic box, and whether
+ * a browse-mode reader then breaks the line at it was NOT measured here;
+ * inline keeps the label in the same run of text as the phrase after it,
+ * which is the shape session 2a heard and passed. The vertical padding is therefore small on purpose: an inline
+ * box's padding does not grow the line, so a large one would paint into the
+ * line below when the half wraps. `white-space: nowrap` keeps "Original:" in
+ * one piece, and `box-decoration-break: clone` means that if a very narrow
+ * viewport ever split it anyway, each piece would get its own closed ends.
+ *
+ * THE SPACE AFTER THE COLON IS OUTSIDE THE CAPSULE, in its own span —
+ * openrouter-embed-transcribe-ui.js's appendHalfLabel says why. Inside it,
+ * that space would widen the right padding against the left.
+ */
+.transcribe-suggestion-label {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding-block: 0.0625rem;
+  padding-inline: 0.375rem 0.3rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/*
+ * THE CAPSULE'S RADIUS WAS 0.75rem AND IS 0.25rem — register item 47 unit 18,
+ * § 5, the owner's ruling: `border-radius: 4px`, and nothing else about the
+ * capsule changes. Written as 0.25rem, which IS 4px at the row's 16px, so it
+ * keeps the rule this block states that every metric is `rem` or `em`; if the
+ * owner wants it fixed at 4px whatever the text size, that is one token. The
+ * capsule stays at body size, 16px against the row's 16px, and its border
+ * still carries it when forced colours removes the tint.
+ */
+
+/*
+ * THE SEAM BETWEEN THE TWO COLUMNS, distinction 2's fourth carrier.
+ *
+ * `.transcribe-suggestion-was + .transcribe-suggestion-proposed` RATHER THAN
+ * `.transcribe-suggestion-proposed` ALONE, and the adjacent-sibling
+ * combinator is doing real work: a CONFLICT wrapper has NO was-half at all
+ * (openrouter-embed-transcribe-ui.js's buildSuggestionWrapper returns early
+ * on `!resolution.ok`, appending only the proposed half and the conflict
+ * sentence), so this selector matches an applicable suggestion and cannot
+ * match a conflict. A seam on a conflict's first child would rule off the
+ * wrapper's own top edge, which is not what a seam is for.
+ *
+ * It is the columns' divider at the standard viewport; the narrow-width block
+ * below turns it through ninety degrees when the halves stack, rather than
+ * dropping it, because that is exactly where two undifferentiated runs of
+ * similar text are hardest to tell apart.
+ *
+ * WITHDRAWN AT REGISTER ITEM 47 UNIT 18, § 2, and the comment above is kept
+ * as the record of why a seam existed. Each half now carries its own left
+ * rule (see the block above `.transcribe-suggestion ins`), so the proposed
+ * half's rule IS the columns' divider at the standard width, and stacked
+ * below 30rem each half keeps its rule rather than turning one seam through
+ * ninety degrees. The withdrawn rule, quoted per register items 51 and 56:
+ *
+ *   .transcribe-suggestion-was + .transcribe-suggestion-proposed {
+ *     padding-inline-start: 0.75rem;
+ *     border-inline-start-width: 1px;
+ *     border-inline-start-style: dashed;
+ *   }
+ *
+ * and its narrow-width override, which zeroed the inline rule and drew a
+ * dashed block-start one, is withdrawn from the breakpoint block below. The
+ * theme sheets' tint on that selector is withdrawn with it and replaced by a
+ * tint per half.
+ */
+
+/*
+ * THE REASON'S MEASURE — register item 47 unit 18, § 4. At 1280 the reason
+ * ran the full width of the wrapper, 1066.5px measured against 525.25px for
+ * each half, so a five-pair reason read as a wall. `max-inline-size` in `em`
+ * holds it to about the measure of one half (34em is 544px at 16px), and it
+ * is a maximum, so at 320 the reason is as wide as the stacked halves and
+ * nothing changes there. RELATIVE UNITS ONLY AND NOTHING IN `ch` — see the
+ * timecode column's comment for why `ch` is a font metric rather than a
+ * rendered advance.
+ *
+ * INDENTED PAST THE HALVES' TEXT, which now sits 0.75rem in (a 0.125rem rule
+ * and 0.625rem of padding), so the reason reads as subordinate to both by
+ * position as well as by weight.
+ *
+ * ONE BLOCK PER PART. The controller renders one
+ * `.transcribe-suggestion-reason-part` per newline-separated part of the
+ * reason (openrouter-embed-transcribe-ui.js's REASON_PART_SEPARATOR says why
+ * the split is a newline and why it is inert today). Each part is a block
+ * with a small gap before the next, and NEVER a marker character: this file
+ * may not use `content` to insert text (see the header), and Chromium
+ * exposes generated content as text, so a bullet would be read aloud on
+ * every pair. NOT A LIST, for the tree-gate reason the controller's comment
+ * carries. A reason with one part is one block and looks exactly as it did.
+ */
+.transcribe-suggestion-reason {
+  grid-column: 1 / -1;
+  font-weight: 400;
+  max-inline-size: 34em;
+  padding-inline-start: 1.5rem;
+}
+
+.transcribe-suggestion-reason-part {
+  display: block;
+}
+
+.transcribe-suggestion-reason-part + .transcribe-suggestion-reason-part {
+  margin-block-start: 0.25rem;
+}
+
+/*
+ * A CONFLICT IS ONE COLUMN AND A DASHED RULE, distinction 4 — and neither of
+ * those is a colour, which is the whole point. A conflict carries nothing to
+ * press: `buildSuggestionWrapper` gives it no controls group, so a person who
+ * reaches for an Accept button that is not there has already spent the
+ * gesture. It should be visible before they reach.
+ *
+ * ONE COLUMN, NOT TWO. Before this rule a conflict wrapper put its proposed
+ * half in column 1 and the conflict sentence in column 2 — measured on the
+ * page, the sentence sitting at `left: 640.5` beside a half-width proposal —
+ * which reads as a two-column diff whose left half is missing rather than as
+ * a statement about the row. Collapsing the track list gives the proposal the
+ * full width and puts the sentence underneath it, where a sentence belongs.
+ * A COLUMN COUNT IS A STRUCTURAL SIGNAL A READER TAKES IN WITHOUT READING:
+ * two columns means there is a comparison to make, one column means there is
+ * not.
+ *
+ * `:has()` IS ALREADY ESTABLISHED IN THIS CODEBASE — light.css and dark.css
+ * carry 25 uses each and main.css two — so this is not a new dependency. It
+ * is still the one selector here that a very old engine could drop, so the
+ * conflict sentence's OWN rule below is written to stand alone: `grid-column:
+ * 1 / -1` spans both tracks if the track list was never collapsed, and the
+ * rule above it separates the sentence from the proposal either way. The
+ * degradation is a conflict that looks like a two-column suggestion with a
+ * full-width sentence under it — worse, and not wrong.
+ */
+.transcribe-suggestion:has(.transcribe-suggestion-conflict) {
+  grid-template-columns: minmax(0, 1fr);
+  border-inline-start-style: dashed;
+}
+
+/*
+ * THE EXPLANATION IS NOT PART OF THE PROPOSAL — design § 12's D4, decided at
+ * listen row 52's first sitting on both a screenshot and an ear.
+ *
+ * IT WAS `font-weight: 700`, THE SAME WEIGHT AS THE PROPOSAL, and the
+ * withdrawn declaration is quoted here per register items 51 and 56:
+ *
+ *   .transcribe-suggestion-conflict { … font-weight: 700; … }
+ *
+ * Two things went wrong with it. On screen the sentence read as a continuation
+ * of the proposed wording rather than as a statement about it — the proposal
+ * and the explanation were the same weight, in one column, with only a dashed
+ * rule between them. And NVDA at the owner's formatting settings announced
+ * "no bold" only AFTER the next row had begun, so the boundary arrived late
+ * and in the wrong place.
+ *
+ * 400 IS BODY WEIGHT AND THE ROW INHERITS 500, so the sentence now reads as
+ * stepped BACK from the row as well as from the 700 proposal above it. That is
+ * the same direction the was-half already steps, and for the same reason: this
+ * is not the thing being offered.
+ *
+ * THE DASHED RULE AND THE BLOCK PADDING STAY and are doing more work now that
+ * weight is no longer separating the two. Distinction 4's account of the
+ * single-column conflict shape above is unaffected.
+ *
+ * A WEIGHT IS NOT A SIZE and costs no line-height, so nothing here moves the
+ * row's vertical rhythm — the same note the weight split above carries.
+ *
+ * THE INDENT AND THE MEASURE — register item 47 unit 18's follow-up. Unit 18
+ * took the 700 off the whole proposed half, so "at body weight" above became
+ * "at the same weight as the proposal" and D4's second half — visually apart
+ * from the proposal — had no carrier left. MEASURED BEFORE THIS RULE at 1280:
+ * the sentence's first ink sat at the wrapper's content edge, 106.75px,
+ * while the proposal's own content edge sat at 118.75px behind its rule and
+ * padding — the explanation OUT-DENTED the thing it explains by 12px and ran
+ * 1066.5px wide, which reads as the row's text resuming rather than as a
+ * statement about it. The carrier is the one the reason already uses, and
+ * for the same reason: `padding-inline-start: 1.5rem` steps the sentence
+ * 0.75rem in past the proposal's content edge, and `max-inline-size: 34em`
+ * holds it to a paragraph's measure. Both are geometry and neither is a
+ * colour, so both survive forced colours with the dashed rule, which stays.
+ * NOTHING TEXTUAL CHANGES: no element, no attribute, no character, and the
+ * StaticText sequence of phrase 6's conflict is proved byte-identical in
+ * both views around this rule.
+ */
+.transcribe-suggestion-conflict {
+  grid-column: 1 / -1;
+  font-weight: 400;
+  max-inline-size: 34em;
+  padding-inline-start: 1.5rem;
+  padding-block-start: 0.375rem;
+  border-block-start-width: 1px;
+  border-block-start-style: dashed;
+}
+
+/*
+ * THE CONTROLS GROUP, THE WRAPPER'S FOURTH CHILD (register item 47 unit 10;
+ * openrouter-embed-transcribe-ui.js's buildSuggestionWrapper). It spans both
+ * columns exactly like the reason span above it, for the same reason: Accept
+ * and Dismiss are one decision about the whole suggestion, not a property of
+ * either diff half, and only ever render together.
+ *
+ * `gap`, NEVER LITERAL WHITESPACE, matching every other spacing decision in
+ * this file. The two buttons' own app-wide `margin` (main.css's bare
+ * `button` rule) is zeroed here so `gap` is the only space between them,
+ * rather than gap plus a margin stacking unpredictably.
+ *
+ * `flex-wrap: wrap` SO A NARROW VIEWPORT DROPS THE SECOND BUTTON TO ITS OWN
+ * LINE rather than being forced to shrink or overflow — the same reflow
+ * answer `.transcribe-row` itself already gives at 320px.
+ *
+ * NO SIZE OVERRIDE FOR SC 2.5.8 TARGET SIZE (MINIMUM). main.css's global
+ * `button` rule already gives every button `padding: 0.5rem 1rem` at
+ * `font-size: 1.2rem`, which measures well over the 24x24 CSS pixel minimum
+ * for "Accept" and "Dismiss" — measured, not assumed; see the register for
+ * the figures at both the standard viewport and 320px, in both modes.
+ *
+ * NO COLOUR HERE, matching the file header's rule; both buttons inherit
+ * their appearance from the app-wide button rule exactly as every other
+ * button on this page does.
+ */
+.transcribe-suggestion-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.transcribe-suggestion-controls button {
+  margin: 0;
+}
+
+/*
+ * BELOW 30rem THE TWO HALVES STACK, matching the same breakpoint the
+ * narrow-width block further down already uses for the row's own columns —
+ * see that block's comment for why 30rem is the chosen width. Two
+ * side-by-side columns of diff text would each be under 10ch wide at 320px,
+ * which is narrower than most of the words being compared.
+ */
+/*
+ * UNIT 12 TURNS THE COLUMN SEAM THROUGH NINETY DEGREES HERE rather than
+ * dropping it. Stacked, the two halves are two runs of near-identical text
+ * one above the other with only a `0.5rem` row gap between them, which is the
+ * layout in which "which half am I reading" is HARDEST, not easiest — so the
+ * carrier that answers it has to survive the breakpoint, just in the other
+ * axis. The weight split and the `<del>`/`<ins>` decorations are unaffected
+ * by width and carry through untouched.
+ *
+ * The inline seam is explicitly zeroed rather than left to be overridden,
+ * because `border-inline-start` and `border-block-start` are different
+ * properties and setting one does not clear the other.
+ *
+ * THE SEAM OVERRIDE IS WITHDRAWN AT REGISTER ITEM 47 UNIT 18, § 2. Each half
+ * now carries its own left rule at every width, so stacked halves read as two
+ * ruled, indented blocks and there is no single seam to turn. The withdrawn
+ * declarations, quoted per register items 51 and 56:
+ *
+ *   .transcribe-suggestion-was + .transcribe-suggestion-proposed {
+ *     padding-inline-start: 0;
+ *     border-inline-start-width: 0;
+ *     padding-block-start: 0.375rem;
+ *     border-block-start-width: 1px;
+ *     border-block-start-style: dashed;
+ *   }
  */
 @media (max-width: 30rem) {
-  .transcribe-list {
-    padding: 0.5rem;
-  }
-
-  .transcribe-row {
-    padding-left: 0;
-    text-indent: 0;
+  .transcribe-suggestion {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -373,26 +1049,133 @@
  * still governs figure width should the stack fall through to a proportional
  * last resort.
  */
+/*
+ * THE RESERVED TIMECODE COLUMN IS THE HOUR-BOUNDARY FIX (item 46 unit 11,
+ * presentation finding 1). Measured on the pristine tree at 1280px: the
+ * fixture's three clock lengths render 52.73px, 61.53px and 79.109375px, and
+ * the last of those — `[1:00:04]`, the widest form a recording under ten hours
+ * can produce — is what the column has to hold. 5.28em at this 15px size is
+ * 79.2px, so every clock is padded out to one width and everything after it on
+ * the row starts at one x.
+ *
+ * IT IS DELIBERATELY NOT WRITTEN AS `9ch`, AND THE REASON IS A MEASUREMENT
+ * WORTH KEEPING. The stack is monospace, so nine characters is exactly what
+ * this column is, and `9ch` says that in the clearest possible way. It was
+ * written that way first and it was 0.0078px SHORT: the engine resolves `ch`
+ * from the font's "0" advance as 8.7890625px, while the string actually
+ * renders at 8.796875px per glyph, so `9ch` computes 79.1016px against a
+ * measured 79.109375px. `min-width` cannot clip, so the seven nine-character
+ * rows simply kept their own width — and the whole-list reading came back as
+ * TWO distinct phrase positions, 278.89 and 278.91, instead of one. A
+ * hundredth of a pixel is invisible and it is still not one column.
+ *
+ * THE GENERAL FORM, because it will catch someone else: `ch` IS A FONT METRIC,
+ * NOT A RENDERED ADVANCE, and the two are not obliged to agree even in a
+ * monospace face. Where a reserved width has to FIT a known string, measure the
+ * string and size to the measurement; use `ch` where the unit is the point
+ * rather than the fit.
+ *
+ * `em` RATHER THAN `px` SO IT TRACKS THE FONT AT 200% ZOOM, which is the reason
+ * the withdrawn hanging indent gave for using `ch`, and it survives the rule
+ * that replaced it. `em` resolves against this element's own `font-size`, which
+ * the line above sets, so the two move together.
+ *
+ * IT IS A FLOOR AND NOT A CAP, WHICH IS THE HONEST LIMIT OF THIS FIX. A
+ * recording past ten hours renders `[10:00:04]` at 87.890625px, and such a row
+ * would push its phrase right again exactly as the hour boundary used to.
+ * Nothing is clipped when that happens; the alignment is what is lost. This
+ * covers every recording up to 9:59:59.
+ */
 .transcribe-time {
   font-variant-numeric: tabular-nums;
   font-size: 0.9375rem;
+  min-width: 5.28em;
   white-space: nowrap;
   font-family:
     ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
 }
 
-/* Weight, not colour. A bold run of "Speaker 2:" reads as a label at any
-   contrast, and at 14.8:1 there is no headroom problem to solve. */
+/*
+ * THE SPEAKER COLUMN, AND ITS PLACEHOLDER, SIZED BY ONE RULE (item 46 unit 11,
+ * presentation finding 5). Weight, not colour, for the reason this rule always
+ * gave: a bold run of "Speaker 2:" reads as a label at any contrast, and at
+ * 14.8:1 there is no headroom problem to solve.
+ *
+ * TWO SELECTORS, ONE DECLARATION BLOCK, so the real span and the empty
+ * placeholder cannot be given different widths by a later edit. The placeholder
+ * deliberately does NOT carry `.transcribe-speaker`: four sites across
+ * `.claude/a11y/sr/transcribe-tree-gate.mjs` and
+ * `.claude/a11y/sr/transcribe-audit-probe.mjs` read `span.transcribe-speaker`
+ * as "this row prints a speaker label", and two of them are drive markers that
+ * assert it is ABSENT when labels are suppressed — which is precisely where the
+ * placeholder appears. The renderer's own comment on CLASS_SPEAKER_PLACEHOLDER
+ * carries the whole reasoning.
+ *
+ * `em`, NOT `ch`, AND THE DIFFERENCE IS LOAD-BEARING RATHER THAN A PREFERENCE.
+ * `ch` resolves against the ELEMENT'S OWN font, and these two elements do not
+ * share one: the real span is `font-weight: 600` and the placeholder inherits
+ * the row's 500. Measured on the pristine tree, 1ch is 11.375px at weight 600
+ * and 10.171875px at weight 500 — so a `ch` value would give the two boxes
+ * DIFFERENT widths and quietly reintroduce the misalignment this rule exists to
+ * remove. `em` resolves against font-size, which both share at 16px.
+ *
+ * 6.05em IS 96.8px AGAINST A MEASURED LABEL OF 96.46875px. Every one of the
+ * fixture's 657 labels renders at that one width, because `Speaker N:` has a
+ * fixed stem and Verdana's digits are tabular — so one reserved width serves
+ * them all, with 0.33px to spare.
+ *
+ * A WIDER LABEL STILL PUSHES ITS ROW, and that is the accepted limit of this
+ * fix rather than an oversight. `Speaker 10:` measures 107.84375px, so a
+ * transcript with ten or more speakers loses the alignment on those rows, and
+ * so does a name longer than the reserve. `min-width` is a floor, so nothing is
+ * clipped and no name is truncated — the column simply grows for that row.
+ * Reserving for the two-digit case instead would cost 11px of gutter on every
+ * row of every transcript to buy alignment for an uncommon one; the design's
+ * § 11.1 takes the common case deliberately. NO CSS MECHANISM ALIGNS A COLUMN
+ * BETWEEN ROWS — each <li> is its own formatting context — so a reserved
+ * minimum is the only tool here, and this is its ceiling.
+ */
+.transcribe-speaker,
+.transcribe-speaker-placeholder {
+  min-width: 6.05em;
+}
+
 .transcribe-speaker {
   font-weight: 600;
 }
 
-/* Inherits everything. Present so the class has a home and so the no-phrase
-   fallback <p>, which the renderer also gives this class, picks up the same
-   measure. `max-width` in ch keeps a long transcript from running to an
-   uncomfortable line length on a wide screen, and being a maximum it cannot
-   cause a horizontal scrollbar at any narrow width. */
+/* Inherits everything else. Present so the class has a home and so the
+   no-phrase fallback <p>, which the renderer also gives this class, picks up
+   the same measure. `max-width` in ch keeps a long transcript from running to
+   an uncomfortable line length on a wide screen, and being a maximum it cannot
+   cause a horizontal scrollbar at any narrow width.
+
+   `flex: 1 1 0` TAKES THE REMAINING SPACE (item 46 unit 11). This class is on
+   the read-only span AND on the edit control, so one declaration puts both in
+   the same measure — which is what `.transcribe-edit`'s own note below already
+   asked for and got by a different route. A zero flex-basis rather than `auto`
+   because the item's own content must not decide the column: a 514-character
+   phrase and a four-word one have to start and end in the same place.
+
+   THE "ONE MEASURE" HALF OF THAT IS SUPERSEDED BY UNIT 12 OF ITEM 46, and the
+   sentence is left standing rather than deleted, per register items 51 and 56.
+   `flex` still reaches both elements and still governs both; what no longer
+   follows is that they end up the same WIDTH, because `.transcribe-edit` now
+   overrides the `max-width` below for itself alone. The read-only span is
+   capped at 80ch and the control is not. See that rule for why the cap is
+   right for reading and wrong for correcting.
+
+   `min-width: 0` IS LOAD-BEARING AND IS THE SAME TRAP `.transcribe-option`
+   RECORDS TWENTY RULES ABOVE. A flex item defaults to `min-width: auto`, which
+   refuses to shrink below its content's minimum — one unbreakable long token in
+   a phrase would then force the row wider than the viewport at 320px. Releasing
+   the floor lets the phrase wrap instead.
+
+   THE FALLBACK <p> IS NOT IN A FLEX ROW, so `flex` and `min-width` are inert on
+   it and `max-width` still reaches it. Nothing about that element changes. */
 .transcribe-text {
+  flex: 1 1 0;
+  min-width: 0;
   max-width: 80ch;
 }
 
@@ -450,10 +1233,181 @@
  * tall, and the transcript's scrollHeight stays 37,480px. The control's TEXT
  * sits 5px right of where the span's text sits, which is the control's own 3px
  * border and 2px padding and not a change of measure.
+ *
+ * TWO THINGS IN THE PARAGRAPHS ABOVE ARE SUPERSEDED BY UNIT 11 OF ITEM 46, and
+ * are corrected here rather than left to be believed. They are SUPERSESSIONS
+ * and not corrections: both were true of the tree they were written against.
+ *
+ * (1) `width: 100%` NO LONGER DECIDES THIS CONTROL'S WIDTH. The row is a flex
+ * container and `.transcribe-text` — which this control also carries — sets
+ * `flex: 1 1 0`. A flex-basis of 0 takes precedence over `width` for an item's
+ * main size, so the control now takes the row's REMAINING space, capped as
+ * before by the `max-width: 80ch` it inherits from that same class. The
+ * declaration is kept because it is still what the control falls back to
+ * wherever the row is not a flex container, and because removing it would put
+ * the UA's 190px back in that case.
+ *
+ * (2) THE LEFT EDGE IS NO LONGER 252.2px AND IS NO LONGER ROW-DEPENDENT, which
+ * is the whole point of unit 11. It is now the same x on every row of a given
+ * state, because the timecode and speaker columns ahead of it are reserved at
+ * fixed minimum widths. The 252.2px reading remains correct for the tree it was
+ * taken on.
+ *
+ * EVERYTHING ELSE IN THIS COMMENT STANDS, including the reason `font-size:
+ * inherit` is here and the reason the border, the background and the focus ring
+ * are not.
+ *
+ * (3) THE 80-CHARACTER CAP NO LONGER REACHES THIS CONTROL — UNIT 12 OF ITEM 46,
+ * presentation finding 2, first half. It supersedes one clause of (1) above,
+ * which is quoted here rather than deleted per register items 51 and 56:
+ *
+ *   "capped as before by the `max-width: 80ch` it inherits from that same class"
+ *
+ * and one sentence from the `width: 100%` paragraph further up:
+ *
+ *   "The read-only span's 80ch is the same 813.75px, which is what puts the two
+ *    modes in one measure rather than merely making the control bigger."
+ *
+ * Both were true of the tree they were written against. THE TWO MODES NO LONGER
+ * SHARE ONE MEASURE, and that is this unit's decision rather than a casualty of
+ * it — see below. The rest of (1) stands: `width: 100%` is still the fallback
+ * wherever the row is not a flex container.
+ */
+
+/*
+ * `max-width: none` RELEASES THE CONTROL FROM `.transcribe-text`'s 80ch, which
+ * it inherits by carrying that class. `flex: 1 1 0` on the same class already
+ * asks for the row's whole remaining space; the cap was the only thing refusing
+ * it. Measured on the pristine tree at the row width the second sitting saw,
+ * 1365.906px: the control sat at 813.75px with 309.17px of the row unused
+ * beside it. With this declaration it measures 1122.922px and the unused space
+ * is zero — the row's four in-flow items, its three gaps and the selection
+ * checkbox's own 7px of user-agent margin then account for 1365.907px of it.
+ *
+ * IT IS AN OVERRIDE AND NOT AN EDIT TO THE CAPPING RULE, WHICH IS THE WHOLE
+ * SHAPE OF THIS UNIT. `.transcribe-text` is on THREE elements — the read-only
+ * span, this control, and the no-phrase fallback <p> — so lifting the cap there
+ * would lift it for READING too, and for reading the cap is right.
+ *
+ * WHY 80 CHARACTERS IS RIGHT FOR READING AND WRONG FOR CORRECTING. The
+ * 80-character figure is SC 1.4.8 Visual Presentation, which is AAA and is
+ * about blocks of running text. A TRANSCRIPT ROW IS NOT PROSE: it is one phrase
+ * in a timestamped list, and the person in edit mode is checking it against
+ * audio rather than reading it for pleasure, so every character pushed out of
+ * view costs them the thing they came to check. The cap is therefore lifted
+ * HERE AND NOWHERE ELSE and the site's measure stands everywhere else. Anyone
+ * tidying for consistency should restore neither the cap nor a copy of it.
+ *
+ * IT DOES NOT FIX THE OTHER HALF OF FINDING 2 AND IS NOT MEANT TO. A one-line
+ * control cannot grow to fit a 514-character phrase at any width: the first
+ * row's phrase needs 1185px of scroll width, and the usable width this
+ * declaration buys at that same viewport is 1117px, so that row still scrolls —
+ * by 68px rather than by 377px. Whether the control should become multi-line is
+ * a decision with four named costs, recorded in § 11.1 of the design document,
+ * and it is not this unit's to take.
+ *
+ * IT IS INERT BELOW 30rem AND THE NARROW LAYOUT IS UNCHANGED. The breakpoint
+ * block gives the phrase a 100% basis on a line of its own, and 813.75px could
+ * never bind against the 263px line that leaves. Measured both ways at a 320px
+ * viewport: the computed `max-width` moves from 813.75px to none and every
+ * other reading is identical.
+ *
+ * PLACEMENT. Equal specificity with `.transcribe-text` (both 0-1-0), so source
+ * order decides and this rule is already the later of the two. It stays AHEAD
+ * of the breakpoint block at the end of the file, for the reason that block's
+ * own comment records at length — a media query does not out-rank anything.
  */
 .transcribe-edit {
   width: 100%;
+  max-width: none;
   font-size: inherit;
+}
+
+/*
+ * NARROW WIDTHS: THE PHRASE TAKES A LINE OF ITS OWN. ONE BREAKPOINT, THE SAME
+ * 30rem UNIT 2b OF ITEM 55 ALREADY CHOSE, AND THE SAME PROBLEM IT SOLVED.
+ *
+ * THE WITHDRAWN RULE AND ITS REASONING, QUOTED IN PLACE per register items 51
+ * and 56, because unit 11 changed the mechanism and not the decision:
+ *
+ *   "NARROW WIDTHS: THE HANGING INDENT IS DROPPED, ADDED IN UNIT 2b OF ITEM 55.
+ *
+ *    The indent is 8ch, and unit 2 measured what that leaves for the phrase at
+ *    a 320px viewport: a text column of 16.28ch WITH this file's panel padding,
+ *    and 19.43ch WITHOUT it. So the indent costs more than half the available
+ *    column — the panel made it worse, but it was already under 20ch on the
+ *    bare page, which is why the fix is here rather than in the panel padding
+ *    alone.
+ *
+ *    Below 30rem the timestamp and speaker therefore run INLINE with the phrase
+ *    instead of sitting in their own column. That is the same trade the rule's
+ *    own comment above describes refusing at desktop width — a fixed timestamp
+ *    column would crush the phrase — arriving at the width where the column
+ *    itself becomes the thing doing the crushing.
+ *
+ *    NOTHING HERE TOUCHES THE ACCESSIBILITY TREE. `padding`, `padding-left` and
+ *    `text-indent` are all layout; the reading order, the roles and the text
+ *    are unchanged, which is why the tree gate is taken at 320px as well as at
+ *    desktop width and both readings must match."
+ *
+ * ITS MEASUREMENT IS WHY THIS BLOCK EXISTS AND IS UNCHANGED. Unit 11's two
+ * reserved columns are wider than unit 2b's 8ch indent — 9ch of timecode plus
+ * 6.05em of speaker plus two gaps, against 8ch — so the crushing it measured
+ * would be worse, not better, if the columns simply stayed. The answer is the
+ * one its own last paragraph describes: below 30rem the phrase stops sharing a
+ * line with them.
+ *
+ * `flex-wrap: wrap` AND A FULL-WIDTH BASIS ARE ONE MECHANISM, NOT TWO. Wrap
+ * alone would let the phrase share the line whenever it happened to fit, so the
+ * layout would change from row to row; a 100% basis is what puts it on its own
+ * line deterministically. `flex-grow` is inherited from the base rule, so the
+ * phrase fills that line. The columns above it keep their reserved widths, so
+ * the timecode and speaker still line up with each other at this width.
+ *
+ * THE TREE IS UNTOUCHED BY THIS BLOCK, and the withdrawn claim above is still
+ * true OF THIS BLOCK even though the file header's blanket version is not:
+ * `padding`, `flex-wrap` and `flex-basis` change no box TYPE, so no whitespace
+ * run changes its rendering. The 320px tree reading must still match the
+ * desktop one.
+ *
+ * THIS BLOCK MOVED TO THE END OF THE SECTION, AFTER THE RULES IT OVERRIDES, AND
+ * IT IS A DEFECT REPAIR RATHER THAN TIDYING. Unit 11 first wrote it where unit
+ * 2b's block stood, immediately after `.transcribe-row` — which is where a
+ * reader looks for it, and which was correct for unit 2b because
+ * `text-indent: 0` had nothing later in the file competing with it.
+ * `flex-basis: 100%` does: `.transcribe-text` declares the `flex` SHORTHAND
+ * lower down, `flex` sets `flex-basis`, and the two selectors have the same
+ * specificity — so source order decided it and the later rule won. THE MEDIA
+ * QUERY WAS SILENTLY INERT.
+ *
+ * IT FAILED IN THE DIRECTION THAT LOOKS LIKE SUCCESS, which is why it is
+ * written down. `flex-wrap: wrap` in the same block DID apply, because
+ * `.transcribe-row` is declared ABOVE it — so the row reported `flex-wrap:
+ * wrap` at 320px and every other reading looked right. Measured at a 320px
+ * viewport with the block in its original place: the phrase still shared line
+ * one with the columns, starting at x=208.23 inside a 279px list, leaving it
+ * about 71px — which is the crushing unit 2b measured and this block exists to
+ * prevent. With the block moved here it starts at the list's own content edge
+ * and takes the full line.
+ *
+ * THE GENERAL FORM: a media query does not out-rank anything. It is an ordinary
+ * rule with ordinary specificity, so an override of an equal-specificity rule
+ * must come AFTER it in the file. Where a breakpoint block and the rules it
+ * modifies drift apart, put the block last and say so here — which is what this
+ * paragraph is for.
+ */
+@media (max-width: 30rem) {
+  .transcribe-list {
+    padding: 0.5rem;
+  }
+
+  .transcribe-row {
+    flex-wrap: wrap;
+  }
+
+  .transcribe-text {
+    flex-basis: 100%;
+  }
 }
 
 /* =========================================================================
@@ -508,3 +1462,248 @@
  * is why no media query for it appears below. Recorded so a reviewer checking
  * for one finds the answer rather than the absence.
  */
+
+/* =========================================================================
+   THE CONFLICTS TABLE — register item 47 unit 14, design section 12's D6
+   ========================================================================= */
+
+/*
+ * A DATA TABLE INSIDE THE REVIEW BLOCK, listing the suggestions that cannot be
+ * applied. It is the default home for a conflict; ticking "Show conflicts in
+ * the transcript" hides this and puts them back in the transcript's order, so
+ * the two are never on screen together.
+ *
+ * NO COLOUR, matching this file's own load-bearing rule. The only tints here
+ * are the same achromatic rgba greys unit 2 of item 55 established for
+ * surfaces — a 25% grey rule between rows, byte-identical to
+ * `.transcribe-row`'s own `border-bottom`, and a 6% grey header band matching
+ * `.transcribe-list`'s panel. Both composite over whatever the theme supplies
+ * and carry no hue of their own, and NEITHER TOUCHES TEXT.
+ *
+ * NO `ch` ANYWHERE, per the timecode column's own note: every metric here is
+ * `rem` or a percentage, and nine `ch` came out 0.0078px short in this file
+ * once already.
+ *
+ * NO FIXED HEIGHT AND NO FIXED LINE COUNT, so unit 9's text-spacing arm keeps
+ * passing when a user agent stylesheet enlarges the line box.
+ */
+.transcribe-review-conflicts {
+  margin-block-start: 0.75rem;
+}
+
+/*
+ * `width: 100%` AND `table-layout: auto` TOGETHER ARE WHAT KEEP THE PAGE FROM
+ * SCROLLING SIDEWAYS. The percentage stops the table growing past its
+ * container; `auto` lets the browser give the three columns the widths their
+ * content actually needs, which is what a two-dimensional data layout is for.
+ *
+ * `border-collapse: collapse` so the row rules below are ONE line between two
+ * rows rather than two abutting lines, matching how the transcript's own row
+ * separators read.
+ */
+.transcribe-conflict-table {
+  width: 100%;
+  border-collapse: collapse;
+  /*
+   * `font-size: inherit` ON THE TABLE, AND IT IS A CORRECTION RATHER THAN A
+   * PREFERENCE. Measured on the page before this line existed: a `<td>`
+   * rendered at 13.6px and a `<th>` at 11.56px, against 16px for the count
+   * sentence beside it and for the transcript's own phrase text. The app's
+   * table styling applies a 0.85 factor, and on a `<th>` it compounded to
+   * 0.85 squared. Eleven and a half pixels of bold text is small enough to be
+   * a readability problem on its own, and NOTHING about this table asked to
+   * be smaller than the block it sits in.
+   *
+   * IT DID NOT REACH THE HEADER CELLS, measured again at unit 15: a `<th>`
+   * computes 13.6px against the row's 16px, because the app's 0.85 factor is
+   * declared on `th` itself and `font-size: inherit` on the TABLE cannot
+   * outrank a rule on the cell. The compounding is gone — 11.56px was the
+   * defect this line fixed and it stayed fixed — but the header row is still
+   * below the body scale. Reported at unit 15 rather than changed: that unit's
+   * scope says nothing else about the table changes, and the desk is the one
+   * to decide whether the column headers join the floor.
+   */
+  font-size: inherit;
+
+  /*
+   * THE GAP BEFORE THE TRANSCRIPT — register item 47 unit 15.
+   *
+   * MEASURED AT ZERO BEFORE THIS LINE. The table's bottom edge and the
+   * transcript box's top edge both read 1759.3 at 1280px: the table finished
+   * and the transcript's panel began on the same pixel, so the two read as one
+   * surface with a rule through it rather than as a list and then a
+   * transcript.
+   *
+   * ON THE TABLE RATHER THAN ON THE TRANSCRIPT, so the space belongs to the
+   * thing that is conditional. The table is withheld entirely when there is no
+   * conflict, and when a person ticks "Show conflicts in the transcript" it is
+   * replaced; in both of those states the gap goes with it, which is right —
+   * there is nothing above the transcript to be separated from.
+   *
+   * `rem`, matching every other spacing figure in this file, so a user's own
+   * root font-size carries it.
+   */
+  margin-block-end: 0.75rem;
+}
+
+/*
+ * THE CAPTION IS LEFT-ALIGNED AND SITS ABOVE THE TABLE, which is a caption's
+ * default position and is kept. It is the table's accessible name, so it is
+ * NOT hidden and not replaced by an `aria-label`: AGENTS.md's first rule of
+ * ARIA, and a caption is the native element for exactly this.
+ *
+ * A WEIGHT, NOT A SIZE AND NOT A COLOUR. Weight costs no line-height, so
+ * nothing here moves the block's vertical rhythm.
+ */
+.transcribe-conflict-table caption {
+  text-align: start;
+  font-weight: 700;
+  margin-block-end: 0.375rem;
+}
+
+/*
+ * `text-align: start` ON EVERY CELL, overriding the user agent's centred
+ * `<th>`. Three columns of prose read as three columns of prose; a centred
+ * header over left-aligned text is a misalignment a person has to look past.
+ *
+ * `vertical-align: top` BECAUSE THE THREE CELLS ARE VERY DIFFERENT LENGTHS. A
+ * one-line button beside a three-line sentence reads as belonging to that
+ * sentence's middle unless it sits at the top of its row.
+ *
+ * `overflow-wrap: break-word` IS THE NARROW-WIDTH ANSWER AND IT IS DELIBERATE
+ * RATHER THAN DEFENSIVE. At 320 CSS pixels three columns are narrow enough
+ * that a single long word can be wider than its column, and the alternative —
+ * a horizontally scrolling region — would have to be a labelled element
+ * carrying `tabindex="0"`, which is ONE MORE TAB STOP for every keyboard user
+ * on every visit, to solve a problem that breaking a word solves for nobody's
+ * cost. It breaks only a word that cannot otherwise fit, so ordinary text
+ * wraps at spaces exactly as it would anywhere else.
+ */
+.transcribe-conflict-table th,
+.transcribe-conflict-table td {
+  text-align: start;
+  vertical-align: top;
+  padding: 0.375rem 0.5rem;
+  overflow-wrap: break-word;
+  border-bottom: 1px solid rgba(127, 127, 127, 0.25);
+}
+
+/*
+ * THE HEADER BAND IS WITHDRAWN, AND THE MEASUREMENT IS WHY. The withdrawn rule
+ * is quoted here per register items 51 and 56:
+ *
+ *   .transcribe-conflict-table thead th { background: rgba(127, 127, 127, 0.06); }
+ *
+ * It was the same 6% achromatic grey `.transcribe-list` uses for its own panel,
+ * chosen to separate the header row from the data without a second rule and
+ * without a colour, and the reasoning quoted alongside it — that this file's
+ * recorded contrast figures apply unchanged, being the same tint over the same
+ * composited surface — was WRONG about what the engines would make of it.
+ *
+ * BOTH ENGINES INDEPENDENTLY FLAGGED THE SAME THREE NODES, which is what makes
+ * this a finding rather than one engine's quirk. IBM reported "Text contrast of
+ * 1.24" on all three `thead th` at 11.56px and weight 700; axe raised
+ * `color-contrast` on the same three selectors in the same run. The pristine
+ * arm, measured on a `git worktree` at `a53651c` in the same sitting, has
+ * NEITHER finding — 0 IBM violations and 1 axe violation, that one being a
+ * pre-existing `region` on `#markdown-live-help`.
+ *
+ * THE MECHANISM IS NOT ISOLATED AND IS NOT GUESSED AT HERE. The computed values
+ * read `color: rgb(0, 19, 29)` on `background: rgba(127, 127, 127, 0.06)`,
+ * which composites nowhere near 1.24:1 over this page's light surface, and the
+ * transcript's own text sits on that identical tint — supplied by
+ * `.transcribe-list` — without either engine objecting. What differs is that
+ * the `<th>` declared the tint ITSELF. That is the observation; the cause is
+ * not established, and nothing here should be read as establishing it.
+ *
+ * IT IS WITHDRAWN RATHER THAN RE-COLOURED BECAUSE IT WAS DECORATION. The header
+ * row is already a row of `<th>` elements, the caption already names the table,
+ * and the rule below already separates every row from the next. A band that
+ * costs two engine violations and buys a shade of grey is not a trade worth
+ * making, and re-colouring it would mean choosing a colour in a file whose
+ * first rule is that it declares none.
+ */
+
+/*
+ * THE LAST ROW LOSES ITS RULE, matching `.transcribe-row:last-child` exactly —
+ * a rule under the final row draws a line with nothing beneath it.
+ */
+.transcribe-conflict-table tbody tr:last-child th,
+.transcribe-conflict-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/*
+ * THE ROW HEADER CARRIES THE BUTTON AND IS THEREFORE NOT BOLD BY DEFAULT'S
+ * LOGIC. The user agent makes a `<th>` bold; here the cell's whole content is
+ * a control with its own appearance, so the weight would apply to nothing and
+ * a later text-only row header would silently inherit an emphasis nobody
+ * chose. `font-weight: inherit` keeps the decision with the content.
+ *
+ * THE BUTTON WRAPS, AND A FIRST DRAFT OF THIS RULE REFUSED TO LET IT. That
+ * draft carried `white-space: nowrap` on the reasoning that "Go to phrase 93"
+ * is the shortest cell in the row and breaking it buys nothing. MEASURED AT
+ * 320 CSS PIXELS IT BOUGHT A DEFECT: the two buttons came out 181x45 and
+ * 193x45 inside a 279px table, so both header cells CLIPPED their own content
+ * and the two prose columns were left sharing 86 pixels between them. The
+ * declaration is withdrawn rather than narrowed to a breakpoint, because a
+ * button that may wrap is the correct behaviour at every width and simply
+ * never does at a wide one.
+ *
+ * LETTING IT WRAP WAS NECESSARY AND NOT SUFFICIENT, WHICH A SECOND
+ * MEASUREMENT FOUND. With the wrap allowed and no width bound the two row
+ * headers STILL clipped at 320px — the cell's content box measured 92px and
+ * the button 103px, overflowing by eleven pixels on both rows, because a
+ * button establishes its own formatting context and the cell's
+ * `overflow-wrap` does not reach inside it. `max-width: 100%` bounds it to
+ * the cell it sits in and `overflow-wrap: break-word` lets its own longest
+ * word break when that bound bites. Neither fires at a wide viewport.
+ *
+ * `font-weight: inherit` ON THE ROW HEADER. The user agent makes a `<th>`
+ * bold; here the cell's whole content is a control with its own appearance, so
+ * the weight applies to nothing — and a later text-only row header would
+ * silently inherit an emphasis nobody chose. The decision stays with the
+ * content.
+ */
+.transcribe-conflict-table tbody th {
+  font-weight: inherit;
+}
+
+.transcribe-conflict-table tbody th button {
+  margin: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+/*
+ * BELOW 30rem THE CELL PADDING TIGHTENS, matching the breakpoint every other
+ * narrow-width block in this file uses — see the transcript block's own note
+ * for why 30rem is the chosen width. Nothing else changes: the table stays a
+ * table, because a data table is exactly the content SC 1.4.10 exempts from
+ * reflowing to one dimension, and turning three columns into a stack at 320px
+ * would throw away the column headers that make it readable.
+ */
+@media (max-width: 30rem) {
+  .transcribe-conflict-table th,
+  .transcribe-conflict-table td {
+    padding: 0.25rem 0.25rem;
+  }
+}
+
+/*
+ * FORCED COLOURS. The rgba grey above is exactly the kind of declaration the
+ * user agent replaces with something that separates nothing, so the rule
+ * between rows is restated on a colour the user has chosen — the same
+ * treatment, and the same reasoning, unit 2 of item 55 applied to
+ * `.transcribe-list` and `.transcribe-row`.
+ *
+ * THERE IS NO SECOND CLAUSE HERE ANY MORE. An earlier draft also dropped a
+ * header band to `Canvas`; that band is withdrawn above, so restating it would
+ * name a rule this file no longer has.
+ */
+@media (forced-colors: active) {
+  .transcribe-conflict-table th,
+  .transcribe-conflict-table td {
+    border-bottom-color: CanvasText;
+  }
+}

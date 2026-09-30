@@ -852,6 +852,24 @@
 
   const APPENDIX_MARKER_RE = /<!--\s*img-desc:([^\s>][^\s>]*?)\s*-->/;
   const APPENDIX_HEADING_RE = /^(#{1,6})\s+\S/;
+
+  // TC-1 (26 September 2026). The marker that opens an entry's "Text in the
+  // image" subsection: `<!-- img-text:<id> -->`, the img-desc form with "text"
+  // in place of "desc". Decision (Matthew, via the side-assist): the boundary
+  // between an entry's long description and its text-in-image subsection is
+  // this MARKER COMMENT, not the heading text. Two readers parse an entry body
+  // back out of the MMD — `_parseAppendixEntries` here, which reconcile runs on
+  // every Image Manager open, and `extractWorkingLongById` in
+  // mathpix-chemistry-registry-writer.js, whose adopt path freezes what it
+  // copies. Both must end the body at this marker, or the subsection is taken
+  // into `longDescription` and grows on every open. A heading match would also
+  // cut short any long description that carries its own "Text in the image"
+  // heading. Exported so the chemistry reader uses this constant rather than a
+  // copy of it.
+  const TEXT_IN_IMAGE_MARKER_KEY = "img-text";
+  const TEXT_IN_IMAGE_MARKER_RE = new RegExp(
+    "<!--\\s*" + TEXT_IN_IMAGE_MARKER_KEY + ":([^\\s>][^\\s>]*?)\\s*-->",
+  );
   const APPENDIX_FENCE_RE = /^(```|~~~)/;
 
   // CTX-P1. The deepest level markdown has; every level computed in this module
@@ -1036,7 +1054,8 @@
   /**
    * Find every appendix entry currently present in the MMD via its marker
    * comment. Each entry's text is the prose between its heading line and the
-   * next marker (or end-of-document). Leading and trailing blank lines in the
+   * first of: a text-in-image marker (TC-1), the next img-desc marker, or
+   * end-of-document. Leading and trailing blank lines in the
    * captured prose are trimmed; internal blank lines are preserved so
    * multi-paragraph descriptions round-trip cleanly.
    *
@@ -1045,9 +1064,14 @@
    * parent heading text. Duplicate marker IDs keep the first occurrence and
    * log a warning.
    *
+   * `entryLevel` is the level of the entry's own heading as it stands in the
+   * MMD, or `null` when the entry has no heading line. It is the level the
+   * writer passed to `demoteEntryHeadings` for this entry, and `parseAppendix`
+   * uses it to compare like with like (PR-1).
+   *
    * @private
    * @param {string} mmd
-   * @returns {Array<{id: string, text: string, markerLine: number, headingLine: number|null}>}
+   * @returns {Array<{id: string, text: string, markerLine: number, headingLine: number|null, entryLevel: number|null}>}
    */
   function _parseAppendixEntries(mmd) {
     if (typeof mmd !== "string") return [];
@@ -1075,17 +1099,32 @@
       seenIds.add(id);
 
       let headingLine = -1;
+      let entryLevel = null;
       for (let i = markerLine + 1; i < nextMarkerLine; i++) {
         const trimmedI = lines[i].trim();
-        if (APPENDIX_HEADING_RE.test(trimmedI)) {
+        const headingMatch = trimmedI.match(APPENDIX_HEADING_RE);
+        if (headingMatch) {
           headingLine = i;
+          entryLevel = headingMatch[1].length;
           break;
         }
         if (trimmedI !== "") break;
       }
 
       const textStart = headingLine === -1 ? markerLine + 1 : headingLine + 1;
-      const textLines = lines.slice(textStart, nextMarkerLine);
+
+      // TC-1. The body ends at the first text-in-image marker before the next
+      // entry; everything from that marker to the next entry is the
+      // subsection, which this reader ignores.
+      let textEnd = nextMarkerLine;
+      for (let i = textStart; i < nextMarkerLine; i++) {
+        if (TEXT_IN_IMAGE_MARKER_RE.test(lines[i])) {
+          textEnd = i;
+          break;
+        }
+      }
+
+      const textLines = lines.slice(textStart, textEnd);
       while (textLines.length > 0 && textLines[0].trim() === "")
         textLines.shift();
       while (
@@ -1099,6 +1138,7 @@
         text: textLines.join("\n"),
         markerLine,
         headingLine: headingLine === -1 ? null : headingLine,
+        entryLevel,
       });
     }
     return entries;
@@ -1158,12 +1198,70 @@
   }
 
   // ============================================================================
+  // TC-1 — TEXT IN THE IMAGE, WRITTEN UNDER THE LONG DESCRIPTION
+  // ============================================================================
+  //
+  // Decision (Matthew, 26 September 2026, via the side-assist). The model's
+  // section-4 Text Content is stored in the registry as `textInImage`, and until
+  // TC-1 it never reached the MMD: a reader of the exported document never met
+  // the text in the image (PB-0). It is now written into the appendix, after the
+  // entry's demoted long description, as its own subsection:
+  //
+  //   <!-- img-text:<id> -->
+  //
+  //   #### Text in the image      (entry level plus one, capped at 6)
+  //
+  //   <textInImage, verbatim>
+  //
+  // Three rules, each decided rather than defaulted:
+  //   - The Stage 2 filter is KEPT. An entry with text in the image but no long
+  //     description writes nothing, because entries are selected on a non-empty
+  //     `longDescription` and the remove-appendix branch depends on that.
+  //   - An empty or whitespace-only value, or the section-4 sentinel "No text
+  //     content.", writes no marker and no subsection. The sentinel is read from
+  //     MathPixAltTextWriteStage at call time, never copied here.
+  //   - The subsection is NOT read back into the registry in this parcel. The
+  //     marker exists so that BOTH readers of an entry body — the reader above
+  //     and the chemistry writer's `extractWorkingLongById` — end the body where
+  //     the subsection begins. Without it, reconcile on every manager open would
+  //     take the subsection into `longDescription`, the next write would add a
+  //     second one, and the chemistry adopt path would freeze the result.
+
+  const TEXT_IN_IMAGE_HEADING = "Text in the image";
+
+  /**
+   * The entry's `textInImage` as it should be written, or `null` when no
+   * subsection should be written (not a string, blank, or the sentinel).
+   *
+   * @private
+   * @param {Object} entry - Registry entry.
+   * @returns {string|null}
+   */
+  function _writableTextInImage(entry) {
+    const value = entry && entry.textInImage;
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if (trimmed === "") return null;
+    const sentinel = window.MathPixAltTextWriteStage?.NO_TEXT_SENTINEL;
+    if (typeof sentinel !== "string") {
+      logWarn(
+        "_writableTextInImage(): MathPixAltTextWriteStage.NO_TEXT_SENTINEL unavailable — sentinel not excluded",
+      );
+    } else if (trimmed === sentinel) {
+      return null;
+    }
+    return value;
+  }
+
+  // ============================================================================
   // STAGE 2.A — PUBLIC: buildAppendix
   // ============================================================================
 
   /**
    * Construct the appendix string from registry entries with non-empty
-   * `longDescription`. The top heading level is
+   * `longDescription`. Since TC-1, an entry with writable `textInImage` also
+   * carries a marked "Text in the image" subsection after its long
+   * description (see the TC-1 block above). The top heading level is
    * `(detectShallowestHeading(mmd) ?? 1) + 1`, capped at 6; entry headings
    * are one deeper, also capped at 6. An explicit `options.appendixHeadingLevel`
    * overrides the auto-detection but is still capped at 6.
@@ -1202,6 +1300,9 @@
     const entryLevel = Math.min(6, topLevel + 1);
     const topHashes = "#".repeat(topLevel);
     const entryHashes = "#".repeat(entryLevel);
+    // TC-1. The text-in-image subsection sits one below the entry heading, the
+    // same level the demoted long description's own shallowest heading takes.
+    const textHashes = "#".repeat(Math.min(MAX_HEADING_LEVEL, entryLevel + 1));
 
     const entries = registry
       .getAllImages()
@@ -1226,6 +1327,15 @@
       // heading above it. Uses the level already computed for this appendix, so
       // the transform and the heading it must sit under can never disagree.
       out.push(demoteEntryHeadings(e.longDescription, entryLevel));
+      const textInImage = _writableTextInImage(e);
+      if (textInImage !== null) {
+        out.push("");
+        out.push(`<!-- ${TEXT_IN_IMAGE_MARKER_KEY}:${e.id} -->`);
+        out.push("");
+        out.push(`${textHashes} ${TEXT_IN_IMAGE_HEADING}`);
+        out.push("");
+        out.push(textInImage);
+      }
       if (i < entries.length - 1) out.push("");
     }
     return {
@@ -1353,6 +1463,43 @@
   }
 
   // ============================================================================
+  // PR-1 — COMPARE THE MMD BODY WITH THE REGISTRY VALUE AS THE WRITER EMITS IT
+  // ============================================================================
+  //
+  // PR-1 (26 September 2026). `buildAppendix` writes each long description
+  // through `demoteEntryHeadings`, so the MMD holds the demoted form while the
+  // registry keeps the form the model wrote. Before PR-1, `parseAppendix`
+  // compared the two directly, found every long description with headings
+  // "changed", and wrote the demoted text back with `nextSource`. TC-1 measured
+  // the result on the shipped path: the first manager open after a generate
+  // took the canary from 506 to 510 characters and from `ai-generated` to
+  // `ai-reviewed`, a reviewed stamp nobody gave, on a field the freeze floor
+  // then locks. The same comparison stamped an `algo-generated` value `user`.
+  //
+  // The reader now passes the registry value through the SAME function the
+  // writer used, at the entry's own heading level, before deciding. Equal after
+  // demotion means the MMD holds what the writer wrote: no content write and no
+  // source change. Anything else is a real MMD edit and takes the existing
+  // path, `nextSource` and all.
+
+  /**
+   * Whether an appendix entry's MMD body is exactly what the writer would emit
+   * for the registry's `longDescription`, so that nobody has edited it.
+   *
+   * @private
+   * @param {{text: string, entryLevel: number|null}} entry - From `_parseAppendixEntries`.
+   * @param {string} registryValue - The registry entry's `longDescription`.
+   * @returns {boolean}
+   */
+  function _appendixBodyUnchanged(entry, registryValue) {
+    if (registryValue === entry.text) return true;
+    if (typeof registryValue !== "string" || entry.entryLevel === null) {
+      return false;
+    }
+    return demoteEntryHeadings(registryValue, entry.entryLevel) === entry.text;
+  }
+
+  // ============================================================================
   // STAGE 2.A — PUBLIC: parseAppendix
   // ============================================================================
 
@@ -1361,7 +1508,10 @@
    * entry's `longDescription`. MMD wins — when the MMD value differs from the
    * registry value, the registry is updated. When values already agree, the
    * registry is left untouched so we don't spuriously flip `isModified` on
-   * every parse (parallel to `parseCaptions`'s convention).
+   * every parse (parallel to `parseCaptions`'s convention). Since PR-1 the
+   * values "agree" when the MMD body equals the registry value passed through
+   * `demoteEntryHeadings` at the entry's level, which is what the writer
+   * emitted; see the PR-1 block above.
    *
    * Defensiveness rule: if the MMD contains no appendix at all, the registry
    * is left untouched — `longDescription` fields are never blanked on the
@@ -1414,7 +1564,8 @@
           (actions[APPENDIX_ACTIONS.ENTRY_NOT_MAPPED] || 0) + 1;
         continue;
       }
-      if (regEntry.longDescription === e.text) {
+      // PR-1: compare with the registry value as the writer emits it.
+      if (_appendixBodyUnchanged(e, regEntry.longDescription)) {
         actions[APPENDIX_ACTIONS.NO_OP] =
           (actions[APPENDIX_ACTIONS.NO_OP] || 0) + 1;
         continue;
@@ -1463,6 +1614,8 @@
     writeAppendix,
     parseAppendix,
     APPENDIX_ACTIONS,
+    // TC-1 — the text-in-image marker, read by the chemistry writer's parse.
+    TEXT_IN_IMAGE_MARKER_RE,
   };
 
   // ============================================================================

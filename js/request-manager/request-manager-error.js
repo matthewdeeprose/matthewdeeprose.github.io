@@ -6,7 +6,6 @@
 
 import { errorHandler } from "../error-handler/error-handler-main.js";
 import { a11y } from "../accessibility-helpers.js";
-import { modelRegistry } from "../model-definitions.js";
 
 // Logging configuration
 const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
@@ -501,19 +500,5 @@ export class RequestManagerError {
       temperature: Math.max(0, parameters.temperature - 0.1),
       top_p: Math.max(0.1, parameters.top_p - 0.1),
     };
-  }
-
-  /**
-   * Switch to fallback model
-   * @param {string} currentModel - Current model ID
-   * @returns {Promise<string|null>} New model ID or null
-   */
-  async switchToFallbackModel(currentModel) {
-    const fallbackModel = modelRegistry.getFallbackModel(currentModel);
-    if (fallbackModel) {
-      await this.modelManager.updateModel(fallbackModel);
-      return fallbackModel;
-    }
-    return null;
   }
 }

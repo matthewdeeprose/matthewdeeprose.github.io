@@ -526,29 +526,39 @@
      * @param {number} attempt - Current retry attempt (1-based)
      * @param {number} delay - Delay before next retry in ms
      * @param {Error} error - Error that triggered retry
+     * @param {Object} [options]
+     * @param {Object} [options.embed] - The embed whose request is being
+     *   retried; its own retry config supplies the "of N". Defaults to the
+     *   main description embed. The verification embed passes itself.
      */
-    handleRetryAttempt(attempt, delay, error) {
+    handleRetryAttempt(attempt, delay, error, { embed = this.embedInstance } = {}) {
       const delaySeconds = Math.round(delay / 1000);
       const errorMessage = error?.message || "Unknown error";
 
       logWarn(`Retry attempt ${attempt} after error: ${errorMessage}`);
       logDebug(`Retrying in ${delaySeconds}s...`);
 
-      // Update progress message if in generation phase
+      // Update progress message if in generation phase. Visible only: the
+      // progress stage is not a live region.
       if (this.isGenerating && this.elements.progressStage) {
-        this.elements.progressStage.innerHTML = `<span aria-hidden="true">🔄</span> Retrying (attempt ${attempt})...`;
+        const iconHtml = typeof getIcon === "function" ? getIcon("refresh") : "";
+        this.elements.progressStage.innerHTML = `${iconHtml} Retrying (attempt ${attempt})...`;
       }
 
-      // Show notification for first retry (user awareness)
-      if (attempt === 1 && typeof window.notifyWarning === "function") {
-        window.notifyWarning(
-          `Request failed, retrying automatically... (${delaySeconds}s delay)`,
-        );
-      }
-
-      // Show notification for final retry attempt
-      if (attempt === 3 && typeof window.notifyWarning === "function") {
-        window.notifyWarning(`Final retry attempt in ${delaySeconds}s...`);
+      // Parcel 52: one cue per retry, on EVERY attempt, in the same words as
+      // Chat and MathPix. This toast is the only voice a retry has: the main
+      // embed's own "Request failed, retrying in Ns" toast is switched off
+      // (showNotifications: false), and the toast announces through the shared
+      // announcer, so nothing else is added here. Before this, attempt 1 and 3
+      // spoke twice (ours and the embed's) and attempt 2 spoke only once.
+      // "of N" is read from the retrying embed, never hard-coded; without an
+      // embed (a direct caller) the count is left out rather than guessed.
+      const maxRetries = embed?.getRetryConfig?.()?.maxRetries;
+      const cue = Number.isInteger(maxRetries)
+        ? `Retrying, attempt ${attempt} of ${maxRetries}.`
+        : `Retrying, attempt ${attempt}.`;
+      if (typeof window.notifyWarning === "function") {
+        window.notifyWarning(cue);
       }
 
       // Log to debug panel if available
@@ -1261,14 +1271,51 @@
       const hasFile = !!this.currentFile;
       const hasOutput = !!this.lastRawOutput;
 
+      // The four run buttons are HELD busy while generating (BusyControl,
+      // parcel 43) rather than natively disabled: native `disabled` on the
+      // button a person just pressed throws their focus to the document. So
+      // natively they carry only the standing no-image state. Held on the
+      // isGenerating edge, released when it falls. Regenerate is RELEASED FIRST:
+      // from <body>, the first visible control released is the one that takes
+      // focus back (measured), and Regenerate is where a finished run belongs.
+      // Resolved at call time; if the helper is absent, today's native line.
+      const runButtonKeys = [
+        "regenerateBtn",
+        "generateBtn",
+        "generateLocalBtn",
+        "redescribeBtn",
+      ];
+      const busyControl = window.BusyControl;
+      const canHold = !!(busyControl && typeof busyControl.hold === "function");
+      if (canHold && this.isGenerating) {
+        this._busyHolds = this._busyHolds || {};
+        for (const key of runButtonKeys) {
+          const btn = this.elements[key];
+          if (btn && !this._busyHolds[key]) {
+            this._busyHolds[key] = busyControl.hold(btn);
+          }
+        }
+      } else if (this._busyHolds) {
+        const holds = this._busyHolds;
+        this._busyHolds = null;
+        for (const key of runButtonKeys) {
+          if (holds[key]) holds[key].release();
+        }
+      } else if (!canHold && this.isGenerating) {
+        logWarn(
+          "BusyControl is not loaded; the run buttons are natively disabled instead",
+        );
+      }
+      const busyNatively = !canHold && this.isGenerating;
+
       // Generate button (cloud)
       if (this.elements.generateBtn) {
-        this.elements.generateBtn.disabled = !hasFile || this.isGenerating;
+        this.elements.generateBtn.disabled = !hasFile || busyNatively;
       }
 
       // Generate Locally button (Phase 13C-1)
       if (this.elements.generateLocalBtn) {
-        this.elements.generateLocalBtn.disabled = !hasFile || this.isGenerating;
+        this.elements.generateLocalBtn.disabled = !hasFile || busyNatively;
       }
 
       // Clear button
@@ -1292,12 +1339,12 @@
 
       // Regenerate button
       if (this.elements.regenerateBtn) {
-        this.elements.regenerateBtn.disabled = !hasFile || this.isGenerating;
+        this.elements.regenerateBtn.disabled = !hasFile || busyNatively;
       }
 
       // Redescribe button
       if (this.elements.redescribeBtn) {
-        this.elements.redescribeBtn.disabled = !hasFile || this.isGenerating;
+        this.elements.redescribeBtn.disabled = !hasFile || busyNatively;
       }
 
       // Nudge the Read Aloud module — it normally refreshes via a

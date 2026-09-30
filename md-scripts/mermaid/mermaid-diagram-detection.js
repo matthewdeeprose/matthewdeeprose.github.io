@@ -171,6 +171,41 @@ window.MermaidDiagramDetection = (function () {
     xychart: "xychart",
     // Item 80: detectType returns "block" for block-beta; one entry suffices.
     block: "block",
+    // Item 84: ONE ROW FOR FIVE DIAGRAM KINDS. detectType returns "c4" for
+    // C4Context, C4Container, C4Component, C4Dynamic AND C4Deployment alike
+    // (census § Q1, measured on all five), so one entry routes every one of
+    // them to the single c4 generator, which recovers the kind from
+    // db.getC4Type() because no detection key can supply it. A second row
+    // would be unreachable: there is no other live name to add.
+    c4: "c4",
+    // Item 88, 21 September 2026: detectType returns "kanban" for a `kanban`
+    // opener; one entry suffices, and there is no -v2-style second spelling to
+    // add. Same pattern as the c4 row above and for the same reason — without
+    // this row the kanban generator registers and is never called, because the
+    // core resolves a generator by the key this map produces and a kanban
+    // source would resolve to `unsupported:kanban` and reach the honest
+    // fallback instead.
+    //
+    // UNCHANGED BY THIS ENTRY, and recorded rather than widened: the legacy
+    // keyword scan below carries a per-type branch list and has NO kanban
+    // branch, so a source reaching that scan — which happens only when Mermaid
+    // itself is absent or its detector throws — still answers `flowchart` and a
+    // board would be described as one. This map cannot reach that path, being
+    // consulted only for a type Mermaid's own detector produced. The misroute
+    // is the same one the xychart row records above, and is left as found.
+    kanban: "kanban",
+    // Item 93, 28 September 2026: detectType returns "radar" for a
+    // `radar-beta` opener; one entry suffices. Same reason as the kanban row
+    // above — without it the radar generator registers and is never called,
+    // and a radar source resolves to `unsupported:radar`. The legacy keyword
+    // scan below has no radar branch either, and is left as found.
+    radar: "radar",
+    // Item 96, 29 September 2026: detectType returns "info" for an `info`
+    // opener; one entry suffices. Same reason as the radar row above. The
+    // legacy keyword scan has no info branch either, and is left as found: an
+    // upper-case `INFO` makes detectType throw, the scan answers `flowchart`,
+    // and that misroute is register item 97's, not this row's.
+    info: "info",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */
@@ -385,81 +420,11 @@ window.MermaidDiagramDetection = (function () {
     return "flowchart";
   }
 
-  /**
-   * Extract the orientation from a flowchart diagram code
-   * @param {string} code - The mermaid diagram code
-   * @returns {string|null} The detected orientation (TB, BT, LR, RL) or null if not found
-   */
-  function detectOrientation(code) {
-    if (!code) return null;
-
-    // Check if code contains graph/flowchart with orientation
-    const graphMatch = code.match(/graph\s+(TB|BT|LR|RL)/i);
-    const flowchartMatch = code.match(/flowchart\s+(TB|BT|LR|RL)/i);
-
-    if (graphMatch) return graphMatch[1].toUpperCase();
-    if (flowchartMatch) return flowchartMatch[1].toUpperCase();
-
-    return null;
-  }
-
-  /**
-   * Check if diagram type supports orientation changes
-   * @param {string} code - The mermaid diagram code
-   * @returns {boolean} True if orientation changes are supported
-   */
-  function supportsOrientation(code) {
-    if (!code) return false;
-
-    // Clean up code to remove whitespace and normalise
-    const cleanCode = code.trim();
-
-    // Check if this is a graph or flowchart (which support orientation)
-    // Look for graph/flowchart at the beginning of the string with any orientation (TB|BT|LR|RL)
-    const graphRegex = /^(?:graph|flowchart)\s+(TB|BT|LR|RL)/i;
-    const isGraphOrFlowchart = graphRegex.test(cleanCode);
-
-    return isGraphOrFlowchart;
-  }
-
-  /**
-   * Check if the diagram is a decision diagram (with many decision nodes)
-   * @param {string} code - The mermaid diagram code
-   * @returns {boolean} True if it's likely a decision-focused diagram
-   */
-  function isDecisionDiagram(code) {
-    if (!code) return false;
-
-    // Count decision nodes (diamond shapes)
-    const decisionNodeCount = (code.match(/\{\{([^}]+)\}\}/g) || []).length;
-
-    // Count rhombus nodes
-    const rhombusNodeCount = (code.match(/\[\{([^}]+)\}\]/g) || []).length;
-
-    // Count question marks in node texts (common for decision nodes)
-    const questionNodeCount = (code.match(/\[[^\]]*\?[^\]]*\]/g) || []).length;
-
-    // Calculate total potential decision nodes
-    const totalDecisionNodes =
-      decisionNodeCount + rhombusNodeCount + questionNodeCount;
-
-    // Count total nodes
-    const totalNodesMatch =
-      code.match(/\[[^\]]+\]|\([^\)]+\)|\{\{[^}]+\}\}|\[\{[^}]+\}\]/g) || [];
-    const totalNodes = totalNodesMatch.length;
-
-    // If more than 30% of nodes are decision nodes, consider it a decision diagram
-    return totalNodes > 0 && totalDecisionNodes / totalNodes > 0.3;
-  }
-
   // Inform that the module has been initialised
   logInfo("[Mermaid Accessibility] Diagram detection module loaded");
 
   // Public API
   return {
     detectDiagramType: detectDiagramType,
-    detectOrientation: detectOrientation,
-    supportsOrientation: supportsOrientation,
-    isDecisionDiagram: isDecisionDiagram,
   };
 })();

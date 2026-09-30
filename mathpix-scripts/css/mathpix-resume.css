@@ -467,7 +467,7 @@ body.resume-focus-mode .resume-storage-dashboard {
       HIGH CONTRAST MODE
       ============================================================================ */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   #resume-drop-zone {
     border-width: 3px;
   }
@@ -1477,7 +1477,7 @@ body.resume-fullscreen-active {
    High Contrast Mode Support
    ============================================================================ */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .resume-auto-restored-banner {
     border-width: 3px;
   }
@@ -2765,42 +2765,33 @@ h4 .icon {
 
 /* ---- High Contrast Colour Overrides ---- */
 
-@media (prefers-contrast: high) {
+/* currentColor, not CanvasText: the app declares no color-scheme, so
+   CanvasText resolves to black in the dark theme too, and this sheet loads
+   after dark.css. The storage-bar fills are left to light.css and dark.css,
+   which tune them per theme. */
+@media (prefers-contrast: more) {
   .session-manager-group {
-    border-color: CanvasText;
+    border-color: currentColor;
   }
 
   .session-manager-toolbar {
-    border-color: CanvasText;
+    border-color: currentColor;
   }
 
   .session-manager-item-badge-active {
-    border-color: CanvasText;
+    border-color: currentColor;
   }
 
   .resume-image-save-warning {
-    border-left-color: CanvasText;
-    border-color: CanvasText;
+    border-color: currentColor;
   }
 
   .resume-storage-dashboard {
-    border-color: CanvasText;
+    border-color: currentColor;
   }
 
   .resume-storage-bar-container {
-    border-color: CanvasText;
-  }
-
-  .resume-storage-bar-ok {
-    background-color: green;
-  }
-
-  .resume-storage-bar-warning {
-    background-color: orange;
-  }
-
-  .resume-storage-bar-danger {
-    background-color: red;
+    border-color: currentColor;
   }
 }
 
@@ -3036,7 +3027,7 @@ details[open] > .session-manager-toggle-summary::before {
 
 /* ---- High Contrast Mode ---- */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .session-manager-group {
     border-width: 2px;
   }
@@ -3152,10 +3143,11 @@ body.resume-focus-mode .session-manager-toolbar {
 
 /* ---- High Contrast Mode ---- */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
+  /* Shorthand first, so it does not reset the wider left accent */
   .resume-image-save-warning {
-    border-left-width: 4px;
     border: 2px solid;
+    border-left-width: 4px;
   }
 }
 
@@ -3244,7 +3236,7 @@ body.resume-focus-mode .resume-image-save-warning {
 
 /* ---- High Contrast Mode ---- */
 
-@media (prefers-contrast: high) {
+@media (prefers-contrast: more) {
   .resume-storage-dashboard {
     border-width: 2px;
   }

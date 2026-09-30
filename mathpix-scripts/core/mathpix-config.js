@@ -1530,6 +1530,86 @@ const MATHPIX_CONFIG = {
 };
 
 /**
+ * @constant {Object} MATHPIX_PRICING
+ * @description MathPix API list prices, used for the cost notices shown before
+ * a billable request in upload mode. USD list price, 0–1M tier, read from the
+ * pricing page on CHECKED_ON. The University's account rate may differ, so
+ * every notice says "MathPix list price, US dollars" rather than converting.
+ *
+ * The static notices in tools.html (class "mathpix-cost-notice") quote these
+ * figures in prose. Update them together when a price changes. Every notice
+ * carries "mathjax-ignore": MathJax's inline delimiter is "$", so two dollar
+ * amounts in one paragraph were otherwise typeset as a formula (measured).
+ *
+ * @property {string} SOURCE_URL - Where the prices were read
+ * @property {string} CHECKED_ON - ISO date the prices were read
+ * @property {string} CURRENCY - Currency of every figure
+ * @property {number} IMAGE_PER_REQUEST - /v3/text, per image (upload, paste, camera)
+ * @property {number} STROKES_PER_REQUEST - /v3/strokes (Draw), per request
+ * @property {number} PDF_PER_PAGE - /v3/pdf, per page; all output formats included
+ * @property {number} DENSE_IMAGE_ROW_THRESHOLD - An image with more rows of
+ *   text than this may be billed at the PDF page rate
+ * @property {null} CONVERTER_PER_REQUEST - /v3/converter: not published
+ * @since 24 September 2026
+ */
+const MATHPIX_PRICING = Object.freeze({
+  SOURCE_URL: "https://mathpix.com/pricing/api",
+  CHECKED_ON: "2026-09-24",
+  CURRENCY: "USD",
+  IMAGE_PER_REQUEST: 0.002,
+  STROKES_PER_REQUEST: 0.002,
+  PDF_PER_PAGE: 0.005,
+  DENSE_IMAGE_ROW_THRESHOLD: 12,
+  // Unpublished: neither the pricing page nor docs.mathpix.com gives a figure.
+  // Never substitute an estimate here.
+  CONVERTER_PER_REQUEST: null,
+});
+
+// Costs are held to a tenth of a cent, because a single PDF page is $0.005
+const MATHPIX_COST_ROUNDING_FACTOR = 1000;
+const MATHPIX_COST_SUB_DOLLAR_DECIMALS = 3;
+const MATHPIX_COST_DOLLAR_DECIMALS = 2;
+
+/**
+ * Format a USD amount for a cost notice
+ * @param {number} amount - Amount in US dollars
+ * @returns {string|null} "$0.005", "$0.05", "$0.50", "$1.25"; null if invalid
+ * @since 24 September 2026
+ *
+ * @example
+ * formatMathPixCost(0.015); // "$0.015"
+ * formatMathPixCost(0.5);   // "$0.50"
+ */
+function formatMathPixCost(amount) {
+  if (typeof amount !== "number" || !Number.isFinite(amount) || amount < 0) {
+    return null;
+  }
+
+  if (amount >= 1) {
+    return `$${amount.toFixed(MATHPIX_COST_DOLLAR_DECIMALS)}`;
+  }
+
+  // Keep a tenth of a cent below a dollar, then drop one trailing zero so
+  // $0.050 reads as $0.05 and $0.500 as $0.50
+  const fixed = amount.toFixed(MATHPIX_COST_SUB_DOLLAR_DECIMALS);
+  return `$${fixed.endsWith("0") ? fixed.slice(0, -1) : fixed}`;
+}
+
+/**
+ * Estimate the list price of processing a number of PDF pages
+ * @param {number|null} pages - Pages that will be sent to MathPix
+ * @returns {number|null} Estimated cost in USD, or null when pages is unknown
+ * @since 24 September 2026
+ */
+function estimateMathPixPdfCost(pages) {
+  if (!Number.isInteger(pages) || pages < 1) return null;
+  return (
+    Math.round(pages * MATHPIX_PRICING.PDF_PER_PAGE * MATHPIX_COST_ROUNDING_FACTOR) /
+    MATHPIX_COST_ROUNDING_FACTOR
+  );
+}
+
+/**
  * Get endpoint configuration by key
  * @param {string} endpointKey - Endpoint key (US, EU, ASIA)
  * @returns {Object} Endpoint configuration
@@ -1590,4 +1670,7 @@ export {
   getEndpointFeatures,
   isFeatureAvailable,
   getFormatInfo,
+  MATHPIX_PRICING,
+  formatMathPixCost,
+  estimateMathPixPdfCost,
 };

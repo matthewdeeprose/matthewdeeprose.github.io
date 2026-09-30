@@ -58,24 +58,10 @@ function logDebug(message, ...args) {
 }
 
 // ============================================================================
-// SVG Icon Registry
+// SVG Icons (from the shared icon library, icon-library.js)
 // ============================================================================
 
-/**
- * Centralised SVG icon registry for consistent icon usage
- * Icons use currentColor for theme-aware styling
- * @constant {Object}
- */
-const ICONS = {
-  check:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>',
-  pencil:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"/><path d="m12.5 3.5 1 1"/></g></svg>',
-  fullscreenEnter:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 2)"><path d="m16.5 5.5v-4.978l-5.5.014"/><path d="m16.5.522-6 5.907"/><path d="m11 16.521 5.5.002-.013-5.5"/><path d="m16.5 16.429-6-5.907"/><path d="m.5 5.5v-5h5.5"/><path d="m6.5 6.429-6-5.907"/><path d="m6 16.516-5.5.007v-5.023"/><path d="m6.5 10.5-6 6"/></g></svg>',
-  fullscreenExit:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m.5 4.5 4.5-.013-.013-4.5"/><path d="m5 4.5-4.5-4"/><path d="m.5 8.5 4.5.014.013 4.5"/><path d="m5 8.5-4.5 4"/><path d="m12.5 4.5-4.5-.013.013-4.5"/><path d="m8 4.5 4.5-4"/><path d="m12.5 8.5-4.5.014-.013 4.5"/><path d="m8 8.5 4.5 4"/></g></svg>',
-};
+let libraryMissingWarned = false;
 
 /**
  * Get an SVG icon by name with accessibility attributes
@@ -85,17 +71,17 @@ const ICONS = {
  * @returns {string} SVG HTML string with aria-hidden="true"
  */
 function getIcon(name, options = {}) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon requested: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
 
-  const className = options.className
-    ? ` class="icon ${options.className}"`
-    : ' class="icon"';
-
-  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+  return library.getIcon(name, options);
 }
 
 // ============================================================================
@@ -543,6 +529,10 @@ class MathPixConvertMode {
       editOverlay: document.getElementById("convert-edit-overlay"),
       editTextarea: document.getElementById("convert-edit-textarea"),
       fullscreenBtn: document.getElementById("convert-fullscreen-btn"),
+
+      // Parcel 10e: kept so it can be put back after downloadAllAsZip()
+      // swaps it for a "Click to Save ZIP" link
+      downloadAllBtn: document.getElementById("convert-mode-download-all-btn"),
     };
 
     logDebug("Elements cached", Object.keys(this.elements).length);
@@ -696,6 +686,11 @@ class MathPixConvertMode {
       if (textarea) {
         textarea.value = content;
         this.currentMMDContent = content;
+
+        // Parcel 10e: a new file's content must not sit beside the previous
+        // document's downloads.
+        this.clearConversionResults();
+
         this.renderPreview(content);
         this.updateExportSectionVisibility();
         this.updateToolbarState();
@@ -1364,10 +1359,9 @@ class MathPixConvertMode {
       this.elements.container.style.display = "block";
     }
 
-    // Focus the textarea for immediate editing
-    if (this.elements.editTextarea) {
-      this.elements.editTextarea.focus();
-    }
+    // Parcel 10h: focus stays on the mode radio the person chose, as in the
+    // other modes, so the arrow keys keep moving through the group. Tab
+    // reaches the editor.
 
     // Update visibility based on any existing content
     this.updateExportSectionVisibility();
@@ -1392,8 +1386,9 @@ class MathPixConvertMode {
       exportSection.hidden = true;
     }
 
-    // Clean up blob URLs to prevent memory leaks
-    this.revokeDownloadUrls();
+    // Parcel 10g: the links are not revoked here, so they still work on
+    // return. reset(), clearConversionResults() and showDownloads() revoke
+    // them whenever they are replaced.
 
     logDebug("Convert mode hidden");
   }
@@ -1499,6 +1494,60 @@ class MathPixConvertMode {
     }
 
     logInfo("Convert mode reset to initial state");
+  }
+
+  /**
+   * Clear the previous document's converted files, progress rows and errors
+   * when new content is loaded from a file (parcel 10e). Unlike reset(), this
+   * keeps the editor, the undo history, the filename and the ticked formats,
+   * and it leaves a conversion in flight alone.
+   * @private
+   */
+  clearConversionResults() {
+    if (this.isConverting) {
+      logDebug("Conversion in progress; previous results left in place");
+      return;
+    }
+
+    this.revokeDownloadUrls();
+    this.completedDownloads = new Map();
+
+    ["convert-mode-progress", "convert-mode-downloads", "convert-mode-errors"]
+      .map((id) => document.getElementById(id))
+      .forEach((section) => {
+        if (section) section.hidden = true;
+      });
+
+    [
+      "convert-mode-progress-list",
+      "convert-mode-downloads-list",
+      "convert-mode-errors-list",
+    ]
+      .map((id) => document.getElementById(id))
+      .forEach((list) => {
+        if (list) list.innerHTML = "";
+      });
+
+    // Parcel 10e: the "Click to Save ZIP" link must not outlive the results.
+    this.restoreDownloadAllButton();
+
+    logInfo("Convert mode results cleared for new content");
+  }
+
+  /**
+   * Put the "Download All as ZIP" button back if downloadAllAsZip() replaced
+   * it with a "Click to Save ZIP" link, and free that link's ZIP (parcel
+   * 10e). Without this the link keeps saving the first document's ZIP.
+   * @private
+   */
+  restoreDownloadAllButton() {
+    const link = document.getElementById("convert-mode-download-all-link");
+    const button = this.elements?.downloadAllBtn;
+    if (!link || !button) return;
+
+    if (link.dataset.blobUrl) URL.revokeObjectURL(link.dataset.blobUrl);
+    link.replaceWith(button);
+    logDebug("Download All as ZIP button restored");
   }
 
   /**
@@ -1889,6 +1938,9 @@ class MathPixConvertMode {
    * user gesture, so we use real anchors with blob URLs in href attribute.
    */
   showDownloads() {
+    // Parcel 10e: put the ZIP button back before it is looked up below.
+    this.restoreDownloadAllButton();
+
     const downloadsSection = document.getElementById("convert-mode-downloads");
     const downloadsList = document.getElementById(
       "convert-mode-downloads-list",
@@ -1951,7 +2003,7 @@ class MathPixConvertMode {
   }
   /**
    * Revoke blob URLs to free memory
-   * Called during reset, hide, and before creating new download links
+   * Called by reset, by the new-content clear, and before creating new download links
    * @private
    */
   revokeDownloadUrls() {
@@ -2595,6 +2647,10 @@ class MathPixConvertMode {
       // Update state
       this.currentMMDContent = content;
       this.filename = this.sanitiseFilename(file.name);
+
+      // Parcel 10e: a new file's content must not sit beside the previous
+      // document's downloads.
+      this.clearConversionResults();
 
       // Update the always-on textarea
       if (this.elements.editTextarea) {

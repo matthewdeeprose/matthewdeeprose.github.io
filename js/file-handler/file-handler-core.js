@@ -882,7 +882,7 @@ export class FileHandler {
         const cost = (pages / 1000) * costs[engine];
         breakdown[engine] = {
           cost: cost,
-          display: `£${cost.toFixed(4)} (~${pages} pages)`,
+          display: `$${cost.toFixed(4)} (~${pages} pages)`,
           confidence: analysis.likelyScanned ? "high" : "medium",
           notes: analysis.likelyScanned
             ? "Recommended for scanned content"
@@ -1981,7 +1981,7 @@ export class FileHandler {
           !this.costEstimate.formatted &&
           this.costEstimate.total
         ) {
-          this.costEstimate.formatted = `£${this.costEstimate.total.toFixed(
+          this.costEstimate.formatted = `$${this.costEstimate.total.toFixed(
             4
           )}`;
         }
@@ -2024,17 +2024,17 @@ export class FileHandler {
 
     if (file.type === "application/pdf") {
       const estimatedPages = Math.ceil(file.size / (1024 * 50)); // Rough estimate
-      estimatedCost = (estimatedPages / 1000) * 2; // £2 per 1000 pages (mistral-ocr fallback)
+      estimatedCost = (estimatedPages / 1000) * 2; // $2 per 1000 pages (mistral-ocr fallback)
     } else {
       estimatedCost = 0.001; // Minimal cost for images
     }
 
     return {
       total: estimatedCost,
-      formatted: `£${estimatedCost.toFixed(4)}`, // Add formatted property
+      formatted: `$${estimatedCost.toFixed(4)}`, // Add formatted property
       warning:
         estimatedCost > 0.1 ? (estimatedCost > 1 ? "red" : "orange") : "green",
-      breakdown: `Estimated cost: £${estimatedCost.toFixed(3)}`,
+      breakdown: `Estimated cost: $${estimatedCost.toFixed(3)}`,
     };
   }
 
@@ -2060,7 +2060,7 @@ export class FileHandler {
     // Display cost information
     let costText = "";
     if (estimate.total && typeof estimate.total === "number") {
-      costText = `Estimated processing cost: £${estimate.total.toFixed(3)}`;
+      costText = `Estimated processing cost: $${estimate.total.toFixed(3)}`;
 
       if (warningLevel === "orange") {
         costText += " (Medium cost - please review)";
@@ -2096,7 +2096,7 @@ export class FileHandler {
     if (!costElement) return;
 
     const { total, warning } = this.determineCostWarningLevel(costEstimate);
-    const formattedCost = `£${total.toFixed(2)}`;
+    const formattedCost = `$${total.toFixed(2)}`;
 
     // Clear existing warning classes
     costElement.className = "file-cost cost-display";
@@ -2129,9 +2129,9 @@ export class FileHandler {
   determineCostWarningLevel(costEstimate) {
     const total = costEstimate?.total || 0;
     const thresholds = CONFIG?.FILE_UPLOAD?.COST_WARNING_THRESHOLDS || {
-      YELLOW: 0.05, // £0.05+
-      ORANGE: 0.5, // £0.50+
-      RED: 2.0, // £2.00+
+      YELLOW: 0.05, // $0.05+
+      ORANGE: 0.5, // $0.50+
+      RED: 2.0, // $2.00+
     };
 
     let warning = "none";
@@ -2161,7 +2161,7 @@ export class FileHandler {
     if (cost >= thresholds.RED) {
       // Double confirmation for very high costs
       const firstConfirm = await this.safeConfirm(
-        `This request will cost approximately £${cost.toFixed(
+        `This request will cost approximately $${cost.toFixed(
           2
         )}. This is a high cost. Continue?`,
         "High Cost Warning"
@@ -2169,7 +2169,7 @@ export class FileHandler {
 
       if (firstConfirm) {
         return await this.safeConfirm(
-          `Please confirm again: Proceed with £${cost.toFixed(2)} request?`,
+          `Please confirm again: Proceed with $${cost.toFixed(2)} request?`,
           "Confirm High Cost"
         );
       }
@@ -2177,13 +2177,13 @@ export class FileHandler {
     } else if (cost >= thresholds.ORANGE) {
       // Single confirmation for moderate costs
       return await this.safeConfirm(
-        `This request will cost approximately £${cost.toFixed(2)}. Continue?`,
+        `This request will cost approximately $${cost.toFixed(2)}. Continue?`,
         "Cost Confirmation"
       );
     } else if (cost >= thresholds.YELLOW) {
       // Just notification for low costs
       if (window.notifyInfo) {
-        window.notifyInfo(`Estimated cost: £${cost.toFixed(2)}`);
+        window.notifyInfo(`Estimated cost: $${cost.toFixed(2)}`);
       }
       return true;
     }
@@ -2686,17 +2686,17 @@ export class FileHandler {
 
     switch (warningLevel) {
       case "yellow":
-        message = `Moderate cost: £${totalCost.toFixed(3)} (over £${
+        message = `Moderate cost: $${totalCost.toFixed(3)} (over $${
           thresholds?.YELLOW || 0.01
         })`;
         break;
       case "orange":
-        message = `High cost: £${totalCost.toFixed(2)} (over £${
+        message = `High cost: $${totalCost.toFixed(2)} (over $${
           thresholds?.ORANGE || 0.05
         }) - Please confirm`;
         break;
       case "red":
-        message = `Very high cost: £${totalCost.toFixed(2)} (over £${
+        message = `Very high cost: $${totalCost.toFixed(2)} (over $${
           thresholds?.RED || 0.1
         }) - Double confirmation required`;
         break;

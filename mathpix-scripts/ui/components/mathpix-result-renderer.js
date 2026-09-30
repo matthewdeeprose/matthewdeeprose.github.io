@@ -44,34 +44,29 @@ import { LaTeXTransformer } from "../../core/mathpix-latex-transformer.js";
 import MathPixMMDPreview from "./mathpix-mmd-preview.js";
 
 // =============================================================================
-// SVG ICON REGISTRY
+// SVG ICONS (from the shared icon library, icon-library.js)
 // =============================================================================
 
-/**
- * SVG icons for UI elements
- * All icons use currentColor for theme compatibility
- */
-const ICONS = {
-  bullet:
-    '<svg class="icon icon-bullet" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><circle cx="10.5" cy="10.5" r="3" fill="currentColor"/></svg>',
-  check:
-    '<svg class="icon icon-check" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><path d="m.5 5.5 3 3 8.028-8" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(5 6)"/></svg>',
-  warning:
-    '<svg class="icon icon-warning" aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(1 1)"><path d="m9.5.5 9 16h-18z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m9.5 10.5v-5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="13.5" fill="currentColor" r="1"/></g></svg>',
-};
+let libraryMissingWarned = false;
 
 /**
  * Get an SVG icon by name
- * @param {string} name - Icon name from ICONS registry (bullet, check, warning)
+ * @param {string} name - Icon library name (bullet, check, warning)
  * @returns {string} SVG HTML string with aria-hidden attribute
  */
 function getIcon(name) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon requested: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
-  return svg;
+
+  // Keep the per-icon class (icon-bullet and so on): the stylesheets target it.
+  return library.getIcon(name, { className: `icon-${name}` });
 }
 
 /**
@@ -502,7 +497,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
     }
 
     // Phase 4: Post-processing UI cleanup
-    if (MATHPIX_CONFIG.PHASE_4?.CLEANUP_AFTER_PROCESSING !== false) {
+    if (MATHPIX_CONFIG.USER_EXPERIENCE?.CLEANUP_AFTER_PROCESSING !== false) {
       this.performPostProcessingCleanup();
     }
 
@@ -515,7 +510,7 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     logInfo("Multi-format result displayed successfully", {
       postProcessingCleanup:
-        MATHPIX_CONFIG.PHASE_4?.CLEANUP_AFTER_PROCESSING !== false,
+        MATHPIX_CONFIG.USER_EXPERIENCE?.CLEANUP_AFTER_PROCESSING !== false,
       lineDataDisplayed: !!(result.line_data && result.line_data.length > 0), // CHANGE 3: Add to final logging
     });
   }
@@ -1437,18 +1432,23 @@ class MathPixResultRenderer extends MathPixBaseModule {
     exportContainer.style.display = "flex";
     exportContainer.style.gap = "0.5rem";
 
+    // Icons from the shared library, kept at the old literals' 21px size and
+    // baseline position by mathpix-inline-icon (rules in mathpix-main.css).
+    const tableIcon = (name) =>
+      typeof window.getIcon === "function"
+        ? window.getIcon(name, { className: "mathpix-inline-icon" })
+        : `<span aria-hidden="true" data-icon="${name}"></span>`;
+
     // Download button
     const downloadBtn = document.createElement("button");
     downloadBtn.className = "action-button";
-    downloadBtn.innerHTML =
-      '<svg aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download';
+    downloadBtn.innerHTML = tableIcon("disk") + " Download";
     downloadBtn.onclick = () => this.downloadTableFormat(format, content);
 
     // Copy button
     const copyBtn = document.createElement("button");
     copyBtn.className = "action-button";
-    copyBtn.innerHTML =
-      '<svg aria-hidden="true" height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m2.5 5.5h5"/><path d="m2.5 7.5h7"/><path d="m2.5 9.5h3"/><path d="m2.5 11.5h6"/></g></svg> Copy';
+    copyBtn.innerHTML = tableIcon("clipboard") + " Copy";
     copyBtn.onclick = () => this.copyTableToClipboard(content, format);
 
     exportContainer.appendChild(downloadBtn);
@@ -4851,14 +4851,14 @@ class MathPixResultRenderer extends MathPixBaseModule {
     }
 
     // Phase 4: Move open original button to comparison panel if configured
-    if (MATHPIX_CONFIG.PHASE_4?.MOVE_BUTTON_TO_COMPARISON !== false) {
+    if (MATHPIX_CONFIG.USER_EXPERIENCE?.MOVE_BUTTON_TO_COMPARISON !== false) {
       this.relocateOpenOriginalButton();
     }
 
     logDebug("Post-processing UI cleanup completed", {
       previewContainerHidden: !!previewContainer,
       buttonRelocated:
-        MATHPIX_CONFIG.PHASE_4?.MOVE_BUTTON_TO_COMPARISON !== false,
+        MATHPIX_CONFIG.USER_EXPERIENCE?.MOVE_BUTTON_TO_COMPARISON !== false,
     });
   }
 
@@ -5916,6 +5916,21 @@ class MathPixResultRenderer extends MathPixBaseModule {
 
     super.cleanup();
     logDebug("Result renderer cleanup completed");
+  }
+
+  /**
+   * Hides the comparison and the output on a mode switch without clearing
+   * them, so a return to the mode that showed them can show them again
+   * (parcel 10d). cleanup() still clears everything for a full reset.
+   */
+  hideForModeSwitch() {
+    const comparisonContainer = document.getElementById(
+      "mathpix-comparison-container",
+    );
+    if (comparisonContainer) comparisonContainer.style.display = "none";
+
+    const outputContainer = this.elements["output-container"];
+    if (outputContainer) outputContainer.style.display = "none";
   }
 
   // ──────────────────────────────────────────────────────────────────

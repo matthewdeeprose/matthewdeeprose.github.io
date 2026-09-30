@@ -57,6 +57,15 @@
  * lanes' surfaces into a MathPix parcel; that is scope creep, not completeness.
  * Neither file is edited by this parcel.
  *
+ * MA-8 (29 September 2026) — A RATING CAN NOW CARRY ITS EVIDENCE. Decision
+ * MA-D1 grew a rating from {modelId, round, measured} towards a record that
+ * says what instrument measured it, under which prompt, against whom, by what
+ * margin and with what finish reasons. Each entry now carries a fourth field,
+ * `evidence`, which is either null or a frozen record with exactly six keys,
+ * checked by `evidenceIsValid`. ALL SIX ENTRIES STILL CARRY null: this parcel
+ * builds the shape and writes no evidence, so nothing a picker shows changes.
+ * Writing the first record, and any change of default, is MA-8b's.
+ *
  * @see mathpix-scripts/core/mathpix-model-capability.js (the shape this follows)
  * @see mathpix-scripts/docs/alt-text/phase-4-roadmap-decisions.md (item 5)
  */
@@ -132,16 +141,102 @@ const MathPixModelRegistry = (function () {
   // ===========================================================================
 
   /**
-   * Build one frozen entry. Kept as a helper so every entry has the same three
+   * The six keys an evidence record carries, in order (MA-8).
+   *
+   * EXACTLY SIX, NO MORE AND NO FEWER. A seventh key is refused rather than
+   * carried, because a field nobody declared is a field no reader checks, and
+   * a missing key is refused rather than defaulted, because "unknown" is
+   * written as null on purpose and an absent key cannot say which it meant.
+   */
+  const EVIDENCE_KEYS = Object.freeze([
+    "instrument",
+    "promptHash",
+    "opponents",
+    "margin",
+    "finishReasons",
+    "notes",
+  ]);
+
+  /**
+   * Whether a value is an acceptable evidence argument to `entry` (MA-8).
+   *
+   * TRUE for null, which is what "no evidence recorded" means. Otherwise true
+   * only for a plain object carrying exactly the six EVIDENCE_KEYS, typed:
+   *
+   *   instrument     string — the parcel and method, e.g. "MA-7 blinded pairwise reading"
+   *   promptHash     string, or null when the round recorded none
+   *   opponents      array of model-id strings, possibly empty
+   *   margin         string — human-readable, e.g. "20 to 12 to 1 top-three credits of 33"
+   *   finishReasons  plain object of non-negative integer counts, e.g. { stop: 33 }
+   *   notes          string, or null — the confound or limit stated plainly
+   *
+   * undefined is FALSE, not treated as null: `entry` turns an omitted argument
+   * into null itself, so a caller passing undefined explicitly has passed
+   * something it did not mean.
+   *
+   * @param {*} e the candidate evidence record
+   * @returns {boolean}
+   */
+  function evidenceIsValid(e) {
+    if (e === null) return true;
+    if (typeof e !== "object" || Array.isArray(e)) return false;
+
+    const keys = Object.keys(e);
+    if (keys.length !== EVIDENCE_KEYS.length) return false;
+    if (!EVIDENCE_KEYS.every((k) => Object.prototype.hasOwnProperty.call(e, k)))
+      return false;
+
+    if (typeof e.instrument !== "string") return false;
+    if (e.promptHash !== null && typeof e.promptHash !== "string") return false;
+    if (!Array.isArray(e.opponents)) return false;
+    if (!e.opponents.every((id) => typeof id === "string")) return false;
+    if (typeof e.margin !== "string") return false;
+    if (e.notes !== null && typeof e.notes !== "string") return false;
+
+    const fr = e.finishReasons;
+    if (typeof fr !== "object" || fr === null || Array.isArray(fr)) return false;
+    return Object.values(fr).every((n) => Number.isInteger(n) && n >= 0);
+  }
+
+  /**
+   * Build one frozen entry. Kept as a helper so every entry has the same four
    * fields and no entry can be written with a field missing.
+   *
+   * THE EVIDENCE IS COPIED AND FROZEN, NOT ADOPTED. The record returned is a
+   * new object built from the six declared keys, with its array and its counts
+   * frozen too, so a caller keeping a reference to what it passed cannot
+   * re-point a recorded rating afterwards — the same reason every other level
+   * of the registry is frozen.
    *
    * @param {string} modelId the recommended model id
    * @param {string} round the measuring round that settled this choice
    * @param {string} measured ISO date of that round, YYYY-MM-DD
-   * @returns {Readonly<{modelId: string, round: string, measured: string}>}
+   * @param {object|null} [evidence] an evidence record, or null (the default)
+   * @returns {Readonly<{modelId: string, round: string, measured: string, evidence: object|null}>}
+   * @throws {TypeError} when evidence is given and `evidenceIsValid` refuses it
    */
-  function entry(modelId, round, measured) {
-    return Object.freeze({ modelId, round, measured });
+  function entry(modelId, round, measured, evidence = null) {
+    if (!evidenceIsValid(evidence)) {
+      throw new TypeError(
+        `entry: the evidence record for '${modelId}' is not valid; it must be null or an object with exactly the six keys ${EVIDENCE_KEYS.join(", ")}, each of its declared type.`
+      );
+    }
+
+    const record =
+      evidence === null
+        ? null
+        : Object.freeze({
+            instrument: evidence.instrument,
+            promptHash: evidence.promptHash,
+            opponents: Object.freeze(
+              Array.isArray(evidence.opponents) ? evidence.opponents.slice() : []
+            ),
+            margin: evidence.margin,
+            finishReasons: Object.freeze({ ...evidence.finishReasons }),
+            notes: evidence.notes,
+          });
+
+    return Object.freeze({ modelId, round, measured, evidence: record });
   }
 
   /**
@@ -269,7 +364,7 @@ const MathPixModelRegistry = (function () {
    *
    * @param {string} purpose one of PURPOSES
    * @param {string} providerId one of PROVIDERS
-   * @returns {Readonly<{modelId: string, round: string, measured: string}>|null}
+   * @returns {Readonly<{modelId: string, round: string, measured: string, evidence: object|null}>|null}
    */
   function recommendedModel(purpose, providerId) {
     const byProvider = RECOMMENDED_BY_PURPOSE[purpose];
@@ -302,10 +397,16 @@ const MathPixModelRegistry = (function () {
     `MathPixModelRegistry ready (${Object.keys(RECOMMENDED_BY_PURPOSE).length} purposes).`
   );
 
+  // `entry` and `evidenceIsValid` are exported for MA-8's guard rows and for
+  // the parcel that writes the first evidence record; no production caller
+  // builds an entry at run time.
   return {
     PURPOSES,
     PROVIDERS,
     RECOMMENDED_BY_PURPOSE,
+    EVIDENCE_KEYS,
+    entry,
+    evidenceIsValid,
     recommendedModel,
   };
 })();

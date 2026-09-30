@@ -148,8 +148,25 @@ const MarkdownEditor = (function () {
         if (scormExportControl) return;
         scormExportControl = mountExportControl({
           container: elements.output.parentNode || elements.output,
-          getContent: () =>
-            elements.output ? elements.output.innerHTML : "",
+          // A static copy: diagrams without their page-only controls and
+          // with their descriptions openable, each carrying a second copy
+          // painted for the other site mode (Mermaid export utils).
+          getContent: () => {
+            const utils = window.MermaidExportUtils;
+            if (!elements.output) return "";
+            if (utils && typeof utils.prepareThemedStaticExport === "function")
+              return utils.prepareThemedStaticExport(elements.output);
+            if (utils && typeof utils.prepareStaticExport === "function")
+              return utils.prepareStaticExport(elements.output);
+            return elements.output.innerHTML;
+          },
+          // The head CSS that shows the copy matching the exported page's
+          // own light/dark switch.
+          getOptions: () =>
+            window.MermaidExportUtils &&
+            window.MermaidExportUtils.THEMED_EXPORT_HEAD
+              ? { head: window.MermaidExportUtils.THEMED_EXPORT_HEAD }
+              : undefined,
           format: "html",
           getTitle: deriveExportTitle,
           idPrefix: "md-scorm-export",

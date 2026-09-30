@@ -102,6 +102,39 @@ function logDebug(message, ...args) {
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
 import MATHPIX_CONFIG from "../../core/mathpix-config.js";
 
+// =============================================================================
+// SVG Icons - from the shared icon library (icon-library.js)
+// =============================================================================
+
+let libraryMissingWarned = false;
+
+/**
+ * @function getIcon
+ * @description Returns an SVG icon with accessibility attributes and optional CSS class
+ * @param {string} name - Icon name from the shared icon library
+ * @param {Object} [options={}] - Configuration options
+ * @param {string} [options.className] - Additional CSS class to apply
+ * @returns {string} SVG markup with aria-hidden and class attributes, or empty string if not found
+ */
+function getIcon(name, options = {}) {
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
+    return "";
+  }
+
+  return library.getIcon(name, options);
+}
+
+// The icons below replaced inline SVG literals drawn at 21px. The library's
+// .icon sizes and centres them at 1em, so they carry mathpix-inline-icon,
+// whose rules in mathpix-main.css restore the literals' size and position.
+const INLINE_ICON_OPTIONS = Object.freeze({ className: "mathpix-inline-icon" });
+
 // Phase 8A-9 D-10: canonical mapping of mode to chemistry-owning panel.
 // Three DOM panels can host chemistry output. Exactly one should contain
 // #chemistry-structure-figure at any moment, matching the current mode.
@@ -1681,7 +1714,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         zipInfo.style.cssText =
           "margin-bottom: 1rem; padding: 0.5rem;  border-radius: 4px; font-size: 0.9em;";
         zipInfo.innerHTML = `
-        <p style="margin: 0 0 0.5rem 0;"><strong><svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 4)"><path d="m.5 1.5v9c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-6.00280762c.0007656-1.05436179-.8150774-1.91816512-1.8499357-1.99451426l-.1500643-.00468356-5 .00200544-2-2h-4c-.55228475 0-1 .44771525-1 1z"/><path d="m.5 2.5h7"/></g></svg> LaTeX ZIP extracted:</strong> ${
+        <p style="margin: 0 0 0.5rem 0;"><strong>${getIcon("folderClosed", INLINE_ICON_OPTIONS)} LaTeX ZIP extracted:</strong> ${
           texFiles.length
         } .tex file(s) found</p>
         <p style="margin: 0;"><strong>Displaying:</strong> ${this.escapeHtml(
@@ -1737,7 +1770,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
           <p>You can still download the ZIP file directly.</p>
           <div class="mathpix-export-actions">
             <button class="mathpix-action-button mathpix-download-button" onclick="window.downloadLatexZip()" aria-label="Download LaTeX ZIP file">
-              <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg>Download ZIP
+              ${getIcon("disk", INLINE_ICON_OPTIONS)}Download ZIP
             </button>
           </div>
         </div>
@@ -1762,7 +1795,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const copyButton = document.createElement("button");
     copyButton.className = "mathpix-action-button mathpix-copy-button";
     copyButton.innerHTML =
-      '<svg height="21" viewBox="0 0 21 21"width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"> <path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m2.5 5.5h5" /><path d="m2.5 7.5h7" /><path d="m2.5 9.5h3" /><path d="m2.5 11.5h6" /></g></svg> Copy LaTeX';
+      getIcon("clipboard", INLINE_ICON_OPTIONS) + " Copy LaTeX";
     copyButton.setAttribute("aria-label", "Copy LaTeX content to clipboard");
     copyButton.addEventListener("click", () => {
       this.copyLatexContent();
@@ -1773,13 +1806,10 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadButton = document.createElement("button");
     downloadButton.className = "mathpix-action-button mathpix-download-button";
     downloadButton.innerHTML =
-      ' <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download ZIP';
+      " " + getIcon("disk", INLINE_ICON_OPTIONS) + " Download ZIP";
     downloadButton.setAttribute("aria-label", "Download LaTeX ZIP file");
     downloadButton.addEventListener("click", () => {
-      const baseFilename =
-        this.documentInfo?.name?.replace(/\.[^/.]+$/, "") || "document";
-      const filename = `${baseFilename}.md.zip`;
-      this.handleBinaryDownload(content, filename, "md.zip");
+      this.handleFormatExport("latex", "download");
     });
     actionsContainer.appendChild(downloadButton);
 
@@ -2643,7 +2673,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       const copyButton = document.createElement("button");
       copyButton.className = "mathpix-action-button mathpix-copy-button";
       copyButton.innerHTML =
-        '<svg height="21" viewBox="0 0 21 21"width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"> <path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/><path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/><path d="m2.5 5.5h5" /><path d="m2.5 7.5h7" /><path d="m2.5 9.5h3" /><path d="m2.5 11.5h6" /></g></svg> Copy';
+        getIcon("clipboard", INLINE_ICON_OPTIONS) + " Copy";
       copyButton.setAttribute(
         "aria-label",
         `Copy ${format.toUpperCase()} content to clipboard`,
@@ -2658,7 +2688,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadButton = document.createElement("button");
     downloadButton.className = "mathpix-action-button mathpix-download-button";
     downloadButton.innerHTML =
-      ' <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download';
+      " " + getIcon("disk", INLINE_ICON_OPTIONS) + " Download";
     downloadButton.setAttribute(
       "aria-label",
       `Download ${format.toUpperCase()} file`,
@@ -2673,7 +2703,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       const previewButton = document.createElement("button");
       previewButton.className = "mathpix-action-button mathpix-preview-button";
       previewButton.innerHTML =
-        '<svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 5)"><path d="m8.5 11c3.1296136 0 5.9629469-1.83333333 8.5-5.5-2.5370531-3.66666667-5.3703864-5.5-8.5-5.5-3.12961358 0-5.96294692 1.83333333-8.5 5.5 2.53705308 3.66666667 5.37038642 5.5 8.5 5.5z"/><path d="m8.5 2c.18463928 0 .36593924.01429736.54285316.04184538-.02850842.148891-.04285316.30184762-.04285316.45815462 0 1.38071187 1.1192881 2.5 2.5 2.5.156307 0 .3092636-.01434474.4576252-.04178957.0280774.17585033.0423748.35715029.0423748.54178957 0 1.93299662-1.5670034 3.5-3.5 3.5-1.93299662 0-3.5-1.56700338-3.5-3.5s1.56700338-3.5 3.5-3.5z"/></g></svg> Preview';
+        getIcon("eye", INLINE_ICON_OPTIONS) + " Preview";
       previewButton.setAttribute("aria-label", "Preview HTML content");
       previewButton.addEventListener("click", () => {
         this.handleFormatExport(format, "preview");
@@ -2715,7 +2745,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       downloadButton.className =
         "mathpix-action-button mathpix-download-button";
       downloadButton.innerHTML =
-        ' <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)"><path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/><path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/><path d="m3.5 3.5h2v2h-2z"/></g></svg> Download DOCX';
+        " " + getIcon("disk", INLINE_ICON_OPTIONS) + " Download DOCX";
       downloadButton.setAttribute("aria-label", "Download DOCX file");
 
       // ✅ CRITICAL FIX: Use addEventListener with arrow function to preserve 'this' context
@@ -2776,13 +2806,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       downloadButton.className =
         "mathpix-action-button mathpix-download-button";
       downloadButton.innerHTML = `
-        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-            <path d="m3.5 3.5h2v2h-2z"/>
-          </g>
-        </svg> Download PPTX
+        ${getIcon("disk", INLINE_ICON_OPTIONS)} Download PPTX
       `;
       downloadButton.setAttribute("aria-label", "Download PPTX file");
 
@@ -2844,13 +2868,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       downloadButton.className =
         "mathpix-action-button mathpix-download-button";
       downloadButton.innerHTML = `
-        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-            <path d="m3.5 3.5h2v2h-2z"/>
-          </g>
-        </svg> Download XLSX
+        ${getIcon("disk", INLINE_ICON_OPTIONS)} Download XLSX
       `;
       downloadButton.setAttribute("aria-label", "Download XLSX file");
 
@@ -2919,13 +2937,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       downloadButton.className =
         "mathpix-action-button mathpix-download-button";
       downloadButton.innerHTML = `
-        <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-          <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-            <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-            <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-            <path d="m3.5 3.5h2v2h-2z"/>
-          </g>
-        </svg> Download PDF
+        ${getIcon("disk", INLINE_ICON_OPTIONS)} Download PDF
       `;
       downloadButton.setAttribute("aria-label", `Download ${formatLabel}`);
       downloadButton.addEventListener("click", () => {
@@ -3006,13 +3018,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadButton = document.createElement("button");
     downloadButton.className = "mathpix-action-button mathpix-download-button";
     downloadButton.innerHTML = `
-      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-          <path d="m3.5 3.5h2v2h-2z"/>
-        </g>
-      </svg> Download Archive
+      ${getIcon("disk", INLINE_ICON_OPTIONS)} Download Archive
     `;
     downloadButton.setAttribute("aria-label", "Download MMD ZIP archive");
     downloadButton.addEventListener("click", () => {
@@ -3087,17 +3093,14 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadButton = document.createElement("button");
     downloadButton.className = "mathpix-action-button mathpix-download-button";
     downloadButton.innerHTML = `
-      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-          <path d="m3.5 3.5h2v2h-2z"/>
-        </g>
-      </svg> Download Archive
+      ${getIcon("disk", INLINE_ICON_OPTIONS)} Download Archive
     `;
     downloadButton.setAttribute("aria-label", "Download MD ZIP archive");
     downloadButton.addEventListener("click", () => {
-      this.handleBinaryDownload(content, "document.md.zip", "md.zip");
+      const baseFilename =
+        this.documentInfo?.name?.replace(/\.[^/.]+$/, "") || "document";
+      const filename = `${baseFilename}.md.zip`;
+      this.handleBinaryDownload(content, filename, "md.zip");
     });
 
     // Assemble structure
@@ -3165,13 +3168,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     const downloadButton = document.createElement("button");
     downloadButton.className = "mathpix-action-button mathpix-download-button";
     downloadButton.innerHTML = `
-      <svg height="21" aria-hidden="true" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg">
-        <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 4)">
-          <path d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"/>
-          <path d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"/>
-          <path d="m3.5 3.5h2v2h-2z"/>
-        </g>
-      </svg> Download Archive
+      ${getIcon("disk", INLINE_ICON_OPTIONS)} Download Archive
     `;
     downloadButton.setAttribute("aria-label", "Download HTML ZIP archive");
     downloadButton.addEventListener("click", () => {
@@ -4281,6 +4278,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     this._showingEnhanced = false;
     logDebug("AI enhancement state cleared");
 
+    // Parcel 10c: the previous document's conversions must not stay on offer
+    // in Export Options, or reach this document's Download All ZIP.
+    const convertUI = window.getMathPixConvertUI?.();
+    if (convertUI) convertUI.clearResults();
+
     // Clear format panel content (preserve structural panels: confidence + MMD)
     if (this.formatElements && this.formatElements.panels) {
       Object.entries(this.formatElements.panels).forEach(([format, panel]) => {
@@ -4777,12 +4779,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         currentPageValid: this.currentPage && this.currentPage >= 1,
       });
 
-      return `<div class="mathpix-page-placeholder">
-        <p>Page ${
-          this.currentPage || 1
-        } content not available for ${format.toUpperCase()} format.</p>
-        <p>Try switching to combined view or another format.</p>
-      </div>`;
+      // Plain text, not markup: displayContentInFormat writes this into a
+      // code view with textContent, so any tags would be shown literally.
+      return `Page ${
+        this.currentPage || 1
+      } content is not available in ${format.toUpperCase()} format. Try the combined view or another format.`;
     }
   }
 
@@ -5314,14 +5315,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       <article class="diagram-card" role="article" aria-labelledby="diagram-title-${diagramNumber}">
         <header class="diagram-card-header">
           <h4 id="diagram-title-${diagramNumber}" class="diagram-card-title">
-            <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)">
-                <path d="m14.5 6.5v-4h-4"/>
-                <path d="m14.5 2.5-5 5"/>
-                <path d="m.5 8.5v-6c0-1.1045695.8954305-2 2-2h3"/>
-                <path d="m8.5 14.5h6c1.1045695 0 2-.8954305 2-2v-3"/>
-              </g>
-            </svg>
+            ${getIcon("image", INLINE_ICON_OPTIONS)}
             Diagram ${diagramNumber} <span class="diagram-page">(Page ${diagram.pageNumber})</span>
           </h4>
           <p class="diagram-stats">
@@ -5343,16 +5337,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
             data-diagram-id="${diagram.diagramId}"
             aria-label="Copy text from diagram ${diagramNumber}"
           >
-            <svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)">
-                <path d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"/>
-                <path d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"/>
-                <path d="m2.5 5.5h5"/>
-                <path d="m2.5 7.5h7"/>
-                <path d="m2.5 9.5h3"/>
-                <path d="m2.5 11.5h6"/>
-              </g>
-            </svg>
+            ${getIcon("clipboard", INLINE_ICON_OPTIONS)}
             Copy Text
           </button>
         </footer>

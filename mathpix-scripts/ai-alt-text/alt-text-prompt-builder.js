@@ -3,15 +3,24 @@
  *   description prompt from document context, an MMD excerpt and a position
  *   clause.
  * @module MathPixAltTextPromptBuilder
- * @version 1.0.0 (parcel CTX-P3)
+ * @version 1.1.0 (parcel PB-1)
  * @since Phase 4 item 2, context-aware prompts
  *
  * @description
  * ONE exported function, `buildDescriptionPrompt({ context, mmd, entry,
- * allEntries })`, returning one string. It is PURE: every input arrives as an
- * argument, nothing is read off `window` inside it, and it holds no state
- * between calls. That is deliberate — it means the whole builder can be gated
- * with no page, no registry and no session, which is how its rows run.
+ * allEntries })`, returning one string. It is PURE apart from ONE guarded
+ * call-time read: every input arrives as an argument, it holds no state
+ * between calls, and the only thing read off `window` is the context
+ * manager's audience options, to send an audience label in place of its
+ * stored value (parcel PB-1, `resolveAudienceLabel`). With no manager the
+ * value is sent unchanged, so the builder still runs with no page, no
+ * registry and no session, which is how its rows run.
+ *
+ * PB-1, 26 September 2026: `DESCRIPTION_PROMPT` and `CONTEXT_USE_INSTRUCTION`
+ * were rewritten from the image describer's prompt, taking its context,
+ * accuracy and screen-reader guidance and leaving its MathJax notation guide
+ * and definition lists behind, so every construct asked for renders in
+ * MathPix Markdown (the PB-0 measurements).
  *
  * WHY A SEPARATE MODULE (plan decision A1). The orchestrator already accepts a
  * finished `prompt` string and has no business knowing where context comes
@@ -92,19 +101,28 @@ const MathPixAltTextPromptBuilder = (function () {
    * FORM: a template literal whose lines start at COLUMN ZERO. Indenting it
    * would inject leading whitespace into every line of the prompt and break the
    * byte-identity row. A row pins that no line begins with whitespace.
+   *
+   * PB-3, 27 September 2026: the second line, pinning the four headings at
+   * level 2, was added to both copies in the same parcel. The reasoning, and
+   * why it does not reopen plan decision A4, is in the orchestrator's docblock.
    */
   const DESCRIPTION_PROMPT = `Describe this image for accessibility using these sections:
+Use exactly these four headings, each a level-2 heading with its number, and no other level-2 heading.
 
 Write all output in British English.
 
+Before you write, look at the whole image: note its overall layout, every labelled part and how the parts relate, and any text. Describe what is drawn, not what a similar diagram usually contains. Where you are inferring rather than seeing, say so, and where an element is unclear, say it is unclear rather than guessing.
+
 ## 1. Title
-A brief descriptive title under 10 words.
+A brief descriptive title under 10 words that says what the image is for. Do not use a generic title such as "Diagram" or "Figure".
 
 ## 2. Alt Text
 One or two sentences, concise enough to serve as an HTML alt attribute: what the image shows, then why it matters educationally. It must stand alone when the image fails to load. Do not open with "Image of", "Picture of", "A photograph of" or any similar phrase — the reader already knows this is an image.
 
 ## 3. Long Description
 Describe the visual content and its educational purpose in full. Write for someone listening to this description rather than looking at the image, and put the important information first.
+
+Write so that it reads well aloud: use commas where a listener needs a pause, write "equals", "plus" and "minus" as words inside prose, name each part the same way every time once you have named it, and give positions in words, such as top left, centre, or along the bottom edge.
 
 Use markdown structure wherever it aids comprehension, rather than as decoration:
 
@@ -115,12 +133,12 @@ Use markdown structure wherever it aids comprehension, rather than as decoration
 
 Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
 
-Write mathematical expressions as inline LaTeX between dollar signs, matching the notation used in the surrounding document. This applies to the long description only: the alt text stays plain prose, with no LaTeX and no markdown.
+Write mathematical expressions as inline LaTeX between dollar signs, and display equations between double dollar signs, matching the notation used in the surrounding document. This description is written into the same MathPix Markdown document as the surrounding text, so every expression must be valid there. This applies to the long description and the text content only: the alt text stays plain prose, with no LaTeX and no markdown.
 
 Do not reuse "Title", "Alt Text", "Long Description" or "Text Content" as a heading inside this section.
 
 ## 4. Text Content
-List every word, number, and label visible in the image. If none, write "No text content."`;
+List every word, number and label visible in the image as a numbered list, one item per line, in reading order, each followed by its position in the image in words. Write mathematical labels as inline LaTeX between dollar signs, matching the surrounding document. If none, write "No text content."`;
 
   // ============================================================================
   // CONSTANTS
@@ -176,6 +194,44 @@ List every word, number, and label visible in the image. If none, write "No text
   const CONTEXT_TRUNCATION_MARKER = "[context truncated]";
 
   const CONTEXT_HEADING = "Document context for this image:";
+
+  /**
+   * The sentence that tells the model what to DO with the context lines above
+   * it. Before parcel CX-1 the fields arrived as bare `Label: value` lines and
+   * nothing asked the model to use them; AT-2's null result measured exactly
+   * that gap.
+   *
+   * IT LIVES INSIDE THE CONTEXT BLOCK, so it is present only when at least one
+   * field is present. With no usable context the block is `null`, this sentence
+   * never reaches the prompt, and the degradation property (plan decision A9)
+   * holds: the prompt stays byte-identical to the orchestrator's
+   * `DESCRIPTION_PROMPT`.
+   *
+   * IT MUST NEVER CONTAIN ANY `CONTEXT_FIELD_LABELS` VALUE as an exact-case
+   * substring. The orchestrator suite's skip rows assert
+   * `out.indexOf(label) === -1` for a skipped field on a prompt whose other
+   * fields are present, so a label-cased mention here would redden them for a
+   * reason that has nothing to do with skipping. Lower-case mentions are safe;
+   * a CX-1 row pins the rule.
+   *
+   * A plain string constant: a string is already immutable, so
+   * `Object.freeze` would add nothing.
+   *
+   * Origin: parcel CX-1, 25 September 2026. Rewritten at parcel PB-1, 26
+   * September 2026, from the image describer's prompt: one instruction per
+   * field, as a list, and a closing sentence for the fields that are absent.
+   * Still one string, joined with line breaks, still placed exactly where CX-1
+   * placed it.
+   */
+  const CONTEXT_USE_INSTRUCTION = [
+    "Use this context when you write:",
+    "- match the vocabulary, the assumed knowledge and the depth of explanation to the audience level;",
+    "- use the terminology and conventions of the subject area;",
+    "- give most weight to the parts of the image that bear on the specific topic;",
+    "- where a learning objective is given, say in the alt text and the long description what the image contributes to it;",
+    "- use any additional information about how the image is used in teaching.",
+    "Where a field is absent, describe from what you observe.",
+  ].join("\n");
   const EXCERPT_BEGIN =
     "--- BEGIN surrounding document text (the image appears within this excerpt) ---";
   const EXCERPT_END = "--- END surrounding document text ---";
@@ -199,6 +255,48 @@ List every word, number, and label visible in the image. If none, write "No text
   }
 
   /**
+   * The audience level as a person would name it. The form stores an option
+   * VALUE such as `ug1`, which tells a model nothing; the matching option
+   * LABEL, `Undergraduate Year 1`, does. Parcel PB-1.
+   *
+   * THE ONE READ OFF `window` IN THIS MODULE, made at call time and guarded,
+   * the same way the orchestrator reaches `window.MathPixContextManager` for
+   * the context itself. The options come from `getSchema()`, which returns the
+   * schema as an ARRAY of fields (not an object keyed by field), so the
+   * audience field is found by its `key`. When the manager is absent, throws,
+   * or has no option with this value, the value is returned unchanged: a free
+   * or unknown value is still worth sending as it stands.
+   *
+   * Read through `window` deliberately, never the bare identifier, so a row
+   * can make the manager absent and restore it.
+   *
+   * @param {string} value - A trimmed, usable audience value.
+   * @returns {string} The option label, or the value unchanged.
+   */
+  function resolveAudienceLabel(value) {
+    const manager =
+      typeof window !== "undefined" ? window.MathPixContextManager : undefined;
+    if (!manager || typeof manager.getSchema !== "function") return value;
+
+    let schema;
+    try {
+      schema = manager.getSchema();
+    } catch (err) {
+      logWarn("getSchema() threw — sending the audience value unchanged", err);
+      return value;
+    }
+
+    const field = Array.isArray(schema)
+      ? schema.find((f) => f && f.key === "audienceLevel")
+      : null;
+    const options = field && Array.isArray(field.options) ? field.options : [];
+    const match = options.find(
+      (o) => o && o.value === value && isUsableContextValue(o.label),
+    );
+    return match ? match.label.trim() : value;
+  }
+
+  /**
    * Build the labelled context block, or `null` when no field is usable.
    * @param {Object} context
    * @returns {string|null}
@@ -212,6 +310,7 @@ List every word, number, and label visible in the image. If none, write "No text
       if (!isUsableContextValue(raw)) continue;
 
       let value = raw.trim();
+      if (key === "audienceLevel") value = resolveAudienceLabel(value);
       if (
         key === "extraInformation" &&
         value.length > EXTRA_INFORMATION_CHAR_CAP
@@ -230,7 +329,13 @@ List every word, number, and label visible in the image. If none, write "No text
     }
 
     if (lines.length === 0) return null;
-    return CONTEXT_HEADING + "\n" + lines.join("\n");
+    return (
+      CONTEXT_HEADING +
+      "\n" +
+      lines.join("\n") +
+      "\n" +
+      CONTEXT_USE_INSTRUCTION
+    );
   }
 
   // ============================================================================
@@ -489,6 +594,7 @@ List every word, number, and label visible in the image. If none, write "No text
     MMD_EXCERPT_CHAR_CAP,
     EXTRA_INFORMATION_CHAR_CAP,
     CONTEXT_TRUNCATION_MARKER,
+    CONTEXT_USE_INSTRUCTION,
     // Exposed so a gate can locate the excerpt body by exact delimiter rather
     // than by splitting on a prefix. Added after a smoke harness did split on a
     // prefix, left the remainder of the delimiter line inside the captured body,

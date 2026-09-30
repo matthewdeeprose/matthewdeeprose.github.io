@@ -480,6 +480,31 @@ export class OpenRouterValidator {
         });
       }
 
+      // PB-5 — THE REASONING OFF SWITCH, admitted on its own predicate.
+      //
+      // PB-4 (e0b4272, 27 September 2026) measured that this closed allowlist
+      // had no reasoning branch, so no OpenRouter caller could turn reasoning
+      // off: the field was dropped here whatever the model declared.
+      //
+      // ADMITTED IF AND ONLY IF the value is exactly { enabled: false } — one
+      // key, boolean false. Disabling asks nothing of the model, so it needs no
+      // declaration in parameterSupport.supported and none is consulted.
+      //
+      // ANY OTHER reasoning value is still removed, as before: enabled true, an
+      // effort or a budget stays undelivered. Turning reasoning ON is item 5
+      // scope and is not decided here.
+      const reasoning = options.reasoning;
+      if (
+        reasoning &&
+        typeof reasoning === "object" &&
+        !Array.isArray(reasoning) &&
+        Object.keys(reasoning).length === 1 &&
+        reasoning.enabled === false
+      ) {
+        requestBody.reasoning = { enabled: false };
+        openRouterUtils.debug("Added the reasoning off switch to request body");
+      }
+
       // MODALITY STEP 2 — the `modalities` branch. This builder is a CLOSED
       // ALLOWLIST: a key not named here never reaches the wire, so a new
       // request field needs an explicit branch. Shaped on the plugins

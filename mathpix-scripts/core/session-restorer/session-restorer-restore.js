@@ -272,6 +272,156 @@
     }
   };
 
+  // =========================================================================
+  // RD-2: FIGURES REFERENCED BUT NOT IN THE ARCHIVE
+  // =========================================================================
+
+  /**
+   * Same predicate extractAndRestoreImages uses for "the archive carries image
+   * files", so the warning and the restore agree on what the archive holds.
+   * @param {string} path - a ZIP entry path
+   * @returns {boolean}
+   */
+  const isArchiveImageFile = (path) =>
+    path.includes("images/") && !path.endsWith("/");
+
+  /** References that carry their own bytes and so need no file in the archive. */
+  const SELF_CONTAINED_REFERENCE = /^(data|blob):/i;
+
+  /** Which single line the restore raised (RD-3; IMAGES added at CS-2). */
+  const RESTORE_OUTCOME = Object.freeze({ SUCCESS: "success", MERGED: "merged", IMAGES: "images" });
+
+  /**
+   * CS-2: the ONE line spoken when the restore put image files from the
+   * archive back into the image registry. It REPLACES the success line on that
+   * path: the images toast used to land 4 to 6 ms before the success line, in
+   * the same animation frame on the same polite region, and a listen heard only
+   * the success line (RD-3 sitting two). Placement contract rule C10.
+   * Exposed on the class as MathPixSessionRestorer.imagesRestoredLine and read
+   * from there at call time, so a suite row matches the spoken line BY
+   * IDENTITY and one patch inverts the product and the rows together.
+   * @param {number} count - images restored from the archive, above 0
+   * @returns {string}
+   */
+  function imagesRestoredLine(count) {
+    if (count === 1) {
+      return "Session restored. 1 image restored from archive.";
+    }
+    return `Session restored. ${count} images restored from archive.`;
+  }
+  MathPixSessionRestorer.imagesRestoredLine = imagesRestoredLine;
+
+  /**
+   * RD-3: the ONE line spoken when the restored document refers to figures
+   * whose image files the archive does not contain. It REPLACES the success
+   * line on that path: RD-2 raised a separate warning 3 to 19 ms before the
+   * success line, both on the same polite region, and a listen heard only the
+   * success line. Every other restore keeps RESTORER_CONFIG.MESSAGES.SUCCESS.
+   * Exposed on the class as MathPixSessionRestorer.figuresNotRestoredWarning
+   * and read from there at call time, so a suite row matches the spoken line
+   * BY IDENTITY rather than retyping it, and one patch inverts the product and
+   * the rows together.
+   * @param {number} count - figure references in the loaded document, above 0
+   * @returns {string}
+   */
+  function figuresNotRestoredWarning(count) {
+    if (count === 1) {
+      return "Session restored, but this document refers to 1 figure that the archive does not contain. An AI description cannot be generated for that figure.";
+    }
+    return `Session restored, but this document refers to ${count} figures that the archive does not contain. AI descriptions cannot be generated for those figures.`;
+  }
+  MathPixSessionRestorer.figuresNotRestoredWarning = figuresNotRestoredWarning;
+
+  /**
+   * RD-2, reshaped at RD-3: decide whether the loaded document refers to
+   * figures that never reached the image registry because the archive carries
+   * no image files (RD-1). Raises NOTHING — _notifyRestoreOutcome raises the
+   * restore's one line from this result, at the point the success line used
+   * to be raised. Taken here, straight after the image step, so the count is
+   * the archive's document and not a later auto-restored local version.
+   *
+   * The count uses the registry's own detection on a throwaway instance, the
+   * same regexes buildFromMMD applies, which schedules no mirror write.
+   *
+   * @param {{restored: boolean}} imageResult - extractAndRestoreImages' result
+   * @returns {{count: number, imageFiles: number, message: ?string}}
+   */
+  proto._figuresNotRestoredOutcome = function (imageResult) {
+    const outcome = { count: 0, imageFiles: 0, message: null };
+    if (!imageResult || imageResult.restored) return outcome;
+    if (typeof window.MathPixImageRegistry !== "function") return outcome;
+
+    const zip = this.restoredSession?.zip;
+    if (!zip || !zip.files) return outcome;
+
+    // An archive that does carry image files failed for another reason, and
+    // "the archive does not contain them" would be false — stay out of it.
+    outcome.imageFiles = Object.keys(zip.files).filter(isArchiveImageFile).length;
+    if (outcome.imageFiles > 0) return outcome;
+
+    const probe = new window.MathPixImageRegistry();
+    probe.buildFromMMD(this.restoredSession.currentMMD || "");
+    outcome.count = probe
+      .getAllImages()
+      .filter((entry) => !SELF_CONTAINED_REFERENCE.test(String(entry.originalUrl || "")))
+      .length;
+    if (outcome.count === 0) return outcome;
+
+    const archiveName =
+      this._rawZIPFile?.name ||
+      this.restoredSession?.source?.filename ||
+      "(unnamed archive)";
+    logWarn(
+      `Restored document refers to ${outcome.count} figure(s) but ${archiveName} carries no image files — none reached the image registry; the merged warning replaces the success line`,
+    );
+
+    outcome.message = MathPixSessionRestorer.figuresNotRestoredWarning(outcome.count);
+    return outcome;
+  };
+
+  /**
+   * RD-3: raise the restore's ONE outcome line. On the figures path that is
+   * the merged warning, raised through notifyWarning directly because the
+   * restorer's own showNotification renders "warning" as an info toast; on
+   * the images path (CS-2) it is the images line, which names the count; on
+   * every other path it is the unchanged success line. Never two: two polite
+   * lines milliseconds apart on one region is what RD-2's listen and RD-3's
+   * sitting two lost (placement contract rule C10). The two outcomes cannot
+   * coincide — _figuresNotRestoredOutcome raises no message once images were
+   * restored — and if they ever did, the figures warning wins and still only
+   * one line is raised. The toast is the voice — no announce() beside it
+   * (AGENTS.md § Announcements, question 1).
+   *
+   * @param {?{message: ?string}} figuresOutcome - _figuresNotRestoredOutcome's result, or null
+   * @param {?{restored: boolean, imageCount: number}} imageResult - extractAndRestoreImages' result, or null
+   * @returns {string} a RESTORE_OUTCOME value naming the line raised
+   */
+  proto._notifyRestoreOutcome = function (figuresOutcome, imageResult) {
+    const imagesRestored =
+      imageResult && imageResult.restored ? Number(imageResult.imageCount) || 0 : 0;
+
+    if ((!figuresOutcome || !figuresOutcome.message) && imagesRestored > 0) {
+      logInfo(
+        `Restore outcome: ${imagesRestored} image(s) restored — the images line replaces the success line`,
+      );
+      this.showNotification(MathPixSessionRestorer.imagesRestoredLine(imagesRestored), "success");
+      return RESTORE_OUTCOME.IMAGES;
+    }
+    if (!figuresOutcome || !figuresOutcome.message) {
+      this.showNotification(RESTORER_CONFIG.MESSAGES.SUCCESS, "success");
+      return RESTORE_OUTCOME.SUCCESS;
+    }
+    if (typeof window.notifyWarning === "function") {
+      window.notifyWarning(figuresOutcome.message);
+    } else {
+      // Never silent: without notifyWarning the merged line still goes out,
+      // through the restorer's own route.
+      logWarn("notifyWarning unavailable — merged figures line sent through showNotification");
+      this.showNotification(figuresOutcome.message, "warning");
+    }
+    return RESTORE_OUTCOME.MERGED;
+  };
+
   /**
    * Restore session from parse result
    * @param {Object} parseResult - Parsed ZIP data
@@ -281,6 +431,10 @@
     logInfo("Restoring session from ZIP archive");
 
     try {
+      // Parcel 10c: a new session must not offer, or zip up, the previous
+      // session's converted files.
+      this.clearConversionResults();
+
       // Determine the content to load (edit takes priority over original)
       const loadedContent = selectedEdit?.content || parseResult.results.mmd;
 
@@ -314,6 +468,11 @@
       // P3: capture the result so a preserved re-open capture can raise the
       // dirty signal after the recovery gates below have settled.
       const ctxResult = await this.extractAndRestoreContext();
+
+      // RD-3: set by the image step, read by the one outcome line at the end.
+      let figuresOutcome = null;
+      // CS-2: the image step's result when it restored images, likewise.
+      let restoredImages = null;
 
       // Phase 8F: Extract images from ZIP and restore registry
       // Must happen before loadMMDContent so blob URLs are in place for preview
@@ -349,15 +508,18 @@
           // Store registry on session for external access (AI enhancer, etc.)
           this.restoredSession.imageRegistry = this.imageRegistry;
 
-          this.showNotification(
-            `${imageResult.imageCount} image(s) restored from archive`,
-            "info",
-          );
+          // CS-2: the count is SPOKEN once at the end, in place of the success line.
+          restoredImages = imageResult;
         }
 
         if (imageResult.errors.length > 0) {
           logWarn("Image restore had errors:", imageResult.errors);
         }
+
+        // RD-2: an archive whose document refers to figures but carries no
+        // image files restores silently with zero images; say so instead.
+        // RD-3: decided here, SPOKEN once at the end in place of the success line.
+        figuresOutcome = this._figuresNotRestoredOutcome(imageResult);
       } catch (imageError) {
         // Non-fatal: images failing should not block session restore
         logWarn("Image restore failed (non-fatal):", imageError);
@@ -467,10 +629,16 @@
         // so blob URLs, CDN URLs, and data URIs all compare as equal
         const normaliseForComparison = (text) => {
           if (!text) return "";
-          return text
-            .replace(/blob:http[^\s)}"\\]+/g, "IMG_URL")
-            .replace(/https:\/\/cdn\.mathpix\.com\/[^\s)}"\\]+/g, "IMG_URL")
-            .replace(/data:image\/[^\s)}"\\]+/g, "IMG_URL");
+          // MX-2: MathPix image URLs match the registry's host pattern, so an
+          // eu-cdn document normalises as a cdn one does. Resolved at call
+          // time, because the registry script loads after this mixin.
+          const cdnUrlRegex =
+            window.MathPixImageRegistry?.createCdnUrlRegex?.() || null;
+          const withoutBlobs = text.replace(/blob:http[^\s)}"\\]+/g, "IMG_URL");
+          const withoutCdn = cdnUrlRegex
+            ? withoutBlobs.replace(cdnUrlRegex, "IMG_URL")
+            : withoutBlobs;
+          return withoutCdn.replace(/data:image\/[^\s)}"\\]+/g, "IMG_URL");
         };
 
         const normalisedZipContent = normaliseForComparison(
@@ -604,8 +772,10 @@
         this.showSwitchVersionButton();
       }
 
-      // Show notification
-      this.showNotification(RESTORER_CONFIG.MESSAGES.SUCCESS, "success");
+      // Show notification — ONE outcome line (RD-3, CS-2): the merged figures
+      // warning on the figures path, the images line on the images path, the
+      // unchanged success line otherwise.
+      this._notifyRestoreOutcome(figuresOutcome, restoredImages);
 
       logInfo("Session restored successfully", {
         sourceFile: parseResult.source.filename,

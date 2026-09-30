@@ -11,10 +11,14 @@ export class RequestValidator {
     if (!options.model) {
       errors.push("Model must be specified");
     } else {
-      const modelConfig = modelRegistry.getModel(options.model);
-      if (!modelConfig) {
-        errors.push(`Model ${options.model} not found`);
-      }
+      // An unregistered id is refused by the registry itself: getModel throws
+      // ModelNotFoundError when not called silently, and that throw leaves this
+      // method before any errors array could be returned (measured at parcels
+      // 22 and 29: an unregistered id announced 0 and threw). The former
+      // `if (!modelConfig)` branch below this call could therefore never run and
+      // was removed at the parcel-38 fold; the call is kept because the throw IS
+      // the behaviour.
+      modelRegistry.getModel(options.model);
     }
 
     if (options.temperature !== undefined) {

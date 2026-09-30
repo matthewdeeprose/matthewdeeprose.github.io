@@ -159,11 +159,22 @@
    */
   const MIRROR_REGISTRY_DEBOUNCE_MS = 1000;
 
-  /** Regex patterns for CDN detection */
-  const CDN_PATTERNS = [
-    /cdn\.mathpix\.com/,
-    /mathpix-ocr-examples\.s3\.amazonaws\.com/,
-  ];
+  /**
+   * Scheme and host of a MathPix-served image URL: the ONE source for "is this
+   * a MathPix image host". isMathPixCDN reads it, and the session restorer reads
+   * it through createCdnUrlRegex (MX-2), so no second host list exists to drift.
+   * `(?:[a-z0-9]+-)?cdn` admits cdn.mathpix.com and its regional hosts
+   * (eu-cdn.mathpix.com); the closing slash refuses a lookalike host such as
+   * cdn.mathpix.com.evil.example.
+   */
+  const CDN_URL_PREFIX =
+    /https:\/\/(?:(?:[a-z0-9]+-)?cdn\.mathpix\.com|mathpix-ocr-examples\.s3\.amazonaws\.com)\//;
+
+  /** The rest of an image URL in MMD text: stops at whitespace, ) } " or a backslash. */
+  const CDN_URL_BODY = /[^\s)}"\\]+/;
+
+  /** Regex patterns for CDN detection, anchored at the start of the URL */
+  const CDN_PATTERNS = [new RegExp("^" + CDN_URL_PREFIX.source)];
 
   // ----------------------------------------------------------------------------
   // Image-detection regexes (module-scoped, hoisted out of buildFromMMD per
@@ -298,6 +309,17 @@
   function isMathPixCDN(url) {
     if (typeof url !== "string") return false;
     return CDN_PATTERNS.some((pattern) => pattern.test(url));
+  }
+
+  /**
+   * A fresh global RegExp matching every whole MathPix image URL in a text,
+   * built from CDN_URL_PREFIX. Fresh on every call because a shared `g` regex
+   * carries lastIndex between callers (see the note above MD_IMG_REGEX).
+   *
+   * @returns {RegExp} Global regex; match[0] is the full URL
+   */
+  function createCdnUrlRegex() {
+    return new RegExp(CDN_URL_PREFIX.source + CDN_URL_BODY.source, "g");
   }
 
   /**
@@ -2098,6 +2120,11 @@
   // ============================================================================
   // GLOBAL EXPOSURE
   // ============================================================================
+
+  // MX-2: the host pattern, for the session restorer, which loads BEFORE this
+  // file and so must resolve these at call time, never at its own load.
+  MathPixImageRegistry.isMathPixCDN = isMathPixCDN;
+  MathPixImageRegistry.createCdnUrlRegex = createCdnUrlRegex;
 
   window.MathPixImageRegistry = MathPixImageRegistry;
 

@@ -499,6 +499,40 @@ const OpenRouterEmbedTranscribeUI = (function () {
   // standing constraint, unchanged.
   let editMode = false;
 
+  // Whether a row that carries a suggestion shows it. IN-MEMORY FOR THE SESSION,
+  // on exactly the terms the three display modes above are, and a RENDER
+  // DECISION rather than a reveal — see the review block's own section for why
+  // the design's § 6 corrected an earlier draft that had two reveals. The
+  // initial value matches the checkbox's markup default, which ships CLEAR: a
+  // change set can be loaded with nobody having asked to see it rendered.
+  let showSuggestions = false;
+
+  // Whether a rendered suggestion carries its reason. Ships TICKED, matching
+  // the markup and the design's stated default — a reason is useful information
+  // and withholding it is the exceptional choice, not offering it. The
+  // asymmetry with the flag above is deliberate.
+  let showReasons = true;
+
+  // Whether a suggestion that CANNOT BE APPLIED renders in the transcript's own
+  // order, or is listed in the review block's table instead. Design section
+  // 12's D6, register item 47 unit 14.
+  //
+  // IT SHIPS CLEAR, AND THE DEFAULT IS THE DECISION RATHER THAN AN INHERITED
+  // CONVENTION. The sitting overturned this desk's provisional answer, which
+  // was conflicts in sequence as rows: a conflict carries NO CONTROLS, so in
+  // edit mode Tab passes straight over it and a person tabbing never meets it
+  // at all. A row in the table carries a button, and a button is reachable by
+  // Tab.
+  //
+  // IT REPLACES THE TABLE RATHER THAN ADDING TO IT. Ticked, conflicts render in
+  // the transcript exactly as they did before this unit AND the table hides;
+  // unticked, the table is the only place they appear. Never both, so a person
+  // never tracks two orders at once — which is the property the withdrawn
+  // one-sequence reasoning was right about, preserved rather than lost.
+  //
+  // A RENDER DECISION, NOT A REVEAL, exactly as the two flags above are.
+  let showConflictsInTranscript = false;
+
   /**
    * The rows a person has ticked, as a Set of 0-based row indices.
    *
@@ -746,6 +780,53 @@ const OpenRouterEmbedTranscribeUI = (function () {
   const CLASS_TEXT = "transcribe-text";
 
   /**
+   * The speaker column's PLACEHOLDER (register item 46 unit 11).
+   *
+   * WHAT IT IS FOR. `transcribe.css` makes the row a flex container and gives
+   * the speaker span a minimum width, so that a row printing a label and a row
+   * not printing one put their phrase text at the same x. A minimum width
+   * cannot do that on its own: a suppressed label leaves NO ELEMENT BEHIND, and
+   * flex sizes a column from what is in it. This span is the element the width
+   * applies to — the whole of design § 11.1's answer to presentation finding 5.
+   *
+   * IT DOES NOT CARRY CLASS_SPEAKER, AND THAT IS A DEPARTURE FROM THE UNIT'S
+   * OWN SPECIFICATION, TAKEN ON A MEASUREMENT. The specification said the
+   * placeholder should carry the real span's class "so one CSS rule sizes
+   * both". One rule does size both — `transcribe.css` lists the two selectors
+   * in a single rule — so the PURPOSE is met. What could not be met is the
+   * letter, because `span.transcribe-speaker` is read at FOUR sites in two
+   * tracked instruments as "this row prints a speaker label":
+   *
+   *   .claude/a11y/sr/transcribe-tree-gate.mjs:990   the speakers drive marker
+   *   .claude/a11y/sr/transcribe-tree-gate.mjs:1781  the applied-name reading
+   *   .claude/a11y/sr/transcribe-audit-probe.mjs:313 the speakers drive marker
+   *   .claude/a11y/sr/transcribe-audit-probe.mjs:873 the element census
+   *
+   * The two drive markers assert the span is ABSENT from a row when labels are
+   * suppressed. A placeholder carrying that class is present on exactly those
+   * rows, so both instruments would time out driving `speakers=off` and exit as
+   * INSTRUMENT ERRORS — on the very states unit 11 exists to measure. The other
+   * two would go on running and silently start counting something else.
+   * Redefining a selector four instruments already depend on, to save one line
+   * of CSS, is not a trade worth taking.
+   *
+   * THE CLASS ALSO MAKES THE PLACEHOLDER COUNTABLE BY CONSTRUCTION, which is
+   * the second reason it exists. Two of unit 11's halt conditions are counts of
+   * placeholders — none in a one-speaker transcript, and the whole-tree
+   * `StaticText` count unmoved by them — and counting them as "a
+   * `.transcribe-speaker` whose text is empty" would be a count taken on a
+   * PROXY. A real speaker span can never be empty today, so the proxy happens
+   * to be sound; a class is sound whether or not that stays true.
+   *
+   * IT IS EMPTY AND CARRIES NO ARIA. An empty span contributes no `StaticText`,
+   * so a reader is offered nothing at all by it. `aria-hidden` would be ARIA
+   * added for a problem that does not exist, which AGENTS.md's first rule of
+   * ARIA forbids — and an `aria-hidden` span is the ghost-element arrangement
+   * rule 4 warns about if anything ever focusable were put inside it.
+   */
+  const CLASS_SPEAKER_PLACEHOLDER = "transcribe-speaker-placeholder";
+
+  /**
    * The edit surface's own strings (register item 45 unit 7).
    *
    * THE EDIT CONTROL'S ID IS DERIVED FROM THE ROW INDEX, in the same style and
@@ -865,6 +946,35 @@ const OpenRouterEmbedTranscribeUI = (function () {
   const SELECT_LABEL_PREFIX = "Select phrase ";
 
   /**
+   * The read-only row's own number (register item 47 unit 17).
+   *
+   * WHY IT EXISTS. Listen row 52 session 2a: "Go to phrase 6" in read-only
+   * mode landed on "list with 657 items, [1:04] Speaker 1: For this special
+   * episode…" and NO NUMBER WAS HEARD ANYWHERE IN THE LANDING. In read-only
+   * mode a row is named by nothing; "Select phrase N" and "Edit phrase N" are
+   * the only carriers of the number and both exist in edit mode only. The
+   * owner chose a visually-hidden number on every row, over a visible one and
+   * over leaving the conflicts table as the only place a number appears.
+   *
+   * 1-BASED, ON THE TERMS SELECT_LABEL_PREFIX RECORDS: the row id stays 0-based
+   * and the words a person hears count from one, so "Phrase 6" and "Go to
+   * phrase 6" and "Edit phrase 6" all name the same line.
+   *
+   * READ-ONLY ONLY. In edit mode the row already says "Select phrase N" and
+   * "Edit phrase N"; a third copy would be the same fact three times on one
+   * row, 657 times over — the defect EDIT_LABEL_CORRECTED_SUFFIX's
+   * one-marker-per-row-per-mode rule exists to prevent. The gate is the `edit`
+   * decision every caller already hoists, so no new predicate is added.
+   *
+   * PROVISIONAL UNTIL LISTEN ROW 52 SESSION 2b. It adds a few characters to
+   * every row of a say-all, and whether that is tolerable is heard, not
+   * reasoned. The CLASS carries no rule in any stylesheet; it exists so a
+   * harness row can find the span without depending on its position.
+   */
+  const PHRASE_NUMBER_PREFIX = "Phrase ";
+  const CLASS_PHRASE_NUMBER = "transcribe-phrase-number";
+
+  /**
    * The selected-line count's wording, and why zero is a separate string.
    *
    * `pluralise` would give "0 lines selected", which is correct English and
@@ -908,19 +1018,37 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * heard and which they wanted. On a 657-row transcript the wrong choice is
    * heard 657 times, so nobody should treat this line as settled by the build.
    *
-   * A MEASURED SIDE EFFECT, RECORDED BECAUSE IT IS A QUESTION FOR THE SITTING
-   * AND NOT A THING TO ENGINEER AGAINST BLIND. `.visually-hidden` positions the
-   * marker ABSOLUTELY, so it leaves the inline flow — and Chrome then drops the
-   * single-space text nodes either side of it from the accessibility tree
-   * entirely. Measured 8 September 2026 by verbose-tree dump: an UNCORRECTED
-   * row exposes `StaticText "Speaker 1:"`, `StaticText " "`, `StaticText
-   * "<phrase>"`, while a corrected one exposes `StaticText "Speaker 1:"`,
-   * `StaticText "Corrected."`, `StaticText "<phrase>"` with NO space node at
-   * all. Whether a reader runs those three together or pauses between them is
-   * decided by the reader, not by the tree — which is precisely the kind of
-   * thing this repo refuses to predict from markup. Listen row 47 (d) is where
-   * it is answered. Uncorrected rows are unaffected, which is why the tree
-   * gate's baseline is unmoved by this unit.
+   * A MEASURED SIDE EFFECT — SUPERSEDED AT UNIT 11, AND QUOTED IN PLACE per
+   * register items 51 and 56. It read:
+   *
+   *   "A MEASURED SIDE EFFECT, RECORDED BECAUSE IT IS A QUESTION FOR THE
+   *    SITTING AND NOT A THING TO ENGINEER AGAINST BLIND. `.visually-hidden`
+   *    positions the marker ABSOLUTELY, so it leaves the inline flow — and
+   *    Chrome then drops the single-space text nodes either side of it from the
+   *    accessibility tree entirely. Measured 8 September 2026 by verbose-tree
+   *    dump: an UNCORRECTED row exposes `StaticText "Speaker 1:"`, `StaticText
+   *    " "`, `StaticText "<phrase>"`, while a corrected one exposes `StaticText
+   *    "Speaker 1:"`, `StaticText "Corrected."`, `StaticText "<phrase>"` with NO
+   *    space node at all. Whether a reader runs those three together or pauses
+   *    between them is decided by the reader, not by the tree — which is
+   *    precisely the kind of thing this repo refuses to predict from markup.
+   *    Listen row 47 (d) is where it is answered. Uncorrected rows are
+   *    unaffected, which is why the tree gate's baseline is unmoved by this
+   *    unit."
+   *
+   * IT WAS A TRUE MEASUREMENT AND ITS SUBJECT NO LONGER EXISTS. Unit 11 deleted
+   * the separators from EVERY row, so there is no space node for the marker to
+   * displace and no difference between the two shapes it contrasts: an
+   * uncorrected row now exposes `StaticText "Speaker 1:"`, `StaticText
+   * "<phrase>"`, and a corrected one exposes those two with `StaticText
+   * "Corrected."` between them.
+   *
+   * THE QUESTION IT RAISED SURVIVES AND HAS GOT BIGGER, which is why this is a
+   * supersession rather than a deletion. It used to ask whether a reader hears
+   * a corrected row differently from an uncorrected one; it now asks whether a
+   * reader hears ANY row's parts run together, because no row has a space node
+   * left. That is the sitting's own § 12.6 ruling — the space is a pause, build
+   * the layout and listen afterwards — and listen row 51 carries it.
    */
   const CORRECTED_MARKER_TEXT = "Corrected.";
 
@@ -1014,9 +1142,32 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * honest", reaching the screen.
    */
   const REASSIGNED_MARKER_PREFIX = "Speaker changed from ";
+  // THE JOIN BETWEEN THE TWO HALVES, HOISTED BECAUSE BOTH SURFACES SHARE IT AND
+  // NEITHER OWNS IT. The prefixes and the suffix differ per surface and are
+  // passed in; this one is part of the sentence itself, so it belongs to the
+  // composer rather than to either caller.
+  const REASSIGNED_MARKER_JOIN = " to ";
   const REASSIGNED_MARKER_SUFFIX = ".";
   const CLASS_REASSIGNED = "transcribe-reassigned";
   const EDIT_LABEL_REASSIGNED_PREFIX = ", speaker changed from ";
+
+  /**
+   * The edit control's suggestion suffixes — design § 12's D3, EDIT MODE
+   * ONLY. Both are PROVISIONAL WORDING and are heard again at session 2.
+   *
+   * THE COMMA IS DOING THE SAME WORK EDIT_LABEL_CORRECTED_SUFFIX's DOES, and
+   * that constant's own note is the place that reasoning is set out: it is
+   * what stops the name reading as an instruction and gives a reader
+   * something to pause on between facts about one control.
+   *
+   * AN ORDINARY SPACE IS CORRECT HERE AND A NO-BREAK SPACE WOULD BE WRONG,
+   * which is worth saying in a commit that adds SUGGESTION_SEPARATOR three
+   * lines away. This text goes into ONE text node inside ONE <label>, so
+   * there is no element boundary for whitespace to be collapsed at — the
+   * blockified-span problem that constant exists for cannot arise.
+   */
+  const EDIT_LABEL_SUGGESTION_SUFFIX = ", suggestion available";
+  const EDIT_LABEL_CONFLICT_SUFFIX = ", suggestion cannot be applied";
 
   /**
    * The moved marker's text, composed ONCE for both modes.
@@ -1038,20 +1189,38 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * verdict is `speaker !== sourceSpeaker` asked of the state module, and a
    * phrase whose two are both absent compares equal. Nothing is guarded for it
    * for that reason, which is the same reasoning `buildRow` gives for composing
-   * the speaker label only INSIDE its `typeof` branch.
+   * the speaker label only INSIDE its `typeof` branch. THE SAME ARGUMENT COVERS
+   * `currentSpeaker` and is why it is not guarded either: the two are compared
+   * to reach this function at all, so neither can be absent while the other is
+   * present.
+   *
+   * BOTH SIDES GO THROUGH `speakerDisplayName`, WHICH IS THE WHOLE POINT OF
+   * TAKING TWO SLOTS RATHER THAN A SLOT AND A STRING. A caller handing in the
+   * row's rendered label would be a second route to the same words, and a row
+   * that prints no label has no such string to hand in — which is the case the
+   * fuller wording exists for.
    *
    * @param {number} sourceSpeaker - the slot the transcription put the line in
+   * @param {number} currentSpeaker - the slot the line is in now
    * @param {Object<string, string>} names - the names map, read once by the
    *   caller
    * @param {string} prefix - REASSIGNED_MARKER_PREFIX or the edit-label one
    * @param {string} suffix - the surface's own punctuation, or ""
-   * @returns {string} e.g. `Speaker changed from Amira.`
+   * @returns {string} e.g. `Speaker changed from Speaker 2 to Amira.`
    */
-  function reassignedMarkerText(sourceSpeaker, names, prefix, suffix) {
+  function reassignedMarkerText(
+    sourceSpeaker,
+    currentSpeaker,
+    names,
+    prefix,
+    suffix,
+  ) {
     const api = moduleOrNull();
     return (
       prefix +
       api.speakerDisplayName({ speaker: sourceSpeaker, names }) +
+      REASSIGNED_MARKER_JOIN +
+      api.speakerDisplayName({ speaker: currentSpeaker, names }) +
       suffix
     );
   }
@@ -1142,7 +1311,37 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * source and only in a reader. See updateApplyButtonName for why the
    * space lives here rather than in the markup.
    */
-  const APPLY_DETAIL_SEPARATOR = " ";
+  //
+  // IT IS A NO-BREAK SPACE SINCE UNIT 13, AND AN ORDINARY SPACE HERE WAS
+  // MEASURED TO DO NOTHING. The withdrawn declaration is quoted per register
+  // items 51 and 56:
+  //
+  //   const APPLY_DETAIL_SEPARATOR = " ";
+  //
+  // The comment above is right that the space is the only thing standing
+  // between "Apply name" and "Amira", and right that a space typed into a
+  // template literal is invisible to review. IT IS WRONG THAT THE SPACE WAS
+  // DOING THE WORK. The detail element is `.visually-hidden` and therefore
+  // absolutely positioned, so whitespace at its leading edge is collapsed
+  // before the rendered text is formed, and the two words welded in exactly
+  // the way the comment was written to prevent — "Apply nameAmira as Speaker
+  // 1", read off the accessibility tree on 21 September 2026.
+  //
+  // LISTEN ROW 51 HEARD THIS CONTROL AND HEARD IT CORRECTLY. It reached the
+  // button by Tab, which speaks the ACCESSIBLE NAME, and the name was right
+  // throughout — accname inserts its own space around a block-level child.
+  // The rendered text is a different path, taken by a reader arrowing through
+  // the page in browse mode, and nothing had ever exercised it. THIS IS NOT A
+  // REGRESSION: the control has behaved this way since it was built, and the
+  // row stays closed. See the row's own entry in chat-owed-sr-listen.md.
+  //
+  // IT IS NOT `SUGGESTION_SEPARATOR`, THOUGH THE CHARACTER IS THE SAME. That
+  // constant belongs to the suggestion wrapper and is named for it; this
+  // control is in a different block of the page, built by a different
+  // function, and sharing one constant between them would be a coupling
+  // neither asked for. The reasoning is written out at SUGGESTION_SEPARATOR
+  // and is not repeated here.
+  const APPLY_DETAIL_SEPARATOR = String.fromCharCode(0x00a0);
   const APPLY_DETAIL_JOINER = " as ";
 
   /**
@@ -1163,12 +1362,19 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * THE MODULE IS RESOLVED AT CALL TIME, never captured — see the file header.
    *
    * IT DOES NOT GUARD A MISSING MODULE, AND THAT IS DELIBERATE RATHER THAN AN
-   * OMISSION. Both callers already refuse on one — renderTranscript logs and
-   * returns, patchRow logs and returns — so this is unreachable with the module
-   * absent. The only fallback that would not throw is a locally composed
+   * OMISSION. Its one caller is `buildRow`, whose own callers all refuse on a
+   * missing module — renderTranscript logs and returns, patchRow logs and
+   * returns, patchRows logs and returns — so this is unreachable with the
+   * module absent. The only fallback that would not throw is a locally composed
    * `Speaker N:`, which is the second copy of the wording this function exists
-   * to prevent. ANY LATER CALLER MUST GUARD `moduleOrNull()` ITSELF, and unit
-   * 4b's rename path is the next one.
+   * to prevent. ANY LATER CALLER MUST GUARD `moduleOrNull()` ITSELF.
+   *
+   * "Both callers" AND "unit 4b's rename path is the next one" WERE TRUE UNTIL
+   * UNIT 10 AND ARE WITHDRAWN. The rename path had its own targeted repaint,
+   * which called this function directly and was the second caller; unit 10
+   * retired that repaint in favour of `patchRows`, so every route to this
+   * function now runs through `buildRow` and the guard it needed lives one
+   * level up. Quoted rather than deleted, per register items 51 and 56.
    *
    * @param {number} speakerLabel - the resolver's verdict, already taken
    * @param {Object<string, string>} names - the names map, keyed by speaker
@@ -1182,6 +1388,1098 @@ const OpenRouterEmbedTranscribeUI = (function () {
       api.speakerDisplayName({ speaker: speakerLabel, names }) +
       SPEAKER_LABEL_SUFFIX
     );
+  }
+
+  /**
+   * The suggestion vocabulary's PROPOSED value, MIRRORED, NEVER IMPORTED —
+   * matching how openrouter-embed-transcribe-state.js's own SUGGESTION_STATUS
+   * is itself mirrored rather than imported from the Captions Fixer lane. This
+   * file reads no state-module constant directly (SUGGESTION_STATUS is not on
+   * that module's export list), so the one value this file needs to recognise
+   * is typed here and kept in step by eye.
+   */
+  const SUGGESTION_STATUS_PROPOSED = "proposed";
+  // THE OTHER TWO, MIRRORED THE SAME WAY AND FOR THE SAME REASON, added at
+  // unit 13 because `reviewableCounts` has to recognise all three rather than
+  // only the one this file used to care about. Typed here beside the first so
+  // the three stay together and a reader checking the vocabulary finds it in
+  // one place.
+  /**
+   * The two forms `rejectedBy` takes, MIRRORED, NEVER IMPORTED, exactly as
+   * the status vocabulary above is. Read out of captions-fixer/ at HEAD on
+   * 21 September 2026: `captions-fixer-guards.js` composes
+   * `REJECTED_BY_PREFIX + guardName` with the prefix "guard:", and
+   * `captions-fixer-ui.js` writes `REJECTED_BY_PERSON`, "person", when a
+   * person unticks a row in their own changes table.
+   *
+   * THEY ARE USED FOR REPORTING ONLY, never for the reviewable decision.
+   * `isReviewable` tests whether `rejectedBy` is SET, which needs no
+   * knowledge of its vocabulary and cannot drift if they add a third form.
+   * Only the log line breaks the total down by cause, and a form it does not
+   * recognise falls into "decided before this surface saw them" — which is
+   * true of any form, so the tally stays correct rather than merely
+   * plausible.
+   */
+  const REJECTED_BY_GUARD_PREFIX = "guard:";
+  const REJECTED_BY_PERSON = "person";
+
+  const SUGGESTION_STATUS_ACCEPTED = "accepted";
+  const SUGGESTION_STATUS_REJECTED = "rejected";
+
+  const CLASS_SUGGESTION = "transcribe-suggestion";
+  // THE TWO HALVES, GROUPED — register item 47 unit 8. Each is ONE element
+  // holding its own hidden label plus whatever inline content belongs to it
+  // (unchanged text nodes and, per half, a <del> or an <ins>). See
+  // buildSuggestionWrapper's own doc comment for why this stopped being a flat
+  // list of siblings.
+  const CLASS_SUGGESTION_WAS = "transcribe-suggestion-was";
+  const CLASS_SUGGESTION_PROPOSED = "transcribe-suggestion-proposed";
+  const CLASS_SUGGESTION_REASON = "transcribe-suggestion-reason";
+
+  /**
+   * ONE ELEMENT PER PART OF A REASON — register item 47 unit 18, § 4, from
+   * listen row 52 session 2a's request that a multi-pair reason stop reading
+   * as a wall.
+   *
+   * THE SPLIT IS A NEWLINE, AND THE SPLIT IS SAFE ONLY BECAUSE THE OTHER LANE
+   * SAYS SO. Unit 16 halted this at grounding: `expand()` in
+   * captions-fixer-stage-recurring.js joined its pair sentences with a single
+   * space, which every sentence also contains many times over, so no split
+   * could tell a boundary from a word gap. The Captions Fixer lane has since
+   * agreed to change that join to a newline, and a newline cannot occur
+   * INSIDE a pair sentence: since their `52661f5` the recurring stage refuses
+   * any pair whose `from` or `to` holds a carriage return or a newline, in
+   * both `discover` and `expand`. So the newline is a boundary and nothing
+   * else, which is what makes it safe to split on.
+   *
+   * INERT UNTIL THEIR CHANGE LANDS. A reason with no newline yields exactly
+   * one part, so today's space-joined fixtures render exactly as before, and
+   * the two changes are order-free: theirs can land before or after this one
+   * and the page is correct either way. The shipped fixtures are deliberately
+   * NOT changed in this unit, so every review figure it reports stays
+   * attributable to the styling rather than to new content; a later unit
+   * points the fixture at the new shape when their hash arrives.
+   *
+   * WRITTEN AS A CODE POINT, NEVER AS A LITERAL OR AN ESCAPE, per register
+   * item 83 (b): an escape in source is what a shell or an editing tool
+   * collapses, and the collapse is invisible.
+   *
+   * NOT A LIST. `<ul>` inside the wrapper would disarm the tree gate, whose
+   * walk stops on entering the fourth `listitem` inside `#transcribe-results`
+   * — the three transcript rows are the first three, and phrase 3 is the
+   * third, so a nested item in its reason would end every pinned walk part
+   * way through that row. The parts are plain spans the stylesheet lays out
+   * as blocks, with indentation and NEVER a marker character: Chromium
+   * exposes generated content as text, and a bullet would be read aloud on
+   * every pair.
+   */
+  const CLASS_SUGGESTION_REASON_PART = "transcribe-suggestion-reason-part";
+  const REASON_PART_SEPARATOR = String.fromCharCode(0x0a);
+
+  /**
+   * Split a reason into its newline-separated parts, dropping empty ones.
+   *
+   * EMPTY PARTS ARE DROPPED, so a trailing newline or a doubled one cannot
+   * render an empty block — an element a reader is offered with nothing in
+   * it. A reason carrying no newline comes back as a one-element array, and
+   * that is the whole of the shipped case today.
+   *
+   * @param {string} reason
+   * @returns {string[]}
+   */
+  function splitReasonParts(reason) {
+    return String(reason)
+      .split(REASON_PART_SEPARATOR)
+      .filter((part) => part.length > 0);
+  }
+  /**
+   * THE HALF'S LABEL, IN ITS OWN ELEMENT — register item 47 unit 15.
+   *
+   * IT HAD NO ELEMENT AND NO CLASS UNTIL NOW, AND THE WITHDRAWN REASONING IS
+   * QUOTED HERE per register items 51 and 56. `appendHalfLabel` said:
+   *
+   *   "NO CLASS AND NO WRAPPING SPAN. The label is a bare text node in its
+   *    half, so it inherits that half's weight — 400 on the original and 700
+   *    on the proposal — which makes the two labels differ in exactly the
+   *    direction the halves already differ. A wrapper would add a node to the
+   *    accessibility tree for a styling hook nothing needs."
+   *
+   * THE FIRST SENTENCE OF THAT IS WHY IT HAD TO CHANGE. Inheriting the half's
+   * weight is exactly what makes the label INDISTINGUISHABLE from the words
+   * beside it: on the proposal both label and text are 700, and the owner
+   * read "SuggestedThis is a podcast" off a screenshot as one run of words.
+   * The two labels differing from EACH OTHER was never the question; a label
+   * differing from its own half's text is.
+   *
+   * THE TREE COST IS NOT ZERO, AND THIS COMMENT SAID IT WAS. Withdrawn text,
+   * quoted per register items 51 and 56:
+   *
+   *   "THE TREE COST IS ZERO, MEASURED RATHER THAN ARGUED. A `<span>` with no
+   *    role and no name contributes no `StaticText` of its own — the text
+   *    nodes inside it are what the walk reads, and they existed before. The
+   *    pinned tree-gate figures move for the label's CHANGED TEXT (a colon and
+   *    a separator), not for the element."
+   *
+   * THE FIRST HALF IS RIGHT AND THE SECOND IS WRONG. A span with no role and
+   * no name does contribute no `StaticText`. But it DOES contribute an ignored
+   * node to the verbose tree the gate counts: measured across the eight review
+   * states, `none` moves by +6 with reasons on and +4 with them off. So the
+   * figures move for the ELEMENTS as well as for the text.
+   *
+   * IT WAS WRITTEN AS "MEASURED RATHER THAN ARGUED" BEFORE ANYTHING HAD BEEN
+   * MEASURED, which is the part worth carrying. The claim was reasoned from
+   * how the accessibility tree treats an unnamed span, it was half right, and
+   * the phrase asserting it was a reading is what would have stopped the next
+   * reader checking. The real figures, their decomposition and the one piece
+   * of the arithmetic that does NOT close are in
+   * `.claude/a11y/sr/transcribe-tree-gate.mjs`'s unit 15 re-pin block.
+   */
+  const CLASS_SUGGESTION_LABEL = "transcribe-suggestion-label";
+
+  /**
+   * WHICH HALF A LABEL BELONGS TO — register item 47 unit 16, § 3.
+   *
+   * A DATA ATTRIBUTE, NOT A SECOND CLASS, so the stylesheets can style the
+   * two capsules apart while every existing rule and harness row that reads
+   * `.transcribe-suggestion-label` keeps reading one class. A conflict's
+   * label is SUGGESTED, because the only half a conflict renders is the
+   * proposal.
+   *
+   * IT REACHES NO ACCESSIBILITY TREE. A `data-*` attribute has no role, no
+   * name and no state, so it moves nothing a screen reader is offered.
+   */
+  const DATA_SUGGESTION_HALF = "data-suggestion-half";
+  const SUGGESTION_HALF = Object.freeze({
+    ORIGINAL: "original",
+    SUGGESTED: "suggested",
+  });
+
+  // A SEPARATE CLASS FROM CLASS_SUGGESTION_REASON, DELIBERATELY. The reason
+  // span carries the entry's own `reason` field; this one carries the
+  // composed sentence explaining why a suggestion could not be resolved
+  // against the row at all. Conflating the two would make a harness row
+  // asserting "the reason is present/absent per the toggle" indistinguishable
+  // from one asserting "the conflict sentence is always shown" — two
+  // different rules that happen to look alike once rendered.
+  const CLASS_SUGGESTION_CONFLICT = "transcribe-suggestion-conflict";
+
+  /**
+   * THE SEPARATOR, AND IT MUST BE A NO-BREAK SPACE. U+00A0.
+   *
+   * AN ORDINARY SPACE DOES NOTHING HERE, MEASURED, and the measurement is why
+   * this constant exists at all (amendment 2's ruling 1, after unit 13's
+   * halt). `.visually-hidden` sets `position: absolute`, which BLOCKIFIES the
+   * span, and whitespace at a block's edge is collapsed before the rendered
+   * text is formed. So the leading space that `buildSuggestionControl` had
+   * carried since unit 10 was discarded, and a screen reader arrowing onto
+   * the control in browse mode read "Acceptsuggestion for phrase 2".
+   *
+   * FOUR VARIANTS WERE PUT THROUGH THE ACCESSIBILITY TREE, headless
+   * chromium-1223, CDP `Accessibility.getFullAXTree`, 21 September 2026. The
+   * joined `StaticText` sequence of the button:
+   *
+   *   leading ordinary space in the hidden span   "Acceptsuggestion for…"
+   *   trailing ordinary space on the visible text "Acceptsuggestion for…"
+   *   NO separator at all                         "Acceptsuggestion for…"
+   *   leading U+00A0 in the hidden span           "Accept suggestion for…"
+   *
+   * THE FIRST THREE ARE INDISTINGUISHABLE FROM EACH OTHER, which is exactly
+   * why the defect read as correct in source for three units: the space was
+   * there, and it was doing nothing.
+   *
+   * THE ACCESSIBLE NAME WAS NEVER THE PROBLEM AND IS NOT WHAT THIS FIXES.
+   * `name` computed to "Accept suggestion for phrase 2" throughout, because
+   * accname inserts its own space around a block-level child. The rendered
+   * text is the path a browse-mode reader takes, and it is the one that
+   * welded. The cost of U+00A0 is that the NAME now carries a double space —
+   * accepted by the owner, since speech collapses whitespace and it is
+   * inaudible, and Label in Name is unaffected because the visible word is
+   * still contained in the name.
+   *
+   * THE APPLY BUTTON IS NOT THE REFERENCE, AND WAS BELIEVED TO BE. It carries
+   * the identical defect — " Apply nameAmira as Speaker 1" — and listen row
+   * 51 heard it by Tab, which speaks the name, so its rendered text was never
+   * exercised by ear. It is fixed in its own commit.
+   *
+   * BUILT WITH `String.fromCharCode`, NEVER A LITERAL AND NEVER AN ESCAPE. A
+   * literal U+00A0 is invisible in every editor and indistinguishable from a
+   * space in review, and `\u00A0` inside a string is one careless
+   * reformatting away from being read as text. This is the spirit of register
+   * item 83 (b), which is about a byte nobody could see.
+   *
+   * THE RULE AGAINST LITERAL WHITESPACE BETWEEN ELEMENTS STILL STANDS. This
+   * lives INSIDE the text of a span, never as a text node between two
+   * elements, so it cannot generate an anonymous box.
+   */
+  const SUGGESTION_SEPARATOR = String.fromCharCode(0x00a0);
+
+  /**
+   * The two halves' labels — VISIBLE TEXT since design § 12's D1, each
+   * followed by a visually-hidden continuation so a reader hears "Original
+   * phrase" and "Suggested phrase" while a sighted reader sees one word.
+   *
+   * THE VISIBLE WORDS REPLACE "was" AND "suggested", which were hidden
+   * entirely. The owner's reasoning, recorded at the sitting: the extra word
+   * gives context to someone relying on hearing, and the visible labels are
+   * what tell a new sighted reader which half is which.
+   *
+   * A CONFLICT CARRIES "Suggested" ONLY, because it has no original to show.
+   *
+   * THE LABEL LIVES IN ITS OWN SPAN SINCE UNIT 15 — see
+   * CLASS_SUGGESTION_LABEL for why the "no wrapping span" decision was
+   * withdrawn, and `appendHalfLabel` for the shape it builds.
+   */
+  const SUGGESTION_WAS_TEXT = "Original";
+  const SUGGESTION_SUGGESTED_TEXT = "Suggested";
+  const SUGGESTION_LABEL_CONTINUATION = "phrase";
+  /**
+   * THE VISIBLE COLON — register item 47 unit 15.
+   *
+   * IT REPLACES A SEPARATOR THAT WAS DOING NOTHING VISIBLE. Before this unit
+   * the hidden continuation carried a separator, the word "phrase" and a
+   * SECOND separator, and that trailing one existed only so a reader would not
+   * hear "phraseThis is a podcast". It is inside an absolutely-positioned
+   * span, so it painted nothing, and a sighted reader saw "SuggestedThis is a
+   * podcast" — the defect this unit exists to close.
+   *
+   * THE TWO SEPARATORS ARE NAMED IN WORDS HERE AND NOT QUOTED AS CHARACTERS,
+   * AND THAT IS NOT FASTIDIOUSNESS. A first draft of this very comment quoted
+   * them, and the editing tool wrote two LITERAL U+00A0 characters into the
+   * file — the same defect unit 13's scan found seven of, reintroduced by a
+   * comment explaining the mechanism that forbids it. Caught by the scan
+   * before the commit; recorded so the next comment about a separator is
+   * written the same way.
+   *
+   * A COLON SEPARATES BOTH AUDIENCES WITH ONE CHARACTER. It is visible, so it
+   * ends the label on screen; it is in the rendered text, so it ends the label
+   * for a reader; and the separator AFTER it does the job the withdrawn
+   * trailing one did.
+   *
+   * NOT `content: ":"`. A generated colon is not in the DOM, is dropped by
+   * some user stylesheets, and — the reason that decides it — would be absent
+   * from the accessible text this unit is measured by.
+   */
+  const SUGGESTION_LABEL_COLON = ":";
+
+  /**
+   * The conflict sentences, keyed by `suggestionTextFor`'s refusal token.
+   *
+   * BOTH ARE PROVISIONAL WORDING (design § 5, § 1 conflict case). Listen row
+   * 52 part (c) decides them; nothing here should be read as settled.
+   */
+  const SUGGESTION_CONFLICT_TEXT = Object.freeze({
+    // REWRITTEN AT DESIGN § 12's D5. Each sentence now names a cause the
+    // person would recognise AND the step still open to them, which is
+    // editing the line themselves. The withdrawn wording is quoted here per
+    // register items 51 and 56:
+    //
+    //   "stale-base": "This line has changed since the suggestion was made."
+    //   "label-changed": "This suggestion changes the speaker label."
+    //
+    // The sitting could not act on either. The first states a fact and stops;
+    // the second says "the speaker label" when neither half of a conflict
+    // shows one, so there was nothing on screen for the words to refer to.
+    "stale-base":
+      "This suggestion was made for an earlier version of this line, so it cannot be applied. You can still edit the line yourself.",
+    // THE TOKEN THIS SENTENCE ANSWERS DID NOT EXIST UNTIL UNIT 13. Before it,
+    // a row whose SPEAKER changed and whose words did not also refused
+    // `stale-base` — so the sentence above was printed on it, and it was
+    // false. See `suggestionTextFor`'s rule 3.
+    "speaker-changed":
+      "This suggestion was made before this line's speaker was changed, so it cannot be applied. You can still edit the line yourself.",
+    // NO "you can still edit" TAIL, DELIBERATELY, and the omission is the
+    // sitting's. Editing the line does not answer this one: the suggestion
+    // wants to change WHO SPOKE, and that is register item 46's controls
+    // rather than this surface's. Offering a remedy that does not remedy is
+    // worse than offering none.
+    //
+    // WHETHER A PERSON CAN REACH THIS SENTENCE AT ALL IS NOW SETTLED, AND THE
+    // ANSWER IS NO — see `isReviewable`. The Captions Fixer lane's
+    // `speakerLabelUnchanged` guard holds such an entry before the change set
+    // leaves them, and D9 excludes a held entry from this surface entirely.
+    // The refusal stays underneath as defence in depth, reachable only if
+    // somebody upstream cleared `rejectedBy` or an unguarded label shape
+    // arrived.
+    "label-changed":
+      "This suggestion would change who said this line, so it cannot be applied.",
+  });
+
+  /**
+   * What a conflict says when the token is one this file does not recognise.
+   *
+   * IT REPLACES A FALLBACK THAT PRINTED THE RAW TOKEN. `buildSuggestionWrapper`
+   * used to render `SUGGESTION_CONFLICT_TEXT[reason] || resolution.reason`, so
+   * an unrecognised token reached the page as a machine string — "stale-base"
+   * on a line of a transcript. That was never reachable while the pure module
+   * emitted exactly the two tokens above, which is why it stood; it becomes
+   * reachable the moment a token is added, and the two files are committed
+   * separately by necessity.
+   *
+   * SO THIS LANDS BEFORE ANY NEW TOKEN EXISTS, AND IS INERT UNTIL ONE DOES.
+   * That ordering is the point (amendment 2, ruling 4): no committed state of
+   * this repository renders a raw token or an `undefined` to a person, at any
+   * point in the sequence, whatever order the remaining commits land in.
+   *
+   * THE WORDING IS THE SAFE INTERSECTION OF THE CASES IT MIGHT COVER. It says
+   * the suggestion cannot be applied — which is true of every refusal, since a
+   * refusal IS that — and offers the step that is always still open, matching
+   * the shape design § 12's D5 sets for the sentences it does name. It
+   * deliberately does NOT guess at a cause: a wrong cause is worse than none,
+   * and a token this file has never heard of is exactly the case where a cause
+   * cannot be known.
+   */
+  const SUGGESTION_CONFLICT_FALLBACK_TEXT =
+    "This suggestion cannot be applied. You can still edit the line yourself.";
+
+  /**
+   * The sentence for one refusal token — ONE SOURCE, TWO SURFACES (register
+   * item 47 unit 14).
+   *
+   * THE WRAPPER AND THE TABLE MUST NOT WORD THE SAME CONFLICT DIFFERENTLY, and
+   * the only way to guarantee it is for neither to know the other exists. Both
+   * ask this function, and it is the whole of what either knows about the
+   * wording, the unrecognised-token fallback included.
+   *
+   * IT RETURNS THE BARE SENTENCE AND ADDS NO SEPARATOR, which is the one thing
+   * the two callers genuinely differ on. In the wrapper the sentence follows
+   * the proposal's last word with no node between them, so
+   * `buildSuggestionWrapper` prepends SUGGESTION_SEPARATOR — the sixth
+   * run-together, never reported at the sitting and separated anyway. In a
+   * table cell the sentence is the cell's only content and has nothing to run
+   * into, so a separator there would be an inset nobody asked for.
+   *
+   * @param {string} reason - `suggestionTextFor`'s refusal token
+   * @returns {string}
+   */
+  function conflictSentenceFor(reason) {
+    return SUGGESTION_CONFLICT_TEXT[reason] || SUGGESTION_CONFLICT_FALLBACK_TEXT;
+  }
+
+  /**
+   * Accept and Dismiss (register item 47 unit 10; design § 7).
+   *
+   * IDS ARE 0-BASED, MATCHING EVERY OTHER CONTROL ON THE ROW — see
+   * EDIT_ID_STEM's own note. `transcribe-accept-13` and `transcribe-edit-13`
+   * are the same row's controls.
+   *
+   * CONFLICT_ID_STEM NAMES THE SENTENCE, NOT THE WRAPPER. A conflict row has
+   * no button, so its focus target — for both "Next suggestion" and the
+   * unified focus rule Accept/Dismiss share — is the conflict sentence
+   * itself, which is why it takes an id and `tabindex="-1"` at all
+   * (buildSuggestionWrapper).
+   *
+   * NEITHER STEM IS A PREFIX OF ANY OTHER STEM IN THIS FILE, matching the
+   * safety condition rowIndexFrom's own note states for EDIT_ID_STEM and
+   * SELECT_ID_STEM: a startsWith test cannot claim another control's rows.
+   */
+  const ACCEPT_ID_STEM = "transcribe-accept-";
+  const DISMISS_ID_STEM = "transcribe-dismiss-";
+  const CONFLICT_ID_STEM = "transcribe-suggestion-conflict-";
+
+  /**
+   * The conflicts table's own ids and the stem of its per-row button (design
+   * section 12's D6; register item 47 unit 14).
+   *
+   * `CONFLICT_GOTO_ID_STEM` IS 0-BASED LIKE EVERY OTHER STEM ON THIS SURFACE,
+   * while the button's VISIBLE TEXT carries the 1-based phrase number a person
+   * reads. `transcribe-conflict-goto-5` and `transcribe-phrase-5` are the same
+   * row, and the button on it says "Go to phrase 6".
+   *
+   * IT IS NOT A PREFIX OF ANY OTHER STEM IN THIS FILE AND NONE IS A PREFIX OF
+   * IT — the safety condition `rowIndexFrom`'s own note states, checked against
+   * all six: `transcribe-edit-`, `transcribe-select-`, `transcribe-accept-`,
+   * `transcribe-dismiss-`, `transcribe-suggestion-conflict-` and
+   * `transcribe-phrase-`.
+   */
+  const CONFLICT_TABLE_ID = "transcribe-review-conflicts";
+  const CONFLICT_TABLE_BODY_ID = "transcribe-review-conflicts-body";
+  const CONFLICT_OPTION_ID = "transcribe-review-conflict-option";
+  const CONFLICT_TOGGLE_ID = "transcribe-review-show-conflicts";
+  const CONFLICT_GOTO_ID_STEM = "transcribe-conflict-goto-";
+
+  /**
+   * The visible text of a table row's button, composed in the one place that
+   * builds it.
+   *
+   * A BUTTON AND NOT A LINK, which is a semantic decision rather than a styling
+   * one. It runs a scripted focus move inside a page that is already open: it
+   * navigates to no URL, adds no history entry, and offers nothing a person
+   * could open in a new tab. `<a href>` would promise all three.
+   *
+   * THE WHOLE NAME IS VISIBLE TEXT. "Go to phrase 6" needs no visually-hidden
+   * continuation and therefore needs no separator, so the run-together defect
+   * SUGGESTION_SEPARATOR exists for cannot arise here — there is only one text
+   * node. Label in Name is satisfied by construction rather than by care.
+   *
+   * @param {number} index - the phrase's 0-based index
+   * @returns {string}
+   */
+  function conflictGotoText(index) {
+    return `Go to phrase ${index + 1}`;
+  }
+
+  const ACCEPT_VISIBLE_TEXT = "Accept";
+  const DISMISS_VISIBLE_TEXT = "Dismiss";
+
+  /**
+   * The controls group — the suggestion wrapper's fourth child, holding
+   * Accept and Dismiss together (register item 47 unit 10; design § 7,
+   * dispatch note on grouping).
+   *
+   * GROUPED FOR THE SAME REASON THE TWO DIFF HALVES ARE: a grid container
+   * turns each contiguous run of text into an anonymous grid item, so two
+   * buttons as direct children of `.transcribe-suggestion` would each want
+   * their own cell. One element holding both keeps the placement to the one
+   * cell the reason span already occupies (`grid-column: 1 / -1` in
+   * transcribe.css).
+   */
+  const CLASS_SUGGESTION_CONTROLS = "transcribe-suggestion-controls";
+
+  /**
+   * The row index a suggestion CONTROL's id names, or null when the target
+   * is not one — the sibling of `rowIndexFrom` this file already has for
+   * `<input>` controls (EDIT_ID_STEM, SELECT_ID_STEM).
+   *
+   * NOT `rowIndexFrom` ITSELF, AND THAT IS DELIBERATE. That function's own
+   * tag test — `target.tagName !== "INPUT"` — is there because both of its
+   * stems only ever name an `<input>`; Accept and Dismiss are `<button>`
+   * elements and a conflict's focus target is a `<span>`, so reusing that
+   * test would refuse every one of them by construction. Everything else
+   * about the id-reading contract is identical, which is why this function
+   * exists rather than widening `rowIndexFrom`'s tag test for controls that
+   * function was never written to name.
+   *
+   * @param {EventTarget|null} target
+   * @param {string} stem - ACCEPT_ID_STEM, DISMISS_ID_STEM or CONFLICT_ID_STEM
+   * @returns {number|null}
+   */
+  function suggestionControlIndexFrom(target, stem) {
+    if (!target || typeof target.id !== "string" || !target.id.startsWith(stem)) {
+      return null;
+    }
+    const index = Number(target.id.slice(stem.length));
+    if (!Number.isInteger(index) || index < 0) {
+      logWarn(`a control with the stem "${stem}" has an unreadable id: ${target.id}`);
+      return null;
+    }
+    return index;
+  }
+
+  /**
+   * Build one suggestion control — Accept or Dismiss.
+   *
+   * THE VISIBLE TEXT STAYS INSIDE THE ACCESSIBLE NAME, THROUGH A
+   * VISUALLY-HIDDEN SPAN RATHER THAN `aria-label` — the pattern the Apply
+   * button already uses (design § 5). "Accept suggestion for phrase 14" is
+   * one accessible name, built from a visible word a sighted person reads and
+   * a continuation only a screen reader hears; neither half is `aria-label`,
+   * so AGENTS.md's first rule of ARIA (native HTML first) is not in tension
+   * with it.
+   *
+   * `createTextNode` ONLY, matching every other string this file puts on a
+   * row: "Accept"/"Dismiss" are this file's own words rather than a phrase or
+   * a service's output, but the rule is simpler kept absolute than qualified.
+   *
+   * @param {string} idStem - ACCEPT_ID_STEM or DISMISS_ID_STEM
+   * @param {number} index - the phrase's 0-based index
+   * @param {string} visibleText - "Accept" or "Dismiss"
+   * @returns {HTMLButtonElement}
+   */
+  function buildSuggestionControl(idStem, index, visibleText) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = idStem + index;
+    button.appendChild(document.createTextNode(visibleText));
+
+    const hidden = document.createElement("span");
+    hidden.className = CLASS_VISUALLY_HIDDEN;
+    // THE LEADING CHARACTER IS A NO-BREAK SPACE AND NOT A SPACE. It used to
+    // be an ordinary space, which was measured to do NOTHING — it is at the
+    // leading edge of an absolutely-positioned block and is collapsed before
+    // the rendered text is formed, so a browse-mode reader heard
+    // "Acceptsuggestion for phrase 2". See SUGGESTION_SEPARATOR for the four
+    // variants that were put through the accessibility tree, and for why the
+    // accessible NAME was correct throughout and is not what this fixes.
+    hidden.appendChild(
+      document.createTextNode(
+        `${SUGGESTION_SEPARATOR}suggestion for phrase ${index + 1}`,
+      ),
+    );
+    button.appendChild(hidden);
+
+    return button;
+  }
+
+  /**
+   * The edit control's suggestion suffix, or "" when there is none
+   * (design § 12's D3).
+   *
+   * BOTH WORDINGS ARE PROVISIONAL and are heard again at session 2.
+   *
+   * THE TWO CASES ARE THE TWO A PERSON CAN ACT ON DIFFERENTLY. An applicable
+   * suggestion has an Accept button further along the row; a conflict has
+   * none, and the only thing left is to edit the line — which is what this
+   * control is. Saying "suggestion available" on a conflict would send a
+   * person looking for a button that is not there, which is the cost the
+   * stylesheet's own conflict rule is already written to avoid on screen.
+   *
+   * IT TAKES THE RESOLVED SUGGESTION, NOT THE ENTRY, because "applicable"
+   * is a property of the resolution against the phrase's CURRENT text and
+   * not of the entry — a line corrected by hand turns an applicable
+   * suggestion into a conflict with nothing having touched the change set.
+   *
+   * @param {object|null} suggestion - `suggestionForRow`'s answer
+   * @returns {string}
+   */
+  function suggestionEditLabelSuffix(suggestion) {
+    if (!suggestion) return "";
+    return suggestion.resolution.ok
+      ? EDIT_LABEL_SUGGESTION_SUFFIX
+      : EDIT_LABEL_CONFLICT_SUFFIX;
+  }
+
+  /**
+   * Put a half's label on it — the visible word, its hidden continuation, and
+   * the separators either side of both (design § 12's D1 and D2).
+   *
+   * ONE FUNCTION FOR THREE CALL SITES, because the three-node shape is easy
+   * to get subtly different and the difference is invisible on screen: the
+   * applicable branch builds two halves and the conflict branch builds one,
+   * and a conflict whose label separated differently from an applicable one
+   * would be a defect nobody could see and only a reader could hear.
+   *
+   * THREE SEPARATORS, EACH DOING A DIFFERENT JOB, and none of them removable:
+   *
+   *   before the visible word  separates this half from whatever precedes it
+   *                            in the rendered text — the previous half's
+   *                            last word, with no node in between. This is
+   *                            "beyond.suggestedThis" in the sitting's list.
+   *   before "phrase"          separates the visible word from its hidden
+   *                            continuation — "Acceptsuggestion", one half
+   *                            of the same defect.
+   *   after "phrase"           separates the label from the half's own words
+   *                            — "wasThis" in the sitting's list.
+   *
+   * UNIT 15 MOVES THE FIRST OUT OF SIGHT AND REPLACES THE THIRD. The three
+   * jobs are unchanged and every one is still done; what changed is where the
+   * characters doing them live.
+   *
+   * THE WITHDRAWN SENTENCE IS QUOTED per register items 51 and 56, because it
+   * recorded a cost the owner later declined to keep paying:
+   *
+   *   "THE FIRST IS VISIBLE, one space of inset before each label, and that is
+   *    accepted rather than overlooked: both halves carry it, so the columns
+   *    stay aligned with each other."
+   *
+   * The alignment argument was sound and the inset was still wrong — the
+   * owner read it off a screenshot as a one-character indent on every part,
+   * which is what a stray indent looks like rather than what a deliberate one
+   * does. It now lives in a `.visually-hidden` span of its own, containing
+   * NOTHING BUT the separator, so the rendered text keeps the break and the
+   * page loses the indent.
+   *
+   * A HIDDEN SPAN CARRYING ONLY U+00A0 IS A NEW CASE AND WAS MEASURED, NOT
+   * ASSUMED. Unit 13 proved a no-break space survives at the LEADING EDGE of
+   * a hidden span that also carries words; a span whose whole content is that
+   * one character is a different question, because an empty or
+   * whitespace-only text node is exactly the kind of thing a layout engine
+   * declines to box. Measured at unit 15, headless chromium-1223, CDP
+   * `Accessibility.getFullAXTree`: the separator arrives as its own
+   * `StaticText` and all three boundaries hold. The figures are in the design
+   * document's revision 9.
+   *
+   * THE THIRD SEPARATOR IS NOW THE ONE AFTER THE COLON, and the colon is
+   * visible. See SUGGESTION_LABEL_COLON. The hidden continuation therefore no
+   * longer ends with a separator: it would be a second break between "phrase"
+   * and a colon that already reads as the end of a label.
+   *
+   * THE VISIBLE WORD, ITS HIDDEN CONTINUATION AND THE COLON ARE ONE SPAN.
+   * That is what the stylesheet needs, and it is also what keeps them one
+   * thing: a rule that made the label distinct without the colon would leave
+   * the colon looking like the first character of the phrase.
+   *
+   * THE SEPARATOR AFTER THE COLON LEFT THE LABEL AT UNIT 16, and the colon did
+   * not. The label became a capsule — a border and padding round the word and
+   * its colon — and a separator inside it would have sat inside the border as
+   * a blank space before the closing edge, so the capsule's right padding read
+   * wider than its left. It is now the only content of a plain span straight
+   * AFTER the label: still inside the text of a span, so the rule against a
+   * text node between two elements holds, and still visible, because it is
+   * now the space between the capsule and the phrase's first word. The joined
+   * text a reader is offered is the same characters in the same order.
+   *
+   * @param {HTMLElement} half - the half element, already classed and empty
+   * @param {string} visibleText - SUGGESTION_WAS_TEXT or …SUGGESTED_TEXT
+   * @param {string} halfName - a SUGGESTION_HALF value, written to the label's
+   *   DATA_SUGGESTION_HALF attribute
+   */
+  function appendHalfLabel(half, visibleText, halfName) {
+    appendHiddenSeparator(half);
+
+    const label = document.createElement("span");
+    label.className = CLASS_SUGGESTION_LABEL;
+    label.setAttribute(DATA_SUGGESTION_HALF, halfName);
+    label.appendChild(document.createTextNode(visibleText));
+
+    const continuation = document.createElement("span");
+    continuation.className = CLASS_VISUALLY_HIDDEN;
+    continuation.appendChild(
+      document.createTextNode(
+        SUGGESTION_SEPARATOR + SUGGESTION_LABEL_CONTINUATION,
+      ),
+    );
+    label.appendChild(continuation);
+
+    label.appendChild(document.createTextNode(SUGGESTION_LABEL_COLON));
+
+    half.appendChild(label);
+
+    const afterLabel = document.createElement("span");
+    afterLabel.appendChild(document.createTextNode(SUGGESTION_SEPARATOR));
+    half.appendChild(afterLabel);
+  }
+
+  /**
+   * Put a part's leading separator on it, out of sight — register item 47
+   * unit 15.
+   *
+   * ONE FUNCTION FOR ALL FOUR PART BOUNDARIES the sitting heard weld, so they
+   * cannot drift into four slightly different spellings of the same thing.
+   * `appendHalfLabel` calls it for the original and the proposed halves;
+   * `buildSuggestionWrapper` calls it for the reason and for the conflict
+   * sentence.
+   *
+   * IT IS `.visually-hidden`, NOT `aria-hidden` AND NOT A BARE TEXT NODE. A
+   * bare text node is what it replaces, and it painted. `aria-hidden` would
+   * remove the very thing it exists to contribute.
+   *
+   * THE CONFLICT SENTENCE WAS THE FOURTH AND WAS LEFT OUT AT UNIT 15. The
+   * withdrawn reasoning is quoted here per register items 51 and 56:
+   *
+   *   "THE CONFLICT SENTENCE DELIBERATELY DOES NOT USE THIS. It carries its
+   *    own leading separator as a bare text node, and that is left alone at
+   *    unit 15 rather than swept up: the three boundaries this unit was asked
+   *    to move are the three the owner saw, and the conflict sentence only
+   *    renders when a person ticks 'Show conflicts in the transcript'. It is
+   *    the same shape and is reported as such rather than changed in passing."
+   *
+   * THE DESK OVERTURNED IT, and the reason is worth keeping: listen row 52's
+   * session 2a part (m) ticks that very checkbox and reads phrase 6, so the
+   * owner meets the indent mid-sitting. "Only behind a checkbox" was a true
+   * statement about the DEFAULT state and a poor argument about THIS one — a
+   * defect the next sitting is about to walk into is not a defect to report
+   * and leave.
+   *
+   * @param {HTMLElement} part - the element the separator belongs in front of
+   */
+  function appendHiddenSeparator(part) {
+    const separator = document.createElement("span");
+    separator.className = CLASS_VISUALLY_HIDDEN;
+    separator.appendChild(document.createTextNode(SUGGESTION_SEPARATOR));
+    part.appendChild(separator);
+  }
+
+  /**
+   * Resolve what a row's suggestion wrapper should render, or null when
+   * nothing should (register item 47 unit 7).
+   *
+   * CALLED FROM ALL THREE ROW-BUILD SITES — renderTranscript, patchRow and
+   * patchRows — so the eligibility rule and the diff computation live in
+   * exactly one place. A rule copied at three call sites is the defect
+   * `speakerLabelFor` exists to prevent, in miniature; this function is that
+   * one place, matching how `labelsAreInformative` and the other hoisted
+   * decisions are each computed once and handed to `buildRow` already taken.
+   *
+   * IT GOES THROUGH `resolveSuggestionAt`, THE SAME SINGLE-INDEX RESOLVER
+   * `reviewResolutions` uses — never a locally recomputed `speakerLabel`.
+   * That function's own doc comment names the trap this avoids (register
+   * item 47 unit 7): the change
+   * set's `original` was built against the Captions Fixer lane's adapter,
+   * which inlines a label on EVERY phrase carrying a speaker (EVERY_LINE, no
+   * `mode`), not only the rows this file's own ON_CHANGE display prints one
+   * for. Passing the DISPLAY-resolved `speakerLabel` — the one `buildRow`
+   * itself already receives, computed WITH a `mode` — would hand `null` for
+   * every suppressed row and turn a whole transcript's worth of applicable
+   * suggestions into silent `stale-base` conflicts. Fixture case 1 in the
+   * suggestions-fixture provenance note is the row that would show it.
+   *
+   * A WRAPPER RENDERS ONLY WHEN ALL OF: suggestions are on, the phrase carries
+   * a suggestion, and that suggestion's status is "proposed" — an accepted or
+   * dismissed suggestion carries no wrapper (design § 2). Resolution failure
+   * (`suggestionTextFor` returning `ok: false`) does NOT suppress the
+   * wrapper: a conflict is itself something the wrapper renders, per design
+   * § 5's second shape.
+   *
+   * ASKS THE STATE MODULE DIRECTLY, THE WAY THE CALLERS DO FOR `edited` AND
+   * `reassigned` — never `buildRow` itself, which decides nothing. This
+   * function lives beside `buildRow` rather than inside it for exactly that
+   * reason: it is the caller's job to ask the state module, and this is the
+   * one place that job is done for suggestions.
+   *
+   * @param {object} api - the transcribe module (moduleOrNull()'s answer)
+   * @param {object} state - the transcribe state module (stateOrNull()'s
+   *   answer), or null
+   * @param {Array} phrases - the whole phrase array, for `previousSpeakerAt`
+   * @param {number} index - the phrase's 0-based index
+   * @param {boolean} labelsAreInformative - hoisted once by the caller,
+   *   `api.distinctSpeakerCount(result) > 1`
+   * A CONFLICT'S WRAPPER RENDERS HERE ONLY WHEN THE PERSON HAS ASKED FOR IT —
+   * design section 12's D6, register item 47 unit 14. By default a suggestion
+   * that cannot be applied shows nothing in the transcript and is listed in
+   * the review block's table instead. Ticked, the wrapper comes back exactly
+   * as it was and the table hides; the two are alternatives and never both.
+   *
+   * IT RETURNS THE SUGGESTION EITHER WAY, CARRYING `inTranscript`, AND THAT IS
+   * A DECISION UNIT 14 HAD TO TAKE BECAUSE D6 DOES NOT COVER IT. Returning
+   * null for a conflict is the obvious reading of "it leaves the transcript",
+   * and it silently takes D3's edit label with it: the label would stop saying
+   * ", suggestion cannot be applied" and an edit-mode row would then say
+   * NOTHING WHATEVER about a line the model had a proposal for. D3 exists
+   * precisely because Tab moves only between controls in edit mode, and that
+   * argument is STRONGER for a conflict than for an applicable suggestion,
+   * because a conflict has no Accept button further along the row to arrive at
+   * eventually. So the label stays, the wrapper goes, and the design records
+   * the decision at revision 8 for the desk to confirm or overturn.
+   *
+   * THE DECISION IS THE ONE PLACE, AND THE BUILDER MERELY OBEYS IT. This
+   * function owns the eligibility rule for all three row-build sites, so
+   * `buildSuggestionWrapper` reads `inTranscript` rather than re-deriving it —
+   * a second copy of the rule would be the defect `speakerLabelFor` exists to
+   * prevent. The builder's conflict branch is otherwise untouched and still
+   * renders the shape it always did.
+   *
+   * @param {boolean} suggestions - the "Show suggestions" decision
+   * @param {boolean} conflictsInTranscript - the "Show conflicts in the
+   *   transcript" decision, hoisted by the caller beside `suggestions`
+   * @returns {null|{entry: object, resolution: object,
+   *   diff: (object|undefined), inTranscript: boolean}}
+   */
+  function suggestionForRow(
+    api,
+    state,
+    phrases,
+    index,
+    labelsAreInformative,
+    suggestions,
+    conflictsInTranscript,
+  ) {
+    if (!suggestions || !api || !state) return null;
+
+    const item = resolveSuggestionAt(api, state, phrases, index, labelsAreInformative);
+    if (!item || item.entry.status !== SUGGESTION_STATUS_PROPOSED) return null;
+
+    // D6. A conflict's WRAPPER is the table's business unless the person has
+    // asked for it here — but the ROW STILL CARRIES A SUGGESTION, and that is
+    // a different fact. Returning null would have taken D3's edit label with
+    // it, which is the decision recorded below.
+    //
+    // COMPUTED AFTER THE STATUS TEST ABOVE, so an accepted or a dismissed
+    // entry is still refused for its own reason rather than for this one.
+    const inTranscript = item.resolution.ok || conflictsInTranscript;
+
+    const diff = item.resolution.ok
+      ? api.diffSpansOrWhole(phrases[index].text, item.resolution.text)
+      : undefined;
+
+    return {
+      entry: item.entry,
+      resolution: item.resolution,
+      diff,
+      inTranscript,
+    };
+  }
+
+  /**
+   * Append one changed span of a diff to a half as a `<del>` or an `<ins>`,
+   * with the span's TRAILING WHITESPACE OUTSIDE the element — register item
+   * 47 unit 18, § 1.
+   *
+   * WHY. `tokenize` in openrouter-embed-transcribe.js gives every word its
+   * trailing whitespace, so that the spans reassemble the text losslessly.
+   * Until this unit the whole span, whitespace included, went inside the
+   * mark, so the strikethrough and the underline each ran one character too
+   * far: the owner read "explore " struck through as "explore-the" on every
+   * screenshot. The mark now covers the word alone, and the whitespace
+   * follows it as a text node of its own, IN THE SAME TEXT ORDER.
+   *
+   * THE DIFF IS UNTOUCHED, and so is its reassembly contract: the split is
+   * made here, at the moment of rendering, on a span whose text is exactly
+   * what `diffSpans` produced. Joining the half's text nodes and marks in
+   * document order still reproduces the original (was-half) or the proposal
+   * (proposed-half) byte for byte, and the harness reads that off the DOM.
+   *
+   * WHITESPACE INSIDE A MULTI-WORD SPAN STAYS INSIDE. Adjacent removed words
+   * are one merged span ("explore the "), and the mark runs across the run of
+   * words and the spaces between them; only the run's trailing whitespace is
+   * moved out. A span that is NOTHING BUT WHITESPACE — possible only as a
+   * leading-whitespace token — renders as a text node with no mark, because
+   * an empty `<del>` or `<ins>` would be an element a reader is offered with
+   * nothing in it.
+   *
+   * WHAT A SCREEN READER IS OFFERED IS THE SAME CHARACTERS IN THE SAME ORDER.
+   * The tree gate's joined `StaticText` holds; what moves is that one
+   * `StaticText` "explore " becomes "explore" and " ", which is why every
+   * review state's node count moves at this unit while no hash does.
+   *
+   * @param {HTMLElement} half - the was-half or the proposed-half
+   * @param {"del"|"ins"} tagName
+   * @param {string} text - one span's text, trailing whitespace included
+   */
+  function appendMarkedSpan(half, tagName, text) {
+    const trailing = text.match(/\s*$/)[0];
+    const word = text.slice(0, text.length - trailing.length);
+
+    if (word.length > 0) {
+      const mark = document.createElement(tagName);
+      mark.appendChild(document.createTextNode(word));
+      half.appendChild(mark);
+    }
+    if (trailing.length > 0) {
+      half.appendChild(document.createTextNode(trailing));
+    }
+  }
+
+  /**
+   * Build the suggestion wrapper for one row, or null when nothing should
+   * render (register item 47 unit 7; design § 5).
+   *
+   * THE LAST CHILD OF THE ROW, IN BOTH MODES. `buildRow` appends whatever
+   * this returns after its own edit/read-only branch, so the wrapper is
+   * identical whichever control precedes it — see design § 1 "both modes".
+   *
+   * ACCEPT AND DISMISS LAND AT UNIT 10 (register item 47), TOGETHER WITH
+   * THEIR HANDLERS — a rendered button with no handler is worse than no
+   * button, which is why unit 7 built the reading half of this surface alone
+   * and left the controls out. They render as a FOURTH CHILD, a controls
+   * group, and only on the applicable shape below; a conflict wrapper gets
+   * no controls, per design § 7.
+   *
+   * THE CONFLICT SENTENCE TAKES AN ID AND `tabindex="-1"` AT THE SAME UNIT,
+   * for a reason that has nothing to do with the controls it does not carry:
+   * every wrapper needs a focus target for the unified rule Accept, Dismiss
+   * and "Next suggestion" all share (an applicable row's target is its
+   * Accept button; a conflict row's is this sentence), and without one a
+   * conflict row would have nowhere for that rule to land.
+   *
+   * THREE OUTCOMES SINCE REGISTER ITEM 47 UNIT 14, the first of which renders
+   * nothing at all: a conflict whose wrapper the person has not asked to see
+   * in the transcript (design section 12's D6). The other two are unchanged
+   * and are decided by `suggestion.resolution.ok`:
+   *
+   *   - APPLICABLE: "was" (hidden), the diff's removed and same spans as
+   *     <del> and plain text, "suggested" (hidden), the diff's added and same
+   *     spans as <ins> and plain text, the reason when `reasons` is true and
+   *     the entry carries one, then the controls group (Accept, Dismiss).
+   *   - A CONFLICT (`ok: false`): no "was" and no <del> — there is no
+   *     original to show, because the suggestion's `original` is not this
+   *     row's text and showing one would assert a comparison that is not
+   *     true. "suggested" (hidden), the raw proposed text, then the conflict
+   *     sentence for the refusal token, carrying its own id and
+   *     `tabindex="-1"` and no controls.
+   *
+   * EACH CHANGED SPAN GETS ITS OWN <del> OR <ins>, RATHER THAN ONE ELEMENT
+   * WRAPPING THE WHOLE RECONSTRUCTION. A two-location change (case 3 in the
+   * fixture provenance note) has unchanged text BETWEEN its two edits; a
+   * single <del> spanning the lot would mark that unchanged text as removed
+   * too, which is wrong both semantically and for what a reader hears.
+   *
+   * THE WRAPPER'S OWN CHILDREN ARE GROUPED INTO TWO HALVES, register item 47
+   * unit 8, and that is a correction rather than a preference. Unit 7a
+   * measured that a flat list of spans, <del>s, <ins>s and bare text nodes as
+   * direct children of `.transcribe-suggestion` collapsed the row: an
+   * unstyled wrapper is a flex child of `.transcribe-row` whose
+   * `flex-basis: auto` took the unwrapped width of a whole sentence, and
+   * `.transcribe-text` / `.transcribe-edit` (both `flex: 1 1 0`) received
+   * none of the resulting negative free space, so the read-only phrase text
+   * force-wrapped one token per line — around 190 boxes for a single
+   * sentence — and the edit control collapsed to 10 pixels. Grouping each
+   * half into ONE element (`.transcribe-suggestion-was`,
+   * `.transcribe-suggestion-proposed`) is what lets the stylesheet put a grid
+   * on the wrapper without a flex/grid interaction reaching the row itself;
+   * see design § 5's "the halves are grouped" note for the anonymous-box
+   * reasoning a flat list would have run into under a grid instead.
+   *
+   * A CONFLICT WRAPPER KEEPS ITS EXISTING SHAPE: there is no "was" half and
+   * no <del>, because there is no original to show and a half built for one
+   * would assert a comparison that is not true. It gets the proposed half
+   * and the conflict sentence, and nothing else.
+   *
+   * `createElement`/`createTextNode` ONLY, matching buildRow's own rule for
+   * anything holding a phrase's words. NO LITERAL WHITESPACE BETWEEN
+   * CHILDREN — `tokenize`'s tokens carry their own trailing whitespace (see
+   * openrouter-embed-transcribe.js), so appending each span's own text is
+   * what keeps each half free of a whitespace-only text node between two
+   * inline elements, matching the row's own convention. This applies both
+   * BETWEEN the wrapper's three children and WITHIN each half.
+   *
+   * @param {null|{entry: object, resolution: object, diff: (object|undefined)}} suggestion
+   * @param {boolean} reasons - the "Show the reason for each suggestion"
+   *   decision
+   * @param {number} index - the phrase's 0-based index, for the conflict
+   *   sentence's id and the controls' ids (register item 47 unit 10)
+   * @returns {HTMLDivElement|null}
+   */
+  function buildSuggestionWrapper(suggestion, reasons, index) {
+    if (!suggestion) return null;
+
+    // D6, register item 47 unit 14. `suggestionForRow` has already decided
+    // whether this row's suggestion belongs in the transcript; this reads the
+    // answer and never re-derives it. A conflict the person has not asked to
+    // see renders NOTHING here and appears in the review block's table
+    // instead, while the row's edit label still mentions it — see
+    // `suggestionForRow` for why those two are different facts.
+    if (!suggestion.inTranscript) return null;
+
+    const entry = suggestion.entry;
+    const resolution = suggestion.resolution;
+    const wrapper = document.createElement("div");
+    wrapper.className = CLASS_SUGGESTION;
+
+    if (!resolution.ok) {
+      const proposedHalf = document.createElement("span");
+      proposedHalf.className = CLASS_SUGGESTION_PROPOSED;
+      appendHalfLabel(
+        proposedHalf,
+        SUGGESTION_SUGGESTED_TEXT,
+        SUGGESTION_HALF.SUGGESTED,
+      );
+
+      proposedHalf.appendChild(document.createTextNode(entry.proposed));
+      wrapper.appendChild(proposedHalf);
+
+      const conflict = document.createElement("span");
+      conflict.className = CLASS_SUGGESTION_CONFLICT;
+      conflict.id = CONFLICT_ID_STEM + index;
+      conflict.setAttribute("tabindex", "-1");
+      // THE LEADING SEPARATOR is what stops "…guests.This line has changed" —
+      // the proposal's last word and this sentence's first abut in the
+      // rendered text with no node between them. See SUGGESTION_SEPARATOR.
+      //
+      // IT MOVED OUT OF SIGHT IN THE UNIT 15 FOLLOW-UP, and that is a RULING
+      // rather than a tidy-up. Unit 15 moved the same separator on the two
+      // halves and the reason, and left this one alone on the reasoning that
+      // the owner had reported three boundaries and this sentence renders only
+      // behind a checkbox no screenshot showed. The desk overturned it: listen
+      // row 52's session 2a part (m) ticks "Show conflicts in the transcript"
+      // and reads phrase 6, so the owner meets this indent MID-SITTING — and a
+      // defect the sitting is about to walk into is not a defect to report and
+      // leave.
+      //
+      // MEASURED BEFORE AND AFTER, not assumed from the three siblings. With
+      // the separator as a bare text node this sentence's first ink sat 5.63px
+      // inside its own content edge, while the three parts unit 15 had already
+      // cured all read 0 — the defect and its three cures side by side in one
+      // reading.
+      //
+      // NEVER `|| resolution.reason`, which put a machine token on the
+      // page — see SUGGESTION_CONFLICT_FALLBACK_TEXT for the full account.
+      //
+      // THROUGH `conflictSentenceFor` SINCE UNIT 14, because the conflicts
+      // table words the same conflict and the two must not diverge. The
+      // separator stays HERE rather than moving into that helper: it exists
+      // because this sentence abuts the proposal in the rendered text, and a
+      // table cell has nothing for it to abut.
+      appendHiddenSeparator(conflict);
+      conflict.appendChild(
+        document.createTextNode(conflictSentenceFor(resolution.reason)),
+      );
+      wrapper.appendChild(conflict);
+
+      return wrapper;
+    }
+
+    const wasHalf = document.createElement("span");
+    wasHalf.className = CLASS_SUGGESTION_WAS;
+    appendHalfLabel(wasHalf, SUGGESTION_WAS_TEXT, SUGGESTION_HALF.ORIGINAL);
+
+    suggestion.diff.spans.forEach((span) => {
+      if (span.type === "added") return;
+      if (span.type === "removed") {
+        appendMarkedSpan(wasHalf, "del", span.text);
+      } else {
+        wasHalf.appendChild(document.createTextNode(span.text));
+      }
+    });
+
+    wrapper.appendChild(wasHalf);
+
+    const proposedHalf = document.createElement("span");
+    proposedHalf.className = CLASS_SUGGESTION_PROPOSED;
+    appendHalfLabel(
+      proposedHalf,
+      SUGGESTION_SUGGESTED_TEXT,
+      SUGGESTION_HALF.SUGGESTED,
+    );
+
+    suggestion.diff.spans.forEach((span) => {
+      if (span.type === "removed") return;
+      if (span.type === "added") {
+        appendMarkedSpan(proposedHalf, "ins", span.text);
+      } else {
+        proposedHalf.appendChild(document.createTextNode(span.text));
+      }
+    });
+
+    wrapper.appendChild(proposedHalf);
+
+    if (reasons && entry.reason) {
+      const reason = document.createElement("span");
+      reason.className = CLASS_SUGGESTION_REASON;
+      // THE LEADING SEPARATOR, for the reason the conflict sentence carries
+      // one: this span follows the proposal's last word in the rendered text
+      // with no node between them, and the sitting heard the result as
+      // "beyond.Approved recurring pair". See SUGGESTION_SEPARATOR.
+      //
+      // IT MOVED OUT OF SIGHT AT UNIT 15. It used to be the first character of
+      // this span's own text node and painted a one-character indent in front
+      // of every reason; `appendHiddenSeparator` keeps the break and drops the
+      // indent. The reason's words follow it as their own text node.
+      appendHiddenSeparator(reason);
+      // ONE BLOCK PER NEWLINE-SEPARATED PART — register item 47 unit 18,
+      // § 4. See REASON_PART_SEPARATOR for why the split is a newline and
+      // why it is inert against today's fixtures.
+      //
+      // A HIDDEN SEPARATOR BEFORE EVERY PART AFTER THE FIRST — register item
+      // 47 unit 19. Consecutive parts are separate StaticText nodes with
+      // nothing between them, so a reader was offered "…once in this
+      // cue.Approved recurring pair: …" at every boundary: the shape D2b
+      // records as heard at the proposal-to-reason boundary. The first part
+      // needs none; the leading separator above already stands before it.
+      //
+      // THE SEPARATOR IS THE PART'S OWN FIRST CHILD, NOT A SIBLING BETWEEN
+      // PARTS. It was first built between the blocks, and that silently took
+      // away unit 18's 0.25rem gap: transcribe.css spaces the parts with
+      // `.transcribe-suggestion-reason-part + .transcribe-suggestion-reason-part`,
+      // which matches only ADJACENT parts. Inside the part, out of flow as
+      // every visually-hidden span is, it keeps the parts adjacent and offers
+      // a reader the same text in the same order.
+      splitReasonParts(entry.reason).forEach((part, index) => {
+        const block = document.createElement("span");
+        block.className = CLASS_SUGGESTION_REASON_PART;
+        if (index > 0) appendHiddenSeparator(block);
+        block.appendChild(document.createTextNode(part));
+        reason.appendChild(block);
+      });
+      wrapper.appendChild(reason);
+    }
+
+    // THE CONTROLS GROUP, THE FOURTH CHILD AND THE LAST — register item 47
+    // unit 10. Reached only from this branch: `suggestionForRow` already
+    // refuses anything whose status is not "proposed" (see its own doc
+    // comment), so a wrapper only ever exists to render controls for a
+    // suggestion still awaiting a decision, and this branch is the
+    // APPLICABLE half of that — a conflict gets no controls at all.
+    const controls = document.createElement("div");
+    controls.className = CLASS_SUGGESTION_CONTROLS;
+    controls.appendChild(
+      buildSuggestionControl(ACCEPT_ID_STEM, index, ACCEPT_VISIBLE_TEXT),
+    );
+    controls.appendChild(
+      buildSuggestionControl(DISMISS_ID_STEM, index, DISMISS_VISIBLE_TEXT),
+    );
+    wrapper.appendChild(controls);
+
+    return wrapper;
   }
 
   // `phraseIsReassigned` WAS HERE AND IS GONE (repair unit R2). Unit 7b built a
@@ -1211,24 +2509,44 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * to call, because there is no parse step to escape for.
    *
    * ROW ORDER, AND THE FOUR SHAPES A ROW CAN TAKE. The parts are appended in
-   * this order and no other: the selection checkbox and its <label>, a " "
-   * text node, <time>, a " " text node, the speaker <span>, a " " text node,
-   * the Corrected. marker and a " " text node, the Moved. marker and a " "
-   * text node, the text <span>. The first pair is present only when `edit` is
-   * true; the second only when `timestamps` is true; the third only when
-   * `speakerLabel` is a number; the two markers only in READ-ONLY mode and
+   * this order and no other: the selection checkbox and its <label>, <time>,
+   * the speaker <span> OR its placeholder, the Corrected. marker, the Moved.
+   * marker, the text <span>. The first pair is present only when `edit` is
+   * true; <time> only when `timestamps` is true; the speaker span only when
+   * `speakerLabel` is a number, its placeholder only when it is not AND
+   * `labelsAreInformative` is true; the two markers only in READ-ONLY mode and
    * only when their own verdict is true. So a row reads, in the accessibility
    * tree and on screen alike:
    *
-   * THIS SENTENCE HAS MOVED FOR THE FOURTH TIME IN NINE UNITS — item 45 unit 7
+   * THIS SENTENCE HAS MOVED FOR THE FIFTH TIME IN ELEVEN UNITS — item 45 unit 7
    * added the edit control, item 46 unit 6 added the checkbox pair, repair unit
-   * R1 reversed that pair's internal order, and item 46 unit 7b adds the Moved.
-   * marker. It is worth saying because a comment rewritten that often is one a
-   * reader should check against the code rather than trust, and because the
-   * four shapes below have NEVER enumerated the markers: they are the
-   * read-only shapes with no marker on any row, and they are correct only for
-   * a row that is neither corrected nor moved. The markers are described in
+   * R1 reversed that pair's internal order, item 46 unit 7b added the Moved.
+   * marker, and item 46 unit 11 REMOVED THE FIVE " " TEXT NODES and added the
+   * speaker placeholder. It is worth saying because a comment rewritten that
+   * often is one a reader should check against the code rather than trust, and
+   * because the four shapes below have NEVER enumerated the markers: they are
+   * the read-only shapes with no marker on any row, and they are correct only
+   * for a row that is neither corrected nor moved. The markers are described in
    * their own branches and under REASSIGNED_MARKER_PREFIX, not here.
+   *
+   * THE WITHDRAWN ORDER IS QUOTED IN PLACE, per register items 51 and 56,
+   * because unit 11 deleted parts this sentence named rather than reordering
+   * them:
+   *
+   *   "the selection checkbox and its <label>, a " " text node, <time>, a " "
+   *    text node, the speaker <span>, a " " text node, the Corrected. marker
+   *    and a " " text node, the Moved. marker and a " " text node, the text
+   *    <span>."
+   *
+   * THE FIVE SEPARATORS ARE GONE AND `gap` IN transcribe.css REPLACES THE SPACE
+   * THEY DREW. They are deleted rather than left in place because the row is
+   * now a flex container, in which a text run of nothing but white space is not
+   * rendered and produces no anonymous flex item — so leaving them would be
+   * markup claiming to do something it no longer does. The cost is stated in
+   * design § 11.1 and was ruled on at the sitting of 14 September 2026 (§ 12.6):
+   * 1,314 whitespace nodes leave the accessibility tree, the space between a
+   * row's parts is a pause, and the ruling was to build the layout and listen
+   * afterwards. Listen row 51 carries the part that judges it.
    *
    *   [0:16] Speaker 1: phrase      both on
    *   Speaker 1: phrase             timestamps off
@@ -1324,27 +2642,82 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * wrong about the blast radius, which is worth knowing next time a divergence
    * is left standing on the strength of being cheap to undo.
    *
+   * `labelsAreInformative` IS THE EIGHTH DECISION (register item 46 unit 11),
+   * AND IT IS NOT A SECOND COPY OF `speakerLabel`. The two answer different
+   * questions and the placeholder needs both: `speakerLabel` says whether THIS
+   * ROW prints a label, and `labelsAreInformative` says whether the TRANSCRIPT
+   * has a speaker column at all. A one-speaker transcript prints no label on
+   * any row, so there is no column and a placeholder there would be an element
+   * with no purpose whatsoever; a multi-speaker transcript with labels
+   * suppressed has a column that some rows fill and others must reserve.
+   * Deriving it here from `speakerLabel` is impossible — a null tells you
+   * nothing about the other 656 rows — which is why it arrives already taken
+   * like everything else. All three callers hold it already.
+   *
    * @param {object} phrase - a normalised phrase
    * @param {number} index - its position, for the stable id
    * @param {number|null} speakerLabel - the resolver's verdict, already taken
    * @param {{timestamps: boolean, edit: boolean, edited: boolean,
    *   names?: Object<string, string>, selected?: boolean,
-   *   reassigned?: boolean}} options - display decisions, the corrected
-   *   verdict, the names map, the selected verdict and the moved verdict, all
-   *   already taken. `names` defaults to an empty map and `selected` and
-   *   `reassigned` to false, so a caller that omits any of them produces
-   *   exactly the output this function produced before the unit that added it.
+   *   reassigned?: boolean, labelsAreInformative?: boolean,
+   *   suggestion?: (null|{entry: object, resolution: object, diff: (object|undefined)}),
+   *   reasons?: boolean}} options - display decisions, the corrected verdict,
+   *   the names map, the selected verdict, the moved verdict, whether this
+   *   transcript has a speaker column at all, and — register item 47 unit 7 —
+   *   the row's resolved suggestion (or null) and the "Show the reason for
+   *   each suggestion" decision, every one of them already taken by the
+   *   caller through `suggestionForRow`. `names` defaults to an empty map and
+   *   `selected`, `reassigned`, `labelsAreInformative` and `reasons` default
+   *   to false and `suggestion` to null, so a caller that omits any of them
+   *   produces exactly the output this function produced before the unit that
+   *   added it.
    * @returns {HTMLLIElement}
    */
   function buildRow(
     phrase,
     index,
     speakerLabel,
-    { timestamps, edit, edited, names = {}, selected = false, reassigned = false },
+    {
+      timestamps,
+      edit,
+      edited,
+      names = {},
+      selected = false,
+      reassigned = false,
+      labelsAreInformative = false,
+      suggestion = null,
+      reasons = false,
+    },
   ) {
     const row = document.createElement("li");
     row.id = ROW_ID_STEM + index;
     row.className = CLASS_ROW;
+
+    // THE PHRASE NUMBER, IN READ-ONLY MODE ONLY, AND FIRST IN THE ROW (register
+    // item 47 unit 17). See PHRASE_NUMBER_PREFIX for why it exists and why edit
+    // mode has none. It is the read-only counterpart of the selection checkbox
+    // below: each mode's row leads with the one thing that carries its number.
+    //
+    // THE SEPARATOR IS SUGGESTION_SEPARATOR, INSIDE THE SPAN'S OWN TEXT. The
+    // row's parts carry no whitespace text node between them, and
+    // `.visually-hidden` blockifies the span, so without it the rendered text a
+    // browse-mode reader walks joins "Phrase 1" to the timecode as
+    // "Phrase 1[0:16]" — the weld unit 13 measured on the Accept button. An
+    // ordinary space at a block's edge is collapsed; U+00A0 is not.
+    //
+    // NO LIVE REGION, NO ROLE, NO ARIA. It is plain visually-hidden text a
+    // reader meets on arrival, and it paints nothing: `.visually-hidden` takes
+    // it out of the flex flow, so it consumes no `gap` and moves no glyph.
+    if (!edit) {
+      const number = document.createElement("span");
+      number.className = `${CLASS_PHRASE_NUMBER} ${CLASS_VISUALLY_HIDDEN}`;
+      number.appendChild(
+        document.createTextNode(
+          `${PHRASE_NUMBER_PREFIX}${index + 1}${SUGGESTION_SEPARATOR}`,
+        ),
+      );
+      row.appendChild(number);
+    }
 
     // THE SELECTION CHECKBOX, IN EDIT MODE ONLY, AND FIRST IN THE ROW. See the
     // doc comment's row order for why it leads rather than follows. In
@@ -1352,13 +2725,21 @@ const OpenRouterEmbedTranscribeUI = (function () {
     // one — because a person reading a transcript is not selecting anything,
     // which is the owner's own decision recorded in the design's section 3.
     //
-    // THE " " TEXT NODE CLOSES THE PAIR AND MATCHES <time> AND THE SPEAKER
-    // SPAN, and it is needed for the same reason theirs are: the checkbox is
-    // VISIBLE, so with no separator it butts against the timecode on screen.
-    // The label contributes no separator of its own because `.visually-hidden`
-    // positions it absolutely and it leaves the inline flow entirely — the
-    // measured side effect recorded under CORRECTED_MARKER_TEXT — which is also
-    // why moving it to the far side of the box changes nothing on screen.
+    // THE " " TEXT NODE THAT CLOSED THE PAIR IS GONE AT UNIT 11, AND ITS
+    // WITHDRAWN NOTE IS QUOTED IN PLACE per register items 51 and 56:
+    //
+    //   "THE " " TEXT NODE CLOSES THE PAIR AND MATCHES <time> AND THE SPEAKER
+    //    SPAN, and it is needed for the same reason theirs are: the checkbox is
+    //    VISIBLE, so with no separator it butts against the timecode on screen."
+    //
+    // The need it describes is real and is now met by `gap` on the flex row.
+    // WHAT SURVIVES UNCHANGED, and is why this paragraph is not deleted whole:
+    // the label contributes no separator of its own because `.visually-hidden`
+    // positions it ABSOLUTELY and it leaves the flow entirely — the measured
+    // side effect recorded under CORRECTED_MARKER_TEXT. That fact got larger
+    // at unit 11 rather than smaller: an absolutely-positioned child of a flex
+    // container is NOT a flex item, so the label consumes no `gap` either, and
+    // moving it to the far side of the box still changes nothing on screen.
     //
     // THE INPUT PRECEDES ITS LABEL, WHICH IS THE OPPOSITE OF WHAT THIS COMMENT
     // SAID UNTIL REPAIR UNIT R1. The withdrawn text read: "THE LABEL PRECEDES
@@ -1412,14 +2793,15 @@ const OpenRouterEmbedTranscribeUI = (function () {
         document.createTextNode(`${SELECT_LABEL_PREFIX}${index + 1}`),
       );
       row.appendChild(selectLabel);
-
-      row.appendChild(document.createTextNode(" "));
     }
 
     // <time> carries the machine-readable offset in `datetime` and the reading
-    // clock as its text. It is built ONLY when timestamps are shown, together
-    // with the " " text node after it: with the box unchecked neither exists,
-    // so the row begins with the speaker span or the phrase text (item 54).
+    // clock as its text. It is built ONLY when timestamps are shown: with the
+    // box unchecked it does not exist, so the row begins with the speaker span,
+    // its placeholder, or the phrase text (item 54). (Withdrawn at unit 11,
+    // quoted in place: "together with the " " text node after it: with the box
+    // unchecked neither exists". The separator is gone and `gap` draws the
+    // space — see the row-order comment.)
     //
     // CORRECTED: this comment previously read "It has NO implicit ARIA role —
     // it computes as generic". That is FALSE. Unit 43.4's own CDP reading, on
@@ -1442,7 +2824,6 @@ const OpenRouterEmbedTranscribeUI = (function () {
         document.createTextNode(`[${toClockText(phrase.offsetMs)}]`),
       );
       row.appendChild(time);
-      row.appendChild(document.createTextNode(" "));
     }
 
     // The speaker span exists only when the shared resolver says a label is
@@ -1469,6 +2850,20 @@ const OpenRouterEmbedTranscribeUI = (function () {
     // it there would move a downloaded byte. Composing ahead of this branch
     // would therefore put "Speaker undefined:" on the SCREEN and undo the guard
     // silently, with nothing in the markup to show what had happened.
+    //
+    // THE PLACEHOLDER IS THE `else` OF THIS EXACT TEST, NOT A SECOND TEST OF
+    // ITS OWN (register item 46 unit 11). Written as an `else if` on the same
+    // condition, so it is structurally impossible for a row to end up with
+    // NEITHER span while the transcript has a speaker column — which is the one
+    // way the alignment this unit exists to fix could come back silently, and
+    // it would come back on exactly the rows a second test got wrong rather
+    // than on all of them. It therefore covers BOTH suppressions: a null
+    // verdict from the resolver, and the undefined guard immediately above.
+    //
+    // ITS OWN CONDITION IS `labelsAreInformative` AND NOTHING ELSE. See the doc
+    // comment: a one-speaker transcript has no column to reserve, so it gets no
+    // placeholders at all, and that is asserted rather than assumed — unit 11
+    // halts if `TranscribeFixture.collapseToOneSpeaker()` produces one.
     if (speakerLabel !== null && typeof speakerLabel === "number") {
       const speaker = document.createElement("span");
       speaker.className = CLASS_SPEAKER;
@@ -1476,7 +2871,14 @@ const OpenRouterEmbedTranscribeUI = (function () {
         document.createTextNode(speakerLabelText(speakerLabel, names)),
       );
       row.appendChild(speaker);
-      row.appendChild(document.createTextNode(" "));
+    } else if (labelsAreInformative) {
+      // EMPTY, AND IT STAYS EMPTY. No text node, no `&nbsp;`, no `aria-hidden`.
+      // An empty span contributes no `StaticText`, so the whole-tree count is
+      // unmoved by any number of these — which is one of unit 11's halts, and
+      // is the only thing that makes a layout-only element honest to add.
+      const placeholder = document.createElement("span");
+      placeholder.className = CLASS_SPEAKER_PLACEHOLDER;
+      row.appendChild(placeholder);
     }
 
     // THE CORRECTED MARKER, IN READ-ONLY MODE ONLY — CHANGED AT UNIT 8, and the
@@ -1505,7 +2907,11 @@ const OpenRouterEmbedTranscribeUI = (function () {
       marker.className = `${CLASS_CORRECTED} ${CLASS_VISUALLY_HIDDEN}`;
       marker.appendChild(document.createTextNode(CORRECTED_MARKER_TEXT));
       row.appendChild(marker);
-      row.appendChild(document.createTextNode(" "));
+      // The separator that followed is gone at unit 11. This marker is
+      // `.visually-hidden` and therefore absolutely positioned, so it is NOT a
+      // flex item and consumes no `gap` — a corrected row and an uncorrected
+      // one put their phrase text at the same x, which is what the old
+      // separator's whitespace collapsing happened to deliver too.
     }
 
     // THE MOVED MARKER, IN READ-ONLY MODE ONLY (register item 46 unit 7b) —
@@ -1523,13 +2929,21 @@ const OpenRouterEmbedTranscribeUI = (function () {
     if (reassigned && !edit) {
       const marker = document.createElement("span");
       marker.className = `${CLASS_REASSIGNED} ${CLASS_VISUALLY_HIDDEN}`;
-      // THE SOURCE SLOT IS READ OFF THE PHRASE, NOT OFF THE VERDICT. The
-      // verdict is a boolean the state module supplies; the WORDS need the slot
-      // the transcription put the line in, which only the phrase carries.
+      // BOTH SLOTS ARE READ OFF THE PHRASE, NOT OFF THE VERDICT. The verdict is
+      // a boolean the state module supplies; the WORDS need the slot the
+      // transcription put the line in and the slot it is in now, and only the
+      // phrase carries either.
+      //
+      // `phrase.speaker` AND NOT `speakerLabel`, WHICH IS THE DIFFERENCE THE
+      // SUPPRESSED-LABEL CASE TURNS ON. `speakerLabel` is the label DECISION —
+      // a number when the row prints one and null when it does not — so
+      // composing the "to" half from it would give the marker nothing to say on
+      // exactly the rows the fuller wording was asked for.
       marker.appendChild(
         document.createTextNode(
           reassignedMarkerText(
             phrase.sourceSpeaker,
+            phrase.speaker,
             names,
             REASSIGNED_MARKER_PREFIX,
             REASSIGNED_MARKER_SUFFIX,
@@ -1537,7 +2951,7 @@ const OpenRouterEmbedTranscribeUI = (function () {
         ),
       );
       row.appendChild(marker);
-      row.appendChild(document.createTextNode(" "));
+      // Gone at unit 11, for the reason the corrected marker's own note gives.
     }
 
     // THE PHRASE, AS EITHER A SPAN OR A SINGLE-LINE TEXT INPUT — the one and
@@ -1594,11 +3008,13 @@ const OpenRouterEmbedTranscribeUI = (function () {
       // THE MOVED STATE JOINS IT AT ITEM 46 UNIT 7b, on exactly the terms the
       // corrected state already has: the label is the whole of the control's
       // accessible name, and both states are part of it. A row that is both
-      // reads "Edit phrase 12, corrected, speaker changed from Speaker 2" —
-      // the order fixed, and fixed here, because this is the only place both
-      // verdicts are in hand. See REASSIGNED_MARKER_PREFIX for why corrected
-      // comes first. (The withdrawn line read "Edit phrase 12, corrected,
-      // moved"; the wording changed at unit 8 and the ORDER did not.)
+      // reads "Edit phrase 12, corrected, speaker changed from Speaker 2 to
+      // Amira" — the order fixed, and fixed here, because this is the only
+      // place both verdicts are in hand. See REASSIGNED_MARKER_PREFIX for why
+      // corrected comes first. (Two withdrawn lines, neither deleted: "Edit
+      // phrase 12, corrected, moved" until unit 8, and "…, speaker changed from
+      // Speaker 2" until unit 10. The wording grew twice and the ORDER has not
+      // moved once.)
       //
       // THE COMMAS ARE DOING THE SAME WORK THE FIRST ONE DOES. They are what
       // stops the name reading as an instruction, and they are what gives a
@@ -1613,11 +3029,29 @@ const OpenRouterEmbedTranscribeUI = (function () {
             (reassigned
               ? reassignedMarkerText(
                   phrase.sourceSpeaker,
+                  phrase.speaker,
                   names,
                   EDIT_LABEL_REASSIGNED_PREFIX,
                   "",
                 )
-              : ""),
+              : "") +
+            // THE SUGGESTION SUFFIX, EDIT MODE ONLY — design § 12's D3. It
+            // is APPENDED after the existing markers, so a row that is
+            // corrected, moved AND carries a suggestion reads its three
+            // facts in the order this label has always used and gains a
+            // fourth at the end.
+            //
+            // WHY EDIT MODE ONLY. In read-only mode the wrapper follows the
+            // phrase in reading order and a reader meets it unaided. In edit
+            // mode Tab moves between CONTROLS, so without this a person
+            // meets the suggestion only when they arrive at Accept — by
+            // which point they have passed the text it is about.
+            //
+            // IT IS NOT A FOURTH MARKER BREAKING THE ONE-MARKER-PER-ROW-PER-
+            // MODE RULE. That rule is about saying the same fact twice in
+            // one mode; nothing else on an edit-mode row mentions the
+            // suggestion at all.
+            suggestionEditLabelSuffix(suggestion),
         ),
       );
       row.appendChild(label);
@@ -1632,6 +3066,13 @@ const OpenRouterEmbedTranscribeUI = (function () {
       field.value = phrase.text;
       row.appendChild(field);
 
+      // THE SUGGESTION WRAPPER, LAST CHILD, IN BOTH MODES (register item 47
+      // unit 7; design § 1 "both modes"). Built once and appended from both
+      // branches so the two never diverge — see buildSuggestionWrapper's own
+      // doc comment for what it renders and why.
+      const editWrapper = buildSuggestionWrapper(suggestion, reasons, index);
+      if (editWrapper) row.appendChild(editWrapper);
+
       return row;
     }
 
@@ -1639,6 +3080,11 @@ const OpenRouterEmbedTranscribeUI = (function () {
     text.className = CLASS_TEXT;
     text.textContent = phrase.text;
     row.appendChild(text);
+
+    // THE SUGGESTION WRAPPER, LAST CHILD — the read-only half of the same
+    // rule the edit branch above follows.
+    const readOnlyWrapper = buildSuggestionWrapper(suggestion, reasons, index);
+    if (readOnlyWrapper) row.appendChild(readOnlyWrapper);
 
     return row;
   }
@@ -1806,6 +3252,31 @@ const OpenRouterEmbedTranscribeUI = (function () {
           // longer available when the module is absent, and `false` is the same
           // answer `edited` gives there.
           reassigned: state ? state.isReassigned(index) : false,
+          // THE SPEAKER COLUMN'S EXISTENCE, hoisted above this loop like every
+          // other decision and handed down rather than re-derived. It is NOT
+          // recoverable from `speakerLabel`, which answers only for this row —
+          // see buildRow's doc comment (register item 46 unit 11).
+          labelsAreInformative,
+          // THE SUGGESTION AND THE REASON DECISION (register item 47 unit 7).
+          // `showSuggestions` and `showReasons` were passed straight through
+          // and inert here at unit 6; `buildRow` now reads a RESOLVED
+          // suggestion rather than the raw toggle, because eligibility
+          // (status === proposed) and the diff computation are the state
+          // module's and the transcribe module's own answers, asked once here
+          // through `suggestionForRow` rather than inside `buildRow`, which
+          // decides nothing — see `suggestionForRow`'s own doc comment. All
+          // THREE call sites resolve it the same way, so a patched row and a
+          // rendered row are still built from the same options.
+          suggestion: suggestionForRow(
+            api,
+            state,
+            phrases,
+            index,
+            labelsAreInformative,
+            showSuggestions,
+            showConflictsInTranscript,
+          ),
+          reasons: showReasons,
         }),
       );
     });
@@ -1929,10 +3400,17 @@ const OpenRouterEmbedTranscribeUI = (function () {
       return;
     }
 
+    // READ ONCE INTO A CONST AT UNIT 11, having previously been computed inline
+    // in the call below. `buildRow` needs the same answer for the placeholder
+    // decision, and computing `distinctSpeakerCount` twice in one function
+    // would be two places for one rule to live — the defect `speakerLabelFor`
+    // exists to prevent, in miniature.
+    const labelsAreInformative = api.distinctSpeakerCount(result) > 1;
+
     const speakerLabel = api.speakerLabelFor({
       speaker: phrase.speaker,
       previousSpeaker: api.previousSpeakerAt(phrases, index),
-      labelsAreInformative: api.distinctSpeakerCount(result) > 1,
+      labelsAreInformative,
       mode: showSpeakerOnEveryLine
         ? api.SPEAKER_LABEL_MODE.EVERY_LINE
         : api.SPEAKER_LABEL_MODE.ON_CHANGE,
@@ -1985,6 +3463,22 @@ const OpenRouterEmbedTranscribeUI = (function () {
         names,
         selected,
         reassigned,
+        // Read into a const above, for the reason stated there (unit 11).
+        labelsAreInformative,
+        // The resolved suggestion and the reason decision (register item 47
+        // unit 7). See `suggestionForRow`'s doc comment and renderTranscript's
+        // call for why the resolution happens here rather than inside
+        // `buildRow`, and why all three call sites resolve it the same way.
+        suggestion: suggestionForRow(
+          api,
+          state,
+          phrases,
+          index,
+          labelsAreInformative,
+          showSuggestions,
+          showConflictsInTranscript,
+        ),
+        reasons: showReasons,
       }),
     );
 
@@ -2013,8 +3507,17 @@ const OpenRouterEmbedTranscribeUI = (function () {
   }
 
   /**
-   * Rebuild SEVERAL rows in place, after a reassignment moved them
-   * (register item 46 unit 7b).
+   * Rebuild SEVERAL rows in place, after a gesture changed what they say
+   * (register item 46 unit 7b; the ONLY repaint path since unit 10).
+   *
+   * TWO CALLERS, NOT ONE, AND THAT IS THE POINT OF UNIT 10. A reassignment
+   * reaches it with the moved rows and their neighbours; a RENAME reaches it
+   * with every row that carries the renamed slot as its current speaker or as
+   * its source. The rename used to have a targeted writer of its own, which
+   * wrote the speaker span's textContent and knew nothing about the moved
+   * marker — so a rename left the marker's wording stale on both sides. One
+   * repaint path is what makes a patched row and a rendered row the same row by
+   * construction rather than by two builders agreeing.
    *
    * A PLURAL SIBLING OF patchRow, NOT A LOOP OVER IT, AND THAT IS THE WHOLE
    * REASON THIS FUNCTION EXISTS. patchRow recomputes
@@ -2043,10 +3546,17 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * ARE DIFFERENT. `setSpeaker` returns the rows whose speaker actually moved;
    * under ON_CHANGE suppression a row's label decision reads its PREDECESSOR
    * through `previousSpeakerAt`, so moving row 12 can change whether row 13
-   * prints a label at all. The caller widens the set by one per moved row; this
-   * function does not widen it, because it has no way to know which of its
+   * prints a label at all. The MOVE caller widens the set by one per moved row;
+   * this function does not widen it, because it has no way to know which of its
    * indices were moved and which were added as neighbours, and a function that
    * widened a widened set would reach further on every call.
+   *
+   * THE RENAME CALLER WIDENS BY NOTHING, AND THE ASYMMETRY IS CORRECT. A rename
+   * cannot change which rows print a label — suppression depends on speaker
+   * NUMBERS and the label mode, never on names — so there is no neighbour whose
+   * decision could have moved. Deciding the set is the caller's job for exactly
+   * this reason: the two gestures have different affected sets and only the
+   * caller knows which gesture happened.
    *
    * OUT-OF-RANGE AND MISSING ROWS ARE SKIPPED, NOT REFUSED. A neighbour index
    * one past the last row is the ordinary product of the widening above, and
@@ -2056,14 +3566,18 @@ const OpenRouterEmbedTranscribeUI = (function () {
    *
    * NO FOCUS PLACEMENT, AND IT IS NOT AN OMISSION. patchRow places focus
    * because the gesture that reaches it — a commit on blur or on Enter — starts
-   * INSIDE the row being replaced. This function is reached from a button
-   * OUTSIDE the list, so no row it replaces can hold focus, and the person
-   * stays on the button they pressed. That is asserted in the console sheet
-   * rather than defended with code for a case the gesture cannot produce.
+   * INSIDE the row being replaced. BOTH of this function's gestures start
+   * OUTSIDE the list: the move from its own button, and the rename from the
+   * Apply button or the name field, which sit in a block above the transcript.
+   * So no row it replaces can hold focus, and the person stays where they were.
+   * That is asserted in the console sheet rather than defended with code for a
+   * case neither gesture can produce.
    *
-   * NOTHING IS ANNOUNCED. No toast, no announcer call, no live region, no
-   * liveness added anywhere in this chain. Listen row 49 is what decides
-   * whether that silence stays.
+   * NOTHING IS ANNOUNCED HERE, AND BOTH CALLERS DO ANNOUNCE. The sentence is
+   * composed and spoken by the handler, never by the repaint — which is what
+   * keeps one gesture to one utterance when a handler has two repaint branches,
+   * as the move's does. No toast, no announcer call, no live region and no
+   * liveness is added anywhere in this chain.
    *
    * @param {number[]} indices - the rows to rebuild, already widened by the
    *   caller. Duplicates and out-of-range values are tolerated.
@@ -2089,6 +3603,19 @@ const OpenRouterEmbedTranscribeUI = (function () {
       : api.SPEAKER_LABEL_MODE.ON_CHANGE;
     const timestamps = showTimestamps;
     const edit = editMode;
+    // THE TWO REVIEW DECISIONS, HOISTED HERE BESIDE THE REST (register item 47
+    // unit 6), rather than read per row, for this block's own stated reason:
+    // every line here is a decision patchRow would otherwise retake 657 times.
+    // `suggestions` is the raw toggle — eligibility still has to be asked of
+    // the state module PER ROW through `suggestionForRow` (unit 7), because
+    // whether a given phrase carries a proposed suggestion cannot be hoisted.
+    const suggestions = showSuggestions;
+    const reasons = showReasons;
+    // THE THIRD REVIEW DECISION, hoisted here with the other two (register item
+    // 47 unit 14). Like `suggestions` it is a raw toggle: whether a given row's
+    // suggestion IS a conflict still has to be asked per row, inside
+    // `suggestionForRow`, because that depends on the phrase's current text.
+    const conflictsInTranscript = showConflictsInTranscript;
     const names = state.isLoaded() ? state.speakerNames() : {};
     const selection = selectedRows;
 
@@ -2124,6 +3651,22 @@ const OpenRouterEmbedTranscribeUI = (function () {
           // (repair unit R2). `state` is non-null — this function's own guard
           // returned on a missing one and `state.isLoaded()` is read above.
           reassigned: state.isReassigned(index),
+          // Already hoisted for the whole batch above (unit 11). A patched row
+          // and a rendered row must be byte-identical, placeholder included.
+          labelsAreInformative,
+          // Resolved PER ROW — see the comment above `suggestions` for why the
+          // toggle is hoisted but the eligibility check is not. Matches
+          // renderTranscript's and patchRow's own calls exactly.
+          suggestion: suggestionForRow(
+            api,
+            state,
+            phrases,
+            index,
+            labelsAreInformative,
+            suggestions,
+            conflictsInTranscript,
+          ),
+          reasons: reasons,
         }),
       );
       rebuilt += 1;
@@ -2340,6 +3883,19 @@ const OpenRouterEmbedTranscribeUI = (function () {
   /**
    * Empty the selection, from the Clear selection button.
    *
+   * IT KEEPS ITS BUTTON AND ITS VOICE NOW THAT A SPEAKER CHANGE ALSO CLEARS
+   * (register item 46 unit 10). The two are not redundant: this is how a person
+   * abandons a selection WITHOUT acting on it, and a change is how they abandon
+   * one BY acting on it. Only this gesture announces the clear, because only
+   * here is the clear the whole of what happened — the change's own sentence is
+   * the one output for that gesture.
+   *
+   * THE TWO CLEAR BY DIFFERENT MECHANISMS, AND BOTH ARE RIGHT WHERE THEY ARE.
+   * This one unticks the boxes that already exist and rebuilds nothing, which
+   * is what protects a reader's position in a 657-row list. The change gesture
+   * rebuilds those rows anyway, so it empties the Set first and lets `buildRow`
+   * read it — no second writer, no window where the Set and the boxes disagree.
+   *
    * IT UNTICKS THE VISIBLE BOXES AND REBUILDS NO ROW. `checked = false` on the
    * inputs that already exist is the same discipline the rename repaint
    * follows, and for the same reason: nothing a person could be inside is
@@ -2364,11 +3920,29 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * WRITE-IF-CHANGED AT THE GESTURE, not only at the text. An empty selection
    * cleared again is no change at all, so it does not walk 657 controls.
    *
-   * NOTHING IS ANNOUNCED. No toast, no announcer call, no live region. The
-   * count is silent text and the boxes convey their own state. Listen row 49
-   * judges whether that is sufficient feedback for a gesture whose whole
-   * visible effect is remote from the control — the same question the design's
-   * section 7 raises about a rename.
+   * IT ANNOUNCES AS OF UNIT 10, AND THE WITHDRAWN PARAGRAPH ASKED FOR IT. That
+   * paragraph is quoted rather than deleted, per register items 51 and 56,
+   * because it named the right question and the sitting answered it:
+   *
+   *   "NOTHING IS ANNOUNCED. No toast, no announcer call, no live region. The
+   *    count is silent text and the boxes convey their own state. Listen row 49
+   *    judges whether that is sufficient feedback for a gesture whose whole
+   *    visible effect is remote from the control — the same question the
+   *    design's section 7 raises about a rename."
+   *
+   * THE ANSWER, AT THE SITTING OF 14 SEPTEMBER 2026: it is not. Four gestures
+   * spoke and this one stayed silent for no reason other than that nobody had
+   * asked for it. See selectionClearedSentence. Everything else in the
+   * withdrawn text still holds — no live region is added here, the count stays
+   * silent text, and the boxes still convey their own state; what changed is
+   * that the GESTURE now has a voice, through the same `notify*()` route the
+   * other five use.
+   *
+   * A NO-OP STILL SAYS NOTHING, AND THE EARLY RETURN BELOW IS WHAT DELIVERS
+   * THAT rather than a second guard beside the sentence. Clearing an empty
+   * selection changed nothing, so there is nothing to report; the announcement
+   * sits after the work for the same reason every other call site in this file
+   * sits after its handler's `changed` guard.
    */
   function handleClearSelection() {
     if (selectedRows.size === 0) {
@@ -2389,7 +3963,1275 @@ const OpenRouterEmbedTranscribeUI = (function () {
     }
 
     updateSelectionCount();
+
+    // COMPOSED FROM THE COUNT READ BEFORE THE CLEAR, and spoken after the work,
+    // matching the other five call sites: composing first means a failure
+    // cannot leave a half-built sentence, and speaking last means nothing is
+    // announced for work that did not happen.
+    speak(selectionClearedSentence(cleared));
     logDebug(`clear selection — ${cleared} row(s) unticked, none rebuilt`);
+  }
+
+  // ==========================================================================
+  // THE REVIEW BLOCK (register item 47 unit 6)
+  // ==========================================================================
+  //
+  // NOTHING HERE RENDERS A SUGGESTION. `buildRow` is untouched at this unit, no
+  // <del> or <ins> reaches the page, and neither Accept nor Dismiss exists yet.
+  // What lands is the BLOCK: its reveal, its count sentence, the two render
+  // decisions its checkboxes carry, and the "Next suggestion" gesture. Unit 7
+  // is where a row begins to show anything, and the two toggles are wired now
+  // precisely so that unit adds a BRANCH rather than a pathway.
+  //
+  // NOTHING HERE ANNOUNCES, AND NOTHING HERE GAINS LIVENESS. The count is
+  // silent text, on exactly the terms `updateSelectionCount` records: no toast,
+  // no announcer call, no aria-live and no live role, and the target is a <p>
+  // with no live ancestor. Revealing the block is not an event that speaks —
+  // register item 46 settled that for controls appearing at a flip, and this is
+  // the same situation. The gestures that DO speak are item 47 unit 8's, and
+  // the sitting decides their wording, not this file.
+
+  // SUGGESTION_STATUS_PROPOSED IS DECLARED ONCE, NEAR `suggestionForRow`
+  // (register item 47 unit 7), NOT HERE. This block and that function need
+  // the identical mirrored value, so it is hoisted to the one place both can
+  // reach it — a second declaration of the same literal is exactly the
+  // "kept in step by eye" hazard its own doc comment names.
+
+  /**
+   * The sentence the block shows when no change set is loaded.
+   *
+   * IT MATCHES THE MARKUP BYTE FOR BYTE, and that is the point rather than a
+   * coincidence: tools.html ships a true zero-state sentence rather than an
+   * empty element, so a block revealed before the first write shows something
+   * honest. `setText` is write-if-changed, so writing this over the shipped
+   * value writes nothing at all.
+   */
+  const REVIEW_NONE_TEXT = "No suggestions.";
+
+  /**
+   * One to nine as words; ten and above as digits.
+   *
+   * THE HOUSE RULE FOR PROSE A PERSON READS, and it is why `pluralise` is not
+   * reused here: that helper prints "1 line", which is right for a terse count
+   * beside a control and wrong inside a sentence. Two helpers, two registers,
+   * and neither pretending to be the other.
+   */
+  const NUMBER_WORDS = Object.freeze([
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+  ]);
+
+  /**
+   * @param {number} value - a whole number
+   * @returns {string}
+   */
+  function numberWord(value) {
+    return value >= 1 && value <= 9 ? NUMBER_WORDS[value] : String(value);
+  }
+
+  /**
+   * Compose the count sentence.
+   *
+   * PURE, AND EXPOSED FOR THAT REASON. It touches no DOM and reads no state, so
+   * the harness can assert the wording at one, at two and at 12 without a page,
+   * a fixture or a render. Every other function in this block reads the live
+   * state, and this is deliberately the one that does not.
+   *
+   * A ZERO-VALUED CLAUSE IS OMITTED RATHER THAN PRINTED AS ZERO. "12
+   * suggestions, three accepted" is what a person wants; "12 suggestions, three
+   * accepted, no dismissed, no conflicts" is a form to fill in. A total of zero
+   * is the one case that is not a clause at all — it is the zero-state sentence
+   * above, because "no suggestions" is the whole of what there is to say.
+   *
+   * ONLY "suggestion" PLURALISES. The other three clauses carry no noun, so
+   * "one accepted" and "three accepted" are both already correct.
+   *
+   * @param {object} counts
+   * @param {number} counts.total - every entry the change set loaded
+   * @param {number} counts.accepted
+   * @param {number} counts.rejected - shown as "dismissed", the word the
+   *   gesture uses; `rejected` is the other lane's status vocabulary and it is
+   *   not the word on screen
+   * @param {number} counts.conflicts - proposed entries `suggestionTextFor`
+   *   refuses against the phrase's CURRENT text
+   * @returns {string}
+   */
+  function reviewCountSentence({ total, accepted, rejected, conflicts }) {
+    if (!total) return REVIEW_NONE_TEXT;
+
+    const clauses = [`${numberWord(total)} suggestion${total === 1 ? "" : "s"}`];
+    if (accepted) clauses.push(`${numberWord(accepted)} accepted`);
+    if (rejected) clauses.push(`${numberWord(rejected)} dismissed`);
+    if (conflicts) clauses.push(`${numberWord(conflicts)} cannot be applied`);
+    return `${clauses.join(", ")}.`;
+  }
+
+  /**
+   * Resolve ONE phrase's suggestion against it, with the ADAPTER'S OWN
+   * speakerLabel — the single-index sibling of `reviewResolutions` below,
+   * extracted at register item 47 unit 7 so a row build asking for its own
+   * entry (`suggestionForRow`, beside `buildRow`) and a full sweep asking for
+   * all of them share one computation rather than two. See
+   * `reviewResolutions`'s doc comment for the full account of why
+   * `speakerLabel` MUST be resolved with `mode` absent (EVERY_LINE) and never
+   * with the display's ON_CHANGE mode.
+   *
+   * O(1) IN THE PHRASE COUNT, UNLIKE `suggestionResolutionAt`. That function's
+   * own doc comment reserves its full-sweep cost for the harness; a row build
+   * called once per row cannot afford it, so this is the cheaper route
+   * `reviewResolutions`'s doc comment says rendering should take.
+   *
+   * @param {object} api - the transcribe module
+   * @param {object} state - the transcribe state module, already known loaded
+   * @param {Array} phrases - the whole phrase array, for `previousSpeakerAt`
+   * @param {number} index - the phrase's 0-based index
+   * @param {boolean} labelsAreInformative - hoisted once by the caller
+   * @returns {null|{entry: object, resolution: object}}
+   */
+  /**
+   * The cue ids this surface has itself decided on, since the page loaded.
+   *
+   * IT IS WHAT MAKES D9's RULE ABOUT ARRIVAL RATHER THAN ABOUT STATUS. An
+   * entry that arrives `accepted` and an entry accepted HERE are the same
+   * three fields afterwards — status `accepted`, `rejectedBy` null — so
+   * nothing in the record distinguishes them and the difference has to be
+   * remembered by the only party that knows it, which is this file.
+   *
+   * KEYED BY CUE ID, NOT BY PHRASE INDEX, and that is what makes unit 4's
+   * carry-forward survive D9. `loadSuggestions` carries a previous
+   * accepted/rejected decision onto a matching entry of a FRESH change set;
+   * such an entry arrives decided, with no `rejectedBy`, and is
+   * indistinguishable from one a person ticked upstream — except that its cue
+   * id is in here, because this surface is where that decision was made.
+   * Amendment 1 is explicit that carry-forward is unaffected by D9, and this
+   * set is how.
+   *
+   * IT IS NEVER CLEARED. A cue id decided here stays decided for the life of
+   * the page; there is no gesture that un-decides one, and a reload of the
+   * same change set is exactly the carry-forward case above.
+   */
+  const decidedHere = new Set();
+
+  /**
+   * Is this entry one this surface may review, count and render?
+   *
+   * D9, AS WIDENED BY AMENDMENT 1: an entry is reviewable only if it ARRIVED
+   * carrying `status: "proposed"` and no `rejectedBy`. Anything else was
+   * decided before this surface saw it, and belongs to whoever decided it.
+   *
+   * THE THREE CASES IT EXCLUDES, all grounded in `captions-fixer/` at HEAD on
+   * 21 September 2026 rather than taken from the lane's summary of itself:
+   *
+   *   a guard held it   `runGuards` writes `status: "rejected"` and
+   *                     `rejectedBy: "guard:<name>"` together, so a
+   *                     `speakerLabelUnchanged` hold arrives REJECTED — not
+   *                     proposed, which is what the lane's "status not
+   *                     accepted" left open.
+   *   a person unticked `handleKeepChange` writes `rejected` and
+   *                     `rejectedBy: "person"`.
+   *   a person TICKED   the same function writes `accepted` and clears
+   *                     `rejectedBy` to null. This is the case D9 as first
+   *                     dispatched did NOT cover, and it is the reason
+   *                     amendment 1 exists: such an entry never renders here
+   *                     anyway, because only a `proposed` entry gets a
+   *                     wrapper — but `suggestionCounts` counted it as
+   *                     accepted, so the count sentence reported a decision
+   *                     nobody made on this surface and a correction that is
+   *                     not in the transcript.
+   *
+   * NO PATH IN THAT LANE CLEARS `rejectedBy` WITHOUT ALSO MOVING `status` —
+   * checked at all three writers, `runGuards`, `handleKeepChange` and
+   * `preserveKeepChoices` — so the two fields cannot disagree and this
+   * predicate does not have to decide what it would mean if they did.
+   *
+   * WHY NOT RENDER A HELD ENTRY AND LET THE REFUSAL CATCH IT. This surface
+   * writes TEXT only; a speaker is changed through register item 46's
+   * controls. So an Accept on a held label change could never do what the
+   * button says, and not rendering it honours the other lane's verdict rather
+   * than re-deriving it — which the cross-lane seam forbids.
+   * `suggestionTextFor`'s `label-changed` refusal stays underneath as defence
+   * in depth, reachable only if somebody upstream cleared `rejectedBy` or an
+   * unguarded label shape arrived.
+   *
+   * AND THE LANE'S OWN REPLY IS WRONG ON ONE POINT, recorded as a desk
+   * inference from their code rather than as a fault in it: that refusal does
+   * NOT cover the ticked case, because an `accepted` entry never renders and
+   * so never reaches `suggestionTextFor` at all. The arrival rule is what
+   * covers it.
+   *
+   * @param {object} entry - a change-set entry as the state module holds it
+   * @returns {boolean}
+   */
+  function isReviewable(entry) {
+    if (!entry) return false;
+    if (decidedHere.has(entry.cueId)) return true;
+    return entry.status === SUGGESTION_STATUS_PROPOSED && !entry.rejectedBy;
+  }
+
+  function resolveSuggestionAt(api, state, phrases, index, labelsAreInformative) {
+    const entry = state.suggestionAt(index);
+    if (!entry) return null;
+    if (!isReviewable(entry)) return null;
+
+    const phrase = phrases[index];
+    const speakerLabel = api.speakerLabelFor({
+      speaker: phrase.speaker,
+      previousSpeaker: api.previousSpeakerAt(phrases, index),
+      labelsAreInformative,
+    });
+
+    return {
+      entry,
+      resolution: api.suggestionTextFor({
+        original: entry.original,
+        proposed: entry.proposed,
+        currentText: phrase.text,
+        speakerLabel,
+        // ADDED AT UNIT 13 FOR DESIGN § 12's D5. `sourceSpeaker` is the
+        // phrase's speaker BEFORE any move, which is the number the adapter
+        // would have inlined when the change set was built — so it is what
+        // lets `suggestionTextFor` tell "the speaker moved" from "the line
+        // changed" and say something true for each. It is read straight off
+        // the phrase, never recomputed: the state module owns that
+        // derivation, which is the ruling repair unit R2 already settled for
+        // `isReassigned`.
+        sourceSpeaker: phrase.sourceSpeaker,
+      }),
+    };
+  }
+
+  /**
+   * Resolve every loaded suggestion against the phrase it belongs to.
+   *
+   * THE `speakerLabel` ARGUMENT IS THE ADAPTER'S RESOLUTION AND NEVER THE
+   * DISPLAY'S, AND GETTING THAT WRONG WOULD BREAK MOST OF THE TRANSCRIPT
+   * SILENTLY. `suggestionTextFor` composes the expected prefix from the number
+   * it is handed, and the number it must be handed is the one
+   * `fromTranscribeResult` used when it built the change set. That call passes
+   * no `mode`, so it takes `SPEAKER_LABEL_MODE.EVERY_LINE` and inlines a label
+   * on EVERY phrase carrying a speaker. Our own display uses ON_CHANGE and
+   * suppresses the label on a row that does not open a run — so passing the
+   * DISPLAY-resolved label would hand `null` for every suppressed row, rule 2
+   * could not fire, and each of those rows would refuse `stale-base`. The
+   * failure is silent and it reads as a transcript that has drifted. Fixture
+   * case 1 is the row that proves this, and the harness asserts it against the
+   * inlined file, where a wrong resolution is observable.
+   *
+   * SO THE `mode` ARGUMENT IS DELIBERATELY ABSENT BELOW, matching
+   * `fromTranscribeResult` exactly rather than naming the default; that call
+   * omits it too, and the two are meant to be read side by side.
+   * `previousSpeaker` is still supplied, because the signature takes it and
+   * EVERY_LINE ignores it — passing it costs nothing and keeps the mirror
+   * faithful.
+   *
+   * ONE SNAPSHOT FOR THE WHOLE SWEEP. `currentResult()` builds a view over all
+   * 657 phrases, so taking one per entry would pay for the transcript once per
+   * suggestion; `labelsAreInformative` is hoisted beside it for the reason
+   * `patchRows` hoists its own decisions.
+   *
+   * @returns {Array<{index: number, entry: object, resolution: object}>} in
+   *   phrase order; empty when nothing is loaded
+   */
+  function reviewResolutions() {
+    const api = moduleOrNull();
+    const state = stateOrNull();
+    if (!api || !state || !state.isLoaded()) return [];
+
+    const result = currentResult();
+    const phrases =
+      result && Array.isArray(result.phrases) ? result.phrases : [];
+    if (phrases.length === 0) return [];
+
+    const labelsAreInformative = api.distinctSpeakerCount(result) > 1;
+    const resolved = [];
+
+    // EXTRACTED TO `resolveSuggestionAt` AT REGISTER ITEM 47 UNIT 8, so the
+    // adapter-speakerLabel rule this loop's own comment describes lives in
+    // one place shared with `suggestionForRow`, rather than two loops each
+    // typing it out. The per-index computation is byte-identical to before
+    // the extraction.
+    phrases.forEach((phrase, index) => {
+      const item = resolveSuggestionAt(api, state, phrases, index, labelsAreInformative);
+      if (!item) return;
+      resolved.push({ index: index, entry: item.entry, resolution: item.resolution });
+    });
+
+    return resolved;
+  }
+
+  /**
+   * One phrase's resolution, or null.
+   *
+   * A CONVENIENCE OVER `reviewResolutions`, AND IT PAYS FOR A WHOLE SWEEP. That
+   * is acceptable because its only caller is the harness, asserting one row;
+   * anything counting or rendering takes the array and reads it once.
+   *
+   * @param {number} index - a 0-based phrase index
+   * @returns {{index: number, entry: object, resolution: object}|null}
+   */
+  function suggestionResolutionAt(index) {
+    return reviewResolutions().find((item) => item.index === index) || null;
+  }
+
+  /**
+   * How many PROPOSED suggestions cannot be applied to the phrase as it stands.
+   *
+   * IT IS COMPUTED, NEVER STORED, matching how `suggestionCounts`,
+   * `editedCount` and `reassignedCount` all work: the answer depends on the
+   * phrase's CURRENT text, so correcting a line by hand can turn an applicable
+   * suggestion into a stale one with nothing having touched the change set. A
+   * stored count would be wrong from that moment and nothing would say so.
+   *
+   * ACCEPTED AND DISMISSED ENTRIES ARE NOT COUNTED. "Cannot be applied"
+   * describes a suggestion still waiting for a decision; one already decided is
+   * reported by its own clause and is not a second problem.
+   *
+   * @param {Array} [resolved] - a sweep already in hand, to avoid a second one
+   * @returns {number}
+   */
+  function reviewConflictCount(resolved) {
+    const items = resolved || reviewResolutions();
+    return items.filter(
+      (item) =>
+        item.entry.status === SUGGESTION_STATUS_PROPOSED && !item.resolution.ok,
+    ).length;
+  }
+
+  /**
+   * The rows carrying a suggestion still awaiting a decision, in phrase order.
+   *
+   * SUPERSEDED IN PART AT REGISTER ITEM 47 UNIT 14, and the withdrawn paragraph
+   * is quoted here per register items 51 and 56 rather than deleted:
+   *
+   *   ~~IT INCLUDES THE ONES THAT CANNOT BE APPLIED, and that is deliberate
+   *   rather than an oversight. A conflict is information about that line — the
+   *   design's § 11 (c) puts it in the transcript's own order for exactly that
+   *   reason — so "Next suggestion" must be able to reach it. A gesture that
+   *   silently skipped the rows a person most needs to look at would be worse
+   *   than no gesture.~~
+   *
+   * § 11 (c)'s answer was overturned by the sitting that tested it. Under D6 a
+   * conflict is reachable by Tab, from the table's own button, so a focus rule
+   * that walks applicable suggestions only no longer walks a person past
+   * anything they cannot get to. `focusNextSuggestionWrapper` carries the live
+   * rule and the two arms it now has; this function does not.
+   *
+   * IT IS CALLED BY NOTHING, MEASURED AT UNIT 14 across this file, the harness
+   * and `.claude/a11y/sr/`. It is left rather than deleted because it is a
+   * plausible seam for a later gesture, and its doc is corrected rather than
+   * left standing because a superseded caveat on an uncalled function is the
+   * hardest kind to notice.
+   *
+   * @returns {number[]}
+   */
+  function proposedRowIndices() {
+    return reviewResolutions()
+      .filter((item) => item.entry.status === SUGGESTION_STATUS_PROPOSED)
+      .map((item) => item.index);
+  }
+
+  /**
+   * The next row to move to, given where we are.
+   *
+   * PURE, AND EXPOSED SO THE WRAP CAN BE ASSERTED WITHOUT A PAGE. `indices` is
+   * in phrase order; `fromIndex` is where focus is now, or null when it is
+   * nowhere in particular.
+   *
+   * IT WRAPS. Past the last proposed suggestion it returns the first, so the
+   * gesture is a no-op only when there are none at all — a state the count
+   * sentence has already explained. WHETHER WRAPPING SILENTLY IS RIGHT IS NOT
+   * SETTLED HERE: listen row 52 part (g) asks a person to find the third
+   * suggestion among 657 rows, and the wrap is one of the things it judges. If
+   * a person is lost at the wrap, the remedy is decided there.
+   *
+   * @param {number[]} indices - rows carrying a proposed suggestion, ascending
+   * @param {number|null} fromIndex - the current row, or null
+   * @returns {number|null} the row to move to, or null when there is none
+   */
+  function nextProposedIndexFrom(indices, fromIndex) {
+    if (!Array.isArray(indices) || indices.length === 0) return null;
+    if (!Number.isInteger(fromIndex)) return indices[0];
+    const next = indices.find((index) => index > fromIndex);
+    return next === undefined ? indices[0] : next;
+  }
+
+  /**
+   * The PROPOSED suggestions that cannot be applied, in phrase order — the
+   * table's rows (design section 12's D6; register item 47 unit 14).
+   *
+   * THE SAME PREDICATE `reviewConflictCount` COUNTS, and deliberately the same
+   * sweep: the count sentence's "N cannot be applied" clause and the number of
+   * rows in this table are two readings of one fact, and a person who sees them
+   * disagree has no way to tell which to believe. That is why this returns the
+   * ITEMS and `reviewConflictCount` takes their length rather than filtering
+   * again.
+   *
+   * @param {Array} [resolved] - a sweep already in hand, to avoid a second one
+   * @returns {Array<{index: number, entry: object, resolution: object}>}
+   */
+  function reviewConflicts(resolved) {
+    const items = resolved || reviewResolutions();
+    return items.filter(
+      (item) =>
+        item.entry.status === SUGGESTION_STATUS_PROPOSED && !item.resolution.ok,
+    );
+  }
+
+  /**
+   * Build one row of the conflicts table.
+   *
+   * `createElement` AND `createTextNode` ONLY, never innerHTML, matching
+   * `buildRow`'s own rule and for its reason: the middle cell holds a phrase
+   * somebody's model proposed, and a proposal containing angle brackets must
+   * stay a proposal containing angle brackets. There is no escape helper to
+   * forget to call because there is no parse step to escape for.
+   *
+   * THE FIRST CELL IS A `<th scope="row">` AND THE OTHER TWO ARE `<td>`. A row
+   * header is what lets a reader moving across the row hear which phrase the
+   * cell belongs to without counting columns. It holds the button rather than
+   * bare text, because the phrase number and the way to reach that phrase are
+   * one thing to a person, not two.
+   *
+   * THE EXPLANATION COMES FROM `conflictSentenceFor`, the same function the
+   * transcript wrapper asks — see that function for why the two surfaces must
+   * not word a conflict differently, and why the separator is the wrapper's
+   * business and not this one's.
+   *
+   * NO DIFF AND NO VISUALLY-HIDDEN LABEL IN THE MIDDLE CELL. A conflict has no
+   * original to compare against, which is what makes it a conflict; and the
+   * column header already says what the cell holds, so the carrier the wrapper
+   * needs to tell its two halves apart has nothing to do here.
+   *
+   * @param {{index: number, entry: object, resolution: object}} item
+   * @returns {HTMLTableRowElement}
+   */
+  function buildConflictTableRow(item) {
+    const tr = document.createElement("tr");
+
+    const phraseCell = document.createElement("th");
+    phraseCell.setAttribute("scope", "row");
+    const goto = document.createElement("button");
+    goto.type = "button";
+    goto.id = CONFLICT_GOTO_ID_STEM + item.index;
+    goto.appendChild(document.createTextNode(conflictGotoText(item.index)));
+    phraseCell.appendChild(goto);
+    tr.appendChild(phraseCell);
+
+    const proposedCell = document.createElement("td");
+    proposedCell.appendChild(document.createTextNode(item.entry.proposed));
+    tr.appendChild(proposedCell);
+
+    const whyCell = document.createElement("td");
+    whyCell.appendChild(
+      document.createTextNode(conflictSentenceFor(item.resolution.reason)),
+    );
+    tr.appendChild(whyCell);
+
+    return tr;
+  }
+
+  /**
+   * The signature of what the table currently shows, for the write-if-changed
+   * test below.
+   *
+   * IT IS NOT AN OPTIMISATION, IT IS WHAT MAKES ONE CLAIM TRUE. Rebuilding the
+   * tbody destroys every button in it, so a rebuild while focus sits on one
+   * would drop that person to `<body>`. Nothing in the shipped page triggers a
+   * refresh from inside the table — the buttons move focus OUT before anything
+   * else runs, and the checkbox lives outside the table — but "nothing
+   * currently does" is an argument, and skipping the rebuild when nothing
+   * changed is a guarantee.
+   *
+   * IT CARRIES EVERY FIELD THE ROWS RENDER, so a change a reader would notice
+   * cannot leave the signature still. The separator is a newline because none
+   * of the three fields can contain one: `proposed` is a single phrase, the
+   * sentences are this file's own, and the index is a number.
+   *
+   * @param {Array} items - `reviewConflicts`' answer
+   * @returns {string}
+   */
+  function conflictTableSignature(items) {
+    return items
+      .map(
+        (item) =>
+          `${item.index}\n${item.entry.proposed}\n${item.resolution.reason}`,
+      )
+      .join("\n\u0000\n");
+  }
+
+  /**
+   * Fill the conflicts table and decide whether it and its checkbox are on
+   * screen at all (design section 12's D6; register item 47 unit 14).
+   *
+   * TWO `hidden` ATTRIBUTES, TWO PREDICATES, decided here and nowhere else —
+   * `setDisplayOptionsVisible`'s shape, and for its reason:
+   *
+   *   - the CHECKBOX shows when review is on AND at least one conflict exists.
+   *     A control governing an empty table would do nothing, and offering it
+   *     would be worse than omitting it, which is the ruling that function
+   *     already applies to the speaker option. It is withheld entirely rather
+   *     than shown disabled.
+   *   - the TABLE shows on the same two conditions AND only while the person
+   *     has NOT asked for conflicts in the transcript. D6 says the checkbox
+   *     REPLACES the table rather than adding to it, so the two are never both
+   *     on screen.
+   *
+   * IT IS A PREDICATE AND NOT A FOURTH REVEAL. The review block's own reveal is
+   * `setReviewVisible`, gated on a change set being loaded; this decides what is
+   * offered INSIDE a block that has already been revealed, which is the same
+   * distinction the design's section 6 draws between one reveal and two render
+   * decisions.
+   *
+   * SILENT, AND NOTHING HERE GAINS LIVENESS. The table appearing, changing or
+   * hiding is not an event that speaks: there is no live region, no live role,
+   * no announcer call and no toast. A person meets the table by reaching it,
+   * and each control conveys its own name and state on arrival. AGENTS.md's
+   * announcement rule question 1, and the rule every other control in this
+   * block already follows.
+   *
+   * THE TBODY IS EMPTIED WHEN THERE IS NOTHING TO SHOW rather than left holding
+   * the last set. A hidden table carrying rows from a transcript that has been
+   * discarded is a record nobody can see and nobody can trust, and this is the
+   * same care `setReviewVisible` takes over the count sentence on its hide
+   * branch.
+   */
+  function refreshConflictTable() {
+    const tableWrapper = el(CONFLICT_TABLE_ID);
+    const body = el(CONFLICT_TABLE_BODY_ID);
+    const option = el(CONFLICT_OPTION_ID);
+    if (!tableWrapper || !body || !option) {
+      logWarn(
+        "the conflicts table is missing from the page — conflicts can still be read in the transcript by ticking Show conflicts in the transcript",
+      );
+      return;
+    }
+
+    const items = showSuggestions ? reviewConflicts() : [];
+    const offer = items.length > 0;
+
+    option.hidden = !offer;
+    tableWrapper.hidden = !(offer && !showConflictsInTranscript);
+
+    // WRITE-IF-CHANGED, on the terms `conflictTableSignature` records.
+    const signature = conflictTableSignature(items);
+    if (body.dataset.conflictSignature === signature) return;
+    body.dataset.conflictSignature = signature;
+
+    body.replaceChildren(
+      ...items.map((item) => buildConflictTableRow(item)),
+    );
+    logDebug(`conflicts table: ${items.length} row(s) built`);
+  }
+
+  /**
+   * Move focus to a conflict's own phrase in the transcript — what a table
+   * row's button does (design section 12's D6; register item 47 unit 14).
+   *
+   * THIS WAS THE HARD PART OF THE UNIT AND THE DESIGN SAID SO. In edit mode the
+   * row carries an edit control and there is an obvious target; in READ-ONLY
+   * mode the row has nothing focusable at all, which is the same gap unit 6
+   * wrote into `handleNextSuggestion` in capitals and which a conflict row
+   * could previously dodge because it carried its own `tabindex="-1"` sentence.
+   * Under D6 it carries no wrapper in the transcript, so that target is gone.
+   *
+   * THE MECHANISM IS `tabindex="-1"` APPLIED AT THE MOMENT OF FOCUSING, TO THAT
+   * ROW ONLY, and it was chosen over the obvious alternative for a measurable
+   * reason. Giving EVERY row `tabindex="-1"` in `buildRow` would put an
+   * attribute on 657 elements at render time, which is a change to the rendered
+   * tree in every pinned tree-gate state; this touches one element, after the
+   * walk any instrument takes, so no pinned figure can move for it. It is also
+   * self-cleaning: `patchRows` replaces the node on the next repaint and the
+   * attribute goes with it, which is harmless because it is needed only for the
+   * instant of the move.
+   *
+   * THE EDIT CONTROL IS TRIED FIRST AND ITS ABSENCE IS THE MODE TEST. An edit
+   * control exists only in edit mode, so `el(EDIT_ID_STEM + index)` answers
+   * "which mode is this row in" without this function reading `editMode` — one
+   * source of truth rather than two that can disagree, which is the reason
+   * `setSelectionVisible` reads the module rather than taking a parameter.
+   *
+   * BY ID, NOT BY A HELD REFERENCE, for `placeFocusOnRow`'s reason: a repaint
+   * between the button being built and being pressed would leave a reference
+   * pointing at a detached element that can be focused and will do nothing.
+   *
+   * IT SCROLLS, because `focus()` scrolls by default and that is wanted here —
+   * the whole gesture is "take me to that line", and a person moving from a
+   * table at the top of the page to phrase 93 needs the page to follow.
+   *
+   * SILENT. Moving focus is not an announcement; the row announces itself on
+   * arrival, which is what a focus move is for.
+   *
+   * @param {number} index - the phrase's 0-based index
+   */
+  function placeFocusOnConflictRow(index) {
+    const control = el(EDIT_ID_STEM + index);
+    if (control) {
+      control.focus();
+      logDebug(`conflict goto: row ${index}, focus placed on ${control.id}`);
+      return;
+    }
+
+    const row = el(ROW_ID_STEM + index);
+    if (!row) {
+      logWarn(`conflict goto: row ${index} is not on the page`);
+      return;
+    }
+    row.setAttribute("tabindex", "-1");
+    row.focus();
+    logDebug(`conflict goto: row ${index}, focus placed on the row itself`);
+  }
+
+  /**
+   * A table row's button was pressed — one delegated listener for every row the
+   * table will ever have, matching how the transcript's own controls are
+   * dispatched.
+   *
+   * @param {Event} event
+   */
+  function handleConflictTableClick(event) {
+    const index = suggestionControlIndexFrom(
+      event.target,
+      CONFLICT_GOTO_ID_STEM,
+    );
+    if (index === null) return;
+    placeFocusOnConflictRow(index);
+  }
+
+  /**
+   * Re-render when "Show conflicts in the transcript" moves — the shape of
+   * `handleShowReasonsChange` and `handleShowSuggestionsChange`, for their
+   * reasons.
+   *
+   * IT RE-RENDERS *AND* REFRESHES THE TABLE, which the other two do not both
+   * do, because this is the one toggle that moves a conflict between the two
+   * surfaces: the transcript gains or loses the wrapper and the table hides or
+   * returns, and a refresh of only one of them would show the same conflict
+   * twice or not at all.
+   *
+   * NO TOAST AND NO ANNOUNCEMENT, per AGENTS.md's announcement rule question 1
+   * and the rule the two checkboxes beside it already follow.
+   */
+  function handleShowConflictsChange() {
+    const box = el(CONFLICT_TOGGLE_ID);
+    showConflictsInTranscript = box ? box.checked : false;
+    logDebug(`conflicts in transcript: shown = ${showConflictsInTranscript}`);
+    refreshConflictTable();
+    if (!haveTranscript()) return;
+    renderTranscript(currentResult());
+  }
+
+  /**
+   * Write the count sentence into its own element.
+   *
+   * SILENT TEXT, WRITE-IF-CHANGED, for `updateSelectionCount`'s reasons exactly
+   * — read that function's note, which is the one place the reasoning is set
+   * out and which this block deliberately does not restate at length. One place
+   * composes the sentence and one place writes it, so there is one place to
+   * check that nothing announces.
+   */
+  function updateReviewCount() {
+    const count = el("transcribe-review-count");
+    if (!count) return;
+
+    const state = stateOrNull();
+    if (!state || !state.isLoaded()) {
+      setText(count, REVIEW_NONE_TEXT);
+      // ON THIS BRANCH TOO. A block with no transcript must not be left
+      // holding a table of conflicts from one that has been discarded.
+      refreshConflictTable();
+      return;
+    }
+
+    const resolved = reviewResolutions();
+    const counts = reviewableCounts(resolved);
+    setText(
+      count,
+      reviewCountSentence({
+        total: counts.total,
+        accepted: counts.accepted,
+        rejected: counts.rejected,
+        conflicts: reviewConflictCount(resolved),
+      }),
+    );
+
+    // THE TABLE REFRESHES WHEREVER THE SENTENCE DOES, FROM THE SAME CALL, and
+    // that is the whole reason it is here rather than beside each caller. The
+    // sentence's "N cannot be applied" clause and the table's row count are two
+    // readings of one fact; a person who sees them disagree cannot tell which
+    // to believe. Sharing the call site makes disagreement impossible rather
+    // than unlikely.
+    refreshConflictTable();
+  }
+
+  /**
+   * The counts the sentence reports — over the REVIEWABLE set only (D9).
+   *
+   * IT REPLACES `state.suggestionCounts()` AT THE ONE PLACE THAT COMPOSES THE
+   * SENTENCE, and the difference is the whole of amendment 1. That function
+   * counts every entry the change set loaded, by status. This one counts only
+   * entries that ARRIVED reviewable, so the sentence describes decisions made
+   * on THIS surface and nothing else.
+   *
+   * WHAT THAT FIXES, CONCRETELY. A guard-held entry arrives `rejected` and was
+   * counted in the "dismissed" clause; an entry a person ticked in the other
+   * lane's own changes table arrives `accepted` and was counted in the
+   * "accepted" clause. Neither renders here, so the sentence was reporting
+   * corrections a person could not see and decisions they did not take.
+   *
+   * IT STILL COUNTS A DECISION TAKEN HERE, because `reviewResolutions` keeps
+   * an entry whose cue id is in `decidedHere` whatever its status — which is
+   * exactly what makes the rule about ARRIVAL rather than about status.
+   *
+   * `state.suggestionCounts()` IS NOT REMOVED and is still the right answer to
+   * a different question: how many entries the change set holds, in each
+   * status, whoever decided them. The suggestion-state suite asserts it and
+   * should go on doing so.
+   *
+   * @param {Array} [resolved] - a sweep already in hand, to avoid a second one
+   * @returns {{proposed: number, accepted: number, rejected: number, total: number}}
+   */
+  function reviewableCounts(resolved) {
+    const items = resolved || reviewResolutions();
+    let proposed = 0;
+    let accepted = 0;
+    let rejected = 0;
+    items.forEach((item) => {
+      const status = item.entry.status;
+      if (status === SUGGESTION_STATUS_PROPOSED) proposed += 1;
+      else if (status === SUGGESTION_STATUS_ACCEPTED) accepted += 1;
+      else if (status === SUGGESTION_STATUS_REJECTED) rejected += 1;
+    });
+    return {
+      proposed: proposed,
+      accepted: accepted,
+      rejected: rejected,
+      total: items.length,
+    };
+  }
+
+  /**
+   * Reveal or hide the review block.
+   *
+   * A FOURTH REVEAL BESIDE THE OTHER THREE, NEVER A PREDICATE INSIDE ANY OF
+   * THEM. `setDisplayOptionsVisible` carries register item 54's documented
+   * three-predicate contract, `setSpeakerNamingVisible` its own single one and
+   * `setSelectionVisible` a third; this block's is none of those. The reasoning
+   * is the one unit 4b gave for not folding naming in and unit 6 gave again for
+   * selection: a function whose contract is written down is one a later reader
+   * can check, and a further predicate would widen a contract rather than add
+   * one.
+   *
+   * THE PREDICATE IS "A CHANGE SET IS LOADED", AND NOTHING ELSE. Not the review
+   * toggle — the block CARRIES that toggle, so gating the block on it would put
+   * the control out of reach the moment it was used. Not edit mode: a
+   * suggestion is something to read as much as something to apply, and the
+   * design puts no mode condition on it. Not `labelsAreInformative`: a
+   * one-speaker transcript can carry suggestions like any other. And not
+   * `hasTranscript` as a separate parameter, because `loadSuggestions` refuses
+   * unless a transcript is loaded, so "a change set is loaded" already implies
+   * it — a second predicate here could only ever disagree with the state module
+   * about a question the state module owns.
+   *
+   * IT TAKES NO ARGUMENTS, WHICH IS THE ASYMMETRY WORTH NAMING. Its three
+   * siblings take `hasTranscript` because that is derived from the RESULT,
+   * which only the caller holds. This one asks the state module directly, for
+   * `setSelectionVisible`'s reason for reading `editMode` off the module: there
+   * is one source of truth, and passing it would create a second place it could
+   * be wrong.
+   *
+   * SILENT. Revealing or hiding a block is not an event that speaks: it is not
+   * a live region, nothing here announces, and each control conveys its own
+   * name and state when a person reaches it. Item 46 settled this for controls
+   * appearing at a flip, and the situation is the same one.
+   *
+   * IT REFRESHES THE COUNT ON BOTH BRANCHES rather than trusting whatever was
+   * last written. On the way in, so the sentence describes the set that has
+   * just arrived — the block can be revealed with a change set already
+   * standing. On the way out, so a hidden block is not left holding a figure
+   * from a transcript that has been discarded. `setText` is write-if-changed,
+   * so a refresh that changes nothing writes nothing.
+   *
+   * NOTHING IS EMPTIED ON HIDE, and that is where it differs from its two
+   * picker-owning siblings. Their `<select>` options BELONG TO A DISCARDED
+   * TRANSCRIPT, which is a real hazard; this block holds a sentence and three
+   * controls, none of which names a row. Rewriting the count to the zero-state
+   * sentence is the whole of what hiding has to undo.
+   */
+  function setReviewVisible() {
+    const block = el("transcribe-review");
+    if (!block) return;
+
+    const state = stateOrNull();
+    const show = Boolean(
+      state && state.isLoaded() && state.suggestionCounts().total > 0,
+    );
+    block.hidden = !show;
+
+    updateReviewCount();
+
+    // The two checkboxes are kept in step with this module's own state, the way
+    // setDisplayOptionsVisible keeps its three in step, so a reveal cannot show
+    // a control disagreeing with the render decision it governs.
+    const suggestionsBox = el("transcribe-review-show-suggestions");
+    if (suggestionsBox) suggestionsBox.checked = showSuggestions;
+    const reasonsBox = el("transcribe-review-show-reasons");
+    if (reasonsBox) reasonsBox.checked = showReasons;
+    // THE THIRD, since register item 47 unit 14. Its own wrapper's `hidden` is
+    // decided by `refreshConflictTable`, which `updateReviewCount` above has
+    // already run; this keeps the control's `checked` in step with the module,
+    // exactly as the two lines before it do.
+    const conflictsBox = el(CONFLICT_TOGGLE_ID);
+    if (conflictsBox) conflictsBox.checked = showConflictsInTranscript;
+  }
+
+  /**
+   * Re-read the state and bring the whole block up to date.
+   *
+   * THE ENTRY POINT FOR ANYTHING THAT LOADS A CHANGE SET, and the reason it is
+   * public. Nothing in the shipped page loads one yet — that route belongs to
+   * the Captions Fixer lane — so today its callers are the fixture loader and
+   * the tree gate. It exists so neither has to know which of the functions
+   * above to call, and so the gate can reach a revealed block by asking the
+   * controller rather than by setting a property on the page.
+   */
+  function refreshReview() {
+    setReviewVisible();
+    reportExcludedSuggestions();
+  }
+
+  /**
+   * Say how many loaded entries this surface is NOT reviewing, and why.
+   *
+   * D9 REQUIRES IT, "the way `refused` is reported" — and `refused` is
+   * reported in a LOG rather than on screen (`loadSuggestions`'s own
+   * `logInfo`), so this follows it there. An exclusion is not a fault and
+   * nothing on the page should present it as one: it is the other lane's
+   * decision being honoured, which is the correct outcome.
+   *
+   * IT IS BROKEN DOWN BY CAUSE, because the three mean different things to
+   * whoever is reading the log. A `guard:` prefix is the Captions Fixer
+   * lane's own guards holding an entry; "person" is somebody unticking a row
+   * in their changes table; a decided entry with no `rejectedBy` at all is
+   * somebody ticking one. Collapsing them to a single number would leave a
+   * reader unable to tell a guard sweep from a person's afternoon.
+   *
+   * SILENT ON THE PAGE AND SILENT TO A READER. No live region, no toast, no
+   * announcement — AGENTS.md § Announcements question 1, and the rule every
+   * other control in this block already follows.
+   */
+  function reportExcludedSuggestions() {
+    const state = stateOrNull();
+    if (!state || !state.isLoaded()) return;
+
+    const total = state.suggestionCounts().total;
+    if (total === 0) return;
+
+    let heldByGuard = 0;
+    let rejectedByPerson = 0;
+    let decidedElsewhere = 0;
+    for (let index = 0; index < state.count(); index += 1) {
+      const entry = state.suggestionAt(index);
+      if (!entry || isReviewable(entry)) continue;
+      const by = typeof entry.rejectedBy === "string" ? entry.rejectedBy : "";
+      if (by.indexOf(REJECTED_BY_GUARD_PREFIX) === 0) heldByGuard += 1;
+      else if (by === REJECTED_BY_PERSON) rejectedByPerson += 1;
+      else decidedElsewhere += 1;
+    }
+
+    const excluded = heldByGuard + rejectedByPerson + decidedElsewhere;
+    if (excluded === 0) {
+      logInfo(`all ${total} loaded suggestion(s) are reviewable on this surface`);
+      return;
+    }
+    logInfo(
+      `${excluded} of ${total} loaded suggestion(s) are NOT reviewable here — ` +
+        `${heldByGuard} held by a guard, ${rejectedByPerson} rejected by a person, ` +
+        `${decidedElsewhere} decided before this surface saw them`,
+    );
+  }
+
+  /**
+   * Re-render the rows when "Show suggestions" moves.
+   *
+   * A RENDER DECISION, NOT A REVEAL, AND THE DISTINCTION IS THE WHOLE POINT.
+   * The design's § 6 corrects an earlier draft that had two reveals: there is
+   * one reveal, on a change set being loaded, and two decisions passed into the
+   * render path exactly as `timestamps` and `edit` already are. So this handler
+   * has the shape of `handleShowTimestampsChange` and not the shape of
+   * `handleEditModeChange`.
+   *
+   * IT CHANGES NOTHING VISIBLE AT THIS UNIT, because no row renders a
+   * suggestion yet. It is wired anyway so that unit 7 adds a branch inside
+   * `buildRow` rather than a pathway through this file, and so the toggle can
+   * be measured by the tree gate before there is anything for it to move.
+   *
+   * NO TOAST AND NO ANNOUNCEMENT, per AGENTS.md § Announcements question 1 and
+   * the rule the three display options already follow. The checkbox conveys its
+   * own state and the transcript is not a live region. Listen row 52 (f) judges
+   * the reason toggle's sufficiency and (g) the block as a whole.
+   */
+  function handleShowSuggestionsChange() {
+    const box = el("transcribe-review-show-suggestions");
+    showSuggestions = box ? box.checked : false;
+    logDebug(`suggestion display: shown = ${showSuggestions}`);
+    // THE TABLE AND ITS CHECKBOX ARE OFFERED ONLY WHILE REVIEW IS ON, so this
+    // toggle decides whether either is on screen — register item 47 unit 14.
+    // It runs BEFORE the early return, because turning review off with no
+    // transcript loaded must still take the table away.
+    refreshConflictTable();
+    // haveTranscript(), not currentResult(): see its doc comment for why the
+    // yes/no question is not asked by building a snapshot and testing it.
+    if (!haveTranscript()) return;
+    renderTranscript(currentResult());
+  }
+
+  /**
+   * Re-render the rows when "Show the reason for each suggestion" moves — the
+   * same shape as the handler above, for the same reasons.
+   *
+   * IT SHIPS TICKED, which is the design's stated default: a reason is useful
+   * information and withholding it is the exceptional choice. The asymmetry
+   * with "Show suggestions", which ships clear, is deliberate and is recorded
+   * in tools.html beside the markup.
+   */
+  function handleShowReasonsChange() {
+    const box = el("transcribe-review-show-reasons");
+    showReasons = box ? box.checked : true;
+    logDebug(`suggestion reasons: shown = ${showReasons}`);
+    if (!haveTranscript()) return;
+    renderTranscript(currentResult());
+  }
+
+  /**
+   * The row a suggestion control belongs to, reading focus's ACTUAL current
+   * position — register item 47 unit 10.
+   *
+   * FOUR STEMS, TRIED IN TURN: the edit control (edit mode only), Accept,
+   * Dismiss, and a conflict's own sentence. Any one of them can hold focus
+   * when "Next suggestion" is pressed, because Accept and Dismiss land at
+   * this same unit and a person can be sitting on any of the four when they
+   * reach for it. `null` when focus is nowhere any of the four name — on the
+   * "Next suggestion" button itself, on some other control entirely, or
+   * nowhere in particular — and the sweep below starts at the first
+   * suggestion in that case, exactly as it always has.
+   *
+   * @returns {number|null}
+   */
+  function focusedSuggestionRowIndex() {
+    const target = document.activeElement;
+    const edit = editIndexOf(target);
+    if (edit !== null) return edit;
+    const accept = suggestionControlIndexFrom(target, ACCEPT_ID_STEM);
+    if (accept !== null) return accept;
+    const dismiss = suggestionControlIndexFrom(target, DISMISS_ID_STEM);
+    if (dismiss !== null) return dismiss;
+    const conflict = suggestionControlIndexFrom(target, CONFLICT_ID_STEM);
+    if (conflict !== null) return conflict;
+    // A FIFTH STEM SINCE REGISTER ITEM 47 UNIT 14, AND IT IS THE ROW ITSELF.
+    // "Go to phrase" leaves focus on the `<li>` in read-only mode, so without
+    // this a person who has just been taken to phrase 93 and then presses
+    // "Next suggestion" is sent back to the first suggestion in the transcript
+    // rather than on to the next one. The row is not a CONTROL, which is what
+    // this function's own heading says it reads; it is where focus really is,
+    // which is what the sweep below actually needs.
+    return suggestionControlIndexFrom(target, ROW_ID_STEM);
+  }
+
+  /**
+   * Move focus to the next row carrying a suggestion still awaiting a
+   * decision, given where the person is now — THE ONE FOCUS RULE Accept,
+   * Dismiss and "Next suggestion" all share (register item 47 unit 10).
+   *
+   * ONE RULE WITH TWO ARMS SINCE REGISTER ITEM 47 UNIT 14, and which arm is
+   * live is the person's own choice rather than a mode:
+   *
+   *   - WITH THE TABLE SHOWING (the default), it walks APPLICABLE suggestions
+   *     in the transcript only. A conflict is not in the transcript to be
+   *     walked to, and it is reachable by Tab from the table's own button, so
+   *     nothing is skipped past — design section 12's D6.
+   *   - WITH "Show conflicts in the transcript" TICKED, the rule is section
+   *     7's, unchanged: conflicts are walked like any other proposed row, and
+   *     a conflict's target is its own sentence, which is why that sentence
+   *     takes `tabindex="-1"` (buildSuggestionWrapper).
+   *
+   * THE WITHDRAWN PARAGRAPH IS QUOTED HERE per register items 51 and 56,
+   * because its reasoning is still correct about the world it described:
+   *
+   *   ~~CONFLICTS ARE NOT SKIPPED. A rule that jumped only between applicable
+   *   rows would walk a person past every line the surface could not fix,
+   *   which is the opposite of why a conflict sits in the transcript's own
+   *   order at all (design § 11 (c)).~~
+   *
+   * § 11 (c) was tested by the sitting it was written for and overturned. What
+   * makes skipping safe now is not that conflicts matter less but that they
+   * have somewhere else to be reached from; under the ticked arm they are in
+   * the transcript and the old rule applies to them in full.
+   *
+   * When nothing remains for the live arm, the target is the count sentence,
+   * which took `tabindex="-1"` for exactly this (tools.html's own comment
+   * beside it).
+   *
+   * ONE SWEEP, `reviewResolutions()`, READ ONCE. `proposedRowIndices()` and a
+   * second resolution of the landing row would be the same sweep taken
+   * twice; this function takes it once and reads both the ordered index list
+   * and each row's own `resolution.ok` off the one array.
+   *
+   * @param {number|null} fromIndex - where focus is now, or null
+   */
+  function focusNextSuggestionWrapper(fromIndex) {
+    const proposed = reviewResolutions().filter(
+      (item) =>
+        item.entry.status === SUGGESTION_STATUS_PROPOSED &&
+        // D6's arm. A conflict is walkable only while it is in the transcript;
+        // otherwise there is nothing in the list for this rule to land on, and
+        // its own row has no focus target at all.
+        (showConflictsInTranscript || item.resolution.ok),
+    );
+
+    if (proposed.length === 0) {
+      const count = el("transcribe-review-count");
+      if (!count) {
+        logWarn("cannot move focus to the count sentence — it is missing");
+        return;
+      }
+      count.focus();
+      logDebug("suggestion focus: none proposed remain — moved to the count sentence");
+      return;
+    }
+
+    const indices = proposed.map((item) => item.index);
+    const nextIndex = nextProposedIndexFrom(indices, fromIndex);
+    const item = proposed.find((entry) => entry.index === nextIndex);
+    const targetId = item.resolution.ok
+      ? ACCEPT_ID_STEM + nextIndex
+      : CONFLICT_ID_STEM + nextIndex;
+
+    const target = el(targetId);
+    if (!target) {
+      logWarn(`row ${nextIndex}'s suggestion focus target (${targetId}) is missing`);
+      return;
+    }
+    target.focus();
+    logDebug(`suggestion focus moved from ${fromIndex} to ${targetId}`);
+  }
+
+  /**
+   * "Next suggestion": move focus to the next row awaiting a decision, from
+   * wherever focus is now.
+   *
+   * WORKS IN BOTH MODES, SINCE UNIT 10. Accept, Dismiss and a conflict's own
+   * sentence all exist in read-only mode as well as edit mode — the
+   * limitation the previous version of this comment recorded, that the
+   * gesture only worked in edit mode because it targeted the row's edit
+   * control, is discharged: `focusNextSuggestionWrapper` targets the row's
+   * OWN focus target, not the row.
+   *
+   * A NO-OP SAYS NOTHING. With no proposed suggestion left, focus still moves
+   * — to the count sentence, which has already said why — but nothing is
+   * announced for a gesture that moved nothing new; item 46's rule that a
+   * no-op is silent, applied here to what this function does NOT do rather
+   * than to a return that skips it.
+   */
+  function handleNextSuggestion() {
+    focusNextSuggestionWrapper(focusedSuggestionRowIndex());
+  }
+
+  /**
+   * The sentence spoken after Accept or Dismiss (register item 47 unit 10;
+   * design § 7).
+   *
+   * PURE, AND EXPOSED FOR THE SAME REASON `reviewCountSentence` is — the
+   * harness can assert the wording without a page, a fixture or a render.
+   *
+   * "N REMAINING" USES `numberWord`, NOT `pluralise` — the house rule for
+   * prose a person reads (see `numberWord`'s own doc comment): one to nine as
+   * words, ten and up as digits. "NO SUGGESTIONS REMAINING" IS WORDS, NEVER A
+   * PRINTED ZERO, for the same reason `reviewCountSentence` omits a
+   * zero-valued clause rather than printing one.
+   *
+   * PROVISIONAL WORDING, matching every other sentence this unit ships —
+   * design § 7 says so of its own draft, and listen row 52 part (d) is what
+   * decides it.
+   *
+   * @param {"accepted"|"dismissed"} verb
+   * @param {number} phraseNumber - 1-based
+   * @param {number} remaining - suggestions still proposed, counted AFTER
+   *   this decision
+   * @returns {string}
+   */
+  function suggestionDecisionSentence(verb, phraseNumber, remaining) {
+    const remainingClause =
+      remaining === 0
+        ? "No suggestions remaining."
+        : `${numberWord(remaining)} remaining.`;
+    return `Suggestion ${verb} for phrase ${phraseNumber}. ${remainingClause}`;
+  }
+
+  /**
+   * The shared tail of Accept and Dismiss: write the status, repaint the row,
+   * update the count, move focus, then announce — in that order, matching
+   * design § 7's numbered steps exactly. Focus moves BEFORE the announcement
+   * is spoken, and both happen AFTER `patchRows`, because the repaint
+   * destroys the button that was pressed (register item 47 unit 10).
+   *
+   * `setSuggestionStatus` IS THE ONLY WRITER OF `status`, so this is the one
+   * place either gesture reaches it. A refusal here — a phrase index that no
+   * longer carries an entry, or an index out of range — means the button was
+   * never supposed to render; it is logged and nothing downstream runs,
+   * matching Accept's own rule for a resolution failure.
+   *
+   * THE NO-OP RULE FROM ITEM 46 IS ANSWERED BY CONSTRUCTION, NOT BY A GUARD
+   * HERE. `setSuggestionStatus` always changes something when it is reached
+   * from Accept or Dismiss — the entry's status is "proposed" whenever the
+   * button that calls this exists (`suggestionForRow` refuses any other
+   * status) — so there is no "nothing happened" branch to gate. Design § 7's
+   * own no-op case is about the TEXT, not the status: an accepted suggestion
+   * whose `proposed` equals the current text writes no new bytes and still
+   * moves the status and still speaks, because the person's gesture changed
+   * the RECORD even though it changed no words. That case is handled in
+   * `handleAcceptSuggestion`, which calls `setText` before this function ever
+   * runs and does not gate on whether it changed anything.
+   *
+   * @param {number} index - the phrase's 0-based index
+   * @param {"accepted"|"dismissed"} verb - the word the announcement uses
+   * @param {"accepted"|"rejected"} status - the value written to the entry
+   */
+  function finishSuggestionDecision(index, verb, status) {
+    const state = stateOrNull();
+    if (!state || !state.isLoaded()) {
+      logWarn(`${verb} on phrase ${index} — no transcript loaded`);
+      return;
+    }
+
+    // READ BEFORE THE WRITE. `suggestionAt` returns the LIVE entry, so
+    // reading the cue id after `setSuggestionStatus` would still work — but
+    // the write is what makes the entry indistinguishable from one decided
+    // upstream, so the record of "we decided this" is taken first as a matter
+    // of ordering rather than of necessity. See `decidedHere`.
+    const deciding = state.suggestionAt(index);
+    const decidedCueId = deciding ? deciding.cueId : null;
+
+    try {
+      state.setSuggestionStatus(index, status);
+    } catch (error) {
+      logError(`the ${verb} decision on phrase ${index} was refused`, error);
+      return;
+    }
+
+    // ONLY AFTER THE WRITE SUCCEEDED. A refused write returns above, so a
+    // decision this surface did not actually make never reaches the set —
+    // which matters because membership makes an entry reviewable for the
+    // life of the page.
+    if (decidedCueId !== null) decidedHere.add(decidedCueId);
+
+    patchRows([index]);
+    updateReviewCount();
+    focusNextSuggestionWrapper(index);
+
+    // COUNTED OVER THE REVIEWABLE SET, not `state.suggestionCounts()`, which
+    // counts every loaded entry including the ones D9 excludes. Saying "two
+    // left" when one of them is an entry a guard held upstream would send a
+    // person hunting for a suggestion this surface never shows.
+    const remaining = reviewableCounts().proposed;
+    speak(suggestionDecisionSentence(verb, index + 1, remaining));
+  }
+
+  /**
+   * Accept a row's proposed suggestion (register item 47 unit 10; design
+   * § 7, steps 1-7).
+   *
+   * RESOLVES THE TEXT ITSELF, THROUGH THE SAME THREE ARGUMENTS
+   * `suggestionForRow` RESOLVES WITH, rather than trusting whatever the
+   * wrapper last rendered — the wrapper can be stale by the time a person
+   * presses the button (another gesture patched the row in between), so this
+   * re-resolves against the CURRENT phrase text rather than reading the DOM.
+   *
+   * A RESOLUTION FAILURE HERE MEANS THE BUTTON WAS NEVER SUPPOSED TO RENDER.
+   * `buildSuggestionWrapper` only ever builds Accept and Dismiss on the
+   * `resolution.ok` branch, so reaching this function with a failing
+   * resolution is a defect — logged, and nothing is written, matching
+   * `commitControl`'s own rule for a refused write.
+   *
+   * `state.setText` IS CALLED WITHOUT GATING ON `changed` — see
+   * `finishSuggestionDecision`'s own note on the no-op case design § 7
+   * describes: an accepted suggestion whose resolved text equals the current
+   * text writes no new bytes and still moves the status and still speaks.
+   *
+   * @param {number} index - the phrase's 0-based index
+   */
+  function handleAcceptSuggestion(index) {
+    const api = moduleOrNull();
+    const state = stateOrNull();
+    if (!api || !state || !state.isLoaded()) {
+      logWarn(`accept on phrase ${index} — no transcript loaded`);
+      return;
+    }
+
+    const result = currentResult();
+    const phrases = result && Array.isArray(result.phrases) ? result.phrases : [];
+    const phrase = phrases[index];
+    const entry = state.suggestionAt(index);
+    if (!phrase || !entry) {
+      logWarn(`accept on phrase ${index} — no suggestion to accept`);
+      return;
+    }
+
+    const labelsAreInformative = api.distinctSpeakerCount(result) > 1;
+    const speakerLabel = api.speakerLabelFor({
+      speaker: phrase.speaker,
+      previousSpeaker: api.previousSpeakerAt(phrases, index),
+      labelsAreInformative,
+    });
+
+    const resolution = api.suggestionTextFor({
+      original: entry.original,
+      proposed: entry.proposed,
+      currentText: phrase.text,
+      speakerLabel,
+    });
+
+    if (!resolution.ok) {
+      logWarn(
+        `accept on phrase ${index} — the button should never have rendered; ` +
+          `the suggestion no longer resolves (${resolution.reason})`,
+      );
+      return;
+    }
+
+    state.setText(index, resolution.text);
+    finishSuggestionDecision(index, "accepted", "accepted");
+  }
+
+  /**
+   * Dismiss a row's proposed suggestion — steps 3 to 7 of design § 7's Accept
+   * list, with no write to the text (register item 47 unit 10).
+   *
+   * NO RESOLUTION IS TAKEN. Dismissing needs no text and no speaker label —
+   * only that a proposed entry exists to dismiss, which
+   * `finishSuggestionDecision`'s own `setSuggestionStatus` call refuses
+   * loudly if it does not.
+   *
+   * @param {number} index - the phrase's 0-based index
+   */
+  function handleDismissSuggestion(index) {
+    const state = stateOrNull();
+    if (!state || !state.isLoaded()) {
+      logWarn(`dismiss on phrase ${index} — no transcript loaded`);
+      return;
+    }
+    if (!state.suggestionAt(index)) {
+      logWarn(`dismiss on phrase ${index} — no suggestion to dismiss`);
+      return;
+    }
+    finishSuggestionDecision(index, "dismissed", "rejected");
   }
 
   // ==========================================================================
@@ -2537,18 +5379,47 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * diverge, which is the objection applySpeakerName and commitControl both
    * record.
    *
-   * THE SELECTION IS KEPT, NOT CLEARED, AND IT IS A DECISION WITH A NAMED
-   * ALTERNATIVE. Moving the lines back is the only undo this feature has —
-   * design section 5 settles that `revertSpeaker` is not built precisely
-   * because `setSpeaker` to the arrival slot already is one — and keeping the
-   * ticks makes that undo ONE gesture rather than forty. Clearing would punish
-   * the most likely mistake, which is moving the right lines to the wrong
-   * speaker. THE ALTERNATIVE IS TO CLEAR, on the ground that a selection
-   * surviving its own gesture can read as a trap: a person who moves and then
-   * moves again without looking moves the same lines twice. Clear selection
-   * exists for when they are done. LISTEN ROW 49 IS WHERE THIS IS DECIDED, and
-   * it is recorded here as two options rather than one preference so the
-   * sitting has something to compare against.
+   * THE SELECTION IS CLEARED, AND UNIT 7b's DECISION TO KEEP IT IS WITHDRAWN
+   * (register item 46 unit 10, the sitting of 14 September 2026). 7b recorded
+   * both readings and took no preference, naming listen row 49 as the place it
+   * would be decided; that is what happened. The withdrawn paragraph is quoted
+   * in place rather than deleted, per register items 51 and 56:
+   *
+   *   "THE SELECTION IS KEPT, NOT CLEARED, AND IT IS A DECISION WITH A NAMED
+   *    ALTERNATIVE. Moving the lines back is the only undo this feature has —
+   *    design section 5 settles that `revertSpeaker` is not built precisely
+   *    because `setSpeaker` to the arrival slot already is one — and keeping
+   *    the ticks makes that undo ONE gesture rather than forty. Clearing would
+   *    punish the most likely mistake, which is moving the right lines to the
+   *    wrong speaker. THE ALTERNATIVE IS TO CLEAR, on the ground that a
+   *    selection surviving its own gesture can read as a trap: a person who
+   *    moves and then moves again without looking moves the same lines twice.
+   *    Clear selection exists for when they are done. LISTEN ROW 49 IS WHERE
+   *    THIS IS DECIDED, and it is recorded here as two options rather than one
+   *    preference so the sitting has something to compare against."
+   *
+   * THE RULING IS CLEAR, AND THE GROUND IS THAT THE TRAP READING BEATS THE
+   * CONVENIENCE ONE. A selection surviving its own gesture is something people
+   * may simply not notice — and an unnoticed selection is acted on again. The
+   * undo the withdrawn text was protecting is a real cost and is not denied:
+   * REVERSING A CHANGE NOW MEANS RE-TICKING.
+   *
+   * THE COMPENSATION IS ALREADY BUILT AND IS WHY THE COST IS BEARABLE. The
+   * notification names BOTH speakers — "4 lines changed from Speaker 1 to
+   * Speaker 2" — so a person who wants to reverse it knows what to set the
+   * picker back to even with the ticks gone. That sentence was built at unit 8
+   * for a different reason and turns out to carry this one.
+   *
+   * IT IS CLEARED BEFORE EITHER REPAINT BRANCH RUNS, so both paths read an
+   * empty selection and rebuild unticked rows from it. There is no second
+   * writer walking the checkboxes, and no window in which the Set and the boxes
+   * disagree.
+   *
+   * AND THE CLEAR ITSELF SAYS NOTHING. One gesture, one output: the change's
+   * own notification is it. A second toast for a consequence of the first is
+   * noise, and the no-op rule this file records exists to stop exactly that.
+   * Listen row 51 reads for whether a selection disappearing in silence is
+   * discoverable, which is the question this ruling opens.
    *
    * A REFUSAL SAYS NOTHING BUT A LOG LINE, exactly as applySpeakerName's does:
    * no toast, no announcer call, no live region — the CODE and not the
@@ -2574,9 +5445,13 @@ const OpenRouterEmbedTranscribeUI = (function () {
     }
 
     // speakerLabelText does NOT guard a missing module, and every repaint path
-    // below reaches it. applySpeakerName carries the same guard for the same
-    // reason, and it sits BEFORE the write so a missing module cannot leave the
-    // state moved and the screen unpainted.
+    // below reaches it through buildRow. It sits BEFORE the write so a missing
+    // module cannot leave the state moved and the screen unpainted.
+    // applySpeakerName carries the same guard in the same position, and since
+    // unit 10 for a DIFFERENT reason — its repaint guards for itself and its
+    // SENTENCE does not. Two guards, one shape, two grounds; the clause saying
+    // "for the same reason" was true until then and is corrected rather than
+    // left to mislead.
     const api = moduleOrNull();
     if (!api) {
       logError("cannot move lines — the transcribe module is missing");
@@ -2686,6 +5561,25 @@ const OpenRouterEmbedTranscribeUI = (function () {
       api.speakerDisplayName({ speaker: target, names: namesNow }),
     );
 
+    // THE SELECTION IS EMPTIED HERE, BEFORE EITHER BRANCH, AND THE COUNT
+    // FOLLOWS IT (register item 46 unit 10). Both repaint paths read
+    // `selectedRows` — the full render through renderTranscript's own hoist,
+    // the targeted one through patchRows' — so clearing above them is what
+    // makes every rebuilt row come back unticked BY CONSTRUCTION. Clearing
+    // after a branch would leave the Set and the boxes disagreeing for the
+    // length of the repaint, and would need a second writer to walk 657
+    // checkboxes and put them right.
+    //
+    // `indices` WAS TAKEN BEFORE THIS AND IS STILL THE ROWS THE PERSON TICKED.
+    // It is an ordinary array by now, not a view on the Set, so emptying the
+    // Set cannot reach back into it — which is what lets the affected set below
+    // still know what was selected.
+    //
+    // NOTHING IS ANNOUNCED FOR THE CLEAR. See this function's own notes: one
+    // gesture, one output, and the change's sentence is it.
+    selectedRows.clear();
+    updateSelectionCount();
+
     if (informativeBefore !== informativeAfter) {
       // THE FLIP BRANCH. Every row's label decision has changed at once, not
       // just the moved ones, so a targeted repaint cannot serve it — design
@@ -2712,21 +5606,55 @@ const OpenRouterEmbedTranscribeUI = (function () {
         labelsAreInformative: informativeAfter,
       });
       setSelectionVisible({ hasTranscript: true });
+      // THE FOURTH REVEAL (register item 47 unit 6). This branch is where
+      // patchRows falls through to a full render, and it refreshed THREE
+      // reveals when unit 6 found it. The review block joins them for the
+      // reason the comment above gives for the other three: a reveal reads the
+      // state the rows are in, and a block left unrefreshed here would carry a
+      // count sentence composed before the labels flipped — and the conflict
+      // clause in that sentence DEPENDS on the label decision, because
+      // `suggestionTextFor` composes its expected prefix from a resolved
+      // speaker number. This is the one call site where skipping it would give
+      // a WRONG figure rather than merely a stale visibility.
+      setReviewVisible();
       speak(changeSentence);
       logInfo(
         `moved ${outcome.changed} line(s) to speaker ${target}; labels became ` +
-          `${informativeAfter ? "informative" : "uninformative"}, so the list was rebuilt`,
+          `${informativeAfter ? "informative" : "uninformative"}, so the list was ` +
+          `rebuilt; selection cleared`,
       );
       return;
     }
 
-    // THE TARGETED BRANCH. The set to repaint is each moved row AND THE ONE
-    // AFTER IT — `setSpeaker` returns the rows that CHANGED, which is not the
-    // same set, because ON_CHANGE suppression reads the previous row through
-    // `previousSpeakerAt` and a row whose own speaker did not move can still
-    // gain or lose its label. Bounded at the last index so a neighbour past the
-    // end is never asked for, deduped so a moved row adjacent to another moved
-    // row is not rebuilt twice, and sorted so the batch is orderly.
+    // THE TARGETED BRANCH. The set to repaint is THREE things unioned, and each
+    // is here for a different reason:
+    //
+    //   1. EACH MOVED ROW — `outcome.indices`, the rows `setSpeaker` reports as
+    //      actually changed. Their speaker span and their marker both moved.
+    //
+    //   2. THE ROW AFTER EACH MOVED ROW. `setSpeaker` returns the rows that
+    //      CHANGED, which is not the same set, because ON_CHANGE suppression
+    //      reads the previous row through `previousSpeakerAt` — so a row whose
+    //      own speaker did not move can still gain or lose its label.
+    //
+    //   3. EVERY ROW THAT WAS SELECTED (register item 46 unit 10). THIS IS THE
+    //      ONE THAT IS EASY TO MISS AND THE CONSOLE SHEET HAS A ROW NAMED FOR
+    //      IT. A ticked row that ALREADY carried the target speaker did not
+    //      change, so it is not in `outcome.indices` at all — and without this
+    //      term it would keep its tick while every row beside it lost one. Tick
+    //      six lines where two are already on the target, and four would clear.
+    //
+    // FOLDING THE OLD SELECTION IN IS WHAT MAKES THE CLEAR CORRECT BY
+    // CONSTRUCTION AND AVOIDS A SECOND WRITER. These rows are being rebuilt
+    // anyway; `buildRow` reads the now-empty Set for its `selected` argument,
+    // so the tick goes simply by the row being built again. The alternative —
+    // walking the checkboxes and setting `checked = false` — is the arrangement
+    // handleClearSelection uses, and it is right THERE because that gesture
+    // rebuilds nothing. Here it would be a second path to the same outcome.
+    //
+    // Bounded at the last index so a neighbour past the end is never asked for,
+    // deduped so adjacent moved rows are not rebuilt twice, and sorted so the
+    // batch is orderly.
     const result = currentResult();
     const lastIndex =
       (result && Array.isArray(result.phrases) ? result.phrases.length : 0) - 1;
@@ -2734,6 +5662,9 @@ const OpenRouterEmbedTranscribeUI = (function () {
     outcome.indices.forEach((index) => {
       toRepaint.add(index);
       if (index + 1 <= lastIndex) toRepaint.add(index + 1);
+    });
+    indices.forEach((index) => {
+      if (index >= 0 && index <= lastIndex) toRepaint.add(index);
     });
     const affected = Array.from(toRepaint).sort((a, b) => a - b);
 
@@ -2744,11 +5675,26 @@ const OpenRouterEmbedTranscribeUI = (function () {
     // drops out of it while staying in the move picker's union.
     repopulateSpeakerPickers();
 
+    // A MOVE CAN TURN AN APPLICABLE SUGGESTION INTO A CONFLICT TOO, by the
+    // other of `suggestionTextFor`'s two routes — register item 47 unit 14. A
+    // moved line keeps its `sourceSpeaker` and gains a new `speaker`, which is
+    // exactly the `speaker-changed` case unit 13 built rule 3 for. Placed
+    // BEFORE the announcement and after the repaint, matching
+    // `finishSuggestionDecision`'s own ordering; it announces nothing itself.
+    //
+    // A RENAME IS NOT HERE, AND THE ABSENCE IS MEASURED RATHER THAN OVERLOOKED.
+    // `resolveSuggestionAt` composes the expected prefix through
+    // `speakerLabelFor` with NO `names` argument, so it is always the numbered
+    // form — a name can change what the row PRINTS and cannot change what
+    // resolves. `applySpeakerName`'s own `patchRows` therefore needs no refresh
+    // here, and adding one would suggest a coupling that does not exist.
+    updateReviewCount();
+
     speak(changeSentence);
     logInfo(
       `moved ${outcome.changed} line(s) to speaker ${target}; ` +
         `${painted.rebuilt} row(s) repainted (${affected.length} affected, ` +
-        `${outcome.changed} moved), selection kept`,
+        `${outcome.changed} moved), selection cleared`,
     );
   }
 
@@ -3109,75 +6055,6 @@ const OpenRouterEmbedTranscribeUI = (function () {
   }
 
   /**
-   * Repaint the speaker label on every row belonging to one slot.
-   *
-   * THE TARGETED REPAINT, AND THE TRAP DESIGN SECTION 4 WAS WRITTEN AROUND.
-   *
-   * IT REPLACES NO NODE AND REBUILDS NO ROW. It calls neither buildRow nor
-   * patchRow: it walks the phrases ONCE, finds each affected row by its stable
-   * id, finds the speaker span already inside it, and writes textContent. So
-   * nothing a person could be inside is removed, and NO FOCUS PLACEMENT IS
-   * NEEDED AT ALL — focus stays on the Apply button or in the name field,
-   * untouched. That is the whole payoff of the design's two-tier decision, and
-   * it is what listen row 47 (b) reads for one level up.
-   *
-   * NEVER LOOP patchRow. It recomputes `distinctSpeakerCount` over the WHOLE
-   * result on every call, so a loop over a slot's rows is quadratic on exactly
-   * the transcripts that most need not to be — 657 rows times a full rescan
-   * each. The single hoisted `speakerLabelText` call below is the contrast: one
-   * composition for the whole slot, not one per row.
-   *
-   * ROWS WITH NO SPEAKER SPAN ARE SKIPPED, AND THAT IS ORDINARY RATHER THAN A
-   * FAULT. Under ON_CHANGE only the rows where the speaker changes carry a
-   * label — 56 of the fixture's 657 — and a row that prints no label has no
-   * label to rename. The `querySelector` miss is an expected outcome here, so
-   * it is counted for the log line and never warned about per row.
-   *
-   * WRITE-IF-CHANGED IS LOAD-BEARING, NOT TIDINESS. An identical-value
-   * textContent assignment is a REAL mutation and arrives as `childList`, not
-   * `characterData` — visible to any observer, and audible the day this subtree
-   * ever gains a live role. AGENTS.md records the measurement; commitControl
-   * applies the same rule one layer down at the state.
-   *
-   * A RENAME NEVER CHANGES WHICH ROWS SHOW A LABEL. Suppression depends on
-   * speaker NUMBERS and the label mode, not on names, so the set of rows
-   * carrying a span is identical before and after. A row gaining or losing one
-   * during a rename is a fault, and this unit's console sheet reads for it.
-   *
-   * @param {number} slot
-   * @param {Object<string, string>} names - read once by the caller
-   * @returns {{written: number, skipped: number, matched: number}}
-   */
-  function repaintSpeakerLabels(slot, names) {
-    const result = currentResult();
-    const phrases = result && Array.isArray(result.phrases) ? result.phrases : [];
-
-    // Composed ONCE for the whole slot. Every row in it prints the same string.
-    const label = speakerLabelText(slot, names);
-
-    let written = 0;
-    let skipped = 0;
-    let matched = 0;
-
-    phrases.forEach((phrase, index) => {
-      if (!phrase || phrase.speaker !== slot) return;
-      matched += 1;
-      const row = el(ROW_ID_STEM + index);
-      if (!row) return;
-      const span = row.querySelector(`.${CLASS_SPEAKER}`);
-      if (!span) {
-        skipped += 1;
-        return;
-      }
-      if (span.textContent === label) return;
-      span.textContent = label;
-      written += 1;
-    });
-
-    return { written: written, skipped: skipped, matched: matched };
-  }
-
-  /**
    * Apply the name in the field to the slot in the picker. THE ONLY APPLY PATH.
    *
    * BOTH GESTURES REACH THIS ONE FUNCTION — the Apply button's click and Enter
@@ -3221,6 +6098,34 @@ const OpenRouterEmbedTranscribeUI = (function () {
    * trimmed name equals the stored one — AGENTS.md's write-if-changed answered
    * at the state — and an apply that changed nothing must not repaint a row or
    * repopulate a control.
+   *
+   * IT REPAINTS THROUGH `patchRows` SINCE UNIT 10, AND THE TARGETED WRITER IS
+   * DELETED RATHER THAN LEFT UNUSED. The withdrawn line read
+   * `const painted = repaintSpeakerLabels(slot, names);`, and that function's
+   * own JSDoc is quoted in full in the design document rather than kept here.
+   *
+   * IT IS A SIMPLIFICATION AS WELL AS A FIX, WHICH IS WHY THE WRITER GOES
+   * RATHER THAN GAINING A SECOND CASE. `patchRows` becomes the ONE repaint path
+   * for both gestures that change what a row says, so the marker's wording is
+   * composed in one place that both reach — `buildRow` — and a rename can no
+   * longer produce a row that differs from a rendered one. Two writers is how
+   * the staleness got in: the targeted one knew about the speaker span and
+   * nothing else on the row.
+   *
+   * THE COST IS BOUNDED AND WAS MEASURED BEFORE IT WAS ACCEPTED. A rename now
+   * rebuilds that slot's rows rather than writing one string each — 307 rows on
+   * slot 1 of the committed fixture. Unit 7b measured 100 rows patched in 4 ms
+   * on the same path, so the predicted cost was roughly 12 ms and the measured
+   * figure is recorded against listen row 51 rather than against this comment,
+   * which would go stale.
+   *
+   * FOCUS IS SAFE BY CONSTRUCTION AND NOT BY CARE, WHICH IS THE SAME ARGUMENT
+   * THAT MADE THE MOVE SAFE. This gesture is reached from the Apply button or
+   * from the name field, both OUTSIDE the list, so no row being replaced can
+   * hold focus — `patchRows`'s own notes carry the reasoning and its no-focus-
+   * placement decision follows from it. The withdrawn repaint claimed a
+   * stronger property, that it replaced no node at all; that property is real
+   * and was not worth a second builder and a stale marker.
    */
   function applySpeakerName() {
     const state = stateOrNull();
@@ -3229,10 +6134,13 @@ const OpenRouterEmbedTranscribeUI = (function () {
       return;
     }
 
-    // speakerLabelText does NOT guard a missing module — its own notes say so,
-    // and name unit 4b's rename path as the caller that must guard it. This is
-    // that guard, and it sits BEFORE the write so a missing module cannot leave
-    // the state named and the screen unpainted.
+    // THE GUARD STAYS, AND ITS REASON CHANGED AT UNIT 10. It was here because
+    // the old targeted repaint called `speakerLabelText`, which guards nothing;
+    // that repaint is gone and `patchRows` guards for itself. What still needs
+    // it is the SENTENCE — `api.speakerDisplayName` is called unguarded below
+    // to compose the slot's number form — and it still sits BEFORE the write,
+    // so a missing module cannot leave the state named and the screen
+    // unpainted.
     if (!moduleOrNull()) {
       logError("cannot apply a speaker name — the transcribe module is missing");
       return;
@@ -3308,7 +6216,34 @@ const OpenRouterEmbedTranscribeUI = (function () {
       typeof applied === "string" && applied !== ""
         ? nameAppliedSentence(previousDisplay, applied)
         : nameClearedSentence(previousDisplay, numberDisplay);
-    const painted = repaintSpeakerLabels(slot, names);
+    // THE RENAME REPAINT, THROUGH `patchRows` SINCE UNIT 10 — the ONE repaint
+    // path, and the line it replaces is quoted in the JSDoc above.
+    //
+    // THE AFFECTED SET IS BOTH SIDES OF THE MARKER, and that is the defect this
+    // replaced. A row whose CURRENT speaker is the renamed slot needs its label
+    // and the marker's "to" half; a row whose SOURCE speaker is the renamed
+    // slot needs the marker's "from" half and may carry a different speaker
+    // entirely — so it is not in the first set at all. The old targeted repaint
+    // saw neither: it matched on `phrase.speaker === slot` and wrote only the
+    // speaker span's textContent, so a renamed source slot kept its old "from"
+    // text for ever and a renamed current slot kept its old "to" text.
+    //
+    // NO NEIGHBOUR WIDENING, WHICH IS WHERE THIS DIFFERS FROM THE MOVE. A
+    // rename never changes which rows show a label — suppression depends on
+    // speaker NUMBERS and the label mode, not on names — so no row outside this
+    // set can gain or lose one. The move widens by one per moved row precisely
+    // because a move DOES change that.
+    const result = currentResult();
+    const phrasesNow =
+      result && Array.isArray(result.phrases) ? result.phrases : [];
+    const affected = [];
+    phrasesNow.forEach((phrase, index) => {
+      if (!phrase) return;
+      if (phrase.speaker === slot || phrase.sourceSpeaker === slot) {
+        affected.push(index);
+      }
+    });
+    const painted = patchRows(affected);
     // BOTH PICKERS SINCE ITEM 46 UNIT 7b, where this line read
     // `populateSpeakerPicker()`. A rename changes neither picker's slot SET and
     // both pickers' option TEXT, and the move picker can be open at the same
@@ -3329,8 +6264,8 @@ const OpenRouterEmbedTranscribeUI = (function () {
 
     speak(sentence);
     logInfo(
-      `speaker ${slot} named: ${painted.written} of ${painted.matched} rows repainted, ` +
-        `${painted.skipped} carried no label`,
+      `speaker ${slot} named: ${painted.rebuilt} of ${affected.length} rows rebuilt, ` +
+        `${painted.missing} had no node`,
     );
   }
 
@@ -3648,6 +6583,61 @@ const OpenRouterEmbedTranscribeUI = (function () {
     }
 
     patchRow(index);
+    // A CORRECTION CAN TURN AN APPLICABLE SUGGESTION INTO A CONFLICT, WITH
+    // NOTHING HAVING TOUCHED THE CHANGE SET — register item 47 unit 14, and
+    // the defect is older than the table. `suggestionTextFor` resolves against
+    // the phrase's CURRENT text, so editing a line the model had a suggestion
+    // for makes that suggestion stale on the spot. The row was already
+    // repainted above and showed the conflict; the COUNT SENTENCE was not, and
+    // has been reporting a stale "N cannot be applied" since the sentence
+    // shipped. This closes that, and carries the table with it because both go
+    // through the one call.
+    updateReviewCount();
+  }
+
+  /**
+   * A THIRD DELEGATED LISTENER ON THE SAME HOST, register item 47 unit 10.
+   * Accept and Dismiss are `<button>` elements rendered per proposed
+   * suggestion — up to 657 of them, the same scale as the edit and selection
+   * controls above — so they are dispatched the same way: one listener on
+   * `#transcribe-transcript`, tested per event by the control's own id, never
+   * one listener per button.
+   *
+   * A SEPARATE EVENT FROM `change` AND `keydown`, NOT A THIRD BRANCH INSIDE
+   * EITHER. A button fires neither of those for a plain activation — its
+   * default action is `click` — so this is a new listener rather than a new
+   * branch in a handler built for a different event.
+   *
+   * `event.target` IS THE BUTTON, NEVER THE HIDDEN CONTINUATION SPAN INSIDE
+   * IT. The span is `.visually-hidden` and carries no visual footprint on
+   * screen, so neither a mouse click nor a keyboard activation's synthetic
+   * click can land on it — a text node is not an Element and cannot be a
+   * target either, so `event.target` resolves to the nearest ancestor
+   * Element, the `<button>` itself, exactly as `rowIndexFrom`'s own callers
+   * assume for the controls they read.
+   *
+   * REACHING A BUTTON AT ALL DEPENDS ON `handleTranscriptKeydown` NOT
+   * SWALLOWING ITS ENTER OR SPACE, MEASURED RATHER THAN ASSUMED. That
+   * handler's `editIndexOf(event.target)` check returns null for any target
+   * that is not an `<input>` matching EDIT_ID_STEM, so it returns before
+   * calling `preventDefault` for a button target — verified live with a
+   * throwaway button under the delegated listener, both keys, real trusted
+   * input via Playwright's keyboard API rather than a synthetic
+   * `dispatchEvent` (which does not exercise a browser's default action for
+   * either key on a focused button).
+   *
+   * @param {Event} event
+   */
+  function handleTranscriptClick(event) {
+    const acceptIndex = suggestionControlIndexFrom(event.target, ACCEPT_ID_STEM);
+    if (acceptIndex !== null) {
+      handleAcceptSuggestion(acceptIndex);
+      return;
+    }
+    const dismissIndex = suggestionControlIndexFrom(event.target, DISMISS_ID_STEM);
+    if (dismissIndex !== null) {
+      handleDismissSuggestion(dismissIndex);
+    }
   }
 
   /**
@@ -3846,6 +6836,14 @@ const OpenRouterEmbedTranscribeUI = (function () {
     // the next transcript exists.
     selectedRows.clear();
     setSelectionVisible({ hasTranscript: false });
+    // THE REVIEW BLOCK GOES WITH IT, and `state.reset()` above has already
+    // emptied the change set, so the predicate is false by the time this runs
+    // and the block hides. Its entries are CUE IDS INTO THE DISCARDED
+    // TRANSCRIPT — the same objection as the naming block's slot numbers and
+    // the selection's row indices, and worse for the same reason an index is:
+    // a cue id is valid against any transcript long enough, so a carried change
+    // set would propose corrections to lines nobody has looked at.
+    setReviewVisible();
 
     if (!file) {
       setText(nameField, NO_FILE_TEXT);
@@ -4005,6 +7003,12 @@ const OpenRouterEmbedTranscribeUI = (function () {
       // the edit checkbox ships unticked, so a fresh transcript arrives with
       // the block hidden. See setSelectionVisible.
       setSelectionVisible({ hasTranscript: true });
+      // AFTER renderTranscript, for the reason the two lines above it are. A
+      // fresh run has no change set — handleFileChange reset the state when the
+      // file was chosen — so this hides the block, and it is called rather than
+      // assumed for the reason every other reveal here is: the function that
+      // owns the block's visibility is the one that should decide it.
+      setReviewVisible();
       setResultActionsEnabled(true);
 
       const phrases = held.phrases ? held.phrases.length : 0;
@@ -4320,16 +7324,76 @@ const OpenRouterEmbedTranscribeUI = (function () {
       );
     }
 
-    // TWO delegated listeners for every ROW control there will ever be — since
-    // item 46 unit 6 that is the edit boxes AND the selection checkboxes, 1,314
-    // controls on the committed fixture. The host persists across renders and
-    // patches; the controls do not. See handleTranscriptChange for why neither
-    // is wired per control and why unit 6 did not add a third listener.
+    // THE REVIEW BLOCK'S THREE CONTROLS (register item 47 unit 6). Each is
+    // wired defensively, the way the display options and the naming block's
+    // controls are: the markup ships them, but a missing control must warn
+    // rather than throw and take the rest of the wiring with it.
+    const reviewSuggestionsBox = el("transcribe-review-show-suggestions");
+    if (reviewSuggestionsBox) {
+      reviewSuggestionsBox.addEventListener(
+        "change",
+        handleShowSuggestionsChange,
+      );
+    } else {
+      logWarn(
+        "the Show suggestions checkbox is missing — suggestions cannot be shown or hidden",
+      );
+    }
+
+    const reviewReasonsBox = el("transcribe-review-show-reasons");
+    if (reviewReasonsBox) {
+      reviewReasonsBox.addEventListener("change", handleShowReasonsChange);
+    } else {
+      logWarn(
+        "the Show reasons checkbox is missing — a suggestion's reason cannot be hidden",
+      );
+    }
+
+    const reviewConflictsBox = el(CONFLICT_TOGGLE_ID);
+    if (reviewConflictsBox) {
+      reviewConflictsBox.addEventListener("change", handleShowConflictsChange);
+    } else {
+      logWarn(
+        "the Show conflicts in the transcript checkbox is missing — conflicts can still be read in the table",
+      );
+    }
+
+    const reviewNext = el("transcribe-review-next");
+    if (reviewNext) {
+      reviewNext.addEventListener("click", handleNextSuggestion);
+    } else {
+      logWarn(
+        "the Next suggestion button is missing — suggestions can still be reached by reading the transcript",
+      );
+    }
+
+    // ONE DELEGATED LISTENER FOR EVERY "Go to phrase" BUTTON THE TABLE WILL
+    // EVER CARRY (register item 47 unit 14), matching how the transcript's own
+    // per-row controls are dispatched. The wrapper persists across every
+    // refresh; the buttons inside it do not, so wiring them individually would
+    // leak a listener per rebuild and lose one on every hide.
+    const conflictTable = el(CONFLICT_TABLE_ID);
+    if (conflictTable) {
+      conflictTable.addEventListener("click", handleConflictTableClick);
+    } else {
+      logWarn(
+        "the conflicts table is missing — a conflict can still be reached by reading the transcript with Show conflicts in the transcript ticked",
+      );
+    }
+
+    // THREE delegated listeners for every ROW control there will ever be —
+    // since register item 47 unit 10 that is the edit boxes, the selection
+    // checkboxes, AND the Accept/Dismiss buttons, up to 1,971 controls on the
+    // committed fixture. The host persists across renders and patches; the
+    // controls do not. See handleTranscriptChange for why none of the three
+    // is wired per control.
     //
-    // `change` is the blur commit and the selection toggle; `keydown` is Enter
-    // and Escape. They are separate listeners rather than one because they
-    // answer different questions, and both edit gestures reach the SAME commit
-    // function — see commitControl.
+    // `change` is the blur commit and the selection toggle; `keydown` is
+    // Enter and Escape; `click` is Accept and Dismiss (handleTranscriptClick).
+    // Three separate listeners rather than one because they answer different
+    // questions about different events — a button fires neither `change` nor
+    // a commit-relevant `keydown` for a plain activation — and both edit
+    // gestures still reach the SAME commit function; see commitControl.
     el("transcribe-transcript").addEventListener(
       "change",
       handleTranscriptChange,
@@ -4337,6 +7401,10 @@ const OpenRouterEmbedTranscribeUI = (function () {
     el("transcribe-transcript").addEventListener(
       "keydown",
       handleTranscriptKeydown,
+    );
+    el("transcribe-transcript").addEventListener(
+      "click",
+      handleTranscriptClick,
     );
 
     // Resting state: nothing to copy or download yet, and no transcript for the
@@ -4354,6 +7422,12 @@ const OpenRouterEmbedTranscribeUI = (function () {
     // clear — this runs once per session, before anything can have selected a
     // row — so the call is the reveal alone, which hides the block.
     setSelectionVisible({ hasTranscript: false });
+    // The review block joins the resting state on the same terms. Nothing has
+    // loaded a change set — this runs once per session — so the call is the
+    // reveal alone, which hides the block and writes the zero-state sentence
+    // over the one the markup ships. `setText` is write-if-changed, so that
+    // write is a no-op and the two are proved to agree rather than assumed to.
+    setReviewVisible();
     hideProgress();
 
     wired = true;
@@ -4388,6 +7462,22 @@ const OpenRouterEmbedTranscribeUI = (function () {
   return {
     init: init,
     cleanup: cleanup,
+    // THE REVIEW BLOCK'S ENTRY POINT (register item 47 unit 6). Public because
+    // loading a change set happens outside this file — the shipped route
+    // belongs to the Captions Fixer lane and does not exist yet, so today the
+    // callers are the fixture loader and the tree gate. Without it a loader
+    // would have to reach into this module's internals or set a property on the
+    // page, and the gate's whole contract is that it drives the shipped surface
+    // rather than simulating it.
+    refreshReview: refreshReview,
+    // A TEST SEAM, AND NAMED AS ONE. The three below are exposed so the harness
+    // can assert this block's decisions without a page: two of them are pure,
+    // and the third reads the live state and is the one place the cross-lane
+    // `speakerLabel` resolution happens. Nothing in the shipped page calls any
+    // of them from outside this module.
+    reviewCountSentence: reviewCountSentence,
+    nextProposedIndexFrom: nextProposedIndexFrom,
+    suggestionResolutionAt: suggestionResolutionAt,
   };
 })();
 

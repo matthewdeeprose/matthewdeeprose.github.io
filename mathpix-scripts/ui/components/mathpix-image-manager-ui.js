@@ -313,6 +313,31 @@ const MathPixImageManagerUI = (function () {
   const EDIT_VIEW_AI_PROGRESS_STAGE_ID = "edit-alt-ai-progress-stage";
   const EDIT_VIEW_AI_PROGRESS_TIME_ID = "edit-alt-ai-progress-time";
 
+  // Parcel MP-2 — the alt-text model picker. Mirrors mathpix-context-ai.js's
+  // MP-1 picker id shape exactly (pickerRoot / pickerFieldset / pickerOptions
+  // / pickerMeasured / pickerNone / pickerUnavailable / pickerAdvanced /
+  // pickerOverride), renamed onto this view's edit-alt- prefix. It sits ABOVE
+  // the Generate button inside EDIT_VIEW_AI_RUN_ID, so the tab order reads
+  // "choose a model, then run" — the same order MP-1 measured on the Context
+  // tab. Built once per manager open() (this view's shell is rebuilt fresh
+  // every open, like every other edit-view id here), never per image: the
+  // model choice is a workflow-level preference, not an image-specific one,
+  // and both the single-image run and the batch run resolve through the SAME
+  // adapter._resolveModel() rung this picker feeds (confirmed at MP-2 step 1).
+  const EDIT_VIEW_MODEL_PICKER_ID = "edit-alt-model-picker";
+  const EDIT_VIEW_MODEL_RECOMMENDED_ID = "edit-alt-model-recommended";
+  const EDIT_VIEW_MODEL_OPTIONS_ID = "edit-alt-model-options";
+  const EDIT_VIEW_MODEL_MEASURED_ID = "edit-alt-model-measured";
+  const EDIT_VIEW_MODEL_NONE_ID = "edit-alt-model-none";
+  const EDIT_VIEW_MODEL_UNAVAILABLE_ID = "edit-alt-model-unavailable";
+  const EDIT_VIEW_MODEL_ADVANCED_ID = "edit-alt-model-advanced";
+  const EDIT_VIEW_MODEL_OVERRIDE_ID = "edit-alt-model-override";
+  const EDIT_VIEW_MODEL_OVERRIDE_HINT_ID = "edit-alt-model-override-hint";
+  /** The radio group's shared name — one constant, used by build and reset. */
+  const EDIT_VIEW_MODEL_RADIO_NAME = "edit-alt-model";
+  /** The override <select>'s placeholder value: "use the recommendation". */
+  const EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER = "";
+
   // Parcel 8d-pre: the run's START line. Paired with the orchestrator's outcome
   // line, a run now speaks at most twice — one at start, one at outcome. The
   // wording lives here so parcel 8d can refine it in exactly one place.
@@ -1242,6 +1267,12 @@ const MathPixImageManagerUI = (function () {
           this._attachEditViewListeners();
           this._constructEditAltEmbed();
           this._constructEditAltRunPipeline();
+          // MP-2: built AFTER the run pipeline so the picker's write reaches
+          // an adapter that already exists — _setUserModelChoice is a no-op
+          // safe call either way, but building here keeps the sequence
+          // matching "pipeline, then picker, then icons" rather than leaving
+          // the ordering incidental.
+          this._buildAltModelPicker();
 
           // Populate data-icon spans inserted by _buildModalContent (key row,
           // the edit view's Back / Generate / accept buttons) and by refresh()
@@ -1945,6 +1976,65 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                 rule would drop it out of the tree while empty.
               -->
               <div id="${EDIT_VIEW_AI_RUN_ID}" class="mmd-image-manager-ai-run">
+                <!--
+                  Parcel MP-2 — the alt-text model picker. Mirrors the Context
+                  tab's picker (mathpix-context-ai.js, MP-1) exactly: a
+                  preselected radio for the registry's measured alt-text
+                  preference, plus an advanced disclosure offering every
+                  vision-capable model the active provider serves.
+
+                  NO LIVE REGION AND NO live ROLE anywhere in this block,
+                  deliberately. Every string here is visible text a person
+                  reads when they reach it. The workflow's live region is
+                  #edit-alt-ai-status below; nothing here writes to it.
+
+                  THREE STATES, EXACTLY ONE VISIBLE AT A TIME:
+                    - a measured recommendation exists  -> the fieldset
+                    - none exists for this provider     -> -none
+                    - the shared registry is absent     -> -unavailable, and
+                      the advanced disclosure is hidden too, because generate()
+                      refuses before any model is resolved and an override
+                      there would be a dead control.
+                -->
+                <div id="${EDIT_VIEW_MODEL_PICKER_ID}"
+                     class="mathpix-alt-model-picker"
+                     hidden>
+                  <fieldset id="${EDIT_VIEW_MODEL_RECOMMENDED_ID}"
+                            class="mathpix-alt-model-recommended"
+                            hidden>
+                    <legend>AI model for the description</legend>
+                    <div id="${EDIT_VIEW_MODEL_OPTIONS_ID}"
+                         class="model-options"></div>
+                    <p id="${EDIT_VIEW_MODEL_MEASURED_ID}"
+                       class="field-help"></p>
+                  </fieldset>
+                  <p id="${EDIT_VIEW_MODEL_NONE_ID}"
+                     class="field-help"
+                     hidden>
+                    No measured recommendation is available for the AI
+                    provider you have selected. Choose a model from the
+                    advanced list below.
+                  </p>
+                  <p id="${EDIT_VIEW_MODEL_UNAVAILABLE_ID}"
+                     class="field-help"
+                     hidden></p>
+                  <details id="${EDIT_VIEW_MODEL_ADVANCED_ID}"
+                            class="mathpix-alt-model-advanced">
+                    <summary>Use a different model</summary>
+                    <div class="field-group">
+                      <label for="${EDIT_VIEW_MODEL_OVERRIDE_ID}">Override model</label>
+                      <select id="${EDIT_VIEW_MODEL_OVERRIDE_ID}"
+                              aria-describedby="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}">
+                        <option value="">Use the recommended model above</option>
+                      </select>
+                      <p id="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}"
+                         class="field-help">
+                        The list shows only models the AI provider you have
+                        selected can use to process an image.
+                      </p>
+                    </div>
+                  </details>
+                </div>
                 <!--
                   Cycle 2b — the button opens OPERABLE. aria-disabled (never the
                   disabled property) carries the running state, so focus stays on
@@ -4305,6 +4395,49 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         logWarn("_attachEditViewListeners: Generate button not in DOM");
       }
 
+      // Parcel MP-2 — the model picker: delegated change binding, matching
+      // mathpix-context-ai.js's MP-1 arrangement. DELEGATED ON THE PICKER
+      // ROOT rather than on each control, because the radios and the options
+      // are REBUILT on every provider change: a listener bound to a node the
+      // rebuild replaces stops firing, silently.
+      const modelPickerRoot = document.getElementById(EDIT_VIEW_MODEL_PICKER_ID);
+      if (modelPickerRoot && !modelPickerRoot.dataset.altModelBound) {
+        modelPickerRoot.addEventListener("change", (event) => {
+          const target = event && event.target;
+          if (!target) return;
+          if (target.type === "radio" && target.name === EDIT_VIEW_MODEL_RADIO_NAME) {
+            this._handleAltModelRadioChange(target.value);
+            return;
+          }
+          if (target.id === EDIT_VIEW_MODEL_OVERRIDE_ID) {
+            this._handleAltModelOverrideChange(target.value);
+          }
+        });
+        modelPickerRoot.dataset.altModelBound = "true";
+        logDebug("_attachEditViewListeners: model picker wired");
+      } else if (!modelPickerRoot) {
+        logWarn("_attachEditViewListeners: model picker not in DOM");
+      }
+
+      // Rebuilds the picker on a provider change. Bound ONCE for the life of
+      // this manager instance (not once per open()) — _buildAltModelPicker
+      // itself no-ops safely when the picker root is not currently in the
+      // DOM, i.e. whenever the manager is closed, so leaving this subscribed
+      // between opens is safe.
+      if (!this._altModelProviderChangedHandler) {
+        this._altModelProviderChangedHandler = (event) => {
+          logInfo("provider:changed — rebuilding the alt-text model picker", {
+            oldProvider: event && event.detail && event.detail.oldProvider,
+            newProvider: event && event.detail && event.detail.newProvider,
+          });
+          this._buildAltModelPicker();
+        };
+        window.addEventListener(
+          "provider:changed",
+          this._altModelProviderChangedHandler,
+        );
+      }
+
       // Parcel 8e-2 — the four accept controls. addEventListener, matching Back,
       // Save and Generate above; the onclick-attribute form in this file appears
       // only on grid cards. Iterated over FIELD_SELECT_ROWS rather than written
@@ -4611,6 +4744,361 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
             error && error.message ? error.message : String(error)
           }`,
         );
+      }
+    }
+
+    // =========================================================================
+    // MP-2 — THE ALT-TEXT MODEL PICKER
+    // =========================================================================
+    //
+    // Mirrors mathpix-context-ai.js's MP-1 picker methods (_buildModelPicker,
+    // _buildRecommendedRadio, _populateOverrideSelect, _handleModelRadioChange,
+    // _handleModelOverrideChange, _formatMeasuredDate) exactly in shape, moved
+    // here because — unlike the Context tab, which owns both its DOM and its
+    // resolution in one file — the alt-text workflow's DOM lives in this class
+    // while resolution lives in alt-text-cloud-adapter.js. The split is
+    // structural, not a design choice: MP-2's write (_setUserModelChoice) and
+    // read (_resolveUserChoice, folded into _resolveModel) both live in the
+    // adapter, because that is the module both the single-image run and the
+    // batch run already resolve a model through (confirmed at MP-2 step 1 —
+    // both call sites share window.MathPixAltTextCloudAdapter.create()'s one
+    // _editAltAdapter, or a freshly-created equivalent instance, either way
+    // reaching the SAME module-scope _resolveModel()).
+    //
+    // THIS BLOCK ADDS NO SPOKEN LINE, on the same reasoning as MP-1's own
+    // comment: this parcel carries no screen-reader listen, and a silent event
+    // is a worse outcome than a doubled one (AGENTS.md § Announcements). A
+    // radio or select reports its own new state when a person moves it, which
+    // is what a reader already speaks.
+
+    /**
+     * Every vision-capable model the ACTIVE provider serves.
+     *
+     * THE FILTER IS `isModelVisionCapable` ITSELF, asked once per id, matching
+     * mathpix-context-ai.js's `_pdfCapableModelsFor` — that predicate is the
+     * SAME one the adapter's send boundary applies, so the picker cannot offer
+     * a model the send would then refuse. `getEligibleModels({capabilities:
+     * ["vision"]})` alone would not guarantee that: `isModelVisionCapable` has
+     * an EMPTY-list fall-through onto `KNOWN_VISION_MODELS` that a bare
+     * capability filter does not share.
+     *
+     * @param {string} providerId
+     * @returns {Array<Object>} possibly empty, sorted by display name
+     * @private
+     */
+    _visionCapableModelsForProvider(providerId) {
+      const selector = window.EmbedModelSelector;
+      const adapter = window.MathPixAltTextCloudAdapter;
+      if (
+        !selector ||
+        typeof selector.getEligibleModels !== "function" ||
+        !adapter ||
+        typeof adapter.isModelVisionCapable !== "function"
+      ) {
+        logWarn(
+          "_visionCapableModelsForProvider: EmbedModelSelector or the adapter's vision predicate is unavailable; the override list is offered empty rather than fabricated.",
+        );
+        return [];
+      }
+
+      let all = [];
+      try {
+        all = selector.getEligibleModels({ providerId, capabilities: [] });
+      } catch (error) {
+        logWarn(
+          "_visionCapableModelsForProvider: getEligibleModels([]) threw:",
+          error,
+        );
+        return [];
+      }
+      if (!Array.isArray(all)) return [];
+
+      const kept = all.filter(
+        (model) =>
+          model &&
+          typeof model.id === "string" &&
+          adapter.isModelVisionCapable(model.id),
+      );
+      kept.sort((a, b) =>
+        String(a.name || a.id).localeCompare(String(b.name || b.id)),
+      );
+      return kept;
+    }
+
+    /**
+     * Fill the override select with every vision-capable model for this
+     * provider. Mirrors mathpix-context-ai.js's `_populateOverrideSelect`.
+     * @param {HTMLSelectElement|null} select
+     * @param {Array<Object>} candidates
+     * @private
+     */
+    _populateAltOverrideSelect(select, candidates) {
+      if (!select) return;
+      select.textContent = "";
+
+      const placeholder = document.createElement("option");
+      placeholder.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+      placeholder.textContent = "Use the recommended model above";
+      select.appendChild(placeholder);
+
+      for (const model of candidates) {
+        const option = document.createElement("option");
+        option.value = model.id;
+        const providerPrefix = String(model.id).split("/")[0] || "";
+        option.textContent = `${model.name || model.id} (${providerPrefix})`;
+        select.appendChild(option);
+      }
+      select.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+    }
+
+    /**
+     * One recommended radio, as DOM rather than as an HTML string. Mirrors
+     * mathpix-context-ai.js's `_buildRecommendedRadio`, built with
+     * createElement and textContent for the same reason: this class has no
+     * escaping helper, and a model name reaching innerHTML unescaped is a
+     * defect waiting for a catalogue entry to contain a bracket.
+     * @param {Object} model a catalogue entry
+     * @param {boolean} checked
+     * @returns {HTMLLabelElement}
+     * @private
+     */
+    _buildAltRecommendedRadio(model, checked) {
+      const label = document.createElement("label");
+      label.className = "model-option";
+
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = EDIT_VIEW_MODEL_RADIO_NAME;
+      input.value = model.id;
+      if (checked) {
+        input.defaultChecked = true;
+        input.checked = true;
+      }
+
+      const content = document.createElement("span");
+      content.className = "model-option-content";
+
+      const name = document.createElement("span");
+      name.className = "model-option-name";
+      name.textContent = `${model.name || model.id} (Recommended)`;
+
+      const description = document.createElement("span");
+      description.className = "model-option-description";
+      description.textContent = model.id;
+
+      content.appendChild(name);
+      content.appendChild(description);
+      label.appendChild(input);
+      label.appendChild(content);
+      return label;
+    }
+
+    /**
+     * "2026-09-03" to "3 September 2026". Mirrors mathpix-context-ai.js's
+     * `_formatMeasuredDate` — a small pure function duplicated deliberately
+     * rather than shared, since there is no data here to drift, only
+     * formatting logic. Returns the input unchanged when it is not the
+     * expected shape.
+     * @param {string} iso
+     * @returns {string}
+     * @private
+     */
+    _formatAltMeasuredDate(iso) {
+      if (typeof iso !== "string") return "";
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+      if (!match) return iso;
+      const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December",
+      ];
+      const month = months[Number(match[2]) - 1];
+      if (!month) return iso;
+      return `${Number(match[3])} ${month} ${match[1]}`;
+    }
+
+    /**
+     * Build (or rebuild) the picker for the ACTIVE provider. Mirrors
+     * mathpix-context-ai.js's `_buildModelPicker`.
+     *
+     * THREE STATES, AND EXACTLY ONE RENDERS — see the template comment in
+     * `_buildEditAltViewHTML`.
+     *
+     * EVERY BUILD CLEARS THE USER'S PICK, the provider-change fail-safe: a
+     * pick made under one provider cannot survive into another, whether or
+     * not the new provider happens to serve it.
+     *
+     * NO-OPS SAFELY when the picker markup is not currently in the DOM (the
+     * manager is closed) — this is what makes it safe to call from the
+     * `provider:changed` handler for the whole life of the manager instance.
+     *
+     * @returns {boolean} true when the picker markup was found and rendered
+     * @private
+     */
+    _buildAltModelPicker() {
+      const root = document.getElementById(EDIT_VIEW_MODEL_PICKER_ID);
+      const optionsEl = document.getElementById(EDIT_VIEW_MODEL_OPTIONS_ID);
+      if (!root || !optionsEl) {
+        logDebug("_buildAltModelPicker: no picker markup on this page.");
+        return false;
+      }
+
+      const adapter = window.MathPixAltTextCloudAdapter;
+
+      // Every build starts from a clean slate, so no state can be left over
+      // from the provider that was active a moment ago.
+      if (adapter && typeof adapter._setUserModelChoice === "function") {
+        adapter._setUserModelChoice(null);
+      }
+
+      const fieldsetEl = document.getElementById(EDIT_VIEW_MODEL_RECOMMENDED_ID);
+      const measuredEl = document.getElementById(EDIT_VIEW_MODEL_MEASURED_ID);
+      const noneEl = document.getElementById(EDIT_VIEW_MODEL_NONE_ID);
+      const unavailableEl = document.getElementById(EDIT_VIEW_MODEL_UNAVAILABLE_ID);
+      const advancedEl = document.getElementById(EDIT_VIEW_MODEL_ADVANCED_ID);
+      const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
+
+      optionsEl.textContent = "";
+      if (measuredEl) measuredEl.textContent = "";
+      if (fieldsetEl) fieldsetEl.hidden = true;
+      if (noneEl) noneEl.hidden = true;
+      if (unavailableEl) unavailableEl.hidden = true;
+      if (advancedEl) advancedEl.hidden = false;
+      root.hidden = false;
+
+      // --- STATE 3: the registry module is absent ---------------------------
+      const registryAbsent =
+        !adapter || typeof adapter._modelRegistryIsAbsent !== "function"
+          ? true
+          : adapter._modelRegistryIsAbsent();
+
+      if (registryAbsent) {
+        if (unavailableEl) {
+          // BY IDENTITY, never retyped — the same constant the WL-1 rows
+          // match on, so the picker's text and the refusal's speech cannot
+          // drift apart.
+          unavailableEl.textContent =
+            adapter && typeof adapter.ABSENT_REGISTRY_REFUSAL === "string"
+              ? adapter.ABSENT_REGISTRY_REFUSAL
+              : "No AI model is set up for the AI provider you have selected, so no description can be written.";
+          unavailableEl.hidden = false;
+        }
+        if (advancedEl) advancedEl.hidden = true;
+        logWarn(
+          "_buildAltModelPicker: the shared model registry module is absent from the page, so the picker offers no default and no override.",
+        );
+        return true;
+      }
+
+      const providerId =
+        window.ProviderSwitcher &&
+        typeof window.ProviderSwitcher.getActive === "function"
+          ? window.ProviderSwitcher.getActive()
+          : "openrouter";
+
+      const candidates = this._visionCapableModelsForProvider(providerId);
+      this._populateAltOverrideSelect(overrideEl, candidates);
+
+      const registry = window.MathPixModelRegistry;
+      const entry =
+        registry && typeof registry.recommendedModel === "function"
+          ? registry.recommendedModel("alt-text", providerId)
+          : null;
+      const recommendedId =
+        entry && typeof entry.modelId === "string" ? entry.modelId : null;
+      const recommended = recommendedId
+        ? candidates.find((model) => model.id === recommendedId) || null
+        : null;
+
+      // --- STATE 2: no measured recommendation this provider can use --------
+      if (!recommended) {
+        if (noneEl) noneEl.hidden = false;
+        logWarn(
+          `_buildAltModelPicker: no measured recommendation is available for provider '${providerId}' that can also process an image; offering the override list with nothing preselected rather than fabricating a default.`,
+          { registryId: recommendedId, candidateCount: candidates.length },
+        );
+        return true;
+      }
+
+      // --- STATE 1: the measured recommendation ------------------------------
+      if (fieldsetEl) fieldsetEl.hidden = false;
+      optionsEl.appendChild(this._buildAltRecommendedRadio(recommended, true));
+      if (measuredEl) {
+        measuredEl.textContent = `Chosen by measurement round ${entry.round}, measured ${this._formatAltMeasuredDate(entry.measured)}.`;
+      }
+      logDebug("_buildAltModelPicker: built", {
+        providerId,
+        recommended: recommended.id,
+        overrideOptions: candidates.length,
+      });
+      return true;
+    }
+
+    /**
+     * A recommended radio was chosen. Mirrors mathpix-context-ai.js's
+     * `_handleModelRadioChange`. Does not announce — see the section banner.
+     * @param {string} modelId the radio's value
+     * @private
+     */
+    _handleAltModelRadioChange(modelId) {
+      const adapter = window.MathPixAltTextCloudAdapter;
+      if (!adapter || typeof adapter._setUserModelChoice !== "function") return;
+
+      const providerId =
+        window.ProviderSwitcher &&
+        typeof window.ProviderSwitcher.getActive === "function"
+          ? window.ProviderSwitcher.getActive()
+          : "openrouter";
+      const registry = window.MathPixModelRegistry;
+      const entry =
+        registry && typeof registry.recommendedModel === "function"
+          ? registry.recommendedModel("alt-text", providerId)
+          : null;
+      const recommendedId =
+        entry && typeof entry.modelId === "string" ? entry.modelId : null;
+
+      if (modelId === recommendedId) {
+        // Choosing the recommendation CLEARS the pick, so the run resolves
+        // down the measured-preference rung exactly as it did before MP-2.
+        adapter._setUserModelChoice(null);
+      } else {
+        adapter._setUserModelChoice(modelId);
+      }
+
+      const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
+      if (overrideEl) overrideEl.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+    }
+
+    /**
+     * The advanced override select changed. Mirrors mathpix-context-ai.js's
+     * `_handleModelOverrideChange`. Does not announce — see the section
+     * banner.
+     * @param {string} modelId a model id, or "" for the placeholder
+     * @private
+     */
+    _handleAltModelOverrideChange(modelId) {
+      const adapter = window.MathPixAltTextCloudAdapter;
+      if (!adapter || typeof adapter._setUserModelChoice !== "function") return;
+
+      const optionsEl = document.getElementById(EDIT_VIEW_MODEL_OPTIONS_ID);
+
+      if (!modelId) {
+        adapter._setUserModelChoice(null);
+        const first = optionsEl && optionsEl.querySelector('input[type="radio"]');
+        if (first) first.checked = true;
+        return;
+      }
+
+      if (!adapter._setUserModelChoice(modelId)) {
+        // Refused. Put the control back where it was rather than leaving it
+        // showing a model that will not be sent.
+        const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
+        if (overrideEl) overrideEl.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+        return;
+      }
+
+      if (optionsEl) {
+        const radios = optionsEl.querySelectorAll('input[type="radio"]');
+        for (const radio of radios) radio.checked = false;
       }
     }
 

@@ -90,6 +90,10 @@
   // announcement stays the short sentence the two call sites used to say.
   const GENERIC_ERROR_ANNOUNCEMENT = "Error generating response.";
 
+  // What a press of Send says when no model is chosen (parcel 55). Shown and
+  // spoken once per press, by the toast alone.
+  const NO_MODEL_REFUSAL = "Nothing was sent: no model is chosen. Choose a model first.";
+
   function shouldLog(level) {
     if (DISABLE_ALL_LOGGING) return false;
     if (ENABLE_ALL_LOGGING) return true;
@@ -270,22 +274,90 @@
   }
 
   // ── Send/cancel UI state ───────────────────────────────────────────────────
+  //
+  // The message box and Send are HELD busy with window.BusyControl rather than
+  // natively disabled. Native `disabled` blurs the focused control inside the
+  // assignment, so a send threw focus to <body> and a screen reader re-read the
+  // whole document (parcel 39 measured it, and it was heard). A hold keeps focus
+  // where the person is: the box goes readOnly, Send gets aria-disabled, and the
+  // helper's guard refuses a second send while the reply is on its way.
+  //
+  // The helper is resolved AT CALL TIME and never cached. If it failed to load,
+  // Chat falls back to the native lines below and still works.
+
+  // The two hold handles while a send is in flight; null when nothing is held.
+  let busyHandles = null;
+  // True while the native fallback (no helper) is what disabled the controls.
+  let heldNatively = false;
 
   function disableSend() {
     const els = S.els;
-    if (els.sendBtn) els.sendBtn.disabled = true;
+    // A second call while held changes nothing.
+    if (busyHandles) return;
+
+    const busy = window.BusyControl;
+    if (!busy || typeof busy.hold !== "function") {
+      logWarn(
+        "BusyControl is not loaded — disabling Send and the message box natively, which drops focus",
+      );
+      heldNatively = true;
+      if (els.sendBtn) els.sendBtn.disabled = true;
+      if (els.cancelBtn) els.cancelBtn.hidden = false;
+      if (els.input) els.input.disabled = true;
+      return;
+    }
+
+    // A person who sent with the Send button lands in the message box, as they
+    // did before (owner's ruling, parcel 41). Moved HERE, inside their own
+    // gesture, and deliberately NOT through hold's moveTo option: release()
+    // restores focus FROM a moveTo target back TO the held control, which would
+    // put them back on Send when the reply lands.
+    if (els.sendBtn && els.input && document.activeElement === els.sendBtn) {
+      els.input.focus();
+    }
+
     if (els.cancelBtn) els.cancelBtn.hidden = false;
-    if (els.input) els.input.disabled = true;
+    busyHandles = {
+      input: els.input ? busy.hold(els.input) : null,
+      send: els.sendBtn ? busy.hold(els.sendBtn) : null,
+    };
   }
 
   function enableSend() {
     const els = S.els;
-    if (els.sendBtn) els.sendBtn.disabled = false;
-    if (els.cancelBtn) els.cancelBtn.hidden = true;
-    if (els.input) {
-      els.input.disabled = false;
-      els.input.focus();
+
+    if (busyHandles) {
+      // Order matters, and each step is load-bearing:
+      //  1. Hide Cancel FIRST. If Cancel has focus it drops to <body> here, and
+      //     release() restores focus only from <body> (or its moveTo target).
+      //  2. Release the message box BEFORE Send: the first release that finds
+      //     focus on <body> takes it, and the box is where it belongs.
+      //  3. Clear the handles. Cancel and then the late reply both call this, so
+      //     the second call must find nothing held and do nothing.
+      // No focus() and no `disabled = false` here: release() puts focus back
+      // only when it was lost, and never takes it from where the person moved it.
+      const handles = busyHandles;
+      busyHandles = null;
+      if (els.cancelBtn) els.cancelBtn.hidden = true;
+      if (handles.input) handles.input.release();
+      if (handles.send) handles.send.release();
+      return;
     }
+
+    if (heldNatively || !window.BusyControl) {
+      // Fallback path: the helper was not loaded when the send began. Today's code.
+      heldNatively = false;
+      if (els.sendBtn) els.sendBtn.disabled = false;
+      if (els.cancelBtn) els.cancelBtn.hidden = true;
+      if (els.input) {
+        els.input.disabled = false;
+        els.input.focus();
+      }
+      return;
+    }
+
+    // Nothing is held: the second call after a Cancel. Cancel is already hidden.
+    if (els.cancelBtn) els.cancelBtn.hidden = true;
   }
 
   // Trim notice — written to the visible stats region (#chat-stats), an <output>
@@ -742,6 +814,12 @@
     // would outlive its purpose until the tab closed.
     clearDraftStash();
     enableSend();
+    // Under reduced motion the embed answers without streaming, and its final
+    // injection focuses the reply bubble (openrouter-embed-core.js injectContent).
+    // The EMBED moved focus there, not the person: the bubble only gains
+    // tabindex="-1" at that injection, so Tab could never have reached it. Put
+    // focus back in the message box, where it was held through the send.
+    if (S.els.input && document.activeElement === assistantBubble) S.els.input.focus();
     // Reply, badge and controls are now in the bubble: switch the log live so the
     // whole response reads cleanly, then announce readiness ONCE.
     S.setMessageListLive("polite");
@@ -968,6 +1046,10 @@
     if (!text) return;
     if (S.isGenerating) return;
 
+    // Refuse HERE, before anything commits to a send: the draft stays in the box,
+    // the attachment stays held, no turn is pushed and nothing reaches the embed.
+    if (refuseIfNoModel("sendMessage")) return;
+
     S.isGenerating = true;
     S.setMessageListLive("off");
 
@@ -1001,6 +1083,27 @@
 
     // Hand off to the shared back half (assistant bubble → embed → stream).
     dispatchSend({ userPrompt: text });
+  }
+
+  /**
+   * Refuse a send when no model is chosen — a withdrawn on-device thread, or
+   * nothing usable set up (parcel 55; shared with edit-and-resend by parcel 56).
+   * Both callers of the send back half call this BEFORE they change anything, so
+   * a refused press leaves the draft, the thread and the saved session as they
+   * were. Send and Re-send stay enabled on purpose (disabling a focused control
+   * drops focus to <body> and cannot say why), so the press itself gets the
+   * answer. One voice: the toast announces through the shared announcer, so no
+   * announce() beside it.
+   * @param {string} caller the calling function's name, for the log line only
+   * @returns {boolean} true when the send was refused and the caller must return
+   */
+  function refuseIfNoModel(caller) {
+    if (S.currentModel) return false;
+    logWarn(caller + ": refused — no model is chosen");
+    if (typeof window.notifyWarning === "function") {
+      window.notifyWarning(NO_MODEL_REFUSAL);
+    }
+    return true;
   }
 
   /**
@@ -1413,6 +1516,9 @@
     init: init,
     sendMessage: sendMessage,
     _dispatchSend: dispatchSend,
+    // The no-model refusal, shared with edit-and-resend (chat-messages.js
+    // commitEdit), which reaches _dispatchSend without passing sendMessage.
+    _refuseIfNoModel: refuseIfNoModel,
     _getOrCreateEmbed: getOrCreateEmbed,
     _postGeneration: postGeneration,
     _updateConversationUI: updateConversationUI,

@@ -1723,18 +1723,43 @@ const EnhancedModelSelection = (function () {
         return false;
       }
 
-      // Capability filter
+      // Capability filter.
+      //
+      // ROUTED THROUGH THE SHARED CONCEPT RESOLVER, NOT A RAW includes(). The checkbox
+      // values in tools.html are CONCEPTS (`vision`, `code`, `reasoning`, `tools`); the
+      // registry's capability arrays are uncontrolled free text spelling those concepts
+      // many ways. Matching the two literally is what hid 245 of the 252 enabled
+      // tool-calling models behind the box that asks for them — only 7 spell it `tools`,
+      // while 250 spell it `tool_calling`. The failure was silent because seven real
+      // models look like a working filter. window.ModelCapabilities owns the spellings so
+      // the checkbox can go on expressing the concept.
       if (currentFilters.capabilities.length > 0) {
-        const hasRequiredCapabilities = currentFilters.capabilities.every(
-          (capability) => model.capabilities.includes(capability)
-        );
+        const resolver = window.ModelCapabilities;
+        if (!resolver) {
+          // Matches how js/modules/model-manager.js guards window.PricingDisplay. The
+          // fallback is the pre-resolver behaviour, so the filter under-reports rather
+          // than over-reports — but it IS the defect, so it says so out loud.
+          logWarn(
+            "window.ModelCapabilities is unavailable — the capability filter has fallen " +
+              "back to exact token matching and will hide models that spell a capability " +
+              "differently from the checkbox"
+          );
+        }
+        const hasRequiredCapabilities = resolver
+          ? resolver.modelHasAllConcepts(model, currentFilters.capabilities)
+          : currentFilters.capabilities.every((capability) =>
+              model.capabilities.includes(capability)
+            );
         if (!hasRequiredCapabilities) {
+          const missing = resolver
+            ? resolver.missingConcepts(model, currentFilters.capabilities)
+            : currentFilters.capabilities.filter(
+                (cap) => !model.capabilities.includes(cap)
+              );
           logDebug(
             `Capability filter excluded: ${
               model.name
-            } (missing capabilities: ${currentFilters.capabilities
-              .filter((cap) => !model.capabilities.includes(cap))
-              .join(", ")})`
+            } (missing capabilities: ${missing.join(", ")})`
           );
           return false;
         }

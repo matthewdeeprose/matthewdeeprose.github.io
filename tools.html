@@ -1313,7 +1313,8 @@
                 <dt>Set Up</dt>
                 <dd>
                   This page. Configure API credentials for every tool, and
-                  download or remove local AI models. No credentials needed.
+                  download or remove local AI models. It requires none of its
+                  own.
                 </dd>
 
                 <dt>OpenRouter AI</dt>
@@ -1331,13 +1332,13 @@
                 <dt>Markdown Editor</dt>
                 <dd>
                   Write and preview Markdown with support for charts, diagrams,
-                  and mathematics. No credentials needed.
+                  and mathematics. Credentials are not required.
                 </dd>
 
                 <dt>Graph Builder</dt>
                 <dd>
                   Create accessible charts and graphs with data tables and alt
-                  text. No credentials needed.
+                  text. Credentials are not required.
                 </dd>
 
                 <dt>MathPix</dt>
@@ -1362,8 +1363,8 @@
                 <dt>Local Chat</dt>
                 <dd>
                   Chat with a local AI model running entirely in your browser.
-                  No data leaves your device. No credentials needed, but you
-                  will need to download a model from the Local AI Models
+                  Your data stays on your device. Credentials are not required.
+                  You will need to download a model from the Local AI Models
                   section.
                 </dd>
 
@@ -1399,8 +1400,8 @@
                   Correct the errors in an automatic caption file. Upload the
                   subtitles from a recording, review the suggested corrections,
                   and download a corrected file with the original timings
-                  intact. Alpha — expect rough edges. Requires an OpenRouter
-                  API key, or a Microsoft Foundry connection.
+                  intact. Alpha — expect rough edges. Requires an OpenRouter API
+                  key, or a Microsoft Foundry connection.
                 </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
@@ -1579,11 +1580,66 @@
                      where Custom holds focus — a control that holds focus is
                      never disabled out from under it.
 
+                     THE DEFAULT IS AZURE UK SOUTH AS OF 21 SEPTEMBER 2026, and
+                     the ORDER and the `checked` attribute both follow from it.
+                     Owner decision, taken for tester reach: the whole service
+                     is beta, and a beta host nobody selects finds no bugs.
+                     Default first, so the option a person already has is the
+                     first one they meet.
+
+                     THE `checked` ATTRIBUTE IS A REAL DEFAULT, NOT DECORATION,
+                     and it was found by a sweep rather than by being listed
+                     anywhere. It is the state the page PAINTS before
+                     syncProxyPicker() runs and corrects it from storage. Left
+                     on Cloudflare it would have shown, for that window, a host
+                     that is no longer the default and that most sessions will
+                     not use — and a screen-reader user landing on the group in
+                     that window would have been given the wrong answer first,
+                     which is the one answer a correction afterwards does not
+                     take back. Keep it on whichever radio matches the built-in
+                     default in setup-tool.js.
+
                      Row 41 of openrouter-embed/docs/chat-owed-sr-listen.md is
-                     open for this control. This unit ARMS part (b) — what is
-                     announced on change — and discharges NOTHING; the row stays
-                     fully owed and needs a person at a screen reader. -->
-                <fieldset class="setup-proxy-picker" id="setup-proxy-picker">
+                     open for this control. Part (b) — what is announced on
+                     change — was ARMED by unit 4b-ii and is unaffected by this
+                     change: the spoken labels never carried the "(default)" or
+                     "(beta)" qualifiers, so the line still says "Azure UK
+                     South" and not "Azure UK South (default, beta)". Parts (a)
+                     and (c) are RE-OPENED by this change, because both the
+                     labels and the state announced on arrival have moved, and
+                     part (e) becomes REACHABLE for the first time, because
+                     defaulting to Azure is what creates concurrent use. The
+                     row is owed and needs a person at a screen reader. -->
+                <!-- THE HELP TEXT IS TIED TO THE FIELDSET WITH
+                     aria-describedby BECAUSE A PARAGRAPH BETWEEN A LEGEND AND
+                     ITS RADIOS IS READ IN BROWSE MODE AND SKIPPED IN FOCUS
+                     MODE. Measured on DINING, NVDA, say-all off, 21 September
+                     2026: TABBING into the group announced "AI service proxy,
+                     grouping / Azure UK South (default, beta), radio button,
+                     checked, 1 of 3" and NOTHING of the paragraph. The 5 and 8
+                     September sittings that discharged row 41(f) had BROWSED
+                     in, where it does read — so the discharge covered one of
+                     the two paths and the keyboard path had never been heard.
+                     Tab moves focus straight to the checked radio; the legend
+                     comes with the grouping, the paragraph does not.
+
+                     There is no NATIVE mechanism for this. A <legend> supplies
+                     the group's NAME, not a description, so moving the text
+                     into it would rename the group rather than describe it and
+                     would make every arrival read the whole paragraph as the
+                     name. aria-describedby is the only route, and the five
+                     rules of ARIA permit it precisely because HTML cannot.
+
+                     WHETHER NVDA VOICES aria-describedby ON A FIELDSET IN FOCUS
+                     MODE IS UNHEARD. The description is present in the
+                     accessibility tree (measured); that a reader SPEAKS it is a
+                     separate claim and needs a person. Row 41(f) is RE-OPENED
+                     until someone tabs in and reports. -->
+                <fieldset
+                  class="setup-proxy-picker"
+                  id="setup-proxy-picker"
+                  aria-describedby="setup-proxy-picker-help"
+                >
                   <legend>AI service proxy</legend>
 
                   <p class="setup-help-text" id="setup-proxy-picker-help">
@@ -1596,12 +1652,12 @@
                     <input
                       type="radio"
                       name="setup-proxy-choice"
-                      id="setup-proxy-cloudflare"
-                      value="cloudflare"
+                      id="setup-proxy-azure"
+                      value="azure"
                       checked
                     />
-                    <label for="setup-proxy-cloudflare"
-                      >Cloudflare (default)</label
+                    <label for="setup-proxy-azure"
+                      >Azure UK South (default, beta)</label
                     >
                   </div>
 
@@ -1609,10 +1665,10 @@
                     <input
                       type="radio"
                       name="setup-proxy-choice"
-                      id="setup-proxy-azure"
-                      value="azure"
+                      id="setup-proxy-cloudflare"
+                      value="cloudflare"
                     />
-                    <label for="setup-proxy-azure">Azure UK South (beta)</label>
+                    <label for="setup-proxy-cloudflare">Cloudflare</label>
                   </div>
 
                   <div class="setup-proxy-option">
@@ -5786,29 +5842,7 @@ Science,91</pre
                     checked
                   />
 
-                  <svg
-                    height="21"
-                    class="mode-icon"
-                    aria-hidden="true"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(3 3)"
-                    >
-                      <path d="m11.5 4.5-3.978-4-4.022 4" />
-                      <path d="m7.522.521v11.979" />
-                      <path
-                        d="m.5 9v4.5c0 1.1045695.8954305 2 2 2h10c1.1045695 0 2-.8954305 2-2v-4.5"
-                      />
-                    </g>
-                  </svg>
+                  <span class="mode-icon" aria-hidden="true" data-icon="upload" data-icon-class="mathpix-inline-icon"></span>
                   <span class="mode-label">Upload File</span>
                 </label>
 
@@ -5819,29 +5853,7 @@ Science,91</pre
                     value="draw"
                     id="mathpix-draw-mode-radio"
                   />
-                  <svg
-                    class="mode-icon"
-                    aria-hidden="true"
-                    height="21"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(3 3)"
-                    >
-                      <path
-                        d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"
-                      />
-                      <path d="m6.5 14.5h8" />
-                      <path d="m12.5 3.5 1 1" />
-                    </g>
-                  </svg>
+                  <span class="mode-icon" aria-hidden="true" data-icon="write" data-icon-class="mathpix-inline-icon"></span>
                   <span class="mode-label">Draw Mathematics</span>
                 </label>
 
@@ -6037,29 +6049,7 @@ Science,91</pre
               aria-controls="mathpix-file-input"
             >
               <p id="upload-instructions">
-                <svg
-                  aria-hidden="true"
-                  height="40"
-                  width="40"
-                  viewBox="0 0 21 21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(2 4)"
-                  >
-                    <path
-                      d="m15.5 4.5c.000802-1.10737712-.8946285-2.00280762-1.999198-2.00280762l-5.000802.00280762-2-2h-4c-.55228475 0-1 .44771525-1 1v.99719238 2.00280762"
-                    />
-                    <path
-                      d="m.81056316 5.74177845 1.31072322 5.24326075c.22257179.8903496 1.02254541 1.5149608 1.94029301 1.5149608h8.87667761c.9177969 0 1.7178001-.6246768 1.9403251-1.5150889l1.3108108-5.24508337c.1339045-.53580596-.1919011-1.07871356-.727707-1.21261805-.079341-.0198283-.1608148-.02983749-.2425959-.02983749l-13.43852073.00188666c-.55228474.00007754-.99985959.44785564-.99985959 1.00014038 0 .08170931.01003737.16310922.02985348.24237922z"
-                    />
-                  </g>
-                </svg>
+                <span aria-hidden="true" data-icon="folder"></span>
                 Drop file here, or select to browse.
                 <br />
                 <span class="help-text"
@@ -6075,34 +6065,7 @@ Science,91</pre
               class="help-text"
               style="margin-top: 0.75rem; text-align: center"
             >
-              <svg
-                aria-hidden="true"
-                height="16"
-                width="16"
-                viewBox="0 0 21 21"
-                xmlns="http://www.w3.org/2000/svg"
-                style="vertical-align: middle; margin-right: 0.25rem"
-              >
-                <g
-                  fill="none"
-                  fill-rule="evenodd"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  transform="translate(4 3)"
-                >
-                  <path
-                    d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                  />
-                  <path
-                    d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                  />
-                  <path d="m2.5 5.5h5" />
-                  <path d="m2.5 7.5h7" />
-                  <path d="m2.5 9.5h3" />
-                  <path d="m2.5 11.5h6" />
-                </g>
-              </svg>
+              <span aria-hidden="true" data-icon="clipboard" data-icon-class="icon-16"></span>
               <strong>Quick tip:</strong> You can paste images directly from
               your clipboard (Ctrl+V or Cmd+V)
             </p>
@@ -6119,28 +6082,7 @@ Science,91</pre
 
             <div class="mathpix-canvas-wrapper">
               <p class="mathpix-canvas-instructions">
-                <svg
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(3 3)"
-                  >
-                    <path
-                      d="m14 1c.8284271.82842712.8284271 2.17157288 0 3l-9.5 9.5-4 1 1-3.9436508 9.5038371-9.55252193c.7829896-.78700064 2.0312313-.82943964 2.864366-.12506788z"
-                    />
-                    <path d="m6.5 14.5h8" />
-                    <path d="m12.5 3.5 1 1" />
-                  </g>
-                </svg>
+                <span aria-hidden="true" data-icon="write" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
                 Draw your mathematical expression using your mouse or touch
                 input. The system will recognise handwritten mathematics.
               </p>
@@ -6242,25 +6184,7 @@ Science,91</pre
                   class="mathpix-canvas-btn mathpix-clear-btn"
                   disabled
                 >
-                  <svg
-                    height="21"
-                    aria-hidden="true"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(5 5)"
-                    >
-                      <path d="m10.5 10.5-10-10z" />
-                      <path d="m10.5.5-10 10" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="close" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
                   Clear Canvas
                 </button>
 
@@ -6271,27 +6195,7 @@ Science,91</pre
                   aria-label="Undo last stroke"
                   disabled
                 >
-                  <svg
-                    height="21"
-                    viewBox="0 0 21 21"
-                    aria-hidden="true"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 7)"
-                    >
-                      <path
-                        d="m.5 6.5c3.33333333-4 6.33333333-6 9-6 2.6666667 0 5 1 7 3"
-                      />
-                      <path d="m.5 1.5v5h5" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="undo" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
                   Undo
                 </button>
 
@@ -6299,36 +6203,29 @@ Science,91</pre
                   type="button"
                   id="mathpix-submit-strokes-btn"
                   class="mathpix-canvas-btn mathpix-submit-btn"
+                  aria-describedby="mathpix-strokes-cost-notice"
                   disabled
                 >
-                  <svg
-                    height="21"
-                    viewBox="0 0 21 21"
-                    aria-hidden="true"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 2)"
-                    >
-                      <path
-                        d="m11.5779891 4.55941656c1.1699828.91516665 1.9220109 2.34005226 1.9220109 3.94058344 0 .48543539-.0691781.95471338-.1982137 1.39851335.3339576-.25026476.748773-.39851335 1.1982137-.39851335 1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2c-1.104407 0-10.16182706 0-11 0-1.65685425 0-3-1.3431458-3-3 0-1.65685425 1.34314575-3 3-3 .03335948 0 .06659179.00054449.09968852.00162508.242805-1.19819586.9140534-2.24091357 1.84691265-2.96132058"
-                      />
-                      <path d="m6.5 2.5 2-2 2 2" />
-                      <path d="m8.5.5v9" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="cloudUploadAlt" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
                   Process Drawing
                   <span class="visually-hidden">
                     — recognises the handwritten mathematics you have drawn
                   </span>
                 </button>
               </div>
+
+              <!-- Cost notice: figures from MATHPIX_PRICING in mathpix-config.js -->
+              <p
+                id="mathpix-strokes-cost-notice"
+                class="help-text mathpix-cost-notice mathjax-ignore"
+              >
+                <span aria-hidden="true" data-icon="coins"></span>
+                <span class="mathpix-cost-notice-text"
+                  >Each Process Drawing sends one request to MathPix: about
+                  <strong>$0.002</strong> (MathPix list price, US
+                  dollars).</span
+                >
+              </p>
 
               <p class="mathpix-canvas-help help-text">
                 <strong>Alternative:</strong> Drawing is only supported using
@@ -6438,27 +6335,7 @@ Science,91</pre
                   onclick="toggleMathPixCameraMirror()"
                   disabled
                 >
-                  <svg
-                    class="button-icon"
-                    aria-hidden="true"
-                    height="18"
-                    viewBox="0 0 21 21"
-                    width="18"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 2)"
-                    >
-                      <path d="m8.5.5v16" />
-                      <path d="m.5 8.5h7v-7h-7z" />
-                      <path d="m9.5 8.5h7v7h-7z" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="flip" data-icon-class="mathpix-inline-icon button-icon"></span>
                   <span>Mirror Preview</span>
                 </button>
                 <button
@@ -6533,6 +6410,20 @@ Science,91</pre
                   <span>Rotate</span>
                 </button>
               </div>
+
+              <!-- Cost notice: figures from MATHPIX_PRICING in mathpix-config.js -->
+              <p
+                id="mathpix-camera-cost-notice"
+                class="help-text mathpix-cost-notice mathjax-ignore"
+              >
+                <span aria-hidden="true" data-icon="coins"></span>
+                <span class="mathpix-cost-notice-text"
+                  >Starting the camera and capturing a photo are free.
+                  Processing the photo sends one image to MathPix: about
+                  <strong>$0.002</strong>, or up to <strong>$0.005</strong> for
+                  a dense page (MathPix list price, US dollars).</span
+                >
+              </p>
 
               <div class="mathpix-camera-info">
                 <p class="info-text">
@@ -7070,6 +6961,20 @@ Science,91</pre
                   </div>
                 </fieldset>
 
+                <!-- Cost notice: MATHPIX_PRICING.CONVERTER_PER_REQUEST is
+                     unpublished, so no figure is given -->
+                <p
+                  id="convert-mode-cost-notice"
+                  class="help-text mathpix-cost-notice mathjax-ignore"
+                >
+                  <span aria-hidden="true" data-icon="coins"></span>
+                  <span class="mathpix-cost-notice-text"
+                    >Converting sends a separate request to MathPix. MathPix
+                    does not publish a price for conversion; check your MathPix
+                    console for the charge.</span
+                  >
+                </p>
+
                 <!-- Convert Actions -->
                 <div class="mathpix-convert-actions">
                   <button
@@ -7078,7 +6983,7 @@ Science,91</pre
                     class="mathpix-btn mathpix-btn-primary"
                     onclick="startConvertModeConversion()"
                     disabled
-                    aria-describedby="convert-mode-status"
+                    aria-describedby="convert-mode-status convert-mode-cost-notice"
                   >
                     <span aria-hidden="true" data-icon="refresh"></span> Convert
                     Selected
@@ -7581,7 +7486,11 @@ Science,91</pre
                       class="mmd-split-pdf-toggle"
                       hidden
                     >
-                      <input type="checkbox" id="resume-mmd-split-show-pdf" />
+                      <input
+                        type="checkbox"
+                        id="resume-mmd-split-show-pdf"
+                        class="default-checkbox"
+                      />
                       <span aria-hidden="true" data-icon="pdf"></span> Show PDF
                     </label>
 
@@ -7594,6 +7503,7 @@ Science,91</pre
                       <input
                         type="checkbox"
                         id="resume-mmd-show-confidence"
+                        class="default-checkbox"
                         aria-describedby="resume-mmd-confidence-description"
                       />
                       <span class="confidence-toggle-label">
@@ -7715,72 +7625,28 @@ Science,91</pre
                           onclick="downloadResumeMMD()"
                           aria-label="Save File"
                         >
-                          <svg
-                            height="21"
-                            viewBox="0 0 21 21"
-                            width="21"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <g
-                              fill="none"
-                              fill-rule="evenodd"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              transform="translate(4 4)"
-                            >
-                              <path
-                                d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"
-                              />
-                              <path
-                                d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"
-                              />
-                              <path d="m3.5 3.5h2v2h-2z" />
-                            </g>
-                          </svg>
+                          <span aria-hidden="true" data-icon="disk" data-icon-class="mathpix-inline-icon"></span>
                           <span class="btn-label">Save File</span>
                         </button>
-                        <label
+                        <button
+                          type="button"
                           id="resume-mmd-upload-label"
                           class="mmd-toolbar-btn mmd-upload-label"
-                          tabindex="0"
-                          onkeydown="handleResumeUploadLabelKeydown(event)"
+                          onclick="document.getElementById('resume-mmd-upload-input').click()"
                           aria-describedby="resume-mmd-upload-help"
                           aria-label="Load File"
                         >
-                          <svg
-                            height="21"
-                            viewBox="0 0 21 21"
-                            width="21"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <g
-                              fill="none"
-                              fill-rule="evenodd"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              transform="translate(4 3)"
-                            >
-                              <path
-                                d="m8.5 14.5h2c1.1045695 0 2-.8954305 2-2v-8l-4-4h-6c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h2"
-                              />
-                              <path d="m3.5 7.5 3-3 3 3" />
-                              <path d="m6.5 4.5v11" />
-                            </g>
-                          </svg>
+                          <span aria-hidden="true" data-icon="fileUpload" data-icon-class="mathpix-inline-icon"></span>
                           <span class="btn-label">Load File</span>
-                          <input
-                            type="file"
-                            id="resume-mmd-upload-input"
-                            accept=".mmd,.md,.txt"
-                            class="visually-hidden"
-                            tabindex="-1"
-                            onchange="handleResumeMMDFileUpload(this.files)"
-                          />
-                        </label>
+                        </button>
+                        <input
+                          type="file"
+                          id="resume-mmd-upload-input"
+                          accept=".mmd,.md,.txt"
+                          class="visually-hidden"
+                          hidden
+                          onchange="handleResumeMMDFileUpload(this.files)"
+                        />
                         <span
                           id="resume-mmd-upload-help"
                           class="visually-hidden"
@@ -7827,38 +7693,7 @@ Science,91</pre
                           disabled
                           aria-describedby="ai-enhance-btn-desc"
                         >
-                          <svg
-                            height="21"
-                            width="21"
-                            viewBox="0 0 21 21"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <g
-                              transform="matrix(1.0685 0 0 .99925 .39221 2.2062)"
-                              fill="none"
-                              fill-rule="evenodd"
-                            >
-                              <path
-                                d="m0.5 15v-11.8c0-1.6 1.3-2.9 3-2.9h6.3m4.5 7.7v7c0 1.6-1.3 2.9-3 2.9h-7.8c-1.6 0-3-1.3-3-2.9"
-                                stroke="currentColor"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                              />
-                              <path
-                                d="m12.2-1.9q0.7 6 6.8 6-6.1 0-6.8 6-0.7-6-6.8-6 6.1 0 6.8-6z"
-                                fill="currentColor"
-                              />
-                              <path
-                                d="m6.1 6.8q0.6 4.8 5.7 4.8-5.1 0-5.7 4.8-0.6-4.8-5.7-4.8 5.1 0 5.7-4.8z"
-                                fill="currentColor"
-                              />
-                              <path
-                                d="m15.8-1.7q0.2 1.5 1.7 1.5-1.5 0-1.7 1.5-0.2-1.5-1.7-1.5 1.5 0 1.7-1.5z"
-                                fill="currentColor"
-                              />
-                            </g>
-                          </svg>
+                          <span aria-hidden="true" data-icon="aiSparkle" data-icon-class="mathpix-inline-icon"></span>
                           <span class="btn-label">Enhance with AI</span>
                         </button>
                         <span id="ai-enhance-btn-desc" class="visually-hidden">
@@ -8818,6 +8653,92 @@ Science,91</pre
                       </div>
                     </fieldset>
                     <div class="mathpix-context-ai">
+                      <!--
+                        MP-1: the model picker for context auto-fill.
+
+                        STATIC STRUCTURE HERE, POPULATED BY
+                        mathpix-scripts/ai-enhancement/mathpix-context-ai.js.
+                        The radio list and the override option list are the only
+                        generated parts, because their contents depend on the
+                        active provider and on the live model catalogue.
+
+                        NO LIVE REGION AND NO live ROLE anywhere in this block,
+                        deliberately. Parcel MP-1 adds NO spoken line: every
+                        string here is visible text a person reads when they
+                        reach it, on the precedent of the enhancer's own
+                        empty-state message. The polite region that serves this
+                        workflow is #resume-context-ai-announce below, and
+                        nothing in the picker writes to it.
+
+                        THREE STATES, EXACTLY ONE VISIBLE AT A TIME:
+                          - a measured recommendation exists  -> the fieldset
+                          - none exists for this provider     -> -none
+                          - the shared registry is absent     -> -unavailable,
+                            and the advanced disclosure is hidden too, because
+                            the run refuses before any model is resolved and an
+                            override would be a dead control.
+                      -->
+                      <div
+                        id="resume-context-model-picker"
+                        class="mathpix-context-model-picker"
+                        hidden
+                      >
+                        <fieldset
+                          id="resume-context-model-recommended"
+                          class="mathpix-context-model-recommended"
+                          hidden
+                        >
+                          <legend>AI model for context auto-fill</legend>
+                          <div
+                            id="resume-context-model-options"
+                            class="model-options"
+                          ></div>
+                          <p
+                            id="resume-context-model-measured"
+                            class="field-hint"
+                          ></p>
+                        </fieldset>
+                        <p
+                          id="resume-context-model-none"
+                          class="field-hint"
+                          hidden
+                        >
+                          No measured recommendation is available for the AI
+                          provider you have selected. Choose a model from the
+                          advanced list below.
+                        </p>
+                        <p
+                          id="resume-context-model-unavailable"
+                          class="field-hint"
+                          hidden
+                        ></p>
+                        <details
+                          id="resume-context-model-advanced"
+                          class="mathpix-context-model-advanced"
+                        >
+                          <summary>Use a different model</summary>
+                          <div class="mathpix-context-field">
+                            <label for="resume-context-model-override"
+                              >Override model</label
+                            >
+                            <select
+                              id="resume-context-model-override"
+                              aria-describedby="resume-context-model-override-hint"
+                            >
+                              <option value="">
+                                Use the recommended model above
+                              </option>
+                            </select>
+                            <p
+                              id="resume-context-model-override-hint"
+                              class="field-hint"
+                            >
+                              The list shows only models the AI provider you
+                              have selected can use to read a PDF.
+                            </p>
+                          </div>
+                        </details>
+                      </div>
                       <button
                         type="button"
                         id="resume-context-ai-analyse"
@@ -9203,6 +9124,20 @@ Science,91</pre
                     </div>
                   </fieldset>
 
+                  <!-- Cost notice: MATHPIX_PRICING.CONVERTER_PER_REQUEST is
+                       unpublished, so no figure is given -->
+                  <p
+                    id="resume-convert-cost-notice"
+                    class="help-text mathpix-cost-notice mathjax-ignore"
+                  >
+                    <span aria-hidden="true" data-icon="coins"></span>
+                    <span class="mathpix-cost-notice-text"
+                      >Converting sends a separate request to MathPix. MathPix
+                      does not publish a price for conversion; check your
+                      MathPix console for the charge.</span
+                    >
+                  </p>
+
                   <!-- Convert Actions -->
                   <div class="mathpix-convert-actions">
                     <button
@@ -9210,7 +9145,7 @@ Science,91</pre
                       id="resume-convert-btn"
                       class="mathpix-btn mathpix-btn-primary"
                       disabled
-                      aria-describedby="resume-convert-size-readout"
+                      aria-describedby="resume-convert-size-readout resume-convert-cost-notice"
                     >
                       <span aria-hidden="true" data-icon="refresh"></span>
                       Convert Selected
@@ -9378,10 +9313,23 @@ Science,91</pre
               <dd id="upload-preview-size"></dd>
             </dl>
 
+            <!-- Cost notice: pdf-preview-upload-verification.js fills in the
+                 page count once PDF.js has read it. Not a live region. -->
+            <p
+              id="mathpix-upload-preview-cost-notice"
+              class="help-text mathpix-cost-notice mathjax-ignore"
+            >
+              <span aria-hidden="true" data-icon="coins"></span>
+              <span class="mathpix-cost-notice-text"
+                >Processing costs about <strong>$0.005</strong> per page
+                (MathPix list price, US dollars).</span
+              >
+            </p>
+
             <!-- Verification Actions -->
             <div class="upload-preview-actions">
               <button id="upload-preview-confirm" class="primary-button">
-                <span aria-hidden="true">✓</span> Yes, this is the PDF!
+                <span aria-hidden="true" data-icon="check"></span> Yes, this is the PDF!
               </button>
               <button id="upload-preview-cancel" class="secondary-button">
                 <span aria-hidden="true" data-icon="error"></span> No, I want to
@@ -9420,25 +9368,7 @@ Science,91</pre
                 onclick="rotateMathPixPreview()"
                 aria-label="Rotate preview 90 degrees clockwise"
               >
-                <svg
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(5.5 6.5)"
-                  >
-                    <path d="m0 8v-2c0-1.65685425 1.34314575-3 3-3h8" />
-                    <path d="m7.999 6 3.001-3-3.001-3" />
-                  </g>
-                </svg>
+                <span aria-hidden="true" data-icon="jumpRight" data-icon-class="mathpix-inline-icon"></span>
                 Rotate
               </button>
               <button
@@ -9448,27 +9378,7 @@ Science,91</pre
                 onclick="flipMathPixPreview()"
                 aria-label="Flip preview horizontally"
               >
-                <svg
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    transform="translate(4 3)"
-                  >
-                    <path d="m4.501 8.5-3.001 3 3.001 3" />
-                    <path d="m12.5 6.5v2c0 1.6568542-1.3431458 3-3 3h-8" />
-                    <path d="m8.499 6.5 3.001-3-3.001-3" />
-                    <path d="m.5 8.5v-2c0-1.65685425 1.34314575-3 3-3h8" />
-                  </g>
-                </svg>
+                <span aria-hidden="true" data-icon="shuffle" data-icon-class="mathpix-inline-icon"></span>
                 Flip
               </button>
               <span
@@ -9578,33 +9488,31 @@ Science,91</pre
               </p>
             </fieldset>
 
+            <!-- Cost notice for the dynamic "Process with MathPix" button, which
+                 mathpix-file-handler.js ties to it with aria-describedby.
+                 Figures from MATHPIX_PRICING in mathpix-config.js -->
+            <p
+              id="mathpix-image-cost-notice"
+              class="help-text mathpix-cost-notice mathjax-ignore"
+            >
+              <span aria-hidden="true" data-icon="coins"></span>
+              <span class="mathpix-cost-notice-text"
+                >Processing sends this image to MathPix: about
+                <strong>$0.002</strong>, or up to <strong>$0.005</strong> if
+                the image holds more than 12 rows of text (MathPix list price,
+                US dollars).</span
+              >
+            </p>
+
             <!-- Duplicate removed in Phase 1F.2 Step 1 -->
             <div class="mathpix-preview-actions">
               <button
                 id="mathpix-open-original-btn"
                 class="mathpix-open-original-btn"
-                aria-hidden="true"
                 type="button"
-                aria-label="Open original file in new window"
                 style="display: none"
               >
-                <svg
-                  height="21"
-                  viewBox="0 0 21 21"
-                  width="21"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <g
-                    fill="none"
-                    fill-rule="evenodd"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <circle cx="8.5" cy="8.5" r="5" />
-                    <path d="m17.571 17.5-5.571-5.5" />
-                  </g>
-                </svg>
+                <span aria-hidden="true" data-icon="external"></span>
                 Open Original in New Window
               </button>
             </div>
@@ -10816,55 +10724,6 @@ Science,91</pre
               Document Processing
             </h2>
 
-            <!-- PDF Upload Section -->
-            <div class="mathpix-pdf-upload-container">
-              <div
-                id="mathpix-pdf-drop-zone"
-                class="drop-zone mathpix-pdf-drop-zone"
-                role="button"
-                tabindex="0"
-                aria-describedby="pdf-upload-instructions"
-              >
-                <p id="pdf-upload-instructions">
-                  <svg
-                    aria-hidden="true"
-                    height="40"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 2)"
-                    >
-                      <path
-                        d="m11.5779891 4.55941656c1.1699828.91516665 1.9220109 2.34005226 1.9220109 3.94058344 0 .48543539-.0691781.95471338-.1982137 1.39851335.3339576-.25026476.748773-.39851335 1.1982137-.39851335 1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2c-1.104407 0-10.16182706 0-11 0-1.65685425 0-3-1.3431458-3-3 0-1.65685425 1.34314575-3 3-3 .03335948 0 .06659179.00054449.09968852.00162508.242805-1.19819586.9140534-2.24091357 1.84691265-2.96132058"
-                      />
-                      <path d="m6.5 2.5 2-2 2 2" />
-                      <path d="m8.5.5v9" />
-                    </g>
-                  </svg>
-                  Drop document here, or select to open file browser
-                  <br />
-                  <span class="help-text"
-                    >Supports: PDF / Word / PowerPoint documents (max 1
-                    GB)</span
-                  >
-                </p>
-                <input
-                  type="file"
-                  id="mathpix-pdf-file-input"
-                  accept="application/pdf"
-                  style="display: none"
-                  aria-label="Select PDF document for processing"
-                />
-              </div>
-            </div>
-
             <!-- Phase 4: Simple File Confirmation Section (for non-PDF formats) -->
             <div
               id="mathpix-file-confirmation"
@@ -11548,35 +11407,29 @@ Science,91</pre
                 </label>
               </fieldset>
 
+              <!-- Cost notice: mathpix-pdf-handler.js updatePdfCostNotice()
+                   fills in the effective page count. Not a live region. -->
+              <p
+                id="mathpix-pdf-cost-notice"
+                class="help-text mathpix-cost-notice mathjax-ignore"
+              >
+                <span aria-hidden="true" data-icon="coins"></span>
+                <span class="mathpix-cost-notice-text"
+                  >Processing costs about <strong>$0.005</strong> per page
+                  (MathPix list price, US dollars). All selected output formats
+                  are included.</span
+                >
+              </p>
+
               <!-- Processing Actions -->
               <div class="mathpix-pdf-actions">
                 <button
                   type="button"
                   id="mathpix-pdf-process-btn"
                   class="mathpix-process-btn"
+                  aria-describedby="mathpix-pdf-cost-notice"
                 >
-                  <svg
-                    height="21"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(2 2)"
-                    >
-                      <path
-                        d="m11.5779891 4.55941656c1.1699828.91516665 1.9220109 2.34005226 1.9220109 3.94058344 0 .48543539-.0691781.95471338-.1982137 1.39851335.3339576-.25026476.748773-.39851335 1.1982137-.39851335 1.1045695 0 2 .8954305 2 2s-.8954305 2-2 2c-1.104407 0-10.16182706 0-11 0-1.65685425 0-3-1.3431458-3-3 0-1.65685425 1.34314575-3 3-3 .03335948 0 .06659179.00054449.09968852.00162508.242805-1.19819586.9140534-2.24091357 1.84691265-2.96132058"
-                      />
-                      <path d="m6.5 2.5 2-2 2 2" />
-                      <path d="m8.5.5v9" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="cloudUploadAlt" data-icon-class="mathpix-inline-icon"></span>
                   Process PDF Document
                 </button>
                 <button
@@ -11639,30 +11492,7 @@ Science,91</pre
               <div class="progress-header">
                 <div class="progress-title-section">
                   <h3 class="progress-title">
-                    <svg
-                      id="pdf-progress-icon"
-                      class="progress-icon"
-                      aria-hidden="true"
-                      height="21"
-                      viewBox="0 0 21 21"
-                      width="21"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <g
-                        fill="none"
-                        fill-rule="evenodd"
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        transform="translate(3 3)"
-                      >
-                        <path
-                          d="m7.5.5c.35132769 0 .69661025.02588228 1.03404495.07584411l.50785434 1.53911115c.44544792.12730646.86820077.30839026 1.26078721.53578009l1.4600028-.70360861c.5166435.39719686.9762801.86487779 1.3645249 1.388658l-.7293289 1.44720284c.2201691.39604534.3936959.82158734.5131582 1.2692035l1.5298263.5338186c.0390082.29913986.0591302.60421522.0591302.91399032 0 .35132769-.0258823.69661025-.0758441 1.03404495l-1.5391112.50785434c-.1273064.44544792-.3083902.86820077-.5357801 1.26078721l.7036087 1.4600028c-.3971969.5166435-.8648778.9762801-1.388658 1.3645249l-1.4472029-.7293289c-.39604532.2201691-.82158732.3936959-1.26920348.5131582l-.5338186 1.5298263c-.29913986.0390082-.60421522.0591302-.91399032.0591302-.35132769 0-.69661025-.0258823-1.03404495-.0758441l-.50785434-1.5391112c-.44544792-.1273064-.86820077-.3083902-1.26078723-.5357801l-1.46000277.7036087c-.51664349-.3971969-.97628006-.8648778-1.36452491-1.388658l.72932886-1.4472029c-.2203328-.39633993-.39395403-.82222042-.51342462-1.27020241l-1.52968981-.53381682c-.03892294-.29882066-.05900023-.60356226-.05900023-.91299317 0-.35132769.02588228-.69661025.07584411-1.03404495l1.53911115-.50785434c.12730646-.44544792.30839026-.86820077.53578009-1.26078723l-.70360861-1.46000277c.39719686-.51664349.86487779-.97628006 1.388658-1.36452491l1.44720284.72932886c.39633995-.2203328.82222044-.39395403 1.27020243-.51342462l.53381682-1.52968981c.29882066-.03892294.60356226-.05900023.91299317-.05900023z"
-                          stroke-width=".933"
-                        />
-                        <circle cx="7.5" cy="7.5" r="3" />
-                      </g>
-                    </svg>
+                    <span id="pdf-progress-icon" class="progress-icon" aria-hidden="true"></span>
                     <span id="pdf-progress-title">Processing Document</span>
                   </h3>
                   <div id="pdf-progress-subtitle" class="progress-subtitle">
@@ -11670,33 +11500,6 @@ Science,91</pre
                   </div>
                 </div>
                 <div class="progress-actions">
-                  <button
-                    type="button"
-                    id="pdf-cancel-btn"
-                    class="cancel-btn"
-                    style="display: none"
-                  >
-                    <svg
-                      height="21"
-                      viewBox="0 0 21 21"
-                      width="21"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <g
-                        fill="none"
-                        fill-rule="evenodd"
-                        stroke="currentColor"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        transform="translate(5 5)"
-                      >
-                        <path d="m10.5 10.5-10-10z" />
-                        <path d="m10.5.5-10 10" />
-                      </g>
-                    </svg>
-                    Cancel
-                  </button>
                 </div>
               </div>
 
@@ -12309,6 +12112,7 @@ Science,91</pre
                         <input
                           type="checkbox"
                           id="mmd-split-show-pdf"
+                          class="default-checkbox"
                           onchange="toggleSplitPDF(this.checked)"
                         />
                         <span aria-hidden="true" data-icon="pdf"></span> Show
@@ -12391,71 +12195,27 @@ Science,91</pre
                           class="mmd-toolbar-btn"
                           onclick="downloadEditedMMD()"
                         >
-                          <svg
-                            height="21"
-                            viewBox="0 0 21 21"
-                            width="21"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <g
-                              fill="none"
-                              fill-rule="evenodd"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              transform="translate(4 4)"
-                            >
-                              <path
-                                d="m2.5.5h7l3 3v7c0 1.1045695-.8954305 2-2 2h-8c-1.1045695 0-2-.8954305-2-2v-8c0-1.1045695.8954305-2 2-2z"
-                              />
-                              <path
-                                d="m4.50000081 8.5h4c.55228475 0 1 .44771525 1 1v3h-6v-3c0-.55228475.44771525-1 1-1z"
-                              />
-                              <path d="m3.5 3.5h2v2h-2z" />
-                            </g>
-                          </svg>
+                          <span aria-hidden="true" data-icon="disk" data-icon-class="mathpix-inline-icon"></span>
                           Save File
                         </button>
-                        <label
+                        <button
+                          type="button"
                           id="mmd-upload-label"
                           class="mmd-toolbar-btn mmd-upload-label"
-                          tabindex="0"
-                          onkeydown="handleUploadLabelKeydown(event)"
+                          onclick="document.getElementById('mmd-upload-input').click()"
                           aria-describedby="mmd-upload-help"
                         >
-                          <svg
-                            height="21"
-                            viewBox="0 0 21 21"
-                            width="21"
-                            xmlns="http://www.w3.org/2000/svg"
-                            aria-hidden="true"
-                          >
-                            <g
-                              fill="none"
-                              fill-rule="evenodd"
-                              stroke="currentColor"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              transform="translate(4 3)"
-                            >
-                              <path
-                                d="m8.5 14.5h2c1.1045695 0 2-.8954305 2-2v-8l-4-4h-6c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h2"
-                              />
-                              <path d="m3.5 7.5 3-3 3 3" />
-                              <path d="m6.5 4.5v11" />
-                            </g>
-                          </svg>
+                          <span aria-hidden="true" data-icon="fileUpload" data-icon-class="mathpix-inline-icon"></span>
                           Load File
-                          <input
-                            type="file"
-                            id="mmd-upload-input"
-                            accept=".mmd,.md,.txt"
-                            class="visually-hidden"
-                            tabindex="-1"
-                            onchange="handleMMDFileUpload(this.files)"
-                          />
-                        </label>
+                        </button>
+                        <input
+                          type="file"
+                          id="mmd-upload-input"
+                          accept=".mmd,.md,.txt"
+                          class="visually-hidden"
+                          hidden
+                          onchange="handleMMDFileUpload(this.files)"
+                        />
                         <span id="mmd-upload-help" class="visually-hidden">
                           Accepts .mmd, .md, or .txt files
                         </span>
@@ -12946,33 +12706,7 @@ Science,91</pre
                       data-format="mmd"
                       data-action="copy"
                     >
-                      <svg
-                        height="21"
-                        viewBox="0 0 21 21"
-                        width="21"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          fill="none"
-                          fill-rule="evenodd"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform="translate(4 3)"
-                        >
-                          <path
-                            d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                          />
-                          <path
-                            d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                          />
-                          <path d="m2.5 5.5h5" />
-                          <path d="m2.5 7.5h7" />
-                          <path d="m2.5 9.5h3" />
-                          <path d="m2.5 11.5h6" />
-                        </g>
-                      </svg>
+                      <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
                       Copy
                     </button>
                     <button
@@ -12980,28 +12714,7 @@ Science,91</pre
                       class="mathpix-download-btn"
                       data-format="mmd"
                     >
-                      <svg
-                        height="21"
-                        viewBox="0 0 21 21"
-                        width="21"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          fill="none"
-                          fill-rule="evenodd"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform="translate(4 2)"
-                        >
-                          <path
-                            d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                          />
-                          <path d="m9.5 8.586-3 2.914-3-2.914" />
-                          <path d="m6.5.5v11" />
-                        </g>
-                      </svg>
+                      <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
                       Download
                     </button>
 
@@ -13014,38 +12727,7 @@ Science,91</pre
                       hidden
                       aria-describedby="upload-ai-enhance-btn-desc"
                     >
-                      <svg
-                        height="21"
-                        width="21"
-                        viewBox="0 0 21 21"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          transform="matrix(1.0685 0 0 .99925 .39221 2.2062)"
-                          fill="none"
-                          fill-rule="evenodd"
-                        >
-                          <path
-                            d="m0.5 15v-11.8c0-1.6 1.3-2.9 3-2.9h6.3m4.5 7.7v7c0 1.6-1.3 2.9-3 2.9h-7.8c-1.6 0-3-1.3-3-2.9"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                          <path
-                            d="m12.2-1.9q0.7 6 6.8 6-6.1 0-6.8 6-0.7-6-6.8-6 6.1 0 6.8-6z"
-                            fill="currentColor"
-                          />
-                          <path
-                            d="m6.1 6.8q0.6 4.8 5.7 4.8-5.1 0-5.7 4.8-0.6-4.8-5.7-4.8 5.1 0 5.7-4.8z"
-                            fill="currentColor"
-                          />
-                          <path
-                            d="m15.8-1.7q0.2 1.5 1.7 1.5-1.5 0-1.7 1.5-0.2-1.5-1.7-1.5 1.5 0 1.7-1.5z"
-                            fill="currentColor"
-                          />
-                        </g>
-                      </svg>
+                      <span aria-hidden="true" data-icon="aiSparkle" data-icon-class="mathpix-inline-icon"></span>
                       Enhance with AI
                     </button>
                     <span
@@ -13092,69 +12774,6 @@ Science,91</pre
                   <div class="mathpix-format-header">
                     <h4>Plain Markdown (MD) Output</h4>
                     <div class="mathpix-format-actions">
-                      <button
-                        type="button"
-                        class="mathpix-copy-btn"
-                        data-format="md"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 3)"
-                          >
-                            <path
-                              d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                            />
-                            <path
-                              d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                            />
-                            <path d="m2.5 5.5h5" />
-                            <path d="m2.5 7.5h7" />
-                            <path d="m2.5 9.5h3" />
-                            <path d="m2.5 11.5h6" />
-                          </g>
-                        </svg>
-                        Copy
-                      </button>
-                      <button
-                        type="button"
-                        class="mathpix-download-btn"
-                        data-format="md"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
-                        Download
-                      </button>
                     </div>
                   </div>
                   <div class="code-block-wrapper">
@@ -13177,33 +12796,7 @@ Science,91</pre
                         class="mathpix-copy-btn"
                         data-format="html"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 3)"
-                          >
-                            <path
-                              d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                            />
-                            <path
-                              d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                            />
-                            <path d="m2.5 5.5h5" />
-                            <path d="m2.5 7.5h7" />
-                            <path d="m2.5 9.5h3" />
-                            <path d="m2.5 11.5h6" />
-                          </g>
-                        </svg>
+                        <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
                         Copy
                       </button>
                       <button
@@ -13211,28 +12804,7 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="html"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
+                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
                         Download
                       </button>
                       <button
@@ -13279,33 +12851,7 @@ Science,91</pre
                         class="mathpix-copy-btn"
                         data-format="latex"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 3)"
-                          >
-                            <path
-                              d="m3.5 1.5c-.44119105-.00021714-1.03893772-.0044496-1.99754087-.00501204-.51283429-.00116132-.93645365.3838383-.99544161.88103343l-.00701752.11906336v10.99753785c.00061498.5520447.44795562.9996604 1 1.0006148l10 .0061982c.5128356.0008356.9357441-.3849039.993815-.882204l.006185-.1172316v-11c0-.55228475-.4477152-1-1-1-.8704853-.00042798-1.56475733.00021399-2 0"
-                            />
-                            <path
-                              d="m4.5.5h4c.55228475 0 1 .44771525 1 1s-.44771525 1-1 1h-4c-.55228475 0-1-.44771525-1-1s.44771525-1 1-1z"
-                            />
-                            <path d="m2.5 5.5h5" />
-                            <path d="m2.5 7.5h7" />
-                            <path d="m2.5 9.5h3" />
-                            <path d="m2.5 11.5h6" />
-                          </g>
-                        </svg>
+                        <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
                         Copy
                       </button>
                       <button
@@ -13313,28 +12859,7 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="latex"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
+                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
                         Download
                       </button>
                     </div>
@@ -13359,61 +12884,12 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="docx"
                       >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
+                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
                         Download DOCX
                       </button>
                     </div>
                   </div>
-                  <div id="mathpix-pdf-content-docx" class="mathpix-docx-info">
-                    <p>
-                      <svg
-                        height="21"
-                        viewBox="0 0 21 21"
-                        width="21"
-                        xmlns="http://www.w3.org/2000/svg"
-                        aria-hidden="true"
-                      >
-                        <g
-                          fill="none"
-                          fill-rule="evenodd"
-                          stroke="currentColor"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          transform="translate(4 3)"
-                        >
-                          <path
-                            d="m12.5 12.5v-10c0-1.1045695-.8954305-2-2-2h-8c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"
-                          />
-                          <path d="m3.5 5.5h5" />
-                          <path d="m3.5 7.5h6" />
-                          <path d="m3.5 9.5h3" />
-                        </g>
-                      </svg>
-                      DOCX file generated successfully. Click download to save
-                      the Microsoft Word document.
-                    </p>
-                  </div>
+                  <div id="mathpix-pdf-content-docx" class="mathpix-docx-info"></div>
                 </div>
 
                 <!-- PowerPoint (PPTX) Results Panel -->
@@ -13426,35 +12902,6 @@ Science,91</pre
                   <div class="mathpix-format-header">
                     <h4>PowerPoint (PPTX) Output</h4>
                     <div class="mathpix-format-actions">
-                      <button
-                        type="button"
-                        class="mathpix-download-btn"
-                        data-format="pptx"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
-                        Download PPTX
-                      </button>
                     </div>
                   </div>
                   <div class="mathpix-binary-format-message">
@@ -13481,35 +12928,6 @@ Science,91</pre
                   <div class="mathpix-format-header">
                     <h4>Excel (XLSX) Output</h4>
                     <div class="mathpix-format-actions">
-                      <button
-                        type="button"
-                        class="mathpix-download-btn"
-                        data-format="xlsx"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
-                        Download XLSX
-                      </button>
                     </div>
                   </div>
                   <div class="mathpix-binary-format-message">
@@ -13536,36 +12954,6 @@ Science,91</pre
                   <div class="mathpix-format-header">
                     <h4>PDF (HTML Rendering) Output</h4>
                     <div class="mathpix-format-actions">
-                      <button
-                        type="button"
-                        class="mathpix-download-btn"
-                        data-format="pdf"
-                        aria-label="Download PDF with HTML rendering"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
-                        Download PDF
-                      </button>
                     </div>
                   </div>
                   <div class="mathpix-binary-format-message">
@@ -13591,36 +12979,6 @@ Science,91</pre
                   <div class="mathpix-format-header">
                     <h4>PDF (LaTeX Rendering) Output</h4>
                     <div class="mathpix-format-actions">
-                      <button
-                        type="button"
-                        class="mathpix-download-btn"
-                        data-format="latexpdf"
-                        aria-label="Download PDF with LaTeX rendering"
-                      >
-                        <svg
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                          aria-hidden="true"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(4 2)"
-                          >
-                            <path
-                              d="m4.5 1.5h-2.00245461c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8.00000001c1.1043778-.000491 1.9997288-.8956223 2.0004909-2l.0019637-8-4-4"
-                            />
-                            <path d="m9.5 8.586-3 2.914-3-2.914" />
-                            <path d="m6.5.5v11" />
-                          </g>
-                        </svg>
-                        Download PDF
-                      </button>
                     </div>
                   </div>
                   <div class="mathpix-binary-format-message">
@@ -14188,6 +13546,20 @@ Science,91</pre
                     </div>
                   </fieldset>
 
+                  <!-- Cost notice: MATHPIX_PRICING.CONVERTER_PER_REQUEST is
+                       unpublished, so no figure is given -->
+                  <p
+                    id="mathpix-convert-cost-notice"
+                    class="help-text mathpix-cost-notice mathjax-ignore"
+                  >
+                    <span aria-hidden="true" data-icon="coins"></span>
+                    <span class="mathpix-cost-notice-text"
+                      >Converting sends a separate request to MathPix. MathPix
+                      does not publish a price for conversion; check your
+                      MathPix console for the charge.</span
+                    >
+                  </p>
+
                   <!-- Convert Actions -->
                   <div class="mathpix-convert-actions">
                     <button
@@ -14196,7 +13568,7 @@ Science,91</pre
                       class="mathpix-btn mathpix-btn-primary"
                       onclick="startMMDConversion()"
                       disabled
-                      aria-describedby="convert-status"
+                      aria-describedby="convert-status mathpix-convert-cost-notice"
                     >
                       <span aria-hidden="true" data-icon="refresh"></span>
                       Convert Selected
@@ -14311,29 +13683,7 @@ Science,91</pre
                   id="mathpix-process-another-pdf"
                   class="mathpix-process-another-btn"
                 >
-                  <svg
-                    height="21"
-                    aria-hidden="true"
-                    viewBox="0 0 21 21"
-                    width="21"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <g
-                      fill="none"
-                      fill-rule="evenodd"
-                      stroke="currentColor"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      transform="translate(4 3)"
-                    >
-                      <path
-                        d="m12.5 12.5v-10c0-1.1045695-.8954305-2-2-2h-8c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"
-                      />
-                      <path d="m3.5 5.5h5" />
-                      <path d="m3.5 7.5h6" />
-                      <path d="m3.5 9.5h3" />
-                    </g>
-                  </svg>
+                  <span aria-hidden="true" data-icon="documentWords" data-icon-class="mathpix-inline-icon"></span>
                   Process Another PDF
                 </button>
                 <button
@@ -15001,7 +14351,11 @@ Science,91</pre
                     </button>
                   </div>
                 </div>
-                <!-- Workspace wrapper — relocates into fullscreen modal (Phase 7A) -->
+                <!-- Workspace wrapper — relocates into fullscreen modal (Phase 7A).
+                     A new DIRECT child of this div is hidden in fullscreen by
+                     default; to show it there, allow-list its class in the
+                     ".imgdesc-workspace--fullscreen > :not(…)" rule in
+                     image-describer/image-describer.css. -->
                 <div id="imgdesc-workspace" class="imgdesc-workspace">
                   <!-- No aria-live. A preview appearing is already announced by
                        "Image loaded: <filename>" (controller-ui.js), so making
@@ -16028,7 +15382,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~350 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -16077,7 +15430,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~1,000 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -16127,7 +15479,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~349 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -16189,7 +15540,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~151 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -16240,7 +15590,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~200 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -16291,7 +15640,6 @@ Science,91</pre
                             <div class="imgdesc-mm-model-size">~50 MB</div>
                             <div
                               class="imgdesc-mm-model-status"
-                              aria-live="polite"
                             >
                               <span class="imgdesc-mm-state-text"
                                 >Checking…</span
@@ -18992,9 +18340,7 @@ Science,91</pre
                 </p>
 
                 <div class="setup-input-group">
-                  <label
-                    id="ally-tenant-name-label"
-                    for="ally-tenant-name"
+                  <label id="ally-tenant-name-label" for="ally-tenant-name"
                     >Institution name (optional)</label
                   >
                   <div class="setup-input-row">
@@ -19054,9 +18400,7 @@ Science,91</pre
                   >
                     <span aria-hidden="true" data-icon="download"></span> Export
                     configuration
-                    <span class="visually-hidden"
-                      >&nbsp;— Ally Reporting</span
-                    >
+                    <span class="visually-hidden">&nbsp;— Ally Reporting</span>
                   </button>
                 </div>
 
@@ -19258,9 +18602,7 @@ Science,91</pre
                   >
                     <span aria-hidden="true" data-icon="download"></span> Fetch
                     course data from URL
-                    <span class="visually-hidden"
-                      >&nbsp;— Ally Reporting</span
-                    >
+                    <span class="visually-hidden">&nbsp;— Ally Reporting</span>
                   </button>
                 </div>
                 <!-- Plain text, NOT a live region: the module announces every
@@ -19276,9 +18618,7 @@ Science,91</pre
                   >
                     <span aria-hidden="true" data-icon="trash"></span> Remove
                     uploaded course data
-                    <span class="visually-hidden"
-                      >&nbsp;— Ally Reporting</span
-                    >
+                    <span class="visually-hidden">&nbsp;— Ally Reporting</span>
                   </button>
                 </div>
               </div>
@@ -20258,7 +19598,8 @@ Science,91</pre
                    Attribute names in this comment are written WITHOUT their
                    quoted values, matching the notes above. -->
               <button type="button" id="transcribe-speaker-apply">
-                <span aria-hidden="true" data-icon="check"></span> Apply name<span
+                <span aria-hidden="true" data-icon="check"></span> Apply
+                name<span
                   class="visually-hidden"
                   id="transcribe-speaker-apply-detail"
                 ></span>
@@ -20340,7 +19681,10 @@ Science,91</pre
                  quoted values, matching the notes above the display options
                  group and the naming block. -->
             <div id="transcribe-selection" class="transcribe-selection" hidden>
-              <p class="transcribe-selection-count" id="transcribe-selection-count">
+              <p
+                class="transcribe-selection-count"
+                id="transcribe-selection-count"
+              >
                 No lines selected
               </p>
               <!-- Register item 46 unit 7b. THE HINT ARRIVES NOW, AND UNIT 6
@@ -20424,8 +19768,8 @@ Science,91</pre
                 class="transcribe-field-hint"
                 id="transcribe-selection-move-hint"
               >
-                Tick the lines you want, choose who said them, then change
-                the speaker. Add speaker makes a new speaker for lines the
+                Tick the lines you want, choose who said them, then change the
+                speaker. Add speaker makes a new speaker for lines the
                 transcription did not separate.
               </p>
               <!-- "CHANGE SPEAKER", NEVER "MOVE" (register item 46 unit 8).
@@ -20451,6 +19795,202 @@ Science,91</pre
                 <span aria-hidden="true" data-icon="checkboxEmpty"></span> Clear
                 selection
               </button>
+            </div>
+            <!-- Register item 47 unit 6. MARKUP ONLY: nothing here has a
+                 handler, nothing reads it, and no JavaScript reveals it, so
+                 the block is unreachable by pointer, keyboard and screen
+                 reader alike until unit 7 lands. That is this unit's correct
+                 behaviour, and it is the shape every earlier block in this
+                 chain shipped in.
+
+                 NO LIST CONSTRUCT OF ANY KIND, AND THIS IS LOAD-BEARING. The
+                 tree gate roots at #transcribe-results and stops on entering
+                 the FOURTH listitem, so an ol, ul, li or list role here would
+                 make the gate hash this block instead of the first three
+                 transcript rows. Nothing below is an ol, a ul, an li or a
+                 list or listitem role, and none must be added later — a
+                 future unit that renders suggestion rows renders them inside
+                 the transcript's own <li> elements, not here.
+
+                 NO CSS AND NO display DECLARATION, WHICH IS WHAT MAKES THE
+                 REVEAL SELF-SUFFICIENT. With no rule on this class at all,
+                 the user agent's own [hidden] { display: none } is
+                 uncontested — the same arrangement transcribe-selection and
+                 transcribe-speaker-names already use. ANY LATER UNIT THAT
+                 ADDS A display VALUE FOR THIS BLOCK MUST ADD
+                 .transcribe-review[hidden] { display: none; } IN THE SAME
+                 COMMIT.
+
+                 NO aria-live AND NO LIVE ROLE ANYWHERE IN THIS CHAIN. The
+                 count sentence is silent text, matching
+                 transcribe-selection-count; a later unit writes it with
+                 textContent and nothing here or in the controller gains
+                 liveness. Register items 43 and 45's do-not-reopen on
+                 liveness reaches this block too.
+
+                 THE COUNT TAKES tabindex="-1", for a reason design section 7
+                 states: when no suggestion remains after an accept or
+                 dismiss, focus moves there rather than being lost. IT SHIPS
+                 A TRUE ZERO-STATE SENTENCE, not empty, matching how
+                 transcribe-selection-count ships "No lines selected" rather
+                 than nothing — a block revealed before the first write would
+                 otherwise show whatever sat here at rest.
+
+                 "SHOW SUGGESTIONS" SHIPS UNTICKED. A change set can be loaded
+                 (register item 47 unit 4) with nobody having asked to see it
+                 rendered, so the box starts clear and a later unit reveals
+                 suggestion rows only once it is ticked. Its hint is the one
+                 place on the page that says suggestions come from an
+                 automated pass rather than from the recording.
+
+                 "SHOW THE REASON FOR EACH SUGGESTION" SHIPS TICKED, matching
+                 the design's stated default: a reason is useful information
+                 and withholding it is the exceptional choice, not offering
+                 it.
+
+                 "NEXT SUGGESTION" HAS NO HANDLER YET. Unit 7 wires focus
+                 movement to the next row carrying a proposed suggestion.
+
+                 Attribute names in this comment are written WITHOUT their
+                 quoted values, matching the notes above the display options
+                 group, the naming block and the selection block. -->
+            <div id="transcribe-review" class="transcribe-review" hidden>
+              <p
+                class="transcribe-review-count"
+                id="transcribe-review-count"
+                tabindex="-1"
+              >
+                No suggestions.
+              </p>
+              <div
+                id="transcribe-review-show-option"
+                class="transcribe-display-option"
+              >
+                <input
+                  type="checkbox"
+                  id="transcribe-review-show-suggestions"
+                  aria-describedby="transcribe-review-show-suggestions-hint"
+                />
+                <label for="transcribe-review-show-suggestions"
+                  >Show suggestions</label
+                >
+                <p
+                  class="transcribe-field-hint"
+                  id="transcribe-review-show-suggestions-hint"
+                >
+                  Suggestions come from an automated pass over the transcript
+                  and are not part of what was recorded.
+                </p>
+              </div>
+              <div
+                id="transcribe-review-reason-option"
+                class="transcribe-display-option"
+              >
+                <input
+                  type="checkbox"
+                  id="transcribe-review-show-reasons"
+                  checked
+                />
+                <label for="transcribe-review-show-reasons"
+                  >Show the reason for each suggestion</label
+                >
+              </div>
+              <!-- "SHOW CONFLICTS IN THE TRANSCRIPT" — design section 12's D6,
+                   register item 47 unit 14. UNTICKED ON LOAD, which is the
+                   decision rather than a default inherited from its two
+                   neighbours: a conflict has nothing to press, so in edit mode
+                   Tab passes straight over it and a person tabbing never meets
+                   it at all. The table below is what gives each conflict a
+                   control, and a control is reachable by Tab.
+
+                   ITS OWN WRAPPER CARRIES hidden, AND THE OTHER TWO DO NOT.
+                   This control and the table are offered only when review is
+                   on AND at least one conflict exists — a checkbox that
+                   governs an empty table would do nothing, and offering it
+                   would be worse than omitting it, which is the ruling
+                   setDisplayOptionsVisible already applies to the speaker
+                   option. The predicate lives in the controller
+                   (setReviewVisible), never here.
+
+                   IT REPLACES THE TABLE RATHER THAN ADDING TO IT. Ticked, the
+                   conflicts return to the transcript's own order exactly as
+                   they rendered before this unit, and the table goes; unticked,
+                   the table is the only place they appear. A person never
+                   tracks two orders at once.
+
+                   TICKING IT ANNOUNCES NOTHING, the rule the two checkboxes
+                   above and the three display options already follow. The
+                   control conveys its own state, and the transcript is not a
+                   live region.
+
+                   Attribute names in this comment are written WITHOUT their
+                   quoted values, matching the notes above. -->
+              <div
+                id="transcribe-review-conflict-option"
+                class="transcribe-display-option"
+                hidden
+              >
+                <input type="checkbox" id="transcribe-review-show-conflicts" />
+                <label for="transcribe-review-show-conflicts"
+                  >Show conflicts in the transcript</label
+                >
+              </div>
+              <button type="button" id="transcribe-review-next">
+                Next suggestion
+              </button>
+              <!-- THE CONFLICTS TABLE — design section 12's D6.
+
+                   A TABLE AND NOT A LIST, AND THE DISTINCTION IS LOAD-BEARING
+                   FOR THE TREE GATE AS WELL AS FOR A READER. That gate roots
+                   its walk at transcribe-results and stops on entering the
+                   FOURTH listitem, so a LIST rendered before the transcript
+                   would make it hash the list and never reach a transcript row.
+                   Table rows are row, not listitem. That is MEASURED at unit
+                   14 and is not inferred from the role names.
+
+                   THE FRAME IS MARKUP AND THE DATA ROWS ARE NOT. The caption
+                   and the header row never change, so they ship here where a
+                   reader can see them; the tbody is filled by the controller
+                   with createElement and text nodes, never innerHTML, for the
+                   reason buildRow gives — a transcript is somebody's speech and
+                   a phrase carrying angle brackets must stay a phrase.
+
+                   THREE COLUMNS, EACH A th carrying scope. The phrase column
+                   holds a BUTTON rather than a link: it performs a scripted
+                   focus move inside this page, and nothing about it navigates
+                   to a URL.
+
+                   THE SUGGESTED WORDING CARRIES NO DIFF AND NO HIDDEN LABEL.
+                   A conflict has no original to compare against — that is what
+                   makes it a conflict — and the column header already says what
+                   the cell holds, so the visually-hidden carrier the wrapper
+                   needs has nothing to do here.
+
+                   IT IS NOT A LIVE REGION AND NOTHING ABOUT IT ANNOUNCES. The
+                   table appearing, changing or hiding says nothing; a person
+                   meets it by reaching it.
+
+                   Attribute names in this comment are written WITHOUT their
+                   quoted values, matching the notes above. -->
+              <div
+                id="transcribe-review-conflicts"
+                class="transcribe-review-conflicts"
+                hidden
+              >
+                <table class="transcribe-conflict-table">
+                  <caption>
+                    Suggestions that cannot be applied
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Phrase</th>
+                      <th scope="col">Suggested wording</th>
+                      <th scope="col">Why it cannot be applied</th>
+                    </tr>
+                  </thead>
+                  <tbody id="transcribe-review-conflicts-body"></tbody>
+                </table>
+              </div>
             </div>
             <!-- A <div>, NOT <output>: <output> carries an implicit status
                  role, so it would compute as a polite atomic live region with
@@ -20581,12 +20121,95 @@ Science,91</pre
             <p id="captions-fixer-file-name">No file chosen</p>
           </div>
 
+          <!-- STAGE 10, DECISION 7. The second input copies the first: same
+               drop-zone shape, same label/description split (Stage 8b
+               decision 6 above), same visually-hidden file input, same
+               plain sibling <p> for the chosen name. MARKUP ONLY — nothing
+               here is wired yet. No listener is bound to this input and no
+               drag-and-drop handler is attached to this label, so choosing
+               or dropping a file does nothing until captions-fixer-ui.js is
+               built (iteration 4). It is reachable by keyboard and by
+               screen reader now, and inert now, on purpose. -->
+          <div class="captions-fixer-upload-area">
+            <label
+              for="captions-fixer-context-input"
+              class="imgdesc-upload-label"
+              id="captions-fixer-context-drop-zone"
+            >
+              <span
+                class="imgdesc-upload-icon"
+                aria-hidden="true"
+                data-icon="fileText"
+              ></span>
+              <span
+                class="imgdesc-upload-text"
+                id="captions-fixer-context-drop-zone-text"
+                >Choose slides or module text (optional)</span
+              >
+              <span
+                class="imgdesc-upload-formats"
+                id="captions-fixer-context-drop-zone-formats"
+                >Supports: PPTX, PDF, TXT or MD. Terms found in it are added to
+                Known terms for you to check</span
+              >
+            </label>
+            <input
+              type="file"
+              id="captions-fixer-context-input"
+              accept=".pptx,.pdf,.txt,.md"
+              class="visually-hidden"
+              aria-labelledby="captions-fixer-context-drop-zone-text"
+              aria-describedby="captions-fixer-context-drop-zone-formats"
+            />
+            <p id="captions-fixer-context-name">No file chosen</p>
+          </div>
+
+          <!-- STAGE 15. THE GLOSSARY, AND IT IS OPT-IN IN THE STRICTEST SENSE:
+               left empty it changes NOTHING that goes to the model. The prompt
+               is assembled from blocks and one of them is a known-terms block;
+               with no terms it reads "none supplied", which is the wording the
+               shipped prompt has always carried. So an empty field is not a
+               prompt change, and the recorded prompt hash does not move.
+
+               IT SITS BEFORE THE COST LINE BECAUSE THE ESTIMATE READS IT. Terms
+               go into the prompt, the prompt is what is charged for, and a cost
+               line written before the field was read would be describing a
+               different send from the one the button makes.
+
+               NATIVE LABEL, NATIVE TEXTAREA, NO ARIA FOR THE NAME. `for` and
+               `id` do that job, and an aria-label here would be a second name
+               that cannot be seen, selected or translated. The only ARIA is
+               `aria-describedby`, because HTML has no native way to tie a hint
+               to a control — the same arrangement, in the same order, as the
+               Set Up tool's optional fields (~:2072). -->
+          <div class="captions-fixer-glossary-field">
+            <label for="captions-fixer-glossary">Known terms (optional)</label>
+            <textarea
+              id="captions-fixer-glossary"
+              rows="4"
+              spellcheck="false"
+              aria-describedby="captions-fixer-glossary-hint"
+            ></textarea>
+            <p
+              class="captions-fixer-help-text"
+              id="captions-fixer-glossary-hint"
+            >
+              One term per line, spelled as it should appear. Leave it empty if
+              you have none. Terms from a slide deck land here for you to check;
+              remove any that are not real terms.
+            </p>
+          </div>
+
           <!-- The cost line. Written once, after a file is parsed and before
                any send. It is an ESTIMATE and says so in its own text: the
                provider does not report usage on this path (see the master
                plan's fabricated-usage row), so no figure here is a
                measurement. Not a live region — a person reads it before
-               choosing to run. -->
+               choosing to run.
+
+               SINCE STAGE 15 IT DESCRIBES TWO SENDS, not one: the tool asks
+               twice and compares, so the figure and the warning tier are both
+               for the whole pass. The wording is the controller's. -->
           <p id="captions-fixer-cost" class="captions-fixer-cost"></p>
 
           <div class="captions-fixer-actions">
@@ -20649,11 +20272,54 @@ Science,91</pre
                 Held back by the checks
               </summary>
               <p id="captions-fixer-held-intro">
-                These corrections would change something the tool protects —
-                a number, a speaker label, or the length of a caption. You can
+                These corrections would change something the tool protects — a
+                number, a speaker label, or the length of a caption. You can
                 still tick one if you disagree.
               </p>
               <div id="captions-fixer-held-list"></div>
+            </details>
+
+            <!-- STAGE 15, DECISION 8. THE ONE-REPLY GROUP. The tool now makes
+                 TWO discovery sends with the same model, the same prompt and
+                 the same settings, and sorts what comes back: a correction both
+                 replies proposed goes in the fieldset above, one only a single
+                 reply proposed comes in here, closed and unticked.
+
+                 NOTHING IS DISCARDED, AND THAT IS THE WHOLE DESIGN. Recall
+                 between two sends of an identical configuration was measured at
+                 11 to 15 of 15 (rounds cf-4 and cf-5 read together, six sends),
+                 so a correction that appears in only one reply is SOMETIMES A
+                 REAL FIX. A filter that dropped it would lose corruptions the
+                 model did find. It is demoted, never deleted.
+
+                 THE SAME ARRANGEMENT AS THE HELD GROUP ABOVE, deliberately, and
+                 for the same reasons: a native <details> and <summary> need no
+                 ARIA, a closed group cannot be ticked by accident, and the
+                 count lives in the summary's own text where the controller
+                 writes it — MEASURED from the list, never taken from a model.
+
+                 IT SITS INSIDE #captions-fixer-pairs-section ON PURPOSE. The
+                 controller collects ticked pairs by querying the WHOLE section
+                 rather than the fieldset, so a checkbox in here is picked up by
+                 Apply with no change to that query at all.
+
+                 HELD WINS. A pair that only one reply proposed AND whose every
+                 caption a check held goes to the held group above, not here:
+                 the check's reason is the more useful thing to tell a person.
+
+                 It ships `hidden` and the controller reveals it only when there
+                 is something in it, closing it again on the next run. -->
+            <details id="captions-fixer-uncertain" hidden>
+              <summary id="captions-fixer-uncertain-summary">
+                Proposed by only one of the two runs
+              </summary>
+              <p id="captions-fixer-uncertain-intro">
+                The tool asks twice and compares. These corrections came back
+                from only one of the two runs, so they are less certain than the
+                list above — nothing has been thrown away. You can still tick
+                any of them.
+              </p>
+              <div id="captions-fixer-uncertain-list"></div>
             </details>
 
             <div class="captions-fixer-actions">
@@ -20663,6 +20329,44 @@ Science,91</pre
               </button>
             </div>
           </section>
+
+          <!-- STAGE 11, DECISION 9: the cue-level pass. INERT UNTIL THE UI
+               READS IT — this parcel is markup only, the controller binds
+               neither of these elements yet, and the button therefore ships
+               `disabled` with nothing able to enable it.
+
+               IT SITS OUTSIDE #captions-fixer-pairs-section ON PURPOSE, and
+               the reason is a measurement rather than a preference. The
+               dispatch places it "after the pairs section's Apply actions",
+               and glosses the enabling moment as "(the moment the pairs
+               section is shown)" — but captions-fixer-ui.js sets
+               `pairsSection.hidden = list.length === 0`, so that section stays
+               HIDDEN when discovery finds no recurring pairs. The dispatch's
+               binding requirement is the main clause, "whether or not pairs
+               were found", and a button nested in that section would be
+               unreachable on exactly the transcript a cue-level pass is most
+               useful for: a clean one, where the recurring stage finds nothing
+               and the remaining errors are all one-offs. Out here its
+               visibility is its own business.
+
+               THE COST LINE COMES FIRST, in the shape of #captions-fixer-cost
+               above: an ESTIMATE, not a live region, read by a person before
+               they choose to spend. It describes a whole pass — one send per
+               chunk, eleven on the 657-cue fixture — and it is re-rendered
+               whenever the ticked set changes, because the pass runs on the
+               APPLIED captions and the applied text is what the prompt
+               carries.
+
+               The icon is the one Stage 8 chose for Run, read out of the
+               markup rather than guessed. -->
+          <p id="captions-fixer-pass-cost" class="captions-fixer-cost"></p>
+
+          <div class="captions-fixer-actions">
+            <button type="button" id="captions-fixer-pass-run" disabled>
+              <span aria-hidden="true" data-icon="aiSparkle"></span> Check the
+              remaining captions
+            </button>
+          </div>
 
           <!-- NOT aria-labelledby, and the omission is deliberate. The
                scrollable wrapper INSIDE this section is the named region — a
@@ -20696,35 +20400,72 @@ Science,91</pre
             <h2 id="captions-fixer-changes-heading">
               Changes to your captions
             </h2>
+            <!-- STAGE 16, DECISION 4. The two kinds of row, one sentence
+                 each, because one table now holds both and the tick box's
+                 own name ("Keep the change to caption 9" against "Keep the
+                 suggested change to caption 9") is one word of difference
+                 heard at the row rather than an explanation of it.
+
+                 IT IS THE TABLE'S DESCRIPTION, NOT THE REGION'S, and nothing
+                 is doubled up. Grounded before it was written: the table
+                 carried no aria-describedby, and neither did the scroll
+                 container, which is NAMED by the heading through
+                 aria-labelledby. The table's own <caption> is a name too, and
+                 a description is the one attachment that adds something
+                 neither of those already says.
+
+                 IT SITS INSIDE THE HIDDEN SECTION ON PURPOSE, so it appears
+                 with the table and is never read ahead of it. -->
+            <p id="captions-fixer-changes-intro">
+              A change fixes a phrase that was wrong in several captions. A
+              suggested change comes from reading one caption on its own, so
+              check it against the recording.
+            </p>
             <div
               class="captions-fixer-table-scroll"
               role="region"
               aria-labelledby="captions-fixer-changes-heading"
               tabindex="0"
             >
-            <table
-              id="captions-fixer-changes"
-              class="captions-fixer-changes allyTable"
-            >
-              <caption id="captions-fixer-changes-caption">
-                No changes yet.
-              </caption>
-              <thead>
-                <tr>
-                  <th scope="col">Caption</th>
-                  <th scope="col">Was</th>
-                  <th scope="col">Now</th>
-                  <th scope="col">Reason</th>
-                  <th scope="col">Keep</th>
-                </tr>
-              </thead>
-              <!-- One row per changed caption. The Keep checkbox carries its
+              <table
+                id="captions-fixer-changes"
+                class="captions-fixer-changes allyTable"
+                aria-describedby="captions-fixer-changes-intro"
+              >
+                <caption id="captions-fixer-changes-caption">
+                  No changes yet.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Caption</th>
+                    <th scope="col">Start</th>
+                    <th scope="col">Was</th>
+                    <th scope="col">Now</th>
+                    <th scope="col">Reason</th>
+                    <th scope="col">Keep</th>
+                    <th scope="col">Edit</th>
+                  </tr>
+                </thead>
+                <!-- One row per changed caption. The Keep checkbox carries its
                    own visually-hidden <label>, because a bare checkbox in a
                    table cell has no accessible name of its own and the column
                    header is not one. Unticking sets status "rejected" and
-                   rejectedBy "person". -->
-              <tbody id="captions-fixer-changes-body"></tbody>
-            </table>
+                   rejectedBy "person".
+
+                   STAGE 16, DECISIONS 7 AND 1: Start and Edit. Start is the
+                   cue's own start time as hh:mm:ss, READ-ONLY and read from
+                   the cue, never written back — iteration 4 fills it. Edit
+                   holds a per-row button that opens a dialog on the proposal
+                   — iteration 5 fills it. The controller renders both cells
+                   EMPTY today, and that is deliberate rather than pending: a
+                   header without its cell would leave every row one cell
+                   short of its own thead, which is the structure a screen
+                   reader reads the table by. COLUMN_LABELS in
+                   captions-fixer-ui.js is the one place these names live for
+                   `data-label`, and the suite asserts it equals this thead in
+                   order rather than trusting either comment. -->
+                <tbody id="captions-fixer-changes-body"></tbody>
+              </table>
             </div>
             <div class="captions-fixer-actions">
               <button type="button" id="captions-fixer-download">
@@ -21160,6 +20901,12 @@ Science,91</pre
          global is published before any tool script (setup-tool, local-chat/*,
          chat/*) can call announceToScreenReader/announce. -->
     <script src="accessibility-announcer.js"></script>
+    <!-- Shared busy-state helper (defines window.BusyControl). Plain IIFE, no
+         dependencies; loaded directly after the announcer and before every tool
+         script so any tool can hold a control busy WITHOUT native `disabled`,
+         which throws keyboard focus to the document (parcel 39 measured nine
+         such drops in six tools). Adopted by no tool yet — one per parcel. -->
+    <script src="js/busy-control.js"></script>
     <!-- Shared LaTeX protection for markdown-it pipelines (defines
          window.MathProtect). Plain IIFE, no dependencies; loaded immediately
          above the markdown-it block below because it exists to guard exactly
@@ -21538,6 +21285,8 @@ Science,91</pre
       type="application/dev-test"
       data-src="mathpix-scripts/testing/mathpix-endpoint-tests.js"
     ></script>
+    <!-- Parcel PC-1: the REAL page count, read out of the PDF by two cross-checked methods (window.MathPixPDFPageCount). MUST load before mathpix-context-ai.js, which reads it at attachPDF time to displace the size heuristic that drove the cost figure a person is shown. Pure computation — no DOM, no network, no dependency of its own. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-pdf-page-count.js"></script>
     <!-- Phase 2 Stage 1: Context auto-fill pure prompt/parse/coerce core (window.MathPixContextAI) -->
     <script src="mathpix-scripts/ai-enhancement/mathpix-context-ai.js?v=1.0"></script>
     <!-- Phase 2 Stage 2 (Parcel 1.1): headless-first progress/status/aria-live/error factory (window.MathPixAltTextProgress) -->
@@ -21684,6 +21433,20 @@ Science,91</pre
       src="openrouter-embed/openrouter-embed-file.js"
     ></script>
     <script src="openrouter-embed/openrouter-embed-prompt-loader.js"></script>
+
+    <!-- Capability concept resolver. ONE implementation of "does this model do vision /
+         code / reasoning / tool calling / pdf?", shared by the three places that ask:
+         js/enhanced-model-selection.js (the picker's capability checkboxes, a plain-script
+         IIFE), openrouter-embed-model-selector.js's CAPABILITY_MAPPING (another IIFE) and
+         FALLBACK_GUARDED_CAPABILITIES in js/model-registry/model-registry-validator.js (an
+         ES module). Same reasoning and the same kind of position as pricing-display.js
+         below: deferred modules always run after plain scripts, so this covers every
+         consumer — and it sits AHEAD of the embed's model selector, which is the earliest
+         of the three in document order. The registry's capability vocabulary is free text
+         (295 distinct tokens; tool calling alone is spelled seven ways), which is why the
+         answer cannot be a raw includes(). -->
+    <script src="js/model-capabilities.js"></script>
+
     <script src="openrouter-embed/openrouter-embed-model-selector.js"></script>
     <script src="openrouter-embed/openrouter-embed-retry.js"></script>
 
@@ -21811,6 +21574,49 @@ Science,91</pre
          tag above. No DOM, no voice, no live region. -->
     <script src="captions-fixer/captions-fixer-stage-recurring.js"></script>
 
+    <!-- Captions Fixer, Stage 10: context — turns a slide deck (.pptx/.pdf)
+         or a module text (.txt/.md) into candidate glossary terms for the
+         Known terms field. The deck supplies vocabulary and NEVER prose:
+         nothing from it reaches the model except the lines the person
+         leaves in the field, through discoveryOptions() in
+         captions-fixer-ui.js, unchanged and still the one reader.
+
+         Resolves window.JSZip and window.pdfjsLib at CALL time, never at
+         load — both are already on the page above every captions-fixer/*.js
+         tag, but a plain script here must not assume either has run its own
+         init yet. No DOM, no voice, no live region; publishes
+         window.CaptionsFixerContext. -->
+    <script src="captions-fixer/captions-fixer-context.js"></script>
+
+    <!-- Captions Fixer, Stage 11: the CUE-LEVEL PASS. The second correction
+         pass, and the second thing in this tool that spends. It reads each
+         caption in context and asks for the captions that should change — the
+         errors that happen once, that a find-and-replace pair cannot express,
+         and that only the surrounding sentences reveal. Publishes
+         window.CaptionsFixerStageLlmPass.
+
+         It runs on the APPLIED cue list, after a person has approved and
+         applied the recurring pairs, so it never sees an error a pair has
+         already fixed and every entry's `original` is the text applyChangeSet
+         will actually find. One send PER CHUNK — eleven on the 657-cue fixture
+         — so "anything paid for is on disk the instant it arrives" is honoured
+         eleven times: passRaw holds the whole array so far, rewritten after
+         every reply and before anything parses it, so no write can lose an
+         earlier one.
+
+         Its prompt is a NEW prompt and never a change to the shipped discovery
+         one, whose digest is pinned. It has no measured round yet, which is
+         exactly why every entry it proposes arrives UNTICKED and a person
+         approves each: applyChangeSet applies `accepted` only, so an unmeasured
+         prompt cannot change a caption on its own.
+
+         It must load AFTER the chunker, the adapter and the recurring stage —
+         whose GLOSSARY_PREFIX it reads so a person's known terms reach both
+         passes in identical words — and BEFORE the orchestrator that runs it.
+         A PLAIN script resolving every sibling at CALL time. No DOM, no voice,
+         no live region; timings are never read. -->
+    <script src="captions-fixer/captions-fixer-stage-llm-pass.js"></script>
+
     <!-- Captions Fixer, Stage 6b: the orchestrator. Runs the stages in order,
          guards everything they propose, writes the accumulated change set after
          every one of them, tallies, and stops cleanly on a spend cap, a cancel
@@ -21936,6 +21742,37 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="captions-fixer/testing/captions-fixer-tests-ui.js"
+    ></script>
+    <!-- Stage 10's section. Fetches the fixture deck (.pptx/.pdf) as
+         ArrayBuffers — the first section in this suite to fetch a binary —
+         and derives a divergent-order deck at runtime by patching
+         ppt/presentation.xml inside the zip, because PowerPoint renumbers a
+         deck's own slideN.xml parts to match final position on save, so the
+         committed fixture cannot itself carry a file-order/list-order
+         mismatch. Declared here, ABOVE the runner's tag. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-context.js"
+    ></script>
+    <!-- Captions Fixer, Stage 11: the cue-level pass section. Row prefix "P",
+         and only "P", chosen after a census of every row label in
+         captions-fixer/testing/ rather than by asking whether "P" was free —
+         a probe that asks about a prefix cannot reveal one nobody thought to
+         ask about, and an earlier version of exactly that probe reported CTXUI
+         free while it held 22 rows. "PUI" is reserved for the UI-side rows and
+         "PE" for error paths; neither is in use yet.
+
+         IT SENDS NOTHING. CaptionsFixerLLM.complete is stubbed at every row
+         that reaches a send and restored by identity, with the restoration
+         itself a row. The stub runs the adapter's OWN applySchema over the
+         items it is handed, so the knownIds and idKey filters under test are
+         the real ones rather than a second implementation that could agree
+         with the module while both were wrong.
+
+         Declared here, ABOVE the runner's tag, which must stay last. -->
+    <script
+      type="application/dev-test"
+      data-src="captions-fixer/testing/captions-fixer-tests-llm-pass.js"
     ></script>
     <script
       type="application/dev-test"
@@ -23972,6 +23809,10 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-user-journey.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-sequence.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-block.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-c4.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-kanban.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-radar.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-info.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>

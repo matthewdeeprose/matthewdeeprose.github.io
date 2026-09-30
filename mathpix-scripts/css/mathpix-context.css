@@ -186,7 +186,9 @@
   display: inline-flex;
 }
 
-.mathpix-context-ai #resume-context-ai-analyse:disabled {
+/* aria-disabled: the held-busy state (BusyControl, parcel 42). */
+.mathpix-context-ai #resume-context-ai-analyse:disabled,
+.mathpix-context-ai #resume-context-ai-analyse[aria-disabled="true"] {
   cursor: not-allowed;
 }
 
@@ -298,4 +300,67 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ============================================================================
+   MODEL PICKER (MP-1) — layout only
+   The picker sits at the top of the `.mathpix-context-ai` block, ahead of the
+   Analyse button, so the reading and tab order is "choose a model, then run".
+
+   COLOUR IS DELIBERATELY ABSENT, for the reason the block above states: the
+   theme files load BEFORE this one, so any shorthand here that carries a
+   colour would reset what they set. The radio card treatment itself comes from
+   `.model-option` in mathpix-ai-enhancer.css, which is a global class and
+   loads earlier still — reused rather than re-declared, so the Context picker
+   and the enhancer's picker cannot drift apart visually.
+
+   `display` is set only via `:not([hidden])` throughout. The picker root, the
+   recommended fieldset and the two empty-state paragraphs are all toggled with
+   the `hidden` attribute, and an unconditional `display` would override it.
+   ============================================================================ */
+
+#resume-context-model-picker:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* The recommended group reuses the form's fieldset card, so only the inner
+   rhythm needs setting here. */
+.mathpix-context-form #resume-context-model-recommended:not([hidden]) {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* The wrapping radio label carries the accessible name, so its text must stay
+   readable rather than inherit the form's bold label weight wholesale: the
+   model name is emphasised and the id beneath it is not. */
+.mathpix-context-form .model-option {
+  font-weight: 400;
+}
+
+.mathpix-context-form .model-option .model-option-name {
+  font-weight: 600;
+}
+
+/* The advanced disclosure. `summary` keeps its native marker and native
+   keyboard behaviour — it is a real disclosure, not a div with a role. */
+.mathpix-context-model-advanced > summary {
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-weight: 600;
+}
+
+.mathpix-context-model-advanced[open] > .mathpix-context-field {
+  margin-top: 0.5rem;
+}
+
+/* The override select sizes to the block so a long model name does not force
+   horizontal overflow at 320px. */
+#resume-context-model-override {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font: inherit;
 }

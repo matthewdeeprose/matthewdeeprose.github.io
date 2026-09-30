@@ -91,37 +91,24 @@ function logDebug(message, ...args) {
 }
 
 // ============================================================================
-// SVG Icon Registry
+// SVG Icons (from the shared icon library, icon-library.js)
 // ============================================================================
 
 /**
- * SVG icons for format types and UI elements
- * All icons use currentColor for theme compatibility
- * @constant {Object}
+ * Convert UI icon names that the icon library holds under another name; the
+ * drawings are the same. "box" is not aliased: it takes the library's own
+ * box, which draws differently (MathPix polish parcel 9d).
+ * @constant {Object.<string, string>}
  */
-const ICONS = {
-  // Document formats
-  docx: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(4 3)"><path d="m12.5 12.5v-7l-5-5h-5c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m2.5 7.5h5"/><path d="m2.5 9.5h7"/><path d="m2.5 11.5h3"/><path d="m7.5.5v3c0 1.1045695.8954305 2 2 2h3"/></g></svg>',
+const LIBRARY_NAME_FOR = Object.freeze({
+  docx: "document",
+  latexPdf: "calculator",
+  markdown: "windowContent",
+  pptx: "projector",
+  inbox: "tray",
+});
 
-  pdf: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m16.5 12.5v-10c0-1.1045695-.8954305-2-2-2h-8c-1.1045695 0-2 .8954305-2 2v10c0 1.1045695.8954305 2 2 2h8c1.1045695 0 2-.8954305 2-2z"/><path d="m4.30542777 2.93478874-2.00419132.72946598c-1.03795581.37778502-1.57312998 1.52546972-1.19534496 2.56342553l3.42020143 9.39692625c.37778502 1.0379558 1.52546972 1.5731299 2.56342553 1.1953449l5.56843115-2.1980811"/><path d="m7.5 5.5h5"/><path d="m7.5 7.5h6"/><path d="m7.5 9.5h3"/></g></svg>',
-
-  latexPdf:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(5 4)"><path d="m2.5.5h6c1.1045695 0 2 .8954305 2 2v9c0 1.1045695-.8954305 2-2 2h-6c-1.1045695 0-2-.8954305-2-2v-9c0-1.1045695.8954305-2 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><path d="m.5 5.5h10" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><g fill="currentColor"><circle cx="2.5" cy="7.5" r="1"/><circle cx="4.5" cy="7.5" r="1"/><circle cx="6.5" cy="7.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><circle cx="2.5" cy="9.5" r="1"/><circle cx="4.5" cy="9.5" r="1"/><circle cx="6.5" cy="9.5" r="1"/><circle cx="8.5" cy="9.5" r="1"/><circle cx="2.5" cy="11.5" r="1"/><circle cx="4.5" cy="11.5" r="1"/><circle cx="6.5" cy="11.5" r="1"/><circle cx="8.5" cy="11.5" r="1"/></g></g></svg>',
-
-  html: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 3)"><path d="m8 16c4.4380025 0 8-3.5262833 8-7.96428571 0-4.43800246-3.5619975-8.03571429-8-8.03571429-4.43800245 0-8 3.59771183-8 8.03571429 0 4.43800241 3.56199755 7.96428571 8 7.96428571z"/><path d="m1 5h14"/><path d="m1 11h14"/><path d="m8 16c2.2190012 0 4-3.5262833 4-7.96428571 0-4.43800246-1.7809988-8.03571429-4-8.03571429-2.21900123 0-4 3.59771183-4 8.03571429 0 4.43800241 1.78099877 7.96428571 4 7.96428571z"/></g></svg>',
-
-  markdown:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m2.5 2.5h10c1.1045695 0 2 .8954305 2 2v-2c0-1-.8954305-2-2-2h-10c-1.1045695 0-2 1-2 2v2c0-1.1045695.8954305-2 2-2z" fill="currentColor"/><path d="m4.498 7.5h1"/><path d="m4.498 5.5h3.997"/><path d="m4.498 9.5h5.997"/><path d="m4.498 11.5h3.997"/></g></svg>',
-
-  pptx: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(1 2)"><path d="m16.5 12.5v-10.01471863h-14v10.01471863c0 .5522847.44771525 1 1 1h12c.5522847 0 1-.4477153 1-1z"/><path d="m7.5 13.5-2 3.5"/><path d="m13.5 13.5-2 3" transform="matrix(-1 0 0 1 25 0)"/><path d="m.5 2.5h18"/><path d="m9.49894742.49789429c1.05502148.00261296 1.91822238.81840641 1.99543358 1.85289779l.0056181.1492082-4.00000003-.00210599c-.00105165-1.1045695.89437885-2 1.99894835-2z"/></g></svg>',
-
-  // Archive/package icon
-  box: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2 3)"><path d="m8.5 7.5 7.5-4-7.5-3.5-7.5 3.5z"/><path d="m16 3.5v9l-7.5 4-7.5-4v-9"/><path d="m8.5 7.5v9"/><path d="m.5 3.5 8 4"/><path d="m16 3.5-7.5 4"/></g></svg>',
-
-  // Download/inbox icon (fallback)
-  inbox:
-    '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(3 3)"><path d="m2.5.5h10c1.1045695 0 2 .8954305 2 2v10c0 1.1045695-.8954305 2-2 2h-10c-1.1045695 0-2-.8954305-2-2v-10c0-1.1045695.8954305-2 2-2z"/><path d="m.5 10.5h3l1.5 2h4l1.5-2h3.5"/></g></svg>',
-};
+let libraryMissingWarned = false;
 
 /**
  * Get an SVG icon by name with accessibility attributes
@@ -131,16 +118,17 @@ const ICONS = {
  * @returns {string} SVG HTML string with aria-hidden
  */
 function getIcon(name, options = {}) {
-  const svg = ICONS[name];
-  if (!svg) {
-    logWarn(`Unknown icon: ${name}`);
+  // icon-library.js can load after this file, so look it up per call, never at load.
+  const library = window.IconLibrary;
+  if (!library || typeof library.getIcon !== "function") {
+    if (!libraryMissingWarned) {
+      logWarn("Icon library (window.IconLibrary) is not loaded; icons render empty");
+      libraryMissingWarned = true;
+    }
     return "";
   }
 
-  const className = options.className
-    ? ` class="icon ${options.className}"`
-    : ' class="icon"';
-  return svg.replace("<svg", `<svg aria-hidden="true"${className}`);
+  return library.getIcon(LIBRARY_NAME_FOR[name] || name, options);
 }
 
 /**
@@ -401,6 +389,23 @@ class MathPixConvertUI {
     if (cancelBtn) cancelBtn.hidden = true;
 
     logInfo("Convert UI reset");
+  }
+
+  /**
+   * Clear the previous document's converted files and their on-screen
+   * status, keeping the ticked formats (parcel 10c). Unlike reset(), this
+   * leaves the person's format choices alone and does not touch a
+   * conversion in flight. It leaves the Convert button alone too: after
+   * Process Another there is no MMD yet, so recomputing here disabled the
+   * button, and nothing re-enables it when the new document arrives.
+   */
+  clearResults() {
+    this.hideProgress();
+    this.hideDownloads();
+    this.hideErrors();
+    this.updateStatus("");
+    this.completedDownloads.clear();
+    logInfo("Convert UI results cleared for a new document");
   }
 
   /**

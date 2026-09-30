@@ -461,6 +461,11 @@ window.MermaidControls = (function () {
   // MAIN CONFIGURATION
   // ===============================================
 
+  // F22, Matthew's ruling of 28 September 2026 (register item 94): a
+  // diagram's smallest text is never drawn below this size. A diagram whose
+  // text would be is drawn wider instead, and its box scrolls sideways.
+  const MIN_DIAGRAM_TEXT_PX = 10;
+
   // Configuration
   const config = {
     buttonClasses: "mermaid-control-button",
@@ -474,14 +479,7 @@ window.MermaidControls = (function () {
     controlsContainerClass: "mermaid-controls",
     defaultWidth: 70, // Default width percentage (70%)
     defaultHeight: 100, // Default height percentage (100%)
-    minWidth: 30, // Minimum width percentage
-    maxWidth: 100, // Maximum width percentage
-    minHeight: 50, // Minimum height percentage
-    maxHeight: 300, // Maximum height percentage
-    // Add these new properties
-    lockAspectRatioDefault: false, // Default for aspect ratio locking
-    aspectRatioLockText: "Lock aspect ratio", // Text for aspect ratio checkbox
-    resetSizeText: "Reset size", // Text for reset size button
+    lockAspectRatioDefault: false, // Default for the stored aspect-ratio lock
     // Orientation control properties
     orientationLabelText: "Orientation:", // Text for orientation label
     orientationOptions: [
@@ -491,47 +489,14 @@ window.MermaidControls = (function () {
       { value: "RL", text: "Right to Left" },
     ],
     defaultOrientation: "TB", // Default orientation
-    // Auto-fit button properties
-    autoFitButtonText: "Auto-fit", // Text for auto-fit button
-    autoFitButtonClass: "mermaid-auto-fit-button", // Class for auto-fit button
-    autoFitOnLoadDefault: false, // Default for auto-fit on load preference
-    // Control order configuration - edit these numbers to change the order (lower numbers appear first)
-    // To change the order of controls, simply change the numbers below.
-    // For example, to make the reset button appear first, change its value to 1 and adjust others accordingly.
-    // You can also use negative numbers or decimal numbers (like 1.5) for more fine-grained control.
-    //
-    // The "row" property determines which row the control appears in (1 for first row, 2 for second row, etc.)
-    // Controls with the same row number will appear on the same line, ordered by their "order" value.
-    // Update the configuration section to include all control types
-    // Replace the existing controlOrder with this expanded version:
-
+    autoFitOnLoadDefault: false, // Default for the stored auto-fit-on-load preference
+    // Control order: "row" is the toolbar row, "order" the position within
+    // it, and "visible: false" leaves a control out. The orientation group is
+    // the only control built here now (parcel 2, F5); the row machinery stays
+    // because mermaid-theme.js appends its theme picker as a second row of
+    // the same .sliders-container.
     controlOrder: {
-      // Row 1
       orientation: { order: 1, row: 1, visible: true },
-      widthSlider: { order: 2, row: 1, visible: false },
-      aspectRatio: { order: 4, row: 1, visible: false },
-      fitOptions: { order: 5, row: 1, visible: false },
-
-      // Row 2
-      presetSizes: { order: 1, row: 2, visible: false },
-      zoomControls: { order: 1, row: 2, visible: false },
-      resetButton: { order: 2, row: 2, visible: false },
-      autoFitButton: { order: 3, row: 2, visible: false },
-      autoFitOnLoad: { order: 4, row: 2, visible: false },
-
-      // Row 3 (former advanced controls)
-      fitOptions: { order: 1, row: 3, visible: false },
-
-      // Row 4 (more former advanced controls)
-      contentAwareButton: { order: 1, row: 4, visible: false },
-      responsiveButton: { order: 2, row: 4, visible: false },
-      responsiveMode: { order: 3, row: 4, visible: false },
-
-      // Row 5 (more former advanced controls)
-      paddingControl: { order: 1, row: 5, visible: false },
-      scaleToContainer: { order: 2, row: 5, visible: false },
-      autoCrop: { order: 3, row: 5, visible: false },
-      heightSlider: { order: 4, row: 5, visible: false },
     },
   };
 
@@ -961,6 +926,17 @@ window.MermaidControls = (function () {
    * @param {number} index - Index for unique IDs
    */
   function addControlsToContainer(container, index) {
+    // Attach the view controls (width, full screen) first, above the early
+    // return: every render site calls this on the live, connected figure
+    // after its render resolves, including the bridge's markup copy, which
+    // arrives already carrying its toolbars. Resolved off window at call time
+    // because mermaid-view-controls.js loads after this file; attach is
+    // idempotent on the node.
+    const viewControls = window.MermaidViewControls;
+    if (viewControls && typeof viewControls.attach === "function") {
+      viewControls.attach(container);
+    }
+
     // Skip if already processed
     if (container.querySelector(`.${config.controlsContainerClass}`)) {
       Logger.debug(
@@ -1038,68 +1014,11 @@ window.MermaidControls = (function () {
     // ==============================================
     // 1. CREATE ALL CONTROL ELEMENTS
     // ==============================================
-
-    // ----- Width slider group -----
-    const widthSliderGroup = document.createElement("div");
-    widthSliderGroup.className = "mermaid-width-slider-group";
-    const widthSliderLabel = document.createElement("label");
-    widthSliderLabel.textContent = "Width:";
-    widthSliderLabel.className = "mermaid-slider-label";
-    widthSliderLabel.setAttribute("for", `mermaid-width-slider-${index}`);
-    const widthSlider = document.createElement("input");
-    widthSlider.type = "range";
-    widthSlider.id = `mermaid-width-slider-${index}`;
-    widthSlider.className = "mermaid-size-slider";
-    widthSlider.min = config.minWidth;
-    widthSlider.max = config.maxWidth;
-    const savedWidth = Utils.getSavedPreference(
-      "mermaid-diagram-width",
-      config.defaultWidth
-    );
-    widthSlider.value = savedWidth;
-    widthSliderGroup.appendChild(widthSliderLabel);
-    widthSliderGroup.appendChild(widthSlider);
-
-    // ----- Height slider group -----
-    const heightSliderGroup = document.createElement("div");
-    heightSliderGroup.className = "mermaid-height-slider-group";
-    const heightSliderLabel = document.createElement("label");
-    heightSliderLabel.textContent = "Height:";
-    heightSliderLabel.className = "mermaid-slider-label";
-    heightSliderLabel.setAttribute("for", `mermaid-height-slider-${index}`);
-    const heightSlider = document.createElement("input");
-    heightSlider.type = "range";
-    heightSlider.id = `mermaid-height-slider-${index}`;
-    heightSlider.className = "mermaid-size-slider";
-    heightSlider.min = config.minHeight;
-    heightSlider.max = config.maxHeight;
-    const savedHeight = Utils.getSavedPreference(
-      "mermaid-diagram-height",
-      config.defaultHeight
-    );
-    heightSlider.value = savedHeight;
-    heightSliderGroup.appendChild(heightSliderLabel);
-    heightSliderGroup.appendChild(heightSlider);
-
-    // ----- Aspect ratio lock -----
-    const aspectRatioContainer = document.createElement("div");
-    aspectRatioContainer.className = "aspect-ratio-container";
-    const aspectRatioCheckbox = document.createElement("input");
-    aspectRatioCheckbox.type = "checkbox";
-    aspectRatioCheckbox.id = `aspect-ratio-lock-${index}`;
-    aspectRatioCheckbox.className = "aspect-ratio-checkbox";
-    const lockAspectRatio = Utils.getSavedPreference(
-      "mermaid-lock-aspect-ratio",
-      config.lockAspectRatioDefault
-    );
-    aspectRatioCheckbox.checked =
-      lockAspectRatio === "true" || lockAspectRatio === true;
-    const aspectRatioLabel = document.createElement("label");
-    aspectRatioLabel.htmlFor = `aspect-ratio-lock-${index}`;
-    aspectRatioLabel.className = "aspect-ratio-label";
-    aspectRatioLabel.textContent = config.aspectRatioLockText;
-    aspectRatioContainer.appendChild(aspectRatioCheckbox);
-    aspectRatioContainer.appendChild(aspectRatioLabel);
+    // The orientation group and the three export buttons. A further fifteen
+    // controls (size sliders, presets, zoom, fit, auto-fit, responsive,
+    // padding, crop) were built here with listeners and never shown; they
+    // were deleted in parcel 2 (F5). The stored preferences they wrote are
+    // still honoured below, in reapplyAfterRender and by the resize listener.
 
     // ----- Orientation control group -----
     const orientationGroup = document.createElement("div");
@@ -1141,236 +1060,7 @@ window.MermaidControls = (function () {
 
     orientationGroup.appendChild(orientationLabel);
     orientationGroup.appendChild(orientationSelect);
-    // ----- Reset button -----
-    const resetButton = document.createElement("button");
-    resetButton.type = "button";
-    resetButton.className = config.buttonClasses;
-    resetButton.setAttribute("aria-label", "Reset diagram to default size");
-    resetButton.textContent = config.resetSizeText;
 
-    // ----- Auto-fit button -----
-    const autoFitButton = document.createElement("button");
-    autoFitButton.className =
-      config.buttonClasses + " " + config.autoFitButtonClass;
-    autoFitButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-  <path d="M9 3v18"></path>
-  <path d="M15 3v18"></path>
-  <path d="M3 9h18"></path>
-  <path d="M3 15h18"></path>
-</svg> ${config.autoFitButtonText}`;
-    autoFitButton.setAttribute("aria-label", "Auto-fit diagram to content");
-    autoFitButton.setAttribute("type", "button");
-
-    // ----- Auto-fit on load checkbox -----
-    const autoFitOnLoadLabel = document.createElement("label");
-    autoFitOnLoadLabel.className = "mermaid-auto-fit-on-load-label";
-    autoFitOnLoadLabel.setAttribute("for", `mermaid-auto-fit-on-load-${index}`);
-    const autoFitOnLoadCheckbox = document.createElement("input");
-    autoFitOnLoadCheckbox.type = "checkbox";
-    autoFitOnLoadCheckbox.id = `mermaid-auto-fit-on-load-${index}`;
-    autoFitOnLoadCheckbox.className = "mermaid-auto-fit-on-load-checkbox";
-    const savedAutoFitOnLoad = Utils.getSavedPreference(
-      "mermaid-auto-fit-on-load",
-      config.autoFitOnLoadDefault
-    );
-    autoFitOnLoadCheckbox.checked =
-      savedAutoFitOnLoad === "true" || savedAutoFitOnLoad === true;
-    autoFitOnLoadLabel.appendChild(autoFitOnLoadCheckbox);
-    autoFitOnLoadLabel.appendChild(
-      document.createTextNode(" Auto-fit on load")
-    );
-
-    // ----- Zoom controls group -----
-    const zoomControlsGroup = document.createElement("div");
-    zoomControlsGroup.className = "mermaid-zoom-controls-group";
-    // Create zoom out button
-    const zoomOutButton = document.createElement("button");
-    zoomOutButton.className = config.buttonClasses;
-    zoomOutButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <circle cx="11" cy="11" r="8"></circle>
-  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  <line x1="8" y1="11" x2="14" y2="11"></line>
-</svg>`;
-    zoomOutButton.setAttribute("aria-label", "Zoom out");
-    zoomOutButton.setAttribute("type", "button");
-    zoomOutButton.setAttribute("title", "Zoom out (decrease size by 10%)");
-    // Create zoom in button
-    const zoomInButton = document.createElement("button");
-    zoomInButton.className = config.buttonClasses;
-    zoomInButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <circle cx="11" cy="11" r="8"></circle>
-  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-  <line x1="11" y1="8" x2="11" y2="14"></line>
-  <line x1="8" y1="11" x2="14" y2="11"></line>
-</svg>`;
-    zoomInButton.setAttribute("aria-label", "Zoom in");
-    zoomInButton.setAttribute("type", "button");
-    zoomInButton.setAttribute("title", "Zoom in (increase size by 10%)");
-    // Add zoom buttons to group
-    zoomControlsGroup.appendChild(zoomOutButton);
-    zoomControlsGroup.appendChild(zoomInButton);
-    // ----- Fit options group -----
-    const fitOptionsGroup = document.createElement("div");
-    fitOptionsGroup.className = "mermaid-fit-options-group";
-    // Create fit to width button
-    const fitWidthButton = document.createElement("button");
-    fitWidthButton.className = config.buttonClasses;
-    fitWidthButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <polyline points="7 8 3 12 7 16"></polyline>
-  <polyline points="17 8 21 12 17 16"></polyline>
-  <line x1="3" y1="12" x2="21" y2="12"></line>
-</svg> Width`;
-    fitWidthButton.setAttribute("aria-label", "Fit to width");
-    fitWidthButton.setAttribute("type", "button");
-    fitWidthButton.setAttribute("title", "Fit diagram to container width");
-    // Create fit to height button
-    const fitHeightButton = document.createElement("button");
-    fitHeightButton.className = config.buttonClasses;
-    fitHeightButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <polyline points="8 7 12 3 16 7"></polyline>
-  <polyline points="8 17 12 21 16 17"></polyline>
-  <line x1="12" y1="3" x2="12" y2="21"></line>
-</svg> Height`;
-    fitHeightButton.setAttribute("aria-label", "Fit to height");
-    fitHeightButton.setAttribute("type", "button");
-    fitHeightButton.setAttribute("title", "Fit diagram to container height");
-    // Add fit buttons to group
-    fitOptionsGroup.appendChild(fitWidthButton);
-    fitOptionsGroup.appendChild(fitHeightButton);
-
-    // ----- Preset sizes group -----
-    const presetSizesGroup = document.createElement("div");
-    presetSizesGroup.className = "mermaid-preset-sizes-group";
-    // Create preset size buttons
-    const presetSizes = [
-      { name: "Small", width: 50, height: 70, label: "Small size" },
-      { name: "Medium", width: 70, height: 100, label: "Medium size" },
-      { name: "Large", width: 90, height: 130, label: "Large size" },
-    ];
-    presetSizes.forEach((preset) => {
-      const presetButton = document.createElement("button");
-      presetButton.className = config.buttonClasses;
-      presetButton.textContent = preset.name;
-      presetButton.setAttribute("aria-label", preset.label);
-      presetButton.setAttribute("type", "button");
-      // presetButton.setAttribute("title", `Apply ${preset.label.toLowerCase()}`);
-      presetSizesGroup.appendChild(presetButton);
-    });
-
-    // ----- Content-aware button -----
-    const contentAwareButton = document.createElement("button");
-    contentAwareButton.className = config.buttonClasses;
-    contentAwareButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <path d="M2 12h6"></path>
-  <path d="M22 12h-6"></path>
-  <path d="M12 2v6"></path>
-  <path d="M12 22v-6"></path>
-  <path d="M4.93 4.93l4.24 4.24"></path>
-  <path d="M14.83 14.83l4.24 4.24"></path>
-  <path d="M14.83 9.17l4.24-4.24"></path>
-  <path d="M4.93 19.07l4.24-4.24"></path>
-</svg> Smart Fit`;
-    contentAwareButton.setAttribute(
-      "aria-label",
-      "Apply content-aware scaling"
-    );
-    contentAwareButton.setAttribute("type", "button");
-    contentAwareButton.setAttribute(
-      "title",
-      "Intelligently scale diagram based on content analysis"
-    );
-    // ----- Responsive button -----
-    const responsiveButton = document.createElement("button");
-    responsiveButton.className = config.buttonClasses;
-    responsiveButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-  <line x1="8" y1="21" x2="16" y2="21"></line>
-  <line x1="12" y1="17" x2="12" y2="21"></line>
-</svg> Responsive`;
-    responsiveButton.setAttribute("aria-label", "Apply responsive scaling");
-    responsiveButton.setAttribute("type", "button");
-    responsiveButton.setAttribute(
-      "title",
-      "Scale diagram based on screen size"
-    );
-
-    // ----- Responsive mode toggle -----
-    const responsiveModeLabel = document.createElement("label");
-    responsiveModeLabel.className = "mermaid-responsive-mode-label";
-    responsiveModeLabel.setAttribute("for", `mermaid-responsive-mode-${index}`);
-    const responsiveModeCheckbox = document.createElement("input");
-    responsiveModeCheckbox.type = "checkbox";
-    responsiveModeCheckbox.id = `mermaid-responsive-mode-${index}`;
-    responsiveModeCheckbox.className = "mermaid-responsive-mode-checkbox";
-    const savedResponsiveMode = Utils.getSavedPreference(
-      "mermaid-responsive-enabled",
-      false
-    );
-    responsiveModeCheckbox.checked =
-      savedResponsiveMode === "true" || savedResponsiveMode === true;
-    responsiveModeLabel.appendChild(responsiveModeCheckbox);
-    responsiveModeLabel.appendChild(
-      document.createTextNode(" Auto-responsive")
-    );
-
-    // ----- Padding control group -----
-    const paddingControlGroup = document.createElement("div");
-    paddingControlGroup.className = "mermaid-padding-control-group";
-    const paddingLabel = document.createElement("label");
-    paddingLabel.textContent = "Padding:";
-    paddingLabel.className = "mermaid-padding-label";
-    paddingLabel.setAttribute("for", `mermaid-padding-slider-${index}`);
-    const paddingSlider = document.createElement("input");
-    paddingSlider.type = "range";
-    paddingSlider.id = `mermaid-padding-slider-${index}`;
-    paddingSlider.className = "mermaid-size-slider";
-    paddingSlider.min = 0;
-    paddingSlider.max = 50;
-    paddingSlider.setAttribute("aria-label", "Diagram padding");
-    const savedPadding = Utils.getSavedPreference(
-      "mermaid-diagram-padding",
-      10
-    );
-    paddingSlider.value = savedPadding;
-    paddingControlGroup.appendChild(paddingLabel);
-    paddingControlGroup.appendChild(paddingSlider);
-
-    // ----- Scale to container button -----
-    const scaleToContainerButton = document.createElement("button");
-    scaleToContainerButton.className = config.buttonClasses;
-    scaleToContainerButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <polyline points="15 3 21 3 21 9"></polyline>
-  <polyline points="9 21 3 21 3 15"></polyline>
-  <line x1="21" y1="3" x2="14" y2="10"></line>
-  <line x1="3" y1="21" x2="10" y2="14"></line>
-</svg> Fit Container`;
-    scaleToContainerButton.setAttribute("aria-label", "Scale to fit container");
-    scaleToContainerButton.setAttribute("type", "button");
-    scaleToContainerButton.setAttribute(
-      "title",
-      "Scale diagram to fit perfectly within its container"
-    );
-
-    // ----- Auto-crop button -----
-    const autoCropButton = document.createElement("button");
-    autoCropButton.className = config.buttonClasses;
-    autoCropButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-  <path d="M6 6h12v12H6z"></path>
-  <path d="M16 16v4h4"></path>
-  <path d="M8 8V4H4"></path>
-  <path d="M16 8V4h4"></path>
-  <path d="M8 16v4H4"></path>
-</svg> Auto-Crop`;
-    autoCropButton.setAttribute(
-      "aria-label",
-      "Auto-crop diagram to remove excess space"
-    );
-    autoCropButton.setAttribute("type", "button");
-    autoCropButton.setAttribute(
-      "title",
-      "Automatically crop the diagram to remove excess space"
-    );
     // Create standard buttons (Copy/SVG/PNG)
     const copyButton = document.createElement("button");
     copyButton.className = config.buttonClasses;
@@ -1401,69 +1091,9 @@ window.MermaidControls = (function () {
 
     // Map control elements to their configuration keys
     const controlElements = {
-      widthSlider: {
-        element: widthSliderGroup,
-        config: config.controlOrder.widthSlider,
-      },
-      heightSlider: {
-        element: heightSliderGroup,
-        config: config.controlOrder.heightSlider,
-      },
-      aspectRatio: {
-        element: aspectRatioContainer,
-        config: config.controlOrder.aspectRatio,
-      },
       orientation: {
         element: orientationGroup,
         config: config.controlOrder.orientation,
-      },
-      resetButton: {
-        element: resetButton,
-        config: config.controlOrder.resetButton,
-      },
-      autoFitButton: {
-        element: autoFitButton,
-        config: config.controlOrder.autoFitButton,
-      },
-      autoFitOnLoad: {
-        element: autoFitOnLoadLabel,
-        config: config.controlOrder.autoFitOnLoad,
-      },
-      zoomControls: {
-        element: zoomControlsGroup,
-        config: config.controlOrder.zoomControls,
-      },
-      fitOptions: {
-        element: fitOptionsGroup,
-        config: config.controlOrder.fitOptions,
-      },
-      presetSizes: {
-        element: presetSizesGroup,
-        config: config.controlOrder.presetSizes,
-      },
-      contentAwareButton: {
-        element: contentAwareButton,
-        config: config.controlOrder.contentAwareButton,
-      },
-      responsiveButton: {
-        element: responsiveButton,
-        config: config.controlOrder.responsiveButton,
-      },
-      responsiveMode: {
-        element: responsiveModeLabel,
-        config: config.controlOrder.responsiveMode,
-      },
-      paddingControl: {
-        element: paddingControlGroup,
-        config: config.controlOrder.paddingControl,
-      },
-      scaleToContainer: {
-        element: scaleToContainerButton,
-        config: config.controlOrder.scaleToContainer,
-      },
-      autoCrop: {
-        element: autoCropButton,
-        config: config.controlOrder.autoCrop,
       },
     };
 
@@ -1543,176 +1173,6 @@ window.MermaidControls = (function () {
       exportAsPng(container, index);
     });
 
-    // Width slider event listener
-    widthSlider.addEventListener("input", function () {
-      const width = this.value;
-      const height = heightSlider.value;
-      const isLocked = aspectRatioCheckbox.checked;
-
-      // Find the SVG element in the container, accounting for possible nesting
-      let svgElement = container.querySelector("svg");
-
-      // If we found an SVG element, apply the size changes
-      if (svgElement) {
-        // Ensure we're not in fullscreen mode
-        if (!container.classList.contains("fullscreen-mode")) {
-          applyDiagramSize(svgElement, width, height, isLocked);
-
-          // If aspect ratio is locked, update height slider to match
-          if (isLocked) {
-            const ratio =
-              parseFloat(svgElement.getAttribute("data-aspect-ratio")) || 1;
-            const newHeightPercentage =
-              (width / ratio / config.defaultHeight) * 100;
-            const newHeight = Math.min(
-              Math.max(newHeightPercentage, config.minHeight),
-              config.maxHeight
-            );
-
-            // Update height slider with visual feedback
-            heightSlider.value = newHeight;
-
-            // Add a temporary highlight effect to show the linked slider movement
-            heightSlider.classList.add("slider-adjusting");
-            setTimeout(() => {
-              heightSlider.classList.remove("slider-adjusting");
-            }, 500);
-
-            // Announce both changes to screen readers
-            announceToScreenReader(
-              `Diagram width set to ${width}%. Height automatically adjusted to ${Math.round(
-                newHeight
-              )}% to maintain aspect ratio.`
-            );
-          } else {
-            // Announce only width change to screen readers
-            announceToScreenReader(`Diagram width set to ${width}%`);
-          }
-        } else {
-          // In fullscreen mode, delegate to pan-zoom functionality
-          Logger.debug(
-            "In fullscreen mode, width adjustment delegated to pan-zoom"
-          );
-        }
-      } else {
-        Logger.warn("Could not find SVG element to resize");
-      }
-
-      // Save preference regardless of whether we could apply it
-      Utils.savePreference("mermaid-diagram-width", width);
-    });
-
-    // Height slider event listener
-    heightSlider.addEventListener("input", function () {
-      const width = widthSlider.value;
-      const height = this.value;
-      const isLocked = aspectRatioCheckbox.checked;
-
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        applyDiagramSize(svgElement, width, height, isLocked);
-
-        // If aspect ratio is locked, update width slider to match
-        if (isLocked) {
-          const ratio =
-            parseFloat(svgElement.getAttribute("data-aspect-ratio")) || 1;
-          const newWidthPercentage =
-            ((height * ratio) / config.defaultWidth) * 100;
-          const newWidth = Math.min(
-            Math.max(newWidthPercentage, config.minWidth),
-            config.maxWidth
-          );
-          // Update width slider with visual feedback
-          widthSlider.value = newWidth;
-
-          // Add a temporary highlight effect to show the linked slider movement
-          widthSlider.classList.add("slider-adjusting");
-          setTimeout(() => {
-            widthSlider.classList.remove("slider-adjusting");
-          }, 500);
-
-          // Announce both changes to screen readers
-          announceToScreenReader(
-            `Diagram height set to ${height}%. Width automatically adjusted to ${Math.round(
-              newWidth
-            )}% to maintain aspect ratio.`
-          );
-        } else {
-          // Announce only height change to screen readers
-          announceToScreenReader(`Diagram height set to ${height}%`);
-        }
-      } else {
-        // Announce only height change to screen readers
-        announceToScreenReader(`Diagram height set to ${height}%`);
-      }
-
-      // Save preference
-      Utils.savePreference("mermaid-diagram-height", height);
-    });
-
-    // Aspect ratio checkbox event listener
-    aspectRatioCheckbox.addEventListener("change", function () {
-      const isLocked = this.checked;
-      Utils.savePreference("mermaid-lock-aspect-ratio", isLocked);
-
-      // Add or remove visual indicators for linked sliders
-      if (isLocked) {
-        // Get current SVG element
-        const svgElement = container.querySelector("svg");
-        if (svgElement) {
-          // Calculate and store the current aspect ratio
-          const ratio = Utils.calculateAspectRatio(svgElement);
-          svgElement.setAttribute("data-aspect-ratio", ratio);
-
-          // Apply size with aspect ratio maintained
-          applyDiagramSize(
-            svgElement,
-            widthSlider.value,
-            heightSlider.value,
-            true,
-            ratio
-          );
-        }
-
-        // Add visual indicators for linked sliders
-        slidersContainer.classList.add("sliders-linked");
-        widthSlider.classList.add("slider-linked");
-        heightSlider.classList.add("slider-linked");
-        widthSliderGroup.classList.add("slider-group-linked");
-        heightSliderGroup.classList.add("slider-group-linked");
-
-        // Update ARIA attributes to indicate linked state
-        widthSlider.setAttribute(
-          "aria-description",
-          "Width slider linked to height slider"
-        );
-        heightSlider.setAttribute(
-          "aria-description",
-          "Height slider linked to width slider"
-        );
-
-        // Announce to screen readers with more detailed information
-        announceToScreenReader(
-          "Aspect ratio locked. Width and height sliders are now linked to maintain proportions."
-        );
-      } else {
-        // Remove visual indicators for linked sliders
-        slidersContainer.classList.remove("sliders-linked");
-        widthSlider.classList.remove("slider-linked");
-        heightSlider.classList.remove("slider-linked");
-        widthSliderGroup.classList.remove("slider-group-linked");
-        heightSliderGroup.classList.remove("slider-group-linked");
-
-        // Update ARIA attributes to indicate independent state
-        widthSlider.setAttribute("aria-description", "Width slider");
-        heightSlider.setAttribute("aria-description", "Height slider");
-
-        // Announce to screen readers with more detailed information
-        announceToScreenReader(
-          "Aspect ratio unlocked. Width and height sliders now work independently."
-        );
-      }
-    });
     // Orientation select event listener - only add if supported
     if (supportsOrientationChanges) {
       orientationSelect.addEventListener("change", function () {
@@ -1766,325 +1226,6 @@ window.MermaidControls = (function () {
       });
     }
 
-    // Reset button event listener
-    resetButton.addEventListener("click", function () {
-      Logger.debug("Resetting diagram size to defaults");
-
-      // Reset sliders to default values
-      widthSlider.value = config.defaultWidth;
-      heightSlider.value = config.defaultHeight;
-
-      // Get SVG element
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        // Apply default size
-        applyDiagramSize(
-          svgElement,
-          config.defaultWidth,
-          config.defaultHeight,
-          aspectRatioCheckbox.checked
-        );
-      }
-
-      // Save preferences
-      Utils.savePreference("mermaid-diagram-width", config.defaultWidth);
-      Utils.savePreference("mermaid-diagram-height", config.defaultHeight);
-
-      // Announce to screen readers
-      announceToScreenReader("Size reset to default");
-    });
-
-    // Auto-fit button event listener
-    autoFitButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.info("Applying auto-fit to diagram");
-        const scale = autoFitDiagram(svgElement, container);
-        if (scale) {
-          announceToScreenReader("Diagram auto-fitted to content");
-
-          // Update slider values to reflect the new size
-          const newWidth = scale;
-          if (widthSlider) widthSlider.value = newWidth;
-        } else {
-          announceToScreenReader("Failed to auto-fit diagram");
-        }
-      } else {
-        Logger.warn("No diagram found to auto-fit");
-        announceToScreenReader("No diagram found to auto-fit");
-      }
-    });
-    // Auto-fit on load checkbox event listener
-    autoFitOnLoadCheckbox.addEventListener("change", function () {
-      Utils.savePreference("mermaid-auto-fit-on-load", this.checked);
-      Logger.info(`Auto-fit on load ${this.checked ? "enabled" : "disabled"}`);
-      announceToScreenReader(
-        this.checked ? "Auto-fit on load enabled" : "Auto-fit on load disabled"
-      );
-    });
-
-    // Zoom controls event listeners
-    zoomOutButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        const currentWidth = parseInt(widthSlider.value);
-        const newWidth = Math.max(currentWidth - 10, config.minWidth);
-
-        Logger.debug(`Zooming out from ${currentWidth}% to ${newWidth}%`);
-
-        // Apply zoom
-        applyZoom(
-          svgElement,
-          newWidth,
-          heightSlider.value,
-          aspectRatioCheckbox.checked
-        );
-
-        // Update slider value
-        widthSlider.value = newWidth;
-
-        // Save preference
-        Utils.savePreference("mermaid-diagram-width", newWidth);
-
-        // Announce to screen readers
-        announceToScreenReader(`Zoomed out to ${newWidth}%`);
-      }
-    });
-
-    zoomInButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        const currentWidth = parseInt(widthSlider.value);
-        const newWidth = Math.min(currentWidth + 10, config.maxWidth);
-
-        Logger.debug(`Zooming in from ${currentWidth}% to ${newWidth}%`);
-
-        // Apply zoom
-        applyZoom(
-          svgElement,
-          newWidth,
-          heightSlider.value,
-          aspectRatioCheckbox.checked
-        );
-
-        // Update slider value
-        widthSlider.value = newWidth;
-
-        // Save preference
-        Utils.savePreference("mermaid-diagram-width", newWidth);
-
-        // Announce to screen readers
-        announceToScreenReader(`Zoomed in to ${newWidth}%`);
-      }
-    });
-
-    // Fit options event listeners
-    fitWidthButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.info("Fitting diagram to width");
-
-        // Fit to width (100%)
-        const newWidth = 100;
-
-        // Apply fit
-        applyDiagramSize(
-          svgElement,
-          newWidth,
-          heightSlider.value,
-          aspectRatioCheckbox.checked
-        );
-
-        // Update slider value
-        widthSlider.value = newWidth;
-
-        // Save preference
-        Utils.savePreference("mermaid-diagram-width", newWidth);
-
-        // Announce to screen readers
-        announceToScreenReader("Diagram fitted to width");
-      }
-    });
-    fitHeightButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        try {
-          Logger.info("Fitting diagram to height");
-
-          // Get container height
-          const containerHeight = container.clientHeight;
-          const svgHeight = svgElement.getBoundingClientRect().height;
-
-          // Calculate height percentage to fit container
-          const heightRatio = (containerHeight / svgHeight) * 100;
-          const newHeight = Math.min(
-            Math.max(heightRatio, config.minHeight),
-            config.maxHeight
-          );
-
-          // Apply fit
-          applyDiagramSize(
-            svgElement,
-            widthSlider.value,
-            newHeight,
-            aspectRatioCheckbox.checked
-          );
-
-          // Update slider value
-          heightSlider.value = newHeight;
-
-          // Save preference
-          Utils.savePreference("mermaid-diagram-height", newHeight);
-
-          // Announce to screen readers
-          announceToScreenReader("Diagram fitted to height");
-        } catch (error) {
-          Logger.error("Error fitting to height:", error);
-        }
-      }
-    });
-
-    // Preset size buttons event listeners
-    // Preset size buttons event listeners - update this section
-    presetSizesGroup
-      .querySelectorAll("button")
-      .forEach((button, buttonIndex) => {
-        button.addEventListener("click", function () {
-          // Don't apply in fullscreen mode
-          if (container.classList.contains("fullscreen-mode")) {
-            Logger.debug("In fullscreen mode, size presets not applied");
-            return;
-          }
-
-          const svgElement = container.querySelector("svg");
-          if (svgElement) {
-            const preset = presetSizes[buttonIndex];
-
-            Logger.info(`Applying preset size: ${preset.name}`);
-
-            // Apply preset size
-            applyDiagramSize(
-              svgElement,
-              preset.width,
-              preset.height,
-              aspectRatioCheckbox.checked
-            );
-
-            // Update slider values
-            widthSlider.value = preset.width;
-            heightSlider.value = preset.height;
-
-            // Save preferences
-            Utils.savePreference("mermaid-diagram-width", preset.width);
-            Utils.savePreference("mermaid-diagram-height", preset.height);
-
-            // Announce to screen readers
-            announceToScreenReader(`Applied ${preset.label}`);
-          } else {
-            Logger.warn("Could not find SVG element to apply preset size");
-          }
-        });
-      });
-
-    // Content-aware button event listener
-    contentAwareButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.info("Applying content-aware auto-fit");
-        contentAwareAutoFit(svgElement, container);
-      }
-    });
-    // Responsive button event listener
-    responsiveButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.info("Applying responsive scaling");
-        const result = applyResponsiveScaling(svgElement);
-        if (result) {
-          // Save preferences
-          Utils.savePreference("mermaid-diagram-width", result.width);
-          Utils.savePreference("mermaid-diagram-height", result.height);
-        }
-      }
-    });
-
-    // Responsive mode checkbox event listener
-    responsiveModeCheckbox.addEventListener("change", function () {
-      Utils.savePreference("mermaid-responsive-enabled", this.checked);
-
-      Logger.info(`Responsive mode ${this.checked ? "enabled" : "disabled"}`);
-
-      // If enabled, apply responsive scaling immediately
-      if (this.checked) {
-        const svgElement = container.querySelector("svg");
-        if (svgElement) {
-          applyResponsiveScaling(svgElement);
-        }
-      }
-
-      announceToScreenReader(
-        this.checked ? "Responsive mode enabled" : "Responsive mode disabled"
-      );
-    });
-
-    // Padding slider event listener
-    paddingSlider.addEventListener("input", function () {
-      const padding = this.value;
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.debug(`Setting diagram padding to ${padding}px`);
-
-        // Apply padding
-        applyDiagramPadding(svgElement, padding);
-
-        // Save preference
-        Utils.savePreference("mermaid-diagram-padding", padding);
-
-        // Announce to screen readers
-        announceToScreenReader(`Diagram padding set to ${padding}px`);
-      }
-    });
-
-    // Scale to container button event listener
-    scaleToContainerButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (svgElement) {
-        Logger.info("Scaling diagram to fit container");
-        scaleToContainer(svgElement, container);
-      }
-    });
-
-    // Auto-crop button event listener
-    autoCropButton.addEventListener("click", function () {
-      const svgElement = container.querySelector("svg");
-      if (!svgElement) return;
-
-      if (container.classList.contains("auto-cropped")) {
-        Logger.info("Resetting auto-crop");
-        // Reset the cropping
-        resetAutoCrop(svgElement, container);
-        // Update button text
-        autoCropButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <path d="M6 6h12v12H6z"></path>
-      <path d="M16 16v4h4"></path>
-      <path d="M8 8V4H4"></path>
-      <path d="M16 8V4h4"></path>
-      <path d="M8 16v4H4"></path>
-    </svg> Auto-Crop`;
-      } else {
-        Logger.info("Applying auto-crop");
-        // Apply auto-cropping
-        autoCropContainer(svgElement, container);
-        // Update button text
-        autoCropButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-      <path d="M6 6h12v12H6z"></path>
-      <path d="M4 14h4v4"></path>
-      <path d="M4 10h4V6"></path>
-      <path d="M16 10h4V6"></path>
-      <path d="M16 14h4v4"></path>
-    </svg> Reset Crop`;
-      }
-    });
     // ==============================================
     // 4. ADD CONTROLS TO CONTAINER AND APPLY INITIAL SETTINGS
     // ==============================================
@@ -2098,14 +1239,31 @@ window.MermaidControls = (function () {
     // Add controls to the container
     container.appendChild(controlsContainer);
 
-    // Apply initial width and height to the SVG container
+    // Apply the stored width and height to the first-paint SVG. The hidden
+    // size controls that used to read these three preferences were deleted
+    // in parcel 2 (F5); the keys, defaults and boolean test are theirs,
+    // unchanged, so a browser that stored a size is sized exactly as before.
+    // (applyTheme's re-render replaces this SVG, and reapplyAfterRender puts
+    // the same values on the replacement.)
+    const savedWidth = Utils.getSavedPreference(
+      "mermaid-diagram-width",
+      config.defaultWidth
+    );
+    const savedHeight = Utils.getSavedPreference(
+      "mermaid-diagram-height",
+      config.defaultHeight
+    );
+    const lockAspectRatio = Utils.getSavedPreference(
+      "mermaid-lock-aspect-ratio",
+      config.lockAspectRatioDefault
+    );
     const svgElement = container.querySelector("svg");
     if (svgElement) {
       applyDiagramSize(
         svgElement,
         savedWidth,
         savedHeight,
-        aspectRatioCheckbox.checked
+        lockAspectRatio === "true" || lockAspectRatio === true
       );
     }
 
@@ -2304,46 +1462,27 @@ window.MermaidControls = (function () {
       applied.encoding = true;
     }
 
-    // 2. Size. The live sliders are the authority where they exist, because
-    // they carry the user's current adjustment; their input handlers write
-    // the saved preference on every change, so the two agree in the normal
-    // case. Where controls have not been built yet the sliders are absent,
-    // and the saved preferences are the same values addControlsToContainer
-    // would apply moments later — so the fallback introduces no new value.
+    // 2. Size, from the stored preferences. This is the step that sets the
+    // size on the SVG a user finally sees: applyTheme's re-render replaces
+    // the first-paint SVG and then calls this helper (measured, parcel 2 step
+    // 0). Hidden size sliders once took precedence here; they were never
+    // shown and were deleted in parcel 2 (F5), so a browser that stored a
+    // size still gets it and one that did not gets the defaults.
     const svgElement = mermaidDiv.querySelector("svg");
     if (svgElement) {
-      const scope = container || mermaidDiv;
-      const widthSlider = scope.querySelector(
-        'input[id^="mermaid-width-slider"]'
+      const width = Utils.getSavedPreference(
+        "mermaid-diagram-width",
+        config.defaultWidth
       );
-      const heightSlider = scope.querySelector(
-        'input[id^="mermaid-height-slider"]'
+      const height = Utils.getSavedPreference(
+        "mermaid-diagram-height",
+        config.defaultHeight
       );
-      const aspectRatioCheckbox = scope.querySelector(".aspect-ratio-checkbox");
-
-      let width;
-      let height;
-      let locked;
-
-      if (widthSlider && heightSlider) {
-        width = widthSlider.value;
-        height = heightSlider.value;
-        locked = aspectRatioCheckbox ? aspectRatioCheckbox.checked : false;
-      } else {
-        width = Utils.getSavedPreference(
-          "mermaid-diagram-width",
-          config.defaultWidth
-        );
-        height = Utils.getSavedPreference(
-          "mermaid-diagram-height",
-          config.defaultHeight
-        );
-        const savedLock = Utils.getSavedPreference(
-          "mermaid-lock-aspect-ratio",
-          config.lockAspectRatioDefault
-        );
-        locked = savedLock === "true" || savedLock === true;
-      }
+      const savedLock = Utils.getSavedPreference(
+        "mermaid-lock-aspect-ratio",
+        config.lockAspectRatioDefault
+      );
+      const locked = savedLock === "true" || savedLock === true;
 
       applyDiagramSize(svgElement, width, height, locked);
       applied.size = true;
@@ -2403,6 +1542,104 @@ window.MermaidControls = (function () {
     );
 
     return applied;
+  }
+
+  // ===============================================
+  // NATURAL SIZE AND THE TEXT FLOOR (parcel 9d, F22)
+  // ===============================================
+
+  /**
+   * True when a size argument is the caller's default rather than a stored
+   * preference. Every caller reads the key through getSavedPreference with the
+   * default as its fallback, so the two arrive looking alike; the key's
+   * absence is what tells them apart. Decided here, not at each call, because
+   * two of the four callers (markdown-editor.js, mermaid-accessibility-core.js)
+   * pass the default as a literal.
+   * @param {string} key - The localStorage key the caller read
+   * @param {*} value - The value the caller passed
+   * @param {number} defaultValue - The default for that key
+   * @returns {boolean}
+   */
+  function isUnstoredDefault(key, value, defaultValue) {
+    return (
+      Utils.getSavedPreference(key, null) === null &&
+      Number(value) === defaultValue
+    );
+  }
+
+  /**
+   * A diagram's natural width: one viewBox unit to one CSS pixel.
+   * @param {SVGSVGElement} svgElement
+   * @returns {number|null} Null for an SVG with no usable viewBox
+   */
+  function getNaturalWidth(svgElement) {
+    const viewBox = svgElement.viewBox && svgElement.viewBox.baseVal;
+    return viewBox && viewBox.width > 0 ? viewBox.width : null;
+  }
+
+  /**
+   * The diagram's smallest rendered text, in the SVG root's user units: each
+   * item's computed font-size times its on-screen scale (parcel 9c's method
+   * A; an HTML label takes its foreignObject's scale), divided by the root's
+   * own scale, so the answer does not depend on how wide the SVG is drawn now.
+   * @param {SVGSVGElement} svgElement - Attached and laid out
+   * @returns {number|null} Null when nothing measurable is rendered
+   */
+  function getSmallestTextUserUnits(svgElement) {
+    const rootMatrix = svgElement.getScreenCTM();
+    const rootScale = rootMatrix ? Math.hypot(rootMatrix.a, rootMatrix.b) : 0;
+    if (!rootScale) return null;
+
+    const hasOwnText = (el) =>
+      Array.from(el.childNodes).some(
+        (n) => n.nodeType === Node.TEXT_NODE && n.nodeValue.trim()
+      );
+    let smallest = null;
+    const measure = (el, scaleSource) => {
+      const style = getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden") return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      const matrix = scaleSource.getScreenCTM();
+      if (!matrix) return;
+      const px = parseFloat(style.fontSize) * Math.hypot(matrix.a, matrix.b);
+      if (px > 0 && (smallest === null || px < smallest)) smallest = px;
+    };
+
+    svgElement.querySelectorAll("text").forEach((text) => {
+      if (!text.textContent.trim()) return;
+      const tspans = Array.from(text.querySelectorAll("tspan")).filter(
+        hasOwnText
+      );
+      const units = hasOwnText(text)
+        ? [text, ...tspans]
+        : tspans.length
+        ? tspans
+        : [text];
+      units.forEach((unit) => measure(unit, unit));
+    });
+    svgElement.querySelectorAll("foreignObject").forEach((foreignObject) => {
+      foreignObject.querySelectorAll("*").forEach((el) => {
+        if (hasOwnText(el)) measure(el, foreignObject);
+      });
+    });
+
+    return smallest === null ? null : smallest / rootScale;
+  }
+
+  /**
+   * The width at which the diagram's smallest text is drawn at
+   * MIN_DIAGRAM_TEXT_PX, rounded up so rounding cannot land it below.
+   * @param {SVGSVGElement} svgElement
+   * @param {number|null} naturalWidth
+   * @returns {number|null}
+   */
+  function getFloorWidth(svgElement, naturalWidth) {
+    if (!naturalWidth) return null;
+    const smallest = getSmallestTextUserUnits(svgElement);
+    return smallest
+      ? Math.ceil((naturalWidth * MIN_DIAGRAM_TEXT_PX) / smallest)
+      : null;
   }
 
   function applyDiagramSize(
@@ -2508,9 +1745,51 @@ window.MermaidControls = (function () {
         heightPercent = null;
       }
 
-      // Apply width styling
-      svgElement.style.width = `${widthPercent}%`;
-      svgElement.style.maxWidth = `${widthPercent}%`;
+      // F22 (parcel 9d). With no stored width the diagram is drawn at its
+      // natural width, shrunk to its box when wider; a stored width keeps its
+      // percentage exactly as before. Either way it is never drawn narrower
+      // than the width that gives its smallest text MIN_DIAGRAM_TEXT_PX.
+      // min-width beats max-width, so such a diagram overflows its .mermaid
+      // box, which scrolls (mermaid-controls.css). The floor is written
+      // whenever it can be measured, not only when it bites today: the box
+      // changes with Expand Width, the window and the export's column, and a
+      // min-width below the drawn width is inert.
+      const naturalWidth = getNaturalWidth(svgElement);
+      const drawNatural =
+        naturalWidth !== null &&
+        isUnstoredDefault(
+          "mermaid-diagram-width",
+          widthPercent,
+          config.defaultWidth
+        );
+      if (drawNatural) {
+        svgElement.style.width = `${naturalWidth}px`;
+        svgElement.style.maxWidth = "100%";
+      } else {
+        svgElement.style.width = `${widthPercent}%`;
+        svgElement.style.maxWidth = `${widthPercent}%`;
+      }
+      const floorWidth = getFloorWidth(svgElement, naturalWidth);
+      if (floorWidth !== null) {
+        svgElement.style.minWidth = `${floorWidth}px`;
+      } else {
+        svgElement.style.removeProperty("min-width");
+      }
+
+      // With no stored height the height follows the width. A pixel height
+      // written here is released on the page by mermaid-controls.css
+      // (height: auto !important), but the export carries no such rule, so
+      // it held diagrams at their natural height there (parcel 9c).
+      if (
+        heightPercent !== null &&
+        isUnstoredDefault(
+          "mermaid-diagram-height",
+          heightPercent,
+          config.defaultHeight
+        )
+      ) {
+        heightPercent = null;
+      }
 
       // Handle height based on parameters
       if (heightPercent !== null) {
@@ -2519,7 +1798,9 @@ window.MermaidControls = (function () {
           const containerWidth = container
             ? container.clientWidth
             : originalWidth;
-          const targetWidth = (containerWidth * widthPercent) / 100;
+          const targetWidth = drawNatural
+            ? Math.min(naturalWidth, containerWidth)
+            : (containerWidth * widthPercent) / 100;
           const targetHeight = targetWidth / aspectRatio;
 
           // Set calculated height
@@ -2588,7 +1869,7 @@ window.MermaidControls = (function () {
         const sizeChangeEvent = new CustomEvent("mermaidSizeChanged", {
           detail: {
             diagramId: diagramId,
-            width: `${widthPercent}%`,
+            width: drawNatural ? `${naturalWidth}px` : `${widthPercent}%`,
             height: heightPercent ? `${heightPercent}%` : "auto",
             aspectRatio: maintainAspectRatio,
             svgElement: svgElement,
@@ -2611,7 +1892,7 @@ window.MermaidControls = (function () {
           heightPercent !== null ? `${heightPercent}%` : "auto";
 
         Logger.info(
-          `Successfully resized ${diagramId}: ${widthPercent}% × ${heightDisplay}${
+          `Successfully resized ${diagramId}: ${drawNatural ? `${naturalWidth}px (natural)` : `${widthPercent}%`} × ${heightDisplay}${
             maintainAspectRatio ? " (aspect locked)" : ""
           }`
         );
@@ -2989,153 +2270,6 @@ window.MermaidControls = (function () {
     return isGraphOrFlowchart;
   }
   /**
-   * Apply zoom to diagram with smooth transition
-   * @param {HTMLElement} svgElement - The SVG element to resize
-   * @param {number} widthPercent - Width percentage
-   * @param {number} heightPercent - Height percentage
-   * @param {boolean} maintainAspectRatio - Whether to maintain aspect ratio
-   */
-  function applyZoom(
-    svgElement,
-    widthPercent,
-    heightPercent,
-    maintainAspectRatio
-  ) {
-    if (!svgElement) return;
-
-    // Apply zoom with smooth transition
-    svgElement.style.transition = "width 0.2s, height 0.2s";
-
-    // Apply size with aspect ratio if needed
-    applyDiagramSize(
-      svgElement,
-      widthPercent,
-      heightPercent,
-      maintainAspectRatio
-    );
-
-    // Remove transition after zoom
-    setTimeout(() => {
-      svgElement.style.transition = "";
-    }, 200);
-  }
-
-  /**
-   * Enhanced auto-fit with content-aware scaling
-   * @param {HTMLElement} svgElement - The SVG element to resize
-   * @param {HTMLElement} container - The container element
-   */
-  function contentAwareAutoFit(svgElement, container) {
-    if (!svgElement) {
-      Logger.error("Cannot apply content-aware scaling: SVG element not found");
-      return;
-    }
-
-    try {
-      // Get the natural size of the SVG content
-      const viewBox = svgElement.getAttribute("viewBox");
-      if (!viewBox) {
-        Logger.warn("Cannot apply content-aware scaling: SVG has no viewBox");
-        return;
-      }
-
-      // Analyse diagram content
-      const textElements = svgElement.querySelectorAll("text");
-      const nodes = svgElement.querySelectorAll(".node");
-      const edges = svgElement.querySelectorAll(".edgePath");
-
-      // Calculate text density (average text length)
-      let totalTextLength = 0;
-      textElements.forEach((text) => {
-        totalTextLength += text.textContent.length;
-      });
-      const avgTextLength =
-        textElements.length > 0 ? totalTextLength / textElements.length : 0;
-
-      // Calculate node density
-      const nodeCount = nodes.length;
-
-      // Calculate edge complexity
-      const edgeCount = edges.length;
-      const edgeDensity = nodeCount > 0 ? edgeCount / nodeCount : 0;
-
-      // Calculate aspect ratio
-      const [, , vbWidth, vbHeight] = viewBox.split(" ").map(Number);
-      const aspectRatio = vbWidth / vbHeight;
-
-      // Log analysis for debugging
-      Logger.debug(`Content analysis:`, {
-        nodes: nodeCount,
-        edges: edgeCount,
-        avgTextLength,
-        edgeDensity,
-        aspectRatio,
-      });
-
-      // Determine optimal scale based on content analysis
-      let widthScale, heightScale;
-
-      // Adjust width based on text length and node count
-      if (avgTextLength > 20) {
-        // Diagrams with long text need more width
-        widthScale = 90;
-      } else if (nodeCount > 20) {
-        // Diagrams with many nodes need more space
-        widthScale = 95;
-      } else if (edgeDensity > 2) {
-        // Diagrams with complex edge relationships need more space
-        widthScale = 90;
-      } else {
-        // Simple diagrams can be smaller
-        widthScale = 70;
-      }
-
-      // Adjust height based on aspect ratio and node count
-      if (aspectRatio < 1) {
-        // Tall diagrams need more height
-        heightScale = 150;
-      } else if (nodeCount > 15) {
-        // Diagrams with many nodes need more height
-        heightScale = 120;
-      } else {
-        // Simple diagrams can use default height
-        heightScale = 100;
-      }
-
-      // Apply the calculated scales
-      applyDiagramSize(svgElement, widthScale, heightScale, false);
-
-      // Update slider values
-      const widthSlider = container.querySelector(
-        `input[id^="mermaid-width-slider"]`
-      );
-      const heightSlider = container.querySelector(
-        `input[id^="mermaid-height-slider"]`
-      );
-      if (widthSlider) widthSlider.value = widthScale;
-      if (heightSlider) heightSlider.value = heightScale;
-
-      // Save preferences
-      Utils.savePreference("mermaid-diagram-width", widthScale);
-      Utils.savePreference("mermaid-diagram-height", heightScale);
-
-      // Log the content-aware scaling for debugging
-      Logger.info(`Content-aware scaling applied:`, {
-        widthScale,
-        heightScale,
-      });
-
-      // Announce to screen readers
-      announceToScreenReader("Applied content-aware scaling");
-
-      return { widthScale, heightScale };
-    } catch (error) {
-      Logger.error("Error in content-aware scaling:", error);
-      return null;
-    }
-  }
-
-  /**
    * Apply responsive scaling based on viewport size
    * @param {HTMLElement} svgElement - The SVG element to resize
    */
@@ -3216,230 +2350,6 @@ window.MermaidControls = (function () {
   }
 
   /**
-   * Apply padding to diagram
-   * @param {HTMLElement} svgElement - The SVG element to add padding to
-   * @param {number} padding - Padding in pixels
-   */
-  function applyDiagramPadding(svgElement, padding) {
-    if (!svgElement) {
-      Logger.error("Cannot apply padding: SVG element not found");
-      return;
-    }
-
-    try {
-      // Apply padding to SVG
-      svgElement.style.padding = `${padding}px`;
-
-      // Adjust viewBox if needed
-      const viewBox = svgElement.getAttribute("viewBox");
-      if (viewBox) {
-        const [x, y, width, height] = viewBox.split(" ").map(Number);
-
-        // Store original viewBox if not already stored
-        if (!svgElement.hasAttribute("data-original-viewbox")) {
-          svgElement.setAttribute("data-original-viewbox", viewBox);
-        }
-
-        // Calculate padding as percentage of width/height
-        const paddingX = (padding / svgElement.clientWidth) * width;
-        const paddingY = (padding / svgElement.clientHeight) * height;
-
-        // Apply new viewBox with padding
-        svgElement.setAttribute(
-          "viewBox",
-          `${x - paddingX} ${y - paddingY} ${width + paddingX * 2} ${
-            height + paddingY * 2
-          }`
-        );
-      }
-
-      // Log the padding application for debugging
-      Logger.debug(`Applied padding: ${padding}px`);
-    } catch (error) {
-      Logger.error("Error applying padding:", error);
-    }
-  }
-
-  /**
-   * Scale diagram to fit container
-   * @param {HTMLElement} svgElement - The SVG element to resize
-   * @param {HTMLElement} container - The container element
-   */
-  function scaleToContainer(svgElement, container) {
-    if (!svgElement || !container) {
-      Logger.error("Cannot scale to container: Missing elements");
-      return;
-    }
-
-    try {
-      // Get container dimensions
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-
-      // Get SVG dimensions
-      const svgRect = svgElement.getBoundingClientRect();
-      const svgWidth = svgRect.width;
-      const svgHeight = svgRect.height;
-
-      // Calculate scale factors
-      const widthScale = (containerWidth / svgWidth) * 100;
-      const heightScale = (containerHeight / svgHeight) * 100;
-
-      // Use the smaller scale to ensure the diagram fits completely
-      const scale = Math.min(widthScale, heightScale) * 0.95; // 95% to add a small margin
-
-      // Apply the scale
-      applyDiagramSize(svgElement, scale, null, true);
-
-      // Update slider values
-      const widthSlider = container.querySelector(
-        `input[id^="mermaid-width-slider"]`
-      );
-      if (widthSlider) widthSlider.value = scale;
-
-      // Save preference
-      Utils.savePreference("mermaid-diagram-width", scale);
-
-      // Log the container scaling for debugging
-      Logger.info(`Scaled to container: ${scale}%`);
-
-      // Announce to screen readers
-      announceToScreenReader(
-        `Scaled diagram to fit container at ${Math.round(scale)}%`
-      );
-
-      return scale;
-    } catch (error) {
-      Logger.error("Error scaling to container:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Auto-crop diagram container by adjusting margins and padding
-   * @param {HTMLElement} svgElement - The SVG element to analyse
-   * @param {HTMLElement} container - The container to adjust
-   */
-  function autoCropContainer(svgElement, container) {
-    if (!svgElement || !container) {
-      Logger.error("Cannot auto-crop: Missing elements");
-      return;
-    }
-
-    try {
-      // Find the actual content bounds within the SVG
-      const elements = svgElement.querySelectorAll(
-        'g[class^="node"], g[class^="cluster"], path'
-      );
-
-      if (elements.length === 0) {
-        Logger.warn("No elements found for auto-cropping");
-        return;
-      }
-
-      // Initialise bounds with the first element
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-
-      // Calculate the actual bounds of all content elements
-      elements.forEach((element) => {
-        const bbox = element.getBBox();
-        minX = Math.min(minX, bbox.x);
-        minY = Math.min(minY, bbox.y);
-        maxX = Math.max(maxX, bbox.x + bbox.width);
-        maxY = Math.max(maxY, bbox.y + bbox.height);
-      });
-
-      // Add a small margin (10px) around the content
-      const margin = 10;
-
-      // Calculate the content dimensions with margin
-      const contentWidth = maxX - minX + margin * 2;
-      const contentHeight = maxY - minY + margin * 2;
-
-      // Set the SVG viewBox to focus on the content area
-      svgElement.setAttribute(
-        "viewBox",
-        `${minX - margin} ${minY - margin} ${contentWidth} ${contentHeight}`
-      );
-
-      // Store original values to enable resetting
-      if (!svgElement.hasAttribute("data-original-viewbox")) {
-        const originalViewBox = svgElement.getAttribute("viewBox");
-        svgElement.setAttribute("data-original-viewbox", originalViewBox);
-      }
-
-      // Adjust the container height to match the content
-      const containerWidth = container.clientWidth;
-      const aspectRatio = contentWidth / contentHeight;
-      const newHeight = containerWidth / aspectRatio;
-
-      // Set a minimum height to avoid too small containers
-      const minHeight = 100;
-      container.style.height = `${Math.max(newHeight, minHeight)}px`;
-      container.style.minHeight = `${minHeight}px`;
-
-      // Add a class to indicate cropping is applied
-      container.classList.add("auto-cropped");
-
-      // Log the auto-crop operation
-      Logger.info(
-        `Auto-cropped container: ${Math.round(contentWidth)}×${Math.round(
-          contentHeight
-        )}`
-      );
-
-      // Announce to screen readers
-      announceToScreenReader("Diagram auto-cropped to remove excess space");
-
-      return {
-        width: contentWidth,
-        height: contentHeight,
-      };
-    } catch (error) {
-      Logger.error("Error auto-cropping container:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Reset auto-cropping to original view
-   * @param {HTMLElement} svgElement - The SVG element to reset
-   * @param {HTMLElement} container - The container to adjust
-   */
-  function resetAutoCrop(svgElement, container) {
-    if (!svgElement || !container) {
-      Logger.error("Cannot reset auto-crop: Missing elements");
-      return;
-    }
-
-    try {
-      // Check if original viewBox exists
-      const originalViewBox = svgElement.getAttribute("data-original-viewbox");
-      if (originalViewBox) {
-        // Restore original viewBox
-        svgElement.setAttribute("viewBox", originalViewBox);
-      }
-
-      // Remove height constraint from container
-      container.style.height = "";
-      container.style.minHeight = "";
-
-      // Remove auto-cropped class
-      container.classList.remove("auto-cropped");
-
-      // Announce to screen readers
-      announceToScreenReader("Auto-crop has been reset");
-
-      Logger.info("Auto-crop reset");
-    } catch (error) {
-      Logger.error("Error resetting auto-crop:", error);
-    }
-  }
-
-  /**
    * Add these debugging functions to the public API
    */
   const DebugUtils = {
@@ -3496,13 +2406,7 @@ window.MermaidControls = (function () {
     detectOrientation: detectOrientation,
     updateOrientation: updateOrientation,
     supportsOrientation: supportsOrientation,
-    applyZoom: applyZoom,
-    contentAwareAutoFit: contentAwareAutoFit,
     applyResponsiveScaling: applyResponsiveScaling,
-    applyDiagramPadding: applyDiagramPadding,
-    scaleToContainer: scaleToContainer,
-    autoCropContainer: autoCropContainer,
-    resetAutoCrop: resetAutoCrop,
     // Enhanced utilities
     getDiagramIdentifier: getDiagramIdentifier,
     getDiagramSummary: getDiagramSummary,

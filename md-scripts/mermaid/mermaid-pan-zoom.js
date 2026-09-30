@@ -134,6 +134,9 @@ const MermaidPanZoom = (function () {
   // State management for each container
   const containerStates = new Map();
 
+  // Counter for container ids minted when the figure carries none
+  let containerIdCounter = 0;
+
   /**
    * Initialize a container for pan and zoom
    * @param {HTMLElement} container - The container element
@@ -436,8 +439,19 @@ const MermaidPanZoom = (function () {
     const state = containerStates.get(containerId);
     if (!state) return;
 
+    // One set per container state. A native full-screen entry requests
+    // activation twice (enterFullscreen and the fullscreenchange handler);
+    // initContainer's own guard already stops the second, and this makes it
+    // explicit at the place the listeners are added.
+    if (state.documentHandlers) return;
+
+    // The document-level handlers are named and kept on the state, so
+    // deactivateForContainer can remove them on exit (F2). The wrapper's own
+    // listeners go with the wrapper when it is removed.
+    state.documentHandlers = {};
+
     // Keyboard event listener
-    document.addEventListener("keydown", (event) => {
+    const handleDocumentKeydown = (event) => {
       // Only process keyboard events if this container is in fullscreen
       if (!state.container.classList.contains("fullscreen-mode")) {
         return;
@@ -491,7 +505,9 @@ const MermaidPanZoom = (function () {
             break;
         }
       }
-    });
+    };
+    document.addEventListener("keydown", handleDocumentKeydown);
+    state.documentHandlers.keydown = handleDocumentKeydown;
 
     if (config.wheelZoomEnabled) {
       // Mouse wheel zoom
@@ -525,7 +541,7 @@ const MermaidPanZoom = (function () {
         state.wrapper.style.cursor = "grabbing";
       });
 
-      document.addEventListener("mousemove", (event) => {
+      const handleDocumentMousemove = (event) => {
         if (!state.isDragging) return;
 
         const dx = event.clientX - state.lastMouseX;
@@ -538,14 +554,18 @@ const MermaidPanZoom = (function () {
 
         state.lastMouseX = event.clientX;
         state.lastMouseY = event.clientY;
-      });
+      };
+      document.addEventListener("mousemove", handleDocumentMousemove);
+      state.documentHandlers.mousemove = handleDocumentMousemove;
 
-      document.addEventListener("mouseup", () => {
+      const handleDocumentMouseup = () => {
         if (state.isDragging) {
           state.isDragging = false;
           state.wrapper.style.cursor = "grab";
         }
-      });
+      };
+      document.addEventListener("mouseup", handleDocumentMouseup);
+      state.documentHandlers.mouseup = handleDocumentMouseup;
 
       // Set initial grab cursor
       state.wrapper.style.cursor = "grab";
@@ -868,7 +888,7 @@ const MermaidPanZoom = (function () {
     // Ensure container has an ID
     if (!container.id) {
       logWarn("Container missing ID, generating one");
-      container.id = `mermaid-container-${Date.now()}`;
+      container.id = mintContainerId(container);
     }
 
     const containerId = container.id;
@@ -908,6 +928,42 @@ const MermaidPanZoom = (function () {
         ensureDiagramVisibility(containerId);
       }, 500);
     }, 100);
+  }
+
+  /**
+   * Remove the document-level keydown/mousemove/mouseup handlers that
+   * setupEventListeners added for one container state
+   * @param {Object} state - The container's state entry
+   */
+  function removeDocumentListeners(state) {
+    const handlers = state && state.documentHandlers;
+    if (!handlers) return;
+
+    Object.entries(handlers).forEach(([type, handler]) => {
+      document.removeEventListener(type, handler);
+    });
+    state.documentHandlers = null;
+    logDebug("Document-level listeners removed");
+  }
+
+  /**
+   * An id for a container that has none: derived from the figure (the inner
+   * .mermaid div's id) when there is one, else from a module counter — never
+   * a timestamp. Skips any id already in the document.
+   * @param {HTMLElement} container - The container element
+   * @returns {string} A fresh id
+   */
+  function mintContainerId(container) {
+    const figure = container.querySelector(".mermaid[id]");
+    const fromFigure = figure ? `mermaid-container-${figure.id}` : null;
+    if (fromFigure && !document.getElementById(fromFigure)) return fromFigure;
+
+    let candidate;
+    do {
+      containerIdCounter++;
+      candidate = `mermaid-container-pz-${containerIdCounter}`;
+    } while (document.getElementById(candidate));
+    return candidate;
   }
 
   /**
@@ -974,6 +1030,10 @@ const MermaidPanZoom = (function () {
             `Restored original DOM structure for container ${containerId}`
           );
         }
+
+        // Remove the document-level listeners before the state that holds
+        // them goes; otherwise every enter/exit cycle leaves a set behind (F2)
+        removeDocumentListeners(state);
 
         // Clear the state
         containerStates.delete(containerId);

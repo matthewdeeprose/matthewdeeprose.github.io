@@ -90,6 +90,18 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// The app element carries the current mode, so CSS can hide the panels that
+// belong to Upload but sit outside its container (parcel 10b).
+const APP_ELEMENT_ID = "mathpix-app";
+const MODE_ATTRIBUTE = "data-mathpix-mode";
+
+// The result regions Upload, Draw and Photo share (parcel 10d).
+const SHARED_RESULT_REGION_IDS = Object.freeze([
+  "mathpix-image-preview-container",
+  "mathpix-comparison-container",
+  "mathpix-output-container",
+]);
+
 /**
  * @class MathPixModeSwitcher
  * @extends MathPixBaseModule
@@ -122,6 +134,12 @@ class MathPixModeSwitcher extends MathPixBaseModule {
      * @type {string}
      */
     this.currentMode = "upload"; // Default to upload mode
+
+    /**
+     * What each mode left showing in the shared result regions (parcel 10d)
+     * @type {Map<string, {displays: Object, result: *, file: *}>}
+     */
+    this._resultsLeftByMode = new Map();
 
     /**
      * Upload container element
@@ -335,6 +353,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Update state
     this.currentMode = "upload";
+    this._markCurrentMode();
 
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "";
@@ -355,6 +374,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("upload");
+    this._restoreResults("upload");
 
     logInfo("Switched to upload mode");
   }
@@ -386,6 +406,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Update state
     this.currentMode = "draw";
+    this._markCurrentMode();
 
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
@@ -409,6 +430,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("draw");
+    this._restoreResults("draw");
 
     logInfo("Switched to draw mode");
   }
@@ -440,6 +462,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Update state
     this.currentMode = "camera";
+    this._markCurrentMode();
 
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
@@ -463,6 +486,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("camera");
+    this._restoreResults("camera");
 
     logInfo("Switched to camera mode");
   }
@@ -494,6 +518,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Update state
     this.currentMode = "convert";
+    this._markCurrentMode();
 
     // Update UI visibility (using style.display to override inline styles)
     if (this.uploadContainer) this.uploadContainer.style.display = "none";
@@ -517,6 +542,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("convert");
+    this._restoreResults("convert");
 
     logInfo("Switched to convert mode");
   }
@@ -548,6 +574,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Update state
     this.currentMode = "resume";
+    this._markCurrentMode();
 
     // Update UI visibility (using style.display to override inline styles).
     // Phase 8A-8 Stage 3: removed a stale duplicate line that set
@@ -595,6 +622,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("resume");
+    this._restoreResults("resume");
 
     logInfo("Switched to resume mode");
   }
@@ -662,12 +690,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    */
   clearPreviousResults() {
     logDebug("Clearing previous results for mode switch");
+    this._rememberResults(this.currentMode);
 
-    // Hide all result containers
+    // PDF results are not hidden: 10b's rule keeps them out of other modes (parcel 10d).
     const containersToHide = [
-      "mathpix-output", // Image results
-      "mathpix-comparison", // Comparison panel
-      "mathpix-pdf-results", // PDF results
       "mathpix-image-preview-container", // Image preview
     ];
 
@@ -683,10 +709,10 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (
       this.controller &&
       this.controller.resultRenderer &&
-      typeof this.controller.resultRenderer.cleanup === "function"
+      typeof this.controller.resultRenderer.hideForModeSwitch === "function"
     ) {
       try {
-        this.controller.resultRenderer.cleanup();
+        this.controller.resultRenderer.hideForModeSwitch();
         logDebug("Result renderer cleanup completed");
       } catch (error) {
         logWarn("Result renderer cleanup failed", error);
@@ -694,6 +720,70 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     }
 
     logDebug("Previous results cleared successfully");
+  }
+
+  /**
+   * Records the current mode on the app element, so CSS can hide Upload's
+   * PDF workspace and upload check while another mode is showing.
+   *
+   * @private
+   * @returns {void}
+   */
+  _markCurrentMode() {
+    const app = document.getElementById(APP_ELEMENT_ID);
+    if (app) app.setAttribute(MODE_ATTRIBUTE, this.currentMode);
+  }
+
+  /**
+   * Records what the mode being left was showing in the shared result
+   * regions, with the result and file it belongs to (parcel 10d). A mode
+   * showing nothing leaves its earlier record alone.
+   *
+   * @private
+   * @param {string} mode - The mode being left
+   * @returns {void}
+   */
+  _rememberResults(mode) {
+    const displays = {};
+    let showing = false;
+    for (const id of SHARED_RESULT_REGION_IDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      displays[id] = el.style.display;
+      if (el.checkVisibility()) showing = true;
+    }
+    if (!showing) return;
+    this._resultsLeftByMode.set(mode, {
+      displays,
+      result: this.controller?.resultRenderer?.currentResult ?? null,
+      file: this.controller?.fileHandler?.currentUploadedFile ?? null,
+    });
+  }
+
+  /**
+   * Shows again what this mode left in the shared result regions, but only
+   * if the same result and file are still current: if another mode has
+   * shown its own since, this mode comes back empty (parcel 10d). A record
+   * is used once.
+   *
+   * @private
+   * @param {string} mode - The mode just entered
+   * @returns {void}
+   */
+  _restoreResults(mode) {
+    const record = this._resultsLeftByMode.get(mode);
+    if (!record) return;
+    this._resultsLeftByMode.delete(mode);
+    const stillCurrent =
+      record.result ===
+        (this.controller?.resultRenderer?.currentResult ?? null) &&
+      record.file ===
+        (this.controller?.fileHandler?.currentUploadedFile ?? null);
+    if (!stillCurrent) return;
+    for (const [id, value] of Object.entries(record.displays)) {
+      const el = document.getElementById(id);
+      if (el) el.style.display = value;
+    }
   }
 
   /**

@@ -29,6 +29,14 @@
  * on a normally-loaded page: its script tag precedes every consumer. It is
  * handled loudly rather than silently, at each consumer, and never here.
  *
+ * MA-5b (28 September 2026) added a fourth predicate, reasoningOffAccepted,
+ * and the list it reads: which OpenRouter models the alt-text adapter may send
+ * the reasoning off switch to. See REASONING_OFF_ACCEPTED_IDS below.
+ *
+ * MA-12a (30 September 2026) added outputBudgetFor and the list it reads: the
+ * completion-token ceiling the alt-text adapter sends per model. See
+ * REASONING_MANDATORY_IDS below.
+ *
  * NO DOM, NO network. Every global this consults — EmbedModelSelector,
  * ProviderSwitcher, EmbedProviderLookup — is reached at CALL time and guarded,
  * so this module takes no load-order dependency in either direction beyond
@@ -185,6 +193,215 @@ const MathPixModelCapability = (function () {
     // deployments remain text-only.
     "azure-responses/gpt-5-pro",
   ]);
+
+  // ===========================================================================
+  // THE REASONING OFF SWITCH — who may receive it (parcel MA-5b)
+  // ===========================================================================
+  // The 77 OpenRouter ids that DECLARE reasoning optional. Source: the keyless
+  // OpenRouter GET /models taken at parcel MA-5 on 28 September 2026, whose
+  // `reasoning.mandatory` field was joined against the 154 ids the alt-text
+  // picker offers on OpenRouter (ma5-join.mjs): 42 declare it mandatory, 77
+  // declare it false (every one of these), 32 carry no reasoning object and 3
+  // are absent from the catalogue. Picker order, not sorted.
+  //
+  // WHY A LIST. The alt-text adapter used to send `reasoning: { enabled: false }`
+  // to every OpenRouter model (PB-5b), and anthropic/claude-fable-5, which
+  // declares reasoning mandatory, answered it with HTTP 400 (MA-4). Only ids
+  // named here receive the switch; any other id, including every Foundry id and
+  // every id not in the catalogue, is sent no reasoning field at all, which is
+  // the body the adapter sent before PB-5b.
+  //
+  // MEASURED FOR TWO, DECLARED FOR THE REST. anthropic/claude-sonnet-5 (PB-5b)
+  // and anthropic/claude-opus-5 (MA-4) have been MEASURED obeying the switch.
+  // The other 75 are here on the catalogue's word alone.
+  //
+  // OWED: a data-driven replacement. The model-add lane is owed a
+  // `reasoning.mandatory` field on each entry in js/model-definitions.js, and
+  // this list should then be derived from it rather than kept by hand. Until
+  // then a model added to the picker is sent no switch until someone adds it
+  // here, which is the safe direction.
+  //
+  // NOT EXPORTED. Callers ask `reasoningOffAccepted(modelId)`; a row that needs
+  // to count or inspect the list reads a COPY from `_reasoningOffAcceptedIds()`,
+  // so nothing outside this closure can hold or replace the array itself.
+  const REASONING_OFF_ACCEPTED_IDS = Object.freeze([
+    "anthropic/claude-haiku-4.5",
+    "anthropic/claude-opus-4.1",
+    "anthropic/claude-opus-4.5",
+    "anthropic/claude-opus-4.6",
+    "anthropic/claude-opus-4.8",
+    "anthropic/claude-opus-5",
+    "anthropic/claude-sonnet-4",
+    "anthropic/claude-sonnet-4.5",
+    "anthropic/claude-sonnet-4.6",
+    "anthropic/claude-sonnet-5",
+    "deepseek/deepseek-v4-flash-vision-exp",
+    "baidu/ernie-4.5-vl-424b-a47b",
+    "google/gemini-2.5-flash",
+    "google/gemini-3-flash-preview",
+    "google/gemini-3.1-flash-lite",
+    "google/gemma-4-26b-a4b-it",
+    "google/gemma-4-31b-it",
+    "z-ai/glm-4.5v",
+    "z-ai/glm-4.6v",
+    "openai/gpt-5.1-codex-mini",
+    "openai/gpt-5.3-codex",
+    "openai/gpt-5.4",
+    "openai/gpt-5.4-image-2",
+    "openai/gpt-5.4-mini",
+    "openai/gpt-5.4-nano",
+    "openai/gpt-5.5",
+    "openai/gpt-5.6-luna",
+    "openai/gpt-5.6-luna-pro",
+    "openai/gpt-5.6-sol",
+    "openai/gpt-5.6-sol-pro",
+    "openai/gpt-5.6-terra",
+    "openai/gpt-5.6-terra-pro",
+    "x-ai/grok-4.3",
+    "thinkingmachines/inkling",
+    "thinkingmachines/inkling-small",
+    "moonshotai/kimi-k2.5",
+    "moonshotai/kimi-k2.6",
+    "moonshotai/kimi-k3",
+    "xiaomi/mimo-v2.5",
+    "minimax/minimax-m3",
+    "mistralai/mistral-medium-3-5",
+    "mistralai/mistral-small-2603",
+    "google/gemini-3.1-flash-image-preview",
+    "google/gemini-3.1-flash-image",
+    "google/gemini-3.1-flash-lite-image",
+    "nvidia/nemotron-3.5-content-safety",
+    "amazon/nova-2-lite-v1",
+    "openai/o1",
+    "openai/o1-pro",
+    "openai/o3",
+    "openai/o3-pro",
+    "openai/o4-mini",
+    "perceptron/perceptron-mk1",
+    "qwen/qwen3.5-122b-a10b",
+    "qwen/qwen3.5-27b",
+    "qwen/qwen3.5-9b",
+    "qwen/qwen3.5-flash-02-23",
+    "qwen/qwen3.5-plus-02-15",
+    "qwen/qwen3.6-35b-a3b",
+    "qwen/qwen3.5-35b-a3b",
+    "qwen/qwen3.5-397b-a17b",
+    "qwen/qwen3.5-plus-20260420",
+    "qwen/qwen3.6-27b",
+    "qwen/qwen3.6-flash",
+    "qwen/qwen3.6-plus",
+    "qwen/qwen3.7-flash",
+    "qwen/qwen3.7-plus",
+    "qwen/qwen3.8-27b",
+    "qwen/qwen3.8-flash",
+    "rekaai/reka-edge",
+    "sakana/sakana-namazu",
+    "bytedance-seed/seed-1.6",
+    "bytedance-seed/seed-1.6-flash",
+    "bytedance-seed/seed-2.0-mini",
+    "bytedance-seed/seed-2-1-turbo",
+    "bytedance-seed/seed-2.0-code",
+    "bytedance-seed/seed-2.0-lite",
+  ]);
+
+  // ===========================================================================
+  // THE OUTPUT BUDGET — who needs headroom for mandatory reasoning (parcel MA-12a)
+  // ===========================================================================
+  // The 42 OpenRouter ids the catalogue marks `reasoning.mandatory: true`.
+  // Source: the same keyless OpenRouter GET /models taken at parcel MA-5 on
+  // 28 September 2026, joined against the 154 ids the alt-text picker offered
+  // (ma5-join.mjs; re-derived at MA-12a on 30 September 2026 from
+  // .claude/model-add/results/ma5-models-2026-09-28T11-54-51-473Z.json and
+  // again from the 30 September catalogue, the same 42 both times). Picker
+  // order, not sorted. Disjoint from REASONING_OFF_ACCEPTED_IDS, which holds
+  // the 77 that declare it optional.
+  //
+  // WHY A BUDGET. A mandatory-reasoning model spends completion tokens on
+  // reasoning that cannot be switched off, and the embed's shipped max_tokens of
+  // 2000 (PB-2) counts them. anthropic/claude-opus-5.5 finished `length` on 4 of
+  // 33 cells at exactly 2000 at MA-10, its reasoning (mean 397.6, max 792
+  // tokens) sitting inside the ceiling; the PB-3 refusal then withheld all four.
+  // Foundry deployments are sent as reasoning models with
+  // max_completion_tokens 2000 (MA-11).
+  const REASONING_MANDATORY_IDS = Object.freeze([
+    "anthropic/claude-fable-5",
+    "anthropic/claude-fable-5.1",
+    "sakana/fugu-ultra",
+    "google/gemini-2.5-pro",
+    "google/gemini-2.5-pro-preview",
+    "google/gemini-3.1-pro-preview",
+    "google/gemini-3.1-pro-preview-customtools",
+    "google/gemini-3.5-flash",
+    "google/gemini-3.5-flash-lite",
+    "google/gemini-3.6-flash",
+    "google/gemini-3.7-flash",
+    "google/gemini-3.8-flash",
+    "z-ai/glm-5.3-flash",
+    "openai/gpt-5",
+    "openai/gpt-5-image",
+    "openai/gpt-5-image-mini",
+    "openai/gpt-5.1-codex",
+    "openai/gpt-5.1-codex-max",
+    "openai/gpt-5.2-codex",
+    "openai/gpt-5.4-pro",
+    "openai/gpt-5.5-pro",
+    "openai/gpt-6-astra",
+    "openai/gpt-6-astra-pro",
+    "x-ai/grok-4.20-multi-agent",
+    "x-ai/grok-4.5",
+    "x-ai/grok-4.6",
+    "x-ai/grok-build-0.1",
+    "moonshotai/kimi-k2.7-code",
+    "meta/muse-glimmer-30b",
+    "meta/muse-spark-1.1",
+    "meta/muse-spark-1.2",
+    "meta/muse-spark-1.2-contributor",
+    "meta/muse-spark-1.3",
+    "meta/muse-spark-1.3-contributor",
+    "google/gemini-3-pro-image-preview",
+    "google/gemini-3-pro-image",
+    "openai/o4-mini-high",
+    "qwen/qwen3-vl-235b-a22b-thinking",
+    "qwen/qwen3-vl-30b-a3b-thinking",
+    "qwen/qwen3-vl-8b-thinking",
+    "qwen/qwen3.8-max-0902",
+    "stepfun/step-3.7-flash",
+  ]);
+
+  // THE TWO 5.5 IDS, KEPT APART FROM THE 42 ON PURPOSE. Neither was in the
+  // picker list the MA-5 join ran over (both post-date it: MA-1 recorded
+  // opus-5.5 as unregistered on 28 September), so the join cannot return them;
+  // the 30 September catalogue declares both mandatory. MEASURED, NOT ONLY
+  // DECLARED: anthropic/claude-opus-5.5 reasons on the wire (MA-10: 13,122
+  // reasoning tokens over 33 cells, max 792). anthropic/claude-sonnet-5.5
+  // declares mandatory and billed 0 reasoning tokens on all 33 cells at MA-10,
+  // a catalogue-versus-wire DISAGREEMENT recorded rather than resolved; it is
+  // budgeted like its sibling because the declaration is the only signal the
+  // catalogue offers and the cost of headroom that goes unused is nil.
+  const REASONING_MANDATORY_MEASURED_IDS = Object.freeze([
+    "anthropic/claude-opus-5.5",
+    "anthropic/claude-sonnet-5.5",
+  ]);
+
+  const PROVIDER_ID_FOUNDRY = "foundry";
+  const PROVIDER_ID_OPENROUTER = "openrouter";
+  const OUTPUT_BUDGET_DEFAULT = 2000;
+  const OUTPUT_BUDGET_REASONING = 3000;
+
+  // A model that is both "may be sent reasoning off" and "reasoning mandatory"
+  // is a contradiction in the data, and it must not load quietly: one of the
+  // two lists would be wrong and the adapter would act on both.
+  (function assertListsDisjoint() {
+    const accepted = new Set(REASONING_OFF_ACCEPTED_IDS);
+    const both = REASONING_MANDATORY_IDS.concat(
+      REASONING_MANDATORY_MEASURED_IDS
+    ).filter((id) => accepted.has(id));
+    if (both.length > 0) {
+      throw new Error(
+        `MathPixModelCapability: ids in both the reasoning-off accepted list and the mandatory list: ${both.join(", ")}`
+      );
+    }
+  })();
 
   // ===========================================================================
   // PROVIDER DERIVATION — shared by both prefix-derived predicates
@@ -442,19 +659,110 @@ const MathPixModelCapability = (function () {
     return memberIds.includes(resolved.id);
   }
 
+  // ===========================================================================
+  // REASONING OFF SWITCH (parcel MA-5b)
+  // ===========================================================================
+
+  /**
+   * May this model id be sent `reasoning: { enabled: false }`?
+   *
+   * Exact membership of REASONING_OFF_ACCEPTED_IDS and nothing else: no prefix
+   * derivation, no selector, no fall-through. A model the list does not name is
+   * refused the switch, which sends it no reasoning field, and that is the safe
+   * direction: withholding the switch costs tokens, sending it to a model that
+   * requires reasoning costs the whole request (MA-4).
+   *
+   * @param {string} modelId - the resolved model id about to be sent.
+   * @returns {boolean} true only for an exact listed id; false for anything
+   *   else, including undefined, null, a non-string and any Foundry id.
+   */
+  function reasoningOffAccepted(modelId) {
+    if (typeof modelId !== "string" || !modelId) return false;
+    return REASONING_OFF_ACCEPTED_IDS.includes(modelId);
+  }
+
+  /**
+   * A COPY of the accepted list, for guard rows that count or inspect it. A
+   * fresh unfrozen array on every call, so a caller can neither mutate nor
+   * replace the list the predicate reads. Not for deciding anything: use
+   * reasoningOffAccepted.
+   *
+   * @returns {string[]}
+   */
+  function _reasoningOffAcceptedIds() {
+    return REASONING_OFF_ACCEPTED_IDS.slice();
+  }
+
+  // ===========================================================================
+  // OUTPUT BUDGET (parcel MA-12a)
+  // ===========================================================================
+
+  /**
+   * The completion-token ceiling the alt-text adapter should send for this
+   * model: 3000 for every Foundry id and for an OpenRouter id whose reasoning
+   * is mandatory, 2000 for everything else.
+   *
+   * Exact membership and exact provider strings, no prefix derivation: an
+   * unknown provider, an unlisted id, undefined, null and a non-string all get
+   * the 2000 the embed already sends, which is the pre-MA-12a behaviour.
+   *
+   * @param {string} modelId - the resolved model id about to be sent.
+   * @param {string} providerId - "foundry" or "openrouter".
+   * @returns {number} 3000 or 2000.
+   */
+  function outputBudgetFor(modelId, providerId) {
+    if (providerId === PROVIDER_ID_FOUNDRY) return OUTPUT_BUDGET_REASONING;
+    if (
+      providerId === PROVIDER_ID_OPENROUTER &&
+      typeof modelId === "string" &&
+      (REASONING_MANDATORY_IDS.includes(modelId) ||
+        REASONING_MANDATORY_MEASURED_IDS.includes(modelId))
+    ) {
+      return OUTPUT_BUDGET_REASONING;
+    }
+    return OUTPUT_BUDGET_DEFAULT;
+  }
+
+  /**
+   * A COPY of the 42 catalogue-derived mandatory ids, for guard rows that count
+   * or inspect them. The two measured 5.5 ids are not in it. Not for deciding
+   * anything: use outputBudgetFor.
+   *
+   * @returns {string[]}
+   */
+  function _reasoningMandatoryIds() {
+    return REASONING_MANDATORY_IDS.slice();
+  }
+
+  /**
+   * A COPY of the two measured 5.5 ids, for the same purpose.
+   *
+   * @returns {string[]}
+   */
+  function _reasoningMandatoryMeasuredIds() {
+    return REASONING_MANDATORY_MEASURED_IDS.slice();
+  }
+
   // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
 
   logInfo(
-    `MathPixModelCapability ready (${KNOWN_VISION_MODELS.length} known vision models).`
+    `MathPixModelCapability ready (${KNOWN_VISION_MODELS.length} known vision models, ${REASONING_OFF_ACCEPTED_IDS.length} models accept the reasoning off switch).`
   );
-  logDebug("Capability predicates exposed: pdf, vision, provider membership.");
+  logDebug(
+    "Capability predicates exposed: pdf, vision, provider membership, reasoning off."
+  );
 
   return {
     isModelPdfCapable,
     isModelVisionCapable,
     isModelProviderAvailable,
+    reasoningOffAccepted,
+    _reasoningOffAcceptedIds,
+    outputBudgetFor,
+    _reasoningMandatoryIds,
+    _reasoningMandatoryMeasuredIds,
     PROVIDER_GROUPS,
     NON_PDF_REFUSAL,
     PROVIDER_REFUSAL,
