@@ -6160,9 +6160,10 @@ figcaption.borders {
   color: #e1e8ec !important;
 }
 
-/* #chat-send (parcel 41), #resume-context-ai-analyse (parcel 42) and Image
-   Describer's four run buttons (parcel 43) are HELD busy with aria-disabled
-   rather than native disabled (BusyControl), so they are named here too. */
+/* #chat-send (parcel 41), #resume-context-ai-analyse (parcel 42), Image
+   Describer's four run buttons (parcel 43) and MathPix Convert Selected
+   (parcel 10j) are HELD busy with aria-disabled rather than native disabled
+   (BusyControl), so they are named here too. */
 button:disabled,
 button[disabled],
 #chat-send[aria-disabled="true"],
@@ -6170,6 +6171,7 @@ button[disabled],
 #imgdesc-generate[aria-disabled="true"],
 #imgdesc-generate-local[aria-disabled="true"],
 #imgdesc-regenerate[aria-disabled="true"],
+#convert-mode-convert-btn[aria-disabled="true"],
 #imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #758d9a !important;
@@ -6180,7 +6182,8 @@ button[disabled],
   z-index: 1;
 }
 
-/* Image Describer's four run buttons, HELD and FOCUSED (parcel 43b). A held
+/* Image Describer's four run buttons and MathPix Convert Selected (parcel
+   10j), HELD and FOCUSED (parcel 43b). A held
    button can keep focus, unlike a natively disabled one. `background-color:
    none` above is invalid and dropped, so the focus fill (#e1e8ec) showed under
    the grey label: 2.81:1. This gives the held state the resting background, as
@@ -6189,6 +6192,7 @@ button[disabled],
 #imgdesc-generate[aria-disabled="true"],
 #imgdesc-generate-local[aria-disabled="true"],
 #imgdesc-regenerate[aria-disabled="true"],
+#convert-mode-convert-btn[aria-disabled="true"],
 #imgdesc-redescribe[aria-disabled="true"] {
   background-color: #231f20;
 }

@@ -55,6 +55,9 @@
       console.log(`[IDC-Analysis] ${message}`, ...args);
   }
 
+  // The image preview region: where every analysis-starting banner exit lands focus.
+  const PREVIEW_ID = "imgdesc-preview";
+
   function logDebug(message, ...args) {
     if (shouldLog(LOG_LEVELS.DEBUG))
       console.log(`[IDC-Analysis] ${message}`, ...args);
@@ -500,6 +503,37 @@
     },
 
     /**
+     * Put keyboard focus on the image preview region. Every banner exit that
+     * starts the analysis (Apply, Proceed, the alternative, Dismiss) lands here,
+     * and it must be called BEFORE the banner is hidden: hiding a focused button
+     * drops focus to the body, and NVDA then reads the whole upload section.
+     * The region is programmatic focus only (tabindex -1), so it is not a Tab stop.
+     * It is deliberately silent: moving focus speaks the region's name, and a
+     * polite line written in the same tick is the g-5/g-8 drop shape.
+     */
+    _moveFocusToPreview() {
+      const preview = document.getElementById(PREVIEW_ID);
+      if (!preview) return;
+      if (!preview.hasAttribute("tabindex")) {
+        preview.setAttribute("tabindex", "-1");
+      }
+      preview.focus();
+    },
+
+    /**
+     * Focus the checked profile radio inside the expert panel, without the
+     * browser scrolling to it (the caller scrolls to the heading instead).
+     * The panel must already be open: a radio in a closed <details> cannot
+     * take focus.
+     */
+    _focusCheckedProfileRadio() {
+      const radio =
+        document.querySelector('input[name="imgdesc-profile"]:checked') ||
+        document.querySelector('input[name="imgdesc-profile"]');
+      if (radio) radio.focus({ preventScroll: true });
+    },
+
+    /**
      * Apply the pending profile suggestion — changes selection, persists, re-analyses.
      */
     applyProfileSuggestion() {
@@ -521,17 +555,14 @@
         logWarn("Could not save profile selection:", e);
       }
 
+      // Move focus out of the banner BEFORE hiding it
+      this._moveFocusToPreview();
+
       // Hide banner
       const banner = document.getElementById("imgdesc-profile-suggestion");
       if (banner) banner.hidden = true;
       this._pendingSuggestion = null;
       this._pendingAlternative = null;
-
-      // Move focus to the now-checked radio button
-      const checkedRadio = document.querySelector(
-        'input[name="imgdesc-profile"]:checked',
-      );
-      if (checkedRadio) checkedRadio.focus();
 
       logInfo(
         `Profile suggestion applied: ${suggestedProfile}, skipOCR: ${skipOCR}`,
@@ -563,17 +594,14 @@
         logWarn("Could not save profile selection:", e);
       }
 
+      // Move focus out of the banner BEFORE hiding it
+      this._moveFocusToPreview();
+
       // Hide banner
       const banner = document.getElementById("imgdesc-profile-suggestion");
       if (banner) banner.hidden = true;
       this._pendingSuggestion = null;
       this._pendingAlternative = null;
-
-      // Move focus to the now-checked radio button
-      const checkedRadio = document.querySelector(
-        'input[name="imgdesc-profile"]:checked',
-      );
-      if (checkedRadio) checkedRadio.focus();
 
       logInfo(
         `Alternative profile suggestion applied: ${altProfile}, skipOCR: ${skipOCR}`,
@@ -587,32 +615,26 @@
      * Open the expert panel profile section so the user can choose manually.
      */
     chooseProfileManually() {
+      // Open the expert panel if it's closed (a radio in a closed <details>
+      // cannot take focus, so this comes first)
+      const expertPanel = document.getElementById("imgdesc-expert-panel");
+      if (expertPanel && !expertPanel.open) {
+        expertPanel.open = true;
+      }
+
+      // Focus the checked profile radio BEFORE hiding the banner, with no
+      // delay and without the browser's own scroll, then scroll to the heading
+      this._focusCheckedProfileRadio();
+
       // Hide the suggestion banner
       const banner = document.getElementById("imgdesc-profile-suggestion");
       if (banner) banner.hidden = true;
       this._pendingSuggestion = null;
       this._pendingAlternative = null;
 
-      // Open the expert panel if it's closed
-      const expertPanel = document.getElementById("imgdesc-expert-panel");
-      if (expertPanel && !expertPanel.open) {
-        expertPanel.open = true;
-      }
-
-      // Scroll to and focus the profile heading
       const profileHeading = document.getElementById("imgdesc-profile-heading");
       if (profileHeading) {
         profileHeading.scrollIntoView({ behavior: "smooth", block: "start" });
-        // Focus the first profile radio for keyboard users
-        const firstRadio = document.querySelector(
-          'input[name="imgdesc-profile"]',
-        );
-        if (firstRadio) {
-          // Small delay to let scroll complete before focus
-          setTimeout(function () {
-            firstRadio.focus();
-          }, 300);
-        }
       }
 
       logInfo("User chose to select profile manually");
@@ -627,6 +649,9 @@
       // Read skip OCR checkbox state (Phase 15B)
       const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
       const skipOCR = skipOCRCheckbox ? skipOCRCheckbox.checked : false;
+
+      // Move focus out of the banner BEFORE hiding it
+      this._moveFocusToPreview();
 
       document.getElementById("imgdesc-profile-suggestion").hidden = true;
       this._pendingSuggestion = null;

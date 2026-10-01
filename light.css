@@ -5577,8 +5577,9 @@ lite-youtube {
 
 /* Style inactive buttons. #chat-send (parcel 41),
    #resume-context-ai-analyse (parcel 42) and Image Describer's four run
-   buttons (parcel 43) are HELD busy with aria-disabled rather than native
-   disabled (BusyControl), so they are named here too. */
+   buttons (parcel 43) and MathPix Convert Selected (parcel 10j) are HELD busy
+   with aria-disabled rather than native disabled (BusyControl), so they are
+   named here too. */
 button:disabled,
 button[disabled],
 #chat-send[aria-disabled="true"],
@@ -5586,6 +5587,7 @@ button[disabled],
 #imgdesc-generate[aria-disabled="true"],
 #imgdesc-generate-local[aria-disabled="true"],
 #imgdesc-regenerate[aria-disabled="true"],
+#convert-mode-convert-btn[aria-disabled="true"],
 #imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #00131d !important;

@@ -2,12 +2,12 @@
  * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Payload
  * @module AllyLookup
  * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
- * @generated 2026-09-08T12:13:54.331Z
+ * @generated 2026-10-01T07:37:56.655Z
  * @version 2.0.0
  *
  * @description
  * Generated from CSV files - provides human-readable names for Ally internal IDs.
- * Contains 39 terms and 92 departments.
+ * Contains 39 terms and 150 departments.
  *
  * THIS FILE IS DATA ONLY. Every method on ALLY_LOOKUP - including the course
  * methods that delegate to ALLY_COURSES - lives in
@@ -683,6 +683,13 @@
       "parentId": "_155_1",
       "parentName": "(P1) Professional Services"
     },
+    "_206_1": {
+      "name": "Student Experience: Central Operations (VF)",
+      "shortCode": "VF",
+      "isSystemTag": false,
+      "parentId": "_155_1",
+      "parentName": "(P1) Professional Services"
+    },
     "_265_1": {
       "name": "Course Format",
       "shortCode": null,
@@ -801,6 +808,405 @@
       "isSystemTag": false,
       "parentId": "_1_1",
       "parentName": "University of Southampton"
+    },
+    "_419_1": {
+      "name": "Faculty Central (Arts and Humanities) (NX) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_134_1",
+      "parentName": "Faculty Central (Arts and Humanities) (NX)"
+    },
+    "_420_1": {
+      "name": "Academic Centre for International Students (HG) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_114_1",
+      "parentName": "Academic Centre for International Students (HG)"
+    },
+    "_421_1": {
+      "name": "Archaeology (MH) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_129_1",
+      "parentName": "Archaeology (MH)"
+    },
+    "_422_1": {
+      "name": "English (PL) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_138_1",
+      "parentName": "English (PL)"
+    },
+    "_423_1": {
+      "name": "Film Studies (LT) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_127_1",
+      "parentName": "Film Studies (LT)"
+    },
+    "_424_1": {
+      "name": "History (RG) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_142_1",
+      "parentName": "History (RG)"
+    },
+    "_425_1": {
+      "name": "Languages, Cultures and Linguistics (GC) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_112_1",
+      "parentName": "Languages, Cultures and Linguistics (GC)"
+    },
+    "_426_1": {
+      "name": "Music (NC) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_131_1",
+      "parentName": "Music (NC)"
+    },
+    "_427_1": {
+      "name": "Philosophy (FJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_110_1",
+      "parentName": "Philosophy (FJ)"
+    },
+    "_428_1": {
+      "name": "Arts and Media Technology (EN) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_302_1",
+      "parentName": "Arts and Media Technology (EN)"
+    },
+    "_429_1": {
+      "name": "Design (WJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_300_1",
+      "parentName": "Design (WJ)"
+    },
+    "_430_1": {
+      "name": "Fashion and Textiles (CP) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_301_1",
+      "parentName": "Fashion and Textiles (CP)"
+    },
+    "_431_1": {
+      "name": "Faculty Central (FELS) (RW) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_143_1",
+      "parentName": "Faculty Central (FELS) (RW)"
+    },
+    "_433_1": {
+      "name": "School of Biological Sciences (BJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_97_1",
+      "parentName": "School of Biological Sciences (BJ)"
+    },
+    "_434_1": {
+      "name": "School of Geography and Environmental Science (WR) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_154_1",
+      "parentName": "School of Geography and Environmental Science (WR)"
+    },
+    "_435_1": {
+      "name": "Allied Health Professions (WA) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_151_1",
+      "parentName": "Allied Health Professions (WA)"
+    },
+    "_436_1": {
+      "name": "Nursing, Midwifery and Health (JB) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_117_1",
+      "parentName": "Nursing, Midwifery and Health (JB)"
+    },
+    "_437_1": {
+      "name": "School of Ocean and Earth Science (HN) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_116_1",
+      "parentName": "School of Ocean and Earth Science (HN)"
+    },
+    "_438_1": {
+      "name": "School of Psychology (JW) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_120_1",
+      "parentName": "School of Psychology (JW)"
+    },
+    "_440_1": {
+      "name": "Faculty Central (FEPS) (GN) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_113_1",
+      "parentName": "Faculty Central (FEPS) (GN)"
+    },
+    "_442_1": {
+      "name": "Optoelectronics Research Centre (BA) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_303_1",
+      "parentName": "Optoelectronics Research Centre (BA)"
+    },
+    "_443_1": {
+      "name": "School of Chemistry (EB) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_106_1",
+      "parentName": "School of Chemistry (EB)"
+    },
+    "_444_1": {
+      "name": "School of Electronics & Computer Science (FP) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_111_1",
+      "parentName": "School of Electronics & Computer Science (FP)"
+    },
+    "_447_1": {
+      "name": "Engineering Education - Acoustical Engineering (ND) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_132_1",
+      "parentName": "Engineering Education - Acoustical Engineering (ND)"
+    },
+    "_448_1": {
+      "name": "Engineering Education - Aerospace Engineering (PE) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_136_1",
+      "parentName": "Engineering Education - Aerospace Engineering (PE)"
+    },
+    "_449_1": {
+      "name": "Engineering Education - Audiology (NT) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_133_1",
+      "parentName": "Engineering Education - Audiology (NT)"
+    },
+    "_450_1": {
+      "name": "Engineering Education - Central (MM) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_130_1",
+      "parentName": "Engineering Education - Central (MM)"
+    },
+    "_451_1": {
+      "name": "Engineering Education - Civil and Environmental Engineering (PV) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_140_1",
+      "parentName": "Engineering Education - Civil and Environmental Engineering (PV)"
+    },
+    "_453_1": {
+      "name": "Engineering Education - Foundation Year (VL) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_148_1",
+      "parentName": "Engineering Education - Foundation Year (VL)"
+    },
+    "_454_1": {
+      "name": "Engineering Education - Maritime Engineering (VT) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_150_1",
+      "parentName": "Engineering Education - Maritime Engineering (VT)"
+    },
+    "_455_1": {
+      "name": "Engineering Education - Mechanical Engineering (VN) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_149_1",
+      "parentName": "Engineering Education - Mechanical Engineering (VN)"
+    },
+    "_459_1": {
+      "name": "School of Physics & Astronomy (WF) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_153_1",
+      "parentName": "School of Physics & Astronomy (WF)"
+    },
+    "_463_1": {
+      "name": "Zepler Institute for Photonics and Nanoelectronics (PN) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_139_1",
+      "parentName": "Zepler Institute for Photonics and Nanoelectronics (PN)"
+    },
+    "_464_1": {
+      "name": "Cancer Sciences (CM) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_104_1",
+      "parentName": "Cancer Sciences (CM)"
+    },
+    "_465_1": {
+      "name": "Clinical and Experimental Sciences (FC) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_108_1",
+      "parentName": "Clinical and Experimental Sciences (FC)"
+    },
+    "_466_1": {
+      "name": "Faculty Central (Medicine) (LL) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_126_1",
+      "parentName": "Faculty Central (Medicine) (LL)"
+    },
+    "_467_1": {
+      "name": "Human Development and Health (AF) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_92_1",
+      "parentName": "Human Development and Health (AF)"
+    },
+    "_468_1": {
+      "name": "Primary Care, Population Sciences and Medical Education (LG) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_124_1",
+      "parentName": "Primary Care, Population Sciences and Medical Education (LG)"
+    },
+    "_469_1": {
+      "name": "Wessex Institute (VB) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_147_1",
+      "parentName": "Wessex Institute (VB)"
+    },
+    "_470_1": {
+      "name": "Centre for Higher Education Practice (LD) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_123_1",
+      "parentName": "Centre for Higher Education Practice (LD)"
+    },
+    "_473_1": {
+      "name": "Economics (BL) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_98_1",
+      "parentName": "Economics (BL)"
+    },
+    "_474_1": {
+      "name": "Gerontology (WB) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_152_1",
+      "parentName": "Gerontology (WB)"
+    },
+    "_475_1": {
+      "name": "Politics & International Relations (CA) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_100_1",
+      "parentName": "Politics & International Relations (CA)"
+    },
+    "_476_1": {
+      "name": "Social Statistics & Demography (KA) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_121_1",
+      "parentName": "Social Statistics & Demography (KA)"
+    },
+    "_477_1": {
+      "name": "Sociology, Social Policy & Criminology (TG) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_145_1",
+      "parentName": "Sociology, Social Policy & Criminology (TG)"
+    },
+    "_478_1": {
+      "name": "School of Mathematical Sciences (PJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_137_1",
+      "parentName": "School of Mathematical Sciences (PJ)"
+    },
+    "_479_1": {
+      "name": "Southampton Business School (TR) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_146_1",
+      "parentName": "Southampton Business School (TR)"
+    },
+    "_480_1": {
+      "name": "Southampton Education School (CJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_103_1",
+      "parentName": "Southampton Education School (CJ)"
+    },
+    "_481_1": {
+      "name": "Southampton Law School (JJ) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_118_1",
+      "parentName": "Southampton Law School (JJ)"
+    },
+    "_483_1": {
+      "name": "Sandbox Courses",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_1_1",
+      "parentName": "University of Southampton"
+    },
+    "_484_1": {
+      "name": "Winchester School of Art (FH) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_109_1",
+      "parentName": "Winchester School of Art (FH)"
+    },
+    "_486_1": {
+      "name": "School of Humanities (AR) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_95_1",
+      "parentName": "School of Humanities (AR)"
+    },
+    "_487_1": {
+      "name": "(A2) Faculty of Environmental and Life Sciences using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_87_1",
+      "parentName": "(A2) Faculty of Environmental and Life Sciences"
+    },
+    "_489_1": {
+      "name": "(A3) Faculty of Engineering and Physical Sciences using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_88_1",
+      "parentName": "(A3) Faculty of Engineering and Physical Sciences"
+    },
+    "_490_1": {
+      "name": "School of Engineering (DA) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_105_1",
+      "parentName": "School of Engineering (DA)"
+    },
+    "_491_1": {
+      "name": "(A4) Faculty of Medicine using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_89_1",
+      "parentName": "(A4) Faculty of Medicine"
+    },
+    "_494_1": {
+      "name": "School of Economic, Social and Political Sciences (CC) using Turnitin",
+      "shortCode": null,
+      "isSystemTag": false,
+      "parentId": "_101_1",
+      "parentName": "School of Economic, Social and Political Sciences (CC)"
     },
     "_86_1": {
       "name": "(A1) Faculty of Arts and Humanities",

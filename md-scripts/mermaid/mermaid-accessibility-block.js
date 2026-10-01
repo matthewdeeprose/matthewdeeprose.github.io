@@ -241,13 +241,42 @@
   });
 
   // Rule B8's end-head decorations, keyed on the delivered `arrowTypeEnd`
-  // string, on sequence S7's pattern. `arrow_point` - which `-->`, `---`,
-  // `<-->` and a labelled link all deliver - takes no decoration and is absent
-  // here. Only `--o` and `--x` draw differently and only those two are
-  // distinguished in the db.
+  // string, on sequence S7's pattern. `arrow_point` takes no decoration and is
+  // absent here, and so is the empty string a link with no end head delivers
+  // on Mermaid 11.17.2. Only `--o` and `--x` draw a different end head.
   const END_DECORATIONS = Object.freeze({
     arrow_circle: ", marked with a circle",
     arrow_cross: ", marked with a cross",
+  });
+
+  // Rule B8's head test (R20), read from BOTH delivered ends. Each table maps
+  // every delivered string the grammar can produce to whether a head is drawn
+  // at that end; a string that is not a key is an unknown value and renderEdge
+  // throws rather than narrating a guess, so the reader reaches the honest
+  // fallback, as this module's other unknown-value paths do. The START never
+  // delivers a circle or cross (the `x` and `o` prefix lexes as a block id).
+  const START_HEAD_DRAWN = Object.freeze({
+    arrow_open: false,
+    arrow_point: true,
+  });
+  const END_HEAD_DRAWN = Object.freeze({
+    "": false,
+    arrow_point: true,
+    arrow_circle: true,
+    arrow_cross: true,
+  });
+
+  // Rule B8's line style (R23), keyed on the delivered `pattern` and
+  // `thickness` strings. The plain values append nothing and so are listed as
+  // known-and-silent rather than left to fall through: an unlisted string is
+  // an unknown value and throws. Both fields are null on Mermaid 11.6.0.
+  const PATTERN_PHRASES = Object.freeze({
+    solid: "",
+    dotted: "dotted",
+  });
+  const THICKNESS_PHRASES = Object.freeze({
+    normal: "",
+    thick: "thick",
   });
 
   // RULE B1's N-ZERO SENTENCES, ruled at R10 on 13 September 2026, CONFIRMED
@@ -897,18 +926,32 @@
    * One edge's sentence (rule B8).
    *
    * SENTENCE ORDER IS FIXED ONCE BY B8 and is not assembled in two ways:
-   * NAME, RELATION, DECORATION, LABEL, full stop.
+   * NAME, RELATION, DECORATION, LINE STYLE, LABEL, full stop.
    *
-   * THERE IS ONE REACHABLE HEAD FORM (ruling R4). Every link this grammar
-   * accepts delivers `arrowTypeStart` of `arrow_open` and draws one head at the
-   * end - measured on all six spellings, and the canvas agrees, `---` and
-   * `<-->` rendering byte-identically to `-->` with a null marker-start. So
-   * every link reads "points to", and B8's start-head-only, both-heads and
-   * no-head forms are retained in the gold as unreachable rather than
-   * implemented here as dead branches.
+   * THE HEAD FORMS ARE LIVE (ruling R20, 30 September 2026). B8's re-open
+   * trigger fired on Mermaid 11.17.2, where a link can draw a head at the end,
+   * at the start, at both ends or at neither, and the db and the canvas agree
+   * on all 53 spellings measured. The head test reads BOTH delivered ends,
+   * with A the link's start and B its end:
+   *   end head only    `"A" points to "B"RELATION`
+   *   start head only  `"B" points to "A"RELATION`, B the subject and the
+   *                    relation computed from B to A
+   *   both heads       `"A" and "B"RELATION, point to each other`, relation
+   *                    from A to B
+   *   no head          `"A" is joined to "B"RELATION`
+   * On 11.6.0 every start is `arrow_open` and every end a head, so every
+   * sentence there reads as it always did ("points to", A to B).
    *
-   * A SELF-EDGE reads `"A" points to itself.` with NO relation, because there
-   * is no second position to relate to.
+   * A DECORATION ON A TWO-ENDED LINK NAMES ITS END (R21): `, marked with a
+   * circle at "B"`, because the start head is always a point. LINE STYLE
+   * (R23) follows the decoration: `, on a dotted line` or `, on a thick line`
+   * (`, on a thick dotted line` if a spelling ever delivers both), and nothing
+   * for a solid normal-width link or where the fields are null.
+   *
+   * A SELF-EDGE reads `"A" points to itself.` when any head is drawn and
+   * `"A" is joined to itself.` when none is, with NO relation, because there
+   * is no second position to relate to. An unknown head or line-style string
+   * throws.
    *
    * THE TWO ENDS TAKE DIFFERENT CAPITALISATION and the difference is
    * positional rather than stylistic (R14 LIFTED): the START opens the
@@ -925,23 +968,87 @@
    * @returns {string} The `<li>` line
    */
   function renderEdge(edge, phraseFor, positions) {
-    const from = phraseFor(edge.start, true);
-    const core =
-      edge.start === edge.end
-        ? `${from} points to itself`
-        : `${from} points to ${phraseFor(edge.end, false)}`;
+    const startHead = headDrawn(START_HEAD_DRAWN, edge.arrowTypeStart, "start");
+    const endHead = headDrawn(END_HEAD_DRAWN, edge.arrowTypeEnd, "end");
+    const isSelf = edge.start === edge.end;
 
-    const relation =
-      edge.start === edge.end
-        ? ""
-        : spatialRelation(positions[edge.start], positions[edge.end]);
+    // One choke point for the head form (R20). The relation always runs from
+    // the SUBJECT to the other end, so the start-head-only form swaps the
+    // arguments.
+    let core;
+    let relation = "";
+    if (isSelf) {
+      core = `${phraseFor(edge.start, true)} ${
+        startHead || endHead ? "points to" : "is joined to"
+      } itself`;
+    } else if (startHead && !endHead) {
+      core = `${phraseFor(edge.end, true)} points to ${phraseFor(edge.start, false)}`;
+      relation = spatialRelation(positions[edge.end], positions[edge.start]);
+    } else {
+      const from = phraseFor(edge.start, true);
+      const to = phraseFor(edge.end, false);
+      relation = spatialRelation(positions[edge.start], positions[edge.end]);
+      if (startHead && endHead) {
+        core = `${from} and ${to}`;
+        relation += ", point to each other";
+      } else {
+        core = `${from} ${endHead ? "points to" : "is joined to"} ${to}`;
+      }
+    }
 
-    const decoration = END_DECORATIONS[edge.arrowTypeEnd] || "";
+    // R21: on a two-ended link the decoration names the end it sits at.
+    let decoration = END_DECORATIONS[edge.arrowTypeEnd] || "";
+    if (decoration && startHead && endHead) {
+      decoration += ` at ${phraseFor(edge.end, false)}`;
+    }
 
     const raw = typeof edge.label === "string" ? edge.label : "";
     const label = raw.trim() === "" ? "" : `, labelled ${quoted(raw)}`;
 
-    return `<li>${core}${relation}${decoration}${label}.</li>`;
+    return `<li>${core}${relation}${decoration}${lineStyle(edge)}${label}.</li>`;
+  }
+
+  /**
+   * Whether a head is drawn at one end of a link (R20).
+   *
+   * @param {Object} table - START_HEAD_DRAWN or END_HEAD_DRAWN
+   * @param {*} value - The delivered arrow-type string
+   * @param {string} end - "start" or "end", for the refusal message
+   * @returns {boolean} True when a head is drawn at that end
+   * @throws {Error} On a value the table does not list
+   */
+  function headDrawn(table, value, end) {
+    if (!Object.prototype.hasOwnProperty.call(table, value)) {
+      throw new Error(
+        `block edge carries an unknown arrow type at its ${end}: ${String(value)}`
+      );
+    }
+    return table[value];
+  }
+
+  /**
+   * The line-style clause (R23): "" for a solid normal-width link or where
+   * both fields are absent (Mermaid 11.6.0), otherwise `, on a dotted line`,
+   * `, on a thick line` or `, on a thick dotted line`.
+   *
+   * @param {Object} edge - A delivered edge
+   * @returns {string} The clause, or ""
+   * @throws {Error} On a pattern or thickness string this module does not list
+   */
+  function lineStyle(edge) {
+    const words = [];
+    const fields = [
+      [edge.thickness, THICKNESS_PHRASES, "thickness"],
+      [edge.pattern, PATTERN_PHRASES, "pattern"],
+    ];
+    for (const [value, table, name] of fields) {
+      if (value === null || value === undefined) continue;
+      if (!Object.prototype.hasOwnProperty.call(table, value)) {
+        throw new Error(`block edge carries an unknown ${name}: ${String(value)}`);
+      }
+      if (table[value] !== "") words.push(table[value]);
+    }
+    return words.length === 0 ? "" : `, on a ${words.join(" ")} line`;
   }
 
   /**

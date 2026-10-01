@@ -31,6 +31,10 @@ const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
 const ENABLE_ALL_LOGGING = false;
 const DISABLE_ALL_LOGGING = false;
 
+// How long the ZIP's object URL outlives its click; matches
+// triggerDownload in mathpix-total-downloader.js.
+const ZIP_URL_REVOKE_DELAY_MS = 1000;
+
 function shouldLog(level) {
   if (DISABLE_ALL_LOGGING) return false;
   if (ENABLE_ALL_LOGGING) return true;
@@ -529,10 +533,6 @@ class MathPixConvertMode {
       editOverlay: document.getElementById("convert-edit-overlay"),
       editTextarea: document.getElementById("convert-edit-textarea"),
       fullscreenBtn: document.getElementById("convert-fullscreen-btn"),
-
-      // Parcel 10e: kept so it can be put back after downloadAllAsZip()
-      // swaps it for a "Click to Save ZIP" link
-      downloadAllBtn: document.getElementById("convert-mode-download-all-btn"),
     };
 
     logDebug("Elements cached", Object.keys(this.elements).length);
@@ -1528,26 +1528,7 @@ class MathPixConvertMode {
         if (list) list.innerHTML = "";
       });
 
-    // Parcel 10e: the "Click to Save ZIP" link must not outlive the results.
-    this.restoreDownloadAllButton();
-
     logInfo("Convert mode results cleared for new content");
-  }
-
-  /**
-   * Put the "Download All as ZIP" button back if downloadAllAsZip() replaced
-   * it with a "Click to Save ZIP" link, and free that link's ZIP (parcel
-   * 10e). Without this the link keeps saving the first document's ZIP.
-   * @private
-   */
-  restoreDownloadAllButton() {
-    const link = document.getElementById("convert-mode-download-all-link");
-    const button = this.elements?.downloadAllBtn;
-    if (!link || !button) return;
-
-    if (link.dataset.blobUrl) URL.revokeObjectURL(link.dataset.blobUrl);
-    link.replaceWith(button);
-    logDebug("Download All as ZIP button restored");
   }
 
   /**
@@ -1648,6 +1629,10 @@ class MathPixConvertMode {
    * Update convert button enabled state based on format selection
    */
   updateConvertButtonState() {
+    // Parcel 10j: a tick during a conversion must not re-enable (or
+    // natively disable) the held button; the end of the run decides.
+    if (this.isConverting) return;
+
     const convertBtn = document.getElementById("convert-mode-convert-btn");
     const selectedFormats = this.getSelectedFormats();
 
@@ -1693,6 +1678,12 @@ class MathPixConvertMode {
    * Start conversion process
    */
   async startConversion() {
+    // Parcel 10j: one conversion at a time.
+    if (this.isConverting) {
+      logDebug("Conversion already running; second start refused");
+      return;
+    }
+
     const selectedFormats = this.getSelectedFormats();
 
     if (selectedFormats.length === 0) {
@@ -1724,7 +1715,18 @@ class MathPixConvertMode {
     const downloadsSection = document.getElementById("convert-mode-downloads");
     const errorsSection = document.getElementById("convert-mode-errors");
 
-    if (convertBtn) convertBtn.disabled = true;
+    // Parcel 10j: hold Convert Selected busy rather than disabling it.
+    // Native disabled blurs the focused button and drops focus to <body>.
+    let convertHold = null;
+    const busy = window.BusyControl;
+    if (convertBtn && busy && typeof busy.hold === "function") {
+      convertHold = busy.hold(convertBtn);
+    } else if (convertBtn) {
+      logWarn(
+        "BusyControl is not loaded — disabling Convert Selected natively, which drops focus",
+      );
+      convertBtn.disabled = true;
+    }
     if (cancelBtn) cancelBtn.hidden = false;
     if (progressSection) progressSection.hidden = false;
     if (downloadsSection) downloadsSection.hidden = true;
@@ -1844,7 +1846,8 @@ class MathPixConvertMode {
     this.isConverting = false;
 
     // Update UI after completion
-    if (convertBtn) convertBtn.disabled = false;
+    if (convertHold) convertHold.release();
+    this.updateConvertButtonState();
     if (cancelBtn) cancelBtn.hidden = true;
 
     // Determine errors (formats that were selected but not completed)
@@ -1938,9 +1941,6 @@ class MathPixConvertMode {
    * user gesture, so we use real anchors with blob URLs in href attribute.
    */
   showDownloads() {
-    // Parcel 10e: put the ZIP button back before it is looked up below.
-    this.restoreDownloadAllButton();
-
     const downloadsSection = document.getElementById("convert-mode-downloads");
     const downloadsList = document.getElementById(
       "convert-mode-downloads-list",
@@ -2041,8 +2041,7 @@ class MathPixConvertMode {
 
   /**
    * Download all completed files as ZIP
-   * Uses a visible link fallback to handle browser security restrictions
-   * on programmatic downloads after async operations
+   * Keeps the button and its focus (parcel 10i)
    */
   async downloadAllAsZip() {
     if (this.completedDownloads.size === 0) {
@@ -2071,51 +2070,19 @@ class MathPixConvertMode {
       const zipFilename = `${this.filename}-converted.zip`;
       const url = URL.createObjectURL(zipBlob);
 
-      // Try programmatic download first
+      // Parcel 10i: download once and keep the button. The old fallback
+      // swapped the focused button for a "Click to Save ZIP" link after
+      // every press, which lost keyboard focus and offered a second copy.
       const a = document.createElement("a");
       a.href = url;
       a.download = zipFilename;
       a.style.display = "none";
       document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), ZIP_URL_REVOKE_DELAY_MS);
 
-      // Check if download started (give browser a moment)
-      setTimeout(() => {
-        document.body.removeChild(a);
-
-        // Fallback: If programmatic download didn't work (async user gesture issue),
-        // replace the Download All button with a direct download link
-        const downloadAllBtn = document.getElementById(
-          "convert-mode-download-all-btn",
-        );
-        if (downloadAllBtn) {
-          // Create a direct download link as fallback
-          const fallbackLink = document.createElement("a");
-          fallbackLink.href = url;
-          fallbackLink.download = zipFilename;
-          fallbackLink.className = downloadAllBtn.className;
-          fallbackLink.innerHTML = `
-            <svg aria-hidden="true" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10 3v10m0 0l-4-4m4 4l4-4M3 17h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
-            </svg>
-            <span>Click to Save ZIP</span>
-          `;
-          fallbackLink.setAttribute("aria-label", "Click to save ZIP archive");
-          fallbackLink.id = "convert-mode-download-all-link";
-
-          // Store URL reference for cleanup
-          fallbackLink.dataset.blobUrl = url;
-
-          // Replace button with link
-          downloadAllBtn.parentNode.replaceChild(fallbackLink, downloadAllBtn);
-
-          this.showNotification(
-            "ZIP ready - click 'Click to Save ZIP' to download",
-            "success",
-          );
-          logInfo("Fallback download link created for ZIP");
-        }
-      }, 100);
+      this.showNotification("ZIP archive saved", "success");
 
       logInfo(`ZIP archive created with ${this.completedDownloads.size} files`);
     } catch (error) {

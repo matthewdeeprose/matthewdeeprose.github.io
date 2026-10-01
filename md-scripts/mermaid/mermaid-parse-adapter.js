@@ -6583,17 +6583,25 @@ window.MermaidParseAdapter = (function () {
       // undefined or null, and "" is passed through unchanged.
       label: typeof edge.label === "string" ? decodeAuthorText(edge.label) : "",
       // THE ARROW-TYPE STRINGS ARE DELIVERED VERBATIM AND ARE FAITHFUL, which
-      // is worth stating because they look lossy. `---` and `<-->` are both
-      // typed `arrow_point` at the end and `arrow_open` at the start, exactly
-      // as a plain `-->` is — and the CANVAS AGREES: rendered at strict, the
-      // plain `---` carries the same `marker-end` and a null `marker-start` as
-      // `-->`, so the db is a truthful record of what is drawn rather than a
-      // dropped distinction (census § Q4). Only `--o` and `--x` draw
-      // differently, and only those two are distinguished here.
+      // is worth stating because they look lossy. On Mermaid 11.6.0 `---` and
+      // `<-->` are both typed `arrow_point` at the end and `arrow_open` at the
+      // start, exactly as a plain `-->` is — and the CANVAS AGREES: rendered
+      // at strict, the plain `---` carries the same `marker-end` and a null
+      // `marker-start` as `-->`, so the db is a truthful record of what is
+      // drawn rather than a dropped distinction (census § Q4). On 11.17.2 the
+      // db distinguishes them (an empty `arrowTypeEnd` for no end head,
+      // `arrow_point` at the start for a start head) and the canvas agrees
+      // on all 53 spellings measured on 30 September 2026.
       arrowTypeStart:
         typeof edge.arrowTypeStart === "string" ? edge.arrowTypeStart : null,
       arrowTypeEnd:
         typeof edge.arrowTypeEnd === "string" ? edge.arrowTypeEnd : null,
+      // LINE STYLE, delivered verbatim when the db carries it and null when it
+      // does not. 11.17.2 adds `pattern` ("solid" or "dotted") and `thickness`
+      // ("normal" or "thick"), and the canvas draws both; 11.6.0 carries
+      // neither, so the key is present and null there rather than absent.
+      pattern: typeof edge.pattern === "string" ? edge.pattern : null,
+      thickness: typeof edge.thickness === "string" ? edge.thickness : null,
     }));
 
     return {
@@ -6789,6 +6797,7 @@ window.MermaidParseAdapter = (function () {
           const [alpha, bravo, charlie, group, space1, space2] = delivery.blocks;
           const child = group && group.children ? group.children[0] : null;
           const edge = delivery.edges[0];
+          const rawEdge = Array.isArray(db.getEdges()) ? db.getEdges()[0] : null;
           const keysOf = (b) => (b ? Object.keys(b).join(",") : "");
           const expectedKeys = BLOCK_DELIVERED_KEYS.join(",");
 
@@ -6898,6 +6907,21 @@ window.MermaidParseAdapter = (function () {
                 edge.arrowTypeStart === "arrow_open" &&
                 edge.arrowTypeEnd === "arrow_point" &&
                 edge.id === "1-scAlpha-scBravo",
+            ],
+            [
+              "the edge's LINE STYLE is delivered: `pattern` and `thickness` " +
+                "are present on the delivery, verbatim when the db carries " +
+                "them (11.17.2) and null when it does not (11.6.0) — so a db " +
+                "that carries either and a delivery that drops it fails here",
+              !!rawEdge &&
+                Object.prototype.hasOwnProperty.call(edge, "pattern") &&
+                Object.prototype.hasOwnProperty.call(edge, "thickness") &&
+                edge.pattern ===
+                  (typeof rawEdge.pattern === "string" ? rawEdge.pattern : null) &&
+                edge.thickness ===
+                  (typeof rawEdge.thickness === "string"
+                    ? rawEdge.thickness
+                    : null),
             ],
             [
               "the class table is a PLAIN OBJECT snapshot rather than the db's " +
