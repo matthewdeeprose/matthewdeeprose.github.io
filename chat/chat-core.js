@@ -56,6 +56,25 @@
   // text-only threads, so those tests are unaffected.
   const IMAGE_TOKEN_ESTIMATE = 1600;
 
+  // Answer length follows the model (parcel H-20). The slider and number entry
+  // top out at the smaller of this ceiling and the model's own published output
+  // limit (js/model-output-budget.js). A model nobody knows keeps today's 4,096,
+  // and so does every on-device model, whose limits the resolver does not know.
+  const CHAT_OUTPUT_CEILING = 32000;
+  const CHAT_OUTPUT_FALLBACK = 4096;
+  const LOCAL_MODEL_PREFIX = "local/";
+  const LOCAL_OUTPUT_CEILING = 4096;
+  const FINISH_REASON_LENGTH = "length";
+  // One sentence on screen and in the ear, per the announcement rules: the
+  // refusal goes through the toast (which announces once), the cut-off line is
+  // announced INSTEAD of "Response ready.", never beside it.
+  const TOO_LONG_REFUSAL =
+    "That message is too long for this model's context window. Shorten it or choose a model with a larger context.";
+  const INCOMPLETE_ANNOUNCEMENT =
+    "Response incomplete: the model stopped at its length limit.";
+  const INCOMPLETE_NOTE =
+    "This answer stopped at the model’s length limit, so the end is missing. Raise “Maximum response length” in the Parameters panel to allow a longer answer.";
+
   // Default caption sent when a PDF is attached without a typed caption — the
   // embed core rejects an empty prompt, so a caption-less PDF send needs one.
   const DEFAULT_ATTACHMENT_CAPTION = "Please review the attached file";
@@ -245,6 +264,96 @@
     if (S.els.maxTokensDesc)
       S.els.maxTokensDesc.textContent = S.getMaxTokensDescription(v);
     return v;
+  }
+
+  // ── Answer length follows the model (parcel H-20) ──────────────────────────
+  // The most a model can be asked to write, aligned DOWN to a slider step so the
+  // slider, the number entry and the sent value can never disagree (a range input
+  // snaps an off-step max to a lower value on its own, leaving the two controls
+  // apart). A local/… model keeps today's cap; a model nobody knows keeps 4,096.
+  function modelOutputMax(model) {
+    const r = maxTokenRange();
+    let ceiling = LOCAL_OUTPUT_CEILING;
+    const isLocal = !model || model.indexOf(LOCAL_MODEL_PREFIX) === 0;
+    if (!isLocal && window.ModelOutputBudget) {
+      ceiling = window.ModelOutputBudget.for(model, {
+        toolCeiling: CHAT_OUTPUT_CEILING,
+        fallback: CHAT_OUTPUT_FALLBACK,
+      });
+    }
+    return r.min + Math.max(0, Math.floor((ceiling - r.min) / r.step)) * r.step;
+  }
+
+  // Set the visible range for the model being sent to, and lower the user's value
+  // if it now sits above it. Silent by design: the value is read when the control
+  // is focused, and one more spoken line at a model change would double what the
+  // picker already says. Called at the picker (chat.js reflectSelection) and, as
+  // the one that must be right, at the top of every send.
+  function applyModelTokenRange(model) {
+    const max = modelOutputMax(model);
+    const slider = S.els.maxTokensSlider;
+    // Read BEFORE the max moves: a range input clamps its own value the instant
+    // its max drops, which would hide that the user's value was above it.
+    const before = slider ? parseInt(slider.value, 10) : NaN;
+    if (slider) slider.max = String(max);
+    if (S.els.maxTokensNumber) S.els.maxTokensNumber.max = String(max);
+    if (!isNaN(before) && before > max) setMaxTokens(max);
+    return max;
+  }
+
+  // The tokens to ask for: never more than the user's value, the model's own
+  // ceiling, or the room the windowed conversation leaves in its context. A
+  // local/… model's context is not known to the resolver, so it keeps today's
+  // windowing only.
+  function resolveAnswerBudget(model, userMax, promptTokens) {
+    const isLocal = !model || model.indexOf(LOCAL_MODEL_PREFIX) === 0;
+    if (isLocal || !window.ModelOutputBudget) {
+      return { budget: userMax, contextExhausted: false, limitedBy: "tool" };
+    }
+    const d = window.ModelOutputBudget.describe(model, {
+      toolCeiling: userMax,
+      fallback: userMax,
+      promptTokens: promptTokens,
+    });
+    return { budget: d.budget, contextExhausted: d.contextExhausted, limitedBy: d.limitedBy };
+  }
+
+  // Same estimate applyTokenWindow trims against, for the payload that will be sent.
+  function estimatePayloadTokens(messages, systemPrompt) {
+    const sys =
+      systemPrompt && systemPrompt.trim() ? [{ role: "system", content: systemPrompt }] : [];
+    const images = messages.reduce(function (sum, m) {
+      return sum + IMAGE_TOKEN_ESTIMATE * contentImageCount(m.content);
+    }, 0);
+    return Math.ceil(estimateWithBridge(sys.concat(messages)) + images);
+  }
+
+  // Everything a send needs from the model actually being sent to: the refreshed
+  // range, the windowed payload (the user's value is the answer reservation, as
+  // before) and the answer budget. `extraTurn` is a turn not yet in S.messages, so
+  // a send can be checked BEFORE anything is committed.
+  function planSend(extraTurn) {
+    const model = S.currentModel;
+    applyModelTokenRange(model);
+    const userMax = S.getMaxTokens();
+    const systemPrompt = S.els.systemInput ? S.els.systemInput.value.trim() : "";
+    const thread = S.messages.concat(extraTurn ? [extraTurn] : []).map(function (m) {
+      return { role: m.role, content: normaliseTurnForWire(m.content) };
+    });
+    const contextLimit = window.Chat.getContextLimit(model);
+    const windowed = applyTokenWindow({
+      messages: thread,
+      limit: contextLimit,
+      answerReservation: userMax,
+      safetyMargin: BUDGET_SAFETY_MARGIN,
+      systemPrompt: systemPrompt,
+    });
+    const answer = resolveAnswerBudget(
+      model,
+      userMax,
+      estimatePayloadTokens(windowed.messages, systemPrompt),
+    );
+    return { model, systemPrompt, userMax, contextLimit, windowed, answer };
   }
 
   // ── Bubble rendering (delegated to the step-3 messages module) ─────────────
@@ -746,6 +855,11 @@
    */
   function composeErrorText(error) {
     const status = error ? error.status : undefined;
+    // A send refused before it left (parcel H-20): the same plain sentence on
+    // screen and in the ear.
+    if (error && error.tooLongForModel === true) {
+      return { bubble: TOO_LONG_REFUSAL, announcement: TOO_LONG_REFUSAL };
+    }
     // typeof FIRST: the map is keyed by number but property access stringifies,
     // so a string "401" would match without this test.
     if (typeof status === "number" && ERROR_TEXT_BY_STATUS[status]) {
@@ -785,6 +899,20 @@
       assistantIndex,
     );
 
+    // A reply the provider cut off at the length limit has text in it, so it is
+    // kept — but it is not called a success (parcel H-20, H-16's treatment). The
+    // note is a plain, NON-live paragraph written while the log is still "off",
+    // so it is read with the reply and never spoken by itself; the one spoken
+    // line is chosen below. Any other finish reason, null included, is as before.
+    const replyCutOff = !!response && response.finishReason === FINISH_REASON_LENGTH;
+    if (replyCutOff) {
+      const note = document.createElement("p");
+      note.className = "chat-incomplete-note";
+      note.textContent = INCOMPLETE_NOTE;
+      assistantBubble.appendChild(note);
+      logWarn("Reply cut off at the length limit — marked as incomplete");
+    }
+
     // Populate the developer panel silently from the completed turn — finish
     // reason, the scrubbed wire request, and the raw response. Guarded so a
     // missing panel is a no-op; adds no spoken cue (no region is a live region).
@@ -823,7 +951,8 @@
     // Reply, badge and controls are now in the bubble: switch the log live so the
     // whole response reads cleanly, then announce readiness ONCE.
     S.setMessageListLive("polite");
-    S.announceToScreenReader("Response ready.");
+    // ONE line: "Response incomplete" replaces "Response ready." on a cut-off reply.
+    S.announceToScreenReader(replyCutOff ? INCOMPLETE_ANNOUNCEMENT : "Response ready.");
     scrollMessagesToBottom();
     // Persist the thread now the assistant turn is pushed and rendered, so the
     // saved session includes the completed turn with its model + providerId.
@@ -1050,6 +1179,21 @@
     // the attachment stays held, no turn is pushed and nothing reaches the embed.
     if (refuseIfNoModel("sendMessage")) return;
 
+    // Likewise refuse a message the model's context cannot hold, before anything
+    // commits: the draft stays in the box, no turn is pushed, nothing is sent.
+    if (
+      refuseIfTooLong(
+        "sendMessage",
+        {
+          role: "user",
+          content: useAttachment
+            ? [attach.getAttachmentPart(), { type: "text", text: text }]
+            : text,
+        },
+      )
+    )
+      return;
+
     S.isGenerating = true;
     S.setMessageListLive("off");
 
@@ -1107,6 +1251,25 @@
   }
 
   /**
+   * Refuse a send whose windowed conversation leaves the model no room to answer
+   * (parcel H-20). Called BEFORE anything commits, so a refused press leaves the
+   * draft, the thread and the saved session as they were. One voice: the toast
+   * announces through the shared announcer, so no announce() beside it.
+   * @param {string} caller the calling function's name, for the log line only
+   * @param {{role: string, content: *}} newTurn the turn about to be added
+   * @returns {boolean} true when the send was refused and the caller must return
+   */
+  function refuseIfTooLong(caller, newTurn) {
+    const plan = planSend(newTurn);
+    if (!plan.answer.contextExhausted) return false;
+    logWarn(caller + ": refused — the message leaves no room in the model's context", S.currentModel);
+    if (typeof window.notifyWarning === "function") {
+      window.notifyWarning(TOO_LONG_REFUSAL);
+    }
+    return true;
+  }
+
+  /**
    * Shared send back-half: create the assistant bubble, set the per-turn embed
    * properties, apply the token window and fire the streaming request. Extracted
    * verbatim from sendMessage so a later edit-resend slice can reuse it.
@@ -1156,31 +1319,24 @@
     embed.top_p = S.getTopP();
     embed.frequency_penalty = S.getFrequencyPenalty();
     embed.presence_penalty = S.getPresencePenalty();
-    embed.max_tokens = S.getMaxTokens();
-
-    // Normalise the full thread to role/content. Array (multimodal) content is
-    // PRESERVED for live image turns so the image reaches the wire; a restored
-    // byte-free reference turn collapses to its text (it cannot be re-sent).
-    const fullThread = S.messages.map(function (m) {
-      return { role: m.role, content: normaliseTurnForWire(m.content) };
-    });
-    // Limit-aware sliding window: keep a recent slice that fits the chosen
-    // model's context window, reserving room for the answer. Trims the PAYLOAD
-    // only — S.messages and the on-screen thread are untouched. The reservation
-    // reads the embed's live max_tokens, so when the max-tokens slider lands it
-    // tracks the slider with no change here.
-    const contextLimit = window.Chat.getContextLimit(S.currentModel);
-    const answerReservation =
-      embed && typeof embed.max_tokens === "number"
-        ? embed.max_tokens
-        : DEFAULT_ANSWER_RESERVATION;
-    const windowed = applyTokenWindow({
-      messages: fullThread,
-      limit: contextLimit,
-      answerReservation: answerReservation,
-      safetyMargin: BUDGET_SAFETY_MARGIN,
-      systemPrompt: systemPrompt,
-    });
+    // Everything below follows the model actually being sent to, worked out NOW
+    // (the model is set at five places, so the send is the one that must be
+    // right): the refreshed range, the user's value lowered if it is above the
+    // model's maximum, the limit-aware window (the user's value reserves the
+    // answer room, as before) and the answer budget, capped by what the
+    // conversation leaves in the model's context. Trims the PAYLOAD only —
+    // S.messages and the on-screen thread are untouched.
+    const plan = planSend(null);
+    if (plan.answer.contextExhausted) {
+      // Backstop for the one caller that reaches here without passing
+      // sendMessage's pre-commit check (edit-and-resend). Nothing is sent.
+      postError(assistantBubble, { tooLongForModel: true });
+      return;
+    }
+    embed.max_tokens =
+      typeof plan.answer.budget === "number" ? plan.answer.budget : DEFAULT_ANSWER_RESERVATION;
+    const contextLimit = plan.contextLimit;
+    const windowed = plan.windowed;
     announceTrim(windowed.dropped);
     if (windowed.dropped > 0) {
       logInfo("token budget: dropped", windowed.dropped, "oldest turn(s) to fit", contextLimit, "tokens for", S.currentModel);
@@ -1529,6 +1685,11 @@
     // cross-provider verification (OpenRouter and Foundry usage share the keys).
     _composeTokenReadout: composeTokenReadout,
     applyTokenWindow: applyTokenWindow,
+    // Answer length follows the model (parcel H-20): the picker refreshes the
+    // range through _applyModelTokenRange; the other two are exposed for inspection.
+    _applyModelTokenRange: applyModelTokenRange,
+    _modelOutputMax: modelOutputMax,
+    _resolveAnswerBudget: resolveAnswerBudget,
     // Wire-normalisation of one turn's content (Unified Chat attachments) —
     // exposed for inspection: preserves live arrays, collapses byte-free refs.
     _normaliseTurnForWire: normaliseTurnForWire,

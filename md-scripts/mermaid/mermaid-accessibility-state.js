@@ -425,6 +425,54 @@
     return transitionLabelPhrase(edge.label.trim());
   }
 
+  // ITEM 82, ENACTMENT 5 (3 October 2026): "a line break the picture draws is
+  // read as a space; a <br> the picture prints as characters is read as
+  // written." State's canvas breaks on every typed spelling (`<br>`, `<br/>`,
+  // `<br />`, `<BR>`, a run, spaced) on a transition label and on a state
+  // alias name, measured 2 October 2026 (measurement 2 § 3), so the shared
+  // rule is called with its default (all) form set. The rule is the adapter's
+  // and is resolved off window AT CALL TIME. The parse reads raw source
+  // bytes, so an escaped `&lt;br&gt;` or `#lt;br#gt;` is not matched; what
+  // the words then say of it (the entity mismatch measurement 1 recorded) is
+  // out of scope for this slice and unchanged. The diagram TITLE is not read
+  // through this: the canvas prints a tag there. The description of a state
+  // (`s1 : text`) breaks on the canvas and is read by nothing here.
+  /**
+   * Read state text with typed line breaks as single spaces.
+   * @param {string} text - A transition label or an alias name
+   * @returns {string} The text with breaks read as spaces; empty when it was
+   *   only a break; unchanged when the rule is not loaded
+   */
+  function readStateBreaks(text) {
+    if (typeof text !== "string" || text === "") return text;
+
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.replaceTypedLineBreaks !== "function") {
+      logWarn(
+        "[Mermaid Accessibility] State: the shared line-break rule is not loaded; labels and names are read as typed"
+      );
+      return text;
+    }
+    return adapter.replaceTypedLineBreaks(text, adapter.LINE_BREAK_FORMS.ALL);
+  }
+
+  /**
+   * Read a `state "Name" as id` alias name. HALTED, not enacted: a name the
+   * transform would EMPTY (a label that is only a break). Principle P2's
+   * phrase carries its own noun (`unlabelled state "s1"`) while every
+   * sentence here writes `the NAME state`, so it would need a restructured
+   * sentence at five or more sites. Such a name is left as typed, which is
+   * today's reading. A spaces-only name is left alone too (and the canvas
+   * draws the id there, not nothing).
+   * @param {string} name - The alias name after quote stripping
+   * @returns {string} The name with breaks read as spaces, or the name
+   *   unchanged when the transform would empty it
+   */
+  function readAliasBreaks(name) {
+    const read = readStateBreaks(name);
+    return typeof read === "string" && read.trim() === "" ? name : read;
+  }
+
   /**
    * Parse state diagram from mermaid code
    * @param {string} code - The mermaid diagram code
@@ -487,7 +535,7 @@
           const declaredName = match[1] || match[2] || match[3];
           const stateId = match[4];
           allStates.add(stateId);
-          displayNames[stateId] = cleanStateName(declaredName);
+          displayNames[stateId] = readAliasBreaks(cleanStateName(declaredName));
           logDebug(
             "[Mermaid Accessibility] Found aliased state:",
             stateId,
@@ -566,7 +614,9 @@
         if (targetState.includes(":")) {
           const targetParts = targetState.split(":");
           targetState = cleanStateName(targetParts[0].trim());
-          transitionLabel = targetParts.slice(1).join(":").trim();
+          transitionLabel = readStateBreaks(
+            targetParts.slice(1).join(":").trim()
+          );
         } else {
           targetState = cleanStateName(targetState);
         }

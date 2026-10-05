@@ -480,6 +480,41 @@
     return typeof value === "string" && value.length > 0;
   }
 
+  // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
+  // break, or only spaces) is read as unlabelled, in each type's own words."
+  // The test is a TEST only: it trims to decide and never alters the bytes it
+  // narrates. It runs on the DELIVERED label, after the adapter's break
+  // transform. A boundary label is a required argument, so an empty one can
+  // only be a label that draws nothing; the canvas shows a blank title.
+  //
+  // The phrase follows CR18's own form, `unlabelled element "ALIAS"`, which
+  // opens its list line in lower case, so the boundary form does the same.
+  const UNLABELLED_BOUNDARY_PHRASE = "unlabelled boundary";
+
+  /**
+   * Is this boundary one whose label draws nothing? The one emptiness test for
+   * a boundary's name: the boundary line and the endpoint lookup both ask it
+   * here, so they cannot disagree.
+   * @param {Object} boundary - A delivered boundary
+   * @returns {boolean} Whether to narrate it as unlabelled
+   */
+  function isUnlabelledBoundary(boundary) {
+    return typeof boundary.label === "string" && boundary.label.trim() === "";
+  }
+
+  /**
+   * A boundary's name as the lines speak it: the quoted escaped label, or the
+   * unlabelled phrase naming the author's alias in the generator's quotes,
+   * never inflected.
+   * @param {Object} boundary - A delivered boundary
+   * @returns {string} The name, ready for the HTML sink
+   */
+  function boundaryName(boundary) {
+    return isUnlabelledBoundary(boundary)
+      ? `${UNLABELLED_BOUNDARY_PHRASE} "${escapeText(boundary.alias)}"`
+      : `"${escapeText(boundary.label)}"`;
+  }
+
   // ---------------------------------------------------------------------
   // Facts: everything counted once, from the delivery
   // ---------------------------------------------------------------------
@@ -875,7 +910,7 @@
   function renderBoundary(boundary) {
     // A deployment node is the one boundary sort with no kind and a technology.
     if (boundary.kind === null) {
-      let line = `"${escapeText(boundary.label)}", a deployment node`;
+      let line = `${boundaryName(boundary)}, a deployment node`;
       // CR23: the technology is QUOTED here too, through the SAME helper the
       // element and relationship lines use. See `quotedTechn`.
       if (has(boundary.techn)) line += ` using ${quotedTechn(boundary.techn)}`;
@@ -893,7 +928,7 @@
       BOUNDARY_KIND_WORD[boundary.kind] ||
       `boundary of kind "${escapeText(boundary.kind)}"`;
     // CR7: the article agrees with the word that follows it.
-    return `"${escapeText(boundary.label)}", ${article(phrase)} ${phrase} containing:`;
+    return `${boundaryName(boundary)}, ${article(phrase)} ${phrase} containing:`;
   }
 
   /**
@@ -1144,11 +1179,11 @@
       const shape = shapeByAlias.get(alias);
       if (shape) return subjectOf(shape);
       const boundary = boundaryByAlias.get(alias);
-      // CR22. A boundary's label is quoted like any other endpoint. CR18 rules
-      // the empty label ON A SHAPE and says nothing about a boundary, so an
-      // empty boundary label is left as the gold's edge gap records it rather
-      // than guessed at here.
-      if (boundary) return `"${escapeText(boundary.label)}"`;
+      // CR22. A boundary's label is quoted like any other endpoint. CR18 ruled
+      // the empty label on a shape and said nothing about a boundary; enactment
+      // 4 (3 October 2026) extends the same reading to one, so an empty
+      // boundary label is the unlabelled phrase here as on its own line.
+      if (boundary) return boundaryName(boundary);
       // C6's unresolved arm: an alias in neither array, read verbatim.
       return escapeText(alias);
     }

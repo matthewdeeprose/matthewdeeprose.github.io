@@ -4227,6 +4227,476 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border: 0.2rem solid transparent;
 }
 
+/* ===== Graph Builder, Add Data screen, dark theme (GT-3a BEGIN, 4 October 2026) =====
+   The dark half of the light.css GT-3a block: the same selectors and properties, the palette swapped as MathPix does
+   (#00131d and #fffff4 trade places, #005c84 becomes #74c9e5, #495961 becomes #9fb1bd, hover and focus glow becomes
+   #c1d100). Panels are opaque #231f20, the surface .mathpix-tab-panel and the MathPix cost notice already use. This
+   block supersedes UX-2c's wide-width Data Preview rules, which are folded in below (table #00131d, even rows #002e3b,
+   hover #231f20, header #9fb1bd on #00131d, links and badges #74c9e5). */
+.gb-method-tabs {
+  border-bottom-color: #9fb1bd;
+}
+.gb-tab-button {
+  color: #9fb1bd;
+}
+.gb-tab-button.active {
+  color: #74c9e5;
+  border-bottom-color: #74c9e5;
+  background-color: rgba(116, 201, 229, 0.1);
+}
+.gb-input-panel {
+  border-color: #9fb1bd;
+  background-color: #231f20;
+}
+.gb-input-panel h3 {
+  color: #74c9e5;
+}
+.gb-form-headers {
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-row-label {
+  color: #e1e8ec;
+}
+.gb-data-row {
+  border-color: #9fb1bd;
+  background-color: #00131d;
+}
+.gb-add-row-button {
+  color: #9fb1bd;
+  border-color: #9fb1bd;
+}
+.gb-remove-row-button {
+  color: #ff7eb6;
+  border-color: #ff7eb6;
+}
+.gb-csv-textarea {
+  border-color: #9fb1bd;
+}
+.gb-csv-textarea::placeholder {
+  color: #9fb1bd;
+}
+.gb-csv-feedback.success {
+  background-color: rgba(179, 219, 210, 0.1);
+  border-color: #b3dbd2;
+  color: #b3dbd2;
+}
+.gb-csv-feedback.warning {
+  background-color: rgba(255, 126, 182, 0.1);
+  border-color: #ff7eb6;
+  color: #ff7eb6;
+}
+.gb-csv-feedback.error {
+  background-color: rgba(255, 126, 182, 0.15);
+  border-color: #ff7eb6;
+  color: #ff7eb6;
+}
+.gb-preview-table-container {
+  border-color: #9fb1bd;
+}
+.gb-preview-table {
+  background-color: #00131d;
+}
+.gb-preview-table caption {
+  background-color: rgba(116, 201, 229, 0.1);
+  border-bottom-color: #9fb1bd;
+}
+.gb-preview-table th,
+.gb-preview-table td {
+  border-bottom-color: #9fb1bd;
+  border-right-color: #9fb1bd;
+}
+.gb-preview-table th {
+  background-color: #9fb1bd;
+  color: #00131d;
+  border-bottom-color: #74c9e5;
+  box-shadow: 0 2px 2px rgba(116, 201, 229, 0.1);
+}
+.gb-preview-table tbody tr:nth-child(even) {
+  background-color: #002e3b;
+}
+.gb-preview-table tbody tr:hover {
+  background-color: #231f20;
+}
+.gb-preview-table tbody tr:hover .gb-empty-cell {
+  background-color: rgba(116, 201, 229, 0.15);
+}
+.gb-empty-cell {
+  background-color: rgba(159, 177, 189, 0.15);
+}
+.gb-empty-indicator {
+  color: #9fb1bd;
+}
+.gb-csv-example {
+  background-color: rgba(159, 177, 189, 0.12);
+  border-color: #9fb1bd;
+  color: #e1e8ec;
+}
+.gb-data-type-boolean::before {
+
+}
+.gb-preview-control-row {
+  border-top-color: #74c9e5;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-preview-status {
+  color: #74c9e5;
+}
+.gb-show-more-button,
+.gb-show-less-button,
+.gb-show-all-button {
+  border-color: #74c9e5;
+  color: #74c9e5;
+}
+.gb-show-all-button {
+  background-color: rgba(116, 201, 229, 0.1);
+}
+.gb-help-text {
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-help-text p {
+  color: #9fb1bd;
+}
+.gb-file-label {
+  border-color: #9fb1bd;
+  background-color: #231f20;
+}
+.gb-file-label:hover {
+  border-color: #c1d100;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-upload-text {
+  color: #74c9e5;
+}
+.gb-data-preview {
+  border-top-color: #9fb1bd;
+}
+.gb-data-preview h3 {
+  color: #74c9e5;
+}
+.gb-preview-stats {
+  background-color: rgba(116, 201, 229, 0.1);
+  color: #74c9e5;
+}
+.gb-file-input:focus + .gb-file-label,
+.gb-file-input:focus-visible + .gb-file-label {
+  outline: 3px solid #c1d100;
+  box-shadow: 0 0 0 1px #00131d,
+    0 0 0 4px #c1d100;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-file-label:focus-within {
+  outline: 3px solid #c1d100;
+  box-shadow: 0 0 0 1px #00131d,
+    0 0 0 4px #c1d100;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-file-label:focus-within .gb-upload-text {
+  color: #74c9e5;
+}
+.gb-file-label.gb-drag-active {
+  background-color: rgba(116, 201, 229, 0.1);
+  border-color: #c1d100;
+}
+.gb-file-label.gb-drag-active .gb-upload-text {
+  color: #74c9e5;
+}
+.gb-file-label.gb-drag-active:focus-within {
+  outline-color: #c1d100;
+  box-shadow: 0 0 0 1px #00131d,
+    0 0 0 4px #c1d100,
+    0 0 0 6px rgba(193, 209, 0, 0.3);
+}
+.gb-upload-area:focus-within .gb-file-label {
+  outline: 3px solid #c1d100;
+  box-shadow: 0 0 0 1px #00131d,
+    0 0 0 4px #c1d100;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-enhanced-config {
+  border-color: #9fb1bd;
+  background-color: #231f20;
+}
+.gb-advanced-toggle {
+  background-color: #00131d;
+  border-color: #9fb1bd;
+  color: #e1e8ec;
+}
+.gb-advanced-toggle:hover {
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-advanced-toggle:has(:focus-visible) {
+  outline-color: #c1d100;
+}
+.gb-advanced-options {
+  background-color: #00131d;
+  border-color: #9fb1bd;
+}
+.gb-advanced-options h4 {
+  color: #74c9e5;
+}
+.gb-column-definition {
+  border-color: #9fb1bd;
+  background-color: #00131d;
+}
+.gb-column-definition legend {
+  color: #74c9e5;
+}
+.gb-enhanced-input,
+.gb-enhanced-select {
+  background-color: #00131d;
+  color: #e1e8ec;
+}
+.gb-add-column-btn {
+  color: #9fb1bd;
+  border-color: #9fb1bd;
+}
+.gb-add-column-btn:hover {
+  border-color: #c1d100;
+  color: #c1d100;
+  background-color: rgba(116, 201, 229, 0.05);
+}
+.gb-add-column-btn:focus-visible {
+  outline-color: #c1d100;
+}
+.gb-remove-column-btn {
+  color: #ff7eb6;
+  border-color: #ff7eb6;
+}
+.gb-remove-column-btn:hover {
+  background-color: rgba(255, 126, 182, 0.1);
+}
+.gb-remove-column-btn:focus-visible {
+  outline-color: #c1d100;
+}
+.gb-smart-suggestions {
+  background-color: rgba(116, 201, 229, 0.05);
+  border-color: rgba(116, 201, 229, 0.3);
+}
+.gb-smart-suggestions h4 {
+  color: #74c9e5;
+}
+.gb-toggle-icon {
+  color: #9fb1bd;
+}
+.gb-advanced-toggle:has(.gb-toggle-checkbox:checked) .gb-toggle-icon {
+  color: #74c9e5;
+}
+@media (prefers-contrast: high) {
+  .gb-file-input:focus + .gb-file-label,
+  .gb-file-input:focus-visible + .gb-file-label,
+  .gb-file-label:focus-within {
+    box-shadow: 0 0 0 2px #00131d,
+        0 0 0 6px currentColor;
+  }
+}
+/* Dark only. The Enter Data fields are #231f20 with a #231f20 border, which used to sit on a cream row (16:1); on the
+   opaque #00131d row they read 1.1 to 1.2:1, so each field gets the boundary the row no longer supplies. Light needs no
+   counterpart: its fields already read against the cream row. The site rule input[type="text"] sets this border colour with
+   !important (dark.css), so this one needs it too, at higher specificity. */
+.gb-form-headers input[type="text"],
+.gb-data-row input[type="text"],
+.gb-data-row input[type="number"] {
+  border-color: #9fb1bd !important;
+}
+/* Dark only. The site's textarea:focus-visible turns the paste box #e1e8ec, so the placeholder swaps back to the light-theme
+   colour while it is focused (#9fb1bd on #e1e8ec reads 1.79:1, #495961 reads 5.88:1). */
+.gb-csv-textarea:focus-visible::placeholder {
+  color: #495961;
+}
+/* GT-3a END */
+
+/* ===== Graph Builder, remaining screens, dark theme (GT-3b BEGIN, 5 October 2026) =====
+   The dark half of the light.css GT-3b block: the same selectors and properties, the palette swapped as in the GT-3a block.
+   Departures from the plain swap are commented where they occur. Folds in GT-2's dark pairs and the dark card-view rules
+   UX-2a and UX-2c left for this parcel. */
+.gb-notification {
+  background-color: #00131d;
+  border-color: #9fb1bd;
+}
+.gb-chart-option {
+  background-color: #00131d;
+  border-color: #9fb1bd;
+}
+.gb-chart-option.selected {
+  border-color: #74c9e5;
+  background-color: rgba(116, 201, 229, 0.1);
+  box-shadow: 0 0 0 2px rgba(116, 201, 229, 0.3);
+}
+.gb-chart-icon {
+  color: #74c9e5;
+}
+#gb-chart-type .gb-chart-option .gb-chart-title {
+  color: #74c9e5;
+}
+#gb-chart-type .gb-chart-option .gb-chart-desc {
+  color: #9fb1bd;
+}
+#gb-chart-type .gb-chart-option.selected:focus-visible {
+  box-shadow: 0 0 0 0.4rem #c1d100;
+}
+.gb-config-preview h3,
+.gb-config-form h3 {
+  color: #74c9e5;
+}
+.gb-chart-preview-container {
+  border-color: #9fb1bd;
+  background-color: #00131d;
+}
+.gb-config-form {
+  border-color: #9fb1bd;
+  background-color: #231f20;
+}
+.gb-config-group label {
+  color: #e1e8ec;
+}
+.gb-advanced-settings {
+  border-color: #9fb1bd;
+}
+.gb-advanced-settings summary {
+  background-color: rgba(159, 177, 189, 0.15);
+}
+.gb-advanced-settings[open] summary {
+  border-bottom-color: #9fb1bd;
+}
+.gb-result-info {
+  color: #b3dbd2;
+}
+.gb-final-chart-container {
+  border-color: #9fb1bd;
+  background-color: #00131d;
+}
+.gb-navigation {
+  border-top-color: #9fb1bd;
+}
+.gb-back-button {
+  color: #9fb1bd;
+  border-color: #9fb1bd;
+}
+.gb-next-button,
+.gb-create-button {
+  background-color: #74c9e5;
+  color: #00131d;
+  border-color: #74c9e5;
+}
+.gb-skip-progress-link {
+  background-color: #74c9e5;
+  color: #00131d;
+}
+.gb-progress {
+  border-bottom-color: #9fb1bd;
+}
+.gb-steps::before {
+  background-color: #758d9a;
+}
+.gb-step {
+  color: #9fb1bd;
+}
+.gb-step.active {
+  color: #74c9e5;
+}
+.gb-step.completed {
+  color: #b3dbd2;
+}
+.gb-step-number {
+  background-color: #8d3970;
+  border-color: rgba(141, 57, 112, 0.65);
+  color: #fffff4;
+}
+.gb-step.active .gb-step-number {
+  background-color: #74c9e5;
+  color: #00131d;
+  border-color: #74c9e5;
+  box-shadow: 0 0 0 4px rgba(116, 201, 229, 0.2);
+}
+.gb-step.completed .gb-step-number {
+  background-color: #b3dbd2;
+  color: #00131d;
+  border-color: #b3dbd2;
+  box-shadow: 0 0 0 2px rgba(179, 219, 210, 0.2);
+}
+.gb-step.active .gb-step-label {
+  color: #74c9e5;
+}
+.gb-step.completed .gb-step-label {
+  color: #b3dbd2;
+}
+.gb-step.completed::after {
+  background-color: #b3dbd2;
+}
+.gb-step-button:hover .gb-step-label {
+  color: #74c9e5;
+}
+.gb-step-button:focus .gb-step-number {
+  outline-color: #c1d100;
+}
+.gb-step-non-interactive .gb-step-number {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  color: #495961;
+}
+.gb-step-non-interactive .gb-step-label {
+  color: #adb5bd;
+}
+.gb-original-image {
+  border-color: #9fb1bd;
+}
+@media (max-width: 768px) {
+  .gb-preview-table caption {
+    border-color: #9fb1bd;
+  }
+  .gb-preview-table tr {
+    border-color: #9fb1bd;
+    background-color: #00131d;
+    box-shadow: 0 2px 4px rgba(116, 201, 229, 0.1);
+  }
+  .gb-preview-table tr:nth-child(even) {
+    background-color: #00131d;
+  }
+  .gb-preview-table tr:hover {
+    background-color: rgba(116, 201, 229, 0.05);
+  }
+  .gb-preview-table td {
+    border-bottom-color: #9fb1bd;
+  }
+  .gb-preview-table td:before {
+    color: #74c9e5;
+  }
+  .gb-preview-table .gb-empty-cell {
+    background-color: rgba(159, 177, 189, 0.15);
+  }
+  .gb-preview-control-row td {
+    border-color: #74c9e5;
+    background-color: rgba(116, 201, 229, 0.05);
+  }
+}
+@media (prefers-contrast: high) {
+  .gb-step.active .gb-step-number {
+    box-shadow: 0 0 0 6px rgba(116, 201, 229, 0.4);
+  }
+}
+/* Dark only. The Configure fields are #231f20 with a #231f20 border, which used to sit on a translucent panel (5:1); on the
+   opaque #231f20 panel they read 1:1, so each field gets the boundary the panel no longer supplies. The site rule
+   input[type="text"] sets its border colour with !important (dark.css), so this one needs it too. */
+.gb-config-form input[type="text"],
+.gb-config-form input[type="number"] {
+  border-color: #9fb1bd !important;
+}
+/* Dark only. The site rule main a:focus (dark.css) turns every focused link #74c9e5, which is the skip link's own fill; the
+   dark text colour needs a selector that out-ranks it. */
+main a.gb-skip-progress-link:focus {
+  color: #00131d;
+}
+/* Dark only. The site rules button:hover and button:focus fill a hovered or focused card #e1e8ec, and the pale title and
+   description colours above would then read 1.5 and 1.8:1; text turns dark in those two states. A SELECTED card keeps its
+   own dark tint in both (its rule out-ranks the site's), so it keeps the pale text. */
+#gb-chart-type .gb-chart-option:not(.selected):hover .gb-chart-title,
+#gb-chart-type .gb-chart-option:not(.selected):hover .gb-chart-desc,
+#gb-chart-type .gb-chart-option:not(.selected):focus .gb-chart-title,
+#gb-chart-type .gb-chart-option:not(.selected):focus .gb-chart-desc {
+  color: #00131d;
+}
+/* GT-3b END */
+
 /* Sortable buttons */
 /**
 * Enhanced Sortable Table CSS
@@ -7330,3 +7800,4 @@ pre.language-json {
   color: #c1d100;
   border-color: #c1d100;
 }
+

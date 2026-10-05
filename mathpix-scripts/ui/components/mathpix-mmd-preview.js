@@ -763,6 +763,11 @@ class MathPixMMDPreview {
   _preprocessForPreview(content) {
     let processed = content;
 
+    // AL-2: the strip below discards every alt, and the library then renders
+    // each includegraphics with alt="". Capture URL -> alt first so render()
+    // can put the real text back on the img once the HTML is inserted.
+    this._figureAltsByUrl = this._extractFigureAlts(content);
+
     // Remove alt={...} from \includegraphics options entirely.
     // The CDN library treats the first {...} in options as the image source,
     // so alt={CONTENT} breaks image rendering. Handles trailing comma/space.
@@ -786,6 +791,108 @@ class MathPixMMDPreview {
     }
 
     return processed;
+  }
+
+  /**
+   * Decode alt text written by the integrator's `escapeAltForLatex`
+   * (backslash, then braces, escaped). Reverses braces first, then backslashes,
+   * exactly as `unescapeAltFromLatex` in the alt-text serialiser does.
+   *
+   * @param {string} text - Alt text as stored between the braces
+   * @returns {string} The original alt text
+   * @private
+   */
+  _decodeLatexAlt(text) {
+    if (typeof text !== "string") return "";
+    return text
+      .replace(/\\\{/g, "{")
+      .replace(/\\\}/g, "}")
+      .replace(/\\\\/g, "\\");
+  }
+
+  /**
+   * Capture the alt text of every `\includegraphics[alt={...}]{URL}` in raw MMD.
+   * Scans braces with backslash escapes, so an alt containing `\{` or `\}` is
+   * read whole. Chemistry alts (`<smiles>` notation) are skipped: that text is
+   * a machine string for the structure renderer, not a description.
+   *
+   * @param {string} content - Raw MMD content (before preprocessing)
+   * @returns {Map<string, string>} Map of image URL → decoded alt text
+   * @private
+   */
+  _extractFigureAlts(content) {
+    const altByUrl = new Map();
+    if (!content) return altByUrl;
+
+    const opener = /\\includegraphics\s*\[/g;
+    let match;
+    while ((match = opener.exec(content)) !== null) {
+      let i = opener.lastIndex;
+      let depth = 0;
+      let altStart = -1;
+      let alt = null;
+
+      for (; i < content.length; i++) {
+        const ch = content[i];
+        if (ch === "\\") {
+          i++; // an escaped character never opens, closes or ends anything
+          continue;
+        }
+        if (ch === "{") {
+          const before = content.slice(Math.max(0, i - 5), i);
+          if (depth === 0 && alt === null && /(^|[\[,\s])alt=$/.test(before)) {
+            altStart = i + 1;
+          }
+          depth++;
+        } else if (ch === "}") {
+          depth--;
+          if (depth === 0 && altStart !== -1 && alt === null) {
+            alt = content.slice(altStart, i);
+          }
+        } else if (ch === "]" && depth === 0) {
+          break;
+        }
+      }
+
+      opener.lastIndex = i;
+      if (alt === null) continue;
+
+      const urlMatch = /^\s*\{([^}]+)\}/.exec(content.slice(i + 1));
+      if (!urlMatch) continue;
+
+      const decoded = this._decodeLatexAlt(alt);
+      if (/<smiles/i.test(decoded)) continue;
+      altByUrl.set(urlMatch[1].trim(), decoded);
+    }
+    return altByUrl;
+  }
+
+  /**
+   * Put the captured alt text back on the rendered images. The CDN library
+   * renders every `\includegraphics` with alt="" once the alt option is
+   * stripped; this sets the real alt (or an empty one for a decorative image)
+   * on each img whose src is a captured URL. The stored MMD is never touched.
+   *
+   * @param {HTMLElement} targetElement - The preview DOM element
+   * @returns {number} How many images had their alt restored
+   * @private
+   */
+  _restoreFigureAlts(targetElement) {
+    const altByUrl = this._figureAltsByUrl;
+    if (!altByUrl || altByUrl.size === 0 || !targetElement) return 0;
+
+    let restored = 0;
+    for (const img of targetElement.querySelectorAll("img")) {
+      const src = img.getAttribute("src");
+      if (!altByUrl.has(src)) continue;
+      img.setAttribute("alt", altByUrl.get(src));
+      restored++;
+    }
+    logDebug("[MathPixMMDPreview] Restored figure alt text", {
+      captured: altByUrl.size,
+      restored,
+    });
+    return restored;
   }
 
   // ============================================================================
@@ -1401,6 +1508,10 @@ class MathPixMMDPreview {
     }
 
     try {
+      // AL-2: never carry a previous render's captured alts into this one
+      // (the map is only refilled when the preprocess flag is on)
+      this._figureAltsByUrl = new Map();
+
       // Phase 5F-3: Pre-process content for preview rendering
       const processedContent = this.config.FEATURES?.PREVIEW_PREPROCESS_FIGURES
         ? this._preprocessForPreview(mmdContent)
@@ -1480,6 +1591,9 @@ class MathPixMMDPreview {
       // Slot the content's headings into the surrounding page outline before
       // MathJax reconciliation runs - the content is still plain HTML here.
       MathPixMMDPreview.renormaliseHeadingLevels(targetElement);
+
+      // AL-2: restore the alt text the preprocess strip removed
+      this._restoreFigureAlts(targetElement);
 
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");

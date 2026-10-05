@@ -204,12 +204,14 @@ const GraphBuilderUI = (function () {
         form: document.getElementById("gb-tab-form"),
         paste: document.getElementById("gb-tab-paste"),
         upload: document.getElementById("gb-tab-upload"),
+        image: document.getElementById("gb-tab-image"),
       };
 
       this.panels = {
         form: document.getElementById("gb-form-panel"),
         paste: document.getElementById("gb-paste-panel"),
         upload: document.getElementById("gb-upload-panel"),
+        image: document.getElementById("gb-image-panel"),
       };
     }
 

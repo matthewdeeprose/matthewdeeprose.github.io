@@ -205,6 +205,49 @@ const ClassDiagramModule = (function () {
     return cls.genericType ? `${base} of ${convertGenerics(cls.genericType)}` : base;
   }
 
+  // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
+  // break, or only spaces) is read as unlabelled, in each type's own words."
+  // The test is a TEST only: it trims to decide, and never alters the bytes it
+  // narrates. It runs on the DELIVERED string, after the adapter's break
+  // transform, so a label that was only a break arrives here as "".
+  const UNLABELLED_CLASS_PHRASE = "unlabelled class";
+  const UNLABELLED_NOTE_TEXT = "is empty";
+
+  /**
+   * Does this delivered author text draw nothing?
+   * @param {*} text - A delivered label or note text
+   * @returns {boolean} True for an empty or whitespace-only string
+   */
+  function drawsNothing(text) {
+    return typeof text === "string" && text.trim() === "";
+  }
+
+  /**
+   * Is this class a class whose label draws nothing? `displayName` always
+   * carries the id when the author wrote no label (stage 0 C8), so an empty
+   * one can only mean a label that was written and draws nothing.
+   * @param {Object} cls - An adapter class object
+   * @returns {boolean} Whether to narrate it as unlabelled
+   */
+  function isUnlabelledClass(cls) {
+    return drawsNothing(cls.displayName);
+  }
+
+  /**
+   * The unlabelled reading of a class: the generator's own noun, then the
+   * author's id in the generator's quotes (never inflected, ledger entry 9).
+   * Lower case, ready for the middle of a sentence; the caller capitalises it
+   * where it opens one. Returned as HTML: only the id is author text.
+   * @param {Object} cls - An adapter class object
+   * @returns {string} e.g. unlabelled class "qa"
+   */
+  function unlabelledClassPhrase(cls) {
+    const generic = cls.genericType
+      ? ` of ${Common.escapeHtml(convertGenerics(cls.genericType))}`
+      : "";
+    return `${UNLABELLED_CLASS_PHRASE} "${Common.escapeHtml(cls.name)}"${generic}`;
+  }
+
   /**
    * The visibility and classifier prefix shared by attributes and methods.
    * Either part is omitted when absent rather than filled with a guess.
@@ -232,22 +275,24 @@ const ClassDiagramModule = (function () {
    * verbatim, and the generator's noun in the number the phrase calls for.
    * The author's name is never inflected.
    * @param {string} multiplicity - The raw multiplicity string
-   * @param {string} name - The other class's narrated name
+   * @param {string} nameHtml - The other class's narrated name, ALREADY
+   *   escaped for the HTML sink (enactment 4: the name may be the unlabelled
+   *   phrase, whose generator-owned quotation marks must not be escaped)
    * @returns {string} e.g. "zero or more Wheel instances"
    */
-  function multiplicityClause(multiplicity, name) {
+  function multiplicityClause(multiplicity, nameHtml) {
     const spec = MULTIPLICITY_PHRASES[multiplicity];
     if (!spec) {
       // An unrecognised multiplicity is spoken as written; the plural noun is
       // the safer default, since bare "1" is the only spelling that is
       // certainly singular and it is already in the map. The risk that made
       // that choice awkward is gone — the plural now lands on our own noun.
-      return `${Common.escapeHtml(multiplicity)} ${Common.escapeHtml(name)} ${CLASS_NOUN.plural}`;
+      return `${Common.escapeHtml(multiplicity)} ${nameHtml} ${CLASS_NOUN.plural}`;
     }
-    // The name is author text and is escaped; the noun is generator furniture
+    // The name arrives escaped by the caller; the noun is generator furniture
     // and is never escaped separately.
     const noun = spec.plural ? CLASS_NOUN.plural : CLASS_NOUN.singular;
-    return `${spec.phrase} ${Common.escapeHtml(name)} ${noun}`;
+    return `${spec.phrase} ${nameHtml} ${noun}`;
   }
 
   /**
@@ -287,8 +332,11 @@ const ClassDiagramModule = (function () {
     const annotations = cls.annotations || [];
 
     // Both halves are author text; the parentheses and separator are not.
+    const headingName = isUnlabelledClass(cls)
+      ? Common.capitalize(unlabelledClassPhrase(cls))
+      : Common.escapeHtml(classDisplayName(cls));
     const heading =
-      Common.escapeHtml(classDisplayName(cls)) +
+      headingName +
       (annotations.length
         ? ` (${annotations.map((a) => Common.escapeHtml(a)).join(", ")})`
         : "");
@@ -363,9 +411,17 @@ const ClassDiagramModule = (function () {
    * @param {Object} relationship - An adapter relationship
    * @param {Map<string, string>} displayNames - Class name to narrated name
    * @param {Map<string, string>} interfaceNames - Synthesised id to label
+   * @param {Map<string, string>} unlabelledPhrases - Class name to the
+   *   (escaped, lower-case) unlabelled phrase, for classes whose label draws
+   *   nothing; such a class is read by this phrase and never by its bare id
    * @returns {string} An <li> fragment
    */
-  function renderRelationshipItem(relationship, displayNames, interfaceNames) {
+  function renderRelationshipItem(
+    relationship,
+    displayNames,
+    interfaceNames,
+    unlabelledPhrases
+  ) {
     // An endpoint may not resolve — the lollipop case is measured and
     // legitimate — so the raw id is the fallback rather than an error.
     const fromName =
@@ -373,10 +429,12 @@ const ClassDiagramModule = (function () {
     const toName = displayNames.get(relationship.to) || relationship.to;
     const isSelf = relationship.from === relationship.to;
 
-    // fromName/toName stay RAW for multiplicityClause, which escapes the name
-    // itself. Everything entering the sentence uses these.
-    const safeFrom = Common.escapeHtml(fromName);
-    const safeTo = Common.escapeHtml(toName);
+    // Everything entering the sentence uses these, escaped once. A class whose
+    // label draws nothing reads as its unlabelled phrase (enactment 4).
+    const safeFrom =
+      unlabelledPhrases.get(relationship.from) || Common.escapeHtml(fromName);
+    const safeTo =
+      unlabelledPhrases.get(relationship.to) || Common.escapeHtml(toName);
 
     // The marker end is the parent, whole, aggregate or target (C2).
     const markerName = relationship.markerAt === "to" ? safeTo : safeFrom;
@@ -411,9 +469,19 @@ const ClassDiagramModule = (function () {
         .replace("{second}", isSelf ? "itself" : slot(spec.second));
     }
 
+    // The unlabelled phrase is lower case so it can sit mid-sentence; where it
+    // opens the sentence it is capitalised. An author's own class name is
+    // never touched, which is why this tests for the generator's phrase WITH
+    // its raw opening quotation mark: escaped author text carries none.
+    if (sentence.startsWith(`${UNLABELLED_CLASS_PHRASE} "`)) {
+      sentence = Common.capitalize(sentence);
+    }
+
     let text = `${sentence}.`;
 
-    if (relationship.label) {
+    // A label that draws nothing is read as no label (P1): the same absence
+    // the canvas shows.
+    if (relationship.label && !drawsNothing(relationship.label)) {
       // The quotation marks are furniture; only the label is escaped.
       text += ` Labelled "${Common.escapeHtml(relationship.label)}".`;
     }
@@ -425,12 +493,12 @@ const ClassDiagramModule = (function () {
     const hasTo = Boolean(relationship.multiplicityTo);
     if (hasFrom && hasTo) {
       text +=
-        ` Each ${safeFrom} relates to ${multiplicityClause(relationship.multiplicityTo, toName)};` +
-        ` each ${safeTo} relates to ${multiplicityClause(relationship.multiplicityFrom, fromName)}.`;
+        ` Each ${safeFrom} relates to ${multiplicityClause(relationship.multiplicityTo, safeTo)};` +
+        ` each ${safeTo} relates to ${multiplicityClause(relationship.multiplicityFrom, safeFrom)}.`;
     } else if (hasTo) {
-      text += ` Each ${safeFrom} relates to ${multiplicityClause(relationship.multiplicityTo, toName)}.`;
+      text += ` Each ${safeFrom} relates to ${multiplicityClause(relationship.multiplicityTo, safeTo)}.`;
     } else if (hasFrom) {
-      text += ` Each ${safeTo} relates to ${multiplicityClause(relationship.multiplicityFrom, fromName)}.`;
+      text += ` Each ${safeTo} relates to ${multiplicityClause(relationship.multiplicityFrom, safeFrom)}.`;
     }
 
     return `<li>${text}</li>`;
@@ -522,6 +590,15 @@ const ClassDiagramModule = (function () {
       graph.classes.map((cls) => [cls.name, classDisplayName(cls)])
     );
 
+    // A class whose label draws nothing is read by its unlabelled phrase
+    // wherever its name would be spoken (enactment 4, P2). Built once so the
+    // class list, the roll-call, the relationships and the notes agree.
+    const unlabelledPhrases = new Map(
+      graph.classes
+        .filter(isUnlabelledClass)
+        .map((cls) => [cls.name, unlabelledClassPhrase(cls)])
+    );
+
     // Only pay for the extra parse when a lollipop is actually present.
     const hasLollipop = graph.relationships.some((r) => r.kind === "lollipop");
     const interfaceNames = hasLollipop
@@ -561,7 +638,9 @@ const ClassDiagramModule = (function () {
         // the Classes list: this is a roll-call, not a declaration.
         const names = Common.formatList(
           unconnected.map((cls) =>
-            Common.escapeHtml(convertGenerics(cls.displayName))
+            isUnlabelledClass(cls)
+              ? unlabelledClassPhrase(cls)
+              : Common.escapeHtml(convertGenerics(cls.displayName))
           )
         );
         sentences.push(
@@ -602,7 +681,12 @@ const ClassDiagramModule = (function () {
       parts.push(`<ul class="class-relationships">`);
       for (const relationship of graph.relationships) {
         parts.push(
-          renderRelationshipItem(relationship, displayNames, interfaceNames)
+          renderRelationshipItem(
+            relationship,
+            displayNames,
+            interfaceNames,
+            unlabelledPhrases
+          )
         );
       }
       parts.push(`</ul>`);
@@ -623,17 +707,21 @@ const ClassDiagramModule = (function () {
       parts.push(`<h4 class="mermaid-details-heading">Notes</h4>`);
       parts.push(`<ul class="class-notes">`);
       for (const note of graph.notes) {
+        // P3: a note that draws nothing is narrated as empty, in the note
+        // sentence's own words, and never as `reads: .`.
+        const noteVerb = drawsNothing(note.text)
+          ? UNLABELLED_NOTE_TEXT
+          : `reads: ${Common.escapeHtml(note.text)}`;
         if (note.attachedTo) {
           // The attachment may name a class that does not exist (C10), so
-          // the raw id stands in rather than the lookup failing.
-          const target = displayNames.get(note.attachedTo) || note.attachedTo;
-          parts.push(
-            `<li>A note on ${Common.escapeHtml(target)} reads: ${Common.escapeHtml(note.text)}.</li>`
-          );
+          // the raw id stands in rather than the lookup failing. A class whose
+          // label draws nothing reads as its unlabelled phrase.
+          const target =
+            unlabelledPhrases.get(note.attachedTo) ||
+            Common.escapeHtml(displayNames.get(note.attachedTo) || note.attachedTo);
+          parts.push(`<li>A note on ${target} ${noteVerb}.</li>`);
         } else {
-          parts.push(
-            `<li>A note reads: ${Common.escapeHtml(note.text)}.</li>`
-          );
+          parts.push(`<li>A note ${noteVerb}.</li>`);
         }
       }
       parts.push(`</ul>`);

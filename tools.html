@@ -5149,6 +5149,21 @@
                     <span class="gb-tab-icon">📁</span>
                     <span class="gb-tab-label">Upload File</span>
                   </button>
+                  <button
+                    type="button"
+                    id="gb-tab-image"
+                    class="gb-tab-button"
+                    role="tab"
+                    aria-controls="gb-image-panel"
+                    aria-selected="false"
+                  >
+                    <span
+                      class="gb-tab-icon"
+                      aria-hidden="true"
+                      data-icon="image"
+                    ></span>
+                    <span class="gb-tab-label">From an image</span>
+                  </button>
                 </div>
               </fieldset>
 
@@ -5264,6 +5279,73 @@ Science,91</pre
                   </p>
                 </div>
               </div>
+
+              <!-- Chart image panel (shipped hidden; wired in B-4) -->
+              <div
+                id="gb-image-panel"
+                class="gb-input-panel"
+                role="tabpanel"
+                aria-labelledby="gb-tab-image"
+              >
+                <h3>Extract data from a chart image</h3>
+                <p>
+                  An AI model reads the chart and fills the data table. Check
+                  the numbers before building your chart, because values read
+                  from a picture are estimates.
+                </p>
+                <!-- UX-2d. The house drop zone, as on the Upload File tab. The label is the click
+                     target and the drop zone; the input is a SIBLING so the theme's
+                     .gb-upload-area:focus-within rule draws the focus ring. aria-labelledby narrows
+                     the name to the first sentence; the help text is the description; the chosen
+                     name is a plain paragraph so the control's name never changes with its value. -->
+                <div class="gb-image-field gb-upload-area">
+                  <label
+                    for="gb-image-input"
+                    class="gb-file-label"
+                    id="gb-image-drop-zone"
+                  >
+                    <span
+                      class="gb-upload-icon"
+                      aria-hidden="true"
+                      data-icon="image"
+                    ></span>
+                    <span class="gb-upload-text" id="gb-image-drop-text"
+                      >Choose a chart image, or drop one here</span
+                    >
+                  </label>
+                  <input
+                    type="file"
+                    id="gb-image-input"
+                    accept="image/png,image/jpeg,image/webp"
+                    class="gb-file-input"
+                    aria-labelledby="gb-image-drop-text"
+                    aria-describedby="gb-image-input-help"
+                  />
+                  <p id="gb-image-input-help" class="gb-help-text">
+                    PNG, JPEG or WebP. You can also paste one from the
+                    clipboard (Ctrl+V).
+                  </p>
+                  <p id="gb-image-file-name">No image chosen</p>
+                </div>
+                <div class="gb-image-field">
+                  <label for="gb-image-model">Model</label>
+                  <select id="gb-image-model"></select>
+                </div>
+                <button type="button" id="gb-image-extract" class="gb-action-button" disabled>
+                  Extract data
+                </button>
+                <div id="gb-image-result" hidden></div>
+                <!-- After the Extract button, so the panel's Tab order stays file input, model, Extract -->
+                <details
+                  id="gb-image-original-data"
+                  class="gb-original-image"
+                  hidden
+                  open
+                >
+                  <summary>Your original image</summary>
+                  <img alt="" />
+                </details>
+              </div>
               <!-- Data preview -->
               <div
                 id="gb-data-preview"
@@ -5305,6 +5387,16 @@ Science,91</pre
               aria-labelledby="gb-chart-heading"
             >
               <h2 id="gb-chart-heading">Step 2: Choose Chart Type</h2>
+
+              <details
+                id="gb-image-original-type"
+                class="gb-original-image"
+                hidden
+                open
+              >
+                <summary>Your original image</summary>
+                <img alt="" />
+              </details>
 
               <div class="gb-chart-grid">
                 <button
@@ -5659,6 +5751,15 @@ Science,91</pre
                   <div id="gb-chart-preview" class="gb-chart-preview-container">
                     <!-- Chart preview will be rendered here -->
                   </div>
+                  <details
+                    id="gb-image-original-config"
+                    class="gb-original-image"
+                    hidden
+                    open
+                  >
+                    <summary>Your original image</summary>
+                    <img alt="" />
+                  </details>
                 </div>
 
                 <!-- Configuration form -->
@@ -5768,9 +5869,20 @@ Science,91</pre
                 </p>
               </div>
 
-              <!-- Generated chart container -->
-              <div id="gb-final-chart" class="gb-final-chart-container">
-                <!-- Final chart with all accessibility features will be rendered here -->
+              <div class="gb-result-layout">
+                <details
+                  id="gb-image-original-result"
+                  class="gb-original-image"
+                  hidden
+                  open
+                >
+                  <summary>Your original image</summary>
+                  <img alt="" />
+                </details>
+                <!-- Generated chart container -->
+                <div id="gb-final-chart" class="gb-final-chart-container">
+                  <!-- Final chart with all accessibility features will be rendered here -->
+                </div>
               </div>
 
               <!-- Navigation -->
@@ -6983,7 +7095,7 @@ Science,91</pre
                     class="mathpix-btn mathpix-btn-primary"
                     onclick="startConvertModeConversion()"
                     disabled
-                    aria-describedby="convert-mode-status convert-mode-cost-notice"
+                    aria-describedby="convert-mode-cost-notice"
                   >
                     <span aria-hidden="true" data-icon="refresh"></span> Convert
                     Selected
@@ -13568,7 +13680,7 @@ Science,91</pre
                       class="mathpix-btn mathpix-btn-primary"
                       onclick="startMMDConversion()"
                       disabled
-                      aria-describedby="convert-status mathpix-convert-cost-notice"
+                      aria-describedby="mathpix-convert-cost-notice"
                     >
                       <span aria-hidden="true" data-icon="refresh"></span>
                       Convert Selected
@@ -20976,6 +21088,8 @@ Science,91</pre
     <script src="md-scripts/charts/graph-builder-charts.js"></script>
     <script src="md-scripts/charts/graph-builder-core.js"></script>
     <script src="md-scripts/charts/graph-builder-sizing-integration.js"></script>
+    <script src="md-scripts/charts/graph-builder-image-reply.js"></script>
+    <script src="md-scripts/charts/graph-builder-image.js"></script>
     <!-- Graph Builder Enhanced Modules (load in dependency order) -->
     <script src="js/graph-builder-column-manager.js"></script>
     <script src="js/graph-builder-csv-processor.js"></script>
@@ -21951,6 +22065,10 @@ Science,91</pre
 
     <!-- Image Describer Prompts (must load before controller) -->
     <script src="image-describer/prompts/prompt-loader.js"></script>
+
+    <!-- Model output ceilings (generated data) and the shared resolver — must load before the controller (H-17) -->
+    <script src="js/model-output-ceilings.js"></script>
+    <script src="js/model-output-budget.js"></script>
 
     <!-- Image Describer Controller -->
     <script src="image-describer/image-describer-controller.js"></script>

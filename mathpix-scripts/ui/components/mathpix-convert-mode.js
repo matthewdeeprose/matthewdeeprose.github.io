@@ -1706,6 +1706,9 @@ class MathPixConvertMode {
 
     this.isConverting = true;
     this.completedDownloads = new Map();
+    // Parcel 10l: Cancel needs the id, and may come before it exists.
+    this.cancelRequested = false;
+    this.activeConversionId = null;
 
     // Update UI
     const convertBtn = document.getElementById("convert-mode-convert-btn");
@@ -1758,6 +1761,9 @@ class MathPixConvertMode {
     }
     logInfo("Starting conversion for formats:", selectedFormats);
 
+    // Parcel O-02: MathPix's reason for each failed format, filled by onComplete
+    let formatErrors = {};
+
     try {
       // Convert all formats in one API call (more efficient)
       const results = await apiClient.convertAndDownload(
@@ -1766,6 +1772,9 @@ class MathPixConvertMode {
         {
           onStart: (conversionId) => {
             logDebug("Conversion started:", conversionId);
+            // Parcel 10l: remember the id; honour a Cancel that came first.
+            this.activeConversionId = conversionId;
+            if (this.cancelRequested) apiClient.cancelConversion(conversionId);
             // Mark all as processing
             selectedFormats.forEach((format) => {
               this.updateProgressItem(format, "processing", "Processing...");
@@ -1789,13 +1798,24 @@ class MathPixConvertMode {
             this.updateProgressItem(format, "completed", "Complete");
 
             // Store result
-            const downloadFilename = `${this.filename}.${this.getFileExtension(
+            const downloadFilename = `${this.filename}${this.getFileExtension(
               format,
             )}`;
             this.completedDownloads.set(format, {
               blob: blob,
               filename: downloadFilename,
               format: format,
+            });
+          },
+          // Parcel O-02: say which format failed and why, in its own row
+          onComplete: (completionResult) => {
+            formatErrors = completionResult.errors || {};
+            (completionResult.failed || []).forEach((format) => {
+              this.updateProgressItem(
+                format,
+                "error",
+                `Failed: ${formatErrors[format] || "Unknown error"}`,
+              );
             });
           },
           onError: (error) => {
@@ -1817,7 +1837,7 @@ class MathPixConvertMode {
       // Handle any formats that completed but weren't caught by onFormatComplete
       results.forEach((blob, format) => {
         if (!this.completedDownloads.has(format)) {
-          const downloadFilename = `${this.filename}.${this.getFileExtension(
+          const downloadFilename = `${this.filename}${this.getFileExtension(
             format,
           )}`;
           this.completedDownloads.set(format, {
@@ -1830,13 +1850,13 @@ class MathPixConvertMode {
     } catch (error) {
       logError("Conversion failed:", error);
 
-      // Mark all incomplete formats as failed
-      selectedFormats.forEach((format) => {
+      // Mark all incomplete formats as failed (not after a Cancel: Parcel 10l)
+      if (!this.cancelRequested) selectedFormats.forEach((format) => {
         if (!this.completedDownloads.has(format)) {
           const progressItem = document.getElementById(
-            `convert-progress-${format.replace(".", "-")}`,
+            `convert-progress-${format.replace(/\./g, "-")}`,
           );
-          const statusEl = progressItem?.querySelector(".progress-status");
+          const statusEl = progressItem?.querySelector(".mathpix-progress-status");
           if (statusEl) statusEl.textContent = `Failed: ${error.message}`;
           if (progressItem) progressItem.classList.add("error");
         }
@@ -1846,14 +1866,28 @@ class MathPixConvertMode {
     this.isConverting = false;
 
     // Update UI after completion
+    // Parcel 10l: if Cancel has focus when it hides, hand focus back.
+    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
     if (convertHold) convertHold.release();
     this.updateConvertButtonState();
     if (cancelBtn) cancelBtn.hidden = true;
+    if (cancelHadFocus && convertBtn) convertBtn.focus();
+
+    // A cancelled run shows nothing it may have fetched.
+    if (this.cancelRequested) {
+      this.cancelRequested = false;
+      this.completedDownloads = new Map();
+      if (progressSection) progressSection.hidden = true;
+      return;
+    }
 
     // Determine errors (formats that were selected but not completed)
     const errors = selectedFormats
       .filter((format) => !this.completedDownloads.has(format))
-      .map((format) => ({ format, error: "Conversion failed" }));
+      .map((format) => ({
+        format,
+        error: formatErrors[format] || "Conversion failed", // Parcel O-02
+      }));
 
     // Show downloads if any succeeded
     if (this.completedDownloads.size > 0) {
@@ -1885,31 +1919,39 @@ class MathPixConvertMode {
    * Cancel ongoing conversion
    */
   cancelConversion() {
-    this.isConverting = false;
+    // Parcel 10l: stop the client polling. It cannot stop the request
+    // MathPix already received, so this saves no charge.
+    if (!this.isConverting || this.cancelRequested) return;
+    this.cancelRequested = true;
+    const apiClient = window.getMathPixConvertClient?.();
+    if (apiClient && this.activeConversionId) {
+      apiClient.cancelConversion(this.activeConversionId);
+    }
     this.showNotification("Conversion cancelled", "info");
     logInfo("Conversion cancelled by user");
   }
 
   /**
-   * Get file extension for format
+   * Get file name suffix for format, separator included (Parcel O-01:
+   * the two PDF formats get distinct suffixes, so a "-" can replace the ".")
    * @param {string} format
-   * @returns {string}
+   * @returns {string} e.g. ".docx" or "-html.pdf"
    * @private
    */
   getFileExtension(format) {
     const extensions = {
-      docx: "docx",
-      pdf: "pdf",
-      "tex.zip": "tex.zip",
-      "latex.pdf": "pdf",
-      html: "html",
-      md: "md",
-      pptx: "pptx",
-      "mmd.zip": "mmd.zip",
-      "md.zip": "md.zip",
-      "html.zip": "html.zip",
+      docx: ".docx",
+      pdf: "-html.pdf",
+      "tex.zip": ".tex.zip",
+      "latex.pdf": "-latex.pdf",
+      html: ".html",
+      md: ".md",
+      pptx: ".pptx",
+      "mmd.zip": ".mmd.zip",
+      "md.zip": ".md.zip",
+      "html.zip": ".html.zip",
     };
-    return extensions[format] || format;
+    return extensions[format] || `.${format}`;
   }
 
   /**
@@ -2100,12 +2142,16 @@ class MathPixConvertMode {
 
     if (!errorsSection || !errorsList) return;
 
-    errorsList.innerHTML = errors
-      .map(
-        (e) =>
-          `<li><strong>${e.format.toUpperCase()}:</strong> ${e.error}</li>`,
-      )
-      .join("");
+    // Parcel O-02: DOM methods, so MathPix's own reason text is never parsed as markup
+    errorsList.replaceChildren(
+      ...errors.map((e) => {
+        const li = document.createElement("li");
+        const strong = document.createElement("strong");
+        strong.textContent = `${e.format.toUpperCase()}:`;
+        li.append(strong, ` ${e.error}`);
+        return li;
+      }),
+    );
 
     errorsSection.hidden = false;
     logDebug("Errors shown:", errors.length);

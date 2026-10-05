@@ -11,7 +11,9 @@
  *   init({ sinkId, temperature }) bind one OpenRouterEmbed to the hidden sink
  *   complete({ systemPrompt, userPrompt, schema, knownIds, model, pass, signal })
  *   estimate({ systemPrompt, userPrompt, model, pass })
- *   resolveModel({ model, pass }) the id one send would use, or null
+ *   resolveModel({ model, pass }) the id one send would use, PASS_UNAVAILABLE
+ *                               for a pass that does not run on this provider, or null
+ *   plausibilityScoresFromReply(raw, knownIds)  stage `pl`: scores, or a named refusal
  *   outputTokensFor(pass, modelId) the output tokens per send estimate assumes
  *   requestOptionsFor(modelId)  one send's reply ceiling and reasoning effort
  *   getTemperature()            what is ON the instance, or null
@@ -154,14 +156,40 @@ const CaptionsFixerLLM = (function () {
   // ==========================================================================
 
   /**
-   * The two passes a caller can name. `recurring` is the discovery stage's
-   * pass over the whole transcript; `pass` is the cue-level pass over the
-   * applied captions (captions-fixer-stage-llm-pass.js).
+   * The passes a caller can name. `recurring` is the discovery stage's pass
+   * over the whole transcript; `pass` is the cue-level pass over the applied
+   * captions (captions-fixer-stage-llm-pass.js); `plausibility` (stage `pl`,
+   * 1 October 2026) is the score-only send after each chunk's cue-level send,
+   * which proposes nothing.
    */
   const PASSES = Object.freeze({
     RECURRING: "recurring",
     PASS: "pass",
+    PLAUSIBILITY: "plausibility",
   });
+
+  /**
+   * What `resolveModel` returns for a pass whose MODEL_BY_PASS entry is an
+   * explicit `null` on the active provider: "this pass does not run here".
+   * It is a string so every caller that treats the result as an id keeps
+   * working, and it is namespaced so no registry id can equal it. A caller
+   * that wants to know compares against this; `complete` refuses it as
+   * NO_MODEL, and `estimate` reports it as `unavailable`.
+   */
+  const PASS_UNAVAILABLE = "captions-fixer:pass-unavailable";
+
+  /** The tier `estimate` reports for an unavailable pass, which sends nothing. */
+  const UNAVAILABLE_TIER = "unavailable";
+
+  /**
+   * Passes that NEVER fall through to the first eligible model (stage `pl`,
+   * ruling 13, 1 October 2026). For these, a preferred id that is not in the
+   * eligible list for the active provider (retired, disabled, or no eligible
+   * model at all) resolves to PASS_UNAVAILABLE, because the fall-through would
+   * send a model nobody measured for this pass. The recurring and cue-level
+   * passes are not in it and fall through as they always did.
+   */
+  const PASSES_WITHOUT_FALL_THROUGH = Object.freeze([PASSES.PLAUSIBILITY]);
 
   /** What a caller naming no pass resolves to, with a WARN saying so. */
   const DEFAULT_PASS = PASSES.RECURRING;
@@ -175,12 +203,20 @@ const CaptionsFixerLLM = (function () {
    * moves to Fable 5.1 on OpenRouter on the evidence of rounds cf-6 and cf-7:
    * 0 harmful proposals in 133 kept against mini's 25 in 82, and mini
    * returned an empty list for 5 of 9 chunks at cf-7 C1. Foundry carries no
-   * Anthropic model, so its pass entry stays on mini until round cf-8 answers
-   * for its successor.
+   * Anthropic model, so its pass entry stayed on mini until a successor was
+   * measured.
+   *
+   * Stage `mp`, Matthew's decision of 1 October 2026, product owner: Foundry's
+   * cue-level default is gpt-6-sol, "better overall and for Foundry the better
+   * option". Round cf-10 (effort "low", a 16,000-token limit) kept 31 proposals
+   * with 0 harm by ear, 0 of 55 clean captions touched, 33 of 254 hunks right;
+   * mini's 25 harms in 82 kept proposals at cf-6 are the comparison. The
+   * recurring pass does not move on either provider.
    *
    * An entry is a PREFERENCE, never a guarantee — the ladder in
    * `resolveModel` uses it only when the id is in the eligible list for the
-   * active provider, and falls through to the first eligible model otherwise.
+   * active provider, and falls through to the first eligible model otherwise
+   * (except for a pass in PASSES_WITHOUT_FALL_THROUGH, which is unavailable).
    *
    * Two provider keys is the whole set: ProviderSwitcher.KNOWN_PROVIDERS
    * carries exactly `openrouter` and `azure-openai`, so `getActive()` returns
@@ -195,8 +231,22 @@ const CaptionsFixerLLM = (function () {
     }),
     [PASSES.PASS]: Object.freeze({
       openrouter: "anthropic/claude-fable-5.1",
-      // THE ONE LINE ROUND cf-8 CHANGES, once it answers for gpt-5.6-sol.
-      "azure-openai": "azure-openai/gpt-5.4-mini",
+      // Stage `mp`, 1 October 2026: gpt-6-sol, on round cf-10. Was
+      // azure-openai/gpt-5.4-mini.
+      "azure-openai": "azure-openai/gpt-6-sol",
+    }),
+    // Stage `pl`, 1 October 2026: the plausibility score, on the one model
+    // round cf-10 measured it on (Foundry). Stage `mp-2`, Matthew's decision of
+    // 5 October 2026, product owner: "gpt-6-sol is the OpenRouter plausibility
+    // model; it matches Fable's catch at a quarter of the cost." Round cf-11
+    // at bar 3: gpt-6-sol caught 93 of 139 with 5 false alarms in 55 for about
+    // $0.12 a lecture, Fable 92 and 4 for about $0.49, mini fails (42 caught,
+    // 2 of 9 chunks unscored). This was an explicit null, which `resolveModel`
+    // still reads as "this pass does not run on this provider"
+    // (PASS_UNAVAILABLE) for any future null entry.
+    [PASSES.PLAUSIBILITY]: Object.freeze({
+      openrouter: "openai/gpt-6-sol",
+      "azure-openai": "azure-openai/gpt-6-sol",
     }),
   });
 
@@ -205,9 +255,18 @@ const CaptionsFixerLLM = (function () {
 
   /**
    * The one provider on which a model's declared request options are applied
-   * (stage `ro`, decision 3). OpenRouter sends exactly what it sent before:
-   * its provider builds a `reasoning` object of its own from an enabled
-   * instance (providers/openrouter.js ~:120-135), which decision 4 keeps out.
+   * (stage `ro`, decision 3): its registered reasoning effort and its
+   * registered output limit.
+   *
+   * OpenRouter takes NEITHER of those. Its provider builds a `reasoning`
+   * object of its own from an enabled instance (providers/openrouter.js
+   * ~:120-135), which decision 4 keeps out, so reasoning is never switched on
+   * there. Its reply LIMIT follows the model through the shared resolver
+   * instead (parcel H-22, 4 October 2026): `requestOptionsFor` below.
+   *
+   * This comment used to read "OpenRouter sends exactly what it sent before",
+   * which stopped being true of the limit at H-22 and is true of reasoning
+   * still.
    */
   const FOUNDRY_PROVIDER_ID = "azure-openai";
 
@@ -226,7 +285,14 @@ const CaptionsFixerLLM = (function () {
     CANCELLED: "cancelled",
     SEND: "send",
     BAD_REQUEST: "bad-request",
+    // The provider stopped the reply at its token limit (finish reason
+    // "length"). Not a parse failure: the reply is not parsed, and it is never
+    // sent again (parcel H-22).
+    TRUNCATED: "truncated",
   });
+
+  /** The finish reason a provider reports when a reply was cut off at its token limit. */
+  const FINISH_REASON_LENGTH = "length";
 
   /**
    * Appended to every system prompt. The embed cannot pass `response_format`,
@@ -285,15 +351,21 @@ const CaptionsFixerLLM = (function () {
    * every model shared and then a map keyed by model alone, which carried a
    * figure measured on the cue-level pass into the recurring pass.
    *
-   * THE ONE MEASURED ENTRY IS A PROVIDER COUNT, unlike cf-1's figures above:
+   * THE TWO MEASURED ENTRIES ARE PROVIDER COUNTS, unlike cf-1's figures above:
    * the mean `completion_tokens` in the provider's own usage over the nine
-   * sends of round cf-7, cell C1 (the 520-cue export, the shipped pass prompt),
-   * one copy per (chunk, attempt). Run file, by SHA-256 prefix:
+   * sends of one round's cell C1 (the shipped pass prompt), one copy per
+   * (chunk, attempt). Run files, by SHA-256 prefix:
    *   anthropic/claude-fable-5.1/C1-run1.json  9516d732b7f6837d  sum 20,069, mean 2,229.9
-   * The same records' summed `cost` reproduces cf-7-score.md exactly
-   * ($1.242780), which is the control that the right records were read.
-   * Fable's figure is 64 per cent reasoning tokens, which the provider bills
-   * as output.
+   *     (round cf-7, the 520-cue export)
+   *   azure-openai/gpt-6-sol/C1-run1.json      1d9c62d59330ab89  sum 7,841, mean 871.2
+   *     (round cf-10, stage `mp`, 1 October 2026, nine send records in the
+   *     run's .sends folder, one attempt per chunk)
+   * Each run's summed `cost` reproduces its score document exactly (Fable
+   * $1.242780 at cf-7-score.md; gpt-6-sol $0.112214 at $2 / $10 per million,
+   * the run file's own measuredUsd), which is the control that the right
+   * records were read. Fable's figure is 64 per cent reasoning tokens and
+   * gpt-6-sol's 39.5, which the provider bills as output: both figures
+   * include reasoning.
    *
    * MINI HAS NO ENTRY, AND ITS C1 MEAN OF 436 IS WITHDRAWN: five of its nine
    * replies were an empty list (5 to 11 tokens each), so the mean describes
@@ -302,11 +374,28 @@ const CaptionsFixerLLM = (function () {
    * THE RECURRING PASS HAS NO MEASURED FIGURE ON ANY MODEL. Its entry is
    * empty, so every recurring estimate takes OUTPUT_TOKENS_FALLBACK, as does
    * any pair absent here — Foundry's `azure-openai/gpt-5.4-mini` included.
+   * The cue-level pass on `azure-openai/gpt-6-sol` is measured, above.
+   *
+   * THE PLAUSIBILITY PASS ON gpt-6-sol IS MEASURED TOO: 398, the mean
+   * `completion_tokens` over the four measured sends of round cf-10's cell C5
+   * (266, 442, 442, 442; sum 1,592), reasoning inside it (16, 11, 11, 11). The
+   * fifth send of that cell was an HTTP 429 carrying no usage and is not in the
+   * mean. At $2 and $10 per million the four sends cost $0.029024.
+   *
+   * ON OPENROUTER (stage `mp-2`) THE SAME PASS IS 888: the mean completion
+   * tokens over the nine sends of round cf-11's P2, reasoning inside it, from
+   * 589 to 1,405. It is measured as the app sends it there, with no reasoning
+   * effort, so it is not like-for-like with Foundry's 398 at effort low.
    */
   const OUTPUT_TOKENS_BY_PASS_AND_MODEL = Object.freeze({
     [PASSES.RECURRING]: Object.freeze({}),
     [PASSES.PASS]: Object.freeze({
       "anthropic/claude-fable-5.1": 2230,
+      "azure-openai/gpt-6-sol": 871,
+    }),
+    [PASSES.PLAUSIBILITY]: Object.freeze({
+      "azure-openai/gpt-6-sol": 398,
+      "openai/gpt-6-sol": 888,
     }),
   });
 
@@ -334,6 +423,21 @@ const CaptionsFixerLLM = (function () {
    */
   const MAX_OUTPUT_TOKENS = 4000;
 
+  /**
+   * The most this tool ever asks one OpenRouter model for in a reply, and the
+   * ceiling it hands the shared resolver (js/model-output-budget.js).
+   *
+   * PARCEL H-22, 4 October 2026, after round cf-8 and Matthew's instruction
+   * that "we keep hitting this type of issue lately so we need to be more
+   * flexible for limits". On OpenRouter the limit sent is
+   * `min(CAPTIONS_OUTPUT_CEILING, the model's published ceiling)`, and
+   * MAX_OUTPUT_TOKENS above is now only the FALLBACK: what an unknown model, or
+   * a page without the resolver, still sends. 16,000 is the figure the Foundry
+   * registrations already chose for this tool (stage `ro`, round cf-9), so the
+   * two providers ask for the same most.
+   */
+  const CAPTIONS_OUTPUT_CEILING = 16000;
+
   /** Registry `costs` are quoted per million tokens. */
   const TOKENS_PER_COST_UNIT = 1000000;
 
@@ -351,6 +455,72 @@ const CaptionsFixerLLM = (function () {
 
   /** The reason string `cancel()` hands the embed's own cancellation path. */
   const CANCEL_REASON = "Captions Fixer cancelled the request";
+
+  // ==========================================================================
+  // THE PLAUSIBILITY PASS — stage `pl`, 1 October 2026
+  // ==========================================================================
+
+  /**
+   * A caption scoring AT OR BELOW this, and carrying no proposal, becomes a
+   * "Check this caption" row (the stage that reads it, a later iteration).
+   *
+   * Matthew's decision of 1 October 2026, on round cf-10 (gpt-6-sol, effort
+   * "low", a 16,000-token limit): at bar 3 the score caught 98 of the 139
+   * erroneous captions (70.5 per cent) with 5 false alarms in 55 clean
+   * captions; at bar 2 it caught 65 of 139 with 0 of 55. Scores run 1 to 5.
+   */
+  const PLAUSIBILITY_BAR = 3;
+
+  /** The scale the prompt asks for; a score outside it is `invalid`. */
+  const PLAUSIBILITY_SCORE_MIN = 1;
+  const PLAUSIBILITY_SCORE_MAX = 5;
+
+  /** The reply is one JSON object, never the array schema's list. */
+  const PLAUSIBILITY_SCHEMA = Object.freeze({ type: "object" });
+
+  /** Joins the prompt's four blocks, as the driver that measured it did. */
+  const PLAUSIBILITY_BLOCK_SEPARATOR = "\n\n";
+
+  /**
+   * THE GLOSSARY LINE IS FIXED AT "none supplied", AS MEASURED. Round cf-10
+   * sent exactly this, so its recall describes this prompt and no other. A
+   * glossary-aware variant is out of scope until a round measures one; a person
+   * who supplies terms still gets this line on this pass.
+   */
+  const PLAUSIBILITY_GLOSSARY_LINE = "Known terms for this module: none supplied.";
+
+  /**
+   * The plausibility system prompt, word for word the driver's constant
+   * (.claude/a11y/sr/cf-6-drive.mjs `CF10_PLAUSIBILITY_SYSTEM`): 806
+   * characters, SHA-256
+   * 025eb53ba07dffe33e71d368abe08afda1324df3b0db7bb5de48d4d742d75ced.
+   * The digest is asserted as a string by the suite, so an edit here that the
+   * measurement does not cover reddens a row. It asks for scores and proposes
+   * nothing.
+   */
+  const PROMPT_PLAUSIBILITY = [
+    "You are a captioning editor for UK university lecture recordings. " +
+      "Below is part of an automatic speech recogniser's transcript of one lecture, one caption per line, in the order the words were spoken.",
+    "Do not correct anything and do not propose any text. " +
+      "For each caption you may score, judge only whether it reads as a sensible sentence in context. " +
+      "Score 1 if it does not read as a sentence anyone would say, and 5 if it reads as a sensible sentence in its context. Use the whole scale.",
+    PLAUSIBILITY_GLOSSARY_LINE,
+    "Reply with a JSON object at the top level, and nothing else. " +
+      "Each key is the number in square brackets at the start of a caption you may score, written as a string; each value is the integer score from 1 to 5. " +
+      "Score every caption you may score, once, and add no other key.",
+  ].join(PLAUSIBILITY_BLOCK_SEPARATOR);
+
+  /**
+   * The plausibility user prompt's range sentence (133 characters), the
+   * driver's `CF10_PLAUSIBILITY_RANGE_TEMPLATE`. `{first}` and `{last}` are the
+   * chunk's own primary ids. It replaces the shipped user prompt's one range
+   * paragraph and the cue lines stay byte for byte.
+   */
+  const PLAUSIBILITY_RANGE_TEMPLATE =
+    "You may score captions {first} to {last} only. The other captions are here so you can read across the join; never score one of those.";
+
+  /** How the shipped user prompt's range paragraph opens, which it must. */
+  const PLAUSIBILITY_SHIPPED_RANGE_LEAD = "You may change captions ";
 
   // ==========================================================================
   // MODULE STATE
@@ -443,15 +613,51 @@ const CaptionsFixerLLM = (function () {
   // ==========================================================================
 
   /**
+   * The reply limit for one OpenRouter send: the shared resolver's answer, or
+   * MAX_OUTPUT_TOKENS when the resolver is not on the page or refuses.
+   *
+   * The resolver is reached at CALL time and through `window`, because it is a
+   * plain script that loads after this one. It throws on a caller bug (an id
+   * that is not a non-empty string); that is caught here and WARNed rather than
+   * allowed to stop a send over a limit, and what is sent is then the old
+   * fixed figure, never nothing.
+   *
+   * @param {string} modelId
+   * @returns {number}
+   */
+  function openRouterLimitFor(modelId) {
+    const budget = window.ModelOutputBudget;
+    if (!budget || typeof budget.for !== "function") {
+      logWarn(`openRouterLimitFor: the output budget resolver is absent; sending ${MAX_OUTPUT_TOKENS}`);
+      return MAX_OUTPUT_TOKENS;
+    }
+    try {
+      return budget.for(modelId, {
+        toolCeiling: CAPTIONS_OUTPUT_CEILING,
+        fallback: MAX_OUTPUT_TOKENS,
+      });
+    } catch (error) {
+      logWarn(`openRouterLimitFor: the resolver refused '${String(modelId)}' (${error && error.message}); sending ${MAX_OUTPUT_TOKENS}`);
+      return MAX_OUTPUT_TOKENS;
+    }
+  }
+
+  /**
    * What one send asks of the instance: the reply ceiling and, where a model
    * declares one, a reasoning effort.
    *
-   * READ OFF THE FOUNDRY REGISTRATION, AND ONLY ON FOUNDRY. A registration may
-   * carry `metadata.maxOutputTokens` and `metadata.reasoningEffort`
+   * FOUNDRY: READ OFF THE REGISTRATION. A registration may carry
+   * `metadata.maxOutputTokens` and `metadata.reasoningEffort`
    * (js/foundry-model-definitions.js, stage `ro` iteration 1; `metadata` is the
-   * one block registerModel keeps whole). With OpenRouter active every send
-   * takes MAX_OUTPUT_TOKENS and no effort, whatever the id — an explicit
-   * Foundry id included — because decision 4 leaves that provider untouched.
+   * one block registerModel keeps whole). Those are this tool's own chosen
+   * settings, which is why the shared resolver does not read them (H-21b).
+   *
+   * OPENROUTER: THE LIMIT FOLLOWS THE MODEL, AND NO EFFORT IS EVER SET
+   * (parcel H-22). The limit is the shared resolver's
+   * `min(CAPTIONS_OUTPUT_CEILING, the model's published ceiling)`, falling
+   * back to MAX_OUTPUT_TOKENS for a model with no published ceiling or a page
+   * without the resolver. Reasoning stays off whatever the id — an explicit
+   * Foundry id included — because decision 4 keeps it off that provider.
    *
    * A declared limit that is not a positive whole number is ignored with a
    * WARN rather than handed to `setMaxTokens`, which throws on it.
@@ -461,7 +667,10 @@ const CaptionsFixerLLM = (function () {
    */
   function requestOptionsFor(modelId) {
     const options = { maxOutputTokens: MAX_OUTPUT_TOKENS, reasoningEffort: null };
-    if (activeProvider() !== FOUNDRY_PROVIDER_ID) return options;
+    if (activeProvider() !== FOUNDRY_PROVIDER_ID) {
+      options.maxOutputTokens = openRouterLimitFor(modelId);
+      return options;
+    }
 
     const model = registryModel(modelId);
     const metadata = model && model.metadata ? model.metadata : null;
@@ -808,6 +1017,14 @@ const CaptionsFixerLLM = (function () {
    *      benchmark that chose the preferred id no longer describes the send;
    *   4. otherwise null.
    *
+   * Before step 2, a pass whose entry for the active provider is an explicit
+   * `null` resolves to PASS_UNAVAILABLE: never a model, never a throw, never a
+   * fall-through. And a pass in PASSES_WITHOUT_FALL_THROUGH (the plausibility
+   * pass, ruling 13) skips step 3: when its preferred id is not eligible, or
+   * nothing is, it resolves to PASS_UNAVAILABLE rather than to another model
+   * or to null. The recurring and cue-level passes carry no null and are not
+   * in that list, so they fall through as they always did.
+   *
    * A MISSING OR UNKNOWN PASS IS NOT A HALT. It resolves as DEFAULT_PASS, the
    * recurring pass, and logs a WARN, so a caller that has not been taught its
    * pass name keeps working on the model it has always had. The recurring
@@ -816,8 +1033,8 @@ const CaptionsFixerLLM = (function () {
    *
    * @param {object} [options]
    * @param {string} [options.model] explicit override
-   * @param {string} [options.pass] a value of PASSES: 'recurring' or 'pass'
-   * @returns {string|null}
+   * @param {string} [options.pass] a value of PASSES: 'recurring', 'pass' or 'plausibility'
+   * @returns {string|null} a model id, PASS_UNAVAILABLE, or null
    */
   function resolveModel(options) {
     const opts = options || {};
@@ -834,16 +1051,35 @@ const CaptionsFixerLLM = (function () {
     }
 
     const provider = activeProvider();
-    const eligible = eligibleModels(provider);
-    if (eligible.length === 0) {
-      logWarn(`resolveModel: no eligible models for provider '${provider}'`);
-      return null;
+
+    // An EXPLICIT null preference is "this pass does not run on this provider".
+    // It is read before the eligible list on purpose: no model, eligible or
+    // not, is the right answer, and falling through would send one nobody
+    // measured. Only null counts; an absent key still falls through as before.
+    if (MODEL_BY_PASS[passName][provider] === null) {
+      logDebug(`resolveModel: the '${passName}' pass is unavailable on provider '${provider}'`);
+      return PASS_UNAVAILABLE;
     }
 
+    const eligible = eligibleModels(provider);
     const preferredId = MODEL_BY_PASS[passName][provider];
     const preferred = preferredId
       ? eligible.find((model) => model && model.id === preferredId)
       : undefined;
+
+    // A pass that never falls through is unavailable when its own model is
+    // not eligible, empty list included: no other model is the right answer.
+    if (!preferred && PASSES_WITHOUT_FALL_THROUGH.includes(passName)) {
+      logWarn(
+        `resolveModel: preferred id '${preferredId}' for the '${passName}' pass is not eligible for provider '${provider}'; the pass does not run here`,
+      );
+      return PASS_UNAVAILABLE;
+    }
+
+    if (eligible.length === 0) {
+      logWarn(`resolveModel: no eligible models for provider '${provider}'`);
+      return null;
+    }
 
     if (!preferred) {
       logWarn(
@@ -854,6 +1090,116 @@ const CaptionsFixerLLM = (function () {
 
     logDebug(`resolveModel: '${preferred.id}' for the '${passName}' pass on provider '${provider}'`);
     return preferred.id;
+  }
+
+  // ==========================================================================
+  // THE PLAUSIBILITY REPLY — six refusals, by name
+  // ==========================================================================
+
+  /**
+   * The six reasons a plausibility reply is refused, IN THE ORDER THEY ARE
+   * TESTED, named as the driver that measured the pass names them
+   * (.claude/a11y/sr/cf-6-drive.mjs `cf10ScoresFromReply`, `:1033-1052`). A
+   * refused reply leaves its chunk UNSCORED: never retried, never repaired, and
+   * no score from it used. The stage records which refusal it was.
+   *
+   *   unparseable  not JSON at all
+   *   shape        JSON that is not an object (a number, a string, null)
+   *   proposes     an array, or any value that is text or an object: the
+   *                reply is proposing, not scoring
+   *   outside      a key that is not one of the chunk's ids
+   *   omitted      an id of the chunk with no numeric score
+   *   invalid      a score that is not an integer from 1 to 5
+   */
+  const PLAUSIBILITY_REFUSALS = Object.freeze(["unparseable", "shape", "proposes", "outside", "omitted", "invalid"]);
+
+  /**
+   * One predicate per refusal, each taking the reading `readingOfReply`
+   * builds and returning true to REFUSE. Deliberately NOT frozen, and reached
+   * through the exported object, so a suite can switch ONE refusal off and
+   * redden exactly the rows that name it; frozen, no refusal could be bound
+   * on its own. Each reads `ctx.value` defensively, so a predicate switched
+   * off never makes a later one throw.
+   */
+  const plausibilityRefusalTests = {
+    unparseable: (ctx) => !ctx.parsed || !ctx.parsed.ok,
+    shape: (ctx) => ctx.value === null || typeof ctx.value !== "object",
+    proposes: (ctx) =>
+      Array.isArray(ctx.value) ||
+      ctx.keys.some((key) => typeof ctx.value[key] === "string" || (ctx.value[key] !== null && typeof ctx.value[key] === "object")),
+    outside: (ctx) => ctx.keys.some((key) => ctx.known.indexOf(key) === -1),
+    omitted: (ctx) => ctx.known.some((id) => ctx.numeric.indexOf(id) === -1),
+    invalid: (ctx) =>
+      ctx.numeric.some(
+        (key) =>
+          !Number.isInteger(ctx.value[key]) ||
+          ctx.value[key] < PLAUSIBILITY_SCORE_MIN ||
+          ctx.value[key] > PLAUSIBILITY_SCORE_MAX,
+      ),
+  };
+
+  /**
+   * What the six predicates read, built once per reply from the shipped
+   * tolerant parse, so the reply is parsed exactly the way `complete` parses
+   * every other.
+   * @param {*} raw
+   * @param {Array<string|number>} knownIds
+   * @returns {{ parsed: object, value: *, keys: Array<string>, known: Array<string>, numeric: Array<string> }}
+   */
+  function readingOfReply(raw, knownIds) {
+    const parsed = api.parseTolerantly(typeof raw === "string" ? raw : "");
+    const value = parsed.ok ? parsed.value : undefined;
+    const isObject = value !== null && typeof value === "object" && !Array.isArray(value);
+    const keys = isObject ? Object.keys(value) : [];
+    const known = Array.isArray(knownIds) ? knownIds.map(String) : [];
+    const numeric = keys.filter((key) => known.indexOf(key) > -1 && typeof value[key] === "number");
+    return { parsed: parsed, value: value, keys: keys, known: known, numeric: numeric };
+  }
+
+  /**
+   * One chunk's raw plausibility reply to a map of id to score, or the NAME of
+   * the first refusal that applies. Reads the RAW reply and not `complete`'s
+   * `data`: an array schema reads an object reply as an empty list, so the
+   * pass sends PLAUSIBILITY_SCHEMA, and the raw is what this reads either way.
+   *
+   * @param {string} raw the reply text
+   * @param {Array<string|number>} knownIds the chunk's primary ids
+   * @returns {{ ok: boolean, reason: string, scores: Object<string, number>|null }}
+   */
+  function plausibilityScoresFromReply(raw, knownIds) {
+    const ctx = readingOfReply(raw, knownIds);
+    for (const reason of PLAUSIBILITY_REFUSALS) {
+      if (api.plausibilityRefusalTests[reason](ctx)) {
+        return { ok: false, reason: reason, scores: null };
+      }
+    }
+    const scores = {};
+    ctx.numeric.forEach((key) => {
+      scores[key] = ctx.value[key];
+    });
+    return { ok: true, reason: "", scores: scores };
+  }
+
+  /**
+   * The plausibility user prompt for one chunk: the shipped user prompt with
+   * its ONE range paragraph (the text up to the first blank line) replaced by
+   * the template, the cue lines kept byte for byte. A shipped prompt that does
+   * not open with its range paragraph is refused as null and never rewritten,
+   * because a rewrite of an unrecognised prompt would send something nobody
+   * measured.
+   *
+   * @param {string} shippedUserPrompt the cue-level pass's user prompt
+   * @param {string|number} firstId the chunk's first primary id
+   * @param {string|number} lastId the chunk's last primary id
+   * @returns {string|null}
+   */
+  function buildPlausibilityUserPrompt(shippedUserPrompt, firstId, lastId) {
+    const text = typeof shippedUserPrompt === "string" ? shippedUserPrompt : "";
+    const paragraphEnd = text.indexOf("\n\n");
+    if (text.indexOf(PLAUSIBILITY_SHIPPED_RANGE_LEAD) !== 0 || paragraphEnd === -1) return null;
+    const idText = (id) => (id === undefined || id === null ? "" : String(id));
+    const range = PLAUSIBILITY_RANGE_TEMPLATE.split("{first}").join(idText(firstId)).split("{last}").join(idText(lastId));
+    return `${range}${text.slice(paragraphEnd)}`;
   }
 
   // ==========================================================================
@@ -1055,7 +1401,8 @@ const CaptionsFixerLLM = (function () {
    * @param {AbortSignal} [options.signal]
    * @returns {Promise<{ data: *, discarded: number, raw: string, model: string, usage: object|null, usageRaw: object|null, attempts: number, maxOutputTokens: number, reasoningEffort: string|null }>}
    *   `maxOutputTokens` and `reasoningEffort` are read off the instance during
-   *   the send (stage `ro`); a parse rejection carries both as well.
+   *   the send (stage `ro`); a parse rejection carries both as well, and so
+   *   does the ERRORS.TRUNCATED rejection a `length` finish produces (H-22).
    */
   async function complete(options) {
     const opts = options || {};
@@ -1080,6 +1427,12 @@ const CaptionsFixerLLM = (function () {
     }
 
     const modelId = api.resolveModel({ model: opts.model, pass: opts.pass });
+    if (modelId === PASS_UNAVAILABLE) {
+      throw adapterError(
+        ERRORS.NO_MODEL,
+        `The '${opts.pass}' pass does not run on the active provider; nothing was sent.`,
+      );
+    }
     if (!modelId) {
       throw adapterError(
         ERRORS.NO_MODEL,
@@ -1172,6 +1525,28 @@ const CaptionsFixerLLM = (function () {
         // NOTE the difference from `usage` one line above: that one uses `||`,
         // so a legitimately falsy object becomes null. This one does not.
         usageRaw = response?.metadata?.tokens ?? null;
+
+        // A REPLY THE PROVIDER CUT OFF AT ITS TOKEN LIMIT IS REFUSED, NOT PARSED
+        // AND NOT SENT AGAIN (parcel H-22). A reply stopped mid-array cannot close
+        // its brackets, so it used to fail to parse and BUY A SECOND PAID SEND at
+        // the same limit, which is likely to be cut again. The bytes are already
+        // in `raw`, so the rejection carries them like a parse rejection does and
+        // the pass stage persists them. Only `length` takes this branch: every
+        // other reason, an absent one included, goes on to parse and retry
+        // exactly as before.
+        if (response && response.finishReason === FINISH_REASON_LENGTH) {
+          throw adapterError(
+            ERRORS.TRUNCATED,
+            `The model's reply was cut off at its limit of ${sent.maxOutputTokens} tokens, so it was not used.`,
+            {
+              raw: raw,
+              model: modelId,
+              attempts: attempts,
+              maxOutputTokens: sent.maxOutputTokens,
+              reasoningEffort: sent.reasoningEffort,
+            },
+          );
+        }
 
         // Both reached through the exported object, for the seam reason in
         // parseTolerantly's own comment.
@@ -1424,6 +1799,22 @@ const CaptionsFixerLLM = (function () {
     const sends = resolveSends(opts.sends);
 
     const modelId = api.resolveModel({ model: opts.model, pass: opts.pass });
+
+    // A pass that does not run on this provider sends nothing, and says so: a
+    // flag, no sends and its own tier, so a caller cannot read the zero cost
+    // as a free model. `outputTokensAssumed` is 0 for the same reason.
+    if (modelId === PASS_UNAVAILABLE) {
+      return {
+        model: PASS_UNAVAILABLE,
+        unavailable: true,
+        inputTokens: inputTokens,
+        outputTokensAssumed: 0,
+        sends: 0,
+        costUsd: 0,
+        tier: UNAVAILABLE_TIER,
+      };
+    }
+
     const model = modelId ? registryModel(modelId) : null;
     const costs = model && model.costs;
 
@@ -1489,8 +1880,21 @@ const CaptionsFixerLLM = (function () {
     findJsonSpan: findJsonSpan,
     sameId: sameId,
     applySchema: applySchema,
+    // stage `pl`: the plausibility pass's parser and user prompt
+    plausibilityScoresFromReply: plausibilityScoresFromReply,
+    buildPlausibilityUserPrompt: buildPlausibilityUserPrompt,
+    // NOT frozen, so a suite can switch one refusal off (see its own comment)
+    plausibilityRefusalTests: plausibilityRefusalTests,
     // constants
     PASSES: PASSES,
+    PASS_UNAVAILABLE: PASS_UNAVAILABLE,
+    UNAVAILABLE_TIER: UNAVAILABLE_TIER,
+    PROMPT_PLAUSIBILITY: PROMPT_PLAUSIBILITY,
+    PLAUSIBILITY_RANGE_TEMPLATE: PLAUSIBILITY_RANGE_TEMPLATE,
+    PLAUSIBILITY_SHIPPED_RANGE_LEAD: PLAUSIBILITY_SHIPPED_RANGE_LEAD,
+    PLAUSIBILITY_SCHEMA: PLAUSIBILITY_SCHEMA,
+    PLAUSIBILITY_BAR: PLAUSIBILITY_BAR,
+    PLAUSIBILITY_REFUSALS: PLAUSIBILITY_REFUSALS,
     DEFAULT_PASS: DEFAULT_PASS,
     MODEL_BY_PASS: MODEL_BY_PASS,
     ERRORS: ERRORS,
@@ -1501,6 +1905,8 @@ const CaptionsFixerLLM = (function () {
     OUTPUT_TOKENS_FALLBACK: OUTPUT_TOKENS_FALLBACK,
     OUTPUT_TOKENS_BY_PASS_AND_MODEL: OUTPUT_TOKENS_BY_PASS_AND_MODEL,
     MAX_OUTPUT_TOKENS: MAX_OUTPUT_TOKENS,
+    CAPTIONS_OUTPUT_CEILING: CAPTIONS_OUTPUT_CEILING,
+    FINISH_REASON_LENGTH: FINISH_REASON_LENGTH,
     FOUNDRY_PROVIDER_ID: FOUNDRY_PROVIDER_ID,
     TOKENS_PER_COST_UNIT: TOKENS_PER_COST_UNIT,
     UNKNOWN_TIER: UNKNOWN_TIER,

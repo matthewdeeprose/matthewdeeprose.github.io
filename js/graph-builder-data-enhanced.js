@@ -472,6 +472,131 @@ const GraphBuilderDataEnhanced = (function () {
     };
   }
 
+  // ============================================
+  // SCATTER PROCESSOR (B-2b)
+  // ============================================
+
+  // Scatter: ONE dataset of {x,y} points, not one series per value column.
+  // First two value-role cols → x/y; the label column rides on each point as
+  // _label. A row with no usable x or y is dropped (Chart.js cannot place it).
+  // Fewer than two value columns returns no datasets so the caller falls back
+  // to the default path, as bubble does.
+  function processScatterData(rawData, columnConfig) {
+    if (!rawData || !Array.isArray(rawData.rows)) {
+      logWarn("processScatterData called without valid rawData.rows");
+      return emptyScatterResult();
+    }
+    if (!Array.isArray(columnConfig) || columnConfig.length === 0) {
+      logWarn("processScatterData called without column configuration");
+      return emptyScatterResult();
+    }
+
+    const headers = Array.isArray(rawData.headers) ? rawData.headers : [];
+    const rows = rawData.rows;
+    const { labelIdx, valueIndices } = resolveRoles(columnConfig);
+
+    if (valueIndices.length < 2) {
+      logWarn("Scatter chart requires 2 value columns (x, y); found " + valueIndices.length);
+      return emptyScatterResult();
+    }
+
+    const xIdx = valueIndices[0];
+    const yIdx = valueIndices[1];
+    const xCol = columnConfig[xIdx] || { type: "number" };
+    const yCol = columnConfig[yIdx] || { type: "number" };
+    const labelCol = columnConfig[labelIdx] || null;
+    const hasLabel = labelCol !== null && labelIdx !== xIdx && labelIdx !== yIdx;
+
+    const isCoordinate = (v) => typeof v === "number" && !isNaN(v);
+    const points = [];
+    const labels = [];
+    let droppedCount = 0;
+    rows.forEach((r) => {
+      const x = parseValue(Array.isArray(r) ? r[xIdx] : undefined, xCol.type);
+      const y = parseValue(Array.isArray(r) ? r[yIdx] : undefined, yCol.type);
+      if (!isCoordinate(x) || !isCoordinate(y)) {
+        droppedCount += 1;
+        return;
+      }
+      const point = { x: x, y: y };
+      if (hasLabel) {
+        point._label = parseValue(Array.isArray(r) ? r[labelIdx] : undefined, labelCol.type);
+        labels.push(point._label);
+      }
+      points.push(point);
+    });
+
+    if (droppedCount > 0) {
+      logWarn("Scatter chart dropped " + droppedCount + " row(s) with no usable x or y");
+    }
+
+    const colours = getSeriesColours(1);
+    const xLabel = headers[xIdx] || xCol.name || "X";
+    const yLabel = headers[yIdx] || yCol.name || "Y";
+
+    const result = {
+      labels: labels,
+      datasets: [
+        {
+          label: yLabel,
+          data: points,
+          backgroundColor: colours[0],
+          borderColor: colours[0],
+          borderWidth: 1,
+          _columnType: yCol.type || "number",
+          _columnIndex: yIdx,
+        },
+      ],
+      xAxisType: "linear",
+      formatters: getFormatters(),
+      meta: {
+        labelIndex: hasLabel ? labelIdx : -1,
+        labelType: hasLabel ? labelCol.type || "text" : null,
+        xIndex: xIdx,
+        yIndex: yIdx,
+        valueIndices: [xIdx, yIdx],
+        xType: xCol.type || "number",
+        yType: yCol.type || "number",
+        valueTypes: [xCol.type || "number", yCol.type || "number"],
+        uniformValueType: (xCol.type || "number") === (yCol.type || "number") ? xCol.type || "number" : null,
+        uniformValueSymbol: null,
+        xLabel: xLabel,
+        yLabel: yLabel,
+        rowCount: rows.length,
+        droppedRowCount: droppedCount,
+      },
+    };
+
+    logInfo("Processed " + rows.length + " rows into 1 scatter dataset of " + points.length + " point(s); x=" + xLabel + ", y=" + yLabel);
+
+    return result;
+  }
+
+  function emptyScatterResult() {
+    return {
+      labels: [],
+      datasets: [],
+      xAxisType: "linear",
+      formatters: getFormatters(),
+      meta: {
+        labelIndex: -1,
+        labelType: null,
+        xIndex: -1,
+        yIndex: -1,
+        valueIndices: [],
+        xType: "number",
+        yType: "number",
+        valueTypes: [],
+        uniformValueType: null,
+        uniformValueSymbol: null,
+        xLabel: "X",
+        yLabel: "Y",
+        rowCount: 0,
+        droppedRowCount: 0,
+      },
+    };
+  }
+
   logInfo("Module loaded");
 
   // ============================================
@@ -481,6 +606,7 @@ const GraphBuilderDataEnhanced = (function () {
   return {
     processData: processData,
     processBubbleData: processBubbleData,
+    processScatterData: processScatterData,
     parseValue: parseValue,
     getSeriesColours: getSeriesColours,
     getFormatters: getFormatters,

@@ -232,6 +232,38 @@ const CaptionsFixerStageLlmPass = (function () {
    */
   const PASS_CONFIDENCE = null;
 
+  /**
+   * STAGE `pl`, WORK ITEM 4 (2 October 2026): the CHECK ENTRY this stage makes
+   * for a caption the plausibility pass scored at or below the bar and that
+   * received no entry of any kind. It proposes nothing: `proposed` is null, so
+   * no check entry can change a caption on its own, and `applyChangeSet`
+   * applies `accepted` only. The source carries the `llm-pass` prefix on
+   * purpose, so the UI's prefix test reads a check row as a pass row.
+   *
+   * `STATUS_CHECK` mirrors `CaptionsFixerCues.STATUS.CHECK`, the way
+   * `STATUS_PROPOSED` mirrors its sibling: one literal here, read by no other
+   * file, and a suite row compares it with the cue module's.
+   */
+  const SOURCE_CHECK = "llm-pass-check";
+  const STATUS_CHECK = "check";
+
+  /** One short sentence on one line, and never the score. */
+  const CHECK_REASON = "Check this caption.";
+
+  /** The key, inside a chunk's `passRaw` record, the plausibility reading lives under. */
+  const FIELD_PLAUSIBILITY = "plausibility";
+
+  /**
+   * The `refusal` values a plausibility reading carries that are NOT one of the
+   * adapter parser's six names: the send itself failed, or the prompt could not
+   * be built from the shipped one and nothing was sent.
+   */
+  const PLAUSIBILITY_SEND_FAILED = "send-failed";
+  const PLAUSIBILITY_NOT_SENT = "not-sent";
+
+  /** One plausibility send per chunk, the figure `estimatePass` multiplies by. */
+  const PLAUSIBILITY_SENDS_PER_CHUNK = 1;
+
   /** Every field a change-set entry carries, and nothing else. The frozen shape. */
   const CHANGE_SET_FIELDS = Object.freeze([
     "cueId",
@@ -341,12 +373,23 @@ const CaptionsFixerStageLlmPass = (function () {
   );
 
   /**
-   * MIRRORS `CaptionsFixerLLM.ERRORS.PARSE`. The one error reason this stage
-   * treats as survivable. Mirrored rather than read at module load because the
-   * adapter is resolved at call time everywhere else in this file; the suite
+   * MIRRORS `CaptionsFixerLLM.ERRORS.PARSE`. One of the two error reasons this
+   * stage treats as survivable. Mirrored rather than read at module load because
+   * the adapter is resolved at call time everywhere else in this file; the suite
    * asserts the two are equal.
    */
   const ERROR_REASON_PARSE = "parse";
+
+  /**
+   * MIRRORS `CaptionsFixerLLM.ERRORS.TRUNCATED`, for the same reason and with the
+   * same mirror row. A reply the provider cut off at its token limit (parcel
+   * H-22) is the second survivable reason; H-22b put it back after H-22 made it
+   * end the pass.
+   */
+  const ERROR_REASON_TRUNCATED = "truncated";
+
+  /** The reasons that skip one chunk, count it, and carry on. Every other reason ends the pass. */
+  const SURVIVABLE_ERROR_REASONS = Object.freeze([ERROR_REASON_PARSE, ERROR_REASON_TRUNCATED]);
 
   // ==========================================================================
   // THE PROMPT
@@ -675,13 +718,16 @@ const CaptionsFixerStageLlmPass = (function () {
   /**
    * Is this rejection one the pass can survive and carry on from?
    *
-   * ONLY A PARSE FAILURE. A cancel, a send failure, a bad request and a
-   * missing model all still end the pass, because none of them says anything
-   * about the NEXT chunk: a cancel is a person's instruction, and a send
-   * failure is the provider. A reply that arrived and could not be read is the
-   * one case where the chunks after it are as likely to succeed as the chunks
-   * before it did — and cf-6 measured what ending the pass costs there, 78
-   * paid-for proposals across five runs.
+   * ONLY A PARSE FAILURE OR A CUT-OFF REPLY (H-22b; the name predates the second
+   * and is kept because the suite inverts this function by identity). A cancel,
+   * a send failure, a bad request and a missing model all still end the pass,
+   * because none of them says anything about the NEXT chunk: a cancel is a
+   * person's instruction, and a send failure is the provider. A reply that
+   * arrived and could not be used is the one case where the chunks after it are
+   * as likely to succeed as the chunks before it did — and cf-6 measured what
+   * ending the pass costs there, 78 paid-for proposals across five runs. The
+   * skip stays VISIBLE: the chunk's record keeps its reason, `failedChunks`
+   * counts it and the end-of-run WARN names it.
    *
    * AN EXPORTED PREDICATE RATHER THAN A LEXICAL TEST INSIDE `run`, so the suite
    * has a narrow seam to invert. A test written inline would be a dead seam,
@@ -692,7 +738,7 @@ const CaptionsFixerStageLlmPass = (function () {
    * @returns {boolean}
    */
   function isParseFailure(error) {
-    return Boolean(error) && error.reason === ERROR_REASON_PARSE;
+    return Boolean(error) && SURVIVABLE_ERROR_REASONS.includes(error.reason);
   }
 
   /**
@@ -953,15 +999,79 @@ const CaptionsFixerStageLlmPass = (function () {
       else costKnown = false;
     });
 
+    // THE PLAUSIBILITY SEND, ONE PER CHUNK, FROM `estimate` FOR THE THIRD PASS
+    // ON THE SAME CHUNKS (stage `pl`, ruling 8). It is part of the pass's price
+    // so the tier, the spend cap and the red-tier confirmation all see it. A
+    // pass the adapter reports `unavailable` adds nothing at all: its shape
+    // carries `sends: 0`, but it also carries input tokens, so reading the
+    // flag is what keeps those out of the total.
+    let plausibilitySends = 0;
+    chunks.forEach((chunk) => {
+      const one = api.plausibilityEstimateFor(chunk);
+      if (!one || one.unavailable) return;
+      plausibilitySends += PLAUSIBILITY_SENDS_PER_CHUNK;
+      inputTokens += one.inputTokens || 0;
+      outputTokensAssumed += one.outputTokensAssumed || 0;
+      if (typeof one.costUsd === "number") costUsd += one.costUsd;
+      else costKnown = false;
+    });
+
     return {
       model: modelId,
       inputTokens: inputTokens,
       outputTokensAssumed: outputTokensAssumed,
-      sends: chunks.length,
+      sends: chunks.length + plausibilitySends,
+      plausibilitySends: plausibilitySends,
       chunks: chunks.length,
       costUsd: costKnown ? costUsd : null,
       tier: costKnown ? tierOf(costUsd) : unknownTier(),
     };
+  }
+
+  /**
+   * One chunk's plausibility estimate, through the adapter's own `estimate`
+   * for the third pass, or null where none can be made. The pass and the
+   * prompts are read off the adapter at CALL time. With no model override: the
+   * pass is measured on one model only, so the cue-level model choice never
+   * reaches it.
+   *
+   * A NAMED SEAM, so a suite can switch the whole addition off and redden
+   * exactly the rows that name it.
+   *
+   * @param {object} chunk
+   * @returns {object|null} the adapter's estimate shape, possibly `unavailable`
+   */
+  function plausibilityEstimateFor(chunk) {
+    const llm = window.CaptionsFixerLLM;
+    const pass = llm && llm.PASSES ? llm.PASSES.PLAUSIBILITY : undefined;
+    if (!pass || typeof llm.estimate !== "function" || typeof llm.buildPlausibilityUserPrompt !== "function") return null;
+    const ids = api.knownIdsFor(chunk);
+    const userPrompt = llm.buildPlausibilityUserPrompt(api.buildUserPrompt(chunk), ids[0], ids[ids.length - 1]);
+    if (userPrompt === null) return null;
+    return llm.estimate({
+      systemPrompt: llm.PROMPT_PLAUSIBILITY,
+      userPrompt: userPrompt,
+      pass: pass,
+      sends: PLAUSIBILITY_SENDS_PER_CHUNK,
+    });
+  }
+
+  /**
+   * The model the plausibility pass would use, or null where it does not run.
+   * Resolved with the PASS ALONE, never the caller's `model`: `resolveModel`
+   * lets an explicit model win outright, so passing the cue-level override
+   * here would send the plausibility prompt to a model nobody measured it on.
+   * `PASS_UNAVAILABLE` (a null preference, or gpt-6-sol not eligible) reads as
+   * null, which is "send nothing", and so does an adapter without the pass.
+   *
+   * @returns {string|null}
+   */
+  function resolvePlausibilityModelId() {
+    const llm = window.CaptionsFixerLLM;
+    const pass = llm && llm.PASSES ? llm.PASSES.PLAUSIBILITY : undefined;
+    if (!pass || typeof llm.resolveModel !== "function") return null;
+    const id = llm.resolveModel({ pass: pass });
+    return id && id !== llm.PASS_UNAVAILABLE ? id : null;
   }
 
   /** The adapter's own "unknown" tier, read rather than copied. */
@@ -1055,7 +1165,8 @@ const CaptionsFixerStageLlmPass = (function () {
    * still ends the pass, so the cancel path above is untouched.
    *
    * @param {Array<object>} cueList the APPLIED list, after the recurring pairs
-   * @param {object} [context] `{ persist, signal, model, glossary }`
+   * @param {object} [context] `{ persist, signal, model, glossary, recurringEntries }`;
+   *   `recurringEntries` is the recurring set the caption check leaves alone
    * @returns {Promise<{ changeSet: Array<object>, halted: string|null, failedChunks: number }>}
    */
   async function run(cueList, context) {
@@ -1076,6 +1187,14 @@ const CaptionsFixerStageLlmPass = (function () {
     }
 
     const systemPrompt = Array.isArray(ctx.glossary) ? api.buildSystemPrompt(ctx.glossary) : api.buildSystemPrompt();
+
+    // THE PLAUSIBILITY PASS, resolved once for the run: null where it does not
+    // run (OpenRouter, or gpt-6-sol not eligible on Foundry), and then nothing
+    // below sends, records or warns about it. `recurringEntries` is the
+    // recurring set a caller hands over; absent, it is empty. A caption with an
+    // entry there gets no check row, the same as one with a proposal here.
+    const plausibilityModel = api.resolvePlausibilityModelId();
+    const recurringEntries = Array.isArray(ctx.recurringEntries) ? ctx.recurringEntries : [];
 
     // APPEND-ONLY, AND EVERY WRITE IS A COPY OF IT. This is the array that
     // makes each `passRaw` write a strict superset of the one before it; see
@@ -1135,7 +1254,7 @@ const CaptionsFixerStageLlmPass = (function () {
         if (!api.isParseFailure(error)) throw error;
         failedChunks += 1;
         logWarn(
-          `run: chunk ${index + 1} of ${chunks.length} could not be parsed (${failure.message}); ` +
+          `run: chunk ${index + 1} of ${chunks.length} was skipped, reason ${failure.reason} (${failure.message}); ` +
             `its reply is under ${FIELD_PASS_RAW} and the pass continues`,
         );
         continue;
@@ -1155,7 +1274,25 @@ const CaptionsFixerStageLlmPass = (function () {
       record.repaired = parsed.repaired;
       await api.persistQuietly(ctx, { [FIELD_PASS_RAW]: records.slice() });
 
-      entries = entries.concat(parsed.entries);
+      // THE CAPTION CHECK. One extra send for this chunk, after the cue-level
+      // reply is parsed and on disk; its reading lives in the record, and a
+      // check entry is made only for a low score on a caption with no entry
+      // of any status in this chunk's parsed entries or the recurring set.
+      // A chunk that could not be scored says so once and yields none, and the
+      // cue-level entries are untouched whatever happens here.
+      let checkEntries = [];
+      if (plausibilityModel) {
+        const reading = await api.scoreChunk(chunk, record, records, ctx);
+        if (reading.scores === null) {
+          logWarn(
+            `run: chunk ${index + 1} of ${chunks.length} could not be scored for plausibility (${reading.refusal}); ` +
+              `it yields no check rows, and its cue-level entries are unaffected`,
+          );
+        }
+        checkEntries = api.checkEntriesFor(chunk, cueList, reading.scores, parsed.entries.concat(recurringEntries));
+      }
+
+      entries = entries.concat(parsed.entries, checkEntries);
       logDebug(
         `run: chunk ${index + 1} of ${chunks.length} gave ${parsed.entries.length} entr(y/ies), ` +
           `${reply.discarded} discarded by the schema, ` +
@@ -1170,7 +1307,7 @@ const CaptionsFixerStageLlmPass = (function () {
       // A PARTIAL PASS MUST NOT BE SILENT. This is the only place today that
       // says so; the surface does not yet, and that is recorded as owed.
       logWarn(
-        `run: ${failedChunks} of ${chunks.length} chunk(s) could not be parsed — ` +
+        `run: ${failedChunks} of ${chunks.length} chunk(s) were skipped because the reply could not be used (unparseable or cut off at its limit) — ` +
           `this transcript has NOT been checked end to end`,
       );
     }
@@ -1240,6 +1377,132 @@ const CaptionsFixerStageLlmPass = (function () {
     };
   }
 
+  // ==========================================================================
+  // THE CAPTION CHECK — stage `pl`, work item 4
+  // ==========================================================================
+
+  /**
+   * Can the pass carry on after this plausibility failure? ALWAYS, and the
+   * function exists so the claim has somewhere to fail. A plausibility send
+   * that throws — a provider error, a reply `complete` could not parse, a
+   * cancel — must never cost the chunk's cue-level entries, which were paid
+   * for and are already in hand; a cancel is read at the top of the next
+   * chunk's iteration as it always was. Exported and reached through `api`,
+   * the shape of `isParseFailure`, so a suite can make it false.
+   *
+   * @param {*} _error
+   * @returns {boolean}
+   */
+  function isSurvivablePlausibilityFailure(_error) {
+    return true;
+  }
+
+  /**
+   * One chunk's plausibility send: the request, the reply on disk, then the
+   * parse, the reading kept in the chunk's own `passRaw` record under
+   * `plausibility` as `{ raw, scores | null, refusal | null }`.
+   *
+   * THE REPLY IS WRITTEN BEFORE IT IS PARSED, as the cue-level reply is: the
+   * reading goes on the record with its raw and no result, the whole array is
+   * persisted, and only then does the parser run. A send that fails is
+   * recorded the same way, raw empty (or the adapter's raw where the reply
+   * arrived and could not be read) and the refusal named, and then survived.
+   *
+   * THE REPLY IS READ FROM `complete`'S RAW, never from its `data`: the schema
+   * is the object one, the parser is the adapter's, and an array schema would
+   * have read the reply as an empty list.
+   *
+   * @param {object} chunk
+   * @param {object} record the chunk's record, already in `records`
+   * @param {Array<object>} records the append-only array every write copies
+   * @param {object} context `{ persist, signal }`
+   * @returns {Promise<{ raw: string, scores: object|null, refusal: string|null }>}
+   */
+  async function scoreChunk(chunk, record, records, context) {
+    const llm = window.CaptionsFixerLLM;
+    const ids = api.knownIdsFor(chunk);
+    const reading = { raw: "", scores: null, refusal: null };
+    record[FIELD_PLAUSIBILITY] = reading;
+
+    const userPrompt = llm.buildPlausibilityUserPrompt(api.buildUserPrompt(chunk), ids[0], ids[ids.length - 1]);
+    if (userPrompt === null) {
+      reading.refusal = PLAUSIBILITY_NOT_SENT;
+      await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
+      return reading;
+    }
+
+    let reply;
+    try {
+      reply = await llm.complete({
+        systemPrompt: llm.PROMPT_PLAUSIBILITY,
+        userPrompt: userPrompt,
+        schema: llm.PLAUSIBILITY_SCHEMA,
+        knownIds: ids,
+        pass: llm.PASSES.PLAUSIBILITY,
+        signal: context.signal,
+      });
+    } catch (error) {
+      reading.raw = error && typeof error.raw === "string" ? error.raw : "";
+      reading.refusal = PLAUSIBILITY_SEND_FAILED;
+      await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
+      if (!api.isSurvivablePlausibilityFailure(error)) throw error;
+      return reading;
+    }
+
+    reading.raw = typeof reply.raw === "string" ? reply.raw : "";
+    await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
+
+    const outcome = llm.plausibilityScoresFromReply(reading.raw, ids);
+    reading.scores = outcome.ok ? outcome.scores : null;
+    reading.refusal = outcome.ok ? null : outcome.reason;
+    await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
+    return reading;
+  }
+
+  /**
+   * The check entries for one chunk: a caption scored at or below the bar that
+   * has NO entry of any status for its cue id in `existingEntries` (this
+   * chunk's parsed entries after the drop rules, and the recurring set). A
+   * caption whose proposal a drop rule removed has no entry, so it is flagged;
+   * one that holds a proposal or a recurring row is never also a check row.
+   *
+   * `scores` null (an unscored chunk) gives none. The bar is read off the
+   * adapter at call time. `original` is the cue list's text, the same source
+   * a proposal's is.
+   *
+   * @param {object} chunk
+   * @param {Array<object>} cueList the list this pass ran on
+   * @param {object|null} scores cue id (as a string) to integer score, or null
+   * @param {Array<object>} existingEntries entries that already speak for a cue
+   * @returns {Array<object>}
+   */
+  function checkEntriesFor(chunk, cueList, scores, existingEntries) {
+    const llm = window.CaptionsFixerLLM;
+    const bar = llm && typeof llm.PLAUSIBILITY_BAR === "number" ? llm.PLAUSIBILITY_BAR : null;
+    if (bar === null || !scores) return [];
+    const cueByStringId = new Map((Array.isArray(cueList) ? cueList : []).map((cue) => [String(cue && cue.id), cue]));
+    const taken = new Set((Array.isArray(existingEntries) ? existingEntries : []).map((entry) => String(entry && entry.cueId)));
+    const checks = [];
+    api.knownIdsFor(chunk).forEach((id) => {
+      const score = scores[String(id)];
+      if (typeof score !== "number" || score > bar) return;
+      if (taken.has(String(id))) return;
+      const cue = cueByStringId.get(String(id));
+      if (!cue || typeof cue.text !== "string") return;
+      checks.push({
+        cueId: cue.id,
+        original: cue.text,
+        proposed: null,
+        source: SOURCE_CHECK,
+        reason: CHECK_REASON,
+        confidence: null,
+        status: STATUS_CHECK,
+        rejectedBy: null,
+      });
+    });
+    return checks;
+  }
+
   logInfo("Captions Fixer cue-level pass loaded");
 
   const api = {
@@ -1263,9 +1526,22 @@ const CaptionsFixerStageLlmPass = (function () {
     emptyDropped: emptyDropped,
     emptyRepaired: emptyRepaired,
     chunkRecord: chunkRecord,
+    // the caption check (stage `pl`), exported so a suite can bind each seam
+    scoreChunk: scoreChunk,
+    checkEntriesFor: checkEntriesFor,
+    plausibilityEstimateFor: plausibilityEstimateFor,
+    resolvePlausibilityModelId: resolvePlausibilityModelId,
+    isSurvivablePlausibilityFailure: isSurvivablePlausibilityFailure,
     // constants
     STAGE_NAME: STAGE_NAME,
     SOURCE: SOURCE,
+    SOURCE_CHECK: SOURCE_CHECK,
+    STATUS_CHECK: STATUS_CHECK,
+    CHECK_REASON: CHECK_REASON,
+    FIELD_PLAUSIBILITY: FIELD_PLAUSIBILITY,
+    PLAUSIBILITY_SEND_FAILED: PLAUSIBILITY_SEND_FAILED,
+    PLAUSIBILITY_NOT_SENT: PLAUSIBILITY_NOT_SENT,
+    PLAUSIBILITY_SENDS_PER_CHUNK: PLAUSIBILITY_SENDS_PER_CHUNK,
     STATUS_PROPOSED: STATUS_PROPOSED,
     PASS_CONFIDENCE: PASS_CONFIDENCE,
     CHANGE_SET_FIELDS: CHANGE_SET_FIELDS,
@@ -1283,6 +1559,8 @@ const CaptionsFixerStageLlmPass = (function () {
     CUE_PREFIX_PATTERN: CUE_PREFIX_PATTERN,
     SPEAKER_LABEL_PATTERN: SPEAKER_LABEL_PATTERN,
     ERROR_REASON_PARSE: ERROR_REASON_PARSE,
+    ERROR_REASON_TRUNCATED: ERROR_REASON_TRUNCATED,
+    SURVIVABLE_ERROR_REASONS: SURVIVABLE_ERROR_REASONS,
     BLOCK_ROLE: BLOCK_ROLE,
     BLOCK_TASK: BLOCK_TASK,
     BLOCK_CONSERVATIVE: BLOCK_CONSERVATIVE,

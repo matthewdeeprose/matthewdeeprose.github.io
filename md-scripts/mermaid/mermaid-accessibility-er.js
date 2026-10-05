@@ -154,10 +154,12 @@ const EntityRelationshipModule = (function () {
    * entity name verbatim, and the generator's noun in the number the phrase
    * calls for. The author's name is never inflected.
    * @param {string} cardinality - A Mermaid cardinality enum value
-   * @param {string} name - The other entity's display name
+   * @param {string} nameHtml - The other entity's narrated name, ALREADY
+   *   escaped by the caller (enactment 4: it may be the unlabelled phrase,
+   *   whose generator-owned quotation marks must not be escaped)
    * @returns {string} e.g. "zero or more ORDER records"
    */
-  function cardinalityClause(cardinality, name) {
+  function cardinalityClause(cardinality, nameHtml) {
     const spec = CARDINALITY_PHRASES[cardinality] || UNSPECIFIED_CARDINALITY;
     if (!CARDINALITY_PHRASES[cardinality]) {
       logWarn(
@@ -165,10 +167,61 @@ const EntityRelationshipModule = (function () {
         `Unrecognised cardinality "${cardinality}"; narrating it as unspecified`
       );
     }
-    // The name is author text and is escaped; the noun is generator furniture
-    // and is never escaped separately.
+    // The name arrives escaped; the noun is generator furniture and is never
+    // escaped separately.
     const noun = spec.plural ? ENTITY_NOUN.plural : ENTITY_NOUN.singular;
-    return `${spec.phrase} ${Common.escapeHtml(name)} ${noun}`;
+    return `${spec.phrase} ${nameHtml} ${noun}`;
+  }
+
+  // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
+  // break, or only spaces) is read as unlabelled, in each type's own words."
+  // The test is a TEST only: it trims to decide and never alters the bytes it
+  // narrates. It runs on the DELIVERED string, after the adapter's break
+  // transform, so an alias that was only a break arrives here as "".
+  const UNLABELLED_ENTITY_PHRASE = "unlabelled entity";
+
+  /**
+   * Does this delivered author text draw nothing?
+   * @param {*} text - A delivered alias or role
+   * @returns {boolean} True for an empty or whitespace-only string
+   */
+  function drawsNothing(text) {
+    return typeof text === "string" && text.trim() === "";
+  }
+
+  /**
+   * The unlabelled reading of an entity: the generator's own noun, then the
+   * author's entity name (the id) in the generator's quotes, never inflected.
+   * `displayName` is the alias, else the entity name, so an empty one can only
+   * mean an alias that was written and draws nothing. Lower case, for the
+   * middle of a sentence; the caller capitalises it where it opens one.
+   * @param {Object} entity - An adapter entity
+   * @returns {string} e.g. unlabelled entity "qa", escaped for the HTML sink
+   */
+  function unlabelledEntityPhrase(entity) {
+    return `${UNLABELLED_ENTITY_PHRASE} "${Common.escapeHtml(entity.name)}"`;
+  }
+
+  /**
+   * One entity's narrated name as HTML, whichever way it reads.
+   * @param {Object} entity - An adapter entity
+   * @returns {string} The escaped display name, or the unlabelled phrase
+   */
+  function entityNameHtml(entity) {
+    return isUnlabelledEntity(entity)
+      ? unlabelledEntityPhrase(entity)
+      : Common.escapeHtml(entity.displayName);
+  }
+
+  /**
+   * Is this entity one whose alias draws nothing? The one emptiness test for
+   * an entity's name: the list heading, the relationship sentences and the
+   * roll-call all ask it here, so they cannot disagree.
+   * @param {Object} entity - An adapter entity
+   * @returns {boolean} Whether to narrate it as unlabelled
+   */
+  function isUnlabelledEntity(entity) {
+    return drawsNothing(entity.displayName);
   }
 
   /**
@@ -203,7 +256,11 @@ const EntityRelationshipModule = (function () {
   function renderEntityItem(entity) {
     const attributes = entity.attributes || [];
 
-    const safeName = Common.escapeHtml(entity.displayName);
+    // A label that draws nothing reads as an unlabelled entity (P2); it opens
+    // the list item, so it is capitalised.
+    const safeName = isUnlabelledEntity(entity)
+      ? Common.capitalize(unlabelledEntityPhrase(entity))
+      : Common.escapeHtml(entity.displayName);
 
     if (attributes.length === 0) {
       return `<li>${safeName}: no attributes listed.</li>`;
@@ -233,18 +290,19 @@ const EntityRelationshipModule = (function () {
    * never narrated: it is a layout property, not a fact about the data.
    *
    * @param {Object} relationship - An adapter relationship
-   * @param {Map<string, string>} displayNames - Entity name to display name
+   * @param {Map<string, string>} displayNames - Entity name to its narrated
+   *   name, already ESCAPED HTML (the display name, or the unlabelled phrase
+   *   for an entity whose alias draws nothing)
    * @returns {string} An <li> fragment
    */
   function renderRelationshipItem(relationship, displayNames) {
-    const fromName =
-      displayNames.get(relationship.from) || relationship.from;
-    const toName = displayNames.get(relationship.to) || relationship.to;
-
-    // cardinalityClause is handed the RAW names — it escapes the name itself.
-    // These two are for the direct interpolations only.
-    const safeFrom = Common.escapeHtml(fromName);
-    const safeTo = Common.escapeHtml(toName);
+    // An endpoint the map does not hold falls back to its raw name, escaped
+    // here; every name that enters the sentence below is already escaped.
+    const safeFrom =
+      displayNames.get(relationship.from) ||
+      Common.escapeHtml(relationship.from);
+    const safeTo =
+      displayNames.get(relationship.to) || Common.escapeHtml(relationship.to);
 
     // The role is QUOTED as a label and the frame supplies its own verb
     // ("links"), because the author's label is not necessarily a finite verb.
@@ -270,11 +328,14 @@ const EntityRelationshipModule = (function () {
     // An empty role is legal — an empty quoted label parses (stage 0 E6) — and
     // its branch is untouched: the neutral verb still carries the sentence when
     // there is no label to place.
-    const forward = relationship.role
-      ? `The "${Common.escapeHtml(relationship.role)}" relationship links each ${safeFrom} to ${cardinalityClause(relationship.toPerFrom, toName)}`
-      : `each ${safeFrom} is linked to ${cardinalityClause(relationship.toPerFrom, toName)}`;
+    //
+    // P1 (enactment 4): a role that draws nothing is read exactly as no role.
+    const forward =
+      relationship.role && !drawsNothing(relationship.role)
+        ? `The "${Common.escapeHtml(relationship.role)}" relationship links each ${safeFrom} to ${cardinalityClause(relationship.toPerFrom, safeTo)}`
+        : `each ${safeFrom} is linked to ${cardinalityClause(relationship.toPerFrom, safeTo)}`;
 
-    const reverse = `each ${safeTo} is linked to ${cardinalityClause(relationship.fromPerTo, fromName)}`;
+    const reverse = `each ${safeTo} is linked to ${cardinalityClause(relationship.fromPerTo, safeFrom)}`;
 
     // A self-relationship is announced, because "each EMPLOYEE ... each
     // EMPLOYEE" otherwise reads as two different entities.
@@ -371,8 +432,10 @@ const EntityRelationshipModule = (function () {
 
     // Endpoints are entity names; the narration uses display names, which
     // differ wherever an alias was declared (stage 0 E5).
+    // The values are ESCAPED HTML, so an unlabelled entity can carry its
+    // generator-owned quotation marks (enactment 4).
     const displayNames = new Map(
-      graph.entities.map((entity) => [entity.name, entity.displayName])
+      graph.entities.map((entity) => [entity.name, entityNameHtml(entity)])
     );
 
     // --- Overview -------------------------------------------------------
@@ -405,7 +468,7 @@ const EntityRelationshipModule = (function () {
         const noun = unconnected.length === 1 ? "entity" : "entities";
         const verb = unconnected.length === 1 ? "is" : "are";
         const names = Common.formatList(
-          unconnected.map((entity) => Common.escapeHtml(entity.displayName))
+          unconnected.map((entity) => entityNameHtml(entity))
         );
         sentences.push(
           `${countWord} ${noun}, ${names}, ${verb} not part of any relationship.`

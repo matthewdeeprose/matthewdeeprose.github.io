@@ -1181,7 +1181,7 @@ const MATHPIX_CONFIG = {
       },
       pdf: {
         label: "PDF",
-        extension: ".pdf",
+        extension: "-html.pdf", // Parcel O-01: distinct from latex.pdf
         binary: true,
         mimeType: "application/pdf",
         priority: 2,
@@ -1197,7 +1197,7 @@ const MATHPIX_CONFIG = {
       },
       "latex.pdf": {
         label: "LaTeX PDF",
-        extension: ".pdf",
+        extension: "-latex.pdf", // Parcel O-01: distinct from pdf
         binary: true,
         mimeType: "application/pdf",
         priority: 4,

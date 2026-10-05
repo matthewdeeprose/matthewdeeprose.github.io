@@ -201,8 +201,9 @@ const MermaidAccessibilityArchitecture = (function () {
         const groupNames = topLevelGroups
           .map(
             (group) =>
-              `<span class="architecture-group-name">${Common.escapeHtml(
-                group.title
+              `<span class="architecture-group-name">${elementNameHtml(
+                group,
+                false
               )}</span>`
           )
           .join(", ");
@@ -210,7 +211,7 @@ const MermaidAccessibilityArchitecture = (function () {
         htmlDescription += groupNames;
         htmlDescription += `</span>`;
         plainTextDescription += topLevelGroups
-          .map((group) => group.title)
+          .map((group) => elementNamePlain(group, false))
           .join(", ");
       }
 
@@ -241,6 +242,103 @@ const MermaidAccessibilityArchitecture = (function () {
   function shortDescriptionWrapper(svgElement, code) {
     const descriptions = generateShortDescription(svgElement, code);
     return descriptions.text;
+  }
+
+  // ITEM 82, ENACTMENT 5 (3 October 2026). "A line break the picture draws is
+  // read as a space; a <br> the picture prints as characters is read as
+  // written." Architecture's canvas breaks on `<br>`, `<br/>` and `<br />` and
+  // PRINTS `<BR>`, measured 2 October 2026 (measurement 2 § 3), so the shared
+  // rule is called with the not-upper-case form set. The rule is the
+  // adapter's and is resolved off window AT CALL TIME. The parse reads raw
+  // source bytes, so an escaped `&lt;br&gt;` or `#lt;br#gt;` is not matched;
+  // what the words then say of it is out of scope. The diagram TITLE is not
+  // read through this: the canvas prints a tag there.
+  /**
+   * Read a group or service title with typed line breaks as single spaces.
+   * @param {string} text - The title between the square brackets
+   * @returns {string} The title with the breaks read as spaces; empty when it
+   *   was only a break, which readers treat as a title that draws nothing
+   */
+  function readTitleBreaks(text) {
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.replaceTypedLineBreaks !== "function") {
+      logWarn(
+        "[Mermaid Accessibility] Architecture: the shared line-break rule is not loaded; titles are read as typed"
+      );
+      return text;
+    }
+    return adapter.replaceTypedLineBreaks(
+      text,
+      adapter.LINE_BREAK_FORMS.NOT_UPPER_CASE
+    );
+  }
+
+  // ITEM 82, ENACTMENT 5, principle P2: a label that names a shape that draws
+  // nothing is read as `unlabelled <noun> "ID"`, the noun the generator's own,
+  // the id quoted and never inflected, capitalised only where it opens a list
+  // line. Measured: a break-only title and a spaces-only title both draw the
+  // shape with no title text, never the id. A group or service always has an
+  // id, and a title the author did not write falls back to the id in
+  // parseArchitecture, so an empty title can only be one that was written and
+  // draws nothing. The emptiness test is a TEST only: it trims to decide and
+  // never alters the bytes it narrates.
+  const ELEMENT_KIND = Object.freeze({
+    GROUP: "group",
+    SERVICE: "service",
+  });
+  const UNLABELLED_OPENER = "Unlabelled";
+  const UNLABELLED_MIDDLE = "unlabelled";
+
+  /**
+   * Does this group or service title draw nothing?
+   * @param {Object} element - A group or service (junction stand-ins carry no kind)
+   * @returns {boolean} True for an empty or whitespace-only title
+   */
+  function isUnlabelledElement(element) {
+    return (
+      Boolean(element) &&
+      Boolean(element.kind) &&
+      typeof element.title === "string" &&
+      element.title.trim() === ""
+    );
+  }
+
+  /**
+   * The unlabelled reading of an element, plain text.
+   * @param {Object} element - A group or service
+   * @param {boolean} atLineStart - True where it opens a list line
+   * @returns {string} e.g. unlabelled group "g"
+   */
+  function unlabelledPhrasePlain(element, atLineStart) {
+    const opener = atLineStart ? UNLABELLED_OPENER : UNLABELLED_MIDDLE;
+    return `${opener} ${element.kind} "${element.id}"`;
+  }
+
+  /**
+   * An element's name for the HTML sink: the escaped title, or the unlabelled
+   * phrase with its id escaped once and its own quotation marks left alone.
+   * @param {Object} element - A group, service or junction stand-in
+   * @param {boolean} atLineStart - True where it opens a list line
+   * @returns {string} The name, ready for the HTML sink
+   */
+  function elementNameHtml(element, atLineStart) {
+    if (!isUnlabelledElement(element)) {
+      return Common.escapeHtml(element.title);
+    }
+    const opener = atLineStart ? UNLABELLED_OPENER : UNLABELLED_MIDDLE;
+    return `${opener} ${element.kind} "${Common.escapeHtml(element.id)}"`;
+  }
+
+  /**
+   * An element's name for the plain text tier.
+   * @param {Object} element - A group or service
+   * @param {boolean} atLineStart - True where it opens a list line
+   * @returns {string} The title, or the unlabelled phrase
+   */
+  function elementNamePlain(element, atLineStart) {
+    return isUnlabelledElement(element)
+      ? unlabelledPhrasePlain(element, atLineStart)
+      : element.title;
   }
 
   /**
@@ -295,8 +393,9 @@ const MermaidAccessibilityArchitecture = (function () {
           const [_, id, icon, title, parentId] = groupMatch;
           const group = {
             id,
+            kind: ELEMENT_KIND.GROUP,
             icon: icon || null,
-            title: title || id,
+            title: title ? readTitleBreaks(title) : id,
             parentId: parentId || null,
             children: [],
           };
@@ -315,8 +414,9 @@ const MermaidAccessibilityArchitecture = (function () {
           const [_, id, icon, title, parentId] = serviceMatch;
           const service = {
             id,
+            kind: ELEMENT_KIND.SERVICE,
             icon: icon || null,
-            title: title || id,
+            title: title ? readTitleBreaks(title) : id,
             parentId: parentId || null,
           };
 
@@ -588,8 +688,9 @@ const MermaidAccessibilityArchitecture = (function () {
     logDebug(`Rendering hierarchy for group: ${group.title}`);
 
     let html = `<li class="architecture-group">
-      <span class="architecture-group-name">${Common.escapeHtml(
-        group.title
+      <span class="architecture-group-name">${elementNameHtml(
+        group,
+        true
       )}</span>`;
 
     // Add icon information if present
@@ -618,8 +719,9 @@ const MermaidAccessibilityArchitecture = (function () {
           const service = architecture.serviceMap.get(child.id);
           if (service) {
             html += `<li class="architecture-service">
-              <span class="architecture-service-name">${Common.escapeHtml(
-              service.title
+              <span class="architecture-service-name">${elementNameHtml(
+              service,
+              true
             )}</span>`;
 
             // Add icon information if present
@@ -682,8 +784,9 @@ const MermaidAccessibilityArchitecture = (function () {
 
     architecture.services.forEach((service) => {
       content += `<li class="architecture-service-item">
-    <span class="architecture-service-name">${Common.escapeHtml(
-      service.title
+    <span class="architecture-service-name">${elementNameHtml(
+      service,
+      true
     )}</span>`;
 
       // Add icon information
@@ -697,8 +800,9 @@ const MermaidAccessibilityArchitecture = (function () {
       if (service.parentId) {
         const parentGroup = architecture.groupMap.get(service.parentId);
         if (parentGroup) {
-          content += ` in <span class="architecture-parent-group">${Common.escapeHtml(
-            parentGroup.title
+          content += ` in <span class="architecture-parent-group">${elementNameHtml(
+            parentGroup,
+            false
           )}</span>`;
         }
       }
@@ -831,8 +935,9 @@ const MermaidAccessibilityArchitecture = (function () {
 
             if (service) {
               content += `<li class="architecture-connection">`;
-              content += `<span class="architecture-service-name">${Common.escapeHtml(
-                service.title
+              content += `<span class="architecture-service-name">${elementNameHtml(
+                service,
+                true
               )}</span>`;
 
               if (service.icon) {
@@ -907,8 +1012,9 @@ const MermaidAccessibilityArchitecture = (function () {
 
         if (sourceElement && targetElement) {
           content += `<li class="architecture-connection">`;
-          content += `<span class="architecture-source">${Common.escapeHtml(
-            sourceElement.title
+          content += `<span class="architecture-source">${elementNameHtml(
+            sourceElement,
+            true
           )}</span>`;
 
           if (edge.hasLeftArrow && edge.hasRightArrow) {
@@ -921,8 +1027,9 @@ const MermaidAccessibilityArchitecture = (function () {
             content += ` connects with `;
           }
 
-          content += `<span class="architecture-target">${Common.escapeHtml(
-            targetElement.title
+          content += `<span class="architecture-target">${elementNameHtml(
+            targetElement,
+            false
           )}</span>`;
           content += ` (from ${getDirectionDescription(
             edge.sourceSide

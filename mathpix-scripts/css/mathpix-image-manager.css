@@ -727,9 +727,7 @@ body.mathpix-manager-open .mmd-image-manager-edit-form .field-label-row {
 /* The flex break. Empty, zero-height, and 100% of the line, so it
    consumes whatever is left of the heading/pill line and the accept
    button ordered after it always begins a new one. */
-body.mathpix-manager-open
-  .mmd-image-manager-edit-form
-  .field-label-row::after {
+body.mathpix-manager-open .mmd-image-manager-edit-form .field-label-row::after {
   content: "";
   flex-basis: 100%;
   height: 0;
@@ -1070,8 +1068,11 @@ body.mathpix-manager-open
    Checkboxes and the transparent secondary Cancel sit on the modal
    surface, so an OUTSET ring in the foreground colour is visible in
    both themes. */
-.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-row input[type="checkbox"]:focus-visible,
-.mmd-image-manager-fieldsel-modal .mmd-image-manager-fieldsel-cancel:focus-visible {
+.mmd-image-manager-fieldsel-modal
+  .mmd-image-manager-fieldsel-row
+  input[type="checkbox"]:focus-visible,
+.mmd-image-manager-fieldsel-modal
+  .mmd-image-manager-fieldsel-cancel:focus-visible {
   outline: 3px solid currentColor !important;
   outline-offset: 2px;
 }
@@ -1305,7 +1306,10 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
   font-weight: 400;
 }
 
-.mmd-image-manager-edit-form #edit-alt-model-picker .model-option .model-option-name {
+.mmd-image-manager-edit-form
+  #edit-alt-model-picker
+  .model-option
+  .model-option-name {
   font-weight: 600;
 }
 
@@ -1325,4 +1329,14 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
    force horizontal overflow at 320px. */
 #edit-alt-model-override {
   max-width: 100%;
+}
+
+/*small tweaks for image alt generator */
+.mathpix-alt-model-advanced {
+  padding: 10px;
+}
+
+.mathpix-alt-model-advanced summary {
+  text-decoration: none;
+  margin: 3px;
 }

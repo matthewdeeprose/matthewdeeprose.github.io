@@ -297,6 +297,77 @@
     return `"${escapeText(name)}"`;
   }
 
+  // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
+  // break, or only spaces) is read as unlabelled, in each type's own words."
+  // The test is a TEST only: it trims to decide and never alters the bytes it
+  // narrates. It runs on the DELIVERED string, after the adapter's break
+  // transform, so a name that was only a break arrives here as "". A
+  // participant declared without an `as` text is delivered with its id as the
+  // name, so an empty name can only be one that was written and draws nothing;
+  // the canvas then shows a blank box and never the id.
+  const UNLABELLED_PARTICIPANT_PHRASE = "unlabelled participant";
+  const EMPTY_NOTE_PREDICATE = " is empty";
+
+  /**
+   * Does this delivered author text draw nothing?
+   * @param {*} text - A delivered participant name or note text
+   * @returns {boolean} True for an empty or whitespace-only string
+   */
+  function drawsNothing(text) {
+    return typeof text === "string" && text.trim() === "";
+  }
+
+  /**
+   * The unlabelled reading of a participant: the generator's own noun, then
+   * the author's id in the generator's quotes, never inflected (ledger entry
+   * 9). Lower case, for the middle of a sentence; a caller that opens a
+   * sentence capitalises it with capitaliseGeneratedOpener.
+   * @param {string} id - The participant's declared id
+   * @param {boolean} escaped - True for the HTML sink, false for plain text
+   * @returns {string} e.g. unlabelled participant "qa"
+   */
+  function unlabelledParticipantPhrase(id, escaped) {
+    return `${UNLABELLED_PARTICIPANT_PHRASE} "${escaped ? escapeText(id) : id}"`;
+  }
+
+  /**
+   * Is this participant one whose name draws nothing? The one emptiness test
+   * for a participant's name: the message, note and activation sentences, the
+   * participants list and the short tier all ask it here.
+   * @param {string} name - The delivered participant name
+   * @returns {boolean} Whether to narrate it as unlabelled
+   */
+  function isUnlabelledParticipant(name) {
+    return drawsNothing(name);
+  }
+
+  /**
+   * A participant's name as the sentences speak it: the quoted escaped name,
+   * or the unlabelled phrase naming the id.
+   * @param {Function} nameFor - Id to display name
+   * @param {string} id - The participant id
+   * @returns {string} The name, ready for the HTML sink
+   */
+  function participantName(nameFor, id) {
+    const name = nameFor(id);
+    return isUnlabelledParticipant(name)
+      ? unlabelledParticipantPhrase(id, true)
+      : quoted(name);
+  }
+
+  /**
+   * Capitalise a sentence that opens with the generator's unlabelled phrase.
+   * It tests for the phrase WITH its raw opening quotation mark, which escaped
+   * author text never carries, so an author's own text is never touched.
+   * @param {string} sentence - A sentence or clause, already assembled
+   * @returns {string} The sentence, capitalised only if it opens with the phrase
+   */
+  function capitaliseGeneratedOpener(sentence) {
+    return sentence.startsWith(`${UNLABELLED_PARTICIPANT_PHRASE} "`)
+      ? sentence.charAt(0).toUpperCase() + sentence.slice(1)
+      : sentence;
+  }
+
   // ---------------------------------------------------------------------
   // Message sentences (rule S7)
   // ---------------------------------------------------------------------
@@ -327,21 +398,26 @@
   function messageClause(event, nameFor) {
     const raw = typeof event.text === "string" ? event.text : "";
     const text = raw.trim() === "" ? EMPTY_MESSAGE_TEXT : quoted(raw);
-    const from = quoted(nameFor(event.from));
-    const to = quoted(nameFor(event.to));
+    const from = participantName(nameFor, event.from);
+    const to = participantName(nameFor, event.to);
     const isSelf = event.from === event.to;
 
+    // The clause opens with the sender, so an unlabelled sender is capitalised.
     if (event.head === "bidirectional") {
-      return `${from} and ${to} exchange ${text}`;
+      return capitaliseGeneratedOpener(`${from} and ${to} exchange ${text}`);
     }
     if (event.line === "dotted") {
-      return isSelf
-        ? `${from} replies to itself with ${text}`
-        : `${from} replies to ${to} with ${text}`;
+      return capitaliseGeneratedOpener(
+        isSelf
+          ? `${from} replies to itself with ${text}`
+          : `${from} replies to ${to} with ${text}`
+      );
     }
-    return isSelf
-      ? `${from} sends ${text} to itself`
-      : `${from} sends ${text} to ${to}`;
+    return capitaliseGeneratedOpener(
+      isSelf
+        ? `${from} sends ${text} to itself`
+        : `${from} sends ${text} to ${to}`
+    );
   }
 
   /**
@@ -566,22 +642,28 @@
    * @returns {string} The sentence
    */
   function noteSentence(event, nameFor) {
-    const text = quoted(event.text);
+    // P3 (enactment 4): a note that draws nothing is narrated as empty, in
+    // the note sentence's own words, and never as `: ""`.
+    const tail = drawsNothing(event.text)
+      ? EMPTY_NOTE_PREDICATE
+      : `: ${quoted(event.text)}`;
     const actors = (event.actors || []).filter(
       (actor) => actor !== null && actor !== undefined
     );
     if (actors.length > 1) {
-      const names = joinNames(actors.map((actor) => quoted(nameFor(actor))));
-      return `Note over ${names}: ${text}.`;
+      const names = joinNames(
+        actors.map((actor) => participantName(nameFor, actor))
+      );
+      return `Note over ${names}${tail}.`;
     }
-    const who = quoted(nameFor(actors[0]));
+    const who = participantName(nameFor, actors[0]);
     if (event.placement === "left") {
-      return `Note to the left of ${who}: ${text}.`;
+      return `Note to the left of ${who}${tail}.`;
     }
     if (event.placement === "right") {
-      return `Note to the right of ${who}: ${text}.`;
+      return `Note to the right of ${who}${tail}.`;
     }
-    return `Note over ${who}: ${text}.`;
+    return `Note over ${who}${tail}.`;
   }
 
   /**
@@ -592,10 +674,12 @@
    * @returns {string} The sentence
    */
   function activationSentence(event, nameFor) {
-    const who = quoted(nameFor(event.actor));
-    return event.kind === "activate"
-      ? `${who} becomes active.`
-      : `${who} becomes inactive.`;
+    const who = participantName(nameFor, event.actor);
+    return capitaliseGeneratedOpener(
+      event.kind === "activate"
+        ? `${who} becomes active.`
+        : `${who} becomes inactive.`
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -830,7 +914,13 @@
    * @returns {string} The line, ending in a full stop
    */
   function participantText(participant) {
-    let out = quoted(participant.name);
+    // A name that draws nothing reads as the unlabelled phrase (enactment 4,
+    // P2); it opens the list item, so it is capitalised.
+    let out = isUnlabelledParticipant(participant.name)
+      ? capitaliseGeneratedOpener(
+          unlabelledParticipantPhrase(participant.id, true)
+        )
+      : quoted(participant.name);
 
     // Ruling R5: the author who chose the stick figure over the box was saying
     // this one is a human, and that is author-declared information.
@@ -1086,7 +1176,13 @@
     const count = participants.length;
     const between =
       count >= 1 && count <= NAME_LIST_MAX
-        ? joinNames(participants.map((participant) => `"${participant.name}"`))
+        ? joinNames(
+            participants.map((participant) =>
+              isUnlabelledParticipant(participant.name)
+                ? unlabelledParticipantPhrase(participant.id, false)
+                : `"${participant.name}"`
+            )
+          )
         : countedNoun(count, "participant", "participants");
     const list = structureList(diagram);
     const including = list ? `, including ${list}` : "";

@@ -1140,6 +1140,13 @@ const GraphBuilderCharts = (function () {
   const finalChartCreator = new FinalChartCreator();
   const validator = new ChartValidator();
 
+  // Scatter takes the x/y route only for exactly two value columns (x and y). With three or more,
+  // the x-against-y route would silently drop every series after the second, so Enter Data's
+  // advanced mode keeps the one-dataset-per-column behaviour it had before B-2b.
+  const SCATTER_VALUE_COLUMNS = 2;
+  const countValueColumns = (columnCfg) =>
+    columnCfg.filter((c) => c && c.role === "value").length;
+
   /**
    * Route chart config building through the Phase 2 enhanced processors
    * when advanced mode is active. Basic mode falls through to the existing
@@ -1150,6 +1157,25 @@ const GraphBuilderCharts = (function () {
    * processing produces zero datasets.
    */
   function buildConfigRouted(data, chartType, options) {
+    return applyValueAxisRange(routeConfig(data, chartType, options), options);
+  }
+
+  /**
+   * An image-sourced table carries the range the model read off the value axis. It is applied as Chart.js
+   * suggestedMin / suggestedMax, which can widen the axis and never clip data. Preview and the final
+   * enhanced chart both come through here; other routes pass no range, so they are untouched.
+   */
+  function applyValueAxisRange(config, options) {
+    const range = options && options.valueAxisRange;
+    const valueScale = config && config.options && config.options.scales && config.options.scales.y;
+    if (!range || !valueScale) return config;
+
+    if (range.min !== null) valueScale.suggestedMin = range.min;
+    if (range.max !== null) valueScale.suggestedMax = range.max;
+    return config;
+  }
+
+  function routeConfig(data, chartType, options) {
     const enhanced = window.GraphBuilderEnhanced;
     const dataEnhanced = window.GraphBuilderDataEnhanced;
     const chartsEnhanced = window.GraphBuilderChartsEnhanced;
@@ -1174,6 +1200,8 @@ const GraphBuilderCharts = (function () {
 
       const processed = chartType === "bubble" && typeof dataEnhanced.processBubbleData === "function"
         ? dataEnhanced.processBubbleData(data, columnCfg)
+        : chartType === "scatter" && countValueColumns(columnCfg) === SCATTER_VALUE_COLUMNS && typeof dataEnhanced.processScatterData === "function"
+        ? dataEnhanced.processScatterData(data, columnCfg)
         : dataEnhanced.processData(data, columnCfg);
       if (!processed || !Array.isArray(processed.datasets) || processed.datasets.length === 0) {
         logWarn("Enhanced processor returned no datasets; using basic path");

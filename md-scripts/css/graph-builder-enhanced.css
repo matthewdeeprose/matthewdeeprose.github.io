@@ -2,108 +2,100 @@
    GRAPH BUILDER ENHANCED - COLOUR PROPERTIES
    ======================================== */
 
-/* Enhancement panel container - Colours */
+/* Palette colours live in light.css and dark.css (GT-3a); what stays here is structure. */
+
 .gb-enhanced-config {
-  border: 1px solid #495961;
-  background-color: rgba(255, 255, 244, 0.5);
+  border-width: 1px;
+  border-style: solid;
 }
 
-/* Advanced options toggle - Colours */
 .gb-advanced-toggle {
-  background-color: #fffff4;
-  border: 1px solid #495961;
-  color: #00131d;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .gb-advanced-toggle:hover {
-  background-color: rgba(0, 92, 132, 0.05);
+
 }
 
 .gb-advanced-toggle:has(:focus-visible) {
-  outline: 0.2rem solid #005c84;
+  outline-style: solid;
+  outline-width: 0.2rem;
   outline-offset: 2px;
 }
 
-/* Advanced panel - Colours */
 .gb-advanced-options {
-  background-color: #fffff4;
-  border: 1px solid #495961;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .gb-advanced-options h4 {
-  color: #005c84;
+
 }
 
-/* Column definition fieldset - Colours */
 .gb-column-definition {
-  border: 1px solid #495961;
-  background-color: #fffff4;
+  border-width: 1px;
+  border-style: solid;
 }
 
 .gb-column-definition legend {
-  color: #005c84;
+
 }
 
-/* Column inputs - Colours */
 .gb-enhanced-input,
 .gb-enhanced-select {
-  background-color: #fffff4;
-  color: #00131d;
+
 }
 
-/* Add column button - Colours */
 .gb-add-column-btn {
-  color: #495961;
-  border: 0.2rem dashed #495961;
+  border-width: 0.2rem;
+  border-style: dashed;
   background: none;
   outline: 0.2rem solid transparent;
 }
 
 .gb-add-column-btn:hover {
-  border-color: #005c84;
-  color: #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
+
 }
 
 .gb-add-column-btn:focus-visible {
-  outline: 0.2rem solid #005c84;
+  outline-style: solid;
+  outline-width: 0.2rem;
   outline-offset: 2px;
 }
 
-/* Remove column button - Colours */
 .gb-remove-column-btn {
-  color: #d5007f;
-  border: 0.2rem solid #d5007f;
+  border-width: 0.2rem;
+  border-style: solid;
   background: none;
   outline: 0.2rem solid transparent;
 }
 
 .gb-remove-column-btn:hover {
-  background-color: rgba(213, 0, 127, 0.1);
+
 }
 
 .gb-remove-column-btn:focus-visible {
-  outline: 0.2rem solid #005c84;
+  outline-style: solid;
+  outline-width: 0.2rem;
   outline-offset: 2px;
 }
 
-/* Smart suggestions - Colours */
 .gb-smart-suggestions {
-  background-color: rgba(0, 92, 132, 0.05);
-  border: 1px solid rgba(0, 92, 132, 0.3);
+  border-width: 1px;
+  border-style: solid;
 }
 
 .gb-smart-suggestions h4 {
-  color: #005c84;
+
 }
 
-/* Toggle icon - Colours */
 .gb-toggle-icon {
-  color: #495961;
+
 }
 
 .gb-advanced-toggle:has(.gb-toggle-checkbox:checked) .gb-toggle-icon {
-  color: #005c84;
+
 }
 
 /* ========================================

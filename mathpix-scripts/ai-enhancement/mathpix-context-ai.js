@@ -314,17 +314,37 @@ const MathPixContextAI = (function () {
   /** Approximate characters per token, for the max_tokens scaling below. */
   const CHARS_PER_TOKEN = 4;
 
-  /** Floor for the response budget — the labelled-block reply is small. */
+  /**
+   * Floor used by the COST PREVIEW only (_renderCostPreview). It is no longer the
+   * floor of the limit sent: since H-21 that follows the model, below.
+   */
   const MAX_TOKENS_FLOOR = 1024;
 
   /**
-   * Conservative, generic output budget — deliberately NOT tied to a specific
-   * model. It clamps the response budget in initEmbed regardless of which model
-   * _resolveModel() picks. Follow-up: derive the true per-model output cap from
-   * the selected model's registry metadata in the alt-text adapter phase. Left
-   * generic here as a conscious, documented leave, not a silent mismatch.
+   * The ceiling this tool asks for, before the model's own limit is applied
+   * (H-21, 3 October 2026). The reply is a few labelled fields, so its size does
+   * not grow with the document; the room is generous because a person pays for
+   * what is written and not for the room, and because the old document-scaled
+   * 1,024 floor left a reasoning model too little room on a short document. Do
+   * NOT scale this back down to the document: that is the defect this replaced.
+   */
+  const CONTEXT_OUTPUT_CEILING = 16384;
+
+  /**
+   * The limit used when no output ceiling is known for the model anywhere (a
+   * model absent from the generated data and from the registry). The shared
+   * resolver, ModelOutputBudget, supplies the model's own limit when there is
+   * one; this is only its fallback.
    */
   const DEFAULT_MODEL_MAX_OUTPUT = 8192;
+
+  /**
+   * The sentence a person hears and sees when the reply was cut off at the
+   * output limit. Thrown before the reply is parsed, so no field is written.
+   */
+  const REPLY_CUT_REFUSAL =
+    "The model ran out of room before it finished, so no fields were filled. " +
+    "Try again, or choose another model.";
 
   /**
    * OpenRouter rejects uploads whose encoded body nears 25 MB. We warn before
@@ -1518,8 +1538,6 @@ const MathPixContextAI = (function () {
       throw new Error(refusal);
     }
 
-    const modelCap = options.modelMaxOutput || DEFAULT_MODEL_MAX_OUTPUT;
-
     // AW-33 / AW-34 — tell the prompt what this run has actually been given,
     // read through the ONE helper both prompt halves use.
     const { systemPrompt } = buildPrompt(
@@ -1528,11 +1546,24 @@ const MathPixContextAI = (function () {
       _readPromptGivens(this.provider)
     );
 
-    // Scale the response budget from the source length, then clamp to the floor
-    // (the reply is only labelled blocks) and the model's output cap.
+    // The response limit follows the MODEL, not the document: the reply is a few
+    // labelled fields, so its size does not grow with the source (H-21). The
+    // shared resolver returns the smaller of this tool's ceiling and the model's
+    // own published output limit. An explicit options.modelMaxOutput still acts
+    // as a cap on top of that. If the resolver is absent the old stopgap figure
+    // applies, so the page degrades to a safe number rather than to none.
     const mmdLength = typeof mmd === "string" ? mmd.length : 0;
-    const mmdTokens = Math.ceil(mmdLength / CHARS_PER_TOKEN);
-    const maxTokens = Math.min(Math.max(mmdTokens, MAX_TOKENS_FLOOR), modelCap);
+    const resolverBudget =
+      window.ModelOutputBudget &&
+      typeof window.ModelOutputBudget.for === "function"
+        ? window.ModelOutputBudget.for(model, {
+            toolCeiling: CONTEXT_OUTPUT_CEILING,
+            fallback: DEFAULT_MODEL_MAX_OUTPUT,
+          })
+        : DEFAULT_MODEL_MAX_OUTPUT;
+    const maxTokens = options.modelMaxOutput
+      ? Math.min(resolverBudget, options.modelMaxOutput)
+      : resolverBudget;
 
     this.embed = new OpenRouterEmbed({
       containerId: EMBED_CONTAINER_ID,
@@ -1725,6 +1756,27 @@ const MathPixContextAI = (function () {
   }
 
   /**
+   * Did the provider say it cut this reply off at the output limit?
+   *
+   * Reuses MathPixAIEnhancer.isProviderCutReply — the one place that knows which
+   * stop reasons mean a cut — resolved at CALL time because that script loads
+   * independently. If it is not reachable, reads `response.finishReason` directly
+   * against the same OpenAI-canonical "length". Every other reason, an absent
+   * one and null included, is NOT a cut, so those replies behave as before.
+   *
+   * @param {Object} response the object the embed returned, unmodified
+   * @returns {boolean}
+   */
+  function _isReplyCut(response) {
+    const enhancer = window.MathPixAIEnhancer;
+    if (enhancer && typeof enhancer.isProviderCutReply === "function") {
+      return enhancer.isProviderCutReply(response).cut === true;
+    }
+    const reason = response && response.finishReason;
+    return typeof reason === "string" && reason.toLowerCase() === "length";
+  }
+
+  /**
    * Send a user prompt through the embed with a hard timeout.
    *
    * Resolves with the caller-facing response TEXT (result.text, falling back to
@@ -1781,6 +1833,21 @@ const MathPixContextAI = (function () {
         .then((response) => {
           if (settled) return;
           settled = true;
+          // H-21: a reply the provider cut off at the output limit is refused
+          // HERE, before anything parses it. Parsing a cut reply fills some
+          // fields, or none, and the run would then announce success. Rejected
+          // directly rather than through _bridgeError: this is a plain
+          // sentence for the person, not a transport failure, and the run's own
+          // catch already bridges every failure once.
+          if (_isReplyCut(response)) {
+            logWarn("Context auto-fill reply was cut off at the output limit", {
+              finishReason: response && response.finishReason,
+            });
+            const cutError = new Error(REPLY_CUT_REFUSAL);
+            cutError.finishReason = response && response.finishReason;
+            reject(cutError);
+            return;
+          }
           const text =
             response && typeof response.text === "string"
               ? response.text

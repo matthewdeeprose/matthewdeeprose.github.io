@@ -667,6 +667,24 @@ class MathPixConvertAPIClient {
   }
 
   /**
+   * Pull a readable reason out of one format's failed status (Parcel O-01).
+   * @param {Object} statusInfo - The per-format status object from MathPix
+   * @returns {string} The reason, or "" when MathPix gave none
+   * @private
+   */
+  _formatErrorReason(statusInfo) {
+    const firstString = (...values) =>
+      values.find((v) => typeof v === "string" && v.trim() !== "") || "";
+    const info = statusInfo?.error_info;
+    if (typeof info === "string" && info.trim() !== "") return info;
+    if (info && typeof info === "object") {
+      const fromObject = firstString(info.message, info.error, info.id);
+      if (fromObject) return fromObject;
+    }
+    return firstString(statusInfo?.error, statusInfo?.message);
+  }
+
+  /**
    * Polls until all formats complete or timeout
    * @param {string} conversionId - The conversion ID to poll
    * @param {Function} [onProgress] - Callback for progress updates: (statusObject) => void
@@ -724,8 +742,15 @@ class MathPixConvertAPIClient {
           } else if (formatStatus === "error") {
             if (!failed.includes(format)) {
               failed.push(format);
-              errors[format] = statusInfo.error_info || "Unknown error";
-              logWarn(`Format failed: ${format}`, errors[format]);
+              // Parcel O-01: surface MathPix's reason, and log the whole reply
+              errors[format] =
+                this._formatErrorReason(statusInfo) || "Unknown error";
+              logWarn(
+                `Format failed: ${format}`,
+                errors[format],
+                `conversion ${conversionId}`, // Parcel O-02
+                JSON.stringify(statusInfo),
+              );
             }
           } else if (formatStatus === "processing") {
             allComplete = false;

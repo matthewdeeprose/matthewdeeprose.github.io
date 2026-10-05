@@ -307,7 +307,27 @@ const CaptionsFixerUI = (function () {
     PROPOSED: "proposed",
     ACCEPTED: "accepted",
     REJECTED: "rejected",
+    // pl, work item 5. A mirror of `CaptionsFixerCues.STATUS.CHECK`: a caption
+    // the plausibility score flagged and nothing proposed a change to. It has
+    // no replacement text, no Keep box, and only a person's Edit makes it an
+    // accepted change.
+    CHECK: "check",
   });
+
+  /**
+   * The sentence a check row's Now cell carries INSTEAD OF A REPLACEMENT — pl,
+   * work item 5. Matthew's starting wording, refined at the listen. The Was
+   * cell carries the caption as it stands, and nothing here says how likely
+   * the caption is to be wrong: a 1-to-5 score means nothing to the person.
+   */
+  const CHECK_NOW_TEXT = "This caption may not read right. Listen to the recording and edit it if needed.";
+
+  /**
+   * What the pass line says in place of "Tick the ones you agree with." when
+   * the pass proposed nothing to tick and left only captions to check — the
+   * ordinary close would be false, and "Nothing was added to the table" worse.
+   */
+  const CHECK_ONLY_CLOSE = "Listen to the recording and edit the captions to check.";
 
   /** What this file writes into `rejectedBy` when a person unticks a row. */
   const REJECTED_BY_PERSON = "person";
@@ -552,6 +572,23 @@ const CaptionsFixerUI = (function () {
   const EDIT_BUTTON_TEXT = "Edit";
   const EDIT_LABEL_TAIL = " the change to caption ";
   const EDIT_LABEL_PASS_TAIL = " the suggested change to caption ";
+  /**
+   * A CHECK ROW'S EDIT TAIL — pl, work item 5b. "Edit caption N, a caption to
+   * check." There is no change on a check row, so the pass pattern ("the
+   * suggested change") and its first wording ("the check change") both read
+   * oddly; this names the caption and says why the row is there. A check row
+   * has no Keep box, so this is the only name it carries; once a person edits
+   * it the entry is an accepted pass entry and takes the pass tail above like
+   * any edited row.
+   */
+  const EDIT_LABEL_CHECK_TAIL = " caption ";
+  const EDIT_LABEL_CHECK_SUFFIX = ", a caption to check.";
+  /**
+   * The Keep cell's text on a check row — pl, work item 5b. The cell holds no
+   * control, and an empty cell would have the stacked narrow layout print the
+   * "Keep" data-label over nothing.
+   */
+  const KEEP_CELL_CHECK_TEXT = "Nothing to keep.";
   /**
    * What the hidden tail BEGINS WITH in the markup — a NON-BREAKING SPACE,
    * U+00A0 — iteration 8b, owed finding 1 of the 23 September 2026 listen.
@@ -1320,9 +1357,64 @@ const CaptionsFixerUI = (function () {
    * @returns {string}
    */
   function composeEstimateSentence(passName, estimate, runsClause, providerLabel) {
-    const figure = estimate.costUsd.toFixed(COST_DECIMAL_PLACES);
+    // pl, work item 6: only the cue-level line can carry the caption check, so
+    // the recurring line reads its figure as it always did.
+    const isPass = passName === "pass";
+    const figure = isPass ? api.costFigures(estimate).main : estimate.costUsd.toFixed(COST_DECIMAL_PLACES);
+    const clause = isPass ? api.composeCheckClause(estimate, providerLabel) : "";
     const model = api.sentenceModelName(estimate.model, providerLabel);
-    return `Estimated cost of the ${COST_PASS_WORDS[passName]}: about USD ${figure} ${runsClause} on ${model} via ${providerLabel}. ${COST_NOT_MEASURED}`;
+    return `Estimated cost of the ${COST_PASS_WORDS[passName]}: about USD ${figure} ${runsClause} on ${model} via ${providerLabel}${clause}. ${COST_NOT_MEASURED}`;
+  }
+
+  /**
+   * THE THREE FIGURES A COST SENTENCE CAN PRINT, as strings — pl, work item 6.
+   *
+   * `estimate.costUsd` is the pass TOTAL since the stage added the caption
+   * check to `estimatePass` (ruling 8), so a sentence saying "about USD <total>
+   * … plus about USD <check>" would count the check twice. `main` is therefore
+   * the cue-level part. All three are worked out in whole thousandths and
+   * printed from those, so the figures ADD UP AS PRINTED: 0.0996 less 0.0504
+   * is 0.0492 raw, which would read 0.049 beside a printed 0.050 and 0.100.
+   *
+   * `check` is null unless the estimate has check sends AND a known check
+   * cost; then `main` is the total and the sentence is the one it always was.
+   * Reached as `api.costFigures` so a suite inversion can patch it.
+   *
+   * @param {object} estimate `{ costUsd, plausibilitySends?, checkCostUsd? }`
+   * @returns {{total: string, main: string, check: string|null}}
+   */
+  function costFigures(estimate) {
+    const total = estimate.costUsd.toFixed(COST_DECIMAL_PLACES);
+    const hasCheck =
+      estimate.plausibilitySends > 0 && typeof estimate.checkCostUsd === "number" && Number.isFinite(estimate.checkCostUsd);
+    if (!hasCheck) return { total: total, main: total, check: null };
+    const scale = Math.pow(10, COST_DECIMAL_PLACES);
+    const totalUnits = Math.round(estimate.costUsd * scale);
+    const checkUnits = Math.round(estimate.checkCostUsd * scale);
+    const print = (units) => (units / scale).toFixed(COST_DECIMAL_PLACES);
+    return {
+      total: print(totalUnits),
+      main: print(Math.max(totalUnits - checkUnits, 0)),
+      check: print(checkUnits),
+    };
+  }
+
+  /**
+   * The clause the cue-level cost line and its confirmation gain when the
+   * caption check will run: ", plus about USD 0.015 for the caption check on
+   * GPT-6 Sol" — pl, work item 6. Empty when there is no check to price (the
+   * pass is unavailable, as on OpenRouter, or its cost is not known), so the
+   * sentence is then byte-identical to the one before the check. The model is
+   * named as the other cost sentences name theirs.
+   *
+   * @param {object} estimate
+   * @param {string} providerLabel a person-readable provider name
+   * @returns {string}
+   */
+  function composeCheckClause(estimate, providerLabel) {
+    const figures = api.costFigures(estimate);
+    if (figures.check === null || !estimate.checkModel) return "";
+    return `, plus about USD ${figures.check} for the caption check on ${api.sentenceModelName(estimate.checkModel, providerLabel)}`;
   }
 
   /**
@@ -1448,18 +1540,30 @@ const CaptionsFixerUI = (function () {
    * none of them moves, and a row that DID move would be reporting a real
    * change in what a person is told rather than a cosmetic one.
    *
+   * PL, WORK ITEM 5: a fifth argument, the number of rows that are captions to
+   * check, adds ONE sentence — "Of these, M are captions to check." — and only
+   * when M is above zero, so with none the sentence is byte-identical to the
+   * one above. It sits after the ticked count and BEFORE the conflict sentence.
+   * `proposed` no longer counts the check rows: they propose nothing. The
+   * changes HEADING carries no count and is untouched.
+   *
    * @param {number} total entries in the table, both sets
    * @param {number} kept entries still ticked
    * @param {number} conflicts entries `applyChangeSet` would refuse
    * @param {number} [proposed] how many of `total` came from the cue-level pass
+   * @param {number} [check] how many of `total` are captions to check
    * @returns {string}
    */
-  function composeChangesCaption(total, kept, conflicts, proposed) {
+  function composeChangesCaption(total, kept, conflicts, proposed, check) {
     const fromPass = typeof proposed === "number" ? proposed : 0;
+    const toCheck = typeof check === "number" && check > 0 ? check : 0;
     const head = fromPass > 0
       ? `${pluralise(total, "caption")} would change, ${fromPass} proposed by the caption-by-caption check;`
       : `${pluralise(total, "caption")} would change;`;
-    const base = `${head} ${kept} ticked to keep.`;
+    const ticked = `${head} ${kept} ticked to keep.`;
+    const base = toCheck > 0
+      ? `${ticked} ${toCheck === 1 ? "Of these, 1 is a caption to check." : `Of these, ${toCheck} are captions to check.`}`
+      : ticked;
     if (conflicts === 0) return base;
     return `${base} ${pluralise(conflicts, "change")} cannot be applied because the caption has changed since it was proposed.`;
   }
@@ -1514,9 +1618,15 @@ const CaptionsFixerUI = (function () {
    * @returns {string}
    */
   function composePassCostConfirmation(estimate, captionCount, chunkCount, providerLabel) {
-    const figure = estimate.costUsd.toFixed(COST_DECIMAL_PLACES);
+    // pl, work item 6: with a caption check the headline is the cue-level part,
+    // the clause prices the check, and the total — the figure the red tier was
+    // judged on — is said last, so the person answers on the whole.
+    const figures = api.costFigures(estimate);
+    const figure = figures.main;
+    const clause = api.composeCheckClause(estimate, providerLabel);
+    const inAll = clause ? `, about USD ${figures.total} in all` : "";
     const model = api.sentenceModelName(estimate.model, providerLabel);
-    return `Checking ${pluralise(captionCount, "caption")} is estimated at about USD ${figure} in ${pluralise(chunkCount, "request")} on ${model} via ${providerLabel}, which is above the level this app asks about. The figure is an estimate, not a measurement. Do you want to run it?`;
+    return `Checking ${pluralise(captionCount, "caption")} is estimated at about USD ${figure} in ${pluralise(chunkCount, "request")} on ${model} via ${providerLabel}${clause}${inAll}, which is above the level this app asks about. The figure is an estimate, not a measurement. Do you want to run it?`;
   }
 
   /**
@@ -1579,13 +1689,23 @@ const CaptionsFixerUI = (function () {
    * @param {number} chunks how many requests were made
    * @param {number} [failed] requests whose reply could not be read
    * @param {number} [tableTotal] rows the table lists, both sets
+   * @param {number} [check] captions to check, which propose nothing and are
+   *   NOT in `proposed`. PL, WORK ITEM 5: named once, between the proposals
+   *   and the held tail, in this same one line — no second announcement. With
+   *   none the line is byte-identical to the one above.
    * @returns {string}
    */
-  function composePassLine(proposed, held, chunks, failed, tableTotal) {
+  function composePassLine(proposed, held, chunks, failed, tableTotal, check) {
+    const toCheck = typeof check === "number" && check > 0 ? check : 0;
     const base = `Checked the captions in ${pluralise(chunks, "request")}: ${pluralise(proposed, "change")} proposed`;
-    const tail = held > 0 ? `, ${held} held by a check` : "";
+    const checkTail = toCheck > 0 ? `, ${pluralise(toCheck, "caption")} to check` : "";
+    const tail = `${checkTail}${held > 0 ? `, ${held} held by a check` : ""}`;
     const unread = api.composeUnreadClause(failed, chunks);
-    const close = proposed === 0 ? "Nothing was added to the table." : "Tick the ones you agree with.";
+    // "Nothing was added to the table" is only true when there are no check rows
+    // either, and "Tick the ones you agree with" only when there is something
+    // to tick.
+    let close = "Tick the ones you agree with.";
+    if (proposed === 0) close = toCheck > 0 ? CHECK_ONLY_CLOSE : "Nothing was added to the table.";
     const listed = typeof tableTotal === "number" && tableTotal > 0
       ? ` The table now lists ${pluralise(tableTotal, "caption")}.`
       : "";
@@ -1682,6 +1802,15 @@ const CaptionsFixerUI = (function () {
   function diffCell(original, proposed, side) {
     const fragment = document.createDocumentFragment();
     const diff = window.Diff;
+
+    // A CHECK ROW HAS NO REPLACEMENT, and without this branch the Now cell
+    // would print the word "null" (or the diff library would throw on it). The
+    // Was cell is the caption as it stands; the Now cell is the sentence that
+    // says why there is nothing to compare it with. pl, work item 5.
+    if (typeof proposed !== "string") {
+      fragment.appendChild(document.createTextNode(side === DIFF_SIDE.WAS ? original : CHECK_NOW_TEXT));
+      return fragment;
+    }
 
     if (!diff || typeof diff.diffWords !== "function") {
       // Degrade to the plain text rather than to nothing: a person still sees
@@ -2063,6 +2192,37 @@ const CaptionsFixerUI = (function () {
   }
 
   /**
+   * Is this entry a "Check this caption" row — pl, work item 5.
+   *
+   * Read off `status` alone, which is what a check entry IS: `proposed` is null,
+   * the source (`llm-pass-check`) already satisfies `isPassEntry`'s prefix test,
+   * and the moment a person's Edit makes it accepted it stops being one. Two
+   * readers ask (the Keep cell and the Edit button's name), both through `api`.
+   *
+   * @param {object} entry
+   * @returns {boolean}
+   */
+  function isCheckEntry(entry) {
+    return Boolean(entry) && entry.status === STATUS.CHECK;
+  }
+
+  /**
+   * The text an edit of this entry STARTS from, and the text a Save is
+   * compared with to decide nothing changed.
+   *
+   * The proposal where there is one; the caption's own text where there is not
+   * (a check row has `proposed: null`). Saving the caption back unchanged is
+   * therefore "nothing changed" and leaves a check row a check row — the
+   * person listened and decided it needed no edit, which is not a change.
+   *
+   * @param {object} entry
+   * @returns {string}
+   */
+  function editStartText(entry) {
+    return typeof entry.proposed === "string" ? entry.proposed : entry.original;
+  }
+
+  /**
    * The guards' own `rejectedBy` prefix, resolved AT CALL TIME.
    *
    * The same arrangement `plainGuardName` already uses, and for the same
@@ -2243,6 +2403,9 @@ const CaptionsFixerUI = (function () {
    * @returns {string}
    */
   function editLabelTail(entry) {
+    // A CHECK ROW FIRST: its source is a pass source too, so the pass tail
+    // would otherwise name it "the suggested change", which it is not.
+    if (api.isCheckEntry(entry)) return EDIT_LABEL_CHECK_TAIL + entry.cueId + EDIT_LABEL_CHECK_SUFFIX;
     return (api.isPassEntry(entry) ? EDIT_LABEL_PASS_TAIL : EDIT_LABEL_TAIL) + entry.cueId;
   }
 
@@ -2581,6 +2744,10 @@ const CaptionsFixerUI = (function () {
   function buildEditDialogContent(entry) {
     const root = document.createElement("div");
 
+    // WHAT THE DIALOGUE STARTS FROM, through `api`: the proposal, or for a
+    // check row (no proposal) the caption's own text — pl, work item 5.
+    const start = api.editStartText(entry);
+
     const textarea = document.createElement("textarea");
     textarea.id = EDIT_TEXTAREA_ID;
     // THE WAS PARAGRAPH FIRST, THEN THE HINT — see EDIT_WAS_ID. Both ids are
@@ -2588,10 +2755,10 @@ const CaptionsFixerUI = (function () {
     // elements are in the dialog by then: the paragraph is appended a few
     // lines below, before the dialog is shown.
     textarea.setAttribute("aria-describedby", api.editDescribedBy());
-    textarea.rows = api.editTextareaRows(entry.proposed);
+    textarea.rows = api.editTextareaRows(start);
     // `value`, never `textContent`: the two differ the moment a person types,
     // and only one of them is what the footer's Save will read back.
-    textarea.value = entry.proposed;
+    textarea.value = start;
 
     const wasLabel = document.createElement("p");
     wasLabel.textContent = EDIT_WAS_LABEL;
@@ -2607,8 +2774,8 @@ const CaptionsFixerUI = (function () {
     // two-hunk threshold and the per-row rebuild check, so a row that cannot be
     // rebuilt byte-exactly simply does not get a fieldset and the dialog below
     // is the free-editing dialog iteration 5 shipped, unchanged.
-    const parts = api.diffPartsFor(entry.original, entry.proposed);
-    const hunks = api.canRebuildHunks(parts, entry.original, entry.proposed)
+    const parts = api.diffPartsFor(entry.original, start);
+    const hunks = api.canRebuildHunks(parts, entry.original, start)
       ? api.hunksOf(parts)
       : [];
     if (hunks.length > 0) {
@@ -2700,7 +2867,9 @@ const CaptionsFixerUI = (function () {
     const entry = api.entryAt(index);
     if (!entry) return EDIT_OUTCOME.DISMISSED;
     if (!api.isSavableEditText(text)) return EDIT_OUTCOME.REFUSED;
-    if (text === entry.proposed) return EDIT_OUTCOME.UNCHANGED;
+    // Against what the dialogue STARTED from, not against `proposed`: a check
+    // row has no proposal, and its caption saved back unchanged is no change.
+    if (text === api.editStartText(entry)) return EDIT_OUTCOME.UNCHANGED;
 
     entry.proposed = text;
     entry.status = STATUS.ACCEPTED;
@@ -2870,24 +3039,34 @@ const CaptionsFixerUI = (function () {
       row.appendChild(reasonCell);
 
       const keepCell = withLabel(document.createElement("td"), 5);
-      const input = document.createElement("input");
-      input.type = "checkbox";
-      input.id = id;
-      input.checked = entry.status === STATUS.ACCEPTED;
-      input.dataset.entryIndex = String(index);
-      const label = document.createElement("label");
-      label.className = VISUALLY_HIDDEN_CLASS;
-      label.setAttribute("for", id);
-      // STAGE 11b, DECISION 2 AND STAGE 16, DECISION 8. Read off the ENTRY's
-      // own source and its own `rejectedBy`, never off the row's position —
-      // and as of this iteration the table IS ordered by caption number, so
-      // the day the Stage 11b comment anticipated is this one. The held suffix
-      // is added by the same function, because both halves of the name are
-      // properties of the entry and splitting them across two places is how
-      // one of them gets missed.
-      label.textContent = api.keepLabelText(entry);
-      keepCell.appendChild(input);
-      keepCell.appendChild(label);
+      // A CHECK ROW HAS NOTHING TO KEEP — pl, work item 5. It proposes no
+      // replacement, so there is no change to accept and no box: the cell stays
+      // so the seven columns still line up, carrying the words "Nothing to
+      // keep." (work item 5b) so the narrow layout never prints the column
+      // label over an empty value, and the Edit button beside it is the row's
+      // only control. Through `api`, so an inversion can reach it.
+      if (api.isCheckEntry(entry)) {
+        keepCell.textContent = KEEP_CELL_CHECK_TEXT;
+      } else {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.id = id;
+        input.checked = entry.status === STATUS.ACCEPTED;
+        input.dataset.entryIndex = String(index);
+        const label = document.createElement("label");
+        label.className = VISUALLY_HIDDEN_CLASS;
+        label.setAttribute("for", id);
+        // STAGE 11b, DECISION 2 AND STAGE 16, DECISION 8. Read off the ENTRY's
+        // own source and its own `rejectedBy`, never off the row's position —
+        // and as of this iteration the table IS ordered by caption number, so
+        // the day the Stage 11b comment anticipated is this one. The held suffix
+        // is added by the same function, because both halves of the name are
+        // properties of the entry and splitting them across two places is how
+        // one of them gets missed.
+        label.textContent = api.keepLabelText(entry);
+        keepCell.appendChild(input);
+        keepCell.appendChild(label);
+      }
       row.appendChild(keepCell);
 
       // STAGE 16, DECISION 1. The per-row Edit button, filled at iteration 5.
@@ -3061,11 +3240,24 @@ const CaptionsFixerUI = (function () {
     const entries = api.allEntries();
     const kept = entries.filter((entry) => entry.status === STATUS.ACCEPTED).length;
     const applied = api.applyBothSets();
+    // THE CHECK COUNT IS THE ORCHESTRATOR'S, read off its own `check` field and
+    // not recounted here (pl, work item 5): a second count in this file would
+    // be a second opinion about the same array. Taken over the pass set as it
+    // stands NOW, so an edit that turns a check row into an accepted change
+    // moves it. The proposal count excludes those rows, which propose nothing.
+    const orchestrator = window.CaptionsFixerOrchestrator;
+    if (!orchestrator || typeof orchestrator.countChangeSet !== "function") {
+      logWarn("the orchestrator's tally is unavailable; the caption names no captions to check");
+    }
+    const checkCount = orchestrator && typeof orchestrator.countChangeSet === "function"
+      ? orchestrator.countChangeSet(passChangeSet, new Map()).check
+      : 0;
     elements.changesCaption.textContent = api.composeChangesCaption(
       entries.length,
       kept,
       applied ? applied.conflicts.length : 0,
-      passChangeSet.length,
+      passChangeSet.length - (typeof checkCount === "number" ? checkCount : 0),
+      checkCount,
     );
   }
 
@@ -3177,6 +3369,36 @@ const CaptionsFixerUI = (function () {
     return cues.applyChangeSet(cueList, changeSet).cueList;
   }
 
+  /**
+   * What the caption check's sends alone would cost over the applied list, and
+   * the model they go to — pl, work item 6. Summed from the stage's own
+   * `plausibilityEstimateFor` over the chunks `estimatePass` itself builds
+   * (same chunker, same cue-level model for chunk sizing), so it is the stage's
+   * figure and not the UI's. Null where the pass is unavailable, or any chunk's
+   * cost is unknown, so the sentence then says nothing about a check.
+   * Reached as `api.plausibilityCostFor` so a suite inversion can patch it.
+   *
+   * @param {Array<object>} applied the list the pass would send
+   * @param {object} options the same options `estimatePass` is given
+   * @returns {{costUsd: number, model: string}|null}
+   */
+  function plausibilityCostFor(applied, options) {
+    const pass = window.CaptionsFixerStageLlmPass;
+    const llm = window.CaptionsFixerLLM;
+    if (!pass || !llm || typeof pass.plausibilityEstimateFor !== "function") return null;
+    const model = pass.resolvePlausibilityModelId();
+    if (!model) return null;
+    const cueModel = llm.resolveModel({ model: options && options.model, pass: llm.PASSES.PASS });
+    const chunks = pass.chunksFor(applied, cueModel);
+    let costUsd = 0;
+    for (const chunk of chunks) {
+      const one = pass.plausibilityEstimateFor(chunk);
+      if (!one || one.unavailable || typeof one.costUsd !== "number") return null;
+      costUsd += one.costUsd;
+    }
+    return chunks.length > 0 ? { costUsd: costUsd, model: model } : null;
+  }
+
   /** What one cue-level pass would cost, over the applied list. @returns {object|null} */
   function estimatePassRun() {
     const pass = window.CaptionsFixerStageLlmPass;
@@ -3188,7 +3410,13 @@ const CaptionsFixerUI = (function () {
       // send are built from, through the one seam — so a term in the field
       // reaches both passes' prices by construction rather than by two readers
       // agreeing.
-      return pass.estimatePass(applied, api.discoveryOptions());
+      const options = api.discoveryOptions();
+      const estimate = pass.estimatePass(applied, options);
+      if (!estimate || !(estimate.plausibilitySends > 0)) return estimate;
+      // The pass total includes the caption check (stage `pl`, ruling 8); the
+      // sentence prices the check apart, so its share is read off the stage.
+      const check = api.plausibilityCostFor(applied, options);
+      return check ? Object.assign({}, estimate, { checkCostUsd: check.costUsd, checkModel: check.model }) : estimate;
     } catch (error) {
       logWarn("estimatePass threw; the pass cost line will say so", error);
       return null;
@@ -4088,6 +4316,12 @@ const CaptionsFixerUI = (function () {
               persist: sha256
                 ? (patch) => window.CaptionsFixerStore.persist(sha256, patch)
                 : undefined,
+              // THE RECURRING SET, so the stage can tell a caption that
+              // already has an entry from one that has none and leaves it a
+              // check row only when no entry of any status exists (ruling 9).
+              // A copy: the stage reads it and must never be able to change
+              // the set this file holds. pl, work item 5.
+              recurringEntries: changeSet.slice(),
             },
             discovery,
           ),
@@ -4141,7 +4375,12 @@ const CaptionsFixerUI = (function () {
     const held = result.tally && typeof result.tally.rejectedByGuard === "number"
       ? result.tally.rejectedByGuard
       : 0;
-    const proposed = Math.max(passChangeSet.length - held, 0);
+    // THE CHECK ROWS PROPOSE NOTHING, so they leave the proposal figure and
+    // are named once beside it. Read off the same tally as `held`, never
+    // recounted: the orchestrator already classifies every entry by status.
+    // pl, work item 5.
+    const check = result.tally && typeof result.tally.check === "number" ? result.tally.check : 0;
+    const proposed = Math.max(passChangeSet.length - held - check, 0);
     // The chunk count is the estimate's, over the same list through the same
     // `chunksFor`. Nothing the orchestrator returns carries it, and inventing
     // a second chunker call here could report a figure the run did not make.
@@ -4161,7 +4400,7 @@ const CaptionsFixerUI = (function () {
     // visible caption is built from (`updateChangesCaption` reads the same
     // `allEntries().length`), so the spoken line and the caption cannot differ.
     const tableTotal = api.allEntries().length;
-    speak("notifySuccess", api.composePassLine(proposed, held, chunks, failedRequests, tableTotal));
+    speak("notifySuccess", api.composePassLine(proposed, held, chunks, failedRequests, tableTotal, check));
 
     // STAGE 16, ITERATION 8c — FOCUS GOES TO THE "Changes to your captions"
     // HEADING, NOT INTO THE TABLE: Matthew's option 1, after the listen of 23
@@ -4696,6 +4935,9 @@ const CaptionsFixerUI = (function () {
     // the model's name as the registry gives it. Both are reached through
     // `api`, so a suite inversion patching either one reaches every caller.
     composeEstimateSentence: composeEstimateSentence,
+    costFigures: costFigures,
+    composeCheckClause: composeCheckClause,
+    plausibilityCostFor: plausibilityCostFor,
     modelDisplayName: modelDisplayName,
     COST_PASS_WORDS: COST_PASS_WORDS,
     // dm, iteration 5 — the model's name beside "via <provider>", and the
@@ -4749,6 +4991,12 @@ const CaptionsFixerUI = (function () {
     // asked.
     sortedEntryView: sortedEntryView,
     isPassEntry: isPassEntry,
+    // pl, work item 5. Each its own seam, read through `api`: whether a row is
+    // a check row, and what an edit of any row starts from.
+    isCheckEntry: isCheckEntry,
+    editStartText: editStartText,
+    CHECK_NOW_TEXT: CHECK_NOW_TEXT,
+    EDIT_LABEL_CHECK_TAIL: EDIT_LABEL_CHECK_TAIL,
     isHeldByGuard: isHeldByGuard,
     startCellText: startCellText,
     composeReasonCell: composeReasonCell,

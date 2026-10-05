@@ -139,9 +139,7 @@ const FlowchartModule = (function () {
   async function generateShortDescription(svgElement, code) {
     logInfo("generateShortDescription", "Generating short description");
 
-    const graph = withNarratableLabels(
-      await window.MermaidParseAdapter.parse(code)
-    );
+    const graph = await window.MermaidParseAdapter.parse(code);
     if (window.MermaidParseAdapter.isHealthy() === false) {
       throw new Error(
         "Parse adapter failed its self-check; refusing to narrate an unverified graph"
@@ -196,70 +194,15 @@ const FlowchartModule = (function () {
     ...DOUBLE_ARROW_KINDS,
   ]);
 
-  /**
-   * R24 LINE BREAKS IN LABELS (ruled 20 August 2026, gold targets version 9).
-   *
-   * A label carrying a line break arrives with the tag as LITERAL CHARACTERS
-   * in the label string, so it is escaped at the sink and read aloud as
-   * markup — the probe sweep measured "First line&lt;br&gt;Second line", which
-   * a screen reader announces as the tag. The design seat ruled it a single
-   * space. It is not a markdown question and needs no `labelType`: the tag is
-   * text whatever the label's type.
-   *
-   * MEASURED, not assumed (20 August 2026): Mermaid normalises EVERY spelling
-   * the author can write — `<br>`, `<br/>`, `<br />`, `<BR>`, `<Br/>`,
-   * `<BR />` — to lowercase `<br>` before the adapter sees it. The pattern
-   * still matches the variants, because that costs nothing and survives a
-   * Mermaid change that stops normalising.
-   *
-   * A RUN of tags collapses to ONE space, which is why the quantifier wraps
-   * the whole group: two adjacent tags matched separately would each leave a
-   * space and the label would gain a double one. Whitespace the author wrote
-   * elsewhere is untouched — a general collapse would edit author text, and
-   * the standing convention is that author labels are verbatim.
-   */
-  const LINE_BREAK_TAGS = /(?:\s*<br\s*\/?>\s*)+/gi;
-
-  /**
-   * @param {string} text - A delivered label or subgraph title
-   * @returns {string} The same text with line-break tags read as spaces
-   */
-  function collapseLineBreaks(text) {
-    if (typeof text !== "string" || text === "") return text;
-    return text.replace(LINE_BREAK_TAGS, " ").trim();
-  }
-
-  /**
-   * Apply R24 ONCE, to a shallow copy of the parsed graph, before anything
-   * reads a label. This is the choke point: the traversal, the step renderer,
-   * the short tier, the group headings and the isolated-node list all read
-   * their text from this object, so no site can be missed and no site has to
-   * remember. It runs BEFORE escaping everywhere, per the standing rule that
-   * transforms come first and the escape is last.
-   *
-   * The adapter's own objects are never mutated — the parse queue hands them
-   * out and another consumer may hold them.
-   *
-   * @param {Object} graph - The parse adapter's normalised graph
-   * @returns {Object} The same shape, with narratable label text
-   */
-  function withNarratableLabels(graph) {
-    return {
-      ...graph,
-      nodes: graph.nodes.map((node) => ({
-        ...node,
-        label: collapseLineBreaks(node.label),
-      })),
-      edges: graph.edges.map((edge) => ({
-        ...edge,
-        label: collapseLineBreaks(edge.label),
-      })),
-      subgraphs: graph.subgraphs.map((sub) => ({
-        ...sub,
-        title: collapseLineBreaks(sub.title),
-      })),
-    };
-  }
+  // R24 LINE BREAKS IN LABELS is decided in the parse adapter, NOT here. This
+  // module used to collapse typed break tags on the adapter's decoded text, and
+  // there an author-escaped `&lt;br&gt;` was the same four characters as a typed
+  // `<br>`, so it was read as a space although the picture draws the tag as
+  // characters. The adapter now replaces typed breaks on the raw string
+  // (decodeAuthorTextBreaks) and delivers an escaped one as the characters
+  // `<br>`, which this module narrates as written and escapes once. A second
+  // transform here would collapse the escaped form again — do not reinstate it.
+  // Register item 82, ruling of 2 October 2026.
 
   /**
    * R21 INVISIBLE LINKS (ruled 20 August 2026, gold targets version 8).
@@ -376,6 +319,69 @@ const FlowchartModule = (function () {
   // quotes and reads ambiguously, which is recorded rather than invented past.
   const BRANCH_LABEL_PUNCTUATION = /[,.;:!?]/;
 
+  // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
+  // break, or only spaces) is read as unlabelled, in each type's own words."
+  // The test is a TEST only: it trims to decide and never alters the bytes it
+  // narrates. It runs on the DELIVERED label, after the adapter's break
+  // transform. A node written without a label is delivered with its id as the
+  // label, so an empty one can only be a label that was written and draws
+  // nothing; the canvas then shows a blank box and never the id.
+  const UNLABELLED_STEP_PHRASE = "unlabelled step";
+  const UNLABELLED_GROUP_PHRASE = "Unlabelled subgraph";
+
+  /**
+   * Does this delivered author text draw nothing?
+   * @param {*} text - A delivered node label or subgraph title
+   * @returns {boolean} True for an empty or whitespace-only string
+   */
+  function drawsNothing(text) {
+    return typeof text === "string" && text.trim() === "";
+  }
+
+  /**
+   * Is this step one whose label draws nothing? The one emptiness test for a
+   * step's name: every read site asks it here, so they cannot disagree.
+   * @param {Object} node - A delivered node
+   * @returns {boolean} Whether to narrate it as unlabelled
+   */
+  function isUnlabelledNode(node) {
+    return drawsNothing(node.label);
+  }
+
+  /**
+   * Is this group one whose title draws nothing? The one emptiness test for a
+   * subgraph's heading.
+   * @param {Object} group - A delivered subgraph
+   * @returns {boolean} Whether to narrate it as an unlabelled subgraph
+   */
+  function isUnlabelledGroup(group) {
+    return drawsNothing(group.title);
+  }
+
+  /**
+   * The unlabelled reading of a step: the generator's own noun, then the
+   * author's id in the generator's quotes, never inflected (ledger entry 9).
+   * Lower case, for the middle of a sentence; a caller that opens a sentence
+   * capitalises it. Escaped, because the id is author text.
+   * @param {Object} node - A delivered node
+   * @returns {string} e.g. unlabelled step "qa"
+   */
+  function unlabelledStepPhrase(node) {
+    return `${UNLABELLED_STEP_PHRASE} "${Common.escapeHtml(node.id)}"`;
+  }
+
+  /**
+   * A step's name where the generator quotes it: the quoted escaped label, or
+   * the unlabelled phrase, which carries its own quotation marks.
+   * @param {Object} node - A delivered node
+   * @returns {string} The name, ready for the HTML sink
+   */
+  function quotedStepName(node) {
+    return isUnlabelledNode(node)
+      ? unlabelledStepPhrase(node)
+      : quoteAuthorLabel(node.label, "double");
+  }
+
   /**
    * Wrap an author label in the generator's own quotation marks.
    *
@@ -438,7 +444,7 @@ const FlowchartModule = (function () {
    */
   function stepReference(id, t) {
     const word = Common.narrationNumber(t.numberOf.get(id));
-    return `step ${word}, ${quoteAuthorLabel(t.nodeById.get(id).label, "double")}`;
+    return `step ${word}, ${quotedStepName(t.nodeById.get(id))}`;
   }
 
   /**
@@ -572,9 +578,7 @@ const FlowchartModule = (function () {
 
     let clause = `an open link joins step ${joinWord} to ${article} ${isFinal ? "final " : ""}${countWord}-step thread, ${where}`;
 
-    const ends = thread.endIds.map((id) =>
-      quoteAuthorLabel(t.nodeById.get(id).label, "double")
-    );
+    const ends = thread.endIds.map((id) => quotedStepName(t.nodeById.get(id)));
     if (ends.length === 1) {
       clause += `, ending at ${ends[0]}`;
     } else if (ends.length === 2) {
@@ -641,7 +645,13 @@ const FlowchartModule = (function () {
       if (totalSteps === 0) return "A flowchart with no steps.";
 
       const quoted = (id) => {
-        const raw = t.nodeById.get(id).label;
+        const node = t.nodeById.get(id);
+        const raw = node.label;
+        // A label that draws nothing reads as the unlabelled phrase, whose
+        // id is author text and is escaped only for the HTML tier.
+        if (isUnlabelledNode(node)) {
+          return `${UNLABELLED_STEP_PHRASE} "${asHtml ? Common.escapeHtml(node.id) : node.id}"`;
+        }
         return `"${asHtml ? Common.escapeHtml(raw) : raw}"`;
       };
       const total = asHtml
@@ -791,8 +801,13 @@ const FlowchartModule = (function () {
     render(segments, t, tag) {
       const parts = [];
       for (const segment of segments) {
+        // A group title that draws nothing reads as an unlabelled subgraph
+        // naming the author's id (enactment 4, P2); before it, an empty
+        // title fell back to the bare id.
         const heading = segment.group
-          ? Common.escapeHtml(segment.group.title || segment.group.id)
+          ? isUnlabelledGroup(segment.group)
+            ? `${UNLABELLED_GROUP_PHRASE} "${Common.escapeHtml(segment.group.id)}"`
+            : Common.escapeHtml(segment.group.title || segment.group.id)
           : "Ungrouped steps";
         parts.push(
           `<${tag} class="flow-heading group-heading">${heading}</${tag}>`
@@ -1452,7 +1467,9 @@ const FlowchartModule = (function () {
     // string. Everything downstream of this point is generator-authored
     // markup and must never be escaped. labelFullStop still reads the RAW
     // label: it is a text-level test for trailing sentence punctuation.
-    const safeLabel = Common.escapeHtml(label);
+    // (safeLabel is settled below, after the shape lead, because a step whose
+    // label draws nothing reads as the unlabelled phrase and that phrase is
+    // capitalised only when nothing precedes it in the item.)
 
     const out = t.orderingOut.get(id);
     const loops = t.selfLoops.get(id);
@@ -1478,6 +1495,17 @@ const FlowchartModule = (function () {
     // by construction rather than by a guard. R17 is unaffected — these are
     // ordinary steps and keep their appended full stop.
     const shapeLead = shapePrefix(node.shape);
+
+    // The step's own name. Ordinary labels are escaped once, here. A label
+    // that draws nothing reads as the unlabelled phrase (enactment 4, P2);
+    // it opens its sentence only when there is no decision prefix and no
+    // shape lead before it, and is capitalised exactly then.
+    const opensSentence = !isDecisionPoint && shapeLead === "";
+    const safeLabel = isUnlabelledNode(node)
+      ? opensSentence
+        ? Common.capitalize(unlabelledStepPhrase(node))
+        : unlabelledStepPhrase(node)
+      : Common.escapeHtml(label);
 
     // A labelled self-loop is narrated as a nested item, so it forces the
     // nested form too. An R7 parallel split never takes it: its exits are
@@ -1640,9 +1668,7 @@ const FlowchartModule = (function () {
   async function generateDetailedDescription(svgElement, code) {
     logInfo("generateDetailedDescription", "Generating flowchart description");
 
-    const graph = withNarratableLabels(
-      await window.MermaidParseAdapter.parse(code)
-    );
+    const graph = await window.MermaidParseAdapter.parse(code);
     if (window.MermaidParseAdapter.isHealthy() === false) {
       throw new Error(
         "Parse adapter failed its self-check; refusing to narrate an unverified graph"
@@ -1684,8 +1710,7 @@ const FlowchartModule = (function () {
     // markup and stay literal, and a second escaping pass would emit
     // "&amp;quot;" on a label carrying an author quote, which one fixture
     // forbids by name.
-    const quotedLabel = (id) =>
-      quoteAuthorLabel(t.nodeById.get(id).label, "double");
+    const quotedLabel = (id) => quotedStepName(t.nodeById.get(id));
     // A zero start count is unreachable (stage 3.1 amendment A): every
     // edge into a component's first-numbered node is a cycle edge, so
     // each component contributes at least one start point. A diagram with
@@ -1933,9 +1958,12 @@ const FlowchartModule = (function () {
     if (t.isolated.length > 0) {
       // Each label is escaped BEFORE the list is formatted — formatList
       // inserts its own commas and "and", which must not be escaped.
-      const labels = t.isolated.map((id) =>
-        Common.escapeHtml(t.nodeById.get(id).label)
-      );
+      const labels = t.isolated.map((id) => {
+        const node = t.nodeById.get(id);
+        return isUnlabelledNode(node)
+          ? unlabelledStepPhrase(node)
+          : Common.escapeHtml(node.label);
+      });
       const countWord = Common.capitalize(Common.narrationNumber(t.isolated.length));
       const noun = t.isolated.length === 1 ? "step" : "steps";
       const verb = t.isolated.length === 1 ? "is" : "are";

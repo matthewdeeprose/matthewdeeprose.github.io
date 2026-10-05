@@ -59,6 +59,11 @@ const GraphBuilder = (function () {
     }
   }
 
+  /** The text when it is a string with something in it, else null (a model's title or axis label). */
+  function nonEmptyText(value) {
+    return typeof value === "string" && value.trim() !== "" ? value : null;
+  }
+
   // Application state
   const state = {
     initialized: false,
@@ -498,6 +503,8 @@ const GraphBuilder = (function () {
         tabForm: this.dependencies.utils.dom.getById("gb-tab-form"),
         tabPaste: this.dependencies.utils.dom.getById("gb-tab-paste"),
         tabUpload: this.dependencies.utils.dom.getById("gb-tab-upload"),
+        tabImage: this.dependencies.utils.dom.getById("gb-tab-image"),
+        imageInput: this.dependencies.utils.dom.getById("gb-image-input"),
         dataRows: this.dependencies.utils.dom.getById("gb-data-rows"),
         addRowButton: this.dependencies.utils.dom.getById("gb-add-row"),
         csvInput: this.dependencies.utils.dom.getById("gb-csv-input"),
@@ -588,6 +595,12 @@ const GraphBuilder = (function () {
         this.elements.dataInput.tabUpload,
         "click",
         () => this.switchDataMethod("upload", true)
+      );
+
+      this.dependencies.utils.dom.addListener(
+        this.elements.dataInput.tabImage,
+        "click",
+        () => this.switchDataMethod("image", true)
       );
 
       // Data input interactions
@@ -1030,6 +1043,14 @@ const GraphBuilder = (function () {
       state.chartData = null;
       this.dependencies.ui.hidePreview();
 
+      // Undo a hand-off's column roles and advanced mode (see loadExtractedTable)
+      if (state.imageExtraction && this.enhancedBeforeHandOff) {
+        const before = this.enhancedBeforeHandOff;
+        window.GraphBuilderEnhanced?.setColumnConfiguration(before.columns, before.advanced);
+        this.enhancedBeforeHandOff = null;
+      }
+      state.imageExtraction = null;
+
       if (this.elements.dataInput.nextButton) {
         this.elements.dataInput.nextButton.disabled = true;
       }
@@ -1047,6 +1068,13 @@ const GraphBuilder = (function () {
         this.elements.dataInput.csvInput
       ) {
         this.elements.dataInput.csvInput.value = "";
+      }
+
+      if (
+        state.currentDataMethod !== "image" &&
+        this.elements.dataInput.imageInput
+      ) {
+        this.elements.dataInput.imageInput.value = "";
       }
     }
 
@@ -1258,6 +1286,78 @@ const GraphBuilder = (function () {
     }
 
     /**
+     * Load a table extracted from an image, as handleCSVInput does after parsing.
+     * Not yet reachable from the UI (B-2); B-4 will call it.
+     * @param {Object} result - An accepted GraphBuilderImageReply.parse result (ok: true)
+     * @returns {boolean} true when the table was loaded, false when refused
+     */
+    loadExtractedTable(result) {
+      if (!result || result.ok !== true || !result.table) {
+        logWarn("[Graph Builder Core] loadExtractedTable refused: no accepted result");
+        return false;
+      }
+
+      // Copy so chartData never aliases the caller's result
+      const headers = result.table.headers.slice();
+      const rows = result.table.rows.map((row) => row.slice());
+
+      // Same keys the paste path's parseCSV fills; there is no delimiter for a table
+      state.chartData = {
+        headers,
+        rows,
+        metadata: {
+          originalRowCount: rows.length,
+          processedRowCount: rows.length,
+          skippedRowCount: 0,
+          delimiter: null,
+        },
+      };
+
+      // Column roles are what lets multi-series, combo and bubble reach a chart
+      const enhanced = window.GraphBuilderEnhanced;
+
+      // Remember what the Enhanced layer held before the first hand-off, so
+      // clearDataState can put it back; advanced mode must not outlive the table
+      if (enhanced && !state.imageExtraction) {
+        this.enhancedBeforeHandOff = {
+          advanced: enhanced.isAdvancedMode(),
+          columns: enhanced.getColumnConfiguration(),
+        };
+      }
+
+      const rolesSet =
+        !!enhanced &&
+        typeof enhanced.setColumnConfiguration === "function" &&
+        enhanced.setColumnConfiguration(result.columnConfiguration, true) === true;
+      if (!rolesSet) {
+        logWarn(
+          "[Graph Builder Core] Column roles not set; multi-series will fall back to one dataset"
+        );
+      }
+
+      // The type and issues are for B-4's panel; the title and value axis feed initializeConfiguration
+      state.imageExtraction = {
+        suggestedType: result.suggestedType,
+        status: result.status,
+        issues: result.issues,
+        title: result.title,
+        valueAxis: result.valueAxis,
+        orientation: result.orientation,
+      };
+
+      this.dependencies.ui.showPreview(state.chartData);
+
+      if (this.elements.dataInput.nextButton) {
+        this.elements.dataInput.nextButton.disabled = false;
+      }
+
+      this.dependencies.notifications.success(
+        `Chart data extracted (${rows.length} rows)`
+      );
+      return true;
+    }
+
+    /**
      * Handle file upload
      * @param {Event} event - File input change event
      */
@@ -1357,9 +1457,16 @@ const GraphBuilder = (function () {
      * Initialize configuration screen
      */
     initializeConfiguration() {
+      // What the model read from an image, when this table came from one; the other routes have none.
+      // The numeric axis is always the y input: Graph Builder draws no horizontal chart.
+      const extraction = state.imageExtraction;
+      const readTitle = extraction && nonEmptyText(extraction.title);
+      const readValueLabel =
+        extraction && extraction.valueAxis && nonEmptyText(extraction.valueAxis.label);
+
       // Set default values
       if (this.elements.configure.titleInput) {
-        this.elements.configure.titleInput.value = "Chart Title";
+        this.elements.configure.titleInput.value = readTitle || "Chart Title";
       }
       if (this.elements.configure.xAxisInput) {
         this.elements.configure.xAxisInput.value =
@@ -1367,7 +1474,7 @@ const GraphBuilder = (function () {
       }
       if (this.elements.configure.yAxisInput) {
         this.elements.configure.yAxisInput.value =
-          state.chartData.headers[1] || "Y Axis";
+          readValueLabel || state.chartData.headers[1] || "Y Axis";
       }
 
       // Phase 3.1.a — Stack series visibility. Only meaningful in advanced
@@ -1420,7 +1527,7 @@ const GraphBuilder = (function () {
      * @returns {Object} Configuration options
      */
     getConfigurationOptions() {
-      return {
+      const options = {
         title: this.elements.configure.titleInput?.value || "Chart Title",
         xAxisTitle: this.elements.configure.xAxisInput?.value || "X Axis",
         yAxisTitle: this.elements.configure.yAxisInput?.value || "Y Axis",
@@ -1433,6 +1540,27 @@ const GraphBuilder = (function () {
         // chart type is a no-op rather than an error.
         stacked: this.elements.configure.stackSeries?.checked === true,
       };
+
+      // Image route only: where the model read the value axis starting and ending
+      const valueAxisRange = this.getImageValueRange();
+      if (valueAxisRange) options.valueAxisRange = valueAxisRange;
+      return options;
+    }
+
+    /**
+     * The value-axis range the model read from the image, as { min, max } with null for a missing end.
+     * Null for every other route, on a log scale (a suggested 0 is not valid there), or when the pair is unusable.
+     * @returns {{min: number|null, max: number|null}|null}
+     */
+    getImageValueRange() {
+      const axis = state.imageExtraction && state.imageExtraction.valueAxis;
+      if (!axis || axis.logarithmic === true) return null;
+
+      const min = Number.isFinite(axis.min) ? axis.min : null;
+      const max = Number.isFinite(axis.max) ? axis.max : null;
+      if (min === null && max === null) return null;
+      if (min !== null && max !== null && min >= max) return null;
+      return { min, max };
     }
 
     /**

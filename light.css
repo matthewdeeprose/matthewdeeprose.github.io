@@ -4076,6 +4076,454 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border: 0.2rem solid transparent;
 }
 
+/* ===== Graph Builder, light theme (GT-2, 3 October 2026; its card and step rules moved into the GT-3b block) =====
+   The text-field focus glow below stays: it answers a SITE rule, not a Graph Builder colour. */
+
+/* Keyboard focus in Graph Builder's text fields: the site rule above draws a cream glow on a cream surface (1.00 to
+   1.08:1). Same glow colour as the hover treatment on the same fields. Not needed for the <select>: select:focus already
+   wins there with the blue glow (measured at HEAD), so the model select is left alone. */
+#GraphBuilderContainer input[type="text"]:focus-visible,
+#GraphBuilderContainer input[type="number"]:focus-visible,
+#GraphBuilderContainer textarea:focus-visible {
+  box-shadow: 0 0 0 0.4rem #005c84;
+}
+
+/* ===== Graph Builder, Add Data screen, light theme (GT-3a BEGIN, 4 October 2026) =====
+   The palette colours the Add Data screen used to take from graph-builder.css and graph-builder-enhanced.css. Those
+   sheets load AFTER this one, so every declaration moved here was removed from them in the same commit; what stays
+   there is structure (border width and style, transparent reservations). Values are byte-for-byte what the Graph
+   Builder sheets held, so light is unchanged; dark.css carries the mirrored half. Choose Chart, Configure, the result
+   screen, the step indicator and the 768px card view are GT-3b's and are not in this block. */
+.gb-method-tabs {
+  border-bottom-color: #495961;
+}
+.gb-tab-button {
+  color: #495961;
+}
+.gb-tab-button.active {
+  color: #005c84;
+  border-bottom-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.1);
+}
+.gb-input-panel {
+  border-color: #495961;
+  background-color: rgba(255, 255, 244, 0.5);
+}
+.gb-input-panel h3 {
+  color: #005c84;
+}
+.gb-form-headers {
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-row-label {
+  color: #00131d;
+}
+.gb-data-row {
+  border-color: #495961;
+  background-color: #fffff4;
+}
+.gb-add-row-button {
+  color: #495961;
+  border-color: #495961;
+}
+.gb-remove-row-button {
+  color: #d5007f;
+  border-color: #d5007f;
+}
+.gb-csv-textarea {
+  border-color: #495961;
+}
+.gb-csv-textarea::placeholder {
+  color: #495961;
+}
+.gb-csv-feedback.success {
+  background-color: rgba(0, 80, 81, 0.1);
+  border-color: #005051;
+  color: #005051;
+}
+.gb-csv-feedback.warning {
+  background-color: rgba(213, 0, 127, 0.1);
+  border-color: #d5007f;
+  color: #d5007f;
+}
+.gb-csv-feedback.error {
+  background-color: rgba(213, 0, 127, 0.15);
+  border-color: #d5007f;
+  color: #d5007f;
+}
+.gb-preview-table-container {
+  border-color: #495961;
+}
+.gb-preview-table {
+  background-color: #fffff4;
+}
+.gb-preview-table caption {
+  background-color: rgba(0, 92, 132, 0.1);
+  border-bottom-color: #495961;
+}
+.gb-preview-table th,
+.gb-preview-table td {
+  border-bottom-color: #495961;
+  border-right-color: #495961;
+}
+.gb-preview-table th {
+  background-color: #e1e8ec;
+  color: #005c84;
+  border-bottom-color: #005c84;
+  box-shadow: 0 2px 2px rgba(0, 92, 132, 0.1);
+}
+.gb-preview-table tbody tr:nth-child(even) {
+  background-color: rgba(73, 89, 97, 0.05);
+}
+.gb-preview-table tbody tr:hover {
+  background-color: rgba(0, 92, 132, 0.08);
+}
+.gb-preview-table tbody tr:hover .gb-empty-cell {
+  background-color: rgba(0, 92, 132, 0.15);
+}
+.gb-empty-cell {
+  background-color: rgba(73, 89, 97, 0.1);
+}
+.gb-empty-indicator {
+  color: #495961;
+}
+.gb-csv-example {
+  background-color: rgba(73, 89, 97, 0.08);
+  border-color: #495961;
+  color: #00131d;
+}
+.gb-data-type-boolean::before {
+
+}
+.gb-preview-control-row {
+  border-top-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-preview-status {
+  color: #005c84;
+}
+.gb-show-more-button,
+.gb-show-less-button,
+.gb-show-all-button {
+  border-color: #005c84;
+  color: #005c84;
+}
+.gb-show-all-button {
+  background-color: rgba(0, 92, 132, 0.1);
+}
+.gb-help-text {
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-help-text p {
+  color: #495961;
+}
+.gb-file-label {
+  border-color: #495961;
+  background-color: rgba(255, 255, 244, 0.8);
+}
+.gb-file-label:hover {
+  border-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-upload-text {
+  color: #005c84;
+}
+.gb-data-preview {
+  border-top-color: #495961;
+}
+.gb-data-preview h3 {
+  color: #005c84;
+}
+.gb-preview-stats {
+  background-color: rgba(0, 92, 132, 0.1);
+  color: #005c84;
+}
+.gb-file-input:focus + .gb-file-label,
+.gb-file-input:focus-visible + .gb-file-label {
+  outline: 3px solid #005c84;
+  box-shadow: 0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-file-label:focus-within {
+  outline: 3px solid #005c84;
+  box-shadow: 0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-file-label:focus-within .gb-upload-text {
+  color: #005c84;
+}
+.gb-file-label.gb-drag-active {
+  background-color: rgba(0, 92, 132, 0.1);
+  border-color: #005c84;
+}
+.gb-file-label.gb-drag-active .gb-upload-text {
+  color: #005c84;
+}
+.gb-file-label.gb-drag-active:focus-within {
+  outline-color: #005c84;
+  box-shadow: 0 0 0 1px #ffffff,
+    0 0 0 4px #005c84,
+    0 0 0 6px rgba(0, 92, 132, 0.3);
+}
+.gb-upload-area:focus-within .gb-file-label {
+  outline: 3px solid #005c84;
+  box-shadow: 0 0 0 1px #ffffff,
+    0 0 0 4px #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-enhanced-config {
+  border-color: #495961;
+  background-color: rgba(255, 255, 244, 0.5);
+}
+.gb-advanced-toggle {
+  background-color: #fffff4;
+  border-color: #495961;
+  color: #00131d;
+}
+.gb-advanced-toggle:hover {
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-advanced-toggle:has(:focus-visible) {
+  outline-color: #005c84;
+}
+.gb-advanced-options {
+  background-color: #fffff4;
+  border-color: #495961;
+}
+.gb-advanced-options h4 {
+  color: #005c84;
+}
+.gb-column-definition {
+  border-color: #495961;
+  background-color: #fffff4;
+}
+.gb-column-definition legend {
+  color: #005c84;
+}
+.gb-enhanced-input,
+.gb-enhanced-select {
+  background-color: #fffff4;
+  color: #00131d;
+}
+.gb-add-column-btn {
+  color: #495961;
+  border-color: #495961;
+}
+.gb-add-column-btn:hover {
+  border-color: #005c84;
+  color: #005c84;
+  background-color: rgba(0, 92, 132, 0.05);
+}
+.gb-add-column-btn:focus-visible {
+  outline-color: #005c84;
+}
+.gb-remove-column-btn {
+  color: #d5007f;
+  border-color: #d5007f;
+}
+.gb-remove-column-btn:hover {
+  background-color: rgba(213, 0, 127, 0.1);
+}
+.gb-remove-column-btn:focus-visible {
+  outline-color: #005c84;
+}
+.gb-smart-suggestions {
+  background-color: rgba(0, 92, 132, 0.05);
+  border-color: rgba(0, 92, 132, 0.3);
+}
+.gb-smart-suggestions h4 {
+  color: #005c84;
+}
+.gb-toggle-icon {
+  color: #495961;
+}
+.gb-advanced-toggle:has(.gb-toggle-checkbox:checked) .gb-toggle-icon {
+  color: #005c84;
+}
+@media (prefers-contrast: high) {
+  .gb-file-input:focus + .gb-file-label,
+  .gb-file-input:focus-visible + .gb-file-label,
+  .gb-file-label:focus-within {
+    box-shadow: 0 0 0 2px #ffffff,
+        0 0 0 6px currentColor;
+  }
+}
+/* GT-3a END */
+
+/* ===== Graph Builder, remaining screens, light theme (GT-3b BEGIN, 5 October 2026) =====
+   The palette colours Choose Chart, Configure, the result screen, the navigation buttons, the skip link, the step indicator,
+   the 768px card view and the original-image holder used to take from graph-builder.css. That sheet loads AFTER this one, so
+   every declaration moved here was removed from it in the same commit. Values are byte-for-byte what it held, so light is
+   unchanged; dark.css carries the mirrored half. GT-2's card and step rules are folded in. */
+.gb-notification {
+  background-color: #fffff4;
+  border-color: #495961;
+}
+.gb-chart-option {
+  background-color: #fffff4;
+  border-color: #495961;
+}
+.gb-chart-option.selected {
+  border-color: #005c84;
+  background-color: rgba(0, 92, 132, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 92, 132, 0.3);
+}
+.gb-chart-icon {
+  color: #005c84;
+}
+#gb-chart-type .gb-chart-option .gb-chart-title {
+  color: #005c84;
+}
+#gb-chart-type .gb-chart-option .gb-chart-desc {
+  color: #495961;
+}
+#gb-chart-type .gb-chart-option.selected:focus-visible {
+  box-shadow: 0 0 0 0.4rem #005c84;
+}
+.gb-config-preview h3,
+.gb-config-form h3 {
+  color: #005c84;
+}
+.gb-chart-preview-container {
+  border-color: #495961;
+  background-color: #fffff4;
+}
+.gb-config-form {
+  border-color: #495961;
+  background-color: rgba(255, 255, 244, 0.5);
+}
+.gb-config-group label {
+  color: #00131d;
+}
+.gb-advanced-settings {
+  border-color: #495961;
+}
+.gb-advanced-settings summary {
+  background-color: rgba(73, 89, 97, 0.1);
+}
+.gb-advanced-settings[open] summary {
+  border-bottom-color: #495961;
+}
+.gb-result-info {
+  color: #005051;
+}
+.gb-final-chart-container {
+  border-color: #495961;
+  background-color: #fffff4;
+}
+.gb-navigation {
+  border-top-color: #495961;
+}
+.gb-back-button {
+  color: #495961;
+  border-color: #495961;
+}
+.gb-next-button,
+.gb-create-button {
+  background-color: #005c84;
+  color: #fffff4;
+  border-color: #005c84;
+}
+.gb-skip-progress-link {
+  background-color: #005c84;
+  color: #fffff4;
+}
+.gb-progress {
+  border-bottom-color: #495961;
+}
+.gb-steps::before {
+  background-color: #758d9a;
+}
+.gb-step {
+  color: #495961;
+}
+.gb-step.active {
+  color: #005c84;
+}
+.gb-step.completed {
+  color: #005051;
+}
+.gb-step-number {
+  background-color: #8d3970;
+  border-color: rgba(141, 57, 112, 0.65);
+  color: #fffff4;
+}
+.gb-step.active .gb-step-number {
+  background-color: #005c84;
+  color: #fffff4;
+  border-color: #005c84;
+  box-shadow: 0 0 0 4px rgba(0, 92, 132, 0.2);
+}
+.gb-step.completed .gb-step-number {
+  background-color: #005051;
+  color: #fffff4;
+  border-color: #005051;
+  box-shadow: 0 0 0 2px rgba(0, 80, 81, 0.2);
+}
+.gb-step.active .gb-step-label {
+  color: #005c84;
+}
+.gb-step.completed .gb-step-label {
+  color: #005051;
+}
+.gb-step.completed::after {
+  background-color: #005051;
+}
+.gb-step-button:hover .gb-step-label {
+  color: #005c84;
+}
+.gb-step-button:focus .gb-step-number {
+  outline-color: #005c84;
+}
+.gb-step-non-interactive .gb-step-number {
+  background-color: #f8f9fa;
+  border-color: #e9ecef;
+  color: #495961;
+}
+.gb-step-non-interactive .gb-step-label {
+  color: #495961;
+}
+.gb-original-image {
+  border-color: #495961;
+}
+@media (max-width: 768px) {
+  .gb-preview-table caption {
+    border-color: #495961;
+  }
+  .gb-preview-table tr {
+    border-color: #495961;
+    background-color: #fffff4;
+    box-shadow: 0 2px 4px rgba(0, 92, 132, 0.1);
+  }
+  .gb-preview-table tr:nth-child(even) {
+    background-color: #fffff4;
+  }
+  .gb-preview-table tr:hover {
+    background-color: rgba(0, 92, 132, 0.05);
+  }
+  .gb-preview-table td {
+    border-bottom-color: #e1e8ec;
+  }
+  .gb-preview-table td:before {
+    color: #005c84;
+  }
+  .gb-preview-table .gb-empty-cell {
+    background-color: rgba(73, 89, 97, 0.05);
+  }
+  .gb-preview-control-row td {
+    border-color: #005c84;
+    background-color: rgba(0, 92, 132, 0.05);
+  }
+}
+@media (prefers-contrast: high) {
+  .gb-step.active .gb-step-number {
+    box-shadow: 0 0 0 6px rgba(0, 92, 132, 0.4);
+  }
+}
+/* GT-3b END */
+
 /* Sortable tables */
 /* ===== COLOURS & THEMING ===== */
 

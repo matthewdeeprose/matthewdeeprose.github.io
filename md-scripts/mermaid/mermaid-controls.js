@@ -1642,6 +1642,45 @@ window.MermaidControls = (function () {
       : null;
   }
 
+  // Parcel 9d-2. An SVG first sized while its panel is hidden (display: none
+  // measures 0 x 0) has nothing to size from: the floor needs getScreenCTM and
+  // the stored originals need a box. Rather than write half the rule, the
+  // whole call is deferred to the SVG's first layout and made then with the
+  // same arguments, so the result is what a diagram rendered while shown
+  // carries. One observer per SVG; a later call while still hidden replaces
+  // the arguments, and the observer is released on that first call.
+  const pendingFirstLayout = new WeakMap();
+
+  /**
+   * Re-run applyDiagramSize for an SVG when it first has a layout box
+   * @param {SVGSVGElement} svgElement - Currently unlaid out
+   * @param {Array} args - The width, height, aspect lock and ratio it was given
+   */
+  function deferSizingToFirstLayout(svgElement, args) {
+    const pending = pendingFirstLayout.get(svgElement);
+    if (pending) {
+      pending.args = args;
+      return;
+    }
+    if (typeof ResizeObserver !== "function") return;
+
+    const entry = { args, observer: null };
+    entry.observer = new ResizeObserver(() => {
+      if (!svgElement.isConnected) {
+        entry.observer.disconnect();
+        pendingFirstLayout.delete(svgElement);
+        return;
+      }
+      const rect = svgElement.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      entry.observer.disconnect();
+      pendingFirstLayout.delete(svgElement);
+      applyDiagramSize(svgElement, ...entry.args);
+    });
+    pendingFirstLayout.set(svgElement, entry);
+    entry.observer.observe(svgElement);
+  }
+
   function applyDiagramSize(
     svgElement,
     widthPercent,
@@ -1709,6 +1748,12 @@ window.MermaidControls = (function () {
           Logger.warn(
             `Invalid dimensions for ${diagramId}: ${rect.width}×${rect.height}`
           );
+          deferSizingToFirstLayout(svgElement, [
+            widthPercent,
+            heightPercent,
+            maintainAspectRatio,
+            aspectRatio,
+          ]);
           return;
         }
       }

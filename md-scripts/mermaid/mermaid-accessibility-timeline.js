@@ -135,6 +135,43 @@
     return descriptions.text;
   }
 
+  // ITEM 82, ENACTMENT 5 (3 October 2026): "a line break the picture draws is
+  // read as a space; a <br> the picture prints as characters is read as
+  // written." Timeline's canvas breaks on `<br>` ALONE, measured 2 October
+  // 2026 (measurement 2 § 3): `<br/>`, `<br />` and `<BR>` are printed as
+  // characters, so they stay as typed. The rule is the adapter's and is
+  // resolved off window AT CALL TIME, never captured at load. The parse reads
+  // raw source bytes, so an escaped `&lt;br&gt;` or `#lt;br#gt;` reaches here
+  // as typed and is not matched; what the words then say of it is unchanged.
+  // The TITLE and the section names are not read through this: the canvas
+  // prints a tag there.
+  //
+  // HALTED, not enacted: an event the transform would EMPTY (a label that is
+  // only a break). Principle P2 needs an id and an event has none, and P1
+  // needs a no-label form the parser does not have (a line with no colon is
+  // dropped, while the canvas does draw an empty card). Such an event is left
+  // as typed until the design seat rules, which is today's reading.
+  /**
+   * Read a timeline event's text with typed line breaks as single spaces.
+   * @param {string} text - The trimmed event text from the source line
+   * @returns {string} The text with `<br>` read as a space, or the text
+   *   unchanged when the transform would empty it or the rule is not loaded
+   */
+  function readEventText(text) {
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.replaceTypedLineBreaks !== "function") {
+      logWarn(
+        "[Mermaid Accessibility] Timeline: the shared line-break rule is not loaded; event text is read as typed"
+      );
+      return text;
+    }
+    const read = adapter.replaceTypedLineBreaks(
+      text,
+      adapter.LINE_BREAK_FORMS.BR_ONLY
+    );
+    return read.trim() === "" ? text : read;
+  }
+
   /**
    * Parse timeline structure from mermaid code
    * @param {string} code - The mermaid code
@@ -196,7 +233,7 @@
       const eventMatch = line.match(/^([^:]+)?:(.*)$/);
       if (eventMatch) {
         const timePeriod = eventMatch[1] ? eventMatch[1].trim() : null;
-        const eventText = eventMatch[2].trim();
+        const eventText = readEventText(eventMatch[2].trim());
 
         if (timePeriod) {
           // This is a new time period

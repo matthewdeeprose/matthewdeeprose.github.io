@@ -2086,6 +2086,11 @@ window.MermaidThemes = (function () {
    * label really is drawn over the element box it points at — measured, not
    * assumed — and an ink must then clear both grounds.
    *
+   * ALL OF THAT GEOMETRY IS IN CLIENT SPACE (presentation standard rule 27,
+   * 1 October 2026). The pass used `getBBox` until Mermaid 11.17.2, which draws
+   * every c4 node about its own origin, so every label's own-space box overlapped
+   * every node's. See docs/mermaid-c4-contrast-fix-2026-10-01.md.
+   *
    * IDEMPOTENT BY CONSTRUCTION. The sweep runs first, so every derivation reads
    * the RENDERER's values and never this pass's own output; each painted element
    * is marked, and its owned properties are cleared before being written again.
@@ -2132,13 +2137,25 @@ window.MermaidThemes = (function () {
         element.closest("clipPath")
       );
 
-    const boxOf = (element) => {
-      try {
-        const box = element.getBBox();
-        return box && box.width > 0 && box.height > 0 ? box : null;
-      } catch (e) {
-        return null;
-      }
+    // CLIENT SPACE, ONE SPACE FOR EVERY ELEMENT (presentation standard rule 27;
+    // 1 October 2026, docs/mermaid-c4-contrast-fix-2026-10-01.md). `getBBox`
+    // is an element's OWN user space, and Mermaid 11.17.2 centres each c4 node
+    // on its own origin inside a translated group, so every label's box
+    // overlapped every node's and the pass scored ink against grounds it never
+    // sat on. `getBoundingClientRect` is one space for the whole tree, as
+    // applyKanbanEncoding already resolves it. A subject that is a line may be
+    // exactly horizontal or vertical, so it keeps a zero-thickness box; a
+    // GROUND needs an area and is never given that allowance.
+    const boxOf = (element, options) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect) return null;
+      const hasArea = rect.width > 0 && rect.height > 0;
+      const thinLine =
+        !!(options && options.allowThin) &&
+        (rect.width > 0 || rect.height > 0);
+      return hasArea || thinLine
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
     };
 
     // The diagram ground: a c4 SVG paints no background rect of its own, so it
@@ -2293,10 +2310,22 @@ window.MermaidThemes = (function () {
           (declared ? declared.a : 0) *
           opacityValue(computed.fillOpacity) *
           opacityValue(computed.opacity);
-        if (!declared || alpha <= 0.05) return;
-        paint(element, "arrowhead", [svgGround], C4_OBJECT_TARGET, {
-          fill: true,
-        });
+        if (declared && alpha > 0.05) {
+          paint(element, "arrowhead", [svgGround], C4_OBJECT_TARGET, {
+            fill: true,
+          });
+          return;
+        }
+        // A STROKE-ONLY marker shape — the `crosshead`'s cross is `fill: none`
+        // with a black stroke — has no fill to ink, so it is inked as a stroke
+        // (1 October 2026). Without this it stayed black on a dark page.
+        const strokeDeclared = parsePaint(computed.stroke);
+        const strokeAlpha =
+          (strokeDeclared ? strokeDeclared.a : 0) *
+          opacityValue(computed.strokeOpacity) *
+          opacityValue(computed.opacity);
+        if (!strokeDeclared || strokeAlpha <= 0.05) return;
+        paint(element, "arrowhead", [svgGround], C4_OBJECT_TARGET);
         return;
       }
 
@@ -2333,7 +2362,9 @@ window.MermaidThemes = (function () {
       }
 
       if (!SHAPE_TAGS.includes(element.tagName)) return;
-      const box = boxOf(element);
+      // A relationship line may be exactly horizontal or vertical: its box has
+      // one zero side and is still a subject (1 October 2026).
+      const box = boxOf(element, { allowThin: true });
       if (!box) return;
 
       const computed = window.getComputedStyle(element);

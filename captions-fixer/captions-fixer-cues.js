@@ -117,11 +117,18 @@ const CaptionsFixerCues = (function () {
   const LINE_ENDING = Object.freeze({ LF: "\n", CRLF: "\r\n" });
   const TIMESTAMP_SEPARATOR = Object.freeze({ SRT: ",", VTT: "." });
 
-  /** Change-set statuses. Only ACCEPTED is ever written. */
+  /**
+   * Change-set statuses. Only ACCEPTED is ever written. CHECK (stage `pl`) marks
+   * a caption the plausibility pass flagged for a person to listen to: it
+   * carries `proposed: null`, is NOT a change, and `applyChangeSet` ignores it
+   * exactly as it ignores PROPOSED. It becomes ACCEPTED only through the
+   * person's own edit.
+   */
   const STATUS = Object.freeze({
     PROPOSED: "proposed",
     ACCEPTED: "accepted",
     REJECTED: "rejected",
+    CHECK: "check",
   });
 
   /** The internal line separator for multi-line cue text and the header. */
@@ -627,8 +634,8 @@ const CaptionsFixerCues = (function () {
    * `status: "accepted"` whose `original` still equals the cue's current text
    * is written. A stale `original` — the cue was edited by an earlier entry, or
    * the person, or the set is from another upload — is a conflict, reported
-   * and skipped, never forced. `proposed` and `rejected` entries are ignored
-   * silently: they are not conflicts, they are simply not accepted. Timestamps
+   * and skipped, never forced. `proposed`, `rejected` and `check` entries are
+   * ignored silently: they are not conflicts, they are simply not accepted. Timestamps
    * are copied through untouched.
    *
    * @param {Array<{ id: number, start: number, end: number, text: string }>} cueList

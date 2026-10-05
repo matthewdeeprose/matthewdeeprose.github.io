@@ -122,11 +122,16 @@ const CaptionsFixerOrchestrator = (function () {
     SKIPPED: "skipped",
   });
 
-  /** The change-set statuses this module counts. Mirrored from the cue module. */
+  /**
+   * The change-set statuses this module counts. Mirrored from the cue module.
+   * CHECK is the plausibility pass's "check this caption" entry: it carries no
+   * replacement text, so it is tallied apart and is never a proposal.
+   */
   const STATUS = Object.freeze({
     PROPOSED: "proposed",
     ACCEPTED: "accepted",
     REJECTED: "rejected",
+    CHECK: "check",
   });
 
   /** What a guard writes into `rejectedBy`, and what a person writes. */
@@ -290,10 +295,14 @@ const CaptionsFixerOrchestrator = (function () {
       rejectedByGuard: 0,
       rejectedByPerson: 0,
       conflicts: 0,
+      check: 0,
     };
     changeSet.forEach((entry) => {
       if (!entry) return;
       if (entry.status === STATUS.PROPOSED) tally.proposed += 1;
+      // A check entry is counted here and nowhere else: not a proposal, and
+      // the guards leave it alone, so it is never a rejection either.
+      if (entry.status === STATUS.CHECK) tally.check += 1;
       if (entry.status === STATUS.ACCEPTED) {
         tally.accepted += 1;
         if (textById.has(entry.cueId) && textById.get(entry.cueId) !== entry.original) {

@@ -2061,11 +2061,11 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       html: { extension: ".html", mimeType: "text/html" },
       // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
       pdf: {
-        extension: ".pdf",
+        extension: "-html.pdf", // Parcel O-01
         mimeType: "application/pdf",
       }, // Phase 1: PDF (HTML Rendering)
       latexpdf: {
-        extension: ".latex.pdf",
+        extension: "-latex.pdf", // Parcel O-01
         mimeType: "application/pdf",
       }, // Phase 1: PDF (LaTeX Rendering) - different extension to distinguish
       latex: { extension: ".zip", mimeType: "application/zip" }, // ✅ FIXED: LaTeX is ZIP

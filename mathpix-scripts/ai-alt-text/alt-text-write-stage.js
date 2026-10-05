@@ -95,6 +95,12 @@
  * as before. Authorisation is a caller's per-call assertion, not a property of
  * this stage's defaults.
  *
+ * ── Maths markup in the alt text (MA-14, MA-D3 addendum) ────────────────────
+ * The alt field only is read as plain prose before the empty gate: a string
+ * carrying a dollar sign or a backslash goes through altToPlainProse, and the
+ * result is written, never refused. The long description and the text content
+ * may carry maths markup (MA-D3) and are not touched. One WARN per conversion.
+ *
  * ── Sentinel-aware empty predicate (S2F option 2) ───────────────────────────
  * The generation prompt's section 4 asks the model to write the literal
  * "No text content." when an image has no visible words (see buildQwenPrompt in
@@ -534,6 +540,231 @@ const MathPixAltTextWriteStage = (function () {
   }
 
   // ---------------------------------------------------------------------------
+  // Alt text: maths markup to plain prose (MA-14, from MA-D3's addendum)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Named map for a backslash command that has a plain-English reading. Greek
+   * letters become their English names; the operators and spacing commands are
+   * the ones the thirteen MA-13 samples and their near neighbours use. A command
+   * not listed here is reported as unmapped and written as its bare name.
+   */
+  const MATHS_COMMAND_WORDS = Object.freeze({
+    alpha: "alpha",
+    beta: "beta",
+    gamma: "gamma",
+    delta: "delta",
+    epsilon: "epsilon",
+    varepsilon: "epsilon",
+    zeta: "zeta",
+    eta: "eta",
+    theta: "theta",
+    lambda: "lambda",
+    mu: "mu",
+    nu: "nu",
+    xi: "xi",
+    pi: "pi",
+    rho: "rho",
+    sigma: "sigma",
+    tau: "tau",
+    phi: "phi",
+    varphi: "phi",
+    chi: "chi",
+    psi: "psi",
+    omega: "omega",
+    Gamma: "Gamma",
+    Delta: "Delta",
+    Theta: "Theta",
+    Lambda: "Lambda",
+    Pi: "Pi",
+    Sigma: "Sigma",
+    Phi: "Phi",
+    Psi: "Psi",
+    Omega: "Omega",
+    times: "times",
+    cdot: "times",
+    pm: "plus or minus",
+    leq: "less than or equal to",
+    le: "less than or equal to",
+    geq: "greater than or equal to",
+    ge: "greater than or equal to",
+    neq: "not equal to",
+    approx: "approximately",
+    infty: "infinity",
+    degree: "degrees",
+    int: "integral",
+    sum: "sum",
+    log: "log",
+    ln: "ln",
+    quad: " ",
+    qquad: " ",
+    left: "",
+    right: "",
+  });
+
+  /** Commands taking one braced group and keeping only its content. */
+  const MATHS_CONTENT_COMMANDS = "text|textbf|mathrm|mathbf|mathit";
+
+  /** True for a character that would run into an inserted word. */
+  function isWordCharacter(character) {
+    return character !== undefined && /[A-Za-z0-9]/.test(character);
+  }
+
+  /**
+   * Put `replacement` where text[start, end) was, adding a space on a side only
+   * when the neighbouring character is a letter or digit, so "2\pi" reads "2 pi"
+   * and "$\phi$," reads "phi," with no stray space before the comma.
+   */
+  function spliceWithPadding(text, start, end, replacement) {
+    const before = isWordCharacter(text[start - 1]) ? " " : "";
+    const after = isWordCharacter(text[end]) ? " " : "";
+    return text.slice(0, start) + before + replacement + after + text.slice(end);
+  }
+
+  /**
+   * Read the balanced brace group opening at text[start]. Returns the content
+   * and the index just past the closing brace, or null if there is none.
+   */
+  function readBraceGroup(text, start) {
+    if (text[start] !== "{") return null;
+    let depth = 0;
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}") {
+        depth--;
+        if (depth === 0) return { content: text.slice(start + 1, i), end: i + 1 };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Rewrite every `\name{...}` (with `arity` groups) using `build(groups)`.
+   * Outermost first, rescanning, so nested forms are reached on the next pass.
+   * A command with its groups missing is replaced by its bare name so the loop
+   * always terminates.
+   */
+  function rewriteGroupCommand(text, names, arity, build) {
+    const pattern = new RegExp(String.raw`\\(?:${names})(?![A-Za-z])\s*(?=\{)`);
+    let out = text;
+    for (;;) {
+      const match = pattern.exec(out);
+      if (!match) return out;
+      let position = match.index + match[0].length;
+      const groups = [];
+      for (let i = 0; i < arity; i++) {
+        while (out[position] === " ") position++;
+        const group = readBraceGroup(out, position);
+        if (!group) break;
+        groups.push(group.content);
+        position = group.end;
+      }
+      if (groups.length < arity) {
+        const bare = match[0].replace(/^\\/, "").trim();
+        out = out.slice(0, match.index) + bare + out.slice(match.index + match[0].length);
+        continue;
+      }
+      out = spliceWithPadding(out, match.index, position, build(groups));
+    }
+  }
+
+  /**
+   * Convert maths markup in an alt text to plain prose. Pure: returns the text
+   * and the names of any commands the map did not know.
+   *
+   * Only a string carrying a dollar sign or a backslash is touched, so a plain
+   * alt text comes back byte-identical and a converted one, which carries
+   * neither, comes back unchanged (idempotence). Rules, in order: delimiters,
+   * fractions and the group commands, the named map, powers, subscripts,
+   * unmapped commands, then braces and whitespace.
+   *
+   * @param {*} alt
+   * @returns {{text: *, unmapped: string[]}}
+   */
+  function convertAltToPlainProse(alt) {
+    if (typeof alt !== "string" || !/[$\\]/.test(alt)) {
+      return { text: alt, unmapped: [] };
+    }
+
+    // (a) delimiters
+    let out = alt.replace(/\\[()[\]]/g, "").replace(/\$+/g, "");
+
+    // (b) fractions, roots and the content-only commands
+    out = rewriteGroupCommand(out, "[dt]?frac", 2, ([a, b]) => `${a} over ${b}`);
+    out = rewriteGroupCommand(out, "sqrt", 1, ([a]) => `square root of ${a}`);
+    out = rewriteGroupCommand(out, "vec", 1, ([a]) => `vector ${a}`);
+    out = rewriteGroupCommand(out, MATHS_CONTENT_COMMANDS, 1, ([a]) => a);
+
+    // (c) the named map. A degree sign first, then the spacing commands, then
+    // every mapped command; one used as a power or subscript argument is
+    // braced so the next two rules read it as a single group.
+    out = out.replace(/\^\s*\{?\s*\\circ\s*\}?/g, " degrees");
+    out = out.replace(/\\[,;!:]/g, " ");
+    out = out.replace(/\\([A-Za-z]+)/g, (whole, name, offset) => {
+      if (!Object.prototype.hasOwnProperty.call(MATHS_COMMAND_WORDS, name)) {
+        return whole;
+      }
+      const word = MATHS_COMMAND_WORDS[name];
+      if (out[offset - 1] === "^" || out[offset - 1] === "_") return `{${word}}`;
+      const before = isWordCharacter(out[offset - 1]) ? " " : "";
+      const after = isWordCharacter(out[offset + whole.length]) ? " " : "";
+      return before + word + after;
+    });
+
+    // (d) powers
+    out = out.replace(/\^\s*(?:\{\s*2\s*\}|2(?![0-9]))/g, (whole, offset, text) =>
+      spliceWord(text, offset, whole, "squared"),
+    );
+    out = out.replace(/\^\s*(?:\{\s*3\s*\}|3(?![0-9]))/g, (whole, offset, text) =>
+      spliceWord(text, offset, whole, "cubed"),
+    );
+    out = out.replace(
+      /\^\s*(?:\{([^{}]*)\}|([0-9]+|[A-Za-z]))/g,
+      (whole, braced, bare, offset, text) =>
+        spliceWord(text, offset, whole, `to the power of ${braced !== undefined ? braced : bare}`),
+    );
+
+    // (e) subscripts: a one-letter base keeps the subscript attached (R1), a
+    // word base takes a space (epsilon 0)
+    out = out.replace(
+      /([A-Za-z]*)_(?:\{([^{}]*)\}|([A-Za-z0-9]))/g,
+      (whole, base, braced, bare) => {
+        const subscript = braced !== undefined ? braced : bare;
+        return base.length > 1 ? `${base} ${subscript}` : `${base}${subscript}`;
+      },
+    );
+
+    // (f) commands the map did not know: bare name, and say so
+    const unmapped = [];
+    out = out.replace(/\\([A-Za-z]+)/g, (whole, name) => {
+      unmapped.push(name);
+      return name;
+    });
+    out = out.replace(/\\/g, "");
+
+    // (g) braces, whitespace
+    out = out.replace(/[{}]/g, "").replace(/\s+/g, " ").trim();
+
+    return { text: out, unmapped };
+  }
+
+  /** The replacement for a power rule: a leading space, a trailing one before a word. */
+  function spliceWord(text, offset, whole, word) {
+    return " " + word + (isWordCharacter(text[offset + whole.length]) ? " " : "");
+  }
+
+  /**
+   * Public pure form of the conversion above.
+   *
+   * @param {*} alt
+   * @returns {*} The alt text as plain prose; a plain string or a non-string is
+   *   returned as it came.
+   */
+  function altToPlainProse(alt) {
+    return convertAltToPlainProse(alt).text;
+  }
+
+  // ---------------------------------------------------------------------------
   // WRITE — the single commit boundary
   // ---------------------------------------------------------------------------
 
@@ -627,7 +858,7 @@ const MathPixAltTextWriteStage = (function () {
     // checked BEFORE empty, so a human-owned field is never touched, even by an
     // empty incoming write.
     for (const { field, setter, sourceKey, contentKey } of FIELD_MAP) {
-      const content = fields ? fields[field] : undefined;
+      let content = fields ? fields[field] : undefined;
       const currentSource = entry[sourceKey];
       const frozen = isFrozen(currentSource);
       const authorised = authorisedOverwrites.has(field);
@@ -657,6 +888,26 @@ const MathPixAltTextWriteStage = (function () {
           `write(): ${field} frozen (source "${currentSource}") — not written`,
         );
         continue;
+      }
+
+      // 2b. MATHS MARKUP IN THE ALT TEXT (MA-14, MA-D3 addendum): converted to
+      // plain prose and written, never refused. Only a field this call will
+      // actually write reaches here, and it runs before the EMPTY gate so an
+      // alt that was nothing but delimiters is not stamped. The long
+      // description and the text content are not touched.
+      if (field === "alt") {
+        const converted = convertAltToPlainProse(content);
+        if (converted.text !== content) {
+          logWarn(
+            `write(): alt text carried maths markup, converted to plain prose. original: ${JSON.stringify(content)} converted: ${JSON.stringify(converted.text)}`,
+          );
+          if (converted.unmapped.length > 0) {
+            logWarn(
+              `write(): alt text maths command(s) not in the map, written as bare names: [${converted.unmapped.join(", ")}]`,
+            );
+          }
+          content = converted.text;
+        }
       }
 
       // 3. EMPTY (F7) last — applies to authorised fields too, so an authorised
@@ -709,6 +960,9 @@ const MathPixAltTextWriteStage = (function () {
     isAcceptableForReview,
     REVIEWABLE_SOURCES,
     ACCEPT_REASON,
+    // MA-14 — the pure alt-text conversion, exposed so a guard row can drive it
+    // directly as well as through write().
+    altToPlainProse,
     // Exposed for tests / callers that need the sentinel or freeze set literally.
     NO_TEXT_SENTINEL,
     FROZEN_SOURCES,

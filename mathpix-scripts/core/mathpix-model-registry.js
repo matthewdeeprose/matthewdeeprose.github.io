@@ -240,6 +240,27 @@ const MathPixModelRegistry = (function () {
   }
 
   /**
+   * The normalised prompt hashes the MA-10 round measured under (MA-D2): one
+   * per image, 11 images, sorted by value and joined by commas. Round 2A
+   * carried each image's round 1 hash on all 132 cells, so the set is the same
+   * for round 1 and round 2A. The source is `promptNormHash` in
+   * `.claude/measurements/ma-10-round-2a/ma10-live-*-record.json`.
+   */
+  const PROMPT_HASH_11_IMAGES = [
+    "0aee8d89b3a7b5bf96957bc1896ead11fd17b6e6ebbab6f05fc13e86fbda21b3",
+    "66b103ac3b925918a6531144b459800812c663dc0625e36d69eddba2146e5d25",
+    "7176cc5ca2a4a45c08dff68ea7bef69e24757fb51a91257350987d724af0f6ee",
+    "7a35dbe06638cc35b50334e98373241c99fce87c34e8de0e6164f9a8f6810ad1",
+    "88b1ae2f03657ff10fe2f28105c86b5b7684b80601f2fe8b41d77628a7e327ce",
+    "97188da381ae3380e0802330d3888d5c18d68639476a2e32c576290afcad4a3f",
+    "b3d890d9cf99286b6b1dc1f4a5759482f017a6ddef9513d27f6c21654d44cc3e",
+    "cb8ad3ad932de0997849ac1adf645163b2d7652d48d6607dea2068d4bf8bc324",
+    "d6954697fcb00b89ed9f6e84de2aff6e74a33e5c0054d05e957dc53e203f2328",
+    "f1a79c3fd6b06e01359957a4a8ec05acbcde19afd2542b55e6162dedae1ddacc",
+    "f6f6a434309e0bc5a6b1fc4e05322b541230d17c0de43ecb6107e5f33d0651b4",
+  ].join(",");
+
+  /**
    * THE RECOMMENDED MODEL PER PURPOSE PER PROVIDER — measured, not preferred.
    *
    * Frozen at every level: the outer map, each purpose's provider map, and each
@@ -263,24 +284,52 @@ const MathPixModelRegistry = (function () {
      * judge sharing a vendor with none of them. `azure-openai/gpt-5.6-sol` came
      * first outright at 18.91 of 20.
      *
-     * THE OPENROUTER ENTRY IS sonnet-5 AND NOT opus-5 ON PURPOSE. That round
-     * did not separate second from third, and where the evidence does not
-     * separate two models it is not this registry's job to invent a separation;
-     * sonnet is the cheaper and markedly faster of the pair.
+     * MA-D2 (1 October 2026) REPLACED BOTH DEFAULTS on three blinded rounds
+     * (MA-7b, MA-10c, MA-12c): `anthropic/claude-opus-5.5` on OpenRouter, where
+     * the previous default was `anthropic/claude-sonnet-5`, and
+     * `azure-openai/gpt-6-astra` on Foundry, where it was
+     * `azure-openai/gpt-5.6-sol`. The evidence records below carry the margins
+     * and their limits; neither is a statistical separation on every measure.
      *
      * THIS IS THE DIVERGENCE THE PURPOSE DIMENSION EXISTS FOR — the other two
      * purposes recommend fable-5 on the same provider, and that is correct.
      */
     [PURPOSES.ALT_TEXT]: Object.freeze({
       [PROVIDERS.OPENROUTER]: entry(
-        "anthropic/claude-sonnet-5",
-        "AW-4r to AW-7ck",
-        "2026-09-03"
+        "anthropic/claude-opus-5.5",
+        "MA-4 to MA-12c",
+        "2026-10-01",
+        {
+          instrument:
+            "MA-10c blinded errors-first reading, 11 images by 3 runs, side-assist reader, shuffle control committed",
+          promptHash: PROMPT_HASH_11_IMAGES,
+          opponents: [
+            "anthropic/claude-opus-5",
+            "anthropic/claude-fable-5",
+            "anthropic/claude-sonnet-5.5",
+          ],
+          margin:
+            "3 errors in 29 letters against 19, 7 and 7; 11 top-three credits of 33 against 10, 9 and 3; errors below the two-sided shuffle band, picks not above the 95th percentile",
+          finishReasons: { stop: 29, length: 4 },
+          notes:
+            "4 of 33 cells lost to the 2,000-token ceiling before MA-12a; 3 of 3 re-run cells finished stop at the 3,000 budget; reasoning mandatory on the wire, mean 397.6 tokens; cost per cell 0.038 USD at 2,000 and about 0.052 at 3,000, wire-priced; sonnet-5 the previous default was measured in round 1 only, where it carried 12 of 16 named misreadings; the reader's length self-check sat on the 95th percentile",
+        }
       ),
       [PROVIDERS.AZURE_OPENAI]: entry(
-        "azure-openai/gpt-5.6-sol",
-        "AW-4r to AW-7ck",
-        "2026-09-03"
+        "azure-openai/gpt-6-astra",
+        "MA-12 to MA-12c",
+        "2026-10-01",
+        {
+          instrument:
+            "MA-12c blinded errors-first reading, 11 images by 3 runs, side-assist reader, shuffle control committed",
+          promptHash: PROMPT_HASH_11_IMAGES,
+          opponents: ["azure-openai/gpt-5.6-sol", "azure-openai/gpt-6-sol"],
+          margin:
+            "1 error in 33 letters against 6 and 4; 19 top-three credits of 33 against 14 and 0, above the 99th percentile; errors inside the shuffle bands, so not separated",
+          finishReasons: { stop: 33 },
+          notes:
+            "cost per cell 0.044 USD at list price, Foundry is unpriced at the wire; reasoning mean 90.1 tokens against the incumbent's 566.1; the reader's length self-check was above the 99.9th percentile and the short letters were all gpt-6-sol's, which omitted the radius label and the test charge in every letter, so the credit gap is confounded with length; not worse than the incumbent on any measure, better on two, neither statistically separated",
+        }
       ),
     }),
 

@@ -242,6 +242,398 @@ window.MermaidParseAdapter = (function () {
     return parseCharacterReferences(resolvePlaceholderDelimiters(text));
   }
 
+  // ITEM 82, LINE BREAKS (ruled 2 October 2026): "a line break the picture
+  // draws is read as a space; a <br> the picture prints as characters is read
+  // as written." Both halves are decided HERE, on the RAW db string, because
+  // decodeAuthorText turns an author-escaped `&lt;br&gt;` or `#lt;br#gt;` into
+  // the same four characters a typed tag is, and nothing downstream can tell
+  // them apart again. Measured 2 October 2026 on flowchart's four positions
+  // (node, pipe edge, dash edge, subgraph): the raw string keeps a typed tag
+  // (`<br>`, Mermaid having normalised every spelling) apart from the escaped
+  // forms (`&lt;br&gt;`, and `#lt;br#gt;` as private delimiter bytes), on all
+  // four. A surface calls decodeAuthorTextBreaks ONLY for a position whose
+  // canvas draws the break (docs/mermaid-item-82-measure-2-2026-10-02.md § 3);
+  // every other surface and every title position keeps decodeAuthorText or
+  // decodePlaceholders and so keeps printing the tag.
+  //
+  // Typed forms matched: `<br>`, `<br/>`, `<br />`, any case. Measured: the
+  // canvas breaks on all four spellings and on a run, and the db delivers them
+  // as `<br>`; the pattern is wider than the delivery on purpose, so a Mermaid
+  // change that stops normalising does not reopen the escaped-versus-typed
+  // question. A RUN of breaks, with the whitespace around it, is ONE break.
+  const TYPED_LINE_BREAK_RUN = /(?:\s*<br\s*\/?>\s*)+/gi;
+
+  // ITEM 82, ENACTMENT 5 (3 October 2026): the per-call FORM SET. The surfaces
+  // above all draw a break on every typed spelling, so they take ALL. Three
+  // modules read the SOURCE (no adapter surface) and the canvas is
+  // form-specific on two of them, measured 2 October 2026 (measure-2 § 3):
+  // timeline breaks on `<br>` alone and prints `<br/>`, `<br />` and `<BR>`;
+  // architecture breaks on every spelling EXCEPT `<BR>`, which it prints. A
+  // form the canvas prints must be read as written, so each set is its own
+  // pattern and a caller names the set rather than passing a pattern. The
+  // names are exported as LINE_BREAK_FORMS so a module never types a string.
+  const LINE_BREAK_FORMS = Object.freeze({
+    ALL: "all",
+    BR_ONLY: "br-only",
+    NOT_UPPER_CASE: "not-upper-case",
+  });
+  const TYPED_LINE_BREAK_RUN_BY_FORMS = Object.freeze({
+    [LINE_BREAK_FORMS.ALL]: TYPED_LINE_BREAK_RUN,
+    [LINE_BREAK_FORMS.BR_ONLY]: /(?:\s*<br>\s*)+/g,
+    [LINE_BREAK_FORMS.NOT_UPPER_CASE]: /(?:\s*<br\s*\/?>\s*)+/g,
+  });
+
+  /**
+   * Replace typed line-break tags with the single space a reader hears, then
+   * apply decodeAuthorText. An interior run becomes one space. A run at the
+   * very start or end of the label is REMOVED, with the whitespace the run
+   * itself carried: the canvas draws a leading break as an empty first line
+   * and a trailing one not at all, so neither leaves a space in the words.
+   * Whitespace the author typed elsewhere is untouched, and a label with no
+   * break goes through byte-identically to decodeAuthorText.
+   *
+   * Item 82, markup (5 October 2026): a caller that passes `markup` also has
+   * drawn markup read as its text, between the break rule and the decode
+   * (replaceDrawnMarkup). Only the flowchart sites pass it; every other caller
+   * passes nothing and is byte-unchanged.
+   * @param {string} text - The delivered RAW label
+   * @param {Object} [markup] - The sink's drawn-markup options, e.g.
+   *   FLOWCHART_DRAWN_MARKUP; absent means no markup step
+   * @returns {string} The decoded text with typed breaks read as spaces, or
+   *   the input unchanged when not a non-empty string
+   */
+  function decodeAuthorTextBreaks(text, markup) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    const withoutBreaks = replaceTypedLineBreaks(text);
+    const withoutMarkup = markup
+      ? replaceDrawnMarkup(withoutBreaks, markup)
+      : withoutBreaks;
+    return decodeAuthorText(withoutMarkup);
+  }
+
+  // The single space that stands for "the author wrote a label and it draws
+  // nothing". Item 82, enactment 4 (3 October 2026): a label that is only a
+  // typed break is emptied by the transform, and a module that reads `""` as
+  // "no label written" (block: the canvas then draws the id) would narrate the
+  // bare id. Spaces-only labels already arrive as whitespace and already read
+  // as unlabelled; this gives the break-only label the same delivery. The
+  // module's own emptiness test is trim(), so the byte chosen never reaches a
+  // narrated word.
+  const PRESENT_BUT_EMPTY_LABEL = " ";
+
+  /**
+   * decodeAuthorTextBreaks for a position whose module distinguishes an ABSENT
+   * label (`""`) from a PRESENT label that draws nothing. A non-empty raw
+   * string that the break transform empties is delivered as one space; every
+   * other input is exactly what decodeAuthorTextBreaks delivers.
+   * A caller that passes `markup` also has drawn markup read as its text, so a
+   * label that is only formatting tags (`<b></b>`) is delivered the same way.
+   * @param {string} text - The delivered RAW label
+   * @param {Object} [markup] - The sink's drawn-markup options
+   * @returns {string} The decoded text, or one space for a break-only label
+   */
+  function decodeAuthorTextBreaksKeepingPresence(text, markup) {
+    const decoded = decodeAuthorTextBreaks(text, markup);
+    return typeof text === "string" && text !== "" && decoded === ""
+      ? PRESENT_BUT_EMPTY_LABEL
+      : decoded;
+  }
+
+  /**
+   * The break rule itself, shared by both decode entries so the two kinds of
+   * surface cannot drift apart: an interior run of typed breaks becomes one
+   * space, and a run at the very start or end of the string is removed.
+   * @param {string} text - A RAW db string
+   * @param {string} [forms] - A LINE_BREAK_FORMS value naming the spellings the
+   *   canvas draws a break for; absent or unknown means ALL
+   * @returns {string} The string with typed breaks replaced
+   */
+  function replaceTypedLineBreaks(text, forms) {
+    const pattern = Object.prototype.hasOwnProperty.call(
+      TYPED_LINE_BREAK_RUN_BY_FORMS,
+      forms
+    )
+      ? TYPED_LINE_BREAK_RUN_BY_FORMS[forms]
+      : TYPED_LINE_BREAK_RUN;
+    return text.replace(
+      pattern,
+      (run, offset, whole) =>
+        offset === 0 || offset + run.length === whole.length ? "" : " "
+    );
+  }
+
+  // ITEM 82, MARKUP (ruled 4 and 5 October 2026): "Formatting the picture
+  // draws (bold, italic, underline, strikethrough, colour, and markdown
+  // emphasis where Mermaid renders it) is read as the plain text it formats,
+  // with no tags; a tag the picture prints as characters is read as written."
+  // Extended on 5 October to <code> and <mark>. An image is read as its alt
+  // text as written, and as nothing when it has none (I1). A link is read as
+  // its text in this pass. A label the transform empties is an empty label
+  // under the 2 October ruling and reads unlabelled in the type's own words.
+  //
+  // Like the break rule it runs on the RAW db string, AFTER the break rule and
+  // BEFORE the decode: after the decode a typed `<b>` and an author-escaped
+  // `&lt;b&gt;` or `#lt;b#gt;` are the same bytes. Measured 4 October 2026
+  // (docs/mermaid-item-82-measure-3-2026-10-04.md § 6): the raw string keeps
+  // them apart on every surface. A tag NOT listed (script, div, p, ...) is left
+  // as typed: Mermaid's own sanitiser decides it, and the words read what the
+  // picture prints. Enacted on flowchart only (5 October 2026); every other
+  // surface still reads markup as delivered until its own session.
+  const DRAWN_FORMATTING_TAG =
+    /<\/?(?:b|i|u|s|strike|strong|em|code|mark|span|font|small|big|sub|sup)(?=[\s/>])(?:"[^"]*"|'[^']*'|[^<>"'])*>/gi;
+  const DRAWN_IMAGE_TAG = /<img(?=[\s/>])((?:"[^"]*"|'[^']*'|[^<>"'])*)>/gi;
+  const DRAWN_IMAGE_ALT =
+    /(?:^|\s)alt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i;
+  const DRAWN_ANCHOR_TAG = /<\/?a(?=[\s/>])(?:"[^"]*"|'[^']*'|[^<>"'])*>/gi;
+
+  // Markdown, for the sinks whose canvas draws it. Two independent options,
+  // because the sinks differ on them (measurement 3 § 3.2; enactment 2 of the
+  // markup slice, 5 October 2026, measured on class and ER):
+  //   emphasis  `*x*`, `**x**`, `_x_`, `__x__` and `\*` `\_` escapes. Class and
+  //             ER DRAW it (all six positions); flowchart and block print it.
+  //   codespan  `x`. PRINTED by every sink read so far, class and ER included,
+  //             and the span is opaque: `a*b*c` inside backticks is not
+  //             emphasis. No caller passes it yet.
+  // Mermaid's canvas follows CommonMark's emphasis rules, which a regex does
+  // not: `a*b*c` draws `abc` while `a_b_c` is left alone, `_a_b` draws `a_b`,
+  // and `*a**` draws `a*`. readDrawnEmphasis below is the delimiter-run
+  // algorithm, checked cell by cell against the canvas.
+  const MARKDOWN_PUNCTUATION = /[\p{P}\p{S}]/u;
+  const MARKDOWN_WHITESPACE = /\s/;
+
+  /**
+   * Read CommonMark emphasis (and, optionally, code spans) as its text.
+   * Characters adjacent to a run are read from the string itself; the ends
+   * count as whitespace. Backslash before `*` or `_` is dropped and the mark
+   * kept; any other backslash is left as typed.
+   * @param {string} text - A string after the tag removal
+   * @param {Object} options - `{ emphasis, codespan }` booleans
+   * @returns {string} The text with drawn markdown read as its text
+   */
+  function readDrawnMarkdown(text, options) {
+    const chars = Array.from(text);
+    const removed = new Array(chars.length).fill(false);
+    const runs = [];
+    const isSpace = (ch) => ch === undefined || MARKDOWN_WHITESPACE.test(ch);
+    const isPunct = (ch) => ch !== undefined && MARKDOWN_PUNCTUATION.test(ch);
+
+    let i = 0;
+    while (i < chars.length) {
+      const ch = chars[i];
+      if (ch === "\\") {
+        const next = chars[i + 1];
+        if (next === "*" || next === "_") {
+          if (options.emphasis) {
+            removed[i] = true;
+          }
+          i += 2;
+        } else if (next === "\\") {
+          i += 2;
+        } else {
+          i += 1;
+        }
+        continue;
+      }
+      if (ch === "`") {
+        let open = i;
+        while (chars[open] === "`") {
+          open += 1;
+        }
+        const fence = open - i;
+        let close = open;
+        let found = -1;
+        while (close < chars.length) {
+          if (chars[close] !== "`") {
+            close += 1;
+            continue;
+          }
+          let end = close;
+          while (chars[end] === "`") {
+            end += 1;
+          }
+          if (end - close === fence) {
+            found = close;
+            break;
+          }
+          close = end;
+        }
+        if (found === -1) {
+          i = open;
+          continue;
+        }
+        if (options.codespan) {
+          for (let k = i; k < i + fence; k += 1) {
+            removed[k] = true;
+          }
+          for (let k = found; k < found + fence; k += 1) {
+            removed[k] = true;
+          }
+        }
+        i = found + fence;
+        continue;
+      }
+      if ((ch === "*" || ch === "_") && options.emphasis) {
+        let end = i;
+        while (chars[end] === ch) {
+          end += 1;
+        }
+        const before = chars[i - 1];
+        const after = chars[end];
+        const left =
+          !isSpace(after) &&
+          (!isPunct(after) || isSpace(before) || isPunct(before));
+        const right =
+          !isSpace(before) &&
+          (!isPunct(before) || isSpace(after) || isPunct(after));
+        const underscore = ch === "_";
+        runs.push({
+          ch,
+          start: i,
+          length: end - i,
+          originalLength: end - i,
+          consumed: 0,
+          canOpen: underscore ? left && (!right || isPunct(before)) : left,
+          canClose: underscore ? right && (!left || isPunct(after)) : right,
+        });
+        i = end;
+        continue;
+      }
+      i += 1;
+    }
+
+    for (let c = 0; c < runs.length; c += 1) {
+      const closer = runs[c];
+      while (closer.canClose && closer.length > 0) {
+        let o = c - 1;
+        while (o >= 0) {
+          const opener = runs[o];
+          const bothThree =
+            opener.originalLength % 3 === 0 && closer.originalLength % 3 === 0;
+          const blocked =
+            (opener.canClose || closer.canOpen) &&
+            (opener.originalLength + closer.originalLength) % 3 === 0 &&
+            !bothThree;
+          if (
+            opener.ch === closer.ch &&
+            opener.length > 0 &&
+            opener.canOpen &&
+            !blocked
+          ) {
+            break;
+          }
+          o -= 1;
+        }
+        if (o < 0) {
+          break;
+        }
+        const opener = runs[o];
+        const use = opener.length >= 2 && closer.length >= 2 ? 2 : 1;
+        for (let k = 0; k < use; k += 1) {
+          removed[opener.start + opener.length - 1 - k] = true;
+          removed[closer.start + closer.consumed + k] = true;
+        }
+        opener.length -= use;
+        closer.length -= use;
+        closer.consumed += use;
+        for (let between = o + 1; between < c; between += 1) {
+          runs[between].length = 0;
+        }
+      }
+    }
+    return chars.filter((ch, index) => !removed[index]).join("");
+  }
+
+  // The options the class and ER sites pass to decodeAuthorTextBreaks: both
+  // draw emphasis, both print backticks (measured at all six positions, 5
+  // October 2026). Flowchart PRINTS emphasis (measurement 3 § 3.2), so it is
+  // read as written.
+  const FLOWCHART_DRAWN_MARKUP = Object.freeze({
+    emphasis: false,
+    codespan: false,
+  });
+  const CLASS_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
+  const ER_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
+  // Block PRINTS emphasis and backticks at both its positions (measurement 3
+  // § 3.2, rechecked 5 October 2026), so only the tags are read as text.
+  const BLOCK_DRAWN_MARKUP = Object.freeze({ emphasis: false, codespan: false });
+
+  /**
+   * The markup rule: formatting the picture draws is read as the text it
+   * formats. Formatting tags (open, close, unclosed, any case, any attributes)
+   * are removed and their text kept; an image becomes its alt text as written,
+   * or nothing; a link becomes its text. When anything was removed, runs of
+   * whitespace collapse to one space and the ends are trimmed, as the canvas
+   * shows them, so a tag-only label arrives empty. A label with nothing to
+   * remove is returned byte-identical.
+   * @param {string} raw - A RAW db string, after the break rule
+   * @param {Object} [options] - `emphasis: true` also reads drawn markdown
+   *   emphasis as its text; `codespan: true` also removes code-span backticks
+   * @returns {string} The string with drawn markup read as its text
+   */
+  function replaceDrawnMarkup(raw, options) {
+    if (typeof raw !== "string" || raw === "") {
+      return raw;
+    }
+    let changed = false;
+    const mark = (replacement) => {
+      changed = true;
+      return replacement;
+    };
+
+    let text = raw.replace(DRAWN_IMAGE_TAG, (tag, attributes) => {
+      const alt = attributes.match(DRAWN_IMAGE_ALT);
+      return mark(
+        alt ? [alt[1], alt[2], alt[3]].find((v) => v !== undefined) : ""
+      );
+    });
+    // The L2 pass reads the anchor's href HERE, before the tag is removed;
+    // this pass reads a link as its text alone.
+    text = text.replace(DRAWN_ANCHOR_TAG, () => mark(""));
+    // BITE a
+    if (options && (options.emphasis === true || options.codespan === true)) {
+      const read = readDrawnMarkdown(text, options);
+      if (read !== text) {
+        mark("");
+        text = read;
+      }
+    }
+
+    if (!changed) {
+      return raw;
+    }
+    logDebug(`Drawn markup read as text: "${raw}" -> "${text}"`);
+    return text.replace(/\s+/g, " ").trim();
+  }
+
+  // ITEM 82 on the SVG-text surfaces that decode with decodePlaceholders
+  // (sequence and c4, enacted 2 October 2026). Measured on both, on every
+  // narrated position whose canvas draws a break: all four typed spellings, a
+  // run and the spaced form draw a break; `#lt;br#gt;` (private delimiter
+  // bytes in the raw string) and `&lt;br&gt;` (entity text, a parse error on
+  // sequence) are drawn as characters. So the per-form set is the same typed
+  // set as decodeAuthorTextBreaks, applied to the RAW string before
+  // decodePlaceholders. The decode then keeps both escaped forms as written,
+  // as it always has. TITLES NEVER CALL THIS: on both types the canvas prints a
+  // typed tag in the title, so the title keeps plain decodePlaceholders.
+  // docs/mermaid-item-82-enact-3-2026-10-02.md carries the per-position table.
+
+  /**
+   * Replace typed line-break tags with the single space a reader hears, then
+   * apply decodePlaceholders. The decodePlaceholders sibling of
+   * decodeAuthorTextBreaks; same rule, same edge behaviour.
+   * @param {string} text - The delivered RAW label
+   * @returns {string} The decoded text with typed breaks read as spaces, or
+   *   the input unchanged when not a non-empty string
+   */
+  function decodePlaceholdersBreaks(text) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    return decodePlaceholders(replaceTypedLineBreaks(text));
+  }
+
   /**
    * Decode Mermaid's own #word; and #digits; escapes in text taken from the
    * RAW diagram source, which encodeEntities never touched.
@@ -470,7 +862,7 @@ window.MermaidParseAdapter = (function () {
   let selfCheckPromise = null;
 
   /**
-   * The embedded self-check fixture. Small on purpose: three nodes and two
+   * The embedded self-check fixture. Small on purpose: eight nodes and seven
    * edges exercise all seven accessors and every field the normalised shape
    * exposes (labelled and bare-id nodes, labelled and unlabelled edges).
    */
@@ -478,6 +870,20 @@ window.MermaidParseAdapter = (function () {
     "graph TB",
     "    A[Start] -->|go| B(Round)",
     "    B --> C",
+    // Item 82: a typed break and an author-escaped one, so a broken break
+    // transform makes this surface unhealthy rather than silently narrating
+    // the wrong reading. The fourth node's label is `one<br>two`, which must
+    // arrive as `one two`; the fifth is `three&lt;br&gt;four`, which must
+    // arrive as the characters `three<br>four`.
+    '    C --> D["one<br>two"]',
+    '    D --> E["three&lt;br&gt;four"]',
+    // Item 82, markup (5 October 2026): a typed tag, an author-escaped one and
+    // a tag-only label. F `<b>x</b>` must arrive as `x`; G `&lt;b&gt;x&lt;/b&gt;`
+    // as the characters `<b>x</b>`; H `<b></b>` as the empty string, the same
+    // delivery a break-only label has, which the module reads as unlabelled.
+    '    E --> F["<b>x</b>"]',
+    '    F --> G["&lt;b&gt;x&lt;/b&gt;"]',
+    '    G --> H["<b></b>"]',
   ].join("\n");
 
   /**
@@ -517,7 +923,7 @@ window.MermaidParseAdapter = (function () {
     // reference and is deliberately left raw.
     const nodes = [...db.getVertices().values()].map((vertex) => ({
       id: vertex.id,
-      label: decodeAuthorText(vertex.text),
+      label: decodeAuthorTextBreaks(vertex.text, FLOWCHART_DRAWN_MARKUP),
       // Bare-id nodes carry no type property at all (M3i); null marks
       // "no declared shape" explicitly for consumers. The alias spellings are
       // collapsed here, inside the queue slot the db read already runs in, so
@@ -528,7 +934,7 @@ window.MermaidParseAdapter = (function () {
     const edges = db.getEdges().map((edge) => ({
       from: edge.start,
       to: edge.end,
-      label: decodeAuthorText(edge.text),
+      label: decodeAuthorTextBreaks(edge.text, FLOWCHART_DRAWN_MARKUP),
       kind: edge.type,
       stroke: edge.stroke,
     }));
@@ -547,7 +953,7 @@ window.MermaidParseAdapter = (function () {
     // only the bracketed form can carry one.
     const subgraphs = rawSubgraphs.map((s) => ({
       id: s.id,
-      title: decodeAuthorText(s.title),
+      title: decodeAuthorTextBreaks(s.title, FLOWCHART_DRAWN_MARKUP),
       nodeIds: s.nodes.filter((n) => !subgraphIds.has(n)),
       childSubgraphIds: s.nodes.filter((n) => subgraphIds.has(n)),
     }));
@@ -675,10 +1081,30 @@ window.MermaidParseAdapter = (function () {
         // Each entry: [assertion name, predicate]. The first false predicate
         // fails the check and is named in the single ERROR line.
         const assertions = [
-          ["three nodes", graph.nodes.length === 3],
+          ["eight nodes", graph.nodes.length === 8],
           [
-            "node order A, B, C",
-            graph.nodes.map((n) => n.id).join(",") === "A,B,C",
+            "node order A to H",
+            graph.nodes.map((n) => n.id).join(",") === "A,B,C,D,E,F,G,H",
+          ],
+          [
+            "typed formatting tag read as its text (node F 'x')",
+            graph.nodes[5] && graph.nodes[5].label === "x",
+          ],
+          [
+            "escaped tag kept as characters (node G '<b>x</b>')",
+            graph.nodes[6] && graph.nodes[6].label === "<b>x</b>",
+          ],
+          [
+            "tag-only label delivered empty (node H '')",
+            graph.nodes[7] && graph.nodes[7].label === "",
+          ],
+          [
+            "typed break read as one space (node D 'one two')",
+            graph.nodes[3] && graph.nodes[3].label === "one two",
+          ],
+          [
+            "escaped break kept as characters (node E 'three<br>four')",
+            graph.nodes[4] && graph.nodes[4].label === "three<br>four",
           ],
           [
             "node A label 'Start'",
@@ -694,7 +1120,7 @@ window.MermaidParseAdapter = (function () {
           ],
           ["node C label 'C'", graph.nodes[2] && graph.nodes[2].label === "C"],
           ["node C shape null", graph.nodes[2] && graph.nodes[2].shape === null],
-          ["two edges", graph.edges.length === 2],
+          ["seven edges", graph.edges.length === 7],
           [
             "edge A to B with label 'go'",
             graph.edges[0] &&
@@ -710,11 +1136,11 @@ window.MermaidParseAdapter = (function () {
               graph.edges[1].label === "",
           ],
           [
-            "both edges kind 'arrow_point'",
+            "every edge kind 'arrow_point'",
             graph.edges.every((e) => e.kind === "arrow_point"),
           ],
           [
-            "both edges stroke 'normal'",
+            "every edge stroke 'normal'",
             graph.edges.every((e) => e.stroke === "normal"),
           ],
           ["direction 'TB'", graph.direction === "TB"],
@@ -799,6 +1225,47 @@ window.MermaidParseAdapter = (function () {
     "    }",
   ].join("\n");
 
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A typed break and an author-escaped one on every ER
+  // position whose canvas draws a break: the alias, the relationship role and
+  // an attribute comment.
+  const ER_BREAK_SELF_CHECK_FIXTURE = [
+    "erDiagram",
+    '    scBrk["one<br>two"]',
+    '    scEsc["three&lt;br&gt;four"]',
+    '    scBrk ||--o{ scEsc : "five<br>six"',
+    '    scEsc ||--o{ scBrk : "eleven&lt;br&gt;twelve"',
+    "    scBrk {",
+    '        string name "seven<br>eight"',
+    "    }",
+    "    scEsc {",
+    '        string name "nine&lt;br&gt;ten"',
+    "    }",
+    // Item 82, markup (5 October 2026): a typed tag, an emphasis run, an
+    // author-escaped tag and a tag-only label on the same three positions.
+    // Appended AFTER the break rows so relationships[0..1] keep their places.
+    '    scTyp["<b>x</b>"]',
+    '    scEmp["**y**"]',
+    '    scEsm["&lt;b&gt;z&lt;/b&gt;"]',
+    '    scNil["<b></b>"]',
+    '    scTyp ||--o{ scEmp : "<i>r</i>"',
+    '    scEmp ||--o{ scEsm : "**e**"',
+    '    scEsm ||--o{ scNil : "&lt;i&gt;q&lt;/i&gt;"',
+    '    scNil ||--o{ scTyp : "<u></u>"',
+    "    scTyp {",
+    '        string a "<b>c</b>"',
+    "    }",
+    "    scEmp {",
+    '        string a "**d**"',
+    "    }",
+    "    scEsm {",
+    '        string a "&lt;b&gt;e&lt;/b&gt;"',
+    "    }",
+    "    scNil {",
+    '        string a "<b></b>"',
+    "    }",
+  ].join("\n");
+
   /**
    * Normalise one resolved ER Diagram instance into the adapter's ER shape.
    *
@@ -850,10 +1317,18 @@ window.MermaidParseAdapter = (function () {
         name: name,
         // Display name is alias when declared, otherwise label (E5).
         // Item 9, verdict C-FULL: ER labels are drawn in an HTML subtree.
-        displayName: decodeAuthorText(
+        // Item 82 (2 October 2026): the alias, the relationship role and an
+        // attribute comment are positions whose canvas DRAWS a break, so a
+        // typed tag reads as a space and an escaped one as written. The
+        // attribute `type` and `name` are not author-text positions here.
+        // Item 82, markup (5 October 2026): the same three positions also read
+        // drawn formatting and emphasis as the text they format
+        // (ER_DRAWN_MARKUP), after the break rule and before the decode.
+        displayName: decodeAuthorTextBreaks(
           typeof entity.alias === "string" && entity.alias !== ""
             ? entity.alias
-            : entity.label
+            : entity.label,
+          ER_DRAWN_MARKUP
         ),
         // Fresh objects and a fresh keys array — never db internals (E4).
         // Item 19 (8 August 2026): `comment` is the only attribute field that
@@ -866,7 +1341,7 @@ window.MermaidParseAdapter = (function () {
           type: attribute.type,
           name: attribute.name,
           keys: Array.isArray(attribute.keys) ? [...attribute.keys] : [],
-          comment: decodeAuthorText(attribute.comment),
+          comment: decodeAuthorTextBreaks(attribute.comment, ER_DRAWN_MARKUP),
         })),
       });
     });
@@ -894,7 +1369,7 @@ window.MermaidParseAdapter = (function () {
         from: resolveEndpoint(relationship.entityA),
         to: resolveEndpoint(relationship.entityB),
         // May be "" — an empty quoted label parses (E6). Item 9, C-FULL.
-        role: decodeAuthorText(relationship.roleA),
+        role: decodeAuthorTextBreaks(relationship.roleA, ER_DRAWN_MARKUP),
         toPerFrom: relSpec.cardA,
         fromPerTo: relSpec.cardB,
         relType: relSpec.relType,
@@ -1064,7 +1539,7 @@ window.MermaidParseAdapter = (function () {
           // fails the check and is named in the single ERROR line. The
           // predicates are EVALUATED HERE, inside the slot, so the verdict
           // below never touches the db.
-          return [
+          const baseAssertions = [
             [
               "entities container is a Map of size 2",
               isMap && entities.size === 2,
@@ -1106,6 +1581,84 @@ window.MermaidParseAdapter = (function () {
                 typeof db.getDiagramTitle() === "string",
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because the db is a singleton and this parse
+          // replaces its payload. Delivered through normaliseEr itself, so
+          // the rows test the transform on the path a consumer reads.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(ER_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakGraph = normaliseEr(breakDiagram);
+              const byName = (name) =>
+                breakGraph.entities.find((e) => e.name === name);
+              const typed = byName("scBrk");
+              const escaped = byName("scEsc");
+              const typedRole = breakGraph.relationships[0];
+              const escapedRole = breakGraph.relationships[1];
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on an alias, a " +
+                    "relationship role and an attribute comment (item 82)",
+                  !!typed &&
+                    typed.displayName === "one two" &&
+                    !!typedRole &&
+                    typedRole.role === "five six" &&
+                    typed.attributes.length === 1 &&
+                    typed.attributes[0].comment === "seven eight",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "an alias, a role and an attribute comment (item 82)",
+                  !!escaped &&
+                    escaped.displayName === "three<br>four" &&
+                    !!escapedRole &&
+                    escapedRole.role === "eleven<br>twelve" &&
+                    escaped.attributes.length === 1 &&
+                    escaped.attributes[0].comment === "nine<br>ten",
+                ],
+                [
+                  "a typed formatting tag reads as its text on an alias, a " +
+                    "role and an attribute comment (item 82)",
+                  !!byName("scTyp") &&
+                    byName("scTyp").displayName === "x" &&
+                    !!breakGraph.relationships[2] &&
+                    breakGraph.relationships[2].role === "r" &&
+                    byName("scTyp").attributes.length === 1 &&
+                    byName("scTyp").attributes[0].comment === "c",
+                ],
+                [
+                  "an author-escaped formatting tag is kept as the " +
+                    "characters <b> on an alias, a role and a comment (item 82)",
+                  !!byName("scEsm") &&
+                    byName("scEsm").displayName === "<b>z</b>" &&
+                    !!breakGraph.relationships[4] &&
+                    breakGraph.relationships[4].role === "<i>q</i>" &&
+                    byName("scEsm").attributes.length === 1 &&
+                    byName("scEsm").attributes[0].comment === "<b>e</b>",
+                ],
+                [
+                  "a tag-only label is delivered empty on an alias, a role " +
+                    "and an attribute comment (item 82)",
+                  !!byName("scNil") &&
+                    byName("scNil").displayName === "" &&
+                    !!breakGraph.relationships[5] &&
+                    breakGraph.relationships[5].role === "" &&
+                    byName("scNil").attributes.length === 1 &&
+                    byName("scNil").attributes[0].comment === "",
+                ],
+                [
+                  "markdown emphasis reads as its text on an alias, a role " +
+                    "and an attribute comment (item 82)",
+                  !!byName("scEmp") &&
+                    byName("scEmp").displayName === "y" &&
+                    !!breakGraph.relationships[3] &&
+                    breakGraph.relationships[3].role === "e" &&
+                    byName("scEmp").attributes.length === 1 &&
+                    byName("scEmp").attributes[0].comment === "d",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -1193,6 +1746,34 @@ window.MermaidParseAdapter = (function () {
     // the notes container and its declaration order (11.17.2 made it a Map).
     '    note "first note"',
     '    note for Animal "second note"',
+  ].join("\n");
+
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A typed break and an author-escaped one on every class
+  // position whose canvas draws a break. The relation label has no escaped
+  // twin: the relation lexer rejects an entity in a quoted label outright.
+  const CLASS_BREAK_SELF_CHECK_FIXTURE = [
+    "classDiagram",
+    '    class scBrk["one<br>two"]',
+    '    class scEsc["three&lt;br&gt;four"]',
+    '    scBrk --> scEsc : "five<br>six"',
+    '    note for scBrk "seven<br>eight"',
+    '    note for scEsc "nine&lt;br&gt;ten"',
+    // Item 82, markup (5 October 2026): a typed tag, an emphasis run, an
+    // author-escaped tag and a tag-only label on the same three positions.
+    // Appended AFTER the break rows so relationships[0] and notes[0..1] keep
+    // their places.
+    '    class scTyp["<b>x</b>"]',
+    '    class scEmp["**y**"]',
+    '    class scEsm["&lt;b&gt;z&lt;/b&gt;"]',
+    '    class scNil["<b></b>"]',
+    '    scTyp --> scEmp : "<i>r</i>"',
+    '    scEmp --> scEsm : "**e**"',
+    '    scEsm --> scNil : "<u></u>"',
+    '    note for scTyp "<b>c</b>"',
+    '    note for scEmp "**d**"',
+    '    note for scEsm "&lt;b&gt;e&lt;/b&gt;"',
+    '    note for scNil "<b></b>"',
   ].join("\n");
 
   /**
@@ -1323,7 +1904,15 @@ window.MermaidParseAdapter = (function () {
         name: name,
         // Always populated: equals the id when no bracket label given (C8).
         // Item 9, verdict C-FULL: class labels are drawn in an HTML subtree.
-        displayName: decodeAuthorText(cls.label),
+        // Item 82 (2 October 2026): the label, the relation label and a note
+        // are positions whose canvas DRAWS a break, so a typed tag reads as a
+        // space and an escaped one as written. Members, methods, generics,
+        // annotations and multiplicities were not probed and keep the plain
+        // decode.
+        // Item 82, markup (5 October 2026): the same three positions also read
+        // drawn formatting and emphasis as the text they format
+        // (CLASS_DRAWN_MARKUP), after the break rule and before the decode.
+        displayName: decodeAuthorTextBreaks(cls.label, CLASS_DRAWN_MARKUP),
         // The generic parameter lives in its own field (C6): Shelf~Item~
         // gives type "Item"; "" when the class is not generic.
         // Item 19, verdict C-FULL (8 August 2026) for both.
@@ -1388,7 +1977,7 @@ window.MermaidParseAdapter = (function () {
         // outright — measured on both the bare and the quoted form. C-FULL is
         // chosen for consistency with every other class field, not because the
         // measurement separated them.
-        label: decodeAuthorText(label),
+        label: decodeAuthorTextBreaks(label, CLASS_DRAWN_MARKUP),
         // An absent multiplicity is the string "none" (C4). Item 19, C-FULL.
         // These two are also the lookup keys into the consumer's
         // MULTIPLICITY_PHRASES table, and the join cannot break: the transform
@@ -1417,7 +2006,7 @@ window.MermaidParseAdapter = (function () {
     // RAW: it is a join key the consumer looks up in a Map built on the raw
     // classes[].name.
     const notes = classNotesToArray(db.getNotes()).map((note) => ({
-      text: decodeAuthorText(note.text),
+      text: decodeAuthorTextBreaks(note.text, CLASS_DRAWN_MARKUP),
       attachedTo: typeof note.class === "string" ? note.class : "",
     }));
 
@@ -1589,7 +2178,7 @@ window.MermaidParseAdapter = (function () {
           // fails the check and is named in the single ERROR line. The
           // predicates are EVALUATED HERE, inside the slot, so the verdict
           // below never touches the db.
-          return [
+          const baseAssertions = [
             [
               "classes container is a Map of size 4 in order Animal, Duck, Car, Wheel",
               isMap && classNames.join(",") === "Animal,Duck,Car,Wheel",
@@ -1643,6 +2232,81 @@ window.MermaidParseAdapter = (function () {
                 notes[1].class === "Animal",
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because the db is a singleton and this parse
+          // replaces its payload. Delivered through normaliseClass itself, so
+          // the rows test the transform on the path a consumer reads.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(CLASS_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakGraph = normaliseClass(breakDiagram);
+              const byName = (name) =>
+                breakGraph.classes.find((c) => c.name === name);
+              const typed = byName("scBrk");
+              const escaped = byName("scEsc");
+              const relation = breakGraph.relationships[0];
+              const typedNote = breakGraph.notes[0];
+              const escapedNote = breakGraph.notes[1];
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on the class label, the " +
+                    "relation label and a note (item 82)",
+                  !!typed &&
+                    typed.displayName === "one two" &&
+                    !!relation &&
+                    relation.label === "five six" &&
+                    !!typedNote &&
+                    typedNote.text === "seven eight",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "the class label and a note (item 82)",
+                  !!escaped &&
+                    escaped.displayName === "three<br>four" &&
+                    !!escapedNote &&
+                    escapedNote.text === "nine<br>ten",
+                ],
+                [
+                  "a typed formatting tag reads as its text on the class " +
+                    "label, the relation label and a note (item 82)",
+                  !!byName("scTyp") &&
+                    byName("scTyp").displayName === "x" &&
+                    !!breakGraph.relationships[1] &&
+                    breakGraph.relationships[1].label === "r" &&
+                    !!breakGraph.notes[2] &&
+                    breakGraph.notes[2].text === "c",
+                ],
+                [
+                  "an author-escaped formatting tag is kept as the " +
+                    "characters <b> on the class label and a note (item 82)",
+                  !!byName("scEsm") &&
+                    byName("scEsm").displayName === "<b>z</b>" &&
+                    !!breakGraph.notes[4] &&
+                    breakGraph.notes[4].text === "<b>e</b>",
+                ],
+                [
+                  "a tag-only label is delivered empty on the class label " +
+                    "and a note, and on a relation label (item 82)",
+                  !!byName("scNil") &&
+                    byName("scNil").displayName === "" &&
+                    !!breakGraph.relationships[3] &&
+                    breakGraph.relationships[3].label === "" &&
+                    !!breakGraph.notes[5] &&
+                    breakGraph.notes[5].text === "",
+                ],
+                [
+                  "markdown emphasis reads as its text on the class label, " +
+                    "the relation label and a note (item 82)",
+                  !!byName("scEmp") &&
+                    byName("scEmp").displayName === "y" &&
+                    !!breakGraph.relationships[2] &&
+                    breakGraph.relationships[2].label === "e" &&
+                    !!breakGraph.notes[3] &&
+                    breakGraph.notes[3].text === "d",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -5621,8 +6285,13 @@ window.MermaidParseAdapter = (function () {
     // name. `getBoxes()` is the db's own grouping and is correct for an
     // unnamed box, where `actor.box.name` is not a string at all.
     const rawBoxes = typeof db.getBoxes === "function" ? db.getBoxes() : [];
+    // Item 82: the box name, the participant name, the message text, the
+    // note text and (enactment 5, 3 October 2026) the block labels (loop, alt,
+    // else, opt, par, and, critical, option, break) draw a typed break, so
+    // they take decodePlaceholdersBreaks. The title prints the tag and keeps
+    // decodePlaceholders.
     const boxes = (Array.isArray(rawBoxes) ? rawBoxes : []).map((box) => ({
-      name: decodePlaceholders(typeof box.name === "string" ? box.name : ""),
+      name: decodePlaceholdersBreaks(typeof box.name === "string" ? box.name : ""),
       members: Array.isArray(box.actorKeys) ? box.actorKeys.slice() : [],
     }));
 
@@ -5653,7 +6322,7 @@ window.MermaidParseAdapter = (function () {
         id: key,
         // The DISPLAY text is `description`; `name` on the db object is the
         // declared id. Delivered under the names a consumer expects.
-        name: decodePlaceholders(
+        name: decodePlaceholdersBreaks(
           actor && typeof actor.description === "string" ? actor.description : ""
         ),
         kind:
@@ -5745,7 +6414,7 @@ window.MermaidParseAdapter = (function () {
           ordinal: ordinal,
           from: typeof entry.from === "string" ? entry.from : null,
           to: typeof entry.to === "string" ? entry.to : null,
-          text: decodePlaceholders(text),
+          text: decodePlaceholdersBreaks(text),
           line: arrow.line,
           head: arrow.head,
         });
@@ -5776,7 +6445,7 @@ window.MermaidParseAdapter = (function () {
           kind: "note",
           placement: placement,
           actors: actors,
-          text: decodePlaceholders(text),
+          text: decodePlaceholdersBreaks(text),
         });
         return;
       }
@@ -5791,7 +6460,7 @@ window.MermaidParseAdapter = (function () {
         const startEvent = {
           kind: "blockStart",
           block: startKind,
-          label: decodePlaceholders(text),
+          label: decodePlaceholdersBreaks(text),
         };
         if (name === "PAR_OVER_START") {
           // MEASURED UNREACHABLE on this build (3 September 2026): `par over
@@ -5817,7 +6486,7 @@ window.MermaidParseAdapter = (function () {
         events.push({
           kind: "blockBranch",
           block: branchKind,
-          label: decodePlaceholders(text),
+          label: decodePlaceholdersBreaks(text),
         });
         return;
       }
@@ -6016,6 +6685,41 @@ window.MermaidParseAdapter = (function () {
     "    end",
   ].join("\n");
 
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A typed break and an author-escaped one (`#lt;br#gt;`;
+  // `&lt;br&gt;` is a parse error on this type) on each of the four positions
+  // whose canvas draws a break, plus a TITLE carrying a typed break, which the
+  // canvas prints and which must therefore arrive as written.
+  const SEQUENCE_BREAK_SELF_CHECK_FIXTURE = [
+    "sequenceDiagram",
+    "    title SelfCheck break<br>title",
+    "    box one<br>two",
+    "        participant SA as three<br>four",
+    "    end",
+    "    box five#lt;br#gt;six",
+    "        participant SB as seven#lt;br#gt;eight",
+    "    end",
+    "    SA->>SB: nine<br>ten",
+    "    SB->>SA: eleven#lt;br#gt;twelve",
+    "    Note over SA: thirteen<br>fourteen",
+    "    Note over SB: fifteen#lt;br#gt;sixteen",
+    // Enactment 5: block labels, appended after the notes so the indices the
+    // rows above read do not move. A typed break on a loop label and on an
+    // else branch, an author-escaped one on an alt label, a break-only loop
+    // label (which must arrive empty) and a spaces-only one for comparison.
+    "    loop seventeen<br>eighteen",
+    "        SA->>SB: nineteen",
+    "    end",
+    "    alt twenty#lt;br#gt;one",
+    "        SB->>SA: twentytwo",
+    "    else twentythree<br>twentyfour",
+    "        SA->>SB: twentyfive",
+    "    end",
+    "    opt <br>",
+    "        SA->>SB: twentysix",
+    "    end",
+  ].join("\n");
+
   /**
    * Parse the embedded fixture and assert every delivered field against known
    * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
@@ -6089,7 +6793,7 @@ window.MermaidParseAdapter = (function () {
           const messages = delivery.events.filter((e) => e.kind === "message");
           const heads = messages.map((m) => m.line + "/" + m.head).join(" ");
 
-          return [
+          const baseAssertions = [
             [
               "the nine db accessors this surface reads exist by name",
               accessorsPresent,
@@ -6226,6 +6930,73 @@ window.MermaidParseAdapter = (function () {
                 ),
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because the title store is shared and a second
+          // parse overwrites it. Delivered through normaliseSequence itself,
+          // so the rows test the transform on the path a consumer reads.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(SEQUENCE_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakDelivery = normaliseSequence(breakDiagram);
+              const breakMessages = breakDelivery.events.filter(
+                (e) => e.kind === "message"
+              );
+              const breakNotes = breakDelivery.events.filter(
+                (e) => e.kind === "note"
+              );
+              const box = (i) => breakDelivery.boxes[i] || {};
+              const person = (i) => breakDelivery.participants[i] || {};
+              const message = (i) => breakMessages[i] || {};
+              const note = (i) => breakNotes[i] || {};
+              // The label of the first block event of one kind and block, or
+              // null when there is none, so a missing event cannot read as an
+              // empty label.
+              const blockLabel = (kind, block) => {
+                const found = breakDelivery.events.find(
+                  (e) => e.kind === kind && e.block === block
+                );
+                return found ? found.label : null;
+              };
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on a box name, a " +
+                    "participant name, a message and a note (item 82)",
+                  box(0).name === "one two" &&
+                    person(0).name === "three four" &&
+                    message(0).text === "nine ten" &&
+                    note(0).text === "thirteen fourteen",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "a box name, a participant name, a message and a note " +
+                    "(item 82)",
+                  box(1).name === "five<br>six" &&
+                    person(1).name === "seven<br>eight" &&
+                    message(1).text === "eleven<br>twelve" &&
+                    note(1).text === "fifteen<br>sixteen",
+                ],
+                [
+                  "a typed break in the TITLE arrives as written, because " +
+                    "the canvas prints it there (item 82)",
+                  breakDelivery.title === "SelfCheck break<br>title",
+                ],
+                [
+                  "a typed break reads as one space on a block opener and on " +
+                    "a branch label, and a break-only block label arrives " +
+                    "empty (item 82, enactment 5)",
+                  blockLabel("blockStart", "loop") === "seventeen eighteen" &&
+                    blockLabel("blockBranch", "alt") ===
+                      "twentythree twentyfour" &&
+                    blockLabel("blockStart", "opt") === "",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "a block opener (item 82, enactment 5)",
+                  blockLabel("blockStart", "alt") === "twenty<br>one",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -6463,8 +7234,19 @@ window.MermaidParseAdapter = (function () {
     // delivered as "" and the narration module owns the fallback phrase. Only
     // ROOT has no label, and root is never delivered as a block. The fallback
     // is therefore a defence, not a live path.
+    //
+    // ITEM 82 (2 October 2026): the label is a position whose canvas DRAWS a
+    // break, so decodeAuthorTextBreaks reads a typed tag as a space and an
+    // escaped one as written. A space cell's generated-id label and a
+    // composite's empty label carry no tag and pass through byte-identically.
+    //
+    // ENACTMENT 4 (3 October 2026): a label that is only a break is delivered
+    // as one space, so the module reads it as a present label that draws
+    // nothing (R14 LIFTED) and not as the absent label `""`.
     const label =
-      typeof raw.label === "string" ? decodeAuthorText(raw.label) : id;
+      typeof raw.label === "string"
+        ? decodeAuthorTextBreaksKeepingPresence(raw.label, BLOCK_DRAWN_MARKUP)
+        : id;
 
     // A SPACE CELL DEFAULTS TO ONE COLUMN when the db gives it no
     // `widthInColumns`, which on this build is every time. The default is
@@ -6581,7 +7363,14 @@ window.MermaidParseAdapter = (function () {
       // decodeAuthorText, on the foreignObject measurement recorded at the top
       // of this surface. An unlabelled edge delivers "" from the db, not
       // undefined or null, and "" is passed through unchanged.
-      label: typeof edge.label === "string" ? decodeAuthorText(edge.label) : "",
+      // Item 82: an edge label is a break-drawing position too, so it takes
+      // decodeAuthorTextBreaks. Item 82, markup (5 October 2026): and drawn
+      // formatting is read as its text (BLOCK_DRAWN_MARKUP); a tag-only label
+      // arrives empty, which the module reads as an unlabelled arrow.
+      label:
+        typeof edge.label === "string"
+          ? decodeAuthorTextBreaks(edge.label, BLOCK_DRAWN_MARKUP)
+          : "",
       // THE ARROW-TYPE STRINGS ARE DELIVERED VERBATIM AND ARE FAITHFUL, which
       // is worth stating because they look lossy. On Mermaid 11.6.0 `---` and
       // `<-->` are both typed `arrow_point` at the end and `arrow_open` at the
@@ -6724,6 +7513,29 @@ window.MermaidParseAdapter = (function () {
     '    scAlpha -- "SelfCheck edge" --> scBravo',
   ].join("\n");
 
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A typed break and an author-escaped one on both block
+  // positions whose canvas draws a break: a block label and an edge label.
+  const BLOCK_BREAK_SELF_CHECK_FIXTURE = [
+    "block-beta",
+    "    columns 2",
+    '    scBrk["one<br>two"]',
+    '    scEsc["three&lt;br&gt;four"]',
+    '    scBrk -- "five<br>six" --> scEsc',
+    '    scEsc -- "seven&lt;br&gt;eight" --> scBrk',
+    // Item 82, markup: appended after the break rows so every index above
+    // holds. A typed tag, an author-escaped tag, a tag-only label and
+    // emphasis (which block PRINTS, so it is left as written).
+    '    scTyp["<b>x</b>"]',
+    '    scEmp["**y**"]',
+    '    scEsm["&lt;b&gt;z&lt;/b&gt;"]',
+    '    scNil["<u></u>"]',
+    '    scTyp -- "<i>r</i>" --> scEmp',
+    '    scEmp -- "&lt;i&gt;q&lt;/i&gt;" --> scEsm',
+    '    scEsm -- "<u></u>" --> scNil',
+    '    scNil -- "**e**" --> scTyp',
+  ].join("\n");
+
   /**
    * Parse the embedded fixture and assert every delivered field against known
    * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
@@ -6801,7 +7613,7 @@ window.MermaidParseAdapter = (function () {
           const keysOf = (b) => (b ? Object.keys(b).join(",") : "");
           const expectedKeys = BLOCK_DELIVERED_KEYS.join(",");
 
-          return [
+          const baseAssertions = [
             [
               "the five db accessors this surface reads exist by name",
               accessorsPresent,
@@ -6932,6 +7744,73 @@ window.MermaidParseAdapter = (function () {
                 Object.keys(delivery.classes).length === 0,
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because on this type a second parse replaces
+          // the WHOLE db payload. Delivered through normaliseBlock itself, so
+          // the rows test the transform on the path a consumer reads.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(BLOCK_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakDelivery = normaliseBlock(breakDiagram);
+              const byId = (id) => breakDelivery.blocks.find((b) => b.id === id);
+              const typed = byId("scBrk");
+              const escaped = byId("scEsc");
+              const typedEdge = breakDelivery.edges[0];
+              const escapedEdge = breakDelivery.edges[1];
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on a block label and an " +
+                    "edge label (item 82)",
+                  !!typed &&
+                    typed.label === "one two" &&
+                    !!typedEdge &&
+                    typedEdge.label === "five six",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "a block label and an edge label (item 82)",
+                  !!escaped &&
+                    escaped.label === "three<br>four" &&
+                    !!escapedEdge &&
+                    escapedEdge.label === "seven<br>eight",
+                ],
+                [
+                  "a typed formatting tag reads as its text on a block label " +
+                    "and an edge label (item 82)",
+                  !!byId("scTyp") &&
+                    byId("scTyp").label === "x" &&
+                    !!breakDelivery.edges[2] &&
+                    breakDelivery.edges[2].label === "r",
+                ],
+                [
+                  "an author-escaped formatting tag is kept as the " +
+                    "characters <b> on a block label and an edge label " +
+                    "(item 82)",
+                  !!byId("scEsm") &&
+                    byId("scEsm").label === "<b>z</b>" &&
+                    !!breakDelivery.edges[3] &&
+                    breakDelivery.edges[3].label === "<i>q</i>",
+                ],
+                [
+                  "a tag-only label is delivered as the present-but-empty " +
+                    "one space on a block label and as empty on an edge " +
+                    "label (item 82)",
+                  !!byId("scNil") &&
+                    byId("scNil").label === PRESENT_BUT_EMPTY_LABEL &&
+                    !!breakDelivery.edges[4] &&
+                    breakDelivery.edges[4].label === "",
+                ],
+                [
+                  "markdown emphasis is left as written on a block label and " +
+                    "an edge label, because block prints it (item 82)",
+                  !!byId("scEmp") &&
+                    byId("scEmp").label === "**y**" &&
+                    !!breakDelivery.edges[5] &&
+                    breakDelivery.edges[5].label === "**e**",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -7165,6 +8044,25 @@ window.MermaidParseAdapter = (function () {
   }
 
   /**
+   * As c4WrappedText, for a position whose canvas DRAWS a typed <br> as a
+   * break (item 82): the typed break reads as one space, the escaped forms
+   * as written. Measured 2 October 2026 on the element label, description
+   * and technology, the boundary label, the deployment node's technology and
+   * description, and the relationship label and technology. NOT the
+   * relationship description, which the canvas does not draw at all, and
+   * never the title, which prints the tag.
+   *
+   * @param {Object|undefined} wrapped - A db wrapper, or undefined
+   * @returns {string|null} The decoded text, or null when the key is absent
+   */
+  function c4WrappedTextBreaks(wrapped) {
+    if (!wrapped || typeof wrapped.text !== "string") {
+      return null;
+    }
+    return decodePlaceholdersBreaks(wrapped.text);
+  }
+
+  /**
    * Read one BARE author string off a db object and decode it.
    *
    * `sprite`, `tags` and `link` are own keys holding `undefined` when the
@@ -7202,9 +8100,9 @@ window.MermaidParseAdapter = (function () {
         raw.typeC4Shape && typeof raw.typeC4Shape.text === "string"
           ? raw.typeC4Shape.text
           : "",
-      label: c4WrappedText(raw.label),
-      descr: c4WrappedText(raw.descr),
-      techn: c4WrappedText(raw.techn),
+      label: c4WrappedTextBreaks(raw.label),
+      descr: c4WrappedTextBreaks(raw.descr),
+      techn: c4WrappedTextBreaks(raw.techn),
       // The author's own alias of the containing boundary, or the synthetic
       // root's. Never "" on a parsed shape.
       parentBoundary: c4BareText(raw.parentBoundary) || "",
@@ -7275,12 +8173,12 @@ window.MermaidParseAdapter = (function () {
 
     return {
       alias: c4BareText(raw.alias) || "",
-      label: c4WrappedText(raw.label),
+      label: c4WrappedTextBreaks(raw.label),
       kind: isDeploymentNode ? null : slot,
-      techn: isDeploymentNode ? decodePlaceholders(slot) : null,
+      techn: isDeploymentNode ? decodePlaceholdersBreaks(slot) : null,
       // CR10's sixth key. null where the db carries no such key, "" where it
       // hands out an empty wrapper — see the note above.
-      descr: c4WrappedText(raw.descr),
+      descr: c4WrappedTextBreaks(raw.descr),
       // "" on the synthetic root, and the parent's alias on everything else.
       parentBoundary: c4BareText(raw.parentBoundary) || "",
     };
@@ -7315,8 +8213,11 @@ window.MermaidParseAdapter = (function () {
       type: typeof raw.type === "string" ? raw.type : "",
       from: c4BareText(raw.from) || "",
       to: c4BareText(raw.to) || "",
-      label: c4WrappedText(raw.label),
-      techn: c4WrappedText(raw.techn),
+      label: c4WrappedTextBreaks(raw.label),
+      techn: c4WrappedTextBreaks(raw.techn),
+      // Item 82: NOT the break transform. The canvas does not draw a
+      // relationship's description at all, so the ruling's "a line break
+      // the picture draws" has nothing to say here; measured 2 October 2026.
       descr: c4WrappedText(raw.descr),
     };
   }
@@ -7489,6 +8390,27 @@ window.MermaidParseAdapter = (function () {
     '    Rel(scPerson, scSystem, "SelfCheck uses", "SelfCheck protocol")',
   ].join("\n");
 
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A C4Deployment, so the deployment node's technology and
+  // description are reachable beside the element's three fields and the
+  // relationship's label and technology. Node and element one carry a typed
+  // break on every break position, node and element two the escaped
+  // `#lt;br#gt;`. Two fields must arrive AS WRITTEN despite a typed break:
+  // the TITLE, which the canvas prints, and the relationship DESCRIPTION,
+  // which the canvas does not draw at all.
+  const C4_BREAK_SELF_CHECK_FIXTURE = [
+    "C4Deployment",
+    "    title SelfCheck break<br>title",
+    '    Deployment_Node(scbN1, "one<br>two", "three<br>four", "five<br>six") {',
+    '        Container(scbC1, "seven<br>eight", "nine<br>ten", "eleven<br>twelve")',
+    "    }",
+    '    Deployment_Node(scbN2, "a#lt;br#gt;b", "c#lt;br#gt;d", "e#lt;br#gt;f") {',
+    '        Container(scbC2, "g#lt;br#gt;h", "i#lt;br#gt;j", "k#lt;br#gt;l")',
+    "    }",
+    '    Rel(scbC1, scbC2, "m<br>n", "o<br>p", "q<br>r")',
+    '    Rel(scbC2, scbC1, "s#lt;br#gt;t", "u#lt;br#gt;v")',
+  ].join("\n");
+
   /**
    * Parse the embedded fixture and assert every delivered field against known
    * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
@@ -7585,7 +8507,7 @@ window.MermaidParseAdapter = (function () {
           const rel = delivery.rels[0];
           const keysOf = (o) => (o ? Object.keys(o).join(",") : "");
 
-          return [
+          const baseAssertions = [
             [
               "the five db accessors this surface reads exist by name",
               accessorsPresent,
@@ -7704,6 +8626,57 @@ window.MermaidParseAdapter = (function () {
                 rel.descr === "",
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because on this type a second parse replaces
+          // the WHOLE db payload. Delivered through normaliseC4 itself, so
+          // the rows test the transform on the path a consumer reads.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(C4_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakDelivery = normaliseC4(breakDiagram);
+              const node = (alias) =>
+                breakDelivery.boundaries.find((b) => b.alias === alias) || {};
+              const shape = (alias) =>
+                breakDelivery.shapes.find((s) => s.alias === alias) || {};
+              const typedRel = breakDelivery.rels[0] || {};
+              const escapedRel = breakDelivery.rels[1] || {};
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on a deployment node's " +
+                    "label, technology and description, an element's label, " +
+                    "technology and description, and a relationship's label " +
+                    "and technology (item 82)",
+                  node("scbN1").label === "one two" &&
+                    node("scbN1").techn === "three four" &&
+                    node("scbN1").descr === "five six" &&
+                    shape("scbC1").label === "seven eight" &&
+                    shape("scbC1").techn === "nine ten" &&
+                    shape("scbC1").descr === "eleven twelve" &&
+                    typedRel.label === "m n" &&
+                    typedRel.techn === "o p",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> " +
+                    "on the same eight positions (item 82)",
+                  node("scbN2").label === "a<br>b" &&
+                    node("scbN2").techn === "c<br>d" &&
+                    node("scbN2").descr === "e<br>f" &&
+                    shape("scbC2").label === "g<br>h" &&
+                    shape("scbC2").techn === "i<br>j" &&
+                    shape("scbC2").descr === "k<br>l" &&
+                    escapedRel.label === "s<br>t" &&
+                    escapedRel.techn === "u<br>v",
+                ],
+                [
+                  "a typed break in the TITLE, which the canvas prints, and " +
+                    "in a relationship DESCRIPTION, which it does not draw, " +
+                    "both arrive as written (item 82)",
+                  breakDelivery.title === "SelfCheck break<br>title" &&
+                    typedRel.descr === "q<br>r",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -8302,7 +9275,12 @@ window.MermaidParseAdapter = (function () {
       // delivers the id, which is what the db itself would have put there — a
       // no-id card's id IS its label — so the fallback is a defence rather
       // than a live path.
-      label: typeof raw.label === "string" ? decodeAuthorText(raw.label) : id,
+      // ITEM 82 (2 October 2026): the card label and `assigned` are positions
+      // whose canvas DRAWS a break, so they take decodeAuthorTextBreaks. The
+      // `ticket` below, the `priority` and the `ticketUrl`/`priorityDrawn`
+      // computations were not probed as break positions and are untouched.
+      label:
+        typeof raw.label === "string" ? decodeAuthorTextBreaks(raw.label) : id,
       // decodeAuthorText on both, measured in this session on five constructs
       // in each field, 5 of 5 against the canvas. NOTE that the URL below is
       // built from `rawTicket` and NOT from this decoded string: the two
@@ -8310,7 +9288,7 @@ window.MermaidParseAdapter = (function () {
       ticket: rawTicket === null ? null : decodeAuthorText(rawTicket),
       assigned: (() => {
         const value = kanbanMetadata(raw, "assigned");
-        return value === null ? null : decodeAuthorText(value);
+        return value === null ? null : decodeAuthorTextBreaks(value);
       })(),
       // decodeAuthorText, SINCE 21 SEPTEMBER 2026 AND RULING KS9, which
       // REVERSES the no-transform arm of KS3. That ruling reasoned that there
@@ -8414,9 +9392,10 @@ window.MermaidParseAdapter = (function () {
         const id = typeof rawColumn.id === "string" ? rawColumn.id : "";
         return {
           id: id,
+          // Item 82: a column label is a break-drawing position too.
           label:
             typeof rawColumn.label === "string"
-              ? decodeAuthorText(rawColumn.label)
+              ? decodeAuthorTextBreaks(rawColumn.label)
               : id,
           // THE ID FILTER, per ruling KS2 and the measurement above. Never a
           // positional walk: the two disagree wherever two columns share an
@@ -8551,6 +9530,18 @@ window.MermaidParseAdapter = (function () {
     "        scFour[SelfCheck four]",
     "    scDup[SelfCheck dup second]",
     "        scFive[SelfCheck five]",
+  ].join("\n");
+
+  // Item 82: a SEPARATE source, because the concurrency lane quotes the one
+  // above verbatim. A typed break and an author-escaped one on all three
+  // kanban positions whose canvas draws a break: a column label, a card label
+  // and an assigned.
+  const KANBAN_BREAK_SELF_CHECK_FIXTURE = [
+    "kanban",
+    "    scbTyped[one<br>two]",
+    "        scbTypedCard[three<br>four]@{ assigned: 'five<br>six' }",
+    "    scbEscaped[seven&lt;br&gt;eight]",
+    "        scbEscapedCard[nine&lt;br&gt;ten]@{ assigned: 'eleven&lt;br&gt;twelve' }",
   ].join("\n");
 
   /**
@@ -8815,7 +9806,7 @@ window.MermaidParseAdapter = (function () {
           const expectedColumn = KANBAN_COLUMN_KEYS.join(",");
           const expectedCard = KANBAN_CARD_KEYS.join(",");
 
-          return [
+          const baseAssertions = [
             [
               "the two db accessors this surface reads exist by name",
               accessorsPresent,
@@ -9127,6 +10118,42 @@ window.MermaidParseAdapter = (function () {
               })(),
             ],
           ];
+
+          // Item 82: the break source is parsed AFTER every predicate above
+          // has been evaluated, because on this type a second parse replaces
+          // the WHOLE db payload. Delivered through normaliseKanban itself,
+          // so the rows test the transform on the path a consumer reads. The
+          // ticket and priority routes are deliberately absent from these
+          // rows: neither takes the break transform.
+          return window.mermaid.mermaidAPI
+            .getDiagramFromText(KANBAN_BREAK_SELF_CHECK_FIXTURE)
+            .then((breakDiagram) => {
+              const breakDelivery = normaliseKanban(breakDiagram);
+              const typedColumn = breakDelivery.columns[0];
+              const escapedColumn = breakDelivery.columns[1];
+              const typedCard = typedColumn && typedColumn.cards[0];
+              const escapedCard = escapedColumn && escapedColumn.cards[0];
+              return baseAssertions.concat([
+                [
+                  "a typed break reads as one space on a column label, a " +
+                    "card label and an assigned (item 82)",
+                  !!typedColumn &&
+                    typedColumn.label === "one two" &&
+                    !!typedCard &&
+                    typedCard.label === "three four" &&
+                    typedCard.assigned === "five six",
+                ],
+                [
+                  "an author-escaped break is kept as the characters <br> on " +
+                    "a column label, a card label and an assigned (item 82)",
+                  !!escapedColumn &&
+                    escapedColumn.label === "seven<br>eight" &&
+                    !!escapedCard &&
+                    escapedCard.label === "nine<br>ten" &&
+                    escapedCard.assigned === "eleven<br>twelve",
+                ],
+              ]);
+            });
         });
 
     const queued = adapterParseQueue.then(run, run);
@@ -10432,6 +11459,14 @@ window.MermaidParseAdapter = (function () {
     // Register item 78: the ONE decoder exported from this module, for the
     // core's author-override route, which reads the raw diagram source.
     decodeSourcePlaceholders: decodeSourcePlaceholders,
+    // Item 82, enactment 5: the shared break rule, for the modules that read
+    // the diagram SOURCE and have no adapter surface (timeline, architecture,
+    // mindmap, state). A module resolves both off window AT CALL TIME.
+    replaceTypedLineBreaks: replaceTypedLineBreaks,
+    LINE_BREAK_FORMS: LINE_BREAK_FORMS,
+    // Item 82, markup (5 October 2026): the shared markup rule, exported the
+    // same way for the source-reading modules. No module calls it yet.
+    replaceDrawnMarkup: replaceDrawnMarkup,
     // Register item 24: the global enableAllLog() cannot reach this module's
     // level, so the control is exported here as MermaidThemes and
     // MermaidControls already do. Without it the per-parse trace above is

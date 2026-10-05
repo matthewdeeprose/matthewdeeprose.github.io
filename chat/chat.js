@@ -863,6 +863,9 @@
     // core has not registered its refresh hook yet.
     if (window.ChatCore && window.ChatCore._updateInputCounter)
       window.ChatCore._updateInputCounter();
+    // Answer-length range follows the new model (H-20); the send recomputes it anyway.
+    if (window.ChatCore && window.ChatCore._applyModelTokenRange)
+      window.ChatCore._applyModelTokenRange(S.currentModel);
     // Starter prompts: re-pick chips for the newly selected model's capabilities (no-op unless the welcome is shown).
     if (window.ChatChips && typeof window.ChatChips.refresh === "function") {
       window.ChatChips.refresh();

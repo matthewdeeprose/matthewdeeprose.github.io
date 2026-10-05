@@ -326,6 +326,63 @@
     429: "The model is busy right now. Please try again shortly.",
   });
 
+  // ============================================================================
+  // DESCRIPTION OUTPUT LIMIT (H-17)
+  // ============================================================================
+
+  // The description call's max_tokens follows the model being sent to, through
+  // the shared resolver (js/model-output-budget.js): the smaller of this ceiling
+  // and the model's own published output limit. The ceiling is generous because
+  // you pay for tokens used, not for the limit: the largest Opus 5 description on
+  // disk used 6,555 tokens at an 8,000 limit, so 32,000 leaves headroom for
+  // reasoning models on dense pictures.
+  const DESCRIPTION_TOKEN_CEILING = 32000;
+
+  // A model the generated data does not know (an unlisted or Foundry model) gets
+  // the value every corpus capture was tested at, not a guess and not the old 4000.
+  const DESCRIPTION_TOKEN_FALLBACK = 8000;
+
+  // ============================================================================
+  // VERIFICATION OUTPUT LIMIT (H-23)
+  // ============================================================================
+
+  // The accuracy check writes a worksheet first and its verdict last, so a limit
+  // that is too small loses the verdict. Same shape as the description limit:
+  // the smaller of this ceiling and the verification model's own published limit.
+  // 16,000 leaves room for a reasoning model's thinking plus the worksheet, and
+  // you pay for tokens written, not for the limit.
+  const VERIFICATION_TOKEN_CEILING = 16000;
+
+  // A model the generated data does not know keeps the value this check always
+  // sent, so an unlisted model sends exactly what it sent before H-23.
+  const VERIFICATION_TOKEN_FALLBACK = 2000;
+
+  // One place for every sentence the check shows when it cannot give a verdict.
+  const VERIFICATION_WORDING = Object.freeze({
+    incompleteBadge: "Check incomplete",
+    incompleteNotice:
+      "This check is incomplete: the model reached its length limit before giving its verdict. The description above is unaffected.",
+    correctionsUnknown: "Unknown (cut off)",
+    emptyReply: "The model returned an empty reply.",
+  });
+
+  // ============================================================================
+  // CUT-OFF REPLY (H-16)
+  // ============================================================================
+
+  // The provider's stop reason for a reply it ended at the length limit. The
+  // embed carries it on response.finishReason (null when the wire carried none).
+  const FINISH_REASON = Object.freeze({ LENGTH: "length" });
+
+  // A reply cut off part-way is shown, never discarded, and never called a
+  // success. The status is the visible line (type "error": showStatus has no
+  // warning style); the announcement replaces the success line, not joins it.
+  const CUT_OFF_WORDING = Object.freeze({
+    status:
+      "This description is incomplete. The model reached its length limit and stopped part-way through, so the end is missing.",
+    announcement: "Description incomplete: the model stopped at its length limit.",
+  });
+
   /**
    * Choose the sentence for one generation failure.
    *
@@ -1342,6 +1399,27 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
+     * The verification call's max_tokens for the model about to be sent to (H-23),
+     * through the shared resolver. Absent resolver: today's value, logged loudly.
+     * @param {string} modelId
+     * @returns {number}
+     */
+    _resolveVerificationBudget(modelId) {
+      if (!window.ModelOutputBudget) {
+        logError(
+          "ModelOutputBudget is not loaded; the verification limit stays at its fallback",
+        );
+        return VERIFICATION_TOKEN_FALLBACK;
+      }
+      const resolved = window.ModelOutputBudget.describe(modelId, {
+        toolCeiling: VERIFICATION_TOKEN_CEILING,
+        fallback: VERIFICATION_TOKEN_FALLBACK,
+      });
+      logInfo("Verification output limit", modelId, resolved);
+      return resolved.budget;
+    },
+
+    /**
      * Get or create the verification embed instance
      * Uses a separate instance so it can have a different model
      * @returns {OpenRouterEmbed}
@@ -1365,7 +1443,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         announceContainer: false,
         model: verifyModel,
         temperature: 0.2, // Lower temperature for accuracy checking
-        max_tokens: 2000, // Verification needs fewer tokens
+        max_tokens: this._resolveVerificationBudget(verifyModel),
         showNotifications: false,
         showStreamingProgress: false,
         enableCompression: false, // Image already compressed from pass 1
@@ -1451,14 +1529,27 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       // Determine if corrections were found
       const text = response.text || "";
-      const hasCorrections = !text
-        .toLowerCase()
-        .includes("no corrections needed");
+
+      // An empty reply is not a verdict: throw into the existing non-fatal
+      // path (generate() -> handleVerificationError) so it reads "Check failed"
+      // with the same wording as any other check that could not be completed.
+      if (text.trim() === "") {
+        throw new Error(VERIFICATION_WORDING.emptyReply);
+      }
+
+      // A reply cut at the length limit has no verdict, whatever its text says:
+      // the verdict is the last line, so a cut reply never reached it, and a
+      // line that happens to be present was not the model finishing.
+      const incomplete = response.finishReason === FINISH_REASON.LENGTH;
+      const hasCorrections = incomplete
+        ? null
+        : !text.toLowerCase().includes("no corrections needed");
 
       this.lastVerificationOutput = text;
 
       logInfo("Verification complete", {
         hasCorrections,
+        incomplete,
         timeMs: verifyTime,
         responseLength: text.length,
       });
@@ -1466,6 +1557,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       return {
         text: text,
         hasCorrections: hasCorrections,
+        incomplete: incomplete,
         timeMs: verifyTime,
         tokens: response.metadata?.tokens || response.raw?.usage || {},
         model: this.getVerificationModel(),
@@ -1478,17 +1570,30 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
      */
     displayVerificationResults(result) {
       // Show the panel
-      if (this.elements.verifyPanel) {
-        this.elements.verifyPanel.hidden = false;
-        // Auto-open if corrections found
-        if (result.hasCorrections) {
-          this.elements.verifyPanel.open = true;
-        }
+      // Open for corrections or a cut-off check (the person needs to see that
+      // there is no verdict); closed for Passed.
+      this._showVerificationPanel(result.hasCorrections || result.incomplete);
+
+      // One visible sentence above the kept text; the output region is
+      // aria-live="off", so this is read in place and never announced.
+      if (result.incomplete && this.elements.verifyOutput) {
+        const notice = document.createElement("p");
+        notice.className = "imgdesc-verify-incomplete-notice";
+        notice.textContent = VERIFICATION_WORDING.incompleteNotice;
+        this.elements.verifyOutput.insertBefore(
+          notice,
+          this.elements.verifyOutput.firstChild,
+        );
       }
 
       // Set badge
       if (this.elements.verifyBadge) {
-        if (result.hasCorrections) {
+        if (result.incomplete) {
+          this.elements.verifyBadge.textContent =
+            VERIFICATION_WORDING.incompleteBadge;
+          this.elements.verifyBadge.className =
+            "imgdesc-verify-badge badge-error";
+        } else if (result.hasCorrections) {
           this.elements.verifyBadge.textContent = "Corrections found";
           this.elements.verifyBadge.className =
             "imgdesc-verify-badge badge-corrections";
@@ -1513,9 +1618,8 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     handleVerificationError(error) {
       logError("Verification failed:", error);
 
-      if (this.elements.verifyPanel) {
-        this.elements.verifyPanel.hidden = false;
-      }
+      // Open: the explanation is inside the panel, so a closed panel hides it.
+      this._showVerificationPanel(true);
 
       if (this.elements.verifyBadge) {
         this.elements.verifyBadge.textContent = "Check failed";
@@ -1524,8 +1628,24 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       }
 
       if (this.elements.verifyOutput) {
-        this.elements.verifyOutput.textContent = `Verification could not be completed: ${error.message}. The description above was generated successfully.`;
+        // Strip trailing sentence punctuation first: many messages already end
+        // in a full stop, and the template adds its own.
+        const reason = String(error.message).replace(/[.!?\s]+$/, "");
+        this.elements.verifyOutput.textContent = `Verification could not be completed: ${reason}. The description above was generated successfully.`;
       }
+    },
+
+    /**
+     * Show the verification panel and set its open state explicitly.
+     * Set on every verdict: a regenerate on the same image does not pass
+     * through clearVerification(), so an earlier run's open state would
+     * otherwise carry over.
+     * @param {boolean} open - Whether the panel should be open
+     */
+    _showVerificationPanel(open) {
+      if (!this.elements.verifyPanel) return;
+      this.elements.verifyPanel.hidden = false;
+      this.elements.verifyPanel.open = Boolean(open);
     },
 
     /**
@@ -1577,7 +1697,11 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       // Corrections
       setText(
         this.elements.debugVerifyCorrections,
-        result.hasCorrections ? "Yes" : "No",
+        result.incomplete
+          ? VERIFICATION_WORDING.correctionsUnknown
+          : result.hasCorrections
+            ? "Yes"
+            : "No",
       );
     },
 
@@ -2607,6 +2731,11 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           return; // finally{} resets isGenerating / abortController / buttons
         }
 
+        // H-17: the limit follows the model actually being sent, set on the
+        // cached embed before EVERY send (a model change must not keep the
+        // previous model's limit).
+        this._applyOutputBudget(embed, modelInUse);
+
         // Attach the image (compression happens here for large files)
         await embed.attachFile(this.currentFile);
         this._notifyCompressionOutcome(embed);
@@ -2705,6 +2834,15 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           return;
         }
 
+        // A reply the provider cut off at the length limit has text in it, so
+        // the belt above lets it through. Keep the text, but do not verify it
+        // (a second paid call on text known to be incomplete) and do not call
+        // it a success below. Any other reason, null included, is unchanged.
+        const replyCutOff = response.finishReason === FINISH_REASON.LENGTH;
+        if (replyCutOff) {
+          logWarn("Reply cut off at the length limit — showing it as incomplete");
+        }
+
         // Reasoning Disclosure: show the model's own summary of its reasoning,
         // when it returned one. response.reasoning is populated by core on both
         // the streaming and reduced-motion paths. Reasoning models only; the
@@ -2751,7 +2889,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // ── Visual Verification Pass (conditional) ──────────────────
         let verificationResult = null;
 
-        if (this.isVerificationEnabled()) {
+        if (!replyCutOff && this.isVerificationEnabled()) {
           this.showProgress("VERIFYING");
 
           try {
@@ -2769,7 +2907,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             };
           }
         } else {
-          // Clear any previous verification results
+          // Clear any previous verification results (also taken for a cut-off reply)
           this.clearVerification();
         }
 
@@ -2786,20 +2924,26 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // true = show completion time; the run ends on the description
         this.hideProgress(true, { focusDescription: true });
 
-        // Show success status with time
-        this.showStatus(
-          `Description generated successfully in ${this.formatElapsedTime(
-            finalTime,
-          )}!`,
-          "success",
-        );
+        if (replyCutOff) {
+          // One voice per event: the incomplete line replaces the success line.
+          this.showStatus(CUT_OFF_WORDING.status, "error");
+          this.announceStatus(CUT_OFF_WORDING.announcement);
+        } else {
+          // Show success status with time
+          this.showStatus(
+            `Description generated successfully in ${this.formatElapsedTime(
+              finalTime,
+            )}!`,
+            "success",
+          );
 
-        // Announce to screen reader
-        this.announceStatus(
-          `Image description generated successfully in ${this.formatElapsedTime(
-            finalTime,
-          )}`,
-        );
+          // Announce to screen reader
+          this.announceStatus(
+            `Image description generated successfully in ${this.formatElapsedTime(
+              finalTime,
+            )}`,
+          );
+        }
 
         logInfo("Generation complete in", this.formatElapsedTime(finalTime));
 
@@ -2815,7 +2959,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           selectedModelCost:
             costBreakdown?.calculated?.formatted || "Not available",
           temperature: cfg.temperature,
-          maxTokens: cfg.maxTokens,
+          maxTokens: embed.max_tokens, // what was actually sent (H-17)
           systemPrompt: systemPrompt,
           userPrompt: userPrompt,
           useStreaming: useStreaming,
@@ -3912,6 +4056,28 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
+     * Set the description call's max_tokens on the embed from the model about
+     * to be sent (H-17). Called before every send, because the embed is cached
+     * across model changes.
+     * @param {OpenRouterEmbed} embed
+     * @param {string} modelId The model actually being sent to
+     */
+    _applyOutputBudget(embed, modelId) {
+      if (!window.ModelOutputBudget) {
+        logError(
+          "ModelOutputBudget is not loaded; the description limit stays at its construction value",
+        );
+        return;
+      }
+      const resolved = window.ModelOutputBudget.describe(modelId, {
+        toolCeiling: DESCRIPTION_TOKEN_CEILING,
+        fallback: DESCRIPTION_TOKEN_FALLBACK,
+      });
+      embed.setMaxTokens(resolved.budget);
+      logInfo("Description output limit", modelId, resolved);
+    },
+
+    /**
      * Get or create OpenRouter Embed instance
      * @returns {OpenRouterEmbed}
      */
@@ -3948,6 +4114,8 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         announceContainer: false,
         model: selectedModel,
         temperature: cfg.temperature,
+        // Construction value only. generate() sets the real limit before every
+        // send from the model being sent (_applyOutputBudget, H-17).
         max_tokens: cfg.maxTokens,
         // Parcel 52: OFF, as in Chat and the verification embed below. The
         // embed's own toasts ("Processing request...", "Request failed,

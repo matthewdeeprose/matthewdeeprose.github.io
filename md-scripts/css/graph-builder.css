@@ -1,261 +1,143 @@
 /* ========================================
    COLOUR PROPERTIES SECTION
    ======================================== */
-/* Container and Screen Management - Colours */
+/* Container and Screen Management - Colours. Palette colours live in light.css and dark.css (GT-3b); what stays here is structure. */
 .gb-notification {
-  background-color: #fffff4;
-  border: 1px solid #495961;
+  border-width: 1px;
+  border-style: solid;
 }
-/* Data Input Methods - Colours */
+/* Add Data screen. Palette colours live in light.css and dark.css (GT-3a); what stays here is structure: border width and style, transparent reservations. */
 .gb-method-tabs {
-  border-bottom: 2px solid #495961;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
 }
 .gb-tab-button {
-  color: #495961;
   border-bottom: 3px solid transparent;
   border: 0.2rem solid transparent;
   outline: 0.2rem solid transparent;
 }
-.gb-tab-button.active {
-  color: #005c84;
-  border-bottom-color: #005c84;
-  background-color: rgba(0, 92, 132, 0.1);
-}
-/* Input Panels - Colours */
 .gb-input-panel {
-  border: 1px solid #495961;
-  background-color: rgba(255, 255, 244, 0.5);
-}
-.gb-input-panel h3 {
-  color: #005c84;
-}
-/* Form-based Data Entry - Colours */
-.gb-form-headers {
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-row-label {
-  color: #00131d;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-data-row {
-  border: 1px solid #495961;
-  background-color: #fffff4;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-add-row-button {
-  color: #495961;
   outline: 0.2rem solid transparent;
-  border: 0.2rem dashed #495961;
+  border-width: 0.2rem;
+  border-style: dashed;
 }
 .gb-remove-row-button {
-  color: #d5007f;
   outline: 0.2rem solid transparent;
-  border: 0.2rem solid #d5007f;
+  border-width: 0.2rem;
+  border-style: solid;
 }
-/* CSV Paste Area - Colours */
 .gb-csv-textarea {
-  border: 1px solid #495961;
+  border-width: 1px;
+  border-style: solid;
 }
-.gb-csv-textarea::placeholder {
-  color: #495961;
-}
-/* CSV parsing feedback - Colours */
 .gb-csv-feedback.success {
-  background-color: rgba(0, 80, 81, 0.1);
-  border: 1px solid #005051;
-  color: #005051;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-csv-feedback.warning {
-  background-color: rgba(213, 0, 127, 0.1);
-  border: 1px solid #d5007f;
-  color: #d5007f;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-csv-feedback.error {
-  background-color: rgba(213, 0, 127, 0.15);
-  border: 1px solid #d5007f;
-  color: #d5007f;
+  border-width: 1px;
+  border-style: solid;
 }
-/* Enhanced preview table - Colours */
 .gb-preview-table-container {
-  border: 1px solid #495961;
-}
-.gb-preview-table {
-  background-color: #fffff4;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-preview-table caption {
-  background-color: rgba(0, 92, 132, 0.1);
-  border-bottom: 1px solid #495961;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
 }
 .gb-preview-table th,
 .gb-preview-table td {
-  border-bottom: 1px solid #495961;
-  border-right: 1px solid #495961;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-right-width: 1px;
+  border-right-style: solid;
 }
 .gb-preview-table th {
-  background-color: #e1e8ec;
-  color: #005c84;
-  border-bottom: 2px solid #005c84;
-  box-shadow: 0 2px 2px rgba(0, 92, 132, 0.1);
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
 }
-.gb-preview-table tbody tr:nth-child(even) {
-  background-color: rgba(73, 89, 97, 0.05);
-}
-.gb-preview-table tbody tr:hover {
-  background-color: rgba(0, 92, 132, 0.08);
-}
-.gb-preview-table tbody tr:hover .gb-empty-cell {
-  background-color: rgba(0, 92, 132, 0.15);
-}
-/* Empty cell styling - Colours */
-.gb-empty-cell {
-  background-color: rgba(73, 89, 97, 0.1);
-}
-.gb-empty-indicator {
-  color: #495961;
-}
-/* CSV Example Styling - Colours */
 .gb-csv-example {
-  background-color: rgba(73, 89, 97, 0.08);
-  border: 1px solid #495961;
-  color: #00131d;
+  border-width: 1px;
+  border-style: solid;
 }
-/* Data type specific styling - Colours */
 .gb-data-type-boolean::before {
   background-color: currentColor;
 }
-/* Preview control row styling - Colours */
 .gb-preview-control-row {
-  border-top: 2px solid #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-preview-status {
-  color: #005c84;
+  border-top-width: 2px;
+  border-top-style: solid;
 }
 .gb-show-more-button,
 .gb-show-less-button,
 .gb-show-all-button {
-  border: 1px solid #005c84;
-  color: #005c84;
+  border-width: 1px;
+  border-style: solid;
 }
-.gb-show-all-button {
-  background-color: rgba(0, 92, 132, 0.1);
-}
-.gb-help-text {
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-help-text p {
-  color: #495961;
-}
-/* File Upload - Colours */
 .gb-file-label {
-  border: 2px dashed #495961;
-  background-color: rgba(255, 255, 244, 0.8);
+  border-width: 2px;
+  border-style: dashed;
 }
-.gb-file-label:hover {
-  border-color: #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-upload-text {
-  color: #005c84;
-}
-/* Data Preview - Colours */
 .gb-data-preview {
-  border-top: 1px solid #495961;
+  border-top-width: 1px;
+  border-top-style: solid;
 }
-.gb-data-preview h3 {
-  color: #005c84;
-}
-.gb-preview-stats {
-  background-color: rgba(0, 92, 132, 0.1);
-  color: #005c84;
-}
-/* Chart Type Selection Grid - Colours */
+/* Chart Type Selection Grid - Colours. Palette colours live in light.css and dark.css (GT-3b); what stays here is structure: border width and style, transparent reservations, inherit, neutral shadows. */
 .gb-chart-option {
-  background: #fffff4;
   outline: 0.2rem solid transparent;
-  border: 0.2rem solid #495961;
-}
-.gb-chart-option.selected {
-  border-color: #005c84;
-  background-color: rgba(0, 92, 132, 0.1);
-  box-shadow: 0 0 0 2px rgba(0, 92, 132, 0.3);
-}
-.gb-chart-icon {
-  color: #005c84;
-}
-.gb-chart-option h3 {
-  color: #005c84;
-}
-.gb-chart-option p {
-  color: #495961;
-}
-/* Configuration Layout - Colours */
-.gb-config-preview h3,
-.gb-config-form h3 {
-  color: #005c84;
+  border-width: 0.2rem;
+  border-style: solid;
 }
 .gb-chart-preview-container {
-  border: 1px solid #495961;
-  background-color: #fffff4;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-config-form {
-  border: 1px solid #495961;
-  background-color: rgba(255, 255, 244, 0.5);
-}
-.gb-config-group label {
-  color: #00131d;
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-advanced-settings {
-  border: 1px solid #495961;
-}
-.gb-advanced-settings summary {
-  background-color: rgba(73, 89, 97, 0.1);
+  border-width: 1px;
+  border-style: solid;
 }
 .gb-advanced-settings[open] summary {
-  border-bottom: 1px solid #495961;
-}
-/* Result Screen - Colours */
-.gb-result-info {
-  color: #005051;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
 }
 .gb-final-chart-container {
-  border: 1px solid #495961;
-  background-color: #fffff4;
+  border-width: 1px;
+  border-style: solid;
 }
-/* Navigation - Colours */
 .gb-navigation {
-  border-top: 1px solid #495961;
+  border-top-width: 1px;
+  border-top-style: solid;
 }
 .gb-back-button {
-  color: #495961;
   outline: 0.2rem solid transparent;
-  border: 0.2rem solid #495961;
+  border-width: 0.2rem;
+  border-style: solid;
 }
 .gb-next-button,
 .gb-create-button {
-  background-color: #005c84;
-  color: #fffff4;
   outline: 0.2rem solid transparent;
-  border: 0.2rem solid #005c84;
+  border-width: 0.2rem;
+  border-style: solid;
 }
-/* Toast System Layout - Colours */
-.gb-skip-progress-link {
-  background: #005c84;
-  color: white;
-}
-/* Progress Navigation - Colours */
 .gb-progress {
-  border-bottom: 1px solid #495961;
-}
-.gb-steps::before {
-  background: #758d9a;
-}
-.gb-step {
-  color: #495961;
-}
-.gb-step.active {
-  color: #005c84;
-}
-.gb-step.completed {
-  color: #005051;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
 }
 .gb-step-button,
 .gb-step-non-interactive {
@@ -264,123 +146,38 @@
   outline: 0.2rem solid transparent;
 }
 .gb-step-number {
-  background-color: #8d3970;
-  border: 3px solid rgba(141, 57, 112, 0.65);
-  color: #fffff4;
-}
-.gb-step.active .gb-step-number {
-  background-color: #005c84;
-  color: #fffff4;
-  border-color: #005c84;
-  box-shadow: 0 0 0 4px rgba(0, 92, 132, 0.2);
-}
-.gb-step.completed .gb-step-number {
-  background-color: #005051;
-  color: #fffff4;
-  border-color: #005051;
-  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
-}
-.gb-step-label {
-  color: #6c757d;
-}
-.gb-step.active .gb-step-label {
-  color: #005c84;
-}
-.gb-step.completed .gb-step-label {
-  color: #005051;
-}
-.gb-step.completed::after {
-  background: #005051;
+  border-width: 3px;
+  border-style: solid;
 }
 .gb-step-button:hover .gb-step-number {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
-.gb-step-button:hover .gb-step-label {
-  color: #005c84;
-}
 .gb-step-button:focus .gb-step-number {
-  outline: 3px solid #005c84;
-}
-.gb-step-non-interactive .gb-step-number {
-  background: #f8f9fa;
-  color: #adb5bd;
-  border-color: #e9ecef;
-}
-.gb-step-non-interactive .gb-step-label {
-  color: #adb5bd;
+  outline-width: 3px;
+  outline-style: solid;
 }
 /* File Upload Focus States - Colours */
-.gb-file-input:focus + .gb-file-label,
-.gb-file-input:focus-visible + .gb-file-label {
-  outline: 3px solid #005c84;
-  box-shadow:
-    0 0 0 1px #ffffff,
-    0 0 0 4px #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-file-label:focus-within {
-  outline: 3px solid #005c84;
-  box-shadow:
-    0 0 0 1px #ffffff,
-    0 0 0 4px #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
-}
-.gb-file-label:focus-within .gb-upload-text {
-  color: #005c84;
-}
-.gb-file-label.gb-drag-active {
-  background-color: rgba(0, 92, 132, 0.1);
-  border-color: #005c84;
-}
-.gb-file-label.gb-drag-active .gb-upload-text {
-  color: #005c84;
-}
-.gb-file-label.gb-drag-active:focus-within {
-  outline-color: #005c84;
-  box-shadow:
-    0 0 0 1px #ffffff,
-    0 0 0 4px #005c84,
-    0 0 0 6px rgba(0, 92, 132, 0.3);
-}
-.gb-upload-area:focus-within .gb-file-label {
-  outline: 3px solid #005c84;
-  box-shadow:
-    0 0 0 1px #ffffff,
-    0 0 0 4px #005c84;
-  background-color: rgba(0, 92, 132, 0.05);
-}
-/* Mobile table responsive design - Colours */
+/* The focus colours for the upload label live in light.css and dark.css (GT-3a). */
+/* Mobile table responsive design - Colours. The colours live in light.css and dark.css (GT-3b). */
 @media (max-width: 768px) {
   .gb-preview-table caption {
-    background-color: rgba(0, 92, 132, 0.1);
-    border: 1px solid #495961;
+    border-width: 1px;
+    border-style: solid;
   }
   .gb-preview-table tr {
-    border: 1px solid #495961;
-    background-color: #fffff4;
-    box-shadow: 0 2px 4px rgba(0, 92, 132, 0.1);
-  }
-  .gb-preview-table tr:nth-child(even) {
-    background-color: #fffff4;
-  }
-  .gb-preview-table tr:hover {
-    background-color: rgba(0, 92, 132, 0.05);
+    border-width: 1px;
+    border-style: solid;
   }
   .gb-preview-table td {
-    border-bottom: 1px solid #e1e8ec;
-  }
-  .gb-preview-table td:before {
-    color: #005c84;
-  }
-  .gb-preview-table .gb-empty-cell {
-    background-color: rgba(73, 89, 97, 0.05);
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
   }
   .gb-preview-table .gb-empty-cell:before {
     background-color: transparent;
   }
   .gb-preview-control-row td {
-    border: 1px solid #005c84;
-    background-color: rgba(0, 92, 132, 0.05);
+    border-width: 1px;
+    border-style: solid;
   }
 }
 /* High contrast mode support - Colours */
@@ -388,17 +185,11 @@
   .gb-toast {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   }
-  .gb-step.active .gb-step-number {
-    box-shadow: 0 0 0 6px rgba(0, 92, 132, 0.4);
-  }
   .gb-file-input:focus + .gb-file-label,
   .gb-file-input:focus-visible + .gb-file-label,
   .gb-file-label:focus-within {
     outline-width: 4px;
     outline-style: solid;
-    box-shadow:
-      0 0 0 2px #ffffff,
-      0 0 0 6px currentColor;
   }
   .gb-file-label.gb-drag-active {
     border-width: 3px;
@@ -508,6 +299,44 @@
 .gb-input-panel h3 {
   margin-top: 0;
   margin-bottom: 1rem;
+}
+/* Chart image panel: stop the native file input and select overflowing at 320px */
+.gb-image-field input,
+.gb-image-field select {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+/* The person's original image, kept beside the chart on every later screen (one holder per screen) */
+.gb-original-image {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0 0 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+}
+.gb-original-image summary {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+}
+.gb-original-image img {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100%;
+  max-height: 20rem;
+  height: auto;
+  margin: 0 auto;
+  padding: 0.75rem;
+  object-fit: contain;
+}
+/* Result screen: the original image stacks above the chart, in the same centred column the chart uses, at every width.
+   The wrapper is a plain block so the chart figure lays out exactly as it does on routes with no image. */
+.gb-result-layout > .gb-original-image {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto 1rem auto;
 }
 /* Form-based Data Entry */
 .gb-form-headers {
@@ -1345,6 +1174,10 @@
     position: relative;
     padding-left: 40%;
   }
+  /* The value is bold and its ::before label is not; the control row's td has no data-label */
+  .gb-preview-table td[data-label] {
+    font-weight: bold;
+  }
   .gb-preview-table td:last-child {
     border-bottom: none;
   }
@@ -1354,7 +1187,7 @@
     left: 0;
     top: 0.5rem;
     width: 35%;
-    font-weight: bold;
+    font-weight: normal;
     word-wrap: break-word;
   }
   .gb-preview-table .gb-empty-cell {

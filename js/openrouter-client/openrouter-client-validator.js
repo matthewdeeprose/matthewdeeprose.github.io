@@ -91,9 +91,10 @@ export class OpenRouterValidator {
    * @throws {OpenRouterClientError} If temperature is invalid
    */
   validateTemperature(temperature) {
-    const parsedTemp = parseFloat(
-      temperature || CONFIG.DEFAULT_PARAMS.temperature
-    );
+    // 0 is a valid temperature; `||` alone would replace it with the default
+    const requested =
+      temperature === 0 ? temperature : temperature || CONFIG.DEFAULT_PARAMS.temperature;
+    const parsedTemp = parseFloat(requested);
 
     if (isNaN(parsedTemp) || parsedTemp < 0 || parsedTemp > 2) {
       throw new OpenRouterClientError(

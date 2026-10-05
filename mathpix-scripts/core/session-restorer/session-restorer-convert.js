@@ -1009,9 +1009,9 @@
     // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks).
     const defaults = {
       docx: { label: "Word Document", extension: ".docx" },
-      pdf: { label: "PDF (HTML Rendering)", extension: ".pdf" },
+      pdf: { label: "PDF (HTML Rendering)", extension: "-html.pdf" }, // Parcel O-01
       "tex.zip": { label: "LaTeX (ZIP)", extension: ".tex.zip" },
-      "latex.pdf": { label: "PDF (LaTeX Rendering)", extension: ".pdf" },
+      "latex.pdf": { label: "PDF (LaTeX Rendering)", extension: "-latex.pdf" }, // Parcel O-01
       html: { label: "HTML", extension: ".html" },
       md: { label: "Markdown", extension: ".md" },
       pptx: { label: "PowerPoint", extension: ".pptx" },

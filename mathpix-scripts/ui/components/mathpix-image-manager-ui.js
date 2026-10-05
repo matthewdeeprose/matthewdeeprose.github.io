@@ -2210,9 +2210,9 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                     <span aria-hidden="true" data-icon="${ACCEPT_BUTTON_ICON}"></span> ${composeAcceptText(ACCEPT_BUTTON_RESTING_TEMPLATE, "textInImage")}
                   </button>
                 </div>
-                <input type="text"
-                       id="${FIELD_IDS.textInImage.input}"
-                       aria-describedby="${FIELD_IDS.textInImage.help} ${FIELD_IDS.textInImage.count} ${FIELD_IDS.textInImage.provenance}" />
+                <textarea id="${FIELD_IDS.textInImage.input}"
+                          rows="5"
+                          aria-describedby="${FIELD_IDS.textInImage.help} ${FIELD_IDS.textInImage.count} ${FIELD_IDS.textInImage.provenance}"></textarea>
                 <p id="${FIELD_IDS.textInImage.help}" class="field-help">${FIELD_HELP_TEXT.textInImage}</p>
                 <small id="${FIELD_IDS.textInImage.count}" class="field-count">${formatCharacterCount(0)}</small>
               </div>

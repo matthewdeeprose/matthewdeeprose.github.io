@@ -221,6 +221,53 @@ const MermaidAccessibilityMindmap = (function () {
     }
   }
 
+  // ITEM 82, ENACTMENT 5 (3 October 2026): "a line break the picture draws is
+  // read as a space; a <br> the picture prints as characters is read as
+  // written." Mindmap's canvas breaks on every typed spelling (`<br>`,
+  // `<br/>`, `<br />`, `<BR>`, a run, spaced), measured 2 October 2026
+  // (measurement 2 § 3), so the shared rule is called with its default (all)
+  // form set. The rule is the adapter's and is resolved off window AT CALL
+  // TIME. The parse reads raw source bytes, so an escaped `&lt;br&gt;` or
+  // `#lt;br#gt;` is not matched; what the words then say of it is out of
+  // scope for this slice.
+  //
+  // An author's own quotation marks round a label are part of node.text and
+  // are narrated, so the rule runs on what is INSIDE them: otherwise an edge
+  // break would sit next to a quotation mark, read as interior, and leave a
+  // stray space inside the quotes.
+  //
+  // HALTED, not enacted: a node the transform would EMPTY (a label that is
+  // only a break). Principle P2 needs an id, and a mindmap node has none this
+  // module can narrate (parseNodeContent mints one at random and keeps an
+  // author id only for the `a[...]` spelling). Such a node is left as typed
+  // until the design seat rules, which is today's reading. A spaces-only
+  // label is not a break and is likewise left alone.
+  const QUOTED_NODE_TEXT = /^"([\s\S]*)"$/;
+
+  /**
+   * Read a node's text with typed line breaks as single spaces.
+   * @param {string} text - The node text after shape parsing
+   * @returns {string} The text with breaks read as spaces, or the text
+   *   unchanged when the transform would empty it or the rule is not loaded
+   */
+  function readNodeBreaks(text) {
+    if (typeof text !== "string" || text === "") return text;
+
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.replaceTypedLineBreaks !== "function") {
+      logWarn(
+        "[Mermaid Accessibility] Mindmap: the shared line-break rule is not loaded; node text is read as typed"
+      );
+      return text;
+    }
+
+    const quoted = text.match(QUOTED_NODE_TEXT);
+    const inner = quoted ? quoted[1] : text;
+    const read = adapter.replaceTypedLineBreaks(inner, adapter.LINE_BREAK_FORMS.ALL);
+    if (read.trim() === "") return text;
+    return quoted ? `"${read}"` : read;
+  }
+
   /**
    * Parse mindmap from mermaid code
    * @param {string} code - The mermaid code
@@ -279,6 +326,7 @@ const MermaidAccessibilityMindmap = (function () {
 
       // Parse node content and shape
       const node = parseNodeContent(content);
+      node.text = readNodeBreaks(node.text);
 
       // If this is the first line, it's the root node
       if (i === 0) {

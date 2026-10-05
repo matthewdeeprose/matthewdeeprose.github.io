@@ -556,9 +556,14 @@ class MathPixConvertUI {
     this.isConverting = true;
     this.completedDownloads.clear();
 
+    // Parcel 10k: note focus before updateConvertButtonState() disables
+    // the button, so the Cancel swap below can carry it.
+    const convertHadFocus =
+      document.activeElement === this.elements["mathpix-convert-btn"];
+
     // Update UI
     this.updateConvertButtonState();
-    this.showCancelButton();
+    this.showCancelButton({ takeFocus: convertHadFocus });
     this.hideErrors();
     this.hideDownloads();
     this.showProgress(selectedFormats);
@@ -604,7 +609,10 @@ class MathPixConvertUI {
       }
     } catch (error) {
       logError("Conversion failed:", error);
-      this.showError(`Conversion failed: ${error.message}`);
+      // Parcel 10l: a Cancel is not a failure.
+      if (error?.code !== "CANCELLED") {
+        this.showError(`Conversion failed: ${error.message}`);
+      }
     } finally {
       this.isConverting = false;
       this.activeConversionId = null;
@@ -960,9 +968,9 @@ class MathPixConvertUI {
     // Fallback defaults
     const defaults = {
       docx: { label: "Word Document", extension: ".docx" },
-      pdf: { label: "PDF", extension: ".pdf" },
+      pdf: { label: "PDF", extension: "-html.pdf" }, // Parcel O-01
       "tex.zip": { label: "LaTeX (ZIP)", extension: ".tex.zip" },
-      "latex.pdf": { label: "LaTeX PDF", extension: ".pdf" },
+      "latex.pdf": { label: "LaTeX PDF", extension: "-latex.pdf" }, // Parcel O-01
       html: { label: "HTML", extension: ".html" },
       md: { label: "Markdown", extension: ".md" },
       pptx: { label: "PowerPoint", extension: ".pptx" },
@@ -1035,13 +1043,16 @@ class MathPixConvertUI {
 
   /**
    * Show cancel button
+   * @param {Object} [options]
+   * @param {boolean} [options.takeFocus] - Move focus to Cancel (parcel 10k)
    * @private
    */
-  showCancelButton() {
+  showCancelButton({ takeFocus = false } = {}) {
     const convertBtn = this.elements["mathpix-convert-btn"];
     const cancelBtn = this.elements["mathpix-convert-cancel-btn"];
     if (convertBtn) convertBtn.hidden = true;
     if (cancelBtn) cancelBtn.hidden = false;
+    if (takeFocus && cancelBtn) cancelBtn.focus();
   }
 
   /**
@@ -1051,8 +1062,15 @@ class MathPixConvertUI {
   hideCancelButton() {
     const convertBtn = this.elements["mathpix-convert-btn"];
     const cancelBtn = this.elements["mathpix-convert-cancel-btn"];
+
+    // Parcel 10k: if Cancel has focus, hand it back to Convert Selected,
+    // enabled first: cancelConversion() hides Cancel before re-enabling.
+    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
+    if (cancelHadFocus) this.updateConvertButtonState();
+
     if (convertBtn) convertBtn.hidden = false;
     if (cancelBtn) cancelBtn.hidden = true;
+    if (cancelHadFocus && convertBtn) convertBtn.focus();
   }
 
   /**

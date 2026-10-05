@@ -4200,7 +4200,9 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      *
      * Checks three sources in order:
      * 1. Recommended models from prompts.json (this.models)
-     * 2. Registry models from OpenRouter API (window.modelRegistry)
+     * 2. The shared resolver, window.ModelOutputBudget (H-21): the smaller of
+     *    32,768 and the model's own published output limit, from generated data
+     *    first and the registry's declared limit second
      * 3. Falls back to AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS (32,768 since
      *    parcel AW-18, 7 September 2026 — see the constant's own note)
      *
@@ -4220,43 +4222,23 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         return promptsModel.maxTokens;
       }
 
-      // 2. Check registry models
+      // 2. The shared resolver (parcel H-21, 3 October 2026): the smaller of this
+      //    tool's ceiling and the model's own published output limit. It replaces
+      //    three registry field names that no entry carries (H-18: 0 of 536), so
+      //    the old step could never answer. A model with no known ceiling gets
+      //    exactly the fallback, which is what step 3 returns, so only models
+      //    whose own ceiling is below the tool's now move.
       if (
-        window.modelRegistry &&
-        typeof window.modelRegistry.getAllModels === "function"
+        window.ModelOutputBudget &&
+        typeof window.ModelOutputBudget.for === "function"
       ) {
-        const registryModel = window.modelRegistry
-          .getAllModels()
-          .find((m) => m.id === modelId);
-
-        if (registryModel) {
-          // Try known field names for max output tokens
-          const maxOutput =
-            registryModel.top_provider?.max_completion_tokens ||
-            registryModel.max_completion_tokens ||
-            registryModel.maxOutput ||
-            null;
-
-          logDebug("Registry model fields inspected:", {
-            modelId,
-            hasTopProvider: !!registryModel.top_provider,
-            topProviderMaxCompletion:
-              registryModel.top_provider?.max_completion_tokens || "absent",
-            maxCompletionTokens:
-              registryModel.max_completion_tokens || "absent",
-            maxOutput: registryModel.maxOutput || "absent",
-            maxContext: registryModel.maxContext || "absent",
-            context_length: registryModel.context_length || "absent",
-            resolved: maxOutput,
-          });
-
-          if (maxOutput && maxOutput > 0) {
-            return maxOutput;
-          }
-        }
+        return window.ModelOutputBudget.for(modelId, {
+          toolCeiling: AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS,
+          fallback: AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS,
+        });
       }
 
-      // 3. Safe default
+      // 3. Safe default (also the answer when the resolver is absent)
       logDebug("Using default MAX_OUTPUT_TOKENS for model:", {
         modelId,
         fallback: AI_ENHANCER_CONFIG.MAX_OUTPUT_TOKENS,
