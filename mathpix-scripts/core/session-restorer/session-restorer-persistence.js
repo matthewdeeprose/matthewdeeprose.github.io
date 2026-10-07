@@ -819,6 +819,11 @@
       );
     }
 
+    // SR-1: the appendix copies change the projected Convert size, and this
+    // path never reaches scheduleAutoSave. Update the figure silently; the save
+    // that caused it has its own voice. Fire-and-forget: it catches its own errors.
+    this._refreshConvertSizeIndicator?.({ silent: true });
+
     logInfo(
       `writeMMDFromRegistry: captions=${result.captions?.transformations ?? 0} altText=${result.altText?.transformations ?? 0} appendix=${result.appendix?.transformations ?? 0}`,
     );

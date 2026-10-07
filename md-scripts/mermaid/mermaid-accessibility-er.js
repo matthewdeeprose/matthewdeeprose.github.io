@@ -242,7 +242,7 @@ const EntityRelationshipModule = (function () {
     }
 
     if (attribute.comment) {
-      sentence += ` Comment: ${Common.escapeHtml(attribute.comment)}.`;
+      sentence += ` Comment: ${Common.renderSegmentsHtml(attribute.segments, attribute.comment)}.`;
     }
 
     return `<li>${sentence}</li>`;
@@ -260,7 +260,7 @@ const EntityRelationshipModule = (function () {
     // the list item, so it is capitalised.
     const safeName = isUnlabelledEntity(entity)
       ? Common.capitalize(unlabelledEntityPhrase(entity))
-      : Common.escapeHtml(entity.displayName);
+      : Common.renderSegmentsHtml(entity.segments, entity.displayName);
 
     if (attributes.length === 0) {
       return `<li>${safeName}: no attributes listed.</li>`;
@@ -332,7 +332,7 @@ const EntityRelationshipModule = (function () {
     // P1 (enactment 4): a role that draws nothing is read exactly as no role.
     const forward =
       relationship.role && !drawsNothing(relationship.role)
-        ? `The "${Common.escapeHtml(relationship.role)}" relationship links each ${safeFrom} to ${cardinalityClause(relationship.toPerFrom, safeTo)}`
+        ? `The "${Common.renderSegmentsHtml(relationship.segments, relationship.role)}" relationship links each ${safeFrom} to ${cardinalityClause(relationship.toPerFrom, safeTo)}`
         : `each ${safeFrom} is linked to ${cardinalityClause(relationship.toPerFrom, safeTo)}`;
 
     const reverse = `each ${safeTo} is linked to ${cardinalityClause(relationship.fromPerTo, safeFrom)}`;

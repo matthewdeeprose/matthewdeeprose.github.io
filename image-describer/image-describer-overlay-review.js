@@ -490,7 +490,12 @@
           : "N/A";
       }
       if (posEl) {
-        posEl.textContent = entry.item.quadrant || "unknown";
+        // Nine-position word from H-7e's helper, matching what the model is told.
+        const posUtils = window.ImageDescriberAnalyserUtils;
+        posEl.textContent =
+          (posUtils && posUtils.getItemPositionWord(entry.item)) ||
+          entry.item.quadrant ||
+          "unknown";
       }
       if (srcEl) {
         const SOURCE_LABELS = {
@@ -565,7 +570,14 @@
 
       if (textInput) textInput.value = addition.text || "";
       if (confEl) confEl.textContent = "User-added (100%)";
-      if (posEl) posEl.textContent = addition.quadrant || "unknown";
+      // Nine-position word from H-7e's helper (an addition carries bounds).
+      const addUtils = window.ImageDescriberAnalyserUtils;
+      if (posEl) {
+        posEl.textContent =
+          (addUtils && addUtils.getItemPositionWord(addition)) ||
+          addition.quadrant ||
+          "unknown";
+      }
       if (srcEl) srcEl.textContent = "User";
 
       if (panel) panel.hidden = false;
@@ -1081,7 +1093,7 @@
               // Update accessible label
               box.setAttribute(
                 "aria-label",
-                "User-added OCR item: " + newText + ", " + addition.quadrant + " quadrant",
+                "User-added OCR item: " + newText + ", position " + this._addedPositionWord(addition),
               );
             }
             logInfo("Added item " + addIndex + " updated: " + newText);
@@ -1585,7 +1597,7 @@
       box.style.width = css.width;
       box.style.height = css.height;
 
-      const label = "User-added OCR item: " + addition.text + ", " + addition.quadrant + " quadrant";
+      const label = "User-added OCR item: " + addition.text + ", position " + this._addedPositionWord(addition);
       box.setAttribute("aria-label", label);
 
       // Text label tag
@@ -1605,6 +1617,20 @@
         source: "user",
       };
       this._attachAddedToggletip(box, syntheticItem, additionIndex);
+    },
+
+    /**
+     * Position word shown or spoken for a person-added item: H-7e's nine-position
+     * word from its box, falling back to the stored quadrant, then "unknown".
+     * @param {Object} item - Addition or synthetic item with bounds and quadrant
+     * @returns {string}
+     * @private
+     */
+    _addedPositionWord(item) {
+      const utils = window.ImageDescriberAnalyserUtils;
+      return (
+        (utils && utils.getItemPositionWord(item)) || item.quadrant || "unknown"
+      );
     },
 
     /**
@@ -1632,7 +1658,7 @@
         '<dd class="toggletip-value toggletip-confidence-high">100% (user-added)</dd>' +
         '<dt class="toggletip-label">Position</dt>' +
         '<dd class="toggletip-value">' +
-        (item.quadrant || "unknown") +
+        this._addedPositionWord(item) +
         "</dd>" +
         '<dt class="toggletip-label">Source</dt>' +
         '<dd class="toggletip-value">User</dd>' +
@@ -1836,10 +1862,13 @@
      */
     _showAddTextPrompt(bounds) {
       const utils = window.ImageDescriberAnalyserUtils;
+      // Display only: the nine-position word from H-7e's helper for the drawn box;
+      // the stored quadrant is still derived by getQuadrant on confirm.
       const quadrant =
-        utils && typeof utils.getQuadrant === "function"
+        (utils && utils.getItemPositionWord({ bounds: bounds })) ||
+        (utils && typeof utils.getQuadrant === "function"
           ? utils.getQuadrant(bounds)
-          : "centre";
+          : "centre");
 
       this._pendingDrawBounds = bounds;
 

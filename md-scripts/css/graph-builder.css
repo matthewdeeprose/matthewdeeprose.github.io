@@ -280,7 +280,7 @@
   transition: all 0.2s ease;
 }
 .gb-tab-icon {
-  font-size: 1.5rem;
+  font-size: 2rem;
   line-height: 1;
 }
 .gb-tab-label {
@@ -302,9 +302,27 @@
 }
 /* Chart image panel: stop the native file input and select overflowing at 320px */
 .gb-image-field input,
-.gb-image-field select {
+.gb-image-field select,
+.gb-image-field textarea {
   max-width: 100%;
   box-sizing: border-box;
+}
+/* UX-3a: the hints group. A fieldset sizes to its content by default, which pushed the panel past 320px. */
+fieldset.gb-image-field {
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+fieldset.gb-image-field legend {
+  padding: 0;
+  font-weight: 500;
+}
+fieldset.gb-image-field select,
+fieldset.gb-image-field textarea {
+  display: block;
+  width: 100%;
+  margin: 0.25rem 0 0.75rem;
 }
 /* The person's original image, kept beside the chart on every later screen (one holder per screen) */
 .gb-original-image {
@@ -329,6 +347,91 @@
   margin: 0 auto;
   padding: 0.75rem;
   object-fit: contain;
+}
+/* Developer information on the image tab (UX-5): layout only, no colour literal. Borders use currentColor so
+   they follow the theme; the summary's focus ring comes from the shared summary:focus-visible rule. */
+.gb-dev-panel {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 1rem 0;
+}
+.gb-dev-panel summary {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.5rem 0.25rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+.gb-dev-list {
+  margin: 0.5rem 0 0;
+}
+.gb-dev-list dt {
+  margin: 0.75rem 0 0.25rem;
+  font-weight: bold;
+}
+.gb-dev-list dd {
+  margin: 0 0 0.5rem;
+  min-width: 0;
+}
+.gb-dev-note {
+  margin: 0 0 0.4rem;
+  font-style: italic;
+}
+/* The scroll cap sits on the pre, the element that scrolls; pre-wrap and overflow-wrap stop a long token forcing a
+   horizontal scroll at 320px */
+.gb-dev-panel pre {
+  box-sizing: border-box;
+  max-height: 300px;
+  margin: 0;
+  padding: 0.75rem;
+  overflow: auto;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gb-dev-panel pre code {
+  padding: 0;
+  background: none;
+}
+.gb-dev-panel pre:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+.gb-dev-copy {
+  min-height: 44px;
+  margin: 0.5rem 0 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+/* The app-wide code-copy enhancer adds its own button to every language-json block; the two copy buttons above
+   copy the full stored JSON, so it is redundant here */
+.gb-dev-panel .code-copy-button {
+  display: none;
+}
+@media (forced-colors: active) {
+  .gb-dev-panel pre:focus-visible {
+    outline-color: Highlight;
+  }
+}
+/* UX-7: focus lands on each step's heading (tabindex="-1", so never a Tab stop). The app-wide treatment draws a transparent
+   outline on a non-control, so a keyboard-arrived heading needs its own indicator; :focus-visible keeps it off after a click.
+   currentColor is the heading's own text colour, which already clears 4.5:1 on the panel in both themes. */
+#gb-data-heading:focus-visible,
+#gb-chart-heading:focus-visible,
+#gb-config-heading:focus-visible,
+#gb-result-heading:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+@media (forced-colors: active) {
+  #gb-data-heading:focus-visible,
+  #gb-chart-heading:focus-visible,
+  #gb-config-heading:focus-visible,
+  #gb-result-heading:focus-visible {
+    outline-color: Highlight;
+  }
 }
 /* Result screen: the original image stacks above the chart, in the same centred column the chart uses, at every width.
    The wrapper is a plain block so the chart figure lays out exactly as it does on routes with no image. */
@@ -459,6 +562,24 @@
 .gb-empty-indicator {
   font-size: 1.2em;
   opacity: 0.6;
+}
+/* UX-4a: editable cells after an image extraction. Layout only; the site's
+   input[type="text"] rules in light.css and dark.css supply every colour. */
+.gb-preview-edit-cell .gb-preview-cell-input {
+  display: block;
+  width: 100%;
+  min-width: 4rem;
+  min-height: 24px;
+  box-sizing: border-box;
+  padding: 0.25rem 0.4rem;
+  font: inherit;
+  font-weight: normal;
+}
+.gb-preview-edit-cell .gb-preview-cell-input[inputmode="decimal"] {
+  font-family: "Courier New", monospace;
+}
+.gb-preview-edit-hint {
+  margin: 0 0 1rem;
 }
 /* Data type specific styling */
 .gb-data-type-number {
@@ -700,6 +821,11 @@
   justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
+}
+/* UX-8: the markup carries no space between a result button's icon and its text (so the accessible name has no leading
+   space); this keeps the two clear of each other. */
+.gb-action-button [data-icon] {
+  margin-right: 0.35em;
 }
 /* Navigation */
 .gb-navigation {

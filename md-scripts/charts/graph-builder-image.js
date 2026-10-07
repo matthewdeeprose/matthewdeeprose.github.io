@@ -106,6 +106,16 @@ const GraphBuilderImage = (function () {
   const PROMPT_URL = "md-scripts/charts/prompts/image-to-table.txt";
   const USER_TEXT = "Reconstruct the chart in this image.";
 
+  // UX-3a: the person's optional hints, appended to USER_TEXT only when at least one is given
+  const HINT_TEXT_MAX_CHARS = 500;
+  const HINT_HEADING = "Hints from the person who uploaded the image (the image wins where they disagree):";
+  const HINT_TYPE_PREFIX = "Chart type: ";
+  const HINT_ABOUT_PREFIX = "About this chart: ";
+  const HINT_ID = Object.freeze({
+    TYPE: "gb-image-hint-type",
+    TEXT: "gb-image-hint-text",
+  });
+
   const REQUEST = Object.freeze({
     TEMPERATURE: 0,
     MAX_TOKENS: 4096,
@@ -145,6 +155,9 @@ const GraphBuilderImage = (function () {
     MODEL: "gb-image-model",
     EXTRACT: "gb-image-extract",
     RESULT: "gb-image-result",
+    PROGRESS: "gb-image-progress",
+    PROGRESS_TEXT: "gb-image-progress-text",
+    STOP: "gb-image-stop",
     PRICE: "gb-image-price",
     NOTE: "gb-image-note",
     EMBED_OUTPUT: "gb-image-embed-output",
@@ -154,7 +167,16 @@ const GraphBuilderImage = (function () {
     ORIGINAL_TYPE: "gb-image-original-type",
     ORIGINAL_CONFIG: "gb-image-original-config",
     ORIGINAL_RESULT: "gb-image-original-result",
+    DEV_FINISH: "gb-image-dev-finish-reason",
+    DEV_REQUEST: "gb-image-dev-request",
+    DEV_RESPONSE: "gb-image-dev-response",
+    DEV_NOTE: "gb-image-dev-request-note",
+    DEV_COPY_REQUEST: "gb-image-dev-copy-request",
+    DEV_COPY_RESPONSE: "gb-image-dev-copy-response",
   });
+
+  // The one voice of the developer panel: its copy buttons' confirmations
+  const DEV_COPIED = Object.freeze({ request: "Request copied.", response: "Response copied." });
 
   // The image panel's holder shows as soon as a file is chosen; the three later screens' holders show only while
   // the table came from the image (state.imageExtraction)
@@ -187,7 +209,24 @@ const GraphBuilderImage = (function () {
     NETWORK: "The request could not reach the service. Check your connection, then try again.",
     GENERIC: "Something went wrong while reading your chart. Try again, or choose another model.",
     NO_PRICE: "No price is listed for this model.",
+    STOPPED: "Stopped. Nothing was read from the image.",
+    STAGE_PREPARING: "Preparing your image…",
+    STAGE_WAITING: "Waiting for the model…",
+    STAGE_RECEIVING: "Receiving the reply…",
+    STAGE_READING: "Reading the table…",
   });
+
+  // Where a run is, for the progress line. RECEIVING is reached only by a streamed reply (no chunks arrive
+  // under reduced motion, which sends without streaming).
+  const STAGE = Object.freeze({ PREPARING: "preparing", WAITING: "waiting", RECEIVING: "receiving", READING: "reading" });
+  const STAGE_TEXT = Object.freeze({
+    [STAGE.PREPARING]: MESSAGE.STAGE_PREPARING,
+    [STAGE.WAITING]: MESSAGE.STAGE_WAITING,
+    [STAGE.RECEIVING]: MESSAGE.STAGE_RECEIVING,
+    [STAGE.READING]: MESSAGE.STAGE_READING,
+  });
+  const PROGRESS_TICK_MS = 1000;
+  const MS_PER_SECOND = 1000;
 
   const STATUS_CODE = Object.freeze({ AUTH: 401, FORBIDDEN: 403, BUSY: 429, SERVER_MIN: 500 });
 
@@ -214,10 +253,22 @@ const GraphBuilderImage = (function () {
   let running = false;
   let promptPromise = null;
 
+  // The run in flight: its embed (for Stop), whether Stop was pressed, its stage and clock, and the token a
+  // deferred end-of-run step checks so a later run is never touched by an earlier one
+  let activeEmbed = null;
+  let stopRequested = false;
+  let stage = STAGE.PREPARING;
+  let runStartedAt = 0;
+  let progressTimer = null;
+  let endToken = null;
+
   // One object URL per chosen file, revoked whenever it is replaced or cleared
   let originalUrl = null;
   let originalName = "";
   let originalFile = null;
+
+  // The shared developer panel (js/dev-panel.js), built at init
+  let devPanel = null;
 
   // ============================================
   // LOOKUPS (call time)
@@ -368,6 +419,52 @@ const GraphBuilderImage = (function () {
     area.hidden = true;
   }
 
+  // ============================================
+  // DEVELOPER INFORMATION (silent: no live role; the copy buttons' confirmation is its only voice)
+  // ============================================
+
+  function announceCopied(message) {
+    const announcer = window.accessibilityHelpers;
+    if (announcer && typeof announcer.announce === "function") announcer.announce(message, "polite");
+  }
+
+  function createDevPanel() {
+    if (!window.DevPanel) {
+      logWarn("window.DevPanel is missing; the developer panel will stay empty");
+      return null;
+    }
+    return window.DevPanel.create({
+      ids: {
+        finish: ID.DEV_FINISH,
+        request: ID.DEV_REQUEST,
+        response: ID.DEV_RESPONSE,
+        note: ID.DEV_NOTE,
+        copyRequest: ID.DEV_COPY_REQUEST,
+        copyResponse: ID.DEV_COPY_RESPONSE,
+      },
+      copiedMessages: DEV_COPIED,
+      announce: announceCopied,
+    });
+  }
+
+  function clearDevInfo() {
+    if (devPanel) devPanel.clear();
+  }
+
+  /** A failed send's error in plain fields only, so the panel never carries more than a status and a message. */
+  function summariseError(error) {
+    if (!error) return null;
+    return { name: error.name, message: error.message, status: error.status || error.statusCode, code: error.code };
+  }
+
+  /** Fill the panel from the run's own embed (read before it is dropped) and its response, or its error. */
+  function showDevInfo(embed, response, error) {
+    if (!devPanel) return;
+    const wire = embed && typeof embed.getLastWireRequest === "function" ? embed.getLastWireRequest() : null;
+    const shown = response || { raw: summariseError(error) };
+    devPanel.update(shown, wire, "");
+  }
+
   function appendLine(area, text) {
     const p = document.createElement("p");
     p.textContent = text;
@@ -516,6 +613,10 @@ const GraphBuilderImage = (function () {
     const config = {
       containerId: ID.EMBED_OUTPUT,
       announceContainer: false, // the container is a scratch area; the toasts are the only voice
+      // This tab shows no streamed text (the reply goes to a hidden scratch container), so streaming moves nothing on
+      // screen. Under reduced motion the embed would otherwise fall back to a non-streaming send, which on OpenRouter
+      // reaches the shared request handler and adds its own "Sending request to API..." beside the start toast.
+      respectReducedMotion: false,
       model: modelId,
       systemPrompt,
       temperature: REQUEST.TEMPERATURE,
@@ -584,6 +685,108 @@ const GraphBuilderImage = (function () {
     logInfo(`tokens: prompt ${usage.prompt}, completion ${usage.completion}, total ${usage.total}`);
   }
 
+  // ============================================
+  // PROGRESS AND STOP (visible text only: no live role, the toasts stay the only voice)
+  // ============================================
+
+  /** Stage plus whole elapsed seconds, rewritten only when it changes. */
+  function renderProgress() {
+    const line = byId(ID.PROGRESS_TEXT);
+    if (!line) return;
+    const seconds = Math.floor((performance.now() - runStartedAt) / MS_PER_SECOND);
+    const text = stage === STAGE.READING || seconds < 1 ? STAGE_TEXT[stage] : `${STAGE_TEXT[stage]} ${seconds} s`;
+    if (line.textContent !== text) line.textContent = text;
+  }
+
+  function setStage(next) {
+    stage = next;
+    renderProgress();
+  }
+
+  function stopProgressTimer() {
+    if (progressTimer !== null) clearInterval(progressTimer);
+    progressTimer = null;
+  }
+
+  function startProgress() {
+    stage = STAGE.PREPARING;
+    runStartedAt = performance.now();
+    const area = byId(ID.PROGRESS);
+    const line = byId(ID.PROGRESS_TEXT);
+    if (line) line.textContent = "";
+    renderProgress();
+    if (area) area.hidden = false;
+    stopProgressTimer();
+    progressTimer = setInterval(renderProgress, PROGRESS_TICK_MS);
+  }
+
+  /**
+   * End the progress area. When focus is inside it (Stop, above all) the hide waits for a full rendering update
+   * after the release, so Stop is not hidden while focused and focus is not left to fall to the page; ONE
+   * requestAnimationFrame is not enough (Image Describer parcels 43b and 43c measured it). Focus then moves to
+   * Extract only if it is still in the area; a person who has moved on is left where they are.
+   */
+  function endProgress() {
+    stopProgressTimer();
+    const area = byId(ID.PROGRESS);
+    if (!area) return;
+    const token = {};
+    endToken = token;
+    if (!area.contains(document.activeElement)) {
+      area.hidden = true;
+      return;
+    }
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        if (endToken !== token || running) return;
+        endToken = null;
+        const button = byId(ID.EXTRACT);
+        if (area.contains(document.activeElement) && button && !button.disabled) button.focus();
+        area.hidden = true;
+      })
+    );
+  }
+
+  /**
+   * Streaming: cancelStreaming resolves the pending send with the cancelled flag. Otherwise (reduced motion)
+   * abort the embed's controller and its non-streaming fallback returns the flag. Never cancelRequest(), which
+   * raises its own "Request cancelled" toast on the non-streaming path (Image Describer parcel 43e-2).
+   */
+  function onStopClick() {
+    if (!running || stopRequested) return;
+    stopRequested = true;
+    stopProgressTimer();
+    logInfo("stop pressed");
+    const embed = activeEmbed;
+    if (!embed) return;
+    if (embed.isStreaming) {
+      embed.cancelStreaming("User cancelled");
+    } else {
+      const controller = embed.getAbortController && embed.getAbortController();
+      if (controller) controller.abort();
+    }
+  }
+
+  /** The cancelled flag sits at the top level (reduced-motion fallback) or in raw (cancelStreaming). */
+  function replyWasCancelled(response) {
+    return !!(response && (response.cancelled === true || (response.raw && response.raw.cancelled === true)));
+  }
+
+  /** The text sent with the image: the fixed line, plus the person's hints when there are any. */
+  function buildUserText() {
+    const typeField = byId(HINT_ID.TYPE);
+    const textField = byId(HINT_ID.TEXT);
+    const type = typeField ? typeField.value : "";
+    const about = textField ? textField.value.trim().slice(0, HINT_TEXT_MAX_CHARS) : "";
+    if (!type && !about) return USER_TEXT;
+
+    logInfo(`hints sent: type ${type || "none"}, text ${about.length} characters`);
+    const lines = [USER_TEXT, "", HINT_HEADING];
+    if (type) lines.push(HINT_TYPE_PREFIX + type);
+    if (about) lines.push(HINT_ABOUT_PREFIX + about);
+    return lines.join("\n");
+  }
+
   async function extract() {
     if (running) return;
 
@@ -597,7 +800,10 @@ const GraphBuilderImage = (function () {
     if (!file || !select || !select.value || !hasCredentials(providerId) || !gb || !toasts || !parser) return;
 
     running = true;
+    stopRequested = false;
+    activeEmbed = null;
     refreshControls();
+    startProgress();
 
     // The trail below never names a key, token, header or the image data: only sizes, ids, counts and codes
     applyDevLogLevel();
@@ -605,24 +811,52 @@ const GraphBuilderImage = (function () {
     let outcome = "failed";
     logInfo(`extract: ${file.name}, ${file.type}, ${file.size} bytes`);
     logInfo(`provider ${providerId}, model ${select.value}`);
+    // Read when Extract is pressed, so a later edit cannot change a request already under way
+    const userText = buildUserText();
     logInfo(`compression ${file.size > COMPRESSION.THRESHOLD_BYTES ? "will" : "will not"} apply (${file.size} bytes against a ${COMPRESSION.THRESHOLD_BYTES} byte threshold)`);
 
     // A new extraction replaces whatever the last one loaded
     gb.clearDataState();
     clearResult();
+    clearDevInfo();
     syncOriginalHolders();
     toasts.info(MESSAGE.READING);
 
     let embed = null;
+    let sent = false;
+    let reply = null;
+    let failure = null;
+    // The one voice for a Stop: no parse, no error toast, the file and its original image stay
+    const stopQuietly = () => {
+      outcome = "stopped";
+      logInfo("stopped before any reply was read");
+      clearResult();
+      toasts.info(MESSAGE.STOPPED);
+    };
     try {
       const systemPrompt = await loadPrompt();
       logInfo(`prompt loaded (${systemPrompt.length} characters)`);
+      if (stopRequested) return stopQuietly();
       embed = buildEmbed(select.value, systemPrompt);
+      activeEmbed = embed;
       await embed.attachFile(file);
+      if (stopRequested) return stopQuietly();
 
       logInfo("request sent");
+      setStage(STAGE.WAITING);
       const sentAt = performance.now();
-      const response = await embed.sendStreamingRequest({ userPrompt: USER_TEXT });
+      sent = true;
+      const response = await embed.sendStreamingRequest({
+        userPrompt: userText,
+        onChunk: () => {
+          if (stage === STAGE.WAITING && !stopRequested) setStage(STAGE.RECEIVING);
+        },
+      });
+      reply = response;
+      // A cancelled send RESOLVES: nothing is parsed and no error is raised. A Stop that landed before the
+      // request could be aborted ends the same way, since the person asked for nothing to be read.
+      if (stopRequested || replyWasCancelled(response)) return stopQuietly();
+      setStage(STAGE.READING);
       logInfo(`reply received in ${Math.round(performance.now() - sentAt)} ms: ${response && response.text ? response.text.length : 0} characters, finishReason ${response && response.finishReason}`);
       logUsage(response);
       logDebug(`reply text: ${response && response.text}`);
@@ -651,14 +885,23 @@ const GraphBuilderImage = (function () {
       syncOriginalHolders();
       outcome = "loaded";
     } catch (error) {
-      logError(`extraction failed: ${error && error.message}`);
-      toasts.error(describeError(error));
+      failure = error;
+      if (stopRequested) {
+        stopQuietly();
+      } else {
+        logError(`extraction failed: ${error && error.message}`);
+        toasts.error(describeError(error));
+      }
     } finally {
       logInfo(`done in ${Math.round(performance.now() - startedAt)} ms (${outcome})`);
       running = false;
+      activeEmbed = null;
+      // Read from this run's embed before it goes: success, refusal, error and Stop all reach here once a send began
+      if (sent) showDevInfo(embed, reply, failure);
       const container = byId(ID.EMBED_OUTPUT);
       if (container) container.textContent = "";
       refreshControls();
+      endProgress();
     }
   }
 
@@ -786,7 +1029,10 @@ const GraphBuilderImage = (function () {
   function onTabClick() {
     setTimeout(() => {
       const extraction = window.GraphBuilder && window.GraphBuilder._state && window.GraphBuilder._state.imageExtraction;
-      if (!extraction) clearResult();
+      if (!extraction) {
+        clearResult();
+        clearDevInfo();
+      }
       followFileInput();
       refreshControls();
     }, 0);
@@ -850,6 +1096,10 @@ const GraphBuilderImage = (function () {
       refreshControls();
     });
     button.addEventListener("click", onExtractClick);
+    const stop = byId(ID.STOP);
+    if (stop) stop.addEventListener("click", onStopClick);
+    byId(ID.PROGRESS); // cached now, so a run never looks them up mid-flight
+    byId(ID.PROGRESS_TEXT);
     TAB_IDS.forEach((id) => {
       const tab = byId(id);
       if (tab) tab.addEventListener("click", onTabClick);
@@ -863,6 +1113,7 @@ const GraphBuilderImage = (function () {
     window.addEventListener("provider:changed", onProviderOrCredentialsChanged);
     window.addEventListener("credentials:changed", onProviderOrCredentialsChanged);
 
+    devPanel = createDevPanel();
     initialised = true;
     populatePicker();
     logInfo("Initialised");

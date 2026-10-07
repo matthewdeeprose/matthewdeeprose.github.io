@@ -426,6 +426,45 @@ window.MermaidAccessibilityCommon = (function () {
   }
 
   /**
+   * Render one author label for the detailed tier, carrying any link the
+   * picture draws on it (item 82, L2: a link the picture draws is a working
+   * link in the words).
+   *
+   * THE ONLY PLACE A MODULE WRITES AN ANCHOR. Every other site keeps
+   * escapeHtml, so a link can only ever appear where a module calls this, and
+   * the adapter alone decides which hrefs reach it (it delivers admitted
+   * segments only). This function never reads `window` and never inspects an
+   * href. It writes no `target`, `rel` or `title`, and no attribute but
+   * `href`. A linked segment whose text is empty contributes nothing: an
+   * anchor with no words in it would be a link with no name.
+   *
+   * With no segments (not an array, or empty) it returns exactly
+   * escapeHtml(plainText), so a caller may adopt it with no change of bytes.
+   *
+   * @param {Array<{text: string, href?: string}>} [segments] - The delivered
+   *   label as ordered pieces; a piece with an `href` is a link
+   * @param {string} plainText - The delivered plain label, for the no-segment
+   *   case
+   * @returns {string} HTML for the label: escaped text with anchors
+   */
+  function renderSegmentsHtml(segments, plainText) {
+    if (!Array.isArray(segments) || segments.length === 0) {
+      return escapeHtml(plainText);
+    }
+    return segments
+      .map((segment) => {
+        if (typeof segment.href !== "string") {
+          return escapeHtml(segment.text);
+        }
+        if (segment.text === "") {
+          return "";
+        }
+        return `<a href="${escapeHtml(segment.href)}">${escapeHtml(segment.text)}</a>`;
+      })
+      .join("");
+  }
+
+  /**
    * Handle errors gracefully with fallback descriptions
    * @param {Error} error - The error object
    * @param {string} diagramType - The diagram type
@@ -494,6 +533,7 @@ window.MermaidAccessibilityCommon = (function () {
     narrationNumber,
     labelFullStop,
     escapeHtml,
+    renderSegmentsHtml,
     handleParsingError,
     plainLanguageTerms,
     formatCountNoun,

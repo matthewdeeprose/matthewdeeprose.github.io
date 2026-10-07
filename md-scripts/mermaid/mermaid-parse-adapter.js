@@ -558,6 +558,10 @@ window.MermaidParseAdapter = (function () {
   // Block PRINTS emphasis and backticks at both its positions (measurement 3
   // § 3.2, rechecked 5 October 2026), so only the tags are read as text.
   const BLOCK_DRAWN_MARKUP = Object.freeze({ emphasis: false, codespan: false });
+  // Kanban DRAWS emphasis and PRINTS backticks at all five of its text
+  // positions: column, card label, ticket, assigned (measurement 3 § 3.2, and
+  // re-read per position on 5 October 2026 in enactment 3's draft table).
+  const KANBAN_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
 
   /**
    * The markup rule: formatting the picture draws is read as the text it
@@ -568,7 +572,8 @@ window.MermaidParseAdapter = (function () {
    * shows them, so a tag-only label arrives empty. A label with nothing to
    * remove is returned byte-identical.
    * @param {string} raw - A RAW db string, after the break rule
-   * @param {Object} [options] - `emphasis: true` also reads drawn markdown
+   * @param {Object} [options] - `tags: false` leaves tags, images and links
+   *   as written (default true); `emphasis: true` also reads drawn markdown
    *   emphasis as its text; `codespan: true` also removes code-span backticks
    * @returns {string} The string with drawn markup read as its text
    */
@@ -576,22 +581,49 @@ window.MermaidParseAdapter = (function () {
     if (typeof raw !== "string" || raw === "") {
       return raw;
     }
+    const read = readDrawnMarkupText(raw, options);
+    if (!read.changed) {
+      return raw;
+    }
+    logDebug(`Drawn markup read as text: "${raw}" -> "${read.text}"`);
+    return read.text.replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * The tag, image, link and markdown reading of replaceDrawnMarkup, WITHOUT
+   * its whitespace collapse. Split out (item 82, L2) so the link-segment
+   * reader can read each piece of a label the same way and collapse once
+   * across the pieces; replaceDrawnMarkup is a pure move around it.
+   * @param {string} raw - A non-empty RAW db string, after the break rule
+   * @param {Object} [options] - As replaceDrawnMarkup
+   * @returns {{text: string, changed: boolean}} The text with markup read, and
+   *   whether anything was removed
+   */
+  function readDrawnMarkupText(raw, options) {
     let changed = false;
     const mark = (replacement) => {
       changed = true;
       return replacement;
     };
 
-    let text = raw.replace(DRAWN_IMAGE_TAG, (tag, attributes) => {
-      const alt = attributes.match(DRAWN_IMAGE_ALT);
-      return mark(
-        alt ? [alt[1], alt[2], alt[3]].find((v) => v !== undefined) : ""
-      );
-    });
-    // The L2 pass reads the anchor's href HERE, before the tag is removed;
-    // this pass reads a link as its text alone.
-    text = text.replace(DRAWN_ANCHOR_TAG, () => mark(""));
-    // BITE a
+    // Item 82, enactment 4 (5 October 2026): a sink that PRINTS tags as
+    // characters (architecture) passes `tags: false`, which skips the three
+    // tag rules below and leaves every tag as written. The images and links
+    // rules stay under it, because that sink prints those tags too.
+    const readTags = !options || options.tags !== false;
+    let text = raw;
+    if (readTags) {
+      text = text.replace(DRAWN_IMAGE_TAG, (tag, attributes) => {
+        const alt = attributes.match(DRAWN_IMAGE_ALT);
+        return mark(
+          alt ? [alt[1], alt[2], alt[3]].find((v) => v !== undefined) : ""
+        );
+      });
+      // The L2 pass reads the anchor's href HERE, before the tag is removed;
+      // this pass reads a link as its text alone.
+      text = text.replace(DRAWN_ANCHOR_TAG, () => mark(""));
+      text = text.replace(DRAWN_FORMATTING_TAG, () => mark(""));
+    }
     if (options && (options.emphasis === true || options.codespan === true)) {
       const read = readDrawnMarkdown(text, options);
       if (read !== text) {
@@ -600,11 +632,155 @@ window.MermaidParseAdapter = (function () {
       }
     }
 
-    if (!changed) {
-      return raw;
+    return { text, changed };
+  }
+
+  // ITEM 82, L2 (6 October 2026): a link the picture draws is a working link
+  // in the words. Only an http: or https: address is admitted, tested exactly
+  // as the kanban ticket link is (buildKanbanTicketUrl, K15): resolved against
+  // document.baseURI, so a relative, protocol-relative or upper-case-scheme
+  // address is admitted and mailto:, javascript: and the rest are text. That
+  // test is fused with URL-building inside the kanban function and is not a
+  // pure move, so it is duplicated here rather than lifted.
+  const LINK_ADMITTED_SCHEMES = Object.freeze(["http:", "https:"]);
+  const DRAWN_ANCHOR_PAIR =
+    /<a(?=[\s/>])((?:"[^"]*"|'[^']*'|[^<>"'])*)>([\s\S]*?)<\/a\s*>/gi;
+  const DRAWN_ANCHOR_HREF =
+    /(?:^|\s)href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i;
+
+  /**
+   * Is this href one the words may link to?
+   * @param {string} href - The decoded href as written
+   * @returns {boolean} True for an address resolving to http: or https:
+   */
+  function isAdmittedLinkHref(href) {
+    if (typeof href !== "string" || href.trim() === "") {
+      return false;
     }
-    logDebug(`Drawn markup read as text: "${raw}" -> "${text}"`);
-    return text.replace(/\s+/g, " ").trim();
+    try {
+      const resolved = new URL(href, document.baseURI);
+      return LINK_ADMITTED_SCHEMES.indexOf(resolved.protocol) !== -1;
+    } catch (error) {
+      logDebug(`Link href refused, unparseable: ${JSON.stringify(href)}`);
+      return false;
+    }
+  }
+
+  /**
+   * Read a label as ordered pieces so a link the picture draws can be
+   * followed from the words. The plain label is NOT changed by this: it is
+   * whatever decodeAuthorTextBreaks delivers, and the join of the segment
+   * texts must equal it exactly or no segments are delivered.
+   *
+   * Each anchor's inner text takes the same breaks, markup and decode as the
+   * label (so `<a><b>bold link</b></a>` is the text `bold link`); the text
+   * between anchors is a plain segment. The href is decoded ONCE with the
+   * surface's decode and is delivered as written, never resolved. A linked
+   * segment is kept only for an admitted href with non-empty text; an anchor
+   * with no href, an unadmitted one or an empty one delivers its text as a
+   * plain segment, or nothing when it has none. Whitespace collapses once
+   * across the pieces, as the label's does.
+   * @param {string} text - The delivered RAW label
+   * @param {Object} markup - The sink's drawn-markup options
+   * @param {string} label - What decodeAuthorTextBreaks delivered for `text`
+   * @returns {Array<{text: string, href?: string}>|null} The segments, or
+   *   null when the label has no anchor or the join check fails
+   */
+  function readDrawnLinkSegments(text, markup, label) {
+    if (typeof text !== "string" || text === "" || (markup && markup.tags === false)) {
+      return null;
+    }
+    const raw = replaceTypedLineBreaks(text);
+    const pieces = [];
+    let cursor = 0;
+    for (const match of raw.matchAll(DRAWN_ANCHOR_PAIR)) {
+      if (match.index > cursor) {
+        pieces.push({ raw: raw.slice(cursor, match.index), href: null });
+      }
+      const found = match[1].match(DRAWN_ANCHOR_HREF);
+      pieces.push({
+        raw: match[2],
+        href: found
+          ? decodeAuthorText([found[1], found[2], found[3]].find((v) => v !== undefined))
+          : null,
+        anchor: true,
+      });
+      cursor = match.index + match[0].length;
+    }
+    if (!pieces.some((piece) => piece.anchor)) {
+      return null;
+    }
+    if (cursor < raw.length) {
+      pieces.push({ raw: raw.slice(cursor), href: null });
+    }
+
+    // One collapse across the pieces, then the trim at both ends.
+    let spaceBefore = true;
+    for (const piece of pieces) {
+      let read = readDrawnMarkupText(piece.raw, markup).text.replace(/\s+/g, " ");
+      if (spaceBefore && read.startsWith(" ")) {
+        read = read.slice(1);
+      }
+      piece.text = read;
+      if (read !== "") {
+        spaceBefore = read.endsWith(" ");
+      }
+    }
+    for (let i = pieces.length - 1; i >= 0; i -= 1) {
+      if (pieces[i].text !== "") {
+        pieces[i].text = pieces[i].text.replace(/ $/, "");
+        break;
+      }
+    }
+
+    const segments = [];
+    for (const piece of pieces) {
+      const piecetext = decodeAuthorText(piece.text);
+      if (piecetext === "") {
+        continue;
+      }
+      const last = segments[segments.length - 1];
+      if (piece.anchor && isAdmittedLinkHref(piece.href)) {
+        segments.push({ text: piecetext, href: piece.href });
+      } else if (last && last.href === undefined) {
+        last.text += piecetext;
+      } else {
+        segments.push({ text: piecetext });
+      }
+    }
+    if (segments.map((segment) => segment.text).join("") !== label) {
+      logDebug(`Link segments dropped, their join differs from the label: "${label}"`);
+      return null;
+    }
+    return segments;
+  }
+
+  /**
+   * decodeAuthorTextBreaks plus the link segments of a drawn label.
+   *
+   * Item 82, entity slice (6 October 2026): a source-reading module passes
+   * `{ fromSource: true }`, and the label is encoded with Mermaid's own rule
+   * first, as the db-fed surfaces already are. Each segment's decodeAuthorText
+   * then resolves Mermaid's `#name;` codes as well as the author's references,
+   * so the segments join to what decodeAuthorTextFromSource delivers (24 of 24
+   * linked cells in the measurement, § 5). Without the option the reader is
+   * byte-unchanged.
+   * @param {string} text - The delivered RAW label
+   * @param {Object} markup - The sink's drawn-markup options
+   * @param {{fromSource: boolean}} [options] - `fromSource` for raw diagram
+   *   source that Mermaid's encode never ran over
+   * @returns {{label: string, segments?: Array}} The label exactly as
+   *   decodeAuthorTextBreaks delivers it; `segments` only when the label drew
+   *   an anchor
+   */
+  function readLabelWithLinks(text, markup, options) {
+    const source =
+      options && options.fromSource === true && typeof text === "string"
+        ? encodeMermaidEntities(text)
+        : text;
+    const label = decodeAuthorTextBreaks(source, markup);
+    const segments = readDrawnLinkSegments(source, markup, label);
+    return segments ? { label, segments } : { label };
   }
 
   // ITEM 82 on the SVG-text surfaces that decode with decodePlaceholders
@@ -674,6 +850,33 @@ window.MermaidParseAdapter = (function () {
     // encodeMermaidEntities is a hoisted function declaration in this same
     // IIFE, declared below; the call is resolved by hoisting, not by order.
     return decodePlaceholders(encodeMermaidEntities(text));
+  }
+
+  // ITEM 82, ENTITY SLICE, ENACTMENT 1 (6 October 2026): the FOURTH decode
+  // entry point, for the source-reading modules whose canvas draws the FULL
+  // decode (mindmap node, state alias and state transition label: foreignObject
+  // sinks). It differs from decodeSourcePlaceholders above in its second step
+  // only. That one is decodePlaceholders, which leaves an author-typed `&lt;`
+  // as the text `&lt;`, because an SVG-text canvas prints it so; this one is
+  // decodeAuthorText, which resolves it, because these canvases draw `<`.
+  // Measured 6 October 2026 (docs/mermaid-item-82-entity-measure-2026-10-06.md
+  // § 2): A∘E matched the canvas on 15 of 15 forms at the mindmap node and the
+  // state alias, where decodeSourcePlaceholders matched 9. Ruling: "the words
+  // read the characters the picture prints, decoded once and escaped once."
+
+  /**
+   * Decode text taken from the RAW diagram source the way a foreignObject
+   * canvas draws it: encode with Mermaid's own rule, then resolve the
+   * placeholders AND the author's own character references.
+   * @param {string} text - Raw source text, after the break and markup rules
+   * @returns {string} The decoded text, or the input unchanged when not a
+   *   non-empty string
+   */
+  function decodeAuthorTextFromSource(text) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    return decodeAuthorText(encodeMermaidEntities(text));
   }
 
   // ---------------------------------------------------------------------
@@ -886,6 +1089,145 @@ window.MermaidParseAdapter = (function () {
     '    G --> H["<b></b>"]',
   ].join("\n");
 
+  // Item 82, L2 (6 October 2026): the link rows. A second fixture, parsed in
+  // its own queue slot after the first, so the original eight-node fixture and
+  // every count asserted against it stay as they were. Each link form is the
+  // measurement's (docs/mermaid-item-82-l2-measure-2026-10-05.md section 1),
+  // and each row below asserts the delivered href equals the href attribute
+  // the CANVAS drew for that form.
+  const FLOWCHART_LINK_SELF_CHECK_FIXTURE = [
+    "flowchart TB",
+    "    L1[\"Zq <a href='https://example.org/a b?x=1&y=2'>text</a>\"] -->|\"<a href='https://example.org'>go</a>\"| L2[\"<a href='https://example.org'>one</a> and <a href='https://example.net'>two</a>\"]",
+    "    L2 -- \"<a href='https://example.org'><b>bold link</b></a>\" --> L3[\"<a href='https://example.org'>dup</a> and dup\"]",
+    "    L3 --> L4[\"<a href='https://example.org/a&quot;b'>quote in href</a>\"]",
+    "    L4 --> L5[\"<a href='/relative'>r</a> <a href='//example.org/p'>p</a> <a href='HTTPS://EXAMPLE.ORG/X'>upper</a>\"]",
+    "    L5 --> L6[\"<a href='javascript:alert(1)'>j</a> <a href='mailto:a@example.org'>m</a> <a>none</a> <a href='https://example.org'></a>.\"]",
+    "    subgraph SG [\"<a href='https://example.org/s'>group</a> title\"]",
+    "        L6",
+    "    end",
+  ].join("\n");
+
+  /**
+   * The link rows of the flowchart self-check, over the delivered link
+   * fixture. Each is [name, predicate].
+   * @param {Object} graph - The normalised link fixture
+   * @returns {Array} Assertion rows
+   */
+  function flowchartLinkAssertions(graph) {
+    const same = (actual, expected) =>
+      JSON.stringify(actual) === JSON.stringify(expected);
+    const node = (id) => graph.nodes.find((n) => n.id === id);
+    const segmented = []
+      .concat(graph.nodes, graph.edges, graph.subgraphs)
+      .filter((element) => element.segments);
+    return [
+      [
+        "link: a node's link, its & decoded once and its space kept (m6)",
+        !!node("L1") &&
+          same(node("L1").segments, [
+            { text: "Zq " },
+            { text: "text", href: "https://example.org/a b?x=1&y=2" },
+          ]),
+      ],
+      [
+        "link: a pipe edge's link (m6 form on an edge)",
+        !!graph.edges[0] &&
+          same(graph.edges[0].segments, [
+            { text: "go", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: a dash edge's nested bold link reads as 'bold link' (l2)",
+        !!graph.edges[1] &&
+          graph.edges[1].label === "bold link" &&
+          same(graph.edges[1].segments, [
+            { text: "bold link", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: two links in one label, in order (l1)",
+        !!node("L2") &&
+          same(node("L2").segments, [
+            { text: "one", href: "https://example.org" },
+            { text: " and " },
+            { text: "two", href: "https://example.net" },
+          ]),
+      ],
+      [
+        "link: the first of two identical words is the linked one (l3)",
+        !!node("L3") &&
+          same(node("L3").segments, [
+            { text: "dup", href: "https://example.org" },
+            { text: " and dup" },
+          ]),
+      ],
+      [
+        "link: the quote entity in an href is decoded once (l7)",
+        !!node("L4") &&
+          same(node("L4").segments, [
+            { text: "quote in href", href: 'https://example.org/a"b' },
+          ]),
+      ],
+      [
+        "link: relative, protocol-relative and upper-case-scheme hrefs are " +
+          "admitted as written (m9, l6, l4)",
+        !!node("L5") &&
+          same(node("L5").segments, [
+            { text: "r", href: "/relative" },
+            { text: " " },
+            { text: "p", href: "//example.org/p" },
+            { text: " " },
+            { text: "upper", href: "HTTPS://EXAMPLE.ORG/X" },
+          ]),
+      ],
+      [
+        "link: javascript:, mailto:, no href and an empty link are plain " +
+          "text, and an empty link leaves no text (m7, m8, l8, m10)",
+        !!node("L6") &&
+          node("L6").label === "j m none ." &&
+          same(node("L6").segments, [{ text: "j m none ." }]),
+      ],
+      [
+        "link: a subgraph title's link",
+        !!graph.subgraphs[0] &&
+          graph.subgraphs[0].title === "group title" &&
+          same(graph.subgraphs[0].segments, [
+            { text: "group", href: "https://example.org/s" },
+            { text: " title" },
+          ]),
+      ],
+      [
+        "link: the segment texts join to the delivered label, everywhere",
+        segmented.length === 9 &&
+          segmented.every(
+            (element) =>
+              element.segments.map((s) => s.text).join("") ===
+              (element.label !== undefined ? element.label : element.title)
+          ),
+      ],
+    ];
+  }
+
+  /**
+   * Parse the link fixture in its own queue slot and return its rows. A
+   * rejection is one failing row, not a throw.
+   * @returns {Promise<Array>} Assertion rows
+   */
+  function runFlowchartLinkRows() {
+    const run = () =>
+      window.mermaid.mermaidAPI
+        .getDiagramFromText(FLOWCHART_LINK_SELF_CHECK_FIXTURE)
+        .then((diagram) => flowchartLinkAssertions(normaliseFlowchart(diagram)));
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    return queued.catch((error) => [
+      [`link fixture parses (rejected: ${error && error.message})`, false],
+    ]);
+  }
+
   /**
    * Collapse an alias shape spelling onto the canonical string the
    * description modules test. Anything absent from SHAPE_SYNONYMS — `null`
@@ -921,23 +1263,34 @@ window.MermaidParseAdapter = (function () {
     // inside an HTML label subtree, so the author's own character
     // references resolve on the canvas too. `id` is a join key that edges
     // reference and is deliberately left raw.
-    const nodes = [...db.getVertices().values()].map((vertex) => ({
-      id: vertex.id,
-      label: decodeAuthorTextBreaks(vertex.text, FLOWCHART_DRAWN_MARKUP),
-      // Bare-id nodes carry no type property at all (M3i); null marks
-      // "no declared shape" explicitly for consumers. The alias spellings are
-      // collapsed here, inside the queue slot the db read already runs in, so
-      // every consumer sees one string per visual shape.
-      shape: normaliseShape(vertex.type === undefined ? null : vertex.type),
-    }));
+    // Item 82, L2 (6 October 2026): a label that drew an anchor also carries
+    // `segments`, nested on the element, so no top-level field is added. The
+    // plain `label` is unchanged by it.
+    const nodes = [...db.getVertices().values()].map((vertex) => {
+      const read = readLabelWithLinks(vertex.text, FLOWCHART_DRAWN_MARKUP);
+      return {
+        id: vertex.id,
+        label: read.label,
+        // Bare-id nodes carry no type property at all (M3i); null marks
+        // "no declared shape" explicitly for consumers. The alias spellings
+        // are collapsed here, inside the queue slot the db read already runs
+        // in, so every consumer sees one string per visual shape.
+        shape: normaliseShape(vertex.type === undefined ? null : vertex.type),
+        ...(read.segments ? { segments: read.segments } : {}),
+      };
+    });
 
-    const edges = db.getEdges().map((edge) => ({
-      from: edge.start,
-      to: edge.end,
-      label: decodeAuthorTextBreaks(edge.text, FLOWCHART_DRAWN_MARKUP),
-      kind: edge.type,
-      stroke: edge.stroke,
-    }));
+    const edges = db.getEdges().map((edge) => {
+      const read = readLabelWithLinks(edge.text, FLOWCHART_DRAWN_MARKUP);
+      return {
+        from: edge.start,
+        to: edge.end,
+        label: read.label,
+        kind: edge.type,
+        stroke: edge.stroke,
+        ...(read.segments ? { segments: read.segments } : {}),
+      };
+    });
 
     // Mermaid reports subgraphs flat, with a child subgraph's id appearing
     // in its parent's nodes array alongside real node ids (M3l). Split the
@@ -951,12 +1304,16 @@ window.MermaidParseAdapter = (function () {
     // narrate a raw id where the primary narrates a decoded title — unreachable
     // today, because the BARE `subgraph X` form rejects every placeholder and
     // only the bracketed form can carry one.
-    const subgraphs = rawSubgraphs.map((s) => ({
-      id: s.id,
-      title: decodeAuthorTextBreaks(s.title, FLOWCHART_DRAWN_MARKUP),
-      nodeIds: s.nodes.filter((n) => !subgraphIds.has(n)),
-      childSubgraphIds: s.nodes.filter((n) => subgraphIds.has(n)),
-    }));
+    const subgraphs = rawSubgraphs.map((s) => {
+      const read = readLabelWithLinks(s.title, FLOWCHART_DRAWN_MARKUP);
+      return {
+        id: s.id,
+        title: read.label,
+        nodeIds: s.nodes.filter((n) => !subgraphIds.has(n)),
+        childSubgraphIds: s.nodes.filter((n) => subgraphIds.has(n)),
+        ...(read.segments ? { segments: read.segments } : {}),
+      };
+    });
 
     return {
       type: "flowchart",
@@ -1147,20 +1504,28 @@ window.MermaidParseAdapter = (function () {
           ["no subgraphs", graph.subgraphs.length === 0],
         ];
 
-        const failed = assertions.find(([, pass]) => !pass);
-        if (failed) {
-          logError(
-            `Self-check FAILED at assertion: ${failed[0]}. ` +
-              "The pinned Mermaid build's parse internals no longer match " +
-              "the stage 0 measurements; do not trust adapter output."
-          );
-          healthy = false;
-          return false;
-        }
+        // Item 82, L2: the link rows read a second fixture, parsed after this
+        // one, so every predicate above has already been evaluated.
+        return runFlowchartLinkRows().then((linkRows) => {
+          const failed = assertions
+            .concat(linkRows)
+            .find(([, pass]) => !pass);
+          if (failed) {
+            logError(
+              `Self-check FAILED at assertion: ${failed[0]}. ` +
+                "The pinned Mermaid build's parse internals no longer match " +
+                "the stage 0 measurements; do not trust adapter output."
+            );
+            healthy = false;
+            return false;
+          }
 
-        logInfo("Self-check passed: all accessor and field-shape assertions hold");
-        healthy = true;
-        return true;
+          logInfo(
+            "Self-check passed: all accessor and field-shape assertions hold"
+          );
+          healthy = true;
+          return true;
+        });
       })
       .catch((error) => {
         logError(
@@ -1310,6 +1675,16 @@ window.MermaidParseAdapter = (function () {
 
     const entities = [];
     rawEntities.forEach((entity, name) => {
+      // Item 82, L2 (6 October 2026): an alias, a role or an attribute comment
+      // that drew an anchor also carries `segments`, nested on the entity,
+      // the attribute or the relationship, so no top-level field is added.
+      // The plain text is unchanged by it.
+      const aliasRead = readLabelWithLinks(
+        typeof entity.alias === "string" && entity.alias !== ""
+          ? entity.alias
+          : entity.label,
+        ER_DRAWN_MARKUP
+      );
       entities.push({
         // `name` is the Map key AND the join key relationships resolve to,
         // so it stays RAW — the consumer narrates displayName, and the two
@@ -1324,12 +1699,8 @@ window.MermaidParseAdapter = (function () {
         // Item 82, markup (5 October 2026): the same three positions also read
         // drawn formatting and emphasis as the text they format
         // (ER_DRAWN_MARKUP), after the break rule and before the decode.
-        displayName: decodeAuthorTextBreaks(
-          typeof entity.alias === "string" && entity.alias !== ""
-            ? entity.alias
-            : entity.label,
-          ER_DRAWN_MARKUP
-        ),
+        displayName: aliasRead.label,
+        ...(aliasRead.segments ? { segments: aliasRead.segments } : {}),
         // Fresh objects and a fresh keys array — never db internals (E4).
         // Item 19 (8 August 2026): `comment` is the only attribute field that
         // can carry a placeholder, verdict C-FULL. `type` and `name` are
@@ -1337,12 +1708,19 @@ window.MermaidParseAdapter = (function () {
         // #word; token (which reaches the parser already as delimiter bytes)
         // rejects the whole diagram and can never be delivered here. `keys` is
         // a fixed enumeration, not author text.
-        attributes: (entity.attributes || []).map((attribute) => ({
-          type: attribute.type,
-          name: attribute.name,
-          keys: Array.isArray(attribute.keys) ? [...attribute.keys] : [],
-          comment: decodeAuthorTextBreaks(attribute.comment, ER_DRAWN_MARKUP),
-        })),
+        attributes: (entity.attributes || []).map((attribute) => {
+          const commentRead = readLabelWithLinks(
+            attribute.comment,
+            ER_DRAWN_MARKUP
+          );
+          return {
+            type: attribute.type,
+            name: attribute.name,
+            keys: Array.isArray(attribute.keys) ? [...attribute.keys] : [],
+            comment: commentRead.label,
+            ...(commentRead.segments ? { segments: commentRead.segments } : {}),
+          };
+        }),
       });
     });
 
@@ -1365,14 +1743,16 @@ window.MermaidParseAdapter = (function () {
     // as distinct relationships (E9).
     const relationships = db.getRelationships().map((relationship) => {
       const relSpec = relationship.relSpec || {};
+      const roleRead = readLabelWithLinks(relationship.roleA, ER_DRAWN_MARKUP);
       return {
         from: resolveEndpoint(relationship.entityA),
         to: resolveEndpoint(relationship.entityB),
         // May be "" — an empty quoted label parses (E6). Item 9, C-FULL.
-        role: decodeAuthorTextBreaks(relationship.roleA, ER_DRAWN_MARKUP),
+        role: roleRead.label,
         toPerFrom: relSpec.cardA,
         fromPerTo: relSpec.cardB,
         relType: relSpec.relType,
+        ...(roleRead.segments ? { segments: roleRead.segments } : {}),
       };
     });
 
@@ -1668,6 +2048,11 @@ window.MermaidParseAdapter = (function () {
     );
 
     erSelfCheckPromise = queued
+      // Item 82, L2: the link rows read a third fixture, parsed after the
+      // others, so every predicate above has already been evaluated.
+      .then((assertions) =>
+        runErLinkRows().then((linkRows) => assertions.concat(linkRows))
+      )
       .then((assertions) => {
         const failed = assertions.find(([, pass]) => !pass);
         if (failed) {
@@ -1696,6 +2081,152 @@ window.MermaidParseAdapter = (function () {
       });
 
     return erSelfCheckPromise;
+  }
+
+  // Item 82, L2 (6 October 2026): the ER link rows. A third source, parsed in
+  // its own queue slot after the two above, so every existing fixture and
+  // every count asserted against it stays as it was. Each link form is the
+  // measurement's (docs/mermaid-item-82-l2-measure-2026-10-05.md section 1);
+  // the alias, the role and an attribute comment are the three positions that
+  // can carry a link, and each is read here.
+  const ER_LINK_SELF_CHECK_FIXTURE = [
+    "erDiagram",
+    "    L1[\"Zq <a href='https://example.org/a b?x=1&y=2'>text</a>\"] {",
+    "        string c1 \"<a href='https://example.org/c'>comment link</a> here\"",
+    "    }",
+    "    L2[\"<a href='https://example.org'>one</a> and <a href='https://example.net'>two</a>\"]",
+    "    L3[\"<a href='https://example.org'><b>bold link</b></a>\"]",
+    "    L4[\"<a href='https://example.org'>dup</a> and dup\"]",
+    "    L5[\"<a href='https://example.org/a&quot;b'>quote in href</a>\"]",
+    "    L6[\"<a href='/relative'>r</a> <a href='//example.org/p'>p</a> <a href='HTTPS://EXAMPLE.ORG/X'>upper</a>\"]",
+    "    L7[\"<a href='javascript:alert(1)'>j</a> <a href='mailto:a@example.org'>m</a> <a>none</a> <a href='https://example.org'></a>.\"]",
+    "    L1 ||--o{ L2 : \"<a href='https://example.org/role'>role link</a>\"",
+  ].join("\n");
+
+  /**
+   * The link rows of the ER self-check, over the delivered link fixture.
+   * @param {Object} graph - The normalised ER link fixture
+   * @returns {Array} Assertion rows
+   */
+  function erLinkAssertions(graph) {
+    const same = (actual, expected) =>
+      JSON.stringify(actual) === JSON.stringify(expected);
+    const entity = (name) => graph.entities.find((e) => e.name === name);
+    const attributes = graph.entities.flatMap((e) => e.attributes);
+    const segmented = []
+      .concat(graph.entities, attributes, graph.relationships)
+      .filter((element) => element.segments);
+    return [
+      [
+        "link: an alias's link, its & decoded once and its space kept (m6)",
+        !!entity("L1") &&
+          same(entity("L1").segments, [
+            { text: "Zq " },
+            { text: "text", href: "https://example.org/a b?x=1&y=2" },
+          ]),
+      ],
+      [
+        "link: an attribute comment's link",
+        !!attributes[0] &&
+          attributes[0].comment === "comment link here" &&
+          same(attributes[0].segments, [
+            { text: "comment link", href: "https://example.org/c" },
+            { text: " here" },
+          ]),
+      ],
+      [
+        "link: a relationship role's link",
+        !!graph.relationships[0] &&
+          graph.relationships[0].role === "role link" &&
+          same(graph.relationships[0].segments, [
+            { text: "role link", href: "https://example.org/role" },
+          ]),
+      ],
+      [
+        "link: a nested bold link reads as 'bold link' (l2)",
+        !!entity("L3") &&
+          entity("L3").displayName === "bold link" &&
+          same(entity("L3").segments, [
+            { text: "bold link", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: two links in one label, in order (l1)",
+        !!entity("L2") &&
+          same(entity("L2").segments, [
+            { text: "one", href: "https://example.org" },
+            { text: " and " },
+            { text: "two", href: "https://example.net" },
+          ]),
+      ],
+      [
+        "link: the first of two identical words is the linked one (l3)",
+        !!entity("L4") &&
+          same(entity("L4").segments, [
+            { text: "dup", href: "https://example.org" },
+            { text: " and dup" },
+          ]),
+      ],
+      [
+        "link: the quote entity in an href is decoded once (l7)",
+        !!entity("L5") &&
+          same(entity("L5").segments, [
+            { text: "quote in href", href: 'https://example.org/a"b' },
+          ]),
+      ],
+      [
+        "link: relative, protocol-relative and upper-case-scheme hrefs are " +
+          "admitted as written (m9, l6, l4)",
+        !!entity("L6") &&
+          same(entity("L6").segments, [
+            { text: "r", href: "/relative" },
+            { text: " " },
+            { text: "p", href: "//example.org/p" },
+            { text: " " },
+            { text: "upper", href: "HTTPS://EXAMPLE.ORG/X" },
+          ]),
+      ],
+      [
+        "link: javascript:, mailto:, no href and an empty link are plain " +
+          "text, and an empty link leaves no text (m7, m8, l8, m10)",
+        !!entity("L7") &&
+          entity("L7").displayName === "j m none ." &&
+          same(entity("L7").segments, [{ text: "j m none ." }]),
+      ],
+      [
+        "link: the segment texts join to the delivered label, everywhere",
+        segmented.length === 9 &&
+          segmented.every(
+            (element) =>
+              element.segments.map((s) => s.text).join("") ===
+              (element.displayName !== undefined
+                ? element.displayName
+                : element.comment !== undefined
+                  ? element.comment
+                  : element.role)
+          ),
+      ],
+    ];
+  }
+
+  /**
+   * Parse the ER link fixture in its own queue slot and return its rows. A
+   * rejection is one failing row, not a throw.
+   * @returns {Promise<Array>} Assertion rows
+   */
+  function runErLinkRows() {
+    const run = () =>
+      window.mermaid.mermaidAPI
+        .getDiagramFromText(ER_LINK_SELF_CHECK_FIXTURE)
+        .then((diagram) => erLinkAssertions(normaliseEr(diagram)));
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    return queued.catch((error) => [
+      [`ER link fixture parses (rejected: ${error && error.message})`, false],
+    ]);
   }
 
   /**
@@ -1775,6 +2306,194 @@ window.MermaidParseAdapter = (function () {
     '    note for scEsm "&lt;b&gt;e&lt;/b&gt;"',
     '    note for scNil "<b></b>"',
   ].join("\n");
+
+  // Item 82, L2 (6 October 2026): the class link rows. A third source, parsed
+  // in its own queue slot after the two above, so every existing fixture and
+  // every count asserted against it stays as it was. Each link form is the
+  // measurement's (docs/mermaid-item-82-l2-measure-2026-10-05.md section 1);
+  // the class label and the note are the two positions that can carry a link
+  // (the relation label cannot: the parser rejects every authorable anchor).
+  const CLASS_LINK_SELF_CHECK_FIXTURE = [
+    "classDiagram",
+    "    class L1[\"Zq <a href='https://example.org/a b?x=1&y=2'>text</a>\"]",
+    "    class L2[\"<a href='https://example.org'>one</a> and <a href='https://example.net'>two</a>\"]",
+    "    class L3[\"<a href='https://example.org'><b>bold link</b></a>\"]",
+    "    class L4[\"<a href='https://example.org'>dup</a> and dup\"]",
+    "    class L5[\"<a href='https://example.org/a&quot;b'>quote in href</a>\"]",
+    "    class L6[\"<a href='/relative'>r</a> <a href='//example.org/p'>p</a> <a href='HTTPS://EXAMPLE.ORG/X'>upper</a>\"]",
+    "    class L7[\"<a href='javascript:alert(1)'>j</a> <a href='mailto:a@example.org'>m</a> <a>none</a> <a href='https://example.org'></a>.\"]",
+    '    L1 --> L2 : "Zq <a href="/relative">go</a> and <a href="//example.org/p">there</a>"',
+    '    L2 --> L3 : "<a href="/only"></a>plain"',
+    "    note for L1 \"Zq <a href='https://example.org/n'>note link</a> here\"",
+    "    note \"<a href='https://example.org/f'>free</a>\"",
+  ].join("\n");
+
+  /**
+   * The link rows of the class self-check, over the delivered link fixture.
+   * @param {Object} graph - The normalised class link fixture
+   * @returns {Array} Assertion rows
+   */
+  function classLinkAssertions(graph) {
+    const same = (actual, expected) =>
+      JSON.stringify(actual) === JSON.stringify(expected);
+    const cls = (name) => graph.classes.find((c) => c.name === name);
+    const segmented = []
+      .concat(graph.classes, graph.notes, graph.relationships)
+      .filter((element) => element.segments);
+    return [
+      [
+        "link: a relation label's relative and protocol-relative links, " +
+          "read as written (m9, l6)",
+        !!graph.relationships[0] &&
+          graph.relationships[0].label === "Zq go and there" &&
+          same(graph.relationships[0].segments, [
+            { text: "Zq " },
+            { text: "go", href: "/relative" },
+            { text: " and " },
+            { text: "there", href: "//example.org/p" },
+          ]),
+      ],
+      [
+        "link: a relation label whose link has no text delivers the plain " +
+          "text and no link",
+        !!graph.relationships[1] &&
+          graph.relationships[1].label === "plain" &&
+          same(graph.relationships[1].segments, [{ text: "plain" }]),
+      ],
+      [
+        "link: a class label's link, its & decoded once and its space kept (m6)",
+        !!cls("L1") &&
+          same(cls("L1").segments, [
+            { text: "Zq " },
+            { text: "text", href: "https://example.org/a b?x=1&y=2" },
+          ]),
+      ],
+      [
+        "link: a note's link (m6 form on a note)",
+        !!graph.notes[0] &&
+          graph.notes[0].text === "Zq note link here" &&
+          same(graph.notes[0].segments, [
+            { text: "Zq " },
+            { text: "note link", href: "https://example.org/n" },
+            { text: " here" },
+          ]),
+      ],
+      [
+        "link: a free note's link",
+        !!graph.notes[1] &&
+          same(graph.notes[1].segments, [
+            { text: "free", href: "https://example.org/f" },
+          ]),
+      ],
+      [
+        "link: a nested bold link reads as 'bold link' (l2)",
+        !!cls("L3") &&
+          cls("L3").displayName === "bold link" &&
+          same(cls("L3").segments, [
+            { text: "bold link", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: two links in one label, in order (l1)",
+        !!cls("L2") &&
+          same(cls("L2").segments, [
+            { text: "one", href: "https://example.org" },
+            { text: " and " },
+            { text: "two", href: "https://example.net" },
+          ]),
+      ],
+      [
+        "link: the first of two identical words is the linked one (l3)",
+        !!cls("L4") &&
+          same(cls("L4").segments, [
+            { text: "dup", href: "https://example.org" },
+            { text: " and dup" },
+          ]),
+      ],
+      [
+        "link: the quote entity in an href is decoded once (l7)",
+        !!cls("L5") &&
+          same(cls("L5").segments, [
+            { text: "quote in href", href: 'https://example.org/a"b' },
+          ]),
+      ],
+      [
+        "link: relative, protocol-relative and upper-case-scheme hrefs are " +
+          "admitted as written (m9, l6, l4)",
+        !!cls("L6") &&
+          same(cls("L6").segments, [
+            { text: "r", href: "/relative" },
+            { text: " " },
+            { text: "p", href: "//example.org/p" },
+            { text: " " },
+            { text: "upper", href: "HTTPS://EXAMPLE.ORG/X" },
+          ]),
+      ],
+      [
+        "link: javascript:, mailto:, no href and an empty link are plain " +
+          "text, and an empty link leaves no text (m7, m8, l8, m10)",
+        !!cls("L7") &&
+          cls("L7").displayName === "j m none ." &&
+          same(cls("L7").segments, [{ text: "j m none ." }]),
+      ],
+      [
+        "link: the segment texts join to the delivered label, everywhere",
+        segmented.length === 11 &&
+          segmented.every(
+            (element) =>
+              element.segments.map((s) => s.text).join("") ===
+              (element.displayName !== undefined
+                ? element.displayName
+                : element.text !== undefined
+                  ? element.text
+                  : element.label)
+          ),
+      ],
+    ];
+  }
+
+  /**
+   * Parse the class link fixture in its own queue slot and return its rows. A
+   * rejection is one failing row, not a throw.
+   * @returns {Promise<Array>} Assertion rows
+   */
+  function runClassLinkRows() {
+    // The relation-label control: the same shape with an https address is
+    // rejected at parse (measurement section 1), and with a relative address
+    // is accepted, so a rejection here is proved to be about the address and
+    // not about the source.
+    const rejects = (source) =>
+      window.mermaid.mermaidAPI.getDiagramFromText(source).then(
+        () => false,
+        () => true
+      );
+    const run = () =>
+      window.mermaid.mermaidAPI
+        .getDiagramFromText(CLASS_LINK_SELF_CHECK_FIXTURE)
+        .then((diagram) => classLinkAssertions(normaliseClass(diagram)))
+        .then((rows) =>
+          Promise.all([
+            rejects('classDiagram\n    A --> B : "<a href="https://example.org">x</a>"'),
+            rejects('classDiagram\n    A --> B : "<a href="/relative">x</a>"'),
+          ]).then(([httpsRejected, relativeRejected]) =>
+            rows.concat([
+              [
+                "link: an https link in a relation label is rejected at parse " +
+                  "(positive control: the relative form of the same source is not)",
+                httpsRejected === true && relativeRejected === false,
+              ],
+            ])
+          )
+        );
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    return queued.catch((error) => [
+      [`class link fixture parses (rejected: ${error && error.message})`, false],
+    ]);
+  }
 
   /**
    * Decode one raw class relation into { kind, markerAt, dashed }.
@@ -1896,6 +2615,10 @@ window.MermaidParseAdapter = (function () {
     // first mention is a relation, a member block or a namespace body.
     const classes = [];
     db.getClasses().forEach((cls, name) => {
+      // Item 82, L2 (6 October 2026): a label that drew an anchor also carries
+      // `segments`, nested on the class, so no top-level field is added. The
+      // plain displayName is unchanged by it.
+      const labelRead = readLabelWithLinks(cls.label, CLASS_DRAWN_MARKUP);
       classes.push({
         // `name` is the Map key, and relations reference it through their
         // own raw id1/id2, so it stays RAW. Measured: it holds the class
@@ -1912,7 +2635,8 @@ window.MermaidParseAdapter = (function () {
         // Item 82, markup (5 October 2026): the same three positions also read
         // drawn formatting and emphasis as the text they format
         // (CLASS_DRAWN_MARKUP), after the break rule and before the decode.
-        displayName: decodeAuthorTextBreaks(cls.label, CLASS_DRAWN_MARKUP),
+        displayName: labelRead.label,
+        ...(labelRead.segments ? { segments: labelRead.segments } : {}),
         // The generic parameter lives in its own field (C6): Shelf~Item~
         // gives type "Item"; "" when the class is not generic.
         // Item 19, verdict C-FULL (8 August 2026) for both.
@@ -1963,6 +2687,8 @@ window.MermaidParseAdapter = (function () {
         }
       }
 
+      const labelRead = readLabelWithLinks(label, CLASS_DRAWN_MARKUP);
+
       return {
         from: relation.id1,
         to: relation.id2,
@@ -1977,7 +2703,12 @@ window.MermaidParseAdapter = (function () {
         // outright — measured on both the bare and the quoted form. C-FULL is
         // chosen for consistency with every other class field, not because the
         // measurement separated them.
-        label: decodeAuthorTextBreaks(label, CLASS_DRAWN_MARKUP),
+        label: labelRead.label,
+        // Item 82, L2 (6 October 2026, enactment 3): the relation label draws a
+        // working link for the relative (/x) and protocol-relative (//x) forms,
+        // the only two the parser accepts there, so it carries `segments` like
+        // the class label and the note.
+        ...(labelRead.segments ? { segments: labelRead.segments } : {}),
         // An absent multiplicity is the string "none" (C4). Item 19, C-FULL.
         // These two are also the lookup keys into the consumer's
         // MULTIPLICITY_PHRASES table, and the join cannot break: the transform
@@ -2005,10 +2736,18 @@ window.MermaidParseAdapter = (function () {
     // Item 19, verdict C-FULL (8 August 2026) for `text`. `attachedTo` stays
     // RAW: it is a join key the consumer looks up in a Map built on the raw
     // classes[].name.
-    const notes = classNotesToArray(db.getNotes()).map((note) => ({
-      text: decodeAuthorTextBreaks(note.text, CLASS_DRAWN_MARKUP),
-      attachedTo: typeof note.class === "string" ? note.class : "",
-    }));
+    // Item 82, L2 (6 October 2026): a note that drew an anchor also carries
+    // `segments`. The relation label is read for links too (enactment 3): the
+    // parser rejects every authorable anchor there but the relative and
+    // protocol-relative forms, and those are drawn as working links.
+    const notes = classNotesToArray(db.getNotes()).map((note) => {
+      const read = readLabelWithLinks(note.text, CLASS_DRAWN_MARKUP);
+      return {
+        text: read.label,
+        attachedTo: typeof note.class === "string" ? note.class : "",
+        ...(read.segments ? { segments: read.segments } : {}),
+      };
+    });
 
     return {
       type: "class",
@@ -2316,6 +3055,11 @@ window.MermaidParseAdapter = (function () {
     );
 
     classSelfCheckPromise = queued
+      // Item 82, L2: the link rows read a third fixture, parsed after the
+      // others, so every predicate above has already been evaluated.
+      .then((assertions) =>
+        runClassLinkRows().then((linkRows) => assertions.concat(linkRows))
+      )
       .then((assertions) => {
         const failed = assertions.find(([, pass]) => !pass);
         if (failed) {
@@ -7243,10 +7987,25 @@ window.MermaidParseAdapter = (function () {
     // ENACTMENT 4 (3 October 2026): a label that is only a break is delivered
     // as one space, so the module reads it as a present label that draws
     // nothing (R14 LIFTED) and not as the absent label `""`.
-    const label =
+    //
+    // ITEM 82, L2 (6 October 2026, enactment 3): the label is read through
+    // readLabelWithLinks, so a link the picture draws arrives as `segments`
+    // beside the unchanged label. The present-but-empty substitution is
+    // applied to the label exactly as before, and a label that is only that
+    // substitution carries no segments.
+    const labelRead =
       typeof raw.label === "string"
-        ? decodeAuthorTextBreaksKeepingPresence(raw.label, BLOCK_DRAWN_MARKUP)
-        : id;
+        ? readLabelWithLinks(raw.label, BLOCK_DRAWN_MARKUP)
+        : null;
+    const label = labelRead
+      ? raw.label !== "" && labelRead.label === ""
+        ? PRESENT_BUT_EMPTY_LABEL
+        : labelRead.label
+      : id;
+    const labelSegments =
+      labelRead && labelRead.segments && label === labelRead.label
+        ? labelRead.segments
+        : null;
 
     // A SPACE CELL DEFAULTS TO ONE COLUMN when the db gives it no
     // `widthInColumns`, which on this build is every time. The default is
@@ -7264,6 +8023,7 @@ window.MermaidParseAdapter = (function () {
     return {
       id: id,
       label: label,
+      ...(labelSegments ? { segments: labelSegments } : {}),
       // THE DB'S OWN TYPE STRING, VERBATIM. Naming the vocabulary — deciding
       // that `stadium` is spoken one way and `lean_right` another — is a later
       // session's table, and inventing one here would put a wording decision
@@ -7353,7 +8113,14 @@ window.MermaidParseAdapter = (function () {
 
     const blocks = (Array.isArray(rawBlocks) ? rawBlocks : []).map(copyBlock);
 
-    const edges = (Array.isArray(rawEdges) ? rawEdges : []).map((edge) => ({
+    const edges = (Array.isArray(rawEdges) ? rawEdges : []).map((edge) => {
+      // Item 82, L2 (enactment 3): read once for the label and its links, in
+      // the same tick as the rest of the snapshot.
+      const labelRead =
+        typeof edge.label === "string"
+          ? readLabelWithLinks(edge.label, BLOCK_DRAWN_MARKUP)
+          : null;
+      return {
       // The id is COMPOSED BY MERMAID as `<n>-<start>-<end>` and the endpoints
       // are the AUTHOR'S OWN ids (census § Q4), so an edge is quotable against
       // the blocks above without a lookup table.
@@ -7367,10 +8134,10 @@ window.MermaidParseAdapter = (function () {
       // decodeAuthorTextBreaks. Item 82, markup (5 October 2026): and drawn
       // formatting is read as its text (BLOCK_DRAWN_MARKUP); a tag-only label
       // arrives empty, which the module reads as an unlabelled arrow.
-      label:
-        typeof edge.label === "string"
-          ? decodeAuthorTextBreaks(edge.label, BLOCK_DRAWN_MARKUP)
-          : "",
+      label: labelRead ? labelRead.label : "",
+      ...(labelRead && labelRead.segments
+        ? { segments: labelRead.segments }
+        : {}),
       // THE ARROW-TYPE STRINGS ARE DELIVERED VERBATIM AND ARE FAITHFUL, which
       // is worth stating because they look lossy. On Mermaid 11.6.0 `---` and
       // `<-->` are both typed `arrow_point` at the end and `arrow_open` at the
@@ -7391,7 +8158,8 @@ window.MermaidParseAdapter = (function () {
       // neither, so the key is present and null there rather than absent.
       pattern: typeof edge.pattern === "string" ? edge.pattern : null,
       thickness: typeof edge.thickness === "string" ? edge.thickness : null,
-    }));
+      };
+    });
 
     return {
       // `diagramType` rather than `type`, because `type` is this surface's
@@ -7535,6 +8303,151 @@ window.MermaidParseAdapter = (function () {
     '    scEsm -- "<u></u>" --> scNil',
     '    scNil -- "**e**" --> scTyp',
   ].join("\n");
+
+  // Item 82, L2 (6 October 2026, enactment 3): the block link rows. A source
+  // of its own, parsed in its own queue slot after the two above, so every
+  // existing fixture and every count asserted against it stays as it was (the
+  // concurrency lane quotes the first verbatim). Each link form is the
+  // measurement's (docs/mermaid-item-82-l2-measure-2026-10-05.md section 1);
+  // a block label and an edge label are the two positions that can carry one.
+  const BLOCK_LINK_SELF_CHECK_FIXTURE = [
+    "block-beta",
+    "    columns 2",
+    "    L1[\"Zq <a href='https://example.org/a b?x=1&y=2'>text</a>\"]",
+    "    L2[\"<a href='https://example.org'>one</a> and <a href='https://example.net'>two</a>\"]",
+    "    L3[\"<a href='https://example.org'><b>bold link</b></a>\"]",
+    "    L4[\"<a href='https://example.org'>dup</a> and dup\"]",
+    "    L5[\"<a href='https://example.org/a&quot;b'>quote in href</a>\"]",
+    "    L6[\"<a href='/relative'>r</a> <a href='//example.org/p'>p</a> <a href='HTTPS://EXAMPLE.ORG/X'>upper</a>\"]",
+    "    L7[\"<a href='javascript:alert(1)'>j</a> <a href='mailto:a@example.org'>m</a> <a>none</a> <a href='https://example.org'></a>.\"]",
+    "    L8[\"<a href='https://example.org'></a>\"]",
+    "    L1 -- \"Zq <a href='https://example.org/e'>edge link</a>\" --> L2",
+    "    L2 -- \"<a href='https://example.org'></a>\" --> L3",
+  ].join("\n");
+
+  /**
+   * The link rows of the block self-check, over the delivered link fixture.
+   * @param {Object} graph - The normalised block link fixture
+   * @returns {Array} Assertion rows
+   */
+  function blockLinkAssertions(graph) {
+    const same = (actual, expected) =>
+      JSON.stringify(actual) === JSON.stringify(expected);
+    const block = (id) => graph.blocks.find((b) => b.id === id);
+    const segmented = []
+      .concat(graph.blocks, graph.edges)
+      .filter((element) => element.segments);
+    return [
+      [
+        "link: a block label's link, its & decoded once and its space kept (m6)",
+        !!block("L1") &&
+          block("L1").label === "Zq text" &&
+          same(block("L1").segments, [
+            { text: "Zq " },
+            { text: "text", href: "https://example.org/a b?x=1&y=2" },
+          ]),
+      ],
+      [
+        "link: an edge label's link (m6 form on an edge)",
+        !!graph.edges[0] &&
+          graph.edges[0].label === "Zq edge link" &&
+          same(graph.edges[0].segments, [
+            { text: "Zq " },
+            { text: "edge link", href: "https://example.org/e" },
+          ]),
+      ],
+      [
+        "link: a nested bold link reads as 'bold link' (l2)",
+        !!block("L3") &&
+          block("L3").label === "bold link" &&
+          same(block("L3").segments, [
+            { text: "bold link", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: two links in one label, in order (l1)",
+        !!block("L2") &&
+          same(block("L2").segments, [
+            { text: "one", href: "https://example.org" },
+            { text: " and " },
+            { text: "two", href: "https://example.net" },
+          ]),
+      ],
+      [
+        "link: the first of two identical words is the linked one (l3)",
+        !!block("L4") &&
+          same(block("L4").segments, [
+            { text: "dup", href: "https://example.org" },
+            { text: " and dup" },
+          ]),
+      ],
+      [
+        "link: the quote entity in an href is decoded once (l7)",
+        !!block("L5") &&
+          same(block("L5").segments, [
+            { text: "quote in href", href: 'https://example.org/a"b' },
+          ]),
+      ],
+      [
+        "link: relative, protocol-relative and upper-case-scheme hrefs are " +
+          "admitted as written (m9, l6, l4)",
+        !!block("L6") &&
+          same(block("L6").segments, [
+            { text: "r", href: "/relative" },
+            { text: " " },
+            { text: "p", href: "//example.org/p" },
+            { text: " " },
+            { text: "upper", href: "HTTPS://EXAMPLE.ORG/X" },
+          ]),
+      ],
+      [
+        "link: javascript:, mailto:, no href and an empty link are plain " +
+          "text, and an empty link leaves no text (m7, m8, l8, m10)",
+        !!block("L7") &&
+          block("L7").label === "j m none ." &&
+          same(block("L7").segments, [{ text: "j m none ." }]),
+      ],
+      [
+        "link: a label that is only an empty link is the present-but-empty " +
+          "one space and carries no segments; the same on an edge is empty " +
+          "text and no linked segment (m10)",
+        !!block("L8") &&
+          block("L8").label === PRESENT_BUT_EMPTY_LABEL &&
+          block("L8").segments === undefined &&
+          !!graph.edges[1] &&
+          graph.edges[1].label === "" &&
+          same(graph.edges[1].segments, []),
+      ],
+      [
+        "link: the segment texts join to the delivered label, everywhere",
+        segmented.length === 9 &&
+          segmented.every(
+            (element) =>
+              element.segments.map((s) => s.text).join("") === element.label
+          ),
+      ],
+    ];
+  }
+
+  /**
+   * Parse the block link fixture in its own queue slot and return its rows. A
+   * rejection is one failing row, not a throw.
+   * @returns {Promise<Array>} Assertion rows
+   */
+  function runBlockLinkRows() {
+    const run = () =>
+      window.mermaid.mermaidAPI
+        .getDiagramFromText(BLOCK_LINK_SELF_CHECK_FIXTURE)
+        .then((diagram) => blockLinkAssertions(normaliseBlock(diagram)));
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    return queued.catch((error) => [
+      [`block link fixture parses (rejected: ${error && error.message})`, false],
+    ]);
+  }
 
   /**
    * Parse the embedded fixture and assert every delivered field against known
@@ -7820,6 +8733,11 @@ window.MermaidParseAdapter = (function () {
     );
 
     blockSelfCheckPromise = queued
+      // Item 82, L2: the link rows read a third fixture, parsed after the
+      // others, so every predicate above has already been evaluated.
+      .then((assertions) =>
+        runBlockLinkRows().then((linkRows) => assertions.concat(linkRows))
+      )
       .then((assertions) => {
         const failed = assertions.find(([, pass]) => !pass);
         if (failed) {
@@ -7891,6 +8809,11 @@ window.MermaidParseAdapter = (function () {
   // all eight, and decodeAuthorText DISAGREES ON FOUR. The block census
   // reached the opposite verdict by the same method on the same day's
   // template. Do not inherit a decode from a neighbouring surface.
+  // AMENDED 6 OCTOBER 2026 (item 82, entity slice, enactment 2): an element's
+  // label, description and technology additionally resolve the author's
+  // `&lt;` `&gt;` `&amp;` first (resolveC4CanvasEntities, below), because
+  // decodePlaceholders keeps those as text where the element canvas draws the
+  // character. Every other string here is unchanged.
   //
   // NO accTitle FIELD AND NO accDescr FIELD — a MEASURED REFUSAL, not an
   // omission, and for two DIFFERENT measured reasons (census § Q6
@@ -8062,6 +8985,122 @@ window.MermaidParseAdapter = (function () {
     return decodePlaceholdersBreaks(wrapped.text);
   }
 
+  // ITEM 82, ENTITY SLICE, ENACTMENT 2 (6 October 2026). Ruling (Matthew):
+  // "the words read the characters the picture prints, decoded once and
+  // escaped once", except that where the picture prints an entity code for a
+  // character the author typed plainly the words read the author's character.
+  // Measured on 11.17.2 (docs/mermaid-item-82-entity-enact-2-2026-10-06.md):
+  // the c4 ELEMENT's label, description and technology resolve an author's
+  // `&lt;` `&gt;` `&amp;` to the character and print every other author
+  // reference as written, while Mermaid's own `#name;` codes resolve through
+  // decodePlaceholders already. decodePlaceholders protects the author's `&`
+  // BEFORE it parses, so it keeps `&lt;` as the four characters and the words
+  // then read `&lt;` where the picture prints `<`. The three references are
+  // therefore resolved on the RAW db string FIRST, in one left-to-right pass,
+  // and decodePlaceholders runs after, which protects the result as text.
+  // Resolving AFTER decodePlaceholders would decode twice: `#amp;lt;` is
+  // `&lt;` once the codes are mapped, and a second pass would read it as `<`
+  // where the picture prints `&lt;`.
+  //
+  // WHAT IT DELIBERATELY DOES NOT DO. The boundary label, the relationship
+  // label and the relationship technology are drawn by a canvas that prints
+  // every author reference as written, and decodePlaceholders already agrees
+  // with it on all 25 forms, so they keep it. The title keeps it too: its
+  // canvas rejects `&lt;` outright and prints a bare `<` as `&lt;`, a different
+  // rule that belongs with the other titles. The numeric family (`&#39;`,
+  // `&#60;`, `&#x3c;`, which Mermaid's encode garbles) is read as it was read
+  // before, not chased, pending the owner's word on the hex form.
+  const C4_CANVAS_REFERENCES = /&(lt|gt|amp);/g;
+  const C4_CANVAS_REFERENCE_CHARACTERS = Object.freeze({
+    lt: "<",
+    gt: ">",
+    amp: "&",
+  });
+
+  /**
+   * Read an author string the way the c4 ELEMENT canvas draws it: the author's
+   * `&lt;` `&gt;` `&amp;` become the characters, Mermaid's `#name;` codes
+   * become their characters, and every other reference stays as written.
+   * @param {string} text - The delivered RAW db string
+   * @returns {string} The resolved text, or the input unchanged when not a
+   *   non-empty string
+   */
+  function resolveC4CanvasEntities(text) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    const resolved = text.replace(
+      C4_CANVAS_REFERENCES,
+      (match, name) => C4_CANVAS_REFERENCE_CHARACTERS[name]
+    );
+    return decodePlaceholders(resolved);
+  }
+
+  // ITEM 82, ENTITY SLICE, FOLLOW-UP 2 (6 October 2026): THE TITLE, OPTION 1.
+  // The body `title` grammar REJECTS a typed `&amp;` `&lt;` `&gt;`, so on a
+  // title that line wrote, every one of the three in the db string is
+  // Mermaid's sanitiser encoding a bare character the author typed, and the
+  // words read the author's character. An `accTitle:` line PARSES a typed
+  // `&amp;`, lands in the same getTitle() slot (last writer wins), and its db
+  // string is byte-identical to the sanitised bare form, so neither the db
+  // nor the canvas can say which the author meant. That title stays on its
+  // earlier reading, recorded as an upstream watch (register item 108); the
+  // core already reads an accTitle: correctly from the source through clause
+  // X3. Measured on 11.17.2 in
+  // docs/mermaid-item-82-entity-c4-title-2-2026-10-06.md: getTitle() answers
+  // the LAST `title` or `accTitle:` line in every order tried.
+  //
+  // The accTitle test is COPIED VERBATIM from parseAccessibilityDirectives in
+  // mermaid-accessibility-utils.js, so this surface and the core agree on
+  // what counts as an accTitle: line. It is unanchored, so a label carrying
+  // "accTitle:" also counts; that declines the resolve, the safe direction.
+  const C4_CORE_ACC_TITLE_TEST = /accTitle\s*:\s*(.*?)(?:\n|$)/;
+  const C4_BODY_TITLE_LINE = /^\s*title\s/;
+
+  /**
+   * Did the body `title` line write the title getTitle() answers? True when
+   * no accTitle: line is present, or when the last title-writing line is a
+   * body `title` line. Read off the same source string this parse parsed.
+   *
+   * @param {string} code - The c4 source handed to getDiagramFromText
+   * @returns {boolean} True when the title is the body title's
+   */
+  function c4TitleIsFromBodyLine(code) {
+    if (typeof code !== "string") {
+      return false;
+    }
+    if (!C4_CORE_ACC_TITLE_TEST.test(code)) {
+      return true;
+    }
+
+    // Both kinds may be present: the last writer decides. An accTitle: match
+    // is tested first, so a line matching both declines the resolve.
+    let lastWriterIsBody = false;
+    for (const line of code.split(/\r?\n/)) {
+      if (C4_CORE_ACC_TITLE_TEST.test(line)) {
+        lastWriterIsBody = false;
+      } else if (C4_BODY_TITLE_LINE.test(line)) {
+        lastWriterIsBody = true;
+      }
+    }
+    return lastWriterIsBody;
+  }
+
+  /**
+   * As c4WrappedTextBreaks, for an element's label, description and
+   * technology: the typed break reads as one space, then the canvas-resolved
+   * entities (item 82).
+   *
+   * @param {Object|undefined} wrapped - A db wrapper, or undefined
+   * @returns {string|null} The decoded text, or null when the key is absent
+   */
+  function c4ElementTextBreaks(wrapped) {
+    if (!wrapped || typeof wrapped.text !== "string") {
+      return null;
+    }
+    return resolveC4CanvasEntities(replaceTypedLineBreaks(wrapped.text));
+  }
+
   /**
    * Read one BARE author string off a db object and decode it.
    *
@@ -8100,9 +9139,11 @@ window.MermaidParseAdapter = (function () {
         raw.typeC4Shape && typeof raw.typeC4Shape.text === "string"
           ? raw.typeC4Shape.text
           : "",
-      label: c4WrappedTextBreaks(raw.label),
-      descr: c4WrappedTextBreaks(raw.descr),
-      techn: c4WrappedTextBreaks(raw.techn),
+      // Item 82, entity slice: the element's three drawn strings resolve the
+      // author's `&lt;` `&gt;` `&amp;` as the canvas does (see the note above).
+      label: c4ElementTextBreaks(raw.label),
+      descr: c4ElementTextBreaks(raw.descr),
+      techn: c4ElementTextBreaks(raw.techn),
       // The author's own alias of the containing boundary, or the synthetic
       // root's. Never "" on a parsed shape.
       parentBoundary: c4BareText(raw.parentBoundary) || "",
@@ -8244,9 +9285,11 @@ window.MermaidParseAdapter = (function () {
    * question for a later session, not a defect to repair here.
    *
    * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @param {string} code - The source that diagram was parsed from, read only
+   *   to tell which line wrote the title (item 82, follow-up 2)
    * @returns {Object} The normalised c4 delivery
    */
-  function normaliseC4(diagram) {
+  function normaliseC4(diagram, code) {
     const db = diagram.db;
 
     // The four reads. getC4ShapeArray and getBoundarys are called with
@@ -8258,6 +9301,7 @@ window.MermaidParseAdapter = (function () {
     const rawRels = db.getRels();
 
     const isDeploymentDiagram = diagramType === C4_DEPLOYMENT_TYPE;
+    const rawTitle = typeof db.getTitle() === "string" ? db.getTitle() : "";
 
     return {
       diagramType: diagramType,
@@ -8265,9 +9309,11 @@ window.MermaidParseAdapter = (function () {
       // may be the author's `accTitle:` text rather than their body title,
       // last writer wins, and the design seat has ruled that a generator
       // narrates it as the title regardless; see the surface comment above.
-      title: decodePlaceholders(
-        typeof db.getTitle() === "string" ? db.getTitle() : ""
-      ),
+      // Item 82, follow-up 2: the sanitiser's `&amp;` `&lt;` `&gt;` resolve
+      // to the author's characters only when the body `title` line wrote it.
+      title: c4TitleIsFromBodyLine(code)
+        ? resolveC4CanvasEntities(rawTitle)
+        : decodePlaceholders(rawTitle),
       shapes: (Array.isArray(rawShapes) ? rawShapes : []).map(copyC4Shape),
       boundaries: (Array.isArray(rawBoundaries) ? rawBoundaries : []).map(
         (raw) => copyC4Boundary(raw, isDeploymentDiagram)
@@ -8320,7 +9366,7 @@ window.MermaidParseAdapter = (function () {
           logDebug(
             `C4 parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
           );
-          const c4 = normaliseC4(diagram);
+          const c4 = normaliseC4(diagram, code);
           logDebug(
             `C4 parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
               `${c4.diagramType}, ${c4.shapes.length} element(s), ` +
@@ -8410,6 +9456,48 @@ window.MermaidParseAdapter = (function () {
     '    Rel(scbC1, scbC2, "m<br>n", "o<br>p", "q<br>r")',
     '    Rel(scbC2, scbC1, "s#lt;br#gt;t", "u#lt;br#gt;v")',
   ].join("\n");
+
+  // Item 82, entity slice: a THIRD source, for the element canvas's entity
+  // rule. Every reference is on an element's label, technology or description
+  // (Container's own argument order), the boundary and the relationship
+  // carry the positions that must NOT resolve, and nothing is a title (a
+  // title cannot carry `&lt;`: the grammar rejects it). `sceH` carries the
+  // hex reference, pinned as the picture prints it rather than as the
+  // carve-out would read it, and the two double-decode forms.
+  const C4_ENTITY_SELF_CHECK_FIXTURE = [
+    "C4Container",
+    '    Enterprise_Boundary(sceB, "bound &lt; x") {',
+    '        Container(sceR, "lt &lt; x", "gt &gt; x", "amp &amp; x")',
+    '        Container(sceU, "quot &quot;q&quot; x", "hash #quot;q#quot; x", "bare a & b x")',
+    '        Container(sceH, "hex &#x3c; x", "both #amp;lt; x", "twice &amp;lt; x")',
+    "    }",
+    '    Rel(sceR, sceU, "rel &amp; x", "tech &gt; x")',
+  ].join("\n");
+
+  // Item 82, follow-up 2: three title sources, one title each, because a
+  // diagram has one title slot. The first and second put both kinds of line
+  // in opposite orders, so the last-writer test is exercised both ways; the
+  // third pins that a `#quot;` code on a body title still reads as before.
+  const C4_TITLE_SELF_CHECK_PERSON = '    Person(sctP, "SelfCheck title person")';
+  const C4_TITLE_SELF_CHECK_SOURCES = Object.freeze([
+    [
+      "C4Context",
+      "    accTitle: SelfCheck title acc",
+      "    title SelfCheck Tom & Jerry a < b c > d",
+      C4_TITLE_SELF_CHECK_PERSON,
+    ].join("\n"),
+    [
+      "C4Context",
+      "    title SelfCheck body first",
+      "    accTitle: SelfCheck Tom &amp; Jerry a &lt; b",
+      C4_TITLE_SELF_CHECK_PERSON,
+    ].join("\n"),
+    [
+      "C4Context",
+      "    title SelfCheck a #quot;q#quot; b",
+      C4_TITLE_SELF_CHECK_PERSON,
+    ].join("\n"),
+  ]);
 
   /**
    * Parse the embedded fixture and assert every delivered field against known
@@ -8501,7 +9589,7 @@ window.MermaidParseAdapter = (function () {
           const boundariesAreOneArray =
             db.getBoundaries(undefined) === rawBoundaries;
 
-          const delivery = normaliseC4(diagram);
+          const delivery = normaliseC4(diagram, C4_SELF_CHECK_FIXTURE);
           const [person, system] = delivery.shapes;
           const [root, boundary] = delivery.boundaries;
           const rel = delivery.rels[0];
@@ -8634,14 +9722,17 @@ window.MermaidParseAdapter = (function () {
           return window.mermaid.mermaidAPI
             .getDiagramFromText(C4_BREAK_SELF_CHECK_FIXTURE)
             .then((breakDiagram) => {
-              const breakDelivery = normaliseC4(breakDiagram);
+              const breakDelivery = normaliseC4(
+                breakDiagram,
+                C4_BREAK_SELF_CHECK_FIXTURE
+              );
               const node = (alias) =>
                 breakDelivery.boundaries.find((b) => b.alias === alias) || {};
               const shape = (alias) =>
                 breakDelivery.shapes.find((s) => s.alias === alias) || {};
               const typedRel = breakDelivery.rels[0] || {};
               const escapedRel = breakDelivery.rels[1] || {};
-              return baseAssertions.concat([
+              const breakAssertions = baseAssertions.concat([
                 [
                   "a typed break reads as one space on a deployment node's " +
                     "label, technology and description, an element's label, " +
@@ -8676,6 +9767,94 @@ window.MermaidParseAdapter = (function () {
                     typedRel.descr === "q<br>r",
                 ],
               ]);
+
+              // Item 82, entity slice: a third source, parsed after the
+              // break source for the same reason that one is parsed after the
+              // base predicates.
+              return window.mermaid.mermaidAPI
+                .getDiagramFromText(C4_ENTITY_SELF_CHECK_FIXTURE)
+                .then((entityDiagram) => {
+                  const entityDelivery = normaliseC4(
+                    entityDiagram,
+                    C4_ENTITY_SELF_CHECK_FIXTURE
+                  );
+                  const one = (alias) =>
+                    entityDelivery.shapes.find((s) => s.alias === alias) || {};
+                  const boundaryOne =
+                    entityDelivery.boundaries.find((b) => b.alias === "sceB") ||
+                    {};
+                  const relOne = entityDelivery.rels[0] || {};
+                  const entityAssertions = breakAssertions.concat([
+                    [
+                      "the author's &lt; &gt; &amp; read as the characters " +
+                        "the element canvas draws, on label, technology and " +
+                        "description (item 82, entity slice)",
+                      one("sceR").label === "lt < x" &&
+                        one("sceR").techn === "gt > x" &&
+                        one("sceR").descr === "amp & x",
+                    ],
+                    [
+                      "an author &quot; stays as written, a #quot; code and a " +
+                        "bare & read as the character, and the hex reference " +
+                        "reads as the picture prints it, `&&x3c;`",
+                      one("sceU").label === "quot &quot;q&quot; x" &&
+                        one("sceU").techn === 'hash "q" x' &&
+                        one("sceU").descr === "bare a & b x" &&
+                        one("sceH").label === "hex &&x3c; x",
+                    ],
+                    [
+                      "the resolver runs ONCE: #amp;lt; reads &lt; as the " +
+                        "picture prints it, and &amp;lt; too",
+                      one("sceH").techn === "both &lt; x" &&
+                        one("sceH").descr === "twice &lt; x",
+                    ],
+                    [
+                      "a boundary label and a relationship label and " +
+                        "technology are NOT resolved: their canvas prints the " +
+                        "author's reference as written",
+                      boundaryOne.label === "bound &lt; x" &&
+                        relOne.label === "rel &amp; x" &&
+                        relOne.techn === "tech &gt; x",
+                    ],
+                  ]);
+
+                  // Item 82, follow-up 2: the three title sources, parsed one
+                  // at a time and in order, each read in its own tick for
+                  // the same singleton reason as the sources above.
+                  const titles = [];
+                  return C4_TITLE_SELF_CHECK_SOURCES.reduce(
+                    (chain, source) =>
+                      chain
+                        .then(() =>
+                          window.mermaid.mermaidAPI.getDiagramFromText(source)
+                        )
+                        .then((titleDiagram) => {
+                          titles.push(normaliseC4(titleDiagram, source).title);
+                        }),
+                    Promise.resolve()
+                  ).then(() =>
+                    entityAssertions.concat([
+                      [
+                        "a body title the author typed with bare & < > reads " +
+                          "the author's characters, written last after an " +
+                          "accTitle: (item 82, follow-up 2)",
+                        titles[0] === "SelfCheck Tom & Jerry a < b c > d",
+                      ],
+                      [
+                        "an accTitle: written last, carrying a typed &amp; " +
+                          "and &lt;, is NOT resolved: its db string cannot " +
+                          "be told from the bare form, so it keeps its " +
+                          "earlier reading (item 82, follow-up 2)",
+                        titles[1] === "SelfCheck Tom &amp; Jerry a &lt; b",
+                      ],
+                      [
+                        "a #quot; code on a body title still reads as the " +
+                          "character, unchanged by the title resolver",
+                        titles[2] === 'SelfCheck a "q" b',
+                      ],
+                    ])
+                  );
+                });
             });
         });
 
@@ -9269,6 +10448,18 @@ window.MermaidParseAdapter = (function () {
   function copyKanbanCard(raw, ticketBase) {
     const rawTicket = kanbanMetadata(raw, "ticket");
     const id = typeof raw.id === "string" ? raw.id : "";
+    // Item 82, L2 (6 October 2026, enactment 3): the label and the assignee
+    // are read for the links the picture draws on them, in the same tick as
+    // the rest of the snapshot. The ticket route below is untouched.
+    const labelRead =
+      typeof raw.label === "string"
+        ? readLabelWithLinks(raw.label, KANBAN_DRAWN_MARKUP)
+        : null;
+    const rawAssigned = kanbanMetadata(raw, "assigned");
+    const assignedRead =
+      rawAssigned === null
+        ? null
+        : readLabelWithLinks(rawAssigned, KANBAN_DRAWN_MARKUP);
     return {
       id: id,
       // decodeAuthorText, per the ruling above. A card whose db label is absent
@@ -9276,20 +10467,32 @@ window.MermaidParseAdapter = (function () {
       // no-id card's id IS its label — so the fallback is a defence rather
       // than a live path.
       // ITEM 82 (2 October 2026): the card label and `assigned` are positions
-      // whose canvas DRAWS a break, so they take decodeAuthorTextBreaks. The
-      // `ticket` below, the `priority` and the `ticketUrl`/`priorityDrawn`
-      // computations were not probed as break positions and are untouched.
-      label:
-        typeof raw.label === "string" ? decodeAuthorTextBreaks(raw.label) : id,
-      // decodeAuthorText on both, measured in this session on five constructs
-      // in each field, 5 of 5 against the canvas. NOTE that the URL below is
-      // built from `rawTicket` and NOT from this decoded string: the two
-      // disagree on a real construct, and the canvas uses the other one.
-      ticket: rawTicket === null ? null : decodeAuthorText(rawTicket),
-      assigned: (() => {
-        const value = kanbanMetadata(raw, "assigned");
-        return value === null ? null : decodeAuthorTextBreaks(value);
-      })(),
+      // whose canvas DRAWS a break, so they take decodeAuthorTextBreaks.
+      // Markup (5 October 2026, enactment 3): and drawn formatting is read as
+      // its text (KANBAN_DRAWN_MARKUP). The `priority` and the
+      // `priorityDrawn` computation take neither: the picture draws a
+      // priority only on a raw exact match, so a priority carrying a tag is
+      // undrawn and reads as written.
+      label: labelRead ? labelRead.label : id,
+      ...(labelRead && labelRead.segments
+        ? { segments: labelRead.segments }
+        : {}),
+      // The TICKET TEXT takes the same transform (measured 5 October 2026:
+      // the canvas draws a typed <br> in a ticket as a break and prints the
+      // escaped forms, and draws formatting and emphasis). NOTE that the URL
+      // below is built from `rawTicket` and NOT from this transformed string:
+      // the canvas builds its href from the raw ticket with any tags in it
+      // (measured 5 October 2026, six cards, frontmatter and directive), and
+      // `ticketUrl` is the address the canvas links to, verbatim, so only the
+      // TEXT is read as plain.
+      ticket:
+        rawTicket === null
+          ? null
+          : decodeAuthorTextBreaks(rawTicket, KANBAN_DRAWN_MARKUP),
+      assigned: assignedRead ? assignedRead.label : null,
+      ...(assignedRead && assignedRead.segments
+        ? { assignedSegments: assignedRead.segments }
+        : {}),
       // decodeAuthorText, SINCE 21 SEPTEMBER 2026 AND RULING KS9, which
       // REVERSES the no-transform arm of KS3. That ruling reasoned that there
       // is no drawn string for a transform to agree with, which is true and
@@ -9390,13 +10593,20 @@ window.MermaidParseAdapter = (function () {
       diagramType: "kanban",
       columns: rawColumns.map((rawColumn) => {
         const id = typeof rawColumn.id === "string" ? rawColumn.id : "";
+        // Item 82, L2 (enactment 3): and a link the picture draws on it
+        // arrives as `segments`, beside the unchanged label.
+        const labelRead =
+          typeof rawColumn.label === "string"
+            ? readLabelWithLinks(rawColumn.label, KANBAN_DRAWN_MARKUP)
+            : null;
         return {
           id: id,
-          // Item 82: a column label is a break-drawing position too.
-          label:
-            typeof rawColumn.label === "string"
-              ? decodeAuthorTextBreaks(rawColumn.label)
-              : id,
+          // Item 82: a column label is a break-drawing position too, and
+          // (markup, 5 October 2026) reads drawn formatting as its text.
+          label: labelRead ? labelRead.label : id,
+          ...(labelRead && labelRead.segments
+            ? { segments: labelRead.segments }
+            : {}),
           // THE ID FILTER, per ruling KS2 and the measurement above. Never a
           // positional walk: the two disagree wherever two columns share an
           // id, and it is the walk that disagrees with the canvas.
@@ -9544,6 +10754,26 @@ window.MermaidParseAdapter = (function () {
     "        scbEscapedCard[nine&lt;br&gt;ten]@{ assigned: 'eleven&lt;br&gt;twelve' }",
   ].join("\n");
 
+  // Item 82, markup (5 October 2026): a THIRD source for the markup rows,
+  // parsed after the break source, for the same reason that one is separate.
+  // Four columns, one per reading: a typed tag, an author-escaped tag, a
+  // tag-only label and emphasis (which kanban DRAWS), each on the column, the
+  // card label, the ticket and the assigned. The ticket carries its tags into
+  // the address on purpose: the canvas builds its href from the raw ticket.
+  const KANBAN_MARKUP_SELF_CHECK_FIXTURE = [
+    "kanban",
+    '    scmTyp["<b>one</b>"]',
+    "        scmTypCard[\"<i>two</i>\"]@{ ticket: 'T<b>3</b>', assigned: '<u>four</u>' }",
+    '    scmEsc["&lt;b&gt;five&lt;/b&gt;"]',
+    "        scmEscCard[\"&lt;i&gt;six&lt;/i&gt;\"]@{ ticket: '&lt;b&gt;seven&lt;/b&gt;', assigned: '&lt;u&gt;eight&lt;/u&gt;' }",
+    '    scmNil["<b></b>"]',
+    "        scmNilCard[\"<i></i>\"]@{ ticket: '<b></b>', assigned: '<u></u>' }",
+    '    scmEmp["**nine**"]',
+    "        scmEmpCard[\"**ten**\"]@{ ticket: '**eleven**', assigned: '_twelve_' }",
+  ].join("\n");
+  const KANBAN_MARKUP_SELF_CHECK_BASE =
+    "https://selfcheck.example.org/browse/#TICKET#";
+
   /**
    * The SECOND self-check fixture, added 20 September 2026 with ruling KS8.
    *
@@ -9574,6 +10804,183 @@ window.MermaidParseAdapter = (function () {
     "        scuTwo[SelfCheck url two]@{ ticket: ' ' }",
     "        scuThree[SelfCheck url three]",
   ].join("\n");
+
+  // Item 82, L2 (6 October 2026, enactment 3): the kanban link rows. A source
+  // of its own, parsed in its own queue slot after the others, so every
+  // existing fixture and every count asserted against it stays as it was (the
+  // concurrency lane quotes the main one verbatim). Each link form is the
+  // measurement's (docs/mermaid-item-82-l2-measure-2026-10-05.md section 1); a
+  // column label, a card label and an assignee are the three positions that
+  // can carry one. It carries a ticket base so a card can hold a label link
+  // AND a ticket link at once.
+  const KANBAN_LINK_SELF_CHECK_FIXTURE = [
+    "---",
+    "config:",
+    "  kanban:",
+    "    ticketBaseUrl: 'https://selfcheck.example.org/browse/#TICKET#'",
+    "---",
+    "kanban",
+    "    lkC1[\"Zq <a href='https://example.org/a b?x=1&y=2'>text</a>\"]",
+    "        lkK1[\"<a href='https://example.org'>one</a> and <a href='https://example.net'>two</a>\"]",
+    "        lkK2[\"<a href='https://example.org'><b>bold link</b></a>\"]",
+    "        lkK3[\"<a href='https://example.org'>dup</a> and dup\"]",
+    "        lkK4[\"<a href='https://example.org/a&quot;b'>quote in href</a>\"]@{ assigned: \"<a href='https://example.org/a&quot;b'>quote</a>\" }",
+    "    lkC2[\"<a href='/relative'>r</a> <a href='//example.org/p'>p</a> <a href='HTTPS://EXAMPLE.ORG/X'>upper</a>\"]",
+    "        lkK5[\"<a href='javascript:alert(1)'>j</a> <a href='mailto:a@example.org'>m</a> <a>none</a> <a href='https://example.org'></a>.\"]@{ assigned: \"<a href='mailto:a@example.org'>Kim</a> <a>Sam</a>\" }",
+    "        lkK6[\"Fix <a href='https://example.org/bug'>bug</a>\"]@{ ticket: 'T1', assigned: \"<a href='https://example.org/sam'>Sam</a>\" }",
+    "        lkK7[Plain]@{ ticket: 'T2' }",
+    "    lkC3[\"<a href='https://example.org'></a>\"]",
+  ].join("\n");
+
+  /**
+   * The link rows of the kanban self-check, over the delivered link fixture.
+   * @param {Object} delivery - The normalised kanban link fixture
+   * @returns {Array} Assertion rows
+   */
+  function kanbanLinkAssertions(delivery) {
+    const same = (actual, expected) =>
+      JSON.stringify(actual) === JSON.stringify(expected);
+    const column = (id) => delivery.columns.find((c) => c.id === id);
+    const card = (id) => {
+      for (const c of delivery.columns) {
+        const found = c.cards.find((k) => k.id === id);
+        if (found) {
+          return found;
+        }
+      }
+      return undefined;
+    };
+    const cards = delivery.columns.flatMap((c) => c.cards);
+    const labelled = [].concat(delivery.columns, cards).filter((e) => e.segments);
+    const assigned = cards.filter((k) => k.assignedSegments);
+    return [
+      [
+        "link: a column label's link, its & decoded once and its space kept (m6)",
+        !!column("lkC1") &&
+          column("lkC1").label === "Zq text" &&
+          same(column("lkC1").segments, [
+            { text: "Zq " },
+            { text: "text", href: "https://example.org/a b?x=1&y=2" },
+          ]),
+      ],
+      [
+        "link: two links in one card label, in order (l1)",
+        !!card("lkK1") &&
+          same(card("lkK1").segments, [
+            { text: "one", href: "https://example.org" },
+            { text: " and " },
+            { text: "two", href: "https://example.net" },
+          ]),
+      ],
+      [
+        "link: a nested bold link reads as 'bold link' (l2)",
+        !!card("lkK2") &&
+          card("lkK2").label === "bold link" &&
+          same(card("lkK2").segments, [
+            { text: "bold link", href: "https://example.org" },
+          ]),
+      ],
+      [
+        "link: the first of two identical words is the linked one (l3)",
+        !!card("lkK3") &&
+          same(card("lkK3").segments, [
+            { text: "dup", href: "https://example.org" },
+            { text: " and dup" },
+          ]),
+      ],
+      [
+        "link: the quote entity in an href is decoded once, on a card label " +
+          "and on an assignee (l7)",
+        !!card("lkK4") &&
+          same(card("lkK4").segments, [
+            { text: "quote in href", href: 'https://example.org/a"b' },
+          ]) &&
+          same(card("lkK4").assignedSegments, [
+            { text: "quote", href: 'https://example.org/a"b' },
+          ]),
+      ],
+      [
+        "link: relative, protocol-relative and upper-case-scheme hrefs are " +
+          "admitted as written (m9, l6, l4)",
+        !!column("lkC2") &&
+          same(column("lkC2").segments, [
+            { text: "r", href: "/relative" },
+            { text: " " },
+            { text: "p", href: "//example.org/p" },
+            { text: " " },
+            { text: "upper", href: "HTTPS://EXAMPLE.ORG/X" },
+          ]),
+      ],
+      [
+        "link: javascript:, mailto:, no href and an empty link are plain " +
+          "text on a card label and an assignee (m7, m8, l8, m10)",
+        !!card("lkK5") &&
+          card("lkK5").label === "j m none ." &&
+          same(card("lkK5").segments, [{ text: "j m none ." }]) &&
+          card("lkK5").assigned === "Kim Sam" &&
+          same(card("lkK5").assignedSegments, [{ text: "Kim Sam" }]),
+      ],
+      [
+        "link: a card with a label link, an assignee link and a ticket under " +
+          "a base delivers all three and none alters another",
+        !!card("lkK6") &&
+          card("lkK6").label === "Fix bug" &&
+          card("lkK6").ticket === "T1" &&
+          card("lkK6").ticketUrl === "https://selfcheck.example.org/browse/T1" &&
+          same(card("lkK6").segments, [
+            { text: "Fix " },
+            { text: "bug", href: "https://example.org/bug" },
+          ]) &&
+          same(card("lkK6").assignedSegments, [
+            { text: "Sam", href: "https://example.org/sam" },
+          ]) &&
+          !!card("lkK7") &&
+          card("lkK7").ticketUrl === "https://selfcheck.example.org/browse/T2" &&
+          card("lkK7").segments === undefined &&
+          card("lkK7").assignedSegments === undefined,
+      ],
+      [
+        "link: a column label that is only an empty link is empty text with " +
+          "no linked segment (m10)",
+        !!column("lkC3") &&
+          column("lkC3").label === "" &&
+          same(column("lkC3").segments, []),
+      ],
+      [
+        "link: the segment texts join to the delivered label and assignee, " +
+          "everywhere",
+        labelled.length === 9 &&
+          assigned.length === 3 &&
+          labelled.every((e) => e.segments.map((s) => s.text).join("") === e.label) &&
+          assigned.every(
+            (k) => k.assignedSegments.map((s) => s.text).join("") === k.assigned
+          ),
+      ],
+    ];
+  }
+
+  /**
+   * Parse the kanban link fixture in its own queue slot and return its rows.
+   * Read the ticket base the way the real route does, so the ticket anchor's
+   * address is the delivered one. A rejection is one failing row, not a throw.
+   * @returns {Promise<Array>} Assertion rows
+   */
+  function runKanbanLinkRows() {
+    const run = () =>
+      readKanbanTicketBase(KANBAN_LINK_SELF_CHECK_FIXTURE).then((base) =>
+        window.mermaid.mermaidAPI
+          .getDiagramFromText(KANBAN_LINK_SELF_CHECK_FIXTURE)
+          .then((diagram) => kanbanLinkAssertions(normaliseKanban(diagram, base)))
+      );
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+    return queued.catch((error) => [
+      [`kanban link fixture parses (rejected: ${error && error.message})`, false],
+    ]);
+  }
 
   /**
    * The THIRD self-check fixture, added 21 September 2026 with rulings KS9 and
@@ -10123,16 +11530,31 @@ window.MermaidParseAdapter = (function () {
           // has been evaluated, because on this type a second parse replaces
           // the WHOLE db payload. Delivered through normaliseKanban itself,
           // so the rows test the transform on the path a consumer reads. The
-          // ticket and priority routes are deliberately absent from these
-          // rows: neither takes the break transform.
+          // priority route is deliberately absent from these rows: it takes
+          // neither the break nor the markup transform. The markup source is
+          // parsed after this one, and this delivery is copied out first.
           return window.mermaid.mermaidAPI
             .getDiagramFromText(KANBAN_BREAK_SELF_CHECK_FIXTURE)
             .then((breakDiagram) => {
               const breakDelivery = normaliseKanban(breakDiagram);
+              return window.mermaid.mermaidAPI
+                .getDiagramFromText(KANBAN_MARKUP_SELF_CHECK_FIXTURE)
+                .then((markupDiagram) => ({
+                  breakDelivery: breakDelivery,
+                  markupDelivery: normaliseKanban(
+                    markupDiagram,
+                    KANBAN_MARKUP_SELF_CHECK_BASE
+                  ),
+                }));
+            })
+            .then(({ breakDelivery, markupDelivery }) => {
               const typedColumn = breakDelivery.columns[0];
               const escapedColumn = breakDelivery.columns[1];
               const typedCard = typedColumn && typedColumn.cards[0];
               const escapedCard = escapedColumn && escapedColumn.cards[0];
+              const markupCard = (index) =>
+                markupDelivery.columns[index] &&
+                markupDelivery.columns[index].cards[0];
               return baseAssertions.concat([
                 [
                   "a typed break reads as one space on a column label, a " +
@@ -10152,6 +11574,54 @@ window.MermaidParseAdapter = (function () {
                     escapedCard.label === "nine<br>ten" &&
                     escapedCard.assigned === "eleven<br>twelve",
                 ],
+                [
+                  "a typed formatting tag reads as its text on a column " +
+                    "label, a card label, a ticket and an assigned (item 82)",
+                  !!markupCard(0) &&
+                    markupDelivery.columns[0].label === "one" &&
+                    markupCard(0).label === "two" &&
+                    markupCard(0).ticket === "T3" &&
+                    markupCard(0).assigned === "four",
+                ],
+                [
+                  "an author-escaped formatting tag is kept as the " +
+                    "characters <b> on a column label, a card label, a " +
+                    "ticket and an assigned (item 82)",
+                  !!markupCard(1) &&
+                    markupDelivery.columns[1].label === "<b>five</b>" &&
+                    markupCard(1).label === "<i>six</i>" &&
+                    markupCard(1).ticket === "<b>seven</b>" &&
+                    markupCard(1).assigned === "<u>eight</u>",
+                ],
+                [
+                  "a tag-only label is delivered empty on a column label, a " +
+                    "card label, a ticket and an assigned (item 82)",
+                  !!markupCard(2) &&
+                    markupDelivery.columns[2].label === "" &&
+                    markupCard(2).label === "" &&
+                    markupCard(2).ticket === "" &&
+                    markupCard(2).assigned === "",
+                ],
+                [
+                  "markdown emphasis reads as its text on a column label, a " +
+                    "card label, a ticket and an assigned, because kanban " +
+                    "draws it (item 82)",
+                  !!markupCard(3) &&
+                    markupDelivery.columns[3].label === "nine" &&
+                    markupCard(3).label === "ten" &&
+                    markupCard(3).ticket === "eleven" &&
+                    markupCard(3).assigned === "twelve",
+                ],
+                [
+                  "a tagged ticket's ticketUrl is still the address the " +
+                    "canvas links to, built from the RAW ticket with its " +
+                    "tags in it, while only the ticket TEXT is read as " +
+                    "plain (item 82)",
+                  !!markupCard(0) &&
+                    markupCard(0).ticket === "T3" &&
+                    markupCard(0).ticketUrl ===
+                      "https://selfcheck.example.org/browse/T<b>3</b>",
+                ],
               ]);
             });
         });
@@ -10163,6 +11633,11 @@ window.MermaidParseAdapter = (function () {
     );
 
     kanbanSelfCheckPromise = queued
+      // Item 82, L2: the link rows read a fixture of their own, parsed after
+      // the others, so every predicate above has already been evaluated.
+      .then((assertions) =>
+        runKanbanLinkRows().then((linkRows) => assertions.concat(linkRows))
+      )
       .then((assertions) => {
         const failed = assertions.find(([, pass]) => !pass);
         if (failed) {
@@ -11456,9 +12931,16 @@ window.MermaidParseAdapter = (function () {
     parseRadar: parseRadar,
     runRadarSelfCheck: runRadarSelfCheck,
     isRadarHealthy: isRadarHealthy,
-    // Register item 78: the ONE decoder exported from this module, for the
-    // core's author-override route, which reads the raw diagram source.
+    // Register item 78: a decoder for the core's author-override route, which
+    // reads the raw diagram source. (It read "the ONE decoder exported from
+    // this module" until 6 October 2026, when the fourth entry point below
+    // joined it; the timeline event reads through this one too, from then.)
     decodeSourcePlaceholders: decodeSourcePlaceholders,
+    // Item 82, entity slice enactment 1 (6 October 2026): the fourth entry
+    // point, for the source-reading modules whose canvas draws the full decode
+    // (mindmap, state). Resolved off window AT CALL TIME, as the rules below.
+    decodeAuthorTextFromSource: decodeAuthorTextFromSource,
+    resolveC4CanvasEntities: resolveC4CanvasEntities,
     // Item 82, enactment 5: the shared break rule, for the modules that read
     // the diagram SOURCE and have no adapter surface (timeline, architecture,
     // mindmap, state). A module resolves both off window AT CALL TIME.
@@ -11467,6 +12949,10 @@ window.MermaidParseAdapter = (function () {
     // Item 82, markup (5 October 2026): the shared markup rule, exported the
     // same way for the source-reading modules. No module calls it yet.
     replaceDrawnMarkup: replaceDrawnMarkup,
+    // Item 82, L2 enactment 4 (6 October 2026): the link-segment reader, for
+    // the two modules that read SOURCE (mindmap, state). Resolved off window
+    // AT CALL TIME, as the two rules above are.
+    readLabelWithLinks: readLabelWithLinks,
     // Register item 24: the global enableAllLog() cannot reach this module's
     // level, so the control is exported here as MermaidThemes and
     // MermaidControls already do. Without it the per-parse trace above is

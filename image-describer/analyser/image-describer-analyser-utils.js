@@ -72,8 +72,18 @@
   /** Confidence filter for Tesseract — words below this are discarded entirely */
   const TESSERACT_MIN_CONFIDENCE = 60; // Tesseract uses 0–100 scale
 
-  /** Tesseract timeout in milliseconds */
-  const TESSERACT_TIMEOUT = 15000;
+  /**
+   * One budget for the WHOLE text-detection stage (primary and secondary
+   * passes together), in milliseconds. H-28 measured single passes of 18–31 s
+   * on a busy machine, so the old 15 s per-pass timer reported the machine's
+   * load as a timeout. The page tells people analysis "can take up to a
+   * minute", and this keeps that true. A run that still exceeds it still
+   * reads "timed-out"; the budget makes that rarer, never hidden.
+   */
+  const OCR_STAGE_BUDGET_MS = 60000;
+
+  /** Tesseract timeout in milliseconds (the stage budget above) */
+  const TESSERACT_TIMEOUT = OCR_STAGE_BUDGET_MS;
 
   /** Expansion factor for cross-reference bounding box sampling */
   const CROSS_REF_EXPANSION = 0.2;
@@ -230,6 +240,60 @@
     return vertical + "-" + horizontal;
   }
 
+  // Nine-position words (H-7c, H-7d). The band edges MUST equal BAND_LOW / BAND_HIGH in
+  // image-describer/testing/idq-position-encode.mjs (1/3 and 2/3, half-open: an edge value
+  // belongs to the band above) and the word tables must equal its VERTICAL_WORDS and
+  // HORIZONTAL_WORDS. Bound by the helper-* rows in idq-position-encode-prove.mjs.
+  const THIRDS_BAND_LOW = 1 / 3;
+  const THIRDS_BAND_HIGH = 2 / 3;
+  const THIRDS_VERTICAL_WORDS = Object.freeze({
+    low: "upper",
+    mid: "middle",
+    high: "lower",
+  });
+  const THIRDS_HORIZONTAL_WORDS = Object.freeze({
+    low: "left",
+    mid: "centre",
+    high: "right",
+  });
+
+  function thirdsBandKey(value) {
+    if (value < THIRDS_BAND_LOW) return "low";
+    if (value < THIRDS_BAND_HIGH) return "mid";
+    return "high";
+  }
+
+  /**
+   * Names a NormalisedBounds rectangle's position with one of nine words, from the
+   * box's centre: upper/middle/lower crossed with left/centre/right, and "centre"
+   * alone for the middle cell. Returns null when bounds is missing or any of
+   * x, y, w, h is not a finite number. getQuadrant is a separate, unchanged channel.
+   */
+  function getThirdsPosition(bounds) {
+    if (!bounds || typeof bounds !== "object") return null;
+    const { x, y, w, h } = bounds;
+    if (![x, y, w, h].every((n) => typeof n === "number" && Number.isFinite(n))) {
+      return null;
+    }
+
+    const vertical = thirdsBandKey(y + h / 2);
+    const horizontal = thirdsBandKey(x + w / 2);
+    if (vertical === "mid" && horizontal === "mid") return "centre";
+
+    return THIRDS_VERTICAL_WORDS[vertical] + " " + THIRDS_HORIZONTAL_WORDS[horizontal];
+  }
+
+  /**
+   * The position word for an item: the nine-word from its box, else its stored
+   * quadrant word, else null. Callers keep their own fallback text.
+   */
+  function getItemPositionWord(item) {
+    if (!item) return null;
+    const thirds = getThirdsPosition(item.bounds);
+    if (thirds) return thirds;
+    return item.quadrant || null;
+  }
+
   /**
    * Generates grid region definitions based on a GridConfig.
    * Returns an array of { label, bounds } objects.
@@ -374,6 +438,7 @@
     SCHEMA_VERSION,
     DEFAULT_CONFIDENCE_THRESHOLD,
     TESSERACT_MIN_CONFIDENCE,
+    OCR_STAGE_BUDGET_MS,
     TESSERACT_TIMEOUT,
     CROSS_REF_EXPANSION,
     NUMERIC_PATTERN,
@@ -388,6 +453,8 @@
     // Spatial helpers
     toNormalisedBounds,
     getQuadrant,
+    getThirdsPosition,
+    getItemPositionWord,
     generateGridRegions,
 
     // Canvas utilities

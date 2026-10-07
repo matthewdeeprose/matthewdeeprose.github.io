@@ -126,10 +126,16 @@ const MermaidAccessibilityMindmap = (function () {
     // string. The PLAIN tier below deliberately keeps the raw values: it feeds
     // the SVG aria-label and the textContent fallback, neither of which parses
     // HTML, so entities there would be read out literally.
-    // Add root node information
-    htmlDescription += ` with the central concept "<span class="diagram-root-node">${Common.escapeHtml(
-      rootText
-    )}</span>"`;
+    // Add root node information. An unlabelled root takes a clause of its own,
+    // because the label's quotation marks cannot hold the phrase.
+    const rootUnlabelled = Boolean(rootNode && rootNode.unlabelled);
+    if (rootUnlabelled) {
+      htmlDescription += ` with ${UNLABELLED_NODE_MID_SENTENCE} as the central concept`;
+    } else {
+      htmlDescription += ` with the central concept "<span class="diagram-root-node">${Common.escapeHtml(
+        rootText
+      )}</span>"`;
+    }
 
     // Add statistics
     htmlDescription += ` containing <span class="diagram-node-count">${nodeCount}</span> concepts`;
@@ -144,7 +150,7 @@ const MermaidAccessibilityMindmap = (function () {
       const mainBranches = rootNode.children
         .map((child) => {
           // Clean any shape markers from branch names
-          return Common.escapeHtml(cleanNodeText(child.text));
+          return Common.escapeHtml(nodeLabelText(child, true));
         })
         .join('</span>, <span class="diagram-branch-name">');
       htmlDescription += `<span class="diagram-branch-name">${mainBranches}</span>`;
@@ -156,13 +162,15 @@ const MermaidAccessibilityMindmap = (function () {
     // Plain text version (without HTML tags)
     let plainTextDescription = `A mindmap diagram`;
 
-    plainTextDescription += ` with the central concept "${rootText}"`;
+    plainTextDescription += rootUnlabelled
+      ? ` with ${UNLABELLED_NODE_MID_SENTENCE} as the central concept`
+      : ` with the central concept "${rootText}"`;
     plainTextDescription += ` containing ${nodeCount} concepts organised into ${maxDepth} levels`;
 
     if (rootNode && rootNode.children && rootNode.children.length > 0) {
       plainTextDescription += `. The main branches are: `;
       plainTextDescription += rootNode.children
-        .map((child) => cleanNodeText(child.text))
+        .map((child) => nodeLabelText(child, true))
         .join(", ");
     }
 
@@ -236,36 +244,234 @@ const MermaidAccessibilityMindmap = (function () {
   // break would sit next to a quotation mark, read as interior, and leave a
   // stray space inside the quotes.
   //
-  // HALTED, not enacted: a node the transform would EMPTY (a label that is
-  // only a break). Principle P2 needs an id, and a mindmap node has none this
-  // module can narrate (parseNodeContent mints one at random and keeps an
-  // author id only for the `a[...]` spelling). Such a node is left as typed
-  // until the design seat rules, which is today's reading. A spaces-only
-  // label is not a break and is likewise left alone.
+  // ITEM 82, HELD EMPTIES (6 October 2026): "a label that draws nothing (only
+  // a break, or only spaces) is read as unlabelled, in each type's own
+  // words." A node the break and markup rules empty (only breaks, only tags,
+  // only spaces, inside or without the author's quotation marks) draws an
+  // empty node, and is read as "an unlabelled node" at its own place, with no
+  // id (kanban K10's positional form) and no quotation marks: the phrase
+  // replaces the label and the author's quotes with it. Capitalised at the
+  // start of a list item, lower case mid-sentence. The emptiness test runs on
+  // the text AFTER the rules and alters no bytes; the node is still counted.
   const QUOTED_NODE_TEXT = /^"([\s\S]*)"$/;
+  const UNLABELLED_NODE = "An unlabelled node";
+  const UNLABELLED_NODE_MID_SENTENCE = "an unlabelled node";
 
   /**
-   * Read a node's text with typed line breaks as single spaces.
+   * A node's label as narrated, or the unlabelled phrase.
+   * @param {Object} node - A parsed node
+   * @param {boolean} midSentence - Lower case when the label sits mid-sentence
+   * @returns {string} Plain text, not escaped
+   */
+  function nodeLabelText(node, midSentence) {
+    if (node && node.unlabelled) {
+      return midSentence ? UNLABELLED_NODE_MID_SENTENCE : UNLABELLED_NODE;
+    }
+    return cleanNodeText(node ? node.text : "");
+  }
+
+  // ITEM 82, MARKUP ENACTMENT 4 (5 October 2026): "formatting the picture
+  // draws is read as the plain text it formats." Mindmap's canvas draws
+  // formatting tags, images, links and markdown emphasis, and PRINTS
+  // backticks (measurement 3 § 3.2), so the adapter's markup rule is called
+  // with tags and emphasis on and codespan off, after the break rule. It is
+  // resolved off window AT CALL TIME. An escaped `&lt;b&gt;` or `#lt;b#gt;`
+  // is not matched, because this parse reads raw source bytes; the entity
+  // decode after it (entity slice, 6 October 2026) then reads it as the
+  // characters the canvas prints. A node the
+  // transform would EMPTY (only tags) is an unlabelled node (held empties,
+  // above).
+  const MINDMAP_DRAWN_MARKUP = Object.freeze({
+    tags: true,
+    emphasis: true,
+    codespan: false,
+  });
+  let warnedMarkupRuleMissing = false;
+
+  /**
+   * Read drawn markup in node text as the text it formats.
+   * @param {Object} adapter - window.MermaidParseAdapter
+   * @param {string} text - The node text after the break rule
+   * @returns {string} The text with drawn markup read as text, or the text
+   *   as typed when the rule is not loaded
+   */
+  function readNodeMarkup(adapter, text) {
+    if (typeof adapter.replaceDrawnMarkup !== "function") {
+      if (!warnedMarkupRuleMissing) {
+        warnedMarkupRuleMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] Mindmap: the shared markup rule is not loaded; node text is read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.replaceDrawnMarkup(text, MINDMAP_DRAWN_MARKUP);
+  }
+
+  // ITEM 82, ENTITY SLICE, ENACTMENT 1 (6 October 2026): "the words read the
+  // characters the picture prints, decoded once and escaped once." A mindmap
+  // node is drawn into a foreignObject, which resolves the author's own
+  // references (`&lt;`, `&quot;`) as well as Mermaid's `#name;` codes, so an
+  // escaped `&lt;b&gt;` prints as the characters `<b>`. The adapter's
+  // decodeAuthorTextFromSource (Mermaid's encode, then the full decode) matched
+  // that canvas on 15 of 15 forms (docs/mermaid-item-82-entity-measure-
+  // 2026-10-06.md § 2). It runs LAST, on the raw string after the break and
+  // markup rules, so an escaped tag is decoded to characters only after the
+  // markup rule has passed over it; every narrating site escapes once. It is
+  // resolved off window AT CALL TIME. A node the rules would empty is an
+  // unlabelled node and is never decoded.
+  let warnedDecodeMissing = false;
+
+  /**
+   * Decode node text as the canvas prints it.
+   * @param {Object} adapter - window.MermaidParseAdapter
+   * @param {string} text - The node text after the break and markup rules
+   * @returns {string} The decoded text, or the text as typed when the decode
+   *   is not loaded
+   */
+  function decodeNodeText(adapter, text) {
+    if (typeof adapter.decodeAuthorTextFromSource !== "function") {
+      if (!warnedDecodeMissing) {
+        warnedDecodeMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] Mindmap: the shared source decode is not loaded; node text is read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.decodeAuthorTextFromSource(text);
+  }
+
+  /**
+   * Read a node's text with typed line breaks as single spaces, drawn markup
+   * as its text, and entities decoded as the canvas prints them.
    * @param {string} text - The node text after shape parsing
-   * @returns {string} The text with breaks read as spaces, or the text
-   *   unchanged when the transform would empty it or the rule is not loaded
+   * @returns {string|null} The text with breaks read as spaces, the text
+   *   unchanged when the rule is not loaded, or null when the node draws
+   *   nothing (an unlabelled node)
    */
   function readNodeBreaks(text) {
-    if (typeof text !== "string" || text === "") return text;
+    if (typeof text !== "string") return text;
 
     const adapter = window.MermaidParseAdapter;
     if (!adapter || typeof adapter.replaceTypedLineBreaks !== "function") {
       logWarn(
         "[Mermaid Accessibility] Mindmap: the shared line-break rule is not loaded; node text is read as typed"
       );
-      return text;
+      return text.trim() === "" ? null : text;
     }
 
     const quoted = text.match(QUOTED_NODE_TEXT);
     const inner = quoted ? quoted[1] : text;
-    const read = adapter.replaceTypedLineBreaks(inner, adapter.LINE_BREAK_FORMS.ALL);
-    if (read.trim() === "") return text;
-    return quoted ? `"${read}"` : read;
+    const withoutBreaks = adapter.replaceTypedLineBreaks(
+      inner,
+      adapter.LINE_BREAK_FORMS.ALL
+    );
+    const read = readNodeMarkup(adapter, withoutBreaks);
+    if (read.trim() === "") return null;
+    const decoded = decodeNodeText(adapter, read);
+    return quoted ? `"${decoded}"` : decoded;
+  }
+
+  // ITEM 82, L2 (6 October 2026): "a link the picture draws is a working link
+  // in the words." The anchor is written ONCE, at the node's own place in the
+  // Complete Mindmap Structure list (renderNodeToHtml); the overview, the
+  // insights and both short tiers read the text. The segment reader is the
+  // adapter's readLabelWithLinks, resolved off window AT CALL TIME like the
+  // two rules above; it delivers an admitted href only, decoded once, and
+  // plain segments around it. Segments are kept ONLY when their join equals
+  // the text this module already narrates. Since the entity slice (6 October
+  // 2026) the node text is decoded and the reader is handed the source with
+  // `fromSource`, so a label carrying an entity joins and keeps its anchor;
+  // one whose cleanNodeText reading differs still reads as text.
+  const ANCHOR_OPENING = /<a[\s/>]/i;
+  let warnedLinkReaderMissing = false;
+
+  /**
+   * Join the text of a segment list.
+   * @param {Array<{text: string, href?: string}>} segments - Label pieces
+   * @returns {string} The plain label the pieces make
+   */
+  function joinSegmentText(segments) {
+    return segments.map((segment) => segment.text).join("");
+  }
+
+  /**
+   * Put the author's own quotation marks back round a segment list, as plain
+   * text, so the list reads the same as node.text does.
+   * @param {Array<{text: string, href?: string}>} segments - Label pieces
+   * @returns {Array<{text: string, href?: string}>} The pieces, quoted
+   */
+  function quoteSegments(segments) {
+    const quoted = segments.map((segment) => ({ ...segment }));
+    if (quoted[0].href === undefined) {
+      quoted[0].text = `"${quoted[0].text}`;
+    } else {
+      quoted.unshift({ text: '"' });
+    }
+    const last = quoted[quoted.length - 1];
+    if (last.href === undefined) {
+      last.text = `${last.text}"`;
+    } else {
+      quoted.push({ text: '"' });
+    }
+    return quoted;
+  }
+
+  /**
+   * Read the link pieces of a node's text.
+   * @param {string} typedText - The node text as parsed, before the break rule
+   * @param {string} read - The text this module narrates (after the rules)
+   * @returns {Array<{text: string, href?: string}>|null} The pieces, or null
+   *   when the node draws no link, the reader is not loaded, or the pieces
+   *   would not read as the narrated text
+   */
+  function readNodeSegments(typedText, read) {
+    if (typeof typedText !== "string" || !ANCHOR_OPENING.test(typedText)) {
+      return null;
+    }
+
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.readLabelWithLinks !== "function") {
+      if (!warnedLinkReaderMissing) {
+        warnedLinkReaderMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] Mindmap: the shared link reader is not loaded; node text is read as typed, with no links"
+        );
+      }
+      return null;
+    }
+
+    // `fromSource`: the reader encodes with Mermaid's rule first, so its
+    // per-segment decode resolves what decodeNodeText resolves and the
+    // segments join to the narrated text (entity slice, 6 October 2026).
+    const quoted = typedText.match(QUOTED_NODE_TEXT);
+    const result = adapter.readLabelWithLinks(
+      quoted ? quoted[1] : typedText,
+      MINDMAP_DRAWN_MARKUP,
+      { fromSource: true }
+    );
+    if (!Array.isArray(result.segments) || result.segments.length === 0) {
+      return null;
+    }
+
+    const segments = quoted ? quoteSegments(result.segments) : result.segments;
+    return joinSegmentText(segments) === read ? segments : null;
+  }
+
+  /**
+   * Render a node's narrated text, with the link it draws as a working link.
+   * Falls back to the escaped text when the pieces do not read as it.
+   * @param {Object} node - The parsed node
+   * @param {string} displayText - The node text after cleanNodeText
+   * @returns {string} HTML for the node's text
+   */
+  function renderNodeLabel(node, displayText) {
+    const segments = node.segments;
+    if (!Array.isArray(segments) || joinSegmentText(segments) !== displayText) {
+      return Common.escapeHtml(displayText);
+    }
+    return Common.renderSegmentsHtml(segments, displayText);
   }
 
   /**
@@ -326,7 +532,17 @@ const MermaidAccessibilityMindmap = (function () {
 
       // Parse node content and shape
       const node = parseNodeContent(content);
-      node.text = readNodeBreaks(node.text);
+      const typedText = node.text;
+      const read = readNodeBreaks(typedText);
+      if (read === null) {
+        // Draws nothing: an unlabelled node, with no text and no link.
+        node.text = "";
+        node.unlabelled = true;
+      } else {
+        node.text = read;
+        const segments = readNodeSegments(typedText, node.text);
+        if (segments) node.segments = segments;
+      }
 
       // If this is the first line, it's the root node
       if (i === 0) {
@@ -769,8 +985,11 @@ const MermaidAccessibilityMindmap = (function () {
       html += `<span class="mindmap-node-text mindmap-level-${level}">Icon: ${Common.escapeHtml(
         iconName
       )}</span>`;
+    } else if (node.unlabelled) {
+      html += `<span class="mindmap-node-text mindmap-level-${level}">${UNLABELLED_NODE}</span>`;
     } else {
-      html += `<span class="mindmap-node-text mindmap-level-${level}">${Common.escapeHtml(
+      html += `<span class="mindmap-node-text mindmap-level-${level}">${renderNodeLabel(
+        node,
         displayText
       )}</span>`;
     }
@@ -821,9 +1040,13 @@ const MermaidAccessibilityMindmap = (function () {
     description += `<section class="mindmap-section mindmap-overview">
       <h4 class="mindmap-section-heading">Mindmap Overview</h4>
       
- <p>This mindmap diagram is centred on the concept "<span class="mindmap-root-concept">${Common.escapeHtml(
-   cleanNodeText(rootNode.text)
- )}</span>" and contains ${nodeCount} total concepts organised into ${maxDepth} levels.</p>`;
+ <p>This mindmap diagram is centred on ${
+   rootNode.unlabelled
+     ? UNLABELLED_NODE_MID_SENTENCE
+     : `the concept "<span class="mindmap-root-concept">${Common.escapeHtml(
+         cleanNodeText(rootNode.text)
+       )}</span>"`
+ } and contains ${nodeCount} total concepts organised into ${maxDepth} levels.</p>`;
     if (rootNode.children && rootNode.children.length > 0) {
       const mainTopics = rootNode.children.length;
       description += `<p>The diagram branches into ${mainTopics} main topics:</p>
@@ -834,7 +1057,7 @@ const MermaidAccessibilityMindmap = (function () {
         if (child.children) subTopics = child.children.length;
 
         description += `<li><span class="mindmap-topic">${Common.escapeHtml(
-          cleanNodeText(child.text)
+          nodeLabelText(child, false)
         )}</span>`;
         if (subTopics > 0) {
           description += ` (contains ${subTopics} sub-topic${
@@ -940,6 +1163,11 @@ const MermaidAccessibilityMindmap = (function () {
 
     if (branchBalanceInfo.isBalanced) {
       insights += `These branches are relatively balanced in terms of content distribution.`;
+    } else if (branchBalanceInfo.largestUnlabelled) {
+      // The label's quotation marks cannot hold the unlabelled phrase.
+      insights += `The branches vary in size, with the branch from ${UNLABELLED_NODE_MID_SENTENCE} containing the most sub-topics (${
+        branchBalanceInfo.largestSize
+      }).`;
     } else {
       insights += `The branches vary in size, with the "${Common.escapeHtml(
         branchBalanceInfo.largestBranch
@@ -954,6 +1182,9 @@ const MermaidAccessibilityMindmap = (function () {
       // Clean up path text to avoid including theme initialisation code
       const pathText = deepestPaths[0]
         .map((node) => {
+          // An unlabelled node sits mid-sentence on the path.
+          if (node.unlabelled) return UNLABELLED_NODE_MID_SENTENCE;
+
           // Handle nodes with theme initialisation
           let text = node.text;
           if (text.includes("%%{init:")) {
@@ -1008,12 +1239,14 @@ const MermaidAccessibilityMindmap = (function () {
     const branchSizes = rootNode.children.map((child) => {
       return {
         name: child.text,
+        unlabelled: Boolean(child.unlabelled),
         size: countNodesInSubtree(child),
       };
     });
 
     // Find largest and smallest branch
     let largestBranch = branchSizes[0].name;
+    let largestUnlabelled = branchSizes[0].unlabelled;
     let largestSize = branchSizes[0].size;
     let smallestSize = branchSizes[0].size;
 
@@ -1021,6 +1254,7 @@ const MermaidAccessibilityMindmap = (function () {
       if (branch.size > largestSize) {
         largestSize = branch.size;
         largestBranch = branch.name;
+        largestUnlabelled = branch.unlabelled;
       }
       if (branch.size < smallestSize) {
         smallestSize = branch.size;
@@ -1038,6 +1272,7 @@ const MermaidAccessibilityMindmap = (function () {
       branchCount,
       isBalanced,
       largestBranch,
+      largestUnlabelled,
       largestSize,
     };
   }

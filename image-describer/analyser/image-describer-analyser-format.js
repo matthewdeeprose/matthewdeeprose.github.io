@@ -100,12 +100,29 @@
   // OCR FORMATTING
   // ============================================================================
 
+  // How the prompt says text detection ended, for each OCR status that is not a result.
+  const OCR_UNFINISHED_WORDING = Object.freeze({
+    "timed-out": "did not finish",
+    failed: "could not run",
+  });
+
+  // A label line as formatOCRForPrompt prints it: `- "text" — position (confidence)`.
+  const OCR_LABEL_LINE = /^- "/m;
+
   /**
    * Formats the OCR section of the prompt.
    * Returns empty string if nothing meaningful to report.
    */
   function formatOCRForPrompt(ocr, confidenceThreshold) {
     const u = utils();
+    // Text detection ran and did not return (H-31). Without this the model
+    // cannot tell "no text in the picture" from "text detection failed".
+    if (ocr && OCR_UNFINISHED_WORDING[ocr.status]) {
+      return (
+        "### Text labels detected (OCR)\n" +
+        `Text detection ${OCR_UNFINISHED_WORDING[ocr.status]}, so text in the image is not listed here. Read any text directly from the image.\n`
+      );
+    }
     if (
       !ocr ||
       ocr.status !== "complete" ||
@@ -130,7 +147,11 @@
     let text = "### Text labels detected (OCR)\n";
 
     included.forEach((item) => {
-      let line = `- "${item.text}" \u2014 ${item.quadrant} (${confidenceWord(item.confidence)})`;
+      // The position is one of nine thirds words taken from the label's own box (H-7c
+      // measured it against the five-word quadrant; H-7d confirmed the shipped boxes give
+      // the right word). An item with no usable box keeps the quadrant word it printed before.
+      const position = u.getItemPositionWord(item) || item.quadrant;
+      let line = `- "${item.text}" \u2014 ${position} (${confidenceWord(item.confidence)})`;
 
       // WITHHELD at Stage F-iii, and deliberately not reworded. `nearbyColour` is
       // sampled from a ring around the label's own bounding box, so it names whatever
@@ -572,7 +593,9 @@
       "The following positions and colours were extracted from the image by OCR\n" +
       "and pixel analysis before you received it. Treat this data as accurate\n" +
       "unless you can see clear evidence that it is wrong. Specifically:\n" +
-      "- Use the OCR label positions below when describing where labels appear.\n" +
+      (OCR_LABEL_LINE.test(ocrText)
+        ? "- Use the OCR label positions below when describing where labels appear.\n"
+        : "") +
       "- Use the colour data below when describing regional colours and tones.\n" +
       "- If your visual impression contradicts this data, re-examine the image\n" +
       "  before defaulting to your initial interpretation.\n\n";

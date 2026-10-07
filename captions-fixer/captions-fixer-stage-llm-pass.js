@@ -1249,7 +1249,7 @@ const CaptionsFixerStageLlmPass = (function () {
           reason: error && error.reason ? error.reason : "",
           message: error && error.message ? error.message : "",
         };
-        records.push(chunkRecord(index, cueIds, raw, null, modelId, 0, emptyDropped(), emptyRepaired(), failure));
+        records.push(chunkRecord(index, cueIds, raw, null, modelId, 0, emptyDropped(), emptyRepaired(), failure, error));
         await api.persistQuietly(ctx, { [FIELD_PASS_RAW]: records.slice() });
         if (!api.isParseFailure(error)) throw error;
         failedChunks += 1;
@@ -1262,7 +1262,7 @@ const CaptionsFixerStageLlmPass = (function () {
 
       // BEFORE anything here reads a single proposal. The whole array, so this
       // write cannot lose the ones before it.
-      const record = chunkRecord(index, cueIds, reply.raw, reply.usageRaw, reply.model, reply.discarded, emptyDropped(), emptyRepaired(), null);
+      const record = chunkRecord(index, cueIds, reply.raw, reply.usageRaw, reply.model, reply.discarded, emptyDropped(), emptyRepaired(), null, reply);
       records.push(record);
       await api.persistQuietly(ctx, { [FIELD_PASS_RAW]: records.slice() });
 
@@ -1359,9 +1359,13 @@ const CaptionsFixerStageLlmPass = (function () {
    * @param {object} dropped
    * @param {object} repaired
    * @param {{reason: string, message: string}|null} [error]
+   * @param {{maxOutputTokens?: number, reasoningEffort?: string|null}|null} [sentFrom]
+   *   whatever `complete` handed back for this chunk, or the error it threw;
+   *   only the two fields are read. Stage `cr`.
    * @returns {object}
    */
-  function chunkRecord(index, cueIds, raw, usageRaw, model, discarded, dropped, repaired, error) {
+  function chunkRecord(index, cueIds, raw, usageRaw, model, discarded, dropped, repaired, error, sentFrom) {
+    const source = sentFrom && typeof sentFrom === "object" ? sentFrom : {};
     return {
       index: index,
       cueIds: cueIds.length > 0 ? [cueIds[0], cueIds[cueIds.length - 1]] : [],
@@ -1374,6 +1378,15 @@ const CaptionsFixerStageLlmPass = (function () {
       dropped: dropped,
       repaired: repaired,
       error: error || null,
+      // WHAT WAS SENT, read off what `complete` returned (or off the two throw
+      // routes that carry it: TRUNCATED and PARSE) and never off a constant.
+      // `null` AND `null` where it did not return the pair: a SEND failure, a
+      // cancel and the argument checks throw before the adapter has read the
+      // instance, so there is nothing to copy, and the record says so rather
+      // than the stage guessing. Nothing WARNs for it. The names say "sent" so
+      // nobody reads them as the model's declared limit.
+      sentMaxOutputTokens: typeof source.maxOutputTokens === "number" ? source.maxOutputTokens : null,
+      sentReasoningEffort: typeof source.reasoningEffort === "string" ? source.reasoningEffort : null,
     };
   }
 

@@ -146,16 +146,56 @@
   // The TITLE and the section names are not read through this: the canvas
   // prints a tag there.
   //
-  // HALTED, not enacted: an event the transform would EMPTY (a label that is
-  // only a break). Principle P2 needs an id and an event has none, and P1
-  // needs a no-label form the parser does not have (a line with no colon is
-  // dropped, while the canvas does draw an empty card). Such an event is left
-  // as typed until the design seat rules, which is today's reading.
+  // ITEM 82, HELD EMPTIES (6 October 2026): "a label that draws nothing (only
+  // a break, or only spaces) is read as unlabelled, in each type's own
+  // words." An event the rule above empties draws an empty card, and is read
+  // as "An empty event" in its own place in the period's event list. The
+  // event is still counted. The emptiness test runs on the text AFTER the
+  // break rule and alters no bytes. Timeline draws no markup, so an event that
+  // is only tags is printed as characters and is never empty here.
+  const EMPTY_EVENT = Object.freeze({ empty: true });
+  const EMPTY_EVENT_PHRASE = "An empty event";
+
+  // ITEM 82, ENTITY SLICE, ENACTMENT 1 (6 October 2026): "the words read the
+  // characters the picture prints, decoded once and escaped once." The event
+  // is drawn into SVG <text>: Mermaid's own `#name;` and `#digits;` codes are
+  // resolved there, while an author-typed `&lt;` and a bare `<` or `&` are
+  // printed as typed. decodeSourcePlaceholders (the adapter's raw-source
+  // composition, item 78's) gives exactly that, measured on 15 of 15 forms
+  // (docs/mermaid-item-82-entity-measure-2026-10-06.md § 2). It runs LAST, on
+  // the raw string after the break rule (this sink draws no markup and no
+  // links, so there are no other rules), and the list site escapes once. It is
+  // resolved off window AT CALL TIME. The title and the section names are NOT
+  // read through it (enactment 3).
+  let warnedDecodeMissing = false;
+
   /**
-   * Read a timeline event's text with typed line breaks as single spaces.
+   * Decode Mermaid's own escapes in event text, as the canvas prints them.
+   * @param {Object} adapter - window.MermaidParseAdapter
+   * @param {string} text - The event text after the break rule
+   * @returns {string} The decoded text, or the text as typed when the decode
+   *   is not loaded
+   */
+  function decodeEventText(adapter, text) {
+    if (typeof adapter.decodeSourcePlaceholders !== "function") {
+      if (!warnedDecodeMissing) {
+        warnedDecodeMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] Timeline: the shared source decode is not loaded; event text is read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.decodeSourcePlaceholders(text);
+  }
+
+  /**
+   * Read a timeline event's text with typed line breaks as single spaces and
+   * Mermaid's escapes decoded as the canvas prints them.
    * @param {string} text - The trimmed event text from the source line
-   * @returns {string} The text with `<br>` read as a space, or the text
-   *   unchanged when the transform would empty it or the rule is not loaded
+   * @returns {string|Object} The text with `<br>` read as a space, the text
+   *   as typed when the rule is not loaded, or EMPTY_EVENT when the event
+   *   draws nothing
    */
   function readEventText(text) {
     const adapter = window.MermaidParseAdapter;
@@ -163,13 +203,22 @@
       logWarn(
         "[Mermaid Accessibility] Timeline: the shared line-break rule is not loaded; event text is read as typed"
       );
-      return text;
+      return text.trim() === "" ? EMPTY_EVENT : text;
     }
     const read = adapter.replaceTypedLineBreaks(
       text,
       adapter.LINE_BREAK_FORMS.BR_ONLY
     );
-    return read.trim() === "" ? text : read;
+    return read.trim() === "" ? EMPTY_EVENT : decodeEventText(adapter, read);
+  }
+
+  /**
+   * One event as it goes into the period's event list.
+   * @param {string|Object} event - Event text, or EMPTY_EVENT
+   * @returns {string} HTML for the list item's content
+   */
+  function eventHtml(event) {
+    return event === EMPTY_EVENT ? EMPTY_EVENT_PHRASE : Common.escapeHtml(event);
   }
 
   /**
@@ -557,7 +606,7 @@
               <ul class="timeline-period-events">`;
 
           timePeriod.events.forEach((event) => {
-            description += `<li class="timeline-event">${Common.escapeHtml(event)}</li>`;
+            description += `<li class="timeline-event">${eventHtml(event)}</li>`;
           });
 
           description += `</ul>
@@ -577,7 +626,7 @@
             <ul class="timeline-period-events">`;
 
         timePeriod.events.forEach((event) => {
-          description += `<li class="timeline-event">${Common.escapeHtml(event)}</li>`;
+          description += `<li class="timeline-event">${eventHtml(event)}</li>`;
         });
 
         description += `</ul>

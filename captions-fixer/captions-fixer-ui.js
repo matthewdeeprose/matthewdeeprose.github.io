@@ -838,6 +838,14 @@ const CaptionsFixerUI = (function () {
   let passChangeSet = [];
 
   /**
+   * The caller of the Transcribe hand-off, if the list came from
+   * `loadCueList`: told of the change set every time it is written back.
+   * Null for an upload, and cleared on every load.
+   * @type {Function|null}
+   */
+  let changeSetListener = null;
+
+  /**
    * WHETHER A DISCOVERY RUN HAS SETTLED — Stage 11, decision 9, and this
    * boolean IS the enabling rule rather than a cache of one.
    *
@@ -3187,10 +3195,27 @@ const CaptionsFixerUI = (function () {
   }
 
   /**
+   * Tell the hand-off caller the change set as it now stands: ONE array of
+   * copies, recurring first, then the pass. A throwing caller is logged and
+   * must never stop the write that follows.
+   */
+  function notifyChangeSetListener() {
+    if (!changeSetListener) return;
+    try {
+      changeSetListener(api.allEntries().map((entry) => ({ ...entry })));
+    } catch (error) {
+      logWarn("the change-set callback threw", error);
+    }
+  }
+
+  /**
    * Write the change set back, where there is a key to write it under.
    * Storage is a convenience: a failure costs resume and nothing else.
    */
   function persistChangeSet() {
+    // BEFORE the key test below: a person with no IndexedDB has no key, and the
+    // hand-off caller must still hear the change set.
+    notifyChangeSetListener();
     if (!sha256) return;
     const patch = { changeSet: changeSet };
     // The pass's entries go under their own name, never merged into
@@ -3503,7 +3528,6 @@ const CaptionsFixerUI = (function () {
    */
   async function loadText(text, name) {
     const cues = window.CaptionsFixerCues;
-    const store = window.CaptionsFixerStore;
     if (!cues) {
       speak("notifyError", "The captions module did not load. Reload the page.");
       return false;
@@ -3520,6 +3544,70 @@ const CaptionsFixerUI = (function () {
       speak("notifyError", `That file could not be read: ${error.message}`);
       return false;
     }
+
+    return loadParsed(parsed, text, name, null);
+  }
+
+  /**
+   * Load a cue list that did not come from a file — the Transcribe hand-off
+   * (stage 12a). Everything after the parse is shared with `loadText`, so the
+   * list is restored, saved, priced and announced exactly as an upload is.
+   *
+   * THE STORE KEY IS THE SHA-256 OF `serialise(cueList, meta)`, the text this
+   * list would download as. For a parsed upload that text is the file's own
+   * bytes (the parser round-trips), so the same captions take the same key by
+   * either route; for a Transcribe list it is the SRT the meta describes.
+   *
+   * `onChangeSet(entries)` is called every time the change set is written back,
+   * BEFORE the store is consulted, so a person without IndexedDB still reaches
+   * the caller. It receives ONE array of COPIES, the recurring corrections
+   * first and then the cue-level pass (`applyBothSets`'s order), so nothing the
+   * caller does to it reaches this tool's own entries. A callback that throws
+   * is logged and ignored.
+   *
+   * @param {{ cueList: Array<object>, meta: object, sourceName?: string, onChangeSet?: Function }} options
+   * @returns {Promise<boolean>} whether the list was accepted
+   */
+  async function loadCueList(options) {
+    const cues = window.CaptionsFixerCues;
+    const given = options || {};
+    if (!cues) {
+      speak("notifyError", "The captions module did not load. Reload the page.");
+      return false;
+    }
+
+    let text;
+    try {
+      text = cues.serialise(given.cueList, given.meta);
+    } catch (error) {
+      logError("the cue list could not be serialised", error);
+      speak("notifyError", `That caption list could not be read: ${error.message}`);
+      return false;
+    }
+
+    const copied = {
+      cueList: given.cueList.map((cue) => ({ ...cue })),
+      meta: { ...given.meta },
+    };
+    const name = String(given.sourceName || given.meta.sourceName || "");
+    return loadParsed(copied, text, name, given.onChangeSet);
+  }
+
+  /**
+   * The half of a load that follows the parse, shared by `loadText` and
+   * `loadCueList`. `text` is what the store key is taken from.
+   *
+   * @param {{ cueList: Array<object>, meta: object }} parsed
+   * @param {string} text
+   * @param {string} name
+   * @param {Function|null|undefined} onChangeSet
+   * @returns {Promise<boolean>}
+   */
+  async function loadParsed(parsed, text, name, onChangeSet) {
+    const store = window.CaptionsFixerStore;
+    // Set here, so a file loaded after a hand-off does not call the previous
+    // caller back.
+    changeSetListener = typeof onChangeSet === "function" ? onChangeSet : null;
 
     cueList = parsed.cueList;
     meta = parsed.meta;
@@ -4071,6 +4159,10 @@ const CaptionsFixerUI = (function () {
         logWarn("the settle marker could not be written; a reload will need a fresh run", error);
       });
     }
+    // The orchestrator's stage wrote this set to the store itself, not through
+    // `persistChangeSet`, so the hand-off caller has to be told here as well or
+    // it hears nothing until a person changes a tick (stage 12a).
+    notifyChangeSetListener();
     renderChanges();
     updateAppliedLabels();
     api.refreshPassControls();
@@ -4478,6 +4570,7 @@ const CaptionsFixerUI = (function () {
     // had just overruled the check heard a box that said it was held and was
     // ticked. The suffix is read off the entry, and the entry has just moved.
     api.refreshKeepLabel(input, entry);
+    api.refreshReasonCell(input, entry);
     updateChangesCaption();
     // The applied list is what the pass would be sent, so a tick changes what
     // the next pass would cost.
@@ -4503,9 +4596,7 @@ const CaptionsFixerUI = (function () {
    * "restored if unticked again while rejectedBy is still a guard value"
    * names a state this file never produces.
    *
-   * THE REASON CELL IS NOT TOUCHED. It still opens "Held: …" after a tick,
-   * which records why the check held the row; the dispatch scopes this fix to
-   * the Keep label, and the cell is reported rather than changed.
+   * THE REASON CELL IS REWRITTEN BESIDE IT, by `refreshReasonCell` below.
    *
    * Exported as a seam: an inversion making it a no-op is the previous
    * implementation restored.
@@ -4521,6 +4612,34 @@ const CaptionsFixerUI = (function () {
     // Write if changed — a label is not a live region, but the same rule
     // costs nothing here and keeps every rewrite in this file deliberate.
     if (label.textContent !== text) label.textContent = text;
+    return true;
+  }
+
+  /**
+   * Rewrite one row's Reason cell from its entry, after the entry moved — stage
+   * sm, the review-table listen's finding (b). A ticked held row read
+   * `Held: <plain words>. <reason>` until the table was next rebuilt, which
+   * says a check is holding a row the person has just overruled.
+   *
+   * The text goes through `composeReasonCell`, the one function that builds it,
+   * so the cell cannot drift from the build. `rejectedBy` is null after a tick
+   * and "person" after an untick, so `isHeldByGuard` is false either way and
+   * the prefix does not come back — the same grounding as the Keep label. The
+   * cell is found as `td[data-label="Reason"]` in the input's own row.
+   *
+   * Exported as a seam: an inversion making it a no-op is the previous
+   * implementation restored.
+   *
+   * @param {HTMLInputElement} input the box that changed
+   * @param {object} entry its entry, already moved
+   * @returns {boolean} whether a cell was found to write
+   */
+  function refreshReasonCell(input, entry) {
+    const row = input ? input.closest("tr") : null;
+    const cell = row ? row.querySelector('td[data-label="Reason"]') : null;
+    if (!cell) return false;
+    const text = api.composeReasonCell(entry);
+    if (cell.textContent !== text) cell.textContent = text;
     return true;
   }
 
@@ -4839,6 +4958,7 @@ const CaptionsFixerUI = (function () {
     // Stage 11, decision 8: Reset clears BOTH sets, and with them the state
     // that enables the pass button — a reset tool has had no run.
     passChangeSet = [];
+    changeSetListener = null;
     discoverySettled = false;
     runOrigin = null;
     appliedPairIndexes = [];
@@ -4874,6 +4994,8 @@ const CaptionsFixerUI = (function () {
     cleanup: cleanup,
     // the file path, reachable without a File object
     loadText: loadText,
+    // the Transcribe hand-off (stage 12a): a cue list in, the change set out
+    loadCueList: loadCueList,
     handleFile: handleFile,
     handleContextFile: handleContextFile,
     // the gestures, so a drive can exercise one without synthesising an event
@@ -4977,6 +5099,7 @@ const CaptionsFixerUI = (function () {
     afterNextFrame: afterNextFrame,
     focusChangesHeading: focusChangesHeading,
     refreshKeepLabel: refreshKeepLabel,
+    refreshReasonCell: refreshReasonCell,
     buildCorrected: buildCorrected,
     // Stage 11's four seams, each patchable on its own so an inversion moves
     // ONE decision: which list the pass is sent, how the two sets are joined,

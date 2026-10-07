@@ -929,7 +929,13 @@
           if (seen.has(key)) continue;
           seen.add(key);
 
-          const quadrant = item.quadrant || "unknown position";
+          // Nine-position word from H-7e's helper, so people see the same position
+          // the model is told; falls back to the old corner word with no box.
+          const utils = window.ImageDescriberAnalyserUtils;
+          const quadrant =
+            (utils && utils.getItemPositionWord(item)) ||
+            item.quadrant ||
+            "unknown position";
           const conf = confidenceWord(item.confidence);
           let line = "- \"" + text + "\" — " + quadrant;
           if (conf) line += " (" + conf + ")";
@@ -1064,7 +1070,12 @@
           if (seen.has(key)) continue;
           seen.add(key);
 
-          const quadrant = item.quadrant || "unknown position";
+          // Nine-position word from H-7e's helper (see buildAnalysisReferenceMarkdown).
+          const utils = window.ImageDescriberAnalyserUtils;
+          const quadrant =
+            (utils && utils.getItemPositionWord(item)) ||
+            item.quadrant ||
+            "unknown position";
           const conf = confidenceWord(item.confidence);
           let desc = "\u201C" + text + "\u201D \u2014 " + quadrant;
           if (conf) desc += " (" + conf + ")";
@@ -2036,6 +2047,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           complete: "checkCircle",
           skipped: "close",
           error: "error",
+          "timed-out": "warning",
           cached: "disk",
         };
         const iconName = iconMap[status] || "";
@@ -2051,6 +2063,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           complete: "complete",
           skipped: "skipped",
           error: "failed",
+          "timed-out": "did not finish",
           cached: "restored from cache",
         };
         statusSpan.textContent = textMap[status] || status;

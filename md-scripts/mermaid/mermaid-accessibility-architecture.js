@@ -244,6 +244,76 @@ const MermaidAccessibilityArchitecture = (function () {
     return descriptions.text;
   }
 
+  // ITEM 82, ENTITY SLICE, ENACTMENT 2 (6 October 2026). Ruling (Matthew):
+  // "the words read the characters the picture prints, decoded once and
+  // escaped once", except that where the picture prints an entity code for a
+  // character the author typed plainly the words read the author's character.
+  // Architecture's canvas draws an author's `&lt;` `&gt;` `&amp;` as the
+  // characters, Mermaid's own `#name;` codes as their characters, and every
+  // other author reference as written (measured on 11.17.2, 6 October 2026,
+  // 21 of 21 forms). This module reads raw source bytes and has no surface,
+  // so the rule is written HERE, not resolved off window: one left-to-right
+  // pass, so that `&amp;lt;` and `#amp;lt;` each read `&lt;` once, as the
+  // picture prints it. THE NUMERIC FAMILY (`&#39;`, `&#60;`, `&#x3c;`) is
+  // Mermaid's own encode reading the `#39;` inside the author's reference as
+  // a code, so the canvas prints `&'`, `&&#60;` and `&&x3c;`; this reads it
+  // exactly as the c4 surface's decodePlaceholders reads it (`&'`, `&<`,
+  // `&&x3c;`), which matches the picture on two of the three. It is recorded
+  // and not chased, pending the owner's word on the hex form. Runs LAST,
+  // after the break and markup rules, so a resolved `<b>` is never read as a
+  // tag. The `style:`/`classDef:` pre-passes of Mermaid's encode are not
+  // modelled; a title carrying one is not a case this slice measured.
+  const ARCHITECTURE_CANVAS_TOKENS = /&(lt|gt|amp);|#(\w+);/g;
+  const ARCHITECTURE_CANVAS_REFERENCE_CHARACTERS = Object.freeze({
+    lt: "<",
+    gt: ">",
+    amp: "&",
+  });
+  const ARCHITECTURE_MAX_CODE_POINT = 0x10ffff;
+  let architectureReferenceDecoder = null;
+
+  /**
+   * The character a Mermaid `#name;` or `#digits;` code stands for.
+   * @param {string} code - The text between the hash and the semicolon
+   * @returns {string|null} The character, or null when the code names none
+   */
+  function architectureCodeCharacter(code) {
+    if (/^\d+$/.test(code)) {
+      const codePoint = Number(code);
+      return codePoint > 0 && codePoint <= ARCHITECTURE_MAX_CODE_POINT
+        ? String.fromCodePoint(codePoint)
+        : null;
+    }
+    if (!architectureReferenceDecoder) {
+      architectureReferenceDecoder = document.createElement("textarea");
+    }
+    const reference = `&${code};`;
+    architectureReferenceDecoder.innerHTML = reference;
+    return architectureReferenceDecoder.value !== reference
+      ? architectureReferenceDecoder.value
+      : null;
+  }
+
+  /**
+   * Read a group or service title the way the architecture canvas draws it.
+   * @param {string} text - The title after the break and markup rules
+   * @returns {string} The title with the author's `&lt;` `&gt;` `&amp;` and
+   *   Mermaid's `#name;` codes read as characters, one pass, everything else
+   *   as typed; an unknown code reads as the canvas prints it, `&name;`
+   */
+  function resolveArchitectureCanvasEntities(text) {
+    if (typeof text !== "string" || text === "") {
+      return text;
+    }
+    return text.replace(ARCHITECTURE_CANVAS_TOKENS, (match, name, code) => {
+      if (name) {
+        return ARCHITECTURE_CANVAS_REFERENCE_CHARACTERS[name];
+      }
+      const character = architectureCodeCharacter(code);
+      return character === null ? `&${code};` : character;
+    });
+  }
+
   // ITEM 82, ENACTMENT 5 (3 October 2026). "A line break the picture draws is
   // read as a space; a <br> the picture prints as characters is read as
   // written." Architecture's canvas breaks on `<br>`, `<br/>` and `<br />` and
@@ -265,12 +335,52 @@ const MermaidAccessibilityArchitecture = (function () {
       logWarn(
         "[Mermaid Accessibility] Architecture: the shared line-break rule is not loaded; titles are read as typed"
       );
-      return text;
+      return resolveArchitectureCanvasEntities(text);
     }
-    return adapter.replaceTypedLineBreaks(
+    const withoutBreaks = adapter.replaceTypedLineBreaks(
       text,
       adapter.LINE_BREAK_FORMS.NOT_UPPER_CASE
     );
+    return resolveArchitectureCanvasEntities(
+      readTitleMarkup(adapter, withoutBreaks)
+    );
+  }
+
+  // ITEM 82, MARKUP ENACTMENT 4 (5 October 2026): "formatting the picture
+  // draws is read as the plain text it formats; a tag the picture prints is
+  // read as written." Architecture is the SVG-text sink where the two differ:
+  // its canvas PRINTS every tag, image and link as characters (measurement 3
+  // § 3.2) but DRAWS markdown emphasis, so the adapter's markup rule is called
+  // with tags OFF and emphasis on, and codespan off (the picture drops a
+  // code span's text altogether, an edge recorded for the owner and read as
+  // written here). Resolved off window AT CALL TIME. An escaped `&lt;b&gt;`
+  // or `#lt;b#gt;` is not matched (this parse reads raw source bytes); what
+  // the words then say of it is item 82 point 2 and is left as it is.
+  const ARCHITECTURE_DRAWN_MARKUP = Object.freeze({
+    tags: false,
+    emphasis: true,
+    codespan: false,
+  });
+  let warnedMarkupRuleMissing = false;
+
+  /**
+   * Read drawn markdown emphasis in a title as the text it formats.
+   * @param {Object} adapter - window.MermaidParseAdapter
+   * @param {string} text - The title after the break rule
+   * @returns {string} The title with emphasis read as text and tags left as
+   *   written, or the title as typed when the rule is not loaded
+   */
+  function readTitleMarkup(adapter, text) {
+    if (typeof adapter.replaceDrawnMarkup !== "function") {
+      if (!warnedMarkupRuleMissing) {
+        warnedMarkupRuleMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] Architecture: the shared markup rule is not loaded; titles are read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.replaceDrawnMarkup(text, ARCHITECTURE_DRAWN_MARKUP);
   }
 
   // ITEM 82, ENACTMENT 5, principle P2: a label that names a shape that draws

@@ -899,6 +899,57 @@ window.MermaidControls = (function () {
   };
 
   /**
+   * Parcel 13b. Bring every already-rendered diagram under `root` fully alive
+   * where it now lives. The bridge renders into a hidden temporary container
+   * and returns an HTML STRING, so a diagram whose render finished there
+   * reaches its host as a serialised copy: its inline styles as they were
+   * (the floor measured while hidden), its toolbar markup, and none of its
+   * listeners, observers or records. For each such diagram this rebuilds the
+   * export toolbar (the copied one is dead), binds the view toolbar and its
+   * scroll watcher, and re-applies size and encoding in place. A diagram whose
+   * render has not finished is left to its own render path.
+   *
+   * IDEMPOTENT: on a diagram already live it rebuilds nothing, the view
+   * controls' own attach is a no-op, and the after-render step rewrites the
+   * values it already holds. Safe to call twice, and on the live path.
+   *
+   * @param {HTMLElement|Document} [root] - Where to look (defaults to document)
+   * @returns {{seen: number, revived: number, controlsRebuilt: number}}
+   */
+  function reviveRendered(root) {
+    const scope = root || document;
+    const found = [];
+    if (scope.matches && scope.matches(".mermaid-container")) found.push(scope);
+    if (typeof scope.querySelectorAll === "function") {
+      scope
+        .querySelectorAll(".mermaid-container")
+        .forEach((container) => found.push(container));
+    }
+    const summary = { seen: found.length, revived: 0, controlsRebuilt: 0 };
+
+    found.forEach((container, i) => {
+      const mermaidDiv = container.querySelector(".mermaid");
+      if (!mermaidDiv || !mermaidDiv.querySelector("svg")) return;
+
+      let index = i;
+      const copied = container.querySelector(`.${config.controlsContainerClass}`);
+      if (copied && !liveControls.has(container)) {
+        // Keep the copy's own number so its label ids stay what they were.
+        const select = copied.querySelector(".mermaid-orientation-select");
+        const match = select ? /-(\d+)$/.exec(select.id) : null;
+        if (match) index = parseInt(match[1], 10);
+        copied.remove();
+        summary.controlsRebuilt++;
+      }
+
+      addControlsToContainer(container, index);
+      reapplyAfterRender(container, mermaidDiv, { index: index });
+      summary.revived++;
+    });
+    return summary;
+  }
+
+  /**
    * Initialize controls on all Mermaid diagrams
    * @param {HTMLElement} container - Container element (defaults to document)
    */
@@ -1238,6 +1289,7 @@ window.MermaidControls = (function () {
 
     // Add controls to the container
     container.appendChild(controlsContainer);
+    liveControls.add(container);
 
     // Apply the stored width and height to the first-paint SVG. The hidden
     // size controls that used to read these three preferences were deleted
@@ -1651,6 +1703,26 @@ window.MermaidControls = (function () {
   // the arguments, and the observer is released on that first call.
   const pendingFirstLayout = new WeakMap();
 
+  // Parcel 13b. Containers whose export toolbar THIS module built and bound.
+  // A toolbar found in a container that is not in here arrived as markup (the
+  // bridge returns a serialised copy of what it rendered in its temporary
+  // container) and carries none of its listeners.
+  const liveControls = new WeakSet();
+
+  /**
+   * True when an SVG's text cannot be measured because the SVG is drawn but
+   * hidden (visibility inherited from the bridge's temporary container) or has
+   * no layout box yet. Both are "not measurable now", which is not the same as
+   * "has no floor".
+   * @param {SVGSVGElement} svgElement
+   * @returns {boolean}
+   */
+  function isFloorUnmeasurable(svgElement) {
+    if (getComputedStyle(svgElement).visibility === "hidden") return true;
+    const rect = svgElement.getBoundingClientRect();
+    return rect.width === 0 && rect.height === 0;
+  }
+
   /**
    * Re-run applyDiagramSize for an SVG when it first has a layout box
    * @param {SVGSVGElement} svgElement - Currently unlaid out
@@ -1817,6 +1889,20 @@ window.MermaidControls = (function () {
       const floorWidth = getFloorWidth(svgElement, naturalWidth);
       if (floorWidth !== null) {
         svgElement.style.minWidth = `${floorWidth}px`;
+      } else if (isFloorUnmeasurable(svgElement)) {
+        // Parcel 13b. The text cannot be measured NOW (hidden, or no box
+        // yet), so the floor is undecided, not absent: leave min-width as it
+        // is, and for an SVG with no box have the whole call made at its
+        // first layout. Removing it here is what stripped the floor from
+        // every diagram the bridge rendered in its hidden container.
+        if (svgElement.getBoundingClientRect().width === 0) {
+          deferSizingToFirstLayout(svgElement, [
+            widthPercent,
+            heightPercent,
+            maintainAspectRatio,
+            aspectRatio,
+          ]);
+        }
       } else {
         svgElement.style.removeProperty("min-width");
       }
@@ -2446,6 +2532,7 @@ window.MermaidControls = (function () {
     announceToScreenReader: announceToScreenReader,
     applyDiagramSize: applyDiagramSize,
     reapplyAfterRender: reapplyAfterRender,
+    reviveRendered: reviveRendered,
     autoFitDiagram: autoFitDiagram,
     estimateDiagramComplexity: estimateDiagramComplexity,
     detectOrientation: detectOrientation,

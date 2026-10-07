@@ -83,6 +83,13 @@
     "Analysis complete. Review OCR and the analysis overlay controls are now available.";
   const COMPLETE_WITHOUT_OCR =
     "Analysis complete. The analysis overlay controls are now available.";
+  // Text detection ended without a result (H-31). Chosen on the OCR status, not
+  // on items, so a run that never read the picture does not sound like a
+  // picture with no text in it.
+  const COMPLETE_OCR_TIMED_OUT =
+    "Analysis complete. Text detection did not finish, so the description will not use any text from the picture. The analysis overlay controls are now available.";
+  const COMPLETE_OCR_FAILED =
+    "Analysis complete. Text detection could not run, so the description will not use any text from the picture. The analysis overlay controls are now available.";
 
   // What the start of a slow analysis says (H-13). The wait used to be voiced by
   // the Model Manager naming each model the analyser happened to load, which
@@ -378,6 +385,7 @@
       complete: { icon: "checkCircle", text: "complete" },
       skipped: { icon: "close", text: "skipped" },
       error: { icon: "error", text: "failed" },
+      "timed-out": { icon: "warning", text: "did not finish" },
       cached: { icon: "disk", text: "restored from cache" },
     },
 
@@ -935,9 +943,11 @@
         result.ocr.items &&
         result.ocr.items.length > 0
       );
-      this.announceStatus(
-        hasOCRItems ? COMPLETE_WITH_OCR : COMPLETE_WITHOUT_OCR,
-      );
+      const ocrStatus = result && result.ocr && result.ocr.status;
+      let completionLine = hasOCRItems ? COMPLETE_WITH_OCR : COMPLETE_WITHOUT_OCR;
+      if (ocrStatus === "timed-out") completionLine = COMPLETE_OCR_TIMED_OUT;
+      if (ocrStatus === "failed") completionLine = COMPLETE_OCR_FAILED;
+      this.announceStatus(completionLine);
       logDebug(
         `Analysis completion announced (OCR items: ${
           hasOCRItems ? result.ocr.items.length : 0

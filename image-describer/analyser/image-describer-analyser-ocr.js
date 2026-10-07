@@ -164,6 +164,27 @@
   }
 
   /**
+   * Detaches a worker from module state at once and terminates it without
+   * waiting, so a timed-out pass stops and a hung terminate cannot extend the
+   * stage. Only clears the shared state if it still holds this worker.
+   * @param {object} worker
+   */
+  function abandonWorker(worker) {
+    if (_tesseractWorker === worker) {
+      _tesseractWorker = null;
+      _tesseractReady = false;
+    }
+    try {
+      Promise.resolve(worker.terminate()).then(
+        () => logInfo("Timed-out Tesseract worker terminated"),
+        (err) => logWarn("Error terminating timed-out worker:", err.message),
+      );
+    } catch (err) {
+      logWarn("Error terminating timed-out worker:", err.message);
+    }
+  }
+
+  /**
    * Returns a reference to the current Tesseract worker (for cancellation).
    * @returns {object|null}
    */
@@ -727,13 +748,19 @@
       // Ensure worker is available (reuse across calls)
       await ensureTesseract();
 
+      // One budget for the whole recognition stage. It starts here, after
+      // worker creation (never inside the old per-pass timers either), and
+      // both passes draw on it: the secondary pass gets what the primary
+      // left, and is skipped if nothing is left.
+      const deadline = Date.now() + timeout;
+
       // ── Primary pass: run OCR on the original (colour) canvas ──
       const primaryItems = await recogniseCanvas(
         imageSource,
         imgWidth,
         imgHeight,
         ocrConfig,
-        timeout,
+        deadline,
         u,
       );
 
@@ -746,7 +773,11 @@
 
       if (preprocess && typeof preprocess.preprocessTier1 === "function") {
         try {
-          if (imageSource instanceof HTMLCanvasElement) {
+          if (deadline - Date.now() <= 0) {
+            logWarn(
+              "Secondary OCR pass skipped — stage budget used up by the primary pass",
+            );
+          } else if (imageSource instanceof HTMLCanvasElement) {
             const preprocessStart = Date.now();
             const preprocessedCanvas = preprocess.preprocessTier1(imageSource);
             logDebug(`Preprocessing took ${Date.now() - preprocessStart}ms`);
@@ -756,7 +787,7 @@
               imgWidth,
               imgHeight,
               ocrConfig,
-              timeout,
+              deadline,
               u,
             );
 
@@ -888,7 +919,7 @@
    * @param {number} imgWidth — original image width (for fallback normalisation)
    * @param {number} imgHeight — original image height
    * @param {object} ocrConfig — OCR profile configuration
-   * @param {number} timeout — timeout in milliseconds
+   * @param {number} deadline — absolute time (Date.now() scale) the stage budget ends
    * @param {object} u — reference to utils module
    * @returns {Promise<Array>} array of OCR item objects
    */
@@ -897,7 +928,7 @@
     imgWidth,
     imgHeight,
     ocrConfig,
-    timeout,
+    deadline,
     u,
   ) {
     // Upscale to 2× for better OCR accuracy on small labels
@@ -930,13 +961,34 @@
       tessedit_pageseg_mode: "11",
     });
 
-    // Run recognition with timeout
-    const recognisePromise = _tesseractWorker.recognize(ocrSource);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Tesseract OCR timed out")), timeout),
-    );
+    // Run recognition against what is left of the stage budget (upscaling
+    // and parameter setup above have already spent their share of it)
+    const timeout = Math.max(deadline - Date.now(), 0);
+    const worker = _tesseractWorker;
+    const recognisePromise = worker.recognize(ocrSource);
+    let timerId = null;
+    const timeoutPromise = new Promise((_, reject) => {
+      timerId = setTimeout(
+        () => reject(new Error("Tesseract OCR timed out")),
+        timeout,
+      );
+    });
 
-    const { data } = await Promise.race([recognisePromise, timeoutPromise]);
+    let data;
+    try {
+      ({ data } = await Promise.race([recognisePromise, timeoutPromise]));
+    } catch (err) {
+      if (err && err.message === "Tesseract OCR timed out") {
+        // The abandoned pass would keep the shared worker busy and make the
+        // next analysis queue behind it (H-28). Stop it; the next
+        // ensureTesseract() makes a fresh worker.
+        abandonWorker(worker);
+        recognisePromise.catch(() => {}); // terminate rejects the lost pass
+      }
+      throw err;
+    } finally {
+      clearTimeout(timerId);
+    }
 
     logDebug(`Tesseract returned ${data.words ? data.words.length : 0} words`);
 

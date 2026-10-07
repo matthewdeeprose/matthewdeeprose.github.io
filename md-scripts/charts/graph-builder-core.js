@@ -64,6 +64,31 @@ const GraphBuilder = (function () {
     return typeof value === "string" && value.trim() !== "" ? value : null;
   }
 
+  // UX-4a: the Data Preview's body cells are inputs after an image extraction.
+  // One switch, so an "Edit values" toggle (design B) stays one change away.
+  const EXTRACTED_PREVIEW_EDITABLE = true;
+
+  // The symbol set extractFormData strips before reading a number ("£1,200", "45%")
+  const CELL_NUMBER_STRIP = /[£$€¥₹%,\s]/g;
+  // After stripping: an optional minus and a plain decimal, nothing else ("12abc" is refused)
+  const CELL_NUMBER_PATTERN = /^-?(\d+(\.\d*)?|\.\d+)$/;
+
+  /** A typed cell value as a number, null for blank, or undefined when it is not a number. */
+  function parseCellNumber(text) {
+    const trimmed = String(text).trim();
+    if (trimmed === "") return null;
+    const cleaned = trimmed.replace(CELL_NUMBER_STRIP, "");
+    if (!CELL_NUMBER_PATTERN.test(cleaned)) return undefined;
+    const value = Number(cleaned);
+    return Number.isFinite(value) ? value : undefined;
+  }
+
+  /** How a stored cell value reads in a toast: "20", "empty", or a quoted label. */
+  function describeKeptValue(value, isLabel) {
+    if (value === null || value === undefined || value === "") return "empty";
+    return isLabel ? `"${value}"` : String(value);
+  }
+
   // Application state
   const state = {
     initialized: false,
@@ -1345,7 +1370,13 @@ const GraphBuilder = (function () {
         orientation: result.orientation,
       };
 
-      this.dependencies.ui.showPreview(state.chartData);
+      // The core owns every cell write; the preview only shows what this returns
+      this.dependencies.ui.setCellEditHandler?.((row, col, text) =>
+        this.updateExtractedCell(row, col, text)
+      );
+      this.dependencies.ui.showPreview(state.chartData, {
+        editable: EXTRACTED_PREVIEW_EDITABLE,
+      });
 
       if (this.elements.dataInput.nextButton) {
         this.elements.dataInput.nextButton.disabled = false;
@@ -1355,6 +1386,49 @@ const GraphBuilder = (function () {
         `Chart data extracted (${rows.length} rows)`
       );
       return true;
+    }
+
+    /**
+     * Store one edited cell of an extracted table (UX-4a). A rejected value keeps
+     * the last good one and raises one error toast; a stored value says nothing.
+     * @param {number} rowIndex - Index into state.chartData.rows
+     * @param {number} colIndex - Column index; 0 is the label column
+     * @param {string} text - What the person typed
+     * @returns {*} The value now stored in the cell (unchanged when refused)
+     */
+    updateExtractedCell(rowIndex, colIndex, text) {
+      const data = state.chartData;
+      const row = data && state.imageExtraction ? data.rows[rowIndex] : undefined;
+      if (!row || colIndex < 0 || colIndex >= data.headers.length) {
+        logWarn("[Graph Builder Core] updateExtractedCell refused: no such cell", rowIndex, colIndex);
+        return row ? row[colIndex] : undefined;
+      }
+
+      const isLabel = colIndex === 0;
+      const kept = row[colIndex];
+      const where = `Row ${rowIndex + 1}, ${data.headers[colIndex]}`;
+
+      if (isLabel) {
+        const label = String(text).trim();
+        if (label === "") {
+          this.dependencies.notifications.error(
+            `${where}: a label cannot be empty. Kept ${describeKeptValue(kept, true)}.`
+          );
+          return kept;
+        }
+        row[colIndex] = label;
+        return label;
+      }
+
+      const value = parseCellNumber(text);
+      if (value === undefined) {
+        this.dependencies.notifications.error(
+          `${where}: "${String(text).trim()}" is not a number. Kept ${describeKeptValue(kept, false)}.`
+        );
+        return kept;
+      }
+      row[colIndex] = value;
+      return value;
     }
 
     /**

@@ -4105,6 +4105,25 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border-bottom-color: #005c84;
   background-color: rgba(0, 92, 132, 0.1);
 }
+/* UX-8: each Add Data tab icon has its own hue, every one from a colour already used in this sheet. The hue carries no
+   meaning (the label does). Each is at least 3:1 on the tab's resting, hover, focus and selected surfaces; the tab's
+   hover and focus surface stays #fffff4 in this theme, so no reset is needed here (dark.css needs one). */
+.gb-tab-icon[data-icon="pencil"] {
+  color: #d5007f;
+}
+.gb-tab-icon[data-icon="clipboardNotes"] {
+  color: #1e8765;
+}
+.gb-tab-icon[data-icon="folder"] {
+  color: #b45309;
+}
+.gb-tab-icon[data-icon="image"] {
+  color: #005c84;
+}
+/* UX-8: the result heading's tick, the same green as the Paste CSV tab icon. */
+#gb-result-heading [data-icon="checkCircle"] {
+  color: #1e8765;
+}
 .gb-input-panel {
   border-color: #495961;
   background-color: rgba(255, 255, 244, 0.5);

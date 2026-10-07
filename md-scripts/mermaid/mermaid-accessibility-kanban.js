@@ -359,6 +359,9 @@
     return `${narrationCount(count)} column${count === 1 ? "" : "s"}`;
   }
 
+  // The option K6's list item passes to columnName to write a label's links.
+  const LINKED_NAME = Object.freeze({ withLinks: true });
+
   /**
    * Name one column - rule K6's form, or rule K4's, carrying K10.
    *
@@ -372,11 +375,17 @@
    *
    * @param {Object} column - A delivered column
    * @param {boolean} midSentence - True for K4's sentence
+   * @param {Object} [options] - `LINKED_NAME` to write the label's links
    * @returns {string} The quoted label, or K10's phrase
    */
-  function columnName(column, midSentence) {
+  function columnName(column, midSentence, options) {
     if (!isNarratable(column.label)) {
       return midSentence ? UNLABELLED_COLUMN_MID_SENTENCE : UNLABELLED_COLUMN;
+    }
+    // Item 82, L2 (enactment 3): only K6's list item asks for the label's
+    // links; K4's distribution sentence reads the text.
+    if (options === LINKED_NAME) {
+      return `"${common().renderSegmentsHtml(column.segments, column.label)}"`;
     }
     return `"${escapeText(column.label)}"`;
   }
@@ -391,7 +400,8 @@
     if (!isNarratable(card.label)) {
       return UNLABELLED_CARD;
     }
-    return `"${escapeText(card.label)}"`;
+    // Item 82, L2 (enactment 3): the card's item is the label's only site.
+    return `"${common().renderSegmentsHtml(card.segments, card.label)}"`;
   }
 
   // ---------------------------------------------------------------------
@@ -712,7 +722,10 @@
    */
   function buildCardLine(card) {
     const assignedPhrase = isNarratable(card.assigned)
-      ? `, assigned to "${escapeText(card.assigned)}"`
+      ? `, assigned to "${common().renderSegmentsHtml(
+          card.assignedSegments,
+          card.assigned
+        )}"`
       : "";
 
     return (
@@ -736,7 +749,7 @@
    * @returns {string[]} The lines for this column
    */
   function renderColumn(column) {
-    const name = columnName(column, false);
+    const name = columnName(column, false, LINKED_NAME);
     const count = cardCountPhrase(column.cards.length);
 
     if (column.cards.length === 0) {

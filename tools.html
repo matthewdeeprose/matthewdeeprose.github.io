@@ -5106,7 +5106,7 @@
               class="gb-screen active"
               aria-labelledby="gb-data-heading"
             >
-              <h2 id="gb-data-heading">Step 1: Add Your Data</h2>
+              <h2 id="gb-data-heading" tabindex="-1">Step 1: Add Your Data</h2>
 
               <!-- Data input method selection -->
               <fieldset class="gb-input-methods">
@@ -5124,7 +5124,11 @@
                     aria-controls="gb-form-panel"
                     aria-selected="true"
                   >
-                    <span class="gb-tab-icon">✏️</span>
+                    <span
+                      class="gb-tab-icon"
+                      aria-hidden="true"
+                      data-icon="pencil"
+                    ></span>
                     <span class="gb-tab-label">Enter Data</span>
                   </button>
                   <button
@@ -5135,7 +5139,11 @@
                     aria-controls="gb-paste-panel"
                     aria-selected="false"
                   >
-                    <span class="gb-tab-icon">📋</span>
+                    <span
+                      class="gb-tab-icon"
+                      aria-hidden="true"
+                      data-icon="clipboardNotes"
+                    ></span>
                     <span class="gb-tab-label">Paste CSV</span>
                   </button>
                   <button
@@ -5146,7 +5154,11 @@
                     aria-controls="gb-upload-panel"
                     aria-selected="false"
                   >
-                    <span class="gb-tab-icon">📁</span>
+                    <span
+                      class="gb-tab-icon"
+                      aria-hidden="true"
+                      data-icon="folder"
+                    ></span>
                     <span class="gb-tab-label">Upload File</span>
                   </button>
                   <button
@@ -5264,7 +5276,11 @@ Science,91</pre
                 <h3>Upload a CSV file</h3>
                 <div class="gb-upload-area">
                   <label for="gb-file-input" class="gb-file-label">
-                    <span class="gb-upload-icon">📁</span>
+                    <span
+                      class="gb-upload-icon"
+                      aria-hidden="true"
+                      data-icon="folder"
+                    ></span>
                     <span class="gb-upload-text">Select a CSV file</span>
                     <input
                       type="file"
@@ -5327,6 +5343,37 @@ Science,91</pre
                   </p>
                   <p id="gb-image-file-name">No image chosen</p>
                 </div>
+                <!-- UX-3a. Optional hints sent to the model with the image. Option values are the
+                     prompt's own suggestedType values, in the prompt's order. -->
+                <fieldset class="gb-image-field">
+                  <legend>About this chart (optional)</legend>
+                  <label for="gb-image-hint-type">Chart type</label>
+                  <select id="gb-image-hint-type">
+                    <option value="">Not sure</option>
+                    <option value="bar">Bar</option>
+                    <option value="line">Line</option>
+                    <option value="combo">Bar and line combined</option>
+                    <option value="pie">Pie</option>
+                    <option value="doughnut">Doughnut</option>
+                    <option value="scatter">Scatter</option>
+                    <option value="bubble">Bubble</option>
+                    <option value="radar">Radar</option>
+                    <option value="polarArea">Polar area</option>
+                  </select>
+                  <label for="gb-image-hint-text"
+                    >Anything else the model should know</label
+                  >
+                  <textarea
+                    id="gb-image-hint-text"
+                    rows="3"
+                    maxlength="500"
+                    aria-describedby="gb-image-hint-help"
+                  ></textarea>
+                  <p id="gb-image-hint-help" class="gb-help-text">
+                    For example, the units, or what each line shows. The model
+                    checks this against the image.
+                  </p>
+                </fieldset>
                 <div class="gb-image-field">
                   <label for="gb-image-model">Model</label>
                   <select id="gb-image-model"></select>
@@ -5334,6 +5381,12 @@ Science,91</pre
                 <button type="button" id="gb-image-extract" class="gb-action-button" disabled>
                   Extract data
                 </button>
+                <div id="gb-image-progress" hidden>
+                  <p id="gb-image-progress-text" class="gb-help-text"></p>
+                  <button type="button" id="gb-image-stop" class="gb-back-button">
+                    <span aria-hidden="true" data-icon="close"></span> Stop
+                  </button>
+                </div>
                 <div id="gb-image-result" hidden></div>
                 <!-- After the Extract button, so the panel's Tab order stays file input, model, Extract -->
                 <details
@@ -5344,6 +5397,52 @@ Science,91</pre
                 >
                   <summary>Your original image</summary>
                   <img alt="" />
+                </details>
+                <!-- UX-5. Developer information, last in the panel so the Tab order above is
+                     unchanged. Filled by graph-builder-image.js through js/dev-panel.js.
+                     No live region: it updates silently; the copy buttons' confirmation is its
+                     only voice. -->
+                <details class="gb-dev-panel" id="gb-image-dev-panel">
+                  <summary>Developer information</summary>
+                  <dl class="gb-dev-list">
+                    <dt>Finish reason</dt>
+                    <dd id="gb-image-dev-finish-reason">Not reported</dd>
+
+                    <dt>Request</dt>
+                    <dd>
+                      <p id="gb-image-dev-request-note" class="gb-dev-note" hidden></p>
+                      <pre
+                        tabindex="0"
+                        aria-label="Request JSON"
+                      ><code id="gb-image-dev-request" class="language-json"></code></pre>
+                      <button
+                        type="button"
+                        id="gb-image-dev-copy-request"
+                        class="gb-dev-copy"
+                        aria-label="Copy request JSON"
+                      >
+                        <span aria-hidden="true" data-icon="clipboardCopy"></span>
+                        Copy request
+                      </button>
+                    </dd>
+
+                    <dt>Response</dt>
+                    <dd>
+                      <pre
+                        tabindex="0"
+                        aria-label="Response JSON"
+                      ><code id="gb-image-dev-response" class="language-json"></code></pre>
+                      <button
+                        type="button"
+                        id="gb-image-dev-copy-response"
+                        class="gb-dev-copy"
+                        aria-label="Copy response JSON"
+                      >
+                        <span aria-hidden="true" data-icon="clipboardCopy"></span>
+                        Copy response
+                      </button>
+                    </dd>
+                  </dl>
                 </details>
               </div>
               <!-- Data preview -->
@@ -5356,6 +5455,7 @@ Science,91</pre
                 <div class="gb-preview-info">
                   <span id="gb-preview-stats" class="gb-preview-stats"></span>
                 </div>
+                <p id="gb-preview-edit-hint" class="gb-preview-edit-hint" hidden>You can correct any value here before you choose a chart.</p>
                 <div class="gb-preview-table-container">
                   <table id="gb-preview-table" class="gb-preview-table">
                     <caption>
@@ -5386,7 +5486,9 @@ Science,91</pre
               class="gb-screen"
               aria-labelledby="gb-chart-heading"
             >
-              <h2 id="gb-chart-heading">Step 2: Choose Chart Type</h2>
+              <h2 id="gb-chart-heading" tabindex="-1">Step 2: Choose Chart Type</h2>
+              <!-- UX-6: says why Combo or Bubble is missing; filled by refreshAvailability. Static text, not a live region -->
+              <p id="gb-chart-type-note" class="gb-help-text" hidden></p>
 
               <details
                 id="gb-image-original-type"
@@ -5742,7 +5844,7 @@ Science,91</pre
               class="gb-screen"
               aria-labelledby="gb-config-heading"
             >
-              <h2 id="gb-config-heading">Step 3: Configure Your Chart</h2>
+              <h2 id="gb-config-heading" tabindex="-1">Step 3: Configure Your Chart</h2>
 
               <div class="gb-config-layout">
                 <!-- Live preview -->
@@ -5860,7 +5962,10 @@ Science,91</pre
               class="gb-screen"
               aria-labelledby="gb-result-heading"
             >
-              <h2 id="gb-result-heading">✓ Your Chart is Ready!</h2>
+              <h2 id="gb-result-heading" tabindex="-1">
+                <span aria-hidden="true" data-icon="checkCircle"></span> Your
+                Chart is Ready!
+              </h2>
 
               <div class="gb-result-info">
                 <p>
@@ -5903,21 +6008,24 @@ Science,91</pre
                   id="gb-use-in-document"
                   class="gb-action-button"
                 >
-                  📄 Use in Document
+                  <span aria-hidden="true" data-icon="fileText"></span>Use in
+                  Document
                 </button>
                 <button
                   type="button"
                   id="gb-save-template"
                   class="gb-action-button"
                 >
-                  💾 Save as Template
+                  <span aria-hidden="true" data-icon="disk"></span>Save as
+                  Template
                 </button>
                 <button
                   type="button"
                   id="gb-create-another"
                   class="gb-action-button"
                 >
-                  🔄 Create Another Chart
+                  <span aria-hidden="true" data-icon="refresh"></span>Create
+                  Another Chart
                 </button>
               </div>
             </section>
@@ -7189,7 +7297,6 @@ Science,91</pre
                   id="convert-mode-errors"
                   class="mathpix-convert-errors"
                   hidden
-                  role="alert"
                 >
                   <h4>
                     <span aria-hidden="true" data-icon="warning"></span>
@@ -9341,7 +9448,6 @@ Science,91</pre
                     id="resume-convert-errors"
                     class="mathpix-convert-errors"
                     hidden
-                    role="alert"
                   >
                     <h4>
                       <span aria-hidden="true" data-icon="warning"></span>
@@ -21292,6 +21398,7 @@ Science,91</pre
          session-restorer-index.js (which counts the prototype methods). -->
     <script src="mathpix-scripts/core/session-restorer/session-restorer-scorm-export.js"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-index.js?v=8.2"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-docx-headings.js?v=1.0"></script>
     <script
       type="application/dev-test"
       data-module="true"
@@ -21980,6 +22087,7 @@ Science,91</pre
     <script src="chat/chat-messages.js"></script>
     <script src="chat/chat-persistence.js"></script>
     <script src="chat/chat-model-info.js"></script>
+    <script src="js/dev-panel.js"></script>
     <script src="chat/chat-dev-panel.js"></script>
     <script src="chat/chat-export.js"></script>
     <script src="chat/chat-attach.js"></script>

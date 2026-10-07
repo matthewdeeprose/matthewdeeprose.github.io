@@ -205,6 +205,27 @@ const ClassDiagramModule = (function () {
     return cls.genericType ? `${base} of ${convertGenerics(cls.genericType)}` : base;
   }
 
+  /**
+   * The class's list-heading name as HTML: classDisplayName, with a link the
+   * picture draws kept as a working link (item 82, L2). Only the Classes list
+   * calls this; every other mention of the class reads the text. The anchor is
+   * written only where the narrated base is exactly the delivered label, so a
+   * `~T~` generic that convertGenerics rewrites falls back to the text rather
+   * than mis-aligning the segments.
+   * @param {Object} cls - An adapter class object
+   * @returns {string} The escaped name, with an anchor where the label drew one
+   */
+  function classHeadingNameHtml(cls) {
+    const base = convertGenerics(cls.displayName);
+    const baseHtml =
+      cls.segments && base === cls.displayName
+        ? Common.renderSegmentsHtml(cls.segments, base)
+        : Common.escapeHtml(base);
+    return cls.genericType
+      ? `${baseHtml} of ${Common.escapeHtml(convertGenerics(cls.genericType))}`
+      : baseHtml;
+  }
+
   // ITEM 82, ENACTMENT 4 (3 October 2026): "a label that draws nothing (only a
   // break, or only spaces) is read as unlabelled, in each type's own words."
   // The test is a TEST only: it trims to decide, and never alters the bytes it
@@ -334,7 +355,7 @@ const ClassDiagramModule = (function () {
     // Both halves are author text; the parentheses and separator are not.
     const headingName = isUnlabelledClass(cls)
       ? Common.capitalize(unlabelledClassPhrase(cls))
-      : Common.escapeHtml(classDisplayName(cls));
+      : classHeadingNameHtml(cls);
     const heading =
       headingName +
       (annotations.length
@@ -483,7 +504,10 @@ const ClassDiagramModule = (function () {
     // the canvas shows.
     if (relationship.label && !drawsNothing(relationship.label)) {
       // The quotation marks are furniture; only the label is escaped.
-      text += ` Labelled "${Common.escapeHtml(relationship.label)}".`;
+      // Item 82, L2 (enactment 3): a relative or protocol-relative link the
+      // picture draws here is a working link in the words; this sentence is
+      // the label's only site.
+      text += ` Labelled "${Common.renderSegmentsHtml(relationship.segments, relationship.label)}".`;
     }
 
     // Multiplicities read as a clause pair, because one end alone never
@@ -711,7 +735,7 @@ const ClassDiagramModule = (function () {
         // sentence's own words, and never as `reads: .`.
         const noteVerb = drawsNothing(note.text)
           ? UNLABELLED_NOTE_TEXT
-          : `reads: ${Common.escapeHtml(note.text)}`;
+          : `reads: ${Common.renderSegmentsHtml(note.segments, note.text)}`;
         if (note.attachedTo) {
           // The attachment may name a class that does not exist (C10), so
           // the raw id stands in rather than the lookup failing. A class whose

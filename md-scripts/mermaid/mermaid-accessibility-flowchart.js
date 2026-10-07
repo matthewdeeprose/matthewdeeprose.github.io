@@ -395,12 +395,18 @@ const FlowchartModule = (function () {
    * which is the OQ4 closure's scope: in gold exemplar 6 exactly two
    * characters change, both inside the author's P1 label.
    *
+   * Item 82, L2: a caller that is the label's own list site passes the
+   * delivered `segments`, so a link the picture draws is a working link there
+   * (Common.renderSegmentsHtml, the one place an anchor is written). Every
+   * other caller passes none and reads the text.
+   *
    * @param {string} label - The RAW author label, never a pre-escaped one
    * @param {string} style - "double", "single" or "bare"
+   * @param {Array} [segments] - The label's delivered link segments
    * @returns {string} The escaped label, wrapped as asked
    */
-  function quoteAuthorLabel(label, style) {
-    const safe = Common.escapeHtml(label);
+  function quoteAuthorLabel(label, style, segments) {
+    const safe = Common.renderSegmentsHtml(segments, label);
     if (style === "single") return `'${safe}'`;
     if (style === "double") return `"${safe}"`;
     return safe;
@@ -413,15 +419,16 @@ const FlowchartModule = (function () {
    * double quote left to find.
    *
    * @param {string} label - The raw branch label
+   * @param {Array} [segments] - The edge's delivered link segments
    * @returns {string} The escaped label, quoted per R10
    */
-  function renderBranchLabel(label) {
+  function renderBranchLabel(label, segments) {
     const style = label.includes('"')
       ? "single"
       : BRANCH_LABEL_PUNCTUATION.test(label)
         ? "double"
         : "bare";
-    return quoteAuthorLabel(label, style);
+    return quoteAuthorLabel(label, style, segments);
   }
 
   /**
@@ -800,14 +807,27 @@ const FlowchartModule = (function () {
      */
     render(segments, t, tag) {
       const parts = [];
+      // Item 82, L2: a group's heading repeats for every segment of the group,
+      // and a link is drawn once, so only the FIRST heading of a group carries
+      // it; every later one reads the text. The set lives on the traversal so
+      // it spans every component's render call.
+      t.linkedGroupHeadings = t.linkedGroupHeadings || new Set();
       for (const segment of segments) {
+        const firstHeading =
+          segment.group && !t.linkedGroupHeadings.has(segment.group);
+        if (segment.group) t.linkedGroupHeadings.add(segment.group);
         // A group title that draws nothing reads as an unlabelled subgraph
         // naming the author's id (enactment 4, P2); before it, an empty
         // title fell back to the bare id.
         const heading = segment.group
           ? isUnlabelledGroup(segment.group)
             ? `${UNLABELLED_GROUP_PHRASE} "${Common.escapeHtml(segment.group.id)}"`
-            : Common.escapeHtml(segment.group.title || segment.group.id)
+            : segment.group.title
+              ? Common.renderSegmentsHtml(
+                  firstHeading ? segment.group.segments : undefined,
+                  segment.group.title
+                )
+              : Common.escapeHtml(segment.group.id)
           : "Ungrouped steps";
         parts.push(
           `<${tag} class="flow-heading group-heading">${heading}</${tag}>`
@@ -1505,7 +1525,7 @@ const FlowchartModule = (function () {
       ? opensSentence
         ? Common.capitalize(unlabelledStepPhrase(node))
         : unlabelledStepPhrase(node)
-      : Common.escapeHtml(label);
+      : Common.renderSegmentsHtml(node.segments, label);
 
     // A labelled self-loop is narrated as a nested item, so it forces the
     // nested form too. An R7 parallel split never takes it: its exits are
@@ -1548,14 +1568,14 @@ const FlowchartModule = (function () {
       for (const edge of out) {
         nestedItems.push(
           edge.label
-            ? `<li>If ${renderBranchLabel(edge.label)}, ${referencePhrase(edge)}.</li>`
+            ? `<li>If ${renderBranchLabel(edge.label, edge.segments)}, ${referencePhrase(edge)}.</li>`
             : `<li>${Common.capitalize(referencePhrase(edge))}.</li>`
         );
       }
       for (const edge of loops) {
         if (edge.label) {
           nestedItems.push(
-            `<li>If ${renderBranchLabel(edge.label)}, this step repeats.</li>`
+            `<li>If ${renderBranchLabel(edge.label, edge.segments)}, this step repeats.</li>`
           );
         }
       }
@@ -1962,7 +1982,7 @@ const FlowchartModule = (function () {
         const node = t.nodeById.get(id);
         return isUnlabelledNode(node)
           ? unlabelledStepPhrase(node)
-          : Common.escapeHtml(node.label);
+          : Common.renderSegmentsHtml(node.segments, node.label);
       });
       const countWord = Common.capitalize(Common.narrationNumber(t.isolated.length));
       const noun = t.isolated.length === 1 ? "step" : "steps";

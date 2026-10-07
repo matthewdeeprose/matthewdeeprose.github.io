@@ -34,6 +34,10 @@
   const ENABLE_ALL_LOGGING = false;
   const DISABLE_ALL_LOGGING = false;
 
+  /** One 60 s budget for the whole text-detection stage; defined once in utils (H-30). */
+  const OCR_STAGE_BUDGET_MS =
+    window.ImageDescriberAnalyserUtils.OCR_STAGE_BUDGET_MS;
+
   function shouldLog(level) {
     if (DISABLE_ALL_LOGGING) return false;
     if (ENABLE_ALL_LOGGING) return true;
@@ -74,7 +78,7 @@
       description: "General-purpose analysis suitable for most image types",
       ocr: {
         enabled: true,
-        timeout: 15000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "word",
         minConfidence: 0.3,
@@ -120,7 +124,7 @@
       description: "Optimised for charts, graphs, and plots with labelled axes",
       ocr: {
         enabled: true,
-        timeout: 15000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "word",
         minConfidence: 0.25,
@@ -167,7 +171,7 @@
         "Optimised for photographs (biology specimens, geological features, laboratory images)",
       ocr: {
         enabled: true,
-        timeout: 15000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "word",
         minConfidence: 0.25,
@@ -218,7 +222,7 @@
         "Optimised for maps with colour-coded regions and text labels",
       ocr: {
         enabled: true,
-        timeout: 15000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "word",
         minConfidence: 0.3,
@@ -265,7 +269,7 @@
         "Optimised for technical diagrams, flow charts, and labelled drawings",
       ocr: {
         enabled: true,
-        timeout: 15000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "word",
         minConfidence: 0.3,
@@ -311,7 +315,7 @@
       description: "Optimised for mathematical equations and formulae",
       ocr: {
         enabled: true,
-        timeout: 20000,
+        timeout: OCR_STAGE_BUDGET_MS,
         language: "eng",
         recognitionLevel: "line",
         minConfidence: 0.2,

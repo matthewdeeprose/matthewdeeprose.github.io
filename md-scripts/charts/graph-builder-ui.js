@@ -57,6 +57,25 @@ const GraphBuilderUI = (function () {
     }
   }
 
+  // UX-6/UX-7 — the note on the chart-type screen saying why Combo or Bubble is missing.
+  // The needs are stated as column roles, which is true on every route; the pointer says where roles are set,
+  // and only where a person can act on it.
+  const CHART_TYPE_NOTE_ID = "gb-chart-type-note";
+  const CHART_TYPE_NOTE = Object.freeze({
+    COMBO: "Combo (mixed) needs at least two columns with the Value role.",
+    BUBBLE:
+      "Bubble Chart needs two columns with the Value role and one with the Radius role.",
+    // Enter Data: Advanced Column Options is on screen in Step 1
+    POINTER_ENTER_DATA:
+      "You can set column roles under Advanced Column Options in Step 1.",
+    // Paste and Upload: switching to Enter Data clears the table, so the pointer says where roles are set, not "go back"
+    POINTER_TABLE_TABS:
+      "Column roles can be set on the Enter Data tab in Step 1, where you type the data in.",
+  });
+  // Data methods that pick a pointer; any other method (the image route) gets none
+  const DATA_METHOD_ENTER_DATA = "form";
+  const DATA_METHODS_TABLE_TABS = Object.freeze(["paste", "upload"]);
+
   // UI State
   const state = {
     currentScreen: "data-input",
@@ -354,13 +373,18 @@ const GraphBuilderUI = (function () {
       this.container = document.getElementById("gb-data-preview");
       this.statsElement = document.getElementById("gb-preview-stats");
       this.tableElement = document.getElementById("gb-preview-table");
+      this.editHint = document.getElementById("gb-preview-edit-hint");
+      // Set by the core: (row, col, text) => the value it stored
+      this.cellEditHandler = null;
     }
 
     /**
      * Show data preview
      * @param {Object} data - Data to preview
+     * @param {Object} [options]
+     * @param {boolean} [options.editable=false] - Body cells become text inputs (image route only)
      */
-    show(data) {
+    show(data, options = {}) {
       if (!data || !this.container) return;
 
       logInfo("[Graph Builder UI] Showing data preview for:", data);
@@ -368,13 +392,20 @@ const GraphBuilderUI = (function () {
       this.container.style.display = "block";
       this.statsElement.textContent = `${data.rows.length} rows, ${data.headers.length} columns`;
 
+      // Editing needs somewhere to send the value, so no handler means a plain table
+      const editable =
+        options.editable === true && typeof this.cellEditHandler === "function";
+
       // Initialise preview state
       state.previewState = {
         data: data,
         currentlyShowing: Math.min(10, data.rows.length),
         totalRows: data.rows.length,
         increment: 25,
+        editable,
       };
+
+      if (this.editHint) this.editHint.hidden = !editable;
 
       this.renderTable();
     }
@@ -386,7 +417,130 @@ const GraphBuilderUI = (function () {
       if (this.container) {
         this.container.style.display = "none";
       }
+
+      // An editable table leaves no input behind; other routes keep their old behaviour
+      if (state.previewState && state.previewState.editable && this.tableElement) {
+        const tbody = this.tableElement.querySelector("tbody");
+        if (tbody) tbody.innerHTML = "";
+      }
+      if (this.editHint) this.editHint.hidden = true;
+
       state.previewState = null;
+    }
+
+    /**
+     * Register the function that validates and stores a cell edit
+     * @param {Function|null} handler - (rowIndex, colIndex, text) => stored value
+     */
+    setCellEditHandler(handler) {
+      this.cellEditHandler = typeof handler === "function" ? handler : null;
+    }
+
+    /**
+     * Text an input shows for a stored value; null and "" show as blank
+     * @param {*} value - Stored cell value
+     * @returns {string}
+     */
+    formatCellValue(value) {
+      if (value === null || value === undefined) return "";
+      return String(value);
+    }
+
+    /**
+     * Accessible name for a cell input: "Sales, Jan", or "Category, row 3" for the label column
+     * @param {Array} headers - Column headers
+     * @param {Array} row - The row's values
+     * @param {number} rowIndex - Index into data.rows
+     * @param {number} colIndex - Column index
+     * @returns {string}
+     */
+    cellInputName(headers, row, rowIndex, colIndex) {
+      const header = headers[colIndex];
+      const label = row[0];
+      const hasLabel = label !== null && label !== undefined && String(label).trim() !== "";
+
+      if (colIndex === 0 || !hasLabel) return `${header}, row ${rowIndex + 1}`;
+      return `${header}, ${label}`;
+    }
+
+    /**
+     * Build the input for one editable body cell
+     * @param {Object} data - Preview data
+     * @param {number} rowIndex - Index into data.rows
+     * @param {number} colIndex - Column index
+     * @returns {HTMLInputElement}
+     */
+    createCellInput(data, rowIndex, colIndex) {
+      const row = data.rows[rowIndex];
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "gb-preview-cell-input";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.dataset.row = String(rowIndex);
+      input.dataset.col = String(colIndex);
+      input.value = this.formatCellValue(row[colIndex]);
+      input.setAttribute("aria-label", this.cellInputName(data.headers, row, rowIndex, colIndex));
+
+      if (colIndex > 0) {
+        input.inputMode = "decimal";
+        input.placeholder = "empty";
+      }
+
+      input.addEventListener("change", () => this.commitCellInput(input));
+      input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          this.commitCellInput(input);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          this.restoreCellInput(input);
+        }
+      });
+
+      return input;
+    }
+
+    /**
+     * Send an input's text to the core and show what it stored; focus never moves
+     * @param {HTMLInputElement} input
+     */
+    commitCellInput(input) {
+      if (!state.previewState || !state.previewState.editable || !this.cellEditHandler) return;
+
+      const { data } = state.previewState;
+      const rowIndex = Number(input.dataset.row);
+      const colIndex = Number(input.dataset.col);
+      const row = data.rows[rowIndex];
+      if (!row) return;
+
+      // Nothing changed since the last commit (Enter then blur): no second write, no second toast
+      if (input.value === this.formatCellValue(row[colIndex])) return;
+
+      const stored = this.cellEditHandler(rowIndex, colIndex, input.value);
+      input.value = this.formatCellValue(stored);
+
+      // A new label renames the row's value inputs
+      if (colIndex === 0) {
+        const tr = input.closest("tr");
+        if (tr) {
+          tr.querySelectorAll("input.gb-preview-cell-input").forEach((cellInput) => {
+            const col = Number(cellInput.dataset.col);
+            cellInput.setAttribute("aria-label", this.cellInputName(data.headers, row, rowIndex, col));
+          });
+        }
+      }
+    }
+
+    /**
+     * Escape: put back the last stored value
+     * @param {HTMLInputElement} input
+     */
+    restoreCellInput(input) {
+      if (!state.previewState) return;
+      const row = state.previewState.data.rows[Number(input.dataset.row)];
+      if (!row) return;
+      input.value = this.formatCellValue(row[Number(input.dataset.col)]);
     }
 
     /**
@@ -395,7 +549,7 @@ const GraphBuilderUI = (function () {
     renderTable() {
       if (!state.previewState || !this.tableElement) return;
 
-      const { data, currentlyShowing, totalRows } = state.previewState;
+      const { data, currentlyShowing, totalRows, editable } = state.previewState;
       const thead = this.tableElement.querySelector("thead");
       const tbody = this.tableElement.querySelector("tbody");
 
@@ -431,8 +585,12 @@ const GraphBuilderUI = (function () {
           const td = document.createElement("td");
           td.setAttribute("data-label", data.headers[cellIndex]);
 
-          // Handle empty cells
-          if (cell === "" || cell === null || cell === undefined) {
+          // Image route: every body cell is an input; rows past the slice still write to data.rows
+          if (editable) {
+            td.className = "gb-preview-edit-cell";
+            td.appendChild(this.createCellInput(data, index, cellIndex));
+          } else if (cell === "" || cell === null || cell === undefined) {
+            // Handle empty cells
             td.className = "gb-empty-cell";
             td.innerHTML = "<em>empty</em>";
           } else {
@@ -702,8 +860,41 @@ const GraphBuilderUI = (function () {
         valueCols = 1;
       }
 
-      this._gateButton("combo", valueCols >= 2);
-      this._gateButton("bubble", valueCols >= 2 && radiusCols >= 1);
+      const comboAllowed = valueCols >= 2;
+      const bubbleAllowed = valueCols >= 2 && radiusCols >= 1;
+      this._gateButton("combo", comboAllowed);
+      this._gateButton("bubble", bubbleAllowed);
+      this._updateTypeNote(comboAllowed, bubbleAllowed);
+    }
+
+    /**
+     * UX-6/UX-7 — Say in plain text why Combo or Bubble is missing. Static
+     * text, not a live region: it is read when the person reaches it after
+     * the heading. The pointer depends on the route: Enter Data names the
+     * Advanced Column Options checkbox, Paste and Upload name the Enter Data
+     * tab, and the image route has none.
+     */
+    _updateTypeNote(comboAllowed, bubbleAllowed) {
+      const note = document.getElementById(CHART_TYPE_NOTE_ID);
+      if (!note) return;
+
+      const sentences = [];
+      if (!comboAllowed) sentences.push(CHART_TYPE_NOTE.COMBO);
+      if (!bubbleAllowed) sentences.push(CHART_TYPE_NOTE.BUBBLE);
+      if (sentences.length > 0) {
+        const method = state.currentDataMethod;
+        if (method === DATA_METHOD_ENTER_DATA) {
+          sentences.push(CHART_TYPE_NOTE.POINTER_ENTER_DATA);
+        } else if (DATA_METHODS_TABLE_TABS.includes(method)) {
+          sentences.push(CHART_TYPE_NOTE.POINTER_TABLE_TABS);
+        }
+      }
+
+      // Write if changed
+      const text = sentences.join(" ");
+      const hidden = sentences.length === 0;
+      if (note.textContent !== text) note.textContent = text;
+      if (note.hidden !== hidden) note.hidden = hidden;
     }
 
     _gateButton(chartType, allowed) {
@@ -1068,7 +1259,8 @@ const GraphBuilderUI = (function () {
     getCurrentDataMethod: () => tabManager.getCurrentMethod(),
 
     // Preview Management
-    showPreview: (data) => previewManager.show(data),
+    showPreview: (data, options) => previewManager.show(data, options),
+    setCellEditHandler: (handler) => previewManager.setCellEditHandler(handler),
     hidePreview: () => previewManager.hide(),
     getPreviewState: () => previewManager.getState(),
 

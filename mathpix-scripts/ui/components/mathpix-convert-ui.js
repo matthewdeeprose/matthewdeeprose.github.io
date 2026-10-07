@@ -400,6 +400,8 @@ class MathPixConvertUI {
    * button, and nothing re-enables it when the new document arrives.
    */
   clearResults() {
+    // Parcel O-04: a run still going belongs to the document being replaced.
+    this._abandonRun();
     this.hideProgress();
     this.hideDownloads();
     this.hideErrors();
@@ -555,6 +557,10 @@ class MathPixConvertUI {
     // Start conversion
     this.isConverting = true;
     this.completedDownloads.clear();
+    // Parcel O-04: this run's token; an abandoned run finds it out of date.
+    this._runToken = (this._runToken || 0) + 1;
+    const runToken = this._runToken;
+    const isCurrentRun = () => this._runToken === runToken;
 
     // Parcel 10k: note focus before updateConvertButtonState() disables
     // the button, so the Cancel swap below can carry it.
@@ -577,18 +583,27 @@ class MathPixConvertUI {
         selectedFormats,
         {
           onStart: (conversionId) => {
+            // Parcel O-04: abandoned before its id existed; stop it now.
+            if (!isCurrentRun()) {
+              client.cancelConversion(conversionId);
+              return;
+            }
             this.activeConversionId = conversionId;
             logDebug("Conversion started:", conversionId);
           },
           onProgress: (status) => {
+            if (!isCurrentRun()) return; // Parcel O-04
             this.updateProgress(status);
           },
           onFormatComplete: async (format, blob) => {
+            if (!isCurrentRun()) return; // Parcel O-04
             // Rename ZIP contents if applicable
             const processedBlob = await this.renameZipContents(blob, format);
+            if (!isCurrentRun()) return; // Parcel O-04: abandoned during the rename
             this.onFormatComplete(format, processedBlob);
           },
           onComplete: (completionResult) => {
+            if (!isCurrentRun()) return; // Parcel O-04
             this.onConversionComplete(completionResult);
           },
           onError: (error) => {
@@ -597,9 +612,13 @@ class MathPixConvertUI {
         },
       );
 
+      // Parcel O-04: an abandoned run stores, shows and says nothing.
+      if (!isCurrentRun()) return;
+
       // Store results (also process ZIPs)
       for (const [format, blob] of results) {
         const processedBlob = await this.renameZipContents(blob, format);
+        if (!isCurrentRun()) return; // Parcel O-04
         this.completedDownloads.set(format, processedBlob);
       }
 
@@ -609,17 +628,44 @@ class MathPixConvertUI {
       }
     } catch (error) {
       logError("Conversion failed:", error);
-      // Parcel 10l: a Cancel is not a failure.
-      if (error?.code !== "CANCELLED") {
+      // Parcel 10l: a Cancel is not a failure. Parcel O-04: nor is an abandon.
+      if (error?.code !== "CANCELLED" && isCurrentRun()) {
         this.showError(`Conversion failed: ${error.message}`);
       }
     } finally {
-      this.isConverting = false;
-      this.activeConversionId = null;
-      this.updateConvertButtonState();
-      this.hideCancelButton();
-      this.hideProgress();
+      // Parcel O-04: an abandoned run leaves the page as the abandon left it,
+      // and must not reset a newer run's state.
+      if (isCurrentRun()) {
+        this.isConverting = false;
+        this.activeConversionId = null;
+        this.updateConvertButtonState();
+        this.hideCancelButton();
+        this.hideProgress();
+      }
     }
+  }
+
+  /**
+   * Parcel O-04: abandon a conversion still running because its document has
+   * been replaced. Stops the client polling (as Cancel does), puts the controls
+   * back to idle and writes no status or toast; the new document's own load
+   * already speaks. A late return finds its token out of date.
+   * @private
+   */
+  _abandonRun() {
+    if (!this.isConverting) return;
+    this._runToken = (this._runToken || 0) + 1;
+
+    const client = window.getMathPixConvertClient?.();
+    if (client && this.activeConversionId) {
+      client.cancelConversion(this.activeConversionId);
+    }
+    this.activeConversionId = null;
+    this.isConverting = false;
+    this.hideCancelButton();
+    this.hideProgress();
+    this.updateConvertButtonState();
+    logInfo("Conversion abandoned: its document was replaced");
   }
 
   /**
@@ -848,17 +894,48 @@ class MathPixConvertUI {
       failed: result.failed?.length || 0,
     });
 
+    // Parcel O-03: the status line the mode already speaks carries each
+    // failed format's name and reason.
+    let statusMessage = "Conversion complete!";
+
     // Show any errors
     if (result.failed && result.failed.length > 0) {
+      // Parcel T-01: a failed format's row says so, whatever the poll last
+      // reported (a download can fail after MathPix reported it complete).
+      // T01-UPLOAD-ROWS-BEGIN
+      result.failed.forEach((format) => {
+        const item = document.querySelector(
+          `.mathpix-progress-item[data-format="${format}"]`,
+        );
+        if (!item) return;
+        item.dataset.status = "error";
+        const statusEl = item.querySelector(".mathpix-progress-status");
+        if (statusEl) statusEl.textContent = this.getStatusText("error");
+      });
+
       const errorMessages = result.failed.map((format) => {
         const formatInfo = this.getFormatInfo(format);
         const error = result.errors?.[format];
         return `${formatInfo.label}: ${error || "Unknown error"}`;
       });
       this.showErrors(errorMessages);
+
+      // Parcel T-01: the closing stop is added only when the reason has none.
+      const stopped = (reason) =>
+        /[.!?]$/.test(reason) ? reason : `${reason}.`;
+      const failures = result.failed
+        .map((format) => {
+          const error = result.errors?.[format];
+          return `${this.getFormatInfo(format).label} failed: ${stopped(error || "Unknown error")}`;
+        })
+        .join(" ");
+      const anyCompleted = (result.completed?.length || 0) > 0;
+      statusMessage = anyCompleted
+        ? `Conversion complete! ${failures}`
+        : `Conversion failed. ${failures}`;
     }
 
-    this.updateStatus("Conversion complete!");
+    this.updateStatus(statusMessage);
   }
 
   /**

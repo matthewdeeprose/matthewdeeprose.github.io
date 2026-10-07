@@ -339,6 +339,17 @@
   white-space: pre-line;
 }
 
+/*
+ * The Reason cell. A recurring row joins several pair reasons with a newline,
+ * and `normal` would collapse that to a space; `pre-line` keeps the break, for
+ * the reason given on the Was and Now rule above. Selected by the attribute the
+ * row builder already writes, because the cell has no class. No width floor or
+ * cap: the Reason column never had one and that is a separate decision.
+ */
+.captions-fixer-changes td[data-label="Reason"] {
+  white-space: pre-line;
+}
+
 /* =========================================================================
    THE STACKED TABLE (Stage 8b, decision 9)
    ========================================================================= */

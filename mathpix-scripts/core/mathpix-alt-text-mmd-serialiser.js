@@ -1593,6 +1593,127 @@
   }
 
   // ============================================================================
+  // AP-1 — CONVERSION-TIME APPENDIX IMAGE COPIES
+  // ============================================================================
+  //
+  // Decision AP-D1 (Matthew, 5 October 2026). Each appendix entry gets a copy of
+  // its body image, with the registry alt text, directly under its "Description
+  // of" heading. The copy exists ONLY in the MMD handed to the Convert API from
+  // Resume mode: the editable MMD, the registry, the preview and
+  // `parseAppendix` never see it (a copy left in the editable MMD would be read
+  // back into the long description). This function is pure and not yet wired.
+
+  /**
+   * Build the markdown image line used as an appendix copy. The alt is the
+   * registry alt text on one line, with square brackets escaped so it cannot
+   * close the image early; it is empty for a decorative or alt-less image.
+   *
+   * @private
+   */
+  function _buildAppendixCopyLine(url, altText) {
+    const flat = String(altText || "")
+      .split("\n")
+      .join(" ")
+      .split("[")
+      .join("\\[")
+      .split("]")
+      .join("\\]");
+    return `![${flat}](${url})`;
+  }
+
+  /**
+   * Add to each appendix entry a copy of its body image, on its own line
+   * immediately after the entry's heading and followed by one blank line.
+   *
+   * Everything outside those insertions is byte-identical. An entry is skipped
+   * (WARN once per id) when it has no heading, no resolvable body image, or a
+   * body image that is not a bare markdown or includegraphics line. An entry
+   * whose heading is already followed by an image with the body image's URL is
+   * skipped silently, so the function is idempotent on its own output.
+   *
+   * @param {string} mmd
+   * @param {Object} registry - Needs `getImage(id)`.
+   * @param {Map<string, string>} [imageBlobUrlMap=null] - CDN→blob map, forwarded
+   *   to `findImage` so a restored session resolves its body images.
+   * @returns {{ mmd: string, copies: number }}
+   */
+  function withAppendixImageCopies(mmd, registry, imageBlobUrlMap = null) {
+    const unchanged = { mmd, copies: 0 };
+    if (typeof mmd !== "string") {
+      logError("withAppendixImageCopies(): mmd must be a string");
+      return unchanged;
+    }
+    if (!registry || typeof registry.getImage !== "function") {
+      logError("withAppendixImageCopies(): registry is missing getImage");
+      return unchanged;
+    }
+
+    const entries = _parseAppendixEntries(mmd);
+    const range = _findAppendixRange(mmd);
+    if (entries.length === 0 || range === null) return unchanged;
+
+    const lines = mmd.split("\n");
+    // The body image is searched for ABOVE the appendix only, so a copy this
+    // function wrote earlier can never be mistaken for the body image.
+    const bodyMmd = lines.slice(0, range.startLine).join("\n");
+
+    const warned = new Set();
+    const skip = (id, reason) => {
+      if (warned.has(id)) return;
+      warned.add(id);
+      logWarn(`withAppendixImageCopies(): skipped "${id}" — ${reason}`);
+    };
+
+    const insertions = [];
+    for (const entry of entries) {
+      const reg = registry.getImage(entry.id);
+      if (!reg) continue;
+      if (entry.headingLine === null) {
+        skip(entry.id, "entry has no heading line");
+        continue;
+      }
+
+      const loc = findImage(bodyMmd, reg, imageBlobUrlMap);
+      if (!loc.found) {
+        skip(entry.id, "no body image found");
+        continue;
+      }
+      const bodyLine = lines[loc.lineIndex];
+      const parsed = _parseMarkdownImage(bodyLine) || _parseIncludegraphics(bodyLine);
+      if (!parsed) {
+        skip(entry.id, "body image is not a bare image line");
+        continue;
+      }
+
+      // Already carries a copy: the first non-blank line after the heading is
+      // an image with the body image's URL.
+      let next = entry.headingLine + 1;
+      while (next < lines.length && lines[next].trim() === "") next++;
+      const existing = next < lines.length ? _parseMarkdownImage(lines[next]) : null;
+      if (existing && existing.url === parsed.url) continue;
+
+      const alt = reg.decorative === true ? "" : reg.altText;
+      const at = entry.headingLine + 1;
+      const blankFollows = at < lines.length && lines[at].trim() === "";
+      insertions.push({
+        at,
+        add: blankFollows
+          ? [_buildAppendixCopyLine(parsed.url, alt)]
+          : [_buildAppendixCopyLine(parsed.url, alt), ""],
+      });
+    }
+
+    if (insertions.length === 0) return unchanged;
+
+    // Splice from the bottom up so earlier indices stay valid.
+    insertions.sort((a, b) => b.at - a.at);
+    for (const ins of insertions) lines.splice(ins.at, 0, ...ins.add);
+
+    logInfo(`withAppendixImageCopies(): copies=${insertions.length}`);
+    return { mmd: lines.join("\n"), copies: insertions.length };
+  }
+
+  // ============================================================================
   // GLOBAL EXPOSURE
   // ============================================================================
 
@@ -1612,6 +1733,8 @@
     demoteEntryHeadings,
     buildAppendix,
     writeAppendix,
+    // AP-1 — conversion-time only; not wired to any caller yet.
+    withAppendixImageCopies,
     parseAppendix,
     APPENDIX_ACTIONS,
     // TC-1 — the text-in-image marker, read by the chemistry writer's parse.

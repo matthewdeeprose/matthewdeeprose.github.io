@@ -85,10 +85,16 @@
   // ANALYSIS EVENT EMITTER (Phase 6A)
   // ============================================================================
 
+  // The stage status that reports each OCR outcome that is not a success.
+  const OCR_STAGE_FOR_STATUS = Object.freeze({
+    "timed-out": "timed-out",
+    failed: "error",
+  });
+
   /**
    * Emit an analysis stage event via EmbedEventEmitter.
    * @param {string} stage — "analysis", "ocr", "colour", "clip"
-   * @param {string} status — "started", "running", "complete", "skipped", "error"
+   * @param {string} status — "started", "running", "complete", "skipped", "error", "timed-out"
    * @param {object} [extra] — optional additional data
    */
   function emitStage(stage, status, extra) {
@@ -461,7 +467,10 @@
             .runOCR(canvas, width, height, ocrConfig)
             .then((ocrResult) => {
               result.ocr = ocrResult;
-              emitStage("ocr", "complete");
+              // Report what runOCR actually returned. It resolves (never
+              // rejects) with "timed-out" or "failed", and this stage used to
+              // say "complete" for both. Any other status keeps "complete".
+              emitStage("ocr", OCR_STAGE_FOR_STATUS[ocrResult.status] || "complete");
             }),
         );
       } else {

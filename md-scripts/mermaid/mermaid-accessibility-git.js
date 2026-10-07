@@ -160,26 +160,31 @@ const GitGraphModule = (function () {
   }
 
   /**
-   * Escape author text at an HTML sink — conservatively, because this module
-   * cannot use Common.escapeHtml.
+   * Escape author text at an HTML sink: every & < and > exactly once. This is
+   * a module-local function, not Common.escapeHtml, because it leaves quote
+   * characters untouched (see the last paragraph).
    *
-   * The parse adapter delivers git graph's fields ALREADY PARTLY
-   * ENTITY-ENCODED, and in two contradictory ways within a single parse of a
-   * single diagram (docs/mermaid-adapter-four-hostile-capture-2026-08-06.md
-   * § 4, re-measured in docs/mermaid-git-escaping-adoption-2026-08-07.md § 1).
-   * Branch names, commit ids and tag names arrive with < and > encoded and &
-   * raw; the body title arrives the other way round. Common.escapeHtml would
-   * escape the & of an incoming &lt;, and a reader would then see the
-   * characters "&lt;b&gt;bold&lt;/b&gt;" where the author typed "<b>bold</b>".
+   * Why it exists: the parse adapter delivers git graph's fields ALREADY
+   * ENTITY-ENCODED, asymmetrically (docs/mermaid-adapter-four-hostile-capture-
+   * 2026-08-06.md § 4). In a branch name, commit id or tag name, < and > arrive
+   * as &lt; and &gt;, a bare & arrives raw, = arrives as &equals; and an
+   * attribute's " arrives as '. The body title arrives the other way round.
+   * Measured on Mermaid 11.17.2 (docs/mermaid-item-82-entity-measure-2026-10-06.md
+   * § 4, docs/mermaid-item-82-entity-enact-3-2026-10-06.md § 1): that delivery
+   * is EXACTLY what the picture prints, on every form at every position drawn.
+   * So the words read the picture's characters by escaping the delivered
+   * string once and decoding nothing: a delivered "&lt;b&gt;" is drawn as the
+   * text "&lt;b&gt;" and must be spoken as that text, not as a <b> tag.
    *
-   * Decoding first is not an option either: the encoding is NOT reversible.
-   * An author-typed "&lt;" and an author-typed "<" both arrive as the same
-   * four bytes, so no decode can tell them apart (adoption report § 2). This
-   * escapes what is unambiguous and leaves alone what is not — < and > always,
-   * & only where it does not already open an entity.
+   * Until 6 October 2026 this escaped & only where it did not already open an
+   * entity (&lt; &gt; &amp; &quot; &#N; &#xN;), so a delivered "&lt;" reached
+   * the HTML as markup and the words read "<". That partial escape is gone.
+   * It rested on the belief that "&lt;" and "<" are the same four bytes and so
+   * cannot be told apart; under the ruling they need not be, because the
+   * picture prints both as "&lt;".
    *
-   * Ampersands are handled FIRST, so the decision is taken on the incoming
-   * bytes alone and this function can never re-escape its own output.
+   * Ampersands are handled FIRST, so this function can never re-escape its own
+   * output.
    *
    * Text sinks only. Every value narrated by this module lands between tags,
    * never inside an attribute, so quote characters are deliberately untouched.
@@ -189,7 +194,7 @@ const GitGraphModule = (function () {
    */
   function escapeNarration(text) {
     return String(text)
-      .replace(/&(?!lt;|gt;|amp;|quot;|#\d+;|#x[0-9a-fA-F]+;)/g, "&amp;")
+      .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   }

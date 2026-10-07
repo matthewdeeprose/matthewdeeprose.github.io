@@ -667,12 +667,29 @@
       if (typeof bridge.initializePendingCharts === "function") {
         bridge.initializePendingCharts(bubble);
       }
+      // The bridge renders into a hidden temporary container and hands back an
+      // HTML string, so a diagram whose render finished there arrives as a
+      // serialised copy with a floor measured while hidden, dead toolbars and
+      // no scroll-stop watcher. Bring every rendered diagram alive in place
+      // (idempotent; one still rendering is left to its own render path).
+      if (
+        window.MermaidControls &&
+        typeof window.MermaidControls.reviveRendered === "function"
+      ) {
+        try {
+          window.MermaidControls.reviveRendered(bubble);
+        } catch (e) {
+          logWarn("mermaid revive failed:", (e && e.message) || e);
+        }
+      }
       // Wrap any mermaid diagrams for accessibility (figure + caption + long
-      // description) deterministically, rather than relying on MermaidAccessibility's
-      // visibility-gated IntersectionObserver — restored bubbles are built while the
-      // Chat panel is hidden, so the observer never fires for them. The feature
-      // self-guards on data-accessibility-initialized, so this is a no-op on any
-      // diagram the observer already wrapped on the live path.
+      // description) deterministically. This is the call that names a diagram
+      // and builds its figure and caption for every bubble, live or restored;
+      // it self-guards on data-accessibility-initialized, so it is a no-op on
+      // any diagram already wrapped. Removing it breaks the clamp's Tab walk
+      // (parcel 13, INV-CH-NO-WRAP: CH5 red), though the earlier belief that
+      // the visibility-gated observer never names restored bubbles was not
+      // borne out (CH4 stayed green).
       if (
         window.MermaidAccessibility &&
         typeof window.MermaidAccessibility.initAccessibilityFeatures === "function"

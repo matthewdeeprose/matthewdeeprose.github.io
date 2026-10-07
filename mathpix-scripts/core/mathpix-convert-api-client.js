@@ -926,6 +926,9 @@ class MathPixConvertAPIClient {
       const pollResult = await this.pollUntilComplete(conversionId, onProgress);
 
       // 3. Download completed formats
+      // Parcel T-01: a format whose download throws is a failure, not a completion.
+      const downloadFailed = [];
+      const downloadErrors = {};
       for (const format of pollResult.completed) {
         try {
           const blob = await this.downloadResult(conversionId, format);
@@ -940,6 +943,10 @@ class MathPixConvertAPIClient {
           }
         } catch (downloadError) {
           logWarn(`Failed to download ${format}:`, downloadError.message);
+          downloadFailed.push(format);
+          downloadErrors[format] = `the file could not be downloaded (${
+            downloadError.substitutions?.details || downloadError.message
+          })`;
           if (onError) {
             try {
               onError(downloadError);
@@ -954,9 +961,11 @@ class MathPixConvertAPIClient {
       const completionResult = {
         conversionId,
         results,
-        completed: pollResult.completed,
-        failed: pollResult.failed,
-        errors: pollResult.errors,
+        completed: pollResult.completed.filter(
+          (format) => !downloadFailed.includes(format),
+        ),
+        failed: [...pollResult.failed, ...downloadFailed],
+        errors: { ...pollResult.errors, ...downloadErrors },
       };
 
       if (onComplete) {

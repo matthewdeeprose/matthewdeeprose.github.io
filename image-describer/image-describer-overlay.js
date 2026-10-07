@@ -902,7 +902,10 @@
       const hasConfidence =
         item.confidence !== null && item.confidence !== undefined;
       const conf = hasConfidence ? Math.round(item.confidence * 100) : null;
-      const quadrant = item.quadrant || "unknown";
+      // Nine-position word from H-7e's helper, so the name matches what the model is told.
+      const utils = window.ImageDescriberAnalyserUtils;
+      const position =
+        (utils && utils.getItemPositionWord(item)) || item.quadrant || "unknown";
       const source = SOURCE_LABELS[item.source] || item.source || "Primary";
       let label =
         "OCR item " +
@@ -911,9 +914,9 @@
         text +
         ", confidence " +
         (conf !== null ? conf + "%" : "N/A") +
+        ", position " +
+        position +
         ", " +
-        quadrant +
-        " quadrant, " +
         source +
         " source";
       if (isSuppressed) {
@@ -945,7 +948,10 @@
       const confidenceLevel = hasConfidence
         ? getConfidenceLevel(item.confidence)
         : "medium";
-      const quadrant = item.quadrant || "unknown";
+      // Nine-position word from H-7e's helper (see _buildOCRAccessibleLabel).
+      const utils = window.ImageDescriberAnalyserUtils;
+      const quadrant =
+        (utils && utils.getItemPositionWord(item)) || item.quadrant || "unknown";
       const source = SOURCE_LABELS[item.source] || item.source || "Primary";
 
       let html =

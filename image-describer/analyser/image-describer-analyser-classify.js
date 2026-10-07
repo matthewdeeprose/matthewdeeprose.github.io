@@ -441,8 +441,10 @@
 
   /**
    * Scores likelihood of being a painting.
-   * Paintings often cause OCR timeout (complex textures) or have
-   * very high noise suppression ratios (OCR detects artefacts).
+   * Paintings often have very high noise suppression ratios (OCR detects
+   * artefacts). A timed-out OCR pass is NOT a signal: H-28 measured the
+   * timeout following the machine's load, not the picture, so a timeout
+   * is reported as a timeout and never read as evidence of a painting.
    *
    * @param {object} ocr — OCR analysis result
    * @param {object} colour — Colour analysis result
@@ -451,12 +453,7 @@
   function scorePainting(ocr, colour) {
     let score = 0;
 
-    // Primary signal: OCR timed out (complex texture overwhelms OCR)
-    if (ocr && ocr.status === "timed-out") {
-      score = 0.6;
-    }
-
-    // Secondary signal: high suppression ratio (lots of noise detected)
+    // Signal: high suppression ratio (lots of noise detected)
     if (ocr && ocr.suppressionStats) {
       const ss = ocr.suppressionStats;
       if (ss.total > 0) {
@@ -623,9 +620,6 @@
         return `Very low text content (${itemCount} items) with high colour diversity`;
 
       case "painting":
-        if (ocr?.status === "timed-out") {
-          return "OCR timed out — complex texture suggests a painting or artwork";
-        }
         if (ocr?.suppressionStats) {
           const ratio = ocr.suppressionStats.total > 0
             ? Math.round((ocr.suppressionStats.suppressed / ocr.suppressionStats.total) * 100)

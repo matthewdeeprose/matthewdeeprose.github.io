@@ -6,9 +6,10 @@
  * same cue list through one adapter, and applies an accepted change set through
  * the one function that is ever allowed to write cue text.
  *
- * THE TWO SHAPES, AND THEY DO NOT CHANGE
- * --------------------------------------
- *   cue list   [{ id, start, end, text }]
+ * THE TWO SHAPES (the cue gained an optional `speaker` at stage 12a)
+ * ------------------------------------------------------------------
+ *   cue list   [{ id, start, end, text }], plus `speaker` on a
+ *              Transcribe-sourced cue: a non-negative integer, or no key
  *              `id` is the file's own index line as an integer; `start` and
  *              `end` are integer milliseconds and READ-ONLY from the moment
  *              they are parsed — nothing after the parser writes them; `text`
@@ -55,12 +56,14 @@
  * IT SPEAKS TO NOTHING AND TOUCHES NO DOM. Pure functions over strings and
  * arrays, so Transcribe's future "fix and format" path can call the same code.
  *
- * THE SPEAKER LABEL IS RESOLVED THROUGH `OpenRouterEmbedTranscribe.speakerLabelFor`,
- * never by a copy of the rule. `toSrt()` prefixes `Speaker N: ` into cue text
- * whenever more than one speaker was found; the adapter here reaches the SAME
- * resolver so the two cannot drift — a copy would be the fourth copy that
- * resolver exists to prevent. It is resolved at CALL time, never at load, for
- * the reason openrouter-embed-transcribe.js gives in its own header.
+ * THE SPEAKER TRAVELS BESIDE THE TEXT, NEVER IN IT (stage 12a, 6 October
+ * 2026). A Transcribe-sourced cue carries `speaker` — a non-negative integer,
+ * or no key at all — and `text` is the phrase's text alone, with no
+ * "Speaker N: " label. The model is sent id and text only, so it never sees the
+ * label and cannot damage it, and Captions Fixer never writes one. Because the
+ * label is no longer in the text, `serialise(fromTranscribeResult(r))` is NOT
+ * byte-equal to `OpenRouterEmbedTranscribe.toSrt(r)` for a multi-speaker
+ * result; that claim is withdrawn. `serialise` ignores `speaker`.
  *
  * @module CaptionsFixerCues
  * @since 6 September 2026
@@ -148,10 +151,6 @@ const CaptionsFixerCues = (function () {
    */
   const TIMESTAMP_PATTERN = /^(\d{2,}):(\d{2}):(\d{2})([,.])(\d{3})$/;
 
-  /** How `toSrt()` composes a label; mirrored, never copied as a rule. */
-  const SPEAKER_LABEL_PREFIX = "Speaker ";
-  const SPEAKER_LABEL_SUFFIX = ": ";
-
   /** Lines either side of the offending line in a refusal excerpt. */
   const EXCERPT_CONTEXT_LINES = 2;
 
@@ -189,11 +188,12 @@ const CaptionsFixerCues = (function () {
   /**
    * Milliseconds to HH:MM:SS<sep>mmm.
    *
-   * A COPY of `toSrtTimestamp` in openrouter-embed-transcribe.js (~:491), with
+   * A COPY of `toSrtTimestamp` in openrouter-embed-transcribe.js (:992), with
    * the separator parameterised so the same function writes VTT. That module
-   * does not export its formatter today; this copy is REMOVED when the Release
-   * 2 Transcribe hand-off parcel exports the original. Keep the two identical
-   * until then.
+   * does not export its formatter today; this copy is REMOVED at stage 12c,
+   * once the Transcribe lane exports the original. The two are behaviourally
+   * identical at "," but NOT byte-identical (the original writes the literal
+   * 1000 and ","; this reads MS_PER_SECOND and a separator parameter).
    *
    * @param {number} ms
    * @param {string} separator - "," or "."
@@ -515,7 +515,7 @@ const CaptionsFixerCues = (function () {
    * measured fixture has an empty phrase, and it is recorded here rather than
    * papered over.)
    *
-   * @param {Array<{ id: number, start: number, end: number, text: string }>} cueList
+   * @param {Array<{ id: number, start: number, end: number, text: string, speaker?: number }>} cueList
    * @param {object} meta - as returned by `parse` or `fromTranscribeResult`
    * @returns {string}
    */
@@ -556,47 +556,26 @@ const CaptionsFixerCues = (function () {
 
   /**
    * Convert a normalised Transcribe result — `{ text, phrases: [{ offsetMs,
-   * durationMs, text, speaker, confidence }] }` — into a cue list whose
-   * serialisation is byte-equal to `OpenRouterEmbedTranscribe.toSrt(result)`.
+   * durationMs, text, speaker, confidence }] }` — into a cue list.
    *
-   * The speaker label is decided by the SHARED resolver, at every line as
-   * `toSrt()` does (SRT is a downloaded artefact and never follows the screen's
-   * display mode). The meta reproduces `toSrt()`'s shape: SRT, no BOM, LF, one
-   * trailing newline, a single blank line between cues, "," separators.
+   * `text` is the phrase's text alone; the speaker is carried as a `speaker`
+   * field when the phrase's value is a non-negative integer, and the key is
+   * ABSENT otherwise (never null, never a name). A one-speaker result keeps
+   * `speaker: 1` on every cue. No label resolver is needed, so this function
+   * does not touch `window.OpenRouterEmbedTranscribe`. The meta keeps
+   * `toSrt()`'s shape: SRT, no BOM, LF, one trailing newline, a single blank
+   * line between cues, "," separators.
    *
    * @param {object} result - a normalised Transcribe result
    * @param {{ sourceName?: string }} [options]
    * @returns {{ cueList: Array, meta: object }}
    */
   function fromTranscribeResult(result, { sourceName = "" } = {}) {
-    // Resolved at CALL time: a module-scope capture would hold whatever was on
-    // window when this file ran, which is the trap the Transcribe header names.
-    const transcribe = window.OpenRouterEmbedTranscribe;
-    if (
-      !transcribe ||
-      typeof transcribe.speakerLabelFor !== "function" ||
-      typeof transcribe.distinctSpeakerCount !== "function" ||
-      typeof transcribe.previousSpeakerAt !== "function"
-    ) {
-      throw new Error(
-        "fromTranscribeResult() needs window.OpenRouterEmbedTranscribe with speakerLabelFor, distinctSpeakerCount and previousSpeakerAt.",
-      );
-    }
     if (!result || !Array.isArray(result.phrases)) {
       throw new TypeError("fromTranscribeResult() needs a result with a phrases array.");
     }
 
-    // Hoisted once, as both formatters do — see toPlainText's note on why.
-    const labelsAreInformative = transcribe.distinctSpeakerCount(result) > 1;
-
     const cueList = result.phrases.map((phrase, index) => {
-      const speaker = transcribe.speakerLabelFor({
-        speaker: phrase.speaker,
-        previousSpeaker: transcribe.previousSpeakerAt(result.phrases, index),
-        labelsAreInformative,
-      });
-      const label =
-        speaker !== null ? `${SPEAKER_LABEL_PREFIX}${speaker}${SPEAKER_LABEL_SUFFIX}` : "";
       // The same clamp `toSrtTimestamp` applies, so a negative or fractional
       // offset lands on the same integer the writer would have printed.
       const start = Math.max(0, Math.floor(Number(phrase.offsetMs) || 0));
@@ -604,7 +583,9 @@ const CaptionsFixerCues = (function () {
         0,
         Math.floor(Number(phrase.offsetMs + phrase.durationMs) || 0),
       );
-      return { id: index + 1, start, end, text: `${label}${phrase.text}` };
+      const cue = { id: index + 1, start, end, text: phrase.text };
+      if (Number.isInteger(phrase.speaker) && phrase.speaker >= 0) cue.speaker = phrase.speaker;
+      return cue;
     });
 
     const meta = {
@@ -638,7 +619,7 @@ const CaptionsFixerCues = (function () {
    * ignored silently: they are not conflicts, they are simply not accepted. Timestamps
    * are copied through untouched.
    *
-   * @param {Array<{ id: number, start: number, end: number, text: string }>} cueList
+   * @param {Array<{ id: number, start: number, end: number, text: string, speaker?: number }>} cueList
    * @param {Array<{ cueId: number, original: string, proposed: string, status: string }>} changeSet
    * @returns {{ cueList: Array, applied: number, conflicts: Array<{ cueId: *, reason: string }> }}
    */
@@ -650,12 +631,8 @@ const CaptionsFixerCues = (function () {
       throw new TypeError("applyChangeSet() needs a change set array.");
     }
 
-    const next = cueList.map((cue) => ({
-      id: cue.id,
-      start: cue.start,
-      end: cue.end,
-      text: cue.text,
-    }));
+    // Spread, never a field-by-field pick: a pick drops `speaker` (stage 12a).
+    const next = cueList.map((cue) => ({ ...cue }));
     const indexById = new Map(next.map((cue, index) => [cue.id, index]));
 
     const conflicts = [];
@@ -682,7 +659,7 @@ const CaptionsFixerCues = (function () {
         return;
       }
 
-      next[index] = { id: cue.id, start: cue.start, end: cue.end, text: entry.proposed };
+      next[index] = { ...cue, text: entry.proposed };
       applied += 1;
     });
 

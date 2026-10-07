@@ -194,7 +194,7 @@
    * gate never disagree on the boundary.
    * @private
    */
-  proto._refreshConvertSizeIndicator = async function () {
+  proto._refreshConvertSizeIndicator = async function ({ silent = false } = {}) {
     try {
       const readoutEl = this.elements?.convertSizeReadout;
       if (!readoutEl) return; // enhancement absent — nothing to update
@@ -248,8 +248,11 @@
       // but P3's encode cache makes the second build cheap.
       const manifest = await this.buildManifest(mmd, selectedFormats);
       const unavailable = this._convertSizeUnavailable(mmd, manifest);
+      // SR-1: size what the conversion will actually send, so the readout and
+      // the guard share one decision about the appendix image copies.
+      const projection = await this._projectConvertPayload(mmd, selectedFormats);
       const breakdown = await this._estimateConvertSizeBreakdown(
-        mmd,
+        projection.sourceMMD,
         selectedFormats,
       );
       const limit = this._getConvertSizeLimit();
@@ -289,7 +292,9 @@
           this._lastConvertSizeBand,
           band,
         );
-        if (speech) this._announceConvertSize(speech);
+        // A silent refresh (a registry write) updates the figure and the
+        // remembered band but never speaks: the save has its own voice.
+        if (speech && !silent) this._announceConvertSize(speech);
         this._lastConvertSizeBand = band;
       }
     } catch (err) {
@@ -480,6 +485,11 @@
 
     this.isConverting = true;
     this.conversionResults = new Map();
+    this._appendixCopiesDropped = false;
+    // Parcel O-04: this run's token; an abandoned run finds it out of date.
+    this._runToken = (this._runToken || 0) + 1;
+    const runToken = this._runToken;
+    const isCurrentRun = () => this._runToken === runToken;
 
     // Update UI. Cancel aborts the API job only, so it is meaningless — and
     // misleading — on a browser-only run.
@@ -501,7 +511,8 @@
       if (apiFormats.length > 0) {
         await this._runApiConvertFormats(apiFormats, mmdContent, errorMessages);
       }
-      if (browserFormats.length > 0) {
+      // Parcel O-04: an abandoned run builds nothing further.
+      if (browserFormats.length > 0 && isCurrentRun()) {
         if (typeof this._runBrowserConvertFormats === "function") {
           await this._runBrowserConvertFormats(browserFormats, errorMessages);
         } else {
@@ -523,15 +534,22 @@
       // Both runners contain their own failures; this is a last resort only.
       logError("Conversion failed:", error);
       errorMessages.push(error.message);
-      this.showNotification(`Conversion failed: ${error.message}`, "error");
+      // Parcel O-03: no toast here; the tail speaks this message once, with the rest.
     } finally {
-      this.isConverting = false;
-      this.activeConversionId = null;
-      this.updateConvertButtonState();
-      if (this.elements.convertCancelBtn)
-        this.elements.convertCancelBtn.hidden = true;
-      this.hideConvertProgress();
+      // Parcel O-04: an abandoned run leaves the page as the abandon left it,
+      // and must not reset a newer run's state.
+      if (isCurrentRun()) {
+        this.isConverting = false;
+        this.activeConversionId = null;
+        this.updateConvertButtonState();
+        if (this.elements.convertCancelBtn)
+          this.elements.convertCancelBtn.hidden = true;
+        this.hideConvertProgress();
+      }
     }
+
+    // Parcel O-04: an abandoned run shows and says nothing.
+    if (!isCurrentRun()) return;
 
     if (errorMessages.length > 0) {
       this.showConvertErrors(errorMessages);
@@ -539,14 +557,110 @@
 
     if (this.conversionResults.size > 0) {
       this.showConvertDownloads();
-      // "ready to download", not "downloaded": nothing has been saved yet. The
-      // user's click on a download button is what writes the file, and that
-      // click is also what keeps the browser from discarding it.
+    }
+
+    // Parcel O-03: one spoken line per run. API failures speak as
+    // "<label> failed: <reason>."; any other message in the sink speaks as itself.
+    const apiFailures = errorMessages.apiFailures || [];
+    const apiBoxTexts = new Set(apiFailures.map((f) => f.boxText));
+    const failureLines = [
+      ...apiFailures.map((f) => f.spoken),
+      ...errorMessages
+        .filter((m) => !apiBoxTexts.has(m))
+        .map((m) => (/[.!?]$/.test(m) ? m : `${m}.`)),
+    ].join(" ");
+
+    // "ready to download", not "downloaded": nothing has been saved yet. The
+    // user's click on a download button is what writes the file, and that
+    // click is also what keeps the browser from discarding it.
+    // AP-2: when the appendix image copies were dropped to fit the size limit
+    // the clause joins THIS line (rule C10: one polite line, never a second).
+    const copiesClause = this._appendixCopiesDropped
+      ? " The appendix image copies were left out to stay under the size limit."
+      : "";
+    if (this.conversionResults.size > 0 && failureLines === "") {
       this.showNotification(
-        `${this.conversionResults.size} format(s) ready to download.`,
+        `${this.conversionResults.size} format(s) ready to download.${copiesClause}`,
         "success",
       );
+    } else if (this.conversionResults.size > 0) {
+      this.showNotification(
+        `${this.conversionResults.size} format(s) ready to download.${copiesClause} ${failureLines}`,
+        "warning",
+      );
+    } else if (failureLines !== "") {
+      this.showNotification(`Conversion failed. ${failureLines}`, "error");
     }
+  };
+
+  /**
+   * AP-2 (AP-D1): add a copy of each body image under its appendix heading, in
+   * the conversion copy of the MMD only. Pure with respect to the stored MMD and
+   * the registry. Degrades to the input unchanged when the serialiser, the
+   * registry or the appendix is absent, or when it throws.
+   * @param {string} rawMMD - canonical MMD, before image embedding
+   * @returns {{ mmd: string, copies: number }}
+   * @private
+   */
+  proto._withAppendixCopiesForConversion = function (rawMMD) {
+    const unchanged = { mmd: rawMMD, copies: 0 };
+    const serialiser = window.MathPixAltTextMMDSerialiser;
+    if (
+      !serialiser ||
+      typeof serialiser.withAppendixImageCopies !== "function" ||
+      !this.imageRegistry
+    ) {
+      return unchanged;
+    }
+    try {
+      const result = serialiser.withAppendixImageCopies(
+        rawMMD,
+        this.imageRegistry,
+        this.imageBlobUrlMap,
+      );
+      logInfo(`Convert: appendix image copies added: ${result.copies}`);
+      return result;
+    } catch (error) {
+      logWarn("Convert: appendix image copies failed; converting without", error);
+      return unchanged;
+    }
+  };
+
+  /**
+   * SR-1: the one place that decides what the Convert API will be sent. Adds
+   * the appendix image copies, embeds, and if the copies alone push the payload
+   * over the limit falls back to the document without them. The guard sends
+   * `mmd`; the size readout sizes `sourceMMD`, so neither can drift from the
+   * other. Pure with respect to the stored MMD and the registry.
+   * @param {string} rawMMD - canonical MMD, before image embedding
+   * @param {string[]} formats - API formats only
+   * @returns {Promise<{mmd:string, sourceMMD:string, bytes:number, copies:number, fellBack:boolean}>}
+   *   mmd: embedded payload; sourceMMD: pre-embedding MMD it was built from;
+   *   fellBack: true only when dropping the copies brought it under the limit
+   * @private
+   */
+  proto._projectConvertPayload = async function (rawMMD, formats) {
+    const maxBytes = this._getConvertSizeLimit();
+    const withCopies = this._withAppendixCopiesForConversion(rawMMD);
+    let sourceMMD = withCopies.mmd;
+    let mmd = await this.getMMDForAPI(sourceMMD, formats);
+    let bytes = new Blob([mmd]).size;
+    let fellBack = false;
+
+    // The copies double the bytes of every described image. If they alone
+    // push the payload over the limit, convert without them (the encode memo
+    // makes the second build cheap).
+    if (withCopies.copies > 0 && bytes > maxBytes) {
+      const withoutCopies = await this.getMMDForAPI(rawMMD, formats);
+      const withoutBytes = new Blob([withoutCopies]).size;
+      fellBack = withoutBytes <= maxBytes;
+      // Over the limit either way: fall back too, so the guard reports the
+      // document's own size exactly as it did before the copies existed.
+      sourceMMD = rawMMD;
+      mmd = withoutCopies;
+      bytes = withoutBytes;
+    }
+    return { mmd, sourceMMD, bytes, copies: withCopies.copies, fellBack };
   };
 
   /**
@@ -571,7 +685,12 @@
     rawMMD,
     errorMessages,
   ) {
+    // Parcel O-04: the token of the run that called this (read synchronously).
+    const runToken = this._runToken;
+    const isCurrentRun = () => this._runToken === runToken;
+
     const failAll = (message) => {
+      if (!isCurrentRun()) return; // Parcel O-04
       for (const format of apiFormats) {
         this.updateConvertProgressItem(format, "error", message);
       }
@@ -585,21 +704,39 @@
     // callback-based. Only the API formats are passed — a browser-only value
     // reaching pickEncoders' `every()` gate would silently drop WebP from the
     // candidate encoders for the whole convert.
+    //
+    // AP-2 (AP-D1): the appendix image copies are added to this conversion copy
+    // BEFORE embedding, so each copy carries the same blob URL as its body image
+    // and getMMDForAPI embeds it with the same bytes. The stored MMD and the
+    // registry are never touched.
+    const maxBytes = this._getConvertSizeLimit();
     let mmdContent;
+    let embeddedSize;
     try {
-      mmdContent = await this.getMMDForAPI(rawMMD, apiFormats);
+      const projection = await this._projectConvertPayload(rawMMD, apiFormats);
+      mmdContent = projection.mmd;
+      embeddedSize = projection.bytes;
+
+      // Say so once in the success line when the copies were dropped to fit.
+      if (projection.fellBack) {
+        logWarn(
+          `Convert: appendix image copies dropped (${projection.copies} copies, limit ${maxBytes}); converting without them (${embeddedSize} bytes)`,
+        );
+        this._appendixCopiesDropped = true;
+      }
     } catch (error) {
       logError("Convert: image embedding failed", error);
       failAll(`Images could not be prepared for conversion: ${error.message}`);
       return;
     }
 
+    // Parcel O-04: abandoned while the images were being prepared; send nothing.
+    if (!isCurrentRun()) return;
+
     // F-M Phase 4: pre-flight size guard. Embedding can push MMD size from ~6 KB
     // to multi-MB; the Convert API enforces a 10 MB JSON body limit. Surface an
     // actionable safeAlert rather than letting the API reject with a generic
     // error. This limit is API-only — it must never gate the browser formats.
-    const maxBytes = this._getConvertSizeLimit();
-    const embeddedSize = new Blob([mmdContent]).size;
     logDebug(
       `Site 3 convert: post-embedding MMD size = ${embeddedSize} bytes (limit ${maxBytes})`,
     );
@@ -634,22 +771,37 @@
     try {
       const results = await client.convertAndDownload(mmdContent, apiFormats, {
         onStart: (conversionId) => {
+          // Parcel O-04: abandoned before its id existed; stop it now.
+          if (!isCurrentRun()) {
+            client.cancelConversion(conversionId);
+            return;
+          }
           this.activeConversionId = conversionId;
           logDebug("Conversion started:", conversionId);
         },
         onProgress: (status) => {
+          if (!isCurrentRun()) return; // Parcel O-04
           this.updateConvertProgress(status);
         },
         onFormatComplete: (format, blob) => {
+          if (!isCurrentRun()) return; // Parcel O-04
           logInfo(`Format complete: ${format} (${blob.size} bytes)`);
           this.updateConvertProgressItem(format, "completed");
           this.conversionResults.set(format, blob);
         },
         onComplete: (completionResult) => {
+          if (!isCurrentRun()) return; // Parcel O-04
           logInfo("Conversion workflow complete:", {
             completed: completionResult.completed?.length || 0,
             failed: completionResult.failed?.length || 0,
           });
+
+          // Parcel T-01: a failed format's row says so, whatever the poll last
+          // reported (a download can fail after MathPix reported it complete).
+          // T01-RESUME-ROWS-BEGIN
+          (completionResult.failed || []).forEach((format) =>
+            this.updateConvertProgressItem(format, "error"),
+          );
 
           // Collect rather than render — the caller renders both branches'
           // errors together, once.
@@ -657,9 +809,19 @@
             for (const format of completionResult.failed) {
               const formatInfo = this.getFormatInfo(format);
               const error = completionResult.errors?.[format];
-              errorMessages.push(
-                `${formatInfo.label}: ${error || "Unknown error"}`,
-              );
+              const boxText = `${formatInfo.label}: ${error || "Unknown error"}`;
+              errorMessages.push(boxText);
+              // Parcel O-03: keep label and reason apart from the box's text so
+              // the tail can speak "<label> failed: <reason>."
+              (errorMessages.apiFailures ||= []).push({
+                boxText,
+                // Parcel T-01: the closing stop is added only when the reason has none.
+                spoken: `${formatInfo.label} failed: ${
+                  /[.!?]$/.test(error || "Unknown error")
+                    ? error || "Unknown error"
+                    : `${error || "Unknown error"}.`
+                }`,
+              });
             }
           }
         },
@@ -667,6 +829,9 @@
           logWarn("Format error:", error.message);
         },
       });
+
+      // Parcel O-04: an abandoned run stores nothing.
+      if (!isCurrentRun()) return;
 
       // Store results from the returned Map (backup in case callbacks didn't fire)
       if (results && results.size > 0) {
@@ -682,6 +847,31 @@
     }
   };
 
+
+  /**
+   * Parcel O-04: abandon a conversion still running because its session has
+   * been replaced. Stops the client polling (as Cancel does), puts the controls
+   * back to idle and writes no status or toast; the new session's own restore
+   * line is the voice. A late return finds its token out of date. A browser-only
+   * build already under way cannot be stopped from here.
+   * @private
+   */
+  proto._abandonRun = function () {
+    if (!this.isConverting) return;
+    this._runToken = (this._runToken || 0) + 1;
+
+    const client = window.getMathPixConvertClient?.();
+    if (client && this.activeConversionId) {
+      client.cancelConversion(this.activeConversionId);
+    }
+    this.activeConversionId = null;
+    this.isConverting = false;
+    if (this.elements.convertCancelBtn)
+      this.elements.convertCancelBtn.hidden = true;
+    this.hideConvertProgress();
+    this.updateConvertButtonState();
+    logInfo("Conversion abandoned: its session was replaced");
+  };
 
   /**
    * Cancel ongoing conversion
@@ -885,6 +1075,8 @@
    * @private
    */
   proto.clearConversionResults = function () {
+    // Parcel O-04: a run still going belongs to the session being replaced.
+    this._abandonRun();
     const store = window.getMathPixConvertUI?.()?.completedDownloads;
     if (store && this.conversionResults) {
       this.conversionResults.forEach((blob, format) => {

@@ -1407,6 +1407,9 @@ class MathPixConvertMode {
     // Clean up blob URLs first to prevent memory leaks
     this.revokeDownloadUrls();
 
+    // Parcel O-04: a run still going belongs to the document being cleared.
+    this._abandonRun();
+
     // Reset state
     this.currentMMDContent = "";
     this.filename = "converted-document";
@@ -1504,10 +1507,9 @@ class MathPixConvertMode {
    * @private
    */
   clearConversionResults() {
-    if (this.isConverting) {
-      logDebug("Conversion in progress; previous results left in place");
-      return;
-    }
+    // Parcel O-04: new content replaces the document a running conversion
+    // belongs to, so that run is abandoned rather than left to deliver here.
+    this._abandonRun();
 
     this.revokeDownloadUrls();
     this.completedDownloads = new Map();
@@ -1709,6 +1711,10 @@ class MathPixConvertMode {
     // Parcel 10l: Cancel needs the id, and may come before it exists.
     this.cancelRequested = false;
     this.activeConversionId = null;
+    // Parcel O-04: this run's token; an abandoned run finds it out of date.
+    this._runToken = (this._runToken || 0) + 1;
+    const runToken = this._runToken;
+    const isCurrentRun = () => this._runToken === runToken;
 
     // Update UI
     const convertBtn = document.getElementById("convert-mode-convert-btn");
@@ -1730,6 +1736,7 @@ class MathPixConvertMode {
       );
       convertBtn.disabled = true;
     }
+    this._runHold = convertHold; // Parcel O-04: abandonRun releases it
     if (cancelBtn) cancelBtn.hidden = false;
     if (progressSection) progressSection.hidden = false;
     if (downloadsSection) downloadsSection.hidden = true;
@@ -1772,6 +1779,11 @@ class MathPixConvertMode {
         {
           onStart: (conversionId) => {
             logDebug("Conversion started:", conversionId);
+            // Parcel O-04: abandoned before its id existed; stop it now.
+            if (!isCurrentRun()) {
+              apiClient.cancelConversion(conversionId);
+              return;
+            }
             // Parcel 10l: remember the id; honour a Cancel that came first.
             this.activeConversionId = conversionId;
             if (this.cancelRequested) apiClient.cancelConversion(conversionId);
@@ -1782,6 +1794,7 @@ class MathPixConvertMode {
           },
           onProgress: (status) => {
             logDebug("Conversion progress:", status);
+            if (!isCurrentRun()) return; // Parcel O-04
             // Update progress for completed formats
             if (status.completed) {
               status.completed.forEach((format) => {
@@ -1795,6 +1808,7 @@ class MathPixConvertMode {
           },
           onFormatComplete: (format, blob) => {
             logDebug("Format complete:", format);
+            if (!isCurrentRun()) return; // Parcel O-04
             this.updateProgressItem(format, "completed", "Complete");
 
             // Store result
@@ -1809,6 +1823,7 @@ class MathPixConvertMode {
           },
           // Parcel O-02: say which format failed and why, in its own row
           onComplete: (completionResult) => {
+            if (!isCurrentRun()) return; // Parcel O-04
             formatErrors = completionResult.errors || {};
             (completionResult.failed || []).forEach((format) => {
               this.updateProgressItem(
@@ -1820,6 +1835,7 @@ class MathPixConvertMode {
           },
           onError: (error) => {
             logError("Conversion error:", error);
+            if (!isCurrentRun()) return; // Parcel O-04
             // If error contains format info, update that specific item
             if (error.format) {
               this.updateProgressItem(
@@ -1833,6 +1849,9 @@ class MathPixConvertMode {
       );
 
       logInfo("Conversion complete, results:", results.size);
+
+      // Parcel O-04: an abandoned run stores, shows and says nothing.
+      if (!isCurrentRun()) return;
 
       // Handle any formats that completed but weren't caught by onFormatComplete
       results.forEach((blob, format) => {
@@ -1849,6 +1868,7 @@ class MathPixConvertMode {
       });
     } catch (error) {
       logError("Conversion failed:", error);
+      if (!isCurrentRun()) return; // Parcel O-04
 
       // Mark all incomplete formats as failed (not after a Cancel: Parcel 10l)
       if (!this.cancelRequested) selectedFormats.forEach((format) => {
@@ -1899,6 +1919,17 @@ class MathPixConvertMode {
       this.showErrors(errors);
     }
 
+    // Parcel O-03: each failed format's name and reason go into the one line
+    // this mode already speaks, in the names the progress rows use.
+    // Parcel T-01: the closing stop is added only when the reason has none.
+    const stopped = (reason) => (/[.!?]$/.test(reason) ? reason : `${reason}.`);
+    const failures = errors
+      .map(
+        (e) =>
+          `${this.getFormatDisplayName(e.format)} failed: ${stopped(e.error)}`,
+      )
+      .join(" ");
+
     // Notify user
     if (this.completedDownloads.size > 0 && errors.length === 0) {
       this.showNotification(
@@ -1907,12 +1938,42 @@ class MathPixConvertMode {
       );
     } else if (this.completedDownloads.size > 0) {
       this.showNotification(
-        `Converted ${this.completedDownloads.size} format(s) with ${errors.length} error(s)`,
+        `Converted ${this.completedDownloads.size} format(s) with ${errors.length} error(s). ${failures}`,
         "warning",
       );
     } else {
-      this.showNotification("All conversions failed", "error");
+      this.showNotification(`All conversions failed. ${failures}`, "error");
     }
+  }
+
+  /**
+   * Parcel O-04: abandon a conversion still running because its document has
+   * been cleared or replaced. Stops the client polling (as Cancel does), puts
+   * the controls back to idle and writes no status or toast; the gesture that
+   * caused it already speaks. A late return finds its token out of date.
+   * @private
+   */
+  _abandonRun() {
+    if (!this.isConverting) return;
+    this._runToken = (this._runToken || 0) + 1;
+
+    const apiClient = window.getMathPixConvertClient?.();
+    if (apiClient && this.activeConversionId) {
+      apiClient.cancelConversion(this.activeConversionId);
+    }
+    this.activeConversionId = null;
+    this.isConverting = false;
+
+    if (this._runHold) {
+      this._runHold.release();
+      this._runHold = null;
+    }
+    const cancelBtn = document.getElementById("convert-mode-cancel-btn");
+    if (cancelBtn) cancelBtn.hidden = true;
+    const progressSection = document.getElementById("convert-mode-progress");
+    if (progressSection) progressSection.hidden = true;
+    this.updateConvertButtonState();
+    logInfo("Conversion abandoned: its document was cleared or replaced");
   }
 
   /**
@@ -2147,7 +2208,7 @@ class MathPixConvertMode {
       ...errors.map((e) => {
         const li = document.createElement("li");
         const strong = document.createElement("strong");
-        strong.textContent = `${e.format.toUpperCase()}:`;
+        strong.textContent = `${this.getFormatDisplayName(e.format)}:`; // Parcel O-03
         li.append(strong, ` ${e.error}`);
         return li;
       }),

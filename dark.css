@@ -4244,6 +4244,30 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border-bottom-color: #74c9e5;
   background-color: rgba(116, 201, 229, 0.1);
 }
+/* UX-8: each Add Data tab icon has its own hue, every one from a colour already used in this sheet. The hue carries no
+   meaning (the label does). The global button:hover and :focus-visible rule flips an unselected tab to #e1e8ec, and no
+   single colour is 3:1 on both that and the resting #231f20 and selected surfaces, so an unselected tab's icon follows
+   its text colour (#00131d, 15:1) while it is hovered or keyboard-focused and returns to its hue afterwards. */
+.gb-tab-icon[data-icon="pencil"] {
+  color: #ff7eb6;
+}
+.gb-tab-icon[data-icon="clipboardNotes"] {
+  color: #4bb694;
+}
+.gb-tab-icon[data-icon="folder"] {
+  color: #fcbc00;
+}
+.gb-tab-icon[data-icon="image"] {
+  color: #74c9e5;
+}
+.gb-tab-button:not(.active):hover .gb-tab-icon,
+.gb-tab-button:not(.active):focus-visible .gb-tab-icon {
+  color: inherit;
+}
+/* UX-8: the result heading's tick, the same green as the Paste CSV tab icon. */
+#gb-result-heading [data-icon="checkCircle"] {
+  color: #4bb694;
+}
 .gb-input-panel {
   border-color: #9fb1bd;
   background-color: #231f20;
@@ -6441,6 +6465,19 @@ textarea {
 button.sample-button {
   outline: 2px solid black;
 }
+
+/* SF-1 BEGIN (5 October 2026). Dark only. The global input::placeholder above paints every placeholder #e1e8ec, the colour of
+   typed text, so an "empty" value cell in the image tab's editable preview read as a typed value. Scoped to those cells:
+   the Paste CSV box's grey at rest; on hover and focus the site turns the input #e1e8ec and the global rules turn the
+   placeholder #231f20 (typed text's colour there), so a darker grey (#495961, 5.88:1 on #e1e8ec) takes its place. */
+.gb-preview-cell-input::placeholder {
+  color: #9fb1bd;
+}
+.gb-preview-cell-input:hover::placeholder,
+.gb-preview-cell-input:focus::placeholder {
+  color: #495961;
+}
+/* SF-1 END */
 
 .sample-format pre {
   background: #00131d;

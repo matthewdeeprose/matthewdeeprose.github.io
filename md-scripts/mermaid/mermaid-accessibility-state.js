@@ -272,6 +272,67 @@
     return names[id];
   }
 
+  // The case a transition-label arm applies to the words it quotes.
+  const LABEL_CASE = Object.freeze({
+    VERBATIM: "verbatim",
+    LOWER_FIRST: "lower-first",
+    LOWER_ALL: "lower-all",
+  });
+
+  /**
+   * Apply a label case rule to a string.
+   * @param {string} text - The label, or one piece of it
+   * @param {string} rule - A LABEL_CASE value
+   * @returns {string} The text with the rule applied
+   */
+  function applyLabelCase(text, rule) {
+    if (rule === LABEL_CASE.LOWER_FIRST) {
+      return text.charAt(0).toLowerCase() + text.slice(1);
+    }
+    if (rule === LABEL_CASE.LOWER_ALL) return text.toLowerCase();
+    return text;
+  }
+
+  /**
+   * Join the text of a segment list.
+   * @param {Array<{text: string, href?: string}>} segments - Label pieces
+   * @returns {string} The plain label the pieces make
+   */
+  function joinSegmentText(segments) {
+    return segments.map((segment) => segment.text).join("");
+  }
+
+  /**
+   * Render a name or label for the detailed tier, with the link it draws as a
+   * working link (item 82, L2) when the pieces read as the text. With no
+   * usable pieces this is exactly escapeHtml of the cased text, so a caller
+   * that passes none is byte-identical to what it was.
+   * @param {string} text - The narrated text
+   * @param {Array<{text: string, href?: string}>} [segments] - Label pieces
+   * @param {string} rule - A LABEL_CASE value
+   * @returns {string} HTML for the text
+   */
+  function labelHtml(text, segments, rule) {
+    const cased = applyLabelCase(text, rule);
+    if (!Array.isArray(segments) || joinSegmentText(segments) !== text) {
+      return Common.escapeHtml(cased);
+    }
+    // Lower-first touches only the first character, which belongs to the first
+    // piece; lower-all touches every piece. Either way the words are the same.
+    const lowered =
+      rule === LABEL_CASE.LOWER_FIRST
+        ? segments.map((segment, index) =>
+            index === 0
+              ? { ...segment, text: applyLabelCase(segment.text, rule) }
+              : segment
+          )
+        : segments.map((segment) => ({
+            ...segment,
+            text: applyLabelCase(segment.text, rule),
+          }));
+    return Common.renderSegmentsHtml(lowered, cased);
+  }
+
   // Arm (a) of transitionLabelPhrase: a label opening with one of these already
   // reads as a clause, so it is spoken as the author wrote it.
   const CONDITION_WORD_PATTERN = /^(?:if|when|after|on|once|upon)\b/i;
@@ -305,17 +366,20 @@
    * @param {string} label - The transition label, already trimmed
    * @returns {string} The phrase to append after the state name, "" if no label
    */
-  function transitionLabelPhrase(label) {
+  function transitionLabelPhrase(label, segments) {
     if (!label) return "";
 
-    const inSpan = (text) =>
-      `<span class="diagram-label">${Common.escapeHtml(text)}</span>`;
-    const lowerFirst = label.charAt(0).toLowerCase() + label.slice(1);
+    // Item 82, L2: `segments` is passed ONLY by the one site that writes the
+    // label's anchor; every other call reads the text, exactly as before. The
+    // case a phrase arm applies is applied to the segment text too, so the
+    // words are the same with or without an anchor in them.
+    const inSpan = (rule) =>
+      `<span class="diagram-label">${labelHtml(label, segments, rule)}</span>`;
 
     // (a) The label is already a condition — do not wrap it in one.
     if (CONDITION_WORD_PATTERN.test(label)) {
       logDebug("[Mermaid Accessibility] Transition label arm (a):", label);
-      return ` ${inSpan(lowerFirst)}`;
+      return ` ${inSpan(LABEL_CASE.LOWER_FIRST)}`;
     }
 
     // (b) Subject plus verb, such as "payment occurs". A lone "occurs" or a
@@ -326,18 +390,18 @@
       words[words.length - 1].toLowerCase().endsWith("s")
     ) {
       logDebug("[Mermaid Accessibility] Transition label arm (b):", label);
-      return ` when the ${inSpan(lowerFirst)}`;
+      return ` when the ${inSpan(LABEL_CASE.LOWER_FIRST)}`;
     }
 
     // (c) A simple event name, such as "Start".
     if (SINGLE_CAPITALISED_WORD_PATTERN.test(label)) {
       logDebug("[Mermaid Accessibility] Transition label arm (c):", label);
-      return ` after ${inSpan(label.toLowerCase())}`;
+      return ` after ${inSpan(LABEL_CASE.LOWER_ALL)}`;
     }
 
     // (d) Everything else is quoted verbatim rather than forced into a phrase.
     logDebug("[Mermaid Accessibility] Transition label arm (d):", label);
-    return `, labelled "${inSpan(label)}"`;
+    return `, labelled "${inSpan(LABEL_CASE.VERBATIM)}"`;
   }
 
   /**
@@ -415,14 +479,17 @@
    *
    * @param {Object} parsedData - Parsed diagram data
    * @param {string} state - The state id the initial edge points at
+   * @param {{links?: boolean}} [options] - `links: true` at the one place the
+   *   label's link is written (the Initial State list); absent, the text is read
    * @returns {string} The phrase, or "" when there is no such edge or no label
    */
-  function initialEdgePhrase(parsedData, state) {
+  function initialEdgePhrase(parsedData, state, options) {
     const transitions = parsedData && parsedData.stateTransitions;
     const edges = (transitions && transitions["[*]"]) || [];
     const edge = edges.find((candidate) => candidate.target === state);
     if (!edge || !edge.label) return "";
-    return transitionLabelPhrase(edge.label.trim());
+    const segments = options && options.links ? edge.segments : undefined;
+    return transitionLabelPhrase(edge.label.trim(), segments);
   }
 
   // ITEM 82, ENACTMENT 5 (3 October 2026): "a line break the picture draws is
@@ -432,13 +499,53 @@
   // alias name, measured 2 October 2026 (measurement 2 § 3), so the shared
   // rule is called with its default (all) form set. The rule is the adapter's
   // and is resolved off window AT CALL TIME. The parse reads raw source
-  // bytes, so an escaped `&lt;br&gt;` or `#lt;br#gt;` is not matched; what
-  // the words then say of it (the entity mismatch measurement 1 recorded) is
-  // out of scope for this slice and unchanged. The diagram TITLE is not read
-  // through this: the canvas prints a tag there. The description of a state
+  // bytes, so an escaped `&lt;br&gt;` or `#lt;br#gt;` is not matched; the
+  // entity decode after the rules (entity slice, 6 October 2026,
+  // decodeStateText) reads it as the characters the canvas prints. The
+  // diagram TITLE is not read through this: the canvas prints a tag there. The description of a state
   // (`s1 : text`) breaks on the canvas and is read by nothing here.
+  // ITEM 82, MARKUP ENACTMENT 4 (5 October 2026): "formatting the picture
+  // draws is read as the plain text it formats." State's canvas draws
+  // formatting tags, images, links and markdown emphasis on a transition label
+  // and on a state alias name, and prints backticks (measurement 3 § 3.2), so
+  // the adapter's markup rule is called with tags and emphasis on and codespan
+  // off, after the break rule, resolved off window AT CALL TIME. An escaped
+  // `&lt;b&gt;` or `#lt;b#gt;` is not matched (this parse reads raw source
+  // bytes); the entity decode after it reads it as the characters the canvas
+  // prints. A transition label that is only tags arrives empty, which this
+  // module already reads as no label; an alias that is only tags draws an
+  // empty state and is named by its id (readAliasBreaks). An alias containing a double quote never
+  // reaches this site: the alias declaration's pattern stops at the first
+  // inner quote, so the alias is dropped before any rule runs.
+  const STATE_DRAWN_MARKUP = Object.freeze({
+    tags: true,
+    emphasis: true,
+    codespan: false,
+  });
+  let warnedMarkupRuleMissing = false;
+
   /**
-   * Read state text with typed line breaks as single spaces.
+   * Read drawn markup in state text as the text it formats.
+   * @param {Object} adapter - window.MermaidParseAdapter
+   * @param {string} text - The text after the break rule
+   * @returns {string} The text with drawn markup read as text, or the text
+   *   as typed when the rule is not loaded
+   */
+  function readStateMarkup(adapter, text) {
+    if (typeof adapter.replaceDrawnMarkup !== "function") {
+      if (!warnedMarkupRuleMissing) {
+        warnedMarkupRuleMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] State: the shared markup rule is not loaded; labels and names are read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.replaceDrawnMarkup(text, STATE_DRAWN_MARKUP);
+  }
+
+  /**
+   * Read state text with typed line breaks as spaces and drawn markup as text.
    * @param {string} text - A transition label or an alias name
    * @returns {string} The text with breaks read as spaces; empty when it was
    *   only a break; unchanged when the rule is not loaded
@@ -453,24 +560,203 @@
       );
       return text;
     }
-    return adapter.replaceTypedLineBreaks(text, adapter.LINE_BREAK_FORMS.ALL);
+    const withoutBreaks = adapter.replaceTypedLineBreaks(
+      text,
+      adapter.LINE_BREAK_FORMS.ALL
+    );
+    return readStateMarkup(adapter, withoutBreaks);
   }
 
   /**
-   * Read a `state "Name" as id` alias name. HALTED, not enacted: a name the
-   * transform would EMPTY (a label that is only a break). Principle P2's
-   * phrase carries its own noun (`unlabelled state "s1"`) while every
-   * sentence here writes `the NAME state`, so it would need a restructured
-   * sentence at five or more sites. Such a name is left as typed, which is
-   * today's reading. A spaces-only name is left alone too (and the canvas
-   * draws the id there, not nothing).
+   * Read a `state "Name" as id` alias name.
+   *
+   * ITEM 82, HELD EMPTIES (6 October 2026): "a label that draws nothing (only
+   * a break, or only spaces) is read as unlabelled, in each type's own
+   * words." A name the break and markup rules empty (only breaks, only tags,
+   * only spaces) is not a name: the state is named by its id in every
+   * sentence, and the state list carries one disclosure sentence,
+   * `State "s1" has an empty name.` The canvas draws an empty state for a
+   * break-only or tag-only name and the id for a spaces-only one (measured
+   * on 11.17.2). The emptiness test runs on the text AFTER the rules and
+   * alters no bytes.
    * @param {string} name - The alias name after quote stripping
-   * @returns {string} The name with breaks read as spaces, or the name
-   *   unchanged when the transform would empty it
+   * @returns {string|null} The name with breaks read as spaces, or null when
+   *   the name draws nothing
    */
   function readAliasBreaks(name) {
     const read = readStateBreaks(name);
-    return typeof read === "string" && read.trim() === "" ? name : read;
+    return typeof read === "string" && read.trim() === ""
+      ? null
+      : decodeStateText(read);
+  }
+
+  /**
+   * Did the author give this state an alias that draws nothing?
+   * @param {Object} parsedData - Parsed diagram data
+   * @param {string} id - The state id
+   * @returns {boolean} True when the alias name is empty after the rules
+   */
+  function hasEmptyName(parsedData, id) {
+    const empties = parsedData && parsedData.emptyNames;
+    return Boolean(empties && Object.prototype.hasOwnProperty.call(empties, id));
+  }
+
+  // ITEM 82, ENTITY SLICE, ENACTMENT 1 (6 October 2026): "the words read the
+  // characters the picture prints, decoded once and escaped once." A state
+  // alias and a transition label are drawn into a foreignObject, which
+  // resolves the author's references and Mermaid's `#name;` codes alike, so
+  // the adapter's decodeAuthorTextFromSource (Mermaid's encode, then the full
+  // decode) is applied LAST, after the break and markup rules, and every
+  // narrating site escapes once. It matched the alias canvas on 15 of 15
+  // forms (docs/mermaid-item-82-entity-measure-2026-10-06.md § 2). It is
+  // resolved off window AT CALL TIME. An alias that draws nothing is never
+  // decoded.
+  let warnedDecodeMissing = false;
+
+  /**
+   * Decode state text as the canvas prints it.
+   * @param {string} text - An alias name or transition label after the break
+   *   and markup rules
+   * @returns {string} The decoded text, or the text as typed when the decode
+   *   is not loaded
+   */
+  function decodeStateText(text) {
+    if (typeof text !== "string" || text === "") return text;
+
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.decodeAuthorTextFromSource !== "function") {
+      if (!warnedDecodeMissing) {
+        warnedDecodeMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] State: the shared source decode is not loaded; labels and names are read as typed"
+        );
+      }
+      return text;
+    }
+    return adapter.decodeAuthorTextFromSource(text);
+  }
+
+  // The same slice, for the transition label only. Mermaid's state grammar
+  // ends a statement at a `;`, so a label is CUT at its first `;` and the
+  // canvas draws the text before it (the rest becomes stray states, an
+  // upstream watch). Mermaid's encode runs first and turns its own `#name;`
+  // and `#digits;` codes into placeholders, so their semicolons never cut;
+  // an author's `&lt;` keeps its `;` and does cut, drawing `a <` for
+  // `a &lt; b`. Measured 6 October 2026 on 11.17.2. Ruling (Matthew,
+  // 6 October 2026): the words read the cut text as drawn.
+  const STATEMENT_END_OR_CODE = /#\w+;|;/g;
+
+  /**
+   * Cut a transition label where Mermaid's grammar ends the statement.
+   * @param {string} text - The label text after the colon, as typed
+   * @returns {string} The text before the first `;` that is not part of a
+   *   Mermaid `#name;` code, or the text unchanged when there is none
+   */
+  function cutTransitionLabel(text) {
+    for (const match of text.matchAll(STATEMENT_END_OR_CODE)) {
+      if (match[0] === ";") return text.slice(0, match.index);
+    }
+    return text;
+  }
+
+  // ITEM 82, L2 (6 October 2026): "a link the picture draws is a working link
+  // in the words." The anchor is written ONCE per position, at its own place
+  // in the structure lists: an alias in the per-state list (`<dt>`), a
+  // transition label in the per-state transition list, or, for an edge out of
+  // the initial marker, in the Initial State list. Every other site, about
+  // twenty for an alias, reads the text. The segment reader is the adapter's
+  // readLabelWithLinks, resolved off window AT CALL TIME like the two rules
+  // above. Segments are kept ONLY when their join equals the text it already
+  // narrates. Since the entity slice (6 October 2026) that text is decoded and
+  // the reader is handed the source with `fromSource`, so a label carrying an
+  // entity joins and keeps its anchor. A transition label is read from source
+  // where Mermaid spells a double quote `#quot;`, so its href took one decode
+  // here, after the adapter's own; on the `fromSource` route the adapter's
+  // decode already resolves it and this one finds nothing left to do. It is
+  // kept, not removed: removal was not measured.
+  const ANCHOR_OPENING = /<a[\s/>]/i;
+  const HASH_ENTITIES = Object.freeze({
+    quot: '"',
+    amp: "&",
+    lt: "<",
+    gt: ">",
+    apos: "'",
+  });
+  let warnedLinkReaderMissing = false;
+
+  /**
+   * Decode Mermaid's `#name;` escapes in an href read from source.
+   * @param {string} href - The href as the adapter delivered it
+   * @returns {string} The href with the five named escapes read
+   */
+  function decodeHashEntities(href) {
+    return href.replace(/#([a-z]+);/gi, (whole, name) =>
+      Object.prototype.hasOwnProperty.call(HASH_ENTITIES, name.toLowerCase())
+        ? HASH_ENTITIES[name.toLowerCase()]
+        : whole
+    );
+  }
+
+  /**
+   * Read the link pieces of an alias name or a transition label.
+   * @param {string} typedText - The text before the break and markup rules
+   * @param {string} read - The text this module narrates (after the rules)
+   * @param {{hashEntities: boolean}} options - `hashEntities` for a
+   *   transition label, whose source spells a quote `#quot;`
+   * @returns {Array<{text: string, href?: string}>|null} The pieces, or null
+   *   when the text draws no link, the reader is not loaded, or the pieces
+   *   would not read as the narrated text
+   */
+  function readStateSegments(typedText, read, options) {
+    if (typeof typedText !== "string" || !ANCHOR_OPENING.test(typedText)) {
+      return null;
+    }
+
+    const adapter = window.MermaidParseAdapter;
+    if (!adapter || typeof adapter.readLabelWithLinks !== "function") {
+      if (!warnedLinkReaderMissing) {
+        warnedLinkReaderMissing = true;
+        logWarn(
+          "[Mermaid Accessibility] State: the shared link reader is not loaded; labels and names are read as typed, with no links"
+        );
+      }
+      return null;
+    }
+
+    // `fromSource`: the reader encodes with Mermaid's rule first, so its
+    // per-segment decode resolves what decodeStateText resolves and the
+    // segments join to the narrated text (entity slice, 6 October 2026).
+    const result = adapter.readLabelWithLinks(typedText, STATE_DRAWN_MARKUP, {
+      fromSource: true,
+    });
+    if (!Array.isArray(result.segments) || result.segments.length === 0) {
+      return null;
+    }
+
+    const segments = options.hashEntities
+      ? result.segments.map((segment) =>
+          segment.href === undefined
+            ? segment
+            : { ...segment, href: decodeHashEntities(segment.href) }
+        )
+      : result.segments;
+    return joinSegmentText(segments) === read ? segments : null;
+  }
+
+  /**
+   * A state's narrated name with the link it draws as a working link. Used at
+   * the one site that writes the anchor; every other site escapes the name.
+   * @param {Object} parsedData - Parsed diagram data
+   * @param {string} id - The state id
+   * @returns {string} HTML for the state's display name
+   */
+  function stateNameHtml(parsedData, id) {
+    const links = parsedData && parsedData.displayLinks;
+    const segments =
+      links && Object.prototype.hasOwnProperty.call(links, id)
+        ? links[id]
+        : undefined;
+    return labelHtml(displayNameFor(parsedData, id), segments, LABEL_CASE.VERBATIM);
   }
 
   /**
@@ -490,6 +776,13 @@
     // declarations. Stays empty for a diagram that declares no alias, which is
     // what makes displayNameFor a no-op on such diagrams.
     const displayNames = {};
+    // id -> link pieces of an alias name that draws a link (item 82, L2).
+    // Empty unless an alias carries one.
+    const displayLinks = {};
+    // id -> true for an alias whose name draws nothing (item 82, held
+    // empties). Such a state stays out of displayNames, so every site names
+    // it by its id; the state list discloses the empty name.
+    const emptyNames = {};
 
     // Parse line by line
     const lines = code.split("\n");
@@ -535,12 +828,23 @@
           const declaredName = match[1] || match[2] || match[3];
           const stateId = match[4];
           allStates.add(stateId);
-          displayNames[stateId] = readAliasBreaks(cleanStateName(declaredName));
+          const typedName = cleanStateName(declaredName);
+          const aliasName = readAliasBreaks(typedName);
+          if (aliasName === null) {
+            // Draws nothing: named by its id, with no link.
+            emptyNames[stateId] = true;
+          } else {
+            displayNames[stateId] = aliasName;
+            const nameSegments = readStateSegments(typedName, aliasName, {
+              hashEntities: false,
+            });
+            if (nameSegments) displayLinks[stateId] = nameSegments;
+          }
           logDebug(
             "[Mermaid Accessibility] Found aliased state:",
             stateId,
             "displayed as",
-            displayNames[stateId]
+            aliasName === null ? `${stateId} (empty name)` : aliasName
           );
         }
         continue;
@@ -610,13 +914,18 @@
         // Extract target state and transition label
         let targetState = parts[1].trim();
         let transitionLabel = "";
+        let transitionSegments = null;
 
         if (targetState.includes(":")) {
           const targetParts = targetState.split(":");
           targetState = cleanStateName(targetParts[0].trim());
-          transitionLabel = readStateBreaks(
-            targetParts.slice(1).join(":").trim()
-          );
+          const typedLabel = cutTransitionLabel(
+            targetParts.slice(1).join(":")
+          ).trim();
+          transitionLabel = decodeStateText(readStateBreaks(typedLabel));
+          transitionSegments = readStateSegments(typedLabel, transitionLabel, {
+            hashEntities: true,
+          });
         } else {
           targetState = cleanStateName(targetState);
         }
@@ -642,10 +951,9 @@
           stateTransitions[sourceState] = [];
         }
 
-        stateTransitions[sourceState].push({
-          target: targetState,
-          label: transitionLabel,
-        });
+        const transition = { target: targetState, label: transitionLabel };
+        if (transitionSegments) transition.segments = transitionSegments;
+        stateTransitions[sourceState].push(transition);
 
         logDebug(
           "[Mermaid Accessibility] Found transition:",
@@ -664,6 +972,8 @@
       allStates: Array.from(allStates),
       compositeStates,
       displayNames,
+      displayLinks,
+      emptyNames,
     };
 
     logDebug(
@@ -744,11 +1054,11 @@
       // out of [*]. An unlabelled edge yields "" and leaves the sentence and
       // the list items byte-identical to what they were before.
       if (parsedData.initialStates.length === 1) {
-        html += `          The process starts in the <strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, parsedData.initialStates[0]))}</span></strong> state${initialEdgePhrase(parsedData, parsedData.initialStates[0])}.\n`;
+        html += `          The process starts in the <strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, parsedData.initialStates[0]))}</span></strong> state${initialEdgePhrase(parsedData, parsedData.initialStates[0], { links: true })}.\n`;
       } else {
         html += `          The process can start in any of these states:\n          <ul>\n`;
         parsedData.initialStates.forEach((state) => {
-          html += `            <li><strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></strong>${initialEdgePhrase(parsedData, state)}</li>\n`;
+          html += `            <li><strong><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></strong>${initialEdgePhrase(parsedData, state, { links: true })}</li>\n`;
         });
         html += `          </ul>\n`;
       }
@@ -789,8 +1099,14 @@
         if (state === "[*]" || processedStates.has(state)) return;
         processedStates.add(state);
 
-        html += `        <dt><span class="diagram-state">${Common.escapeHtml(displayNameFor(parsedData, state))}</span></dt>\n`;
+        html += `        <dt><span class="diagram-state">${stateNameHtml(parsedData, state)}</span></dt>\n`;
         html += `        <dd>\n`;
+
+        // Item 82, held empties: the one sentence that discloses an alias
+        // which draws nothing; every other sentence names the state by id.
+        if (hasEmptyName(parsedData, state)) {
+          html += `          <p>State "${Common.escapeHtml(state)}" has an empty name.</p>\n`;
+        }
 
         // Note if this is a composite state
         if (parsedData.compositeStates[state]) {
@@ -817,7 +1133,8 @@
 
             // Create more natural transition phrasing (ledger entry 4)
             const transitionPhrase = transitionLabelPhrase(
-              transition.label ? transition.label.trim() : ""
+              transition.label ? transition.label.trim() : "",
+              transition.segments
             );
 
             if (transition.target === "[*]") {

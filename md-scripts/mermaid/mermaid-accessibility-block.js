@@ -357,6 +357,9 @@
     );
   }
 
+  // The option the row list passes to namePhrase to write a label's links.
+  const LINKED_NAME = Object.freeze({ withLinks: true });
+
   /**
    * THE ONE PLACE A BLOCK'S NAME BECOMES A PHRASE (rules B9, B12, R14 LIFTED).
    *
@@ -379,15 +382,25 @@
    * each form and this is the rule that makes both true without ever opening a
    * sentence in lower case.
    *
+   * ITEM 82, L2 (enactment 3): a link the picture draws on the label is a
+   * working link in the words, at the label's own site in the row list and
+   * nowhere else. Only the row list asks for it (`LINKED_NAME`); every arrow
+   * sentence reads the text, so the anchor is written once however many
+   * arrows name the block.
+   *
    * @param {Object} block - A delivered block, never a space
    * @param {boolean} sentenceInitial - Does this phrase open its sentence?
+   * @param {Object} [options] - `LINKED_NAME` to write the label's links
    * @returns {string} The phrase, escaped, ready for the HTML sink
    */
-  function namePhrase(block, sentenceInitial) {
+  function namePhrase(block, sentenceInitial, options) {
     if (labelTrimsToEmpty(block)) {
       const opener = sentenceInitial ? "Unlabelled block" : "unlabelled block";
       const id = typeof block.id === "string" ? block.id : "";
       return `${opener} ${quoted(id)}`;
+    }
+    if (options === LINKED_NAME) {
+      return `"${common().renderSegmentsHtml(block.segments, nameOf(block))}"`;
     }
     return quoted(nameOf(block));
   }
@@ -773,7 +786,7 @@
     const arrows = counts[block.id] || 0;
 
     if (isGroup(block)) {
-      const opener = `${namePhrase(block, true)}${groupQualifiers(block, arrows)}`;
+      const opener = `${namePhrase(block, true, LINKED_NAME)}${groupQualifiers(block, arrows)}`;
       const children = placement.children || [];
       if (children.length === 0) {
         return [`<li>${opener}, an empty group.</li>`];
@@ -789,7 +802,7 @@
     // `Unlabelled block "b", with one arrow.` fall out rather than being a
     // second sentence shape to maintain.
     return [
-      `<li>${namePhrase(block, true)}${cellQualifiers(block, arrows)}.</li>`,
+      `<li>${namePhrase(block, true, LINKED_NAME)}${cellQualifiers(block, arrows)}.</li>`,
     ];
   }
 
@@ -1003,7 +1016,11 @@
     }
 
     const raw = typeof edge.label === "string" ? edge.label : "";
-    const label = raw.trim() === "" ? "" : `, labelled ${quoted(raw)}`;
+    // Item 82, L2 (enactment 3): the edge label's only site writes its links.
+    const label =
+      raw.trim() === ""
+        ? ""
+        : `, labelled "${common().renderSegmentsHtml(edge.segments, raw)}"`;
 
     return `<li>${core}${relation}${decoration}${lineStyle(edge)}${label}.</li>`;
   }

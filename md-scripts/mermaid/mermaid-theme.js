@@ -283,6 +283,9 @@ window.MermaidThemes = (function () {
    */
   const CASING_EXTRA_WIDTH = 4;
 
+  /** SC 1.4.11: the least a legend swatch may contrast with its ground before it is enclosed. */
+  const LEGEND_SWATCH_MIN_RATIO = 3;
+
   /**
    * Single-point marker radius, as a multiple of the line's own stroke width.
    * At the 3px lines this repo sets in light.css/dark.css that is r=6, a 12-unit
@@ -4527,13 +4530,76 @@ window.MermaidThemes = (function () {
       });
     });
 
+    // --- legend swatches (parcel 12c, 5 October 2026) ------------------------
+    // Mermaid 11.17.2 draws a legend beside every named series: a 2px swatch
+    // in the series' own colour. The colour is the key to the line on the plot
+    // and must stay exactly that, so a swatch that does not reach 3:1 (SC
+    // 1.4.11) against its ground is not recoloured; it is ENCLOSED. A casing in
+    // one of the two outline inks of record goes behind it, wider than the
+    // swatch by the plot's own CASING_EXTRA_WIDTH, and the pair is the object:
+    // the casing clears the ground, and the swatch's ink clears the casing.
+    // Measured on the paint fence: light:neutral 2.15:1 and light:forest 2.73:1
+    // bare; every other cell already passes and is left untouched. Both grounds
+    // are judged, the chart's own background (what the legend paints over) and
+    // the host's, and the worse one decides. The casing carries the pass's own
+    // CASING_ATTRIBUTE, so the sweep above removes it on a re-run.
+    const legendHostGround = resolveHostGround(svg);
+    const legendChartPaint = parsePaint(ground);
+    const legendGrounds = [
+      ...new Set([
+        legendChartPaint
+          ? paintToHex(compositeOver(legendChartPaint, parsePaint(legendHostGround)))
+          : legendHostGround,
+        legendHostGround,
+      ]),
+    ];
+    applied.legendCasings = [];
+    svg.querySelectorAll("g.legend g.markers > path").forEach((swatch) => {
+      const swatchComputed = window.getComputedStyle(swatch);
+      const swatchPaint = parsePaint(swatchComputed.stroke);
+      if (!swatchPaint) return;
+
+      const swatchInk = paintToHex(swatchPaint);
+      const bare = Math.min(
+        ...legendGrounds.map((g) => calculateContrastRatio(swatchInk, g))
+      );
+      if (bare >= LEGEND_SWATCH_MIN_RATIO) return;
+
+      const pick = pickInkAgainst(BLOCK_OUTLINE_INKS, [...legendGrounds, swatchInk]);
+      if (pick.worst < LEGEND_SWATCH_MIN_RATIO) {
+        logWarn(
+          `Legend swatch ${swatchInk} cannot be enclosed to ${LEGEND_SWATCH_MIN_RATIO}:1 by either outline ink (best ${pick.worst.toFixed(2)}:1) - left as drawn`
+        );
+        return;
+      }
+
+      const swatchWidth = parseFloat(swatchComputed.strokeWidth) || 2;
+      const legendCasing = document.createElementNS(svgNS, "path");
+      legendCasing.setAttribute(CASING_ATTRIBUTE, "true");
+      legendCasing.setAttribute("d", swatch.getAttribute("d"));
+      legendCasing.setAttribute("fill", "none");
+      legendCasing.setAttribute("stroke", pick.ink);
+      // Square caps, so the enclosure also reaches past the swatch's two ends.
+      legendCasing.setAttribute("stroke-linecap", "square");
+      legendCasing.setAttribute("aria-hidden", "true");
+      // Inline, for the reason the plot casing's width is: see above.
+      legendCasing.style.strokeWidth = `${swatchWidth + CASING_EXTRA_WIDTH}px`;
+      swatch.parentNode.insertBefore(legendCasing, swatch);
+      applied.legendCasings.push({
+        stroke: pick.ink,
+        width: swatchWidth + CASING_EXTRA_WIDTH,
+        worst: pick.worst,
+        bare,
+      });
+    });
+
     if (tiles.length) {
       defs.innerHTML = tiles.join("");
       svg.insertBefore(defs, svg.firstChild);
     }
 
     logInfo(
-      `Series encoding applied: ${applied.patterns.length} bar series, ${applied.dashes.length} line series, ${tiles.length} patterns, ${applied.casings.length} casings, ${applied.markers.filter((m) => m.drawn).length} single-point markers`
+      `Series encoding applied: ${applied.patterns.length} bar series, ${applied.dashes.length} line series, ${tiles.length} patterns, ${applied.casings.length} casings, ${applied.legendCasings.length} legend casings, ${applied.markers.filter((m) => m.drawn).length} single-point markers`
     );
     return applied;
   }
@@ -4541,7 +4607,7 @@ window.MermaidThemes = (function () {
   /**
    * Build the COMPLETE xyChart theme block for a theme.
    *
-   * ⚠ ALL ELEVEN KEYS ARE SET DELIBERATELY, AND OMITTING ANY ONE IS A DEFECT.
+   * ⚠ ALL THIRTEEN KEYS ARE SET DELIBERATELY, AND OMITTING ANY ONE IS A DEFECT.
    * Supplying an `xyChart` block inside `themeVariables` is all-or-nothing: any
    * key left out does NOT fall through to this theme's own `primaryTextColor`,
    * it falls through to Mermaid's `default` theme value, which is the near-black
@@ -4552,6 +4618,18 @@ window.MermaidThemes = (function () {
    *   B  xyChart: palette only        label #131300   background white     (both lost)
    *   C  xyChart: background+palette  label #131300   background #1E1E1E   (axes lost)
    *   D  xyChart: all eleven keys     label #ffffff   background #1E1E1E   (correct)
+   *
+   * ⚠ MERMAID 11.17.2 ADDED TWO KEYS, AND ROW D ABOVE WAS ELEVEN WHEN IT WAS
+   * TRUE. Read out of the bundle the page loads (5 October 2026, parcel 12c),
+   * Mermaid's xyChart block carries thirteen keys: the eleven below plus
+   * `dataLabelColor` and `legendTextColor`. The builder set only eleven, so the
+   * two new ones fell to the default #131300 — and `legendTextColor` is the
+   * colour of the legend text Mermaid now draws beside every named series.
+   * Measured by the UI guard's XL1 row: 1.12:1 against the chart's own
+   * background in dark:accessibleDark and dark:highContrastDark. A controlled
+   * render with and without the one key, same fence, moved the legend text from
+   * #131300 to the title's colour. When Mermaid is next re-pinned, compare its
+   * key list with this one; XL1's report prints both.
    *
    * Row C is what this function shipped for its first half hour, and it put the
    * dark themes' axis labels at 1.12:1 against their own ground — a WORSE defect
@@ -4570,6 +4648,8 @@ window.MermaidThemes = (function () {
     return {
       backgroundColor: ground,
       titleColor: ink,
+      dataLabelColor: ink,
+      legendTextColor: ink,
       xAxisTitleColor: ink,
       xAxisLabelColor: ink,
       xAxisTickColor: ink,
