@@ -1505,7 +1505,11 @@ const CaptionsFixerLLM = (function () {
           throw adapterError(
             ERRORS.SEND,
             `The request failed: ${error && error.message ? error.message : String(error)}`,
-            { cause: error },
+            {
+              cause: error,
+              maxOutputTokens: sent.maxOutputTokens,
+              reasoningEffort: sent.reasoningEffort,
+            },
           );
         }
         attempts = attempt;

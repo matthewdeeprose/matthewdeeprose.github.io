@@ -173,6 +173,8 @@ const GraphBuilderImage = (function () {
     DEV_NOTE: "gb-image-dev-request-note",
     DEV_COPY_REQUEST: "gb-image-dev-copy-request",
     DEV_COPY_RESPONSE: "gb-image-dev-copy-response",
+    DEV_EXPAND_REQUEST: "gb-image-dev-expand-request",
+    DEV_REQUEST_PRE: "gb-image-dev-request-pre",
   });
 
   // The one voice of the developer panel: its copy buttons' confirmations
@@ -423,9 +425,10 @@ const GraphBuilderImage = (function () {
   // DEVELOPER INFORMATION (silent: no live role; the copy buttons' confirmation is its only voice)
   // ============================================
 
-  function announceCopied(message) {
-    const announcer = window.accessibilityHelpers;
-    if (announcer && typeof announcer.announce === "function") announcer.announce(message, "polite");
+  /** The copy confirmation is this tab's success toast, which is the one voice (no direct announcement beside it). */
+  function notifyCopied(message) {
+    const toasts = notifications();
+    if (toasts) toasts.success(message);
   }
 
   function createDevPanel() {
@@ -441,9 +444,11 @@ const GraphBuilderImage = (function () {
         note: ID.DEV_NOTE,
         copyRequest: ID.DEV_COPY_REQUEST,
         copyResponse: ID.DEV_COPY_RESPONSE,
+        expandRequest: ID.DEV_EXPAND_REQUEST,
+        requestPre: ID.DEV_REQUEST_PRE,
       },
       copiedMessages: DEV_COPIED,
-      announce: announceCopied,
+      notifyCopied: notifyCopied,
     });
   }
 

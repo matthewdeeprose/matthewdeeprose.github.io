@@ -1,17 +1,17 @@
 // ─── MathPixDocxHeadings ─────────────────────────────────────────────────────
 // window.MathPixDocxHeadings — gives the headings in a Convert API docx real
-// Word heading styles (Heading1 to Heading3), so the Navigation pane and a
+// Word heading styles (Heading1 to Heading6), so the Navigation pane and a
 // screen reader see the document's structure. The API writes headings as
 // bold, large direct formatting on Normal paragraphs, with no w:pStyle.
 //
 // Grounding: HW-0 (.claude/measurements/hw-0-headings-word/HW-0-record.md).
-// Heading-shaped paragraphs are bold in every non-empty run with w:sz 56, 42
-// or 33 (levels 1, 2, 3); the MMD heading sequence aligns with them in order,
+// Heading-shaped paragraphs are bold in every non-empty run with w:sz 56, 42,
+// 33, 28, 23 or 19 (levels 1 to 6); the MMD heading sequence aligns with them in order,
 // level and text. The regex set and text normalisation below are HW-0's, so
 // its committed alignment stays the reference.
 //
-// Pure module: nothing in production calls it yet (HW-1b wires it into the
-// post-await block of the Resume-mode conversion). Fail safe throughout: any
+// HW-1b wires it into the post-await block of the Resume-mode conversion
+// (session-restorer-convert.js, _runApiConvertFormats). Fail safe throughout: any
 // mismatch or error returns null, or resolves the ORIGINAL blob unchanged.
 //
 // XML is edited with string operations only. A DOM serialiser can rewrite
@@ -65,14 +65,32 @@
     { level: 2, re: /^## (.*)$/ },
     { level: 2, re: /^\\section\*?\{(.*)\}\s*$/ },
     { level: 3, re: /^### (.*)$/ },
-    { level: 3, re: /^\\subsection\*\{(.*)\}\s*$/ },
+    // HW-1c: the star is optional. Measured: the numbered \subsection{} and
+    // \subsubsection{} both arrive as headings ("1.1. ..."), sized as starred.
+    { level: 3, re: /^\\subsection\*?\{(.*)\}\s*$/ },
+    { level: 4, re: /^#### (.*)$/ },
+    { level: 4, re: /^\\subsubsection\*?\{(.*)\}\s*$/ },
+    { level: 5, re: /^##### (.*)$/ },
+    { level: 6, re: /^###### (.*)$/ },
+    // \paragraph{} and \subparagraph{} are NOT here: measured, the API writes
+    // them as literal plain text, not as headings.
   ]);
 
-  /** Docx half-point size to heading level (HW-0: 56, 42, 33). */
-  const SIZE_TO_LEVEL = Object.freeze({ 56: 1, 42: 2, 33: 3 });
+  /**
+   * Docx half-point size to heading level, every level MEASURED on a real
+   * Convert docx (HW-0 for 56, 42, 33; HW-1c for 28, 23, 19, from a synthetic
+   * document carrying every heading form,
+   * .claude/measurements/hw-1c-word-checkpoint/levels.mmd). Markdown has six
+   * heading levels, so this covers all of them. HW-0 had read a size-28
+   * paragraph as a bold non-heading; it was "#### Text in the image".
+   */
+  const SIZE_TO_LEVEL = Object.freeze({ 56: 1, 42: 2, 33: 3, 28: 4, 23: 5, 19: 6 });
 
   /** Heading level to Word outline level (0-based). */
-  const LEVEL_TO_OUTLINE = Object.freeze({ 1: 0, 2: 1, 3: 2 });
+  const LEVEL_TO_OUTLINE = Object.freeze({ 1: 0, 2: 1, 3: 2, 4: 3, 5: 4, 6: 5 });
+
+  /** Every level the map can style, in order. */
+  const HEADING_LEVELS = Object.freeze([1, 2, 3, 4, 5, 6]);
 
   // Every w:p in document order: self-closing, or open tag to close tag.
   // "<w:p[ >]" excludes w:pPr and w:pStyle. Paragraphs do not nest here
@@ -252,10 +270,10 @@
     };
   }
 
-  /** Append Heading1 to Heading3 before </w:styles>, skipping ids present. */
+  /** Append Heading1 to Heading6 before </w:styles>, skipping ids present. */
   function addHeadingStyles(stylesXml) {
     let additions = "";
-    for (const level of [1, 2, 3]) {
+    for (const level of HEADING_LEVELS) {
       const id = `Heading${level}`;
       if (stylesXml.includes(`w:styleId="${id}"`)) continue;
       additions +=
@@ -380,10 +398,13 @@
    * map does not align or anything fails; never rejects.
    * @param {Blob} blob - the docx from the Convert API
    * @param {string} mmd - the MMD the conversion was sent
-   * @returns {Promise<{blob:Blob, mapped:number, applied:boolean}>}
+   * @returns {Promise<{blob:Blob, mapped:number, applied:boolean, expected:number}>}
+   *   expected: how many headings the MMD carries, so a caller can tell "no
+   *   map was needed" (0) from "a map was needed and failed" (applied false)
    */
   async function restyleDocxHeadings(blob, mmd) {
-    const unchanged = { blob, mapped: 0, applied: false };
+    const expected = headingSequence(mmd).length;
+    const unchanged = { blob, mapped: 0, applied: false, expected };
     try {
       if (typeof window.JSZip !== "function") {
         logWarn("restyleDocxHeadings: JSZip not loaded, original kept");
@@ -410,7 +431,7 @@
       const newBlob = await zip.generateAsync({ type: "blob", mimeType: DOCX_MIME });
 
       logDebug(`restyleDocxHeadings: ${result.mapped} heading(s) styled`);
-      return { blob: newBlob, mapped: result.mapped, applied: true };
+      return { blob: newBlob, mapped: result.mapped, applied: true, expected };
     } catch (err) {
       logError("restyleDocxHeadings: failed, original kept", err);
       return unchanged;

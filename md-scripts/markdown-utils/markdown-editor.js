@@ -1074,7 +1074,7 @@ const MarkdownEditor = (function () {
         );
       }
 
-      return `<div class="mermaid-container" aria-label="Diagram" role="figure" data-diagram-code="${encodeURIComponent(
+      return `<div class="mermaid-container" data-diagram-code="${encodeURIComponent(
         cleanCode
       )}">
               <div id="${mermaidId}" class="mermaid">${escapedCode}</div>

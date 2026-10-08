@@ -99,6 +99,49 @@ function logDebug(message, ...args) {
 }
 
 // ============================================================================
+// Request timeouts (HW-1c)
+// ============================================================================
+
+/**
+ * Per-request time limits. Measured 7 October 2026: a Convert request that
+ * never answered left the conversion "Waiting..." for 150 s and beyond with no
+ * message, because fetch has no limit of its own. Each limit runs until the
+ * response HEADERS arrive; a body that stalls after its headers is not covered.
+ * A timed-out status check is a recoverable error, so polling carries on.
+ * @constant {Object}
+ */
+const REQUEST_TIMEOUT_MS = Object.freeze({
+  START: 60000,
+  STATUS: 20000,
+  DOWNLOAD: 120000,
+});
+
+/**
+ * fetch with a time limit. On expiry the request is aborted and an Error
+ * naming the limit is thrown, which each caller wraps in its own ConvertError.
+ * @param {string} url
+ * @param {RequestInit} init
+ * @param {number} timeoutMs
+ * @returns {Promise<Response>}
+ */
+async function fetchWithTimeout(url, init, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        `the request timed out after ${Math.round(timeoutMs / 1000)} seconds`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// ============================================================================
 // Error Definitions
 // ============================================================================
 
@@ -554,11 +597,11 @@ class MathPixConvertAPIClient {
     try {
       logDebug("Sending POST to", config.ENDPOINT);
 
-      const response = await fetch(config.ENDPOINT, {
-        method: "POST",
-        headers: headers,
-        body: JSON.stringify(body),
-      });
+      const response = await fetchWithTimeout(
+        config.ENDPOINT,
+        { method: "POST", headers: headers, body: JSON.stringify(body) },
+        REQUEST_TIMEOUT_MS.START,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -628,10 +671,11 @@ class MathPixConvertAPIClient {
     try {
       logDebug("Checking status:", url);
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: headers,
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: "GET", headers: headers },
+        REQUEST_TIMEOUT_MS.STATUS,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -850,10 +894,11 @@ class MathPixConvertAPIClient {
     try {
       logDebug("Downloading:", url);
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: headers,
-      });
+      const response = await fetchWithTimeout(
+        url,
+        { method: "GET", headers: headers },
+        REQUEST_TIMEOUT_MS.DOWNLOAD,
+      );
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -92,6 +92,8 @@
   const REQUEST_NOTE_ID = "chat-dev-request-note";
   const COPY_REQUEST_ID = "chat-dev-copy-request";
   const COPY_RESPONSE_ID = "chat-dev-copy-response";
+  const EXPAND_REQUEST_ID = "chat-dev-expand-request";
+  const REQUEST_PRE_ID = "chat-dev-request-pre";
 
   // The confirmation both copy buttons announce (the assistant-bubble copy cue).
   const COPIED_MESSAGE = "Response copied to clipboard.";
@@ -117,10 +119,13 @@
           note: REQUEST_NOTE_ID,
           copyRequest: COPY_REQUEST_ID,
           copyResponse: COPY_RESPONSE_ID,
+          expandRequest: EXPAND_REQUEST_ID,
+          requestPre: REQUEST_PRE_ID,
         },
         copiedMessages: { request: COPIED_MESSAGE, response: COPIED_MESSAGE },
-        announce: function (message) {
-          S.announceToScreenReader(message);
+        // The success toast is the one voice for a copy (the shared announcer speaks it); no direct announcement.
+        notifyCopied: function (message) {
+          if (typeof window.notifySuccess === "function") window.notifySuccess(message);
         },
         wiredKey: "chatDevWired",
         finishReasonFromResponse: false,

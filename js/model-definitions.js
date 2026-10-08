@@ -66627,5 +66627,274 @@ modelRegistry.registerModel("aion-labs/aion-3.5", {
     errorMessage: null,
   },
 });
+modelRegistry.registerModel("anthropic/claude-haiku-5.5", {
+  provider: "anthropic",
+  name: "Claude Haiku 5.5",
+  category: "GeneralPurpose",
+  disabled: false,
+  description: "Claude Haiku 5.5 is a small and fast model designed for high-volume, cost-sensitive tasks. It is suitable for summarisation, subagent interactions, and browser use, and offers improved capabilities over its predecessor, Claude Haiku 4.5.",
+  costs: {
+    input: 0.1,
+    output: 0.5,
+    image: 0,
+    video: 0,
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+    "code",
+  ],
+  maxContext: 1000000,
+  fallbackTo: "anthropic/claude-haiku-4.5",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Model designed for high-volume, cost-sensitive tasks such as summarisation and tool use.",
+    releaseDate: "2026-10-07",
+    policyLinks: {
+      privacyPolicy: "https://www.anthropic.com/legal/privacy",
+      acceptableUse: "",
+      termsOfService: "https://www.anthropic.com/legal/commercial-terms",
+      lastUpdated: "2026-10-07",
+    },
+    bestFor: [
+      "High-volume summarisation",
+      "Subagent interactions",
+      "Browser-based tasks",
+    ],
+    modalities: {
+      inputs: [
+        "file",
+        "image",
+        "text",
+      ],
+      outputs: [
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-10-08",
+    pricingCheckedAt: "2026-10-08",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 10 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_completion_tokens",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "stop",
+      "structured_outputs",
+      "tool_choice",
+      "tools",
+      "verbosity",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "summarisation",
+      "tool-calling",
+      "browser-use",
+    ],
+    warnings: [
+      "Not a free model - consider budget implications",
+      "Cost per million inputs and outputs may accumulate quickly",
+    ],
+    ariaLabels: {
+      modelSelect: "Claude Haiku 5.5 - model with 1M context window",
+      parameterSection: "Parameter controls for Claude Haiku 5.5 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Claude Haiku 5.5 model",
+        complete: "Response ready from Claude Haiku 5.5",
+        reasoning: "Generating reasoning output with Claude Haiku 5.5",
+        analysis: "Analysing input with Claude Haiku 5.5",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
+modelRegistry.registerModel("google/gemini-nano-banana-2.1", {
+  provider: "google",
+  name: "Nano Banana 2.1",
+  category: "Vision",
+  disabled: false,
+  description: "Nano Banana 2.1 is an image generation and editing model developed by Google. It is designed to improve product recontextualisation and supports both text and image inputs and outputs. This model is part of the Flash tier and offers capabilities in reasoning and tool calling.",
+  costs: {
+    input: 1.5,
+    output: 7.5,
+    image: 0,
+    video: 0,
+    meters: {
+      image_output: {
+        value: 30,
+        unit: "usd-per-million-tokens",
+      },
+    },
+  },
+  capabilities: [
+    "text",
+    "vision",
+    "tool_calling",
+    "reasoning",
+  ],
+  maxContext: 65536,
+  fallbackTo: "google/gemini-3.5-flash",
+  isFree: false,
+  metadata: {
+    categoryDescription: "Image generation and editing model with advanced recontextualisation capabilities",
+    releaseDate: "2026-10-06",
+    policyLinks: {
+      privacyPolicy: "https://cloud.google.com/terms/cloud-privacy-notice",
+      acceptableUse: "",
+      termsOfService: "https://cloud.google.com/terms/",
+      lastUpdated: "2026-10-06",
+    },
+    bestFor: [
+      "Image generation",
+      "Image editing",
+      "Product recontextualisation",
+    ],
+    modalities: {
+      inputs: [
+        "image",
+        "text",
+      ],
+      outputs: [
+        "image",
+        "text",
+      ],
+    },
+    pricingCapturedAt: "2026-10-08",
+    pricingCheckedAt: "2026-10-08",
+    pricingDiscount: 0,
+    pricingNote: "costs reflect ONE endpoint tier as listed by GET /models, not a guaranteed rate. This model has 1 endpoint(s).",
+  },
+  parameterSupport: {
+    supported: [
+      "include_reasoning",
+      "max_tokens",
+      "reasoning",
+      "reasoning_effort",
+      "response_format",
+      "seed",
+      "structured_outputs",
+      "temperature",
+      "tool_choice",
+      "tools",
+      "top_p",
+      "system-prompt",
+    ],
+    statistics: {
+      frequency_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      min_p: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      presence_penalty: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      repetition_penalty: {
+        p10: 1,
+        p50: 1,
+        p90: 1,
+      },
+      temperature: {
+        p10: 0.1,
+        p50: 0.7,
+        p90: 1.1,
+      },
+      top_k: {
+        p10: 0,
+        p50: 0,
+        p90: 0,
+      },
+      top_p: {
+        p10: 0.9,
+        p50: 1,
+        p90: 1,
+      },
+    },
+  },
+  accessibility: {
+    preferredFor: [
+      "image-generation",
+      "image-editing",
+      "product-recontextualisation",
+    ],
+    warnings: [
+      "Not a free tier model - consider budget implications",
+      "Cost per million output is higher than input",
+    ],
+    ariaLabels: {
+      modelSelect: "Nano Banana 2.1 - model with 66K context window",
+      parameterSection: "Parameter controls for Nano Banana 2.1 reasoning and output configuration",
+      statusMessages: {
+        processing: "Processing request with Nano Banana 2.1 model",
+        complete: "Response ready from Nano Banana 2.1",
+        reasoning: "Generating reasoning output with Nano Banana 2.1",
+        analysis: "Analysing input with Nano Banana 2.1",
+      },
+    },
+  },
+  status: {
+    isAvailable: true,
+    lastCheck: new Date().toISOString(),
+    errorCode: null,
+    errorMessage: null,
+  },
+});
 export { modelRegistry };
 window.modelRegistry = modelRegistry;

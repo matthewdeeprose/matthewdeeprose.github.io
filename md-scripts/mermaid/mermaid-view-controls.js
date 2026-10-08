@@ -388,8 +388,7 @@ const MermaidViewControls = (function () {
     const widthButton = createButton(
       getExpandIcon(),
       config.expandText,
-      `toggle-width-${root.id}`,
-      "Toggle diagram width"
+      `toggle-width-${root.id}`
     );
 
     // Create fullscreen button
@@ -675,7 +674,7 @@ const MermaidViewControls = (function () {
    * @param {string} icon - HTML for the button icon
    * @param {string} text - Button text
    * @param {string} id - Button ID
-   * @param {string} ariaLabel - Accessibility label
+   * @param {string} [ariaLabel] - Accessibility label; omit it when the visible text is the name (SC 2.5.3)
    * @returns {HTMLElement} The created button
    */
   function createButton(icon, text, id, ariaLabel) {
@@ -683,7 +682,7 @@ const MermaidViewControls = (function () {
     button.id = id;
     button.className = config.buttonClass;
     button.innerHTML = `${icon} <span class="button-text">${text}</span>`;
-    button.setAttribute("aria-label", ariaLabel);
+    if (ariaLabel) button.setAttribute("aria-label", ariaLabel);
     button.setAttribute("type", "button");
     return button;
   }

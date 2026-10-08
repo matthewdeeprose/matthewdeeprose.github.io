@@ -84,12 +84,30 @@
   // WORKER MANAGEMENT
   // ============================================================================
 
+  let _ensurePromise = null;
+
   /**
-   * Creates or reuses the Tesseract worker.
+   * Creates or reuses the Tesseract worker. Concurrent callers share one
+   * creation, so a pre-warm started by abandonWorker() and the next analysis's
+   * own call never make two workers.
+   * @returns {Promise<void>}
+   */
+  function ensureTesseract() {
+    if (_tesseractWorker && _tesseractReady) return Promise.resolve();
+    if (!_ensurePromise) {
+      _ensurePromise = ensureTesseractOnce().finally(() => {
+        _ensurePromise = null;
+      });
+    }
+    return _ensurePromise;
+  }
+
+  /**
+   * Creates the Tesseract worker (callers go through ensureTesseract).
    * Emits library:status events via EmbedEventEmitter for the expert panel
    * status indicator (Phase 4B).
    */
-  async function ensureTesseract() {
+  async function ensureTesseractOnce() {
     if (_tesseractWorker && _tesseractReady) return;
 
     const startTime = performance.now();
@@ -164,24 +182,53 @@
   }
 
   /**
-   * Detaches a worker from module state at once and terminates it without
-   * waiting, so a timed-out pass stops and a hung terminate cannot extend the
-   * stage. Only clears the shared state if it still holds this worker.
+   * Detaches a worker from module state at once, stops its thread, and starts
+   * making the replacement, so a timed-out pass stops using the CPU and the
+   * next analysis does not pay the worker start-up. Only clears the shared
+   * state if it still holds this worker.
+   *
+   * The thread is stopped through the raw Web Worker (worker.worker), not
+   * worker.terminate(). In tesseract.js 5.x recognise() posts its job only
+   * after an async image encode, and terminate() nulls the library's worker
+   * at once; a terminate that lands before the post makes the library's
+   * un-awaited send() reject with "Cannot read properties of null (reading
+   * 'postMessage')", uncaught, inside the library (H-32). Terminating the raw
+   * Worker leaves that reference intact, so the late post goes to a dead
+   * thread and does nothing. If a later 5.x drops worker.worker, the library
+   * terminate waits for the lost pass to settle, which is the same safe order.
    * @param {object} worker
+   * @param {Promise} lostPass — the abandoned worker.recognize() promise
    */
-  function abandonWorker(worker) {
+  function abandonWorker(worker, lostPass) {
     if (_tesseractWorker === worker) {
       _tesseractWorker = null;
       _tesseractReady = false;
     }
-    try {
-      Promise.resolve(worker.terminate()).then(
-        () => logInfo("Timed-out Tesseract worker terminated"),
-        (err) => logWarn("Error terminating timed-out worker:", err.message),
-      );
-    } catch (err) {
-      logWarn("Error terminating timed-out worker:", err.message);
+
+    const rawWorker = worker.worker;
+    if (rawWorker && typeof rawWorker.terminate === "function") {
+      rawWorker.terminate();
+      logInfo("Timed-out Tesseract worker thread stopped");
+    } else {
+      const terminateLate = () => {
+        try {
+          Promise.resolve(worker.terminate()).then(
+            () => logInfo("Timed-out Tesseract worker terminated"),
+            (err) =>
+              logWarn("Error terminating timed-out worker:", err.message),
+          );
+        } catch (err) {
+          logWarn("Error terminating timed-out worker:", err.message);
+        }
+      };
+      lostPass.then(terminateLate, terminateLate);
     }
+
+    // Pre-warm the replacement; the next analysis joins this creation. A
+    // failure is logged here and happens again, loudly, at the next analysis.
+    ensureTesseract().catch((err) =>
+      logWarn("Pre-warm of the replacement Tesseract worker failed:", err.message),
+    );
   }
 
   /**
@@ -980,10 +1027,10 @@
     } catch (err) {
       if (err && err.message === "Tesseract OCR timed out") {
         // The abandoned pass would keep the shared worker busy and make the
-        // next analysis queue behind it (H-28). Stop it; the next
-        // ensureTesseract() makes a fresh worker.
-        abandonWorker(worker);
-        recognisePromise.catch(() => {}); // terminate rejects the lost pass
+        // next analysis queue behind it (H-28). Stop it; a fresh worker is
+        // already being made. The lost promise never settles (the library
+        // never answers a stopped thread), so there is nothing to catch.
+        abandonWorker(worker, recognisePromise);
       }
       throw err;
     } finally {

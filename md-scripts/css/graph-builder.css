@@ -523,8 +523,6 @@ fieldset.gb-image-field textarea {
 .gb-preview-table-container {
   overflow-x: auto;
   border-radius: 4px;
-  max-height: 500px;
-  overflow-y: auto;
   position: relative;
 }
 .gb-preview-table {
@@ -730,6 +728,17 @@ fieldset.gb-image-field textarea {
   grid-template-columns: 1fr 350px;
   gap: 2rem;
   margin-bottom: 2rem;
+}
+/* UX-12: let both columns shrink below their content so Configure reflows at 320px */
+.gb-config-layout > * {
+  min-width: 0;
+}
+.gb-chart-preview-frame {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 4 / 3;
+  overflow: hidden; /* lets the ratio win over the canvas's own 300px attribute height */
 }
 .gb-config-preview h3,
 .gb-config-form h3 {
@@ -1186,6 +1195,27 @@ fieldset.gb-image-field textarea {
   border-radius: inherit;
   pointer-events: none;
 }
+/* UX-14 BEGIN: Add Data, wide screens. While a preview shows, the panel takes the left column and the Data Preview the right (placed by DOM order, nothing reordered); the heading, tabs and Next span both. The image tab keeps its own layout. */
+@media (min-width: 1130px) {
+  #gb-data-input.active.gb-has-preview:not(:has(#gb-image-panel.active)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > h2,
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-input-methods,
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-navigation {
+    grid-column: 1 / -1;
+  }
+  /* Beside the panel there is nothing to separate it from above, so the stacked gap and rule go */
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-data-preview {
+    margin-top: 0;
+    padding-top: 0;
+    border-top-width: 0;
+  }
+}
+/* UX-14 END */
 /* Responsive Design */
 @media (max-width: 885px) {
   .gb-steps {

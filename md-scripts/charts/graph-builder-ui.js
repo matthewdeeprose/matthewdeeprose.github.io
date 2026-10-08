@@ -390,6 +390,7 @@ const GraphBuilderUI = (function () {
       logInfo("[Graph Builder UI] Showing data preview for:", data);
 
       this.container.style.display = "block";
+      this.container.closest("#gb-data-input")?.classList.add("gb-has-preview");
       this.statsElement.textContent = `${data.rows.length} rows, ${data.headers.length} columns`;
 
       // Editing needs somewhere to send the value, so no handler means a plain table
@@ -416,6 +417,7 @@ const GraphBuilderUI = (function () {
     hide() {
       if (this.container) {
         this.container.style.display = "none";
+        this.container.closest("#gb-data-input")?.classList.remove("gb-has-preview");
       }
 
       // An editable table leaves no input behind; other routes keep their old behaviour
@@ -447,10 +449,12 @@ const GraphBuilderUI = (function () {
     }
 
     /**
-     * Accessible name for a cell input: "Sales, Jan", or "Category, row 3" for the label column
+     * Accessible name for a cell input: "Sales, Jan" for a value cell whose row has a label, otherwise
+     * the header alone ("Category"). No row number: the table already gives each cell's row and column,
+     * and its count includes the header row, so a number here would disagree with the screen reader's.
      * @param {Array} headers - Column headers
      * @param {Array} row - The row's values
-     * @param {number} rowIndex - Index into data.rows
+     * @param {number} rowIndex - Index into data.rows (kept for the callers; not part of the name)
      * @param {number} colIndex - Column index
      * @returns {string}
      */
@@ -459,8 +463,8 @@ const GraphBuilderUI = (function () {
       const label = row[0];
       const hasLabel = label !== null && label !== undefined && String(label).trim() !== "";
 
-      if (colIndex === 0 || !hasLabel) return `${header}, row ${rowIndex + 1}`;
-      return `${header}, ${label}`;
+      if (colIndex > 0 && hasLabel) return `${header}, ${label}`;
+      return String(header);
     }
 
     /**

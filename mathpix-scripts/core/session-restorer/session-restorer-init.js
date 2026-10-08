@@ -468,10 +468,6 @@
       convertErrorList: document.getElementById("resume-convert-error-list"),
       convertSelectAll: document.getElementById("resume-select-all-formats"),
       convertFormatCheckboxes: null, // Populated after DOM ready
-      convertDownloadAllBtn: document.getElementById(
-        "resume-download-all-converted-btn",
-      ),
-
       // Download all (main ZIP with edits)
       downloadAllBtn: document.getElementById("resume-download-all-btn"),
 
@@ -771,13 +767,6 @@
         this._refreshConvertSizeIndicator?.();
       });
     });
-
-    // Download All Converted button
-    if (this.elements.convertDownloadAllBtn) {
-      this.elements.convertDownloadAllBtn.addEventListener("click", () =>
-        this.downloadAllConvertedFiles(),
-      );
-    }
 
     // Initial button state
     this.updateConvertButtonState();

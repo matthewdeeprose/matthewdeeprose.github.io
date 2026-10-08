@@ -320,7 +320,11 @@ const GraphBuilderCharts = (function () {
         canvas.setAttribute("role", "img");
         canvas.setAttribute("aria-label", "Chart preview");
 
-        this.container.appendChild(canvas);
+        // UX-12: a relatively positioned frame gives the responsive chart its size
+        const frame = document.createElement("div");
+        frame.className = "gb-chart-preview-frame";
+        frame.appendChild(canvas);
+        this.container.appendChild(frame);
 
         // Get configuration (routes through enhanced path when advanced mode is active)
         const config = buildConfigRouted(data, chartType, options);
@@ -328,8 +332,9 @@ const GraphBuilderCharts = (function () {
         // Add preview-specific options
         config.options = {
           ...config.options,
-          responsive: false,
-          maintainAspectRatio: true,
+          // UX-12: the frame sets the size (4:3, at most 400px wide), the chart fills it
+          responsive: true,
+          maintainAspectRatio: false,
           animation: {
             duration: 0, // Disable animations for better performance
           },

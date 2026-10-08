@@ -486,6 +486,7 @@
     this.isConverting = true;
     this.conversionResults = new Map();
     this._appendixCopiesDropped = false;
+    this._docxHeadingsFailed = false; // HW-1b
     // Parcel O-04: this run's token; an abandoned run finds it out of date.
     this._runToken = (this._runToken || 0) + 1;
     const runToken = this._runToken;
@@ -578,18 +579,51 @@
     const copiesClause = this._appendixCopiesDropped
       ? " The appendix image copies were left out to stay under the size limit."
       : "";
+    // HW-1b (HW-D1): the same line carries one clause when the docx heading map
+    // did not align and the original docx was kept (rule C10, never a second line).
+    const headingsClause = this._docxHeadingsFailed
+      ? " Word headings could not be set."
+      : "";
     if (this.conversionResults.size > 0 && failureLines === "") {
       this.showNotification(
-        `${this.conversionResults.size} format(s) ready to download.${copiesClause}`,
+        `${this.conversionResults.size} format(s) ready to download.${copiesClause}${headingsClause}`,
         "success",
       );
     } else if (this.conversionResults.size > 0) {
       this.showNotification(
-        `${this.conversionResults.size} format(s) ready to download.${copiesClause} ${failureLines}`,
+        `${this.conversionResults.size} format(s) ready to download.${copiesClause}${headingsClause} ${failureLines}`,
         "warning",
       );
     } else if (failureLines !== "") {
       this.showNotification(`Conversion failed. ${failureLines}`, "error");
+    }
+  };
+
+  /**
+   * HW-1b: restyle a Convert API docx so its headings carry Word heading
+   * styles. Never throws and never loses the blob: on any failure the original
+   * comes back. `failed` is true only when the MMD HAD headings and the map did
+   * not apply; a missing module is not a map failure.
+   * @param {Blob} blob - the docx as received
+   * @param {string} sentMMD - the payload that was sent to the API
+   * @returns {Promise<{blob: Blob, failed: boolean}>}
+   * @private
+   */
+  proto._restyleDocxForConvert = async function (blob, sentMMD) {
+    const headings = window.MathPixDocxHeadings;
+    if (!headings || typeof headings.restyleDocxHeadings !== "function") {
+      logWarn("Convert: docx heading module not loaded; docx left as received");
+      return { blob, failed: false };
+    }
+    try {
+      const result = await headings.restyleDocxHeadings(blob, sentMMD);
+      return {
+        blob: result.applied ? result.blob : blob,
+        failed: result.applied === false && result.expected > 0,
+      };
+    } catch (error) {
+      logWarn("Convert: docx heading restyle threw; docx left as received", error);
+      return { blob, failed: true };
     }
   };
 
@@ -833,6 +867,23 @@
       // Parcel O-04: an abandoned run stores nothing.
       if (!isCurrentRun()) return;
 
+      // HW-1b: give the docx real Word heading styles BEFORE the backup block
+      // below can store the raw one. Done here, not in onFormatComplete: that
+      // callback is synchronous and unawaited, so an async restyle there would
+      // race the backup store (HW-0 section 4). mmdContent is what was SENT.
+      if (apiFormats.includes("docx")) {
+        const docxBlob =
+          this.conversionResults.get("docx") || (results && results.get("docx"));
+        if (docxBlob) {
+          const restyled = await this._restyleDocxForConvert(docxBlob, mmdContent);
+          if (!isCurrentRun()) return;
+          this._docxHeadingsFailed = restyled.failed;
+          if (restyled.blob !== docxBlob) {
+            this.conversionResults.set("docx", restyled.blob);
+          }
+        }
+      }
+
       // Store results from the returned Map (backup in case callbacks didn't fire)
       if (results && results.size > 0) {
         results.forEach((blob, format) => {
@@ -874,11 +925,26 @@
   };
 
   /**
-   * Cancel ongoing conversion
+   * Cancel ongoing conversion.
+   *
+   * HW-1c: this used to set a `conversionAborted` flag that nothing read, so
+   * Cancel said "Conversion cancelled" and stopped nothing: the run stayed
+   * converting and every later Convert press returned at the in-progress guard
+   * in silence, until a reload. It now abandons the run as O-04 does (token
+   * bumped, client polling stopped, controls back to idle), so a late reply is
+   * ignored and Convert works again at once. Focus was on Cancel, which is
+   * hidden here, so it moves to Convert rather than being lost to the page.
    * @private
    */
   proto.cancelConversion = function () {
-    this.conversionAborted = true;
+    if (!this.isConverting) return;
+    const cancelHadFocus =
+      this.elements.convertCancelBtn &&
+      document.activeElement === this.elements.convertCancelBtn;
+    this._abandonRun();
+    if (cancelHadFocus && this.elements.convertBtn) {
+      this.elements.convertBtn.focus();
+    }
     this.showNotification("Conversion cancelled", "info");
     logInfo("Conversion cancelled by user");
   };
@@ -1239,51 +1305,6 @@
 
     this.elements.convertSelectAll.checked = allChecked;
     this.elements.convertSelectAll.indeterminate = someChecked && !allChecked;
-  };
-
-  /**
-   * Download all converted files as a combined operation
-   * Uses the existing TotalDownloader pattern
-   * @private
-   */
-  proto.downloadAllConvertedFiles = async function () {
-    if (!this.conversionResults || this.conversionResults.size === 0) {
-      this.showNotification(
-        "No converted files available to download.",
-        "warning",
-      );
-      return;
-    }
-
-    logInfo("Downloading all converted files...");
-
-    try {
-      // Download each file individually (simple approach)
-      // Could be enhanced to create a ZIP with all converted files
-      const sourceFilename =
-        this.restoredSession?.source?.filename || "document";
-      const baseName = sourceFilename.replace(/\.[^/.]+$/, "");
-
-      this.conversionResults.forEach((blob, format) => {
-        const formatInfo = this.getFormatInfo(format);
-        const filename = `${baseName}-converted${formatInfo.extension}`;
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-      });
-
-      this.showNotification(
-        `Downloaded ${this.conversionResults.size} converted file(s)`,
-        "success",
-      );
-    } catch (error) {
-      logError("Failed to download converted files:", error);
-      this.showNotification(`Download failed: ${error.message}`, "error");
-    }
   };
 
   console.log("[SessionRestorer] Convert mixin loaded");

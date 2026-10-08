@@ -235,7 +235,7 @@
   .mermaid-container {
     max-width: 100%;
   }
-  button[aria-label="Toggle diagram width"] {
+  .mermaid-view-button[id^="toggle-width-"] {
     display: none;
   }
 }

@@ -8,7 +8,8 @@
  * announce function, so the same code serves a panel in any tool.
  *
  * The panel updates SILENTLY: none of its regions is a live region. The only spoken cue
- * is the copy confirmation, raised through the caller's announce function.
+ * is the copy confirmation, raised as a success notification by the caller's notifyCopied
+ * function (the toast is the one voice; the copy buttons themselves never change).
  *
  * The request shown is whatever the caller passes as `wire`. Callers read the embed
  * core's scrubbed snapshot (getLastWireRequest), so no credential and no image data ever
@@ -71,7 +72,11 @@
   // browser.
   const MAX_HIGHLIGHT_LENGTH = 100000;
   const PREVIEW_LENGTH = 2000;
-  const COPIED_RESTORE_MS = 2000;
+  // The reply text, put together from the stream, is added to the Response view under this key.
+  const REPLY_TEXT_KEY = "replyText";
+  const REPLY_FROM_STREAM_NOTE =
+    "The reply text was put together from the stream; the provider's last message did not include it.";
+  const EXPAND_LABEL = { more: "Show the whole request", less: "Show less" };
   const DEFAULT_WIRED_KEY = "devPanelWired";
 
   // ── Pure helpers ───────────────────────────────────────────────────────────
@@ -152,17 +157,36 @@
     }
   }
 
-  // Re-populate any data-icon glyphs after an innerHTML swap (the auto-populator
-  // only runs once at DOMContentLoaded).
-  function refreshIcons(scope) {
-    if (
-      window.IconLibrary &&
-      typeof window.IconLibrary.populateIcons === "function"
-    ) {
-      window.IconLibrary.populateIcons(scope);
-    } else if (typeof window.refreshIcons === "function") {
-      window.refreshIcons(scope);
+  /**
+   * True when the raw body already carries a reply: some choice holds message content.
+   * A streamed Foundry reply ends in a usage-only chunk, so its raw `choices` is `[]`.
+   */
+  function rawCarriesReply(raw) {
+    const choices = raw && raw.choices;
+    if (!Array.isArray(choices)) return false;
+    return choices.some(function (choice) {
+      const content = choice && choice.message && choice.message.content;
+      return Array.isArray(content) ? content.length > 0 : typeof content === "string" && content !== "";
+    });
+  }
+
+  /**
+   * What the Response view shows. The raw object unchanged when it carries the reply;
+   * otherwise, when the response object holds the streamed reply text, the raw object
+   * unchanged plus one top-level `replyText` key. Never invents `choices`.
+   *
+   * @returns {{ shown: *, fromStream: boolean }}
+   */
+  function responseToShow(response) {
+    const raw = response && response.raw;
+    const text = response && response.text;
+    const isObject = raw && typeof raw === "object" && !Array.isArray(raw);
+    if (!isObject || rawCarriesReply(raw) || typeof text !== "string" || text === "") {
+      return { shown: raw, fromStream: false };
     }
+    const shown = Object.assign({}, raw);
+    shown[REPLY_TEXT_KEY] = text;
+    return { shown: shown, fromStream: true };
   }
 
   // ── Factory ────────────────────────────────────────────────────────────────
@@ -171,7 +195,7 @@
    * @param {Object} options
    * @param {Object} options.ids - { finish, request, response, note, copyRequest, copyResponse }.
    * @param {Object} options.copiedMessages - { request, response } confirmation texts.
-   * @param {Function} options.announce - Called with a confirmation text; the caller's one voice.
+   * @param {Function} options.notifyCopied - Called with a confirmation text; raises the caller's success notification, which is the one voice.
    * @param {string} [options.wiredKey] - dataset key marking a copy button as bound.
    * @param {boolean} [options.finishReasonFromResponse=true] - Read response.finishReason first.
    * @returns {{ update: Function, clear: Function }}
@@ -179,7 +203,7 @@
   function create(options) {
     const ids = options.ids;
     const copiedMessages = options.copiedMessages;
-    const announce = options.announce;
+    const notifyCopied = options.notifyCopied;
     const wiredKey = options.wiredKey || DEFAULT_WIRED_KEY;
     const finishFromResponse = options.finishReasonFromResponse !== false;
 
@@ -192,7 +216,10 @@
      * @param {string} [note] - Caption above the request; empty or absent hides it.
      */
     function update(response, wire, note) {
-      const raw = response && response.raw;
+      const reply = responseToShow(response);
+      if (reply.fromStream) {
+        note = note ? note + " " + REPLY_FROM_STREAM_NOTE : REPLY_FROM_STREAM_NOTE;
+      }
 
       const finishEl = document.getElementById(ids.finish);
       if (finishEl) {
@@ -215,7 +242,7 @@
 
       const responseEl = document.getElementById(ids.response);
       if (responseEl) {
-        renderJson(responseEl, raw);
+        renderJson(responseEl, reply.shown);
       } else {
         logWarn("update: #" + ids.response + " not found");
       }
@@ -253,7 +280,6 @@
       if (button.dataset[wiredKey] === "true") return;
       button.dataset[wiredKey] = "true";
 
-      const restore = button.innerHTML;
       button.addEventListener("click", function () {
         // Always copy the stored plain JSON, never the highlighted HTML.
         const raw =
@@ -261,14 +287,8 @@
         navigator.clipboard
           .writeText(raw)
           .then(function () {
-            button.innerHTML =
-              '<span aria-hidden="true" data-icon="check"></span> Copied';
-            refreshIcons(button);
-            announce(message);
-            setTimeout(function () {
-              button.innerHTML = restore;
-              refreshIcons(button);
-            }, COPIED_RESTORE_MS);
+            // The button never changes; the success notification is the one voice.
+            if (typeof notifyCopied === "function") notifyCopied(message);
           })
           .catch(function () {
             logWarn("Clipboard write failed");
@@ -276,9 +296,25 @@
       });
     }
 
+    /** One toggle beside the Request view: lifts or restores the height limit on its <pre>. */
+    function wireExpandButton() {
+      const button = ids.expandRequest && document.getElementById(ids.expandRequest);
+      const pre = ids.requestPre && document.getElementById(ids.requestPre);
+      if (!button || !pre) return;
+      if (button.dataset[wiredKey] === "true") return;
+      button.dataset[wiredKey] = "true";
+      button.addEventListener("click", function () {
+        const expand = button.getAttribute("aria-expanded") !== "true";
+        pre.style.maxHeight = expand ? "none" : "";
+        button.setAttribute("aria-expanded", expand ? "true" : "false");
+        button.textContent = expand ? EXPAND_LABEL.less : EXPAND_LABEL.more;
+      });
+    }
+
     function wireCopyButtons() {
       wireCopyButton(ids.copyRequest, ids.request, copiedMessages.request);
       wireCopyButton(ids.copyResponse, ids.response, copiedMessages.response);
+      wireExpandButton();
     }
 
     // Wire once the panel markup is present (and its icons populated).

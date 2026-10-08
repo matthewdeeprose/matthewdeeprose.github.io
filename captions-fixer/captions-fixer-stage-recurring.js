@@ -615,7 +615,7 @@ const CaptionsFixerStageRecurring = (function () {
    *
    * @param {Array<object>} cueList
    * @param {object} [context] `{ persist, signal, model, glossary }`
-   * @returns {Promise<{ pairs: Array<object>, raw: string, model: string, usage: object|null, usageRaw: object|null, discarded: number, dropped: number }>}
+   * @returns {Promise<{ pairs: Array<object>, raw: string, model: string, usage: object|null, usageRaw: object|null, discarded: number, dropped: number, maxOutputTokens: (number|null), reasoningEffort: (string|null) }>}
    */
   async function discover(cueList, context) {
     if (!Array.isArray(cueList)) {
@@ -689,6 +689,12 @@ const CaptionsFixerStageRecurring = (function () {
       usageRaw: reply.usageRaw !== undefined ? reply.usageRaw : null,
       discarded: reply.discarded,
       dropped: dropped,
+      // Stage `sp`, B: the limit and effort the send was made with, as
+      // `complete` returned them and `null` where the reply carries none (no
+      // WARN, as at `cr`). Carried for the harness to record; this stage
+      // persists only `pairsRaw` and `pairs`, so `RECORD_FIELDS` is unmoved.
+      maxOutputTokens: reply.maxOutputTokens !== undefined ? reply.maxOutputTokens : null,
+      reasoningEffort: reply.reasoningEffort !== undefined ? reply.reasoningEffort : null,
     };
   }
 

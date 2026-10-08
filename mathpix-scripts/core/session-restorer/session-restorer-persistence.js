@@ -201,7 +201,15 @@
       });
 
       // Create the archive
-      await downloader.createArchive(archiveData);
+      const archiveResult = await downloader.createArchive(archiveData);
+
+      // Parcel T-03: a cancelled download (the builder's Document Health Check)
+      // returns null and has already said "Download cancelled."; nothing was
+      // saved, so the saved-state flags, image warning and MMD versions stay.
+      if (!archiveResult) {
+        logInfo("Updated ZIP cancelled; session state left unchanged");
+        return;
+      }
 
       this.hasUnsavedChanges = false;
       this.hasContextEdits = false;
@@ -211,7 +219,8 @@
 
       // Track manually saved MMD versions for inclusion in ZIP
       this.savedMMDVersions = [];
-      this.showNotification("Updated ZIP downloaded successfully!", "success");
+      // Parcel T-03: no toast of our own; createArchive already raised
+      // "Saved successfully — includes N images".
 
       logInfo("Updated ZIP archive created successfully");
     } catch (error) {

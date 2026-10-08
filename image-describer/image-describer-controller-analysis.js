@@ -90,6 +90,11 @@
     "Analysis complete. Text detection did not finish, so the description will not use any text from the picture. The analysis overlay controls are now available.";
   const COMPLETE_OCR_FAILED =
     "Analysis complete. Text detection could not run, so the description will not use any text from the picture. The analysis overlay controls are now available.";
+  // Text detection finished after a description was already written without it
+  // (H-36). Replaces the ordinary "Review OCR" line only, so it never implies the
+  // description used the text.
+  const COMPLETE_AFTER_DESCRIPTION =
+    "Text detection has now finished. The description was written before it finished, so it does not use any text from the picture. Review OCR and the analysis overlay controls are now available.";
 
   // What the start of a slow analysis says (H-13). The wait used to be voiced by
   // the Model Manager naming each model the analyser happened to load, which
@@ -945,6 +950,9 @@
       );
       const ocrStatus = result && result.ocr && result.ocr.status;
       let completionLine = hasOCRItems ? COMPLETE_WITH_OCR : COMPLETE_WITHOUT_OCR;
+      if (hasOCRItems && this._descriptionWrittenBeforeOcr === true) {
+        completionLine = COMPLETE_AFTER_DESCRIPTION;
+      }
       if (ocrStatus === "timed-out") completionLine = COMPLETE_OCR_TIMED_OUT;
       if (ocrStatus === "failed") completionLine = COMPLETE_OCR_FAILED;
       this.announceStatus(completionLine);
@@ -956,6 +964,15 @@
     },
 
     /**
+     * True when the person has ticked "skip text detection" (H-36).
+     * @returns {boolean}
+     */
+    _isSkipOcrTicked() {
+      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
+      return skipOCRCheckbox ? skipOCRCheckbox.checked : false;
+    },
+
+    /**
      * Start background image analysis as soon as preview loads.
      * Runs OCR + colour sampling in parallel, storing results
      * in this.lastAnalysis for later inclusion in the prompt.
@@ -964,6 +981,8 @@
     startBackgroundAnalysis() {
       // Clear any previous analysis
       this.lastAnalysis = null;
+      // A new image starts with no description written before text detection (H-36)
+      this._descriptionWrittenBeforeOcr = false;
       this._analysisPending = null;
       this._cacheHit = false;
       this._immediateResult = null;

@@ -716,6 +716,7 @@ class MathPixPDFProcessor extends MathPixBaseModule {
               html: "html",
               latex: "tex.zip", // Map UI "latex" to result key "tex.zip"
               docx: "docx",
+              latexpdf: "latex.pdf", // Parcel T-04: the result screen reads the LaTeX PDF as "latex.pdf"
             };
 
             for (const uiFormat of requestedFormats) {

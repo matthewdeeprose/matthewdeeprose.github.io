@@ -1379,9 +1379,10 @@ const CaptionsFixerStageLlmPass = (function () {
       repaired: repaired,
       error: error || null,
       // WHAT WAS SENT, read off what `complete` returned (or off the two throw
-      // routes that carry it: TRUNCATED and PARSE) and never off a constant.
-      // `null` AND `null` where it did not return the pair: a SEND failure, a
-      // cancel and the argument checks throw before the adapter has read the
+      // routes that carry it: TRUNCATED, PARSE and, since stage `sp`, SEND) and
+      // never off a constant.
+      // `null` AND `null` where it did not return the pair: a cancel and the
+      // argument checks throw before the adapter has read the
       // instance, so there is nothing to copy, and the record says so rather
       // than the stage guessing. Nothing WARNs for it. The names say "sent" so
       // nobody reads them as the model's declared limit.
@@ -1429,13 +1430,20 @@ const CaptionsFixerStageLlmPass = (function () {
    * @param {object} record the chunk's record, already in `records`
    * @param {Array<object>} records the append-only array every write copies
    * @param {object} context `{ persist, signal }`
-   * @returns {Promise<{ raw: string, scores: object|null, refusal: string|null }>}
+   * @returns {Promise<{ raw: string, scores: object|null, refusal: string|null, sentMaxOutputTokens: number|null, sentReasoningEffort: string|null }>}
    */
   async function scoreChunk(chunk, record, records, context) {
     const llm = window.CaptionsFixerLLM;
     const ids = api.knownIdsFor(chunk);
-    const reading = { raw: "", scores: null, refusal: null };
+    // Stage `sp`: the pair this send was made with, `null` and `null` until a reply or a
+    // rejection carries it (and for the not-sent refusal, which makes no send).
+    const reading = { raw: "", scores: null, refusal: null, sentMaxOutputTokens: null, sentReasoningEffort: null };
     record[FIELD_PLAUSIBILITY] = reading;
+    const readSentPair = (source) => {
+      if (!source || typeof source !== "object") return;
+      if (typeof source.maxOutputTokens === "number") reading.sentMaxOutputTokens = source.maxOutputTokens;
+      if (typeof source.reasoningEffort === "string") reading.sentReasoningEffort = source.reasoningEffort;
+    };
 
     const userPrompt = llm.buildPlausibilityUserPrompt(api.buildUserPrompt(chunk), ids[0], ids[ids.length - 1]);
     if (userPrompt === null) {
@@ -1456,6 +1464,7 @@ const CaptionsFixerStageLlmPass = (function () {
       });
     } catch (error) {
       reading.raw = error && typeof error.raw === "string" ? error.raw : "";
+      readSentPair(error);
       reading.refusal = PLAUSIBILITY_SEND_FAILED;
       await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
       if (!api.isSurvivablePlausibilityFailure(error)) throw error;
@@ -1463,6 +1472,7 @@ const CaptionsFixerStageLlmPass = (function () {
     }
 
     reading.raw = typeof reply.raw === "string" ? reply.raw : "";
+    readSentPair(reply);
     await api.persistQuietly(context, { [FIELD_PASS_RAW]: records.slice() });
 
     const outcome = llm.plausibilityScoresFromReply(reading.raw, ids);

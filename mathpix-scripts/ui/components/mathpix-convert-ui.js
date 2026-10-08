@@ -830,7 +830,8 @@ class MathPixConvertUI {
     if (status.formatStatuses) {
       Object.entries(status.formatStatuses).forEach(
         ([format, formatStatus]) => {
-          const item = document.querySelector(
+          // Parcel T-02: look inside Upload's own progress list.
+          const item = this.elements["mathpix-convert-progress-list"]?.querySelector(
             `.mathpix-progress-item[data-format="${format}"]`,
           );
           if (item) {
@@ -870,8 +871,8 @@ class MathPixConvertUI {
   onFormatComplete(format, blob) {
     logInfo(`Format complete: ${format} (${blob.size} bytes)`);
 
-    // Update progress item
-    const item = document.querySelector(
+    // Update progress item (Parcel T-02: inside Upload's own progress list)
+    const item = this.elements["mathpix-convert-progress-list"]?.querySelector(
       `.mathpix-progress-item[data-format="${format}"]`,
     );
     if (item) {
@@ -904,7 +905,8 @@ class MathPixConvertUI {
       // reported (a download can fail after MathPix reported it complete).
       // T01-UPLOAD-ROWS-BEGIN
       result.failed.forEach((format) => {
-        const item = document.querySelector(
+        // Parcel T-02: inside Upload's own progress list.
+        const item = this.elements["mathpix-convert-progress-list"]?.querySelector(
           `.mathpix-progress-item[data-format="${format}"]`,
         );
         if (!item) return;
@@ -1066,6 +1068,10 @@ class MathPixConvertUI {
    */
   showError(message) {
     this.showErrors([message]);
+
+    // Parcel T-02: the polite status line speaks the message; the error box
+    // stays visual. The closing stop is added only when the message has none.
+    this.updateStatus(/[.!?]$/.test(message) ? message : `${message}.`);
   }
 
   /**

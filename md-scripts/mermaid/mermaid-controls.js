@@ -1116,7 +1116,6 @@ window.MermaidControls = (function () {
     const copyButton = document.createElement("button");
     copyButton.className = config.buttonClasses;
     copyButton.innerHTML = `${getCopyButtonIcon()} ${config.copyText}`;
-    copyButton.setAttribute("aria-label", "Copy diagram code to clipboard");
     copyButton.setAttribute("type", "button");
     copyButton.setAttribute("data-diagram-index", index);
 
@@ -1124,7 +1123,6 @@ window.MermaidControls = (function () {
     const svgButton = document.createElement("button");
     svgButton.className = config.buttonClasses;
     svgButton.innerHTML = `${getSvgButtonIcon()} ${config.svgText}`;
-    svgButton.setAttribute("aria-label", "Download diagram as SVG");
     svgButton.setAttribute("type", "button");
     svgButton.setAttribute("data-diagram-index", index);
 
@@ -1132,7 +1130,6 @@ window.MermaidControls = (function () {
     const pngButton = document.createElement("button");
     pngButton.className = config.buttonClasses;
     pngButton.innerHTML = `${getPngButtonIcon()} ${config.pngText}`;
-    pngButton.setAttribute("aria-label", "Download diagram as PNG");
     pngButton.setAttribute("type", "button");
     pngButton.setAttribute("data-diagram-index", index);
 

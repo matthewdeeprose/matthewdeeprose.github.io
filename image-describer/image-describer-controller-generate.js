@@ -137,6 +137,16 @@
     "If no image is attached to this message, say so explicitly and do not invent a description.";
 
   // ============================================================================
+  // GENERATE BEFORE TEXT DETECTION (H-36)
+  // ============================================================================
+  // Generate goes ahead on the quick result while text detection has not ended.
+  // The model is told in the prompt (OCR status below, worded in the format
+  // module) and the person is told in the existing success line.
+  const OCR_NOT_FINISHED_STATUS = "not-finished";
+  const SUCCESS_SUFFIX_BEFORE_OCR =
+    " Written without detected text, because text detection had not finished.";
+
+  // ============================================================================
   // IMAGE-STRIP TELEMETRY (Layer 2 — log-only observability, never user-facing)
   // ============================================================================
   // The Foundry v1 surface can silently strip an image (HTTP 200, text-scale
@@ -761,6 +771,7 @@
       }
 
       // Pre-analysis context (if available)
+      this._descriptionWrittenBeforeOcr = false;
       if (this.lastAnalysis) {
         // Use corrected analysis if user has made OCR edits (Phase 5D-2)
         let analysisToFormat = this.lastAnalysis;
@@ -782,6 +793,20 @@
               "Corrections reported but corrected analysis unavailable — using raw analysis",
             );
           }
+        }
+        // H-36: Generate is running on the quick result while text detection has
+        // not finished (and the person has not asked to skip it). Say so to the
+        // model on a COPY — the stored analysis is never written to.
+        const ranBeforeOcr =
+          !!this._immediateResult &&
+          this.lastAnalysis === this._immediateResult &&
+          !this._isSkipOcrTicked();
+        this._descriptionWrittenBeforeOcr = ranBeforeOcr;
+        if (ranBeforeOcr) {
+          analysisToFormat = {
+            ...analysisToFormat,
+            ocr: { status: OCR_NOT_FINISHED_STATUS },
+          };
         }
         const analysisText =
           window.ImageDescriberAnalyser.formatForPrompt(analysisToFormat);
@@ -2943,10 +2968,13 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           this.announceStatus(CUT_OFF_WORDING.announcement);
         } else {
           // Show success status with time
+          // H-36: when the run went ahead before text detection ended, the same
+          // line says so (replaced, not added — one write each).
+          const beforeOcr = this._descriptionWrittenBeforeOcr === true;
           this.showStatus(
             `Description generated successfully in ${this.formatElapsedTime(
               finalTime,
-            )}!`,
+            )}!${beforeOcr ? SUCCESS_SUFFIX_BEFORE_OCR : ""}`,
             "success",
           );
 
@@ -2954,7 +2982,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           this.announceStatus(
             `Image description generated successfully in ${this.formatElapsedTime(
               finalTime,
-            )}`,
+            )}${beforeOcr ? "." + SUCCESS_SUFFIX_BEFORE_OCR : ""}`,
           );
         }
 

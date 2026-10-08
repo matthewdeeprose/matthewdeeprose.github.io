@@ -1962,9 +1962,13 @@ Upcoming phases:
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       },
       pdf: {
-        filename: baseFilename
-          ? `${baseFilename}-rendered.pdf`
-          : "rendered.pdf",
+        // Parcel T-04: named as the single download names it (O-01)
+        filename: baseFilename ? `${baseFilename}-html.pdf` : "html.pdf",
+        format: "application/pdf",
+      },
+      // Parcel T-04: the LaTeX PDF, stored by the processor under "latex.pdf"
+      "latex.pdf": {
+        filename: baseFilename ? `${baseFilename}-latex.pdf` : "latex.pdf",
         format: "application/pdf",
       },
     };

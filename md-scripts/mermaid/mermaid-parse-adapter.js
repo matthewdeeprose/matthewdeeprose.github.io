@@ -12891,6 +12891,1297 @@ window.MermaidParseAdapter = (function () {
     return radarHealthy;
   }
 
+  // REQUIREMENT — the fourteenth surface, and the seventh read from the db
+  //
+  // Register item 110, census 1 (docs/mermaid-item-110-census-1-2026-10-07.md)
+  // and the session-2 build (docs/mermaid-item-110-surface-2-2026-10-07.md).
+  // NO CONSUMER READS THIS SURFACE YET; the module and its gold are the
+  // registering session's.
+  //
+  // THE SEQUENCE WAY, with ONE non-db read. Every node line and every edge
+  // fact comes out of one per-instance db through zero-argument accessors:
+  // `getRequirements()` and `getElements()` are Maps keyed by name, in
+  // declaration order, and `getRelationships()` an Array of `{type, src, dst}`
+  // with both arrow spellings already normalised to one direction (census
+  // R03/R04). The ONE non-db read is the frontmatter `title:`, which the canvas
+  // draws and which a plain `getDiagramFromText(code)` never delivers
+  // (`getDiagramTitle()` reads "" on every titled source).
+  //
+  // THE TITLE ROUTE, AS BUILT, AND IT IS NOT WHAT THE DISPATCH ASSUMED. The
+  // dispatch asked for the title "by the census's measured route". The census
+  // measured the DELIVERY half only: `getDiagramFromText(code, { title })`
+  // hands back the title it was given. No Mermaid call EXTRACTS a frontmatter
+  // title from source: measured 7 October 2026 on 11.17.2, `mermaid.parse` on
+  // a titled source resolves to `{ diagramType, config }` with `config` an
+  // empty object, and `getDiagramFromText` returns `{ type, text, db, parser,
+  // renderer }`, none of which carries it. So the title is read by a small
+  // SOURCE reader, `readRequirementFrontmatterTitle`, which duplicates the
+  // patterns the state module's `extractTitleFromSource` already uses (item
+  // 67), and is then PASSED to `getDiagramFromText` so the db is what delivers
+  // it. A source with no frontmatter returns null and is parsed with no option.
+  //
+  // THE TRIO IS ONE SHARED STORE AND EVERY REQUIREMENT PARSE CLEARS IT (census
+  // S2/S3): a reading taken after another parse loses its own accTitle or
+  // reads the next diagram's. So the trio is read in the same tick as the
+  // payload, inside this call's own queue slot, and copied into this adapter's
+  // own objects.
+  //
+  // `getData()` IS NEVER CALLED, AND THAT IS THE POINT OF THE ACCESSOR LIST.
+  // It is a zero-argument `get` that WRITES `id`, `cssClasses`, `shape`, `look`
+  // and `colorIndex` onto the stored objects (census, nodeIsStoredObject:
+  // true), so a surface calling it would change every later key reading of
+  // the same db. Also not read: `getClasses`, `getDirection` (layout only),
+  // `getConfig`, `getInitialElement` and `getInitialRequirement`. The six
+  // accessors read are the six that are pure.
+  //
+  // `type` MEANS TWO THINGS and the surface branches on WHICH MAP the object
+  // came from before it reads the key. On a requirement it is Mermaid's own
+  // display string for the kind ("Functional Requirement"), a closed
+  // vocabulary delivered as `kind`; on an element it is the author's free text
+  // ("simulation") and takes the full decode, delivered as `type`. Neither
+  // key ever appears on the other kind of object.
+  //
+  // THE DECODES, per the census's 56-cell comparison. Every node line and
+  // every edge label is a foreignObject drawn through Mermaid's markdown path,
+  // so a node field takes decodeAuthorTextBreaks with drawn markup read as
+  // text (emphasis ON, code spans PRINTED: measured 7 October 2026, a
+  // backtick pair in a name, id, text, type and doc ref all arrive printed),
+  // and readLabelWithLinks where the canvas draws a link (measured the same
+  // day: an https anchor in a field is drawn as an anchor, a javascript:
+  // anchor is drawn with no href). The title is svg-text, so it takes
+  // decodePlaceholders, as the other svg-text surfaces' titles do: on all
+  // seven forms measured the db string the title route delivers IS the string
+  // the canvas prints, the bare `& < >` form included, which prints
+  // sanitised (the item 108 shape, left on its earlier reading). accTitle and
+  // accDescr take NO transform and are delivered as the db holds them,
+  // because that one db delivers the trio sanitised while the node fields are
+  // raw (census: raw and decodePlaceholders match the svg `<title>`/`<desc>`)
+  // and clause X3 reads the raw source for the override. NOTE that the
+  // dispatch asked for decodeAuthorText on every author field; the census
+  // measured it wrong for the trio and for the title.
+  //
+  // NULL FOR AN ABSENT FIELD. The db holds "" for every field the author did
+  // not write, and the canvas draws no line for it, so "" is delivered as
+  // null. A field the author DID write that draws nothing (`<b></b>`) is
+  // delivered as the empty string, because its line IS drawn ("ID:" with no
+  // value); the two are different facts and a narration may want to say so.
+  //
+  // THE NAME-COLLISION CASE. A requirement and an element sharing one name are
+  // BOTH held by the db (two Maps) and getData() would emit two nodes with
+  // one id; the canvas draws ONE, the element (census R06). Both are
+  // delivered, as the db delivers them, and the REQUIREMENT carries
+  // `drawn: false` so the gold can rule on it. Every other requirement carries
+  // `drawn: true`. A duplicate requirement DECLARATION is not flagged: the db
+  // keeps the first and the canvas draws the first, so they agree.
+  //
+  // A STOP, NOT A SILENT DROP, on every closed vocabulary: an unknown kind,
+  // risk, verify method or verb, a db object missing a key the census
+  // recorded, and an accessor that returns the wrong container all throw, so
+  // the consumer reaches the honest-unsupported fallback rather than a diagram
+  // with something missing from it.
+  const REQUIREMENT_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+  });
+
+  // The seven top-level keys, in order. The dispatch listed five; accTitle and
+  // accDescr are delivered too, because the shared-store assertion is per
+  // caller on all three of the trio and a field nothing delivers cannot be
+  // asserted per caller.
+  const REQUIREMENT_DELIVERED_KEYS = Object.freeze([
+    "diagramType",
+    "title",
+    "accTitle",
+    "accDescr",
+    "requirements",
+    "elements",
+    "relationships",
+  ]);
+
+  // The seven keys a delivered REQUIREMENT always carries, in order. Segment
+  // keys (`nameSegments`, `idSegments`, `textSegments`) follow them and ONLY
+  // when the canvas drew an anchor in that field.
+  const REQUIREMENT_NODE_KEYS = Object.freeze([
+    "name",
+    "kind",
+    "id",
+    "text",
+    "risk",
+    "verifyMethod",
+    "drawn",
+  ]);
+
+  // The three keys a delivered ELEMENT always carries, in order, followed by
+  // `typeSegments` and `docRefSegments` under the same rule.
+  const REQUIREMENT_ELEMENT_KEYS = Object.freeze(["name", "type", "docRef"]);
+
+  // The three keys a delivered RELATIONSHIP carries, in order. `source` and
+  // `target` are the node names as delivered on the nodes themselves.
+  const REQUIREMENT_RELATIONSHIP_KEYS = Object.freeze([
+    "source",
+    "verb",
+    "target",
+  ]);
+
+  // The closed vocabularies, as the db stores them (census: `type` holds the
+  // display string; risk and verify method are title-cased). Pinned in the
+  // self-check against the db's own RequirementType, RiskLevel, VerifyType and
+  // Relationships objects.
+  const REQUIREMENT_KINDS = Object.freeze([
+    "Requirement",
+    "Functional Requirement",
+    "Interface Requirement",
+    "Performance Requirement",
+    "Physical Requirement",
+    "Design Constraint",
+  ]);
+  const REQUIREMENT_RISKS = Object.freeze(["Low", "Medium", "High"]);
+  const REQUIREMENT_VERIFY_METHODS = Object.freeze([
+    "Analysis",
+    "Demonstration",
+    "Inspection",
+    "Test",
+  ]);
+  const REQUIREMENT_VERBS = Object.freeze([
+    "contains",
+    "copies",
+    "derives",
+    "satisfies",
+    "verifies",
+    "refines",
+    "traces",
+  ]);
+
+  // The frontmatter reader's patterns: the state module's (item 67), kept
+  // identical on purpose. A `title:` indented under another key belongs to
+  // that key and Mermaid draws no caption for it, so it is anchored at column
+  // 0; YAML strips one layer of matching quotes and the drawing follows YAML.
+  // NOT HANDLED, and said so: a block scalar, a multi-line value, a trailing
+  // YAML comment and an escape inside double quotes. Mermaid's own YAML read
+  // would differ on those and this reader does not try to match it.
+  const REQUIREMENT_FRONTMATTER_PATTERN =
+    /^\s*---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
+  const REQUIREMENT_FRONTMATTER_TITLE_PATTERN = /^title[ \t]*:[ \t]*(.*)$/m;
+  const REQUIREMENT_DOUBLE_QUOTED_PATTERN = /^"([^"]*)"$/;
+  const REQUIREMENT_SINGLE_QUOTED_PATTERN = /^'([^']*)'$/;
+
+  let requirementMemoCode = null;
+  let requirementMemoPromise = null;
+  let requirementHealthy = null;
+  let requirementSelfCheckStarted = false;
+  let requirementSelfCheckPromise = null;
+
+  /**
+   * Read the frontmatter `title:` from the diagram SOURCE, or null.
+   *
+   * The one non-db read of this surface. It runs inside the caller's own queue
+   * slot (it is pure, so the slot does not matter to it, but the title is
+   * passed straight into the parse that follows). Returns null when there is
+   * no frontmatter, no top-level `title:` key, or an empty value.
+   *
+   * @param {string} code - The Mermaid requirement source, frontmatter included
+   * @returns {string|null} The title as YAML would read it, or null
+   */
+  function readRequirementFrontmatterTitle(code) {
+    if (typeof code !== "string" || code === "") {
+      return null;
+    }
+    const frontmatter = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    if (!frontmatter) {
+      return null;
+    }
+    const titleLine = REQUIREMENT_FRONTMATTER_TITLE_PATTERN.exec(frontmatter[1]);
+    if (!titleLine) {
+      return null;
+    }
+    const value = titleLine[1].trim();
+    const doubled = REQUIREMENT_DOUBLE_QUOTED_PATTERN.exec(value);
+    const singled = REQUIREMENT_SINGLE_QUOTED_PATTERN.exec(value);
+    const title = (doubled ? doubled[1] : singled ? singled[1] : value).trim();
+    return title === "" ? null : title;
+  }
+
+  /**
+   * Read one node field the way the canvas draws it.
+   *
+   * @param {*} raw - A db field value
+   * @returns {{label: string, segments?: Array}|null} The decoded text (and
+   *   link segments when the canvas drew an anchor), or null when the db holds
+   *   no value for the field
+   */
+  function readRequirementField(raw) {
+    if (typeof raw !== "string" || raw === "") {
+      return null;
+    }
+    return readLabelWithLinks(raw, REQUIREMENT_DRAWN_MARKUP);
+  }
+
+  /**
+   * Throw a STOP naming the object kind and the missing or unexpected thing.
+   * @param {string} what - The sentence after "Requirement db "
+   * @throws {Error} Always
+   */
+  function requirementStop(what) {
+    throw new Error(
+      "Requirement db " + what + ". Refusing to deliver a partial diagram."
+    );
+  }
+
+  /**
+   * Assert a db object carries every key this surface reads from it.
+   * @param {Object} raw - A db requirement or element
+   * @param {string} kind - "requirement" or "element", for the message
+   * @param {Array<string>} keys - The own keys the census recorded
+   * @throws {Error} When the value is not an object or a key is missing
+   */
+  function requireRequirementKeys(raw, kind, keys) {
+    if (!raw || typeof raw !== "object") {
+      requirementStop("carries a " + kind + " that is not an object");
+    }
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(raw, key)) {
+        requirementStop("has a " + kind + " carrying no `" + key + "`");
+      }
+    }
+  }
+
+  /**
+   * Copy ONE db requirement into this surface's own object.
+   *
+   * THE KEY LIST IS CLOSED. Only the keys in REQUIREMENT_NODE_KEYS (and the
+   * conditional segment keys) are produced; `cssStyles` and `classes` cannot
+   * cross into the delivery, and neither can a key a later Mermaid build adds.
+   * `type` is read here as the KIND, never as author text.
+   *
+   * @param {Object} raw - A db requirement
+   * @param {boolean} drawn - False when an element of the same name hides it
+   * @returns {Object} The delivered requirement
+   */
+  function copyRequirementNode(raw, drawn) {
+    requireRequirementKeys(raw, "requirement", [
+      "name",
+      "type",
+      "requirementId",
+      "text",
+      "risk",
+      "verifyMethod",
+    ]);
+    if (typeof raw.name !== "string") {
+      requirementStop("has a requirement whose name is not a string");
+    }
+    if (REQUIREMENT_KINDS.indexOf(raw.type) === -1) {
+      requirementStop(
+        "carries an unknown requirement kind " +
+          JSON.stringify(raw.type) +
+          "; this surface knows only " +
+          JSON.stringify(REQUIREMENT_KINDS)
+      );
+    }
+    if (raw.risk !== "" && REQUIREMENT_RISKS.indexOf(raw.risk) === -1) {
+      requirementStop(
+        "carries an unknown risk " +
+          JSON.stringify(raw.risk) +
+          "; this surface knows only " +
+          JSON.stringify(REQUIREMENT_RISKS)
+      );
+    }
+    if (
+      raw.verifyMethod !== "" &&
+      REQUIREMENT_VERIFY_METHODS.indexOf(raw.verifyMethod) === -1
+    ) {
+      requirementStop(
+        "carries an unknown verify method " +
+          JSON.stringify(raw.verifyMethod) +
+          "; this surface knows only " +
+          JSON.stringify(REQUIREMENT_VERIFY_METHODS)
+      );
+    }
+
+    const name = readRequirementField(raw.name);
+    const id = readRequirementField(raw.requirementId);
+    const text = readRequirementField(raw.text);
+    return {
+      name: name ? name.label : "",
+      kind: raw.type,
+      id: id ? id.label : null,
+      text: text ? text.label : null,
+      // The closed vocabularies are delivered as the db holds them, or null
+      // for the db's "" (the author wrote none and the canvas draws no line).
+      risk: raw.risk === "" ? null : raw.risk,
+      verifyMethod: raw.verifyMethod === "" ? null : raw.verifyMethod,
+      drawn: drawn,
+      ...(name && name.segments ? { nameSegments: name.segments } : {}),
+      ...(id && id.segments ? { idSegments: id.segments } : {}),
+      ...(text && text.segments ? { textSegments: text.segments } : {}),
+    };
+  }
+
+  /**
+   * Copy ONE db element into this surface's own object. `type` here is the
+   * AUTHOR'S free text and takes the full decode.
+   *
+   * @param {Object} raw - A db element
+   * @returns {Object} The delivered element
+   */
+  function copyRequirementElement(raw) {
+    requireRequirementKeys(raw, "element", ["name", "type", "docRef"]);
+    if (typeof raw.name !== "string") {
+      requirementStop("has an element whose name is not a string");
+    }
+    const name = readRequirementField(raw.name);
+    const type = readRequirementField(raw.type);
+    const docRef = readRequirementField(raw.docRef);
+    return {
+      name: name ? name.label : "",
+      type: type ? type.label : null,
+      docRef: docRef ? docRef.label : null,
+      ...(type && type.segments ? { typeSegments: type.segments } : {}),
+      ...(docRef && docRef.segments ? { docRefSegments: docRef.segments } : {}),
+    };
+  }
+
+  /**
+   * Copy ONE db relationship. The db has already normalised `a - verb -> b`
+   * and `b <- verb - a` to the same `{type, src, dst}`.
+   *
+   * @param {Object} raw - A db relationship
+   * @returns {Object} The delivered relationship
+   */
+  function copyRequirementRelationship(raw) {
+    requireRequirementKeys(raw, "relationship", ["type", "src", "dst"]);
+    if (REQUIREMENT_VERBS.indexOf(raw.type) === -1) {
+      requirementStop(
+        "carries an unknown relationship verb " +
+          JSON.stringify(raw.type) +
+          "; this surface knows only " +
+          JSON.stringify(REQUIREMENT_VERBS)
+      );
+    }
+    if (typeof raw.src !== "string" || typeof raw.dst !== "string") {
+      requirementStop("has a relationship whose end is not a string");
+    }
+    const source = readRequirementField(raw.src);
+    const target = readRequirementField(raw.dst);
+    return {
+      source: source ? source.label : "",
+      verb: raw.type,
+      target: target ? target.label : "",
+    };
+  }
+
+  /**
+   * Normalise one Mermaid requirement diagram into the fourteenth surface's
+   * delivery.
+   *
+   * EAGER SNAPSHOT: the six pure accessors are called ONCE, together, inside
+   * the parse's own queue slot, and every value is mapped into this adapter's
+   * own objects in the same tick. Nothing returned references a db-owned
+   * object.
+   *
+   * @param {Object} diagram - The resolved Diagram from getDiagramFromText
+   * @returns {Object} The normalised requirement delivery
+   * @throws {Error} When the db hands over a shape this surface does not know
+   */
+  function normaliseRequirement(diagram) {
+    const db = diagram.db;
+
+    // THE SIX READS, together, before anything else can yield.
+    const rawTitle = db.getDiagramTitle();
+    const rawAccTitle = db.getAccTitle();
+    const rawAccDescr = db.getAccDescription();
+    const rawRequirements = db.getRequirements();
+    const rawElements = db.getElements();
+    const rawRelationships = db.getRelationships();
+
+    const isMap = (value) =>
+      Object.prototype.toString.call(value) === "[object Map]";
+    if (
+      !isMap(rawRequirements) ||
+      !isMap(rawElements) ||
+      !Array.isArray(rawRelationships)
+    ) {
+      requirementStop(
+        "getRequirements() and getElements() must both return Maps and " +
+          "getRelationships() an array; this build returned " +
+          Object.prototype.toString.call(rawRequirements) +
+          ", " +
+          Object.prototype.toString.call(rawElements) +
+          " and " +
+          Object.prototype.toString.call(rawRelationships)
+      );
+    }
+
+    const requirements = [];
+    for (const [key, raw] of rawRequirements) {
+      requirements.push(copyRequirementNode(raw, !rawElements.has(key)));
+    }
+    const elements = [];
+    for (const raw of rawElements.values()) {
+      elements.push(copyRequirementElement(raw));
+    }
+
+    return {
+      // `diagramType` rather than `type`, matching block, c4, kanban and radar.
+      diagramType: "requirement",
+      title:
+        typeof rawTitle !== "string" || rawTitle === ""
+          ? null
+          : decodePlaceholders(rawTitle),
+      accTitle:
+        typeof rawAccTitle !== "string" || rawAccTitle === ""
+          ? null
+          : rawAccTitle,
+      accDescr:
+        typeof rawAccDescr !== "string" || rawAccDescr === ""
+          ? null
+          : rawAccDescr,
+      requirements: requirements,
+      elements: elements,
+      relationships: rawRelationships.map(copyRequirementRelationship),
+    };
+  }
+
+  /**
+   * One requirement parse, FROM THE TITLE READ TO THE DELIVERY, with no yield
+   * point between the parse and the db reads. It must run inside an adapter
+   * queue slot; parseRequirement and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid requirement source
+   * @param {Function} [inspect] - Called with the diagram in the SAME tick as
+   *   the delivery, for the self-check's raw readings
+   * @returns {Promise<{diagram: Object, delivery: Object, extra: *}>}
+   */
+  function readRequirementInSlot(code, inspect) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readRequirementFrontmatterTitle(code);
+    const parsed =
+      title === null
+        ? api.getDiagramFromText(code)
+        : api.getDiagramFromText(code, { title: title });
+    return parsed.then((diagram) => ({
+      diagram: diagram,
+      delivery: normaliseRequirement(diagram),
+      extra: inspect ? inspect(diagram) : undefined,
+    }));
+  }
+
+  /**
+   * Parse a requirement diagram and deliver the normalised shape.
+   *
+   * Same contract as the other thirteen surfaces: the PROMISE is memoised on
+   * the code string, the memo sits in front of the adapter-wide queue, and
+   * every db read happens inside this call's own queue slot.
+   *
+   * @param {string} code - The Mermaid requirement source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseRequirement(code) {
+    if (!requirementSelfCheckStarted) {
+      runRequirementSelfCheck();
+    }
+
+    if (code === requirementMemoCode && requirementMemoPromise) {
+      logDebug("Returning memoised requirement parse for identical code string");
+      return requirementMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(
+        `Requirement parse entering its queue slot, ${code.length} characters`
+      );
+      return readRequirementInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Requirement parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.requirements.length} requirement(s), ` +
+              `${delivery.elements.length} element(s), ` +
+              `${delivery.relationships.length} relationship(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Requirement parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    requirementMemoCode = code;
+    requirementMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string distinctive and prefixed
+  // SelfCheck (or sc), so a cross-delivery from another diagram NAMES ITS
+  // SOURCE rather than merely looking wrong. Four sources, parsed in one slot:
+  // the concurrency lane quotes the MAIN one verbatim, so a change to it is a
+  // change in two files, and the others are separate so every count asserted
+  // against the main one stays as it was.
+
+  // MAIN: a frontmatter title, the acc pair, all six kinds, every field on
+  // some requirement and NONE on another, the seven verbs forward AND the
+  // reverse spelling, an element with no fields, an element whose author type
+  // is literally a kind name, a requirement and an element sharing one name,
+  // and a duplicate requirement declaration.
+  const REQUIREMENT_SELF_CHECK_FIXTURE = [
+    "---",
+    "title: SelfCheck req title",
+    "---",
+    "requirementDiagram",
+    "accTitle: SelfCheck req acc title",
+    "accDescr: SelfCheck req acc descr",
+    "",
+    "requirement scReqA {",
+    "    id: scIdA",
+    '    text: "SelfCheck text A"',
+    "    risk: high",
+    "    verifymethod: test",
+    "}",
+    "functionalRequirement scReqB {",
+    "    id: scIdB",
+    '    text: "SelfCheck text B"',
+    "    risk: medium",
+    "    verifymethod: inspection",
+    "}",
+    "interfaceRequirement scReqC {",
+    "    id: scIdC",
+    "    risk: low",
+    "    verifymethod: analysis",
+    "}",
+    "performanceRequirement scReqD {",
+    "    id: scIdD",
+    "    verifymethod: demonstration",
+    "}",
+    "physicalRequirement scReqE {",
+    "    id: scIdE",
+    "}",
+    "designConstraint scReqF {",
+    "}",
+    "element scElemA {",
+    '    type: "SelfCheck type"',
+    "    docref: scdoc/ref",
+    "}",
+    "element scElemB {",
+    "}",
+    "element scElemKind {",
+    '    type: "Functional Requirement"',
+    "}",
+    "element scShared {",
+    '    type: "SelfCheck shared element"',
+    "}",
+    "requirement scShared {",
+    "    id: scIdShared",
+    '    text: "SelfCheck shared requirement"',
+    "}",
+    "requirement scReqA {",
+    "    id: scIdDupe",
+    "}",
+    "scReqA - contains -> scReqB",
+    "scElemA - copies -> scReqA",
+    "scReqC - derives -> scReqA",
+    "scElemA - satisfies -> scReqB",
+    "scElemA - verifies -> scReqC",
+    "scReqD - refines -> scReqA",
+    "scReqE - traces -> scReqA",
+    "scReqB <- contains - scReqA",
+    "scReqA <- satisfies - scElemB",
+    "",
+  ].join("\n");
+
+  // ITEM 82, BREAKS: a typed break and an author-escaped one on every
+  // narrated position that can carry one, name, id, text, type and doc ref.
+  // The requirement's name is quoted because an unquoted name cannot hold `<`.
+  // It also carries the TITLE FORMS: a frontmatter title holding an
+  // author-escaped tag and a `#quot;` pair, which the canvas prints exactly as
+  // typed (svg-text), so the delivered title must equal the typed string and
+  // a decodeAuthorText would turn the `&lt;` into the character.
+  const REQUIREMENT_BREAK_TITLE = "t1 &lt;b&gt; t2 #quot;q#quot;";
+  const REQUIREMENT_BREAK_SELF_CHECK_FIXTURE = [
+    "---",
+    'title: "' + REQUIREMENT_BREAK_TITLE + '"',
+    "---",
+    "requirementDiagram",
+    "",
+    'requirement "one<br>two" {',
+    '    id: "three<br>four"',
+    '    text: "five<br>six"',
+    "    risk: high",
+    "    verifymethod: test",
+    "}",
+    'element "seven&lt;br&gt;eight" {',
+    '    type: "nine&lt;br&gt;ten"',
+    '    docref: "eleven&lt;br&gt;twelve"',
+    "}",
+    'requirement "thirteen&lt;br&gt;fourteen" {',
+    '    id: "fifteen&lt;br&gt;sixteen"',
+    '    text: "seventeen&lt;br&gt;eighteen"',
+    "}",
+    'element "nineteen<br>twenty" {',
+    '    type: "alpha<br>beta"',
+    '    docref: "gamma<br>delta"',
+    "}",
+    "",
+  ].join("\n");
+
+  // ITEM 82, MARKUP, and the title-absent and acc-absent source: no
+  // frontmatter and no trio. A typed tag, an author-escaped tag, a tag-only
+  // value, emphasis (DRAWN), a backtick pair (PRINTED), a `#quot;` and a bare
+  // `&`, each on a requirement text and on an element type.
+  const REQUIREMENT_MARKUP_SELF_CHECK_FIXTURE = [
+    "requirementDiagram",
+    "",
+    "requirement scmTyped {",
+    '    text: "<b>one</b>"',
+    "}",
+    "requirement scmEscaped {",
+    '    text: "&lt;b&gt;two&lt;/b&gt;"',
+    "}",
+    "requirement scmNil {",
+    '    text: "<b></b>"',
+    "}",
+    "requirement scmEmph {",
+    '    text: "**three**"',
+    "}",
+    "requirement scmTick {",
+    '    text: "`four`"',
+    "}",
+    "requirement scmQuot {",
+    '    text: "five #quot;six#quot;"',
+    "}",
+    "requirement scmBare {",
+    '    text: "seven & eight"',
+    "}",
+    "element scmElem {",
+    '    type: "<i>nine</i>"',
+    '    docref: "ten &lt;i&gt;"',
+    "}",
+    "",
+  ].join("\n");
+
+  // ITEM 82, L2 LINKS: an admitted link on a name, an id, a text, a type and
+  // a doc ref; a link beside plain text; a javascript: link, a no-href anchor
+  // and an empty link, all read as text.
+  const REQUIREMENT_LINK_SELF_CHECK_FIXTURE = [
+    "requirementDiagram",
+    "",
+    "requirement \"<a href='https://example.org/n'>lkName</a>\" {",
+    "    id: \"<a href='https://example.org/i'>lkId</a>\"",
+    "    text: \"Zq <a href='https://example.org/t'>lkText</a> tail\"",
+    "}",
+    "requirement lkBad {",
+    "    text: \"<a href='javascript:alert(1)'>j</a> <a>none</a> <a href='https://example.org'></a>.\"",
+    "}",
+    "element lkElem {",
+    "    type: \"<a href='https://example.org/y'>lkType</a>\"",
+    "    docref: \"<a href='https://example.org/d'>lkDoc</a>\"",
+    "}",
+    "",
+  ].join("\n");
+
+  /**
+   * A synthetic db, for the STOP rows. It is deliberately NOT a parse: the
+   * rows exercise shapes the grammar cannot produce, a kind outside the six,
+   * a verb outside the seven, an object missing a key, and a Map that is an
+   * Array, so no source exists for them.
+   *
+   * @param {Object} [overrides] - Accessor replacements merged over the
+   *   one-requirement, one-element, one-relationship default
+   * @returns {Object} A stand-in with the six accessors normaliseRequirement
+   *   reads
+   */
+  function requirementStubDiagram(overrides) {
+    const requirement = {
+      name: "r",
+      type: "Requirement",
+      requirementId: "1",
+      text: "t",
+      risk: "High",
+      verifyMethod: "Test",
+    };
+    const element = { name: "e", type: "y", docRef: "d" };
+    const base = {
+      getDiagramTitle: () => "",
+      getAccTitle: () => "",
+      getAccDescription: () => "",
+      getRequirements: () => new Map([["r", requirement]]),
+      getElements: () => new Map([["e", element]]),
+      getRelationships: () => [{ type: "satisfies", src: "e", dst: "r" }],
+    };
+    return { db: Object.assign(base, overrides || {}) };
+  }
+
+  /**
+   * True when normaliseRequirement refuses the given stub, with a message
+   * matching the pattern, so a refusal for the WRONG reason cannot pass.
+   *
+   * @param {Object} overrides - Accessor replacements for the stub
+   * @param {RegExp} pattern - What the refusal must say
+   * @returns {boolean} Whether it refused, for that reason
+   */
+  function requirementStubRefuses(overrides, pattern) {
+    try {
+      normaliseRequirement(requirementStubDiagram(overrides));
+      return false;
+    } catch (e) {
+      return pattern.test((e && e.message) || "");
+    }
+  }
+
+  /**
+   * Parse the embedded fixtures and assert every delivered field against known
+   * values. Resolves true on a clean run; on any failure logs ONE ERROR naming
+   * the first failed assertion, marks the requirement surface unhealthy, and
+   * resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} Resolves to the requirement health verdict
+   */
+  function runRequirementSelfCheck() {
+    if (requirementSelfCheckPromise) {
+      return requirementSelfCheckPromise;
+    }
+    requirementSelfCheckStarted = true;
+
+    const run = () =>
+      Promise.resolve()
+        .then(() => {
+          if (
+            !window.mermaid ||
+            !window.mermaid.mermaidAPI ||
+            typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+          ) {
+            throw new Error(
+              "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+            );
+          }
+          // THE MAIN FIXTURE RUNS FIRST, and its raw readings and its delivery
+          // are taken in the SAME TICK as its parse. Every later parse clears
+          // the shared trio, which is itself a row below: the handle kept
+          // from this parse reads "" once the next one has run.
+          return readRequirementInSlot(REQUIREMENT_SELF_CHECK_FIXTURE, (diagram) => {
+            const db = diagram.db;
+            const rels = db.getRelationships();
+            return {
+              accessorsPresent:
+                typeof db.getDiagramTitle === "function" &&
+                typeof db.getAccTitle === "function" &&
+                typeof db.getAccDescription === "function" &&
+                typeof db.getRequirements === "function" &&
+                typeof db.getElements === "function" &&
+                typeof db.getRelationships === "function",
+              vocabulary: {
+                kinds: Object.values(db.RequirementType || {}),
+                risks: Object.values(db.RiskLevel || {}),
+                methods: Object.values(db.VerifyType || {}),
+                verbs: Object.values(db.Relationships || {}),
+              },
+              rawKinds: Array.from(db.getRequirements().values()).map((r) => r.type),
+              rawRelationships: rels.map((r) => [r.src, r.type, r.dst].join(">")),
+              rawTitle: db.getDiagramTitle(),
+              rawAccTitle: db.getAccTitle(),
+              rawAccDescr: db.getAccDescription(),
+              rawReqKeys: Object.keys(Array.from(db.getRequirements().values())[0]),
+              rawElKeys: Object.keys(Array.from(db.getElements().values())[0]),
+            };
+          });
+        })
+        .then((main) =>
+          // THE PLAIN PARSE of the main source, with NO title option: the
+          // measured fact that makes the title route necessary. It reads ""
+          // from the db although the canvas draws the title.
+          window.mermaid.mermaidAPI
+            .getDiagramFromText(REQUIREMENT_SELF_CHECK_FIXTURE)
+            .then((plain) => ({ main, plainTitle: plain.db.getDiagramTitle() }))
+        )
+        .then((state) =>
+          readRequirementInSlot(REQUIREMENT_BREAK_SELF_CHECK_FIXTURE).then(
+            (broken) => Object.assign(state, { broken: broken.delivery })
+          )
+        )
+        .then((state) =>
+          readRequirementInSlot(REQUIREMENT_LINK_SELF_CHECK_FIXTURE).then(
+            (linked) => Object.assign(state, { linked: linked.delivery })
+          )
+        )
+        .then((state) =>
+          // THE NO-FRONTMATTER, NO-TRIO SOURCE RUNS LAST, so its parse is the
+          // one that clears the store under the main handle read below.
+          readRequirementInSlot(REQUIREMENT_MARKUP_SELF_CHECK_FIXTURE).then(
+            (marked) => Object.assign(state, { marked: marked.delivery })
+          )
+        )
+        .then((state) => {
+          const { main } = state;
+          const delivery = main.delivery;
+          const extra = main.extra;
+          // The main handle, read AFTER three more parses: its trio is gone.
+          const staleHandle = {
+            accTitle: main.diagram.db.getAccTitle(),
+            accDescr: main.diagram.db.getAccDescription(),
+          };
+          const keysOf = (o) => (o ? Object.keys(o).join(",") : "");
+          const baseKeys = (o, keys) =>
+            o ? Object.keys(o).slice(0, keys.length).join(",") : "";
+          const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+          const requirement = (name) =>
+            delivery.requirements.find((r) => r.name === name);
+          const element = (name) =>
+            delivery.elements.find((e) => e.name === name);
+          const rels = delivery.relationships.map((r) =>
+            [r.source, r.verb, r.target].join(">")
+          );
+          const [reqA, reqB, reqC, reqD, reqE, reqF] = delivery.requirements;
+          const [elA, elB, elKind, elShared] = delivery.elements;
+          const broken = state.broken;
+          const marked = state.marked;
+          const linked = state.linked;
+          const markedReq = (name) =>
+            marked.requirements.find((r) => r.name === name);
+          const linkedReq = (name) =>
+            linked.requirements.find((r) => r.name === name);
+
+          return [
+            [
+              "the six db accessors this surface reads exist by name, and " +
+                "the db's own four vocabulary objects equal the closed " +
+                "vocabularies this surface checks against",
+              extra.accessorsPresent &&
+                same(extra.vocabulary.kinds, REQUIREMENT_KINDS) &&
+                same(extra.vocabulary.risks, REQUIREMENT_RISKS) &&
+                same(extra.vocabulary.methods, REQUIREMENT_VERIFY_METHODS) &&
+                same(extra.vocabulary.verbs, REQUIREMENT_VERBS),
+            ],
+            [
+              "the delivery carries EXACTLY the seven documented top-level " +
+                "keys, in order, and names its type",
+              keysOf(delivery) === REQUIREMENT_DELIVERED_KEYS.join(",") &&
+                delivery.diagramType === "requirement",
+            ],
+            [
+              "requirements and elements arrive in DECLARATION ORDER with " +
+                "the author's own names, a duplicate declaration collapsed " +
+                "to the first as the db collapses it",
+              same(
+                delivery.requirements.map((r) => r.name),
+                [
+                  "scReqA",
+                  "scReqB",
+                  "scReqC",
+                  "scReqD",
+                  "scReqE",
+                  "scReqF",
+                  "scShared",
+                ]
+              ) &&
+                same(
+                  delivery.elements.map((e) => e.name),
+                  ["scElemA", "scElemB", "scElemKind", "scShared"]
+                ) &&
+                reqA.id === "scIdA",
+            ],
+            [
+              "the six kinds are delivered as the db's display strings, in " +
+                "order, and asserted against the db's own raw types",
+              same(
+                delivery.requirements.slice(0, 6).map((r) => r.kind),
+                REQUIREMENT_KINDS
+              ) &&
+                same(extra.rawKinds.slice(0, 6), REQUIREMENT_KINDS),
+            ],
+            [
+              "every delivered requirement carries EXACTLY the seven " +
+                "documented keys, every element the three and every " +
+                "relationship the three, and the db objects' own extra keys " +
+                "do not cross",
+              delivery.requirements.every(
+                (r) => keysOf(r) === REQUIREMENT_NODE_KEYS.join(",")
+              ) &&
+                delivery.elements.every(
+                  (e) => keysOf(e) === REQUIREMENT_ELEMENT_KEYS.join(",")
+                ) &&
+                delivery.relationships.every(
+                  (r) => keysOf(r) === REQUIREMENT_RELATIONSHIP_KEYS.join(",")
+                ) &&
+                extra.rawReqKeys.indexOf("cssStyles") !== -1 &&
+                extra.rawElKeys.indexOf("classes") !== -1,
+            ],
+            [
+              "the four fields arrive on the requirements that declare them: " +
+                "risk and verify method as the db's title-cased strings",
+              reqA.id === "scIdA" &&
+                reqA.text === "SelfCheck text A" &&
+                reqA.risk === "High" &&
+                reqA.verifyMethod === "Test" &&
+                reqB.risk === "Medium" &&
+                reqB.verifyMethod === "Inspection" &&
+                reqC.risk === "Low" &&
+                reqC.verifyMethod === "Analysis" &&
+                reqD.verifyMethod === "Demonstration",
+            ],
+            [
+              "an ABSENT field is null, never the empty string, on every " +
+                "kind of object: a requirement with no fields, a requirement " +
+                "with some, and an element with none — with the declaring " +
+                "objects beside them so a build that nulled everything fails",
+              reqF.id === null &&
+                reqF.text === null &&
+                reqF.risk === null &&
+                reqF.verifyMethod === null &&
+                reqD.risk === null &&
+                reqD.text === null &&
+                reqE.id === "scIdE" &&
+                reqE.risk === null &&
+                elB.type === null &&
+                elB.docRef === null &&
+                elA.type === "SelfCheck type" &&
+                elA.docRef === "scdoc/ref",
+            ],
+            [
+              "all seven verbs are delivered, and the reverse spelling " +
+                "`b <- verb - a` delivers the SAME relationship as the " +
+                "forward one — and a non-symmetric reverse row keeps its " +
+                "source and target the right way round — asserted against " +
+                "the db's own src, type and dst",
+              same(
+                Array.from(new Set(delivery.relationships.map((r) => r.verb))),
+                ["contains", "copies", "derives", "satisfies", "verifies", "refines", "traces"]
+              ) &&
+                rels[0] === "scReqA>contains>scReqB" &&
+                rels[7] === "scReqA>contains>scReqB" &&
+                rels[8] === "scElemB>satisfies>scReqA" &&
+                delivery.relationships.length === 9 &&
+                same(
+                  rels,
+                  extra.rawRelationships.map((r) => {
+                    const [src, type, dst] = r.split(">");
+                    return [src, type, dst].join(">");
+                  })
+                ),
+            ],
+            [
+              "`type` is branched on the KIND OF OBJECT before it is read: " +
+                "a requirement delivers `kind` and no `type`, an element " +
+                "delivers `type` and no `kind`, and an element whose author " +
+                "text is literally a kind name stays author text",
+              reqA.kind === "Requirement" &&
+                !("type" in reqA) &&
+                elA.type === "SelfCheck type" &&
+                !("kind" in elA) &&
+                elKind.type === "Functional Requirement" &&
+                reqB.kind === "Functional Requirement",
+            ],
+            [
+              "the frontmatter title is delivered through the title route, " +
+                "and a PLAIN parse of the same source reads empty — the " +
+                "measured fact that makes the route necessary",
+              delivery.title === "SelfCheck req title" &&
+                extra.rawTitle === "SelfCheck req title" &&
+                state.plainTitle === "",
+            ],
+            [
+              "a source with no frontmatter delivers a null title, with the " +
+                "titled fixture's string beside it so a build that nulled " +
+                "every title fails",
+              marked.title === null &&
+                delivery.title !== null &&
+                readRequirementFrontmatterTitle(REQUIREMENT_MARKUP_SELF_CHECK_FIXTURE) === null &&
+                readRequirementFrontmatterTitle(REQUIREMENT_SELF_CHECK_FIXTURE) ===
+                  "SelfCheck req title",
+            ],
+            [
+              "the frontmatter reader takes one layer of matching quotes, " +
+                "ignores a `title:` indented under another key, and refuses " +
+                "an empty value",
+              readRequirementFrontmatterTitle('---\ntitle: "Quoted one"\n---\nx') === "Quoted one" &&
+                readRequirementFrontmatterTitle("---\ntitle: 'Single one'\n---\nx") === "Single one" &&
+                readRequirementFrontmatterTitle("---\nconfig:\n  title: nested\n---\nx") === null &&
+                readRequirementFrontmatterTitle("---\ntitle:\n---\nx") === null &&
+                readRequirementFrontmatterTitle("requirementDiagram\ntitle: no") === null,
+            ],
+            [
+              "accTitle and accDescr take NO transform and are delivered " +
+                "verbatim as the db holds them, and are null on a source " +
+                "that declares neither",
+              delivery.accTitle === "SelfCheck req acc title" &&
+                delivery.accDescr === "SelfCheck req acc descr" &&
+                delivery.accTitle === extra.rawAccTitle &&
+                delivery.accDescr === extra.rawAccDescr &&
+                marked.accTitle === null &&
+                marked.accDescr === null,
+            ],
+            [
+              "the trio is ONE SHARED STORE that every requirement parse " +
+                "clears: the main handle, read after three more parses, " +
+                "reads empty strings while the delivery taken in its own " +
+                "tick still holds the strings — the canary for the " +
+                "snapshot being necessary",
+              staleHandle.accTitle === "" &&
+                staleHandle.accDescr === "" &&
+                delivery.accTitle === "SelfCheck req acc title" &&
+                delivery.accDescr === "SelfCheck req acc descr",
+            ],
+            [
+              "a typed break reads as one space on a requirement's name, id " +
+                "and text and on an element's name, type and doc ref " +
+                "(item 82)",
+              broken.requirements[0].name === "one two" &&
+                broken.requirements[0].id === "three four" &&
+                broken.requirements[0].text === "five six" &&
+                broken.elements[1].name === "nineteen twenty" &&
+                broken.elements[1].type === "alpha beta" &&
+                broken.elements[1].docRef === "gamma delta",
+            ],
+            [
+              "an author-escaped break is kept as the characters <br> on " +
+                "the same six positions (item 82)",
+              broken.requirements[1].name === "thirteen<br>fourteen" &&
+                broken.requirements[1].id === "fifteen<br>sixteen" &&
+                broken.requirements[1].text === "seventeen<br>eighteen" &&
+                broken.elements[0].name === "seven<br>eight" &&
+                broken.elements[0].type === "nine<br>ten" &&
+                broken.elements[0].docRef === "eleven<br>twelve",
+            ],
+            [
+              "the title is read as the svg-text canvas prints it: an " +
+                "author-escaped tag and a `#quot;` pair are delivered AS " +
+                "TYPED (decodePlaceholders), asserted with the two decoders' " +
+                "DISAGREEMENT on that string as a canary so a build that had " +
+                "swapped in decodeAuthorText fails",
+              broken.title === REQUIREMENT_BREAK_TITLE &&
+                decodeAuthorText(REQUIREMENT_BREAK_TITLE) !==
+                  REQUIREMENT_BREAK_TITLE &&
+                decodePlaceholders(REQUIREMENT_BREAK_TITLE) ===
+                  REQUIREMENT_BREAK_TITLE,
+            ],
+            [
+              "a typed formatting tag reads as its text, on a requirement " +
+                "text and an element type (item 82)",
+              markedReq("scmTyped").text === "one" &&
+                marked.elements[0].type === "nine",
+            ],
+            [
+              "an author-escaped formatting tag is kept as the characters " +
+                "<b>, on a requirement text and an element doc ref (item 82)",
+              markedReq("scmEscaped").text === "<b>two</b>" &&
+                marked.elements[0].docRef === "ten <i>",
+            ],
+            [
+              "a tag-only value is delivered as the empty string and NOT as " +
+                "null, because its line is drawn with no value — beside a " +
+                "null for a field never written, so the two stay apart",
+              markedReq("scmNil").text === "" &&
+                markedReq("scmNil").id === null,
+            ],
+            [
+              "markdown emphasis reads as its text because the canvas " +
+                "DRAWS it, and a backtick pair is PRINTED and so kept",
+              markedReq("scmEmph").text === "three" &&
+                markedReq("scmTick").text === "`four`",
+            ],
+            [
+              "a `#quot;` pair is delivered as the real quote characters " +
+                "and a bare `&` as itself (the canvas prints both)",
+              markedReq("scmQuot").text === 'five "six"' &&
+                markedReq("scmBare").text === "seven & eight",
+            ],
+            [
+              "an admitted link the canvas draws arrives as link segments on " +
+                "a name, an id, a text, an element type and a doc ref, and " +
+                "every segment join equals the delivered text",
+              (() => {
+                const lk = linked.requirements[0];
+                const le = linked.elements[0];
+                const joined = (segments, text) =>
+                  Array.isArray(segments) &&
+                  segments.map((s) => s.text).join("") === text;
+                return (
+                  same(lk.nameSegments, [
+                    { text: "lkName", href: "https://example.org/n" },
+                  ]) &&
+                  same(lk.idSegments, [
+                    { text: "lkId", href: "https://example.org/i" },
+                  ]) &&
+                  same(lk.textSegments, [
+                    { text: "Zq " },
+                    { text: "lkText", href: "https://example.org/t" },
+                    { text: " tail" },
+                  ]) &&
+                  same(le.typeSegments, [
+                    { text: "lkType", href: "https://example.org/y" },
+                  ]) &&
+                  same(le.docRefSegments, [
+                    { text: "lkDoc", href: "https://example.org/d" },
+                  ]) &&
+                  joined(lk.nameSegments, lk.name) &&
+                  joined(lk.idSegments, lk.id) &&
+                  joined(lk.textSegments, lk.text) &&
+                  joined(le.typeSegments, le.type) &&
+                  joined(le.docRefSegments, le.docRef)
+                );
+              })(),
+            ],
+            [
+              "a javascript: link, a no-href anchor and an empty link are " +
+                "plain text, beside a requirement that does carry a link",
+              linkedReq("lkBad").text === "j none ." &&
+                same(linkedReq("lkBad").textSegments, [{ text: "j none ." }]) &&
+                linked.requirements[0].textSegments.length === 3,
+            ],
+            [
+              "a requirement and an element sharing one name are BOTH " +
+                "delivered, the requirement carries `drawn: false` — the " +
+                "canvas draws the element — and every other requirement " +
+                "carries `drawn: true`",
+              !!requirement("scShared") &&
+                !!element("scShared") &&
+                requirement("scShared").drawn === false &&
+                elShared.type === "SelfCheck shared element" &&
+                delivery.requirements.filter((r) => r.drawn === false).length === 1 &&
+                reqA.drawn === true &&
+                reqF.drawn === true,
+            ],
+            [
+              "an unknown kind, risk, verify method and verb are each a STOP " +
+                "for the right reason, and the stub's own defaults deliver, " +
+                "so a build refusing everything could not pass",
+              (() => {
+                const req = (fields) => () =>
+                  new Map([
+                    [
+                      "r",
+                      Object.assign(
+                        {
+                          name: "r",
+                          type: "Requirement",
+                          requirementId: "1",
+                          text: "t",
+                          risk: "High",
+                          verifyMethod: "Test",
+                        },
+                        fields
+                      ),
+                    ],
+                  ]);
+                return (
+                  normaliseRequirement(requirementStubDiagram()).requirements.length === 1 &&
+                  requirementStubRefuses(
+                    { getRequirements: req({ type: "Mystery Requirement" }) },
+                    /unknown requirement kind/
+                  ) &&
+                  requirementStubRefuses(
+                    { getRequirements: req({ risk: "Extreme" }) },
+                    /unknown risk/
+                  ) &&
+                  requirementStubRefuses(
+                    { getRequirements: req({ verifyMethod: "Guess" }) },
+                    /unknown verify method/
+                  ) &&
+                  requirementStubRefuses(
+                    { getRelationships: () => [{ type: "mirrors", src: "e", dst: "r" }] },
+                    /unknown relationship verb/
+                  )
+                );
+              })(),
+            ],
+            [
+              "a db object MISSING a key the census recorded is a STOP on a " +
+                "requirement, an element and a relationship, and a Map " +
+                "accessor that returns an Array is a STOP",
+              requirementStubRefuses(
+                {
+                  getRequirements: () =>
+                    new Map([["r", { name: "r", type: "Requirement" }]]),
+                },
+                /requirement carrying no `requirementId`/
+              ) &&
+                requirementStubRefuses(
+                  { getElements: () => new Map([["e", { name: "e", type: "y" }]]) },
+                  /element carrying no `docRef`/
+                ) &&
+                requirementStubRefuses(
+                  { getRelationships: () => [{ type: "satisfies", src: "e" }] },
+                  /relationship carrying no `dst`/
+                ) &&
+                requirementStubRefuses(
+                  { getRequirements: () => [] },
+                  /must both return Maps/
+                ),
+            ],
+          ];
+        });
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    requirementSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Requirement self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's requirement internals no " +
+              "longer match the 7 October 2026 census, or this surface's " +
+              "mapping has drifted; do not trust requirement adapter output."
+          );
+          requirementHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Requirement self-check passed: accessor-and-vocabulary, key-set, " +
+            "declaration-order, kinds, node-keys, fields, null-field, " +
+            "verbs-both-ways, type-branch, title-route, title-absent, " +
+            "frontmatter-reader, acc-verbatim, shared-store, typed-break, " +
+            "escaped-break, title-forms, typed-tag, escaped-tag, tag-only, emphasis-and-tick, " +
+            "quot-and-bare, links, plain-links, name-collision, vocabulary-stop " +
+            "and missing-key-stop assertions all hold"
+        );
+        requirementHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Requirement self-check FAILED at assertion: the fixtures parse " +
+            `and read. The fixture run rejected: ${error && error.message}`
+        );
+        requirementHealthy = false;
+        return false;
+      });
+
+    return requirementSelfCheckPromise;
+  }
+
+  /**
+   * Report the requirement surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the requirement self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isRequirementHealthy() {
+    return requirementHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -12931,6 +14222,9 @@ window.MermaidParseAdapter = (function () {
     parseRadar: parseRadar,
     runRadarSelfCheck: runRadarSelfCheck,
     isRadarHealthy: isRadarHealthy,
+    parseRequirement: parseRequirement,
+    runRequirementSelfCheck: runRequirementSelfCheck,
+    isRequirementHealthy: isRequirementHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

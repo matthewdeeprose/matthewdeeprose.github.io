@@ -104,6 +104,9 @@
   const OCR_UNFINISHED_WORDING = Object.freeze({
     "timed-out": "did not finish",
     failed: "could not run",
+    // Generate went ahead on the quick result, before text detection ended (H-36).
+    // Set on a copy by the controller, never on a stored analysis.
+    "not-finished": "had not finished when this description was requested",
   });
 
   // A label line as formatOCRForPrompt prints it: `- "text" — position (confidence)`.
