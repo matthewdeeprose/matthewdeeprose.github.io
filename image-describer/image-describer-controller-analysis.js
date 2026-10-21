@@ -3,7 +3,7 @@
  * IMAGE DESCRIBER CONTROLLER — ANALYSIS PIPELINE SUB-MODULE
  * ═══════════════════════════════════════════════════════════════
  *
- * Analysis orchestration, profile management, cache recall,
+ * Analysis orchestration, the text-detection tick box, cache recall,
  * Florence-2 integration, and background analysis for the
  * Image Describer controller.
  *
@@ -72,6 +72,20 @@
   const REANALYSE_WARNING_ID = "imgdesc-reanalyse-warning";
   const REANALYSE_BUTTON_ID = "imgdesc-reanalyse-btn";
 
+  // The "Detect text in this picture?" question (H-64): a group holding two
+  // toggle buttons, shown once a picture is loaded and unanswered for every new
+  // picture. Declared in tools.html. Text detection does not start until one is
+  // pressed; Skip text means text detection is skipped. Not saved.
+  const TEXT_CHOICE_ID = "imgdesc-text-choice";
+  const TEXT_CHOICE_BUTTON_IDS = Object.freeze({
+    detect: "imgdesc-text-choice-detect",
+    skip: "imgdesc-text-choice-skip",
+  });
+  const TEXT_CHOICE = Object.freeze({ DETECT: "detect", SKIP: "skip" });
+
+  // The one analysis profile left since the categories were removed (H-56).
+  const DEFAULT_PROFILE_NAME = "default";
+
   // The overlay toolbar revealed at analysis completion. Declared in tools.html.
   const OVERLAY_TOOLBAR_ID = "imgdesc-overlay-toolbar";
 
@@ -96,12 +110,14 @@
   const COMPLETE_AFTER_DESCRIPTION =
     "Text detection has now finished. The description was written before it finished, so it does not use any text from the picture. Review OCR and the analysis overlay controls are now available.";
 
-  // What the start of a slow analysis says (H-13). The wait used to be voiced by
-  // the Model Manager naming each model the analyser happened to load, which
-  // told the person nothing they could use. One plain line now gives the wait a
-  // beginning, and the completion line above is its end. It speaks only on a run
-  // that will take time, never on a cache hit, where completion follows at once.
-  const ANALYSING_START = "Analysing the picture. This can take up to a minute.";
+  // What the start of text detection says (H-13, moved and reworded at H-64). The
+  // wait used to be voiced by the Model Manager naming each model the analyser
+  // happened to load, which told the person nothing they could use. One plain line
+  // gives the wait a beginning, and the completion line above is its end. It is
+  // written where text detection really starts, so it is never spoken for Skip text
+  // or for a cache hit, where completion follows at once.
+  const DETECTING_TEXT_START =
+    "Detecting text in the picture. This can take up to a minute.";
 
   // ============================================================================
   // ANALYSIS PIPELINE METHODS
@@ -109,275 +125,13 @@
 
   const methods = {
 
-    // ========================================================================
-    // ANALYSIS PROFILE SELECTION (Phase 4C)
-    // ========================================================================
-
-    /**
-     * Get the currently selected analysis profile name.
-     * @returns {string} profile name (e.g. "default", "chart")
-     */
-    getSelectedProfile() {
-      const checked = document.querySelector(
-        'input[name="imgdesc-profile"]:checked',
-      );
-      return checked ? checked.value : "default";
-    },
-
-    /**
-     * Set the selected analysis profile by value.
-     * @param {string} profileName
-     */
-    setSelectedProfile(profileName) {
-      const radio = document.querySelector(
-        `input[name="imgdesc-profile"][value="${profileName}"]`,
-      );
-      if (radio) {
-        radio.checked = true;
-        logDebug(`Profile set to: ${profileName}`);
-      } else {
-        logWarn(`Profile not found: ${profileName}, falling back to default`);
-        const defaultRadio = document.querySelector(
-          'input[name="imgdesc-profile"][value="default"]',
-        );
-        if (defaultRadio) defaultRadio.checked = true;
-      }
-    },
-
-    /**
-     * Handle profile change — persist and re-run analysis if image loaded.
-     * @param {string} profileName — the newly selected profile
-     */
-    handleProfileChange(profileName) {
-      // Persist selection
-      try {
-        localStorage.setItem("imgdesc-profile", profileName);
-      } catch (e) {
-        logWarn("Could not save profile selection:", e);
-      }
-
-      logInfo(`Analysis profile changed to: ${profileName}`);
-
-      // If in two-phase flow (immediate analysis done, awaiting profile
-      // confirmation), run the gated phase directly instead of restarting
-      if (this._immediateResult) {
-        const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-        const skipOCR = skipOCRCheckbox ? skipOCRCheckbox.checked : false;
-
-        logInfo(
-          `Profile selected during two-phase flow — running gated analysis: ${profileName}, skipOCR: ${skipOCR}`,
-        );
-        this.runGatedAnalysis(profileName, skipOCR);
-        return;
-      }
-
-      // Re-run analysis if an image is currently loaded
-      if (this.currentFile && this.elements.preview?.querySelector("img")) {
-        this.startBackgroundAnalysis();
-      }
-    },
-
-    // ========================================================================
-    // PROFILE SUGGESTION (Phase 5C)
-    // ========================================================================
-
-    /**
-     * Show a suggestion banner when classification recommends a different profile.
-     * If heuristic and CLIP disagree, shows both options.
-     * @param {Object} classification - { profile, confidence, reason, source, scores, heuristic?, clip? }
-     */
-    showProfileSuggestion(classification) {
-      const banner = document.getElementById("imgdesc-profile-suggestion");
-      if (!banner) return;
-
-      // Reset skip OCR checkbox (Phase 15B)
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      if (skipOCRCheckbox) skipOCRCheckbox.checked = false;
-
-      const currentProfile = this.getSelectedProfile();
-      const inTwoPhaseFlow = this._immediateResult !== null;
-
-      // Phase 15B: In two-phase flow, always show the banner so the user can
-      // confirm the profile and optionally skip text detection before gated
-      // analysis runs. When no profile change is needed, show a confirmation
-      // banner instead of a suggestion banner.
-      const suggestedProfile = classification?.profile;
-      const noSuggestion =
-        !suggestedProfile ||
-        suggestedProfile === "default" ||
-        suggestedProfile === currentProfile;
-
-      if (noSuggestion && !inTwoPhaseFlow) {
-        // Old behaviour: hide banner when not in two-phase flow
-        banner.hidden = true;
-        return;
-      }
-
-      if (noSuggestion && inTwoPhaseFlow) {
-        // Two-phase flow but no profile change needed — show confirmation banner
-        const currentDisplayName =
-          currentProfile.charAt(0).toUpperCase() + currentProfile.slice(1);
-
-        this._pendingSuggestion = { profile: currentProfile };
-        this._pendingAlternative = null;
-
-        const textEl = document.getElementById(
-          "imgdesc-profile-suggestion-text",
-        );
-        const applyBtn = banner.querySelector(
-          ".imgdesc-profile-suggestion-apply",
-        );
-
-        if (textEl) {
-          textEl.innerHTML =
-            `Ready to analyse with the <strong>${currentDisplayName}</strong> profile. ` +
-            `Proceed, or choose another profile?`;
-        }
-        if (applyBtn) applyBtn.textContent = "Proceed";
-
-        // Hide alternative button if it exists
-        const altBtn = banner.querySelector(
-          ".imgdesc-profile-suggestion-apply-alt",
-        );
-        if (altBtn) altBtn.hidden = true;
-
-        banner.hidden = false;
-        logInfo(
-          `Profile confirmation banner shown for: ${currentProfile} (no change needed)`,
-        );
-        return;
-      }
-
-      // Store pending suggestion
-      this._pendingSuggestion = classification;
-      this._pendingAlternative = null;
-
-      // Detect conflicting alternative
-      let altProfile = null;
-      let altSource = null;
-      let altConfidence = null;
-
-      if (classification.source === "clip" && classification.heuristic) {
-        // CLIP won, check if heuristic had a different idea
-        const h = classification.heuristic;
-        if (
-          h.profile &&
-          h.profile !== classification.profile &&
-          h.profile !== "default" &&
-          h.profile !== currentProfile
-        ) {
-          altProfile = h.profile;
-          altSource = "heuristic";
-          altConfidence = h.confidence;
-        }
-      } else if (
-        classification.source === "heuristic" &&
-        classification.clip &&
-        classification.clip.status === "success"
-      ) {
-        // Heuristic won, check if CLIP had a different idea
-        const profiles = window.ImageDescriberAnalyserProfiles;
-        const clipMapped =
-          profiles?.LABEL_TO_PROFILE?.[classification.clip.topLabel];
-        if (
-          clipMapped &&
-          clipMapped !== classification.profile &&
-          clipMapped !== "default" &&
-          clipMapped !== currentProfile
-        ) {
-          altProfile = clipMapped;
-          altSource = "clip";
-          altConfidence = classification.clip.topConfidence;
-        }
-      }
-
-      // Build display names
-      const displayName =
-        classification.profile.charAt(0).toUpperCase() +
-        classification.profile.slice(1);
-      const confidenceText =
-        classification.confidence != null
-          ? ` (${Math.round(classification.confidence * 100)}% confidence)`
-          : "";
-
-      const textEl = document.getElementById("imgdesc-profile-suggestion-text");
-      const applyBtn = banner.querySelector(
-        ".imgdesc-profile-suggestion-apply",
-      );
-
-      if (altProfile && altProfile !== classification.profile) {
-        // Conflicting suggestion — show both options
-        const altDisplayName =
-          altProfile.charAt(0).toUpperCase() + altProfile.slice(1);
-        const altConfText =
-          altConfidence != null ? ` (${Math.round(altConfidence * 100)}%)` : "";
-
-        this._pendingAlternative = altProfile;
-
-        if (textEl) {
-          textEl.innerHTML =
-            `Analysis suggests this could be a <strong>${displayName}</strong>${confidenceText} or a <strong>${altDisplayName}</strong>${altConfText}. ` +
-            `Which profile would you like to use?`;
-        }
-
-        // Update primary Apply button text
-        if (applyBtn) applyBtn.textContent = "Apply " + displayName;
-
-        // Show or create the alternative Apply button
-        let altBtn = banner.querySelector(
-          ".imgdesc-profile-suggestion-apply-alt",
-        );
-        if (!altBtn) {
-          altBtn = document.createElement("button");
-          altBtn.type = "button";
-          altBtn.className = "imgdesc-profile-suggestion-apply-alt";
-          altBtn.setAttribute(
-            "onclick",
-            "ImageDescriberController.applyAlternativeSuggestion()",
-          );
-          // Insert after primary Apply button
-          if (applyBtn && applyBtn.parentNode) {
-            applyBtn.parentNode.insertBefore(altBtn, applyBtn.nextSibling);
-          }
-        }
-        altBtn.textContent = "Apply " + altDisplayName;
-        altBtn.hidden = false;
-      } else {
-        // Single suggestion — standard banner
-        this._pendingAlternative = null;
-
-        if (textEl) {
-          textEl.innerHTML =
-            `Analysis suggests this is a <strong>${displayName}</strong>${confidenceText}. ` +
-            `Switch to the ${displayName} profile for optimised results?`;
-        }
-
-        // Reset primary Apply button text
-        if (applyBtn) applyBtn.textContent = "Apply";
-
-        // Hide alternative button if it exists
-        const altBtn = banner.querySelector(
-          ".imgdesc-profile-suggestion-apply-alt",
-        );
-        if (altBtn) altBtn.hidden = true;
-      }
-
-      banner.hidden = false;
-      logInfo(
-        `Profile suggestion shown: ${classification.profile} (${classification.source})` +
-          (altProfile ? ` with alternative: ${altProfile} (${altSource})` : ""),
-      );
-    },
-
     /**
      * Slot definitions for the analysis status display.
      * Keys match analysis:stage event stage values.
      */
     _ANALYSIS_STATUS_SLOTS: {
-      clip: { label: "CLIP classification" },
       colour: { label: "Colour sampling" },
       ocr: { label: "Tesseract OCR" },
-      depth: { label: "Depth estimation" },
       florenceOCR: { label: "Florence-2 OCR (optional)" },
     },
 
@@ -386,6 +140,7 @@
      */
     _ANALYSIS_STATUS_ICONS: {
       pending: { icon: "", text: "pending" },
+      waiting: { icon: "", text: "waiting for your choice" },
       running: { icon: "hourglass", text: "running\u2026" },
       complete: { icon: "checkCircle", text: "complete" },
       skipped: { icon: "close", text: "skipped" },
@@ -397,7 +152,7 @@
     /**
      * Update the analysis progress status display (Phase 6A, enhanced Phase 9E).
      * Shows per-slot breakdown with icons matching the generation progress style.
-     * @param {string} stage — "analysis", "ocr", "colour", "clip"
+     * @param {string} stage — "analysis", "ocr", "colour"
      * @param {string} status — "started", "running", "complete", "skipped", "error"
      * @param {object} [data] — optional extra data
      */
@@ -437,10 +192,8 @@
       }
 
       // Update tracked stage
-      if (stage === "clip") this._stageStatus_clip = status;
       if (stage === "colour") this._stageStatus_colour = status;
       if (stage === "ocr") this._stageStatus_ocr = status;
-      if (stage === "depth") this._stageStatus_depth = status;
       if (stage === "florenceOCR") this._stageStatus_florenceOCR = status;
 
       // Update the individual slot element
@@ -531,156 +284,6 @@
         preview.setAttribute("tabindex", "-1");
       }
       preview.focus();
-    },
-
-    /**
-     * Focus the checked profile radio inside the expert panel, without the
-     * browser scrolling to it (the caller scrolls to the heading instead).
-     * The panel must already be open: a radio in a closed <details> cannot
-     * take focus.
-     */
-    _focusCheckedProfileRadio() {
-      const radio =
-        document.querySelector('input[name="imgdesc-profile"]:checked') ||
-        document.querySelector('input[name="imgdesc-profile"]');
-      if (radio) radio.focus({ preventScroll: true });
-    },
-
-    /**
-     * Apply the pending profile suggestion — changes selection, persists, re-analyses.
-     */
-    applyProfileSuggestion() {
-      if (!this._pendingSuggestion) return;
-
-      const suggestedProfile = this._pendingSuggestion.profile;
-
-      // Read skip OCR checkbox state (Phase 15B)
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      const skipOCR = skipOCRCheckbox ? skipOCRCheckbox.checked : false;
-
-      // Change the profile selection (UI radio button)
-      this.setSelectedProfile(suggestedProfile);
-
-      // Persist profile selection
-      try {
-        localStorage.setItem("imgdesc-profile", suggestedProfile);
-      } catch (e) {
-        logWarn("Could not save profile selection:", e);
-      }
-
-      // Move focus out of the banner BEFORE hiding it
-      this._moveFocusToPreview();
-
-      // Hide banner
-      const banner = document.getElementById("imgdesc-profile-suggestion");
-      if (banner) banner.hidden = true;
-      this._pendingSuggestion = null;
-      this._pendingAlternative = null;
-
-      logInfo(
-        `Profile suggestion applied: ${suggestedProfile}, skipOCR: ${skipOCR}`,
-      );
-
-      // Run gated analysis with confirmed profile (Phase 15B)
-      this.runGatedAnalysis(suggestedProfile, skipOCR);
-    },
-
-    /**
-     * Apply the alternative profile from a conflicting suggestion.
-     */
-    applyAlternativeSuggestion() {
-      if (!this._pendingAlternative) return;
-
-      const altProfile = this._pendingAlternative;
-
-      // Read skip OCR checkbox state (Phase 15B)
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      const skipOCR = skipOCRCheckbox ? skipOCRCheckbox.checked : false;
-
-      // Change the profile selection
-      this.setSelectedProfile(altProfile);
-
-      // Persist profile selection
-      try {
-        localStorage.setItem("imgdesc-profile", altProfile);
-      } catch (e) {
-        logWarn("Could not save profile selection:", e);
-      }
-
-      // Move focus out of the banner BEFORE hiding it
-      this._moveFocusToPreview();
-
-      // Hide banner
-      const banner = document.getElementById("imgdesc-profile-suggestion");
-      if (banner) banner.hidden = true;
-      this._pendingSuggestion = null;
-      this._pendingAlternative = null;
-
-      logInfo(
-        `Alternative profile suggestion applied: ${altProfile}, skipOCR: ${skipOCR}`,
-      );
-
-      // Run gated analysis with confirmed profile (Phase 15B)
-      this.runGatedAnalysis(altProfile, skipOCR);
-    },
-
-    /**
-     * Open the expert panel profile section so the user can choose manually.
-     */
-    chooseProfileManually() {
-      // Open the expert panel if it's closed (a radio in a closed <details>
-      // cannot take focus, so this comes first)
-      const expertPanel = document.getElementById("imgdesc-expert-panel");
-      if (expertPanel && !expertPanel.open) {
-        expertPanel.open = true;
-      }
-
-      // Focus the checked profile radio BEFORE hiding the banner, with no
-      // delay and without the browser's own scroll, then scroll to the heading
-      this._focusCheckedProfileRadio();
-
-      // Hide the suggestion banner
-      const banner = document.getElementById("imgdesc-profile-suggestion");
-      if (banner) banner.hidden = true;
-      this._pendingSuggestion = null;
-      this._pendingAlternative = null;
-
-      const profileHeading = document.getElementById("imgdesc-profile-heading");
-      if (profileHeading) {
-        profileHeading.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-
-      logInfo("User chose to select profile manually");
-    },
-
-    /**
-     * Dismiss the profile suggestion without changing anything.
-     */
-    dismissProfileSuggestion() {
-      const currentProfile = this.getSelectedProfile();
-
-      // Read skip OCR checkbox state (Phase 15B)
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      const skipOCR = skipOCRCheckbox ? skipOCRCheckbox.checked : false;
-
-      // Move focus out of the banner BEFORE hiding it
-      this._moveFocusToPreview();
-
-      document.getElementById("imgdesc-profile-suggestion").hidden = true;
-      this._pendingSuggestion = null;
-      this._pendingAlternative = null;
-      // Hide alt button if visible
-      const altBtn = document.querySelector(
-        ".imgdesc-profile-suggestion-apply-alt",
-      );
-      if (altBtn) altBtn.hidden = true;
-
-      logDebug(
-        `Profile suggestion dismissed, running gated analysis with: ${currentProfile}, skipOCR: ${skipOCR}`,
-      );
-
-      // Run gated analysis with current profile (Phase 15B)
-      this.runGatedAnalysis(currentProfile, skipOCR);
     },
 
     // ========================================================================
@@ -964,12 +567,178 @@
     },
 
     /**
-     * True when the person has ticked "skip text detection" (H-36).
+     * True when the person has pressed "Skip text" (H-64). It is false while the
+     * question is unanswered; "has the person answered" is _hasTextChoice().
+     * (H-56 to H-63 read a "Detect text in the picture" tick box here.)
      * @returns {boolean}
      */
     _isSkipOcrTicked() {
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      return skipOCRCheckbox ? skipOCRCheckbox.checked : false;
+      return this._textChoice === TEXT_CHOICE.SKIP;
+    },
+
+    /**
+     * True once the person has answered "Detect text in this picture?" for the
+     * current picture (H-64).
+     * @returns {boolean}
+     */
+    _hasTextChoice() {
+      return (
+        this._textChoice === TEXT_CHOICE.DETECT ||
+        this._textChoice === TEXT_CHOICE.SKIP
+      );
+    },
+
+    /**
+     * Show or hide the question (H-64). Shown only while a picture is loaded.
+     * @param {boolean} visible
+     */
+    _showTextChoice(visible) {
+      const group = document.getElementById(TEXT_CHOICE_ID);
+      if (group) group.hidden = !visible;
+    },
+
+    /**
+     * Put the question back to unanswered: no choice held, both buttons
+     * unpressed (H-64). Called for every new picture and when the picture is
+     * cleared. Does not touch the analysis; the caller starts or stops that.
+     */
+    _resetTextChoice() {
+      this._textChoice = null;
+      this._textDetectionPromise = null;
+      this._syncTextChoiceButtons();
+    },
+
+    /** Make both buttons' aria-pressed agree with the held choice (H-64). */
+    _syncTextChoiceButtons() {
+      for (const [choice, id] of Object.entries(TEXT_CHOICE_BUTTON_IDS)) {
+        const button = document.getElementById(id);
+        if (button) {
+          button.setAttribute(
+            "aria-pressed",
+            this._textChoice === choice ? "true" : "false",
+          );
+        }
+      }
+    },
+
+    /**
+     * A button of the question was pressed, or Generate asked it for the person
+     * (H-64). The first answer for a picture starts text detection on the quick
+     * result that has been waiting (or lets the colour pass start it when it
+     * arrives); a different answer later analyses the picture again, and the
+     * run-number guard drops the superseded pass; the same answer again does
+     * nothing. No announcement of its own: the start line is written by
+     * runGatedAnalysis, and "Analysis complete" by the ordinary completion path.
+     * @param {string} choice - TEXT_CHOICE.DETECT or TEXT_CHOICE.SKIP
+     */
+    handleTextChoice(choice) {
+      if (choice !== TEXT_CHOICE.DETECT && choice !== TEXT_CHOICE.SKIP) return;
+      if (!this.currentFile || !this.elements.preview?.querySelector("img")) {
+        return;
+      }
+
+      const previous = this._textChoice || null;
+      if (previous === choice) return;
+
+      this._textChoice = choice;
+      this._syncTextChoiceButtons();
+      this._updateFlorenceOCRPrompt();
+
+      // A later answer: the earlier one already started text detection.
+      if (previous !== null) {
+        logInfo(
+          `Text detection ${choice === TEXT_CHOICE.SKIP ? "skipped" : "chosen"} after an earlier answer — analysing the picture again`,
+        );
+        this.startBackgroundAnalysis();
+        return;
+      }
+
+      // The first answer. If the quick result is waiting, start text detection
+      // on it (after looking for a saved analysis made with this same answer,
+      // H-98); if the colour pass has not finished, it will read the choice.
+      if (this._immediateResult && !this._textDetectionPromise) {
+        logInfo(`First answer (${choice}) — starting text detection`);
+        this._textDetectionPromise = this._detectTextOrRestore(
+          DEFAULT_PROFILE_NAME,
+          choice === TEXT_CHOICE.SKIP,
+          this._analysisRunId,
+          false,
+        );
+      }
+    },
+
+    /**
+     * True when a saved record can stand in for analysing the picture now: the
+     * Default profile and the same answer to "Detect text in this picture?"
+     * (H-56, H-64). The one test, used by the lookup in startBackgroundAnalysis
+     * and by _detectTextOrRestore (H-98), so the two cannot drift apart.
+     * @param {object} cached - a record from ImageDescriberCache.load
+     * @param {string} profile - the profile name in use
+     * @returns {boolean}
+     */
+    _savedAnalysisMatchesAnswer(cached, profile) {
+      if (!cached || !cached.analysis || !this._hasTextChoice()) return false;
+      const cachedOcrSkipped =
+        !!cached.analysis.ocr && cached.analysis.ocr.status === "skipped";
+      return (
+        cached.analysis.profile === profile &&
+        cachedOcrSkipped === this._isSkipOcrTicked()
+      );
+    },
+
+    /**
+     * Start text detection, unless the cache already holds this picture's
+     * analysis made with the same answer (H-98). A picture seen before had no
+     * answer to match when the page first looked, so the lookup in
+     * startBackgroundAnalysis could never hit for it; the answer arrives later,
+     * so the lookup is repeated here. On a match this calls
+     * startBackgroundAnalysis(), whose lookup restores the record (the one
+     * restore path); otherwise it runs text detection as before.
+     * @param {string} profile - the profile name
+     * @param {boolean} skipOCR - whether the answer was "Skip text"
+     * @param {number} runId - the start this pass belongs to
+     * @param {boolean} skipLookup - true when startBackgroundAnalysis has just
+     *   been called from here, so a record that vanished meanwhile cannot loop
+     * @returns {Promise<object|null>}
+     */
+    async _detectTextOrRestore(profile, skipOCR, runId, skipLookup) {
+      if (
+        !skipLookup &&
+        this.currentFileHash &&
+        typeof window.ImageDescriberCache !== "undefined"
+      ) {
+        let cached = null;
+        try {
+          cached = await window.ImageDescriberCache.load(this.currentFileHash);
+        } catch (err) {
+          logWarn("Saved analysis lookup failed:", err.message);
+        }
+        if (runId !== this._analysisRunId) return null;
+        if (this._savedAnalysisMatchesAnswer(cached, profile)) {
+          logInfo("Saved analysis found for this answer — restoring it");
+          this._skipSavedLookupOnce = true;
+          this.startBackgroundAnalysis();
+          return null;
+        }
+      }
+      return this.runGatedAnalysis(profile, skipOCR, runId);
+    },
+
+    /**
+     * Wait until text detection has finished for the current picture, however
+     * many times it is started again meanwhile (H-64). Resolves at once when it
+     * is not running. Used by "Detect text, then describe".
+     */
+    async _awaitTextDetection() {
+      const MAX_RESTARTS = 5;
+      for (let attempt = 0; attempt < MAX_RESTARTS; attempt++) {
+        // The quick pass starts text detection when it ends, so wait for it first.
+        if (this._analysisPending) await this._analysisPending;
+        const running = this._textDetectionPromise;
+        if (!running) return;
+        await running;
+        if (this._textDetectionPromise === running) return;
+      }
     },
 
     /**
@@ -979,11 +748,21 @@
      * Results are stored in this.lastAnalysis when complete.
      */
     startBackgroundAnalysis() {
+      // Set by _detectTextOrRestore just before it calls this (H-98).
+      const skipSavedLookup = this._skipSavedLookupOnce === true;
+      this._skipSavedLookupOnce = false;
+
+      // A banner from an earlier restore must not outlive this start: a later
+      // answer can analyse the picture afresh after a first-answer restore
+      // (H-98). The restore path below shows it again.
+      this.hideCacheRecallBanner();
+
       // Clear any previous analysis
       this.lastAnalysis = null;
       // A new image starts with no description written before text detection (H-36)
       this._descriptionWrittenBeforeOcr = false;
       this._analysisPending = null;
+      this._textDetectionPromise = null;
       this._cacheHit = false;
       this._immediateResult = null;
       this._immediateCanvasData = null;
@@ -991,8 +770,6 @@
       // Clear stage tracking (Phase 6A)
       this._stageStatus_ocr = null;
       this._stageStatus_colour = null;
-      this._stageStatus_clip = null;
-      this._stageStatus_depth = null;
 
       if (
         typeof window.ImageDescriberAnalyser === "undefined" ||
@@ -1013,7 +790,16 @@
 
       const self = this;
 
+      // This start's number. Starting again (a new picture, Re-analyse, or the
+      // "Detect text" box changed with a picture loaded) makes any earlier,
+      // slower pass stale: it must neither store its result nor announce, or
+      // the picture ends up with the older setting's result and "Analysis
+      // complete" is spoken twice (measured at H-56 before this guard).
+      this._analysisRunId = (this._analysisRunId || 0) + 1;
+      const runId = this._analysisRunId;
+
       const applyFullResult = (result) => {
+        if (runId !== self._analysisRunId) return result;
         self.lastAnalysis = result;
         self._analysisPending = null;
 
@@ -1023,7 +809,8 @@
       };
 
       const runAnalysis = () => {
-        const profile = this.getSelectedProfile();
+        // One analysis setting for every picture (H-56): the Default profile.
+        const profile = DEFAULT_PROFILE_NAME;
 
         // Phase 9B: Check cache before running analysis
         const cacheCheck =
@@ -1034,6 +821,7 @@
 
         this._analysisPending = cacheCheck
           .then((cached) => {
+            if (runId !== self._analysisRunId) return null;
             if (cached && cached.analysis) {
               // Restore user edits on a HASH hit, whatever the profile.
               //
@@ -1063,9 +851,19 @@
                 window.ImageDescriberOverlay._userEdits = edits;
               }
 
-              // Check if the cached analysis matches current profile
+              // The cached analysis must match the current settings: the
+              // Default profile, and the same answer to "Detect text in this
+              // picture?". A record saved with text detection off holds no text,
+              // and one saved with it on holds text the person has now turned
+              // off, so either mismatch analyses the picture again (H-56).
+              // While the question is unanswered nothing matches (H-64): text
+              // detection must not run, or be restored, before the person chooses.
+              // Records saved under the removed categories (chart, map, ...)
+              // carry another profile name, so they are analysed again once.
               const cachedProfile = cached.analysis.profile;
-              if (cachedProfile === profile) {
+              const cachedOcrSkipped =
+                !!cached.analysis.ocr && cached.analysis.ocr.status === "skipped";
+              if (this._savedAnalysisMatchesAnswer(cached, profile)) {
                 logInfo(
                   `Cache hit for ${this.currentFileHash.substring(0, 16)}... — restoring analysis (profile: ${profile})`,
                 );
@@ -1081,11 +879,6 @@
 
                 applyFullResult(cached.analysis);
 
-                // Show profile suggestion if classification differs
-                if (cached.analysis?.classification) {
-                  self.showProfileSuggestion(cached.analysis.classification);
-                }
-
                 // Phase 11D: show cache recall banner
                 this.showCacheRecallBanner(
                   cached.createdAt,
@@ -1095,15 +888,14 @@
                 return cached.analysis;
               } else {
                 logInfo(
-                  `Cache hit but profile mismatch (cached: ${cachedProfile}, current: ${profile}) — re-analysing`,
+                  `Cache hit but settings differ (cached profile: ${cachedProfile}, text detection skipped: ${cachedOcrSkipped}; now: ${profile}, skipped: ${this._isSkipOcrTicked()}) — re-analysing`,
                 );
               }
             }
 
-            // No usable cache — the slow path. Say so once (H-13): this point is
-            // reached by a first analysis, a Re-analyse and a profile mismatch,
-            // and not by a cache hit, which returned above.
-            this.announceStatus(ANALYSING_START);
+            // No usable cache — the slow path. Nothing is said here any more
+            // (H-64): the start line is written where text detection really
+            // starts, in runGatedAnalysis.
 
             // Run two-phase analysis
             const analyser = window.ImageDescriberAnalyser;
@@ -1114,9 +906,6 @@
               logInfo(`Starting background analysis with profile: ${profile}`);
               return analyser.analyse(previewImg, profile).then((result) => {
                 applyFullResult(result);
-                if (result?.classification) {
-                  self.showProfileSuggestion(result.classification);
-                }
                 logInfo(
                   `Background analysis complete in ${result.totalDuration}ms ` +
                     `(OCR: ${result.ocr?.status}, Colour: ${result.colour?.status})`,
@@ -1126,7 +915,7 @@
             }
 
             // Phase 15B: Two-phase analysis
-            logInfo("Starting immediate analysis (CLIP + colour)...");
+            logInfo("Starting immediate analysis (colour)...");
             return analyser.analyseImmediate(previewImg).then((immediate) => {
               if (!immediate || !immediate.result) {
                 logWarn("Immediate analysis returned no result");
@@ -1137,24 +926,31 @@
               self._immediateResult = immediate.result;
               self._immediateCanvasData = immediate.canvasData;
 
-              // Store partial analysis (colour + CLIP available for prompt)
+              // Store partial analysis (colour available for the prompt)
               self.lastAnalysis = immediate.result;
 
               logInfo(
                 `Immediate analysis complete ` +
-                  `(Colour: ${immediate.result.colour?.status}, ` +
-                  `CLIP: ${immediate.result.classification?.clip ? "yes" : "no"})`,
+                  `(Colour: ${immediate.result.colour?.status})`,
               );
 
-              // Show profile suggestion banner — user must confirm before gated analyses run
-              if (immediate.result.classification) {
-                self.showProfileSuggestion(immediate.result.classification);
-              } else {
-                // No CLIP result — run gated analysis immediately with current profile
-                logInfo(
-                  "No CLIP classification — running gated analysis with current profile",
+              // Text detection starts only once the person has answered
+              // "Detect text in this picture?" (H-64). Until then the quick
+              // result waits and the status list says so. The gated run is NOT
+              // returned, so _analysisPending still resolves at the quick
+              // result, and Generate pressed during detection does not wait for
+              // it unless the person chose "Detect text, then describe" (H-33, H-36).
+              if (runId !== self._analysisRunId) return null;
+              if (self._hasTextChoice()) {
+                self._textDetectionPromise = self._detectTextOrRestore(
+                  profile,
+                  self._isSkipOcrTicked(),
+                  runId,
+                  skipSavedLookup,
                 );
-                return self.runGatedAnalysis(profile, false);
+              } else {
+                logInfo("Quick analysis done — waiting for the text detection choice");
+                self._updateAnalysisStatus("ocr", "waiting");
               }
 
               return immediate.result;
@@ -1176,15 +972,17 @@
     },
 
     /**
-     * Run the gated (profile-dependent) analysis phase (Phase 15B).
-     * Called after user confirms profile via suggestion banner,
-     * or when no CLIP classification is available.
+     * Run the gated analysis phase: text detection (Phase 15B).
+     * Called straight after the quick colour analysis (H-56); it used to wait
+     * for an answer to the profile suggestion banner, which no longer exists.
      *
      * @param {string} profileName — confirmed profile name
      * @param {boolean} skipOCR — whether to skip Tesseract OCR
+     * @param {number} [runId] — the start (startBackgroundAnalysis) this pass belongs to;
+     *   when a newer start has happened by the time it finishes, its result is dropped
      * @returns {Promise<object|null>} Full analysis result or null on failure
      */
-    async runGatedAnalysis(profileName, skipOCR) {
+    async runGatedAnalysis(profileName, skipOCR, runId) {
       const analyser = window.ImageDescriberAnalyser;
 
       if (typeof analyser.analyseGated !== "function") {
@@ -1205,6 +1003,10 @@
         `Running gated analysis with profile: ${profileName}, skipOCR: ${skipOCR}`,
       );
 
+      // Text detection is really starting: say so once. Skip text says nothing
+      // here; its completion line is the only voice (H-64).
+      if (!skipOCR) this.announceStatus(DETECTING_TEXT_START);
+
       try {
         const result = await analyser.analyseGated(
           this._immediateResult,
@@ -1212,6 +1014,13 @@
           profileName,
           { skipOCR: skipOCR },
         );
+
+        // Superseded while it ran: a newer start owns lastAnalysis and the
+        // completion announcement, so this result is dropped untouched.
+        if (runId !== undefined && runId !== this._analysisRunId) {
+          logInfo("Gated analysis superseded by a newer start — result dropped");
+          return null;
+        }
 
         // Store final result
         this.lastAnalysis = result;
@@ -1225,7 +1034,7 @@
 
         logInfo(
           `Gated analysis complete in ${result.totalDuration}ms ` +
-            `(OCR: ${result.ocr?.status}, Depth: ${result.depth?.status})`,
+            `(OCR: ${result.ocr?.status})`,
         );
 
         return result;
@@ -1529,9 +1338,9 @@
         return;
       }
 
-      // Guard: user said "no text in this image" — Florence-2 OCR not useful
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      if (skipOCRCheckbox && skipOCRCheckbox.checked) {
+      // Guard: the question is unanswered, or the person said "no text in this
+      // image" — Florence-2 OCR not useful (yet)
+      if (!this._hasTextChoice() || this._isSkipOcrTicked()) {
         prompt.hidden = true;
         return;
       }
@@ -1673,7 +1482,7 @@
             await new Promise(function (r) { setTimeout(r, 100); });
             const florenceRow = document.getElementById("imgdesc-mm-model-florence2");
             if (florenceRow) {
-              florenceRow.scrollIntoView({ behavior: "smooth", block: "center" });
+              florenceRow.scrollIntoView({ behavior: "instant", block: "center" });
               const actionBtn = florenceRow.querySelector(".imgdesc-mm-model-actions button");
               if (actionBtn) {
                 setTimeout(function () { actionBtn.focus(); }, 300);

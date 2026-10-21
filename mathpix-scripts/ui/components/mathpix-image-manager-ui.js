@@ -644,6 +644,7 @@ const MathPixImageManagerUI = (function () {
   const BATCH_OUTCOME_STATUS_TYPE = "success";
 
   // Visible-only strings for the three views.
+  const BATCH_UNAVAILABLE_TEXT = "Batch description is unavailable.";
   const BATCH_NO_TARGETS_TEXT =
     "Every image already has alt text, or is marked decorative. There is nothing to describe.";
   const BATCH_START_INTRO_SINGULAR =
@@ -1141,8 +1142,10 @@ const MathPixImageManagerUI = (function () {
 
       const content = this._buildModalContent();
 
+      let openedModal = null;
+
       try {
-        this.currentModal = new UniversalModal.Modal({
+        this.currentModal = openedModal = new UniversalModal.Modal({
           title: "Manage Images",
           content: content,
           size: "fullscreen",
@@ -1200,6 +1203,13 @@ const MathPixImageManagerUI = (function () {
             return document.getElementById(RESUME_MODE_RADIO_ID);
           },
           closeOnOverlayClick: true,
+          // RR-2 (RR-D1): the one point every close shares. finishClose runs
+          // this synchronously once the dialog is gone, BEFORE focus returns
+          // and before onClose (so before any closing line is written), and
+          // the cross, Escape, backdrop, Done and programmatic closes all
+          // reach it. Moves no existing step: it only pays the preview rebuild
+          // that writes made while open skipped.
+          onBeforeFocusRestore: () => this._settlePreviewForClose(openedModal),
           onClose: () => {
             // Chunk 4b — save-on-X is handled by _attachXButtonInterceptor,
             // a capture-phase click listener registered during open(). It
@@ -1220,11 +1230,20 @@ const MathPixImageManagerUI = (function () {
             if (gridView) gridView.hidden = false;
             this._currentEditImageId = null;
 
+            // S6-3d: the cross close left a stale currentModal, so a later
+            // quiet Describe All skipped open() and ran against a dead dialog.
+            // Cleared only if it is still THIS modal (a reopen may have won).
+            if (this.currentModal === openedModal) this.currentModal = null;
+
             // Parcel g-1 (5 August 2026): nothing to restore on close. The
             // coverage counter is permanently non-live, so there is no
             // suppression lifecycle to unwind here.
 
             document.body.classList.remove(BODY_CLASS_MANAGER_OPEN);
+
+            // RR-2 backstop: onBeforeFocusRestore normally settled this
+            // already, so this is a no-op unless a close skipped finishClose.
+            this._settlePreviewForClose(openedModal);
 
             // Parcel g-4: speak anything deferred to close. This runs AFTER
             // the dialog element has left the DOM (onClose is invoked from a
@@ -1247,13 +1266,24 @@ const MathPixImageManagerUI = (function () {
         this.currentModal.open();
         document.body.classList.add(BODY_CLASS_MANAGER_OPEN);
 
+        // RR-2: the modal now covers the preview, so writes skip its rebuild
+        // until _settlePreviewForClose pays it.
+        this.restorer._deferPreviewRebuild = true;
+
         // After modal opens: reconcile the registry against the current
         // MMD (Stage 6) before rendering the grid. The reconcile is a
         // per-user-open event (Q5 hard rule: never in refresh()). The
         // rAF callback is async so the cleanup loop can await
         // _removeCachedImage; refresh() runs after reconcile completes
         // so the grid renders the reconciled state on first paint.
-        requestAnimationFrame(async () => {
+        //
+        // S6-3b: `_openSettled` resolves when this callback has finished
+        // (the embed, the run pipeline and the picker exist), so a script can
+        // wait on the real completion instead of a 393 to 522 ms timer.
+        this._openSettled = new Promise((resolve) => {
+          this._resolveOpenSettled = resolve;
+        });
+        const finishOpen = async () => {
           try {
             await this._reconcileOnOpen();
           } catch (err) {
@@ -1272,7 +1302,7 @@ const MathPixImageManagerUI = (function () {
           // safe call either way, but building here keeps the sequence
           // matching "pipeline, then picker, then icons" rather than leaving
           // the ordering incidental.
-          this._buildAltModelPicker();
+          this._buildAltModelPicker({ keepChoice: true });
 
           // Populate data-icon spans inserted by _buildModalContent (key row,
           // the edit view's Back / Generate / accept buttons) and by refresh()
@@ -1290,11 +1320,43 @@ const MathPixImageManagerUI = (function () {
             window.IconLibrary.populateIcons();
             logDebug("Populated icons after modal open");
           }
+        };
+        const resolveSettled = this._resolveOpenSettled;
+        requestAnimationFrame(() => {
+          finishOpen()
+            .catch((err) => logError("Image manager open sequence failed:", err))
+            .finally(() => resolveSettled());
         });
 
         logDebug("Image manager modal opened");
       } catch (error) {
         logError("Failed to open modal:", error);
+      }
+    }
+
+    /**
+     * RR-2: stop deferring the preview rebuild and pay any debt. Called from
+     * the modal's onBeforeFocusRestore (and again, harmlessly, from onClose).
+     * A reopen that beat this close keeps its own deferral: the flag is
+     * cleared only when no newer modal has taken over, and the debt is paid
+     * either way. With no debt the flush renders nothing.
+     *
+     * @param {Object} closingModal - The modal instance that is closing.
+     * @private
+     */
+    _settlePreviewForClose(closingModal) {
+      const reopened = this.currentModal && this.currentModal !== closingModal;
+      if (!reopened) this.restorer._deferPreviewRebuild = false;
+
+      try {
+        const pending = this.restorer.flushStalePreview?.();
+        if (pending && typeof pending.catch === "function") {
+          pending.catch((error) =>
+            logWarn("Stale preview rebuild failed on close:", error),
+          );
+        }
+      } catch (error) {
+        logError("Stale preview rebuild threw on close:", error);
       }
     }
 
@@ -1742,6 +1804,7 @@ ${
             <dd class="image-manager-size">${this._escapeHTML(sizeDisplay)}</dd>
             <dt class="visually-hidden">Status</dt>
             <dd class="image-manager-status" data-status="${this._escapeAttr(entry.status)}">${this._escapeHTML(statusLabel)}</dd>
+            ${this._buildCaptionMetaHTML(entry)}
           </dl>
           <div class="image-manager-actions">
             <button type="button" class="image-manager-btn image-manager-swap-btn"
@@ -1759,6 +1822,64 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
           </div>
         </li>
       `;
+    }
+
+    /**
+     * TT-2: the caption as visible text on the card (a dt/dd pair for the
+     * meta list). Empty string when the entry has no caption, so the card
+     * keeps its "Caption missing" cluster state and nothing else.
+     * @param {Object} entry - Image registry entry
+     * @returns {string} HTML string
+     * @private
+     */
+    _buildCaptionMetaHTML(entry) {
+      const caption = typeof entry?.title === "string" ? entry.title : "";
+      if (caption.trim().length === 0) return "";
+      return `<dt class="visually-hidden image-manager-caption-term">Caption</dt>
+            <dd class="image-manager-caption">${this._escapeHTML(caption)}</dd>`;
+    }
+
+    /**
+     * TT-2: bring ONE card's caption text and metadata cluster up to date
+     * from a registry entry, mutating in place. A full refresh() is ruled out
+     * after a single run (see _handleGenerateAltText): it would rebuild the
+     * Alt button that focus returns to. Neither node touched here is
+     * focusable, so focus is unaffected.
+     * @param {Object} entry - Registry entry (needs `id`)
+     * @private
+     */
+    _refreshCardCaption(entry) {
+      if (!entry || !entry.id) return;
+
+      const card = document.querySelector(
+        `.image-manager-card[data-image-id="${CSS.escape(entry.id)}"]`,
+      );
+      if (!card) {
+        logDebug(`_refreshCardCaption: no card for "${entry.id}"; grid not rendered`);
+        return;
+      }
+
+      // Cluster: swap the element for a freshly built one.
+      const cluster = card.querySelector(".mmd-image-manager-metadata-cluster");
+      if (cluster) {
+        const status = MathPixImageRegistry.getMetadataStatus(entry);
+        const holder = document.createElement("div");
+        holder.innerHTML = this._buildMetadataClusterHTML(status);
+        const fresh = holder.firstElementChild;
+        cluster.replaceWith(fresh);
+        if (window.IconLibrary?.populateIcons) {
+          window.IconLibrary.populateIcons(fresh);
+        }
+      }
+
+      // Caption text: remove the old pair, add the current one after status.
+      const meta = card.querySelector("dl.image-manager-meta");
+      if (!meta) return;
+      meta
+        .querySelectorAll(".image-manager-caption-term, .image-manager-caption")
+        .forEach((node) => node.remove());
+      const html = this._buildCaptionMetaHTML(entry);
+      if (html) meta.insertAdjacentHTML("beforeend", html);
     }
 
     /**
@@ -3569,6 +3690,60 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     }
 
     /**
+     * S6-3b — Describe All with no dialog and no spoken line, for the AI tab.
+     *
+     * Opens the manager if it is closed, WAITS on `_openSettled` (the open
+     * sequence's own completion, not a timer) and only then runs, so the early
+     * press that failed every image with no model call cannot happen. The model
+     * choice is made after the settle because the picker is built then. The
+     * outcome sentence comes back as `line`; nothing is raised on any sink.
+     * The manager is left open, as the person would leave it.
+     *
+     * @param {{model?: string, includeDescribed?: boolean}} [options] AT-2:
+     *   `includeDescribed` adds pictures whose description is "ai-generated"
+     * @returns {Promise<{ran: boolean, generated: number, failed: number, line: string|null}>}
+     * @private
+     */
+    async _describeAllQuiet(options) {
+      const none = (line) => ({ ran: false, generated: 0, failed: 0, line });
+
+      if (!this.currentModal) this.open();
+      if (this._openSettled) await this._openSettled;
+
+      if (this._editAltGenerating === true) {
+        return none(DESCRIBE_ALL_BLOCKED_BY_RUN_LINE);
+      }
+      if (this._isEditViewOpen()) return none(DESCRIBE_ALL_BLOCKED_BY_EDIT_LINE);
+      if (this._batchDialogOpen) return none(null);
+
+      const registry = this.restorer?.imageRegistry;
+      const runnerModule = window.MathPixAltTextBatchRunner;
+      if (!runnerModule || typeof runnerModule.create !== "function") {
+        return none(BATCH_UNAVAILABLE_TEXT);
+      }
+      const targets = runnerModule.selectTargets(
+        registry && typeof registry.getAllImages === "function"
+          ? registry.getAllImages()
+          : [],
+        { includeDescribed: Boolean(options && options.includeDescribed === true) },
+      );
+      if (targets.length === 0) return none(BATCH_NO_TARGETS_TEXT);
+
+      const model = options && options.model;
+      if (model && !this._chooseAltModelFromScript(model)) {
+        return none(null);
+      }
+
+      return this._runBatch({
+        instance: null,
+        root: null,
+        targets,
+        resolveOnce: () => {},
+        quiet: true,
+      });
+    }
+
+    /**
      * Parcel BG-P2 — open the batch dialog and drive the run (A1, A3).
      *
      * A SIBLING UniversalModal over the manager, copying _promptFieldSelection
@@ -3707,13 +3882,16 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * Parcel BG-P2 — drive the runner and place the outcome line.
      * @private
      */
-    async _runBatch({ instance, root, targets, resolveOnce }) {
+    async _runBatch({ instance, root, targets, resolveOnce, quiet = false }) {
       const runnerModule = window.MathPixAltTextBatchRunner;
       const orchestrator = this._buildBatchOrchestrator(root);
 
       if (!orchestrator) {
         logWarn("_runBatch: could not build a batch orchestrator");
-        this._showStatus("Batch description is unavailable.", "error");
+        if (quiet) {
+          return { ran: false, generated: 0, failed: 0, line: BATCH_UNAVAILABLE_TEXT };
+        }
+        this._showStatus(BATCH_UNAVAILABLE_TEXT, "error");
         return;
       }
 
@@ -3741,8 +3919,11 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
               targets.length,
               runnerModule,
             );
-      UniversalModal.showStatus(startLine, BATCH_START_STATUS_TYPE);
-      this._batchSpokenLines = 1;
+      // S6-3b: a quiet run has no dialog and raises no start line.
+      if (!quiet) {
+        UniversalModal.showStatus(startLine, BATCH_START_STATUS_TYPE);
+        this._batchSpokenLines = 1;
+      }
 
       this._showBatchView(root, BATCH_RUNNING_VIEW_ID);
 
@@ -3788,10 +3969,36 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         logWarn("_runBatch: grid refresh failed after the batch", refreshErr);
       }
 
+      // BW-1 — registry-is-truth: the batch wrote the registry, so push the
+      // projection into the working MMD and the session store ONCE, exactly as
+      // the single run does (_handleGenerateAltText). Nothing is written when no
+      // image generated. Its own try/catch keeps a push failure from adding a
+      // voice: the outcome line below is the one spoken line (C10).
+      if (result && result.generated > 0) {
+        try {
+          this._writeMMDFromRegistry(this.restorer.imageRegistry);
+        } catch (pushError) {
+          logError(
+            `_runBatch: projection push failed: ${
+              pushError && pushError.message ? pushError.message : String(pushError)
+            }`,
+          );
+        }
+      }
+
       // THE SECOND OF THE TWO SPOKEN LINES (A10). It is the RUNNER'S OWN
       // composed line, passed through verbatim — never recomposed here, so the
       // taxonomy lives in exactly one place.
       const outcomeLine = result ? result.line : null;
+      if (quiet) {
+        // S6-3b: hand the runner's own sentence back; speak nothing.
+        return {
+          ran: true,
+          generated: result ? result.generated : 0,
+          failed: result ? result.failed : 0,
+          line: outcomeLine || null,
+        };
+      }
       if (!outcomeLine) {
         logWarn("_runBatch: the runner returned no composed line; nothing to speak");
         return;
@@ -4934,7 +5141,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * @returns {boolean} true when the picker markup was found and rendered
      * @private
      */
-    _buildAltModelPicker() {
+    _buildAltModelPicker(options) {
       const root = document.getElementById(EDIT_VIEW_MODEL_PICKER_ID);
       const optionsEl = document.getElementById(EDIT_VIEW_MODEL_OPTIONS_ID);
       if (!root || !optionsEl) {
@@ -4944,9 +5151,19 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       const adapter = window.MathPixAltTextCloudAdapter;
 
-      // Every build starts from a clean slate, so no state can be left over
-      // from the provider that was active a moment ago.
-      if (adapter && typeof adapter._setUserModelChoice === "function") {
+      // A build starts from a clean slate, so no state can be left over from
+      // the provider that was active a moment ago. S6-3b: a manager OPEN passes
+      // { keepChoice: true } and keeps the pick for the page session, but only
+      // while the provider is the one it was made under. The provider-change
+      // rebuild passes nothing and still clears.
+      const keepRequested = !!(options && options.keepChoice === true);
+      const heldChoice =
+        keepRequested && adapter && typeof adapter._getUserModelChoice === "function"
+          ? adapter._getUserModelChoice()
+          : null;
+      const keepChoice =
+        !!heldChoice && this._altPickProvider === this._activeAltProviderId();
+      if (!keepChoice && adapter && typeof adapter._setUserModelChoice === "function") {
         adapter._setUserModelChoice(null);
       }
 
@@ -4998,6 +5215,18 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       const candidates = this._visionCapableModelsForProvider(providerId);
       this._populateAltOverrideSelect(overrideEl, candidates);
 
+      // A kept pick is shown again in the rebuilt control, or dropped when the
+      // control no longer offers it (the resolver would discard it anyway).
+      let pickRestored = false;
+      if (keepChoice) {
+        if (overrideEl && candidates.some((model) => model.id === heldChoice)) {
+          overrideEl.value = heldChoice;
+          pickRestored = true;
+        } else {
+          adapter._setUserModelChoice(null);
+        }
+      }
+
       const registry = window.MathPixModelRegistry;
       const entry =
         registry && typeof registry.recommendedModel === "function"
@@ -5021,7 +5250,9 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       // --- STATE 1: the measured recommendation ------------------------------
       if (fieldsetEl) fieldsetEl.hidden = false;
-      optionsEl.appendChild(this._buildAltRecommendedRadio(recommended, true));
+      optionsEl.appendChild(
+        this._buildAltRecommendedRadio(recommended, !pickRestored),
+      );
       if (measuredEl) {
         measuredEl.textContent = `Chosen by measurement round ${entry.round}, measured ${this._formatAltMeasuredDate(entry.measured)}.`;
       }
@@ -5060,8 +5291,8 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         // Choosing the recommendation CLEARS the pick, so the run resolves
         // down the measured-preference rung exactly as it did before MP-2.
         adapter._setUserModelChoice(null);
-      } else {
-        adapter._setUserModelChoice(modelId);
+      } else if (adapter._setUserModelChoice(modelId)) {
+        this._altPickProvider = this._activeAltProviderId();
       }
 
       const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
@@ -5096,10 +5327,41 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         return;
       }
 
+      this._altPickProvider = this._activeAltProviderId();
+
       if (optionsEl) {
         const radios = optionsEl.querySelectorAll('input[type="radio"]');
         for (const radio of radios) radio.checked = false;
       }
+    }
+
+    /**
+     * The active provider id, as the picker reads it. S6-3b: the pick is kept
+     * across a manager open only under the provider it was made for.
+     * @returns {string}
+     * @private
+     */
+    _activeAltProviderId() {
+      return window.ProviderSwitcher &&
+        typeof window.ProviderSwitcher.getActive === "function"
+        ? window.ProviderSwitcher.getActive()
+        : "openrouter";
+    }
+
+    /**
+     * S6-3b: choose an alt-text model from script, through the picker's own
+     * handler so the control and the adapter agree. Needs the manager open and
+     * settled (the picker is built after the run pipeline).
+     * @param {string} modelId
+     * @returns {boolean} true when the adapter holds the pick afterwards
+     * @private
+     */
+    _chooseAltModelFromScript(modelId) {
+      const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
+      if (overrideEl) overrideEl.value = modelId;
+      this._handleAltModelOverrideChange(modelId);
+      const adapter = window.MathPixAltTextCloudAdapter;
+      return !!adapter && adapter._getUserModelChoice() === modelId;
     }
 
     /**
@@ -6761,15 +7023,13 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
           // the one button, NOT the refresh() the paragraph above rules out.
           this._refreshCardAltButton(entry);
 
-          // The metadata cluster icons on the card are still stale after this
-          // write — _closeEditAltText calls neither refresh() nor either update
-          // above (the three refresh() sites are _executeSwap, _executeAdd and
-          // handleDelete). That one needs the card rebuild ruled out above, so
-          // it remains its own parcel.
+          // TT-2: the cluster icons and the caption text move too, in place,
+          // for the same reason (no card rebuild; focus returns to the Alt
+          // button). A single run no longer leaves "Caption missing".
+          this._refreshCardCaption(entry);
           logDebug(
-            `_handleGenerateAltText: coverage counter and card Alt button ` +
-              `recomputed for ${id}; cluster icons may remain stale until the ` +
-              "next refresh()",
+            `_handleGenerateAltText: coverage counter, card Alt button, ` +
+              `cluster and caption recomputed for ${id}`,
           );
 
           // Registry-is-truth invariant: the registry is the source of truth and
@@ -7837,11 +8097,18 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
   // convention as addImageToDocument above (AGENTS.md accepts onclick for simple
   // handlers). The blocking checks and the spoken feedback are the method's, not
   // this wrapper's, so the button and any future caller behave identically.
-  window.describeAllImages = function () {
+  // S6-3b: `{ quiet: true, model }` is the programmatic entry (no dialog, no
+  // spoken line, resolves with the outcome); the onclick passes nothing.
+  window.describeAllImages = function (options) {
     const mgr = getInstance();
-    if (mgr) {
-      mgr._handleDescribeAll();
+    if (!mgr) return undefined;
+    if (options && options.quiet === true) {
+      return mgr._describeAllQuiet(options);
     }
+    // Default: return nothing, as before. The handler's own promise settles on
+    // dialog close, and a drive awaiting it would hang.
+    mgr._handleDescribeAll();
+    return undefined;
   };
 
   window.deleteImage = function (imageId) {

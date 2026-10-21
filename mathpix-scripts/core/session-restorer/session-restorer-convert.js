@@ -461,15 +461,28 @@
     // read, so a convert taken without opening the Image Manager ships prose,
     // not raw <smiles>. Wrapped so a chemistry failure degrades to today's
     // behaviour (convert proceeds with existing content) rather than blocking.
+    // Parcel T-10a: the person can restore another session while the describe
+    // is awaited. isConverting is still false here, so nothing abandons the
+    // press; compare the session object instead (every restore assigns a new
+    // one). A replaced session drops the press, and the describe is told not
+    // to push the old registry's prose into the new session's MMD.
+    const pressSession = this.restoredSession;
+    const isSameSession = () => this.restoredSession === pressSession;
     if (typeof this.describeChemistryIntoWorkingMMD === "function") {
       try {
-        await this.describeChemistryIntoWorkingMMD();
+        await this.describeChemistryIntoWorkingMMD({
+          shouldPush: isSameSession,
+        });
       } catch (chemErr) {
         logError(
           "Item 1 describe-at-load failed; converting with existing content",
           chemErr,
         );
       }
+    }
+    if (!isSameSession()) {
+      logInfo("Convert press dropped: its session was replaced"); // T-10a
+      return;
     }
 
     // Canonical read, shared by both branches. No longer reassigned here — the
@@ -596,34 +609,6 @@
       );
     } else if (failureLines !== "") {
       this.showNotification(`Conversion failed. ${failureLines}`, "error");
-    }
-  };
-
-  /**
-   * HW-1b: restyle a Convert API docx so its headings carry Word heading
-   * styles. Never throws and never loses the blob: on any failure the original
-   * comes back. `failed` is true only when the MMD HAD headings and the map did
-   * not apply; a missing module is not a map failure.
-   * @param {Blob} blob - the docx as received
-   * @param {string} sentMMD - the payload that was sent to the API
-   * @returns {Promise<{blob: Blob, failed: boolean}>}
-   * @private
-   */
-  proto._restyleDocxForConvert = async function (blob, sentMMD) {
-    const headings = window.MathPixDocxHeadings;
-    if (!headings || typeof headings.restyleDocxHeadings !== "function") {
-      logWarn("Convert: docx heading module not loaded; docx left as received");
-      return { blob, failed: false };
-    }
-    try {
-      const result = await headings.restyleDocxHeadings(blob, sentMMD);
-      return {
-        blob: result.applied ? result.blob : blob,
-        failed: result.applied === false && result.expected > 0,
-      };
-    } catch (error) {
-      logWarn("Convert: docx heading restyle threw; docx left as received", error);
-      return { blob, failed: true };
     }
   };
 
@@ -830,6 +815,12 @@
             failed: completionResult.failed?.length || 0,
           });
 
+          // WD-4 (WD-D3): the client restyled the docx against the MMD it sent;
+          // only the outcome is read here.
+          this._docxHeadingsFailed = Boolean(
+            completionResult.docx && completionResult.docx.failed,
+          );
+
           // Parcel T-01: a failed format's row says so, whatever the poll last
           // reported (a download can fail after MathPix reported it complete).
           // T01-RESUME-ROWS-BEGIN
@@ -867,23 +858,8 @@
       // Parcel O-04: an abandoned run stores nothing.
       if (!isCurrentRun()) return;
 
-      // HW-1b: give the docx real Word heading styles BEFORE the backup block
-      // below can store the raw one. Done here, not in onFormatComplete: that
-      // callback is synchronous and unawaited, so an async restyle there would
-      // race the backup store (HW-0 section 4). mmdContent is what was SENT.
-      if (apiFormats.includes("docx")) {
-        const docxBlob =
-          this.conversionResults.get("docx") || (results && results.get("docx"));
-        if (docxBlob) {
-          const restyled = await this._restyleDocxForConvert(docxBlob, mmdContent);
-          if (!isCurrentRun()) return;
-          this._docxHeadingsFailed = restyled.failed;
-          if (restyled.blob !== docxBlob) {
-            this.conversionResults.set("docx", restyled.blob);
-          }
-        }
-      }
-
+      // WD-4: the client delivers the restyled docx on both paths (the callback
+      // and this Map), so nothing is restyled here.
       // Store results from the returned Map (backup in case callbacks didn't fire)
       if (results && results.size > 0) {
         results.forEach((blob, format) => {

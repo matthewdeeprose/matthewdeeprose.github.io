@@ -1,0 +1,611 @@
+/*
+ * tikz-studio/tikz-studio.css — TikZ Studio layout. LAYOUT ONLY.
+ *
+ * No colour is declared here. The paper surface (white, with black ink, in BOTH themes, because TeX draws in colours chosen for
+ * white paper) and its border live in light.css and dark.css, where every other tool's colours live. A hue in this file would be
+ * right in one theme and wrong in the other.
+ *
+ * Same convention as captions-fixer/captions-fixer.css: it carries its own [hidden] rule, so the reveal of the error section,
+ * the live note and the Stop button does not depend on another sheet's global.
+ */
+
+#tikz-studio-app [hidden] {
+  display: none !important;
+}
+
+#tikz-studio-app section {
+  margin-block: 1.5rem;
+}
+
+#tikz-studio-app label {
+  display: block;
+  margin-block-end: 0.25rem;
+}
+
+#tikz-studio-app .tikz-studio-inline-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+#tikz-studio-app .tikz-studio-template-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-block-end: 1rem;
+}
+
+#tikz-studio-app .tikz-studio-template-row label {
+  margin: 0;
+}
+
+/* A long template name must not push the page wider than a 320 px window (SC 1.4.10). */
+#tikz-studio-template {
+  max-width: 100%;
+  min-width: 0;
+}
+
+#tikz-studio-source {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 12rem;
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 1rem;
+  line-height: 1.5;
+  tab-size: 2;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+}
+
+#tikz-studio-longdesc {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  resize: vertical;
+}
+
+/* OD1: the mark over a drawing that is the last one that worked. Text, border and icon are currentColor, so they take the paper's own text
+   colour in both themes (and forced colours), and the drawing under it is not dimmed. */
+.tikz-studio-paper .tikz-studio-out-of-date {
+  margin: 0 0 0.75rem;
+  font-weight: 700;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.tikz-studio-paper .tikz-studio-out-of-date[hidden] {
+  display: none;
+}
+
+/* The AI warning closing a long description (P4f): bold and boxed on all four sides so it stands apart from the description. Border and
+   text are both currentColor, so both themes keep it, and forced colours keep it as text. */
+.tikz-studio-paper .tikz-disclaimer {
+  text-align: center;
+  font-weight: 700;
+  border: 2px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+}
+
+/* The note above the Describe button (P4f): a plain paragraph, bold, with a heavy rule on the start edge. currentColor, as above. */
+#tikz-studio-app .tikz-studio-describe-note {
+  font-weight: 700;
+  border-inline-start: 0.25rem solid currentColor;
+  padding-inline-start: 0.75rem;
+  margin-block: 0 0.75rem;
+}
+
+#tikz-studio-alt,
+#tikz-studio-caption {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Copy, read aloud and save the description (P5b): sits under the figure's closing line, inside the paper, outside the figure's own HTML.
+   The shared Image Describer classes style the Save split button; [hidden] has to be restated because they set display. */
+#tikz-studio-app .tikz-studio-description-actions {
+  margin-block-start: 1rem;
+}
+
+#tikz-studio-app .tikz-studio-description-actions[hidden],
+#tikz-studio-app .tikz-studio-description-actions [hidden] {
+  display: none;
+}
+
+#tikz-studio-app .tikz-studio-copy-label {
+  font-weight: 700;
+}
+
+/* P5d: the copy group is a fieldset so its legend names it natively. Unboxed, like the rest of the Studio's groups; the legend reads
+   as a small heading above the three buttons. */
+#tikz-studio-app fieldset.tikz-studio-copy-group {
+  min-inline-size: 0;
+  margin-inline: 0;
+  padding: 0;
+  border: 0;
+}
+
+/* The theme sheets draw every legend as a small dark chip (main.css, light.css, dark.css). Here it is a heading over the buttons, so the
+   chip's box, fill and border are taken off and the text takes the page's own colour, which is the colour the theme already checks. */
+#tikz-studio-app .tikz-studio-copy-group > legend {
+  padding: 0;
+  margin-block-end: 0.5rem;
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font-size: 1rem;
+}
+
+/* F2: the font choice for the drawing. A native radio group, unboxed like the copy group, the two choices side by side and wrapping. */
+#tikz-studio-app fieldset.tikz-studio-font-group {
+  min-inline-size: 0;
+  margin-inline: 0;
+  margin-block: 0.75rem;
+  padding: 0;
+  border: 0;
+}
+
+#tikz-studio-app .tikz-studio-font-group > legend {
+  padding: 0;
+  margin-block-end: 0.25rem;
+  border: 0;
+  background-color: transparent;
+  color: inherit;
+  font-size: 1rem;
+}
+
+#tikz-studio-app .tikz-studio-font-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+}
+
+#tikz-studio-app .tikz-studio-font-choices label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* F2: Sans serif. The kit pins TeX's font on each <text> as an inline style (F1), which beats any ordinary sheet rule, so the switch needs
+   !important. The family itself is the site's own, set on the container by the Studio's script from the computed style (never retyped). */
+#tikz-studio-figure.tikz-studio-font-sans svg :is(text, tspan) {
+  font-family: var(--tikz-studio-sans-family) !important;
+}
+
+#tikz-studio-app .tikz-studio-field {
+  margin-block-end: 1rem;
+}
+
+#tikz-studio-app .tikz-studio-field:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#tikz-studio-app .tikz-studio-field:has(> input[type="checkbox"]) label {
+  margin: 0;
+}
+
+#tikz-studio-app .tikz-studio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-block: 0.75rem;
+}
+
+#tikz-studio-app .tikz-studio-hint {
+  margin-block: 0.5rem;
+}
+
+/* P5d: the PNG size label and list sit side by side and wrap together; the select never outgrows a 320 px column. */
+#tikz-studio-app .tikz-studio-png-size-field {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  max-width: 100%;
+}
+
+#tikz-studio-png-size {
+  max-width: 100%;
+  min-width: 0;
+}
+
+/* K3: the "See the problems" link under a failed render's status line. Plain link, the page's own link colour. */
+#tikz-studio-app .tikz-studio-problems-link {
+  margin-block: 0.25rem 0.5rem;
+}
+
+/* K2: what the Studio changed, and the list of what it can draw. Both wrap at 320 px; neither carries a colour of its own. */
+#tikz-studio-app .tikz-studio-notes {
+  margin-block: 0.5rem;
+}
+
+#tikz-studio-app .tikz-studio-notes ul,
+#tikz-studio-app .tikz-studio-supported ul {
+  padding-inline-start: 1.25rem;
+}
+
+#tikz-studio-app .tikz-studio-supported {
+  margin-block: 0.75rem;
+}
+
+#tikz-studio-app .tikz-studio-supported summary {
+  cursor: pointer;
+}
+
+#tikz-studio-app .tikz-studio-supported h3 {
+  font-size: 1rem;
+  margin-block: 0.75rem 0.25rem;
+}
+
+#tikz-studio-app .tikz-studio-notes li,
+#tikz-studio-app .tikz-studio-supported li,
+#tikz-studio-app .tikz-studio-supported p {
+  overflow-wrap: anywhere;
+}
+
+#tikz-studio-errors {
+  padding-inline-start: 1.25rem;
+}
+
+#tikz-studio-errors li {
+  margin-block: 0.5rem;
+}
+
+#tikz-studio-log-text {
+  max-height: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+/* The preview section is the skip link's positioning context: the shared .skip-link slides in from a fixed offset above its own
+   position, which only makes sense at the top of the page, so (as Image Describer's overlay link does) it is clipped away until
+   it has focus. */
+#tikz-studio-app section[aria-labelledby="tikz-studio-preview-heading"] {
+  position: relative;
+}
+
+.skip-link.tikz-studio-skip {
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  transform: none;
+  transition: none;
+  z-index: 20;
+}
+
+.skip-link.tikz-studio-skip:focus {
+  width: auto;
+  height: auto;
+  padding: 0.5rem 1rem;
+  overflow: visible;
+  clip-path: none;
+  transform: none;
+  transition: none !important;
+}
+
+/* Two columns on a wide window (P3L), as Set Up (setup-tool.css) and the Image Manager edit view (mathpix-image-manager.css) do:
+   source, problems and describe on the left; the preview and the downloads that save it together on the right (P5e, OR6: the
+   downloads belong directly under the drawing). The layout is a grid so the article itself keeps the display value the tool switcher
+   gives it. DOM order is the Tab and reading order and is not touched: the preview column (a plain wrapper round the two adjacent
+   sections) is PLACED in column 2, never moved. P5e dropped the sticky, height-capped scroll box the preview had; P5f (OR9: the owner
+   wanted the drawing to stay in view) makes the WHOLE column sticky instead, with no height cap and no overflow, so there is no scroll
+   bar of its own. A sticky box taller than the window would pin with its bottom hidden, so `top` is a custom property that
+   tikz-studio-ui.js keeps at min(1rem, window height - column height - 1rem): a column that fits pins 1rem from the top, and a taller
+   one has a negative top, so it scrolls with the page until its bottom reaches the window's bottom and pins there, and every part of it
+   can be scrolled to. Nothing moves by itself, so prefers-reduced-motion has nothing to change. Below 64em nothing is sticky. The
+   column's grid row spans ten rows and the last row is flexible, so a tall drawing's extra height goes to that empty row and not into
+   gaps between the left-hand sections (auto rows would share it out). 64em leaves each column about 35 characters of monospace source
+   at the narrowest width this applies to, and the textarea scrolls inside itself (wrap="off"). */
+@media (min-width: 64em) {
+  #tikz-studio-app .tikz-studio-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: repeat(9, auto) 1fr;
+    gap: 0 1.5rem;
+    align-items: start;
+  }
+
+  #tikz-studio-app .tikz-studio-layout > section {
+    grid-column: 1;
+  }
+
+  #tikz-studio-app .tikz-studio-layout > .tikz-studio-preview-column {
+    grid-column: 2;
+    grid-row: 1 / span 10;
+    position: sticky;
+    top: var(--tikz-studio-column-top, 1rem);
+  }
+}
+
+/* The paper frame. It follows the page theme; only the drawing's own box (below) is the white sheet. Colours come from the theme
+   sheets. */
+.tikz-studio-paper {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 6rem;
+  padding: 1rem;
+  overflow: auto;
+  border-width: 2px;
+  border-style: solid;
+  border-radius: 0.25rem;
+}
+
+/* The sheet: a rectangle around the drawing and nothing else, shrink-wrapped, keeping the drawing's aspect ratio. TeX draws in
+   colours chosen for white, so the sheet is white with black ink in both themes (colours in light.css and dark.css; dark dims it).
+   It keeps its own colours under forced colours, as the exported figure's does (scorm-builder tikz-export.css). Recorded, not gated:
+   see the P3 report. A failed figure has no svg, so it never matches and follows the theme. */
+.tikz-studio-paper .tikz-graphic-container:has(> svg) {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 1rem;
+  overflow: auto;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.25rem;
+  forced-color-adjust: none;
+}
+
+.tikz-studio-paper #tikz-studio-figure svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+}
+
+.tikz-studio-paper figure {
+  margin: 0;
+}
+
+.tikz-studio-paper figcaption {
+  margin-block-start: 0.5rem;
+  text-align: center;
+}
+
+.tikz-studio-paper pre {
+  overflow: auto;
+}
+
+/* The figure's Data table (parcel T1). The page has no generic responsive table rule (main.css sets a global fixed-layout table and
+   the card rules there are scoped to other tools), so this copies scorm-builder's pattern, scoped to .tikz-data. At 6 or fewer columns
+   the table stacks into cards when its own container is narrow; at 7 or more it scrolls inside a focusable, named wrapper
+   (tikz-studio-ui.js adds the data-label attributes, the wrapper and data-tikz-layout). No colour is declared: borders and the focus
+   ring are currentColor, so they follow the theme. A container query, not a viewport one, because at 64em the preview is half the
+   window. */
+.tikz-studio-paper .tikz-data {
+  container-type: inline-size;
+  margin-block-start: 1rem;
+}
+
+.tikz-studio-paper .tikz-data table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+  font-size: 1rem;
+}
+
+.tikz-studio-paper .tikz-data caption {
+  margin-block-end: 0.5rem;
+  text-align: start;
+  font-weight: 600;
+}
+
+.tikz-studio-paper .tikz-data th,
+.tikz-studio-paper .tikz-data td {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid currentColor;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.tikz-studio-paper .tikz-data-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tikz-studio-paper .tikz-data-scroll table {
+  min-width: max-content;
+}
+
+.tikz-studio-paper .tikz-data-scroll:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 2px;
+}
+
+@container (max-width: 30em) {
+  .tikz-data table[data-tikz-layout="cards"],
+  .tikz-data table[data-tikz-layout="cards"] thead,
+  .tikz-data table[data-tikz-layout="cards"] tbody,
+  .tikz-data table[data-tikz-layout="cards"] tr,
+  .tikz-data table[data-tikz-layout="cards"] th,
+  .tikz-data table[data-tikz-layout="cards"] td {
+    display: block;
+  }
+
+  /* the caption stays a block of its own: left as a table-caption inside a block table it shrinks to one word per line */
+  .tikz-data table[data-tikz-layout="cards"] {
+    border: 0;
+  }
+
+  .tikz-data table[data-tikz-layout="cards"] caption {
+    display: block;
+  }
+
+  .tikz-data table[data-tikz-layout="cards"] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .tikz-data table[data-tikz-layout="cards"] tbody tr {
+    margin-block-end: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid currentColor;
+  }
+
+  .tikz-data table[data-tikz-layout="cards"] th,
+  .tikz-data table[data-tikz-layout="cards"] td {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    border: 0;
+  }
+
+  .tikz-data table[data-tikz-layout="cards"] [data-label]::before {
+    content: attr(data-label) ": ";
+    flex-shrink: 0;
+    font-weight: 600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #tikz-studio-app * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Fix with AI (P4b): the changed lines are a plain list read in words ("Line 4, removed: ..."), so colour is never the only signal.
+   The code wraps rather than scrolls, so a long line adds no horizontal scroll at 320 px. */
+#tikz-studio-app .tikz-studio-fix-diff {
+  list-style: none;
+  padding-inline-start: 0;
+}
+
+#tikz-studio-app .tikz-studio-fix-diff li {
+  margin-block: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+#tikz-studio-app .tikz-studio-fix-diff code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#tikz-studio-app #tikz-studio-fix-attempts details {
+  margin-block: 0.5rem;
+}
+
+
+/* Draw with AI (P4c): the proposal beside the author's diagram. Two panels side by side where there is room for two 14rem panels and
+   stacked where there is not, so nothing scrolls sideways at 320 px. Each panel is a figure with a visible caption. */
+#tikz-studio-app .tikz-studio-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+  gap: 1rem;
+  margin-block: 1rem;
+}
+
+#tikz-studio-app .tikz-studio-compare figure {
+  margin: 0;
+  min-width: 0;
+}
+
+#tikz-studio-app .tikz-studio-compare figcaption {
+  margin-block-start: 0.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The sheet: a picture sits on white with black ink in BOTH themes, as the preview's sheet does (TeX draws in colours chosen for white;
+   a picture may have a transparent background). The preview's own sheet takes its colours from light.css and dark.css, which this parcel
+   may not edit, so the two colours are declared here; the edge inherits the frame's themed border colour. Not dimmed in the dark theme. */
+#tikz-studio-app .tikz-studio-compare-sheet {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 0.5rem;
+  border: 1px solid;
+  border-color: inherit;
+  border-radius: 0.25rem;
+  background-color: #ffffff;
+  color: #000000;
+  forced-color-adjust: none;
+}
+
+#tikz-studio-app .tikz-studio-compare-sheet img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#tikz-studio-app #tikz-studio-generate-code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#tikz-studio-app #tikz-studio-generate-attempts details {
+  margin-block: 0.5rem;
+}
+
+#tikz-studio-app #tikz-studio-generate-attempts pre {
+  overflow: auto;
+}
+
+/* P5a look: each section is a framed card, as the other tools' panels are, with tighter heading spacing and a section heading one step
+   below the page heading. The frame is a mix of currentColor, so both themes keep it with no colour declared here; under forced colours
+   it is CanvasText. Decorative framing only: nothing in it is a control boundary. */
+#tikz-studio-app .tikz-studio-layout > section,
+#tikz-studio-app .tikz-studio-preview-column > section {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 0 1.25rem 1rem;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 0.5rem;
+}
+
+/* The preview is NOT framed: its paper already is, and the data table inside it switches to cards by a container query on this column's
+   width (30em), so padding added here would flip a table that is an ordinary table at 1280 px into cards (measured: data spec T8). */
+#tikz-studio-app .tikz-studio-preview-column > section[aria-labelledby="tikz-studio-preview-heading"] {
+  padding-inline: 0;
+  border: 0;
+}
+
+#tikz-studio-app .tikz-studio-layout > section > h2,
+#tikz-studio-app .tikz-studio-preview-column > section > h2 {
+  margin-block: 1rem 0.75rem;
+  font-size: 1.75rem;
+}
+
+@media (forced-colors: active) {
+  #tikz-studio-app .tikz-studio-layout > section,
+  #tikz-studio-app .tikz-studio-preview-column > section {
+    border-color: CanvasText;
+  }
+}
+
+/* P5a picture zone: the shared gb-* drop zone, kept inside a 320 px window; the chosen file's name wraps instead of widening the page. */
+#tikz-studio-app .gb-upload-area {
+  max-width: 100%;
+}
+
+#tikz-studio-app .tikz-studio-picture-name {
+  margin-block: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+#tikz-studio-app #tikz-studio-generate-picture-remove {
+  margin-block: 0.25rem 0.5rem;
+}

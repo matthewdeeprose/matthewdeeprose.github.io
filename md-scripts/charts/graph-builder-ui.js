@@ -732,7 +732,12 @@ const GraphBuilderUI = (function () {
       state.previewState.currentlyShowing += toAdd;
       this.renderTable();
 
-      GraphBuilderNotifications.info(
+      // Prefer the next "Show N more" button; fall back to "Show less"
+      this.moveFocusAfterRowChange([
+        ".gb-show-more-button",
+        ".gb-show-less-button",
+      ]);
+      this.announceRowChange(
         `Now showing ${state.previewState.currentlyShowing} of ${totalRows} rows`
       );
     }
@@ -740,26 +745,36 @@ const GraphBuilderUI = (function () {
     /**
      * Show all rows in preview
      */
-    showAllRows() {
+    async showAllRows() {
       if (!state.previewState) return;
 
       const { totalRows } = state.previewState;
 
-      // Warn for very large datasets
+      // Warn for very large datasets, with the app's own dialog
       if (totalRows > 200) {
-        if (
-          !confirm(
-            `This will display all ${totalRows} rows, which may affect performance. Continue?`
-          )
-        ) {
-          return;
-        }
+        const confirmed = await window.safeConfirm(
+          `This will display all ${totalRows} rows, which may affect performance. Continue?`,
+          PreviewManager.SHOW_ALL_DIALOG.title,
+          {
+            // Resolved at CLOSE time: "Show less" once the rows are rebuilt
+            // (Yes), otherwise the "Show all" button that is still there (No).
+            returnFocusTo: () =>
+              document.querySelector(
+                PreviewManager.SHOW_ALL_DIALOG.showLessSelector
+              ) ||
+              document.querySelector(
+                PreviewManager.SHOW_ALL_DIALOG.showAllSelector
+              ),
+          }
+        );
+        if (!confirmed || !state.previewState) return;
       }
 
       state.previewState.currentlyShowing = totalRows;
       this.renderTable();
 
-      GraphBuilderNotifications.info(`Now showing all ${totalRows} rows`);
+      this.moveFocusAfterRowChange([".gb-show-less-button"]);
+      this.announceRowChange(`Now showing all ${totalRows} rows`);
     }
 
     /**
@@ -771,8 +786,52 @@ const GraphBuilderUI = (function () {
       state.previewState.currentlyShowing = 10; // Reset to initial view
       this.renderTable();
 
-      GraphBuilderNotifications.info("Now showing first 10 rows");
+      this.moveFocusAfterRowChange([".gb-show-more-button"]);
+      this.announceRowChange("Now showing first 10 rows");
     }
+
+    /**
+     * renderTable() destroys the control row, and the button just pressed
+     * with it, so focus would fall to <body>. Land it on the first matching
+     * button in the rebuilt control row instead.
+     * @param {string[]} selectors - Candidate selectors, in preference order
+     */
+    moveFocusAfterRowChange(selectors) {
+      const target = selectors
+        .map((selector) => this.tableElement.querySelector(selector))
+        .find(Boolean);
+      if (!target) {
+        logWarn("[Graph Builder UI] No control to focus after row change");
+        return;
+      }
+      target.focus();
+    }
+
+    /**
+     * Speak the row-count toast AFTER the focus move has settled: a polite
+     * write within ~10ms of a focus change has been measured lost. A later
+     * press supersedes a pending line, which is dropped at fire time rather
+     * than spoken late (placement contract § E, § E1).
+     * @param {string} message - Toast text
+     */
+    announceRowChange(message) {
+      const token = (this.rowChangeToken = (this.rowChangeToken || 0) + 1);
+      setTimeout(() => {
+        if (token !== this.rowChangeToken) return;
+        GraphBuilderNotifications.info(message);
+      }, PreviewManager.SHOW_ROWS_ANNOUNCE_SETTLE_MS);
+    }
+
+    // Borrowed from the placement contract § E (UNIVERSAL_MODAL_REBUILD_ANNOUNCE_SETTLE_MS
+    // / REMOVE_ANNOUNCE_SETTLE_MS, both 1000ms); not bracketed for this surface
+    static SHOW_ROWS_ANNOUNCE_SETTLE_MS = 1000;
+
+    // The "Show all" confirmation: its title and the two buttons focus may return to
+    static SHOW_ALL_DIALOG = Object.freeze({
+      title: "Show all rows",
+      showLessSelector: ".gb-show-less-button",
+      showAllSelector: ".gb-show-all-button",
+    });
 
     /**
      * Get current preview state

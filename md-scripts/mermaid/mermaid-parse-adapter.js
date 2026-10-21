@@ -553,6 +553,15 @@ window.MermaidParseAdapter = (function () {
     emphasis: false,
     codespan: false,
   });
+  // Item 116, part 2 (20 October 2026): a flowchart whose EFFECTIVE global
+  // `htmlLabels` is false draws every label as SVG text, which PRINTS tags,
+  // emphasis, backticks and anchors as characters (measurement 2, flowchart-
+  // hloff row). The same sink as architecture, so tags are read as written.
+  const FLOWCHART_HTMLLABELS_OFF_MARKUP = Object.freeze({
+    tags: false,
+    emphasis: false,
+    codespan: false,
+  });
   const CLASS_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
   const ER_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
   // Block PRINTS emphasis and backticks at both its positions (measurement 3
@@ -1107,6 +1116,62 @@ window.MermaidParseAdapter = (function () {
     "    end",
   ].join("\n");
 
+  // Item 116, part 2 (20 October 2026): a global `htmlLabels: false` by
+  // frontmatter. Every form is printed by the picture, so every form is read as
+  // written. Parsed through parse() itself, so the self-check exercises the
+  // htmlLabels read as consumers meet it.
+  const FLOWCHART_HLOFF_SELF_CHECK_FIXTURE = [
+    "---",
+    "config:",
+    "  htmlLabels: false",
+    "---",
+    "flowchart TB",
+    "    H1[\"<b>bold</b> start\"] -->|\"<i>e</i> *m*\"| H2[\"*em* `c` <a href='https://example.org'>lnk</a>\"]",
+    "    subgraph HS [\"<u>T</u>\"]",
+    "        H2",
+    "    end",
+  ].join("\n");
+
+  /**
+   * The htmlLabels-off rows of the flowchart self-check.
+   * @returns {Promise<Array>} Assertion rows; a rejection is one failing row
+   */
+  function runFlowchartHtmlLabelsOffRows() {
+    return parse(FLOWCHART_HLOFF_SELF_CHECK_FIXTURE).then(
+      (graph) => {
+        const node = (id) => graph.nodes.find((n) => n.id === id);
+        return [
+          [
+            "htmlLabels off: a node's tags are delivered as typed",
+            node("H1").label === "<b>bold</b> start",
+          ],
+          [
+            "htmlLabels off: emphasis, backticks and an anchor are delivered as typed",
+            // Mermaid's own sanitiser hands the anchor over with double quotes.
+            node("H2").label === '*em* `c` <a href="https://example.org">lnk</a>',
+          ],
+          [
+            "htmlLabels off: an edge label is delivered as typed",
+            graph.edges[0].label === "<i>e</i> *m*",
+          ],
+          [
+            "htmlLabels off: a subgraph title is delivered as typed",
+            graph.subgraphs[0].title === "<u>T</u>",
+          ],
+          [
+            "htmlLabels off: no segments are delivered anywhere",
+            []
+              .concat(graph.nodes, graph.edges, graph.subgraphs)
+              .every((element) => element.segments === undefined),
+          ],
+        ];
+      },
+      (error) => [
+        [`htmlLabels-off fixture parses (rejected: ${error && error.message})`, false],
+      ]
+    );
+  }
+
   /**
    * The link rows of the flowchart self-check, over the delivered link
    * fixture. Each is [name, predicate].
@@ -1246,14 +1311,53 @@ window.MermaidParseAdapter = (function () {
   }
 
   /**
+   * Is the flowchart source's EFFECTIVE global `htmlLabels` false?
+   *
+   * Item 116, part 2 (20 October 2026). `mermaid.parse(source).config` carries
+   * the merged config at parse time on BOTH routes, measured on 11.17.2:
+   * frontmatter `config: htmlLabels: false`, and an `%%{init}%%` directive,
+   * each read `{"htmlLabels":false}`, and a directive after a frontmatter block
+   * won. Only the GLOBAL key reaches the SVG-text path on 11.17.2: the type-own
+   * `flowchart.htmlLabels` key is deliberately not read, because it does not
+   * switch the picture to printed tags.
+   *
+   * Runs inside the caller's queue slot, before getDiagramFromText. NEVER
+   * REJECTS: a source this route refuses reads as "not off", and the parse
+   * itself then reports the real error.
+   * @param {string} code - The Mermaid flowchart source
+   * @returns {Promise<boolean>} True only for a global `htmlLabels` of false
+   */
+  function readFlowchartHtmlLabelsOff(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      return Promise.resolve(false);
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => !!parsed && !!parsed.config && parsed.config.htmlLabels === false)
+      .catch((error) => {
+        logDebug(`Flowchart htmlLabels read failed, reading as on: ${error && error.message}`);
+        return false;
+      });
+  }
+
+  /**
    * Normalise one Mermaid Diagram instance into the adapter's graph shape.
    * Field sources are the stage 0 measurements: vertex and edge shapes from
    * M2, bare-id text and absent type from M3i, subgraph flattening from M3l.
    * @param {Object} diagram - The resolved Diagram from getDiagramFromText
    * @returns {Object} The normalised graph
    */
-  function normaliseFlowchart(diagram) {
+  function normaliseFlowchart(diagram, htmlLabelsOff) {
     const db = diagram.db;
+
+    // Item 116, part 2: where the picture draws SVG text, every label is read
+    // as written and no anchor is a link (the picture prints it as characters),
+    // so readLabelWithLinks and its segments are skipped.
+    const readFlowchartLabel = htmlLabelsOff
+      ? (text) => ({
+          label: decodeAuthorTextBreaks(text, FLOWCHART_HTMLLABELS_OFF_MARKUP),
+        })
+      : (text) => readLabelWithLinks(text, FLOWCHART_DRAWN_MARKUP);
 
     const rawDirection = db.getDirection();
     const direction = DIRECTION_SYNONYMS[rawDirection] || rawDirection;
@@ -1267,7 +1371,7 @@ window.MermaidParseAdapter = (function () {
     // `segments`, nested on the element, so no top-level field is added. The
     // plain `label` is unchanged by it.
     const nodes = [...db.getVertices().values()].map((vertex) => {
-      const read = readLabelWithLinks(vertex.text, FLOWCHART_DRAWN_MARKUP);
+      const read = readFlowchartLabel(vertex.text);
       return {
         id: vertex.id,
         label: read.label,
@@ -1281,7 +1385,7 @@ window.MermaidParseAdapter = (function () {
     });
 
     const edges = db.getEdges().map((edge) => {
-      const read = readLabelWithLinks(edge.text, FLOWCHART_DRAWN_MARKUP);
+      const read = readFlowchartLabel(edge.text);
       return {
         from: edge.start,
         to: edge.end,
@@ -1305,7 +1409,7 @@ window.MermaidParseAdapter = (function () {
     // today, because the BARE `subgraph X` form rejects every placeholder and
     // only the bracketed form can carry one.
     const subgraphs = rawSubgraphs.map((s) => {
-      const read = readLabelWithLinks(s.title, FLOWCHART_DRAWN_MARKUP);
+      const read = readFlowchartLabel(s.title);
       return {
         id: s.id,
         title: read.label,
@@ -1375,13 +1479,20 @@ window.MermaidParseAdapter = (function () {
     const run = () => {
       const startedAt = performance.now();
       logDebug(`Flowchart parse entering its queue slot, ${code.length} characters`);
-      return window.mermaid.mermaidAPI
-        .getDiagramFromText(code)
-        .then((diagram) => {
+      // The htmlLabels read runs FIRST in the slot and the db read last, the
+      // order the kanban base read established (a parse clears Mermaid's shared
+      // store, so nothing may come between getDiagramFromText and the db read).
+      return readFlowchartHtmlLabelsOff(code)
+        .then((htmlLabelsOff) =>
+          window.mermaid.mermaidAPI
+            .getDiagramFromText(code)
+            .then((diagram) => ({ diagram, htmlLabelsOff }))
+        )
+        .then(({ diagram, htmlLabelsOff }) => {
           logDebug(
             `Flowchart parse resolved after ${Math.round(performance.now() - startedAt)}ms, normalising`
           );
-          const graph = normaliseFlowchart(diagram);
+          const graph = normaliseFlowchart(diagram, htmlLabelsOff);
           logDebug(
             `Flowchart parse delivered after ${Math.round(performance.now() - startedAt)}ms`
           );
@@ -1506,9 +1617,12 @@ window.MermaidParseAdapter = (function () {
 
         // Item 82, L2: the link rows read a second fixture, parsed after this
         // one, so every predicate above has already been evaluated.
-        return runFlowchartLinkRows().then((linkRows) => {
+        return Promise.all([
+          runFlowchartLinkRows(),
+          runFlowchartHtmlLabelsOffRows(),
+        ]).then(([linkRows, hloffRows]) => {
           const failed = assertions
-            .concat(linkRows)
+            .concat(linkRows, hloffRows)
             .find(([, pass]) => !pass);
           if (failed) {
             logError(
@@ -12915,7 +13029,7 @@ window.MermaidParseAdapter = (function () {
   // a titled source resolves to `{ diagramType, config }` with `config` an
   // empty object, and `getDiagramFromText` returns `{ type, text, db, parser,
   // renderer }`, none of which carries it. So the title is read by a small
-  // SOURCE reader, `readRequirementFrontmatterTitle`, which duplicates the
+  // SOURCE reader, `readFrontmatterTitle`, which duplicates the
   // patterns the state module's `extractTitleFromSource` already uses (item
   // 67), and is then PASSED to `getDiagramFromText` so the db is what delivers
   // it. A source with no frontmatter returns null and is parsed with no option.
@@ -12998,9 +13112,21 @@ window.MermaidParseAdapter = (function () {
     "relationships",
   ]);
 
-  // The seven keys a delivered REQUIREMENT always carries, in order. Segment
-  // keys (`nameSegments`, `idSegments`, `textSegments`) follow them and ONLY
-  // when the canvas drew an anchor in that field.
+  // RAW KEYS (item 110, session 4, 8 October 2026). The db holds a box's name
+  // as the author typed it, and the CANVAS JOINS ON THAT STRING: measured on
+  // `requirement "<b>x</b>"` beside `requirement x`, the nodes are keyed
+  // `<b>x</b>` and `x` and the arrow's data-id is `<b>x</b>-x-0`, running from
+  // the foot of the first box to the head of the second. The decoded names
+  // (`name`, `source`, `target`) both read `x`, so a consumer that matches a
+  // relationship end to a box on the DECODED name cannot tell the two boxes
+  // apart. `rawName` on a box and `rawSource` / `rawTarget` on a relationship
+  // are the db's own strings, BEFORE decodeAuthorText: a consumer matches ends
+  // on them and narrates the decoded name. They are delivered verbatim, never
+  // decoded, never trimmed, and never narrated as words.
+  //
+  // The seven keys a delivered REQUIREMENT always carries, then `rawName`, in
+  // order. Segment keys (`nameSegments`, `idSegments`, `textSegments`) follow
+  // them and ONLY when the canvas drew an anchor in that field.
   const REQUIREMENT_NODE_KEYS = Object.freeze([
     "name",
     "kind",
@@ -13009,18 +13135,27 @@ window.MermaidParseAdapter = (function () {
     "risk",
     "verifyMethod",
     "drawn",
+    "rawName",
   ]);
 
-  // The three keys a delivered ELEMENT always carries, in order, followed by
-  // `typeSegments` and `docRefSegments` under the same rule.
-  const REQUIREMENT_ELEMENT_KEYS = Object.freeze(["name", "type", "docRef"]);
+  // The three keys a delivered ELEMENT always carries, then `rawName`, in
+  // order, followed by `typeSegments` and `docRefSegments` under the same rule.
+  const REQUIREMENT_ELEMENT_KEYS = Object.freeze([
+    "name",
+    "type",
+    "docRef",
+    "rawName",
+  ]);
 
-  // The three keys a delivered RELATIONSHIP carries, in order. `source` and
-  // `target` are the node names as delivered on the nodes themselves.
+  // The keys a delivered RELATIONSHIP carries, in order. `source` and `target`
+  // are the DECODED node names, as delivered on the nodes themselves;
+  // `rawSource` and `rawTarget` are the db's strings the canvas joined on.
   const REQUIREMENT_RELATIONSHIP_KEYS = Object.freeze([
     "source",
     "verb",
     "target",
+    "rawSource",
+    "rawTarget",
   ]);
 
   // The closed vocabularies, as the db stores them (census: `type` holds the
@@ -13056,14 +13191,49 @@ window.MermaidParseAdapter = (function () {
   // identical on purpose. A `title:` indented under another key belongs to
   // that key and Mermaid draws no caption for it, so it is anchored at column
   // 0; YAML strips one layer of matching quotes and the drawing follows YAML.
-  // NOT HANDLED, and said so: a block scalar, a multi-line value, a trailing
-  // YAML comment and an escape inside double quotes. Mermaid's own YAML read
-  // would differ on those and this reader does not try to match it.
+  //
+  // ITEM 110, SESSION 7b (F2, ruling R3): the value is now read the way YAML
+  // reads the scalar, measured against the canvas on 28 forms (the sweep's
+  // p12m to p12r and the rest of `titles-canvas.mjs`): a trailing ` #` comment
+  // outside quotes is dropped, a double-quoted scalar is unescaped, a
+  // single-quoted one folds `''` to `'`, a plain scalar continues on following
+  // indented lines, and a `|` or `>` block scalar is folded or kept as YAML
+  // says. Before this the value was the line's text with one layer of quotes
+  // removed, so the narration carried the comment, the backslashes or the
+  // single character `|`. The state module's reader (`extractTitleFromSource`)
+  // is a SEPARATE function and still has the old reading.
   const REQUIREMENT_FRONTMATTER_PATTERN =
     /^\s*---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
   const REQUIREMENT_FRONTMATTER_TITLE_PATTERN = /^title[ \t]*:[ \t]*(.*)$/m;
-  const REQUIREMENT_DOUBLE_QUOTED_PATTERN = /^"([^"]*)"$/;
-  const REQUIREMENT_SINGLE_QUOTED_PATTERN = /^'([^']*)'$/;
+  // A comment starts at a `#` at the start of the text or after whitespace.
+  const REQUIREMENT_YAML_COMMENT_PATTERN = /(?:^|[ \t]+)#.*$/;
+  // After a closing quote only whitespace and a comment may follow.
+  const REQUIREMENT_YAML_AFTER_QUOTE_PATTERN = /^[ \t]*(?:#.*)?$/;
+  // `|` or `>`, then an optional chomping sign and indentation digit in
+  // either order, then an optional comment.
+  const REQUIREMENT_BLOCK_HEADER_PATTERN =
+    /^([|>])([+\-0-9]{0,2})[ \t]*(?:#.*)?$/;
+  const REQUIREMENT_YAML_ESCAPES = Object.freeze({
+    0: "\0",
+    a: "\x07",
+    b: "\b",
+    t: "\t",
+    "\t": "\t",
+    n: "\n",
+    v: "\v",
+    f: "\f",
+    r: "\r",
+    e: "\x1b",
+    " ": " ",
+    '"': '"',
+    "/": "/",
+    "\\": "\\",
+    N: "\x85",
+    _: "\xa0",
+    L: " ",
+    P: " ",
+  });
+  const REQUIREMENT_YAML_HEX_ESCAPES = Object.freeze({ x: 2, u: 4, U: 8 });
 
   let requirementMemoCode = null;
   let requirementMemoPromise = null;
@@ -13079,10 +13249,14 @@ window.MermaidParseAdapter = (function () {
    * passed straight into the parse that follows). Returns null when there is
    * no frontmatter, no top-level `title:` key, or an empty value.
    *
-   * @param {string} code - The Mermaid requirement source, frontmatter included
+   * SHARED: the packet surface (register item 114) reads its title through this
+   * same function. It was `readRequirementFrontmatterTitle` until then; the
+   * rename is the whole of the move, and the requirement fixtures guard it.
+   *
+   * @param {string} code - The Mermaid source, frontmatter included
    * @returns {string|null} The title as YAML would read it, or null
    */
-  function readRequirementFrontmatterTitle(code) {
+  function readFrontmatterTitle(code) {
     if (typeof code !== "string" || code === "") {
       return null;
     }
@@ -13095,10 +13269,169 @@ window.MermaidParseAdapter = (function () {
       return null;
     }
     const value = titleLine[1].trim();
-    const doubled = REQUIREMENT_DOUBLE_QUOTED_PATTERN.exec(value);
-    const singled = REQUIREMENT_SINGLE_QUOTED_PATTERN.exec(value);
-    const title = (doubled ? doubled[1] : singled ? singled[1] : value).trim();
+    if (value === "") {
+      return null;
+    }
+    const after = frontmatter[1].slice(titleLine.index + titleLine[0].length);
+    const following = after === "" ? [] : after.replace(/^\r?\n/, "").split(/\r?\n/);
+    const title = readRequirementYamlScalar(value, following).trim();
     return title === "" ? null : title;
+  }
+
+  /**
+   * Read the double- or single-quoted scalar at the start of `value`.
+   * @param {string} value - Text starting with the quote character
+   * @returns {string|null} The unescaped text, or null when the quote does not
+   *   close on this line or something other than a comment follows it
+   */
+  function readRequirementQuotedScalar(value) {
+    const quote = value[0];
+    let out = "";
+    let i = 1;
+    while (i < value.length) {
+      const ch = value[i];
+      if (quote === '"' && ch === "\\") {
+        const next = value[i + 1];
+        const hexLength = REQUIREMENT_YAML_HEX_ESCAPES[next];
+        if (hexLength) {
+          const hex = value.slice(i + 2, i + 2 + hexLength);
+          const point = /^[0-9a-fA-F]+$/.test(hex) && hex.length === hexLength
+            ? parseInt(hex, 16)
+            : NaN;
+          if (!(point <= 0x10ffff)) {
+            return null;
+          }
+          out += String.fromCodePoint(point);
+          i += 2 + hexLength;
+          continue;
+        }
+        if (!Object.prototype.hasOwnProperty.call(REQUIREMENT_YAML_ESCAPES, next)) {
+          return null;
+        }
+        out += REQUIREMENT_YAML_ESCAPES[next];
+        i += 2;
+        continue;
+      }
+      if (ch === quote) {
+        if (quote === "'" && value[i + 1] === "'") {
+          out += "'";
+          i += 2;
+          continue;
+        }
+        return REQUIREMENT_YAML_AFTER_QUOTE_PATTERN.test(value.slice(i + 1))
+          ? out
+          : null;
+      }
+      out += ch;
+      i += 1;
+    }
+    return null;
+  }
+
+  /**
+   * Read a `|` or `>` block scalar: the lines after the key that are indented
+   * (or blank), folded or kept, then chomped as the header says.
+   * @param {string} header - The value on the key's line, e.g. `|-`
+   * @param {Array<string>} following - The frontmatter lines after the key
+   * @returns {string|null} The scalar, or null when the header is not one
+   */
+  function readRequirementBlockScalar(header, following) {
+    const parsed = REQUIREMENT_BLOCK_HEADER_PATTERN.exec(header);
+    if (!parsed) {
+      return null;
+    }
+    const folded = parsed[1] === ">";
+    const indicators = parsed[2];
+    const chomp = indicators.includes("-") ? "strip" : indicators.includes("+") ? "keep" : "clip";
+    const digit = /[0-9]/.exec(indicators);
+    const content = [];
+    let indent = digit ? Number(digit[0]) : 0;
+    for (const line of following) {
+      if (line.trim() === "") {
+        content.push("");
+        continue;
+      }
+      const lead = /^ */.exec(line)[0].length;
+      if (lead === 0 || (indent > 0 && lead < indent)) {
+        break;
+      }
+      if (indent === 0) {
+        indent = lead;
+      }
+      content.push(line.slice(indent));
+    }
+    let trailing = 0;
+    while (content.length > 0 && content[content.length - 1] === "") {
+      content.pop();
+      trailing += 1;
+    }
+    let text = "";
+    if (!folded) {
+      text = content.join("\n");
+    } else {
+      let blanks = 0;
+      let previous = null;
+      for (const line of content) {
+        if (line === "") {
+          blanks += 1;
+          continue;
+        }
+        const spaced = /^[ \t]/.test(line);
+        if (previous === null) {
+          text = "\n".repeat(blanks) + line;
+        } else if (spaced || /^[ \t]/.test(previous)) {
+          text += "\n".repeat(blanks + 1) + line;
+        } else {
+          text += blanks === 0 ? " " + line : "\n".repeat(blanks) + line;
+        }
+        blanks = 0;
+        previous = line;
+      }
+    }
+    if (text === "") {
+      return "";
+    }
+    if (chomp === "strip") {
+      return text;
+    }
+    return text + "\n".repeat(chomp === "keep" ? 1 + trailing : 1);
+  }
+
+  /**
+   * Read the scalar on the `title:` line as YAML does, over the frontmatter
+   * lines that follow it.
+   * @param {string} value - The trimmed text after `title:` (not empty)
+   * @param {Array<string>} following - The frontmatter lines after that line
+   * @returns {string} The scalar text (the caller trims and nulls an empty one)
+   */
+  function readRequirementYamlScalar(value, following) {
+    if (value[0] === '"' || value[0] === "'") {
+      const quoted = readRequirementQuotedScalar(value);
+      return quoted === null ? value : quoted;
+    }
+    if (value[0] === "|" || value[0] === ">") {
+      const block = readRequirementBlockScalar(value, following);
+      if (block !== null) {
+        return block;
+      }
+    }
+    // A plain scalar: a comment ends it, and an indented line continues it.
+    const first = value.replace(REQUIREMENT_YAML_COMMENT_PATTERN, "");
+    if (first !== value) {
+      return first;
+    }
+    const parts = [value];
+    for (const line of following) {
+      if (!/^[ \t]/.test(line) || line.trim() === "" || line.trim()[0] === "#") {
+        break;
+      }
+      const stripped = line.trim().replace(REQUIREMENT_YAML_COMMENT_PATTERN, "");
+      parts.push(stripped);
+      if (stripped !== line.trim()) {
+        break;
+      }
+    }
+    return parts.join(" ");
   }
 
   /**
@@ -13210,6 +13543,7 @@ window.MermaidParseAdapter = (function () {
       risk: raw.risk === "" ? null : raw.risk,
       verifyMethod: raw.verifyMethod === "" ? null : raw.verifyMethod,
       drawn: drawn,
+      rawName: raw.name,
       ...(name && name.segments ? { nameSegments: name.segments } : {}),
       ...(id && id.segments ? { idSegments: id.segments } : {}),
       ...(text && text.segments ? { textSegments: text.segments } : {}),
@@ -13235,6 +13569,11 @@ window.MermaidParseAdapter = (function () {
       name: name ? name.label : "",
       type: type ? type.label : null,
       docRef: docRef ? docRef.label : null,
+      rawName: raw.name,
+      // Item 110, session 7b (F0): an element's NAME can carry a link the
+      // canvas draws, exactly as a requirement's does; it was read for its
+      // text and its segments dropped.
+      ...(name && name.segments ? { nameSegments: name.segments } : {}),
       ...(type && type.segments ? { typeSegments: type.segments } : {}),
       ...(docRef && docRef.segments ? { docRefSegments: docRef.segments } : {}),
     };
@@ -13266,6 +13605,8 @@ window.MermaidParseAdapter = (function () {
       source: source ? source.label : "",
       verb: raw.type,
       target: target ? target.label : "",
+      rawSource: raw.src,
+      rawTarget: raw.dst,
     };
   }
 
@@ -13353,7 +13694,7 @@ window.MermaidParseAdapter = (function () {
    */
   function readRequirementInSlot(code, inspect) {
     const api = window.mermaid.mermaidAPI;
-    const title = readRequirementFrontmatterTitle(code);
+    const title = readFrontmatterTitle(code);
     const parsed =
       title === null
         ? api.getDiagramFromText(code)
@@ -13595,6 +13936,34 @@ window.MermaidParseAdapter = (function () {
     "    type: \"<a href='https://example.org/y'>lkType</a>\"",
     "    docref: \"<a href='https://example.org/d'>lkDoc</a>\"",
     "}",
+    "element \"<a href='https://example.org/e'>lkEName</a>\" {",
+    "    type: lkPlain",
+    "}",
+    "",
+  ].join("\n");
+
+  // RAW KEYS (item 110, session 4): two boxes whose names DECODE alike but are
+  // declared differently (`<b>scRawX</b>` and `scRawX`) joined by one arrow, and
+  // a tag-only pair (a requirement `<b></b>` and an element `<i></i>`, both
+  // decoding to the empty string) joined by another. The decoded ends cannot
+  // tell either pair apart; the raw ends can.
+  const REQUIREMENT_RAWKEY_SELF_CHECK_FIXTURE = [
+    "requirementDiagram",
+    "",
+    'requirement "<b>scRawX</b>" {',
+    "    id: scRawIdA",
+    "}",
+    "requirement scRawX {",
+    "    id: scRawIdB",
+    "}",
+    'requirement "<b></b>" {',
+    "    id: scRawIdC",
+    "}",
+    'element "<i></i>" {',
+    "    type: scRawType",
+    "}",
+    '"<b>scRawX</b>" - derives -> scRawX',
+    '"<b></b>" - satisfies -> "<i></i>"',
     "",
   ].join("\n");
 
@@ -13694,6 +14063,8 @@ window.MermaidParseAdapter = (function () {
                 methods: Object.values(db.VerifyType || {}),
                 verbs: Object.values(db.Relationships || {}),
               },
+              requirementMapKeys: Array.from(db.getRequirements().keys()),
+              elementMapKeys: Array.from(db.getElements().keys()),
               rawKinds: Array.from(db.getRequirements().values()).map((r) => r.type),
               rawRelationships: rels.map((r) => [r.src, r.type, r.dst].join(">")),
               rawTitle: db.getDiagramTitle(),
@@ -13720,6 +14091,20 @@ window.MermaidParseAdapter = (function () {
         .then((state) =>
           readRequirementInSlot(REQUIREMENT_LINK_SELF_CHECK_FIXTURE).then(
             (linked) => Object.assign(state, { linked: linked.delivery })
+          )
+        )
+        .then((state) =>
+          // The raw-key source's keys are read in the SAME TICK as its parse:
+          // the db's own Map keys are what the canvas joins on, so they are
+          // the reference the delivered raw strings are asserted against.
+          readRequirementInSlot(REQUIREMENT_RAWKEY_SELF_CHECK_FIXTURE, (diagram) => ({
+            requirementMapKeys: Array.from(diagram.db.getRequirements().keys()),
+            elementMapKeys: Array.from(diagram.db.getElements().keys()),
+          })).then((rawKeyed) =>
+            Object.assign(state, {
+              rawKeyed: rawKeyed.delivery,
+              rawKeyedMapKeys: rawKeyed.extra,
+            })
           )
         )
         .then((state) =>
@@ -13808,9 +14193,9 @@ window.MermaidParseAdapter = (function () {
                 same(extra.rawKinds.slice(0, 6), REQUIREMENT_KINDS),
             ],
             [
-              "every delivered requirement carries EXACTLY the seven " +
-                "documented keys, every element the three and every " +
-                "relationship the three, and the db objects' own extra keys " +
+              "every delivered requirement carries EXACTLY the eight " +
+                "documented keys, every element the four and every " +
+                "relationship the five, and the db objects' own extra keys " +
                 "do not cross",
               delivery.requirements.every(
                 (r) => keysOf(r) === REQUIREMENT_NODE_KEYS.join(",")
@@ -13903,19 +14288,51 @@ window.MermaidParseAdapter = (function () {
                 "every title fails",
               marked.title === null &&
                 delivery.title !== null &&
-                readRequirementFrontmatterTitle(REQUIREMENT_MARKUP_SELF_CHECK_FIXTURE) === null &&
-                readRequirementFrontmatterTitle(REQUIREMENT_SELF_CHECK_FIXTURE) ===
+                readFrontmatterTitle(REQUIREMENT_MARKUP_SELF_CHECK_FIXTURE) === null &&
+                readFrontmatterTitle(REQUIREMENT_SELF_CHECK_FIXTURE) ===
                   "SelfCheck req title",
             ],
             [
               "the frontmatter reader takes one layer of matching quotes, " +
                 "ignores a `title:` indented under another key, and refuses " +
                 "an empty value",
-              readRequirementFrontmatterTitle('---\ntitle: "Quoted one"\n---\nx') === "Quoted one" &&
-                readRequirementFrontmatterTitle("---\ntitle: 'Single one'\n---\nx") === "Single one" &&
-                readRequirementFrontmatterTitle("---\nconfig:\n  title: nested\n---\nx") === null &&
-                readRequirementFrontmatterTitle("---\ntitle:\n---\nx") === null &&
-                readRequirementFrontmatterTitle("requirementDiagram\ntitle: no") === null,
+              readFrontmatterTitle('---\ntitle: "Quoted one"\n---\nx') === "Quoted one" &&
+                readFrontmatterTitle("---\ntitle: 'Single one'\n---\nx") === "Single one" &&
+                readFrontmatterTitle("---\nconfig:\n  title: nested\n---\nx") === null &&
+                readFrontmatterTitle("---\ntitle:\n---\nx") === null &&
+                readFrontmatterTitle("requirementDiagram\ntitle: no") === null,
+            ],
+            [
+              "the frontmatter reader drops a trailing YAML comment outside " +
+                "quotes and keeps a `#` inside quotes or glued to a word " +
+                "(item 110, F2; measured against the canvas)",
+              readFrontmatterTitle("---\ntitle: Cost # five\n---\nx") === "Cost" &&
+                readFrontmatterTitle("---\ntitle: Cost#five\n---\nx") === "Cost#five" &&
+                readFrontmatterTitle('---\ntitle: "Quoted" # note\n---\nx') === "Quoted" &&
+                readFrontmatterTitle("---\ntitle: 'a # b'\n---\nx") === "a # b",
+            ],
+            [
+              "the frontmatter reader unescapes a double-quoted scalar " +
+                "(`\\\"`, `\\\\`, `\\t`, `\\u00e9`), folds `''` to one quote in a " +
+                "single-quoted one, and reads `''` and `\"\"` as no title",
+              readFrontmatterTitle('---\ntitle: "say \\"hi\\" now"\n---\nx') === 'say "hi" now' &&
+                readFrontmatterTitle('---\ntitle: "back\\\\slash"\n---\nx') === "back\\slash" &&
+                readFrontmatterTitle('---\ntitle: "tab\\there"\n---\nx') === "tab\there" &&
+                readFrontmatterTitle('---\ntitle: "caf\\u00e9"\n---\nx') === "café" &&
+                readFrontmatterTitle("---\ntitle: 'it''s here'\n---\nx") === "it's here" &&
+                readFrontmatterTitle("---\ntitle: ''\n---\nx") === null &&
+                readFrontmatterTitle('---\ntitle: ""\n---\nx') === null,
+            ],
+            [
+              "the frontmatter reader reads a `|` block scalar as lines kept, " +
+                "a `>` block scalar as lines folded, and a plain scalar's " +
+                "indented continuation as one line, and stops a block at the " +
+                "next unindented key",
+              readFrontmatterTitle("---\ntitle: |-\n  line one\n  line two\n---\nx") === "line one\nline two" &&
+                readFrontmatterTitle("---\ntitle: >-\n  folded one\n  folded two\n---\nx") === "folded one folded two" &&
+                readFrontmatterTitle("---\ntitle: |\n  only line\n---\nx") === "only line" &&
+                readFrontmatterTitle("---\ntitle: first\n  second\n---\nx") === "first second" &&
+                readFrontmatterTitle("---\ntitle: |\n  kept\nother: z\n---\nx") === "kept",
             ],
             [
               "accTitle and accDescr take NO transform and are delivered " +
@@ -14040,6 +14457,22 @@ window.MermaidParseAdapter = (function () {
               })(),
             ],
             [
+              "an element NAME the canvas draws as a link arrives as " +
+                "`nameSegments`, joined equal to the name, and an element " +
+                "whose name is plain carries none (item 110, F0)",
+              (() => {
+                const named = linked.elements.find((e) => e.name === "lkEName");
+                return (
+                  !!named &&
+                  same(named.nameSegments, [
+                    { text: "lkEName", href: "https://example.org/e" },
+                  ]) &&
+                  named.nameSegments.map((s) => s.text).join("") === named.name &&
+                  !("nameSegments" in linked.elements[0])
+                );
+              })(),
+            ],
+            [
               "a javascript: link, a no-href anchor and an empty link are " +
                 "plain text, beside a requirement that does carry a link",
               linkedReq("lkBad").text === "j none ." &&
@@ -14058,6 +14491,87 @@ window.MermaidParseAdapter = (function () {
                 delivery.requirements.filter((r) => r.drawn === false).length === 1 &&
                 reqA.drawn === true &&
                 reqF.drawn === true,
+            ],
+            [
+              "a plain name delivers its RAW KEY equal to its decoded name " +
+                "on every requirement, element and relationship end of the " +
+                "main fixture, and the raw key is the db's own Map key — " +
+                "the string the canvas joins on (item 110, session 4)",
+              delivery.requirements.length > 0 &&
+                delivery.requirements.every((r) => r.rawName === r.name) &&
+                delivery.elements.every((e) => e.rawName === e.name) &&
+                delivery.relationships.every(
+                  (r) => r.rawSource === r.source && r.rawTarget === r.target
+                ) &&
+                same(
+                  delivery.requirements.map((r) => r.rawName),
+                  extra.requirementMapKeys
+                ) &&
+                same(
+                  delivery.elements.map((e) => e.rawName),
+                  extra.elementMapKeys
+                ),
+            ],
+            [
+              "two boxes whose names DECODE ALIKE stay two boxes: both read " +
+                "scRawX, their raw keys are <b>scRawX</b> and scRawX in " +
+                "declaration order, and the one arrow between them names " +
+                "them by RAW end so its source resolves to the first box " +
+                "and its target to the second — with the decoded name " +
+                "matching BOTH boxes as the canary that the raw ends are " +
+                "what separates them",
+              (() => {
+                const rk = state.rawKeyed;
+                const arrow = rk.relationships[0];
+                const boxes = rk.requirements.slice(0, 2);
+                return (
+                  boxes.length === 2 &&
+                  boxes[0].name === "scRawX" &&
+                  boxes[1].name === "scRawX" &&
+                  boxes[0].rawName === "<b>scRawX</b>" &&
+                  boxes[1].rawName === "scRawX" &&
+                  arrow.source === "scRawX" &&
+                  arrow.target === "scRawX" &&
+                  arrow.rawSource === "<b>scRawX</b>" &&
+                  arrow.rawTarget === "scRawX" &&
+                  boxes.findIndex((b) => b.rawName === arrow.rawSource) === 0 &&
+                  boxes.findIndex((b) => b.rawName === arrow.rawTarget) === 1 &&
+                  boxes.filter((b) => b.name === arrow.source).length === 2 &&
+                  same(
+                    state.rawKeyedMapKeys.requirementMapKeys.slice(0, 2),
+                    boxes.map((b) => b.rawName)
+                  )
+                );
+              })(),
+            ],
+            [
+              "a TAG-ONLY pair stays two boxes: a requirement and an element " +
+                "both decode to the empty string, their raw keys are <b></b> " +
+                "and <i></i>, and the arrow between them resolves by raw end " +
+                "to the requirement as source and the element as target — " +
+                "with both decoded ends empty as the canary",
+              (() => {
+                const rk = state.rawKeyed;
+                const arrow = rk.relationships[1];
+                const req = rk.requirements[2];
+                const el = rk.elements[0];
+                return (
+                  !!req &&
+                  !!el &&
+                  req.name === "" &&
+                  el.name === "" &&
+                  req.rawName === "<b></b>" &&
+                  el.rawName === "<i></i>" &&
+                  arrow.source === "" &&
+                  arrow.target === "" &&
+                  arrow.rawSource === "<b></b>" &&
+                  arrow.rawTarget === "<i></i>" &&
+                  req.rawName === arrow.rawSource &&
+                  el.rawName === arrow.rawTarget &&
+                  same(state.rawKeyedMapKeys.requirementMapKeys[2], req.rawName) &&
+                  same(state.rawKeyedMapKeys.elementMapKeys[0], el.rawName)
+                );
+              })(),
             ],
             [
               "an unknown kind, risk, verify method and verb are each a STOP " +
@@ -14155,7 +14669,8 @@ window.MermaidParseAdapter = (function () {
             "verbs-both-ways, type-branch, title-route, title-absent, " +
             "frontmatter-reader, acc-verbatim, shared-store, typed-break, " +
             "escaped-break, title-forms, typed-tag, escaped-tag, tag-only, emphasis-and-tick, " +
-            "quot-and-bare, links, plain-links, name-collision, vocabulary-stop " +
+            "quot-and-bare, links, plain-links, name-collision, raw-key-plain, " +
+            "raw-key-collision, raw-key-tag-only, vocabulary-stop " +
             "and missing-key-stop assertions all hold"
         );
         requirementHealthy = true;
@@ -14180,6 +14695,2842 @@ window.MermaidParseAdapter = (function () {
    */
   function isRequirementHealthy() {
     return requirementHealthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // PACKET — the FIFTEENTH surface, for the twenty-second generator (register
+  // item 114, 14 October 2026)
+  //
+  // A HYBRID, on the quadrant precedent: the db for validity and the common
+  // fields, a SOURCE reader for the author's own declarations, the db's layout
+  // delivered as `crossCheck` and never narrated. Measured in
+  // docs/mermaid-item-114-census-1-2026-10-14.md and
+  // docs/mermaid-item-114-surface-2-2026-10-14.md.
+  //
+  // WHY NOT THE DB ALONE. `getPacket()` returns POST-LAYOUT rows: fields the
+  // lexer already split across a row (the label repeated, `bits` one short on
+  // the split piece), laid out at the config in force when the parse ran (32
+  // bits), not the config the canvas applies. In-source `bitsPerRow` (by
+  // frontmatter `config:` or a `%%{init}%%` directive) is therefore NOT in the
+  // db, and 5 of the census's 70 sources draw rows the db does not hold. The
+  // author's fields, config and the grid they imply are recovered from the
+  // source, and the grid agrees with the CANVAS (step 0 of the surface-2
+  // record), which the db's cannot.
+  //
+  // CONFIG PRECEDENCE, MEASURED ON THE CANVAS (not read from Mermaid's code):
+  // per key, a directive beats frontmatter, frontmatter beats the default, and
+  // the merge is DEEP (a directive that sets one key leaves a frontmatter
+  // value for the other standing). The default is Mermaid's SITE config
+  // (getSiteConfig, item 114 R2), so a site-level `mermaid.initialize({
+  // packet: … })` is followed and a width a previous render leaked into the
+  // live config is not.
+  //
+  // A FIELD LINE THE READER CANNOT PARSE IS A STOP, never a silent drop, and so
+  // is any frontmatter or directive that names a packet setting the reader
+  // cannot place. NAMES: the typed label is unquoted as the lexer does, then
+  // decoded by decodeSourcePlaceholders (the db holds the ENCODED form, so the
+  // source-side decode is the one that reaches the canvas). Breaks and markup
+  // are NOT applied: the canvas is svg-text throughout and prints them.
+  const PACKET_ROW_CAP = 10000; // Mermaid's own, silently truncating
+  const PACKET_FIELD_PATTERN =
+    /^(?:(\d+)(?:[ \t]*-[ \t]*(\d+))?|\+(\d+))[ \t]*:[ \t]*("(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*')/;
+  const PACKET_DIRECTIVE_PATTERN = /%%\{\s*(?:init|initialize)\s*:([\s\S]*?)\}%%/g;
+  const PACKET_CONFIG_WORDS = /bitsPerRow|showBits/;
+  const PACKET_ESCAPES = Object.freeze({
+    n: "\n",
+    t: "\t",
+    r: "\r",
+    b: "\b",
+    f: "\f",
+    v: "\v",
+    0: "\0",
+  });
+  const PACKET_DB_ACCESSORS = Object.freeze([
+    "getPacket",
+    "getConfig",
+    "getDiagramTitle",
+    "getAccTitle",
+    "getAccDescription",
+  ]);
+
+  let packetMemoCode = null;
+  let packetMemoPromise = null;
+  let packetHealthy = null;
+  let packetSelfCheckStarted = false;
+  let packetSelfCheckPromise = null;
+
+  function packetStop(message) {
+    return new Error("Packet source reader: " + message);
+  }
+
+  /**
+   * ITEM 114 FIX 6B, R7 (16 October 2026). A line break inside a field name
+   * or a title is drawn as ONE SPACE: SVG text collapses a run of white space,
+   * a newline included, to a single space and trims it at the ends (measured
+   * on the canvas: `g\nh`, `g \n h`, a CRLF and a block-scalar title all
+   * draw one line, as wide as `g h`). Left in the words it would break the
+   * one-line-per-row layout of the Rows list and the SHORT. A run that holds
+   * a line break becomes one space and a run at either end is dropped; white
+   * space with no line break in it is left as typed.
+   *
+   * @param {string} text - A decoded name or title
+   * @returns {string} The text with each line-break run read as one space
+   */
+  function collapsePacketLineBreaks(text) {
+    if (typeof text !== "string" || !/[\r\n]/.test(text)) {
+      return text;
+    }
+    return text
+      .replace(/^(?:[ \t]*\r?\n)+[ \t]*|[ \t]*(?:\r?\n[ \t]*)+$/g, "")
+      .replace(/[ \t]*(?:\r?\n[ \t]*)+/g, " ");
+  }
+
+  /** The lexer's string conversion: a known escape, else the character. */
+  function unquotePacketString(quoted) {
+    return quoted.slice(1, -1).replace(/\\([\s\S])/g, (all, ch) =>
+      Object.prototype.hasOwnProperty.call(PACKET_ESCAPES, ch)
+        ? PACKET_ESCAPES[ch]
+        : ch
+    );
+  }
+
+  /**
+   * ITEM 114, R3 (16 October 2026). The YAML a frontmatter `config:` is read
+   * with, to the extent the packet reader needs it. Mermaid draws these
+   * (measured on the canvas, 16 October 2026): flow-form `config: {packet:
+   * {bitsPerRow: 16}}` in JSON or bare style, a flow `packet: {…}` under a
+   * block `config:`, a quoted `"16"` or `'16'`, and a YAML boolean, number or
+   * string for either key. The reader gives each value its YAML type here and
+   * leaves "what Mermaid applies" to applyPacketWidth and applyPacketShowBits.
+   *
+   * A construct this does not understand throws a packetStop, never a guess.
+   */
+  const PACKET_UNPLACED =
+    "the frontmatter names a packet setting the reader could not place";
+  const PACKET_YAML_NULL = /^(?:~|null|Null|NULL)$/;
+  const PACKET_YAML_TRUE = /^(?:true|True|TRUE)$/;
+  const PACKET_YAML_FALSE = /^(?:false|False|FALSE)$/;
+  const PACKET_YAML_NUMBER = /^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$/;
+  const PACKET_YAML_HEX = /^0x[0-9a-fA-F]+$/;
+
+  /** A plain YAML scalar, typed as the core schema types it. */
+  function readPacketPlainScalar(raw) {
+    if (raw === "" || PACKET_YAML_NULL.test(raw)) return null;
+    if (PACKET_YAML_TRUE.test(raw)) return true;
+    if (PACKET_YAML_FALSE.test(raw)) return false;
+    if (PACKET_YAML_NUMBER.test(raw) || PACKET_YAML_HEX.test(raw)) {
+      return Number(raw);
+    }
+    return raw;
+  }
+
+  /**
+   * One quoted YAML scalar starting at `start` (the opening quote).
+   * @returns {{value: string, end: number}} `end` is just past the closing quote
+   */
+  function readPacketQuoted(text, start) {
+    const quote = text[start];
+    let value = "";
+    let i = start + 1;
+    while (i < text.length) {
+      const ch = text[i];
+      if (quote === '"' && ch === "\\" && i + 1 < text.length) {
+        const next = text[i + 1];
+        value += Object.prototype.hasOwnProperty.call(PACKET_ESCAPES, next)
+          ? PACKET_ESCAPES[next]
+          : next;
+        i += 2;
+        continue;
+      }
+      if (ch === quote) {
+        if (quote === "'" && text[i + 1] === "'") {
+          value += "'";
+          i += 2;
+          continue;
+        }
+        return { value: value, end: i + 1 };
+      }
+      value += ch;
+      i += 1;
+    }
+    throw packetStop(PACKET_UNPLACED);
+  }
+
+  function skipPacketFlowSpace(text, from) {
+    let i = from;
+    for (;;) {
+      while (i < text.length && /\s/.test(text[i])) i += 1;
+      if (text[i] !== "#") return i;
+      while (i < text.length && text[i] !== "\n") i += 1;
+    }
+  }
+
+  /**
+   * A YAML flow collection or scalar starting at `start`: mappings, sequences,
+   * quoted and plain scalars, newlines and comments between tokens. A flow
+   * mapping becomes a null-prototype object, a sequence an Array.
+   * @returns {{value: *, end: number}}
+   */
+  function readPacketFlowValue(text, start) {
+    let i = skipPacketFlowSpace(text, start);
+    const ch = text[i];
+    if (ch === "{") {
+      const map = Object.create(null);
+      i += 1;
+      for (;;) {
+        i = skipPacketFlowSpace(text, i);
+        if (text[i] === "}") return { value: map, end: i + 1 };
+        if (i >= text.length) throw packetStop(PACKET_UNPLACED);
+        let key;
+        if (text[i] === '"' || text[i] === "'") {
+          const quoted = readPacketQuoted(text, i);
+          key = quoted.value;
+          i = quoted.end;
+        } else {
+          const plain = /^[^\s,:{}\[\]"']+/.exec(text.slice(i));
+          if (!plain) throw packetStop(PACKET_UNPLACED);
+          key = plain[0];
+          i += plain[0].length;
+        }
+        i = skipPacketFlowSpace(text, i);
+        let value = null;
+        if (text[i] === ":") {
+          const item = readPacketFlowValue(text, i + 1);
+          value = item.value;
+          i = item.end;
+        }
+        map[key] = value;
+        i = skipPacketFlowSpace(text, i);
+        if (text[i] === ",") i += 1;
+        else if (text[i] !== "}") throw packetStop(PACKET_UNPLACED);
+      }
+    }
+    if (ch === "[") {
+      const list = [];
+      i += 1;
+      for (;;) {
+        i = skipPacketFlowSpace(text, i);
+        if (text[i] === "]") return { value: list, end: i + 1 };
+        if (i >= text.length) throw packetStop(PACKET_UNPLACED);
+        const item = readPacketFlowValue(text, i);
+        list.push(item.value);
+        i = skipPacketFlowSpace(text, item.end);
+        if (text[i] === ",") i += 1;
+        else if (text[i] !== "]") throw packetStop(PACKET_UNPLACED);
+      }
+    }
+    if (ch === '"' || ch === "'") {
+      return readPacketQuoted(text, i);
+    }
+    // A plain scalar ends at a flow indicator, a line end or ` #`.
+    const plain = /^(?:[^\n,\]}#]|(?<=\S)#)*/.exec(text.slice(i))[0];
+    return {
+      value: readPacketPlainScalar(plain.trim()),
+      end: i + plain.length,
+    };
+  }
+
+  /**
+   * The value text of a block-style `key: value` line, typed. A quoted or
+   * flow value is read from its own offset; a plain one loses a trailing
+   * ` # comment`.
+   * @returns {{value: *, end: number}} `end` is an offset into `text`
+   */
+  function readPacketBlockValue(text, from) {
+    const lead = /^[ \t]*/.exec(text.slice(from))[0].length;
+    const at = from + lead;
+    const ch = text[at];
+    if (ch === '"' || ch === "'" || ch === "{" || ch === "[") {
+      return readPacketFlowValue(text, at);
+    }
+    const lineEnd = text.indexOf("\n", at);
+    const stop = lineEnd < 0 ? text.length : lineEnd;
+    const raw = text.slice(at, stop).replace(/(?:^|[ \t])#.*$/, "").trim();
+    return { value: readPacketPlainScalar(raw), end: stop };
+  }
+
+  /**
+   * Read `config: packet:` out of a frontmatter block: block style, flow style
+   * (`config: {…}` or `packet: {…}`), and any mixture.
+   * @param {string} frontmatter - The text between the `---` fences
+   * @returns {{bitsPerRow: *, showBits: *}} A key the block does not name is
+   *   undefined; a key named with no value is null
+   */
+  function readPacketFrontmatterConfig(frontmatter) {
+    const out = { bitsPerRow: undefined, showBits: undefined };
+    if (!PACKET_CONFIG_WORDS.test(frontmatter)) {
+      return out;
+    }
+    const lines = [];
+    const starts = [];
+    frontmatter.split(/\r?\n/).reduce((offset, line) => {
+      lines.push(line);
+      starts.push(offset);
+      return offset + line.length + 1;
+    }, 0);
+    // Offsets are into `text`, the frontmatter with line ends as \n.
+    const text = lines.join("\n");
+    const indentOf = (line) => /^[ \t]*/.exec(line)[0].length;
+    const blank = (line) => line.trim() === "" || /^[ \t]*#/.test(line);
+    const emptyRest = (rest) => rest.trim() === "" || /^[ \t]*#/.test(rest);
+    const adopt = (packet) => {
+      if (!packet || typeof packet !== "object" || Array.isArray(packet)) {
+        throw packetStop(PACKET_UNPLACED);
+      }
+      if (Object.prototype.hasOwnProperty.call(packet, "bitsPerRow")) {
+        out.bitsPerRow = packet.bitsPerRow;
+      }
+      if (Object.prototype.hasOwnProperty.call(packet, "showBits")) {
+        out.showBits = packet.showBits;
+      }
+    };
+
+    const configAt = lines.findIndex((line) => /^config[ \t]*:/.test(line));
+    if (configAt < 0) {
+      throw packetStop(
+        "the frontmatter names a packet setting but has no `config:`"
+      );
+    }
+    const configRest = lines[configAt].replace(/^config[ \t]*:/, "");
+    if (!emptyRest(configRest)) {
+      // Flow style: `config: {packet: {…}}`.
+      const flowAt = starts[configAt] + lines[configAt].length - configRest.length;
+      if (configRest.trim()[0] !== "{") throw packetStop(PACKET_UNPLACED);
+      const read = readPacketFlowValue(text, flowAt);
+      if (!read.value.packet) {
+        throw packetStop(
+          "the frontmatter names a packet setting but has no `config: packet:`"
+        );
+      }
+      adopt(read.value.packet);
+    } else {
+      let packetAt = -1;
+      for (let i = configAt + 1; i < lines.length; i++) {
+        if (blank(lines[i])) continue;
+        if (indentOf(lines[i]) === 0) break;
+        if (/^[ \t]+packet[ \t]*:/.test(lines[i])) {
+          packetAt = i;
+          break;
+        }
+      }
+      if (packetAt < 0) {
+        throw packetStop(
+          "the frontmatter names a packet setting but has no `config: packet:`"
+        );
+      }
+      const packetRest = lines[packetAt].replace(/^[ \t]+packet[ \t]*:/, "");
+      if (!emptyRest(packetRest)) {
+        // Flow style under a block `config:`: `packet: {…}`.
+        if (packetRest.trim()[0] !== "{") throw packetStop(PACKET_UNPLACED);
+        const flowAt = starts[packetAt] + lines[packetAt].length - packetRest.length;
+        adopt(readPacketFlowValue(text, flowAt).value);
+      } else {
+        const packetIndent = indentOf(lines[packetAt]);
+        let consumed = 0;
+        for (let i = packetAt + 1; i < lines.length; i++) {
+          if (starts[i] < consumed) continue;
+          if (blank(lines[i])) continue;
+          if (indentOf(lines[i]) <= packetIndent) break;
+          const pair = /^[ \t]+(\w+)[ \t]*:/.exec(lines[i]);
+          if (!pair) continue;
+          if (pair[1] !== "bitsPerRow" && pair[1] !== "showBits") continue;
+          const read = readPacketBlockValue(text, starts[i] + pair[0].length);
+          consumed = read.end;
+          out[pair[1]] = read.value;
+        }
+      }
+    }
+    if (out.bitsPerRow === undefined && out.showBits === undefined) {
+      throw packetStop(PACKET_UNPLACED);
+    }
+    return out;
+  }
+
+  /**
+   * Read `packet` settings out of every `%%{init: …}%%` directive; a later
+   * directive wins per key.
+   * @param {string} text - The source after the frontmatter
+   * @returns {{bitsPerRow: *, showBits: *}} A key no directive names is
+   *   undefined; a key named with null, an array or an object keeps that value
+   */
+  function readPacketDirectiveConfig(text) {
+    const out = { bitsPerRow: undefined, showBits: undefined };
+    const pattern = new RegExp(PACKET_DIRECTIVE_PATTERN.source, "g");
+    let match;
+    while ((match = pattern.exec(text))) {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(match[1].trim().replace(/'/g, '"'));
+      } catch (error) {
+        parsed = null;
+      }
+      if (parsed === null || typeof parsed !== "object") {
+        if (PACKET_CONFIG_WORDS.test(match[1])) {
+          throw packetStop(
+            "a directive names a packet setting but does not parse as JSON"
+          );
+        }
+        continue;
+      }
+      const packet = parsed.packet;
+      if (!packet || typeof packet !== "object") continue;
+      if (Object.prototype.hasOwnProperty.call(packet, "bitsPerRow")) {
+        out.bitsPerRow = packet.bitsPerRow;
+      }
+      if (Object.prototype.hasOwnProperty.call(packet, "showBits")) {
+        out.showBits = packet.showBits;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * ITEM 114, R3. What Mermaid APPLIES for a width, measured on the canvas
+   * (16 October 2026, 11.17.2): a value that is not set, null, an array or an
+   * object leaves the default, and does so even when a lower tier set a
+   * number (a directive `[8]` over a frontmatter 16 draws 32); a boolean
+   * counts as 1 or 0; a string is read as a number when it is plain digits
+   * (a leading `+` or spaces, or `0x` and hex digits); anything else is
+   * refused. 0, text, a fraction and a negative are refused by the caller.
+   */
+  function applyPacketWidth(raw, fallback) {
+    if (raw === undefined || raw === null || typeof raw === "object") {
+      return fallback;
+    }
+    if (typeof raw === "string") {
+      return /^\s*\+?\d+$/.test(raw) || PACKET_YAML_HEX.test(raw)
+        ? Number(raw)
+        : NaN;
+    }
+    return Number(raw);
+  }
+
+  /**
+   * ITEM 114, R3. What Mermaid APPLIES for showBits: the value's JavaScript
+   * truthiness (`no`, `off`, `"false"` and `"0"` are strings and draw the
+   * numbers; false, 0, 0.0 and "" do not), with the same default rule as the
+   * width for an unset, null, array or object value.
+   */
+  function applyPacketShowBits(raw, fallback) {
+    if (raw === undefined || raw === null || typeof raw === "object") {
+      return fallback;
+    }
+    return Boolean(raw);
+  }
+
+  /**
+   * Read the author's field declarations and the in-source packet config from
+   * the diagram SOURCE. Pure; runs only after Mermaid has judged the source
+   * valid, so contiguity and ordering are Mermaid's to enforce.
+   *
+   * @param {string} code - The Mermaid packet source
+   * @param {{bitsPerRow: *, showBits: *}} defaults - Mermaid's own config
+   * @returns {{fields: Array<Object>, bitsPerRow: number, showBits: boolean}}
+   * @throws {Error} "Packet source reader: …" on anything it cannot read
+   */
+  function readPacketSource(code, defaults) {
+    let text = code;
+    let frontmatterConfig = { bitsPerRow: undefined, showBits: undefined };
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(text);
+    if (fence) {
+      frontmatterConfig = readPacketFrontmatterConfig(fence[1]);
+      text = text.slice(fence[0].length);
+    }
+    const directiveConfig = readPacketDirectiveConfig(text);
+    text = text.replace(new RegExp(PACKET_DIRECTIVE_PATTERN.source, "g"), "");
+
+    const fields = [];
+    let position = 0;
+    let sawHeader = false;
+    let nextStart = 0;
+    let lastBodyTitle = null;
+    while (position < text.length) {
+      const here = text.slice(position);
+      let match = /^[ \t\r\n;]+/.exec(here);
+      if (match) {
+        position += match[0].length;
+        continue;
+      }
+      if ((match = /^%%[^\n]*/.exec(here))) {
+        position += match[0].length;
+        continue;
+      }
+      if (!sawHeader) {
+        match = /^packet(?:-beta)?(?![\w-])/.exec(here);
+        if (!match) {
+          throw packetStop("no packet header where one was expected");
+        }
+        sawHeader = true;
+        position += match[0].length;
+        continue;
+      }
+      // The trio and the title come from the db and the title route.
+      if ((match = /^accDescr[ \t]*\{[^}]*\}/.exec(here))) {
+        position += match[0].length;
+        continue;
+      }
+      if ((match = /^(?:title|accTitle|accDescr)(?![\w-])[^\n]*/.exec(here))) {
+        // ITEM 114, PR12: the LAST body `title` statement is kept as typed
+        // (the source test: it is read by this tokeniser, so an `accDescr {`
+        // block holding a line that starts `title` is never mistaken for one).
+        // Mermaid drops a trailing `%%` comment from the title; so do we.
+        const bodyTitle = /^title(?![\w-])([^\n]*)/.exec(match[0]);
+        if (bodyTitle) {
+          lastBodyTitle = bodyTitle[1].replace(/[ \t]*%%.*$/, "").trim();
+        }
+        position += match[0].length;
+        continue;
+      }
+      if ((match = PACKET_FIELD_PATTERN.exec(here))) {
+        let start;
+        let end;
+        if (match[3] !== undefined) {
+          start = nextStart;
+          end = start + Number(match[3]) - 1;
+        } else {
+          start = Number(match[1]);
+          end = match[2] !== undefined ? Number(match[2]) : start;
+        }
+        const rawName = unquotePacketString(match[4]);
+        fields.push({
+          start: start,
+          end: end,
+          width: end - start + 1,
+          name: collapsePacketLineBreaks(decodeSourcePlaceholders(rawName)),
+          rawName: rawName,
+        });
+        nextStart = end + 1;
+        position += match[0].length;
+        continue;
+      }
+      throw packetStop("cannot read " + JSON.stringify(here.slice(0, 40)));
+    }
+    if (!sawHeader) {
+      throw packetStop("no packet header");
+    }
+
+    // Per key, the highest tier that NAMES the key supplies the raw value (a
+    // directive beats frontmatter, even when its value is then discarded), and
+    // applyPacketWidth / applyPacketShowBits say what Mermaid does with it.
+    const rawWidth =
+      directiveConfig.bitsPerRow !== undefined
+        ? directiveConfig.bitsPerRow
+        : frontmatterConfig.bitsPerRow;
+    const rawShowBits =
+      directiveConfig.showBits !== undefined
+        ? directiveConfig.showBits
+        : frontmatterConfig.showBits;
+    const bitsPerRow = applyPacketWidth(rawWidth, defaults.bitsPerRow);
+    const showBits = applyPacketShowBits(rawShowBits, defaults.showBits);
+    if (!Number.isInteger(bitsPerRow) || bitsPerRow < 1) {
+      throw packetStop(
+        "bitsPerRow is not a positive integer: " + JSON.stringify(rawWidth)
+      );
+    }
+    if (typeof showBits !== "boolean") {
+      throw packetStop("showBits is not true or false: " + JSON.stringify(showBits));
+    }
+    return {
+      fields: fields,
+      bitsPerRow: bitsPerRow,
+      showBits: showBits,
+      bodyTitle: lastBodyTitle,
+    };
+  }
+
+  // The three codes Mermaid's sanitiser writes for a bare `&`, `<` and `>`.
+  const PACKET_SANITISED_FORMS = /&(?:amp|lt|gt);/g;
+  const PACKET_SANITISED_CHARACTERS = Object.freeze({
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+  });
+
+  const PACKET_QUOTE_CODE = "#quot;";
+
+  function foldSanitisedForms(text) {
+    return text.replace(
+      PACKET_SANITISED_FORMS,
+      (form) => PACKET_SANITISED_CHARACTERS[form]
+    );
+  }
+
+  /**
+   * ITEM 114, PR12 (Matthew's carve-out of 6 October 2026): a title whose `<`
+   * or `&` the canvas prints as `&lt;` or `&amp;` reads as the author's
+   * character. The db title cannot carry it: with a `<` in the title Mermaid
+   * encodes every `&` too, so a typed `x & y <` and a typed `x &amp; y <`
+   * both deliver `x &amp; y &lt;` (measured 15 October 2026). The author's
+   * own text is read from the SOURCE instead, the body `title` line when one
+   * was written (it beats a frontmatter title, measured) and the frontmatter
+   * title otherwise, and passed through decodeSourcePlaceholders.
+   *
+   * The source reading is taken only when it AGREES with the delivered title
+   * once the three sanitiser codes are folded on both sides. A title the
+   * sanitiser changed in any other way (it removes a typed tag such as
+   * `<team>`) disagrees, so the title stays as drawn rather than narrating
+   * text the picture does not show. ITEM 114 FIX 6B, R4: as drawn still reads
+   * the author's character for each code the sanitiser wrote (`R&D <team>`
+   * reads `R&D `) and `#quot;` as a quotation mark, unless the author typed
+   * one of the three codes, where the drawn and the typed code cannot be told
+   * apart.
+   *
+   * @param {string} rawTitle - db.getDiagramTitle()
+   * @param {string|null} bodyTitle - The last body `title` line, as typed
+   * @param {string|null} frontmatterTitle - The frontmatter title, as read
+   * @returns {string|null} The title to narrate, null when none
+   */
+  function resolvePacketTitle(rawTitle, bodyTitle, frontmatterTitle) {
+    const title = resolvePacketTitleText(rawTitle, bodyTitle, frontmatterTitle);
+    if (title === null) {
+      return null;
+    }
+    const collapsed = collapsePacketLineBreaks(title);
+    return collapsed === "" ? null : collapsed;
+  }
+
+  function resolvePacketTitleText(rawTitle, bodyTitle, frontmatterTitle) {
+    if (typeof rawTitle !== "string" || rawTitle === "") {
+      return null;
+    }
+    // ITEM 114 FIX 6B, R4 (16 October 2026): a frontmatter title reaches the
+    // canvas with `#quot;` undecoded, so the drawn title carries the code
+    // where the author meant a quotation mark; read it as the quote.
+    const drawn = decodePlaceholders(rawTitle)
+      .split(PACKET_QUOTE_CODE)
+      .join('"');
+    const source = bodyTitle !== null ? bodyTitle : frontmatterTitle;
+    if (typeof source !== "string" || source === "") {
+      return foldSanitisedForms(drawn);
+    }
+    const author = decodeSourcePlaceholders(source);
+    if (foldSanitisedForms(author) === foldSanitisedForms(drawn)) {
+      return author;
+    }
+    // The guard refuses: the sanitiser changed the title in some other way
+    // (it removes a typed tag such as `<team>`). The title stays as drawn,
+    // except that the codes it wrote for a bare `&`, `<` and `>` read as the
+    // author's characters (`R&D <team>` reads `R&D `, never "R amp semicolon
+    // D"), unless the author typed one of those codes themselves: then the
+    // drawn code and the typed one cannot be told apart, and it stays as drawn.
+    return source.search(PACKET_SANITISED_FORMS) >= 0
+      ? drawn
+      : foldSanitisedForms(drawn);
+  }
+
+  /**
+   * THE ONE GRID FUNCTION. Lays the author's fields out in rows of
+   * `bitsPerRow` bits. A field crossing a row becomes one segment per row,
+   * `continues` true on every segment but the last. A row's `endBit` is the
+   * last bit actually filled, so a short final row is visible as
+   * `endBit < startBit + bitsPerRow - 1`. Rows past Mermaid's own cap of
+   * 10000 are cut as the canvas cuts them (`truncated`).
+   *
+   * @param {Array<{start: number, end: number}>} fields
+   * @param {number} bitsPerRow - A positive integer
+   * @returns {{rows: Array<Object>, truncated: boolean}}
+   */
+  function buildPacketGrid(fields, bitsPerRow) {
+    const rows = [];
+    let truncated = false;
+    for (let i = 0; i < fields.length && !truncated; i++) {
+      let cursor = fields[i].start;
+      while (cursor <= fields[i].end) {
+        const rowIndex = Math.floor(cursor / bitsPerRow);
+        if (rowIndex >= PACKET_ROW_CAP) {
+          truncated = true;
+          break;
+        }
+        const segmentEnd = Math.min(
+          fields[i].end,
+          rowIndex * bitsPerRow + bitsPerRow - 1
+        );
+        if (!rows[rowIndex]) {
+          rows[rowIndex] = {
+            index: rowIndex,
+            startBit: rowIndex * bitsPerRow,
+            endBit: segmentEnd,
+            segments: [],
+          };
+        }
+        rows[rowIndex].segments.push({
+          fieldIndex: i,
+          start: cursor,
+          end: segmentEnd,
+          continues: segmentEnd < fields[i].end,
+        });
+        rows[rowIndex].endBit = segmentEnd;
+        cursor = segmentEnd + 1;
+      }
+    }
+    return { rows: rows, truncated: truncated };
+  }
+
+  /**
+   * ITEM 114, R2 (16 October 2026). THE DEFAULT WIDTH IS MERMAID'S SITE
+   * CONFIG, NEVER THE LIVE ONE. `db.getConfig()` is the global config the last
+   * RENDER left behind: a render applies an in-source `bitsPerRow` to it and
+   * nothing clears it until the next render starts, so a packet parsed after
+   * another packet's render was narrated at the leaked width (measured: three
+   * rows of 16 for a source the canvas draws as two of 32). The canvas starts
+   * each render from the site config (initialize's values over the built-in
+   * defaults), so that is the default the reader must use. getSiteConfig()
+   * reads it without mutating anything, which `reset()` would not: a reset
+   * during another diagram's in-flight render could change what that render
+   * draws. The db's own config stays in force for the cross-check, where it is
+   * exactly the config the db laid out under.
+   *
+   * @param {Object} dbConfig - db.getConfig(), the live config (fallback only)
+   * @returns {{bitsPerRow: *, showBits: *}} The defaults the reader applies
+   */
+  function readPacketDefaults(dbConfig) {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    let site = null;
+    if (api && typeof api.getSiteConfig === "function") {
+      site = api.getSiteConfig();
+    }
+    if ((!site || !site.packet) && api && api.defaultConfig) {
+      site = api.defaultConfig;
+    }
+    const packet = site && site.packet ? site.packet : dbConfig;
+    return { bitsPerRow: packet.bitsPerRow, showBits: packet.showBits };
+  }
+
+  /**
+   * Normalise one parsed packet diagram. Every db read is synchronous and
+   * happens before the source reader runs; call it in the same tick as the
+   * parse, inside the caller's own queue slot.
+   *
+   * @param {Object} diagram - The resolved getDiagramFromText result
+   * @param {string} code - The same source, for the reader
+   * @returns {Object} The normalised packet delivery
+   */
+  function normalisePacket(diagram, code) {
+    const db = diagram.db;
+    for (const accessor of PACKET_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw new Error(
+          `Packet surface: db.${accessor} is not a function; the pinned Mermaid ` +
+            "build's packet db no longer matches the 14 October 2026 census"
+        );
+      }
+    }
+    // The shared trio first: every parse of every type clears it.
+    const rawTitle = db.getDiagramTitle();
+    const rawAccTitle = db.getAccTitle();
+    const rawAccDescr = db.getAccDescription();
+
+    const dbPacket = db.getPacket();
+    if (
+      !Array.isArray(dbPacket) ||
+      dbPacket.some((row) => !Array.isArray(row))
+    ) {
+      throw new Error(
+        "Packet surface: db.getPacket must return an Array of rows, each an Array"
+      );
+    }
+    const dbRows = dbPacket.map((row) =>
+      row.map((piece) => ({
+        start: piece.start,
+        end: piece.end,
+        bits: piece.bits,
+        label: piece.label,
+      }))
+    );
+    const dbConfig = db.getConfig() || {};
+
+    // Mermaid has judged the source valid; only now does the reader run.
+    const read = readPacketSource(code, readPacketDefaults(dbConfig));
+    const grid = buildPacketGrid(read.fields, read.bitsPerRow);
+
+    // Does the same grid function, run at the config the DB laid out at,
+    // reproduce the db's pieces? Range and decoded label, in order.
+    const dbGrid = buildPacketGrid(read.fields, dbConfig.bitsPerRow);
+    const dbPieces = dbRows.flat();
+    const gridPieces = dbGrid.rows.flatMap((row) => row.segments);
+    const agrees =
+      Number.isInteger(dbConfig.bitsPerRow) &&
+      dbConfig.bitsPerRow > 0 &&
+      dbPieces.length === gridPieces.length &&
+      dbPieces.every(
+        (piece, i) =>
+          piece.start === gridPieces[i].start &&
+          piece.end === gridPieces[i].end &&
+          collapsePacketLineBreaks(decodePlaceholders(piece.label)) ===
+            read.fields[gridPieces[i].fieldIndex].name
+      );
+
+    return {
+      diagramType: "packet",
+      title: resolvePacketTitle(
+        rawTitle,
+        read.bodyTitle,
+        readFrontmatterTitle(code)
+      ),
+      // NO transform on accTitle or accDescr: the standing carve-out.
+      accTitle:
+        typeof rawAccTitle !== "string" || rawAccTitle === ""
+          ? null
+          : rawAccTitle,
+      accDescr:
+        typeof rawAccDescr !== "string" || rawAccDescr === ""
+          ? null
+          : rawAccDescr,
+      bitsPerRow: read.bitsPerRow,
+      showBits: read.showBits,
+      fields: read.fields,
+      rows: grid.rows,
+      crossCheck: {
+        // The db's pieces verbatim: post-layout, `bits` unreliable, labels
+        // encoded. Never narrated.
+        dbRows: dbRows,
+        dbRowCount: dbRows.length,
+        dbBitsPerRow: dbConfig.bitsPerRow,
+        gridRowCount: grid.rows.length,
+        gridTruncated: grid.truncated,
+        agrees: agrees,
+      },
+    };
+  }
+
+  /**
+   * One packet parse, FROM THE TITLE READ TO THE DELIVERY, with no yield point
+   * between the parse and the db reads. It must run inside an adapter queue
+   * slot; parsePacket and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid packet source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readPacketInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    const parsed =
+      title === null
+        ? api.getDiagramFromText(code)
+        : api.getDiagramFromText(code, { title: title });
+    return parsed.then((diagram) => ({
+      diagram: diagram,
+      delivery: normalisePacket(diagram, code),
+    }));
+  }
+
+  /**
+   * Parse a packet diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and every db
+   * read happens inside this call's own queue slot. THE QUEUE IS LOAD-BEARING
+   * HERE AS IT IS NOWHERE ELSE: the packet parser is a module singleton whose
+   * `yy` is read after an `await`, so two overlapping parses write into the
+   * wrong db (census S8: A's db empty, B's holding both).
+   *
+   * @param {string} code - The Mermaid packet source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parsePacket(code) {
+    if (!packetSelfCheckStarted) {
+      runPacketSelfCheck();
+    }
+
+    if (code === packetMemoCode && packetMemoPromise) {
+      logDebug("Returning memoised packet parse for identical code string");
+      return packetMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Packet parse entering its queue slot, ${code.length} characters`);
+      return readPacketInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Packet parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.fields.length} field(s), ${delivery.rows.length} row(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Packet parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    packetMemoCode = code;
+    packetMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed SelfCheck. Five
+  // sources parsed one after another in ONE slot, each fully normalised before
+  // the next parse replaces the shared store.
+
+  // MAIN: a frontmatter title (the title route), the acc pair, a plain field,
+  // a single-bit field, a field crossing a row, and a final row not filled.
+  const PACKET_SELF_CHECK_MAIN = [
+    "---",
+    "title: SelfCheck packet title",
+    "---",
+    "packet-beta",
+    "accTitle: SelfCheck packet acc title",
+    "accDescr: SelfCheck packet acc descr",
+    '0-15: "SelfCheck plain"',
+    '16: "SelfCheck bit"',
+    '17-47: "SelfCheck wide"',
+    '48-55: "SelfCheck tail"',
+    "",
+  ].join("\n");
+
+  // bitsPerRow 16 by frontmatter alone: a field crossing the row, and the
+  // db (laid out at 32) holding ONE row where the canvas draws two.
+  const PACKET_SELF_CHECK_FM16 = [
+    "---",
+    "config:",
+    "  packet:",
+    "    bitsPerRow: 16",
+    "---",
+    "packet-beta",
+    '0-7: "SelfCheck f16 a"',
+    '8-23: "SelfCheck f16 b"',
+    '24-31: "SelfCheck f16 c"',
+    "",
+  ].join("\n");
+
+  // bitsPerRow by DIRECTIVE beating a frontmatter value, and a frontmatter
+  // showBits surviving a directive that sets the other key (deep merge).
+  const PACKET_SELF_CHECK_DIRECTIVE = [
+    "---",
+    "config:",
+    "  packet:",
+    "    bitsPerRow: 8",
+    "    showBits: false",
+    "---",
+    '%%{init: {"packet": {"bitsPerRow": 16}}}%%',
+    "packet-beta",
+    '0-15: "SelfCheck dir a"',
+    '16-31: "SelfCheck dir b"',
+    "",
+  ].join("\n");
+
+  // The `+bits` form, and every optional field ABSENT.
+  const PACKET_SELF_CHECK_PLUS = [
+    "packet-beta",
+    '+16: "SelfCheck plus a"',
+    '+16: "SelfCheck plus b"',
+    "",
+  ].join("\n");
+
+  // Names: `#quot;` decoded, a typed break and a typed tag LEFT AS TYPED, a
+  // quoted escape resolved, a single-quoted label; a body title holding an
+  // author-escaped tag; the acc block form.
+  const PACKET_SELF_CHECK_TEXT = [
+    "packet-beta",
+    "title SelfCheck body &lt;b&gt; title",
+    "accTitle: SelfCheck text acc title",
+    "accDescr {",
+    "    SelfCheck text acc one",
+    "    SelfCheck text acc two",
+    "}",
+    '0-15: "SelfCheck q #quot;x#quot;"',
+    '16-23: "SelfCheck a<br>b"',
+    '24-31: "SelfCheck <b>c</b>"',
+    '32-39: "SelfCheck say \\"hi\\""',
+    "40: 'SelfCheck single'",
+    "",
+  ].join("\n");
+
+  // PR12 title forms (item 114). Five sources: a body title with a bare `&`
+  // and `<` and a `#quot;` code; a frontmatter title with both; a typed
+  // `&amp;` beside a bare `<` with an accTitle carrying the same forms; a
+  // typed tag the sanitiser REMOVES; a real title written before an
+  // `accDescr {` block holding a line that starts `title`.
+  const PACKET_SELF_CHECK_TITLE_BODY = [
+    "packet-beta",
+    "title SelfCheck a & b <3 #quot;q#quot;",
+    '0-7: "SelfCheck t1"',
+    "",
+  ].join("\n");
+  const PACKET_SELF_CHECK_TITLE_FM = [
+    "---",
+    "title: SelfCheck c < d & e",
+    "---",
+    "packet-beta",
+    '0-7: "SelfCheck t2"',
+    "",
+  ].join("\n");
+  const PACKET_SELF_CHECK_TITLE_TYPED = [
+    "packet-beta",
+    "title SelfCheck f &amp; g <",
+    "accTitle: SelfCheck i &amp; j <",
+    '0-7: "SelfCheck t3"',
+    "",
+  ].join("\n");
+  const PACKET_SELF_CHECK_TITLE_TAG = [
+    "packet-beta",
+    "title SelfCheck h & <team>",
+    '0-7: "SelfCheck t4"',
+    "",
+  ].join("\n");
+  const PACKET_SELF_CHECK_TITLE_DESCR = [
+    "packet-beta",
+    "title SelfCheck real & <",
+    "accDescr {",
+    "title SelfCheck fake",
+    "}",
+    '0-7: "SelfCheck t5"',
+    "",
+  ].join("\n");
+
+  // Accepted by Mermaid, refused by the reader.
+  const PACKET_SELF_CHECK_STOP_ZERO = [
+    "---",
+    "config:",
+    "  packet:",
+    "    bitsPerRow: 0",
+    "---",
+    "packet-beta",
+    '0-7: "SelfCheck zero"',
+    "",
+  ].join("\n");
+  // Text where a width belongs (R3: flow-form config is now READ, so this is
+  // the second refusal Mermaid accepts and the reader keeps).
+  const PACKET_SELF_CHECK_STOP_TEXT = [
+    "---",
+    "config:",
+    "  packet:",
+    "    bitsPerRow: ten",
+    "---",
+    "packet-beta",
+    '0-15: "SelfCheck text width"',
+    "",
+  ].join("\n");
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessor
+   * names, the same-tick snapshot, the title route, the source reader and the
+   * grid, the config precedence, the decode, the cross-check and the STOPs.
+   * Resolves true on a clean run; on any failure logs ONE ERROR naming the
+   * first failed assertion, marks the surface unhealthy, and resolves false.
+   * Never throws.
+   *
+   * @returns {Promise<boolean>} The packet health verdict
+   */
+  function runPacketSelfCheck() {
+    if (packetSelfCheckPromise) {
+      return packetSelfCheckPromise;
+    }
+    packetSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readPacketInSlot(code).then(
+        (result) => ({ result: result }),
+        (error) => ({ error: error })
+      );
+    const stopped = (outcome, pattern) =>
+      !!outcome.error && pattern.test(String(outcome.error.message));
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      // ITEM 114, 15 October 2026. THE SELF-CHECK READS THE DEFAULTS, AND A
+      // RENDERED DIRECTIVE LEAVES ITS SETTINGS BEHIND. mermaid.render applies a
+      // `%%{init: {"packet": {"bitsPerRow": 16}}}%%` directive to the GLOBAL
+      // config and nothing clears it until the next render starts, so a page
+      // whose FIRST packet diagram carries one ran this lazy check under 16
+      // (measured: bitsPerRow 16 in getConfig() after the render, 32 after
+      // reset()), failed its default-width assertions, and marked the surface
+      // unhealthy for the life of the page: every packet diagram then fell to
+      // the generation-failed fallback. mermaidAPI.reset() returns the config
+      // to the site's own, which is what each render's start does anyway.
+      if (typeof window.mermaid.mermaidAPI.reset === "function") {
+        window.mermaid.mermaidAPI.reset();
+      }
+      const outcomes = {};
+      let chain = Promise.resolve();
+      [
+        ["main", PACKET_SELF_CHECK_MAIN],
+        ["fm16", PACKET_SELF_CHECK_FM16],
+        ["dir", PACKET_SELF_CHECK_DIRECTIVE],
+        ["plus", PACKET_SELF_CHECK_PLUS],
+        ["text", PACKET_SELF_CHECK_TEXT],
+        ["titleBody", PACKET_SELF_CHECK_TITLE_BODY],
+        ["titleFm", PACKET_SELF_CHECK_TITLE_FM],
+        ["titleTyped", PACKET_SELF_CHECK_TITLE_TYPED],
+        ["titleTag", PACKET_SELF_CHECK_TITLE_TAG],
+        ["titleDescr", PACKET_SELF_CHECK_TITLE_DESCR],
+        ["stopZero", PACKET_SELF_CHECK_STOP_ZERO],
+        ["stopText", PACKET_SELF_CHECK_STOP_TEXT],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+          });
+      });
+
+      return chain.then(() => {
+        const mainDb = outcomes.main.result && outcomes.main.result.diagram.db;
+        const accessorsPresent =
+          !!mainDb &&
+          PACKET_DB_ACCESSORS.every((name) => typeof mainDb[name] === "function");
+        const d = (key) => (outcomes[key].result ? outcomes[key].result.delivery : null);
+        const main = d("main");
+        const fm16 = d("fm16");
+        const dir = d("dir");
+        const plus = d("plus");
+        const text = d("text");
+        const titleBody = d("titleBody");
+        const titleFm = d("titleFm");
+        const titleTyped = d("titleTyped");
+        const titleTag = d("titleTag");
+        const titleDescr = d("titleDescr");
+        const everything = [
+          main,
+          fm16,
+          dir,
+          plus,
+          text,
+          titleBody,
+          titleFm,
+          titleTyped,
+          titleTag,
+          titleDescr,
+        ];
+
+        const stubRefuses = (dbOverrides, pattern) => {
+          const stubDb = Object.assign(
+            {
+              getPacket: () => [],
+              getConfig: () => ({ bitsPerRow: 32, showBits: true }),
+              getDiagramTitle: () => "",
+              getAccTitle: () => "",
+              getAccDescription: () => "",
+            },
+            dbOverrides
+          );
+          try {
+            normalisePacket({ db: stubDb }, 'packet-beta\n0-7: "x"\n');
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const readerRefuses = (code, pattern) => {
+          try {
+            readPacketSource(code, { bitsPerRow: 32, showBits: true });
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        // ITEM 114, R3: what the reader APPLIES for one config form, with the
+        // site defaults 32 and true. Pure; Mermaid is not asked.
+        const FM = (lines) => "---\n" + lines.join("\n") + "\n---\npacket-beta\n0-7: \"x\"\n";
+        const DIR = (json) => "%%{init: " + json + "}%%\npacket-beta\n0-7: \"x\"\n";
+        const appliedAs = (
+          code,
+          width,
+          show,
+          defaults = { bitsPerRow: 32, showBits: true }
+        ) => {
+          try {
+            const got = readPacketSource(code, defaults);
+            return got.bitsPerRow === width && got.showBits === show;
+          } catch (error) {
+            return false;
+          }
+        };
+        // ITEM 114, R2: a db whose LIVE config carries a leaked 16 and no
+        // showBits (what the last render left behind) must not change the
+        // delivery of a source that names no width. Stubbed, so no global
+        // config is touched mid-page; concurrency.mjs CP4 does it for real.
+        const leakedConfigIgnored = () => {
+          const leakedDb = {
+            getPacket: () => [],
+            getConfig: () => ({ bitsPerRow: 16, showBits: false }),
+            getDiagramTitle: () => "",
+            getAccTitle: () => "",
+            getAccDescription: () => "",
+          };
+          try {
+            const delivery = normalisePacket(
+              { db: leakedDb },
+              'packet-beta\n0-7: "x"\n'
+            );
+            return delivery.bitsPerRow === 32 && delivery.showBits === true;
+          } catch (error) {
+            return false;
+          }
+        };
+
+        return [
+          [
+            "the five db accessors this surface reads exist by name, and " +
+              "every self-check source parsed and normalised",
+            accessorsPresent && everything.every((delivery) => delivery !== null),
+          ],
+          [
+            "TITLE ROUTE and the shared store: a frontmatter title and the " +
+              "acc pair survive the same-tick snapshot, diagramType is packet",
+            !!main &&
+              main.diagramType === "packet" &&
+              main.title === "SelfCheck packet title" &&
+              main.accTitle === "SelfCheck packet acc title" &&
+              main.accDescr === "SelfCheck packet acc descr",
+          ],
+          [
+            "a plain field, a single-bit field, a field crossing a row and " +
+              "a short final row read as the author's own declarations, in " +
+              "source order, width = end - start + 1",
+            !!main &&
+              main.fields.length === 4 &&
+              same(
+                main.fields.map((f) => [f.start, f.end, f.width, f.name]),
+                [
+                  [0, 15, 16, "SelfCheck plain"],
+                  [16, 16, 1, "SelfCheck bit"],
+                  [17, 47, 31, "SelfCheck wide"],
+                  [48, 55, 8, "SelfCheck tail"],
+                ]
+              ) &&
+              main.fields.every((f) => f.rawName === f.name),
+          ],
+          [
+            "THE GRID: the crossing field is two segments with continues on " +
+              "all but the last, and the unfilled final row ends where it is " +
+              "filled",
+            !!main &&
+              main.bitsPerRow === 32 &&
+              main.showBits === true &&
+              same(
+                main.rows,
+                [
+                  {
+                    index: 0,
+                    startBit: 0,
+                    endBit: 31,
+                    segments: [
+                      { fieldIndex: 0, start: 0, end: 15, continues: false },
+                      { fieldIndex: 1, start: 16, end: 16, continues: false },
+                      { fieldIndex: 2, start: 17, end: 31, continues: true },
+                    ],
+                  },
+                  {
+                    index: 1,
+                    startBit: 32,
+                    endBit: 55,
+                    segments: [
+                      { fieldIndex: 2, start: 32, end: 47, continues: false },
+                      { fieldIndex: 3, start: 48, end: 55, continues: false },
+                    ],
+                  },
+                ]
+              ),
+          ],
+          [
+            "bitsPerRow 16 by FRONTMATTER reaches the grid, and the db, laid " +
+              "out at its own 32, still holds one row against the grid's two",
+            !!fm16 &&
+              fm16.bitsPerRow === 16 &&
+              fm16.showBits === true &&
+              fm16.rows.length === 2 &&
+              fm16.rows[0].segments.length === 2 &&
+              fm16.rows[0].segments[1].continues === true &&
+              fm16.rows[1].segments[0].continues === false &&
+              fm16.crossCheck.dbRowCount === 1 &&
+              fm16.crossCheck.gridRowCount === 2 &&
+              fm16.crossCheck.dbBitsPerRow === 32,
+          ],
+          [
+            "bitsPerRow 16 by DIRECTIVE beats a frontmatter 8, and the " +
+              "frontmatter showBits false survives the directive (deep merge)",
+            !!dir &&
+              dir.bitsPerRow === 16 &&
+              dir.showBits === false &&
+              dir.rows.length === 2,
+          ],
+          [
+            "the `+bits` form lays out as consecutive ranges, and every " +
+              "ABSENT optional field arrives null, never an empty string",
+            !!plus &&
+              same(plus.fields.map((f) => [f.start, f.end]), [[0, 15], [16, 31]]) &&
+              plus.title === null &&
+              plus.accTitle === null &&
+              plus.accDescr === null &&
+              plus.rows.length === 1,
+          ],
+          [
+            "NAMES: #quot; decoded, a typed <br> and <b> left as typed, a " +
+              "quoted escape resolved, a single-quoted label, rawName kept " +
+              "undecoded",
+            !!text &&
+              same(
+                text.fields.map((f) => f.name),
+                [
+                  'SelfCheck q "x"',
+                  "SelfCheck a<br>b",
+                  "SelfCheck <b>c</b>",
+                  'SelfCheck say "hi"',
+                  "SelfCheck single",
+                ]
+              ) &&
+              text.fields[0].rawName === "SelfCheck q #quot;x#quot;" &&
+              text.fields[3].rawName === 'SelfCheck say "hi"',
+          ],
+          [
+            "a body title holding an author-escaped tag arrives as typed, " +
+              "and the acc block arrives without its indentation",
+            !!text &&
+              text.title === "SelfCheck body &lt;b&gt; title" &&
+              text.accTitle === "SelfCheck text acc title" &&
+              typeof text.accDescr === "string" &&
+              text.accDescr.indexOf("SelfCheck text acc one") === 0 &&
+              text.accDescr.indexOf("SelfCheck text acc two") > 0,
+          ],
+          [
+            "PR12 TITLES: a bare & and < in a body title or a frontmatter " +
+              "title read as the author's characters, a #quot; code still " +
+              "decodes, a typed &amp; beside a bare < stays as typed, an " +
+              "accTitle is delivered untouched, a title the sanitiser " +
+              "changed by removing a typed tag stays as drawn with its codes " +
+              "read as the author's characters, and a " +
+              "`title` line inside an accDescr block is never the title",
+            !!titleBody &&
+              titleBody.title === 'SelfCheck a & b <3 "q"' &&
+              !!titleFm &&
+              titleFm.title === "SelfCheck c < d & e" &&
+              !!titleTyped &&
+              titleTyped.title === "SelfCheck f &amp; g <" &&
+              titleTyped.accTitle === "SelfCheck i &amp; j &lt;" &&
+              !!titleTag &&
+              titleTag.title === "SelfCheck h & " &&
+              !!titleDescr &&
+              titleDescr.title === "SelfCheck real & <",
+          ],
+          [
+            "R4 TITLES, the resolver on literal inputs: a removed tag leaves " +
+              "the codes read as characters (R&D, a second body title), " +
+              "#quot; in a frontmatter title reads as a quote whether or not " +
+              "the guard agrees, and a typed code beside a removed tag stays " +
+              "as drawn",
+            resolvePacketTitle("R&amp;D ", "R&D <team>", null) === "R&D " &&
+              resolvePacketTitle("Second &amp; ", "Second & <last>", null) ===
+                "Second & " &&
+              resolvePacketTitle(
+                "Frame #quot;x#quot; &amp; &lt;",
+                null,
+                "Frame #quot;x#quot; & <"
+              ) === 'Frame "x" & <' &&
+              resolvePacketTitle(
+                "say #quot;hi#quot;  &amp; you",
+                null,
+                "say #quot;hi#quot; <team> & you"
+              ) === 'say "hi"  & you' &&
+              resolvePacketTitle("x &amp; y ", "x &amp; y <team>", null) ===
+                "x &amp; y " &&
+              resolvePacketTitle("a &amp; b &lt; c &gt; d", "a & b < c > d", null) ===
+                "a & b < c > d",
+          ],
+          [
+            "R7 LINE BREAKS: a newline run in a name or a title reads as one " +
+              "space (a run at the ends is dropped, a CRLF and surrounding " +
+              "spaces fold in, plain white space is left as typed), through the " +
+              "reader and through the title resolver",
+            collapsePacketLineBreaks("g\nh") === "g h" &&
+              collapsePacketLineBreaks("g \r\n  h") === "g h" &&
+              collapsePacketLineBreaks("g\n\nh") === "g h" &&
+              collapsePacketLineBreaks("\ng\n") === "g" &&
+              collapsePacketLineBreaks("g  h\tx") === "g  h\tx" &&
+              !!readPacketSource('packet-beta\n0-7: "g\\nh"\n', {
+                bitsPerRow: 32,
+                showBits: true,
+              }).fields.length &&
+              readPacketSource('packet-beta\n0-7: "g\\nh"\n', {
+                bitsPerRow: 32,
+                showBits: true,
+              }).fields[0].name === "g h" &&
+              resolvePacketTitle("g\nh\n", "g\nh", null) === "g h" &&
+              resolvePacketTitle("\n", "\n", null) === null,
+          ],
+          [
+            "the crossCheck carries the db's rows verbatim, the grid re-run " +
+              "at the db's own bitsPerRow reproduces them (range and decoded " +
+              "label) on EVERY self-check source, and where no in-source " +
+              "bitsPerRow is in force the db and grid row counts are equal",
+            everything.every(
+              (delivery) =>
+                delivery !== null &&
+                delivery.crossCheck.agrees === true &&
+                Array.isArray(delivery.crossCheck.dbRows) &&
+                delivery.crossCheck.gridTruncated === false
+            ) &&
+              [main, plus, text].every(
+                (delivery) =>
+                  delivery.crossCheck.dbRowCount ===
+                  delivery.crossCheck.gridRowCount
+              ) &&
+              main.crossCheck.dbRows[0].length === 3 &&
+              main.crossCheck.dbRows[0][2].label === "SelfCheck wide",
+          ],
+          [
+            "THE STOPS: a bitsPerRow of 0 and a bitsPerRow of text, which Mermaid " +
+              "accepts, are refused by the reader, an unreadable field " +
+              "line is refused, and a db that breaks its own shape is refused",
+            stopped(outcomes.stopZero, /Packet source reader: bitsPerRow/) &&
+              stopped(outcomes.stopText, /Packet source reader: bitsPerRow/) &&
+              readerRefuses(
+                'packet-beta\n0-7: "ok"\nnot a field line\n',
+                /Packet source reader: cannot read/
+              ) &&
+              stubRefuses(
+                { getPacket: () => ({}) },
+                /db\.getPacket must return an Array/
+              ) &&
+              stubRefuses({ getAccTitle: undefined }, /db\.getAccTitle is not a function/),
+          ],
+          [
+            "R3 FLOW FORM: a flow-style `config: {…}` (JSON and bare keys, " +
+              "across lines, with a trailing comment) and a flow `packet: {…}` " +
+              "under a block `config:` are read, with the other keys beside " +
+              "`packet` ignored",
+            appliedAs(FM(['config: {"packet": {"bitsPerRow": 16}}']), 16, true) &&
+              appliedAs(FM(["config: {theme: forest, packet: {bitsPerRow: 8}} # c"]), 8, true) &&
+              appliedAs(FM(["config: {", "  packet: {bitsPerRow: 16,", "    showBits: false}", "}"]), 16, false) &&
+              appliedAs(FM(["config:", "  packet: {bitsPerRow: 16, showBits: no}"]), 16, true),
+          ],
+          [
+            "R3 WIDTH VALUES: a quoted `\"16\"` or `'16'`, a `+16`, a hex " +
+              "`0x10` and `true` (one bit) are applied as Mermaid applies " +
+              "them, in frontmatter and directive alike",
+            appliedAs(FM(["config:", "  packet:", '    bitsPerRow: "16"']), 16, true) &&
+              appliedAs(FM(["config:", "  packet:", "    bitsPerRow: '16' # c"]), 16, true) &&
+              appliedAs(FM(["config:", "  packet:", "    bitsPerRow: +16"]), 16, true) &&
+              appliedAs(FM(["config:", "  packet:", '    bitsPerRow: "0x10"']), 16, true) &&
+              appliedAs(FM(["config:", "  packet:", "    bitsPerRow: true"]), 1, true) &&
+              appliedAs(DIR('{"packet": {"bitsPerRow": "16"}}'), 16, true),
+          ],
+          [
+            "R3 SHOWBITS VALUES: showBits is its JavaScript truthiness, so `no`, " +
+              "`off`, `\"false\"` and `\"0\"` draw the numbers while false, `False`, " +
+              "0 and `\"\"` do not",
+            appliedAs(FM(["config:", "  packet:", "    showBits: no"]), 32, true) &&
+              appliedAs(FM(["config:", "  packet:", "    showBits: off"]), 32, true) &&
+              appliedAs(FM(["config:", "  packet:", '    showBits: "false"']), 32, true) &&
+              appliedAs(FM(["config:", "  packet:", '    showBits: "0"']), 32, true) &&
+              appliedAs(FM(["config:", "  packet:", "    showBits: False"]), 32, false) &&
+              appliedAs(FM(["config:", "  packet:", "    showBits: 0"]), 32, false) &&
+              appliedAs(FM(["config:", "  packet:", '    showBits: ""']), 32, false) &&
+              appliedAs(DIR('{"packet": {"showBits": 0}}'), 32, false),
+          ],
+          [
+            "R3 DISCARDED VALUES: a null, an array or an object at the highest " +
+              "tier that names the key gives the DEFAULT, not the tier below " +
+              "(a directive `[8]` over a frontmatter 16 reads 32; a directive " +
+              "`[true]` over a frontmatter showBits false reads true)",
+            appliedAs(
+              "---\nconfig:\n  packet:\n    bitsPerRow: 16\n    showBits: false\n---\n" +
+                DIR('{"packet": {"bitsPerRow": [8], "showBits": [true]}}'),
+              32,
+              true
+            ) &&
+              appliedAs(FM(["config:", "  packet:", "    bitsPerRow: [16]"]), 32, true) &&
+              appliedAs(FM(["config:", "  packet:", "    bitsPerRow:"]), 32, true) &&
+              appliedAs(DIR('{"packet": {"bitsPerRow": null}}'), 32, true) &&
+              // Arrays and objects are truthy, so only a default of false can
+              // tell "discarded" from "coerced" for showBits.
+              appliedAs(
+                DIR('{"packet": {"showBits": [true]}}'),
+                32,
+                false,
+                { bitsPerRow: 32, showBits: false }
+              ) &&
+              appliedAs(
+                DIR('{"packet": {"showBits": {"a": 1}}}'),
+                32,
+                false,
+                { bitsPerRow: 32, showBits: false }
+              ),
+          ],
+          [
+            "R3 STILL REFUSED: 0, false, text, a fraction, a negative, a " +
+              "trailing-space string and an unplaceable flow collection",
+            [
+              FM(["config:", "  packet:", "    bitsPerRow: 0"]),
+              FM(["config:", "  packet:", "    bitsPerRow: false"]),
+              FM(["config:", "  packet:", "    bitsPerRow: ten"]),
+              FM(["config:", "  packet:", "    bitsPerRow: 12.5"]),
+              FM(["config:", "  packet:", '    bitsPerRow: "16.5"']),
+              FM(["config:", "  packet:", "    bitsPerRow: -4"]),
+              FM(["config:", "  packet:", '    bitsPerRow: "16 "']),
+              DIR('{"packet": {"bitsPerRow": 0}}'),
+              DIR('{"packet": {"bitsPerRow": "ten"}}'),
+            ].every((code) => readerRefuses(code, /Packet source reader: bitsPerRow/)) &&
+              readerRefuses(
+                FM(["config: {packet: {bitsPerRow: 16"]),
+                /Packet source reader: the frontmatter/
+              ),
+          ],
+          [
+            "THE DEFAULT WIDTH is the site config, not the live one: a db " +
+              "whose live config carries a leaked 16 and showBits false " +
+              "delivers a width-free source at 32 and showBits true",
+            leakedConfigIgnored(),
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    packetSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Packet self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's packet internals no longer " +
+              "match the 14 October 2026 census, or the source reader or " +
+              "grid has drifted; do not trust packet adapter output."
+          );
+          packetHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Packet self-check passed: accessor, title-route, fields, grid, " +
+            "frontmatter-config, directive-precedence, plus-form, absent-fields, " +
+            "names, title-forms, cross-check and stop assertions all hold"
+        );
+        packetHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Packet self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        packetHealthy = false;
+        return false;
+      });
+
+    return packetSelfCheckPromise;
+  }
+
+  /**
+   * Report the packet surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the packet self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isPacketHealthy() {
+    return packetHealthy;
+  }
+
+  // ---------------------------------------------------------------------
+  // TREEMAP — the SIXTEENTH surface, for the twenty-third generator (register
+  // item 119, 21 October 2026)
+  //
+  // A HYBRID, on the packet precedent: the db for validity, names, values and
+  // nesting (getNodes() is a flat Array in author order and db.levels holds
+  // each node's depth), a SOURCE reader for what the db does not hold, one
+  // tree builder, one total function, one sort. Measured in
+  // docs/mermaid-item-119-census-1-2026-10-21.md and
+  // docs/mermaid-item-119-surface-2-2026-10-21.md.
+  //
+  // WHAT THE DB LACKS. A section has no total (it is the sum of its leaves,
+  // derived here), the canvas draws siblings in a different order from the
+  // author's (derived here), and in-source `showValues` / `valueFormat` reach
+  // the canvas but NOT the db: getConfig() reads the defaults at parse time
+  // (a source reader supplies them).
+  //
+  // THE SORT, MEASURED ON THE CANVAS (87 sources, 21 October 2026): siblings
+  // are drawn by total DESCENDING, ties in AUTHOR order, a section and a leaf
+  // sorted together; a zero sorts last and is drawn as a 0-size box that is
+  // still present. THE TOTAL IS SUMMED FROM THE LAST CHILD TO THE FIRST, as
+  // d3's hierarchy.sum does: 0.6 against 0.1 + 0.2 + 0.3 is a tie summed that
+  // way and a loss the other way (E08), so a forward sum puts a section in the
+  // wrong place by one float ulp.
+  //
+  // CONFIG, MEASURED ON THE CANVAS: per key, the highest tier that NAMES the
+  // key supplies the raw value (a directive beats frontmatter; a later
+  // directive beats an earlier one), and a null, an array, an object or a
+  // string holding `<` or `>` at that tier gives the DEFAULT, not the tier
+  // below. showValues hides values only for the boolean `false`
+  // (`a.showValues !== false`: a quoted "false", 0, "no" and "" all show).
+  // valueFormat is read by the renderer as `value || ","`, with its own `$`
+  // handling, then d3-format: a string d3 rejects, a number and "" draw as
+  // ",", and a `$` format whose remainder d3 rejects makes the render THROW
+  // (a STOP here, as the canvas cannot be drawn). THE DEFAULT IS MERMAID'S
+  // SITE CONFIG, NEVER THE LIVE ONE (packet R2): a render leaves its
+  // in-source values in the live config and db.getConfig() carries them into
+  // the next parse.
+  //
+  // A NODE LINE THE READER CANNOT PARSE IS A STOP, never a silent drop. The
+  // db's flat list is delivered verbatim as `crossCheck` and never narrated.
+  // A value Mermaid stores differently from what the author typed (`1_000`
+  // is stored as 1, `1.2.3` as 1.2) is delivered as the db delivers it, with
+  // the author's token and a note beside it, never corrected.
+  const TREEMAP_DB_ACCESSORS = Object.freeze([
+    "getNodes",
+    "getDiagramTitle",
+    "getAccTitle",
+    "getAccDescription",
+  ]);
+  const TREEMAP_CONFIG_KEYS = Object.freeze(["showValues", "valueFormat"]);
+  const TREEMAP_CONFIG_WORDS = /showValues|valueFormat/;
+  const TREEMAP_DIRECTIVE_PATTERN = PACKET_DIRECTIVE_PATTERN;
+  const TREEMAP_UNPLACED =
+    "the frontmatter names a treemap setting the reader could not place";
+  const TREEMAP_HEADER_PATTERN = /^[ \t]*(?:treemap-beta|treemap)(?![\w-])[ \t]*$/;
+  const TREEMAP_NODE_PATTERN =
+    /^([ \t]*)("[^"]*"|'[^']*')(?:[ \t]*:::[ \t]*\S+?)?(?:[ \t]*[:,][ \t]*([0-9_.,]+)(?:[ \t]*:::[ \t]*\S+)?)?[ \t]*$/;
+  // d3-format's own specifier pattern: a string it does not match throws
+  // "invalid format", which the renderer catches and draws as ",".
+  const TREEMAP_FORMAT_SPEC =
+    /^(?:(.)?([<>=^]))?([+\-( ])?([$#])?(0)?(\d+)?(,)?(\.\d+)?(~)?([a-z%])?$/i;
+  const TREEMAP_FORMAT_DOLLAR_COMMA = "$0,0";
+  const TREEMAP_FALLBACK_FORMAT = ",";
+  const TREEMAP_ROOT_LEVEL = -1;
+
+  let treemapMemoCode = null;
+  let treemapMemoPromise = null;
+  let treemapHealthy = null;
+  let treemapSelfCheckStarted = false;
+  let treemapSelfCheckPromise = null;
+
+  function treemapStop(message) {
+    return new Error("Treemap source reader: " + message);
+  }
+
+  /**
+   * The YAML and flow readers shared with packet throw a packet-named STOP;
+   * a treemap caller re-raises it under its own name, or leaves it alone when
+   * the text it was reading cannot hold a treemap key at all.
+   */
+  function readTreemapFlow(read, holdsKeys) {
+    try {
+      return read();
+    } catch (error) {
+      if (!/^Packet source reader:/.test(String((error && error.message) || ""))) {
+        throw error;
+      }
+      if (holdsKeys) {
+        throw treemapStop(TREEMAP_UNPLACED);
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Read `config: treemap:` out of a frontmatter block: block style, flow
+   * style (`config: {…}` or `treemap: {…}`) and any mixture. A frontmatter
+   * with no `config:`, or a `config:` that names no treemap, is not an error:
+   * only an unreadable construct that DOES hold a treemap key is a STOP.
+   *
+   * @param {string} frontmatter - The text between the `---` fences
+   * @returns {{showValues: *, valueFormat: *}} A key not named is undefined;
+   *   a key named with no value is null
+   */
+  function readTreemapFrontmatterConfig(frontmatter) {
+    const out = { showValues: undefined, valueFormat: undefined };
+    const lines = [];
+    const starts = [];
+    frontmatter.split(/\r?\n/).reduce((offset, line) => {
+      lines.push(line);
+      starts.push(offset);
+      return offset + line.length + 1;
+    }, 0);
+    const text = lines.join("\n");
+    const indentOf = (line) => /^[ \t]*/.exec(line)[0].length;
+    const blank = (line) => line.trim() === "" || /^[ \t]*#/.test(line);
+    const emptyRest = (rest) => rest.trim() === "" || /^[ \t]*#/.test(rest);
+    const adopt = (treemap) => {
+      if (!treemap || typeof treemap !== "object" || Array.isArray(treemap)) {
+        return;
+      }
+      for (const key of TREEMAP_CONFIG_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(treemap, key)) {
+          out[key] = treemap[key];
+        }
+      }
+    };
+
+    const configAt = lines.findIndex((line) => /^config[ \t]*:/.test(line));
+    if (configAt < 0) {
+      return out;
+    }
+    let configEnd = lines.length;
+    for (let i = configAt + 1; i < lines.length; i++) {
+      if (!blank(lines[i]) && indentOf(lines[i]) === 0) {
+        configEnd = i;
+        break;
+      }
+    }
+    const configText = lines.slice(configAt, configEnd).join("\n");
+    const holdsKeys = TREEMAP_CONFIG_WORDS.test(configText);
+    const configRest = lines[configAt].replace(/^config[ \t]*:/, "");
+
+    if (!emptyRest(configRest)) {
+      // Flow style: `config: {treemap: {…}}`.
+      if (configRest.trim()[0] !== "{") {
+        if (holdsKeys) throw treemapStop(TREEMAP_UNPLACED);
+        return out;
+      }
+      const flowAt = starts[configAt] + lines[configAt].length - configRest.length;
+      const read = readTreemapFlow(() => readPacketFlowValue(text, flowAt), holdsKeys);
+      if (read && read.value) adopt(read.value.treemap);
+      return out;
+    }
+
+    let treemapAt = -1;
+    for (let i = configAt + 1; i < configEnd; i++) {
+      if (blank(lines[i])) continue;
+      if (/^[ \t]+treemap[ \t]*:/.test(lines[i])) {
+        treemapAt = i;
+        break;
+      }
+    }
+    if (treemapAt < 0) {
+      return out;
+    }
+    const treemapRest = lines[treemapAt].replace(/^[ \t]+treemap[ \t]*:/, "");
+    if (!emptyRest(treemapRest)) {
+      // Flow style under a block `config:`: `treemap: {…}`.
+      if (treemapRest.trim()[0] !== "{") {
+        throw treemapStop(TREEMAP_UNPLACED);
+      }
+      const flowAt = starts[treemapAt] + lines[treemapAt].length - treemapRest.length;
+      const read = readTreemapFlow(() => readPacketFlowValue(text, flowAt), true);
+      adopt(read.value);
+      return out;
+    }
+    const treemapIndent = indentOf(lines[treemapAt]);
+    let consumed = 0;
+    for (let i = treemapAt + 1; i < configEnd; i++) {
+      if (starts[i] < consumed) continue;
+      if (blank(lines[i])) continue;
+      if (indentOf(lines[i]) <= treemapIndent) break;
+      const pair = /^[ \t]+(\w+)[ \t]*:/.exec(lines[i]);
+      if (!pair || !TREEMAP_CONFIG_KEYS.includes(pair[1])) continue;
+      const read = readTreemapFlow(
+        () => readPacketBlockValue(text, starts[i] + pair[0].length),
+        true
+      );
+      consumed = read.end;
+      out[pair[1]] = read.value;
+    }
+    return out;
+  }
+
+  /**
+   * Read `treemap` settings out of every `%%{init: …}%%` directive; a later
+   * directive wins per key.
+   * @param {string} text - The source after the frontmatter
+   * @returns {{showValues: *, valueFormat: *}} A key no directive names is
+   *   undefined; a key named with null, an array or an object keeps that value
+   */
+  function readTreemapDirectiveConfig(text) {
+    const out = { showValues: undefined, valueFormat: undefined };
+    const pattern = new RegExp(TREEMAP_DIRECTIVE_PATTERN.source, "g");
+    let match;
+    while ((match = pattern.exec(text))) {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(match[1].trim().replace(/'/g, '"'));
+      } catch (error) {
+        parsed = null;
+      }
+      if (parsed === null || typeof parsed !== "object") {
+        if (TREEMAP_CONFIG_WORDS.test(match[1])) {
+          throw treemapStop(
+            "a directive names a treemap setting but does not parse as JSON"
+          );
+        }
+        continue;
+      }
+      const treemap = parsed.treemap;
+      if (!treemap || typeof treemap !== "object") continue;
+      for (const key of TREEMAP_CONFIG_KEYS) {
+        if (Object.prototype.hasOwnProperty.call(treemap, key)) {
+          out[key] = treemap[key];
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A raw config value Mermaid DISCARDS to the default: not set, null, an
+   * array, an object, or a string holding `<` or `>` (measured on the canvas,
+   * W1 to W7: the key is dropped and the result is the default, not the tier
+   * below).
+   */
+  function isTreemapDiscarded(raw) {
+    return (
+      raw === undefined ||
+      raw === null ||
+      typeof raw === "object" ||
+      (typeof raw === "string" && /[<>]/.test(raw))
+    );
+  }
+
+  /**
+   * What the renderer does with showValues: `a.showValues !== false`, so only
+   * the boolean false hides values (S5, S6, S8, S10, S11, T3, T4 all show).
+   */
+  function applyTreemapShowValues(raw, defaultShown) {
+    return isTreemapDiscarded(raw) ? defaultShown : raw !== false;
+  }
+
+  /**
+   * What the renderer does with valueFormat (read from the 11.17.2 bundle,
+   * then measured: V01 to V30, F1 to F11, W1 to W7).
+   *
+   * @param {*} raw - The raw value at the highest tier that names the key
+   * @param {string} defaultFormat - Mermaid's site default
+   * @returns {{format: string, fellBack: boolean}} The string the canvas
+   *   applies, and whether the author's own string was NOT the one used
+   * @throws {Error} "Treemap source reader: …" for a `$` format whose remainder
+   *   d3 rejects, which makes the render throw
+   */
+  function resolveTreemapValueFormat(raw, defaultFormat) {
+    const chosen = isTreemapDiscarded(raw) ? defaultFormat : raw;
+    const named = raw !== undefined && raw !== null;
+    let format = TREEMAP_FALLBACK_FORMAT;
+    if (typeof chosen === "string" && chosen !== "") {
+      if (
+        chosen === TREEMAP_FORMAT_DOLLAR_COMMA ||
+        (chosen[0] === "$" && chosen.includes(","))
+      ) {
+        format = chosen;
+      } else if (chosen[0] === "$") {
+        const rest = chosen.slice(1);
+        if (rest !== "" && !TREEMAP_FORMAT_SPEC.test(rest)) {
+          throw treemapStop(
+            "valueFormat " + JSON.stringify(chosen) + " makes the canvas throw"
+          );
+        }
+        format = chosen;
+      } else if (TREEMAP_FORMAT_SPEC.test(chosen)) {
+        format = chosen;
+      }
+    }
+    return { format: format, fellBack: named && format !== raw };
+  }
+
+  /**
+   * Read the node lines and the in-source treemap config from the diagram
+   * SOURCE. Pure; runs only after Mermaid has judged the source valid.
+   *
+   * @param {string} code - The Mermaid treemap source
+   * @param {{showValues: boolean, valueFormat: string}} defaults - Mermaid's
+   *   site config for the treemap
+   * @returns {Object} nodes (rawName, valueToken, one per node line),
+   *   showValues, valueFormat, the raw values, and the last body title
+   * @throws {Error} "Treemap source reader: …" on anything it cannot read
+   */
+  function readTreemapSource(code, defaults) {
+    let text = code;
+    let frontmatterConfig = { showValues: undefined, valueFormat: undefined };
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(text);
+    if (fence) {
+      frontmatterConfig = readTreemapFrontmatterConfig(fence[1]);
+      text = text.slice(fence[0].length);
+    }
+    const directiveConfig = readTreemapDirectiveConfig(text);
+    text = text.replace(new RegExp(TREEMAP_DIRECTIVE_PATTERN.source, "g"), "");
+
+    const nodes = [];
+    let sawHeader = false;
+    let inDescription = false;
+    let lastBodyTitle = null;
+    for (const line of text.split(/\r?\n/)) {
+      if (inDescription) {
+        if (line.includes("}")) inDescription = false;
+        continue;
+      }
+      if (/^[ \t]*$/.test(line) || /^[ \t]*%%/.test(line)) continue;
+      if (!sawHeader) {
+        if (!TREEMAP_HEADER_PATTERN.test(line)) {
+          throw treemapStop("no treemap header where one was expected");
+        }
+        sawHeader = true;
+        continue;
+      }
+      if (/^[ \t]*accDescr[ \t]*\{/.test(line)) {
+        if (!line.slice(line.indexOf("{") + 1).includes("}")) inDescription = true;
+        continue;
+      }
+      if (/^[ \t]*(?:accTitle|accDescr)[ \t]*:/.test(line)) continue;
+      if (/^[ \t]*classDef(?![\w-])/.test(line)) continue;
+      const bodyTitle = /^[ \t]*title(?![\w-])(.*)$/.exec(line);
+      if (bodyTitle) {
+        // The LAST body `title` is kept as typed, less a trailing `%%` comment
+        // (the packet rule, PR12).
+        lastBodyTitle = bodyTitle[1].replace(/[ \t]*%%.*$/, "").trim();
+        continue;
+      }
+      const node = TREEMAP_NODE_PATTERN.exec(line);
+      if (!node) {
+        throw treemapStop("cannot read " + JSON.stringify(line.trim().slice(0, 40)));
+      }
+      nodes.push({
+        rawName: node[2].slice(1, -1),
+        valueToken: node[3] === undefined ? null : node[3],
+      });
+    }
+    if (!sawHeader) {
+      throw treemapStop("no treemap header");
+    }
+
+    // Per key, the highest tier that NAMES the key supplies the raw value.
+    const rawShow =
+      directiveConfig.showValues !== undefined
+        ? directiveConfig.showValues
+        : frontmatterConfig.showValues;
+    const rawFormat =
+      directiveConfig.valueFormat !== undefined
+        ? directiveConfig.valueFormat
+        : frontmatterConfig.valueFormat;
+    const format = resolveTreemapValueFormat(rawFormat, defaults.valueFormat);
+    return {
+      nodes: nodes,
+      showValues: applyTreemapShowValues(rawShow, defaults.showValues),
+      valueFormat: format.format,
+      valueFormatFellBack: format.fellBack,
+      rawShowValues: rawShow === undefined ? null : rawShow,
+      rawValueFormat: rawFormat === undefined ? null : rawFormat,
+      bodyTitle: lastBodyTitle,
+    };
+  }
+
+  /**
+   * THE DEFAULTS ARE MERMAID'S SITE CONFIG, NEVER THE LIVE ONE (packet R2,
+   * confirmed for treemap on the canvas: a render of `showValues: false`
+   * leaves the live config at false, and the next parse's db.getConfig()
+   * carries it, while getSiteConfig().treemap stays at the defaults).
+   */
+  function readTreemapDefaults(dbConfig) {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    let site = null;
+    if (api && typeof api.getSiteConfig === "function") {
+      site = api.getSiteConfig();
+    }
+    if ((!site || !site.treemap) && api && api.defaultConfig) {
+      site = api.defaultConfig;
+    }
+    const treemap = site && site.treemap ? site.treemap : dbConfig || {};
+    return {
+      showValues: treemap.showValues !== false,
+      valueFormat:
+        typeof treemap.valueFormat === "string" && treemap.valueFormat !== ""
+          ? treemap.valueFormat
+          : TREEMAP_FALLBACK_FORMAT,
+    };
+  }
+
+  /**
+   * THE ONE TOTAL FUNCTION. A leaf's total is its value; a section's is the
+   * sum of its children's, added from the LAST child to the first as d3 does
+   * (float ties depend on it). A section with no children totals 0.
+   */
+  function totalTreemapNode(node) {
+    let total = node.leaf ? node.value : 0;
+    for (let i = node.children.length - 1; i >= 0; i--) {
+      total += totalTreemapNode(node.children[i]);
+    }
+    node.total = total;
+    return total;
+  }
+
+  /**
+   * THE ONE SORT. Siblings by total descending, ties in author order, a
+   * section and a leaf together; each child's position is its drawnIndex.
+   * Returns authorIndex in depth-first pre-order of the sorted tree.
+   */
+  function sortTreemapNode(node, drawnOrder) {
+    const sorted = node.children
+      .map((child, position) => ({ child: child, position: position }))
+      .sort((a, b) => b.child.total - a.child.total || a.position - b.position)
+      .map((entry) => entry.child);
+    node.children = sorted;
+    sorted.forEach((child, index) => {
+      child.drawnIndex = index;
+      drawnOrder.push(child.authorIndex);
+      sortTreemapNode(child, drawnOrder);
+    });
+  }
+
+  /**
+   * Rebuild the tree from the db's flat list, its levels and the reader's node
+   * lines; derive every total; sort every sibling set.
+   */
+  function buildTreemapTree(dbNodes, sourceNodes) {
+    const root = {
+      name: "",
+      rawName: "",
+      value: null,
+      total: 0,
+      children: [],
+      leaf: false,
+    };
+    const stack = [{ level: TREEMAP_ROOT_LEVEL, node: root }];
+    dbNodes.forEach((dbNode, authorIndex) => {
+      const source = sourceNodes[authorIndex] || null;
+      const leaf = !dbNode.hasChildren;
+      const rawValue = leaf && source ? source.valueToken : null;
+      const stored = leaf ? dbNode.value : null;
+      let valueNote = null;
+      if (leaf && rawValue !== null && Number(rawValue.replace(/,/g, "")) !== stored) {
+        valueNote =
+          "The author wrote " + rawValue + "; the diagram stores and draws " + stored + ".";
+      }
+      const item = {
+        name: decodePlaceholders(dbNode.name),
+        // The author's own text from the source (the db's copy holds
+        // placeholder bytes, and stays in crossCheck.dbNodes verbatim).
+        rawName: source ? source.rawName : dbNode.name,
+        value: stored,
+        rawValue: rawValue,
+        valueNote: valueNote,
+        total: 0,
+        level: dbNode.level,
+        authorIndex: authorIndex,
+        drawnIndex: 0,
+        leaf: leaf,
+        children: [],
+      };
+      while (stack.length > 1 && stack[stack.length - 1].level >= dbNode.level) {
+        stack.pop();
+      }
+      stack[stack.length - 1].node.children.push(item);
+      if (!leaf) stack.push({ level: dbNode.level, node: item });
+    });
+    totalTreemapNode(root);
+    const drawnOrder = [];
+    sortTreemapNode(root, drawnOrder);
+    return { root: root, drawnOrder: drawnOrder };
+  }
+
+  /**
+   * Normalise one parsed treemap diagram. Every db read is synchronous and
+   * happens before the source reader runs; call it in the same tick as the
+   * parse, inside the caller's own queue slot.
+   *
+   * @param {Object} diagram - The resolved getDiagramFromText result
+   * @param {string} code - The same source, for the reader
+   * @returns {Object} The normalised treemap delivery
+   */
+  function normaliseTreemap(diagram, code) {
+    const db = diagram.db;
+    for (const accessor of TREEMAP_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw new Error(
+          `Treemap surface: db.${accessor} is not a function; the pinned Mermaid ` +
+            "build's treemap db no longer matches the 21 October 2026 census"
+        );
+      }
+    }
+    if (!(db.levels instanceof Map)) {
+      throw new Error("Treemap surface: db.levels must be a Map of node to depth");
+    }
+    // The shared trio first: every parse of every type clears it.
+    const rawTitle = db.getDiagramTitle();
+    const rawAccTitle = db.getAccTitle();
+    const rawAccDescr = db.getAccDescription();
+
+    // An eager snapshot of plain keys, in author order, in the same tick.
+    const flat = db.getNodes();
+    if (!Array.isArray(flat)) {
+      throw new Error("Treemap surface: db.getNodes must return an Array");
+    }
+    const dbNodes = flat.map((node) => {
+      const level = db.levels.get(node);
+      const hasChildren = Array.isArray(node.children);
+      if (!Number.isInteger(level)) {
+        throw new Error("Treemap surface: a db node has no integer level");
+      }
+      if (!hasChildren && typeof node.value !== "number") {
+        throw new Error("Treemap surface: a db leaf has no numeric value");
+      }
+      return {
+        name: node.name,
+        value: hasChildren ? null : node.value,
+        hasChildren: hasChildren,
+        level: level,
+      };
+    });
+    const dbConfig =
+      typeof db.getConfig === "function" ? db.getConfig() || {} : {};
+
+    // Mermaid has judged the source valid; only now does the reader run.
+    const read = readTreemapSource(code, readTreemapDefaults(dbConfig));
+    const built = buildTreemapTree(dbNodes, read.nodes);
+
+    const agrees =
+      dbNodes.length === read.nodes.length &&
+      dbNodes.every((dbNode, i) => {
+        const source = read.nodes[i];
+        return (
+          decodePlaceholders(dbNode.name) === decodeSourcePlaceholders(source.rawName) &&
+          dbNode.hasChildren === (source.valueToken === null)
+        );
+      });
+
+    return {
+      diagramType: "treemap",
+      title: resolvePacketTitle(
+        rawTitle,
+        read.bodyTitle,
+        readFrontmatterTitle(code)
+      ),
+      // NO transform on accTitle or accDescr: the standing carve-out.
+      accTitle:
+        typeof rawAccTitle !== "string" || rawAccTitle === ""
+          ? null
+          : rawAccTitle,
+      accDescr:
+        typeof rawAccDescr !== "string" || rawAccDescr === ""
+          ? null
+          : rawAccDescr,
+      showValues: read.showValues,
+      valueFormat: read.valueFormat,
+      root: built.root,
+      drawnOrder: built.drawnOrder,
+      crossCheck: {
+        // The db's flat list verbatim: author order, names encoded. Never
+        // narrated.
+        dbNodes: dbNodes,
+        dbNodeCount: dbNodes.length,
+        sourceNodeCount: read.nodes.length,
+        agrees: agrees,
+        config: {
+          rawShowValues: read.rawShowValues,
+          rawValueFormat: read.rawValueFormat,
+          valueFormatFellBack: read.valueFormatFellBack,
+          dbShowValues: dbConfig.showValues,
+          dbValueFormat: dbConfig.valueFormat,
+        },
+      },
+    };
+  }
+
+  /**
+   * One treemap parse, FROM THE TITLE READ TO THE DELIVERY, with no yield
+   * point between the parse and the db reads. It must run inside an adapter
+   * queue slot; parseTreemap and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid treemap source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readTreemapInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    const parsed =
+      title === null
+        ? api.getDiagramFromText(code)
+        : api.getDiagramFromText(code, { title: title });
+    return parsed.then((diagram) => ({
+      diagram: diagram,
+      delivery: normaliseTreemap(diagram, code),
+    }));
+  }
+
+  /**
+   * Parse a treemap diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and every db
+   * read happens inside this call's own queue slot. THE QUEUE IS LOAD-BEARING
+   * HERE AS IT IS FOR PACKET: the treemap parser is a module singleton whose
+   * `yy` is read after an `await`, so two overlapping parses write into the
+   * wrong db (census S8: A's db empty, B's holding both).
+   *
+   * @param {string} code - The Mermaid treemap source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseTreemap(code) {
+    if (!treemapSelfCheckStarted) {
+      runTreemapSelfCheck();
+    }
+
+    if (code === treemapMemoCode && treemapMemoPromise) {
+      logDebug("Returning memoised treemap parse for identical code string");
+      return treemapMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Treemap parse entering its queue slot, ${code.length} characters`);
+      return readTreemapInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Treemap parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.crossCheck.dbNodeCount} node(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Treemap parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    treemapMemoCode = code;
+    treemapMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed SelfCheck. Sources
+  // parsed one after another in ONE slot, each fully normalised before the
+  // next parse replaces the shared store.
+
+  // MAIN: a frontmatter title (the title route), a frontmatter valueFormat,
+  // the acc pair, three levels, a tie at two levels, a zero leaf, a leaf and
+  // a section ordered together, and a final leaf that sorts above the zero.
+  const TREEMAP_SELF_CHECK_MAIN = [
+    "---",
+    "title: SelfCheck treemap title",
+    "config:",
+    "  treemap:",
+    '    valueFormat: ".1f"',
+    "---",
+    "treemap-beta",
+    "accTitle: SelfCheck treemap acc title",
+    "accDescr: SelfCheck treemap acc descr",
+    '"SelfCheck Top"',
+    '    "SelfCheck mid"',
+    '        "SelfCheck deep a": 2',
+    '        "SelfCheck deep b": 2',
+    '    "SelfCheck big": 10',
+    '"SelfCheck tie a": 4',
+    '"SelfCheck tie b": 4',
+    '"SelfCheck zero": 0',
+    '"SelfCheck tail": 1',
+    "",
+  ].join("\n");
+
+  // showValues false by FRONTMATTER alone.
+  const TREEMAP_SELF_CHECK_SHOW_FM = [
+    "---",
+    "config:",
+    "  treemap:",
+    "    showValues: false",
+    "---",
+    "treemap-beta",
+    '"SelfCheck sv a": 1',
+    "",
+  ].join("\n");
+
+  // A DIRECTIVE beating frontmatter for both keys, and the deep merge.
+  const TREEMAP_SELF_CHECK_DIRECTIVE = [
+    "---",
+    "config:",
+    "  treemap:",
+    "    showValues: false",
+    '    valueFormat: ".2f"',
+    "---",
+    '%%{init: {"treemap": {"showValues": true, "valueFormat": "$,.0f"}}}%%',
+    "treemap-beta",
+    '"SelfCheck sd a": 1',
+    "",
+  ].join("\n");
+
+  // showValues false by DIRECTIVE alone, over a frontmatter true.
+  const TREEMAP_SELF_CHECK_SHOW_DIR = [
+    "---",
+    "config:",
+    "  treemap:",
+    "    showValues: true",
+    "---",
+    '%%{init: {"treemap": {"showValues": false}}}%%',
+    "treemap-beta",
+    '"SelfCheck sdir a": 1',
+    "",
+  ].join("\n");
+
+  // Names: #quot; decoded, a typed break and a typed tag LEFT AS TYPED, a
+  // single-quoted name, the value corruption (1_000 stored as 1, 1.2.3 as 1.2),
+  // a comma value, the acc block form, and NO title.
+  const TREEMAP_SELF_CHECK_TEXT = [
+    "treemap-beta",
+    "accTitle: SelfCheck text acc title",
+    "accDescr {",
+    "    SelfCheck text acc one",
+    "    SelfCheck text acc two",
+    "}",
+    '"SelfCheck q #quot;x#quot;"',
+    '    "SelfCheck a<br>b": 1_000',
+    '    "SelfCheck <b>c</b>": 1.2.3',
+    "    'SelfCheck single': 1,000",
+    '    "SelfCheck plain": 5',
+    "",
+  ].join("\n");
+
+  // A body title with a bare & and <, and a section with no children.
+  const TREEMAP_SELF_CHECK_TITLE = [
+    "treemap-beta",
+    "title SelfCheck a & b <3",
+    '"SelfCheck empty section"',
+    '"SelfCheck leaf": 2',
+    "",
+  ].join("\n");
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessor
+   * names, the same-tick snapshot, the title route, the tree and its totals,
+   * the sort (tie, zero, mixed), the config precedence, the decode, the value
+   * note, the cross-check and the STOPs. Resolves true on a clean run; on any
+   * failure logs ONE ERROR naming the first failed assertion, marks the
+   * surface unhealthy, and resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} The treemap health verdict
+   */
+  function runTreemapSelfCheck() {
+    if (treemapSelfCheckPromise) {
+      return treemapSelfCheckPromise;
+    }
+    treemapSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readTreemapInSlot(code).then(
+        (result) => ({ result: result }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      // A rendered directive leaves its settings in the GLOBAL config (packet
+      // R2, the same here): reset to the site's own before the defaults are
+      // read, as the packet check does.
+      if (typeof window.mermaid.mermaidAPI.reset === "function") {
+        window.mermaid.mermaidAPI.reset();
+      }
+      const outcomes = {};
+      let chain = Promise.resolve();
+      [
+        ["main", TREEMAP_SELF_CHECK_MAIN],
+        ["showFm", TREEMAP_SELF_CHECK_SHOW_FM],
+        ["directive", TREEMAP_SELF_CHECK_DIRECTIVE],
+        ["showDir", TREEMAP_SELF_CHECK_SHOW_DIR],
+        ["text", TREEMAP_SELF_CHECK_TEXT],
+        ["title", TREEMAP_SELF_CHECK_TITLE],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+          });
+      });
+
+      return chain.then(() => {
+        const mainDb = outcomes.main.result && outcomes.main.result.diagram.db;
+        const accessorsPresent =
+          !!mainDb &&
+          TREEMAP_DB_ACCESSORS.every((name) => typeof mainDb[name] === "function") &&
+          mainDb.levels instanceof Map;
+        const d = (key) => (outcomes[key].result ? outcomes[key].result.delivery : null);
+        const main = d("main");
+        const showFm = d("showFm");
+        const directive = d("directive");
+        const showDir = d("showDir");
+        const text = d("text");
+        const title = d("title");
+        const everything = [main, showFm, directive, showDir, text, title];
+
+        const defaults = { showValues: true, valueFormat: "," };
+        const SRC = (head, lines) =>
+          head + "treemap-beta\n" + (lines || '"x": 1\n');
+        const FM = (rows) => "---\nconfig:\n" + rows.join("\n") + "\n---\n";
+        const FMT = (rows) =>
+          FM(["  treemap:"].concat(rows.map((row) => "    " + row)));
+        const DIR = (json) => "%%{init: " + json + "}%%\n";
+        const readerRefuses = (code, pattern) => {
+          try {
+            readTreemapSource(code, defaults);
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        // What the reader APPLIES for one config form, with the site defaults.
+        const appliedAs = (code, show, format, withDefaults = defaults) => {
+          try {
+            const got = readTreemapSource(code, withDefaults);
+            return got.showValues === show && got.valueFormat === format;
+          } catch (error) {
+            return false;
+          }
+        };
+        const stubRefuses = (dbOverrides, pattern) => {
+          const stubDb = Object.assign(
+            {
+              getNodes: () => [],
+              levels: new Map(),
+              getDiagramTitle: () => "",
+              getAccTitle: () => "",
+              getAccDescription: () => "",
+            },
+            dbOverrides
+          );
+          try {
+            normaliseTreemap({ db: stubDb }, 'treemap-beta\n"x": 1\n');
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        // The live config of a db that has just rendered `showValues: false`
+        // must not change the delivery of a source that names no setting.
+        const leakedConfigIgnored = () => {
+          const leakedNode = { name: "x", value: 1 };
+          const leakedDb = {
+            getNodes: () => [leakedNode],
+            levels: new Map([[leakedNode, 0]]),
+            getConfig: () => ({ showValues: false, valueFormat: ".1f" }),
+            getDiagramTitle: () => "",
+            getAccTitle: () => "",
+            getAccDescription: () => "",
+          };
+          try {
+            const delivery = normaliseTreemap(
+              { db: leakedDb },
+              'treemap-beta\n"x": 1\n'
+            );
+            return (
+              delivery.showValues === true &&
+              delivery.valueFormat === "," &&
+              delivery.crossCheck.config.dbShowValues === false
+            );
+          } catch (error) {
+            return false;
+          }
+        };
+        const shape = (node) =>
+          node && [
+            node.name,
+            node.value,
+            node.total,
+            node.level,
+            node.authorIndex,
+            node.drawnIndex,
+            node.leaf,
+          ];
+        const flatten = (node, out) => {
+          node.children.forEach((child) => {
+            out.push(child);
+            flatten(child, out);
+          });
+          return out;
+        };
+        const mainNodes = main ? flatten(main.root, []) : [];
+        const byName = (nodes, name) => nodes.find((n) => n.name === name);
+        const textNodes = text ? flatten(text.root, []) : [];
+        const titleNodes = title ? flatten(title.root, []) : [];
+
+        return [
+          [
+            "the four db accessors and db.levels this surface reads exist, and " +
+              "every self-check source parsed and normalised",
+            accessorsPresent && everything.every((delivery) => delivery !== null),
+          ],
+          [
+            "TITLE ROUTE and the shared store: a frontmatter title and the acc " +
+              "pair survive the same-tick snapshot, diagramType is treemap",
+            !!main &&
+              main.diagramType === "treemap" &&
+              main.title === "SelfCheck treemap title" &&
+              main.accTitle === "SelfCheck treemap acc title" &&
+              main.accDescr === "SelfCheck treemap acc descr",
+          ],
+          [
+            "THE TREE: three levels rebuilt from the flat list and its levels, " +
+              "authorIndex in source order, the root total the sum of every leaf",
+            !!main &&
+              main.root.total === 23 &&
+              main.root.children.length === 5 &&
+              same(
+                mainNodes.map((n) => n.authorIndex).sort((a, b) => a - b),
+                [0, 1, 2, 3, 4, 5, 6, 7, 8]
+              ) &&
+              byName(mainNodes, "SelfCheck Top").leaf === false &&
+              byName(mainNodes, "SelfCheck deep a").leaf === true &&
+              byName(mainNodes, "SelfCheck deep a").level >
+                byName(mainNodes, "SelfCheck mid").level,
+          ],
+          [
+            "SECTION TOTALS are derived by one function: a section is the sum " +
+              "of its leaves at every depth, a leaf its own value",
+            !!main &&
+              byName(mainNodes, "SelfCheck Top").total === 14 &&
+              byName(mainNodes, "SelfCheck mid").total === 4 &&
+              byName(mainNodes, "SelfCheck big").total === 10 &&
+              byName(mainNodes, "SelfCheck mid").value === null &&
+              byName(mainNodes, "SelfCheck zero").total === 0,
+          ],
+          [
+            "THE SORT: total descending, a tie in author order, a zero last, " +
+              "a section sorted among leaves, and drawnOrder the pre-order of " +
+              "the sorted tree",
+            !!main &&
+              same(
+                main.root.children.map(shape),
+                [
+                  ["SelfCheck Top", null, 14, 0, 0, 0, false],
+                  ["SelfCheck tie a", 4, 4, 0, 5, 1, true],
+                  ["SelfCheck tie b", 4, 4, 0, 6, 2, true],
+                  ["SelfCheck tail", 1, 1, 0, 8, 3, true],
+                  ["SelfCheck zero", 0, 0, 0, 7, 4, true],
+                ].map((row) => [row[0], row[1], row[2], mainNodes.find((n) => n.name === row[0]).level, row[4], row[5], row[6]])
+              ) &&
+              same(
+                main.root.children[0].children.map((n) => n.name),
+                ["SelfCheck big", "SelfCheck mid"]
+              ) &&
+              same(
+                byName(mainNodes, "SelfCheck mid").children.map((n) => [n.name, n.drawnIndex]),
+                [["SelfCheck deep a", 0], ["SelfCheck deep b", 1]]
+              ) &&
+              same(main.drawnOrder, [0, 4, 1, 2, 3, 5, 6, 8, 7]),
+          ],
+          [
+            "a section with no children delivers leaf false, total 0 and an " +
+              "empty children list, and sorts after a leaf with a value",
+            !!title &&
+              same(
+                titleNodes.map((n) => [n.name, n.leaf, n.total, n.children.length, n.drawnIndex]),
+                [
+                  ["SelfCheck leaf", true, 2, 0, 0],
+                  ["SelfCheck empty section", false, 0, 0, 1],
+                ]
+              ),
+          ],
+          [
+            "CONFIG: frontmatter valueFormat reaches the delivery with " +
+              "showValues at its default, and a directive BEATS frontmatter for " +
+              "both keys (deep merge)",
+            !!main &&
+              main.showValues === true &&
+              main.valueFormat === ".1f" &&
+              !!directive &&
+              directive.showValues === true &&
+              directive.valueFormat === "$,.0f" &&
+              directive.crossCheck.config.rawValueFormat === "$,.0f",
+          ],
+          [
+            "showValues false by FRONTMATTER, and by DIRECTIVE over a " +
+              "frontmatter true, hides the values",
+            !!showFm &&
+              showFm.showValues === false &&
+              !!showDir &&
+              showDir.showValues === false,
+          ],
+          [
+            "NAMES: #quot; decoded, a typed <br> and <b> left as typed, a " +
+              "single-quoted name, rawName kept undecoded",
+            !!text &&
+              same(
+                textNodes.map((n) => n.name).sort(),
+                [
+                  'SelfCheck q "x"',
+                  "SelfCheck <b>c</b>",
+                  "SelfCheck a<br>b",
+                  "SelfCheck plain",
+                  "SelfCheck single",
+                ].sort()
+              ) &&
+              text.root.children[0].rawName === "SelfCheck q #quot;x#quot;",
+          ],
+          [
+            "THE VALUE CORRUPTION is delivered as the db delivers it with the " +
+              "author's token and a note: 1_000 stored as 1, 1.2.3 as 1.2, " +
+              "while 1,000 stored as 1000 needs no note",
+            !!text &&
+              (() => {
+                const a = byName(textNodes, "SelfCheck a<br>b");
+                const c = byName(textNodes, "SelfCheck <b>c</b>");
+                const s = byName(textNodes, "SelfCheck single");
+                const p = byName(textNodes, "SelfCheck plain");
+                return (
+                  a.value === 1 &&
+                  a.rawValue === "1_000" &&
+                  /1_000.*stores and draws 1\./.test(a.valueNote) &&
+                  c.value === 1.2 &&
+                  c.rawValue === "1.2.3" &&
+                  !!c.valueNote &&
+                  s.value === 1000 &&
+                  s.rawValue === "1,000" &&
+                  s.valueNote === null &&
+                  p.valueNote === null
+                );
+              })(),
+          ],
+          [
+            "the acc block arrives without its indentation, an absent title " +
+              "arrives null, and a body title with a bare & and < reads as the " +
+              "author's characters",
+            !!text &&
+              text.title === null &&
+              text.accTitle === "SelfCheck text acc title" &&
+              typeof text.accDescr === "string" &&
+              text.accDescr.indexOf("SelfCheck text acc one") === 0 &&
+              text.accDescr.indexOf("SelfCheck text acc two") > 0 &&
+              !!title &&
+              title.title === "SelfCheck a & b <3",
+          ],
+          [
+            "the crossCheck carries the db's flat list verbatim, and the " +
+              "source reader agrees with the db on every self-check source " +
+              "(count, decoded name, section or leaf)",
+            everything.every(
+              (delivery) =>
+                delivery !== null &&
+                delivery.crossCheck.agrees === true &&
+                delivery.crossCheck.dbNodeCount === delivery.crossCheck.sourceNodeCount &&
+                Array.isArray(delivery.crossCheck.dbNodes)
+            ) &&
+              main.crossCheck.dbNodeCount === 9 &&
+              main.crossCheck.dbNodes[0].name === "SelfCheck Top" &&
+              main.crossCheck.dbNodes[0].hasChildren === true,
+          ],
+          [
+            "THE STOPS: an unreadable node line, a missing header, a `$` " +
+              "format d3 rejects and an unterminated frontmatter flow are " +
+              "refused, a db that breaks its own shape is refused, and the " +
+              "same reader reads a valid source (the positive control)",
+            readerRefuses(
+              'treemap-beta\n"ok": 1\nnot a node line\n',
+              /Treemap source reader: cannot read/
+            ) &&
+              readerRefuses('"ok": 1\n', /Treemap source reader: no treemap header/) &&
+              readerRefuses(
+                SRC(DIR('{"treemap": {"valueFormat": "$zzz"}}')),
+                /Treemap source reader: valueFormat/
+              ) &&
+              readerRefuses(
+                SRC(FM(["  treemap: {showValues: false"])),
+                /Treemap source reader: the frontmatter/
+              ) &&
+              (() => {
+                try {
+                  return readTreemapSource(SRC(""), defaults).nodes.length === 1;
+                } catch (error) {
+                  return false;
+                }
+              })() &&
+              stubRefuses({ getNodes: () => ({}) }, /db\.getNodes must return an Array/) &&
+              stubRefuses({ getAccTitle: undefined }, /db\.getAccTitle is not a function/) &&
+              stubRefuses({ levels: {} }, /db\.levels must be a Map/),
+          ],
+          [
+            "CONFIG FORMS: block, flow and flow-under-block frontmatter, with " +
+              "other config keys beside it, a frontmatter with no treemap, and " +
+              "a title that merely mentions a setting, all read without a STOP",
+            appliedAs(SRC(FM(['  treemap: {showValues: false, valueFormat: ".1f"}'])), false, ".1f") &&
+              appliedAs(SRC("---\nconfig: {\"treemap\": {\"showValues\": false}}\n---\n"), false, ",") &&
+              appliedAs(SRC(FM(["  theme: forest", "  treemap:", "    showValues: false"])), false, ",") &&
+              appliedAs(SRC(FM(["  theme: forest"])), true, ",") &&
+              appliedAs(
+                SRC("---\ntitle: about showValues and valueFormat\n---\n"),
+                true,
+                ","
+              ) &&
+              appliedAs(SRC(FMT(["showValues: False"])), false, ",") &&
+              appliedAs(SRC(FMT(["showValues: no"])), true, ","),
+          ],
+          [
+            "SHOWVALUES VALUES: only the boolean false hides; a quoted " +
+              "\"false\", 0, \"\", \"no\" and a string show (S5, S6, S8, S10, T3, T4)",
+            appliedAs(SRC(FMT(['showValues: "false"'])), true, ",") &&
+              appliedAs(SRC(FMT(["showValues: 0"])), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"showValues": ""}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"showValues": "x"}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"showValues": false}}')), false, ","),
+          ],
+          [
+            "DISCARDED VALUES: a null, an array, an object or a string holding " +
+              "< or > at the highest tier that names a key gives the DEFAULT, " +
+              "not the tier below (T1, T2, T5, T8, W1 to W7)",
+            appliedAs(
+              FMT(["showValues: false", 'valueFormat: ".1f"']) +
+                DIR('{"treemap": {"showValues": null, "valueFormat": null}}') +
+                'treemap-beta\n"x": 1\n',
+              true,
+              ","
+            ) &&
+              appliedAs(
+                FMT(["showValues: false"]) + DIR('{"treemap": {"showValues": [true]}}') + 'treemap-beta\n"x": 1\n',
+                true,
+                ","
+              ) &&
+              appliedAs(
+                FMT(['valueFormat: ".1f"']) + DIR('{"treemap": {"valueFormat": {"a": 1}}}') + 'treemap-beta\n"x": 1\n',
+                true,
+                ","
+              ) &&
+              appliedAs(
+                FMT(['valueFormat: ".1f"']) + DIR('{"treemap": {"valueFormat": "_<10,"}}') + 'treemap-beta\n"x": 1\n',
+                true,
+                ","
+              ) &&
+              // A site that initialised treemap away from Mermaid's own
+              // defaults: a null names the key and still gives THAT default.
+              appliedAs(
+                SRC(DIR('{"treemap": {"showValues": null, "valueFormat": null}}')),
+                false,
+                "~s",
+                { showValues: false, valueFormat: "~s" }
+              ) &&
+              appliedAs(SRC(""), false, "~s", { showValues: false, valueFormat: "~s" }),
+          ],
+          [
+            "VALUEFORMAT: a string d3 rejects, a number, \"\" and a type-less " +
+              "word draw as the default; a valid d3 specifier, a `$` format with " +
+              "a comma and the `$0,0` form are used as written; the author's " +
+              "string is reported as not used",
+            appliedAs(SRC(DIR('{"treemap": {"valueFormat": "zz"}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": 5}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": ""}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": ",."}}')), true, ",") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": "~s"}}')), true, "~s") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": "$0,0"}}')), true, "$0,0") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": "$,zzz"}}')), true, "$,zzz") &&
+              appliedAs(SRC(DIR('{"treemap": {"valueFormat": "$.1f"}}')), true, "$.1f") &&
+              resolveTreemapValueFormat("zz", ",").fellBack === true &&
+              resolveTreemapValueFormat(".2f", ",").fellBack === false &&
+              resolveTreemapValueFormat(undefined, ",").fellBack === false,
+          ],
+          [
+            "THE DEFAULTS are the site config, not the live one: a db whose live " +
+              "config carries a leaked showValues false and valueFormat \".1f\" " +
+              "delivers a setting-free source at true and \",\"",
+            leakedConfigIgnored(),
+          ],
+          [
+            "THE FLOAT TIE: a section whose leaves sum to 0.6 only when added " +
+              "from the last child to the first ties a leaf of 0.6 and keeps " +
+              "author order (E08)",
+            (() => {
+              const section = {
+                leaf: false,
+                children: [0.1, 0.2, 0.3].map((v) => ({ leaf: true, value: v, children: [] })),
+              };
+              return totalTreemapNode(section) === 0.6;
+            })(),
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    treemapSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Treemap self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's treemap internals no longer " +
+              "match the 21 October 2026 census, or the source reader, tree " +
+              "or sort has drifted; do not trust treemap adapter output."
+          );
+          treemapHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Treemap self-check passed: accessor, title-route, tree, totals, " +
+            "sort, config-precedence, value-note, cross-check and stop " +
+            "assertions all hold"
+        );
+        treemapHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Treemap self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        treemapHealthy = false;
+        return false;
+      });
+
+    return treemapSelfCheckPromise;
+  }
+
+  /**
+   * Report the treemap surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the treemap self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isTreemapHealthy() {
+    return treemapHealthy;
   }
 
   return {
@@ -14225,6 +17576,12 @@ window.MermaidParseAdapter = (function () {
     parseRequirement: parseRequirement,
     runRequirementSelfCheck: runRequirementSelfCheck,
     isRequirementHealthy: isRequirementHealthy,
+    parsePacket: parsePacket,
+    runPacketSelfCheck: runPacketSelfCheck,
+    isPacketHealthy: isPacketHealthy,
+    parseTreemap: parseTreemap,
+    runTreemapSelfCheck: runTreemapSelfCheck,
+    isTreemapHealthy: isTreemapHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

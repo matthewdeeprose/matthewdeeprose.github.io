@@ -12,6 +12,7 @@ import { buildDocument } from "./builder.js";
 import { resolveConfig } from "../scorm/config.js";
 import { generateHtmlFilename } from "../scorm/filename.js";
 import { resolveJSZip, bundleLocalMathjax, auditMathjaxAssets } from "../util/zip-helpers.js";
+import { shouldRunOfflineMaths, addOfflineMaths } from "../browser/offline-maths.js";
 
 // Companion `assets` are a SCORM-only feature (they must be declared in the
 // imsmanifest). The single-file HTML can't carry separate files, and the offline
@@ -29,14 +30,28 @@ function assertNoAssets(options, where) {
  * Build a single self-contained .html file. Maths renders via the MathJax CDN
  * (default `mathjaxMode:'cdn'`), matching the original playground export.
  * @param {object} [options] - the same options buildDocument accepts, plus opts.isoDate
+ * @param {boolean} [options.offlineMaths=true] - in a browser, store MathJax's SVG for each
+ *   equation and Read Aloud's speech in the file so it shows maths with no internet
+ *   (browser/offline-maths.js). `false` skips it; a failure of any kind has the same effect.
+ * @param {number} [options.offlineMathsTimeoutMs=20000] - how long that step may take
  * @returns {Promise<{ data: Blob|string, filename: string, mediaType: string, html: string, metadata: object }>}
  */
 export async function buildStandaloneHtml(options = {}) {
   assertNoAssets(options, "buildStandaloneHtml / target 'html'");
-  const { html, metadata } = await buildDocument({
+  const built = await buildDocument({
     ...options,
     mathjaxMode: options.mathjaxMode || "cdn",
   });
+  const { metadata } = built;
+  let html = built.html;
+
+  // In a browser, with MathJax from the network and maths in the document, store MathJax's own SVG
+  // for each equation and Read Aloud's speech in the file, so it shows maths when opened with no
+  // internet. Any failure leaves the export exactly as built (`offlineMaths: false` is the same).
+  if (shouldRunOfflineMaths({ ...options, mathjaxMode: options.mathjaxMode || "cdn" }, html)) {
+    const enriched = await addOfflineMaths(html, options);
+    if (enriched) html = enriched;
+  }
 
   const filename = generateHtmlFilename(metadata, { isoDate: options.isoDate });
   const data = typeof Blob !== "undefined" ? new Blob([html], { type: "text/html" }) : html;

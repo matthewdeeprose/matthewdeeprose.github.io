@@ -151,7 +151,7 @@
     const mdRe = /!\[((?:[^\]]|\](?!\())*)\]\(([^)]+)\)/;
     const m = mdRe.exec(line);
     if (!m) return null;
-    return m[1];
+    return S().decodeAltFromMarkdown(m[1]);
   }
 
   /**
@@ -217,7 +217,7 @@
     const m = mdRe.exec(line);
     if (!m) return { ok: false };
     const url = m[2];
-    const replacement = `![${targetAlt}](${url})`;
+    const replacement = `![${S().encodeAltForMarkdown(targetAlt)}](${url})`;
     const before = line.substring(0, m.index);
     const after = line.substring(m.index + m[0].length);
     return {
@@ -270,6 +270,10 @@
         ? entry.altText
         : "";
 
+    // UT-3: an alt is one line of plain prose, so the comparison below is made
+    // against the form that can actually be read back.
+    const flatTargetAlt = S().flattenLineBreaks(targetAlt);
+
     const loc = S().findImage(mmd, entry, imageBlobUrlMap);
     if (!loc.found) {
       logWarn(`writeAltText(): image not found for entry ${entry.id || "?"}`);
@@ -286,7 +290,7 @@
       return { mmd, transformed: false, action: "no-op" };
     }
 
-    if (currentAlt === targetAlt) {
+    if (currentAlt === flatTargetAlt) {
       return { mmd, transformed: false, action: "no-op" };
     }
 

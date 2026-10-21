@@ -242,13 +242,10 @@
         // Show preview
         this.showPreview(file);
 
-        // Phase H-3b: every new picture starts on the Default profile. A profile
-        // chosen for one picture must not silently decide what is analysed on
-        // the next, and Painting switches text detection off. Only a new picture
-        // resets it: a profile change or a re-analysis of the same picture keeps
-        // the choice. setSelectedProfile fires no change event, so this neither
-        // re-runs analysis nor persists anything; the banner names the profile.
-        this.setSelectedProfile("default");
+        // Ask whether to detect text (H-64): unanswered for every new picture.
+        // The colour pass below runs at once; text detection waits for the answer.
+        this._resetTextChoice();
+        this._showTextChoice(true);
 
         // Start background analysis immediately (runs while user fills in form)
         this.startBackgroundAnalysis();
@@ -256,8 +253,11 @@
         // Update button states
         this.updateButtonStates();
 
-        // Announce to screen reader
-        this.announceStatus(`Image loaded: ${file.name}`);
+        // Announce to screen reader: one composed line, so the question is
+        // spoken with the load rather than as a second write (H-64)
+        this.announceStatus(
+          `Image loaded: ${file.name}. Choose whether to detect text in this picture.`,
+        );
 
         logInfo("File processed successfully", {
           name: file.name,
@@ -883,9 +883,6 @@
       if (this.lastAnalysis) {
         const overlayToolbar = document.getElementById("imgdesc-overlay-toolbar");
         if (overlayToolbar) overlayToolbar.hidden = false;
-
-        const classBadge = document.getElementById("imgdesc-overlay-classification");
-        if (classBadge && classBadge.textContent) classBadge.hidden = false;
       }
 
       // Restore Florence-2 OCR prompt state (Phase 14J)
@@ -968,12 +965,6 @@
       const overlayToolbar = document.getElementById("imgdesc-overlay-toolbar");
       if (overlayToolbar) overlayToolbar.hidden = true;
 
-      // Hide classification badge during generation output (Phase 5E fix)
-      const classBadge = document.getElementById(
-        "imgdesc-overlay-classification",
-      );
-      if (classBadge) classBadge.hidden = true;
-
       // Hide Florence-2 OCR prompt during generation output (Phase 14J)
       const florenceOCRPrompt = document.getElementById("imgdesc-florence-ocr-prompt");
       if (florenceOCRPrompt) florenceOCRPrompt.hidden = true;
@@ -997,12 +988,6 @@
       );
       if (analysisStatusEl) analysisStatusEl.hidden = true;
 
-      // Hide profile suggestion banner during generation output (Phase 5C)
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
-
       // Move preview into output section (before progress, so progress/completion/warning appear below it)
       if (this.elements.preview && this.elements.progress) {
         this.elements.progress.parentElement.insertBefore(
@@ -1014,7 +999,7 @@
 
       // Show output section
       if (this.elements.outputSection) {
-        this.elements.outputSection.style.display = "";
+        this.showOutputSection();
       }
     },
 
@@ -1037,11 +1022,6 @@
       // Clear preview
       if (this.elements.preview) {
         this.elements.preview.innerHTML = "";
-      }
-
-      // Hide clear button
-      if (this.elements.clearBtn) {
-        this.elements.clearBtn.style.display = "none";
       }
 
       // Restore full upload area
@@ -1075,16 +1055,6 @@
       if (this.elements.module) this.elements.module.value = '';
       */
 
-      // Hide completion time
-      this.hideCompletionTime();
-
-      // Clear profile suggestion banner (Phase 5C)
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
-      this._pendingSuggestion = null;
-
       // Phase 11D: hide cache recall banner
       this.hideCacheRecallBanner();
 
@@ -1112,6 +1082,10 @@
       this._analysisPending = null;
       this._immediateResult = null;
       this._immediateCanvasData = null;
+
+      // No picture, so no question (H-64)
+      this._resetTextChoice();
+      this._showTextChoice(false);
 
       // Phase 10D-fix: reset Florence-2 session flag
       this._florenceRanThisSession = false;
@@ -1187,9 +1161,6 @@
         this.elements.output.setAttribute("tabindex", "-1");
       }
 
-      // Hide completion time
-      this.hideCompletionTime();
-
       // Exit overlay review mode if active, but keep overlay data
       if (typeof window.ImageDescriberOverlay !== "undefined") {
         if (window.ImageDescriberOverlay._inReviewMode) {
@@ -1202,14 +1173,6 @@
 
       // Clear verification state
       this.clearVerification();
-
-      // Re-show the profile suggestion banner if we have analysis data
-      if (this.lastAnalysis && this._pendingSuggestion) {
-        const suggestionBanner = document.getElementById(
-          "imgdesc-profile-suggestion",
-        );
-        if (suggestionBanner) suggestionBanner.hidden = false;
-      }
 
       // Return to configuration view (shows config panel, generate button,
       // upload area, and moves preview back into workspace)

@@ -788,7 +788,7 @@
     // Smooth scroll to line
     container.scrollTo({
       top: Math.max(0, scrollTarget),
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
 
     logDebug(`Scrolled to line ${lineNumber}`);
@@ -948,6 +948,85 @@
   };
 
   /**
+   * The registry snapshot for the session store (VS-3c), or undefined when
+   * there is none to store. Shared by both session-store writers. A snapshot
+   * that throws is logged and dropped: a lost snapshot must never lose the
+   * document save.
+   * @returns {Object|undefined}
+   * @private
+   */
+  proto._registrySnapshotForStore = function () {
+    if (typeof this._registrySnapshot !== "function") return undefined;
+
+    try {
+      return this._registrySnapshot() || undefined;
+    } catch (error) {
+      logWarn("Registry snapshot failed; saving without it:", error);
+      return undefined;
+    }
+  };
+
+  // QF-1: how browsers name a full-storage failure. Chromium and Safari throw a
+  // DOMException named QuotaExceededError (legacy code 22); Firefox names it
+  // NS_ERROR_DOM_QUOTA_REACHED (legacy code 1014).
+  const QUOTA_ERROR_NAMES = Object.freeze([
+    "QuotaExceededError",
+    "NS_ERROR_DOM_QUOTA_REACHED",
+  ]);
+  const QUOTA_ERROR_CODES = Object.freeze([22, 1014]);
+  const STORAGE_FULL_MESSAGE =
+    "Your edits could not be saved in the browser because its storage is full. Download the ZIP to keep them.";
+
+  /**
+   * QF-1: is this a browser-storage-full failure?
+   * @param {*} error
+   * @returns {boolean}
+   * @private
+   */
+  proto._isQuotaError = function (error) {
+    if (!error) return false;
+    return (
+      QUOTA_ERROR_NAMES.includes(error.name) ||
+      QUOTA_ERROR_CODES.includes(error.code)
+    );
+  };
+
+  /**
+   * QF-1: the one place both session-store writers report the outcome of
+   * their setItem. Success clears the flag (the notice stays until a ZIP is
+   * saved). A quota failure raises ONE polite line the first time only and
+   * shows the unsaved notice; a repeat while the flag is set raises nothing.
+   * Any other error is left to the caller, as before.
+   * @param {*} [error] - the caught error, or undefined after a good write
+   * @private
+   */
+  proto._noteSessionStoreWrite = function (error) {
+    if (error === undefined) {
+      this._storageFull = false;
+      return;
+    }
+    if (!this._isQuotaError(error)) return;
+
+    const alreadyFull = this._storageFull === true;
+    this._storageFull = true;
+    if (alreadyFull) return;
+
+    if (typeof this.setArchiveUnsaved === "function") {
+      this.setArchiveUnsaved(true);
+    }
+    if (typeof this.showUnsavedNotice === "function") {
+      this.showUnsavedNotice();
+    }
+    // A warning a person has to read stays until dismissed (duration 0). The
+    // toast announces once through the shared announcer.
+    if (typeof window.notifyWarning === "function") {
+      window.notifyWarning(STORAGE_FULL_MESSAGE, { duration: 0 });
+    } else {
+      logWarn("notifyWarning unavailable: storage-full line logged only");
+    }
+  };
+
+  /**
    * Save content to localStorage
    * @param {string} content - Content to save
    * @private
@@ -1016,7 +1095,21 @@
           lastModified: Date.now(),
         };
 
+        // VS-3c: the registry snapshot rides in the same JSON and the same
+        // setItem, so the document and its snapshot are written all or nothing.
+        // Omitted (not null) when there is none, so an old reader sees the
+        // same keys it always read.
+        const registrySnapshot =
+          typeof this._registrySnapshotForStore === "function"
+            ? this._registrySnapshotForStore()
+            : undefined;
+        if (registrySnapshot) sessionData.registrySnapshot = registrySnapshot;
+
         localStorage.setItem(storageKey, JSON.stringify(sessionData));
+        // Guarded: some harnesses call this method on a stub without the helper
+        if (typeof this._noteSessionStoreWrite === "function") {
+          this._noteSessionStoreWrite();
+        }
         logDebug("Saved to localStorage:", storageKey);
       }
 
@@ -1028,6 +1121,9 @@
     } catch (error) {
       logError("Failed to auto-save:", error);
       this.updateSessionStatus("modified"); // Revert to modified on error
+      if (typeof this._noteSessionStoreWrite === "function") {
+        this._noteSessionStoreWrite(error); // QF-1: quota only; once
+      }
     }
   };
 

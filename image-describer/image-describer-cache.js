@@ -249,11 +249,9 @@ window.ImageDescriberCache = (function () {
     var slots = [
       "ocr",
       "colour",
-      "classification",
       "edges",
       "objects",
       "faces",
-      "depth",
     ];
     for (var i = 0; i < slots.length; i++) {
       var slot = slots[i];
@@ -380,7 +378,7 @@ window.ImageDescriberCache = (function () {
   /**
    * Update a single analysis slot within a cached record.
    * @param {string} hash
-   * @param {string} slotName — e.g. 'ocr', 'colour', 'classification'
+   * @param {string} slotName — e.g. 'ocr', 'colour'
    * @param {object} data — the slot data
    * @returns {Promise<void>}
    */
@@ -634,13 +632,13 @@ window.ImageDescriberCache = (function () {
   // ========================================================================
 
   /**
-   * Deep-clone an analysis result and strip rawDepthMap.data for caching.
-   * The Float32Array can be ~800KB per image — too large for IndexedDB.
-   * Zones, depthRange, hasSignificantDepth, and invertDepth are preserved
-   * (they feed the prompt and legend). Width/height kept for reference.
+   * Deep-clone an analysis result for caching.
+   * H-61: it used to strip rawDepthMap.data (a ~800KB Float32Array) as well;
+   * depth estimation is gone, and a record saved before that still carries a
+   * depth field, which nothing reads.
    *
    * @param {object} analysis — the analysis result from the analyser
-   * @returns {object} — a deep clone with rawDepthMap.data set to null
+   * @returns {object} — a deep clone
    */
   function stripForCache(analysis) {
     if (!analysis) return analysis;
@@ -652,23 +650,6 @@ window.ImageDescriberCache = (function () {
     } catch (err) {
       logWarn("stripForCache: JSON clone failed, returning original:", err);
       return analysis;
-    }
-
-    // Null out the large Float32Array data (not serialised by JSON anyway,
-    // but we set it explicitly to null so the intent is clear on recall)
-    if (
-      stripped.depth &&
-      stripped.depth.rawDepthMap &&
-      stripped.depth.rawDepthMap.data !== undefined
-    ) {
-      stripped.depth.rawDepthMap.data = null;
-      logDebug(
-        "stripForCache: rawDepthMap.data stripped (width: " +
-          (stripped.depth.rawDepthMap.width || "?") +
-          ", height: " +
-          (stripped.depth.rawDepthMap.height || "?") +
-          ")",
-      );
     }
 
     return stripped;

@@ -1435,6 +1435,17 @@ export class MarkdownItBridge extends ContentProcessorBase {
                     );
                   }
                 }
+              }, (error) => {
+                // render() rejected: say so beside the diagram. A second
+                // argument to .then, not a .catch, so a fault in the success
+                // handler above is never mistaken for a failed diagram.
+                logWarn("Mermaid render rejected", { error: error });
+                if (
+                  window.MermaidControls &&
+                  typeof window.MermaidControls.noteRenderFailure === "function"
+                ) {
+                  window.MermaidControls.noteRenderFailure(element);
+                }
               });
           }
         } catch (err) {

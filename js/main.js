@@ -62,6 +62,9 @@ import { errorClassification } from "./error-handler/error-classification.js";
 import { recoveryStrategies } from "./error-handler/recovery-strategies.js";
 import { errorMessages } from "./error-handler/error-messages.js";
 
+// Parcel T-06a: a reload starts at the top of the page, not at the browser's restored offset.
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
 // Stage 7 testing commands: dev-gated in tools.html — see the note above.
 
 // ============================================================================

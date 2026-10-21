@@ -621,6 +621,25 @@
 
   async function renderRichContent(bubble, rawMarkdown) {
     if (!bubble) return;
+    // A bubble with no text of its own (a restored reply: the embed never
+    // streamed into it) is given the raw reply as plain text before any wait, so
+    // a slow page never leaves it empty. aria-hidden keeps the log region from
+    // announcing the raw markdown as well as the rich body that replaces it, but
+    // only while the wait is live: on every path that gives up the stand-in is the
+    // only copy of the reply, so exposeStandIn() takes the aria-hidden off it
+    // (silently; nothing is announced). A rendered body replaces the stand-in, so
+    // there is nothing to expose then.
+    let standIn = null;
+    if (rawMarkdown && !(bubble.textContent || "").trim()) {
+      standIn = document.createElement("div");
+      standIn.setAttribute("aria-hidden", "true");
+      standIn.style.whiteSpace = "pre-wrap";
+      standIn.textContent = rawMarkdown;
+      bubble.appendChild(standIn);
+    }
+    function exposeStandIn() {
+      if (standIn && bubble.contains(standIn)) standIn.removeAttribute("aria-hidden");
+    }
     const bridge =
       (window.resultsManager &&
         window.resultsManager.contentProcessor &&
@@ -630,16 +649,21 @@
       null;
     if (!bridge || typeof bridge.process !== "function") {
       logWarn("markdown bridge unavailable — leaving the streamed plain render in place");
+      exposeStandIn();
       return;
     }
     // The bridge can hand back its boot self-test output if process() runs during
     // the DOMContentLoaded tick (restore-on-load races the bridge's own main.js
     // integration test through the shared debounce). Wait for the bridge's readiness
     // gate first — it resolves after document.readyState is "complete", which also
-    // defers us past that collision. Bounded, so a never-ready bridge degrades to the
-    // plain render rather than hanging.
+    // defers us past that collision. The window load event can be late on a slow
+    // page (a held image is enough), and an 8 s bound here left a restored reply
+    // empty for the life of the page, so the wait is now for readiness itself:
+    // the bridge bounds its own wait once the page has loaded. The bound kept
+    // here is only a hang guard for a page that never loads; the bubble keeps
+    // the plain text it was given above if it fires.
     if (typeof bridge.ensureMarkdownEditorReady === "function") {
-      const READY_TIMEOUT_MS = 8000;
+      const READY_TIMEOUT_MS = 120000;
       let timer = null;
       const ready = await Promise.race([
         bridge.ensureMarkdownEditorReady().then(
@@ -655,6 +679,7 @@
         logWarn(
           "markdown bridge not ready (" + ready + ") — leaving the streamed plain render in place",
         );
+        exposeStandIn();
         return;
       }
     }
@@ -717,6 +742,7 @@
         "bridge render failed — keeping the streamed plain render:",
         (err && err.message) || err,
       );
+      exposeStandIn();
     }
   }
 

@@ -287,8 +287,8 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     // Attach event listeners
     this.attachEventListeners();
 
-    // Set initial mode (upload by default)
-    this.switchToUploadMode();
+    // Set initial mode (upload by default). A restored open of this tool (tools.html) raises no line of its own.
+    this.switchToUploadMode({ quiet: window.restoredToolOpen === "MathPix" });
 
     this.isInitialised = true;
     logInfo("Mode switcher initialised successfully");
@@ -329,6 +329,11 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   /**
    * Switches to upload mode
    *
+   * @param {Object} [options]
+   * @param {boolean} [options.quiet=false] - S6-1c: when true, every visible
+   *   and structural change happens exactly as usual but the switcher's own
+   *   spoken line is not raised. For a caller that speaks one composed line
+   *   of its own (announcement-placement-contract rule C10).
    * @returns {void}
    *
    * @description
@@ -338,11 +343,11 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    * @example
    * modeSwitcher.switchToUploadMode();
    *
-   * @accessibility Announces mode change to screen readers
+   * @accessibility Announces mode change to screen readers unless quiet
    *
    * @since 1.0.0
    */
-  switchToUploadMode() {
+  switchToUploadMode({ quiet = false } = {}) {
     logDebug("Switching to upload mode");
 
     // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
@@ -369,8 +374,8 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.convertRadio) this.convertRadio.checked = false;
     if (this.resumeRadio) this.resumeRadio.checked = false;
 
-    // Notify user
-    this.showNotification("Upload mode active", "info");
+    // Notify user (S6-1c: a quiet switch raises no line of its own)
+    if (!quiet) this.showNotification("Upload mode active", "info");
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("upload");
@@ -550,6 +555,11 @@ class MathPixModeSwitcher extends MathPixBaseModule {
   /**
    * Switches to resume mode (Phase 8.2)
    *
+   * @param {Object} [options]
+   * @param {boolean} [options.quiet=false] - S6-1c: when true, every visible
+   *   and structural change happens exactly as usual but the switcher's own
+   *   spoken line is not raised. S6-1a measured that line landing 0.1 to 27 ms
+   *   after the restore line on the same region and overwriting it.
    * @returns {void}
    *
    * @description
@@ -559,11 +569,11 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    * @example
    * modeSwitcher.switchToResumeMode();
    *
-   * @accessibility Announces mode change to screen readers
+   * @accessibility Announces mode change to screen readers unless quiet
    *
    * @since Phase 8.2
    */
-  switchToResumeMode() {
+  switchToResumeMode({ quiet = false } = {}) {
     logDebug("Switching to resume mode");
 
     // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
@@ -614,11 +624,13 @@ class MathPixModeSwitcher extends MathPixBaseModule {
       }
     }
 
-    // Notify user
-    this.showNotification(
-      "Resume mode active. Upload a ZIP archive to restore a previous session.",
-      "info"
-    );
+    // Notify user (S6-1c: a quiet switch raises no line of its own)
+    if (!quiet) {
+      this.showNotification(
+        "Resume mode active. Upload a ZIP archive to restore a previous session.",
+        "info"
+      );
+    }
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("resume");

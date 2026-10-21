@@ -696,8 +696,9 @@ const CaptionsFixerLLM = (function () {
    * The ceiling is always written, so a send carries its own model's limit
    * rather than whatever the previous send left. Reasoning is switched on only
    * when an effort is declared; the core forwards `reasoning` only while it is
-   * enabled (openrouter-embed-core.js ~:1037), which is the one route the
-   * Foundry adapter reads the effort from.
+   * enabled (`buildOptions` in openrouter-embed-core.js, and the options object
+   * `sendStreamingRequest` builds), which is the one route the Foundry adapter
+   * reads the effort from.
    *
    * @param {object} instance the bound embed
    * @param {{ maxOutputTokens: number, reasoningEffort: string|null }} options

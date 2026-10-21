@@ -85,10 +85,18 @@
   },
   "models": {
     "openrouter": {
+      "fable51": {
+        "id": "anthropic/claude-fable-5.1",
+        "label": "Claude Fable 5.1",
+        "description": "The default. In the October 2026 comparison on the same five documents it matched Claude Fable 5 on every check, with no picture lost and no corrected text cut short, and it cost about a fifth less (about 77 cents a run against 96). Both models made very few mistakes, so the reading shows them level on quality, not this one ahead.",
+        "recommended": true,
+        "supportsReasoning": true,
+        "reasoningMode": "effort"
+      },
       "fable": {
         "id": "anthropic/claude-fable-5",
         "label": "Claude Fable 5",
-        "description": "The default. Placed first of five models across five documents in the September 2026 comparison, leading on correction quality and on the blind reading, and completing every run. It is also the most expensive of the three per document, so check the cost estimate below before starting a long one.",
+        "description": "The previous default. Placed first of five models across five documents in the September 2026 comparison, leading on correction quality and on the blind reading, and completing every run. It is also the most expensive of the three per document, so check the cost estimate below before starting a long one.",
         "recommended": true,
         "supportsReasoning": true,
         "reasoningMode": "effort"
@@ -111,10 +119,18 @@
       }
     },
     "azure-openai": {
+      "sol61": {
+        "id": "azure-openai/gpt-6.1-sol",
+        "label": "GPT-6.1 Sol",
+        "description": "The default for Microsoft Foundry. In the October 2026 comparison on the same five documents it lost no picture and made fewer wrong changes than GPT-5.6 Sol, at about a third of the cost. It changes less and comments more, so it can leave a few more errors in place for you to check.",
+        "recommended": true,
+        "supportsReasoning": true,
+        "reasoningMode": "effort"
+      },
       "sol": {
         "id": "azure-openai/gpt-5.6-sol",
         "label": "GPT-5.6 Sol",
-        "description": "The default for Microsoft Foundry. Placed joint first of five models across five documents in the September 2026 comparison, leading on net improvement and completing every run. Handwritten material was its weakest document type, so consider an OpenRouter model for handwriting.",
+        "description": "The previous default for Microsoft Foundry. Placed joint first of five models across five documents in the September 2026 comparison, leading on net improvement and completing every run. Handwritten material was its weakest document type, so consider an OpenRouter model for handwriting.",
         "recommended": true,
         "supportsReasoning": true,
         "reasoningMode": "effort"

@@ -138,6 +138,14 @@
   flex-shrink: 0;
 }
 
+/* T-22b G3 (SC 1.4.10): at phone widths the count and coverage counter wrap instead of pushing the modal body sideways at 320px.
+   Narrow only, so no wider layout is re-flowed. */
+@media (max-width: 400px) {
+  .image-manager-toolbar {
+    flex-wrap: wrap;
+  }
+}
+
 .image-manager-action-btn {
   display: inline-flex;
   align-items: center;
@@ -227,6 +235,13 @@
   font-family: monospace;
   font-size: 0.7rem;
   word-break: break-all;
+}
+
+/* TT-2: caption text on the card; wraps anywhere rather than cutting a word */
+.image-manager-caption {
+  font-size: 0.75rem;
+  margin-inline-start: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Card actions */
@@ -1091,7 +1106,7 @@ body.mathpix-manager-open
 
 @media (max-width: 768px) {
   .mmd-image-manager-edit-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* T-22b G3 (SC 1.4.10): 1fr grew to the picture's width and cut Save off at 320px */
     gap: 1rem;
   }
 }
@@ -1299,6 +1314,14 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
   gap: 0.75rem;
 }
 
+/* T-22b G3 (SC 1.4.10): at phone widths the model cards and the measured note wrap instead of holding the form at 343px.
+   Narrow only: at 640px a plain wrap made the fieldset 10px taller. */
+@media (max-width: 400px) {
+  .mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
+    flex-wrap: wrap;
+  }
+}
+
 /* The wrapping radio label carries the accessible name, so its text must
    stay readable rather than inherit the form's bold label weight wholesale:
    the model name is emphasised and the id beneath it is not. */
@@ -1312,6 +1335,41 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
   .model-option-name {
   font-weight: 600;
 }
+
+/* T-22b G3 (SC 1.4.12): under wider text spacing "(Recommended)" and the model id were each wider than the form column at 320px.
+   Set on the spans themselves: main.css gives every element overflow-wrap: break-word, so inheritance cannot carry it, and only
+   `anywhere` lowers the min-content that holds the fieldset wide.
+   Narrow only: at 640px it let the flex row squeeze the cards and made the fieldset 38px taller. */
+@media (max-width: 400px) {
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-name,
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-description {
+    overflow-wrap: anywhere;
+  }
+}
+/* T-27 (L4 from T-26a): narrow Edit alt-text model cards at phone width. */
+@media (max-width: 400px) {
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option input[type="radio"] {
+    align-self: flex-start;
+  }
+
+  .mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-name,
+  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-description {
+    overflow-wrap: normal;
+  }
+}
+
 
 /* The advanced disclosure. `summary` keeps its native marker and native
    keyboard behaviour — it is a real disclosure, not a div with a role. */

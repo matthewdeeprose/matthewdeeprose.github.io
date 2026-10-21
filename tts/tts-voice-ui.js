@@ -316,7 +316,7 @@ window.TTSVoiceUI = (function () {
 
     // Scroll to the voice settings panel after mode switch paints
     requestAnimationFrame(function () {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView({ behavior: 'instant', block: 'start' });
       // Move focus to the first interactive element in the panel
       var firstInput = target.querySelector('input, select, button');
       if (firstInput) firstInput.focus({ preventScroll: true });

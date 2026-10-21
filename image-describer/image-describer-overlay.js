@@ -4,7 +4,7 @@
  * Review mode methods are in image-describer-overlay-review.js (loaded after).
  *
  * Phase 5D-1: OCR boxes, toolbar state, toggletip integration.
- * Phase 5D-4: Colour grid overlay + classification badge.
+ * Phase 5D-4: Colour grid overlay (its classification badge was removed in H-56).
  * Phase 7B: Expand/sidebar toggle.
  *
  * @version 2.0.0
@@ -54,6 +54,12 @@
   const SKIP_LINK_TEXT = "Skip text boxes to analysis controls";
   const TOOLBAR_ID = "imgdesc-overlay-toolbar";
   const BOX_LAYER_TYPES = Object.freeze(["ocr", "objects"]);
+  // H-88: where a plain suppressed box parks its toggletip id until review mode
+  const PARKED_CONTROLS_ATTR = "data-parked-controls";
+  // H-92: a suppressed box the person has confirmed in review mode ("restored")
+  const RESTORED_STATUS = "restored";
+  const RESTORED_ATTR = "data-restored";
+  const REVIEW_EDIT_HINT = ". Press Enter to edit";
 
   // ── HTML escaping ────────────────────────────────────────────────────
   const esc =
@@ -206,15 +212,6 @@
       img.parentNode.insertBefore(container, img);
       container.appendChild(img);
 
-      // Create depth layer (Phase 11B) — inserted first so it renders
-      // beneath OCR, colour, and objects layers in the stacking order
-      const depthLayer = document.createElement("div");
-      depthLayer.className = "imgdesc-overlay-layer imgdesc-overlay-depth";
-      depthLayer.setAttribute("data-layer", "depth");
-      depthLayer.setAttribute("aria-hidden", "true"); // Canvas is decorative; legend provides accessible data
-      depthLayer.hidden = true;
-      container.appendChild(depthLayer);
-
       // Create OCR layer
       const ocrLayer = document.createElement("div");
       ocrLayer.className = "imgdesc-overlay-layer imgdesc-overlay-ocr";
@@ -247,36 +244,6 @@
       this._layers.ocr = ocrLayer;
       this._layers.colour = colourLayer;
       this._layers.objects = objectsLayer;
-      this._layers.depth = depthLayer;
-
-      // Create classification badge (Phase 5D-4) — inserted before toolbar
-      //
-      // The badge is SILENT by design (H-6c). It is hidden until a
-      // classification arrives, hidden again in output mode, and populated
-      // only when one exists, so it is a channel that is in the accessibility
-      // tree in some states and not others — the property the controller's
-      // announceStatus() JSDoc was written about. Analysis completion is
-      // announced from the controller through the always-exposed shared
-      // polite region instead. Setting aria-live to "off" overrides the
-      // implicit politeness role="status" carries, while the role and the
-      // accessible name survive, so this stays a reachable labelled surface
-      // that nobody is forced to hear. Leaving it live would give two
-      // utterances for one event. Do NOT restore "polite" here without first
-      // reading the write-before-un-hide ordering defect registered against
-      // _renderClassificationBadge.
-      let badge = document.getElementById("imgdesc-overlay-classification");
-      if (!badge) {
-        badge = document.createElement("div");
-        badge.id = "imgdesc-overlay-classification";
-        badge.className = "imgdesc-overlay-classification";
-        badge.setAttribute("role", "status");
-        badge.setAttribute("aria-live", "off");
-        badge.hidden = true;
-        const toolbar = document.getElementById("imgdesc-overlay-toolbar");
-        if (toolbar && toolbar.parentNode) {
-          toolbar.parentNode.insertBefore(badge, toolbar);
-        }
-      }
 
       this._watchBoxLayers();
       this._syncSkipLink();
@@ -304,15 +271,6 @@
 
       // Clean up toggletips
       this._cleanupToggletips();
-
-      // Hide classification badge (Phase 5D-4)
-      const destroyBadge = document.getElementById(
-        "imgdesc-overlay-classification",
-      );
-      if (destroyBadge) {
-        destroyBadge.hidden = true;
-        destroyBadge.textContent = "";
-      }
 
       // Move the image back out of the container
       const img = this._container.querySelector("img");
@@ -454,22 +412,6 @@
         this._layers.objects.innerHTML = "";
       }
 
-      // Clear depth layer content (Phase 11B)
-      if (this._layers.depth) {
-        this._layers.depth.innerHTML = "";
-      }
-
-      // Hide depth legend (Phase 11B)
-      const depthLegend = document.getElementById("imgdesc-depth-legend");
-      if (depthLegend) depthLegend.hidden = true;
-
-      // Hide classification badge (Phase 5D-4)
-      const badge = document.getElementById("imgdesc-overlay-classification");
-      if (badge) {
-        badge.hidden = true;
-        badge.textContent = "";
-      }
-
       // Hide all layers
       for (const type of this._visible) {
         const layer = this._layers[type];
@@ -509,11 +451,6 @@
       );
       if (btn) btn.setAttribute("aria-pressed", "true");
 
-      // Phase 11B: show depth legend when depth layer is shown
-      if (type === "depth") {
-        this._updateDepthLegend();
-      }
-
       this._syncSkipLink();
     },
 
@@ -530,12 +467,6 @@
         '.imgdesc-overlay-toggle[data-layer="' + type + '"]',
       );
       if (btn) btn.setAttribute("aria-pressed", "false");
-
-      // Phase 11B: hide depth legend when depth layer is hidden
-      if (type === "depth") {
-        const legend = document.getElementById("imgdesc-depth-legend");
-        if (legend) legend.hidden = true;
-      }
 
       this._syncSkipLink();
     },
@@ -597,11 +528,6 @@
         this._layers.objects.innerHTML = "";
       }
 
-      // Clear existing depth layer content (Phase 11B)
-      if (this._layers.depth) {
-        this._layers.depth.innerHTML = "";
-      }
-
       // Render OCR if available
       if (
         result.ocr &&
@@ -638,21 +564,6 @@
         result.florenceObjects.items.length > 0
       ) {
         this._renderObjectsLayer(result.florenceObjects);
-      }
-
-      // Render depth zone overlay if available — start hidden (Phase 11B)
-      if (
-        result.depth &&
-        result.depth.status === "success" &&
-        result.depth.rawDepthMap &&
-        result.depth.rawDepthMap.data
-      ) {
-        this._renderDepthLayer(result.depth);
-      }
-
-      // Render classification badge (Phase 5D-4)
-      if (result.classification) {
-        this._renderClassificationBadge(result.classification);
       }
 
       this._syncSkipLink();
@@ -854,7 +765,8 @@
 
       const box = document.createElement("div");
       box.className = "imgdesc-overlay-box";
-      box.setAttribute("tabindex", "0");
+      // H-88: suppressed boxes get no tabindex here (see _setSuppressedBoxInteractive)
+      if (!isSuppressed) box.setAttribute("tabindex", "0");
       box.setAttribute("data-index", String(index));
       box.setAttribute("data-confidence", confidenceLevel);
       box.setAttribute("data-source", source);
@@ -880,6 +792,127 @@
 
       // Toggletip integration
       this._attachToggletip(box, item, index, isSuppressed);
+
+      // H-88: a suppressed box is a plain visual mark outside review mode
+      if (isSuppressed) {
+        this._setSuppressedBoxInteractive(box, !!this._inReviewMode);
+      }
+    },
+
+    /**
+     * H-88: make a suppressed OCR box interactive (review mode) or plain
+     * (everywhere else). Changes attributes on the existing element only.
+     * Plain = no tabindex, no role, no aria-expanded/aria-controls, so it is
+     * not a Tab stop and not exposed as a control. The toggletip stays
+     * attached; its trigger id is parked in a data attribute and restored on
+     * entering review mode. Pointer events are switched off in CSS.
+     * @param {HTMLElement} box
+     * @param {boolean} interactive
+     * @private
+     */
+    _setSuppressedBoxInteractive(box, interactive) {
+      if (!box || box.getAttribute("data-suppressed") !== "true") return;
+
+      // H-92: a restored box is an ordinary keyboard stop everywhere, because
+      // its text is sent to the model; only review mode needs the rest
+      this._syncRestoredBoxName(box, !!interactive);
+      if (interactive || this._isSuppressedBoxRestored(box)) {
+        const controls = box.getAttribute(PARKED_CONTROLS_ATTR);
+        box.removeAttribute("aria-hidden");
+        box.setAttribute("tabindex", "0");
+        box.setAttribute("role", "button");
+        box.setAttribute("aria-expanded", "false");
+        if (controls) box.setAttribute("aria-controls", controls);
+        return;
+      }
+
+      const controls = box.getAttribute("aria-controls");
+      if (controls) {
+        box.setAttribute(PARKED_CONTROLS_ATTR, controls);
+        // Close the tip if it was open when review mode ended
+        if (
+          box.getAttribute("aria-expanded") === "true" &&
+          window.UniversalToggletip &&
+          typeof window.UniversalToggletip.hide === "function"
+        ) {
+          window.UniversalToggletip.hide(controls);
+        }
+      }
+      box.removeAttribute("tabindex");
+      box.removeAttribute("role");
+      box.removeAttribute("aria-expanded");
+      box.removeAttribute("aria-controls");
+      // Hidden from the accessibility tree; legal here because it is no longer focusable (ARIA rule 4)
+      box.setAttribute("aria-hidden", "true");
+    },
+
+    /**
+     * H-92: the one rule for "this suppressed box is now an ordinary stop".
+     * Reads the corrections store, not the DOM, because a re-render rebuilds
+     * the boxes without any data-status. Only "restored" counts: a "removed"
+     * suppressed box stays plain, and so does one with no correction.
+     * @param {HTMLElement} box
+     * @returns {boolean}
+     * @private
+     */
+    _isSuppressedBoxRestored(box) {
+      if (!box || box.getAttribute("data-suppressed") !== "true") return false;
+      const corrections = this._userEdits && this._userEdits.corrections;
+      const correction = corrections && corrections[Number(box.dataset.index)];
+      return !!correction && correction.status === RESTORED_STATUS;
+    },
+
+    /**
+     * H-92: make a suppressed box's name, tip and CSS hook say "restored" (or
+     * "suppressed" again after an undo). A restored item is in the request, so
+     * ", suppressed" would misdescribe it. Rebuilt from the stored item, so
+     * it is idempotent and the review-mode hint is added only in review.
+     * @param {HTMLElement} box
+     * @param {boolean} inReview
+     * @private
+     */
+    _syncRestoredBoxName(box, inReview) {
+      if (!box || box.getAttribute("data-suppressed") !== "true") return;
+      const restored = this._isSuppressedBoxRestored(box);
+      if (restored) box.setAttribute(RESTORED_ATTR, "true");
+      else box.removeAttribute(RESTORED_ATTR);
+
+      const index = Number(box.dataset.index);
+      const entry = this._sortedItems && this._sortedItems[index];
+      if (!entry) return;
+
+      box.setAttribute(
+        "aria-label",
+        this._buildOCRAccessibleLabel(entry.item, index, true, restored) +
+          (inReview ? REVIEW_EDIT_HINT : ""),
+      );
+
+      const tipId =
+        box.getAttribute("aria-controls") ||
+        box.getAttribute(PARKED_CONTROLS_ATTR);
+      if (
+        tipId &&
+        window.UniversalToggletip &&
+        typeof window.UniversalToggletip.updateContent === "function"
+      ) {
+        window.UniversalToggletip.updateContent(
+          tipId,
+          this._buildOCRToggletipContent(entry.item, index, true, restored),
+        );
+      }
+    },
+
+    /**
+     * H-88: apply _setSuppressedBoxInteractive to every suppressed OCR box.
+     * @param {boolean} interactive
+     * @private
+     */
+    _syncSuppressedBoxes(interactive) {
+      const layer = this._layers && this._layers.ocr;
+      if (!layer) return;
+      layer
+        .querySelectorAll('.imgdesc-overlay-box[data-suppressed="true"]')
+        .forEach((box) => this._setSuppressedBoxInteractive(box, interactive));
     },
 
     /**
@@ -890,7 +923,7 @@
      * @returns {string}
      * @private
      */
-    _buildOCRAccessibleLabel(item, index, isSuppressed) {
+    _buildOCRAccessibleLabel(item, index, isSuppressed, isRestored) {
       const SOURCE_LABELS = {
         tesseract: "Tesseract",
         primary: "Primary",
@@ -920,7 +953,7 @@
         source +
         " source";
       if (isSuppressed) {
-        label += ", suppressed";
+        label += isRestored ? ", restored" : ", suppressed";
       }
       return label;
     },
@@ -933,7 +966,7 @@
      * @returns {string}
      * @private
      */
-    _buildOCRToggletipContent(item, index, isSuppressed) {
+    _buildOCRToggletipContent(item, index, isSuppressed, isRestored) {
       const SOURCE_LABELS = {
         tesseract: "Tesseract",
         primary: "Primary",
@@ -978,7 +1011,11 @@
       if (isSuppressed) {
         html +=
           '<dt class="toggletip-label">Status</dt>' +
-          '<dd class="toggletip-value">Suppressed (noise-filtered)</dd>';
+          '<dd class="toggletip-value">' +
+          (isRestored
+            ? "Restored (noise-filtered, then confirmed)"
+            : "Suppressed (noise-filtered)") +
+          "</dd>";
       }
 
       html += "</dl>";
@@ -1106,24 +1143,6 @@
         objBtn.setAttribute(
           "aria-pressed",
           this._visible.has("objects") ? "true" : "false",
-        );
-      }
-
-      // Depth button (Phase 11B)
-      const depthBtn = document.querySelector(
-        '.imgdesc-overlay-toggle[data-layer="depth"]',
-      );
-      if (depthBtn) {
-        const hasDepth =
-          result &&
-          result.depth &&
-          result.depth.status === "success" &&
-          result.depth.rawDepthMap &&
-          result.depth.rawDepthMap.data;
-        depthBtn.disabled = !hasDepth;
-        depthBtn.setAttribute(
-          "aria-pressed",
-          this._visible.has("depth") ? "true" : "false",
         );
       }
 
@@ -1438,239 +1457,6 @@
     },
 
     // ══════════════════════════════════════════════════════════════════
-    // Phase 11B: Depth Zone Overlay
-    // ══════════════════════════════════════════════════════════════════
-
-    /**
-     * Render depth zone canvas overlay into the depth layer.
-     * Paints three colour-coded zones (foreground, midground, background)
-     * and positions text labels at each zone's visual centroid.
-     * The layer starts hidden — the user reveals it via the Depth toolbar button.
-     * @param {Object} depth - The depth result from analysis
-     * @private
-     */
-    _renderDepthLayer(depth) {
-      const layer = this._layers.depth;
-      if (!layer) return;
-
-      layer.innerHTML = "";
-
-      const rawMap = depth.rawDepthMap;
-      if (!rawMap || !rawMap.data || !rawMap.width || !rawMap.height) {
-        logWarn("Depth layer: rawDepthMap missing or incomplete");
-        return;
-      }
-
-      const w = rawMap.width;
-      const h = rawMap.height;
-      const data = rawMap.data;
-
-      // Create canvas element
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      canvas.className = "imgdesc-depth-canvas";
-      const ctx = canvas.getContext("2d");
-      const imageData = ctx.createImageData(w, h);
-      const pixels = imageData.data;
-
-      // Zone colour definitions: [r, g, b, a]
-      const ZONE_COLOURS = {
-        foreground: [230, 100, 60, 76], // rgba(230, 100, 60, 0.30)
-        midground: [140, 80, 200, 64], // rgba(140, 80, 200, 0.25)
-        background: [50, 120, 220, 76], // rgba(50, 120, 220, 0.30)
-      };
-
-      // Normalisation range
-      const dMin = depth.depthRange ? depth.depthRange.min : 0;
-      const dMax = depth.depthRange ? depth.depthRange.max : 1;
-      const range = dMax - dMin;
-
-      // Centroid accumulators: { sumX, sumY, count }
-      const centroids = {
-        foreground: { sumX: 0, sumY: 0, count: 0 },
-        midground: { sumX: 0, sumY: 0, count: 0 },
-        background: { sumX: 0, sumY: 0, count: 0 },
-      };
-
-      const totalPixels = w * h;
-
-      for (let i = 0; i < totalPixels; i++) {
-        const val = data[i];
-
-        // Normalise using the depth result's range
-        let normalised;
-        if (range === 0) {
-          normalised = 0; // Flat image — treat all as foreground
-        } else {
-          normalised = (val - dMin) / range;
-          // Apply inversion if the analyser detected reversed convention
-          if (depth.invertDepth) normalised = 1.0 - normalised;
-          // Clamp to 0–1
-          if (normalised < 0) normalised = 0;
-          if (normalised > 1) normalised = 1;
-        }
-
-        // Determine zone
-        let zone;
-        if (normalised < 0.33) {
-          zone = "foreground";
-        } else if (normalised < 0.66) {
-          zone = "midground";
-        } else {
-          zone = "background";
-        }
-
-        // Set pixel colour
-        const colour = ZONE_COLOURS[zone];
-        const px = i * 4;
-        pixels[px] = colour[0]; // R
-        pixels[px + 1] = colour[1]; // G
-        pixels[px + 2] = colour[2]; // B
-        pixels[px + 3] = colour[3]; // A
-
-        // Accumulate centroid data
-        const x = i % w;
-        const y = Math.floor(i / w);
-        centroids[zone].sumX += x;
-        centroids[zone].sumY += y;
-        centroids[zone].count += 1;
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-      layer.appendChild(canvas);
-
-      // Create positioned labels for zones with ≥5% area
-      const AREA_THRESHOLD = 0.05;
-      const ZONE_DISPLAY_NAMES = {
-        foreground: "Foreground",
-        midground: "Midground",
-        background: "Background",
-      };
-      const zoneKeys = ["foreground", "midground", "background"];
-
-      for (let zi = 0; zi < zoneKeys.length; zi++) {
-        const zoneName = zoneKeys[zi];
-        const c = centroids[zoneName];
-        if (c.count / totalPixels < AREA_THRESHOLD) continue;
-
-        // Clamp centroid so labels stay within visible bounds.
-        // Labels use translate(-50%, -50%) so a centroid at 0% or 100%
-        // would place half the label outside the container.
-        const LABEL_MARGIN = 0.08; // 8% inset from edges
-        const centroidX = Math.max(
-          LABEL_MARGIN,
-          Math.min(1 - LABEL_MARGIN, c.sumX / c.count / w),
-        );
-        const centroidY = Math.max(
-          LABEL_MARGIN,
-          Math.min(1 - LABEL_MARGIN, c.sumY / c.count / h),
-        );
-
-        const label = document.createElement("span");
-        label.className = "imgdesc-depth-zone-label";
-        label.setAttribute("data-zone", zoneName);
-        label.textContent = ZONE_DISPLAY_NAMES[zoneName];
-        label.style.left = (centroidX * 100).toFixed(1) + "%";
-        label.style.top = (centroidY * 100).toFixed(1) + "%";
-        layer.appendChild(label);
-      }
-
-      logInfo("Rendered depth zone overlay (" + w + "×" + h + ")");
-    },
-
-    /**
-     * Populate and show the depth legend panel with zone area percentages.
-     * @private
-     */
-    _updateDepthLegend() {
-      const legend = document.getElementById("imgdesc-depth-legend");
-      if (!legend) return;
-
-      const result = this._analysisRef;
-      if (!result || !result.depth || !result.depth.zones) {
-        legend.hidden = true;
-        return;
-      }
-
-      const zones = result.depth.zones;
-      const zoneConfig = [
-        { key: "foreground", ddId: "imgdesc-depth-legend-foreground" },
-        { key: "midground", ddId: "imgdesc-depth-legend-midground" },
-        { key: "background", ddId: "imgdesc-depth-legend-bg" },
-      ];
-
-      for (let i = 0; i < zoneConfig.length; i++) {
-        const z = zoneConfig[i];
-        const dd = document.getElementById(z.ddId);
-        if (dd && zones[z.key]) {
-          const zone = zones[z.key];
-          let text = zone.areaPercent + "% of image";
-          if (zone.dominantQuadrants && zone.dominantQuadrants.length > 0) {
-            text += " — " + zone.dominantQuadrants.join(", ");
-          }
-          dd.textContent = text;
-        }
-      }
-
-      legend.hidden = false;
-    },
-
-    // ══════════════════════════════════════════════════════════════════
-    // Phase 5D-4: Classification Badge
-    // ══════════════════════════════════════════════════════════════════
-
-    /**
-     * Update the classification badge below the image.
-     * Shows the suggested profile and source (heuristic or CLIP).
-     * @param {Object} classification - From analysisResult.classification
-     * @private
-     */
-    _renderClassificationBadge(classification) {
-      const badge = document.getElementById("imgdesc-overlay-classification");
-      if (!badge) return;
-
-      if (!classification || !classification.profile) {
-        badge.hidden = true;
-        badge.textContent = "";
-        return;
-      }
-
-      const profile = classification.profile;
-      const conf = Math.round((classification.confidence || 0) * 100);
-      const source = classification.source || "heuristic";
-
-      let text = "Detected: " + profile + " (" + conf + "%, " + source + ")";
-
-      // Append CLIP detail if it ran as a secondary source alongside heuristic
-      if (
-        classification.clip &&
-        classification.clip.status === "success" &&
-        classification.clip.topLabel &&
-        source !== "clip"
-      ) {
-        const clipPct = Math.round(
-          (classification.clip.topConfidence || 0) * 100,
-        );
-        text +=
-          " \u00b7 CLIP: " +
-          classification.clip.topLabel +
-          " (" +
-          clipPct +
-          "%)";
-      }
-
-      badge.textContent = text;
-
-      // Keep badge hidden when in output mode (generation complete)
-      const layoutEl = document.querySelector(".imgdesc-layout");
-      const inOutputMode = layoutEl && layoutEl.classList.contains("imgdesc-output-mode");
-      badge.hidden = inOutputMode;
-
-      logDebug("Classification badge updated:", text, inOutputMode ? "(hidden — output mode)" : "");
-    },
-
-    // ══════════════════════════════════════════════════════════════════
     // Phase 7B: Expand/Sidebar Toggle
     // ══════════════════════════════════════════════════════════════════
 
@@ -1712,8 +1498,6 @@
     _boundsToCSS: boundsToCSS,
     _getConfidenceLevel: getConfidenceLevel,
     _pixelBoundsToNormalised: pixelBoundsToNormalised,
-    // Phase 11B: exposed for testing
-    // _renderDepthLayer and _updateDepthLegend are already on the object
   };
 
   logInfo("Module loaded");

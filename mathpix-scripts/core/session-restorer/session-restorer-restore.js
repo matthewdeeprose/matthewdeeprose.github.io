@@ -380,6 +380,26 @@
   };
 
   /**
+   * VS-3d-2: compose the auto-restored version's line (applyRecoveredSession's
+   * recoveredVersionLine, deferred to here) into the restore's outcome line, so
+   * the upload path speaks ONE line that carries both (rule C10). The plain
+   * success line adds nothing a loaded version does not already say, so the
+   * version line REPLACES it; the images line and the figures warning carry
+   * facts of their own, so the version line is appended. Exposed on the class
+   * and read at call time so a suite row matches the spoken line by identity.
+   * @param {string} outcomeLine
+   * @param {?string} versionLine - null when no version was auto-restored
+   * @returns {string}
+   */
+  function composeRestoreLine(outcomeLine, versionLine) {
+    if (!versionLine) return outcomeLine;
+    if (outcomeLine === RESTORER_CONFIG.MESSAGES.SUCCESS) return versionLine;
+    const stop = /[.!?]$/.test(outcomeLine) ? "" : ".";
+    return `${outcomeLine}${stop} ${versionLine}`;
+  }
+  MathPixSessionRestorer.composeRestoreLine = composeRestoreLine;
+
+  /**
    * RD-3: raise the restore's ONE outcome line. On the figures path that is
    * the merged warning, raised through notifyWarning directly because the
    * restorer's own showNotification renders "warning" as an info toast; on
@@ -396,28 +416,61 @@
    * @param {?{restored: boolean, imageCount: number}} imageResult - extractAndRestoreImages' result, or null
    * @returns {string} a RESTORE_OUTCOME value naming the line raised
    */
-  proto._notifyRestoreOutcome = function (figuresOutcome, imageResult) {
+  proto._notifyRestoreOutcome = function (
+    figuresOutcome,
+    imageResult,
+    { versionLine = null } = {},
+  ) {
+    // S6-1d: the flag rides on the instance so the call text the reopen-context
+    // source rows pin is unchanged.
+    const quiet = this._restoreQuiet === true;
     const imagesRestored =
       imageResult && imageResult.restored ? Number(imageResult.imageCount) || 0 : 0;
+
+    // S6-1d: a quiet restore composes the same line and outcome, stores them on
+    // lastRestoreOutcome for the caller, and raises nothing.
+    const raise = (line, outcome, type) => {
+      if (quiet) {
+        this.lastRestoreOutcome = { line, outcome, imageCount: imagesRestored };
+        return;
+      }
+      this.showNotification(line, type);
+    };
 
     if ((!figuresOutcome || !figuresOutcome.message) && imagesRestored > 0) {
       logInfo(
         `Restore outcome: ${imagesRestored} image(s) restored — the images line replaces the success line`,
       );
-      this.showNotification(MathPixSessionRestorer.imagesRestoredLine(imagesRestored), "success");
+      raise(
+        MathPixSessionRestorer.composeRestoreLine(
+          MathPixSessionRestorer.imagesRestoredLine(imagesRestored),
+          versionLine,
+        ),
+        RESTORE_OUTCOME.IMAGES,
+        "success",
+      );
       return RESTORE_OUTCOME.IMAGES;
     }
     if (!figuresOutcome || !figuresOutcome.message) {
-      this.showNotification(RESTORER_CONFIG.MESSAGES.SUCCESS, "success");
+      raise(
+        MathPixSessionRestorer.composeRestoreLine(RESTORER_CONFIG.MESSAGES.SUCCESS, versionLine),
+        RESTORE_OUTCOME.SUCCESS,
+        "success",
+      );
       return RESTORE_OUTCOME.SUCCESS;
     }
+    const mergedLine = MathPixSessionRestorer.composeRestoreLine(figuresOutcome.message, versionLine);
+    if (quiet) {
+      this.lastRestoreOutcome = { line: mergedLine, outcome: RESTORE_OUTCOME.MERGED, imageCount: imagesRestored };
+      return RESTORE_OUTCOME.MERGED;
+    }
     if (typeof window.notifyWarning === "function") {
-      window.notifyWarning(figuresOutcome.message);
+      window.notifyWarning(mergedLine);
     } else {
       // Never silent: without notifyWarning the merged line still goes out,
       // through the restorer's own route.
       logWarn("notifyWarning unavailable — merged figures line sent through showNotification");
-      this.showNotification(figuresOutcome.message, "warning");
+      this.showNotification(mergedLine, "warning");
     }
     return RESTORE_OUTCOME.MERGED;
   };
@@ -427,13 +480,20 @@
    * @param {Object} parseResult - Parsed ZIP data
    * @param {Object|null} selectedEdit - User's edit selection (or null for original)
    */
-  proto.restoreSession = async function (parseResult, selectedEdit) {
+  proto.restoreSession = async function (parseResult, selectedEdit, { quiet = false } = {}) {
     logInfo("Restoring session from ZIP archive");
+    // S6-1d: a quiet restore leaves its outcome here instead of speaking it.
+    this.lastRestoreOutcome = null;
+    this._restoreQuiet = quiet === true;
 
     try {
       // Parcel 10c: a new session must not offer, or zip up, the previous
       // session's converted files.
       this.clearConversionResults();
+
+      // VS-3d-2: nothing held from a previous archive can leak into this one.
+      this._archiveSnapshotKey = null;
+      this._pendingVersionLine = null;
 
       // Determine the content to load (edit takes priority over original)
       const loadedContent = selectedEdit?.content || parseResult.results.mmd;
@@ -525,6 +585,14 @@
         logWarn("Image restore failed (non-fatal):", imageError);
       }
 
+      // VS-3d-2: hold the registry as the ARCHIVE just built it. The chooser's
+      // checkForMatchingSessions and the filter below compare a stored version's
+      // snapshot with this, never with the live registry a re-show may change.
+      this._archiveSnapshotKey =
+        this._registrySnapshotKey?.({
+          registrySnapshot: this._registrySnapshot?.(),
+        }) ?? null;
+
       // Configure UI based on source type
       this.configureUIForSourceType(parseResult.source.isPDF);
 
@@ -533,6 +601,14 @@
 
       // Phase 8G: Initialise display layer for image collapse
       this.initialiseDisplayLayer(this.restoredSession.currentMMD);
+
+      // RL-2: the display layer has just revealed the Manage images button, but
+      // applyRecoveredSession (below) has not yet read the registry mirror. Opening
+      // the manager in that window runs _reconcileOnOpen against the pre-recovery
+      // registry, whose setters schedule a mirror write that overwrites the mirror
+      // before the hydrate reads it. Keep the button disabled until the restore
+      // settles; the finally at the end of this method lifts it on every path.
+      this._setManageImagesBusy({ busy: true });
 
       // Load MMD content into editor
       // If display layer is active, this will show collapsed content
@@ -645,13 +721,19 @@
           this.restoredSession.currentMMD,
         );
 
+        // VS-3d: a version whose text matches the archive but whose registry
+        // differs in authored fields (S6-1f) is a different version; the archive's
+        // own registry is the held _archiveSnapshotKey.
+
         const newerSessions = preExistingSessions.filter((s) => {
           if (s.lastModified <= zipEditTime) return false;
           // Skip sessions whose content only differs by image URL format
           const normalisedStored = normaliseForComparison(
             s.data?.current || "",
           );
-          return normalisedStored !== normalisedZipContent;
+          if (normalisedStored !== normalisedZipContent) return true;
+          // S6-1f (B-D1a): a registry difference is a version only when authored
+          return this._registryEditsDiffer(s.data) === true;
         });
 
         if (newerSessions.length > 0) {
@@ -682,9 +764,16 @@
           logDebug("Reusing recovered session key:", recoveredStorageKey);
 
           // Apply the most recent session
+          // VS-3d-2: deferNotification hands the "Loaded version" line to the
+          // ONE outcome line raised at the end (rule C10).
           await this.applyRecoveredSession({
             key: mostRecentSession.key,
             data: mostRecentSession.data,
+            deferNotification: true,
+            // VS-5: the banner's sentence rides in the one line.
+            bannerSentence: MathPixSessionRestorer.autoRestoredBannerSentence(
+              mostRecentSession.lastModified,
+            ),
           });
 
           // Update the current session index to reflect the auto-restored session
@@ -775,7 +864,9 @@
       // Show notification — ONE outcome line (RD-3, CS-2): the merged figures
       // warning on the figures path, the images line on the images path, the
       // unchanged success line otherwise.
-      this._notifyRestoreOutcome(figuresOutcome, restoredImages);
+      const versionLine = this._pendingVersionLine || null;
+      this._pendingVersionLine = null;
+      this._notifyRestoreOutcome(figuresOutcome, restoredImages, { versionLine });
 
       logInfo("Session restored successfully", {
         sourceFile: parseResult.source.filename,
@@ -786,11 +877,32 @@
       });
     } catch (error) {
       logError("Failed to restore session:", error);
-      this.showNotification(
-        `Failed to restore session: ${error.message}`,
-        "error",
-      );
+      const failureLine = `Failed to restore session: ${error.message}`;
+      if (quiet) {
+        this.lastRestoreOutcome = { line: failureLine, outcome: "error", imageCount: 0 };
+      } else {
+        this.showNotification(failureLine, "error");
+      }
+    } finally {
+      // RL-2: settled, or failed: either way the button must not stay disabled.
+      this._setManageImagesBusy({ busy: false });
+      this._restoreQuiet = false;
     }
+  };
+
+  /**
+   * RL-2: disable or re-enable the Manage images toolbar button while a restore
+   * is still reading the registry mirror. Only the disabled state changes: the
+   * label, aria-label and visibility are the display layer's to own. A disabled
+   * native button is dimmed and skipped by Tab, which is an honest account of a
+   * control that cannot be used yet; hiding it would not be.
+   * @param {{busy: boolean}} options - busy true to disable, false to enable
+   * @private
+   */
+  proto._setManageImagesBusy = function ({ busy }) {
+    const btn = this.elements && this.elements.manageImagesBtn;
+    if (!btn) return;
+    btn.disabled = busy;
   };
 
   /**

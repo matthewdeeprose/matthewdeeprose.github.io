@@ -453,16 +453,37 @@ window.MermaidAccessibilityExport = (function () {
 
     // Text node handling
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent.trim();
-      if (!text) return "";
+      // Item 111 (13 October 2026): the space beside an inline sibling (a
+      // link above all) is the AUTHOR's. The old code trimmed every text node
+      // and then added a space after it, which put a space inside an opening
+      // quote ('" name') and dropped the one after a link ('specnow').
+      const raw = node.textContent;
+      const text = raw.trim();
+      const previous = node.previousSibling;
+      const next = node.nextSibling;
+
+      if (!text) {
+        return previous &&
+          next &&
+          isInlineContent(previous) &&
+          isInlineContent(next)
+          ? " "
+          : "";
+      }
+
+      const leading =
+        previous && isInlineContent(previous) && /^\s/.test(raw) ? " " : "";
+      const nextIsInline = !!next && isInlineContent(next);
+      const authoredTrailing = /\s$/.test(raw);
 
       // Check if we're in an inline context
       if (context.parentNode && isInlineElement(context.parentNode)) {
-        return text;
+        return leading + text + (nextIsInline && authoredTrailing ? " " : "");
       }
 
-      // Normal text node
-      return text + " ";
+      // Normal text node: a space after it, unless an inline sibling follows
+      // and the author wrote none.
+      return leading + text + (nextIsInline && !authoredTrailing ? "" : " ");
     }
 
     // Skip certain elements
@@ -626,6 +647,43 @@ window.MermaidAccessibilityExport = (function () {
         }
 
         context.lastNodeWasBlock = false;
+        break;
+      }
+
+      case "DL": {
+        // Item 111 (13 October 2026): a definition list reads "Term: detail",
+        // one pair to a line. The default branch ran the term and the detail
+        // together with no separator and no break.
+        if (!context.lastNodeWasBlock) {
+          result += "\n\n";
+        }
+
+        const read = (child) => {
+          let text = "";
+          for (const grandchild of child.childNodes) {
+            text += processNodeToTextEnhanced(grandchild, {
+              ...context,
+              parentNode: child,
+              lastNodeWasBlock: false,
+            });
+          }
+          return text.trim();
+        };
+
+        let term = null;
+        for (const child of node.childNodes) {
+          if (child.nodeName === "DT") {
+            if (term !== null) result += term + "\n";
+            term = read(child);
+          } else if (child.nodeName === "DD") {
+            result += (term !== null ? term + ": " : "") + read(child) + "\n";
+            term = null;
+          }
+        }
+        if (term !== null) result += term + "\n";
+
+        result += "\n";
+        context.lastNodeWasBlock = true;
         break;
       }
 
@@ -793,6 +851,21 @@ window.MermaidAccessibilityExport = (function () {
     ];
 
     return inlineElements.includes(node.nodeName);
+  }
+
+  /**
+   * True for a node that sits in the flow of a line of text: a text node with
+   * words in it, or an inline element. Decides whether the space beside a text
+   * node is the author's (item 111).
+   * @param {Node} node - The node to test
+   * @returns {boolean} True when the node is inline content
+   */
+  function isInlineContent(node) {
+    if (!node) return false;
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent.trim() !== "";
+    }
+    return isInlineElement(node);
   }
 
   /**

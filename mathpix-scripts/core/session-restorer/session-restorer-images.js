@@ -314,6 +314,11 @@
       // Extract each image, create blob URLs, attach to registry
       let extractedCount = 0;
 
+      // VS-2: remember the URL and bytes extracted from THIS archive, so a
+      // switch to the ZIP original can tell an untouched picture (re-link)
+      // from a swapped, deleted or added one (re-extract from the archive).
+      this._archiveImageUrls = new Map();
+
       for (const [imageId, zipPath] of filenameLookup) {
         try {
           // Extract blob from ZIP
@@ -351,6 +356,7 @@
 
           // Attach blob to registry entry
           registry.attachBlob(imageId, typedBlob);
+          this._archiveImageUrls.set(imageId, { blobUrl, blob: typedBlob });
           extractedCount++;
 
           // For user-added images: regenerate dataUri so getMMDForAPI can embed them
@@ -385,8 +391,13 @@
           }
 
           // Phase 9 Feature 2: Cache for cross-session persistence
+          // VS-1: write only when the id key is ABSENT. The id keys are stable
+          // across reloads for OCR images, so an unconditional write put the
+          // archive's original bytes over a swap on every extraction.
           const zipFilename = zipPath.split("/").pop();
-          this._cacheImage(imageId, zipFilename, typedBlob);
+          if (!(await this._hasCachedImage(imageId))) {
+            this._cacheImage(imageId, zipFilename, typedBlob);
+          }
 
           logDebug(
             `Extracted image: ${imageId} → ${filename} (${typedBlob.size} bytes)`,
@@ -1102,12 +1113,13 @@
           URL.revokeObjectURL(blobUrl);
         }
 
-        // Step 4: Remove from Cache API. Filename is the secondary key;
-        // null is safe when filenameMap has no record for this entry.
-        const filename = this.imageFilenameMap?.[entry.id]?.filename || null;
-        if (typeof this._removeCachedImage === "function") {
-          await this._removeCachedImage(entry.id, filename);
-        }
+        // Step 4 (retired, VS-1): the Cache API entry is deliberately KEPT.
+        // Both callers are version switches (loadZIPContents and
+        // applyRecoveredSession). The registry entry leaves because the chosen
+        // version does not show the picture, but the bytes belong to the
+        // version that does, and switching back resolves them from the cache
+        // by id. A person's own Delete still removes the entry: that goes
+        // through deleteImage and the manager, not through this helper.
       } catch (err) {
         logWarn(
           `_cleanupBuildFromMMDRemoved: error cleaning up entry ${entry?.id}:`,
@@ -1236,40 +1248,14 @@
 
     // Step 2: User-added images — blob URL is the originalUrl in registry
     if (this.imageRegistry && rewritten.includes("blob:")) {
-      // Ensure imageFilenameMap exists
-      if (!this.imageFilenameMap) {
-        this.imageFilenameMap = {};
-      }
-
-      // Counter for generating filenames — start after existing entries
-      let addedImageCounter = Object.keys(this.imageFilenameMap).length + 1;
-
-      // Derive document base name for filename generation
-      const docBaseName = (
-        this.restoredSession?.source?.filename || "document"
-      ).replace(/\.[^/.]+$/, "");
-
       const allImages = this.imageRegistry.getAllImages();
       for (const img of allImages) {
         if (img.source === "user-upload" || img.status === "user-added") {
           if (img.originalUrl?.startsWith("blob:")) {
-            // Generate filename if missing from the map
-            if (!this.imageFilenameMap[img.id]?.filename) {
-              const ext =
-                img.mimeType === "image/png"
-                  ? ".png"
-                  : img.mimeType === "image/webp"
-                    ? ".webp"
-                    : ".jpg";
-              const filename = `${docBaseName}-image-${addedImageCounter}${ext}`;
-              addedImageCounter++;
-
-              this.imageFilenameMap[img.id] = {
-                filename: filename,
-                url: img.originalUrl,
-                downloaded: true,
-                status: "user-added",
-              };
+            // Generate filename if missing from the map (shared with the
+            // add path, which records one at add time since VS-1)
+            if (!this.imageFilenameMap?.[img.id]?.filename) {
+              const filename = this._ensureUserImageFilename(img);
               logInfo(
                 `rewriteMMDForZIP: generated filename "${filename}" for ${img.id}`,
               );
@@ -1293,6 +1279,61 @@
       `rewriteMMDForZIP: rewrote ${replacementCount} image URL(s) to relative paths`,
     );
     return rewritten;
+  };
+
+  /**
+   * Make sure a user-added image has a file name on record (VS-1).
+   *
+   * The name is the key the Cache API's secondary lookup and the stored
+   * placeholder (`[user-image:id|name]`) both use, so it has to exist when the
+   * picture is ADDED, not only when a ZIP is later saved. Returns the existing
+   * name when the map already has one; otherwise generates
+   * `<document>-image-<n>.<ext>`, unique within the map, and records it in the
+   * same shape rewriteMMDForZIP has always used.
+   *
+   * @param {Object} entry - Registry entry (needs id, mimeType, originalUrl)
+   * @returns {string|null} The file name, or null when there is no entry id
+   * @private
+   */
+  proto._ensureUserImageFilename = function (entry) {
+    if (!entry || !entry.id) return null;
+    if (!this.imageFilenameMap) {
+      this.imageFilenameMap = {};
+    }
+
+    const existing = this.imageFilenameMap[entry.id]?.filename;
+    if (existing) return existing;
+
+    const ext =
+      entry.mimeType === "image/png"
+        ? ".png"
+        : entry.mimeType === "image/webp"
+          ? ".webp"
+          : ".jpg";
+    const docBaseName = (
+      this.restoredSession?.source?.filename || "document"
+    ).replace(/\.[^/.]+$/, "");
+
+    // Start after existing entries; step past any name already taken
+    const inUse = new Set(
+      Object.values(this.imageFilenameMap)
+        .map((mapEntry) => mapEntry?.filename)
+        .filter(Boolean),
+    );
+    let counter = Object.keys(this.imageFilenameMap).length + 1;
+    let filename = `${docBaseName}-image-${counter}${ext}`;
+    while (inUse.has(filename)) {
+      counter++;
+      filename = `${docBaseName}-image-${counter}${ext}`;
+    }
+
+    this.imageFilenameMap[entry.id] = {
+      filename: filename,
+      url: entry.originalUrl,
+      downloaded: true,
+      status: "user-added",
+    };
+    return filename;
   };
 
   /**
@@ -1493,6 +1534,24 @@
                 source: "cache-recovery",
               });
               if (recoveredEntry) {
+                // VS-1: the recovered entry has a NEW id. Record a file name
+                // for it (the one the placeholder carried, else a generated
+                // one) so the next stored placeholder carries it, and make sure
+                // the bytes sit under that name. Filename key only: an id key
+                // per recovery would duplicate the bytes on every switch.
+                if (filename) {
+                  if (!this.imageFilenameMap) this.imageFilenameMap = {};
+                  this.imageFilenameMap[recoveredEntry.id] = {
+                    filename: filename,
+                    url: recoveredEntry.originalUrl,
+                    downloaded: true,
+                    status: "user-added",
+                  };
+                }
+                this._cacheImageByFilename(
+                  this._ensureUserImageFilename(recoveredEntry),
+                  cachedBlob,
+                );
                 logInfo(
                   `reconcileRecoveredImages: recovered ${imageId} from Cache API as ${recoveredEntry.id}`,
                 );
@@ -1694,6 +1753,19 @@
     this._removeCachedImage(imageId, swapFilename);
     this._cacheImage(imageId, swapFilename, fileData.blob);
 
+    // VS-3e: the same bytes under a key that names the swap, so two stored
+    // versions that swap one picture differently each keep their own. The
+    // digest is the marker the snapshot records; it must be set before the
+    // auto-save below reads the snapshot.
+    const swapDigest = await this._digestBlob(fileData.blob);
+    this._swapDigests = { ...(this._swapDigests || {}) };
+    if (swapDigest) {
+      this._swapDigests[imageId] = swapDigest;
+      this._cacheSwapImage(imageId, swapDigest, fileData.blob);
+    } else {
+      delete this._swapDigests[imageId];
+    }
+
     // Trigger auto-save
     this.updateSessionStatus("modified");
     this.scheduleAutoSave(this.restoredSession.currentMMD);
@@ -1738,7 +1810,9 @@
     }
 
     // Phase 9 Feature 2: Cache for cross-session persistence
-    const addedFilename = fileData.blob?.name || null;
+    // VS-1: record the file name now, so getMMDForStorage writes it into the
+    // placeholder and the same name keys the cache's secondary lookup.
+    const addedFilename = this._ensureUserImageFilename(addedEntry);
     this._cacheImage(addedEntry.id, addedFilename, fileData.blob);
 
     // Append to end of working MMD
@@ -1947,6 +2021,106 @@
     }
   };
 
+  // Length of the swap marker: 128 bits of SHA-256, ample for a handful of
+  // swaps per document, short enough to read in a cache key.
+  const SWAP_DIGEST_HEX_LENGTH = 32;
+
+  /**
+   * Content digest of a blob (VS-3e): SHA-256, first 32 hex characters.
+   * Deterministic, so identical bytes give one key. Null when the digest is
+   * unavailable, in which case the swap is kept under the plain id key only.
+   *
+   * @param {Blob} blob
+   * @returns {Promise<string|null>}
+   * @private
+   */
+  proto._digestBlob = async function (blob) {
+    try {
+      if (!blob || typeof crypto === "undefined" || !crypto.subtle) return null;
+      const hash = await crypto.subtle.digest("SHA-256", await blob.arrayBuffer());
+      return Array.from(new Uint8Array(hash))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("")
+        .slice(0, SWAP_DIGEST_HEX_LENGTH);
+    } catch (error) {
+      logWarn("Failed to digest swapped image:", error);
+      return null;
+    }
+  };
+
+  /**
+   * Cache swapped bytes under the swap's own key (VS-3e), beside the plain id
+   * key `_cacheImage` writes for the newest swap. Fire-and-forget.
+   *
+   * @param {string} imageId - Registry image ID
+   * @param {string} digest - from `_digestBlob`
+   * @param {Blob} blob
+   * @private
+   */
+  proto._cacheSwapImage = async function (imageId, digest, blob) {
+    if (!this._hasCacheAPI() || !imageId || !digest || !blob) return;
+
+    try {
+      const cache = await caches.open("mathpix-user-images");
+      await cache.put(
+        new Request(`/mathpix-images/id/${imageId}/${digest}`),
+        new Response(blob.slice(), {
+          headers: { "Content-Type": blob.type || "image/jpeg" },
+        }),
+      );
+    } catch (error) {
+      logWarn("Failed to cache swapped image:", imageId, error);
+    }
+  };
+
+  /**
+   * Is there a cached entry under this image id? (VS-1)
+   * Fails toward "no entry" on any error, so the caller writes as it always did.
+   *
+   * @param {string} imageId - Registry image ID
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  proto._hasCachedImage = async function (imageId) {
+    if (!this._hasCacheAPI() || !imageId) return false;
+
+    try {
+      const cache = await caches.open("mathpix-user-images");
+      const hit = await cache.match(new Request(`/mathpix-images/id/${imageId}`));
+      return !!hit;
+    } catch (error) {
+      logWarn("Failed to check cached image:", imageId, error);
+      return false;
+    }
+  };
+
+  /**
+   * Cache an image blob under its filename key only (VS-1).
+   * Used when an image is recovered from the cache under a new id: the id key
+   * would duplicate the bytes on every recovery, and the placeholder now
+   * carries the file name that resolves it. Idempotent (overwrites the key).
+   *
+   * @param {string} filename - File name recorded for the image
+   * @param {Blob} blob - Image blob to cache
+   * @private
+   */
+  proto._cacheImageByFilename = async function (filename, blob) {
+    if (!this._hasCacheAPI() || !filename || !blob) return;
+
+    try {
+      const cache = await caches.open("mathpix-user-images");
+      await cache.put(
+        new Request(`/mathpix-images/fn/${filename}`),
+        new Response(blob.slice(), {
+          headers: { "Content-Type": blob.type || "image/jpeg" },
+        }),
+      );
+      logDebug(`Cached image by filename: ${filename}`);
+    } catch (error) {
+      logWarn("Failed to cache image by filename:", filename, error);
+    }
+  };
+
   /**
    * Remove a cached image by ID and optional filename.
    * Fire-and-forget — failures are logged but do not block the caller.
@@ -2013,6 +2187,645 @@
     return map;
   };
 
+  // =========================================================================
+  // VS-2: THE ZIP ORIGINAL IS THE ARCHIVE AS SAVED (GR-D3)
+  // =========================================================================
+
+  const ARCHIVE_IMAGE_MIME_TYPES = Object.freeze({
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
+    webp: "image/webp",
+    gif: "image/gif",
+  });
+
+  /**
+   * Does this blob URL still resolve? A revoked URL fails the fetch.
+   * @param {string} url
+   * @returns {Promise<boolean>}
+   * @private
+   */
+  proto._blobUrlHoldsBytes = async function (url) {
+    if (typeof url !== "string" || !url.startsWith("blob:")) return false;
+    try {
+      const response = await fetch(url);
+      await response.blob();
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  /**
+   * The archive's own bytes for one picture (VS-3e factor of the loops in
+   * `_rebuildRegistryFromArchive` and `_restoreRegistryFromSnapshot`): the blob
+   * extracted from this archive earlier when its URL still resolves (relink),
+   * otherwise the kept archive's file (re-extract; the caller mints the URL).
+   * Never reads the Cache API. Returns null when neither source is available.
+   *
+   * @param {Object} source
+   * @param {Object} source.entry - registry entry (its originalUrl keys the held map)
+   * @param {string} source.id - registry image id
+   * @param {Map} source.archiveStore - id to {blobUrl, blob} from the last extraction
+   * @param {Map} source.heldMap - CDN URL to blob URL as it stood before the rebuild
+   * @param {Object|null} source.zip - loaded archive, or null
+   * @param {string|null} source.zipPath - the picture's path in the archive, or null
+   * @returns {Promise<{blob: Blob, blobUrl: string|null, kind: string}|null>}
+   * @private
+   */
+  proto._resolveArchiveImageBytes = async function (source) {
+    const { entry, id, archiveStore, heldMap, zip, zipPath } = source;
+    const held = archiveStore.get(id);
+    const mapped = entry.originalUrl ? heldMap.get(entry.originalUrl) : null;
+    if (
+      held &&
+      mapped === held.blobUrl &&
+      (await this._blobUrlHoldsBytes(held.blobUrl))
+    ) {
+      return { blob: held.blob, blobUrl: held.blobUrl, kind: "relinked" };
+    }
+    if (!zip || !zipPath) return null;
+
+    const raw = await zip.files[zipPath].async("blob");
+    const ext = zipPath.split(".").pop().toLowerCase();
+    const blob =
+      raw.type && raw.type !== "application/octet-stream"
+        ? raw
+        : new Blob([raw], {
+            type: ARCHIVE_IMAGE_MIME_TYPES[ext] || "image/jpeg",
+          });
+    return { blob, blobUrl: null, kind: "reextracted" };
+  };
+
+  /**
+   * Replace the live registry, the filename map and the blob-URL map with the
+   * archive's own (VS-2). The registry object keeps its identity: fromJSON
+   * clears and refills it, so every holder of the reference sees the archive's
+   * entries and no ghost survives a swap or a delete.
+   *
+   * Pictures: an entry whose blob URL is still the one extracted from this
+   * archive (the map holds exactly that URL, and it still resolves) is
+   * re-linked. Any other entry (swapped, deleted, added since) is re-extracted
+   * from the kept archive. Original bytes never come from the Cache API.
+   *
+   * @returns {Promise<{rebuilt: boolean, relinked: number, reextracted: number, errors: string[]}>}
+   * @private
+   */
+  proto._rebuildRegistryFromArchive = async function () {
+    const result = { rebuilt: false, relinked: 0, reextracted: 0, errors: [] };
+    if (!this._rawZIPFile || !this.imageRegistry || typeof JSZip === "undefined") {
+      return result;
+    }
+
+    try {
+      const zip = await JSZip.loadAsync(this._rawZIPFile);
+      const allFiles = Object.keys(zip.files);
+      const registryPath = allFiles.find(
+        (f) => f.endsWith("image-registry.json") && f.includes("metadata"),
+      );
+      if (!registryPath) return result;
+
+      const registryData = JSON.parse(await zip.files[registryPath].async("text"));
+      if (!Array.isArray(registryData.images) || registryData.images.length === 0) {
+        return result;
+      }
+
+      const imageFiles = allFiles.filter(
+        (f) => f.includes("images/") && !f.endsWith("/"),
+      );
+      if (imageFiles.length === 0) return result;
+
+      const registry = this.imageRegistry;
+
+      // What the live state holds now, read before it is replaced.
+      const oldIds = registry.getAllImages().map((e) => e.id);
+      const oldUrls = new Set();
+      for (const e of registry.getAllImages()) {
+        if (typeof e.originalUrl === "string" && e.originalUrl.startsWith("blob:")) {
+          oldUrls.add(e.originalUrl);
+        }
+      }
+      for (const url of this.imageBlobUrlMap.values()) oldUrls.add(url);
+      const archiveStore = this._archiveImageUrls || new Map();
+
+      // A debounced mirror write of the old state must not land after this.
+      if (typeof registry._cancelMirrorWrite === "function") {
+        registry._cancelMirrorWrite();
+      }
+      if (!registry.fromJSON(registryData)) {
+        result.errors.push("fromJSON refused the archive registry");
+        return result;
+      }
+
+      const filenameMap = registryData.filenameMap || {};
+      this.imageFilenameMap = filenameMap;
+      const heldMap = new Map(this.imageBlobUrlMap);
+      const nextMap = new Map();
+      const nextStore = new Map();
+
+      for (const [imageId, mapEntry] of Object.entries(filenameMap)) {
+        if (!mapEntry || !mapEntry.filename || !mapEntry.downloaded) continue;
+        const entry = registry.getImage(imageId);
+        const zipPath = imageFiles.find(
+          (p) => p.split("/").pop() === mapEntry.filename,
+        );
+        if (!entry || !zipPath) continue;
+
+        try {
+          const resolved = await this._resolveArchiveImageBytes({
+            entry,
+            id: imageId,
+            archiveStore,
+            heldMap,
+            zip,
+            zipPath,
+          });
+          const blob = resolved.blob;
+          let blobUrl = resolved.blobUrl;
+          if (resolved.kind === "relinked") {
+            result.relinked++;
+          } else {
+            blobUrl = URL.createObjectURL(blob);
+            this.objectURLs.push(blobUrl);
+            result.reextracted++;
+          }
+
+          if (entry.originalUrl) nextMap.set(entry.originalUrl, blobUrl);
+          nextStore.set(imageId, { blobUrl, blob });
+          registry.attachBlob(imageId, blob);
+
+          if (entry.source === "user-upload" || entry.status === "user-added") {
+            const dataUri = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(blob);
+            });
+            if (dataUri) registry.syncDataUriForRestore(imageId, dataUri);
+          }
+        } catch (imageError) {
+          result.errors.push(`${imageId}: ${imageError.message}`);
+        }
+      }
+
+      this.imageBlobUrlMap.clear();
+      for (const [cdnUrl, blobUrl] of nextMap) {
+        this.imageBlobUrlMap.set(cdnUrl, blobUrl);
+      }
+      this._archiveImageUrls = nextStore;
+      // The ZIP original holds no swap, so no marker (and reads no swap key).
+      this._swapDigests = {};
+
+      // Free what the old state held and the archive state does not use.
+      const inUse = new Set(nextMap.values());
+      for (const url of oldUrls) {
+        if (typeof url === "string" && url.startsWith("blob:") && !inUse.has(url)) {
+          URL.revokeObjectURL(url);
+        }
+      }
+      for (const id of new Set([...oldIds, ...Object.keys(filenameMap)])) {
+        this._invalidateEncode?.(id);
+      }
+
+      result.rebuilt = true;
+      return result;
+    } catch (error) {
+      logWarn("_rebuildRegistryFromArchive failed:", error);
+      result.errors.push(error.message);
+      return result;
+    }
+  };
+
+  // =========================================================================
+  // VS-3b: THE PER-VERSION REGISTRY SNAPSHOT (GR-2 design section 7)
+  // =========================================================================
+
+  const REGISTRY_SNAPSHOT_VERSION = 1;
+
+  // A URL that is dead after a reload (a blob URL) or that carries bytes (a
+  // data URI). Matched on the URL shape, so prose in an alt text that merely
+  // says "data:" is not touched.
+  const SNAPSHOT_DEAD_URL_PATTERN = /blob:https?:|data:image\//i;
+
+  // Pictures the person supplied, as opposed to those the archive extracted.
+  const isUserSuppliedEntry = (entry) =>
+    entry.status === "user-added" ||
+    entry.source === "user-upload" ||
+    entry.source === "cache-recovery";
+
+  /**
+   * The registry as one version stores it (VS-3b). `toJSON` plus the recorded
+   * file name of each user-supplied or swapped picture, which `toJSON` does not
+   * carry. No bytes and no data URIs (toJSON nulls them); no `stats`; no
+   * context (GR-D4). A blob URL is dead after a reload, so it never leaves:
+   * an archive original keeps its CDN `originalUrl` and gets its CDN
+   * `mmdReference` back, a user picture stores both as null and the restore
+   * mints a live URL from the cached bytes.
+   *
+   * Pure and deterministic: two calls with no change between give equal JSON.
+   *
+   * @returns {{v: number, metadata: Object, images: Object[], filenames: Object}|null}
+   * @private
+   */
+  proto._registrySnapshot = function () {
+    const registry = this.imageRegistry;
+    if (!registry || typeof registry.toJSON !== "function") return null;
+
+    const data = registry.toJSON();
+    const filenames = {};
+
+    const images = data.images.map((entry) => {
+      const out = { ...entry };
+
+      if (SNAPSHOT_DEAD_URL_PATTERN.test(out.originalUrl || "")) {
+        out.originalUrl = null;
+      }
+
+      if (SNAPSHOT_DEAD_URL_PATTERN.test(out.mmdReference || "")) {
+        const liveUrl = this.imageBlobUrlMap?.get(out.originalUrl);
+        out.mmdReference =
+          liveUrl && out.originalUrl
+            ? out.mmdReference.replace(liveUrl, out.originalUrl)
+            : null;
+        if (SNAPSHOT_DEAD_URL_PATTERN.test(out.mmdReference || "")) {
+          out.mmdReference = null;
+        }
+      }
+
+      const named = this.imageFilenameMap?.[out.id];
+      if (
+        named?.filename &&
+        (isUserSuppliedEntry(out) || out.status === "user-replaced")
+      ) {
+        filenames[out.id] = {
+          filename: named.filename,
+          status: named.status || out.status,
+        };
+      }
+
+      return out;
+    });
+
+    // VS-3e: the swap marker of each picture whose bytes were swapped in this
+    // version. Present only when there is one, so a snapshot with no swap is
+    // byte-identical to those saved before the marker existed.
+    const swaps = {};
+    for (const out of images) {
+      const digest = this._swapDigests?.[out.id];
+      if (digest) swaps[out.id] = digest;
+    }
+
+    const snapshot = {
+      v: REGISTRY_SNAPSHOT_VERSION,
+      metadata: { ...data.metadata },
+      images,
+      filenames,
+    };
+    if (Object.keys(swaps).length > 0) snapshot.swaps = swaps;
+    return snapshot;
+  };
+
+  /**
+   * Why this value is not a usable snapshot, or null when it is (VS-3b).
+   * @param {*} data
+   * @returns {string|null}
+   * @private
+   */
+  proto._invalidRegistrySnapshotReason = function (data) {
+    if (!data || typeof data !== "object") return "snapshot is not an object";
+    if (data.v !== REGISTRY_SNAPSHOT_VERSION) return "snapshot version not 1";
+    if (!data.metadata || typeof data.metadata !== "object") {
+      return "snapshot has no metadata";
+    }
+    if (!Array.isArray(data.images)) return "snapshot images is not an array";
+
+    const seen = new Set();
+    for (const image of data.images) {
+      if (!image || typeof image !== "object") return "snapshot entry is not an object";
+      if (typeof image.id !== "string" || image.id.length === 0) {
+        return "snapshot entry has no id";
+      }
+      if (seen.has(image.id)) return "snapshot repeats an id";
+      seen.add(image.id);
+    }
+
+    if (data.filenames !== undefined) {
+      if (!data.filenames || typeof data.filenames !== "object") {
+        return "snapshot filenames is not an object";
+      }
+      for (const named of Object.values(data.filenames)) {
+        if (!named || typeof named.filename !== "string") {
+          return "snapshot file name is not a string";
+        }
+      }
+    }
+
+    if (data.swaps !== undefined) {
+      if (!data.swaps || typeof data.swaps !== "object") {
+        return "snapshot swaps is not an object";
+      }
+      for (const digest of Object.values(data.swaps)) {
+        if (typeof digest !== "string" || digest.length === 0) {
+          return "snapshot swap marker is not a string";
+        }
+      }
+    }
+
+    return null;
+  };
+
+  /**
+   * Put the live registry, file-name map and blob-URL map back to a stored
+   * version's snapshot (VS-3b). The registry object keeps its identity, as in
+   * `_rebuildRegistryFromArchive`. Nothing calls this from production yet
+   * (VS-3d wires it).
+   *
+   * Pictures: an archive original whose blob URL still resolves is re-linked;
+   * otherwise it is re-extracted from the kept archive. An added or swapped
+   * picture takes its bytes from the Cache API by the SNAPSHOT's id (then by
+   * its file name), attached before reconcile, so the id mint is never reached.
+   * A picture with no bytes keeps its entry and is reported in `missingBytes`.
+   *
+   * An unreadable snapshot returns `{applied: false, reason}` and leaves every
+   * registry field as it was; everything that can fail is read before the
+   * first write.
+   *
+   * @param {Object|string} snapshot - from `_registrySnapshot`, object or JSON
+   * @param {Object} [options]
+   * @param {string} [options.mmd] - the stored document; reconciled and rendered
+   * @param {boolean} [options.render=true] - render `mmd` into the preview
+   * @returns {Promise<{applied: boolean, reason: string|null, relinked: number, reextracted: number, fromCache: number, missingBytes: string[], errors: string[], mmd: string|null}>}
+   * @private
+   */
+  proto._restoreRegistryFromSnapshot = async function (snapshot, options = {}) {
+    const result = {
+      applied: false,
+      reason: null,
+      relinked: 0,
+      reextracted: 0,
+      fromCache: 0,
+      missingBytes: [],
+      errors: [],
+      mmd: null,
+    };
+
+    let data = snapshot;
+    if (typeof snapshot === "string") {
+      try {
+        data = JSON.parse(snapshot);
+      } catch (parseError) {
+        result.reason = "snapshot is not valid JSON";
+        return result;
+      }
+    }
+
+    const invalid = this._invalidRegistrySnapshotReason(data);
+    if (invalid) {
+      result.reason = invalid;
+      return result;
+    }
+    if (!this.imageRegistry) {
+      result.reason = "no image registry";
+      return result;
+    }
+
+    const registry = this.imageRegistry;
+
+    // ---- Reads: all of them before the first write -------------------------
+    let zip = null;
+    let zipFilenameMap = null;
+    let imageFiles = [];
+    if (this._rawZIPFile && typeof JSZip !== "undefined") {
+      try {
+        zip = await JSZip.loadAsync(this._rawZIPFile);
+        const allFiles = Object.keys(zip.files);
+        const registryPath = allFiles.find(
+          (f) => f.endsWith("image-registry.json") && f.includes("metadata"),
+        );
+        if (registryPath) {
+          const archiveRegistry = JSON.parse(
+            await zip.files[registryPath].async("text"),
+          );
+          zipFilenameMap = archiveRegistry.filenameMap || {};
+        }
+        imageFiles = allFiles.filter(
+          (f) => f.includes("images/") && !f.endsWith("/"),
+        );
+      } catch (zipError) {
+        result.errors.push(`archive: ${zipError.message}`);
+        zip = null;
+      }
+    }
+    const cached = await this._prefetchCachedImages();
+
+    const oldIds = registry.getAllImages().map((e) => e.id);
+    const oldUrls = new Set();
+    for (const e of registry.getAllImages()) {
+      if (typeof e.originalUrl === "string" && e.originalUrl.startsWith("blob:")) {
+        oldUrls.add(e.originalUrl);
+      }
+    }
+    for (const url of this.imageBlobUrlMap.values()) oldUrls.add(url);
+    const archiveStore = this._archiveImageUrls || new Map();
+    const heldMap = new Map(this.imageBlobUrlMap);
+    const baseFilenames = zipFilenameMap || this.imageFilenameMap || {};
+
+    // ---- Writes -------------------------------------------------------------
+    if (typeof registry._cancelMirrorWrite === "function") {
+      registry._cancelMirrorWrite();
+    }
+    const fromJsonOk = registry.fromJSON({
+      version: data.metadata.version,
+      metadata: data.metadata,
+      images: data.images,
+    });
+    if (!fromJsonOk) {
+      result.reason = "fromJSON refused the snapshot";
+      return result;
+    }
+    result.applied = true;
+
+    const nextFilenames = {};
+    const nextSwaps = {};
+    const nextMap = new Map();
+    const nextStore = new Map();
+
+    for (const entry of registry.getAllImages()) {
+      const id = entry.id;
+      const user = isUserSuppliedEntry(entry);
+      const swapped = !user && entry.status === "user-replaced";
+      const stored = data.filenames?.[id] || null;
+      const archiveName = baseFilenames[id]?.filename || null;
+      const knownName = stored?.filename || archiveName;
+
+      if (user && stored) {
+        nextFilenames[id] = {
+          filename: stored.filename,
+          url: null,
+          downloaded: true,
+          status: stored.status || entry.status,
+        };
+      } else if (baseFilenames[id]) {
+        nextFilenames[id] = baseFilenames[id];
+      }
+
+      try {
+        let blob = null;
+        let blobUrl = null;
+        let fromArchive = false;
+
+        if (user || swapped) {
+          // VS-3e: a marked swap takes its own bytes; an entry with no marker
+          // (a snapshot saved before markers) takes the plain id key as before.
+          const marker = data.swaps?.[id] || null;
+          blob = marker ? cached.get(`${id}/${marker}`) || null : null;
+          if (blob) nextSwaps[id] = marker;
+          if (!blob) {
+            blob = cached.get(id) || (knownName ? cached.get(knownName) : null);
+          }
+          if (blob) result.fromCache++;
+        }
+
+        if (!blob && !user) {
+          const zipPath = archiveName
+            ? imageFiles.find((p) => p.split("/").pop() === archiveName)
+            : null;
+          const resolved = await this._resolveArchiveImageBytes({
+            entry,
+            id,
+            archiveStore,
+            heldMap,
+            zip,
+            zipPath,
+          });
+          if (resolved) {
+            blob = resolved.blob;
+            blobUrl = resolved.blobUrl;
+            fromArchive = true;
+            if (resolved.kind === "relinked") result.relinked++;
+            else result.reextracted++;
+          }
+        }
+
+        if (!blob) {
+          result.missingBytes.push(id);
+          continue;
+        }
+
+        if (!blobUrl) {
+          blobUrl = URL.createObjectURL(blob);
+          this.objectURLs.push(blobUrl);
+        }
+        registry.attachBlob(id, blob);
+
+        if (user) {
+          registry.syncOriginalUrlForRestore(id, blobUrl);
+          registry.syncMmdReferenceForRestore(id, `![](${blobUrl})`);
+          if (nextFilenames[id]) nextFilenames[id].url = blobUrl;
+          const dataUri = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+          });
+          if (dataUri) registry.syncDataUriForRestore(id, dataUri);
+          continue;
+        }
+
+        if (entry.originalUrl) nextMap.set(entry.originalUrl, blobUrl);
+        if (fromArchive) nextStore.set(id, { blobUrl, blob });
+      } catch (imageError) {
+        result.errors.push(`${id}: ${imageError.message}`);
+      }
+    }
+
+    this.imageFilenameMap = nextFilenames;
+    this._swapDigests = nextSwaps;
+    this.imageBlobUrlMap.clear();
+    for (const [cdnUrl, blobUrl] of nextMap) {
+      this.imageBlobUrlMap.set(cdnUrl, blobUrl);
+    }
+    this._archiveImageUrls = nextStore;
+
+    // Free what the old state held and this version does not use.
+    const inUse = new Set(nextMap.values());
+    for (const url of oldUrls) {
+      if (typeof url === "string" && url.startsWith("blob:") && !inUse.has(url)) {
+        URL.revokeObjectURL(url);
+      }
+    }
+    for (const id of new Set([...oldIds, ...data.images.map((i) => i.id)])) {
+      this._invalidateEncode?.(id);
+    }
+
+    // ---- The document: CDN form to blob form, then placeholders ------------
+    if (typeof options.mmd === "string") {
+      let working = options.mmd;
+      if (typeof this.rewriteRelativePathsToBlobUrls === "function") {
+        working = this.rewriteRelativePathsToBlobUrls(working);
+      }
+      if (typeof this.rewriteMMDWithBlobUrls === "function") {
+        working = this.rewriteMMDWithBlobUrls(working);
+      }
+      this.syncRegistryReferencesToBlobUrls();
+
+      result.mmd = this.reconcileRecoveredImages(working, cached);
+
+      // reconcile may refresh a user picture's blob URL; keep the reference in step.
+      for (const entry of registry.getAllImages()) {
+        if (isUserSuppliedEntry(entry) && entry.blob instanceof Blob && entry.originalUrl) {
+          registry.syncMmdReferenceForRestore(entry.id, `![](${entry.originalUrl})`);
+          if (nextFilenames[entry.id]) nextFilenames[entry.id].url = entry.originalUrl;
+        }
+      }
+
+      if (this.restoredSession) this.restoredSession.currentMMD = result.mmd;
+      if (options.render !== false && typeof this.loadMMDContent === "function") {
+        this.loadMMDContent(result.mmd, this.restoredSession?.originalMMD);
+      }
+    }
+
+    return result;
+  };
+
+  /**
+   * Remove the Cache API keys of every picture the live registry holds, and
+   * every file-name key recorded for them (VS-2, Clear Local Saves). Purges by
+   * the ids held, never the whole cache, so another document's keys stay.
+   * @returns {Promise<number>} number of entries purged
+   * @private
+   */
+  proto._purgeCacheForLiveImages = async function () {
+    if (!this.imageRegistry) return 0;
+    const ids = this.imageRegistry.getAllImages().map((e) => e.id);
+    for (const id of ids) {
+      await this._removeCachedImage(
+        id,
+        this.imageFilenameMap?.[id]?.filename || null,
+      );
+    }
+
+    // VS-3e: every swap-marker key of those ids, whichever version made it.
+    // Matched on the id plus a slash, so another document's id that merely
+    // starts with the same letters is left alone.
+    if (this._hasCacheAPI() && ids.length > 0) {
+      try {
+        const cache = await caches.open("mathpix-user-images");
+        const prefixes = ids.map((id) => `/mathpix-images/id/${id}/`);
+        for (const request of await cache.keys()) {
+          const path = new URL(request.url, location.origin).pathname;
+          if (prefixes.some((prefix) => path.startsWith(prefix))) {
+            await cache.delete(request);
+          }
+        }
+      } catch (error) {
+        logWarn("Failed to purge swap-marker keys:", error);
+      }
+    }
+    this._swapDigests = {};
+    return ids.length;
+  };
+
   /**
    * Clear all localStorage sessions matching the current ZIP file
    * Shows a confirmation modal before proceeding.
@@ -2069,11 +2882,22 @@
       `Cleared ${clearedCount} localStorage session(s) for ${sourceFilename}`,
     );
 
+    // VS-2 (GR-D1): every browser-held trace goes, not only the session keys.
+    // The registry mirror would otherwise carry the cleared descriptions into
+    // the next load, and the Cache API would keep the added and swapped
+    // pictures. A pending debounced mirror write is cancelled first so it
+    // cannot re-create the key.
+    this.imageRegistry?._cancelMirrorWrite?.();
+    localStorage.removeItem("mathpix-registry-current");
+    const purgedImages = await this._purgeCacheForLiveImages();
+    logInfo(`Purged the picture cache for ${purgedImages} image(s)`);
+
     // Clear internal recovery session references
     this._recoverySessions = [];
 
-    // Load the ZIP original contents into MMD preview
-    this.loadZIPContents();
+    // Load the ZIP original contents into MMD preview. Awaited (VS-2), and the
+    // mirror is left unwritten: nothing of the cleared state should persist.
+    await this.loadZIPContents({ writeMirror: false });
     this._currentSessionIndex = -1;
 
     // Start a fresh persistence session so new edits are tracked cleanly

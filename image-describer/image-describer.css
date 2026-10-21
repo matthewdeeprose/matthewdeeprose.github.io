@@ -260,6 +260,13 @@
   flex-shrink: 0;
 }
 
+/* Hint under a checkbox: indented to line up with the label text */
+.imgdesc-checkbox-hint {
+  display: block;
+  margin-top: 0.25rem;
+  margin-left: 1.5rem;
+}
+
 /* ==============================================
    GENERATE SECTION
    ============================================== */
@@ -341,7 +348,6 @@
 .imgdesc-output--follow {
   overflow-y: auto;
   max-height: 60vh;
-  scroll-behavior: smooth;
 }
 
 /* Thinking indicator (3 pulsing dots) — shown before first token. */
@@ -387,9 +393,6 @@
   .imgdesc-typing-dot {
     animation: none;
     opacity: 0.6;
-  }
-  .imgdesc-output--follow {
-    scroll-behavior: auto;
   }
 }
 
@@ -549,22 +552,6 @@
   font-style: italic;
 }
 
-/* ==============================================
-   COMPLETION TIME DISPLAY (Phase 2A)
-   ============================================== */
-
-.imgdesc-completion-time {
-  margin: 0.75rem 0;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  opacity: 0.85;
-  text-align: center;
-}
-
-.imgdesc-completion-time strong {
-  font-variant-numeric: tabular-nums;
-}
-
 /* Pulsing animation for progress bar during generation (post-14F) */
 @keyframes imgdesc-progress-pulse {
   0%,
@@ -622,6 +609,31 @@
   .imgdesc-output-column {
     position: sticky;
     top: 1rem;
+  }
+
+  /* H-93: the Generate area is the last child of the layout in the DOM (so Tab order is
+     picture, settings, context, options, Generate), and the grid puts it in the left
+     column directly under the picture. Row 1 is sized by the left column; row 2 is the
+     flexible remainder under the right column's overhang. Below 1024px nothing is placed. */
+  .imgdesc-layout {
+    grid-template-rows: auto 1fr;
+  }
+
+  .imgdesc-input-column {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .imgdesc-output-column {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  #imgdesc-generate-area {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    margin-top: 0;
   }
 }
 
@@ -762,6 +774,27 @@
   margin-top: 0.25rem;
 }
 
+/* Description options: a full-width row above the Generate buttons.
+   The fieldset's default border and padding are reset so it takes the
+   dashed frame of the Generate area rather than drawing a second box. */
+.imgdesc-description-options {
+  flex: 1 0 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/* The legend keeps the app-wide chip look (light.css / dark.css / main.css
+   `legend`); only the gap below it is set here. */
+.imgdesc-description-options legend {
+  margin-bottom: 0.5rem;
+}
+
+.imgdesc-description-options .imgdesc-option-group {
+  margin-bottom: 0.5rem;
+}
+
 /* Streaming is disabled entirely for reduced-motion users, so the
    follow-mode toggle has no effect for them — hide it to avoid clutter. */
 @media (prefers-reduced-motion: reduce) {
@@ -852,13 +885,6 @@
   display: none;
 }
 
-/* Desktop: constrain width when in left column */
-@media (min-width: 1024px) {
-  .imgdesc-input-column .imgdesc-generate-inline {
-    margin-top: 1.5rem;
-  }
-}
-
 /* Mobile: stack buttons vertically */
 @media (max-width: 600px) {
   .imgdesc-generate-inline {
@@ -908,10 +934,6 @@
   padding: 1rem;
   border: 1px solid currentColor;
   border-radius: 0.25rem;
-}
-
-.imgdesc-output-section .imgdesc-completion-time {
-  margin: 0 0 0.5rem 0;
 }
 
 /* ==============================================
@@ -1074,8 +1096,7 @@
   .imgdesc-overlay-toolbar,
   .imgdesc-overlay-review-panel,
   .imgdesc-add-item-controls,
-  .imgdesc-add-keyboard-form,
-  .imgdesc-overlay-classification {
+  .imgdesc-add-keyboard-form {
     display: none;
   }
 
@@ -1321,11 +1342,9 @@
 /* View-only mode: hide review/analysis controls, maximise image */
 .imgdesc-workspace--view-only .imgdesc-review-sidebar,
 .imgdesc-workspace--view-only .imgdesc-overlay-toolbar,
-.imgdesc-workspace--view-only .imgdesc-overlay-classification,
 .imgdesc-workspace--view-only .imgdesc-florence-ocr-prompt,
 .imgdesc-workspace--view-only .imgdesc-analysis-status,
-.imgdesc-workspace--view-only .imgdesc-cache-recall-banner,
-.imgdesc-workspace--view-only .imgdesc-depth-legend {
+.imgdesc-workspace--view-only .imgdesc-cache-recall-banner {
   display: none;
 }
 
@@ -1358,6 +1377,33 @@
   .imgdesc-workspace--fullscreen .imgdesc-preview img,
   .imgdesc-workspace--fullscreen .imgdesc-overlay-container > img {
     max-height: 40vh;
+  }
+}
+
+/* The picture is sized from the space the preview has left, not from a share of
+   the window (H-95). The vh caps above ignore the header and the toolbar, so
+   once rem-sized furniture takes more of the 90vh dialog (zoom, short window)
+   the preview shrinks below the picture and the picture paints over the
+   toolbar. The preview is made a size container so 100cqh is its own height,
+   and the picture keeps its natural ratio, so the overlay boxes (percentages
+   of a container as big as the picture) stay on their text. Not under 1024px,
+   where the preview takes its natural height and the workspace scrolls; not
+   when expanded, which scrolls the modal body the same way. */
+@media (min-width: 1024px) {
+  .imgdesc-workspace--fullscreen:not(.imgdesc-workspace--expanded)
+    .imgdesc-preview {
+    container-type: size;
+    width: 100%;
+  }
+
+  .imgdesc-workspace--fullscreen:not(.imgdesc-workspace--expanded)
+    .imgdesc-preview
+    img,
+  .imgdesc-workspace--fullscreen:not(.imgdesc-workspace--expanded)
+    .imgdesc-overlay-container
+    > img {
+    max-height: 100cqh;
+    max-width: 100cqw;
   }
 }
 
@@ -2255,169 +2301,34 @@
   }
 }
 
-/* ── Analysis Profile Selection (Phase 4C) ── */
+/* ── Detect text in the picture (H-56) ──
+   A checkbox and its label on one row, the hint underneath. No colours are set
+   here, so both themes inherit their own text colour; the focus indicator is the
+   global input:focus treatment in main.css. */
 
-.imgdesc-expert-profile-description {
-  font-size: 0.85rem;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.5;
-}
-
-.imgdesc-profile-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.imgdesc-profile-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.5rem 0.6rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
-}
-
-.imgdesc-profile-option:has(input:checked) {
-  border-width: 2px;
-  padding: 0.4375rem 0.5625rem;
-}
-
-.imgdesc-profile-option:has(input:focus-visible) {
-  outline-offset: 2px;
-}
-
-/* Hide native radio visually but keep accessible */
-.imgdesc-profile-option input[type="radio"] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.imgdesc-profile-label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-}
-
-.imgdesc-profile-name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.imgdesc-profile-desc {
-  font-size: 0.78rem;
-  line-height: 1.3;
-}
-
-.imgdesc-profile-features {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.2rem;
-}
-
-.imgdesc-profile-feature {
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.1rem 0.4rem;
-  border-radius: 3px;
-  line-height: 1.4;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .imgdesc-profile-option {
-    transition: none;
-  }
-}
-
-/* ── Profile Suggestion Banner (Phase 5C) ── */
-
-.imgdesc-profile-suggestion {
+.imgdesc-text-detection-option {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border-radius: 6px;
-  transition: opacity 0.2s ease;
+  gap: 0.2rem 0.5rem;
+  margin: 0.5rem 0;
 }
 
-.imgdesc-profile-suggestion[hidden] {
-  display: none;
+.imgdesc-text-choice-label {
+  font-weight: 600;
 }
 
-.imgdesc-profile-suggestion-text {
-  flex: 1 1 auto;
-  margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
+/* The chosen answer is marked by weight and underline, not by a new colour,
+   so it reads in both themes and under forced colours. */
+.imgdesc-text-detection-option button[aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration: underline;
 }
 
-.imgdesc-profile-suggestion-skip-ocr {
+.imgdesc-text-detection-hint {
   flex-basis: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  margin: 0.1rem 0;
-}
-
-.imgdesc-profile-suggestion-skip-ocr input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
   margin: 0;
-  cursor: pointer;
-}
-
-.imgdesc-profile-suggestion-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-}
-
-.imgdesc-profile-suggestion-apply,
-.imgdesc-profile-suggestion-dismiss,
-.imgdesc-profile-suggestion-apply-alt,
-.imgdesc-profile-suggestion-choose {
   font-size: 0.85rem;
-  cursor: pointer;
-  outline: 0.2rem solid #f0f4ff !important;
-  border: 0.2rem solid #00131d;
-}
-
-.imgdesc-profile-suggestion-apply:hover {
-  opacity: 0.9;
-}
-
-.imgdesc-profile-suggestion-apply:focus-visible {
-  outline-offset: 2px;
-}
-
-.imgdesc-profile-suggestion-dismiss:focus-visible {
-  outline-offset: 2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .imgdesc-profile-suggestion,
-  .imgdesc-profile-suggestion-apply,
-  .imgdesc-profile-suggestion-dismiss {
-    transition: none;
-  }
 }
 
 /* ── Overlay Container (Phase 5D-1) ── */
@@ -2462,6 +2373,11 @@
   padding: 0.5rem 1rem;
   overflow: visible;
   clip-path: none;
+  /* H-92: the base rule's nowrap made the link wider than a 320px window;
+     let it wrap inside its container instead of running off the screen */
+  white-space: normal;
+  max-width: 100%;
+  box-sizing: border-box;
   transform: none;
   transition: none !important;
 }
@@ -2492,6 +2408,14 @@
 .imgdesc-overlay-box[data-suppressed="true"] {
   border-style: dashed;
   opacity: 0.4;
+}
+
+/* H-88: outside review mode a suppressed box is a plain visual mark.
+   H-92: unless the person restored it (data-restored), then it is an ordinary box */
+.imgdesc-overlay-layer:not(.imgdesc-review-active)
+  .imgdesc-overlay-box[data-suppressed="true"]:not([data-restored="true"]) {
+  pointer-events: none;
+  cursor: default;
 }
 
 .imgdesc-overlay-box-label {
@@ -2876,13 +2800,6 @@
   pointer-events: none;
 }
 
-.imgdesc-overlay-classification {
-  font-size: 0.85rem;
-  padding: 6px 12px;
-  margin: 8px 0 4px;
-  border-radius: 4px;
-}
-
 /* --- Florence-2 OCR quick-access prompt (Phase 14J) --- */
 
 .imgdesc-florence-ocr-prompt {
@@ -3068,7 +2985,7 @@
   .imgdesc-workspace--fullscreen.imgdesc-workspace--review-active
     .imgdesc-overlay-container
     > img {
-    max-height: calc(90vh - 10rem);
+    max-height: 100cqh;
     max-width: 100%;
   }
 
@@ -3189,97 +3106,18 @@
     display: none;
   }
 }
-/* ── Depth Zone Overlay (Phase 11B) ─────────────────────────── */
-
-/* Depth layer needs visible overflow so zone labels aren't clipped at edges */
-.imgdesc-overlay-depth {
-  overflow: visible;
-}
-
-/* Canvas fills the overlay layer, CSS-scaled from smaller render */
-.imgdesc-depth-canvas {
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated; /* Preserves zone boundaries when upscaled */
-  display: block;
-}
-
-/* Zone text labels — positioned at centroids */
-.imgdesc-depth-zone-label {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  padding: 0.15rem 0.5rem;
-  border-radius: 0.75rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ── Depth Legend (Phase 11B) ───────────────────────────────── */
-
-.imgdesc-depth-legend {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  font-size: 0.8rem;
-}
-
-.imgdesc-depth-legend-list {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.imgdesc-depth-legend-item {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-}
-
-.imgdesc-depth-legend-item dt {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-weight: 600;
-  white-space: nowrap;
-  min-width: 11rem;
-}
-
-.imgdesc-depth-legend-item dd {
-  margin: 0;
-}
-
-/* Colour swatches in legend */
-.imgdesc-depth-swatch {
-  display: inline-block;
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 0.2rem;
-  vertical-align: middle;
-  flex-shrink: 0;
-}
-
-.universal-modal-body #imgdesc-overlay-classification {
-  display: none;
-}
 
 .universal-modal-body .imgdesc-overlay-toolbar {
   margin-top: 0rem;
 }
 
-/* Workspace furniture that fullscreen does not need. The depth legend is
-   redundant there because the on-image labels carry the same data; the file
+/* Workspace furniture that fullscreen does not need. The file
    info and the Florence-2 OCR prompt are configuration-time strips that only
    crowd the image. Hiding the Florence prompt also removes it as an unplaced
    item in the review-mode grid at 1024px and above (it carries no grid-row or
    grid-column, so it was auto-placed into a stray implicit row).
    Note this silences the Florence prompt's role="status" region while
    fullscreen is open — the same trade-off --view-only already accepts. */
-.imgdesc-workspace--fullscreen .imgdesc-depth-legend,
 .imgdesc-workspace--fullscreen .imgdesc-file-info,
 .imgdesc-workspace--fullscreen .imgdesc-florence-ocr-prompt {
   display: none;
@@ -3301,39 +3139,6 @@
     .imgdesc-overlay-toolbar
   ):not(.imgdesc-review-sidebar):not(.visually-hidden) {
   display: none;
-}
-
-.imgdesc-depth-zone-label {
-  color: #fffff4;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
-}
-
-.imgdesc-depth-zone-label[data-zone="foreground"] {
-  background: #c44520;
-}
-
-.imgdesc-depth-zone-label[data-zone="midground"] {
-  background: #6b3fa0;
-}
-
-.imgdesc-depth-zone-label[data-zone="background"] {
-  background: #2860a8;
-}
-
-.imgdesc-depth-swatch {
-  border: 1px solid rgba(0, 0, 0, 0.2);
-}
-
-.imgdesc-depth-swatch[data-zone="foreground"] {
-  background: rgba(230, 100, 60, 0.6);
-}
-
-.imgdesc-depth-swatch[data-zone="midground"] {
-  background: rgba(140, 80, 200, 0.5);
-}
-
-.imgdesc-depth-swatch[data-zone="background"] {
-  background: rgba(50, 120, 220, 0.6);
 }
 
 /* ════════════════════════════════════════════════════════════════

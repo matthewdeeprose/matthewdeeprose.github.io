@@ -134,6 +134,9 @@
         }
       });
 
+      // H-88: suppressed boxes are plain outside review mode; make them reachable here
+      this._syncSuppressedBoxes(true);
+
       // Show add item controls (Phase 5D-3)
       const addControls = document.getElementById("imgdesc-add-item-controls");
       if (addControls) addControls.hidden = false;
@@ -422,6 +425,9 @@
           );
         });
       }
+
+      // H-88: suppressed boxes return to plain visual marks
+      this._syncSuppressedBoxes(false);
 
       // Phase 11D: persist user edits as safety net
       this._persistUserEdits();
@@ -968,7 +974,10 @@
         targetRow.classList.add("imgdesc-list-selected");
         targetRow.setAttribute("aria-selected", "true");
         // Scroll into view if needed
-        targetRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        targetRow.scrollIntoView({
+          block: "nearest",
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        });
       }
     },
 
@@ -1144,6 +1153,8 @@
         : null;
       if (box) {
         box.setAttribute("data-status", status);
+        // H-92: a restored suppressed box is named "restored", not "suppressed"
+        this._syncRestoredBoxName(box, true);
         // Update label text if corrected
         if (status === "corrected") {
           const label = box.querySelector(".imgdesc-overlay-box-label");
@@ -1209,6 +1220,8 @@
         : null;
       if (box) {
         box.setAttribute("data-status", "removed");
+        // H-92: a restored box that is now removed is "suppressed" again
+        this._syncRestoredBoxName(box, true);
       }
 
       logInfo("Item removed", index);
@@ -1235,6 +1248,8 @@
         : null;
       if (box) {
         box.removeAttribute("data-status");
+        // H-92: undoing a restoration makes the suppressed box "suppressed" again
+        this._syncRestoredBoxName(box, !!this._inReviewMode);
         // Restore label text from sorted items
         const entry = this._sortedItems[index];
         if (entry) {

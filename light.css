@@ -23,11 +23,6 @@
   border: 0.2rem solid #fffff4;
 }
 
-.imgdesc-depth-legend {
-  border: 1px solid currentcolor;
-  background: #e1e8ec;
-}
-
 /* Semantic status icon colours (subtle — icons + text labels remain primary indicator) */
 .imgdesc-mm-model-item[data-state="loaded"] .imgdesc-mm-status-icon svg,
 .imgdesc-progress-slot[data-slot-status="complete"]
@@ -192,68 +187,6 @@
   color: #d5007f;
 }
 
-/* ── Analysis Profile Selection (Phase 4C) ── */
-
-.imgdesc-expert-profile-description {
-  color: #495961;
-}
-
-.imgdesc-profile-option {
-  border: 1px dotted #495961;
-}
-
-.imgdesc-profile-option:hover {
-  border-color: #005c84;
-  background: #e1e8ec;
-}
-
-.imgdesc-profile-option:has(input:checked) {
-  border: 1px solid #495961;
-  background: #e1e8ec;
-}
-
-.imgdesc-profile-option:has(input:focus-visible) {
-  outline: 2px solid #005c84;
-}
-
-.imgdesc-profile-desc {
-  color: #495961;
-}
-
-/* Feature badge colours */
-.imgdesc-profile-feature[data-feature="ocr"] {
-  background: #e6f4ea;
-  color: #005051;
-}
-
-.imgdesc-profile-feature[data-feature="ocr-off"] {
-  background: #f0f0f0;
-  color: #495961;
-}
-
-.imgdesc-profile-feature[data-feature="colour"] {
-  background: #e3f2fd;
-  color: #005c84;
-}
-
-.imgdesc-profile-feature[data-feature="colour-high"] {
-  background: #e3f2fd;
-  color: #005c84;
-}
-
-.imgdesc-profile-feature[data-feature="colour-low"] {
-  background: #f0f0f0;
-  color: #495961;
-}
-
-/* ── Profile Suggestion Banner (Phase 5C) ── */
-
-.imgdesc-profile-suggestion {
-  border: 1px solid #005c84;
-  border-left: 4px solid #005c84;
-  background: #f0f4ff;
-}
-
 /* ── OCR Bounding Boxes (Phase 5D) ── */
 
 .imgdesc-overlay-toggle,
@@ -406,10 +339,6 @@
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
 
-.imgdesc-overlay-classification {
-  background: #e1e8ec;
-}
-
 .imgdesc-verification-results[open] {
   border-color: #005c84;
 }
@@ -470,6 +399,10 @@
 }
 
 .image-manager-size {
+  color: #495961;
+}
+
+.image-manager-caption {
   color: #495961;
 }
 
@@ -7163,4 +7096,28 @@ pre.language-json {
 
 #resume-context-ai-summary {
   background: #9fb1bd;
+}
+
+/* TikZ Studio (P3 of the TikZ programme, hidden Alpha; P3L). The preview frame follows the page. Only the drawing's own box is a
+ * sheet of paper: TeX draws in colours chosen for white, so that box is white with black ink in BOTH themes, as scorm-builder's
+ * exported figures are (tikz-export.css). Ink on paper is 21:1. Both edges are #595959, which against the white page is 7:1
+ * (SC 1.4.11 asks 3:1). The layout is in tikz-studio/tikz-studio.css, which declares no colour. */
+.tikz-studio-paper {
+  background-color: transparent;
+  color: inherit;
+  border-color: #595959;
+}
+
+.tikz-studio-paper .tikz-graphic-container:has(> svg) {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #595959;
+}
+
+/* Resume: on narrow screens the selected format chip is filled in so it stands out from the others */
+@media (max-width: 768px) {
+  #mathpix-resume-mode-container .mathpix-tab-header[aria-selected="true"] {
+    background: #005c84 !important;
+    color: #fffff4 !important;
+  }
 }

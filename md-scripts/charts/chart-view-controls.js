@@ -638,12 +638,12 @@ const ChartViewControls = (function () {
           logDebug(
             `Restoring scroll position to: ${state.scrollPositionX}, ${state.scrollPositionY}`
           );
-          window.scrollTo(state.scrollPositionX, state.scrollPositionY);
+          window.scrollTo({ left: state.scrollPositionX, top: state.scrollPositionY, behavior: "instant" });
 
           // Scroll the container into view for better user experience
           if (activeContainer) {
             activeContainer.scrollIntoView({
-              behavior: "smooth",
+              behavior: "instant",
               block: "nearest",
             });
           }
@@ -912,24 +912,71 @@ const ChartViewControls = (function () {
         </svg>`;
   }
 
+  // A chart container still waiting for its view controls
+  const PENDING_CONTAINER_SELECTOR =
+    ".chart-container:not(.view-controls-added)";
+
+  /**
+   * Whether one mutation record could have produced a pending chart container.
+   * Covers a container being inserted (or inserted inside a larger subtree),
+   * content being inserted into an existing container that was given the
+   * class after insertion (graph-builder-charts.js prepareContainer,
+   * chart-builder-state.js), and the class being added to an existing element.
+   * @param {MutationRecord} mutation
+   * @returns {boolean}
+   */
+  function mutationMayAddChart(mutation) {
+    const target = mutation.target;
+
+    if (mutation.type === "attributes") {
+      return target.nodeType === Node.ELEMENT_NODE &&
+        target.matches(PENDING_CONTAINER_SELECTOR);
+    }
+
+    if (mutation.addedNodes.length === 0) return false;
+
+    if (
+      target.nodeType === Node.ELEMENT_NODE &&
+      target.closest(PENDING_CONTAINER_SELECTOR)
+    ) {
+      return true;
+    }
+
+    for (const node of mutation.addedNodes) {
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+      if (
+        node.matches(PENDING_CONTAINER_SELECTOR) ||
+        node.querySelector(PENDING_CONTAINER_SELECTOR)
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   logInfo("Script loaded and initialising");
 
   // Initialize when DOM is fully loaded
   document.addEventListener("DOMContentLoaded", function () {
     init();
 
-    // Also observe changes to handle dynamically added charts
+    // Also observe changes to handle dynamically added charts. The observer
+    // watches the whole page, so it filters each batch cheaply and runs the
+    // full-page init() scan at most once per batch, only when needed. It used
+    // to scan once per mutation record on every change anywhere, which cost
+    // other tools (measured on the MathPix image-manager Save).
     const observer = new MutationObserver(function (mutations) {
-      mutations.forEach(function (mutation) {
-        if (mutation.type === "childList") {
-          init(document.body);
-        }
-      });
+      if (mutations.some(mutationMayAddChart)) {
+        init(document.body);
+      }
     });
 
     observer.observe(document.body, {
       childList: true,
       subtree: true,
+      attributes: true,
+      attributeFilter: ["class"],
     });
   });
 

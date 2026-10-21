@@ -1,0 +1,105 @@
+Licence notices for the LaTeX packages added to tex/tex_files.tar.gz (tikz-kit parcel E2).
+
+Every package below is distributed under the LaTeX Project Public License (LPPL); the licence text is in LICENSE-LPPL.txt beside this file.
+Each file in the archive is the author's file, unmodified; the SHA-256 of each is pinned in tikz-kit/build/PINS.md and
+tikz-kit/build/extra-packages.mjs. Below, for each file, are its source and the licence lines it carries (copied from the file).
+tikz-uml is not on CTAN: the file comes from its author's GitLab at tag v1.1. Version 1.0 of that package states no licence and is not used.
+
+== tikz-uml.sty  (tikz-uml 1.1; LPPL 1.3 or later (stated in the file))
+   source: https://plmlab.math.cnrs.fr/api/v4/projects/10721/repository/files/tikz-uml.sty/raw?ref=v1.1
+   SHA-256: 8e6e1c41d8cabc3036bf353384aac549005fc503d5269c001419b5c8018e1a69
+   | %% Copyright (c) 2011 by Nicolas Kielbasiewicz <nicolas dot kielbasiewicz at ensta-paris dot fr>
+   | % This work may be distributed and/or modified under the
+   | % conditions of the LaTeX Project Public License, either version 1.3
+   | %   http://www.latex-project.org/lppl.txt
+   | % This work has the LPPL maintenance status `maintained'.
+
+== xstring.sty  (xstring TeX Live 2020 final; LPPL 1.3c)
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/xstring.tar.xz : tex/generic/xstring/xstring.sty
+   SHA-256: 6b2fdbe2c3a1f873a6c19fc8da67001e269580be2827040b152cc59216b022c4
+   | (no licence line in this file; it is covered by the package's other files above)
+
+== xstring.tex  (xstring TeX Live 2020 final; LPPL 1.3c)
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/xstring.tar.xz : tex/generic/xstring/xstring.tex
+   SHA-256: dd83808484d2c9a12bd18b1b7388095f910ba6c5d1819ae5e50c01a7e785033f
+   | % Copyright  : Christian Tellechea 2008-2019                         %
+   | % Licence    : Released under the LaTeX Project Public License v1.3c %
+   | %              or later, see http://www.latex-project.org/lppl.txt   %
+
+== pgfopts.sty  (pgfopts 2.1a (2014/07/10); LPPL 1.3c or later)
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/pgfopts.tar.xz : tex/latex/pgfopts/pgfopts.sty
+   SHA-256: 8aa0cf8d9635876f5a64a15ad5358c5ebea61e9d0ce8d7397f8f9034c5887d05
+   | %% Released under the LaTeX Project Public License v1.3c or later
+   | %% See http://www.latex-project.org/lppl.txt
+   | %% Copyright (C) 2008-2011,2013,2014 by
+   | %% It may be distributed and/or modified under the conditions of
+   | %% the LaTeX Project Public License (LPPL), either version 1.3c of
+   | %%    http://www.latex-project.org/lppl.txt
+   | %% This work is "maintained" (as per LPPL maintenance status) by
+
+== calc.sty  (calc (LaTeX tools bundle) 4.3 (2017/05/25); LPPL)
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/tools.tar.xz : tex/latex/tools/calc.sty
+   SHA-256: a275b783b9b90539c5dd1a3e08b633819ec26893c7199ffd5976ce209e725df9
+   | %% Copyright (C) 1993-2020
+   | %% It may be distributed and/or modified under the
+   | %% conditions of the LaTeX Project Public License, either version 1.3c
+   | %%    https://www.latex-project.org/lppl.txt
+   | %% Copyright (C) 1992--1995
+   | %% Copyright (C) 1997--2007
+
+== etoolbox.sty  (etoolbox 2.5k (2020/10/05); LPPL 1.3c)
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/etoolbox.tar.xz : tex/latex/etoolbox/etoolbox.sty
+   SHA-256: b10381f0017ae75bd03dc9175b35ad56b93fdd24f2a47dd4aa9c6987ef35ccdb
+   | % Copyright (c) 2007-2011 Philipp Lehman.
+   | %           (c) 2015-2020 Joseph Wright
+   | % Permission is granted to copy, distribute and/or modify this
+   | % software under the terms of the LaTeX Project Public License
+   | % (LPPL), version 1.3c or any later version.
+
+== contour.sty  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/contour.sty
+   SHA-256: a3a57ae2d4a45f09347b48c58c4f59b9bf94b2937b7c92f0d3a5e15b2e832035
+   | %%   Copyright  1999--2004 Harald Harders, Morten Høgholm
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either
+
+== contour.cfg  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/contour.cfg
+   SHA-256: ed08dd731ec908e12ab87c6c90c2bd8e04158959bd28aa3d658b3c5bcaf9efc8
+   | %%   Copyright  2004 Harald Harders
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either
+
+== dvips.cnt  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/dvips.cnt
+   SHA-256: 980d2c837309652b4095ed64616120ce30b8724ab8646db2129e926cb8fafae9
+   | %%   Copyright  2004 Harald Harders
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either
+
+== dvipsone.cnt  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/dvipsone.cnt
+   SHA-256: 87b2b0409bc521e84aa46678b9178a03f87d571a623c6c43aa394c6c7b5ecfd3
+   | %%   Copyright  2004 Harald Harders
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either
+
+== pdftex.cnt  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/pdftex.cnt
+   SHA-256: b1d1dbab44078dcc010e9fc8a7763eaedd87728b09870eb4d64bba46db12fd8e
+   | %%   Copyright  2004 Harald Harders
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either
+
+== vtex.cnt  (contour 2.14 (2004/11/18); LPPL (version 1 or later))
+   source: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2020/tlnet-final/archive/contour.tar.xz : tex/latex/contour/vtex.cnt
+   SHA-256: c427de09ffa9f29efcfd4602e2213c0e3c4e271d234a7b954dd3a7acfa0c3ca3
+   | %%   Copyright  2004 Harald Harders
+   | %%   This program can be redistributed and/or modified under the terms
+   | %%   of the LaTeX Project Public License Distributed from CTAN
+   | %%   archives in directory macros/latex/base/lppl.txt; either

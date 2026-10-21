@@ -118,6 +118,17 @@
   opacity: 0.5;
 }
 
+/* S6-1h: the Open in Resume mode button sits beside Download All, but
+   .mathpix-btn sets 0.8rem (mathpix-convert.css) and so drew it smaller.
+   Same text size, weight and icon spacing as its neighbour. */
+.mathpix-download-section > .mathpix-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
 .mathpix-download-progress {
   margin-top: 1rem;
   padding: 0.75rem;
@@ -463,6 +474,19 @@ input#custom-height {
   padding: 0.5rem;
   border-radius: 4px;
   font-size: 0.9rem;
+}
+
+/* T-22b G1 (SC 1.4.10, 1.4.12): at phone widths the API configuration fields fit the card. The grid's single column took the width of
+   its widest row (the key input beside its Show button), 12px past a 320px window and 22px under wider text spacing; the inputs
+   inside that row had a content minimum of their own. Narrow and scoped to this card, so the same class elsewhere is untouched. */
+@media (max-width: 400px) {
+  .mathpix-config .config-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mathpix-config .api-key-input-group input {
+    min-width: 0;
+  }
 }
 
 #mathpix-save-config {
@@ -2259,7 +2283,7 @@ input#custom-height {
 
 .mathpix-doc-details {
   flex: 1 1 auto;
-  min-width: 280px;
+  min-width: min(280px, 100%); /* T-22b G2 (SC 1.4.10): never wider than its row; was 280px, which held the PDF result view at 327px in a 320px window */
 }
 
 /* Confidence Indicator Card */
@@ -2424,6 +2448,14 @@ input#custom-height {
 
   .mathpix-tab-header:last-child {
     border-top-right-radius: 6px !important;
+  }
+
+  /* The PDF and image format tabs wrap onto rows on narrow screens, so every format is visible and a focused tab is never cut off at the strip edge */
+  .mathpix-format-selection-nav .mathpix-tab-headers,
+  #mathpix-pdf-interface .mathpix-tab-headers {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    overflow-y: visible;
   }
 
   .mathpix-format-header {
@@ -3036,6 +3068,14 @@ input#custom-height {
 .endpoint-options {
   display: flex;
   gap: 1rem;
+}
+
+/* T-22b G1 (SC 1.4.10): at phone widths the two endpoint cards stack instead of holding the page at 424px in a 320px window.
+   Narrow only: a plain flex-wrap also re-flowed the cards at 640px and 1280px, where the row fits by shrinking the text. */
+@media (max-width: 400px) {
+  .endpoint-options {
+    flex-wrap: wrap;
+  }
 }
 
 .endpoint-option {
@@ -5147,8 +5187,6 @@ input#custom-height {
 
 /* Icon spacing in buttons */
 .convert-toolbar-btn .icon,
-.convert-edit-btn .icon,
-#convert-edit-btn .icon,
 #convert-fullscreen-btn .icon {
   margin-right: 0.25em;
 }

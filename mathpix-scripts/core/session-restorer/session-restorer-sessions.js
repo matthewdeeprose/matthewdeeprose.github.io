@@ -138,7 +138,15 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
         if (!baseline) return true;
 
         // Filter out if current equals baseline (no user edits made)
-        return current !== baseline;
+        if (current !== baseline) return true;
+
+        // VS-3d-2: unless the version changed only on the registry side (a
+        // decorative tick, a description edit). Compared with the ARCHIVE's
+        // registry as restoreSession held it, never the live registry, which
+        // a re-show may have changed. No held key: today's drop.
+        if (typeof this._archiveSnapshotKey !== "string") return false;
+        // S6-1f: only an authored registry difference keeps it (B-D1a)
+        return this._registryEditsDiffer(session.data) === true;
       });
 
       const filteredCount = dedupedSessions.length - sessionsWithChanges.length;
@@ -160,6 +168,192 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
   };
 
   /**
+   * A stored session's registry snapshot as a comparable string (VS-3d), or an
+   * empty string when the session has none. The chooser's dedupe and the
+   * upload filter compare these, so a registry-only change is a change.
+   * @param {Object} data - stored session data
+   * @returns {string}
+   * @private
+   */
+  proto._registrySnapshotKey = function (data) {
+    let snapshot = data?.registrySnapshot;
+    if (snapshot === undefined || snapshot === null) return "";
+    try {
+      if (typeof snapshot === "string") snapshot = JSON.parse(snapshot);
+      if (!snapshot || !Array.isArray(snapshot.images)) return "";
+      // Content-bearing fields only: metadata timestamps and the had-blob flags
+      // can differ between two saves of one state and must not split a version.
+      return JSON.stringify({
+        images: snapshot.images.map((e) => [
+          e.id, e.altText, e.altTextSource, e.title, e.titleSource,
+          e.textInImage, e.textInImageSource, e.longDescription,
+          e.longDescriptionSource, e.decorative, e.status, e.source,
+        ]),
+        filenames: snapshot.filenames || {},
+        // VS-3e: two versions that swap one picture differently differ here.
+        swaps: snapshot.swaps || {},
+      });
+    } catch (error) {
+      return "";
+    }
+  };
+
+  /**
+   * S6-1f (B-D1a): does a stored session's registry differ from the ARCHIVE's
+   * (the held _archiveSnapshotKey) in anything a person authored? Alt text,
+   * title, in-image text, long description (each with its source), decorative
+   * and swaps are authored. Status, the entry source, filenames and which
+   * pictures have bytes are not: a bigger or smaller picture set is not an
+   * edit. An id on one side only counts only when it carries authored content.
+   * @param {Object} data - stored session data
+   * @returns {?boolean} null when either side has no comparable snapshot
+   * @private
+   */
+  proto._registryEditsDiffer = function (data, againstKey = this._archiveSnapshotKey) {
+    // Through proto, not this: a test borrows this method onto a stub (vs3d-10).
+    const fields = proto._registryEditFields.call(this, data, againstKey);
+    return fields === null ? null : fields.length > 0;
+  };
+
+  // DP-1: the authored fields as the person names them. Each pairs a value with
+  // its source in the snapshot key's slice (altText, altTextSource, title, ...).
+  const PICTURE_FIELD_GROUPS = Object.freeze([
+    { name: "alt", slots: [0, 1] },
+    { name: "caption", slots: [2, 3] },
+    { name: "textInImage", slots: [4, 5] },
+    { name: "longDescription", slots: [6, 7] },
+    { name: "decorative", slots: [8] },
+  ]);
+  const UNREADABLE_FIELD = "unreadable";
+
+  /**
+   * DP-1: which authored fields differ between a stored session's registry and
+   * the archive's. The list behind _registryEditsDiffer (its boolean is
+   * length > 0, so every boolean caller behaves as before).
+   * @param {Object} data - stored session data
+   * @returns {?Array<{id: ?string, field: string}>} null when either side has no
+   *   comparable snapshot; one entry per differing field per picture, plus one
+   *   per differing swap. An unreadable snapshot is one entry named "unreadable".
+   * @private
+   */
+  proto._registryEditFields = function (data, againstKey = this._archiveSnapshotKey) {
+    const storedKey = this._registrySnapshotKey?.(data) ?? "";
+    // CH-1: againstKey defaults to the archive's held key; the chooser passes the
+    // live registry's key to find which stored copy is on screen.
+    const archiveKey = againstKey;
+    if (storedKey === "" || typeof archiveKey !== "string" || archiveKey === "") return null;
+    if (storedKey === archiveKey) return [];
+    const AUTHORED_FIELDS = 10; // id, then the nine authored fields; status and source follow
+    const entries = (key) => {
+      const parsed = JSON.parse(key);
+      return {
+        map: new Map(parsed.images.map((e) => [e[0], e.slice(1, AUTHORED_FIELDS)])),
+        swaps: parsed.swaps || {},
+      };
+    };
+    try {
+      const stored = entries(storedKey);
+      const archive = entries(archiveKey);
+      const differing = [];
+      const hasContent = (value) => value !== undefined && value !== null && value !== "" && value !== false;
+      const swapIds = new Set([...Object.keys(stored.swaps), ...Object.keys(archive.swaps)]);
+      for (const id of swapIds) {
+        if (JSON.stringify(stored.swaps[id]) !== JSON.stringify(archive.swaps[id])) differing.push({ id, field: "swap" });
+      }
+      // Same swaps in a different key order still differ as a string: keep the
+      // boolean this helper replaces exactly, counting it as one swap.
+      if (!differing.length && JSON.stringify(stored.swaps) !== JSON.stringify(archive.swaps)) {
+        differing.push({ id: null, field: "swap" });
+      }
+      const ids = new Set([...stored.map.keys(), ...archive.map.keys()]);
+      for (const id of ids) {
+        const a = stored.map.get(id);
+        const b = archive.map.get(id);
+        if (a && b) {
+          for (const group of PICTURE_FIELD_GROUPS) {
+            if (group.slots.some((s) => JSON.stringify(a[s]) !== JSON.stringify(b[s]))) differing.push({ id, field: group.name });
+          }
+        } else {
+          // an id on one side only counts only for the fields that carry content
+          const present = a || b;
+          for (const group of PICTURE_FIELD_GROUPS) {
+            if (group.slots.some((s) => hasContent(present[s]))) differing.push({ id, field: group.name });
+          }
+        }
+      }
+      return differing;
+    } catch (error) {
+      return [{ id: null, field: UNREADABLE_FIELD }]; // unreadable: treat as different, never as safe to drop
+    }
+  };
+
+  /**
+   * DP-1: the chooser preview for a stored copy. Text changes keep the existing
+   * figures; when the registry differs from the archive's, a visible clause
+   * names how many picture fields changed. An equal document with changed
+   * pictures reads the clause alone, never "No changes from original".
+   * @param {Object} session - { data }
+   * @param {Object} diffResult - from computeDiff()
+   * @returns {string} preview HTML
+   * @private
+   */
+  proto._renderSessionPreview = function (session, diffResult) {
+    const html = this.renderDiffPreview(diffResult);
+    const fields = (this._registryEditFields(session?.data) || []).filter((f) => f.field !== UNREADABLE_FIELD);
+    if (!fields.length) return html;
+    // OV-1: the clause is its own wrapping element after the text figures, so a long
+    // diff line is cut with an ellipsis on its own line and never pushes the clause out of view.
+    const clause = `<span class="resume-session-preview-clause"><span class="diff-preview diff-preview-pictures">Picture descriptions changed: ${fields.length} field${fields.length === 1 ? "" : "s"}</span></span>`;
+    return diffResult?.magnitude === "identical" ? clause : `<span class="resume-session-preview-text">${html}</span>${clause}`;
+  };
+
+  /**
+   * CH-1: text compared with every picture URL form (blob, CDN, data) folded to
+   * one placeholder. The same normalisation restoreSession applies to decide
+   * whether a stored copy is newer than the archive (session-restorer-restore.js,
+   * left untouched by CH-1); kept in step with it by hand.
+   * @param {string} text
+   * @returns {string}
+   * @private
+   */
+  proto._normaliseMMDForComparison = function (text) {
+    if (!text) return "";
+    const cdnUrlRegex = window.MathPixImageRegistry?.createCdnUrlRegex?.() || null;
+    const withoutBlobs = text.replace(/blob:http[^\s)}"\\]+/g, "IMG_URL");
+    const withoutCdn = cdnUrlRegex ? withoutBlobs.replace(cdnUrlRegex, "IMG_URL") : withoutBlobs;
+    return withoutCdn.replace(/data:image\/[^\s)}"\\]+/g, "IMG_URL");
+  };
+
+  /**
+   * CH-1: the archive's document as the ZIP as saved loads it (the most recent
+   * edit, else the results document), in the blob form a loaded document has.
+   * @returns {string}
+   * @private
+   */
+  proto._archiveSavedMMD = function () {
+    const archiveEdit = this.parseResult?.edits?.mostRecent || null;
+    const archiveMMD = archiveEdit?.content || this.parseResult?.results?.mmd || "";
+    if (!archiveMMD) return "";
+    return this.rewriteMMDWithBlobUrls(this.rewriteRelativePathsToBlobUrls(archiveMMD));
+  };
+
+  /**
+   * CH-1: is a stored copy the ZIP as saved? Same document under the URL
+   * normalisation AND no authored registry difference (swaps included). An
+   * unreadable or absent snapshot on either side is NOT equal, so a copy that
+   * cannot be compared is listed rather than folded away.
+   * @param {Object} session - { data }
+   * @returns {boolean}
+   * @private
+   */
+  proto._storedEqualsArchive = function (session) {
+    const archive = this._normaliseMMDForComparison(this._archiveSavedMMD());
+    if (!archive) return false;
+    if (this._normaliseMMDForComparison(session?.data?.current || "") !== archive) return false;
+    return this._registryEditsDiffer(session.data) === false;
+  };
+
+  /**
    * Remove duplicate sessions with identical content
    * Keeps sessions with actual edit value when duplicates are found
    * Prefers: 1) Sessions with user edits (current !== baseline)
@@ -172,11 +366,13 @@ const { logError, logWarn, logInfo, logDebug, getIcon, RESTORER_CONFIG } =
   proto.deduplicateSessions = function (sessions) {
     if (!sessions || sessions.length <= 1) return sessions;
 
-    // Group sessions by their current content
+    // Group sessions by their current content AND registry snapshot (VS-3d): two
+    // versions with the same text and different pictures or descriptions are
+    // different versions. A session with no snapshot keys on content alone.
     const contentGroups = new Map();
 
     for (const session of sessions) {
-      const content = session.data?.current || "";
+      const content = `${session.data?.current || ""}\u0000${this._registrySnapshotKey?.(session.data) ?? ""}`;
 
       if (!contentGroups.has(content)) {
         contentGroups.set(content, []);
@@ -338,7 +534,7 @@ if (context.eagerDiff) {
       if (this._distinguishingLines?.has(index)) {
         diffResult.distinguishingLine = this._distinguishingLines.get(index);
       }
-      diffContent = this.renderDiffPreview(diffResult);
+      diffContent = this._renderSessionPreview(session, diffResult);
       this._diffCache.set(index, diffContent);
     }
     const previewHTML = `<span class="resume-session-preview" data-diff-index="${index}" data-diff-type="localStorage">${diffContent}</span>`;
@@ -423,12 +619,12 @@ if (context.eagerDiff) {
     const dateTimeDisplay = date
       ? `<time class="resume-session-option-date" datetime="${isoDateTime}">${getIcon(
           "pencil",
-        )} ZIP Edit: ${this.escapeHtml(dateStr)}${
+        )} Earlier ZIP edit: ${this.escapeHtml(dateStr)}${
           timeStr ? ` at ${this.escapeHtml(timeStr)}` : ""
         }</time>`
       : `<span class="resume-session-option-date">${getIcon(
           "pencil",
-        )} ZIP Edit: ${this.escapeHtml(dateStr)}</span>`;
+        )} Earlier ZIP edit: ${this.escapeHtml(dateStr)}</span>`;
 
     // Check if this ZIP edit is the globally most recent
     const isNewest =
@@ -473,13 +669,14 @@ if (context.eagerDiff) {
 
     document
       .getElementById("resume-session-restore-btn")
-      ?.addEventListener("click", () => {
+      ?.addEventListener("click", async () => {
         const selectedIndex = this.getSelectedSessionIndex();
 
         if (selectedIndex === -1) {
-          // User chose ZIP original (results folder)
+          // User chose ZIP original (results folder). VS-2: awaited, so the
+          // sentence and the switch button follow the rebuild, not precede it.
           banner.remove();
-          this.loadZIPContents();
+          await this.loadZIPContents();
           this._currentSessionIndex = -1;
         } else if (selectedIndex <= -2) {
           // User chose a ZIP edit (index -2, -3, etc.)
@@ -487,7 +684,7 @@ if (context.eagerDiff) {
           const zipEdit = this._zipEdits?.[editIndex];
           if (zipEdit) {
             banner.remove();
-            this.loadZIPEdit(zipEdit);
+            await this.loadZIPEdit(zipEdit);
             this._currentSessionIndex = selectedIndex;
           }
         } else if (
@@ -631,7 +828,10 @@ if (context.eagerDiff) {
     if (this._distinguishingLines?.has(diffIndex)) {
       diffResult.distinguishingLine = this._distinguishingLines.get(diffIndex);
     }
-    const html = this.renderDiffPreview(diffResult);
+    const html =
+      diffType === "localStorage"
+        ? this._renderSessionPreview(this._recoverySessions?.[diffIndex], diffResult)
+        : this.renderDiffPreview(diffResult);
 
     this._diffCache.set(diffIndex, html);
     previewElement.innerHTML = html;
@@ -765,18 +965,46 @@ if (context.eagerDiff) {
     banner.setAttribute("role", "region");
     banner.setAttribute("aria-labelledby", "resume-session-banner-title");
 
-    // Gather data
-    const zipEdits = this.parseResult?.edits?.files || [];
+    // Gather data. CH-1: the archive is ONE entry, "ZIP as saved" (value -1),
+    // loading its most recent edit with its registry exactly as loadZIPContents
+    // does. Only edits OLDER than that one stay as entries of their own, because
+    // they genuinely differ; they are re-indexed from 0, and the current
+    // marker is moved into the same scheme.
+    const allZipEdits = this.parseResult?.edits?.files || [];
+    const archiveEdit = this.parseResult?.edits?.mostRecent || null;
+    const zipEdits = allZipEdits.filter((edit) => edit !== archiveEdit);
     const originalMMD = this.restoredSession?.originalMMD || "";
 
+    let archiveIsCurrent = currentSessionIndex === -1;
+    let currentEditIndex = currentSessionIndex;
+    if (currentSessionIndex !== null && currentSessionIndex <= -2) {
+      const loaded = allZipEdits[-2 - currentSessionIndex];
+      if (loaded && loaded === archiveEdit) {
+        archiveIsCurrent = true;
+        currentEditIndex = null;
+      } else {
+        const olderIndex = zipEdits.indexOf(loaded);
+        currentEditIndex = olderIndex >= 0 ? -2 - olderIndex : null;
+      }
+    }
+    if (archiveIsCurrent) currentEditIndex = -1;
+
     // Find the globally most recent version across all sources
-    const mostRecentItem = this._findMostRecentVersion(sessions, zipEdits);
+    const mostRecentItem = this._findMostRecentVersion(sessions, allZipEdits);
+    const storedMostRecentItem =
+      mostRecentItem?.source === "localStorage" ? mostRecentItem : null;
+    const archiveIsNewest = mostRecentItem?.source === "zipEdit" && mostRecentItem.index === -2;
 
 // Build shared context for rendering helpers
     // Eager diff for small version counts — instant previews without selection
     const diffableCount = sessions.length + zipEdits.length;
     const eagerDiff = diffableCount <= EAGER_DIFF_THRESHOLD;
-    const context = { mostRecentItem, currentSessionIndex, originalMMD, eagerDiff };
+    const context = {
+      mostRecentItem: storedMostRecentItem,
+      currentSessionIndex: currentEditIndex,
+      originalMMD,
+      eagerDiff,
+    };
 
     // Cross-reference unique lines across all versions (cheap line-level operation)
     // Must run before rendering helpers so _distinguishingLines is populated
@@ -793,28 +1021,44 @@ if (context.eagerDiff) {
       .map((edit, index) => this._renderZipEditOption(edit, index, context))
       .join("");
 
-    // ZIP original option (inline — simple static template)
-    const zipPreview = this.getContentPreview(originalMMD);
+    // CH-1: the ZIP as saved (inline — simple static template). Its date is the
+    // archive edit's where there is one; an archive with no edits/ shows none.
+    const savedMMD = archiveEdit?.content || this.parseResult?.results?.mmd || originalMMD;
+    const zipPreview = this.getContentPreview(savedMMD);
+    const savedDate = archiveEdit?.timestamp ? new Date(archiveEdit.timestamp) : null;
+    const savedDateText = savedDate
+      ? `: ${this.escapeHtml(
+          savedDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+        )} at ${this.escapeHtml(
+          savedDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+        )}`
+      : "";
+    const savedSizeKB = Math.round(((savedMMD || "").length / 1024) * 10) / 10;
     const zipOriginalOptionHTML = `
       <label class="resume-session-option resume-session-option-zip ${
-        currentSessionIndex === -1 ? "resume-session-option-current" : ""
+        archiveIsCurrent ? "resume-session-option-current" : ""
       }">
         <input type="radio" name="resume-session-choice" value="-1" ${
-          currentSessionIndex === -1 ? "checked" : ""
+          archiveIsCurrent ? "checked" : ""
         }>
 <span class="resume-session-option-content">
           <span class="resume-session-option-date">
-            ${getIcon("box")} ZIP Original (Results)
+            ${getIcon("box")} ZIP as saved${savedDateText}
           </span>
           ${
-            currentSessionIndex === -1
+            archiveIsNewest
+              ? '<strong class="resume-session-badge">Most Recent</strong>'
+              : ""
+          }
+          ${
+            archiveIsCurrent
               ? '<strong class="resume-session-badge resume-session-badge-current">Currently Loaded</strong>'
               : ""
           }
           <span class="resume-session-preview">${getIcon(
             "document",
           )} ${this.escapeHtml(zipPreview)}</span>
-          <span class="resume-session-option-size">Original</span>
+          <span class="resume-session-option-size">${savedSizeKB} KB</span>
         </span>
       </label>
     `;
@@ -826,25 +1070,23 @@ if (context.eagerDiff) {
 
     if (hasLocalStorage) {
       optionsHTML += localStorageOptionsHTML;
+      optionsHTML += `
+        <div class="resume-session-options-divider">
+          <span>or use the ZIP as saved</span>
+        </div>
+      `;
     }
+
+    optionsHTML += zipOriginalOptionHTML;
 
     if (hasZipEdits) {
-      if (hasLocalStorage) {
-        optionsHTML += `
-          <div class="resume-session-options-divider">
-            <span>or use ZIP saved edit${zipEdits.length > 1 ? "s" : ""}</span>
-          </div>
-        `;
-      }
+      optionsHTML += `
+        <div class="resume-session-options-divider">
+          <span>or use ${zipEdits.length > 1 ? "earlier ZIP edits" : "an earlier ZIP edit"}</span>
+        </div>
+      `;
       optionsHTML += zipEditsOptionsHTML;
     }
-
-    optionsHTML += `
-      <div class="resume-session-options-divider">
-        <span>or use original</span>
-      </div>
-    `;
-    optionsHTML += zipOriginalOptionHTML;
 
     // Build banner content
     const totalVersions = (sessions?.length || 0) + zipEdits.length + 1;
@@ -954,9 +1196,8 @@ if (context.eagerDiff) {
     const banner = document.createElement("div");
     banner.id = "resume-auto-restored-banner";
     banner.className = "resume-auto-restored-banner";
-    banner.setAttribute("role", "status");
-    banner.setAttribute("aria-live", "polite");
-    banner.setAttribute("aria-labelledby", "resume-auto-restored-title");
+    // VS-5: not a live region. Its sentence is composed into the ONE restore
+    // line (rule C10) by restoreSession, so the banner stays visible text only.
 
     banner.innerHTML = `
     <div class="resume-auto-restored-header">
@@ -1010,10 +1251,8 @@ if (context.eagerDiff) {
     // Set up event listeners
     this.setupAutoRestoredBannerListeners(banner);
 
-    // Announce to screen readers
-    this.announceToScreenReader(
-      `Your edit from ${dateStr} at ${timeStr} was automatically restored from browser storage.`,
-    );
+    // VS-5: no announce here. The sentence is spoken once, inside the restore
+    // line (MathPixSessionRestorer.autoRestoredBannerSentence).
 
     logInfo("Auto-restored banner shown for session from:", dateStr, timeStr);
   };
@@ -1169,16 +1408,59 @@ if (context.eagerDiff) {
    * @returns {Promise<void>}
    * @private
    */
-  proto.loadZIPContents = async function () {
+  proto.loadZIPContents = async function (options = {}) {
+    // VS-2: the Manage images button stays disabled while the switch settles,
+    // as it does during a restore (RL-2), and is released on every path.
+    this._setManageImagesBusy?.({ busy: true });
+    try {
+      await this._loadArchiveOriginal(options);
+    } finally {
+      this._setManageImagesBusy?.({ busy: false });
+    }
+  };
+
+  /**
+   * The body of loadZIPContents: the registry, pictures and document of the
+   * archive as saved (VS-2).
+   * @param {{writeMirror?: boolean}} [options] writeMirror false leaves the
+   *   registry mirror key unwritten (Clear Local Saves).
+   * @private
+   */
+  proto._loadArchiveOriginal = async function ({ writeMirror = true } = {}) {
     logInfo("Loading original ZIP contents (results folder)");
 
-    const originalMMD = this.restoredSession?.originalMMD;
+    // VS-2 (GR-D3): the ZIP original is the archive as saved. The document is
+    // chosen the way a clean restore chooses it (the archive's most recent
+    // edit, else the results document); the registry and pictures come from
+    // the archive, never from a browser-stored version.
+    const archiveEdit = this.parseResult?.edits?.mostRecent || null;
+    const archiveMMD = archiveEdit?.content || this.parseResult?.results?.mmd;
+    const rebuilt = await this._rebuildRegistryFromArchive();
+
+    let originalMMD = this.restoredSession?.originalMMD;
+    if (archiveMMD) {
+      const toBlobForm = (mmd) =>
+        this.rewriteMMDWithBlobUrls(this.rewriteRelativePathsToBlobUrls(mmd));
+      this.restoredSession.originalMMD = toBlobForm(
+        this.parseResult?.results?.mmd || archiveMMD,
+      );
+      this.restoredSession.selectedEdit = archiveEdit;
+      originalMMD = toBlobForm(archiveMMD);
+    }
 
     if (originalMMD) {
       // Reset to original content
       this.restoredSession.currentMMD = originalMMD;
       this.restoredSession.baselineMMD = originalMMD;
 
+      if (rebuilt.rebuilt) {
+        this.syncRegistryReferencesToBlobUrls();
+        if (writeMirror) this.imageRegistry._writeMirrorNow();
+        logInfo(
+          `loadZIPContents: rebuilt from the archive, ${rebuilt.relinked} re-linked, ${rebuilt.reextracted} re-extracted, registry now ${this.imageRegistry.getCount()} image(s)`,
+        );
+      } else if (this.imageRegistry) {
+      // Archive has no registry to rebuild from: the earlier reconcile path.
       // Sync registry to original MMD — purge entries not referenced in the
       // ZIP-original content. Replaces the markdown-only Fix-9 ghost-purge
       // loop with the Stage 6 reconcile pattern (per Finding 5 of
@@ -1191,7 +1473,7 @@ if (context.eagerDiff) {
       // CDN-derived IDs (same Finding 10 fix as Phase 2b of the manager-open path).
       // Phase D then restores blob form to mmdReference for findImage and the
       // live editor.
-      if (this.imageRegistry) {
+      {
         const cdnMMD = this._translateBlobUrlsToCdnForMMD(originalMMD);
         const setDiff = this.imageRegistry.buildFromMMD(cdnMMD);
         await this._cleanupBuildFromMMDRemoved(setDiff.removed);
@@ -1200,11 +1482,15 @@ if (context.eagerDiff) {
           `loadZIPContents: setDiff added=${setDiff.added.length} removed=${setDiff.removed.length}, registry now ${this.imageRegistry.getCount()} image(s)`,
         );
       }
+      }
 
       // Reinitialise display layer with correct image count
       this.initialiseDisplayLayer(originalMMD);
 
-      this.loadMMDContent(originalMMD, originalMMD);
+      this.loadMMDContent(
+        originalMMD,
+        this.restoredSession.originalMMD || originalMMD,
+      );
       this.updateSessionStatus("saved");
       this.hasUnsavedChanges = false;
       this.hasContextEdits = false;
@@ -1221,13 +1507,38 @@ if (context.eagerDiff) {
    * @param {Object} zipEdit - ZIP edit object with content and metadata
    * @private
    */
-  proto.loadZIPEdit = function (zipEdit) {
+  proto.loadZIPEdit = async function (zipEdit) {
+    // VS-5: held busy while the switch settles, as loadZIPContents does (RL-2).
+    this._setManageImagesBusy?.({ busy: true });
+    try {
+      await this._loadArchiveEdit(zipEdit);
+    } finally {
+      this._setManageImagesBusy?.({ busy: false });
+    }
+  };
+
+  /**
+   * The body of loadZIPEdit (VS-5): the archive's registry and pictures, with
+   * the chosen edit as the document, so a ZIP edit no longer shows whichever
+   * registry was loaded before it.
+   * @param {Object} zipEdit
+   * @private
+   */
+  proto._loadArchiveEdit = async function (zipEdit) {
     logInfo("Loading ZIP edit:", zipEdit.filename || "unknown");
 
     const originalMMD = this.restoredSession?.originalMMD;
     let editContent = zipEdit.content;
 
     if (editContent) {
+      // VS-5: the same rebuild the ZIP original runs (VS-2), never a copy.
+      const rebuilt = await this._rebuildRegistryFromArchive();
+      if (rebuilt.rebuilt) {
+        logInfo(
+          `loadZIPEdit: rebuilt from the archive, ${rebuilt.relinked} re-linked, ${rebuilt.reextracted} re-extracted`,
+        );
+      }
+
       // Phase 8H.3: Rewrite relative image paths to blob URLs for display
       editContent = this.rewriteRelativePathsToBlobUrls(editContent);
       // Also apply standard CDN→blob rewriting (for any CDN URLs in the content)
@@ -1293,6 +1604,8 @@ if (context.eagerDiff) {
             `loadZIPEdit: purged ${purgedCount} ghost registry entry/entries`,
           );
         }
+        // VS-5: as the ZIP original does, so the mirror matches what is shown.
+        if (rebuilt.rebuilt) this.imageRegistry._writeMirrorNow();
       }
 
       // Reinitialise display layer with correct image count
@@ -1471,29 +1784,31 @@ if (context.eagerDiff) {
     // Get all matching sessions (not just newer ones)
     const allSessions = this.checkForMatchingSessions(sourceFilename);
 
-    // Filter to only sessions with actual user edits (current !== baseline)
-    const sessionsWithEdits = allSessions.filter((session) => {
-      // F-O: coerce so a corrupt {} baseline/original is treated as absent. When
-      // neither is a usable string the result is null, so `null !== current`
-      // keeps the session (bias to keep — never hide a session whose edit state
-      // we cannot determine).
-      const baseline =
-        this._coerceStoredMMDField(session.data?.baseline) ||
-        this._coerceStoredMMDField(session.data?.original);
-      const current = session.data?.current;
-      return baseline !== current;
-    });
+    // CH-1: checkForMatchingSessions has already dropped a copy that holds no
+    // edit (text AND authored registry both unchanged). The text-only re-filter
+    // this method used to apply hid an alt-only edit, which leaves the text
+    // untouched. What is dropped HERE is a stored copy that IS the ZIP as saved:
+    // it is that entry, not a second one.
+    const sessionsWithEdits = allSessions.filter(
+      (session) => !this._storedEqualsArchive(session),
+    );
 
     logDebug("Session filtering:", {
       total: allSessions.length,
-      withEdits: sessionsWithEdits.length,
+      listed: sessionsWithEdits.length,
     });
 
-    // Check if there's anything to switch to
-    const zipEdits = this.parseResult?.edits?.files || [];
-    const hasZipOptions = zipEdits.length > 0; // Has ZIP edits besides original
+    // Nothing to switch to only when no stored copy differs from the archive and
+    // the version on screen IS the ZIP as saved. A person who has edited since
+    // (unsaved) still has the ZIP as saved to go back to.
+    const liveText = this.getCurrentMMDContent?.() || this.restoredSession?.currentMMD || "";
+    const onScreenIsArchive =
+      !this.hasUnsavedChanges &&
+      this._normaliseMMDForComparison(liveText) ===
+        this._normaliseMMDForComparison(this._archiveSavedMMD()) &&
+      this._registryEditsDiffer({ registrySnapshot: this._registrySnapshot?.() }) !== true;
 
-    if (sessionsWithEdits.length === 0 && !hasZipOptions) {
+    if (sessionsWithEdits.length === 0 && onScreenIsArchive) {
       this.showNotification("No alternative versions available", "info");
       return;
     }
@@ -1503,6 +1818,22 @@ if (context.eagerDiff) {
 
     // DEFENSIVE: Validate _currentSessionIndex against actual content
     const actualVersion = this.getCurrentVersionType();
+    // CH-1: getCurrentVersionType reads the TEXT alone, so a stored copy that
+    // differs from the archive only in its registry (an alt-only edit) reads as
+    // the ZIP. Now that such a copy is listed, identify it by the registry on
+    // screen: the listed copy whose snapshot is the live one.
+    if (actualVersion.type !== "localStorage" && !onScreenIsArchive) {
+      const liveKey = this._registrySnapshotKey({ registrySnapshot: this._registrySnapshot?.() });
+      const onScreen = liveKey
+        ? sessionsWithEdits.findIndex(
+            (s) =>
+              this._normaliseMMDForComparison(s.data?.current || "") ===
+                this._normaliseMMDForComparison(liveText) &&
+              this._registryEditsDiffer(s.data, liveKey) === false,
+          )
+        : -1;
+      if (onScreen >= 0) actualVersion.index = onScreen;
+    }
     if (actualVersion.index !== this._currentSessionIndex) {
       logWarn(
         `Index mismatch in reshowSessionSelector: stored=${this._currentSessionIndex}, actual=${actualVersion.index}`,
@@ -1560,6 +1891,46 @@ if (context.eagerDiff) {
   };
 
   /**
+   * S6-1e (B-D1): remove stored sessions for one file that hold no edit and
+   * the same registry as the archive just restored, and nothing else. A
+   * session qualifies only when its current text equals its baseline AND its
+   * registry snapshot key equals the held archive key; the session now in
+   * use is never removed. checkForMatchingSessions drops such sessions before
+   * the chooser cleanup can see them, so repeated hand-overs piled them up.
+   * @param {string} sourceFilename - the file the archive was made for
+   * @param {{keepKey?: ?string}} [options] - storage key to leave alone
+   * @returns {string[]} the storage keys removed
+   */
+  proto.pruneUnchangedSessions = function (sourceFilename, { keepKey = null } = {}) {
+    const removed = [];
+    const archiveKey = this._archiveSnapshotKey;
+    if (!sourceFilename || typeof archiveKey !== "string" || archiveKey === "") return removed;
+    const wanted = sourceFilename.replace(/\.[^/.]+$/, "");
+
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("mathpix-resume-session") && k !== keepKey)
+      .forEach((key) => {
+        try {
+          const data = JSON.parse(localStorage.getItem(key));
+          const storedName = data?.sourceFileName || data?.sourceFilename || "";
+          if (!storedName || storedName.replace(/\.[^/.]+$/, "") !== wanted) return;
+          const current = data.current || "";
+          const baseline = this._coerceStoredMMDField(data.baseline) || "";
+          if (!current || !baseline || current !== baseline) return;
+          // S6-1f (B-D1a): a different picture set is not an edit
+          if (this._registryEditsDiffer(data) !== false) return;
+          localStorage.removeItem(key);
+          removed.push(key);
+        } catch (e) {
+          logDebug("Prune skipped an unreadable stored entry:", key);
+        }
+      });
+
+    if (removed.length > 0) logInfo("Pruned unchanged stored sessions:", removed);
+    return removed;
+  };
+
+  /**
    * Clear a stored session from localStorage
    * @param {string} key - Session storage key
    * @private
@@ -1579,6 +1950,66 @@ if (context.eagerDiff) {
    * @private
    */
   proto.applyRecoveredSession = async function (sessionInfo) {
+    // VS-3d: the Manage images button stays disabled while a stored version is
+    // applied, as it does during a restore (RL-2) and an archive-original load
+    // (VS-2). A hold the caller already took (restoreSession's) is left alone,
+    // so the nested release cannot reopen the window that outer hold closes.
+    const alreadyHeld = this.elements?.manageImagesBtn?.disabled === true;
+    if (!alreadyHeld) this._setManageImagesBusy?.({ busy: true });
+    try {
+      await applyRecoveredSessionBody.call(this, sessionInfo);
+    } finally {
+      if (!alreadyHeld) this._setManageImagesBusy?.({ busy: false });
+    }
+  };
+
+  /**
+   * The ONE line spoken when a stored version is applied (VS-3d, GR-D5, placement
+   * contract rule C10). The clause is composed INTO the existing sentence, never
+   * raised as a second announcement. Exposed on the class and read at call time,
+   * so a suite row matches the spoken line by identity.
+   * @param {string} dateText - the version's date, already formatted
+   * @param {{snapshotUnreadable?: boolean}} [flags]
+   * @returns {string}
+   */
+  function recoveredVersionLine(
+    dateText,
+    { snapshotUnreadable = false, bannerSentence = null } = {},
+  ) {
+    // VS-5: the banner sentence sits after the version and BEFORE the clause,
+    // so the clause stays last.
+    const base = bannerSentence
+      ? `Loaded version from ${dateText}. ${bannerSentence}`
+      : `Loaded version from ${dateText}`;
+    if (!snapshotUnreadable) return base;
+    const stop = /[.!?]$/.test(base) ? "" : ".";
+    return `${base}${stop} The saved picture descriptions could not be read.`;
+  }
+  MathPixSessionRestorer.recoveredVersionLine = recoveredVersionLine;
+
+  /**
+   * VS-5: the sentence the auto-restored banner used to announce on its own,
+   * now composed into the one restore line. Same wording and en-GB formatting
+   * as the banner's own date and time. Exposed for suite rows.
+   * @param {number} lastModified - timestamp of the auto-restored session
+   * @returns {string}
+   */
+  function autoRestoredBannerSentence(lastModified) {
+    const when = new Date(lastModified);
+    const dateStr = when.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    const timeStr = when.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `Your edit from ${dateStr} at ${timeStr} was automatically restored from browser storage.`;
+  }
+  MathPixSessionRestorer.autoRestoredBannerSentence = autoRestoredBannerSentence;
+
+  async function applyRecoveredSessionBody(sessionInfo) {
     logInfo("Applying recovered session edits");
 
     const data = sessionInfo.data;
@@ -1587,10 +2018,49 @@ if (context.eagerDiff) {
     if (this.restoredSession && data.current) {
       this.restoredSession.currentMMD = data.current;
 
+      // VS-3d: a version stored with a registry snapshot (VS-3c) restores the
+      // registry, the pictures and the document from it, not from the mirror.
+      // Absent field: today's path unchanged (migration). Present and refused:
+      // today's path too, and the spoken line carries the GR-D5 clause.
+      let snapshotApplied = false;
+      let snapshotUnreadable = false;
+      if (data.registrySnapshot !== undefined && this.imageRegistry) {
+        let snapshotResult = null;
+        try {
+          snapshotResult = await this._restoreRegistryFromSnapshot(
+            data.registrySnapshot,
+            { mmd: data.current, render: false },
+          );
+        } catch (snapshotError) {
+          logWarn(
+            "applyRecoveredSession: registry snapshot restore threw; falling back.",
+            snapshotError,
+          );
+        }
+        if (snapshotResult && snapshotResult.applied) {
+          snapshotApplied = true;
+          // The mirror is the fallback's source after a reload: write it once
+          // from the restored registry so the fallback sees this version.
+          this.imageRegistry._writeMirrorNow?.();
+          logInfo(
+            `applyRecoveredSession: restored from snapshot, relinked=${snapshotResult.relinked} reextracted=${snapshotResult.reextracted} fromCache=${snapshotResult.fromCache} missingBytes=${snapshotResult.missingBytes.length}`,
+          );
+        } else {
+          snapshotUnreadable = true;
+          logWarn(
+            `applyRecoveredSession: registry snapshot not usable (${snapshotResult?.reason || "restore threw"}); using the rebuild and mirror path`,
+          );
+        }
+      }
+
       // Phase 8G: Normalise stored content to CDN URLs, then rewrite to fresh blob URLs
       // Stored content may contain: CDN URLs (post-fix), fresh blobs (current session),
       // or stale blobs (previous page loads that getMMDForAPI cannot reverse)
-      if (this.imageBlobUrlMap.size > 0 && this.restoredSession.currentMMD) {
+      if (
+        !snapshotApplied &&
+        this.imageBlobUrlMap.size > 0 &&
+        this.restoredSession.currentMMD
+      ) {
         // Step 1: Try standard normalisation (handles CDN URLs and fresh blob URLs)
         //
         // F-M async-conversion fallout: getMMDForAPI became async in F-M Phase 4
@@ -1672,16 +2142,21 @@ if (context.eagerDiff) {
 
       // Step 5 (Phase 8H.3): Reconcile recovered images — resolve placeholders and legacy data URIs
       // Phase 9 Feature 2: Pre-fetch cached images for placeholder resolution
-      const cachedImages = await this._prefetchCachedImages();
-      this.restoredSession.currentMMD = this.reconcileRecoveredImages(
-        this.restoredSession.currentMMD,
-        cachedImages,
-      );
+      // (The snapshot branch has done this inside _restoreRegistryFromSnapshot.)
+      if (!snapshotApplied) {
+        const cachedImages = await this._prefetchCachedImages();
+        this.restoredSession.currentMMD = this.reconcileRecoveredImages(
+          this.restoredSession.currentMMD,
+          cachedImages,
+        );
+      }
 
       // Step 5b: Generate dataUris for cache-recovered images
       // reconcileRecoveredImages is synchronous so cannot await FileReader;
       // do it here where we have an async context.
-      const allImages = this.imageRegistry?.getAllImages() || [];
+      const allImages = snapshotApplied
+        ? []
+        : this.imageRegistry?.getAllImages() || [];
       for (const img of allImages) {
         if (
           (img.source === "cache-recovery" || img.source === "user-upload") &&
@@ -1723,7 +2198,7 @@ if (context.eagerDiff) {
       // the live editor (the line-1586 syncRegistryReferencesToBlobUrls call
       // ran BEFORE this block; this second call restores blob form after
       // buildFromMMD's matched-entry refresh).
-      if (this.imageRegistry) {
+      if (this.imageRegistry && !snapshotApplied) {
         const workingMMD = this.restoredSession.currentMMD;
         const cdnMMD = this._translateBlobUrlsToCdnForMMD(workingMMD);
         const setDiff = this.imageRegistry.buildFromMMD(cdnMMD);
@@ -1757,9 +2232,23 @@ if (context.eagerDiff) {
           // decorative flag for those entries only — a created entry's false is
           // a default nobody chose, whereas a matched entry's false may be a
           // person deliberately unticking the box and is left alone.
+          //
+          // RL-1: on a reload the registry was rebuilt from the archive's own
+          // JSON before this point, so buildFromMMD MATCHES every entry and
+          // setDiff.added is empty — which left the decorative flag (carried
+          // by the mirror alone, since the document writes it as an empty alt)
+          // unrestorable on exactly the path DEC-1 was written for. An entry
+          // nobody has touched this session (decorative false AND isModified
+          // not true) holds a default nobody chose, the same reading DEC-1
+          // gives a created entry. A deliberate untick goes through
+          // updateDecorative, which sets isModified, so it stays refused.
+          const untouchedIds = this.imageRegistry
+            .getAllImages()
+            .filter((entry) => !entry.decorative && entry.isModified !== true)
+            .map((entry) => entry.id);
           const hydrateResult = this.imageRegistry.hydrateFromMirror(
             registryMirror,
-            setDiff.added,
+            [...setDiff.added, ...untouchedIds],
           );
           logInfo(
             `applyRecoveredSession: registry mirror hydrate matched=${hydrateResult.matched} applied=${hydrateResult.applied} decorativeApplied=${hydrateResult.decorativeApplied}`,
@@ -1829,9 +2318,23 @@ if (context.eagerDiff) {
       this.showSwitchVersionButton();
 
       const date = new Date(data.lastModified).toLocaleString();
-      this.showNotification(`Loaded version from ${date}`, "success");
+      const versionLine = MathPixSessionRestorer.recoveredVersionLine(date, {
+        snapshotUnreadable,
+        bannerSentence:
+          sessionInfo.deferNotification === true
+            ? sessionInfo.bannerSentence || null
+            : null,
+      });
+      if (sessionInfo.deferNotification === true) {
+        // VS-3d-2 (rule C10): the upload path speaks ONE line. restoreSession
+        // composes this into its outcome line instead of raising a second
+        // polite line 2 to 3 ms before it, which replaced this one.
+        this._pendingVersionLine = versionLine;
+      } else {
+        this.showNotification(versionLine, "success");
+      }
     }
-  };
+  }
 
   /**
    * Hide the resume mode interface

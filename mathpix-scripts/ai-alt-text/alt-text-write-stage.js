@@ -97,8 +97,9 @@
  *
  * ── Maths markup in the alt text (MA-14, MA-D3 addendum) ────────────────────
  * The alt field only is read as plain prose before the empty gate: a string
- * carrying a dollar sign or a backslash goes through altToPlainProse, and the
- * result is written, never refused. The long description and the text content
+ * carrying a backslash or a dollar-delimited maths span goes through
+ * altToPlainProse, and the result is written, never refused. A currency
+ * dollar sign is not a span and is kept (UT-1). The long description and the text content
  * may carry maths markup (MA-D3) and are not touched. One WARN per conversion.
  *
  * ── Sentinel-aware empty predicate (S2F option 2) ───────────────────────────
@@ -669,25 +670,50 @@ const MathPixAltTextWriteStage = (function () {
   }
 
   /**
+   * A display span, `$$...$$`. Not global: `.test` on a global pattern keeps
+   * its lastIndex between calls, so the replace below builds its own.
+   */
+  const DISPLAY_MATHS_SPAN = /\$\$([\s\S]+?)\$\$/;
+
+  /**
+   * An inline span by the pandoc rule (UT-1, unclaimed entry 69): the opening
+   * sign is followed at once by a non-space character, the closing sign is
+   * preceded at once by a non-space character and is not followed at once by
+   * a digit. Any other dollar sign is a currency sign and stays as written, so
+   * "costs $5 per page" and "between $5 and $10" are not read as maths.
+   */
+  const INLINE_MATHS_SPAN = /\$(?!\s)([^$]*?[^\s$])\$(?![0-9])/;
+
+  /**
    * Convert maths markup in an alt text to plain prose. Pure: returns the text
    * and the names of any commands the map did not know.
    *
-   * Only a string carrying a dollar sign or a backslash is touched, so a plain
-   * alt text comes back byte-identical and a converted one, which carries
-   * neither, comes back unchanged (idempotence). Rules, in order: delimiters,
-   * fractions and the group commands, the named map, powers, subscripts,
-   * unmapped commands, then braces and whitespace.
+   * Only a string carrying a backslash or a dollar-delimited maths span is
+   * touched, so a plain alt text, or one whose only dollar signs are currency,
+   * comes back byte-identical, and a converted one comes back unchanged
+   * (idempotence). Rules, in order: delimiters, fractions and the group
+   * commands, the named map, powers, subscripts, unmapped commands, then
+   * braces and whitespace.
    *
    * @param {*} alt
    * @returns {{text: *, unmapped: string[]}}
    */
   function convertAltToPlainProse(alt) {
-    if (typeof alt !== "string" || !/[$\\]/.test(alt)) {
+    if (
+      typeof alt !== "string" ||
+      (alt.indexOf("\\") === -1 &&
+        !DISPLAY_MATHS_SPAN.test(alt) &&
+        !INLINE_MATHS_SPAN.test(alt))
+    ) {
       return { text: alt, unmapped: [] };
     }
 
-    // (a) delimiters
-    let out = alt.replace(/\\[()[\]]/g, "").replace(/\$+/g, "");
+    // (a) delimiters: the backslash pairs, then display spans, then inline
+    // spans by the pandoc rule. A dollar sign outside a span is kept.
+    let out = alt
+      .replace(/\\[()[\]]/g, "")
+      .replace(new RegExp(DISPLAY_MATHS_SPAN.source, "g"), "$1")
+      .replace(new RegExp(INLINE_MATHS_SPAN.source, "g"), "$1");
 
     // (b) fractions, roots and the content-only commands
     out = rewriteGroupCommand(out, "[dt]?frac", 2, ([a, b]) => `${a} over ${b}`);

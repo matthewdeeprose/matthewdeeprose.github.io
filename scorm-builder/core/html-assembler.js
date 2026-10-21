@@ -15,6 +15,7 @@ import { encodeBase64Utf8 } from "../util/base64.js";
 import { processHeadings } from "../enhancers/headings.js";
 import { processTables } from "../enhancers/enhance-tables.js";
 import { processLongDescriptions, findLongDescriptionRanges } from "../enhancers/long-descriptions.js";
+import { sanitiseSvg, sanitiseTikzFigures } from "../enhancers/svg-sanitiser.js";
 import { processQuiz, hasQuizBlock } from "../enhancers/quiz.js";
 import { processMathpixFigures, hasMathpixFigure } from "../enhancers/mathpix-figures.js";
 import { processYoutubeEmbeds, hasYoutubeIframe } from "../enhancers/youtube-embed.js";
@@ -52,6 +53,19 @@ export function buildHtml(options = {}) {
   // and their in-content targets always agree. Opt out with processHeadings:false.
   let content = options.content || "";
   let sections = options.sections || [];
+
+  // Strip active content (script, foreignObject, on* handlers, off-page links and
+  // urls) from the inline <svg> of TikZ figures (figure.tikz-figure) BEFORE any other
+  // pass, so nothing below — long descriptions above all — ever sees markup that was
+  // about to be removed. HTML outside an <svg> is untouched, and so is every svg
+  // outside a tikz-figure: an author's own inline svg has always passed through
+  // verbatim (documented in the developer guide) and still does.
+  // sanitiseSvg:"all" extends this to every svg; sanitiseSvg:false turns it off.
+  if (options.sanitiseSvg === "all") {
+    content = sanitiseSvg(content).html;
+  } else if (options.sanitiseSvg !== false) {
+    content = sanitiseTikzFigures(content).html;
+  }
 
   // Convert authored YouTube <iframe> embeds into the lightweight, keyboard-accessible
   // <lite-youtube> element. Gated on the liteYoutube feature (which also injects the

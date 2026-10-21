@@ -1597,7 +1597,7 @@ class MathPixUIManager extends MathPixBaseModule {
         document.body.style.width = originalBodyWidth;
 
         // Restore scroll position
-        window.scrollTo(0, originalScrollPos);
+        window.scrollTo({ top: originalScrollPos, left: 0, behavior: "instant" });
 
         // Remove inert from background elements
         mainElements.forEach((el) => el.removeAttribute("inert"));

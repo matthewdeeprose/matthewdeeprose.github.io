@@ -155,7 +155,7 @@ List every word, number and label visible in the image as a numbered list, one i
   const CONTEXT_FIELD_LABELS = Object.freeze({
     subjectArea: "Subject area",
     specificTopic: "Specific topic",
-    learningObjective: "Learning objective",
+    learningObjective: "Learning outcome",
     moduleName: "Module name",
     moduleCode: "Module code",
     audienceLevel: "Audience level",
@@ -165,6 +165,9 @@ List every word, number and label visible in the image as a numbered list, one i
 
   /** The eight keys in presentation order, derived so the two cannot drift. */
   const CONTEXT_KEY_ORDER = Object.freeze(Object.keys(CONTEXT_FIELD_LABELS));
+
+  /** The context fields whose stored value is a select option slug (DT-1). */
+  const SELECT_BACKED_KEYS = Object.freeze(["audienceLevel", "documentType"]);
 
   /**
    * Excerpt window: lines either side of the image's own line. Plan decision
@@ -228,7 +231,7 @@ List every word, number and label visible in the image as a numbered list, one i
     "- match the vocabulary, the assumed knowledge and the depth of explanation to the audience level;",
     "- use the terminology and conventions of the subject area;",
     "- give most weight to the parts of the image that bear on the specific topic;",
-    "- where a learning objective is given, say in the alt text and the long description what the image contributes to it;",
+    "- where a learning outcome is given, say in the alt text and the long description what the image contributes to it;",
     "- use any additional information about how the image is used in teaching.",
     "Where a field is absent, describe from what you observe.",
   ].join("\n");
@@ -270,10 +273,15 @@ List every word, number and label visible in the image as a numbered list, one i
    * Read through `window` deliberately, never the bare identifier, so a row
    * can make the manager absent and restore it.
    *
-   * @param {string} value - A trimmed, usable audience value.
+   * DT-1 (16 October 2026): generalised from the audience field to every
+   * select-backed field, so the document type is sent as `Lecture notes` and
+   * not as its stored slug `lecture-notes`. The stored value stays the slug.
+   *
+   * @param {string} key - The schema key of a select-backed field.
+   * @param {string} value - A trimmed, usable stored value.
    * @returns {string} The option label, or the value unchanged.
    */
-  function resolveAudienceLabel(value) {
+  function resolveSelectLabel(key, value) {
     const manager =
       typeof window !== "undefined" ? window.MathPixContextManager : undefined;
     if (!manager || typeof manager.getSchema !== "function") return value;
@@ -282,12 +290,12 @@ List every word, number and label visible in the image as a numbered list, one i
     try {
       schema = manager.getSchema();
     } catch (err) {
-      logWarn("getSchema() threw — sending the audience value unchanged", err);
+      logWarn("getSchema() threw — sending the value unchanged", err);
       return value;
     }
 
     const field = Array.isArray(schema)
-      ? schema.find((f) => f && f.key === "audienceLevel")
+      ? schema.find((f) => f && f.key === key)
       : null;
     const options = field && Array.isArray(field.options) ? field.options : [];
     const match = options.find(
@@ -310,7 +318,7 @@ List every word, number and label visible in the image as a numbered list, one i
       if (!isUsableContextValue(raw)) continue;
 
       let value = raw.trim();
-      if (key === "audienceLevel") value = resolveAudienceLabel(value);
+      if (SELECT_BACKED_KEYS.includes(key)) value = resolveSelectLabel(key, value);
       if (
         key === "extraInformation" &&
         value.length > EXTRA_INFORMATION_CHAR_CAP

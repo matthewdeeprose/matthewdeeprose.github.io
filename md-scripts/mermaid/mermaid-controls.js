@@ -931,13 +931,24 @@ window.MermaidControls = (function () {
       const mermaidDiv = container.querySelector(".mermaid");
       if (!mermaidDiv || !mermaidDiv.querySelector("svg")) return;
 
-      let index = i;
+      // Never the position in the bubble: every message numbers from 0, so two
+      // messages would share mermaid-orientation-0 and mermaid-theme-0. Default
+      // to the diagram's own id tail, as the core does, then something random.
+      const ownId = container.id || mermaidDiv.id || "";
+      let index = ownId.split("-").pop() || Math.random().toString(36).slice(2, 12);
       const copied = container.querySelector(`.${config.controlsContainerClass}`);
       if (copied && !liveControls.has(container)) {
-        // Keep the copy's own number so its label ids stay what they were.
+        // Keep the copy's own suffix, whatever its characters, so its label
+        // ids stay what they were (read off the orientation select, then the
+        // theme select).
         const select = copied.querySelector(".mermaid-orientation-select");
-        const match = select ? /-(\d+)$/.exec(select.id) : null;
-        if (match) index = parseInt(match[1], 10);
+        const themeSelect = copied.querySelector(".mermaid-theme-select");
+        const match = select
+          ? /^mermaid-orientation-(.+)$/.exec(select.id)
+          : themeSelect
+            ? /^mermaid-theme-(.+)$/.exec(themeSelect.id)
+            : null;
+        if (match) index = match[1];
         copied.remove();
         summary.controlsRebuilt++;
       }
@@ -1446,6 +1457,44 @@ window.MermaidControls = (function () {
    * @param {boolean} maintainAspectRatio - Whether to maintain aspect ratio
    * @param {number} aspectRatio - Aspect ratio to maintain (width/height)
    */
+  // The one visible line beside a diagram Mermaid could not draw. Plain text in
+  // a plain paragraph: no live role, no announce() — a restored or re-rendered
+  // reply must not speak. It sits BEFORE the .mermaid div, never inside it,
+  // because every downstream consumer reads that div's textContent as the
+  // diagram source.
+  const RENDER_FAILURE_NOTE_CLASS = "mermaid-render-failed-note";
+  const RENDER_FAILURE_NOTE_TEXT =
+    "This diagram could not be drawn. Its source text is shown instead.";
+
+  /**
+   * Show the failure line beside a diagram whose mermaid.render() rejected.
+   * Idempotent. Call it from the rejection handler of a render site.
+   *
+   * @param {HTMLElement} mermaidDiv - The .mermaid div that holds the source text
+   */
+  function noteRenderFailure(mermaidDiv) {
+    if (!mermaidDiv || !mermaidDiv.parentNode) return;
+    const holder = mermaidDiv.parentNode;
+    if (holder.querySelector("." + RENDER_FAILURE_NOTE_CLASS)) return;
+
+    const note = document.createElement("p");
+    note.className = RENDER_FAILURE_NOTE_CLASS;
+    note.textContent = RENDER_FAILURE_NOTE_TEXT;
+    holder.insertBefore(note, mermaidDiv);
+  }
+
+  /**
+   * Remove the failure line, if present. Called when a render lands or when
+   * the accessibility layer shows its own, fuller fallback.
+   *
+   * @param {HTMLElement} holder - The .mermaid-container (or the .mermaid div's parent)
+   */
+  function clearRenderFailureNote(holder) {
+    if (!holder || typeof holder.querySelector !== "function") return;
+    const note = holder.querySelector("." + RENDER_FAILURE_NOTE_CLASS);
+    if (note) note.remove();
+  }
+
   /**
    * Re-apply everything we know about a diagram after a fresh SVG has landed.
    *
@@ -1499,6 +1548,9 @@ window.MermaidControls = (function () {
       Logger.warn("reapplyAfterRender: no mermaid div provided");
       return applied;
     }
+
+    // A fresh SVG has landed, so any earlier "could not be drawn" line is stale.
+    clearRenderFailureNote(container || mermaidDiv.parentNode);
 
     // 1. Non-colour series encoding — patterns and dashes for xychart.
     // A no-op for every other diagram type. Resolved off window at call
@@ -2529,6 +2581,8 @@ window.MermaidControls = (function () {
     announceToScreenReader: announceToScreenReader,
     applyDiagramSize: applyDiagramSize,
     reapplyAfterRender: reapplyAfterRender,
+    noteRenderFailure: noteRenderFailure,
+    clearRenderFailureNote: clearRenderFailureNote,
     reviveRendered: reviveRendered,
     autoFitDiagram: autoFitDiagram,
     estimateDiagramComplexity: estimateDiagramComplexity,

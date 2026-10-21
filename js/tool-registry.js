@@ -79,27 +79,33 @@ window.ToolRegistry = (function () {
     { value: "Ally Reporting", status: "beta", hidden: false },
     { value: "Image Describer", status: "beta", hidden: false },
     { value: "MathPix", status: "beta", hidden: false },
-    { value: "Local Chat", status: null, hidden: false },
+
+    // Alpha (TikZ programme). Built hidden at P3, unhidden on 12 October 2026
+    // (P4u), and moved to sit directly after MathPix at P5a (12 October 2026,
+    // at the owner's request). It is fifth of the ten visible tools (Local
+    // Chat is hidden), so a screen reader says "N of 10" for every tool.
+    { value: "TikZ Studio", status: "alpha", hidden: false },
+
+    // Hidden 20 October 2026 because Chat replaced it. Kept in the page and
+    // loaded because Chat depends on local-chat-state.js (createChatState)
+    // and local-chat.css.
+    { value: "Local Chat", status: null, hidden: true },
     { value: "Markdown Editor", status: null, hidden: false },
     { value: "Chat", status: "beta", hidden: false },
     { value: "Graph Builder", status: "alpha", hidden: false },
 
-    // Placed LAST among the visible tools deliberately, which is where the
-    // fallback had already left it. Until this entry existed the registry
+    // Transcribe was placed after Graph Builder deliberately, which is where
+    // the fallback had already left it: until this entry existed the registry
     // warned on every load that "Transcribe" was in tools.html but not in
-    // TOOLS, and parked it at the end; putting it anywhere else now would
-    // renumber the group and invalidate the NVDA sitting of 2 September 2026,
-    // which heard it as "9 of 9". Same position, no longer by accident.
+    // TOOLS, and parked it at the end. It was ninth of nine when the NVDA
+    // sitting of 2 September 2026 heard it as "9 of 9". Tools added since have
+    // changed both the group size and, with the Studio before it, its place
+    // (now tenth of eleven); the sitting's figures describe that day only.
     { value: "Transcribe", status: "alpha", hidden: false },
 
     // Placed immediately after Transcribe deliberately: the two are a pair,
     // Transcribe produces the subtitle file this tool corrects, and Release 2
-    // adds a hand-off from one to the other. TRANSCRIBE KEEPS ITS NINTH
-    // POSITION, which is what the note above asks for — but the group is now
-    // ten, so a screen reader says "9 of 10" where the sitting of 2 September
-    // 2026 heard "9 of 9". The position is preserved; the group size cannot be
-    // while a tool is added, and pretending otherwise would mean never adding
-    // one.
+    // adds a hand-off from one to the other.
     { value: "Captions Fixer", status: "alpha", hidden: false },
 
     { value: "OpenRouter", status: null, hidden: true },

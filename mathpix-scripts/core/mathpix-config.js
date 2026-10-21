@@ -1660,6 +1660,30 @@ function getFormatInfo(mimeType) {
   return MATHPIX_CONFIG.DOCUMENT_FORMATS[mimeType] || null;
 }
 
+/**
+ * @constant MATHPIX_FORMAT_RESULT_KEYS
+ * @description Maps each UI format name to the key under which the PDF
+ *   processor stores that format's result. One table, read by the PDF result
+ *   renderer (five lookups) and the PDF handler (three lookups).
+ *
+ * FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). This table and the formats lists in the renderer move together.
+ * @since 13 October 2026
+ */
+const MATHPIX_FORMAT_RESULT_KEYS = Object.freeze({
+  mmd: "mmd",
+  md: "md", // Feature 3: Plain Markdown
+  html: "html",
+  pdf: "pdf", // Phase 1: PDF (HTML Rendering)
+  latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering); Parcel T-04: the processor stores it as "latex.pdf"
+  latex: "tex.zip", // Critical fix: the latex UI format maps to the tex.zip result key
+  docx: "docx",
+  pptx: "pptx", // Phase 2: PowerPoint
+  xlsx: "xlsx", // SuperNet-200: Excel
+  mmdzip: "mmd.zip", // Phase 2B: MMD Archive
+  mdzip: "md.zip", // Phase 2B: MD Archive
+  htmlzip: "html.zip", // Phase 2B: HTML Archive
+});
+
 export default MATHPIX_CONFIG;
 export {
   logError,
@@ -1671,6 +1695,7 @@ export {
   isFeatureAvailable,
   getFormatInfo,
   MATHPIX_PRICING,
+  MATHPIX_FORMAT_RESULT_KEYS,
   formatMathPixCost,
   estimateMathPixPdfCost,
 };

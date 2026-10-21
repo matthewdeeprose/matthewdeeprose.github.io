@@ -129,9 +129,6 @@ import MathPixPDFResultRenderer from "./components/mathpix-pdf-result-renderer.j
 // Phase 3.1: Advanced content analysis components
 import MathPixLinesDataManager from "../core/mathpix-lines-data-manager.js";
 
-// Phase 3.4.2: PDF preview system components
-import { PDFPreviewCore } from "../pdf-preview/pdf-preview-core.js";
-
 // Phase 5: Total Downloader system
 import MathPixDownloadManager from "./components/mathpix-download-manager.js";
 
@@ -203,9 +200,6 @@ class MathPixController {
 
     // Phase 3.1: Advanced content analysis
     this.linesDataManager = new MathPixLinesDataManager(this);
-
-    // Phase 3.4.2: PDF preview system
-    this.pdfPreviewCore = null; // Initialized on demand
 
     // Phase 1C: Strokes system (handwriting recognition)
     this.strokesCanvas = null; // Initialized on demand when user switches to draw mode
@@ -321,18 +315,6 @@ class MathPixController {
     } else {
       logDebug("MMD Editor not available - edit button not shown");
     }
-  }
-
-  /**
-   * Initialize PDF preview core on demand
-   * @returns {PDFPreviewCore} PDF preview core instance
-   */
-  getPDFPreviewCore() {
-    if (!this.pdfPreviewCore) {
-      this.pdfPreviewCore = new PDFPreviewCore();
-      logInfo("PDFPreviewCore instance created");
-    }
-    return this.pdfPreviewCore;
   }
 
   /**
@@ -3453,7 +3435,3 @@ window.getPDFPreviewState = () => {
   return state;
 };
 
-// Global exposure for testing
-if (typeof window !== "undefined") {
-  window.PDFPreviewCore = PDFPreviewCore;
-}

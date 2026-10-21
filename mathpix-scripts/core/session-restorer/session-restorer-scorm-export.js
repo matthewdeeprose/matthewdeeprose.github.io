@@ -85,6 +85,20 @@
   /** Marker class the library's long-description enhancer looks for. */
   const LONGDESC_CLASS = "longdesc";
 
+  /**
+   * Alt text for a picture that is neither decorative nor described. An empty
+   * alt means "decorative" to a screen reader and to Read Aloud, so an
+   * undescribed picture says so plainly instead (RA-5). No full stop: it is read
+   * as a label. No role word ("picture", "image"): the screen reader says
+   * "graphic" and Read Aloud says "Image:" already, so naming the role again
+   * made it be spoken twice (owner listen T12, 9 October 2026).
+   */
+  const UNDESCRIBED_ALT = "No description";
+
+  /** Selector for headings, and for the blocks whose headings do not count. */
+  const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6";
+  const DESCRIPTION_BLOCK_SELECTOR = ".image-long-description, .longdesc";
+
   /** Class the mathpix figure normaliser uses to spot an image wrapper. */
   const FIGURE_IMG_CLASS = "figure_img";
 
@@ -417,6 +431,44 @@
   }
 
   /**
+   * Level (1-6) of the nearest heading that comes before `img` in document
+   * order, ignoring headings inside long-description blocks. 1 when there is
+   * none, so description headings then start at h2.
+   * @param {Document} doc
+   * @param {Element} img
+   * @returns {number}
+   */
+  function nearestPrecedingHeadingLevel(doc, img) {
+    let level = 1;
+    for (const h of doc.querySelectorAll(HEADING_SELECTOR)) {
+      if (h.closest(DESCRIPTION_BLOCK_SELECTOR)) continue;
+      // A heading precedes the image when the image FOLLOWS it.
+      if (!(h.compareDocumentPosition(img) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        continue;
+      }
+      level = Number(h.tagName[1]);
+    }
+    return level;
+  }
+
+  /**
+   * Demote a description's headings so they sit below the picture's section.
+   * Falls back to the undemoted text, with a warning, if the serialiser is
+   * absent: the export must never fail because of this.
+   * @param {string} markdown
+   * @param {number} sectionLevel
+   * @returns {string}
+   */
+  function demoteDescriptionHeadings(markdown, sectionLevel) {
+    const serialiser = window.MathPixAltTextMMDSerialiser;
+    if (!serialiser || typeof serialiser.demoteEntryHeadings !== "function") {
+      logWarn("scorm export: heading demotion unavailable, descriptions keep their own levels");
+      return markdown;
+    }
+    return serialiser.demoteEntryHeadings(markdown, sectionLevel);
+  }
+
+  /**
    * Render one long description (markdown) to an HTML fragment.
    * @param {string} markdown
    * @returns {string} HTML, or "" when the renderer is unavailable
@@ -477,26 +529,36 @@
         img.setAttribute("alt", alt);
         stats.altApplied.push(entry.id);
       } else {
-        // Deliberately NOT alt="". An empty alt is a positive claim that the
-        // image is decorative, and stamping one here would (a) misdescribe six
-        // real diagrams to a screen-reader user and (b) silence the library's
-        // own img-missing-alt audit, which keys on the attribute being absent
-        // (enhancers/audit.js). Measured: with alt="" stamped, the audit
-        // reported 0 warnings for 6 undescribed images.
+        // Deliberately NOT alt="": an empty alt is a positive claim that the
+        // image is decorative, so a screen reader and Read Aloud skip it. An
+        // undescribed picture says so instead (RA-5). Our own advisory count
+        // (stats.missingAlt) is the author's warning and still fires; the
+        // library's img-missing-alt audit keys on the attribute being absent
+        // or empty and no longer sees these pictures.
         stats.missingAlt.push(entry.id);
         if (img.hasAttribute("alt") && !str(img.getAttribute("alt"))) {
-          // The renderer emitted its own empty alt, which defeats the audit
-          // just as effectively. Record it so the gap is visible rather than
-          // silently absorbed.
+          // Record the renderer's own empty alt before overwriting it.
           stats.emptyAltFromRenderer.push(entry.id);
         }
+        img.setAttribute("alt", UNDESCRIBED_ALT);
       }
 
-      if (str(entry.longDescription)) described.push({ img, entry });
+      if (str(entry.longDescription)) {
+        // Read the section level now, synchronously, before any await.
+        described.push({
+          img,
+          entry,
+          sectionLevel: nearestPrecedingHeadingLevel(doc, img),
+        });
+      }
     }
 
     const fragments = await Promise.all(
-      described.map((d) => renderDescriptionFragment(d.entry.longDescription)),
+      described.map((d) =>
+        renderDescriptionFragment(
+          demoteDescriptionHeadings(d.entry.longDescription, d.sectionLevel),
+        ),
+      ),
     );
 
     // Synchronous DOM walk from here down.
@@ -915,12 +977,18 @@
    * @private
    */
   proto._runBrowserConvertFormats = async function (browserFormats, errorMessages) {
+    // Parcel T-08a: this run's token; an abandoned run (new session restored,
+    // Cancel) finds it out of date and writes nothing further, matching O-04.
+    const runToken = this._runToken;
+    const isCurrentRun = () => this._runToken === runToken;
+
     const statusEl = document.getElementById(CONVERT_STATUS_ID);
     const setStatus = (msg) => {
-      if (statusEl) statusEl.textContent = msg;
+      if (statusEl && isCurrentRun()) statusEl.textContent = msg;
     };
 
     const failAll = (message) => {
+      if (!isCurrentRun()) return;
       for (const format of browserFormats) {
         this.updateConvertProgressItem(format, "error", message);
         const info = BROWSER_FORMATS[format] || { label: format };
@@ -963,6 +1031,7 @@
       setStatus("");
       return;
     }
+    if (!isCurrentRun()) return; // T-08a
 
     const build = this._lastScormExportBuild || {};
 
@@ -985,16 +1054,20 @@
           download: false,
         });
 
+        if (!isCurrentRun()) return; // T-08a
         this.conversionResults.set(format, this._toBrowserFormatBlob(result, format));
         this.updateConvertProgressItem(format, "completed");
         logInfo(`browser export complete: ${format} → ${result && result.filename}`);
       } catch (err) {
         const message = (err && err.message) || String(err);
         logError(`browser export failed for ${format}`, err);
+        if (!isCurrentRun()) return; // T-08a
         this.updateConvertProgressItem(format, "error", message);
         errorMessages.push(`${info.label}: ${message}`);
       }
     }
+
+    if (!isCurrentRun()) return; // T-08a
 
     // Advisory notes, from the registry rather than the library's audit:
     // mathpix-markdown-it emits alt="" itself and the audit correctly reads that

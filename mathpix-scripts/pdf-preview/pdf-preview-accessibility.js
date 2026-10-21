@@ -186,80 +186,11 @@ export class PDFPreviewAccessibility {
 
     element.focus();
     element.scrollIntoView({
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       block: "nearest",
     });
 
     logDebug("Focus managed for element", element.id || element.className);
-  }
-
-  /**
-   * Set up keyboard navigation for PDF preview
-   * @param {Object} callbacks - Keyboard action callbacks
-   */
-  setupKeyboardNavigation(callbacks) {
-    document.addEventListener("keydown", (event) => {
-      // Only handle if PDF preview is visible
-      const container = document.getElementById(
-        "mathpix-pdf-preview-container"
-      );
-      if (!container || container.hidden) return;
-
-      // Check if focus is within PDF preview
-      const previewElement = event.target.closest(".mathpix-pdf-preview");
-      if (!previewElement) return;
-
-      // Handle different keys
-      switch (event.key) {
-        case "ArrowLeft":
-        case "PageUp":
-          event.preventDefault();
-          if (callbacks.previousPage) callbacks.previousPage();
-          break;
-
-        case "ArrowRight":
-        case "PageDown":
-          event.preventDefault();
-          if (callbacks.nextPage) callbacks.nextPage();
-          break;
-
-        case "Home":
-          event.preventDefault();
-          if (callbacks.firstPage) callbacks.firstPage();
-          break;
-
-        case "End":
-          event.preventDefault();
-          if (callbacks.lastPage) callbacks.lastPage();
-          break;
-
-        case "+":
-        case "=":
-          if (event.ctrlKey || event.metaKey) {
-            event.preventDefault();
-            if (callbacks.zoomIn) callbacks.zoomIn();
-          }
-          break;
-
-        case "-":
-        case "_":
-          if (event.ctrlKey || event.metaKey) {
-            event.preventDefault();
-            if (callbacks.zoomOut) callbacks.zoomOut();
-          }
-          break;
-
-        case "o":
-        case "O":
-          if (event.ctrlKey || event.metaKey) {
-            event.preventDefault();
-            if (callbacks.toggleOverlays) callbacks.toggleOverlays();
-          }
-          break;
-      }
-    });
-
-    logInfo("Keyboard navigation set up");
   }
 
   /**

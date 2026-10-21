@@ -479,7 +479,12 @@ class MathPixMMDPreview {
 
         // Call loadMathJax to initialise styles
         try {
-          const mathJaxLoaded = window.loadMathJax?.();
+          // Pass true (notScrolling): without it the library binds a global
+          // window click handler that cancels EVERY link with exactly two
+          // attributes (href + download, href + target) app-wide, as if it were
+          // an in-page anchor, then scrolls a #preview this page does not have.
+          // That killed the TikZ Studio and Mermaid downloads once this loaded.
+          const mathJaxLoaded = window.loadMathJax?.(true);
           logDebug("MathJax styles loaded:", mathJaxLoaded);
         } catch (mathJaxError) {
           logWarn("MathJax style loading failed:", mathJaxError);
@@ -1728,6 +1733,7 @@ class MathPixMMDPreview {
 
   /**
    * Collect an element's text content, excluding any <pre>/<code> subtrees
+   * and the CDN's hidden <latex>/<mathml> storage wrappers
    *
    * Code blocks legitimately contain LaTeX-looking text — SuperNet-200 emits
    * \begin{lstlisting}[mathescape=true] pseudocode whose \(...\) is source, not
@@ -1738,7 +1744,9 @@ class MathPixMMDPreview {
    * @private
    */
   getTextExcludingCodeBlocks(element) {
-    const EXCLUDED_TAGS = ["PRE", "CODE"];
+    // LATEX and MATHML are the CDN hidden format-storage wrappers: they hold the
+    // source of maths the CDN has already rendered, so they are not unrendered maths
+    const EXCLUDED_TAGS = ["PRE", "CODE", "LATEX", "MATHML"];
 
     // A root that is itself a code block contributes nothing
     if (EXCLUDED_TAGS.includes(element.tagName)) return "";
@@ -2061,6 +2069,15 @@ class MathPixMMDPreview {
     // Update data attribute on content area
     if (this.elements.contentArea) {
       this.elements.contentArea.dataset.currentView = viewMode;
+    }
+
+    // Parcel T-11a: hide Edit at once when going to a view that cannot edit,
+    // before the (slow) view build, so Edit cannot be pressed in the gap.
+    if (
+      viewMode === this.config.VIEW_MODES.PREVIEW ||
+      viewMode === this.config.VIEW_MODES.PDF_SPLIT
+    ) {
+      window.getMathPixMMDEditor?.()?.updateButtonVisibility(viewMode);
     }
 
     // Update toggle button states

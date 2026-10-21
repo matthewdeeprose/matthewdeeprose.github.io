@@ -1385,6 +1385,88 @@ const buildFoundryModels = () => [
       "Text-only: image input empirically rejected/not processed (probe verified, June 2026).",
   }),
 
+  // ── grok-4.7 (xAI format — reasoning + vision; deployed and registered 13 October 2026) ──
+  // MR-7. Deployed by the owner at capacity 1, scaled to 10 the same evening,
+  // and probed BEFORE registration. Measured 13 October 2026 by
+  // .claude/foundry-catalogue/probe.mjs, 12 requests, artefact
+  // results/probe-grok-4.7-2026-10-13.json:
+  //   token field : max_tokens accepted on the first try (ONE-SIDED). The
+  //                 adapter's max_completion_tokens was measured accepted by
+  //                 the wire-check below, which completes it.
+  //   sampling    : temperature and top_p ACCEPTED; presence_penalty and
+  //                 frequency_penalty REFUSED (HTTP 400). The adapter drops the
+  //                 two penalties only (PENALTY_UNSUPPORTED_PATTERNS).
+  //   image       : accepted-reads, 3 of 3 runs, ratio 1.00, sentinel named
+  //   pdf         : REFUSED, HTTP 400 json_parse_error — so no "pdf" capability
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted,
+  //                 25 / 26 / 29 reasoning tokens — DIRECT evidence of
+  //                 reasoning, unlike the GPT entries' indirect signature.
+  // Wire-check of the shipped buildRequest (results/wire-check-2026-10-13-
+  // grok-4.7.json): before the penalty table, the embed's default body (both
+  // penalties at 0) was refused HTTP 400 "Model grok-4.7 does not support p…";
+  // the same body without them answered HTTP 200 "ready".
+  createFoundryModel({
+    deploymentName: "grok-4.7",
+    displayName: "Grok 4.7",
+    upstreamProvider: "xAI",
+    description:
+      "xAI's Grok 4.7 reasoning model, routed via Microsoft Foundry. Format 'xAI', serving on the OpenAI-v1 surface through the existing Foundry adapter. Accepts temperature/top_p; refuses presence and frequency penalties, which the adapter drops. Measured 13 October 2026: reads images; refuses PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: Azure retail price list (prices.azure.com/api/retail/prices),
+    // serviceName "Foundry Models", product "Azure Grok Models", meters
+    // "4.7 Inp glbl 1M Tokens" / "4.7 Outp glbl 1M Tokens", USD per 1M,
+    // effective 2026-10-01, the same in all 40 listed regions including
+    // uksouth (2.5 / 7.5 applies only in the two US Government regions), read
+    // 13 October 2026. "glbl L" rates also exist (4 / 12), applying at or above
+    // 200K prompt tokens per xAI's model page; this entry records the base rate.
+    costs: { input: 2.0, output: 6.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+    ],
+    // Source: xAI's model page, https://docs.x.ai/docs/models, read 13 October
+    // 2026 (grok-4.7, context "500k"). The Foundry catalogue row carries no
+    // context field.
+    maxContext: 500000,
+    // Never cross the provider streams (register item 107). Measured by
+    // .claude/measurements/mr-7-model-refresh/grok47-fallback-check.mjs.
+    fallbackTo: "azure-openai/gpt-6-sol",
+    releaseDate: null, // xAI's page publishes no date — null per factory unknown-date handling
+    categoryDescription:
+      "xAI reasoning model with image input, routed via Microsoft Foundry",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "reasoning over text and images",
+      "a non-OpenAI option on Foundry",
+      "UK data residency requirements",
+      "testing the Foundry adapter end-to-end",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "max_tokens",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 13 October 2026: accepted-reads on all three sampled runs (ratio 1.00), sentinel named. PDF attachments refused (HTTP 400).",
+  }),
+
   // ── DeepSeek-V3.1 (DeepSeek format — non-reasoning, text-only) ───────────
   createFoundryModel({
     deploymentName: "DeepSeek-V3.1",
@@ -2893,6 +2975,91 @@ const buildFoundryModels = () => [
     // the list.
     reasoningEffort: GPT_6_SOL_REASONING_EFFORT,
     maxOutputTokens: GPT_6_SOL_MAX_OUTPUT_TOKENS,
+  }),
+
+  // ── gpt-6.1-sol (chat — reasoning; deployed 13 October 2026 by the owner, registered the same day) ──
+  // MR-7. Probed BEFORE registration. Measured 13 October 2026 by
+  // .claude/foundry-catalogue/probe.mjs, 13 requests, artefact
+  // results/probe-gpt-6.1-sol-2026-10-13.json:
+  //   token field : max_completion_tokens (max_tokens refused,
+  //                 unsupported_parameter)
+  //   sampling    : ALL FOUR refused — temperature unsupported_value ("Only the
+  //                 default (1) value is supported"), top_p / presence_penalty /
+  //                 frequency_penalty unsupported_parameter.
+  //   image       : accepted-reads, 3 of 3 runs, ratio 1.00 each, sentinel named
+  //   pdf         : accepted-reads, ratio 0.83
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted.
+  // Completion tokens on the image task were 98 / 7 / 7, never empty at a high
+  // cap, so the STANDARD REASONING_BUDGET_FLOOR (1024) is sufficient.
+  // "reasoning" capability: INDIRECT, on the v1 adapter's own signature (all
+  // four sampling parameters refused), not on observed reasoning tokens.
+  // gpt-6-sol's reasoningEffort / maxOutputTokens choices are NOT copied here:
+  // they were chosen for gpt-6-sol's round and have not been measured on this
+  // deployment.
+  createFoundryModel({
+    deploymentName: "gpt-6.1-sol",
+    displayName: "GPT-6.1 Sol",
+    description:
+      "GPT-6.1 mid-tier model, the successor to GPT-6 Sol at the same price. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 13 October 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: Azure retail price list (prices.azure.com/api/retail/prices),
+    // serviceName "Foundry Models", product "Azure OpenAI GPT6", meters
+    // "6.1-sol ShortCo Inp Std Gl 1M Tokens" / "6.1-sol ShortCo Opt Std Gl 1M
+    // Tokens", Global Standard, USD per 1M, effective 2026-10-01, the same in
+    // all 26 listed regions including uksouth, read 13 October 2026 (38 pages,
+    // 37,521 rows; control: gpt-6-astra read 10 / 50, as registered). LongCo
+    // rates also exist (4 / 15), applying above 272K input tokens per OpenAI's
+    // model page; this entry records the ShortCo rate only.
+    costs: { input: 2.0, output: 10.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    // Source: OpenAI's model page, https://developers.openai.com/api/docs/models/gpt-6.1-sol,
+    // read 13 October 2026 ("1,050,000 context window"; 922,000 max input
+    // tokens). The Foundry catalogue row carries no context field.
+    maxContext: 1050000,
+    // Never cross the provider streams (register item 107). gpt-6-sol is the
+    // same price, the same context and the same capability set, and its own
+    // chain (gpt-6-sol -> gpt-5.5 -> end) terminates.
+    fallbackTo: "azure-openai/gpt-6-sol",
+    releaseDate: "2026-09-29",
+    categoryDescription:
+      "Newest-generation mid-tier model routed via Microsoft Foundry",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "complex coding and agentic workflows",
+      "demanding mixed-content work",
+      "document-heavy tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 13 October 2026: accepted-reads on all three sampled runs (ratio 1.00 each), sentinel named.",
   }),
 
   // ══════════════════════════════════════════════════════════════════════════

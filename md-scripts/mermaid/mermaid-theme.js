@@ -642,6 +642,168 @@ window.MermaidThemes = (function () {
     return { ink: best, worst: bestWorst };
   }
 
+  // -----------------------------------------------------------------------
+  // AUTHOR STROKES (presentation standard rule 42; register item 100, session 2)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Stamped on an element the first time its AUTHOR stroke is read: the colour
+   * and alpha as `#rrggbb;alpha`. A pass writes its own stroke onto the same
+   * element and its sweep later removes it, which takes the author's inline value
+   * with it (the pass overwrites the very property the author set), so a second
+   * run, or a theme flip that reuses the element, reads the stamp and never the
+   * element. The stamp is not in any pass's owned list and no sweep removes it.
+   */
+  const AUTHOR_STROKE_ATTRIBUTE = "data-author-stroke";
+
+  /**
+   * One pass's author-stroke ledger, or null for a pass whose renderer sets every
+   * stroke itself (it has no author path to read). `locate(element)` is the
+   * pass's own way of telling an author's stroke from the renderer's, measured per
+   * type (rule 42): it returns the stroke COMPUTED at first sight, `{r,g,b,a}`
+   * with every stroke-opacity folded into `a`, or null when the stroke is the
+   * renderer's.
+   *
+   * @param {string|null} path - What the author's stroke travels as, or null for none
+   * @param {Function} [locate] - (element) => {r,g,b,a}|null
+   * @returns {Object|null}
+   */
+  function authorStrokeLedger(path, locate) {
+    if (!path) return null;
+    return { path, locate, authored: 0, kept: 0, reinked: 0, elements: [] };
+  }
+
+  /**
+   * Does an author stroke on `element` clear `target` against EVERY ground it sits
+   * on? Returns null where the element carries no author stroke (or the pass has
+   * no ledger), else `{ kept, ink, opacity, worst, authorInk }`: `kept` true means
+   * the pass must write `ink` and `opacity` back (the author's own colour) instead
+   * of choosing its own; false means the pass re-inks as it always did. The
+   * author's colour is read from the stamp when there is one, otherwise from the
+   * pass's `locate` at this first sight, and stamped.
+   *
+   * @param {Element|null} element - A stroked shape
+   * @param {string[]} grounds - Hex grounds the stroke straddles
+   * @param {number} target - 3 for an object
+   * @param {Object|null} ledger - From authorStrokeLedger
+   * @returns {{kept: boolean, ink: string, opacity: number, worst: number, authorInk: string}|null}
+   */
+  function keepsAuthorStroke(element, grounds, target, ledger) {
+    if (!element || !ledger) return null;
+
+    let author = null;
+    const stamped = element.getAttribute(AUTHOR_STROKE_ATTRIBUTE);
+    if (stamped) {
+      const [hex, alpha] = stamped.split(";");
+      const parsed = parsePaint(hex);
+      if (parsed) author = { ...parsed, a: Number(alpha) };
+    } else {
+      author = ledger.locate ? ledger.locate(element) : null;
+      if (author) {
+        element.setAttribute(
+          AUTHOR_STROKE_ATTRIBUTE,
+          `${paintToHex(author)};${Number(author.a.toFixed(3))}`
+        );
+      }
+    }
+    if (!author || !(author.a > 0.05)) return null;
+
+    const worst = grounds.reduce(
+      (lowest, ground) =>
+        Math.min(
+          lowest,
+          calculateContrastRatio(
+            paintToHex(compositeOver(author, parsePaint(ground))),
+            ground
+          )
+        ),
+      Infinity
+    );
+    const kept = worst >= target;
+
+    ledger.authored += 1;
+    if (kept) ledger.kept += 1;
+    else ledger.reinked += 1;
+    ledger.elements.push({
+      authorInk: paintToHex(author),
+      authorAlpha: Number(author.a.toFixed(3)),
+      worst: Number(worst.toFixed(2)),
+      target,
+      kept,
+    });
+
+    return {
+      kept,
+      ink: paintToHex(author),
+      opacity: Number(author.a.toFixed(3)),
+      worst,
+      authorInk: paintToHex(author),
+    };
+  }
+
+  /**
+   * GIVE BACK WHAT THE SWEEP DISPLACES (rule 20, widened; item 118, 20 October
+   * 2026). Before a pass writes a property it records the inline declaration the
+   * element already held (the renderer's, or an author's), as JSON
+   * `{ property: { value, priority } }` on `attribute`. The pass's sweep removes
+   * only the properties it wrote and then puts these back, so every application
+   * starts from what the renderer drew and a second application, in place on the
+   * same SVG, finds the same thing the first did. c4 swept without this and lost
+   * the renderer's own inline `stroke` on an element glyph; a glyph whose stroke
+   * then computed `none` was skipped by the next application and lost its outline.
+   * Block needs no restore (it rewrites every property it displaces), only an
+   * owned list, so it does not use this pair.
+   *
+   * @param {Element} element - The element about to be written
+   * @param {string[]} properties - The properties the pass is about to write on it
+   * @param {string} attribute - Where the record is kept
+   */
+  function stashPriorInline(element, properties, attribute) {
+    const prior = {};
+    properties.forEach((property) => {
+      const value = element.style.getPropertyValue(property);
+      if (value) {
+        prior[property] = {
+          value,
+          priority: element.style.getPropertyPriority(property),
+        };
+      }
+    });
+    if (Object.keys(prior).length) {
+      element.setAttribute(attribute, JSON.stringify(prior));
+    }
+  }
+
+  /** Put back what stashPriorInline recorded, and drop the record. */
+  function restorePriorInline(element, attribute) {
+    let prior = {};
+    try {
+      prior = JSON.parse(element.getAttribute(attribute) || "{}");
+    } catch (error) {
+      prior = {};
+    }
+    Object.keys(prior).forEach((property) =>
+      element.style.setProperty(
+        property,
+        prior[property].value,
+        prior[property].priority
+      )
+    );
+    element.removeAttribute(attribute);
+  }
+
+  /** What a pass reports of its ledger: null when it has no author-stroke path. */
+  function summariseAuthorStrokes(ledger) {
+    if (!ledger) return null;
+    return {
+      path: ledger.path,
+      authored: ledger.authored,
+      kept: ledger.kept,
+      reinked: ledger.reinked,
+      elements: ledger.elements,
+    };
+  }
+
   /**
    * Every gantt band, with the ground it ACTUALLY presents once its 20% opacity
    * is composited over the page.
@@ -750,6 +912,9 @@ window.MermaidThemes = (function () {
     const groundSet = grounds.length ? grounds : [pageGround];
 
     const applied = {
+      // Rule 42: gantt's grammar has no style or stroke directive, so the
+      // renderer sets every stroke and there is no author stroke to keep.
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
       pageGround,
       bandGrounds: groundSet,
       bands: bands.length,
@@ -1391,6 +1556,9 @@ window.MermaidThemes = (function () {
     ];
 
     const applied = {
+      // Rule 42: sequence's `rect` and `box` directives colour fills only, so
+      // the renderer sets every stroke and there is no author stroke to keep.
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
       pageGround,
       svgGround,
       grounds: allGrounds,
@@ -1735,13 +1903,13 @@ window.MermaidThemes = (function () {
   /** Attribute marking an element this pass has painted, for idempotency. */
   const BLOCK_ENCODING_ATTRIBUTE = "data-block-encoding";
 
-  /** Paint properties this pass writes, and therefore sweeps before re-writing. */
-  const BLOCK_OWNED_PROPERTIES = Object.freeze([
-    "stroke",
-    "stroke-opacity",
-    "stroke-width",
-    "fill",
-  ]);
+  /**
+   * The properties written to a given element, recorded on it (rule 20). The
+   * sweep removes these and nothing else: it used to remove a fixed list of four
+   * from every marked element, which took the renderer's own inline
+   * `stroke-width` off an arrowhead the pass never gave a width.
+   */
+  const BLOCK_OWNED_LIST_ATTRIBUTE = "data-block-encoding-owned";
 
   /** Minimum boundary width, so a 1px hairline is not the only channel. */
   const BLOCK_BOUNDARY_WIDTH = 2;
@@ -1788,7 +1956,13 @@ window.MermaidThemes = (function () {
    * IDEMPOTENT BY CONSTRUCTION. Every derivation reads only the page background
    * and the group FILLS — never a property this pass writes — so a re-run cannot
    * read back its own output. Each painted element is marked, and its owned
-   * properties are cleared before being written again.
+   * properties are cleared before being written again. IN PLACE TOO (item 118,
+   * 20 October 2026): the sweep removes only the properties the pass recorded
+   * writing on that element, so a second application on the same SVG finds what
+   * the first did. It used to remove a fixed list from every marked element,
+   * which took the renderer's own arrowhead `stroke-width` with it (the pass never
+   * writes a width on an arrowhead). Every property block writes is written again
+   * on the next run, so there is nothing to give back; c4 differs (see its sweep).
    *
    * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
    * @returns {Object|null} What was applied and every ratio measured, or null
@@ -1809,12 +1983,14 @@ window.MermaidThemes = (function () {
       return null;
     }
 
-    // --- sweep what a previous run owned ------------------------------------
+    // --- sweep what a previous run owned, and ONLY that ----------------------
     svg.querySelectorAll(`[${BLOCK_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
-      BLOCK_OWNED_PROPERTIES.forEach((property) =>
-        owned.style.removeProperty(property)
-      );
+      (owned.getAttribute(BLOCK_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
       owned.removeAttribute(BLOCK_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(BLOCK_OWNED_LIST_ATTRIBUTE);
     });
 
     // --- grounds ------------------------------------------------------------
@@ -1858,12 +2034,32 @@ window.MermaidThemes = (function () {
       frameGrounds.set(frame, groupGroundOf(frame, outer));
     });
 
+    // AUTHOR STROKES (rule 42). `style` and `classDef` reach a block as an inline
+    // `stroke` on the shape itself; the renderer's own strokes come from CSS
+    // classes and are never inline (measured 19 October 2026 on the six gold
+    // exemplars and a styled source), so an inline stroke is the author's.
+    const authorLedger = authorStrokeLedger(
+      "inline style stroke on the shape itself",
+      (element) => {
+        if (!element.style.getPropertyValue("stroke")) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke);
+        if (!declared) return null;
+        // Element `opacity` is deliberately NOT folded in: this pass owns
+        // `stroke-opacity` but never `opacity`, so a kept stroke is written with
+        // the author's stroke-opacity alone and element opacity is left to apply
+        // once, as it always did.
+        return { ...declared, a: declared.a * opacityValue(computed.strokeOpacity) };
+      }
+    );
+
     const applied = {
       svgGround,
       frames: frames.length,
       counts: {},
       elements: [],
       worst: null,
+      authorStrokes: null,
     };
 
     /**
@@ -1871,21 +2067,35 @@ window.MermaidThemes = (function () {
      *
      * The ink of record is tried first and used wherever it clears the target,
      * so block reads as one system with xychart and sequence; the ramp is
-     * reached only when neither does.
+     * reached only when neither does. AN AUTHOR STROKE THAT CLEARS THE TARGET IS
+     * KEPT instead (rule 42): its own colour is written back as the owned stroke.
      */
     const paint = (element, kind, ground, options) => {
       const settings = options || {};
+      const author = settings.fill
+        ? null
+        : keepsAuthorStroke(element, [ground], BLOCK_OBJECT_TARGET, authorLedger);
       const record = pickInkAgainst(BLOCK_OUTLINE_INKS, [ground]);
       const chosen =
-        record.worst >= BLOCK_OBJECT_TARGET
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : record.worst >= BLOCK_OBJECT_TARGET
           ? record
           : pickInkAgainst(BLOCK_INK_RAMP, [ground]);
+
+      const written = ["stroke", "stroke-opacity"];
+      if (settings.width) written.push("stroke-width");
+      if (settings.fill) written.push("fill");
 
       element.style.setProperty("stroke", chosen.ink, "important");
       // The 0.2 Mermaid gives a cluster rect is the whole reason a group frame
       // is invisible, so opacity is written with the ink rather than left to
-      // fight it.
-      element.style.setProperty("stroke-opacity", "1", "important");
+      // fight it. A kept author stroke carries its own opacity.
+      element.style.setProperty(
+        "stroke-opacity",
+        author && author.kept ? String(author.opacity) : "1",
+        "important"
+      );
       if (settings.width) {
         element.style.setProperty(
           "stroke-width",
@@ -1897,6 +2107,7 @@ window.MermaidThemes = (function () {
         element.style.setProperty("fill", chosen.ink, "important");
       }
       element.setAttribute(BLOCK_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(BLOCK_OWNED_LIST_ATTRIBUTE, written.join(","));
 
       applied.counts[kind] = (applied.counts[kind] || 0) + 1;
       applied.elements.push({
@@ -1905,6 +2116,7 @@ window.MermaidThemes = (function () {
         ground: ground,
         ratio: Number(chosen.worst.toFixed(2)),
         ofRecord: record.worst >= BLOCK_OBJECT_TARGET,
+        ...(author ? { authorKept: author.kept, authorInk: author.authorInk } : {}),
       });
       if (applied.worst === null || chosen.worst < applied.worst) {
         applied.worst = Number(chosen.worst.toFixed(2));
@@ -1966,6 +2178,8 @@ window.MermaidThemes = (function () {
       }
     );
 
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
     logInfo(
       `Block encoding applied: ${applied.elements.length} objects, worst ${applied.worst}:1 on ground ${svgGround}`
     );
@@ -2023,8 +2237,51 @@ window.MermaidThemes = (function () {
    */
   const C4_OWNED_LIST_ATTRIBUTE = "data-c4-encoding-owned";
 
+  /**
+   * The inline declarations an element held before a write, given back by the
+   * sweep (item 118). The c4 renderer writes an inline `stroke` with `!important`
+   * on every element glyph; the pass overwrites it, and a sweep that only removed
+   * the property left the glyph with no stroke at all, so the next application
+   * read `none`, skipped it, and the outline was gone.
+   */
+  const C4_PRIOR_ATTRIBUTE = "data-c4-encoding-prior";
+
   /** Minimum boundary width, so a 0.5px hairline is not the only channel. */
   const C4_BOUNDARY_WIDTH = 2;
+
+  /**
+   * The c4 renderer's own border palette, lower-case hex, MEASURED 19 October
+   * 2026 from `mermaid.mermaidAPI.getConfig().c4` (every `*_border_color`) and
+   * confirmed against the inline strokes on the six gold exemplars. It is the
+   * fallback; the live config is added to it when mermaid is present. An element
+   * border outside this set is the author's (UpdateElementStyle $borderColor).
+   */
+  const C4_RENDERER_BORDER_DEFAULTS = Object.freeze([
+    "#073b6f", "#8a8a8a", "#3c7fc0", "#a6a6a6", "#78a8d8", "#bfbfbf",
+  ]);
+
+  /**
+   * The colour the c4 renderer gives every relationship line and boundary frame,
+   * as a `stroke` attribute (measured 19 October 2026, gold exemplars e1 to e6).
+   * A line in any other colour is the author's (UpdateRelStyle $lineColor).
+   */
+  const C4_RENDERER_LINE_STROKE = "#444444";
+
+  /** The renderer's border palette: the measured fallback plus the live c4 config. */
+  function c4RendererBorders() {
+    const borders = new Set(C4_RENDERER_BORDER_DEFAULTS);
+    const config =
+      window.mermaid && window.mermaid.mermaidAPI && window.mermaid.mermaidAPI.getConfig
+        ? window.mermaid.mermaidAPI.getConfig().c4
+        : null;
+    Object.keys(config || {}).forEach((key) => {
+      const value = config[key];
+      if (/_border_color$/.test(key) && typeof value === "string") {
+        borders.add(value.toLowerCase());
+      }
+    });
+    return borders;
+  }
 
   /**
    * Apply the accessibility encoding to a rendered c4 diagram: an outline ink
@@ -2123,6 +2380,7 @@ window.MermaidThemes = (function () {
         .split(",")
         .filter(Boolean)
         .forEach((property) => owned.style.removeProperty(property));
+      restorePriorInline(owned, C4_PRIOR_ATTRIBUTE);
       owned.removeAttribute(C4_ENCODING_ATTRIBUTE);
       owned.removeAttribute(C4_OWNED_LIST_ATTRIBUTE);
     });
@@ -2229,6 +2487,30 @@ window.MermaidThemes = (function () {
       [box.x + box.width * 0.5, box.y + box.height * 0.85],
     ];
 
+    // AUTHOR STROKES (rule 42). c4 writes ITS OWN defaults the same way an author
+    // does (an inline `stroke` with `!important` on every element, from the c4
+    // palette), so inline-ness cannot tell them apart: an element border is the
+    // author's when it differs from the renderer's border palette, and a line or
+    // frame (a `stroke` attribute) when it differs from the renderer's #444444.
+    // Both defaults measured 19 October 2026 on the six gold exemplars; the
+    // palette is also read live from the c4 config where mermaid is present.
+    const rendererBorders = c4RendererBorders();
+    const authorLedger = authorStrokeLedger(
+      "inline border differing from the c4 palette (UpdateElementStyle $borderColor); stroke attribute differing from #444444 (UpdateRelStyle $lineColor)",
+      (element) => {
+        if (element.closest("marker")) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke);
+        if (!declared) return null;
+        const inline = !!element.style.getPropertyValue("stroke");
+        const hex = paintToHex(declared).toLowerCase();
+        if (inline ? rendererBorders.has(hex) : element.getAttribute("stroke") === null || hex === C4_RENDERER_LINE_STROKE) {
+          return null;
+        }
+        return { ...declared, a: declared.a * opacityValue(computed.strokeOpacity) };
+      }
+    );
+
     const applied = {
       svgGround,
       walked: all.length,
@@ -2241,6 +2523,7 @@ window.MermaidThemes = (function () {
       // it rather than argued about.
       paintedFills: [...new Set(painted.map((shape) => `${shape.element.tagName}:${paintToHex(shape.paint)}`))],
       worst: null,
+      authorStrokes: null,
     };
 
     /**
@@ -2256,17 +2539,39 @@ window.MermaidThemes = (function () {
      */
     const paint = (element, kind, grounds, target, options) => {
       const settings = options || {};
+      // An author stroke that clears every ground is KEPT (rule 42): its own
+      // colour and stroke-opacity are written back as the owned stroke.
+      const author =
+        settings.fill || kind === "arrowhead"
+          ? null
+          : keepsAuthorStroke(element, grounds, target, authorLedger);
       const record = pickInkAgainst(C4_INKS, grounds);
       const chosen =
-        record.worst >= target ? record : pickInkAgainst(C4_INK_RAMP, grounds);
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : record.worst >= target
+          ? record
+          : pickInkAgainst(C4_INK_RAMP, grounds);
 
       const written = [];
+      // Recorded BEFORE any write, so the next sweep gives it back (item 118).
+      stashPriorInline(
+        element,
+        settings.fill
+          ? ["fill"]
+          : ["stroke", "stroke-opacity", ...(settings.width ? ["stroke-width"] : [])],
+        C4_PRIOR_ATTRIBUTE
+      );
       if (settings.fill) {
         element.style.setProperty("fill", chosen.ink, "important");
         written.push("fill");
       } else {
         element.style.setProperty("stroke", chosen.ink, "important");
-        element.style.setProperty("stroke-opacity", "1", "important");
+        element.style.setProperty(
+          "stroke-opacity",
+          author && author.kept ? String(author.opacity) : "1",
+          "important"
+        );
         written.push("stroke", "stroke-opacity");
         if (settings.width) {
           element.style.setProperty(
@@ -2289,6 +2594,7 @@ window.MermaidThemes = (function () {
         ratio: Number(chosen.worst.toFixed(2)),
         target: target,
         ofRecord: record.worst >= target,
+        ...(author ? { authorKept: author.kept, authorInk: author.authorInk } : {}),
       };
       applied.elements.push(reading);
       if (chosen.worst < target) applied.shortfalls.push(reading);
@@ -2410,6 +2716,8 @@ window.MermaidThemes = (function () {
         width: kind === "relationshipLine" ? null : C4_BOUNDARY_WIDTH,
       });
     });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
 
     logInfo(
       `C4 encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, worst ${applied.worst}:1 on ground ${svgGround}` +
@@ -2835,6 +3143,9 @@ window.MermaidThemes = (function () {
     ];
 
     const applied = {
+      // Rule 42: kanban's grammar has no style or classDef directive (a probe
+      // with both rendered with no stroke change), so there is no author stroke.
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
       hostGround,
       walked: all.length,
       reached: 0,
@@ -3778,6 +4089,9 @@ window.MermaidThemes = (function () {
     };
 
     const applied = {
+      // Rule 42: radar's grammar has no classDef or style directive (a probe
+      // with classDef is a parse error), so there is no author stroke.
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
       hostGround,
       geometryResolved,
       walked: all.length,
@@ -4048,6 +4362,3206 @@ window.MermaidThemes = (function () {
     return applied;
   }
 
+
+  // -----------------------------------------------------------------------
+  // REQUIREMENT DIAGRAM ENCODING (register item 110 session 8, 14 October 2026)
+  // -----------------------------------------------------------------------
+
+  const REQUIREMENT_ROLEDESCRIPTION = "requirement";
+
+  /** SC 1.4.11 for every box outline, divider, relationship line and arrowhead. */
+  const REQUIREMENT_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const REQUIREMENT_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD, presentation standard § 1.4, the pair every
+   * other after-render pass uses. Both are offered to every derivation rather
+   * than selected by mode (standard rule 18).
+   */
+  const REQUIREMENT_INKS = Object.freeze(["#00131D", "#E1E8EC"]);
+
+  /** Fallback ramp, reached only where neither ink of record clears the target. */
+  const REQUIREMENT_INK_RAMP = Object.freeze(
+    Array.from({ length: 65 }, (unused, i) => {
+      const v = Math.round((i * 255) / 64);
+      return rgbToHex(v, v, v);
+    })
+  );
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const REQUIREMENT_ENCODING_ATTRIBUTE = "data-requirement-encoding";
+
+  /**
+   * The properties written to a given element, recorded on the element itself
+   * (standard rule 20): a sweep removes only what it wrote, never a declaration
+   * the renderer made.
+   */
+  const REQUIREMENT_OWNED_LIST_ATTRIBUTE = "data-requirement-encoding-owned";
+
+  /**
+   * Minimum width of a box outline and of a divider, in user units. The
+   * renderer draws both at 1.3, which is the only channel a box has once its
+   * fill is left alone (rule 18), so it is not left at a hairline.
+   */
+  const REQUIREMENT_BOX_WIDTH = 2;
+
+  /** Samples along a relationship line, in per cent of its length (interior). */
+  const REQUIREMENT_LINE_SAMPLES = Object.freeze([0.1, 0.3, 0.5, 0.7, 0.9]);
+
+  /** Distance, in client pixels, either side of a box edge at which grounds are read. */
+  const REQUIREMENT_EDGE_OFFSET = 2;
+
+  /**
+   * Apply the accessibility encoding to a rendered requirement diagram: an
+   * outline ink per box and per header divider, an ink per relationship line,
+   * an ink on every arrowhead and contains-marker a relationship REFERENCES,
+   * and a text ink WHERE AND ONLY WHERE a text fails against the ground it
+   * actually sits on. RENDERER AND AUTHOR FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS — measured before this pass (item 110 session 8, 14 October
+   * 2026: six gold exemplars, a scale source and a hostile source, nine theme
+   * cells, pass off): box outlines and header dividers fail in `neutral`
+   * (#999999 on #EEEEEE, 2.46:1) and `accessibleDark` (#000000 on #2C3E50,
+   * 1.91:1, and on the page, 1.45:1); the relationship label fails in `dark`
+   * (#CCCCCC on its #585858 chip, 4.43:1). Relationship lines, arrowheads and
+   * the title already clear in all nine cells.
+   *
+   * WHY IT WRITES WHERE THE RENDERER ALREADY CLEARS: the outline, line and
+   * marker inks are written in every cell, as c4 and kanban do, so the type
+   * reads as one system and so a theme the renderer later changes cannot move a
+   * box outline back below 3:1 unnoticed. Text is the exception: it is repainted
+   * only where it fails, because rewriting a correct label would overwrite a
+   * correct choice (kanban's rule).
+   *
+   * NOTHING IS CARRIED BY COLOUR ALONE in what Mermaid draws here: the kind,
+   * risk, method and verb are all text, and `contains` differs from the other
+   * six verbs by a solid line and a circle-and-cross marker as well as its
+   * label. So this pass adds no non-colour channel (rule 24) and stamps nothing.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION, NEVER BY CLASS ALONE (rule 19). A
+   * stroked, unfilled path whose own group holds a painted filled shape is that
+   * box's OUTLINE; one whose node holds a painted filled shape in a different
+   * group is a header DIVIDER; any other is a RELATIONSHIP LINE. A marker is
+   * inked only if a relationship references it (Ruling 1, 2 October 2026): the
+   * `contains` start marker is defined in every requirement SVG and drawn only
+   * where a contains edge exists.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27). A line's grounds are read at
+   * points along its length mapped through getScreenCTM; a box outline's at its
+   * edge midpoints, both just inside (the box fill) and just outside (the page),
+   * because the stroke straddles the two and the ink must clear both. A label's
+   * ground includes any HTML background between the text and its foreignObject
+   * (the relationship label's chip), which no SVG painter reports.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first, so every derivation reads
+   * the renderer's values and never this pass's own output. It never calls
+   * applyTheme; it is reached FROM the re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyRequirementEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === REQUIREMENT_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${REQUIREMENT_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug(
+        "No requirement SVG in this container - requirement encoding skipped"
+      );
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and ONLY that ----------------------
+    svg
+      .querySelectorAll(`[${REQUIREMENT_ENCODING_ATTRIBUTE}]`)
+      .forEach((owned) => {
+        (owned.getAttribute(REQUIREMENT_OWNED_LIST_ATTRIBUTE) || "")
+          .split(",")
+          .filter(Boolean)
+          .forEach((property) => owned.style.removeProperty(property));
+        owned.removeAttribute(REQUIREMENT_ENCODING_ATTRIBUTE);
+        owned.removeAttribute(REQUIREMENT_OWNED_LIST_ATTRIBUTE);
+      });
+
+    const all = [...svg.querySelectorAll("*")];
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    // "Off stage" is not "inside <defs>": Mermaid keeps its markers there and a
+    // marker's content is painted at every arrow end it is referenced from.
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element, options) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect) return null;
+      const hasArea = rect.width > 0 && rect.height > 0;
+      const thin =
+        !!(options && options.allowThin) && (rect.width > 0 || rect.height > 0);
+      return hasArea || thin
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        opacityValue(computed.opacity);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /** Painted area shapes in document order, with their client box and fill. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      painted.push({ element, index, box, paint: fill });
+    });
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        const box = shape.box;
+        if (x < box.x || x > box.x + box.width) continue;
+        if (y < box.y || y > box.y + box.height) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    // Edge midpoints just inside and just outside a box: a stroke straddles its
+    // edge, so the ink has to clear what is on both sides.
+    const straddlePoints = (box) => {
+      const d = REQUIREMENT_EDGE_OFFSET;
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      return [
+        [cx, box.y + d], [cx, box.y + box.height - d],
+        [box.x + d, cy], [box.x + box.width - d, cy],
+        [cx, box.y - d], [cx, box.y + box.height + d],
+        [box.x - d, cy], [box.x + box.width + d, cy],
+      ];
+    };
+    // Points along a path's length, in client space (rule 27).
+    const linePoints = (element) => {
+      try {
+        const length = element.getTotalLength();
+        const matrix = element.getScreenCTM();
+        if (!matrix || !(length > 0)) return [];
+        return REQUIREMENT_LINE_SAMPLES.map((t) => {
+          const p = element.getPointAtLength(length * t);
+          const mapped = new DOMPoint(p.x, p.y).matrixTransform(matrix);
+          return [mapped.x, mapped.y];
+        });
+      } catch (error) {
+        return [];
+      }
+    };
+
+    // AUTHOR STROKES (rule 42). `style` and `classDef` reach a requirement or
+    // element box as an inline `stroke` on the `g.label-container` group that
+    // holds the box's paths, and again as a `stroke` attribute on the paths. The
+    // renderer's own strokes are attributes only: no inline stroke anywhere on
+    // the eight gold and scale sources (measured 19 October 2026). So an inline
+    // stroke on an ancestor up to the svg is the author's. Relationship lines
+    // cannot carry one (the grammar styles nodes), and are not asked.
+    const authorLedger = authorStrokeLedger(
+      "inline style stroke on an ancestor group of the box (style / classDef)",
+      (element) => {
+        let authored = false;
+        for (let node = element; node && node !== svg; node = node.parentElement) {
+          if (node.style && node.style.getPropertyValue("stroke")) {
+            authored = true;
+            break;
+          }
+        }
+        if (!authored) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke);
+        if (!declared) return null;
+        return {
+          ...declared,
+          a:
+            declared.a *
+            opacityValue(computed.strokeOpacity) *
+            opacityValue(computed.opacity),
+        };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        boxOutlines: 0,
+        dividers: 0,
+        relationshipLines: 0,
+        markersReferenced: 0,
+        markersUnreferenced: 0,
+        texts: 0,
+      },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(REQUIREMENT_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(REQUIREMENT_INK_RAMP, grounds);
+    };
+
+    /** Write a derived value, own it, and record the reading that justified it. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      Object.keys(properties).forEach((property) => {
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(REQUIREMENT_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(REQUIREMENT_OWNED_LIST_ATTRIBUTE, written.join(","));
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    /**
+     * A stroke ink: the colour, full stroke opacity, and the opacity where one is
+     * carried. A KEPT author stroke (`author.kept`) writes its own colour and its
+     * own folded alpha, with the element's `opacity` reset below so it applies once.
+     */
+    const strokeProperties = (computed, chosen, width, author) => {
+      const properties = {
+        stroke: chosen.ink,
+        "stroke-opacity": author && author.kept ? String(author.opacity) : "1",
+      };
+      if (opacityValue(computed.opacity) < 1) properties.opacity = "1";
+      if (width) properties["stroke-width"] = `${width}px`;
+      return properties;
+    };
+
+    // --- boxes, dividers and relationship lines ------------------------------
+    const referencedMarkers = new Set();
+    const markerIdOf = (value) => {
+      const match = /url\(\s*["']?#([^"')\s]+)["']?\s*\)/.exec(value || "");
+      return match ? match[1] : null;
+    };
+
+    all.forEach((element, index) => {
+      if (offstage(element) || element.closest("marker")) return;
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      const computed = window.getComputedStyle(element);
+      if (!paintOf(computed, "stroke")) return;
+      const isArea =
+        GROUND_TAGS.includes(element.tagName) && !!paintOf(computed, "fill");
+      const box = boxOf(element, { allowThin: true });
+      if (!box) return;
+
+      const parent = element.parentElement;
+      const grand = parent ? parent.parentElement : null;
+      const sameGroup = painted.some(
+        (shape) => shape.index < index && shape.element.parentElement === parent
+      );
+      const sameNode =
+        !!grand &&
+        painted.some(
+          (shape) =>
+            shape.index < index &&
+            shape.element.parentElement &&
+            shape.element.parentElement.parentElement === grand
+        );
+
+      // A shape carrying both a fill and a stroke is a box outline as well.
+      if (isArea || sameGroup) {
+        applied.subjects.boxOutlines += 1;
+        const grounds = groundsOver(straddlePoints(box), index);
+        const author = keepsAuthorStroke(
+          element,
+          grounds,
+          REQUIREMENT_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pick(grounds, REQUIREMENT_OBJECT_TARGET);
+        const width = Math.max(
+          parseFloat(computed.strokeWidth) || 0,
+          REQUIREMENT_BOX_WIDTH
+        );
+        write(
+          element,
+          "boxOutline",
+          strokeProperties(computed, chosen, width, author),
+          grounds,
+          chosen,
+          REQUIREMENT_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+        return;
+      }
+
+      if (sameNode) {
+        applied.subjects.dividers += 1;
+        const nodeBox = boxOf(grand);
+        const grounds = groundsOver(
+          [...(nodeBox ? straddlePoints(nodeBox) : []), ...linePoints(element)],
+          index
+        );
+        const author = keepsAuthorStroke(
+          element,
+          grounds,
+          REQUIREMENT_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pick(grounds, REQUIREMENT_OBJECT_TARGET);
+        const width = Math.max(
+          parseFloat(computed.strokeWidth) || 0,
+          REQUIREMENT_BOX_WIDTH
+        );
+        write(
+          element,
+          "dividerLine",
+          strokeProperties(computed, chosen, width, author),
+          grounds,
+          chosen,
+          REQUIREMENT_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+        return;
+      }
+
+      // Any other stroked, unfilled shape is a relationship line. Its width and
+      // dash are the renderer's: the dash separates `contains` from the rest.
+      applied.subjects.relationshipLines += 1;
+      [
+        element.getAttribute("marker-start"),
+        element.getAttribute("marker-mid"),
+        element.getAttribute("marker-end"),
+        computed.markerStart,
+        computed.markerMid,
+        computed.markerEnd,
+      ].forEach((value) => {
+        const id = markerIdOf(value);
+        if (id) referencedMarkers.add(id);
+      });
+      const grounds = [
+        ...new Set([svgGround, ...groundsOver(linePoints(element), index)]),
+      ];
+      const chosen = pick(grounds, REQUIREMENT_OBJECT_TARGET);
+      write(
+        element,
+        "relationshipLine",
+        strokeProperties(computed, chosen, null),
+        grounds,
+        chosen,
+        REQUIREMENT_OBJECT_TARGET
+      );
+    });
+
+    // --- markers: ONLY those a relationship references (Ruling 1) ------------
+    svg.querySelectorAll("marker").forEach((marker) => {
+      if (!referencedMarkers.has(marker.getAttribute("id"))) {
+        applied.subjects.markersUnreferenced += 1;
+        return;
+      }
+      applied.subjects.markersReferenced += 1;
+      // A marker shape has no box of its own, so its ground is the diagram's.
+      const grounds = [svgGround];
+      const chosen = pick(grounds, REQUIREMENT_OBJECT_TARGET);
+      marker.querySelectorAll(SHAPE_TAGS.join(",")).forEach((shape) => {
+        const computed = window.getComputedStyle(shape);
+        const properties = {};
+        // A <line> has no fillable region however its fill computes (rule 21).
+        if (GROUND_TAGS.includes(shape.tagName) && paintOf(computed, "fill")) {
+          properties.fill = chosen.ink;
+        }
+        if (paintOf(computed, "stroke")) {
+          properties.stroke = chosen.ink;
+          properties["stroke-opacity"] = "1";
+        }
+        if (!Object.keys(properties).length) return;
+        if (opacityValue(computed.opacity) < 1) properties.opacity = "1";
+        write(shape, "arrowhead", properties, grounds, chosen, REQUIREMENT_OBJECT_TARGET);
+      });
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    const considerText = (element, baseGrounds, backgrounds, channel, kind) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed[channel]);
+      if (!declared) return;
+      const alpha =
+        declared.a *
+        (channel === "fill" ? opacityValue(computed.fillOpacity) : 1) *
+        opacityValue(computed.opacity);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+      // HTML backgrounds between the text and its foreignObject, outermost first.
+      const grounds = baseGrounds.map((ground) =>
+        paintToHex(
+          backgrounds.reduce(
+            (under, background) => compositeOver(background, under),
+            parsePaint(ground)
+          )
+        )
+      );
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= REQUIREMENT_TEXT_TARGET) return;
+      const chosen = pick(grounds, REQUIREMENT_TEXT_TARGET);
+      write(
+        element,
+        kind,
+        { [channel === "fill" ? "fill" : "color"]: chosen.ink },
+        grounds,
+        chosen,
+        REQUIREMENT_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    };
+
+    // The title, and any other SVG <text>.
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      considerText(element, groundsOver(spreadPoints(box), index), [], "fill", "titleInk");
+    });
+
+    // Every label is HTML inside a foreignObject; the ink is `color`.
+    svg.querySelectorAll("foreignObject").forEach((host) => {
+      const hostBox = boxOf(host);
+      if (!hostBox) return;
+      const baseGrounds = groundsOver(spreadPoints(hostBox), all.indexOf(host));
+      const leaves = [...host.querySelectorAll("*")].filter((element) =>
+        [...element.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        )
+      );
+      leaves.forEach((leaf) => {
+        const backgrounds = [];
+        for (let node = leaf; node && node !== host; node = node.parentElement) {
+          const background = parsePaint(
+            window.getComputedStyle(node).backgroundColor
+          );
+          if (background && background.a > 0.05) backgrounds.unshift(background);
+        }
+        considerText(leaf, baseGrounds, backgrounds, "color", "textInk");
+      });
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
+    logInfo(
+      `Requirement encoding applied:${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `${applied.subjects.markersReferenced} referenced markers inked, ${applied.subjects.markersUnreferenced} unreferenced left alone, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // PACKET DIAGRAM ENCODING (register item 114 session 7, 16 October 2026)
+  // -----------------------------------------------------------------------
+
+  const PACKET_ROLEDESCRIPTION = "packet";
+
+  /** SC 1.4.11 for every box outline. */
+  const PACKET_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label, bit-number and title text. */
+  const PACKET_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD (presentation standard § 1.4): the same pair
+   * every other after-render pass offers, both offered to every derivation
+   * rather than selected by mode (rule 18). The fallback ramp is reached only
+   * where neither clears, which is the box outline in the two base-theme dark
+   * cells (a light box on a dark page: neither ink clears both sides).
+   */
+  const PACKET_INKS = REQUIREMENT_INKS;
+  const PACKET_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const PACKET_ENCODING_ATTRIBUTE = "data-packet-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const PACKET_OWNED_LIST_ATTRIBUTE = "data-packet-encoding-owned";
+
+  /**
+   * Minimum width of a box outline, in user units. The renderer draws 1. The
+   * boxes sit 5 units apart and fill the gap between them with nothing else, so
+   * a 2-unit stroke leaves 3 clear; it is the only boundary channel once the
+   * fill is left alone (rule 18), by the c4, kanban and requirement precedent.
+   */
+  const PACKET_BOX_WIDTH = 2;
+
+  /** Distance, in client pixels, either side of a box edge at which grounds are read. */
+  const PACKET_EDGE_OFFSET = 2;
+
+  /**
+   * Apply the accessibility encoding to a rendered packet diagram: an outline
+   * ink on every field box, and a text ink WHERE AND ONLY WHERE a text fails
+   * against the ground it actually sits on. FIELD FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS — measured before this pass (item 114 session 7, 16 October
+   * 2026: six gold exemplars and the 400-field scale source, nine theme cells,
+   * pass off): in `accessibleDark` and `highContrastDark` the renderer draws
+   * every box outline, every bit number and the title in #000000 on the
+   * #2E282A page, 1.45:1 (the field labels sit on the #EFEFEF box and read
+   * 18.3:1). The box fill against the page fails 3:1 in seven cells (1.13 to
+   * 1.36), but it is not an ink question and the outline carries the boundary.
+   *
+   * WRITES WHERE THE RENDERER ALREADY CLEARS for the outline (every cell, as
+   * c4, kanban and requirement do), and repaints text only where it fails.
+   *
+   * NOTHING IS CARRIED BY COLOUR ALONE: every box has one fill, and a field's
+   * extent is its stroke, its start and end numbers and its label. The grammar
+   * has no class or style syntax, so there are NO author fills to preserve. No
+   * non-colour channel is added (rule 24) and nothing is stamped as such.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION, NEVER BY CLASS ALONE (rule 19): a
+   * stroked rect that also paints a fill is a field box; every <text> is
+   * considered. A stroked shape that is not such a rect is counted as
+   * `strayStroked` and left alone, which is 0 on everything Mermaid draws.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27). A box's grounds are the edge
+   * midpoints 2 px inside (its own fill) and 2 px outside (the page), because
+   * the stroke straddles the two. The box's own fill counts under its own
+   * stroke, so the inside read uses the shape's index + 1: a packet box is ONE
+   * rect carrying both paints, unlike the requirement box's two coincident
+   * paths where the fill precedes the outline.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first, so every derivation reads
+   * the renderer's values and never this pass's own output. It never calls
+   * applyTheme; it is reached FROM the re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyPacketEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === PACKET_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${PACKET_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No packet SVG in this container - packet encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and ONLY that ----------------------
+    svg.querySelectorAll(`[${PACKET_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(PACKET_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      owned.removeAttribute(PACKET_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(PACKET_OWNED_LIST_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        opacityValue(computed.opacity);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /** Painted area shapes in document order, with their client box and fill. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      painted.push({ element, index, box, paint: fill });
+    });
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        const box = shape.box;
+        if (x < box.x || x > box.x + box.width) continue;
+        if (y < box.y || y > box.y + box.height) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    // Edge midpoints just inside and just outside a box (a stroke straddles).
+    const straddlePoints = (box) => {
+      const d = PACKET_EDGE_OFFSET;
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      return [
+        [cx, box.y + d], [cx, box.y + box.height - d],
+        [box.x + d, cy], [box.x + box.width - d, cy],
+        [cx, box.y - d], [cx, box.y + box.height + d],
+        [box.x - d, cy], [box.x + box.width + d, cy],
+      ];
+    };
+
+    const applied = {
+      // Rule 42: packet's grammar has no class or style syntax, so there is no
+      // author stroke.
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: { boxOutlines: 0, strayStroked: 0, texts: 0 },
+      worst: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(PACKET_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(PACKET_INK_RAMP, grounds);
+    };
+
+    /** Write a derived value, own it, and record the reading that justified it. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      Object.keys(properties).forEach((property) => {
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(PACKET_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(PACKET_OWNED_LIST_ATTRIBUTE, written.join(","));
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    // --- field boxes: a stroked rect that also paints a fill -----------------
+    all.forEach((element, index) => {
+      if (offstage(element) || element.closest("marker")) return;
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      const computed = window.getComputedStyle(element);
+      if (!paintOf(computed, "stroke")) return;
+      const box = boxOf(element);
+      if (!box) return;
+
+      const isBox =
+        element.tagName === "rect" && !!paintOf(computed, "fill");
+      if (!isBox) {
+        applied.subjects.strayStroked += 1;
+        return;
+      }
+
+      applied.subjects.boxOutlines += 1;
+      // index + 1: the box's own fill lies under its own stroke.
+      const grounds = groundsOver(straddlePoints(box), index + 1);
+      const chosen = pick(grounds, PACKET_OBJECT_TARGET);
+      const properties = { stroke: chosen.ink, "stroke-opacity": "1" };
+      if (opacityValue(computed.opacity) < 1) properties.opacity = "1";
+      properties["stroke-width"] = `${Math.max(
+        parseFloat(computed.strokeWidth) || 0,
+        PACKET_BOX_WIDTH
+      )}px`;
+      write(element, "boxOutline", properties, grounds, chosen, PACKET_OBJECT_TARGET);
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      if (!declared) return;
+      const alpha =
+        declared.a *
+        opacityValue(computed.fillOpacity) *
+        opacityValue(computed.opacity);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+
+      const grounds = groundsOver(spreadPoints(box), index);
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= PACKET_TEXT_TARGET) return;
+
+      const chosen = pick(grounds, PACKET_TEXT_TARGET);
+      const classes = element.classList;
+      const kind = classes.contains("packetTitle")
+        ? "titleInk"
+        : classes.contains("packetByte")
+          ? "bitNumberInk"
+          : classes.contains("packetLabel")
+            ? "labelInk"
+            : "textInk";
+      write(
+        element,
+        kind,
+        { fill: chosen.ink },
+        grounds,
+        chosen,
+        PACKET_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    });
+
+    logInfo(
+      `Packet encoding applied: ${applied.subjects.boxOutlines} box outlines, ` +
+        `${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // FLOWCHART DIAGRAM ENCODING (register item 100 session 3, 20 October 2026)
+  // -----------------------------------------------------------------------
+
+  /** Mermaid 11.17.2 sets `flowchart-v2` on the root; the prefix also takes a plain `flowchart`. */
+  const FLOWCHART_ROLEDESCRIPTION_PATTERN = /^flowchart/;
+
+  /** SC 1.4.11 for every node outline, cluster frame, edge, arrowhead and label backing. */
+  const FLOWCHART_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const FLOWCHART_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD (presentation standard § 1.4), the pair every other
+   * after-render pass offers, both offered to every derivation rather than
+   * selected by mode (rule 18). The ramp is reached only where neither clears.
+   */
+  const FLOWCHART_INKS = REQUIREMENT_INKS;
+  const FLOWCHART_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const FLOWCHART_ENCODING_ATTRIBUTE = "data-flowchart-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const FLOWCHART_OWNED_LIST_ATTRIBUTE = "data-flowchart-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON `{ property: { value, priority } }`. Mermaid writes an author's `style`,
+   * `classDef` and `linkStyle` as INLINE declarations on the very properties this
+   * pass writes (`stroke` on a node, an edge or a cluster; `color` on a label), so
+   * a sweep that only removed the property would delete the author's value too.
+   * The sweep restores these, so every application starts from what the renderer
+   * drew (rule 20, widened from "never delete the renderer's" to "give it back").
+   */
+  const FLOWCHART_PRIOR_ATTRIBUTE = "data-flowchart-encoding-prior";
+
+  /** Minimum outline width of a node and of a cluster frame, in user units (the renderer draws 1). */
+  const FLOWCHART_SHAPE_WIDTH = 2;
+
+  /** Width of the outline given to a label backing, which is a chip and not a shape. */
+  const FLOWCHART_BACKING_WIDTH = 1;
+
+  /** Outline samples around a node, around a cluster frame, and along an edge. */
+  const FLOWCHART_NODE_SAMPLES = 16;
+  const FLOWCHART_FRAME_SAMPLES = 24;
+  const FLOWCHART_LINE_SAMPLES = 21;
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const FLOWCHART_EDGE_OFFSET = 2;
+
+  /** Client pixels back along an edge, from its end, at which an arrowhead's ground is also read. */
+  const FLOWCHART_ARROW_REACH = 8;
+
+  /**
+   * Apply the accessibility encoding to a rendered flowchart: an outline ink per
+   * node shape, per cluster frame and per edge path, an ink on every arrowhead an
+   * edge REFERENCES, an outline on any label backing that has a fill and none of
+   * its own, and a text ink WHERE AND ONLY WHERE a text fails against the ground it
+   * actually sits on. RENDERER AND AUTHOR FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS: measured before this pass (item 100 session 3, 20 October 2026:
+   * the six gold exemplars, nine theme cells, pass off, interior line sampling) 327
+   * of 2,574 readings fail 3:1. Node outlines fail in `neutral` (#999999 on the
+   * page, 2.80:1) and `accessibleDark` (#000000 on #2E282A, 1.45:1); cluster
+   * frames fail in `default` and `forest` (2.43 to 2.75:1); edges fail in
+   * `accessibleDark` where a #6082B6 line crosses a #34495E cluster (2.37:1); and
+   * the node fills the outlines then carry (144 of the 327) fail only because
+   * their outline does (Ruling 3, rule 40).
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION (rule 19), by the vocabulary Mermaid
+   * gives every flowchart: a stroked shape inside `g.node` and outside its
+   * `g.label` is a node outline whatever its tag (rect, polygon, circle, path); one
+   * inside `g.cluster` is a frame; a shape inside `g.edgePaths` is an edge; a
+   * filled shape inside `g.label` is a label backing. Anything else stroked is
+   * counted as `strayStroked` and left alone. A shape with no stroke drawn, or no
+   * box, is never written (an undrawn element): `undrawnStroke` counts them.
+   *
+   * GROUNDS ARE READ BY GEOMETRY IN ONE CLIENT SPACE (rule 27): points along each
+   * outline (`getPointAtLength` through `getScreenCTM`), on both sides of the
+   * stroke, each composited from the area shapes that precede the subject and
+   * whose own geometry (`isPointInFill`) contains the point. A diamond or a
+   * cylinder is therefore read where it is, not at its bounding box. The ink must
+   * clear every ground either side, so a pale cluster, a dark author fill and the
+   * page are all read.
+   *
+   * AUTHOR STROKES (rule 42): `style`, `classDef` and `linkStyle` reach a shape or
+   * an edge as an inline `stroke`, and an arrowhead as a `stroke` or `fill`
+   * attribute on a per-colour clone of its marker (the renderer's own markers carry
+   * neither). An author stroke that clears 3:1 against every ground is KEPT and
+   * written back as the owned stroke; one that fails is re-inked.
+   *
+   * LABELS: every label is HTML in a `foreignObject` by default and SVG `<text>`
+   * under `htmlLabels: false`. The ground of an HTML label includes the HTML
+   * background between it and its foreignObject, which no SVG painter reports
+   * (rule 36), so that chain is composited here exactly as the requirement pass
+   * does. An edge label's chip is HTML and cannot take an SVG outline; under
+   * `htmlLabels: false` it is an SVG rect and does.
+   *
+   * NOTHING IS CARRIED BY COLOUR ALONE in what Mermaid draws here: a node's kind is
+   * its shape and its text, an edge's kind is its dash, its width and its
+   * arrowhead shape, and a cluster is titled. So this pass adds no non-colour
+   * channel (rule 24) and stamps no identity. An author's `classDef` that means
+   * something by colour alone is the author's.
+   *
+   * OPACITY: the pass never writes `opacity`, so an author's dimmed node stays
+   * dimmed and its fill stays the author's. Every ground, stroke and text is read
+   * at the opacity of the element and ALL its ancestors, and an ink is chosen by
+   * what it composites to at that opacity.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first and restores every inline
+   * value it displaced, so every derivation reads the renderer's and the author's
+   * values and never this pass's own output. It never calls applyTheme; it is
+   * reached FROM the re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyFlowchartEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      FLOWCHART_ROLEDESCRIPTION_PATTERN.test(
+        root.getAttribute("aria-roledescription") || ""
+      )
+        ? root
+        : root.querySelector('svg[aria-roledescription^="flowchart"]');
+
+    if (!svg) {
+      logDebug(
+        "No flowchart SVG in this container - flowchart encoding skipped"
+      );
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg
+      .querySelectorAll(`[${FLOWCHART_ENCODING_ATTRIBUTE}]`)
+      .forEach((owned) => {
+        (owned.getAttribute(FLOWCHART_OWNED_LIST_ATTRIBUTE) || "")
+          .split(",")
+          .filter(Boolean)
+          .forEach((property) => owned.style.removeProperty(property));
+        let prior = {};
+        try {
+          prior = JSON.parse(
+            owned.getAttribute(FLOWCHART_PRIOR_ATTRIBUTE) || "{}"
+          );
+        } catch (error) {
+          prior = {};
+        }
+        Object.keys(prior).forEach((property) =>
+          owned.style.setProperty(
+            property,
+            prior[property].value,
+            prior[property].priority
+          )
+        );
+        owned.removeAttribute(FLOWCHART_ENCODING_ATTRIBUTE);
+        owned.removeAttribute(FLOWCHART_OWNED_LIST_ATTRIBUTE);
+        owned.removeAttribute(FLOWCHART_PRIOR_ATTRIBUTE);
+      });
+
+    const all = [...svg.querySelectorAll("*")];
+    const indexOf = new Map(all.map((element, index) => [element, index]));
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    // "Off stage" is not "inside <defs>": a marker's content is painted at every
+    // arrow end that references it.
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element, options) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect) return null;
+      const hasArea = rect.width > 0 && rect.height > 0;
+      const thin =
+        !!(options && options.allowThin) && (rect.width > 0 || rect.height > 0);
+      return hasArea || thin
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg. An author's
+    // `classDef x opacity:0.5` lands on the shape AND, through the node's class,
+    // on its label group, so a label's alpha is its ancestors' as well as its own.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /**
+     * Painted area shapes in document order, each with its client box, its fill
+     * and the inverse of its screen matrix, so a point is tested against its OWN
+     * geometry and not its bounding box.
+     */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      let inverse = null;
+      try {
+        const matrix = element.getScreenCTM();
+        inverse = matrix ? matrix.inverse() : null;
+      } catch (error) {
+        inverse = null;
+      }
+      painted.push({ element, index, box, paint: fill, inverse });
+    });
+
+    const covers = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x - 1 || x > box.x + box.width + 1) return false;
+      if (y < box.y - 1 || y > box.y + box.height + 1) return false;
+      const element = shape.element;
+      if (!shape.inverse || typeof element.isPointInFill !== "function") {
+        return true;
+      }
+      try {
+        return element.isPointInFill(
+          new DOMPoint(x, y).matrixTransform(shape.inverse)
+        );
+      } catch (error) {
+        return true;
+      }
+    };
+
+    /** The ground at a client point from every painted shape that precedes `before`. */
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (covers(shape, x, y)) colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+
+    /**
+     * Points along a shape's outline in client space, each with its unit normal.
+     * A closed shape is sampled at the middle of `count` equal arcs; an open line
+     * from 2% to 98% of its length. Returns the screen scale as well, so a stroke
+     * width in user units can be turned into client pixels.
+     */
+    const outlinePoints = (element, count, open) => {
+      try {
+        const length = element.getTotalLength();
+        const matrix = element.getScreenCTM();
+        if (!matrix || !(length > 0)) return { points: [], scale: 1 };
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        const step = Math.max(length * 0.002, 0.25);
+        const map = (p) => new DOMPoint(p.x, p.y).matrixTransform(matrix);
+        const points = [];
+        for (let i = 0; i < count; i += 1) {
+          const along = open
+            ? length * (0.02 + (0.96 * i) / Math.max(count - 1, 1))
+            : (length * (i + 0.5)) / count;
+          const here = map(element.getPointAtLength(along));
+          const before = map(element.getPointAtLength(Math.max(0, along - step)));
+          const after = map(element.getPointAtLength(Math.min(length, along + step)));
+          const tx = after.x - before.x;
+          const ty = after.y - before.y;
+          const norm = Math.hypot(tx, ty) || 1;
+          points.push({ x: here.x, y: here.y, nx: -ty / norm, ny: tx / norm });
+        }
+        return { points, scale };
+      } catch (error) {
+        return { points: [], scale: 1 };
+      }
+    };
+
+    /** The grounds either side of a stroke, at its sample points, as hex. */
+    const strokeGrounds = (samples, widthClient, before) => {
+      const distance = widthClient / 2 + FLOWCHART_EDGE_OFFSET;
+      const seen = new Set();
+      samples.forEach((q) =>
+        [1, -1].forEach((side) =>
+          seen.add(
+            paintToHex(
+              groundAt(q.x + side * q.nx * distance, q.y + side * q.ny * distance, before)
+            )
+          )
+        )
+      );
+      return [...seen];
+    };
+
+    // AUTHOR STROKES (rule 42). `style`, `classDef` and `linkStyle` reach a node,
+    // an edge or a cluster as an inline `stroke` on the shape; the renderer's own
+    // are CSS only. An arrowhead is the author's where its marker shape carries a
+    // `stroke` or `fill` attribute (linkStyle clones the marker per colour); the
+    // renderer's own markers carry neither.
+    const authorLedger = authorStrokeLedger(
+      "an inline style stroke on the shape, or a stroke or fill attribute on a cloned marker shape (style / classDef / linkStyle)",
+      (element) => {
+        const isMarkerShape = !!element.closest("marker");
+        const authored = isMarkerShape
+          ? element.hasAttribute("stroke") || element.hasAttribute("fill")
+          : !!element.style.getPropertyValue("stroke");
+        if (!authored) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke) || parsePaint(computed.fill);
+        if (!declared) return null;
+        // The author's alpha INCLUDES the opacity of the element and its ancestors,
+        // because that is what a reader sees. This pass never writes `opacity` (a
+        // node's shape holds its fill as well as its stroke, so writing it would
+        // repaint an author's fill), so a kept stroke is written back DIVIDED by
+        // that opacity (see keptOpacity), and the opacity applies once, as before.
+        return {
+          ...declared,
+          a: declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element),
+        };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        nodeOutlines: 0,
+        clusterFrames: 0,
+        edgeLines: 0,
+        labelBackings: 0,
+        markersReferenced: 0,
+        markersUnreferenced: 0,
+        texts: 0,
+        strayStroked: 0,
+        undrawnStroke: 0,
+      },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(FLOWCHART_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(FLOWCHART_INK_RAMP, grounds);
+    };
+
+    /**
+     * The same choice for an element whose own `opacity` is below 1: the ink is
+     * seen at that opacity over each ground, so each candidate is scored by what
+     * it composites to, never by its nominal colour. The element's opacity is left
+     * as the author wrote it (see the author ledger above).
+     */
+    const pickAtOpacity = (grounds, target, alpha) => {
+      if (!(alpha < 1)) return pick(grounds, target);
+      const worstOf = (ink) =>
+        grounds.reduce(
+          (lowest, ground) =>
+            Math.min(
+              lowest,
+              calculateContrastRatio(
+                paintToHex(compositeOver({ ...parsePaint(ink), a: alpha }, parsePaint(ground))),
+                ground
+              )
+            ),
+          Infinity
+        );
+      const best = (inks) =>
+        inks.reduce(
+          (winner, ink) => {
+            const worst = worstOf(ink);
+            return worst > winner.worst ? { ink, worst } : winner;
+          },
+          { ink: inks[0], worst: -1 }
+        );
+      const record = best(FLOWCHART_INKS);
+      return record.worst >= target ? record : best(FLOWCHART_INK_RAMP);
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = {
+            value: before,
+            priority: element.style.getPropertyPriority(property),
+          };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(FLOWCHART_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(FLOWCHART_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(FLOWCHART_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    /**
+     * A stroke ink: the colour, full stroke opacity (the author's where kept), and a
+     * width only where the renderer's is thinner than `minWidth`, so an author's
+     * wider stroke and an edge's thin or thick weight are never overwritten.
+     */
+    const keptOpacity = (element, author) =>
+      author && author.kept
+        ? String(Math.min(1, Number((author.opacity / (chainOpacity(element) || 1)).toFixed(3))))
+        : "1";
+    const strokeProperties = (element, computed, chosen, minWidth, author) => {
+      const properties = {
+        stroke: chosen.ink,
+        "stroke-opacity": keptOpacity(element, author),
+      };
+      if (minWidth && (parseFloat(computed.strokeWidth) || 0) < minWidth) {
+        properties["stroke-width"] = `${minWidth}px`;
+      }
+      return properties;
+    };
+
+    // --- shapes: nodes, cluster frames, label backings, edges ----------------
+    const referencedMarkers = new Set();
+    const markerGrounds = new Map();
+    const markerIdOf = (value) => {
+      const match = /url\(\s*["']?#([^"')\s]+)["']?\s*\)/.exec(value || "");
+      return match ? match[1] : null;
+    };
+
+    all.forEach((element, index) => {
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      if (element.closest("foreignObject")) return;
+
+      const computed = window.getComputedStyle(element);
+      const stroke = paintOf(element, computed, "stroke");
+      const strokeWidth = parseFloat(computed.strokeWidth) || 0;
+      const fill = GROUND_TAGS.includes(element.tagName)
+        ? paintOf(element, computed, "fill")
+        : null;
+      const box = boxOf(element, { allowThin: true });
+
+      const inLabel = !!element.closest("g.label, g.cluster-label");
+      const role = element.closest("g.edgePaths")
+        ? "edge"
+        : element.closest("g.edgeLabel") || inLabel
+        ? "backing"
+        : element.closest("g.cluster")
+        ? "cluster"
+        : element.closest("g.node")
+        ? "node"
+        : null;
+
+      if (!box) return;
+      if (!role) {
+        if (stroke) applied.subjects.strayStroked += 1;
+        return;
+      }
+
+      // A label backing is a painted fill; the renderer gives it no outline of its
+      // own, and one that carries an outline is inked the same way.
+      if (role === "backing") {
+        if (!fill) return;
+        applied.subjects.labelBackings += 1;
+        const { points, scale } = outlinePoints(element, FLOWCHART_NODE_SAMPLES, false);
+        const grounds = strokeGrounds(points, FLOWCHART_BACKING_WIDTH * scale, index + 1);
+        if (!grounds.length) return;
+        const chosen = pick(grounds, FLOWCHART_OBJECT_TARGET);
+        write(
+          element,
+          "labelBacking",
+          {
+            stroke: chosen.ink,
+            "stroke-opacity": "1",
+            "stroke-width": `${FLOWCHART_BACKING_WIDTH}px`,
+          },
+          grounds,
+          chosen,
+          FLOWCHART_OBJECT_TARGET
+        );
+        return;
+      }
+
+      if (!stroke || strokeWidth <= 0) {
+        applied.subjects.undrawnStroke += 1;
+        return;
+      }
+
+      if (role === "edge") {
+        applied.subjects.edgeLines += 1;
+        [
+          element.getAttribute("marker-start"),
+          element.getAttribute("marker-mid"),
+          element.getAttribute("marker-end"),
+          computed.markerStart,
+          computed.markerMid,
+          computed.markerEnd,
+        ].forEach((value) => {
+          const id = markerIdOf(value);
+          if (id) referencedMarkers.add(id);
+        });
+
+        const { points, scale } = outlinePoints(element, FLOWCHART_LINE_SAMPLES, true);
+        const grounds = strokeGrounds(points, strokeWidth * scale, index + 1);
+        if (!grounds.length) return;
+
+        // Where this edge's arrowheads sit: its two ends, and a little way back
+        // along it, over whatever lies beneath them.
+        [
+          [markerIdOf(element.getAttribute("marker-start") || computed.markerStart), 0],
+          [markerIdOf(element.getAttribute("marker-end") || computed.markerEnd), 1],
+        ].forEach(([id, atEnd]) => {
+          if (!id) return;
+          const seen = markerGrounds.get(id) || new Set();
+          try {
+            const length = element.getTotalLength();
+            const matrix = element.getScreenCTM();
+            if (length > 0 && matrix) {
+              const back = Math.min(length * 0.5, FLOWCHART_ARROW_REACH / scale);
+              [0, back].forEach((inward) => {
+                const along = atEnd ? length - inward : inward;
+                const local = element.getPointAtLength(along);
+                const p = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+                seen.add(paintToHex(groundAt(p.x, p.y, index + 1)));
+              });
+            }
+          } catch (error) {
+            // An edge with no length has no arrowhead to place.
+          }
+          markerGrounds.set(id, seen);
+        });
+
+        const author = keepsAuthorStroke(
+          element,
+          grounds,
+          FLOWCHART_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pickAtOpacity(grounds, FLOWCHART_OBJECT_TARGET, chainOpacity(element));
+        write(
+          element,
+          "edgeLine",
+          strokeProperties(element, computed, chosen, null, author),
+          grounds,
+          chosen,
+          FLOWCHART_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+        return;
+      }
+
+      // A node outline or a cluster frame.
+      const isFrame = role === "cluster";
+      applied.subjects[isFrame ? "clusterFrames" : "nodeOutlines"] += 1;
+      const width = Math.max(strokeWidth, FLOWCHART_SHAPE_WIDTH);
+      const { points, scale } = outlinePoints(
+        element,
+        isFrame ? FLOWCHART_FRAME_SAMPLES : FLOWCHART_NODE_SAMPLES,
+        false
+      );
+      const grounds = strokeGrounds(points, width * scale, index + 1);
+      if (!grounds.length) return;
+      const author = keepsAuthorStroke(
+        element,
+        grounds,
+        FLOWCHART_OBJECT_TARGET,
+        authorLedger
+      );
+      const chosen =
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : pickAtOpacity(grounds, FLOWCHART_OBJECT_TARGET, chainOpacity(element));
+      write(
+        element,
+        isFrame ? "clusterFrame" : "nodeOutline",
+        strokeProperties(element, computed, chosen, FLOWCHART_SHAPE_WIDTH, author),
+        grounds,
+        chosen,
+        FLOWCHART_OBJECT_TARGET,
+        author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+      );
+    });
+
+    // --- markers: ONLY those an edge references (Ruling 1) -------------------
+    svg.querySelectorAll("marker").forEach((marker) => {
+      if (!referencedMarkers.has(marker.getAttribute("id"))) {
+        applied.subjects.markersUnreferenced += 1;
+        return;
+      }
+      applied.subjects.markersReferenced += 1;
+      // A marker shape has no box of its own: its ground is the diagram's, and
+      // what lies under the ends of the edges that reference it.
+      const grounds = [
+        ...new Set([svgGround, ...(markerGrounds.get(marker.getAttribute("id")) || [])]),
+      ];
+      marker.querySelectorAll(SHAPE_TAGS.join(",")).forEach((shape) => {
+        const computed = window.getComputedStyle(shape);
+        const filled =
+          GROUND_TAGS.includes(shape.tagName) && !!paintOf(shape, computed, "fill");
+        const stroked = !!paintOf(shape, computed, "stroke");
+        if (!filled && !stroked) return;
+        const author = keepsAuthorStroke(
+          shape,
+          grounds,
+          FLOWCHART_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pickAtOpacity(grounds, FLOWCHART_OBJECT_TARGET, chainOpacity(shape));
+        const properties = {};
+        // A <line> has no fillable region however its fill computes (rule 21).
+        if (filled) properties.fill = chosen.ink;
+        if (stroked) {
+          properties.stroke = chosen.ink;
+          properties["stroke-opacity"] = keptOpacity(shape, author);
+        }
+        write(
+          shape,
+          "arrowhead",
+          properties,
+          grounds,
+          chosen,
+          FLOWCHART_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+      });
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    const considerText = (element, baseGrounds, backgrounds, channel, kind) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed[channel]);
+      if (!declared) return;
+      const alpha =
+        declared.a *
+        (channel === "fill" ? opacityValue(computed.fillOpacity) : 1) *
+        chainOpacity(element);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+      // HTML backgrounds between the text and its foreignObject, outermost first.
+      const grounds = baseGrounds.map((ground) =>
+        paintToHex(
+          backgrounds.reduce(
+            (under, background) => compositeOver(background, under),
+            parsePaint(ground)
+          )
+        )
+      );
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= FLOWCHART_TEXT_TARGET) return;
+      const chosen = pickAtOpacity(grounds, FLOWCHART_TEXT_TARGET, chainOpacity(element));
+      write(
+        element,
+        kind,
+        { [channel === "fill" ? "fill" : "color"]: chosen.ink },
+        grounds,
+        chosen,
+        FLOWCHART_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    };
+
+    // SVG <text>: every label under `htmlLabels: false`, and any title.
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      considerText(element, groundsOver(spreadPoints(box), index), [], "fill", "textInk");
+    });
+
+    // HTML in a foreignObject: every label by default; the ink is `color`.
+    svg.querySelectorAll("foreignObject").forEach((host) => {
+      const hostBox = boxOf(host);
+      if (!hostBox) return;
+      const baseGrounds = groundsOver(spreadPoints(hostBox), indexOf.get(host));
+      const leaves = [...host.querySelectorAll("*")].filter((element) =>
+        [...element.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        )
+      );
+      leaves.forEach((leaf) => {
+        const backgrounds = [];
+        for (let node = leaf; node && node !== host; node = node.parentElement) {
+          const background = parsePaint(
+            window.getComputedStyle(node).backgroundColor
+          );
+          if (background && background.a > 0.05) backgrounds.unshift(background);
+        }
+        considerText(leaf, baseGrounds, backgrounds, "color", "textInk");
+      });
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
+    logInfo(
+      `Flowchart encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `${applied.subjects.markersReferenced} referenced markers inked, ${applied.subjects.markersUnreferenced} unreferenced left alone, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // CLASS DIAGRAM ENCODING (register item 100 session 4, 20 October 2026)
+  // -----------------------------------------------------------------------
+
+  /** Mermaid 11.17.2 sets `classDiagram` on the root of a class diagram. */
+  const CLASS_ROLEDESCRIPTION_PATTERN = /^classDiagram/;
+
+  /** SC 1.4.11 for every box outline, divider, namespace frame, relation, arrowhead and label backing. */
+  const CLASS_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const CLASS_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD (presentation standard § 1.4), the pair every other
+   * after-render pass offers, both offered to every derivation rather than
+   * selected by mode (rule 18). The ramp is reached only where neither clears.
+   */
+  const CLASS_INKS = REQUIREMENT_INKS;
+  const CLASS_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const CLASS_ENCODING_ATTRIBUTE = "data-class-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const CLASS_OWNED_LIST_ATTRIBUTE = "data-class-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON `{ property: { value, priority } }`. Mermaid writes an author's `style`,
+   * `classDef` and `linkStyle` as INLINE declarations on the very properties this
+   * pass writes (`stroke` on a node, an edge or a cluster; `color` on a label), so
+   * a sweep that only removed the property would delete the author's value too.
+   * The sweep restores these, so every application starts from what the renderer
+   * drew (rule 20, widened from "never delete the renderer's" to "give it back").
+   */
+  const CLASS_PRIOR_ATTRIBUTE = "data-class-encoding-prior";
+
+  /** Minimum outline width of a node and of a cluster frame, in user units (the renderer draws 1). */
+  const CLASS_SHAPE_WIDTH = 2;
+
+  /** Width of the outline given to a label backing, which is a chip and not a shape. */
+  const CLASS_BACKING_WIDTH = 1;
+
+  /** Outline samples around a node, around a cluster frame, and along an edge. */
+  const CLASS_NODE_SAMPLES = 16;
+  const CLASS_FRAME_SAMPLES = 24;
+  const CLASS_LINE_SAMPLES = 21;
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const CLASS_EDGE_OFFSET = 2;
+
+  /** Client pixels back along an edge, from its end, at which an arrowhead's ground is also read. */
+  const CLASS_ARROW_REACH = 8;
+
+  /**
+   * Apply the accessibility encoding to a rendered class diagram: an outline ink
+   * per box (its fill and outline paths), per member divider, per namespace frame
+   * and per relation path, an ink on every arrowhead a relation REFERENCES (a
+   * hollow head keeps its hollow: the stroke is inked and the fill never), an
+   * outline on any label backing that has a fill and none of its own, and a text
+   * ink WHERE AND ONLY WHERE a text fails against the ground it actually sits on.
+   * RENDERER AND AUTHOR FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS: measured before this pass (item 100 session 4, 20 October 2026:
+   * the seven class fixtures named in the sweep record, nine theme cells, pass off,
+   * interior line sampling, Ruling 3 and the coincident-outline pairing) 324 of
+   * 1,733 readings fail 3:1. Box outlines and dividers fail in `neutral` (#999999
+   * on the page, 2.80:1) and `accessibleDark` (#000000 on #2E282A, 1.45:1);
+   * namespace frames fail in `default`, `forest` and `dark`; relations fail in
+   * `neutral` (#999999 on #EEEEEE, 2.46:1) and `accessibleDark` (#000000 on
+   * #2C3E50, 1.91:1); and the box fills those outlines carry (72 of the 324) fail
+   * only because their outline does (Ruling 3, rule 40).
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION (rule 19), by the vocabulary Mermaid
+   * 11.17.2 gives every class diagram: a box is a `g.node` holding TWO stacked
+   * paths on one edge (the fill and the outline, each drawing a stroke) and its
+   * member dividers are zero-height paths in `g.divider`; a stroked shape inside
+   * `g.node` and outside `g.divider` and `g.label` is a box outline; one inside
+   * `g.divider` is a divider; inside `g.cluster` a namespace frame; inside
+   * `g.edgePaths` a relation; a filled shape inside a label group is a label
+   * backing. A note is a `g.node` that holds a `g.noteLabel`. Anything else
+   * stroked is counted as `strayStroked` and left alone. A shape with no stroke
+   * drawn, or no box, is never written (an undrawn element, such as the invisible
+   * lollipop node): `undrawnStroke` counts them.
+   *
+   * GROUNDS ARE READ BY GEOMETRY IN ONE CLIENT SPACE (rule 27): points along each
+   * outline (`getPointAtLength` through `getScreenCTM`), on both sides of the
+   * stroke, each composited from the area shapes that precede the subject and
+   * whose own geometry (`isPointInFill`) contains the point. The ink must clear
+   * every ground either side, so a box fill, a namespace fill and the page are
+   * all read. A divider is sampled as an open line, like a relation.
+   *
+   * ARROWHEADS ARE TOLD APART BY SHAPE, not by colour (inheritance and realisation
+   * a hollow triangle, composition a filled diamond, aggregation a hollow diamond,
+   * dependency a filled open arrow, lollipop a circle), so this pass adds no
+   * non-colour channel (rule 24) and stamps no identity. The hollow heads' fill is
+   * `transparent` and is never written; only their stroke is inked.
+   *
+   * AUTHOR STROKES (rule 42): `style` and `classDef` reach a box as an inline
+   * `style` on all four of its paths (fill, outline and the dividers), so an
+   * inline `stroke` on the shape is the discriminator. Mermaid itself writes an
+   * inline `stroke` on a NOTE (`stroke:#000000 !important`), so a note is never
+   * read as an author stroke, and class diagrams have no author path onto a
+   * relation or an arrowhead (no `linkStyle`), so those are never read as one.
+   * An author stroke that clears 3:1 against every ground is KEPT and written back
+   * as the owned stroke; one that fails is re-inked.
+   *
+   * LABELS: every label is HTML in a `foreignObject` by default and SVG `<text>`
+   * under `htmlLabels: false`. The ground of an HTML label includes the HTML
+   * background between it and its foreignObject, which no SVG painter reports
+   * (rule 36), so that chain is composited here exactly as the flowchart pass
+   * does. A relation label's chip is HTML and cannot take an SVG outline; under
+   * `htmlLabels: false` it is an SVG rect and does.
+   *
+   * OPACITY: the pass never writes `opacity` (rule 43), so an author's dimmed box
+   * stays dimmed and its fill stays the author's. Every ground, stroke and text is
+   * read at the opacity of the element and ALL its ancestors, and an ink is chosen
+   * by what it composites to at that opacity.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first and restores every inline
+   * value it displaced, so every derivation reads the renderer's and the author's
+   * values and never this pass's own output. It never calls applyTheme; it is
+   * reached FROM the re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyClassEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      CLASS_ROLEDESCRIPTION_PATTERN.test(
+        root.getAttribute("aria-roledescription") || ""
+      )
+        ? root
+        : root.querySelector('svg[aria-roledescription^="classDiagram"]');
+
+    if (!svg) {
+      logDebug(
+        "No flowchart SVG in this container - flowchart encoding skipped"
+      );
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg
+      .querySelectorAll(`[${CLASS_ENCODING_ATTRIBUTE}]`)
+      .forEach((owned) => {
+        (owned.getAttribute(CLASS_OWNED_LIST_ATTRIBUTE) || "")
+          .split(",")
+          .filter(Boolean)
+          .forEach((property) => owned.style.removeProperty(property));
+        let prior = {};
+        try {
+          prior = JSON.parse(
+            owned.getAttribute(CLASS_PRIOR_ATTRIBUTE) || "{}"
+          );
+        } catch (error) {
+          prior = {};
+        }
+        Object.entries(prior).forEach(([property, held]) =>
+          owned.style.setProperty(property, held.value, held.priority)
+        );
+        owned.removeAttribute(CLASS_ENCODING_ATTRIBUTE);
+        owned.removeAttribute(CLASS_OWNED_LIST_ATTRIBUTE);
+        owned.removeAttribute(CLASS_PRIOR_ATTRIBUTE);
+      });
+
+    const all = [...svg.querySelectorAll("*")];
+    const indexOf = new Map(all.map((element, index) => [element, index]));
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    // "Off stage" is not "inside <defs>": a marker's content is painted at every
+    // arrow end that references it.
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element, options) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect) return null;
+      const hasArea = rect.width > 0 && rect.height > 0;
+      const thin =
+        !!(options && options.allowThin) && (rect.width > 0 || rect.height > 0);
+      return hasArea || thin
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg. An author's
+    // `classDef x opacity:0.5` lands on the shape AND, through the node's class,
+    // on its label group, so a label's alpha is its ancestors' as well as its own.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /**
+     * Painted area shapes in document order, each with its client box, its fill
+     * and the inverse of its screen matrix, so a point is tested against its OWN
+     * geometry and not its bounding box.
+     */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      let inverse = null;
+      try {
+        const matrix = element.getScreenCTM();
+        inverse = matrix ? matrix.inverse() : null;
+      } catch (error) {
+        inverse = null;
+      }
+      painted.push({ element, index, box, paint: fill, inverse });
+    });
+
+    const covers = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x - 1 || x > box.x + box.width + 1) return false;
+      if (y < box.y - 1 || y > box.y + box.height + 1) return false;
+      const element = shape.element;
+      if (!shape.inverse || typeof element.isPointInFill !== "function") {
+        return true;
+      }
+      try {
+        return element.isPointInFill(
+          new DOMPoint(x, y).matrixTransform(shape.inverse)
+        );
+      } catch (error) {
+        return true;
+      }
+    };
+
+    /** The ground at a client point from every painted shape that precedes `before`. */
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (covers(shape, x, y)) colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+
+    /**
+     * Points along a shape's outline in client space, each with its unit normal.
+     * A closed shape is sampled at the middle of `count` equal arcs; an open line
+     * from 2% to 98% of its length. Returns the screen scale as well, so a stroke
+     * width in user units can be turned into client pixels.
+     */
+    const outlinePoints = (element, count, open) => {
+      try {
+        const length = element.getTotalLength();
+        const matrix = element.getScreenCTM();
+        if (!matrix || !(length > 0)) return { points: [], scale: 1 };
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        const step = Math.max(length * 0.002, 0.25);
+        const map = (p) => new DOMPoint(p.x, p.y).matrixTransform(matrix);
+        const points = [];
+        for (let i = 0; i < count; i += 1) {
+          const along = open
+            ? length * (0.02 + (0.96 * i) / Math.max(count - 1, 1))
+            : (length * (i + 0.5)) / count;
+          const here = map(element.getPointAtLength(along));
+          const before = map(element.getPointAtLength(Math.max(0, along - step)));
+          const after = map(element.getPointAtLength(Math.min(length, along + step)));
+          const tx = after.x - before.x;
+          const ty = after.y - before.y;
+          const norm = Math.hypot(tx, ty) || 1;
+          points.push({ x: here.x, y: here.y, nx: -ty / norm, ny: tx / norm });
+        }
+        return { points, scale };
+      } catch (error) {
+        return { points: [], scale: 1 };
+      }
+    };
+
+    /** The grounds either side of a stroke, at its sample points, as hex. */
+    const strokeGrounds = (samples, widthClient, before) => {
+      const distance = widthClient / 2 + CLASS_EDGE_OFFSET;
+      const seen = new Set();
+      samples.forEach((q) =>
+        [1, -1].forEach((side) =>
+          seen.add(
+            paintToHex(
+              groundAt(q.x + side * q.nx * distance, q.y + side * q.ny * distance, before)
+            )
+          )
+        )
+      );
+      return [...seen];
+    };
+
+    // AUTHOR STROKES (rule 42). `style` and `classDef` reach a box as an inline
+    // `style` on each of its paths (fill, outline and dividers), so an inline
+    // `stroke` on the shape is the discriminator; the renderer's own are CSS only.
+    // Two renderer exceptions, measured on 11.17.2: a NOTE carries Mermaid's own
+    // inline `stroke:... !important` (it is never the author's), and a class
+    // diagram has no `linkStyle`, so a marker shape is never the author's either
+    // (its lollipop circle carries a `fill="transparent"` attribute of the
+    // renderer's, which the flowchart rule would read as an author paint).
+    const authorLedger = authorStrokeLedger(
+      "an inline style stroke on a box, divider, frame or relation path (style / classDef); never a note's, never a marker's",
+      (element) => {
+        if (element.closest("marker")) return null;
+        const owner = element.closest("g.node");
+        if (owner && owner.querySelector("g.noteLabel")) return null;
+        const authored = !!element.style.getPropertyValue("stroke");
+        if (!authored) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke) || parsePaint(computed.fill);
+        if (!declared) return null;
+        // The author's alpha INCLUDES the opacity of the element and its ancestors,
+        // because that is what a reader sees. This pass never writes `opacity` (a
+        // node's shape holds its fill as well as its stroke, so writing it would
+        // repaint an author's fill), so a kept stroke is written back DIVIDED by
+        // that opacity (see keptOpacity), and the opacity applies once, as before.
+        return {
+          ...declared,
+          a: declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element),
+        };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        nodeOutlines: 0,
+        clusterFrames: 0,
+        edgeLines: 0,
+        dividerLines: 0,
+        labelBackings: 0,
+        markersReferenced: 0,
+        markersUnreferenced: 0,
+        texts: 0,
+        strayStroked: 0,
+        undrawnStroke: 0,
+      },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(CLASS_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(CLASS_INK_RAMP, grounds);
+    };
+
+    /**
+     * The same choice for an element whose own `opacity` is below 1: the ink is
+     * seen at that opacity over each ground, so each candidate is scored by what
+     * it composites to, never by its nominal colour. The element's opacity is left
+     * as the author wrote it (see the author ledger above).
+     */
+    const pickAtOpacity = (grounds, target, alpha) => {
+      if (!(alpha < 1)) return pick(grounds, target);
+      const worstOf = (ink) =>
+        grounds.reduce(
+          (lowest, ground) =>
+            Math.min(
+              lowest,
+              calculateContrastRatio(
+                paintToHex(compositeOver({ ...parsePaint(ink), a: alpha }, parsePaint(ground))),
+                ground
+              )
+            ),
+          Infinity
+        );
+      const best = (inks) =>
+        inks.reduce(
+          (winner, ink) => {
+            const worst = worstOf(ink);
+            return worst > winner.worst ? { ink, worst } : winner;
+          },
+          { ink: inks[0], worst: -1 }
+        );
+      const record = best(CLASS_INKS);
+      return record.worst >= target ? record : best(CLASS_INK_RAMP);
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = {
+            value: before,
+            priority: element.style.getPropertyPriority(property),
+          };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(CLASS_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(CLASS_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(CLASS_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    /**
+     * A stroke ink: the colour, full stroke opacity (the author's where kept), and a
+     * width only where the renderer's is thinner than `minWidth`, so an author's
+     * wider stroke and an edge's thin or thick weight are never overwritten.
+     */
+    const keptOpacity = (element, author) =>
+      author && author.kept
+        ? String(Math.min(1, Number((author.opacity / (chainOpacity(element) || 1)).toFixed(3))))
+        : "1";
+    const strokeProperties = (element, computed, chosen, minWidth, author) => {
+      const properties = {
+        stroke: chosen.ink,
+        "stroke-opacity": keptOpacity(element, author),
+      };
+      if (minWidth && (parseFloat(computed.strokeWidth) || 0) < minWidth) {
+        properties["stroke-width"] = `${minWidth}px`;
+      }
+      return properties;
+    };
+
+    // --- shapes: nodes, cluster frames, label backings, edges ----------------
+    const referencedMarkers = new Set();
+    const markerGrounds = new Map();
+    const markerIdOf = (value) => {
+      const match = /url\(\s*["']?#([^"')\s]+)["']?\s*\)/.exec(value || "");
+      return match ? match[1] : null;
+    };
+
+    all.forEach((element, index) => {
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      if (element.closest("foreignObject")) return;
+
+      const computed = window.getComputedStyle(element);
+      const stroke = paintOf(element, computed, "stroke");
+      const strokeWidth = parseFloat(computed.strokeWidth) || 0;
+      const fill = GROUND_TAGS.includes(element.tagName)
+        ? paintOf(element, computed, "fill")
+        : null;
+      const box = boxOf(element, { allowThin: true });
+
+      const inLabel = !!element.closest("g.label, g.cluster-label");
+      const role = element.closest("g.edgePaths")
+        ? "edge"
+        : element.closest("g.edgeLabel") || inLabel
+        ? "backing"
+        : element.closest("g.cluster")
+        ? "cluster"
+        : element.closest("g.divider")
+        ? "divider"
+        : element.closest("g.node")
+        ? "node"
+        : null;
+
+      if (!box) return;
+      if (!role) {
+        if (stroke) applied.subjects.strayStroked += 1;
+        return;
+      }
+
+      // A label backing is a painted fill; the renderer gives it no outline of its
+      // own, and one that carries an outline is inked the same way.
+      if (role === "backing") {
+        if (!fill) return;
+        applied.subjects.labelBackings += 1;
+        const { points, scale } = outlinePoints(element, CLASS_NODE_SAMPLES, false);
+        const grounds = strokeGrounds(points, CLASS_BACKING_WIDTH * scale, index + 1);
+        if (!grounds.length) return;
+        const chosen = pick(grounds, CLASS_OBJECT_TARGET);
+        write(
+          element,
+          "labelBacking",
+          {
+            stroke: chosen.ink,
+            "stroke-opacity": "1",
+            "stroke-width": `${CLASS_BACKING_WIDTH}px`,
+          },
+          grounds,
+          chosen,
+          CLASS_OBJECT_TARGET
+        );
+        return;
+      }
+
+      if (!stroke || strokeWidth <= 0) {
+        applied.subjects.undrawnStroke += 1;
+        return;
+      }
+
+      // A relation, or a member divider: both are open lines, sampled along their
+      // length and left at the renderer's weight. Only a relation references a
+      // marker, so a divider's marker lookups below return nothing.
+      if (role === "edge" || role === "divider") {
+        applied.subjects[role === "divider" ? "dividerLines" : "edgeLines"] += 1;
+        [
+          element.getAttribute("marker-start"),
+          element.getAttribute("marker-mid"),
+          element.getAttribute("marker-end"),
+          computed.markerStart,
+          computed.markerMid,
+          computed.markerEnd,
+        ].forEach((value) => {
+          const id = markerIdOf(value);
+          if (id) referencedMarkers.add(id);
+        });
+
+        const { points, scale } = outlinePoints(element, CLASS_LINE_SAMPLES, true);
+        const grounds = strokeGrounds(points, strokeWidth * scale, index + 1);
+        if (!grounds.length) return;
+
+        // Where this edge's arrowheads sit: its two ends, and a little way back
+        // along it, over whatever lies beneath them.
+        [
+          [markerIdOf(element.getAttribute("marker-start") || computed.markerStart), 0],
+          [markerIdOf(element.getAttribute("marker-end") || computed.markerEnd), 1],
+        ].forEach(([id, atEnd]) => {
+          if (!id) return;
+          const seen = markerGrounds.get(id) || new Set();
+          try {
+            const length = element.getTotalLength();
+            const matrix = element.getScreenCTM();
+            if (length > 0 && matrix) {
+              const back = Math.min(length * 0.5, CLASS_ARROW_REACH / scale);
+              [0, back].forEach((inward) => {
+                const along = atEnd ? length - inward : inward;
+                const local = element.getPointAtLength(along);
+                const p = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+                seen.add(paintToHex(groundAt(p.x, p.y, index + 1)));
+              });
+            }
+          } catch (error) {
+            // An edge with no length has no arrowhead to place.
+          }
+          markerGrounds.set(id, seen);
+        });
+
+        const author = keepsAuthorStroke(
+          element,
+          grounds,
+          CLASS_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pickAtOpacity(grounds, CLASS_OBJECT_TARGET, chainOpacity(element));
+        write(
+          element,
+          role === "divider" ? "dividerLine" : "edgeLine",
+          strokeProperties(element, computed, chosen, null, author),
+          grounds,
+          chosen,
+          CLASS_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+        return;
+      }
+
+      // A node outline or a cluster frame.
+      const isFrame = role === "cluster";
+      applied.subjects[isFrame ? "clusterFrames" : "nodeOutlines"] += 1;
+      const width = Math.max(strokeWidth, CLASS_SHAPE_WIDTH);
+      const { points, scale } = outlinePoints(
+        element,
+        isFrame ? CLASS_FRAME_SAMPLES : CLASS_NODE_SAMPLES,
+        false
+      );
+      const grounds = strokeGrounds(points, width * scale, index + 1);
+      if (!grounds.length) return;
+      const author = keepsAuthorStroke(
+        element,
+        grounds,
+        CLASS_OBJECT_TARGET,
+        authorLedger
+      );
+      const chosen =
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : pickAtOpacity(grounds, CLASS_OBJECT_TARGET, chainOpacity(element));
+      write(
+        element,
+        isFrame ? "clusterFrame" : "nodeOutline",
+        strokeProperties(element, computed, chosen, CLASS_SHAPE_WIDTH, author),
+        grounds,
+        chosen,
+        CLASS_OBJECT_TARGET,
+        author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+      );
+    });
+
+    // --- markers: ONLY those an edge references (Ruling 1) -------------------
+    svg.querySelectorAll("marker").forEach((marker) => {
+      if (!referencedMarkers.has(marker.getAttribute("id"))) {
+        applied.subjects.markersUnreferenced += 1;
+        return;
+      }
+      applied.subjects.markersReferenced += 1;
+      // A marker shape has no box of its own: its ground is the diagram's, and
+      // what lies under the ends of the edges that reference it.
+      const grounds = [
+        ...new Set([svgGround, ...(markerGrounds.get(marker.getAttribute("id")) || [])]),
+      ];
+      marker.querySelectorAll(SHAPE_TAGS.join(",")).forEach((shape) => {
+        const computed = window.getComputedStyle(shape);
+        const filled =
+          GROUND_TAGS.includes(shape.tagName) && !!paintOf(shape, computed, "fill");
+        const stroked = !!paintOf(shape, computed, "stroke");
+        if (!filled && !stroked) return;
+        const author = keepsAuthorStroke(
+          shape,
+          grounds,
+          CLASS_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pickAtOpacity(grounds, CLASS_OBJECT_TARGET, chainOpacity(shape));
+        const properties = {};
+        // A <line> has no fillable region however its fill computes (rule 21).
+        // A HOLLOW head (inheritance, realisation, aggregation, lollipop) paints no
+        // fill, so only its stroke is inked and it stays hollow.
+        if (filled) {
+          properties.fill = chosen.ink;
+        }
+        if (stroked) {
+          properties.stroke = chosen.ink;
+          properties["stroke-opacity"] = keptOpacity(shape, author);
+        }
+        write(
+          shape,
+          "arrowhead",
+          properties,
+          grounds,
+          chosen,
+          CLASS_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+      });
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    const considerText = (element, baseGrounds, backgrounds, channel, kind) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed[channel]);
+      if (!declared) return;
+      const alpha =
+        declared.a *
+        (channel === "fill" ? opacityValue(computed.fillOpacity) : 1) *
+        chainOpacity(element);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+      // HTML backgrounds between the text and its foreignObject, outermost first.
+      const grounds = baseGrounds.map((ground) =>
+        paintToHex(
+          backgrounds.reduce(
+            (under, background) => compositeOver(background, under),
+            parsePaint(ground)
+          )
+        )
+      );
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= CLASS_TEXT_TARGET) return;
+      const chosen = pickAtOpacity(grounds, CLASS_TEXT_TARGET, chainOpacity(element));
+      write(
+        element,
+        kind,
+        { [channel === "fill" ? "fill" : "color"]: chosen.ink },
+        grounds,
+        chosen,
+        CLASS_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    };
+
+    // SVG <text>: every label under `htmlLabels: false`, and any title.
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      const grounds = groundsOver(spreadPoints(box), index);
+      considerText(element, grounds, [], "fill", "textInk");
+
+      // The glyphs are painted by the TSPANS, and a class diagram carries an
+      // author's `color` as an inline `fill` on each leaf tspan (measured 20 October
+      // 2026, `htmlLabels: false`): a fill written on the <text> never reaches
+      // them. Each leaf tspan is read and inked on its own, against the same
+      // grounds, and the sweep restores the author's inline value as ever.
+      element.querySelectorAll("tspan").forEach((span) => {
+        const holdsText = [...span.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        );
+        if (holdsText) considerText(span, grounds, [], "fill", "tspanInk");
+      });
+    });
+
+    // HTML in a foreignObject: every label by default; the ink is `color`.
+    svg.querySelectorAll("foreignObject").forEach((host) => {
+      const hostBox = boxOf(host);
+      if (!hostBox) return;
+      const baseGrounds = groundsOver(spreadPoints(hostBox), indexOf.get(host));
+      const leaves = [...host.querySelectorAll("*")].filter((element) =>
+        [...element.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        )
+      );
+      leaves.forEach((leaf) => {
+        const backgrounds = [];
+        for (let node = leaf; node && node !== host; node = node.parentElement) {
+          const background = parsePaint(
+            window.getComputedStyle(node).backgroundColor
+          );
+          if (background && background.a > 0.05) backgrounds.unshift(background);
+        }
+        considerText(leaf, baseGrounds, backgrounds, "color", "textInk");
+      });
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
+    logInfo(
+      `Class encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `${applied.subjects.markersReferenced} referenced markers inked, ${applied.subjects.markersUnreferenced} unreferenced left alone, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // ER DIAGRAM ENCODING (register item 100 session 5, 20 October 2026)
+  // -----------------------------------------------------------------------
+
+  /** Mermaid 11.17.2 sets `er` on the root of an entity-relationship diagram. */
+  const ER_ROLEDESCRIPTION_PATTERN = /^er$/;
+
+  /** SC 1.4.11 for every entity outline, row outline, divider, relationship and cardinality end. */
+  const ER_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for label text. */
+  const ER_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD (presentation standard § 1.4), both offered to
+   * every derivation rather than selected by mode (rule 18). The ramp is reached
+   * only where neither clears.
+   */
+  const ER_INKS = REQUIREMENT_INKS;
+  const ER_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const ER_ENCODING_ATTRIBUTE = "data-er-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const ER_OWNED_LIST_ATTRIBUTE = "data-er-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON `{ property: { value, priority } }`: Mermaid writes an author's `style`
+   * and `classDef` as INLINE declarations on the very properties this pass
+   * writes (`stroke` on a shape, `color` on a label), so the sweep gives them
+   * back (rule 44).
+   */
+  const ER_PRIOR_ATTRIBUTE = "data-er-encoding-prior";
+
+  /** Width of the outline given to a label backing, which is a chip and not a shape. */
+  const ER_BACKING_WIDTH = 1;
+
+  /** Outline samples around an entity or a row, and along a relationship or a divider. */
+  const ER_NODE_SAMPLES = 16;
+  const ER_LINE_SAMPLES = 21;
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const ER_EDGE_OFFSET = 2;
+
+  /** Client pixels back along a relationship, from its end, at which a cardinality end's ground is also read. */
+  const ER_ARROW_REACH = 8;
+
+  /**
+   * Apply the accessibility encoding to a rendered entity-relationship diagram:
+   * an outline ink per entity (its outline path), per attribute row (its outline
+   * path), per column and header divider, and per relationship path; an ink on
+   * the STROKE of every cardinality end a relationship REFERENCES; an outline on
+   * any label backing that has a fill and none of its own; and a text ink WHERE
+   * AND ONLY WHERE a text fails against the ground it actually sits on. RENDERER
+   * AND AUTHOR FILLS ARE NEVER TOUCHED, the knockout fill of a circle included.
+   *
+   * WHY IT EXISTS: measured before this pass (item 100 session 5, 20 October 2026:
+   * the five er fixtures named in the sweep record, nine theme cells, pass off,
+   * Ruling 3 and the coincident-outline pairing) 164 of 1,034 readings fail 3:1.
+   * Entity and row outlines fail in `neutral` (#999999 on the page, 2.80:1) and
+   * `accessibleDark` (#000000 on #2E282A, 1.45:1); relationships fail in `neutral`
+   * (#999999 on #EEEEEE, 2.46:1) and `accessibleDark` (#000000 on #233140, 1.58:1);
+   * and the cardinality ends fail in every light cell because the circle of a
+   * zero-or-one and a zero-or-more end is a WHITE-FILLED KNOCKOUT (`fill="white"`),
+   * read at #FFFFFF on the page (1.02:1) while its #333333 stroke carries the shape.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION (rule 19), by the vocabulary Mermaid
+   * 11.17.2 gives every er diagram: an entity is a `g.node` holding `g.outer-path`
+   * (a fill path with `stroke: none` and an outline path on one edge), one
+   * `g.row-rect-odd` or `g.row-rect-even` per attribute row (the same pair), and
+   * `g.divider` groups (the same pair again, a zero-width box); an entity with no
+   * attributes is a `g.node` holding its outline pair directly, with no
+   * `g.outer-path`. A stroked shape in a row group is a row outline, in
+   * `g.divider` a divider, in `g.edgePaths` a relationship, in a label group a
+   * backing, and any other in `g.node` an entity outline. Anything else stroked is counted as `strayStroked`
+   * and left alone; a shape with no stroke drawn is never written (`undrawnStroke`).
+   *
+   * CARDINALITY ENDS ARE TOLD APART BY SHAPE, not by colour (a bar, a double bar,
+   * a circle, a crow's foot, in the combinations of the four forms), so this pass
+   * adds no non-colour channel (rule 24). A circle's white fill is the renderer's
+   * mask over the relationship line and is NEVER written: filling it with the ink
+   * would turn a zero end into a filled dot. Only strokes are inked.
+   *
+   * AUTHOR STROKES (rule 42): `style` and `classDef` reach an entity as an inline
+   * `stroke` on every path of the box (outline, rows and dividers), so an inline
+   * `stroke` on a shape in `g.node` is the discriminator. There is no
+   * `linkStyle` for er, so a relationship or a marker shape is never the author's.
+   * An author stroke that clears 3:1 against every ground is KEPT and written back
+   * as the owned stroke; one that fails is re-inked.
+   *
+   * LABELS: every label is HTML in a `foreignObject` by default and SVG `<text>`
+   * under `htmlLabels: false`, whose glyphs are painted through `<tspan>` children
+   * (rule 46). The ground of an HTML label includes the HTML background between it
+   * and its foreignObject (rule 36). A relationship label's chip is HTML and cannot
+   * take an SVG outline; under `htmlLabels: false` it is an SVG rect and does.
+   *
+   * OPACITY: the pass never writes `opacity` (rule 43). Mermaid 11.17.2's er
+   * grammar refuses `opacity` in both `style` and `classDef` (a lexical error), so
+   * an er author cannot dim an entity; every ground, stroke and text is read at the
+   * opacity of the element and all its ancestors all the same.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first and restores every inline
+   * value it displaced. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyErEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      ER_ROLEDESCRIPTION_PATTERN.test(
+        root.getAttribute("aria-roledescription") || ""
+      )
+        ? root
+        : root.querySelector('svg[aria-roledescription="er"]');
+
+    if (!svg) {
+      logDebug("No er SVG in this container - er encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${ER_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(ER_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(ER_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const [property, held] of Object.entries(prior)) {
+        owned.style.setProperty(property, held.value, held.priority);
+      }
+      owned.removeAttribute(ER_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(ER_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(ER_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const indexOf = new Map(all.map((element, index) => [element, index]));
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    // "Off stage" is not "inside <defs>": a marker's content is painted at every
+    // relationship end that references it.
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element, options) => {
+      const rect = element.getBoundingClientRect();
+      if (!rect) return null;
+      const hasArea = rect.width > 0 && rect.height > 0;
+      const thin =
+        !!(options && options.allowThin) && (rect.width > 0 || rect.height > 0);
+      return hasArea || thin
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /**
+     * Painted area shapes in document order, each with its client box, its fill
+     * and the inverse of its screen matrix, so a point is tested against its OWN
+     * geometry and not its bounding box.
+     */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      let inverse = null;
+      try {
+        const matrix = element.getScreenCTM();
+        inverse = matrix ? matrix.inverse() : null;
+      } catch (error) {
+        inverse = null;
+      }
+      painted.push({ element, index, box, paint: fill, inverse });
+    });
+
+    const covers = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x - 1 || x > box.x + box.width + 1) return false;
+      if (y < box.y - 1 || y > box.y + box.height + 1) return false;
+      const element = shape.element;
+      if (!shape.inverse || typeof element.isPointInFill !== "function") {
+        return true;
+      }
+      try {
+        return element.isPointInFill(
+          new DOMPoint(x, y).matrixTransform(shape.inverse)
+        );
+      } catch (error) {
+        return true;
+      }
+    };
+
+    /** The ground at a client point from every painted shape that precedes `before`. */
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (covers(shape, x, y)) colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+
+    /**
+     * Points along a shape's outline in client space, each with its unit normal.
+     * A closed shape is sampled at the middle of `count` equal arcs; an open line
+     * from 2% to 98% of its length. Returns the screen scale as well, so a stroke
+     * width in user units can be turned into client pixels.
+     */
+    const outlinePoints = (element, count, open) => {
+      try {
+        const length = element.getTotalLength();
+        const matrix = element.getScreenCTM();
+        if (!matrix || !(length > 0)) return { points: [], scale: 1 };
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        const step = Math.max(length * 0.002, 0.25);
+        const map = (p) => new DOMPoint(p.x, p.y).matrixTransform(matrix);
+        const points = [];
+        for (let i = 0; i < count; i += 1) {
+          const along = open
+            ? length * (0.02 + (0.96 * i) / Math.max(count - 1, 1))
+            : (length * (i + 0.5)) / count;
+          const here = map(element.getPointAtLength(along));
+          const before = map(element.getPointAtLength(Math.max(0, along - step)));
+          const after = map(element.getPointAtLength(Math.min(length, along + step)));
+          const tx = after.x - before.x;
+          const ty = after.y - before.y;
+          const norm = Math.hypot(tx, ty) || 1;
+          points.push({ x: here.x, y: here.y, nx: -ty / norm, ny: tx / norm });
+        }
+        return { points, scale };
+      } catch (error) {
+        return { points: [], scale: 1 };
+      }
+    };
+
+    /** The grounds either side of a stroke, at its sample points, as hex. */
+    const strokeGrounds = (samples, widthClient, before) => {
+      const distance = widthClient / 2 + ER_EDGE_OFFSET;
+      const seen = new Set();
+      samples.forEach((q) =>
+        [1, -1].forEach((side) =>
+          seen.add(
+            paintToHex(
+              groundAt(q.x + side * q.nx * distance, q.y + side * q.ny * distance, before)
+            )
+          )
+        )
+      );
+      return [...seen];
+    };
+
+    // AUTHOR STROKES (rule 42). `style` and `classDef` reach an entity as an inline
+    // `stroke` on each of its paths (outline, rows, dividers); the renderer's own
+    // strokes are attributes and CSS only. er has no `linkStyle`, so a relationship
+    // and a marker shape are never the author's.
+    const authorLedger = authorStrokeLedger(
+      "an inline style stroke on an entity outline, row outline or divider path (style / classDef); never a relationship's, never a marker's",
+      (element) => {
+        if (element.closest("marker") || element.closest("g.edgePaths")) return null;
+        const authored = !!element.style.getPropertyValue("stroke");
+        if (!authored) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke) || parsePaint(computed.fill);
+        if (!declared) return null;
+        // The author's alpha INCLUDES the opacity of the element and its ancestors,
+        // because that is what a reader sees; a kept stroke is written back divided
+        // by it (see keptOpacity), so the opacity applies once.
+        return {
+          ...declared,
+          a: declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element),
+        };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        entityOutlines: 0,
+        rowOutlines: 0,
+        edgeLines: 0,
+        dividerLines: 0,
+        labelBackings: 0,
+        markersReferenced: 0,
+        markersUnreferenced: 0,
+        knockoutFills: 0,
+        texts: 0,
+        strayStroked: 0,
+        undrawnStroke: 0,
+      },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(ER_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(ER_INK_RAMP, grounds);
+    };
+
+    /**
+     * The same choice for an element whose own `opacity` is below 1: the ink is
+     * seen at that opacity over each ground, so each candidate is scored by what
+     * it composites to, never by its nominal colour.
+     */
+    const pickAtOpacity = (grounds, target, alpha) => {
+      if (!(alpha < 1)) return pick(grounds, target);
+      const worstOf = (ink) =>
+        grounds.reduce(
+          (lowest, ground) =>
+            Math.min(
+              lowest,
+              calculateContrastRatio(
+                paintToHex(compositeOver({ ...parsePaint(ink), a: alpha }, parsePaint(ground))),
+                ground
+              )
+            ),
+          Infinity
+        );
+      const best = (inks) =>
+        inks.reduce(
+          (winner, ink) => {
+            const worst = worstOf(ink);
+            return worst > winner.worst ? { ink, worst } : winner;
+          },
+          { ink: inks[0], worst: -1 }
+        );
+      const record = best(ER_INKS);
+      return record.worst >= target ? record : best(ER_INK_RAMP);
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = {
+            value: before,
+            priority: element.style.getPropertyPriority(property),
+          };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(ER_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(ER_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(ER_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    /** A stroke's opacity: the author's where a stroke is kept (divided by the chain), else 1. */
+    const keptOpacity = (element, author) =>
+      author && author.kept
+        ? String(Math.min(1, Number((author.opacity / (chainOpacity(element) || 1)).toFixed(3))))
+        : "1";
+    const strokeProperties = (element, chosen, author) => ({
+      stroke: chosen.ink,
+      "stroke-opacity": keptOpacity(element, author),
+    });
+
+    // --- shapes: entities, rows, dividers, relationships, label backings -----
+    const referencedMarkers = new Set();
+    const markerGrounds = new Map();
+    const markerIdOf = (value) => {
+      const match = /url\(\s*["']?#([^"')\s]+)["']?\s*\)/.exec(value || "");
+      return match ? match[1] : null;
+    };
+
+    all.forEach((element, index) => {
+      if (!SHAPE_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      if (element.closest("foreignObject")) return;
+
+      const computed = window.getComputedStyle(element);
+      const stroke = paintOf(element, computed, "stroke");
+      const strokeWidth = parseFloat(computed.strokeWidth) || 0;
+      const fill = GROUND_TAGS.includes(element.tagName)
+        ? paintOf(element, computed, "fill")
+        : null;
+      const box = boxOf(element, { allowThin: true });
+
+      const inLabel = !!element.closest("g.label, g.edgeLabel");
+      const role = element.closest("g.edgePaths")
+        ? "edge"
+        : inLabel
+        ? "backing"
+        : element.closest("g.divider")
+        ? "divider"
+        : element.closest("g.row-rect-odd, g.row-rect-even")
+        ? "row"
+        : element.closest("g.node")
+        ? "entity"
+        : null;
+
+      if (!box) return;
+      if (!role) {
+        if (stroke) applied.subjects.strayStroked += 1;
+        return;
+      }
+
+      // A label backing is a painted fill; the renderer gives it no outline of its
+      // own, and one that carries an outline is inked the same way.
+      if (role === "backing") {
+        if (!fill) return;
+        applied.subjects.labelBackings += 1;
+        const { points, scale } = outlinePoints(element, ER_NODE_SAMPLES, false);
+        const grounds = strokeGrounds(points, ER_BACKING_WIDTH * scale, index + 1);
+        if (!grounds.length) return;
+        const chosen = pick(grounds, ER_OBJECT_TARGET);
+        write(
+          element,
+          "labelBacking",
+          {
+            stroke: chosen.ink,
+            "stroke-opacity": "1",
+            "stroke-width": `${ER_BACKING_WIDTH}px`,
+          },
+          grounds,
+          chosen,
+          ER_OBJECT_TARGET
+        );
+        return;
+      }
+
+      if (!stroke || strokeWidth <= 0) {
+        applied.subjects.undrawnStroke += 1;
+        return;
+      }
+
+      // A relationship, or a divider: both are open lines, sampled along their
+      // length and left at the renderer's weight.
+      if (role === "edge" || role === "divider") {
+        applied.subjects[role === "divider" ? "dividerLines" : "edgeLines"] += 1;
+        [
+          element.getAttribute("marker-start"),
+          element.getAttribute("marker-mid"),
+          element.getAttribute("marker-end"),
+          computed.markerStart,
+          computed.markerMid,
+          computed.markerEnd,
+        ].forEach((value) => {
+          const id = markerIdOf(value);
+          if (id) referencedMarkers.add(id);
+        });
+
+        const { points, scale } = outlinePoints(element, ER_LINE_SAMPLES, true);
+        const grounds = strokeGrounds(points, strokeWidth * scale, index + 1);
+        if (!grounds.length) return;
+
+        // Where this relationship's cardinality ends sit: its two ends, and a
+        // little way back along it, over whatever lies beneath them.
+        [
+          [markerIdOf(element.getAttribute("marker-start") || computed.markerStart), 0],
+          [markerIdOf(element.getAttribute("marker-end") || computed.markerEnd), 1],
+        ].forEach(([id, atEnd]) => {
+          if (!id) return;
+          const seen = markerGrounds.get(id) || new Set();
+          try {
+            const length = element.getTotalLength();
+            const matrix = element.getScreenCTM();
+            if (length > 0 && matrix) {
+              const back = Math.min(length * 0.5, ER_ARROW_REACH / scale);
+              [0, back].forEach((inward) => {
+                const along = atEnd ? length - inward : inward;
+                const local = element.getPointAtLength(along);
+                const p = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+                seen.add(paintToHex(groundAt(p.x, p.y, index + 1)));
+              });
+            }
+          } catch (error) {
+            // A relationship with no length has no end to place.
+          }
+          markerGrounds.set(id, seen);
+        });
+
+        const author = keepsAuthorStroke(
+          element,
+          grounds,
+          ER_OBJECT_TARGET,
+          authorLedger
+        );
+        const chosen =
+          author && author.kept
+            ? { ink: author.ink, worst: author.worst }
+            : pickAtOpacity(grounds, ER_OBJECT_TARGET, chainOpacity(element));
+        write(
+          element,
+          role === "divider" ? "dividerLine" : "edgeLine",
+          strokeProperties(element, chosen, author),
+          grounds,
+          chosen,
+          ER_OBJECT_TARGET,
+          author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+        );
+        return;
+      }
+
+      // An entity outline, or an attribute row's outline.
+      const isRow = role === "row";
+      applied.subjects[isRow ? "rowOutlines" : "entityOutlines"] += 1;
+      const { points, scale } = outlinePoints(element, ER_NODE_SAMPLES, false);
+      const grounds = strokeGrounds(points, strokeWidth * scale, index + 1);
+      if (!grounds.length) return;
+      const author = keepsAuthorStroke(
+        element,
+        grounds,
+        ER_OBJECT_TARGET,
+        authorLedger
+      );
+      const chosen =
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : pickAtOpacity(grounds, ER_OBJECT_TARGET, chainOpacity(element));
+      write(
+        element,
+        isRow ? "rowOutline" : "entityOutline",
+        strokeProperties(element, chosen, author),
+        grounds,
+        chosen,
+        ER_OBJECT_TARGET,
+        author ? { authorKept: author.kept, authorInk: author.authorInk } : null
+      );
+    });
+
+    // --- markers: ONLY those a relationship references (Ruling 1) ------------
+    svg.querySelectorAll("marker").forEach((marker) => {
+      if (!referencedMarkers.has(marker.getAttribute("id"))) {
+        applied.subjects.markersUnreferenced += 1;
+        return;
+      }
+      applied.subjects.markersReferenced += 1;
+      // A marker shape has no box of its own: its ground is the diagram's, and
+      // what lies under the ends of the relationships that reference it.
+      const grounds = [
+        ...new Set([svgGround, ...(markerGrounds.get(marker.getAttribute("id")) || [])]),
+      ];
+      marker.querySelectorAll(SHAPE_TAGS.join(",")).forEach((shape) => {
+        const computed = window.getComputedStyle(shape);
+        // A circle's white fill is a knockout over the relationship line, and is
+        // the renderer's: it is counted and never written.
+        if (paintOf(shape, computed, "fill")) applied.subjects.knockoutFills += 1;
+        if (!paintOf(shape, computed, "stroke")) return;
+        const chosen = pickAtOpacity(grounds, ER_OBJECT_TARGET, chainOpacity(shape));
+        write(
+          shape,
+          "cardinalityEnd",
+          { stroke: chosen.ink, "stroke-opacity": "1" },
+          grounds,
+          chosen,
+          ER_OBJECT_TARGET
+        );
+      });
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    const considerText = (element, baseGrounds, backgrounds, channel, kind) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed[channel]);
+      if (!declared) return;
+      const alpha =
+        declared.a *
+        (channel === "fill" ? opacityValue(computed.fillOpacity) : 1) *
+        chainOpacity(element);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+      // HTML backgrounds between the text and its foreignObject, outermost first.
+      const grounds = baseGrounds.map((ground) =>
+        paintToHex(
+          backgrounds.reduce(
+            (under, background) => compositeOver(background, under),
+            parsePaint(ground)
+          )
+        )
+      );
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= ER_TEXT_TARGET) return;
+      const chosen = pickAtOpacity(grounds, ER_TEXT_TARGET, chainOpacity(element));
+      write(
+        element,
+        kind,
+        { [channel === "fill" ? "fill" : "color"]: chosen.ink },
+        grounds,
+        chosen,
+        ER_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    };
+
+    // SVG <text>: every label under `htmlLabels: false`, and any title.
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      const grounds = groundsOver(spreadPoints(box), index);
+      considerText(element, grounds, [], "fill", "textInk");
+
+      // The glyphs are painted by the TSPANS, and an author's `color` can travel as
+      // an inline `fill` on each leaf tspan (rule 46), where a fill written on the
+      // <text> never reaches them. Each leaf tspan is read and inked on its own.
+      element.querySelectorAll("tspan").forEach((span) => {
+        const holdsText = [...span.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        );
+        if (holdsText) considerText(span, grounds, [], "fill", "tspanInk");
+      });
+    });
+
+    // HTML in a foreignObject: every label by default; the ink is `color`.
+    svg.querySelectorAll("foreignObject").forEach((host) => {
+      const hostBox = boxOf(host);
+      if (!hostBox) return;
+      const baseGrounds = groundsOver(spreadPoints(hostBox), indexOf.get(host));
+      const leaves = [...host.querySelectorAll("*")].filter((element) =>
+        [...element.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        )
+      );
+      leaves.forEach((leaf) => {
+        const backgrounds = [];
+        for (let node = leaf; node && node !== host; node = node.parentElement) {
+          const background = parsePaint(
+            window.getComputedStyle(node).backgroundColor
+          );
+          if (background && background.a > 0.05) backgrounds.unshift(background);
+        }
+        considerText(leaf, baseGrounds, backgrounds, "color", "textInk");
+      });
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
+    logInfo(
+      `Er encoding applied: ${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `${applied.subjects.markersReferenced} referenced markers inked, ${applied.subjects.markersUnreferenced} unreferenced left alone, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
 
   // -----------------------------------------------------------------------
   // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
@@ -4333,6 +7847,36 @@ window.MermaidThemes = (function () {
     // applyRadarEncoding never calls applyTheme, so it cannot recurse.
     const radarEncoding = applyRadarEncoding(root);
 
+    // REQUIREMENT DISPATCH, added 14 October 2026 (register item 110 session
+    // 8), at the same seam and for the same wiring reason as the six above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyRequirementEncoding never calls applyTheme, so it cannot recurse.
+    const requirementEncoding = applyRequirementEncoding(root);
+
+    // PACKET DISPATCH, added 16 October 2026 (register item 114 session 7), at
+    // the same seam and for the same wiring reason as the seven above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyPacketEncoding never calls applyTheme, so it cannot recurse.
+    const packetEncoding = applyPacketEncoding(root);
+
+    // FLOWCHART DISPATCH, added 20 October 2026 (register item 100 session 3),
+    // at the same seam and for the same wiring reason as the eight above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyFlowchartEncoding never calls applyTheme, so it cannot recurse.
+    const flowchartEncoding = applyFlowchartEncoding(root);
+
+    // CLASS DISPATCH, added 20 October 2026 (register item 100 session 4), at
+    // the same seam and for the same wiring reason as the nine above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyClassEncoding never calls applyTheme, so it cannot recurse.
+    const classEncoding = applyClassEncoding(root);
+
+    // ER DISPATCH, added 20 October 2026 (register item 100 session 5), at the
+    // same seam and for the same wiring reason as the ten above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyErEncoding never calls applyTheme, so it cannot recurse.
+    const erEncoding = applyErEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -4348,8 +7892,13 @@ window.MermaidThemes = (function () {
       if (c4Encoding) return { c4: c4Encoding };
       if (kanbanEncoding) return { kanban: kanbanEncoding };
       if (radarEncoding) return { radar: radarEncoding };
+      if (requirementEncoding) return { requirement: requirementEncoding };
+      if (packetEncoding) return { packet: packetEncoding };
+      if (flowchartEncoding) return { flowchart: flowchartEncoding };
+      if (classEncoding) return { class: classEncoding };
+      if (erEncoding) return { er: erEncoding };
       logDebug(
-        "No xychart, gantt, sequence, block, c4, kanban or radar SVG in this container - series encoding skipped"
+        "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class or er SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -4380,7 +7929,15 @@ window.MermaidThemes = (function () {
     );
     defs.setAttribute("data-xychart-series", "true");
     const tiles = [];
-    const applied = { patterns: [], dashes: [], casings: [], markers: [] };
+    // Rule 42: xychart has no per-element stroke directive in its grammar, so
+    // the renderer sets every stroke and there is no author stroke to keep.
+    const applied = {
+      patterns: [],
+      dashes: [],
+      casings: [],
+      markers: [],
+      authorStrokes: summariseAuthorStrokes(authorStrokeLedger(null)),
+    };
 
     // --- bars: first stays solid, the rest take patterns in vocabulary order
     const barGroups = svg.querySelectorAll('g[class^="bar-plot"]');
@@ -5398,6 +8955,107 @@ window.MermaidThemes = (function () {
     return directive + code;
   }
 
+  // One-line `init` / `initialize` directive. Group 1 is its argument text.
+  // Multi-line directives are out of scope (recorded in item 116): the pattern
+  // cannot match their first line, so they are left exactly as written.
+  const ONE_LINE_INIT_DIRECTIVE = /^%%\{\s*(?:init|initialize)\s*:(.*)\}%%\s*$/;
+
+  /**
+   * Every directive line this module can build, for exact-match recognition.
+   * A line equal to one of these is the theme's own and may be replaced; no
+   * other line is ever touched. Stateless on purpose (item 116, M2): the source
+   * is re-entered from `data-diagram-code`, so a stored reference would not
+   * survive it.
+   * @returns {Set<string>} The directive strings, without a line ending
+   */
+  function buildOwnDirectiveSet() {
+    const own = new Set();
+    builtInThemes.forEach((theme) => {
+      own.add(`%%{init: {'theme': '${theme.id}'}}%%`);
+    });
+    customThemes.forEach((theme) => {
+      own.add(
+        `%%{init: {'theme': 'base', 'themeVariables': ${JSON.stringify(
+          theme.variables
+        )}}}%%`
+      );
+    });
+    return own;
+  }
+
+  /**
+   * Would Mermaid parse this one-line directive? It replaces every `'` with
+   * `"` and calls JSON.parse on the argument text (measured, item 116 § 2.2),
+   * and ONE directive that fails drops every directive in the source.
+   * @param {string} argumentText - Group 1 of ONE_LINE_INIT_DIRECTIVE
+   * @returns {boolean} True when the argument text parses
+   */
+  function mermaidCanParseDirective(argumentText) {
+    try {
+      JSON.parse(argumentText.replace(/'/g, '"'));
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * Put the theme's directive into a source WITHOUT touching the author's.
+   *
+   * Item 116. The theme removes only a line equal to a directive it could have
+   * built (its own earlier one), keeps every author directive as written, and
+   * inserts its own on the line after the LAST author one-line `init` or
+   * `initialize` directive, so the app's theme wins per key while the author's
+   * other settings (`bitsPerRow`, `htmlLabels`, `showSequenceNumbers`) hold.
+   * With no author directive it falls through to insertInitDirective, whose
+   * output is unchanged (item 85's frontmatter placement included).
+   *
+   * One exception: an author directive Mermaid cannot parse is removed, with a
+   * logged warning, because keeping it makes Mermaid drop EVERY directive in
+   * the source, the theme's included, and gives the author nothing.
+   *
+   * @param {string} code - The Mermaid source, possibly already themed
+   * @param {string} directive - The theme's directive, ending in a newline
+   * @returns {string} The source carrying the theme's directive
+   */
+  function placeThemeDirective(code, directive) {
+    const own = buildOwnDirectiveSet();
+    const kept = [];
+    code.split("\n").forEach((line) => {
+      const bare = line.replace(/\r$/, "");
+      if (own.has(bare)) {
+        return;
+      }
+      const match = bare.match(ONE_LINE_INIT_DIRECTIVE);
+      if (match && !mermaidCanParseDirective(match[1])) {
+        logWarn(
+          "Removed an init directive Mermaid cannot parse (it would drop every directive in the source, the theme's included); register item 116"
+        );
+        return;
+      }
+      kept.push(line);
+    });
+
+    let lastAuthorDirective = -1;
+    kept.forEach((line, index) => {
+      if (ONE_LINE_INIT_DIRECTIVE.test(line.replace(/\r$/, ""))) {
+        lastAuthorDirective = index;
+      }
+    });
+
+    if (lastAuthorDirective === -1) {
+      return insertInitDirective(kept.join("\n"), directive);
+    }
+
+    const lineEnding = kept[lastAuthorDirective].endsWith("\r") ? "\r" : "";
+    kept.splice(
+      lastAuthorDirective + 1,
+      0,
+      directive.replace(/\n$/, "") + lineEnding
+    );
+    return kept.join("\n");
+  }
+
   /**
    * Build a diagram's source carrying the `%%{init}%%` directive for a theme.
    *
@@ -5425,21 +9083,17 @@ window.MermaidThemes = (function () {
         customTheme.variables
       )}}}%%\n`;
 
-      // Remove any existing init directive
-      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
-
-      // Add new init directive, after any frontmatter block
-      newCode = insertInitDirective(newCode, initDirective);
+      // Replace the theme's own earlier directive, keep the author's, and
+      // place this one after the author's (item 116)
+      newCode = placeThemeDirective(newCode, initDirective);
       logDebug(`Applied custom theme variables for "${themeId}"`);
     } else if (builtInThemes.find((theme) => theme.id === themeId)) {
       // For built-in themes, we just need to specify the theme name
       const initDirective = `%%{init: {'theme': '${themeId}'}}%%\n`;
 
-      // Remove any existing init directive
-      newCode = newCode.replace(/^%%{init:.*?}%%\n/m, "");
-
-      // Add new init directive, after any frontmatter block
-      newCode = insertInitDirective(newCode, initDirective);
+      // Replace the theme's own earlier directive, keep the author's, and
+      // place this one after the author's (item 116)
+      newCode = placeThemeDirective(newCode, initDirective);
       logDebug(`Applied built-in theme "${themeId}"`);
     } else {
       return null;
@@ -6301,6 +9955,11 @@ window.MermaidThemes = (function () {
     applyC4Encoding: applyC4Encoding,
     applyKanbanEncoding: applyKanbanEncoding,
     applyRadarEncoding: applyRadarEncoding,
+    applyRequirementEncoding: applyRequirementEncoding,
+    applyPacketEncoding: applyPacketEncoding,
+    applyFlowchartEncoding: applyFlowchartEncoding,
+    applyClassEncoding: applyClassEncoding,
+    applyErEncoding: applyErEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

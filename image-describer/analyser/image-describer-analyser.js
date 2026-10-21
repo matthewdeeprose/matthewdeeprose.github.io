@@ -93,7 +93,7 @@
 
   /**
    * Emit an analysis stage event via EmbedEventEmitter.
-   * @param {string} stage — "analysis", "ocr", "colour", "clip"
+   * @param {string} stage — "analysis", "ocr", "colour"
    * @param {string} status — "started", "running", "complete", "skipped", "error", "timed-out"
    * @param {object} [extra] — optional additional data
    */
@@ -198,7 +198,7 @@
     // ========================================================================
 
     /**
-     * Phase 15A: Runs the fast, profile-independent analyses only (CLIP + colour).
+     * Phase 15A: Runs the fast, profile-independent analysis only (colour).
      * Returns a partial result plus canvas data needed by analyseGated().
      *
      * @param {HTMLImageElement|HTMLCanvasElement|File|string} imageSource
@@ -208,7 +208,7 @@
       const u = utils();
       const startedAt = Date.now();
 
-      logInfo("Starting immediate analysis (CLIP + colour)...");
+      logInfo("Starting immediate analysis (colour)…");
 
       // Prepare the canvas (shared between phases)
       let canvasData;
@@ -230,7 +230,7 @@
 
       logDebug(`Image loaded: ${width}×${height} pixels`);
 
-      // Build the base result (partial — OCR/depth not yet run)
+      // Build the base result (partial — OCR not yet run)
       const result = {
         schemaVersion: u.SCHEMA_VERSION,
         source: {
@@ -252,53 +252,11 @@
         edges: null,
         objects: null,
         faces: null,
-        depth: null, // Not yet run
-        classification: null,
       };
 
-      // Run CLIP + colour in parallel
+      // Colour sampling (the only quick analysis since the classifier was removed, H-56)
       emitStage("analysis", "started");
       const promises = [];
-      let clipResult = null;
-
-      // CLIP classification (Phase 5B-2) — runs in parallel, failure doesn't block
-      const transformers = window.ImageDescriberAnalyserTransformers;
-      if (transformers && transformers.isAvailable()) {
-        emitStage("clip", "running");
-        const profiles = window.ImageDescriberAnalyserProfiles;
-        const clipPromise = transformers
-          .classifyImage(canvas, profiles.ACADEMIC_IMAGE_LABELS)
-          .then((r) => {
-            clipResult = r;
-            emitStage("clip", "complete");
-          })
-          .catch((err) => {
-            logWarn("CLIP classification failed:", err.message);
-            emitStage("clip", "error");
-          });
-        promises.push(clipPromise);
-      } else if (transformers) {
-        // Gateway exists but library not loaded — try to load it
-        emitStage("clip", "running");
-        const clipPromise = transformers
-          .ensureLibrary()
-          .then(() => {
-            const profiles = window.ImageDescriberAnalyserProfiles;
-            return transformers.classifyImage(
-              canvas,
-              profiles.ACADEMIC_IMAGE_LABELS,
-            );
-          })
-          .then((r) => {
-            clipResult = r;
-            emitStage("clip", "complete");
-          })
-          .catch((err) => {
-            logWarn("CLIP classification failed:", err.message);
-            emitStage("clip", "error");
-          });
-        promises.push(clipPromise);
-      }
 
       // Colour — use default profile config (profile not yet confirmed)
       const defaultColourConfig = u.PROFILES.default.colour;
@@ -327,45 +285,7 @@
         };
       }
 
-      // Await CLIP + colour
       await Promise.all(promises);
-
-      // Attach CLIP classification if available
-      if (typeof window.ImageDescriberAnalyserClassify !== "undefined") {
-        try {
-          result.classification =
-            window.ImageDescriberAnalyserClassify.suggestProfile(
-              result,
-              clipResult,
-            );
-          logDebug(
-            "Immediate classification:",
-            result.classification?.profile,
-            `(${Math.round((result.classification?.confidence || 0) * 100)}%)`,
-          );
-        } catch (err) {
-          logWarn("Classification failed:", err);
-          result.classification = null;
-        }
-      }
-
-      if (clipResult && clipResult.status === "success") {
-        if (!result.classification) {
-          result.classification = {
-            profile: null,
-            confidence: 0,
-            reason: "No heuristic signal",
-            source: "heuristic",
-            scores: {},
-          };
-        }
-        result.classification.clip = clipResult;
-        logDebug(
-          "CLIP classification attached:",
-          clipResult.topLabel,
-          `(${(clipResult.topConfidence * 100).toFixed(0)}%)`,
-        );
-      }
 
       // Finalise immediate timing
       result.completedAt = Date.now();
@@ -374,7 +294,7 @@
       // Do NOT emit ("analysis", "complete") — that happens in the gated phase
       logInfo(
         `Immediate analysis complete in ${result.totalDuration}ms ` +
-          `(Colour: ${result.colour?.status}, CLIP: ${clipResult ? "yes" : "no"})`,
+          `(Colour: ${result.colour?.status})`,
       );
 
       return { result, canvasData: { canvas, ctx, width, height } };
@@ -385,7 +305,7 @@
     // ========================================================================
 
     /**
-     * Phase 15A: Runs profile-dependent analyses (OCR + depth) using canvas
+     * Phase 15A: Runs profile-dependent analyses (OCR) using canvas
      * data from analyseImmediate().
      *
      * @param {object} immediateResult — the .result from analyseImmediate()
@@ -425,31 +345,8 @@
       // Confirm profile (was "pending")
       result.profile = resolvedProfileName;
 
-      // Run OCR + depth in parallel
+      // Run OCR
       const promises = [];
-
-      // Depth estimation (Phase 11A) — profile-gated
-      if (profile.depth && profile.depth.enabled !== false) {
-        const depthTransformers = window.ImageDescriberAnalyserTransformers;
-        if (depthTransformers) {
-          emitStage("depth", "running");
-          const depthPromise = depthTransformers
-            .estimateDepth(canvas)
-            .then((depthResult) => {
-              result.depth = depthResult;
-              emitStage("depth", "complete");
-            })
-            .catch((err) => {
-              logWarn("Depth estimation failed:", err.message);
-              result.depth = { status: "error", error: err.message };
-              emitStage("depth", "error");
-            });
-          promises.push(depthPromise);
-        }
-      } else {
-        emitStage("depth", "skipped");
-        result.depth = { status: "skipped" };
-      }
 
       // OCR — profile-gated + skipOCR option
       if (
@@ -520,40 +417,6 @@
         }
       }
 
-      // Re-run full classification with OCR + depth data now available
-      let clipResult = result.classification?.clip || null;
-      if (typeof window.ImageDescriberAnalyserClassify !== "undefined") {
-        try {
-          result.classification =
-            window.ImageDescriberAnalyserClassify.suggestProfile(
-              result,
-              clipResult,
-            );
-          logDebug(
-            "Gated classification:",
-            result.classification?.profile,
-            `(${Math.round((result.classification?.confidence || 0) * 100)}%)`,
-          );
-        } catch (err) {
-          logWarn("Classification failed:", err);
-          result.classification = null;
-        }
-      }
-
-      // Re-attach CLIP data if available
-      if (clipResult && clipResult.status === "success") {
-        if (!result.classification) {
-          result.classification = {
-            profile: null,
-            confidence: 0,
-            reason: "No heuristic signal",
-            source: "heuristic",
-            scores: {},
-          };
-        }
-        result.classification.clip = clipResult;
-      }
-
       // Florence-2 — opt-in only (unchanged)
       result.florenceCaption = { status: "skipped" };
       result.florenceObjects = { status: "skipped" };
@@ -569,7 +432,7 @@
 
       logInfo(
         `Gated analysis complete in ${result.totalDuration}ms ` +
-          `(OCR: ${result.ocr?.status}, Depth: ${result.depth?.status})`,
+          `(OCR: ${result.ocr?.status})`,
       );
 
       // Phase 9B/11C: Save to cache if hash is available
@@ -790,8 +653,6 @@
         edges: null,
         objects: null,
         faces: null,
-        depth: null,
-        classification: null,
       };
     },
   };

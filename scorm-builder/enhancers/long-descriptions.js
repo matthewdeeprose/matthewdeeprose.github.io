@@ -36,6 +36,12 @@
 
 import { escapeXML } from "../util/escape-xml.js";
 
+// Summary text of the disclosure. A description inside a TikZ figure reads "Description"
+// (the figure is a drawing, not an image with a long description); an explicit
+// `summaryLabel` option wins for both.
+const LONG_DESCRIPTION_LABEL = "Long description";
+const TIKZ_DESCRIPTION_LABEL = "Description";
+
 const IMG_TAG = /<img\b[^>]*>/gi;
 const ID_ATTR = /\bid\s*=\s*("([^"]*)"|'([^']*)')/i;
 const CLASS_ATTR = /\bclass\s*=\s*("([^"]*)"|'([^']*)')/i;
@@ -123,6 +129,57 @@ export function findLongDescriptionRanges(html) {
   return ranges;
 }
 
+const FIGURE_OPEN = /<figure\b([^>]*)>/gi;
+const SVG_OPEN = /<svg\b(?:"[^"]*"|'[^']*'|[^>"'])*>/gi;
+
+// Start index of the <figure class="tikz-figure"> that `prefix` ends inside, or -1 when it
+// ends outside every such figure (no tikz-figure, or the last one is already closed).
+function openTikzFigureStart(prefix) {
+  let figStart = -1;
+  let m;
+  FIGURE_OPEN.lastIndex = 0;
+  while ((m = FIGURE_OPEN.exec(prefix)) !== null) {
+    const cls = m[1].match(CLASS_ATTR);
+    if (cls && hasClassToken(cls[2] ?? cls[3] ?? "", "tikz-figure")) figStart = m.index;
+  }
+  if (figStart === -1 || /<\/figure\s*>/i.test(prefix.slice(figStart))) return -1;
+  return figStart;
+}
+
+// figure-contract-v1: a TikZ figure carries an <svg role="img"> rather than an <img>.
+// If `prefix` ends inside an open <figure class="tikz-figure">, find that figure's last
+// <svg> and wire it. Returns null when the longdesc is not inside such a figure (the
+// caller then falls back to the <img> logic, unchanged).
+//
+//   - decorative svg (aria-hidden="true")  -> never wired; { wired: false }
+//   - aria-details already present         -> left exactly as is; when it names the
+//     longdesc's own id (the contract's tikz-fig-N-longdesc) that id is returned as
+//     `reuseId` so the <details> takes it and the reference resolves
+//   - otherwise                            -> gets aria-details="<id>" like an <img>
+function wireTikzSvg(prefix, id, ownId) {
+  const figStart = openTikzFigureStart(prefix);
+  if (figStart === -1) return null;
+
+  let m;
+  let last = null;
+  SVG_OPEN.lastIndex = figStart;
+  while ((m = SVG_OPEN.exec(prefix)) !== null) {
+    last = { tag: m[0], start: m.index, end: SVG_OPEN.lastIndex };
+  }
+  if (!last) return null;
+
+  if (/\baria-hidden\s*=\s*["']?true\b/i.test(last.tag)) return { html: prefix, wired: false };
+  if (!/\brole\s*=\s*["']?img\b/i.test(last.tag)) return null;
+
+  const existing = last.tag.match(/\baria-details\s*=\s*("([^"]*)"|'([^']*)')/i);
+  if (existing) {
+    const value = existing[2] ?? existing[3] ?? "";
+    return { html: prefix, wired: true, reuseId: ownId && value === ownId ? ownId : undefined };
+  }
+  const newTag = last.tag.replace(/^<svg\b/i, `<svg aria-details="${id}"`);
+  return { html: prefix.slice(0, last.start) + newTag + prefix.slice(last.end), wired: true };
+}
+
 // Wire the nearest preceding <img> in `prefix` to the details `id`. Returns the
 // (possibly modified) prefix and whether an img was found. An img already inside
 // an emitted long-description-details block is never selected.
@@ -154,13 +211,15 @@ function wireImg(prefix, id) {
  * Transform authored long-description blocks into accessible <details> disclosures.
  * @param {string} html
  * @param {object} [opts]
- * @param {string} [opts.summaryLabel="Long description"] - <summary> text
+ * @param {string} [opts.summaryLabel] - <summary> text for every block; default "Long description",
+ *   or "Description" for a block inside a figure.tikz-figure
  * @param {string} [opts.className="longdesc"] - the marker class token
  * @param {(warning: {type,message,snippet}) => void} [opts.onWarning] - orphan blocks
  * @returns {{ html: string, count: number }}
  */
 export function processLongDescriptions(html, opts = {}) {
-  const label = escapeXML(opts.summaryLabel || "Long description");
+  const label = escapeXML(opts.summaryLabel || LONG_DESCRIPTION_LABEL);
+  const tikzLabel = escapeXML(opts.summaryLabel || TIKZ_DESCRIPTION_LABEL);
   const className = opts.className || "longdesc";
   let src = String(html);
   let counter = maxLdId(src) + 1;
@@ -179,15 +238,21 @@ export function processLongDescriptions(html, opts = {}) {
     }
 
     const inner = src.slice(close.innerStart, close.innerEnd);
-    const id = `ld-${counter++}`;
+    // A contract figure already points its svg at this block's own id; the <details>
+    // keeps that id (the block's id would otherwise be dropped with its <div>) so the
+    // reference resolves, and no ld-N is minted for it.
+    const ownIdMatch = src.slice(open.start, open.openEnd).match(ID_ATTR);
+    const ownId = ownIdMatch ? ownIdMatch[2] ?? ownIdMatch[3] : undefined;
+    const prefix = src.slice(0, open.start);
+    const tikz = wireTikzSvg(prefix, `ld-${counter}`, ownId);
+    const id = tikz?.reuseId ?? `ld-${counter++}`;
     const details =
       `<details class="long-description-details" id="${id}">` +
-      `<summary>${label}</summary>` +
+      `<summary>${openTikzFigureStart(prefix) === -1 ? label : tikzLabel}</summary>` +
       `<div class="image-long-description">${inner}</div>` +
       `</details>`;
 
-    const prefix = src.slice(0, open.start);
-    const wired = wireImg(prefix, id);
+    const wired = tikz ?? wireImg(prefix, id);
     if (!wired.wired && opts.onWarning) {
       opts.onWarning({
         type: "longdesc-orphan",

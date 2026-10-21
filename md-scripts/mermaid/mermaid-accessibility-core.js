@@ -105,7 +105,6 @@ window.MermaidAccessibility = (function () {
     maxActors: 5,
     // NEW: Retry and error recovery settings
     enableRetryButtons: true, // Global flag for retry buttons
-    enableSyntaxFix: true, // Enable automatic syntax fix attempts
     retryButtonMode: "single", // "single" or "full" or "both" - configurable retry mode
     retrySchedule: [100, 300, 1000, 3000], // Exponential backoff schedule in ms
     maxRetryAttempts: 4,
@@ -114,6 +113,15 @@ window.MermaidAccessibility = (function () {
 
   // Store for retry attempts and timers
   const retryStore = new Map();
+
+  // Parcel 18k. Containers whose accessibility set-up has started (and settled
+  // as built or failed), and containers an IntersectionObserver is watching.
+  // Keyed by the container NODE, never by diagram id: Chat and the visibility
+  // observer name the same container differently, so retryStore's id-keyed
+  // guard let both through and a failed diagram's box was built two to four
+  // times.
+  const startedContainers = new WeakSet();
+  const observedContainers = new WeakSet();
 
   // Description generators storage
   const descriptionGenerators = {};
@@ -147,6 +155,20 @@ window.MermaidAccessibility = (function () {
     );
   }
 
+  // The one sentence a failed diagram is described by, on every path. Same
+  // wording as the short line in mermaid-controls.js (noteRenderFailure); the
+  // technical message stays inside the "Technical Error Details" disclosure.
+  const FAILURE_MESSAGE =
+    "This diagram could not be drawn. Its source text is shown instead.";
+
+  // A box inside one of these is already read by it, so it adds no live role.
+  const LIVE_ANCESTOR_SELECTOR = [
+    "[aria-live]:not([aria-live=off])",
+    "[role=status]",
+    "[role=alert]",
+    "[role=log]",
+  ].join(",");
+
   /**
    * Analyze error to determine if it's a syntax error or rendering issue
    * @param {Error} error - The error object
@@ -174,32 +196,8 @@ window.MermaidAccessibility = (function () {
       isSyntaxError,
       isRenderingIssue: !isSyntaxError,
       originalMessage: error.message,
-      userFriendlyMessage: isSyntaxError
-        ? "Invalid Mermaid syntax detected"
-        : "Diagram rendering failed",
+      userFriendlyMessage: FAILURE_MESSAGE,
     };
-  }
-
-  /**
-   * Attempt to fix common Mermaid syntax issues
-   * @param {string} diagramCode - The original mermaid code
-   * @returns {string} Potentially fixed mermaid code
-   */
-  function attemptSyntaxFix(diagramCode) {
-    let fixedCode = diagramCode;
-
-    // Fix 1: Remove colons after arrows (common LLM mistake)
-    // A[Start] --> B[Define objective]: Description
-    // becomes: A[Start] --> B[Define objective]
-    fixedCode = fixedCode.replace(/(\s*-->\s*[^:\n]+):\s*[^\n]*/g, "$1");
-
-    // Fix 2: Remove other colon-based descriptions
-    fixedCode = fixedCode.replace(/(\]\s*):\s*[^\n]*/g, "$1");
-
-    // Fix 3: Ensure proper line endings
-    fixedCode = fixedCode.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-
-    return fixedCode;
   }
 
   /**
@@ -407,6 +405,45 @@ window.MermaidAccessibility = (function () {
   }
 
   /**
+   * Put keyboard focus back after a single-diagram retry has settled.
+   * The retry empties the diagram, which removes the pressed button, so focus
+   * would otherwise fall to <body>. A failed retry builds a new Retry button
+   * with the same id; a successful one has no Retry button, so focus goes to the
+   * first button of the redrawn diagram's own toolbar, or failing that to the
+   * diagram itself.
+   * @param {HTMLElement} container - The diagram container
+   * @param {HTMLElement} pressedButton - The Retry button that was pressed
+   */
+  function restoreFocusAfterRetry(container, pressedButton) {
+    // The pressed button survived (the retry returned early): nothing was lost.
+    if (pressedButton.isConnected) return;
+
+    const newRetryButton = document.getElementById(pressedButton.id);
+    if (newRetryButton) {
+      newRetryButton.focus();
+      return;
+    }
+
+    const toolbarButton = container.querySelector(
+      ".mermaid-controls button, .mermaid-view-controls button"
+    );
+    if (toolbarButton) {
+      toolbarButton.focus();
+      return;
+    }
+
+    const mermaidDiv = container.querySelector(".mermaid");
+    if (!mermaidDiv) return;
+    mermaidDiv.setAttribute("tabindex", "-1");
+    mermaidDiv.addEventListener(
+      "blur",
+      () => mermaidDiv.removeAttribute("tabindex"),
+      { once: true }
+    );
+    mermaidDiv.focus();
+  }
+
+  /**
    * Create retry button for failed diagrams
    * @param {HTMLElement} container - The diagram container
    * @param {string} diagramId - Unique identifier for the diagram
@@ -425,17 +462,18 @@ window.MermaidAccessibility = (function () {
     button.className = "mermaid-retry-button";
 
     if (mode === "full") {
+      // No aria-label: the visible text is the accessible name (SC 2.5.3).
       button.textContent = "Re-render entire content";
-      button.setAttribute(
-        "aria-label",
-        "Re-render all content using markdown editor pipeline"
-      );
     } else {
       button.textContent = "Retry diagram";
-      button.setAttribute("aria-label", `Retry rendering diagram ${diagramId}`);
     }
 
     button.addEventListener("click", async () => {
+      // Read before anything is removed: only a person whose focus is on this
+      // button is put back; one who clicked and moved on, or tabbed away during
+      // the wait, is left where they are.
+      const hadFocus = document.activeElement === button;
+
       button.disabled = true;
       button.textContent = mode === "full" ? "Re-rendering..." : "Retrying...";
 
@@ -444,6 +482,9 @@ window.MermaidAccessibility = (function () {
           await retryFullContentRender(container, diagramId);
         } else {
           await retrySingleDiagram(container, diagramId, diagramCode);
+          if (hadFocus) {
+            restoreFocusAfterRetry(container, button);
+          }
         }
       } catch (error) {
         logError(
@@ -451,79 +492,6 @@ window.MermaidAccessibility = (function () {
           error
         );
         button.textContent = "Retry failed";
-        button.setAttribute(
-          "aria-label",
-          `Retry failed for diagram ${diagramId}`
-        );
-      }
-    });
-
-    return button;
-  }
-
-  /**
-   * Create fix syntax button for diagrams with syntax errors
-   * @param {HTMLElement} container - The diagram container
-   * @param {string} diagramId - Unique identifier for the diagram
-   * @param {string} diagramCode - The original mermaid code
-   * @returns {HTMLElement} The fix syntax button element
-   */
-  function createFixSyntaxButton(container, diagramId, diagramCode) {
-    const button = document.createElement("button");
-    button.id = `mermaid-fix-syntax-${diagramId}`;
-    button.className = "mermaid-fix-syntax-button";
-    button.textContent = "Try syntax fix";
-    button.setAttribute(
-      "aria-label",
-      `Attempt to fix syntax errors in diagram ${diagramId}`
-    );
-    button.style.marginRight = "0.5em";
-
-    button.addEventListener("click", async () => {
-      button.disabled = true;
-      button.textContent = "Fixing syntax...";
-
-      try {
-        const fixedCode = attemptSyntaxFix(diagramCode);
-
-        // Show what was changed
-        if (fixedCode !== diagramCode) {
-          logInfo(
-            `[Mermaid Accessibility] Attempting syntax fix for diagram ${diagramId}`
-          );
-          logInfo(
-            `[Mermaid Accessibility] Original code length: ${diagramCode.length}, Fixed code length: ${fixedCode.length}`
-          );
-
-          // Update the container's data attribute with fixed code
-          container.setAttribute(
-            "data-diagram-code",
-            encodeURIComponent(fixedCode)
-          );
-
-          // Try to render with fixed code
-          await retrySingleDiagram(container, diagramId, fixedCode);
-        } else {
-          // No changes made
-          button.textContent = "No fixes available";
-          button.setAttribute(
-            "aria-label",
-            `No automatic fixes available for diagram ${diagramId}`
-          );
-          logWarn(
-            `[Mermaid Accessibility] No syntax fixes could be applied to diagram ${diagramId}`
-          );
-        }
-      } catch (error) {
-        logError(
-          `[Mermaid Accessibility] Syntax fix failed for diagram ${diagramId}:`,
-          error
-        );
-        button.textContent = "Fix failed";
-        button.setAttribute(
-          "aria-label",
-          `Syntax fix failed for diagram ${diagramId}`
-        );
       }
     });
 
@@ -609,6 +577,11 @@ window.MermaidAccessibility = (function () {
 
         // Initialize all control systems first
         initializeAllControls(container, diagramId);
+
+        // Retry is the one legitimate re-initialisation, so it lifts the
+        // once-per-container mark (parcel 18k). A retry that fails never
+        // reaches this line, and its container stays marked.
+        startedContainers.delete(container);
 
         // Then initialize accessibility features
         await initAccessibilityFeatures(container, diagramId);
@@ -729,30 +702,40 @@ window.MermaidAccessibility = (function () {
     const mermaidDiv = container.querySelector(".mermaid");
     if (!mermaidDiv) return;
 
+    // This fuller fallback replaces the short "could not be drawn" line a
+    // render site may have put beside the diagram, so the two never stack.
+    if (
+      window.MermaidControls &&
+      typeof window.MermaidControls.clearRenderFailureNote === "function"
+    ) {
+      window.MermaidControls.clearRenderFailureNote(container);
+    }
+
     // Analyze the error type
     const errorAnalysis = originalError
       ? analyzeError(originalError)
       : {
           isSyntaxError: false,
           isRenderingIssue: true,
-          userFriendlyMessage: errorMessage,
+          userFriendlyMessage: FAILURE_MESSAGE,
         };
 
     // Create error container
     const errorContainer = document.createElement("div");
     errorContainer.className = "mermaid-error-fallback";
-    errorContainer.setAttribute("role", "alert");
-    errorContainer.setAttribute("aria-live", "polite");
 
-    // Error message with more specific information
+    // Say it once: where a live region already holds the diagram (the editor's
+    // #output, Chat's message list) the box is read by it, and its own alert
+    // would speak the same text again. Only a surface with no live ancestor
+    // (the OpenRouter results panel) keeps the box's own announcement.
+    if (!mermaidDiv.closest(LIVE_ANCESTOR_SELECTOR)) {
+      errorContainer.setAttribute("role", "alert");
+      errorContainer.setAttribute("aria-live", "polite");
+    }
+
     const errorPara = document.createElement("p");
     errorPara.className = "mermaid-error-message";
-
-    if (errorAnalysis.isSyntaxError) {
-      errorPara.innerHTML = `<strong>${errorAnalysis.userFriendlyMessage}</strong>: The Mermaid code contains syntax errors. Showing code below with fix options.`;
-    } else {
-      errorPara.textContent = `${errorAnalysis.userFriendlyMessage}, showing code instead`;
-    }
+    errorPara.textContent = errorAnalysis.userFriendlyMessage;
 
     // Technical error details (collapsible)
     let technicalDetails = null;
@@ -790,16 +773,6 @@ window.MermaidAccessibility = (function () {
     retryContainer.className = "mermaid-retry-container";
 
     if (config.enableRetryButtons) {
-      if (errorAnalysis.isSyntaxError && config.enableSyntaxFix) {
-        // For syntax errors, offer syntax fix option
-        const fixSyntaxButton = createFixSyntaxButton(
-          container,
-          diagramId,
-          diagramCode
-        );
-        retryContainer.appendChild(fixSyntaxButton);
-      }
-
       // Standard retry button
       const singleRetryButton = createRetryButton(
         container,
@@ -834,9 +807,23 @@ window.MermaidAccessibility = (function () {
       errorContainer.appendChild(retryContainer);
     }
 
+    // A box rebuilt while keyboard focus is on its Retry button would drop
+    // focus to <body> (Chat rebuilds it a second time about 4.5 s after a
+    // retry, under a new diagram id). Read before the old box is removed.
+    const retryHadFocus =
+      mermaidDiv.contains(document.activeElement) &&
+      document.activeElement.classList.contains("mermaid-retry-button");
+
     // Replace mermaid div content
     mermaidDiv.innerHTML = "";
     mermaidDiv.appendChild(errorContainer);
+
+    if (retryHadFocus) {
+      const newRetryButton = retryContainer.querySelector("button");
+      if (newRetryButton) {
+        newRetryButton.focus();
+      }
+    }
 
     // Mark as having error fallback
     container.setAttribute("data-mermaid-error", "true");
@@ -1045,6 +1032,15 @@ window.MermaidAccessibility = (function () {
     "unsupported:kanban": "a Kanban board",
     "unsupported:radar": "a radar chart",
     "unsupported:info": "a Mermaid information panel",
+    // Item 110, 9 October 2026 (Matthew's decision of 7 October): the six
+    // bundled types that render to the honest-unsupported path get friendly
+    // names, keyed on the exact strings detectType returns (census § Q1).
+    "unsupported:treemap": "a treemap",
+    "unsupported:venn": "a Venn diagram",
+    "unsupported:ishikawa": "an Ishikawa diagram",
+    "unsupported:treeView": "a tree view",
+    "unsupported:wardley": "a Wardley map",
+    "unsupported:cynefin": "a Cynefin diagram",
     // Legacy keys from the keyword-scan fallback path.
     classDiagram: "a class diagram",
     entityRelationshipDiagram: "an entity relationship diagram",
@@ -1089,6 +1085,21 @@ window.MermaidAccessibility = (function () {
     // fallback). The `unsupported:info` twin above is kept and is unreachable
     // while the MERMAID_TYPE_TO_KEY row stands.
     info: "a Mermaid information panel",
+    // Item 110, 9 October 2026. The same bare-key row, added WITH the
+    // requirement generator so a generation failure still names the diagram.
+    // The `unsupported:requirement` twin above is kept and is unreachable
+    // while the MERMAID_TYPE_TO_KEY row stands.
+    requirement: "a requirement diagram",
+    // Item 114, 15 October 2026. The same bare-key row, added WITH the packet
+    // generator so a generation failure still names the diagram. The
+    // `unsupported:packet` twin above is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    packet: "a packet diagram",
+    // Item 119, 21 October 2026. The same bare-key row, added WITH the treemap
+    // generator so a generation failure still names the diagram. The
+    // `unsupported:treemap` twin above is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    treemap: "a treemap",
   });
 
   /** Last-resort phrase when the type is genuinely unknown to us. */
@@ -1199,6 +1210,31 @@ window.MermaidAccessibility = (function () {
       return;
     }
 
+    // Parcel 18k: one set-up per container node. A second caller (Chat and
+    // the visibility observer each start one, with different ids) is turned
+    // away while the first is running AND after it has built or failed.
+    if (startedContainers.has(container)) {
+      logDebug(
+        `[Mermaid Accessibility] Set-up already started for this container, skipping ${diagramId}`
+      );
+      return;
+    }
+    startedContainers.add(container);
+
+    try {
+      await buildAccessibilityFeatures(container, diagramId);
+    } finally {
+      // Unsettled (an early return or a throw before the container was built
+      // or marked failed): lift the mark so a later pass may try again, as it
+      // could before this guard.
+      const settled = container.getAttribute("data-accessibility-initialized");
+      if (settled !== "true" && settled !== "error") {
+        startedContainers.delete(container);
+      }
+    }
+  }
+
+  async function buildAccessibilityFeatures(container, diagramId) {
     // Skip if already processed (but allow error state to be reprocessed)
     const initState = container.getAttribute("data-accessibility-initialized");
     if (initState === "true") {
@@ -1273,7 +1309,7 @@ window.MermaidAccessibility = (function () {
           container,
           diagramId,
           diagramCode,
-          "Diagram failed to render after multiple attempts"
+          FAILURE_MESSAGE
         );
         return;
       }
@@ -1520,15 +1556,22 @@ window.MermaidAccessibility = (function () {
 
     logInfo("[Mermaid Accessibility] Initialising with lazy loading");
 
-    // Find all mermaid containers without accessibility features
-    const mermaidContainers =
+    // Find all mermaid containers without accessibility features, leaving out
+    // any already watched or already started (parcel 18k). Each call used to
+    // give the same container a fresh observer, which is how a restored Chat
+    // reply started its set-up up to four times.
+    const mermaidContainers = (
       Utils && typeof Utils.findContainersWithoutFeatures === "function"
         ? Utils.findContainersWithoutFeatures(container)
         : Array.from(
             container.querySelectorAll(
               ".mermaid-container:not([data-accessibility-initialized='true'])"
             )
-          );
+          )
+    ).filter(
+      (candidate) =>
+        !observedContainers.has(candidate) && !startedContainers.has(candidate)
+    );
 
     if (mermaidContainers.length === 0) {
       logInfo(
@@ -1551,6 +1594,11 @@ window.MermaidAccessibility = (function () {
               container.id ||
               `mermaid-${Math.random().toString(36).substring(2, 10)}`;
 
+            // Stop observing the moment set-up is handed over (parcel 18k),
+            // and let a later pass watch it again only if it stays unbuilt.
+            observer.unobserve(container);
+            observedContainers.delete(container);
+
             // Add accessibility features if not already initialised
             if (
               container.getAttribute("data-accessibility-initialized") !==
@@ -1561,20 +1609,22 @@ window.MermaidAccessibility = (function () {
               );
               initAccessibilityFeatures(container, diagramId);
             }
-
-            // Stop observing this container once initialised
-            observer.unobserve(container);
           }
         });
       },
       {
-        threshold: 0.1, // Trigger when at least 10% of the element is visible
+        // Item 117: a fractional threshold can never be met by a container
+        // taller than about ten times the viewport band (measured: fails above
+        // ~8,250 px at 1280x720; ratio ~825/height), so such a diagram was
+        // never described. 0 fires on the first pixel inside rootMargin.
+        threshold: 0,
         rootMargin: "100px", // Add 100px margin to load slightly before visible
       }
     );
 
     // Start observing each container
     mermaidContainers.forEach((container) => {
+      observedContainers.add(container);
       observer.observe(container);
     });
   }
@@ -1757,7 +1807,7 @@ window.MermaidAccessibility = (function () {
     );
 
     logInfo(
-      "[Mermaid Accessibility] Test container with syntax error created. Check for 'Try syntax fix' button."
+      "[Mermaid Accessibility] Test container with syntax error created. Check for the error fallback and its Retry button."
     );
 
     return testContainer;

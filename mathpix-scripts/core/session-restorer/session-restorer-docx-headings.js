@@ -17,6 +17,15 @@
 // XML is edited with string operations only. A DOM serialiser can rewrite
 // namespace declarations and self-closing tags; HW-0 proved the round trip on
 // untouched bytes, so only the inserted w:pStyle and w:style text changes.
+//
+// WD-1 (WD-D1, 14 October 2026): the same pass also repairs w:ind attributes
+// whose value is not a valid measure. The API renders a \pagebreak after a
+// blockquote as a "Page Break" paragraph carrying w:ind w:left="true", and Word
+// refuses the whole package. repairDocumentXml removes only such attributes;
+// the MMD sent to the API is never altered.
+//
+// WD-2 (WD-D2, 14 October 2026): repairDocxBlob runs the same repair at the
+// shared download seam in mathpix-convert-api-client.js, so every mode gets it.
 // ─────────────────────────────────────────────────────────────────────────────
 
 (function () {
@@ -102,6 +111,27 @@
   const SIZE_RE = /<w:sz\s+w:val="(\d+)"\s*\/>/g;
   const PPR_FIRST_RE = /^(<w:p(?:\s[^>]*)?>)(<w:pPr\/>|<w:pPr(?:\s[^>]*)?>)/;
   const PSTYLE_RE = /<w:pStyle\s+w:val="([^"]*)"\s*\/>/;
+
+  // WD-1: w:ind, self-closing or open. "\b" after "ind" excludes w:indent-style names.
+  const IND_RE = /<w:ind\b([^>]*?)(\/?)>/g;
+  const IND_ATTR_RE = /\s+(w:[A-Za-z]+)="([^"]*)"/g;
+
+  /** w:ind attributes typed ST_SignedTwipsMeasure (or its Chars variants). */
+  const IND_MEASURE_ATTRS = Object.freeze([
+    "w:left",
+    "w:right",
+    "w:hanging",
+    "w:firstLine",
+    "w:start",
+    "w:end",
+    "w:leftChars",
+    "w:rightChars",
+    "w:hangingChars",
+    "w:firstLineChars",
+  ]);
+
+  /** An integer, or a universal measure such as 0.5in. */
+  const VALID_MEASURE_RE = /^(?:-?\d+|-?\d+(?:\.\d+)?(?:mm|cm|in|pt|pc|pi))$/;
 
   // =========================================================================
   // Text helpers
@@ -390,21 +420,110 @@
   }
 
   // =========================================================================
+  // repairDocumentXml (WD-1)
+  // =========================================================================
+
+  /**
+   * Remove w:ind measure attributes whose value is not a valid measure, e.g.
+   * w:left="true", which Word rejects for the whole package. A w:ind left with
+   * no attributes is removed (self-closing form only). Every other byte is
+   * untouched. Never throws: on any error the input comes back, repaired 0.
+   * @param {string} documentXml - word/document.xml
+   * @returns {{documentXml:string, repaired:number}} repaired: attributes removed
+   */
+  function repairDocumentXml(documentXml) {
+    try {
+      if (typeof documentXml !== "string") return { documentXml, repaired: 0 };
+
+      let repaired = 0;
+      const out = documentXml.replace(IND_RE, (whole, attrs, slash, offset) => {
+        let removedHere = 0;
+        let remaining = 0;
+        const kept = attrs.replace(IND_ATTR_RE, (attr, name, value) => {
+          if (!IND_MEASURE_ATTRS.includes(name)) {
+            remaining++;
+            return attr;
+          }
+          if (VALID_MEASURE_RE.test(value)) {
+            remaining++;
+            return attr;
+          }
+          removedHere++;
+          const paragraph = (documentXml.slice(0, offset).match(/<w:p[\s/>]/g) || [])
+            .length;
+          logWarn(`repairDocumentXml: removed ${name}="${value}" from paragraph ${paragraph}`);
+          return "";
+        });
+        if (removedHere === 0) return whole;
+        repaired += removedHere;
+        if (slash === "") {
+          logWarn("repairDocumentXml: w:ind in open form, attributes removed, element kept");
+          return `<w:ind${kept}>`;
+        }
+        // No attribute left: the element says nothing, so drop it whole.
+        return remaining === 0 ? "" : `<w:ind${kept}/>`;
+      });
+
+      return { documentXml: out, repaired };
+    } catch (err) {
+      logError("repairDocumentXml: failed, input kept", err);
+      return { documentXml, repaired: 0 };
+    }
+  }
+
+  // =========================================================================
+  // repairDocxBlob (WD-2)
+  // =========================================================================
+
+  /**
+   * Repair the w:ind measures in a docx blob. Used at the Convert download
+   * seam (WD-D2), so every mode gets the repair. Resolves the INPUT blob object
+   * when nothing needed repairing or anything fails; never rejects.
+   * @param {Blob} blob - the docx from the Convert API
+   * @returns {Promise<{blob:Blob, repaired:number}>}
+   */
+  async function repairDocxBlob(blob) {
+    const unchanged = { blob, repaired: 0 };
+    try {
+      if (typeof window.JSZip !== "function") {
+        logWarn("repairDocxBlob: JSZip not loaded, original kept");
+        return unchanged;
+      }
+      const zip = await window.JSZip.loadAsync(blob);
+      const docEntry = zip.file("word/document.xml");
+      if (!docEntry) return unchanged;
+
+      const repair = repairDocumentXml(await docEntry.async("string"));
+      if (repair.repaired === 0) return unchanged;
+
+      zip.file("word/document.xml", repair.documentXml, { compression: "DEFLATE" });
+      const newBlob = await zip.generateAsync({ type: "blob", mimeType: DOCX_MIME });
+      return { blob: newBlob, repaired: repair.repaired };
+    } catch (err) {
+      logError("repairDocxBlob: failed, original kept", err);
+      return unchanged;
+    }
+  }
+
+  // =========================================================================
   // restyleDocxHeadings
   // =========================================================================
 
   /**
-   * Restyle a Convert API docx. Resolves the ORIGINAL blob object whenever the
-   * map does not align or anything fails; never rejects.
+   * Repair and restyle a Convert API docx. Resolves the ORIGINAL blob object
+   * whenever there is nothing to repair and the map does not align, or anything
+   * fails; never rejects. The zip is written only when something changed.
    * @param {Blob} blob - the docx from the Convert API
    * @param {string} mmd - the MMD the conversion was sent
-   * @returns {Promise<{blob:Blob, mapped:number, applied:boolean, expected:number}>}
+   * @returns {Promise<{blob:Blob, mapped:number, applied:boolean, expected:number, repaired:number}>}
    *   expected: how many headings the MMD carries, so a caller can tell "no
-   *   map was needed" (0) from "a map was needed and failed" (applied false)
+   *   map was needed" (0) from "a map was needed and failed" (applied false).
+   *   repaired: invalid w:ind attributes removed (WD-1).
    */
   async function restyleDocxHeadings(blob, mmd) {
-    const expected = headingSequence(mmd).length;
-    const unchanged = { blob, mapped: 0, applied: false, expected };
+    const sequence = headingSequence(mmd);
+    const expected = sequence.length;
+    const unchanged = { blob, mapped: 0, applied: false, expected, repaired: 0 };
     try {
       if (typeof window.JSZip !== "function") {
         logWarn("restyleDocxHeadings: JSZip not loaded, original kept");
@@ -419,19 +538,31 @@
         return unchanged;
       }
 
-      const documentXml = await docEntry.async("string");
+      const rawDocumentXml = await docEntry.async("string");
       const stylesXml = await stylesEntry.async("string");
-      const result = mapHeadings(documentXml, stylesXml, headingSequence(mmd));
-      if (!result) return unchanged;
+      const repair = repairDocumentXml(rawDocumentXml);
+      const result = mapHeadings(repair.documentXml, stylesXml, sequence);
+      if (!result && repair.repaired === 0) return unchanged;
 
-      // Only the two XML entries are rewritten; every other entry keeps its
-      // original compressed data.
-      zip.file("word/document.xml", result.documentXml, { compression: "DEFLATE" });
-      zip.file("word/styles.xml", result.stylesXml, { compression: "DEFLATE" });
+      // Only the entries that changed are rewritten; every other entry keeps
+      // its original compressed data.
+      const documentXml = result ? result.documentXml : repair.documentXml;
+      zip.file("word/document.xml", documentXml, { compression: "DEFLATE" });
+      if (result) {
+        zip.file("word/styles.xml", result.stylesXml, { compression: "DEFLATE" });
+      }
       const newBlob = await zip.generateAsync({ type: "blob", mimeType: DOCX_MIME });
 
-      logDebug(`restyleDocxHeadings: ${result.mapped} heading(s) styled`);
-      return { blob: newBlob, mapped: result.mapped, applied: true, expected };
+      logDebug(
+        `restyleDocxHeadings: ${result ? result.mapped : 0} heading(s) styled, ${repair.repaired} attribute(s) repaired`,
+      );
+      return {
+        blob: newBlob,
+        mapped: result ? result.mapped : 0,
+        applied: Boolean(result),
+        expected,
+        repaired: repair.repaired,
+      };
     } catch (err) {
       logError("restyleDocxHeadings: failed, original kept", err);
       return unchanged;
@@ -441,6 +572,8 @@
   window.MathPixDocxHeadings = Object.freeze({
     headingSequence,
     mapHeadings,
+    repairDocumentXml,
+    repairDocxBlob,
     restyleDocxHeadings,
   });
 })();

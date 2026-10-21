@@ -866,6 +866,9 @@
     // Answer-length range follows the new model (H-20); the send recomputes it anyway.
     if (window.ChatCore && window.ChatCore._applyModelTokenRange)
       window.ChatCore._applyModelTokenRange(S.currentModel);
+    // Foundry default system prompt follows the model (parcel 15c). Silent, and never overwrites typed text.
+    if (window.ChatCore && window.ChatCore._applyDefaultSystemPrompt)
+      window.ChatCore._applyDefaultSystemPrompt(S.currentModel);
     // Starter prompts: re-pick chips for the newly selected model's capabilities (no-op unless the welcome is shown).
     if (window.ChatChips && typeof window.ChatChips.refresh === "function") {
       window.ChatChips.refresh();
@@ -1289,6 +1292,8 @@
       S.currentModel = null;
       S.openingAuto = false;
       showConfigureNotice();
+      if (window.ChatCore && window.ChatCore._applyDefaultSystemPrompt)
+        window.ChatCore._applyDefaultSystemPrompt(null);
     } else if (rendered.some((m) => m.id === opening.id)) {
       // The opening model is visible — select it and reflect it. reflectSelection()
       // writes currentModel and runs updateModelStatus, so a cloud default clears
@@ -2001,6 +2006,10 @@
     wireProviderEvents();
     populateModelPicker();
     logDebug("refresh complete (picker re-populated)");
+    // R1: speak a restore line that was held back while Chat was closed.
+    if (window.ChatPersistence && typeof window.ChatPersistence.flushPendingRestoreLine === "function") {
+      window.ChatPersistence.flushPendingRestoreLine();
+    }
   }
 
   // ── Expose singleton ────────────────────────────────────────────────────

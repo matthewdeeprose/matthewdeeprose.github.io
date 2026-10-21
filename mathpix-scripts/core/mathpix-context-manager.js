@@ -141,7 +141,7 @@ const MathPixContextManager = (function () {
     },
     {
       key: "learningObjective",
-      label: "Learning Objective",
+      label: "Learning Outcome",
       type: "text",
       defaultValue: "",
     },

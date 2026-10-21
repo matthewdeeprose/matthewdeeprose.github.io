@@ -196,6 +196,12 @@
     // astra. Anchored exactly, per the parcel-9 rule above.
     /^gpt-6-luna$/i,
     /^gpt-6-sol$/i,
+
+    // Added 13 October 2026, MR-7. Deployed by the owner that day and PROBED
+    // BEFORE REGISTRATION (results/probe-gpt-6.1-sol-2026-10-13.json): all four
+    // sampling parameters refused with the same code pair as gpt-6-sol.
+    // Anchored exactly, per the parcel-9 rule above.
+    /^gpt-6\.1-sol$/i,
   ];
 
   // Deployment-name patterns for models whose strict MaaS schema rejects
@@ -204,6 +210,21 @@
   // deployment id (e.g. "Mistral-Large-3"), not the prefixed library id.
   // Add new strict surfaces here.
   const PLAIN_MAX_TOKENS_PATTERNS = [/^Mistral-Large-3$/i];
+
+  // Deployment-name patterns for models that ACCEPT temperature and top_p but
+  // REFUSE presence_penalty and frequency_penalty. A partial refusal, so it
+  // cannot ride on REASONING_MODEL_PATTERNS, which drops all four: that would
+  // strip two parameters these models accept. Tested against the STRIPPED
+  // deployment id. Anchored exactly, per the parcel-9 rule above.
+  //
+  // Added 13 October 2026, MR-7. grok-4.7's probe
+  // (results/probe-grok-4.7-2026-10-13.json) recorded temperature and top_p
+  // accepted and both penalties refused with HTTP 400. The wire-check of the
+  // shipped body (results/wire-check-2026-10-13-grok-4.7.json) then showed why
+  // it matters: the embed sends both penalties at 0 on every request
+  // (openrouter-embed-core.js), and that body was refused, "Model grok-4.7 does
+  // not support p…", while the same body without them answered HTTP 200.
+  const PENALTY_UNSUPPORTED_PATTERNS = [/^grok-4\.7$/i];
 
   // Reasoning-budget floor for chat-surface models that spend hidden reasoning
   // budget before any visible content. A tiny token cap is consumed entirely by
@@ -248,6 +269,19 @@
     // high cap on any run, so the standard floor is sufficient. gpt-6-luna is
     // NOT here: it measured 1460 / 471 / 1161 and belongs to the HIGH list below.
     /^gpt-6-sol$/i,
+
+    // Added 13 October 2026, MR-7. gpt-6.1-sol's image task produced 98 / 7 / 7
+    // completion tokens across three runs, never empty at a high cap
+    // (results/probe-gpt-6.1-sol-2026-10-13.json), so the standard floor is
+    // sufficient.
+    /^gpt-6\.1-sol$/i,
+
+    // Added 13 October 2026, MR-7. grok-4.7 spends hidden reasoning: 25 / 26 /
+    // 29 reasoning tokens on the effort rows, and 3 completion tokens on each
+    // of the three image runs, never empty at a high cap
+    // (results/probe-grok-4.7-2026-10-13.json). The standard floor is
+    // sufficient. It accepts temperature/top_p, which this list allows for.
+    /^grok-4\.7$/i,
   ];
 
   // Raised floor for chat models whose hidden reasoning spend EXCEEDS
@@ -579,6 +613,24 @@
   }
 
   /**
+   * Test whether a stripped deployment id matches any pattern in
+   * PENALTY_UNSUPPORTED_PATTERNS — i.e. it refuses presence_penalty and
+   * frequency_penalty while accepting temperature and top_p. Used by
+   * buildRequest to drop the two penalties only.
+   *
+   * @param {string} strippedDeploymentId - e.g. "grok-4.7" (NOT
+   *   "azure-openai/grok-4.7"). Strip the registry prefix before calling this.
+   * @returns {boolean}
+   * @private
+   */
+  function refusesPenalties(strippedDeploymentId) {
+    if (typeof strippedDeploymentId !== "string" || !strippedDeploymentId) {
+      return false;
+    }
+    return PENALTY_UNSUPPORTED_PATTERNS.some((re) => re.test(strippedDeploymentId));
+  }
+
+  /**
    * Resolve the reasoning-budget floor that applies to a stripped deployment
    * id — i.e. the minimum token cap it needs to emit visible content after
    * its hidden reasoning phase. Used by buildRequest to decide whether, and
@@ -840,6 +892,9 @@
       // an accepting model = mild fidelity loss. Keeping on a rejecting
       // model = HTTP 400. Asymmetry favours dropping.
       const isReasoning = isReasoningModel(deploymentName);
+      // The two penalties are also dropped for a deployment that refuses only
+      // them (PENALTY_UNSUPPORTED_PATTERNS), keeping temperature and top_p.
+      const dropsPenalties = isReasoning || refusesPenalties(deploymentName);
 
       if (typeof options.temperature === "number" && !isReasoning) {
         body.temperature = options.temperature;
@@ -847,10 +902,10 @@
       if (typeof options.top_p === "number" && !isReasoning) {
         body.top_p = options.top_p;
       }
-      if (typeof options.frequency_penalty === "number" && !isReasoning) {
+      if (typeof options.frequency_penalty === "number" && !dropsPenalties) {
         body.frequency_penalty = options.frequency_penalty;
       }
-      if (typeof options.presence_penalty === "number" && !isReasoning) {
+      if (typeof options.presence_penalty === "number" && !dropsPenalties) {
         body.presence_penalty = options.presence_penalty;
       }
 

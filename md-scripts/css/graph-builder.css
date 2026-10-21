@@ -1216,6 +1216,90 @@ fieldset.gb-image-field textarea {
   }
 }
 /* UX-14 END */
+/* UX-16 BEGIN: the image tab, wide screens, while the original image is showing. Controls in the left column, the image in the right and sticky; the developer panel spans both below. Placed by DOM order; only the image names a row. */
+@media (min-width: 1130px) {
+  #gb-image-panel.active:has(> #gb-image-original-data:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  #gb-image-panel.active:has(> #gb-image-original-data:not([hidden])) > * {
+    grid-column: 1;
+  }
+  #gb-image-panel.active > #gb-image-original-data:not([hidden]) {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+    position: sticky;
+    top: 1rem;
+    margin-bottom: 0;
+  }
+  #gb-image-panel.active > #gb-image-original-data:not([hidden]) img {
+    max-height: calc(100vh - 6rem);
+  }
+  /* UX-20: removed, the developer panel is no longer a child of #gb-image-panel and this could not match. Was:
+     #gb-image-panel.active:has(> #gb-image-original-data:not([hidden])) > #gb-image-dev-panel { grid-column: 1 / -1; } */
+}
+/* UX-16 END */
+/* UX-20 BEGIN: the developer panel sits after the Data Preview, outside the image tab panel, so it is hidden whenever the image tab is not the active one (display none also takes it out of the Tab order and the accessibility tree). Every width. */
+#gb-data-input:not(:has(#gb-image-panel.active)) > #gb-image-dev-panel {
+  display: none;
+}
+/* UX-20 END */
+/* UX-17 BEGIN: Choose Chart and Result, wide screens, while the original image is showing. The image takes the narrower left column and the chart the right (placed by DOM order, nothing reordered). With no image both screens are as before. */
+@media (min-width: 1130px) {
+  /* UX-17 S2 */
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > h2,
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > #gb-chart-type-note,
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > .gb-navigation {
+    grid-column: 1 / -1;
+  }
+  #gb-chart-type.active > #gb-image-original-type:not([hidden]) {
+    margin-bottom: 0;
+  }
+  /* UX-17 S2 END */
+  /* UX-17 S4 */
+  .gb-result-layout:has(> #gb-image-original-result:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 7fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  .gb-result-layout > #gb-image-original-result:not([hidden]) {
+    margin: 0;
+  }
+  /* UX-17 S4 END */
+}
+/* UX-17 END */
+/* UX-19 BEGIN: Configure, wide screens, while the original image is showing. The live preview chart takes the wider left column and the image the right (placed by DOM order, nothing reordered); the settings card keeps its own column. The breakpoint is the first width at which the drawn chart reaches 400px, the old frame cap, so the chart never gets smaller. With no image Configure is as before. */
+@media (min-width: 1319px) {
+  /* UX-19 G */
+  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    column-gap: 2rem;
+    align-items: start;
+  }
+  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) > h3 {
+    grid-column: 1 / -1;
+  }
+  #gb-configure .gb-config-preview > #gb-image-original-config:not([hidden]) {
+    margin-bottom: 0;
+  }
+  /* UX-19 G END */
+  /* UX-19 L */
+  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) .gb-chart-preview-frame {
+    max-width: 800px;
+  }
+  /* UX-19 L END */
+}
+/* UX-19 END */
 /* Responsive Design */
 @media (max-width: 885px) {
   .gb-steps {

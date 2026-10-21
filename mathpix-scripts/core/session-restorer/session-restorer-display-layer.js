@@ -225,9 +225,14 @@
    * Load MMD content into editor
    * @param {string} mmdContent - Content to display/edit
    * @param {string} originalMMD - Original for restore functionality
+   * @param {Object} [options]
+   * @param {boolean} [options.deferPreview=false] - RR-2: skip the preview
+   *   rebuild and mark it stale instead. The caller (the Image Manager, whose
+   *   modal covers the preview) owes a flushStalePreview() before it finishes
+   *   closing. Everything else this function does is unchanged.
    * @private
    */
-  proto.loadMMDContent = function (mmdContent, originalMMD) {
+  proto.loadMMDContent = function (mmdContent, originalMMD, options = {}) {
     logDebug("Loading MMD content", { length: mmdContent?.length });
 
     // Phase 8G: Determine what to show in textarea vs what to store as working MMD
@@ -289,8 +294,18 @@
     // When content is loaded, editing is enabled by default
     this.setEditMode(true);
 
-    // Update preview (uses full working MMD so images render properly)
-    this.updatePreview(contentForPreview);
+    // Update preview (uses full working MMD so images render properly).
+    // RR-2: a deferred write records the content it owes the preview and
+    // leaves the rebuild to flushStalePreview; any other load rebuilds now
+    // and so clears an earlier debt (the preview is current again).
+    if (options.deferPreview === true) {
+      this._previewStale = true;
+      this._stalePreviewContent = contentForPreview;
+    } else {
+      this._previewStale = false;
+      this._stalePreviewContent = null;
+      this.updatePreview(contentForPreview);
+    }
 
     // Re-render line-based editor if confidence highlighting is enabled
     // This ensures edit status indicators are recalculated after version switches
@@ -300,6 +315,24 @@
       this.renderLineBasedConfidenceEditor(isEditing);
       logDebug("Re-rendered line editor after content load");
     }
+  };
+
+  /**
+   * RR-2: pay the preview rebuild a deferred write owed. Rebuilds once from
+   * the content the last deferred write recorded and clears the debt; with no
+   * debt it does nothing and renders zero times.
+   * @returns {Promise|null} The updatePreview promise, or null when not stale.
+   * @private
+   */
+  proto.flushStalePreview = function () {
+    if (this._previewStale !== true) return null;
+
+    const content = this._stalePreviewContent;
+    this._previewStale = false;
+    this._stalePreviewContent = null;
+
+    logDebug("Flushing stale preview", { length: content?.length });
+    return this.updatePreview(content);
   };
 
   /**
@@ -765,7 +798,20 @@
         lastModified: timestamp,
       };
 
+      // VS-3c: the same field, from the same helper, as saveContentToStorage
+      // (session-restorer-confidence.js). After Clear Local Saves this is the
+      // snapshot of the archive registry VS-2 has just rebuilt.
+      const registrySnapshot =
+        typeof this._registrySnapshotForStore === "function"
+          ? this._registrySnapshotForStore()
+          : undefined;
+      if (registrySnapshot) sessionData.registrySnapshot = registrySnapshot;
+
       localStorage.setItem(storageKey, JSON.stringify(sessionData));
+      // QF-1: the shared outcome helper (session-restorer-confidence.js)
+      if (typeof this._noteSessionStoreWrite === "function") {
+        this._noteSessionStoreWrite();
+      }
 
       // Store both keys for reference
       this.restoredSession.sessionKey = sessionKey;
@@ -774,6 +820,9 @@
       logInfo("Persistence session started:", storageKey);
     } catch (error) {
       logWarn("Failed to start persistence session:", error);
+      if (typeof this._noteSessionStoreWrite === "function") {
+        this._noteSessionStoreWrite(error);
+      }
     }
   };
 

@@ -92,9 +92,17 @@
   // CONFIGURATION
   // ============================================================================
 
+  // The localStorage key the removed analysis categories were saved under (H-56).
+  // Cleared once at start-up; nothing reads or writes it any more.
+  const REMOVED_PROFILE_STORAGE_KEY = "imgdesc-profile";
+
+  // Written once the retired models' cached files (CLIP, Depth Anything) have been
+  // cleared, so later start-ups skip the scan (H-62).
+  const RETIRED_MODELS_CLEARED_KEY = "imgdesc_retired_models_cleared_h62";
+
   const CONTROLLER_CONFIG = {
     // AI model to use
-    model: "anthropic/claude-haiku-4.5",
+    model: "anthropic/claude-haiku-5.5",
 
     // Token limits
     maxTokens: 4000,
@@ -249,14 +257,6 @@
           });
         }
 
-        // Position generate button based on viewport (Phase 2B.2)
-        this.positionGenerateButton();
-
-        // Re-position on resize
-        window.addEventListener("resize", () => {
-          this.positionGenerateButton();
-        });
-
         // Subscribe to provider/credential events (Task 3.5b).
         // Added before _initialized = true so handlers no-op if an event
         // arrives in the millisecond gap between subscription and the flag
@@ -281,7 +281,6 @@
         fileInput: document.getElementById("imgdesc-file-input"),
         uploadArea: document.getElementById("imgdesc-upload-area"),
         preview: document.getElementById("imgdesc-preview"),
-        clearBtn: document.getElementById("imgdesc-clear"),
 
         // Form fields
         subject: document.getElementById("imgdesc-subject"),
@@ -342,8 +341,6 @@
         progressStage: document.getElementById("imgdesc-progress-stage"),
         progressTime: document.getElementById("imgdesc-progress-time"),
         cancelBtn: document.getElementById("imgdesc-cancel"),
-        completionTime: document.getElementById("imgdesc-completion-time"),
-        finalTime: document.getElementById("imgdesc-final-time"),
 
         // Output
         outputSection: document.getElementById("imgdesc-output-section"),
@@ -420,13 +417,6 @@
             "imgdesc-debug-user-char-count",
           ),
           // Pre-analysis details (Local Analysis)
-          analysisProfile: document.getElementById(
-            "imgdesc-debug-analysis-profile",
-          ),
-          classification: document.getElementById(
-            "imgdesc-debug-classification",
-          ),
-          clip: document.getElementById("imgdesc-debug-clip"),
           ocrLabels: document.getElementById("imgdesc-debug-ocr-labels"),
           ocrTime: document.getElementById("imgdesc-debug-ocr-time"),
           noiseSuppression: document.getElementById(
@@ -476,11 +466,9 @@
 
         // Expert mode (Phase 4A)
         expertSection: document.getElementById("imgdesc-expert-section"),
-        expertPanel: document.getElementById("imgdesc-expert-panel"),
         expertLibraryStatus: document.getElementById(
           "imgdesc-expert-library-status",
         ),
-        expertProfile: document.getElementById("imgdesc-expert-profile"),
 
         // Camera capture elements (Phase 2E.2)
         cameraSection: document.getElementById("imgdesc-camera-section"),
@@ -700,53 +688,6 @@
     },
 
     /**
-     * Position generate button based on viewport (Phase 2B.2)
-     * Desktop: Below image upload/preview in left column
-     * Mobile: Below options in right column
-     */
-    positionGenerateButton() {
-      if (!this.elements.generateArea) {
-        logWarn("Generate area not found for positioning");
-        return;
-      }
-
-      const isDesktop = window.matchMedia("(min-width: 768px)").matches;
-      const inputColumn = document.querySelector(".imgdesc-input-column");
-      const configPanel = this.elements.configPanel;
-
-      if (isDesktop && inputColumn) {
-        // Desktop: Place at end of left column (after upload section)
-        const uploadSection = inputColumn.querySelector(".imgdesc-section");
-        if (
-          uploadSection &&
-          this.elements.generateArea.parentElement !== uploadSection
-        ) {
-          uploadSection.appendChild(this.elements.generateArea);
-          logDebug("Generate button moved to left column (desktop)");
-        }
-      } else if (configPanel) {
-        // Mobile: Place after config panel (at end of right column content)
-        const outputColumn = document.querySelector(".imgdesc-output-column");
-        if (
-          outputColumn &&
-          this.elements.generateArea.parentElement !== outputColumn
-        ) {
-          // Insert after config panel but before output section
-          const outputSection = this.elements.outputSection;
-          if (outputSection) {
-            outputColumn.insertBefore(
-              this.elements.generateArea,
-              outputSection,
-            );
-          } else {
-            outputColumn.appendChild(this.elements.generateArea);
-          }
-          logDebug("Generate button moved to right column (mobile)");
-        }
-      }
-    },
-
-    /**
      * Bind event listeners
      */
     bindEvents() {
@@ -795,13 +736,6 @@
             }
             this.handleFileSelect(e.dataTransfer.files[0]);
           }
-        });
-      }
-
-      // Clear button
-      if (this.elements.clearBtn) {
-        this.elements.clearBtn.addEventListener("click", () => {
-          this.clear();
         });
       }
 
@@ -937,31 +871,6 @@
         });
       }
 
-      // Expert panel state persistence (Phase 4A)
-      if (this.elements.expertPanel) {
-        // Restore saved open/closed state
-        try {
-          const savedState = localStorage.getItem("imgdesc-expert-open");
-          if (savedState === "true") {
-            this.elements.expertPanel.open = true;
-          }
-        } catch (e) {
-          logWarn("Could not restore expert panel state:", e);
-        }
-
-        // Save state on toggle
-        this.elements.expertPanel.addEventListener("toggle", () => {
-          try {
-            localStorage.setItem(
-              "imgdesc-expert-open",
-              this.elements.expertPanel.open,
-            );
-          } catch (e) {
-            logWarn("Could not save expert panel state:", e);
-          }
-        });
-      }
-
       // Library status events (Phase 4B)
       if (window.EmbedEventEmitter) {
         window.EmbedEventEmitter.on("library:status", (data) => {
@@ -970,9 +879,12 @@
           const options = {};
 
           if (data.status === "ready" && data.elapsed) {
+            // Words, not "12s": a reader says the compact form as "tens"
+            // elapsed arrives as text with one decimal ("1.2"); keep its digits
+            const elapsedWords = `${data.elapsed} ${String(data.elapsed) === "1" ? "second" : "seconds"}`;
             options.hint = data.cached
-              ? `Cached (${data.elapsed}s)`
-              : `Loaded in ${data.elapsed}s`;
+              ? `Cached (${elapsedWords})`
+              : `Loaded in ${elapsedWords}`;
           }
 
           if (data.status === "error" && data.error) {
@@ -996,25 +908,64 @@
         logDebug("Subscribed to analysis:stage events");
       }
 
-      // Profile selection change handler (Phase 4C)
-      const profileRadios = document.querySelectorAll(
-        'input[name="imgdesc-profile"]',
-      );
-      profileRadios.forEach((radio) => {
-        radio.addEventListener("change", (e) => {
-          this.handleProfileChange(e.target.value);
-        });
-      });
+      // The analysis category the person used to choose was saved under this key.
+      // The categories are gone (H-56), so clear it once at start-up: an old saved
+      // Painting choice used to turn text detection off without saying so.
+      try {
+        localStorage.removeItem(REMOVED_PROFILE_STORAGE_KEY);
+      } catch (e) {
+        logWarn("Could not clear the old analysis profile setting:", e);
+      }
 
-      // Skip-OCR checkbox — hide/show Florence-2 OCR prompt (Phase 14J)
-      const skipOCRCheckbox = document.getElementById("imgdesc-skip-ocr");
-      if (skipOCRCheckbox) {
-        skipOCRCheckbox.addEventListener("change", () => {
-          this._updateFlorenceOCRPrompt();
+      // Delete the retired models' cached files (CLIP, Depth Anything) once per
+      // browser (H-62). Not awaited: start-up does not wait for it.
+      this._clearRetiredModelFilesOnce();
+
+      // "Detect text in this picture?" buttons (H-64) — the first answer starts
+      // text detection, a later one analyses the picture again, and the
+      // Florence-2 OCR prompt is hidden/shown with it (Phase 14J)
+      const textChoiceButtons = {
+        detect: document.getElementById("imgdesc-text-choice-detect"),
+        skip: document.getElementById("imgdesc-text-choice-skip"),
+      };
+      for (const [choice, button] of Object.entries(textChoiceButtons)) {
+        if (!button) continue;
+        button.addEventListener("click", () => {
+          this.handleTextChoice(choice);
         });
       }
 
       logDebug("Event listeners bound");
+    },
+
+    /**
+     * One-time clean-up of the retired models' cached files (H-62).
+     * Skips when the marker is set; writes the marker after the attempt,
+     * whatever its outcome. Fire-and-forget; never throws.
+     */
+    _clearRetiredModelFilesOnce() {
+      try {
+        if (localStorage.getItem(RETIRED_MODELS_CLEARED_KEY)) return;
+
+        const manager = window.ImageDescriberModelManager;
+        if (!manager || typeof manager.clearRetiredModelFiles !== "function") {
+          logWarn("Model Manager not available — retired model files not cleared");
+          return;
+        }
+
+        manager
+          .clearRetiredModelFiles()
+          .catch((e) => logWarn("Retired model clean-up failed:", e))
+          .finally(() => {
+            try {
+              localStorage.setItem(RETIRED_MODELS_CLEARED_KEY, "1");
+            } catch (e) {
+              logWarn("Could not record the retired model clean-up:", e);
+            }
+          });
+      } catch (e) {
+        logWarn("Could not start the retired model clean-up:", e);
+      }
     },
 
     /**
@@ -1316,11 +1267,6 @@
       // Generate Locally button (Phase 13C-1)
       if (this.elements.generateLocalBtn) {
         this.elements.generateLocalBtn.disabled = !hasFile || busyNatively;
-      }
-
-      // Clear button
-      if (this.elements.clearBtn) {
-        this.elements.clearBtn.hidden = !hasFile;
       }
 
       // Copy button

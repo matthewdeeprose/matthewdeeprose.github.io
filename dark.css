@@ -32,11 +32,6 @@
   border: 0.2rem solid #231f20;
 }
 
-.imgdesc-depth-legend {
-  border: 1px solid currentcolor;
-  background: #00131d;
-}
-
 /* Semantic status icon colours (subtle — icons + text labels remain primary indicator) */
 .imgdesc-mm-model-item[data-state="loaded"] .imgdesc-mm-status-icon svg,
 .imgdesc-progress-slot[data-slot-status="complete"]
@@ -187,59 +182,6 @@
 .imgdesc-library-item[data-status="error"] .imgdesc-library-status-text {
   color: #ef7d00;
 }
-/* ── Analysis Profile Selection (Phase 4C) ── */
-.imgdesc-expert-profile-description {
-  color: #e1e8ec;
-}
-.imgdesc-profile-option {
-  border: 1px dotted #e1e8ec;
-}
-.imgdesc-profile-option:hover {
-  border-color: #e1e8ec;
-  background: #00131d;
-}
-.imgdesc-profile-option:has(input:checked) {
-  border: 1px solid #e1e8ec;
-  background: #00131d;
-}
-.imgdesc-profile-option:has(input:focus-visible) {
-  outline: 2px solid #e1e8ec;
-}
-.imgdesc-profile-desc {
-  color: #e1e8ec;
-}
-/* Feature badge colours */
-.imgdesc-profile-feature[data-feature="ocr"] {
-  background: #00131d;
-  color: #c1d100;
-  border: 1px solid #e1e8ec;
-}
-.imgdesc-profile-feature[data-feature="ocr-off"] {
-  background: #00131d;
-  color: #e1e8ec;
-  border: 1px solid #e1e8ec;
-}
-.imgdesc-profile-feature[data-feature="colour"] {
-  background: #00131d;
-  color: #b3dbd2;
-  border: 1px solid #e1e8ec;
-}
-.imgdesc-profile-feature[data-feature="colour-high"] {
-  background: #00131d;
-  color: #b3dbd2;
-  border: 1px solid #e1e8ec;
-}
-.imgdesc-profile-feature[data-feature="colour-low"] {
-  background: #00131d;
-  color: #b3dbd2;
-  border: 1px solid #e1e8ec;
-}
-/* ── Profile Suggestion Banner (Phase 5C) ── */
-.imgdesc-profile-suggestion {
-  border: 1px solid #b3dbd2;
-  border-left: 4px solid #b3dbd2;
-  background: #00131d;
-}
 /* ── OCR Bounding Boxes (Phase 5D) ── */
 .imgdesc-overlay-box[data-confidence="high"] {
   border-color: #005051;
@@ -388,10 +330,6 @@
   color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
-.imgdesc-overlay-classification {
-  background: #00131d;
-  border: 1px solid #e1e8ec;
-}
 
 .imgdesc-verification-results > summary,
 .imgdesc-verification-results {
@@ -441,6 +379,10 @@
 }
 
 .image-manager-size {
+  color: #e1e8ec;
+}
+
+.image-manager-caption {
   color: #e1e8ec;
 }
 
@@ -7838,3 +7780,34 @@ pre.language-json {
   border-color: #c1d100;
 }
 
+
+/* TikZ Studio (P3 of the TikZ programme, hidden Alpha; P3L). The preview frame follows the page. The drawing's own box is the same
+ * white sheet with black ink as in light.css, deliberately not inverted: TeX draws in colours chosen for white. It is dimmed to
+ * about 85% brightness for people who prefer dark, which leaves black ink on it well above 7:1 (measured in the P3L report). The
+ * dimming is dropped under prefers-contrast: more and forced colours, where the sheet should be as plain as it can be. The edge
+ * is the page's own light tone, 16.3:1 against this theme's page. */
+.tikz-studio-paper {
+  background-color: transparent;
+  color: inherit;
+  border-color: #e1e8ec;
+}
+
+.tikz-studio-paper .tikz-graphic-container:has(> svg) {
+  background-color: #ffffff;
+  color: #000000;
+  border-color: #e1e8ec;
+}
+
+@media not ((prefers-contrast: more) or (forced-colors: active)) {
+  .tikz-studio-paper .tikz-graphic-container:has(> svg) {
+    filter: brightness(0.85);
+  }
+}
+
+/* Resume: on narrow screens the selected format chip is filled in so it stands out from the others */
+@media (max-width: 768px) {
+  #mathpix-resume-mode-container .mathpix-tab-header[aria-selected="true"] {
+    background: #b3dbd2 !important;
+    color: #00131d !important;
+  }
+}

@@ -286,6 +286,10 @@
       // so the opening-model / re-resolve logic does not fire on a restore.
       S.currentModel = data.currentModel;
       if (els.select && S.currentModel) els.select.value = S.currentModel;
+      // This path bypasses reflectSelection(), so the Foundry default system
+      // prompt (parcel 15c) is re-asserted here for the restored model.
+      if (window.ChatCore && window.ChatCore._applyDefaultSystemPrompt)
+        window.ChatCore._applyDefaultSystemPrompt(S.currentModel);
 
       // Restore messages and rebuild the DOM through the shared render helper.
       S.messages = data.messages;
@@ -447,12 +451,44 @@
       window.refreshIcons(banner);
     }
 
-    S.announceToScreenReader(
-      "Previous conversation restored. " +
+    announceRestoreLine("Previous conversation restored. " +
         msgCount +
         " messages. " +
         "Choose to continue or start fresh.",
     );
+  }
+
+  // ── R1: the restore line is spoken only while Chat is the open tool ──
+  // Held here until Chat is open. On a user-initiated switch to Chat the tool switcher takes it and speaks it inside the one switch line;
+  // otherwise Chat.refresh() (run by the switcher on every switch to Chat) flushes it once.
+  let pendingRestoreLine = null;
+
+  function isChatOpen() {
+      const a = document.getElementById("chat-app");
+      const open = !!a && a.style.display !== "none" && a.getAttribute("aria-hidden") !== "true";
+      return open;
+  }
+
+  function announceRestoreLine(text) {
+    if (isChatOpen()) {
+      S.announceToScreenReader(text);
+      return;
+    }
+    pendingRestoreLine = text;
+  }
+
+  function flushPendingRestoreLine() {
+    if (!pendingRestoreLine) return;
+    const text = pendingRestoreLine;
+    pendingRestoreLine = null;
+    S.announceToScreenReader(text);
+  }
+
+  // For the tool switcher: hand over the pending line so it can be spoken inside the one switch line.
+  function takePendingRestoreLine() {
+    const text = pendingRestoreLine;
+    pendingRestoreLine = null;
+    return text;
   }
 
   function dismissRestoreBanner() {
@@ -468,6 +504,8 @@
     clearSession: clearSession,
     performClear: performClear,
     showRestoreBanner: showRestoreBanner,
+    flushPendingRestoreLine: flushPendingRestoreLine,
+    takePendingRestoreLine: takePendingRestoreLine,
     dismissRestoreBanner: dismissRestoreBanner,
     attach: attach,
     // Testability seams (no behaviour change) — used by the structural probe.

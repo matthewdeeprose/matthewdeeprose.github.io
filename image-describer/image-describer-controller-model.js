@@ -77,7 +77,30 @@
    * Default model ID — fallback when no model is selected.
    * Mirrors CONTROLLER_CONFIG.model in the core file.
    */
-  const DEFAULT_MODEL = "anthropic/claude-haiku-4.5";
+  const DEFAULT_MODEL = "anthropic/claude-haiku-5.5";
+
+  /**
+   * Models shown first, in their own group, as "Tested for describing pictures".
+   * Rule (idq-phase-h-plan.md, "Decisions of 8 October 2026 (evening)"): a model is
+   * listed only if every shipped-thirds row it was measured on passed the bar.
+   * Full ids only, in display order. Foundry's Maverick is listed by its Foundry id;
+   * OpenRouter's meta-llama/llama-4-maverick was NOT tested and must not be added.
+   */
+  const TESTED_MODEL_IDS = Object.freeze([
+    "anthropic/claude-haiku-5.5",
+    "anthropic/claude-sonnet-5",
+    "anthropic/claude-sonnet-5.5",
+    "azure-openai/Llama-4-Maverick-17B-128E-Instruct-FP8",
+  ]);
+  const TESTED_GROUP_LABEL = "Tested for describing pictures";
+
+  /**
+   * One-time move (H-48): a saved Haiku 4.5 choice becomes Haiku 5.5, once.
+   * The marker is set on every restore, so a later deliberate pick of 4.5 is kept.
+   */
+  const MIGRATION_MARKER_KEY = "imgdesc_model_preference_h48";
+  const MIGRATION_FROM_ID = "anthropic/claude-haiku-4.5";
+  const MIGRATION_TO_ID = "anthropic/claude-haiku-5.5";
 
   // ============================================================================
   // MODEL FAMILY MAP — friendly grouping for the family filter
@@ -280,9 +303,54 @@
 
         const tierOrder = ["low", "medium", "high"];
 
+        const buildOption = (model, tier) => {
+          const option = document.createElement("option");
+          option.value = model.id;
+
+          // Display name with provider
+          const displayName = model.name || model.id.split("/").pop();
+          const provider = model.provider || model.id.split("/")[0];
+          option.textContent = `${displayName} (${provider})`;
+
+          // Add data attributes for cost calculation (Stage 3)
+          if (model.costs) {
+            option.dataset.inputCost = model.costs.input || 0;
+            option.dataset.outputCost = model.costs.output || 0;
+          }
+          option.dataset.provider = provider;
+          option.dataset.costTier = tier;
+          return option;
+        };
+
+        // "Tested for describing pictures" comes first. A tested model keeps its
+        // own cost tier on the option (the cost line reads it) but is listed here
+        // only, so the select never offers one model twice. No tested model present
+        // after the provider and filters means no group at all.
+        const tierOf = {};
+        tierOrder.forEach((tier) =>
+          (groupedModels[tier] || []).forEach((m) => {
+            tierOf[m.id] = tier;
+          }),
+        );
+        const testedModels = TESTED_MODEL_IDS.map((id) =>
+          filteredModels.find((m) => m.id === id),
+        ).filter(Boolean);
+        const testedIds = new Set(testedModels.map((m) => m.id));
+
+        if (testedModels.length > 0) {
+          const testedGroup = document.createElement("optgroup");
+          testedGroup.label = TESTED_GROUP_LABEL;
+          testedModels.forEach((model) =>
+            testedGroup.appendChild(buildOption(model, tierOf[model.id])),
+          );
+          selector.appendChild(testedGroup);
+        }
+
         tierOrder.forEach((tier) => {
-          const models = groupedModels[tier];
-          if (!models || models.length === 0) return;
+          const models = (groupedModels[tier] || []).filter(
+            (m) => !testedIds.has(m.id),
+          );
+          if (models.length === 0) return;
 
           const optgroup = document.createElement("optgroup");
           optgroup.label = tierLabels[tier];
@@ -292,25 +360,9 @@
             (a.name || a.id).localeCompare(b.name || b.id),
           );
 
-          sortedModels.forEach((model) => {
-            const option = document.createElement("option");
-            option.value = model.id;
-
-            // Display name with provider
-            const displayName = model.name || model.id.split("/").pop();
-            const provider = model.provider || model.id.split("/")[0];
-            option.textContent = `${displayName} (${provider})`;
-
-            // Add data attributes for cost calculation (Stage 3)
-            if (model.costs) {
-              option.dataset.inputCost = model.costs.input || 0;
-              option.dataset.outputCost = model.costs.output || 0;
-            }
-            option.dataset.provider = provider;
-            option.dataset.costTier = tier;
-
-            optgroup.appendChild(option);
-          });
+          sortedModels.forEach((model) =>
+            optgroup.appendChild(buildOption(model, tier)),
+          );
 
           selector.appendChild(optgroup);
         });
@@ -959,6 +1011,12 @@
       try {
         const saved = localStorage.getItem(PREFERENCE_CONFIG.STORAGE_KEY);
 
+        // One-time move (H-48): claim the marker on every restore, whatever is
+        // saved, so only the very first restore can move a choice.
+        const firstRestore =
+          localStorage.getItem(MIGRATION_MARKER_KEY) === null;
+        if (firstRestore) localStorage.setItem(MIGRATION_MARKER_KEY, "1");
+
         if (!saved) {
           logDebug("No saved preference found - using default");
           this.setDefaultModel();
@@ -992,6 +1050,31 @@
             );
           }
           return;
+        }
+
+        // Move a saved Haiku 4.5 choice to Haiku 5.5, once and silently (the tool
+        // is not in general use). Only when 5.5 is in the list being restored into.
+        if (
+          firstRestore &&
+          preference.modelId === MIGRATION_FROM_ID &&
+          Array.from(this.elements.modelSelector.options).some(
+            (opt) => opt.value === MIGRATION_TO_ID,
+          )
+        ) {
+          const target = this.elements.modelSelector.querySelector(
+            `option[value="${MIGRATION_TO_ID}"]`,
+          );
+          preference.modelId = MIGRATION_TO_ID;
+          preference.modelName =
+            target?.textContent?.trim() || MIGRATION_TO_ID;
+          preference.savedAt = Date.now();
+          localStorage.setItem(
+            PREFERENCE_CONFIG.STORAGE_KEY,
+            JSON.stringify(preference),
+          );
+          logInfo(
+            `Saved model preference moved: ${MIGRATION_FROM_ID} to ${MIGRATION_TO_ID}`,
+          );
         }
 
         // Check if saved model still exists in dropdown
@@ -1604,7 +1687,8 @@
         return;
       }
 
-      // Priority 2: Try to find Claude Haiku 4.5 specifically
+      // Priority 2: Claude Haiku 4.5, the previous default. This is the fallback
+      // when Haiku 5.5 (Priority 1) is missing from the list or disabled.
       const haiku45 = optionsArray.find(
         (opt) => opt.value === "anthropic/claude-haiku-4.5",
       );
@@ -1778,7 +1862,10 @@
 
       // Scroll the target into view smoothly
       if (target) {
-        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        target.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "nearest",
+        });
       }
 
       // Move keyboard focus after scroll starts

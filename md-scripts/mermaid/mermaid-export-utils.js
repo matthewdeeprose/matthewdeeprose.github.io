@@ -360,7 +360,7 @@ window.MermaidExportUtils = (function () {
     descriptionToolbarSelector: ".mermaid-description .mermaid-export-controls",
     disclosureClass: "long-description-details",
     disclosureBodyClass: "image-long-description",
-    disclosureSummary: "Diagram description",
+    disclosureSummary: "Description",
     fullscreenClass: "fullscreen-mode",
     panZoomContainerSelector: ".mermaid-pan-zoom-container",
   });

@@ -64,12 +64,14 @@ let engineState = "idle";
 // Y.4-early readiness state (Convert preview not always immediately renderable
 // because of CDN / MathJax warm-up). When previewReady is false and the engine
 // is idle, the Speak button is disabled with an explanatory aria-label.
-let previewReady = false;
+let previewReady = null; // unknown until the first readiness check
 let previewListenersWired = false;
 let previewObserver = null;
 const PREVIEW_NOT_READY_STATUS =
   "Preview is still rendering, please try again in a moment";
-const PREVIEW_NOT_READY_ARIA_LABEL = "Preview is loading, please wait";
+// Names for the disabled Read Aloud button (screen-reader only; both start with the visible words, SC 2.5.3).
+const PREVIEW_LOADING_ARIA_LABEL = "Read Aloud, preview is loading";
+const PREVIEW_EMPTY_ARIA_LABEL = "Read Aloud, nothing to read yet";
 
 // ============================================================================
 // State tables
@@ -152,11 +154,24 @@ function isPreviewReadyForTts(panelEl) {
       ? window.getMathPixConvertMode()
       : null;
   if (mode && mode.pendingPreviewRender) return false;
-  const src =
-    (mode && (mode.pendingPreviewContent || mode.currentMMDContent)) || "";
-  const expectsMath = /\$\$?|\\\[|\\\(/.test(src);
-  if (expectsMath && !panelEl.querySelector("mjx-container")) return false;
+  // Parcel T-12a: readiness is the renderer's (pending flag, loading
+  // placeholder), not a guess from the source. A lone or escaped "$" is not
+  // maths and used to leave Read Aloud disabled for good.
   return true;
+}
+
+// Which disabled name applies: the preview is still loading, or there is nothing to read.
+// Content typed or loaded but not yet rendered counts as loading; an empty editor with nothing rendering does not.
+function notReadyAriaLabel(panelEl) {
+  if (panelEl && panelEl.querySelector(".mmd-preview-loading")) {
+    return PREVIEW_LOADING_ARIA_LABEL;
+  }
+  const mode =
+    typeof window.getMathPixConvertMode === "function"
+      ? window.getMathPixConvertMode()
+      : null;
+  const hasContent = !!mode && String(mode.currentMMDContent || "").trim() !== "";
+  return hasContent ? PREVIEW_LOADING_ARIA_LABEL : PREVIEW_EMPTY_ARIA_LABEL;
 }
 
 // Only call when engineState === "idle". Caller's responsibility.
@@ -168,12 +183,19 @@ function applyReadyState(opts) {
     speakBtn.removeAttribute("aria-label");
   } else {
     speakBtn.disabled = true;
-    speakBtn.setAttribute("aria-label", PREVIEW_NOT_READY_ARIA_LABEL);
+    const label = notReadyAriaLabel(opts.panelEl);
+    if (speakBtn.getAttribute("aria-label") !== label) {
+      speakBtn.setAttribute("aria-label", label);
+    }
   }
 }
 
 function setPreviewReady(opts, ready) {
-  if (previewReady === ready) return;
+  if (previewReady === ready) {
+    // Same readiness, but the reason may have changed (loading, then cleared to empty).
+    if (!ready && engineState === "idle") applyReadyState(opts);
+    return;
+  }
   previewReady = ready;
   logDebug("Preview ready =", ready);
   if (engineState === "idle") applyReadyState(opts);
@@ -312,17 +334,8 @@ async function handleClick(opts) {
   // assistive tech edge cases. Refuse and announce instead of reading the
   // "Loading preview renderer…" placeholder aloud.
   if (!isPreviewReadyForTts(panelEl)) {
-    if (opts.statusEl) {
-      opts.statusEl.textContent = PREVIEW_NOT_READY_STATUS;
-      setTimeout(() => {
-        if (
-          opts.statusEl &&
-          opts.statusEl.textContent === PREVIEW_NOT_READY_STATUS
-        ) {
-          opts.statusEl.textContent = "";
-        }
-      }, 3000);
-    }
+    // Parcel T-11a: a warning toast that stays until dismissed (announced once by the toast)
+    window.notifyWarning?.(PREVIEW_NOT_READY_STATUS, { duration: 0 });
     return;
   }
 

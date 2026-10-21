@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "templates": [
+    {
+      "id": "shapes",
+      "name": "Shapes and arrows",
+      "source": "\\begin{tikzpicture}\n  \\draw[thick, blue] (0,0) rectangle (3,2);\n  \\draw[->, thick, green!60!black] (0,0) -- (3,2);\n  \\node[red] at (1.5, 1) {Label};\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "flowchart",
+      "name": "Flowchart",
+      "source": "\\usetikzlibrary{positioning, arrows.meta}\n\\begin{tikzpicture}[node distance=1.6cm, box/.style={draw, thick, rounded corners, minimum width=2cm, minimum height=0.9cm}]\n  \\node[box] (a) {Start};\n  \\node[box, right=of a] (b) {Process};\n  \\node[box, right=of b] (c) {Finish};\n  \\draw[-{Stealth}, thick] (a) -- (b);\n  \\draw[-{Stealth}, thick] (b) -- (c);\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "plot",
+      "name": "Graph of a function (pgfplots)",
+      "source": "\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.16}\n\\begin{tikzpicture}\n  \\begin{axis}[xlabel={Time $t$ (s)}, ylabel={Distance $d$ (m)}, grid=major, legend pos=north west]\n    \\addplot[domain=0:5, samples=30, blue, thick] {x^2};\n    \\addlegendentry{$d=t^2$}\n  \\end{axis}\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "circuit",
+      "name": "Circuit (circuitikz)",
+      "source": "\\usepackage{circuitikz}\n\\begin{tikzpicture}\n  \\draw (0,0) to[battery1, l=$V_s$] (0,3) to[R, l=$R_1$] (3,3) to[C, l=$C_1$] (3,0) -- (0,0);\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "diagram",
+      "name": "Commutative square (tikz-cd)",
+      "source": "\\usepackage{tikz-cd}\n\\begin{tikzcd}\n  A \\arrow[r, \"f\"] \\arrow[d, \"g\"'] & B \\arrow[d, \"h\"] \\\\\n  C \\arrow[r, \"k\"'] & D\n\\end{tikzcd}\n"
+    },
+    {
+      "id": "molecule",
+      "name": "Benzene ring (TikZ)",
+      "source": "\\begin{tikzpicture}[line width=0.8pt]\n  \\foreach \\a in {0,60,...,300} { \\draw (\\a:1) -- (\\a+60:1); }\n  \\foreach \\a in {0,120,240} { \\draw (\\a+12:0.78) -- (\\a+48:0.78); }\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "class-diagram",
+      "name": "UML class diagram (tikz-uml)",
+      "source": "\\usepackage{tikz-uml}\n\\begin{tikzpicture}\n  \\umlclass{Student}{name : String \\\\ id : Integer}{enrol() \\\\ withdraw()}\n  \\umlclass[x=6]{Module}{title : String \\\\ credits : Integer}{addStudent()}\n  \\umlclass[y=-4.5, x=3]{Lecturer}{name : String}{mark()}\n  \\umlassoc[mult1=0..*, mult2=1..*]{Student}{Module}\n  \\umlassoc[mult1=1, mult2=1..*]{Lecturer}{Module}\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "contour-labels",
+      "name": "Labels that stand out (contour)",
+      "source": "\\usepackage{contour}\n\\usetikzlibrary{shadings}\n\\begin{tikzpicture}\n  \\shade[top color=blue!70!black, bottom color=cyan!60!blue] (0,0) rectangle (6,3);\n  \\fill[yellow!90!orange] (4.5,2) circle (0.5);\n  \\fill[green!50!black] (0,0) -- (2,1.4) -- (4,0.6) -- (6,1.2) -- (6,0) -- cycle;\n  \\node[white] at (1.5,2.4) {\\contour{blue!70!black}{Sky}};\n  \\node[white] at (3,0.4) {\\contour{green!50!black}{Hills}};\n  \\node at (4.5,2) {\\contour{yellow!90!orange}{Sun}};\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "probability-tree",
+      "name": "Probability tree",
+      "source": "\\begin{tikzpicture}[grow=right, level distance=3cm,\n    level 1/.style={sibling distance=3.4cm}, level 2/.style={sibling distance=1.6cm},\n    every node/.style={font=\\small}]\n  \\node[draw, circle] {Start}\n    child { node[draw, rounded corners] {Rain}\n      child { node[draw, rounded corners] {Late} edge from parent node[above] {$0.6$} }\n      child { node[draw, rounded corners] {On time} edge from parent node[below] {$0.4$} }\n      edge from parent node[above] {$0.3$} }\n    child { node[draw, rounded corners] {Dry}\n      child { node[draw, rounded corners] {Late} edge from parent node[above] {$0.1$} }\n      child { node[draw, rounded corners] {On time} edge from parent node[below] {$0.9$} }\n      edge from parent node[below] {$0.7$} };\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "surface",
+      "name": "3-D surface (pgfplots)",
+      "source": "\\usepackage{pgfplots}\n\\pgfplotsset{compat=1.16}\n\\begin{tikzpicture}\n  \\begin{axis}[view={50}{30}, xlabel={$x$}, ylabel={$y$}, zlabel={$z$}, colormap/viridis]\n    \\addplot3[surf, domain=-2:2, samples=14] {exp(-x^2 - y^2)};\n  \\end{axis}\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "mind-map",
+      "name": "Mind map",
+      "source": "\\usetikzlibrary{mindmap}\n\\begin{tikzpicture}[mindmap, grow cyclic, concept color=blue!60!black, text=white,\n    level 1/.append style={level distance=4cm, sibling angle=90},\n    level 2/.append style={level distance=2.6cm, sibling angle=60}]\n  \\node[concept] {Learning}\n    child[concept color=orange!80!black] { node[concept] {Memory} }\n    child[concept color=green!50!black] { node[concept] {Practice} }\n    child[concept color=red!70!black] { node[concept] {Feedback} }\n    child[concept color=purple!70!black] { node[concept] {Motivation} };\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "mass-on-spring",
+      "name": "Mass on a spring (patterns, decorations)",
+      "source": "\\usetikzlibrary{patterns.meta, decorations.pathmorphing, arrows.meta}\n\\begin{tikzpicture}\n  \\fill[pattern={Lines[angle=45, distance=4pt]}, pattern color=gray] (-0.4,-0.6) rectangle (0,1);\n  \\draw[thick] (0,-0.6) -- (0,1);\n  \\draw[thick] (0,0.2) -- (0.4,0.2);\n  \\draw[thick, decorate, decoration={coil, aspect=0.6, segment length=3mm, amplitude=3mm}] (0.4,0.2) -- (3.4,0.2);\n  \\draw[thick, fill=blue!15] (3.4,-0.3) rectangle (4.6,0.7);\n  \\node at (4,0.2) {$m$};\n  \\draw[-{Stealth}, thick, red] (4.6,0.2) -- (5.8,0.2) node[right] {$F$};\n  \\draw[Stealth-Stealth] (0,-0.9) -- (3.4,-0.9) node[midway, below] {$x$};\n  \\draw[thick] (-0.4,-0.6) -- (5.6,-0.6);\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "state-machine",
+      "name": "Finite state machine (automata)",
+      "source": "\\usetikzlibrary{automata, positioning, arrows.meta}\n\\begin{tikzpicture}[>={Stealth}, node distance=2.6cm, auto, thick]\n  \\node[state, initial] (q0) {$q_0$};\n  \\node[state, right=of q0] (q1) {$q_1$};\n  \\node[state, accepting, right=of q1] (q2) {$q_2$};\n  \\path[->] (q0) edge node {a} (q1)\n            (q1) edge node {b} (q2)\n            (q1) edge[loop above] node {a} ()\n            (q0) edge[loop above] node {b} ()\n            (q2) edge[bend left=40] node {a} (q0);\n\\end{tikzpicture}\n"
+    },
+    {
+      "id": "vector-3d",
+      "name": "A vector in 3-D (tikz-3dplot)",
+      "source": "\\usepackage{tikz-3dplot}\n\\tdplotsetmaincoords{70}{110}\n\\begin{tikzpicture}[tdplot_main_coords, scale=1.2]\n  \\draw[->] (0,0,0) -- (3,0,0) node[anchor=north east] {$x$};\n  \\draw[->] (0,0,0) -- (0,3,0) node[anchor=north west] {$y$};\n  \\draw[->] (0,0,0) -- (0,0,3) node[anchor=south] {$z$};\n  \\tdplotsetcoord{P}{2.6}{50}{60}\n  \\draw[-stealth, very thick, red] (0,0,0) -- (P) node[above right] {$\\mathbf{r}$};\n  \\draw[dashed, gray] (0,0,0) -- (Pxy);\n  \\draw[dashed, gray] (P) -- (Pxy);\n  \\tdplotdrawarc{(0,0,0)}{0.8}{0}{60}{anchor=north}{$\\phi$}\n\\end{tikzpicture}\n"
+    }
+  ]
+}

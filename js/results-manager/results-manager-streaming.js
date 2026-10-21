@@ -2041,7 +2041,7 @@ export class StreamingManager {
       a11y.announceStatus("AI is generating a response", "polite");
 
       // ✅ Preserve existing: Handle scroll to make sure the streaming area is visible
-      core.handleScroll(options.scrollBehavior || "smooth");
+      core.handleScroll(options.scrollBehavior || "instant");
 
       // ✅ Preserve existing: Set up update interval for reduced motion if needed
       this.setupReducedMotionInterval(core);

@@ -165,6 +165,10 @@
   font-size: 1rem;
 }
 
+#markdownExampleSelect {
+  max-width: 100%; /* RF1 (SC 1.4.10): the example list is as wide as its longest option (507px), which held the page wider than a 320px window */
+}
+
 /* Print structure */
 @media print {
   .markdown-live-contenteditable {

@@ -123,6 +123,9 @@ const MathPixAltTextBatchRunner = (function () {
    * single pass with a function replacer — see fillTemplate for why chaining
    * sequential replaces is wrong.
    */
+  /** AT-2: the one alt source a re-describe run may overwrite. */
+  const REDESCRIBABLE_SOURCE = "ai-generated";
+
   const CLAUSE_GENERATED_SINGULAR = "One description generated.";
   const CLAUSE_GENERATED_PLURAL = "{count} descriptions generated.";
   const CLAUSE_FAILED = "{count} failed.";
@@ -251,21 +254,30 @@ const MathPixAltTextBatchRunner = (function () {
    * person could act on, and treating it as covered would leave the image
    * silently unreachable by the only path that fills it.
    *
+   * AT-2 (AI-D3): with `includeDescribed`, an image whose alt text came from an
+   * AI model and has not been touched by a person (source "ai-generated") is a
+   * target too. Every other source stays out, so the write stage's freeze set
+   * (user, ai-reviewed, ai-edited) is never asked to overwrite anything.
+   *
    * @param {Array<Object>} entries - registry entries, as `getAllImages()` returns
+   * @param {{includeDescribed?: boolean}} [options]
    * @returns {Array<Object>} the subset that is a target, order preserved
    */
-  function selectTargets(entries) {
+  function selectTargets(entries, options) {
     if (!Array.isArray(entries)) {
       logWarn("selectTargets(): entries is not an array — returning none");
       return [];
     }
+
+    const includeDescribed = Boolean(options && options.includeDescribed === true);
 
     return entries.filter((entry) => {
       if (!entry || typeof entry !== "object") return false;
       if (entry.decorative) return false;
 
       const alt = entry.altText;
-      return typeof alt !== "string" || alt.trim() === "";
+      if (typeof alt !== "string" || alt.trim() === "") return true;
+      return includeDescribed && entry.altTextSource === REDESCRIBABLE_SOURCE;
     });
   }
 

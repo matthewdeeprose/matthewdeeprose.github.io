@@ -1325,7 +1325,7 @@ class PDFConfidenceVisualiser {
     // Restore scroll position after a brief delay to allow layout to settle
     if (this.scrollPositionBeforeFullscreen !== null) {
       requestAnimationFrame(() => {
-        window.scrollTo(0, this.scrollPositionBeforeFullscreen);
+        window.scrollTo({ top: this.scrollPositionBeforeFullscreen, left: 0, behavior: "instant" });
         this.scrollPositionBeforeFullscreen = null;
       });
     }

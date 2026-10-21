@@ -372,6 +372,21 @@ body.resume-focus-mode .resume-storage-dashboard {
   min-width: 0;
 }
 
+/* S6-1e: the heading around the source name is for focus, not for looks */
+.resume-working-heading {
+  margin: 0;
+  font: inherit;
+  min-width: 0;
+}
+
+/* SV-3: the Download ZIP now outcome; focus lands on it, so it is plain text with no indicator of its own */
+.resume-save-status {
+  margin: 0;
+  font-size: 0.9rem;
+  min-width: 0;
+  word-break: break-word;
+}
+
 .resume-source-name {
   font-weight: 600;
   font-size: 0.95rem;
@@ -415,6 +430,16 @@ body.resume-focus-mode .resume-storage-dashboard {
 
 .resume-download-all-btn:hover {
   transform: translateY(-1px);
+}
+
+/* T-12e: the library download icon in this button. Without this the icon draws
+   at 1em (19.2px here) on the middle of the line and the button is 0.64px
+   shorter; this keeps the literal's 20px box on the baseline. */
+#resume-download-all-btn > [data-icon] > .icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 0;
+  vertical-align: baseline;
 }
 
 .resume-download-help {
@@ -668,6 +693,27 @@ body.resume-focus-mode .resume-storage-dashboard {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* OV-1: a fieldset's default min-width is its min-content, so one unbreakable
+   preview line sized the whole chooser wider than its banner. */
+fieldset.resume-session-options {
+  min-width: 0;
+}
+
+/* OV-1: the text figures keep one line and cut with an ellipsis; the DP-1
+   clause is its own element and wraps at every width. */
+.resume-session-preview-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resume-session-preview-clause {
+  display: block;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Size pushed to far right */
@@ -3267,4 +3313,18 @@ body.resume-focus-mode .resume-image-save-warning {
 }
 .session-manager-select-all {
   cursor: pointer;
+}
+
+/* Forced colours: the selected format chip uses the system highlight pair with the browser's text backplate off, and keeps a real focus outline */
+@media (max-width: 768px) and (forced-colors: active) {
+  #mathpix-resume-mode-container .mathpix-tab-header[aria-selected="true"] {
+    forced-color-adjust: none;
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  #mathpix-resume-mode-container .mathpix-tab-header[aria-selected="true"]:focus-visible {
+    outline: 0.2rem solid CanvasText !important;
+    outline-offset: 0.2rem !important;
+  }
 }

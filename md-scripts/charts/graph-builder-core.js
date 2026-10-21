@@ -1180,9 +1180,9 @@ const GraphBuilder = (function () {
 
       this.elements.dataInput.dataRows.appendChild(rowDiv);
 
-      // Focus the new input
+      // Focus the new input (not on a restored open, which the person did not ask for)
       const firstInput = document.getElementById(`${rowId}-col1`);
-      if (firstInput) {
+      if (firstInput && window.restoredToolOpen !== "Graph Builder") {
         this.dependencies.utils.dom.focus(firstInput);
       }
 

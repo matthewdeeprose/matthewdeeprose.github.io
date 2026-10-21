@@ -978,7 +978,6 @@ window.MermaidAccessibilityUtils = (function () {
       const descButton = document.createElement("button");
       descButton.className = "mermaid-control-button";
       descButton.innerHTML = `${window.MermaidAccessibilityUtils.getDescriptionButtonIcon()} ${showText}`;
-      descButton.setAttribute("aria-label", "Show diagram description");
       descButton.setAttribute("type", "button");
       descButton.setAttribute("data-diagram-id", diagramId);
       descButton.setAttribute("aria-expanded", "false");

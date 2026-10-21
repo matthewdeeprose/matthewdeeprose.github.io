@@ -150,23 +150,38 @@ const MarkdownEditor = (function () {
           container: elements.output.parentNode || elements.output,
           // A static copy: diagrams without their page-only controls and
           // with their descriptions openable, each carrying a second copy
-          // painted for the other site mode (Mermaid export utils).
+          // painted for the other site mode (Mermaid export utils). Charts
+          // become pictures (one per site mode) with a "Description"
+          // disclosure holding the description and the data table, taken
+          // from the same single copy (Chart export utils).
           getContent: () => {
             const utils = window.MermaidExportUtils;
             if (!elements.output) return "";
-            if (utils && typeof utils.prepareThemedStaticExport === "function")
-              return utils.prepareThemedStaticExport(elements.output);
-            if (utils && typeof utils.prepareStaticExport === "function")
-              return utils.prepareStaticExport(elements.output);
-            return elements.output.innerHTML;
+            const copyStep = (root) => {
+              if (utils && typeof utils.prepareThemedStaticExport === "function")
+                return utils.prepareThemedStaticExport(root);
+              if (utils && typeof utils.prepareStaticExport === "function")
+                return utils.prepareStaticExport(root);
+              return root.innerHTML;
+            };
+            const chartUtils = window.ChartExportUtils;
+            if (chartUtils && typeof chartUtils.prepareChartExport === "function")
+              return chartUtils.prepareChartExport(elements.output, copyStep);
+            return copyStep(elements.output);
           },
           // The head CSS that shows the copy matching the exported page's
-          // own light/dark switch.
-          getOptions: () =>
-            window.MermaidExportUtils &&
-            window.MermaidExportUtils.THEMED_EXPORT_HEAD
+          // own light/dark switch: Mermaid's, joined to the chart pictures'.
+          getOptions: () => {
+            const chartUtils = window.ChartExportUtils;
+            if (chartUtils && typeof chartUtils.getExportHead === "function") {
+              const head = chartUtils.getExportHead();
+              return head ? { head } : undefined;
+            }
+            return window.MermaidExportUtils &&
+              window.MermaidExportUtils.THEMED_EXPORT_HEAD
               ? { head: window.MermaidExportUtils.THEMED_EXPORT_HEAD }
-              : undefined,
+              : undefined;
+          },
           format: "html",
           getTitle: deriveExportTitle,
           idPrefix: "md-scorm-export",
@@ -1055,6 +1070,17 @@ const MarkdownEditor = (function () {
                     );
                   }
                 }
+              }, (error) => {
+                // render() rejected: say so beside the diagram. A second
+                // argument to .then, not a .catch, so a fault in the success
+                // handler above is never mistaken for a failed diagram.
+                Logger.warn("Mermaid render rejected", error);
+                if (
+                  window.MermaidControls &&
+                  typeof window.MermaidControls.noteRenderFailure === "function"
+                ) {
+                  window.MermaidControls.noteRenderFailure(element);
+                }
               });
           }
         } catch (err) {
@@ -1151,6 +1177,9 @@ const MarkdownEditor = (function () {
         startOnLoad: false,
         theme: "default",
         securityLevel: "strict",
+        // Same reason as the call in tools.html (parcel 18): no error picture
+        // left in <body> when a render fails.
+        suppressErrorRendering: true,
       });
     }
   }
@@ -1416,7 +1445,9 @@ const MarkdownEditor = (function () {
         window.initSortableTables();
       }
 
-      NotificationHandler.showSuccess("Content rendered successfully");
+      if (state.notifyNextRender) {
+        NotificationHandler.showSuccess("Content rendered successfully");
+      }
       if (config.autoSave) {
         AutoSave.save();
       }
@@ -1426,6 +1457,7 @@ const MarkdownEditor = (function () {
         '<div class="error-boundary">Rendering failed. Please check the console for details.</div>';
     } finally {
       state.isRendering = false;
+      state.notifyNextRender = false;
       LoadingManager.hide();
       if (window.MarkdownCodeCopy) {
         window.MarkdownCodeCopy.init(elements.output);
@@ -1437,6 +1469,7 @@ const MarkdownEditor = (function () {
   function handleKeyboardShortcuts(event) {
     if (event.ctrlKey && event.key === "Enter") {
       event.preventDefault();
+      state.notifyNextRender = true;
       renderMarkdown();
     } else if (event.key === "Escape") {
       event.preventDefault();
@@ -1566,6 +1599,9 @@ const MarkdownEditor = (function () {
             Logger.debug("Restoring focus to live editor");
             // Use setTimeout to ensure DOM is ready
             setTimeout(() => {
+              if (window.restoredToolOpen === "Markdown Editor") return;
+              // A person still in the tool picker keeps their place; they Tab into the editor when they want it
+              if (document.activeElement && document.activeElement.closest("#toolSelection")) return;
               if (liveMarkdownEditor.contentEditableElement) {
                 liveMarkdownEditor.contentEditableElement.focus();
               }
@@ -1795,7 +1831,10 @@ const MarkdownEditor = (function () {
     }
 
     // Event listeners
-    elements.renderBtn.addEventListener("click", renderMarkdown);
+    elements.renderBtn.addEventListener("click", () => {
+      state.notifyNextRender = true;
+      renderMarkdown();
+    });
     elements.clearBtn.addEventListener("click", async () => {
       try {
         const confirmed = await window.safeConfirm(
@@ -1898,6 +1937,7 @@ const MarkdownEditor = (function () {
     loadContent: function (markdownText) {
       if (elements.markdownInput) {
         elements.markdownInput.value = markdownText;
+        state.notifyNextRender = true;
         renderMarkdown();
         Logger.info("Content loaded into editor");
       } else {

@@ -1644,11 +1644,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
     // Ensure section is open
     detailsEl.open = true;
 
-    // Scroll into view smoothly
-    detailsEl.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
+    // Scroll into view instantly (not on a restored open, which the person did not ask for)
+    if (window.restoredToolOpen !== "Ally Reporting") {
+      detailsEl.scrollIntoView({
+        behavior: "instant",
+        block: "start",
+      });
+    }
 
     // Add highlight class
     detailsEl.classList.add("ally-credentials-highlight");
@@ -1663,6 +1665,9 @@ const ALLY_MAIN_CONTROLLER = (function () {
       var clientIdEl = document.getElementById("ally-client-id");
       var tokenEl = document.getElementById("ally-api-token");
 
+      if (window.restoredToolOpen === "Ally Reporting") return;
+      // A person still in the tool picker keeps their place: the box is already open, scrolled to and announced
+      if (document.activeElement && document.activeElement.closest("#toolSelection")) return;
       if (clientIdEl && !clientIdEl.value) {
         clientIdEl.focus();
       } else if (tokenEl && !tokenEl.value) {

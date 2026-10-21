@@ -158,6 +158,7 @@ const EDITOR_CONFIG = {
     EDIT_MODE_ENABLED: "Edit mode enabled",
     EDIT_MODE_DISABLED: "Edit mode disabled",
     NO_CONTENT: "No MMD content available to edit",
+    EDIT_NOT_AVAILABLE: "Edit mode is only available in Code and Split views",
     CONTENT_SYNCED: "Content updated",
   },
   BUTTON_TEXT: {
@@ -291,6 +292,7 @@ class MMDEditorCore {
 
       // Fullscreen button (Phase 5.4)
       fullscreenBtn: document.getElementById("mmd-fullscreen-btn"),
+      fullscreenExitBtn: document.getElementById("mmd-fullscreen-exit-btn"), // Exit button inside the fullscreen layer
 
       // Code container and elements
       codeContainer: document.getElementById("mmd-code-container"),
@@ -349,6 +351,16 @@ class MMDEditorCore {
 
       logDebug("Event listeners attached");
     }
+
+    // Escape on the in-layer exit button leaves fullscreen, as it does in Convert
+    const { fullscreenExitBtn } = this.elements;
+    if (fullscreenExitBtn) {
+      fullscreenExitBtn.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || !this.isFullscreen) return;
+        e.preventDefault();
+        this.toggleFullscreen();
+      });
+    }
   }
 
   // ==========================================================================
@@ -368,7 +380,10 @@ class MMDEditorCore {
     const currentView = this.getCurrentView();
     if (!EDITOR_CONFIG.ALLOWED_VIEWS.includes(currentView)) {
       logWarn("Edit mode not allowed in view:", currentView);
-      this.announceStatus(`Edit mode not available in ${currentView} view`);
+      // Parcel T-11a: a warning toast that stays until dismissed (announced once by the toast)
+      window.notifyWarning?.(EDITOR_CONFIG.MESSAGES.EDIT_NOT_AVAILABLE, {
+        duration: 0,
+      });
       return this.isEditing;
     }
 
@@ -870,6 +885,12 @@ class MMDEditorCore {
    * @param {string} message - Message to announce
    */
   announceStatus(message) {
+    // The editor wrapper is hidden before this runs, so speak through the shared announcer (resolved at call time)
+    if (window.accessibilityHelpers && typeof window.accessibilityHelpers.announce === "function") {
+      window.accessibilityHelpers.announce(message);
+      return;
+    }
+
     const { statusElement } = this.elements;
     if (statusElement) {
       statusElement.textContent = message;
@@ -963,6 +984,16 @@ class MMDEditorCore {
       textarea.focus();
     }
 
+    // Keep keyboard focus inside the fullscreen layer (T-22a)
+    if (this.isFullscreen) {
+      window.MathPixFullscreenFocus?.hold(codeContainer, {
+        onLost: () => this.exitFullscreen(),
+      });
+    } else {
+      window.MathPixFullscreenFocus?.release(codeContainer);
+      this.refocusAfterFullscreenExit(); // Rescue focus if leaving fullscreen lost it
+    }
+
     this.announceStatus(
       this.isFullscreen
         ? "Fullscreen edit mode enabled. Press Escape to exit."
@@ -970,6 +1001,19 @@ class MMDEditorCore {
     );
 
     logDebug("Fullscreen mode:", this.isFullscreen);
+  }
+
+  /**
+   * Put keyboard focus back on the fullscreen button after leaving fullscreen.
+   * Moves focus only when leaving has lost it (it is on the page body, or on an element that is no longer
+   * rendered, such as the exit button); focus that is still in the text box stays there.
+   */
+  refocusAfterFullscreenExit() {
+    const target = this.elements.fullscreenBtn;
+    if (!target) return;
+    const active = document.activeElement;
+    const lost = !active || active === document.body || !active.getClientRects().length;
+    if (lost) target.focus();
   }
 
   /**
@@ -994,6 +1038,9 @@ class MMDEditorCore {
         fullscreenBtn.setAttribute("aria-label", "Toggle fullscreen edit mode");
         fullscreenBtn.innerHTML = getIcon("fullscreenEnter");
       }
+
+      window.MathPixFullscreenFocus?.release(codeContainer); // T-22a
+      this.refocusAfterFullscreenExit(); // Rescue focus if leaving fullscreen lost it
 
       logDebug("Fullscreen mode exited");
     }

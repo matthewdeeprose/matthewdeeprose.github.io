@@ -221,6 +221,14 @@
         }
       });
 
+      // Expose the editable element as a multiline text box, named by the textarea's label
+      div.setAttribute("role", "textbox");
+      div.setAttribute("aria-multiline", "true");
+      const label = this.originalTextarea.labels && this.originalTextarea.labels[0];
+      if (label && label.id) {
+        div.setAttribute("aria-labelledby", label.id);
+      }
+
       // Set initial content
       div.textContent = this.originalTextarea.value;
 
@@ -454,7 +462,10 @@
             range.collapse(true);
           }
           selection.removeAllRanges();
-          selection.addRange(range);
+          // Choosing this tool in the picker must not pull focus into the editor
+          if (!(document.activeElement && document.activeElement.closest("#toolSelection"))) {
+            selection.addRange(range);
+          }
           return;
         }
 
@@ -511,6 +522,8 @@
      * Place cursor at end of content
      */
     placeCursorAtEnd() {
+      // A selection inside a contenteditable focuses it; a restored open must not move focus.
+      if (window.restoredToolOpen === "Markdown Editor") return;
       try {
         const selection = window.getSelection();
         const range = document.createRange();
@@ -1009,6 +1022,7 @@
 
       // Focus contenteditable
       setTimeout(() => {
+        if (window.restoredToolOpen === "Markdown Editor") return;
         this.contentEditableElement.focus();
         logDebug("ContentEditable focused after enabling");
       }, 50);
@@ -1143,19 +1157,40 @@
     announceHighlightingUpdate(contentLength) {
       if (!this.announceChanges) return;
 
+      const wordCount = this.getPlainTextContent()
+        .split(/\s+/)
+        .filter((w) => w).length;
+
+      // The first reading is the baseline and is never spoken, so a restored
+      // document does not announce its own count when the tool opens.
+      if (this.lastAnnouncedWordCount === undefined) {
+        this.lastAnnouncedWordCount = wordCount;
+        return;
+      }
+
+      // Only a change in the number is news.
+      if (wordCount === this.lastAnnouncedWordCount) return;
+
+      // Speak only while the Markdown Editor is the open tool: the page's own
+      // convention (showArticle/hideArticle) is aria-hidden on the article.
+      const article = document.getElementById("markdown-converter");
+      const open = (!!article && article.getAttribute("aria-hidden") !== "true");
+      if (!open) {
+        this.lastAnnouncedWordCount = wordCount;
+        return;
+      }
+
       const now = Date.now();
       if (now - this.lastAnnouncementTime < this.announcementDelay) {
         return; // Throttle announcements
       }
 
       const liveRegion = document.getElementById("markdown-live-announcements");
-      if (liveRegion) {
-        const wordCount = this.getPlainTextContent()
-          .split(/\s+/)
-          .filter((w) => w).length;
-        liveRegion.textContent = `${wordCount} words`;
-        this.lastAnnouncementTime = now;
-      }
+      if (!liveRegion) return;
+
+      liveRegion.textContent = `${wordCount} ${wordCount === 1 ? "word" : "words"}`;
+      this.lastAnnouncedWordCount = wordCount;
+      this.lastAnnouncementTime = now;
     }
 
     /**
@@ -1163,11 +1198,9 @@
      * @param {KeyboardEvent} event - Keyboard event
      */
     handleKeyDown(event) {
-      // Tab key - insert tab character
+      // Tab and Shift+Tab leave the editor, as in any other field; no tab character is typed
       if (event.key === "Tab") {
-        event.preventDefault();
-        this.insertPlainText("\t");
-        this.debouncedUpdate();
+        return;
       }
 
       // Enter key - insert newline

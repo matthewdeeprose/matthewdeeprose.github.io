@@ -64,6 +64,83 @@
   const CHAT_OUTPUT_FALLBACK = 4096;
   const LOCAL_MODEL_PREFIX = "local/";
   const LOCAL_OUTPUT_CEILING = 4096;
+
+  // Answer room for the Foundry thinking models (parcel 16b). These models spend
+  // part of max_tokens on reasoning before the answer, so at the 1,024 default
+  // many replies came back empty or cut off (parcel 16: gpt-5-nano 18 of 20,
+  // gpt-5 13, Kimi 15, o4-mini 7, gpt-5-mini 3). Each figure is the smallest
+  // tested cap with no cut-off (8,000 for nano and gpt-5; 4,000 for the others),
+  // snapped UP to a slider step (8,192 and 4,096). gpt-5.5, gpt-5.6-luna and
+  // gpt-5.6-sol are UNTESTED above 1,024 (16 lost 4 of 90 replies there; parcel
+  // 16d measures); 4,096 is a precaution for them. Foundry ids have no entry in
+  // the generated output ceilings, so modelOutputMax lifts the slider to these.
+  const DEFAULT_ANSWER_ROOM = 1024;
+  const FOUNDRY_ANSWER_ROOM = Object.freeze({
+    "azure-openai/gpt-5": 8192,
+    "azure-openai/gpt-5-nano": 8192,
+    "azure-openai/gpt-5-mini": 4096,
+    "azure-openai/o4-mini": 4096,
+    "azure-openai/Kimi-K2.5": 4096,
+    "azure-openai/gpt-5.5": 4096,
+    "azure-openai/gpt-5.6-luna": 4096,
+    "azure-openai/gpt-5.6-sol": 4096,
+  });
+  // Answer room for OpenRouter's thinking models (parcel 16f, from parcel 16e's
+  // 130 replies per cap: 63 came back empty or cut at Chat's 1,024; 4,096 cleared
+  // 59 and 8,192 all 63). Every OpenRouter model Chat counts as a reasoning model
+  // starts at 4,096, so new models are covered without a list. Three needed 8,192
+  // in 16e: gpt-5-nano (2 prompts), gpt-5 (1) and qwen3.7-flash (1). Foundry and
+  // on-device ids never take this rule: the two providers are separate streams.
+  const OPENROUTER_REASONING_ANSWER_ROOM = 4096;
+  const OPENROUTER_ANSWER_ROOM_HIGH = Object.freeze([
+    "openai/gpt-5-nano",
+    "openai/gpt-5",
+    "qwen/qwen3.7-flash",
+  ]);
+  const FOUNDRY_ID_PREFIX = "azure-";
+  const isNonOpenRouterId = (model) =>
+    model.indexOf(FOUNDRY_ID_PREFIX) === 0 || model.indexOf(LOCAL_MODEL_PREFIX) === 0;
+  // Chat's own test for a reasoning model (chat-chips.js), read at call time;
+  // false when the selector is missing. A saved chat is restored on DOMContentLoaded,
+  // before the picker has built its list, so Chat has no entry yet: fall back to the
+  // registry entry, as chat.js does.
+  function countsAsReasoning(model) {
+    const chat = window.Chat;
+    const selector = window.EmbedModelSelector;
+    if (!selector || typeof selector._modelHasCapabilities !== "function") return false;
+    let entry =
+      chat && typeof chat.getModelEntry === "function" ? chat.getModelEntry(model) : null;
+    if (!entry && window.modelRegistry && typeof window.modelRegistry.getModel === "function") {
+      entry = window.modelRegistry.getModel(model, true);
+    }
+    return !!entry && selector._modelHasCapabilities(entry, ["reasoning"]);
+  }
+  // The answer length a model starts with: the Foundry table, else the OpenRouter
+  // rule, else the 1,024 default.
+  function tableAnswerRoomFor(model) {
+    if (!model) return DEFAULT_ANSWER_ROOM;
+    if (FOUNDRY_ANSWER_ROOM[model]) return FOUNDRY_ANSWER_ROOM[model];
+    if (isNonOpenRouterId(model)) return DEFAULT_ANSWER_ROOM;
+    if (OPENROUTER_ANSWER_ROOM_HIGH.indexOf(model) !== -1) return 8192;
+    if (countsAsReasoning(model)) return OPENROUTER_REASONING_ANSWER_ROOM;
+    return DEFAULT_ANSWER_ROOM;
+  }
+  // Parcel 15f: while the default prompt is in the system box, a model starts with
+  // at least 4,096. Parcel 15e part B: with that prompt 0 of 95 explain replies was
+  // cut at 4,096 (longest 2,016 tokens), against 10 of 80 cut at 1,024. Models
+  // already higher keep their start. The rule follows the prompt, not the provider;
+  // on-device models never take it.
+  const DEFAULT_PROMPT_ANSWER_ROOM = 4096;
+  function answerRoomFor(model) {
+    const base = tableAnswerRoomFor(model);
+    if (!model || model.indexOf(LOCAL_MODEL_PREFIX) === 0) return base;
+    const systemBox = S.els ? S.els.systemInput : null;
+    if (!systemBox || systemBox.value !== FOUNDRY_DEFAULT_SYSTEM_PROMPT) return base;
+    return Math.max(base, DEFAULT_PROMPT_ANSWER_ROOM);
+  }
+  // The value this code last wrote, so a value the person set is told apart from
+  // one it set. null until the first write.
+  let lastAppliedAnswerRoom = null;
   const FINISH_REASON_LENGTH = "length";
   // One sentence on screen and in the ear, per the announcement rules: the
   // refusal goes through the toast (which announces once), the cut-off line is
@@ -281,7 +358,8 @@
         fallback: CHAT_OUTPUT_FALLBACK,
       });
     }
-    return r.min + Math.max(0, Math.floor((ceiling - r.min) / r.step)) * r.step;
+    const base = r.min + Math.max(0, Math.floor((ceiling - r.min) / r.step)) * r.step;
+    return Math.max(base, FOUNDRY_ANSWER_ROOM[model] || 0);
   }
 
   // Set the visible range for the model being sent to, and lower the user's value
@@ -297,7 +375,15 @@
     const before = slider ? parseInt(slider.value, 10) : NaN;
     if (slider) slider.max = String(max);
     if (S.els.maxTokensNumber) S.els.maxTokensNumber.max = String(max);
-    if (!isNaN(before) && before > max) setMaxTokens(max);
+    // Parcel 16b: a value still at the default, or at what this code last wrote, is
+    // not the person's choice, so it follows the model. Anything else is theirs and
+    // is only ever lowered to fit (below).
+    const untouched =
+      isNaN(before) || before === DEFAULT_ANSWER_ROOM || before === lastAppliedAnswerRoom;
+    if (untouched && slider) {
+      const wanted = Math.min(answerRoomFor(model), max);
+      lastAppliedAnswerRoom = setMaxTokens(wanted);
+    } else if (!isNaN(before) && before > max) setMaxTokens(max);
     return max;
   }
 
@@ -1489,6 +1575,8 @@
     // on MODAL_CLOSE_ANNOUNCE_DELAY_MS in chat/chat-persistence.js.
     window.ChatPersistence.performClear({ afterModalClose: true });
     updateConversationUI();
+    // Clear leaves the box as it was; re-assert the default for the selected model.
+    applyDefaultSystemPrompt(S.currentModel);
   }
 
   // ── Global handlers + wiring ───────────────────────────────────────────────
@@ -1617,15 +1705,143 @@
       els.presetSelect.addEventListener("change", function () {
         if (!els.systemInput) return;
         const key = els.presetSelect.value;
-        if (key && S.SYSTEM_PRESETS[key]) {
+        // Parcel 15d: the Chat-only default prompt is offered as a named preset. It
+        // is not in the shared map (Local Chat's), so it is resolved here; and a
+        // person's own choice of it is remembered so a model change does not undo it.
+        defaultChosenByPerson = key === DEFAULT_PRESET_KEY;
+        if (key === DEFAULT_PRESET_KEY) {
+          els.systemInput.value = FOUNDRY_DEFAULT_SYSTEM_PROMPT;
+        } else if (key && S.SYSTEM_PRESETS[key]) {
           els.systemInput.value = S.SYSTEM_PRESETS[key];
         } else {
           els.systemInput.value = "";
         }
+        // The answer room follows the box (parcel 15f).
+        if (S.currentModel) /*15F-REAPPLY-MENU*/ applyModelTokenRange(S.currentModel);
         S.logInfo("Chat system-prompt preset changed to:", key || "none (custom)");
       });
     }
     wired = true;
+  }
+
+  // ── Foundry default system prompt (parcel 15c; text replaced at parcels 15f and 15l) ─
+  // Source: .claude/measurements/p15i-reword-v2/draft-v3b.txt, held here byte for
+  // byte (v2 until parcel 15l). Parcel 15e (.claude/measurements/p15e-prompt-v1-v2/report.md)
+  // measured v2 against the 15c text on these models: a drawn visual on 91 of 95
+  // explain replies against 68. Parcel 15k measured v3b against v2 on Foundry, 22 of
+  // 23 models (gpt-6-astra untested): visual on E1-E5, 102 of 110 (v3b) against 105
+  // (v2); on the held-out C1-C3, 22 of 66 (v3b) against 43 (v2).
+  // Text replaced at parcel 15l. Foundry only: no OpenRouter model gets it by
+  // model, and nothing crosses the provider streams. Chat-only map — Local Chat's
+  // SYSTEM_PRESETS is shared and is deliberately not touched.
+  const FOUNDRY_DEFAULT_SYSTEM_PROMPT = [
+    "You write accessible, well-structured answers in British English. Your replies are rendered as rich Markdown, so use its features to make an answer easier to follow.\n",
+    "\n",
+    "WHEN TO ADD A VISUAL\n",
+    "Before you write, ask: does the subject itself contain steps, a cycle, quantities or options that sit side by side? If it does, add one visual from the list below. If it does not, write prose only, however the question is worded. \"Explain\" does not by itself call for a picture.\n",
+    "- Steps, cause and effect, a cycle or a decision: a mermaid diagram.\n",
+    "- Numbers over time, or a comparison of amounts: a chart.\n",
+    "- Options or features set side by side: a table (a table counts as a visual).\n",
+    "Put one sentence before each visual saying what it shows, and still explain it in words. For greetings, short facts, opinions and code, write plain prose.\n",
+    "\n",
+    "RULES\n",
+    "- Never start a reply with a code fence, and never put a table inside a code block.\n",
+    "- Use headings in order (## then ###). Keep answers focused, but do not leave out a visual that would help just to save space.\n",
+    "- Every image needs alt text. Every link needs descriptive text.\n",
+    "- Put a short sentence of context before a diagram, chart or equation, and say in words what it shows.\n",
+    "\n",
+    "MARKDOWN THAT RENDERS\n",
+    "Tables: pipe tables with a header row (sortable on screen). Task lists: - [x] done, - [ ] to do. ==highlight==, ~~strike~~, H~2~O, E=mc^2^, footnotes [^1] with [^1]: text, containers ::: info, ::: warning or ::: danger (closed by :::), [[toc]] for long documents.\n",
+    "\n",
+    "MATHS: always LaTeX, never plain text. Inline: $x^2$ or \\(x^2\\). Display: $$ ... $$ on its own lines. Example: $$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n",
+    "\n",
+    "DIAGRAMS: a ```mermaid fence whose first line is the diagram type. These render well:\n",
+    "flowchart TD, sequenceDiagram, stateDiagram-v2, classDiagram, gantt, pie, xychart-beta, mindmap, timeline, kanban, block-beta, C4Context.\n",
+    "- One diagram per fence, valid Mermaid only, nothing else inside the fence.\n",
+    "- Put labels containing brackets, quotes, colons or commas in double quotes.\n",
+    "- Do not set colours, themes, styles or %%{init}%% directives; the page supplies them.\n",
+    "- Keep diagrams small enough to read (about 12 nodes or fewer); split large ones.\n",
+    "Example:\n",
+    "```mermaid\n",
+    "flowchart TD\n",
+    "    A[Question] --> B{Clear?}\n",
+    "    B -->|Yes| C[Answer]\n",
+    "    B -->|No| D[Ask for detail]\n",
+    "```\n",
+    "Pie: pie title Browser share, then lines such as \"Chrome\" : 62. Gantt: needs dateFormat YYYY-MM-DD and task lines such as Draft :a1, 2026-03-02, 5d.\n",
+    "\n",
+    "CHARTS: a ```chart fence holding JSON for Chart.js v3+ (bar, line, pie, doughnut, radar, scatter). Use \"x\" and \"y\" scale keys, give a title and axis titles, and never specify colours.\n",
+    "```chart\n",
+    "{\"type\":\"bar\",\"data\":{\"labels\":[\"A\",\"B\"],\"datasets\":[{\"label\":\"Score\",\"data\":[85,45]}]},\"options\":{\"plugins\":{\"title\":{\"display\":true,\"text\":\"Scores\"}},\"scales\":{\"y\":{\"title\":{\"display\":true,\"text\":\"Score\"}},\"x\":{\"title\":{\"display\":true,\"text\":\"Group\"}}}}}\n",
+    "```\n",
+    "\n",
+    "CODE: fenced with the language name, e.g. ```javascript.\n",
+  ].join("");
+
+  // The preset-menu value for the default prompt (tools.html #chat-preset-select),
+  // and whether the person picked it themselves rather than the model change
+  // filling it (parcel 15d).
+  const DEFAULT_PRESET_KEY = "visual";
+  let defaultChosenByPerson = false;
+
+  // The four after grok-4.7 drew every fence with the v2 text at 4,096 (parcel 15e, part C).
+  const FOUNDRY_DEFAULT_PROMPT_MODEL_IDS = Object.freeze([
+    "azure-openai/Llama-3.3-70B-Instruct",
+    "azure-openai/Llama-4-Maverick-17B-128E-Instruct-FP8",
+    "azure-openai/Mistral-Large-3",
+    "azure-openai/cohere-command-a",
+    "azure-openai/gpt-4.1",
+    "azure-openai/gpt-4.1-mini",
+    "azure-openai/gpt-4.1-nano",
+    "azure-openai/gpt-4o",
+    "azure-openai/gpt-5.4",
+    "azure-openai/gpt-5.4-mini",
+    "azure-openai/gpt-5.5",
+    "azure-openai/gpt-5.6-luna",
+    "azure-openai/gpt-5.6-sol",
+    "azure-openai/gpt-5.6-terra",
+    "azure-openai/gpt-6-astra",
+    "azure-openai/gpt-6-luna",
+    "azure-openai/gpt-6-sol",
+    "azure-openai/gpt-6.1-sol",
+    "azure-openai/grok-4.7",
+    "azure-openai/DeepSeek-V3.2",
+    "azure-openai/o4-mini",
+    "azure-openai/Phi-4",
+    "azure-openai/Kimi-K2.5",
+  ]);
+
+  /**
+   * Keep the system box in step with the selected model without ever replacing
+   * the person's text. Fills the box with the default only when it is empty or
+   * already holds the default exactly; clears it, on a move to an unlisted model,
+   * only when it still holds the default exactly. Silent by design: this is
+   * selection-time state, not an event the person caused, and the box sits in a
+   * collapsed disclosure (AGENTS.md: announce changes, never the initial set).
+   * Chat saves no system prompt, so re-applying on selection, restore and Clear
+   * is the persistence.
+   */
+  function applyDefaultSystemPrompt(modelId) {
+    // Restore and Clear reach here without passing the picker, so the answer room
+    // (parcel 16b) is re-asserted alongside the prompt. Silent for the same reason.
+    if (modelId) applyModelTokenRange(modelId);
+    const box = S.els ? S.els.systemInput : null;
+    if (!box) return;
+    // A textarea normalises line breaks to LF, so compare against LF text.
+    const untouched = box.value === "" || box.value === FOUNDRY_DEFAULT_SYSTEM_PROMPT;
+    if (!untouched) return;
+    if (box.value !== FOUNDRY_DEFAULT_SYSTEM_PROMPT) defaultChosenByPerson = false;
+    // A default the person chose from the menu stays through a model change.
+    const wanted = defaultChosenByPerson || FOUNDRY_DEFAULT_PROMPT_MODEL_IDS.includes(modelId);
+    const next = wanted ? FOUNDRY_DEFAULT_SYSTEM_PROMPT : "";
+    const changed = box.value !== next;
+    if (changed) box.value = next;
+    // Keep the menu naming what the box holds. Only when the box changed, so a
+    // menu the person set is never moved. Assigning .value fires no event: silent.
+    const menu = S.els ? S.els.presetSelect : null;
+    if (changed && menu) menu.value = wanted ? DEFAULT_PRESET_KEY : "";
+    // The room above was read before the box changed (parcel 15f).
+    if (changed && modelId) /*15F-REAPPLY-FILL*/ applyModelTokenRange(modelId);
   }
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -1688,6 +1904,10 @@
     // Answer length follows the model (parcel H-20): the picker refreshes the
     // range through _applyModelTokenRange; the other two are exposed for inspection.
     _applyModelTokenRange: applyModelTokenRange,
+    // Foundry default system prompt (parcel 15c): called by chat.js reflectSelection().
+    _applyDefaultSystemPrompt: applyDefaultSystemPrompt,
+    _foundryDefaultPromptModelIds: FOUNDRY_DEFAULT_PROMPT_MODEL_IDS,
+    _foundryDefaultSystemPrompt: FOUNDRY_DEFAULT_SYSTEM_PROMPT,
     _modelOutputMax: modelOutputMax,
     _resolveAnswerBudget: resolveAnswerBudget,
     // Wire-normalisation of one turn's content (Unified Chat attachments) —

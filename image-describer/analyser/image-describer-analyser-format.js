@@ -112,17 +112,34 @@
   // A label line as formatOCRForPrompt prints it: `- "text" — position (confidence)`.
   const OCR_LABEL_LINE = /^- "/m;
 
+  // The heading of the text section, in the three places it is built (H-64; wording chosen after H-65).
+  const OCR_HEADING = "### OCR results";
+
+  // R3(0.9) from H-63: an item is a fragment at this many trimmed characters or fewer, and the
+  // text section is left out when at least this share of the listed items are fragments.
+  const FRAGMENT_MAX_CHARS = 2;
+  const FRAGMENT_SHARE_THRESHOLD = 0.9;
+
+  /** True when at least FRAGMENT_SHARE_THRESHOLD of the items are fragments. Counts as h63-rules.mjs does. */
+  function isMostlyFragments(items) {
+    if (!items.length) return false;
+    const fragments = items.filter(
+      (i) => String(i.text).trim().length <= FRAGMENT_MAX_CHARS,
+    ).length;
+    return fragments / items.length >= FRAGMENT_SHARE_THRESHOLD;
+  }
+
   /**
    * Formats the OCR section of the prompt.
    * Returns empty string if nothing meaningful to report.
    */
-  function formatOCRForPrompt(ocr, confidenceThreshold) {
+  function formatOCRForPrompt(ocr, confidenceThreshold, options = {}) {
     const u = utils();
     // Text detection ran and did not return (H-31). Without this the model
     // cannot tell "no text in the picture" from "text detection failed".
     if (ocr && OCR_UNFINISHED_WORDING[ocr.status]) {
       return (
-        "### Text labels detected (OCR)\n" +
+        `${OCR_HEADING}\n` +
         `Text detection ${OCR_UNFINISHED_WORDING[ocr.status]}, so text in the image is not listed here. Read any text directly from the image.\n`
       );
     }
@@ -144,17 +161,30 @@
     if (included.length === 0 && excluded === 0) return "";
     if (included.length === 0) {
       // All detections were low-confidence
-      return `### Text labels detected (OCR)\n${excluded} low-confidence detection${excluded !== 1 ? "s were" : " was"} excluded.\n`;
+      return `${OCR_HEADING}\n${excluded} low-confidence detection${excluded !== 1 ? "s were" : " was"} excluded.\n`;
     }
 
-    let text = "### Text labels detected (OCR)\n";
+    // Left out whole when nearly every item is a one- or two-character fragment (H-64, rule
+    // R3(0.9) from H-63): text detection returns such fragments on a picture with no text.
+    // Never applied once a person has corrected or added text: their choice beats a heuristic.
+    if (!options.hasCorrections && isMostlyFragments(included)) {
+      logDebug(
+        `Text section left out: ${included.length} item(s), at least ${FRAGMENT_SHARE_THRESHOLD * 100}% of ${FRAGMENT_MAX_CHARS} characters or fewer`,
+      );
+      return "";
+    }
+
+    let text = `${OCR_HEADING}\n`;
 
     included.forEach((item) => {
       // The position is one of nine thirds words taken from the label's own box (H-7c
       // measured it against the five-word quadrant; H-7d confirmed the shipped boxes give
       // the right word). An item with no usable box keeps the quadrant word it printed before.
+      // An item with neither box nor quadrant has no position to print (H-39); the line
+      // then carries no dash and no word, rather than the text "undefined".
       const position = u.getItemPositionWord(item) || item.quadrant;
-      let line = `- "${item.text}" \u2014 ${position} (${confidenceWord(item.confidence)})`;
+      const positionPart = position ? ` \u2014 ${position}` : "";
+      let line = `- "${item.text}"${positionPart} (${confidenceWord(item.confidence)})`;
 
       // WITHHELD at Stage F-iii, and deliberately not reworded. `nearbyColour` is
       // sampled from a ring around the label's own bounding box, so it names whatever
@@ -190,6 +220,45 @@
   // ============================================================================
   // COLOUR FORMATTING
   // ============================================================================
+
+  /**
+   * Smallest share, in whole per cent, that a colour needs to be written out in a
+   * palette list a reader sees. Phase H-54 (12 October 2026), after H-53 measured
+   * that dropping the 1% slots cost nothing the scoring rule could detect.
+   */
+  const PALETTE_DISPLAY_MIN_PERCENT = 3;
+
+  /**
+   * Tidies the analyser's palette for display: entries sharing a colour name are
+   * joined (raw shares added), entries whose joined share rounds to under
+   * PALETTE_DISPLAY_MIN_PERCENT are left out, and the rest are ordered largest
+   * first (ties keep first-appearance order). Returns a NEW array of new objects;
+   * the analyser's own palette is never changed.
+   *
+   * Phase H-54. Used by every list a reader sees; the debug panel reads the raw
+   * palette on purpose.
+   *
+   * @param {Array<{colourName: string, percentage: number}>} palette
+   * @returns {Array<object>} tidied copy (empty if the input is not a usable array)
+   */
+  function tidyPaletteForDisplay(palette) {
+    if (!Array.isArray(palette)) return [];
+
+    const groups = new Map();
+    palette.forEach((entry) => {
+      const share = (entry && entry.percentage) || 0;
+      const existing = groups.get(entry && entry.colourName);
+      if (existing) {
+        existing.percentage += share;
+        return;
+      }
+      groups.set(entry && entry.colourName, { ...entry, percentage: share });
+    });
+
+    return Array.from(groups.values())
+      .filter((e) => Math.round(e.percentage * 100) >= PALETTE_DISPLAY_MIN_PERCENT)
+      .sort((a, b) => b.percentage - a.percentage);
+  }
 
   /**
    * Formats the colour section of the prompt.
@@ -230,61 +299,15 @@
     }
 
     // Palette
-    if (colour.palette && colour.palette.length > 0) {
-      const paletteStr = colour.palette
+    const tidyPalette = tidyPaletteForDisplay(colour.palette);
+    if (tidyPalette.length > 0) {
+      const paletteStr = tidyPalette
         .map((p) => `${p.colourName} (${Math.round(p.percentage * 100)}%)`)
         .join(", ");
       text += `- Dominant palette: ${paletteStr}\n`;
     }
 
     return text;
-  }
-
-  // ============================================================================
-  // CLASSIFICATION FORMATTING (Phase 5B-2)
-  // ============================================================================
-
-  /**
-   * Formats classification data into a prompt section.
-   * Used to give the LLM context about what type of image this is.
-   *
-   * Phase H-5a (1 September 2026) — the block was cut from five lines to three.
-   * Three of the four claims it made were removed and one was kept:
-   *
-   *   - the confidence parenthetical on the headline sentence. On every image
-   *     whose source is CLIP, that percentage is CLIP's confidence in a
-   *     DIFFERENT word from the one the sentence asserts, measured identical
-   *     across all four such frozen fixtures. The provenance token beside it
-   *     went with it as a wording judgement, not on evidence.
-   *   - the raw CLIP top-label sentence, right 3 of 6 and measured being copied
-   *     into descriptions verbatim.
-   *   - the alternatives list, which vote-split against the headline word and
-   *     supplied one further measured injection from a 22% also-ran.
-   *
-   * The headline word itself is KEPT — it was right 5 of 6 and nothing has been
-   * measured copying it — as is the closing instruction to verify against the image.
-   *
-   * External validity: seven hard images, no easy cases. See
-   * docs/idq-corpus-validity.md for what this makes incomparable with what.
-   *
-   * @param {object} classification — ClassificationResult from classify module
-   * @returns {string} formatted prompt text, or empty string if no classification
-   */
-  function formatClassificationForPrompt(classification) {
-    if (!classification || !classification.profile) return "";
-
-    const parts = [];
-    parts.push("### Image Classification (automated pre-analysis)");
-
-    parts.push(
-      `This image has been automatically classified as a **${classification.profile}**.`,
-    );
-
-    parts.push(
-      "Use this classification to inform your description approach, but verify it against what you see in the image.",
-    );
-
-    return parts.join("\n");
   }
 
   // ============================================================================
@@ -468,63 +491,6 @@
   }
 
   // ============================================================================
-  // DEPTH FORMATTING (Phase 11A)
-  // ============================================================================
-
-  /**
-   * Human-readable labels for depth zones.
-   */
-  const DEPTH_ZONE_LABELS = {
-    foreground: "Foreground (closest",
-    midground: "Midground (intermediate",
-    background: "Background (farthest",
-  };
-
-  /**
-   * Formats depth estimation data into a prompt section.
-   * Returns empty string if depth data is absent, errored, skipped,
-   * or shows no significant depth variation.
-   *
-   * @param {object} depth — depth estimation result from estimateDepth()
-   * @returns {string} formatted prompt text, or empty string
-   */
-  function formatDepthForPrompt(depth) {
-    if (!depth || depth.status !== "success" || !depth.hasSignificantDepth) {
-      return "";
-    }
-
-    if (!depth.zones) return "";
-
-    const parts = [];
-    parts.push("### Depth analysis (pre-analysis)");
-    parts.push("This image contains distinct depth layers:");
-
-    const zoneNames = ["foreground", "midground", "background"];
-    let significantZoneCount = 0;
-
-    zoneNames.forEach(function (name) {
-      const zone = depth.zones[name];
-      if (!zone || zone.areaPercent < 5) return;
-
-      significantZoneCount++;
-      const label = DEPTH_ZONE_LABELS[name];
-      let line = "- " + label + ", " + zone.areaPercent + "% of image area)";
-
-      if (zone.dominantQuadrants && zone.dominantQuadrants.length > 0) {
-        line += ": concentrated in " + zone.dominantQuadrants.join(", ");
-      }
-
-      parts.push(line);
-    });
-
-    if (significantZoneCount <= 1) {
-      parts.push("This image has minimal depth variation.");
-    }
-
-    return parts.join("\n");
-  }
-
-  // ============================================================================
   // FULL PROMPT FORMATTING
   // ============================================================================
 
@@ -533,7 +499,8 @@
    * Returns an empty string if no analysers produced usable results.
    *
    * @param {object} analysis — ImageAnalysisResult
-   * @param {object} [config] — optional { confidenceThreshold }
+   * @param {object} [config] — optional { confidenceThreshold, hasCorrections, includeColour }
+   *   includeColour defaults to true; false leaves out the colour section and every sentence about it (H-78).
    * @returns {string}
    */
   function formatForPrompt(analysis, config) {
@@ -543,8 +510,13 @@
     const threshold =
       (config && config.confidenceThreshold) || u.DEFAULT_CONFIDENCE_THRESHOLD;
 
-    const ocrText = formatOCRForPrompt(analysis.ocr, threshold);
-    const colourText = formatColourForPrompt(analysis.colour);
+    const ocrText = formatOCRForPrompt(analysis.ocr, threshold, {
+      hasCorrections: !!(config && config.hasCorrections),
+    });
+    // H-78: the colour analysis follows the "Include colour descriptions" box.
+    // Absent option = include, so every caller that does not pass it is unchanged.
+    const includeColour = !config || config.includeColour !== false;
+    const colourText = includeColour ? formatColourForPrompt(analysis.colour) : "";
 
     // Florence-2 context (Phase 10B)
     const imgW = analysis.source && analysis.source.width;
@@ -576,14 +548,10 @@
       ? ""
       : formatFlorence2OCRForPrompt(analysis.florenceOCR);
 
-    // Depth estimation context (Phase 11A)
-    const depthText = formatDepthForPrompt(analysis.depth);
-
     // If no analyser produced any output, return empty
     if (
       !ocrText &&
       !colourText &&
-      !depthText &&
       !florenceCaptionText &&
       !florenceObjectsText &&
       !florenceOCRText
@@ -591,31 +559,29 @@
       return "";
     }
 
+    // Box off: the preamble says nothing about colour, because the data it
+    // would point at is not sent (H-78).
+    const preambleIntro = includeColour
+      ? "The following positions and colours were extracted from the image by OCR\n" +
+        "and pixel analysis before you received it. Treat the colour data as accurate\n" +
+        "unless you can see clear evidence that it is wrong. Specifically:\n"
+      : "The following positions were extracted from the image by OCR before you received it. Specifically:\n";
+    const colourInstruction = includeColour
+      ? "- Use the colour data below when describing regional colours and tones.\n"
+      : "";
+
     let prompt =
       "## Machine pre-analysis data\n\n" +
-      "The following positions and colours were extracted from the image by OCR\n" +
-      "and pixel analysis before you received it. Treat this data as accurate\n" +
-      "unless you can see clear evidence that it is wrong. Specifically:\n" +
+      preambleIntro +
       (OCR_LABEL_LINE.test(ocrText)
         ? "- Use the OCR label positions below when describing where labels appear.\n"
         : "") +
-      "- Use the colour data below when describing regional colours and tones.\n" +
+      colourInstruction +
       "- If your visual impression contradicts this data, re-examine the image\n" +
       "  before defaulting to your initial interpretation.\n\n";
 
     if (ocrText) prompt += ocrText + "\n";
     if (colourText) prompt += colourText + "\n";
-
-    // Classification context (Phase 5B-2)
-    if (analysis.classification) {
-      const classText = formatClassificationForPrompt(analysis.classification);
-      if (classText) {
-        prompt += "\n" + classText + "\n";
-      }
-    }
-
-    // Depth estimation context (Phase 11A)
-    if (depthText) prompt += "\n" + depthText + "\n";
 
     // Object detection context (Phase 8A — OWL-ViT legacy, may be unused)
     if (analysis.objects) {
@@ -650,28 +616,16 @@
    * @param {object} analysis — ImageAnalysisResult (same structure as formatForPrompt)
    * @returns {string} concise plain text, or empty string if no analysis available
    */
-  function formatForLocalPrompt(analysis) {
+  function formatForLocalPrompt(analysis, config) {
     if (!analysis) return "";
+
+    // H-78: the colour line follows the "Include colour descriptions" box.
+    // Absent option = include.
+    const includeColour = !config || config.includeColour !== false;
 
     const u = utils();
     const threshold = u.DEFAULT_CONFIDENCE_THRESHOLD;
     const lines = [];
-
-    // CLIP classification
-    if (analysis.classification && analysis.classification.profile) {
-      const cls = analysis.classification;
-      const pct = Math.round((cls.confidence || 0) * 100);
-      let line = "- Image type: " + cls.profile + " (" + pct + "% confidence)";
-      // Include CLIP topLabel if available and different from profile
-      if (
-        cls.clip &&
-        cls.clip.topLabel &&
-        cls.clip.topLabel.toLowerCase() !== cls.profile.toLowerCase()
-      ) {
-        line += ' (CLIP: "' + cls.clip.topLabel + '")';
-      }
-      lines.push(line);
-    }
 
     // OCR text
     if (
@@ -704,48 +658,23 @@
 
     // Colour palette
     if (
+      includeColour &&
       analysis.colour &&
       analysis.colour.status === "complete" &&
       analysis.colour.palette &&
       analysis.colour.palette.length > 0
     ) {
       const colourNames = [];
-      const max = Math.min(analysis.colour.palette.length, 5);
+      const tidyPalette = tidyPaletteForDisplay(analysis.colour.palette);
+      const max = Math.min(tidyPalette.length, 5);
       for (let c = 0; c < max; c++) {
-        const entry = analysis.colour.palette[c];
+        const entry = tidyPalette[c];
         if (entry.colourName) {
           colourNames.push(entry.colourName);
         }
       }
       if (colourNames.length > 0) {
         lines.push("- Main colours: " + colourNames.join(", "));
-      }
-    }
-
-    // Depth zones
-    if (
-      analysis.depth &&
-      analysis.depth.status === "success" &&
-      analysis.depth.hasSignificantDepth
-    ) {
-      const zones = analysis.depth.zones || analysis.depth.depthZones;
-      if (zones && zones.length > 0) {
-        const zoneParts = [];
-        for (let z = 0; z < zones.length; z++) {
-          const zone = zones[z];
-          const areaPct = zone.areaPercent || zone.area || 0;
-          if (areaPct >= 10) {
-            zoneParts.push(
-              (zone.label || zone.name || "zone") +
-                " (" +
-                Math.round(areaPct) +
-                "%)",
-            );
-          }
-        }
-        if (zoneParts.length > 0) {
-          lines.push("- Depth: " + zoneParts.join(", "));
-        }
       }
     }
 
@@ -777,10 +706,9 @@
     confidenceWord,
     luminanceDescriptor,
     formatOCRForPrompt,
+    tidyPaletteForDisplay,
     formatColourForPrompt,
-    formatClassificationForPrompt,
     formatObjectsForPrompt,
-    formatDepthForPrompt,
     formatFlorence2CaptionForPrompt,
     formatFlorence2ObjectsForPrompt,
     formatFlorence2OCRForPrompt,

@@ -222,7 +222,10 @@
     );
 
     if (pageElement && this.elements.pdfScrollContainer) {
-      pageElement.scrollIntoView({ behavior: "smooth", block: "start" });
+      pageElement.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "start",
+      });
       logDebug("Navigated to page", { pageNum });
     }
   };
@@ -570,6 +573,13 @@
         tab: liveEl(this.elements.tabContext, "resume-tab-context"),
         panel: liveEl(this.elements.panelContext, "resume-panel-context"),
       },
+      // S6-3a: AI tab. Resume-only, like Context: the upload group has no
+      // counterpart, and the container-selector reset loop above hides this
+      // panel when any sibling activates.
+      ai: {
+        tab: liveEl(this.elements.tabAi, "resume-tab-ai"),
+        panel: liveEl(this.elements.panelAi, "resume-panel-ai"),
+      },
     };
 
     // Update the target tab's buttons and panels. The defensive reset above
@@ -618,6 +628,12 @@
     if (tab === "context") {
       window.MathPixContextAI?.refreshAvailability?.();
     }
+
+    // S6-3a: re-read the AI tab's preconditions and model lines on EVERY tab
+    // switch. switchToResumeMode and restoreSession both end in switchTab, so
+    // this one line covers "Resume mode shown" and "after a restore settles".
+    // Writes the tab's own ticks and text only; raises nothing.
+    window.MathPixAITab?.refresh?.();
 
     // Phase 8A-8 D-1: verify no invariant drift at the end of the switch.
     assertResumeTabStateConsistent(resumeContainer, "switchTab:end");

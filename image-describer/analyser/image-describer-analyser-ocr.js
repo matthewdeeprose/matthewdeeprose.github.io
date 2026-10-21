@@ -772,11 +772,13 @@
     // Check Tesseract availability
     if (typeof Tesseract === "undefined") {
       logWarn(
-        "Tesseract.js is not loaded — OCR skipped. " +
+        "Tesseract.js is not loaded — OCR could not run. " +
           'Add <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script> to tools.html',
       );
+      // A missing library is a failure, not a skip (H-39): "skipped" is a person's own choice
+      // or a profile with OCR off, and reported as "complete" it hid that text detection never ran.
       return {
-        status: "skipped",
+        status: "failed",
         duration: Date.now() - ocrStart,
         error: "Tesseract.js not loaded",
         items: [],

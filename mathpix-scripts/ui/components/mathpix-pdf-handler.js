@@ -102,6 +102,7 @@ import MATHPIX_CONFIG, {
   isFeatureAvailable,
   getFormatInfo,
   MATHPIX_PRICING,
+  MATHPIX_FORMAT_RESULT_KEYS,
   formatMathPixCost,
   estimateMathPixPdfCost,
 } from "../../core/mathpix-config.js";
@@ -2759,18 +2760,10 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @since 2.1.0
    */
   populateFormatTabs(results) {
-    // Map UI format names to result keys
-    const formatMapping = {
-      mmd: "mmd",
-      html: "html",
-      latex: "tex.zip", // Key fix: map latex UI to tex.zip result key
-      docx: "docx",
-    };
-
     const formats = ["mmd", "html", "latex", "docx"];
 
     formats.forEach((format) => {
-      const resultKey = formatMapping[format];
+      const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
       const contentElement = document.getElementById(
         `mathpix-pdf-content-${format}`,
       );
@@ -3246,14 +3239,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   async copyFormatContent(format) {
     // Map UI format names to result keys (same as populateFormatTabs)
-    const formatMapping = {
-      mmd: "mmd",
-      html: "html",
-      latex: "tex.zip", // Key fix: map latex UI to tex.zip result key
-      docx: "docx",
-    };
-
-    const resultKey = formatMapping[format];
+    const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
     if (!this.currentPDFResults || !this.currentPDFResults[resultKey]) {
       this.showNotification("No content available to copy", "error");
       logError("Copy failed - no content", {
@@ -3297,14 +3283,7 @@ class MathPixPDFHandler extends MathPixBaseModule {
    */
   downloadFormatContent(format) {
     // Map UI format names to result keys (same as populateFormatTabs)
-    const formatMapping = {
-      mmd: "mmd",
-      html: "html",
-      latex: "tex.zip", // Key fix: map latex UI to tex.zip result key
-      docx: "docx",
-    };
-
-    const resultKey = formatMapping[format];
+    const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
 
     // Handle DOCX specially first (requires PDF ID)
     if (format === "docx") {

@@ -515,8 +515,23 @@
    * the person is told nothing was changed and can try again — where the error
    * this closes is silent data loss. No minimum-length floor is added, because
    * nothing has been measured that would set one.
+   *
+   * EN-2 (15 October 2026) SPLIT THIS ONE VALUE INTO TWO, after EN-1 measured
+   * the single 0.94 refusing six COMPLETE `stop` replies (all haiku-4.5, on the
+   * two shortest documents, ratios 0.926 to 0.939) while every cut reply was
+   * also caught by the `length` net. Rule C, ruling EN-D1:
+   *   under RATIO_REFUSE_FLOOR                    refuse
+   *   RATIO_REFUSE_FLOOR up to RATIO_WARN_BELOW   apply, and say so
+   *   RATIO_WARN_BELOW and above                  apply, nothing said
+   * FIRST VALUE, NOT A MEASURED ONE: 0.80 rests on two cut replies (0.632 and
+   * 0.711) from one model family. Re-read it when more cut replies exist.
    */
-  const INCOMPLETE_REPLY_MIN_CHAR_RATIO = 0.94;
+  const RATIO_REFUSE_FLOOR = 0.8;
+  const RATIO_WARN_BELOW = 0.94;
+
+  /** Added to the applied line when the reply sat in the warn band. */
+  const SHORTER_REPLY_CLAUSE =
+    "The correction is shorter than the original; check it in the diff.";
 
   /**
    * Decide whether an AI reply was cut off before it finished.
@@ -560,10 +575,15 @@
     // as complete rather than refusing on a figure nothing supports.
     const ratio = originalChars === 0 ? 1 : replyChars / originalChars;
 
+    const incomplete = originalChars > 0 && ratio < RATIO_REFUSE_FLOOR;
+
     return {
-      incomplete: originalChars > 0 && ratio < INCOMPLETE_REPLY_MIN_CHAR_RATIO,
+      incomplete,
+      warn:
+        originalChars > 0 && !incomplete && ratio < RATIO_WARN_BELOW,
       ratio,
-      threshold: INCOMPLETE_REPLY_MIN_CHAR_RATIO,
+      threshold: RATIO_REFUSE_FLOOR,
+      warnBelow: RATIO_WARN_BELOW,
       originalChars,
       replyChars,
       originalLines: meaningfulLines(original),
@@ -625,6 +645,205 @@
         PROVIDER_CUT_FINISH_REASONS.includes(finishReason.toLowerCase()),
       finishReason,
       nativeFinishReason,
+    };
+  }
+
+  /**
+   * Every picture reference the correction can be given or hand back: markdown
+   * `![alt](url)` and LaTeX `\includegraphics[opts]{url}`. Module-scope
+   * constants, but only ever used through `matchAll`, which clones the regex,
+   * so no lastIndex is shared between callers.
+   */
+  const MARKDOWN_PICTURE_REF = /!\[([^\]]*)\]\(([^)]*)\)/g;
+  const LATEX_PICTURE_REF =
+    /\\includegraphics\s*(?:\[([^\]]*)\])?\s*\{([^}]*)\}/g;
+
+  /** The option key whose braced value is a LaTeX picture's alt text. */
+  const LATEX_ALT_KEY = "alt={";
+
+  /** A restored page can hand the model a blob: URL for a picture it holds. */
+  const BLOB_URL_PATTERN = /^blob:/i;
+
+  /**
+   * The picture URLs in a document, in document order, one entry per reference.
+   *
+   * CR-1. The URL is taken EXACT: the text inside the brackets, with any
+   * markdown title (anything after the first whitespace) dropped.
+   *
+   * DELIBERATELY NOT READ THROUGH the image registry's `createCdnUrlRegex`,
+   * though that was the first design. Measured on the stored AX output: it
+   * ends one URL `...top_left_x=222}` (a stray brace where the closing
+   * parenthesis belongs), a broken picture. The registry body stops at `}`
+   * and reads that URL as intact, so the check counted 7 lost pictures where
+   * the exact comparison counts 8. A normaliser that forgives what the model
+   * damaged cannot be the yardstick for whether it damaged it.
+   *
+   * @param {string} mmd
+   * @returns {string[]}
+   */
+  function extractPictureUrls(mmd) {
+    return extractPictureRefs(mmd).map(({ url }) => url);
+  }
+
+  /**
+   * The alt text inside a `\includegraphics` option list: the value of
+   * `alt={...}`, read to the MATCHING brace.
+   *
+   * CR-1c. Not to the first `}`: that is the trap AL-2's strip regex fell
+   * into, and an alt such as `{x^2}` would be read as `{x^2`. Nested braces
+   * count depth, and a backslash-escaped brace (`\{`, `\}`, how the serialiser
+   * writes a literal brace) does not.
+   *
+   * @param {string|undefined} options - text between `[` and `]`
+   * @returns {string} the alt text, or "" when there is none
+   */
+  function readLatexAlt(options) {
+    if (!options) return "";
+    const keyAt = options.indexOf(LATEX_ALT_KEY);
+    if (keyAt === -1) return "";
+    const openAt = keyAt + LATEX_ALT_KEY.length - 1;
+    let depth = 0;
+    for (let i = openAt; i < options.length; i++) {
+      const ch = options[i];
+      if (ch === "\\") {
+        i++;
+        continue;
+      }
+      if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+        if (depth === 0) return options.slice(openAt + 1, i);
+      }
+    }
+    return options.slice(openAt + 1);
+  }
+
+  /**
+   * Every picture reference in a document, in document order, with the URL
+   * (exact, as `extractPictureUrls` documents) and the alt text it carries.
+   *
+   * @param {string} mmd
+   * @returns {{ url: string, alt: string }[]}
+   */
+  function extractPictureRefs(mmd) {
+    const text = String(mmd === undefined || mmd === null ? "" : mmd);
+    const found = [];
+    for (const m of text.matchAll(MARKDOWN_PICTURE_REF)) {
+      found.push({ at: m.index, raw: m[2], alt: m[1] });
+    }
+    for (const m of text.matchAll(LATEX_PICTURE_REF)) {
+      found.push({ at: m.index, raw: m[2], alt: readLatexAlt(m[1]) });
+    }
+    found.sort((a, b) => a.at - b.at);
+    return found.map(({ raw, alt }) => ({
+      url: raw.trim().split(/\s+/)[0],
+      alt,
+    }));
+  }
+
+  /**
+   * The input pictures whose alt text the output blanked.
+   *
+   * CR-1c. S6-2 found a correction can keep every URL and still hand back
+   * empty alt text, which passes the URL check while the registry goes on
+   * saying the picture is covered. Pictures are paired by URL, the nth
+   * input reference with the nth output reference of that URL (the last one
+   * if the output has fewer). A loss is a non-empty input alt against an empty
+   * or absent output alt. A reworded alt is NOT a loss (the correction may fix
+   * an OCR slip inside it) and an alt the output adds is not a loss. A URL the
+   * output no longer carries is already counted as a lost URL, not here.
+   *
+   * @param {{ url: string, alt: string }[]} inputRefs
+   * @param {{ url: string, alt: string }[]} outputRefs
+   * @returns {string[]} the URL of each picture whose alt was blanked
+   */
+  function findBlankedAlts(inputRefs, outputRefs) {
+    const outputByUrl = new Map();
+    for (const ref of outputRefs) {
+      const list = outputByUrl.get(ref.url);
+      if (list) list.push(ref);
+      else outputByUrl.set(ref.url, [ref]);
+    }
+
+    const seen = new Map();
+    const blanked = [];
+    for (const input of inputRefs) {
+      const nth = seen.get(input.url) || 0;
+      seen.set(input.url, nth + 1);
+      const candidates = outputByUrl.get(input.url);
+      if (!candidates || !input.alt.trim()) continue;
+
+      const output = candidates[Math.min(nth, candidates.length - 1)];
+      if (!output.alt.trim()) {
+        blanked.push(input.url);
+      } else if (output.alt !== input.alt) {
+        logDebug("Correction reworded an alt text", {
+          url: input.url,
+          before: input.alt,
+          after: output.alt,
+        });
+      }
+    }
+    return blanked;
+  }
+
+  /** Shown and spoken when a correction hands back fewer pictures than it was given. */
+  function composePicturesLostLine(lostCount, totalCount) {
+    return (
+      `The correction was not applied because it lost ${lostCount} of ` +
+      `${totalCount} pictures.`
+    );
+  }
+
+  /**
+   * Decide whether a corrected document lost any picture the original held.
+   *
+   * CR-1. A picture is lost when its input URL is absent from the output, or
+   * present only as a different URL. A syntax change that keeps the URL
+   * (markdown to `\includegraphics`) is NOT a loss, and a reference the output
+   * adds is not a loss. A blob: URL in the output stands for a picture the
+   * restored page holds locally (S6-1a, FEEG1050), so it is never a change:
+   * a blob: input is never lost, and each blob: URL the output carries that
+   * the input did not offsets one lost URL.
+   *
+   * MODULE SCOPE and pure for the same reason `isIncompleteReply` is.
+   *
+   * @param {string} originalMMD
+   * @param {string} replyMMD
+   * @returns {{ lost: boolean, lostCount: number, totalCount: number,
+   *   missingUrls: string[], line: string }}
+   */
+  function findLostPictures(originalMMD, replyMMD) {
+    const inputRefs = extractPictureRefs(originalMMD);
+    const outputRefs = extractPictureRefs(replyMMD);
+    const inputUrls = inputRefs.map(({ url }) => url);
+    const outputUrls = outputRefs.map(({ url }) => url);
+    const outputSet = new Set(outputUrls);
+    const inputSet = new Set(inputUrls);
+
+    const absent = inputUrls.filter(
+      (url) => !BLOB_URL_PATTERN.test(url) && !outputSet.has(url),
+    );
+    const newBlobs = outputUrls.filter(
+      (url) => BLOB_URL_PATTERN.test(url) && !inputSet.has(url),
+    ).length;
+    const urlsMissing = Math.max(0, absent.length - newBlobs);
+
+    // CR-1c: a picture whose URL survived but whose alt text was blanked
+    // counts as lost too, so the sentence and its figures keep one meaning.
+    const blankedAlts = findBlankedAlts(inputRefs, outputRefs).map(
+      (url) => `${url} (alt text removed)`,
+    );
+    const missingUrls = [...absent.slice(0, urlsMissing), ...blankedAlts];
+    const missingCount = missingUrls.length;
+
+    return {
+      lost: missingCount > 0,
+      lostCount: missingCount,
+      totalCount: inputUrls.length,
+      missingUrls,
+      line: composePicturesLostLine(missingCount, inputUrls.length),
     };
   }
 
@@ -4715,6 +4934,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // modal remains in the configuration state with the picker still open,
       // which is where the fix for the refusal actually is.
       const refusal = this._preflightRefusal();
+      if (refusal && this._quietRun) {
+        // S6-3b: a modal-free run (runCorrection) hands the sentence back.
+        this._quietRun.refused = true;
+        this._quietRun.preflight = true;
+        this._quietRun.line = refusal;
+        return;
+      }
       if (refusal) {
         // The modal is open, so the shared notification path reroutes this into
         // the dialogue's own div.universal-modal-status-text — the same host the
@@ -4990,15 +5216,44 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           this.originalMMD,
           replyMMD,
         );
+        // EN-2: remembered for applyEnhancement, which composes the clause
+        // into the applied line. Assigned BEFORE the refusal branch so a
+        // refused run never leaves a stale true behind.
+        this._shorterReplyWarn = completeness.warn === true;
         if (completeness.incomplete) {
           logError("Refusing an incomplete AI reply", completeness);
           const percent = (value) => Math.round(value * 100);
           this.showError(
             INCOMPLETE_REPLY_LINE,
             `The reply was ${percent(completeness.ratio)}% of the original's length, ` +
-              `below the ${percent(completeness.threshold)}% a complete reply has measured at.\n` +
+              `below the ${percent(completeness.threshold)}% floor.\n` +
               `Reply: ${completeness.replyChars} characters, ${completeness.replyLines} non-empty lines.\n` +
               `Original: ${completeness.originalChars} characters, ${completeness.originalLines} non-empty lines.\n` +
+              `The document was not changed.`,
+          );
+          return;
+        }
+
+        // CR-1: refuse a correction that loses a picture. S6-1a measured 6 of
+        // 66 stored AW-21 outputs doing it (three haiku-4.5 cells dropping 5 to
+        // 8 pictures, two gpt-5.6-sol cells cutting a URL after its last query
+        // parameter, one rewriting markdown as \includegraphics), and the
+        // length nets above cannot see it. Reached through the STATIC so an
+        // inversion moves product and rows together.
+        const pictures = MathPixAIEnhancer.findLostPictures(
+          this.originalMMD,
+          replyMMD,
+        );
+        if (pictures.lost) {
+          logWarn("Refusing a correction that lost pictures", {
+            lostCount: pictures.lostCount,
+            totalCount: pictures.totalCount,
+            missingUrls: pictures.missingUrls,
+          });
+          this.showError(
+            pictures.line,
+            `Missing from the reply (${pictures.lostCount} of ` +
+              `${pictures.totalCount}):\n${pictures.missingUrls.join("\n")}\n` +
               `The document was not changed.`,
           );
           return;
@@ -5017,6 +5272,31 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
             const verifiedMMD = await window.MathPixMultiPass.orchestrate(this);
             if (verifiedMMD) {
+              // CR-1b: the picture-loss check covers Pass 2 too. It is compared
+              // with the Pass 1 text it would replace (Pass 1 has already been
+              // checked against the original, so nothing lost there reaches
+              // here). On a loss the whole enhancement is refused, as at Pass 1:
+              // enhancedMMD is cleared so Apply cannot write the Pass 1 text
+              // behind an error, and the document stays the original.
+              const pass2Pictures = MathPixAIEnhancer.findLostPictures(
+                replyMMD,
+                verifiedMMD,
+              );
+              if (pass2Pictures.lost) {
+                logWarn("Refusing a Pass 2 result that lost pictures", {
+                  lostCount: pass2Pictures.lostCount,
+                  totalCount: pass2Pictures.totalCount,
+                  missingUrls: pass2Pictures.missingUrls,
+                });
+                this.enhancedMMD = "";
+                this.showError(
+                  pass2Pictures.line,
+                  `Missing from the reply (${pass2Pictures.lostCount} of ` +
+                    `${pass2Pictures.totalCount}):\n${pass2Pictures.missingUrls.join("\n")}\n` +
+                    `The document was not changed.`,
+                );
+                return;
+              }
               logInfo("Pass 2 verification applied — replacing Pass 1 output");
               this.enhancedMMD = verifiedMMD;
             } else {
@@ -5097,8 +5377,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         // Phase 7.3J: Stop elapsed timer before switching to results view
         this.stopElapsedTimer();
 
-        // Show results
-        await this.showResults();
+        // Show results. S6-3b: a modal-free run has no results view; it only
+        // needs the cost figure that view would have computed.
+        if (this._quietRun) {
+          this.calculateActualCost();
+        } else {
+          await this.showResults();
+        }
       } catch (error) {
         if (error.message === "Cancelled") {
           logInfo("Enhancement cancelled by user");
@@ -6235,7 +6520,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       );
 
       if (pageElement && scrollContainer) {
-        pageElement.scrollIntoView({ behavior: "smooth", block: "start" });
+        pageElement.scrollIntoView({
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+          block: "start",
+        });
       }
 
       logDebug("PDF navigated to page", { page: validPage });
@@ -6357,6 +6645,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // the product.
       const described = MathPixAIEnhancer.describeProviderFailure(message);
 
+      if (this._quietRun) {
+        // S6-3b: a modal-free run records the plain sentence and raises nothing.
+        this._quietRun.refused = true;
+        this._quietRun.line = described.line;
+        return;
+      }
+
       if (!this.currentModal) {
         // Modal not open, use notification
         if (window.notifyError) {
@@ -6432,10 +6727,13 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         return;
       }
 
+      const run = this._quietRun;
       const provider = this.ensureDataProvider();
       if (!provider) {
         logError("No data provider available for apply");
-        if (window.notifyError) {
+        if (run) {
+          run.line = "Cannot apply changes: no data provider";
+        } else if (window.notifyError) {
           window.notifyError("Cannot apply changes: no data provider");
         }
         return;
@@ -6462,12 +6760,19 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         this.closeModal();
 
         // Notify success — message varies by provider mode
-        if (window.notifySuccess) {
-          const message =
-            provider.mode === "resume"
-              ? "AI enhancement applied! Use Ctrl+Z to undo."
-              : "AI enhancement applied! Use the toggle to compare versions.";
-          window.notifySuccess(message);
+        const appliedBase =
+          provider.mode === "resume"
+            ? "AI enhancement applied! Use Ctrl+Z to undo."
+            : "AI enhancement applied! Use the toggle to compare versions.";
+        // EN-2: one line, one raise; the clause rides inside it.
+        const appliedLine = this._shorterReplyWarn
+          ? appliedBase + " " + SHORTER_REPLY_CLAUSE
+          : appliedBase;
+        if (run) {
+          run.applied = true;
+          run.line = appliedLine;
+        } else if (window.notifySuccess) {
+          window.notifySuccess(appliedLine);
         }
 
         logInfo(
@@ -6475,10 +6780,89 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         );
       } catch (error) {
         logError("Failed to apply enhancement:", error);
-        if (window.notifyError) {
+        if (run) {
+          run.line = "Failed to apply changes: " + error.message;
+        } else if (window.notifyError) {
           window.notifyError("Failed to apply changes: " + error.message);
         }
       }
+    }
+
+    /**
+     * S6-3b — the correction without its modal, for the AI tab.
+     *
+     * Does what Start Enhancement then Apply Changes do, through the same
+     * `startEnhancement` and `applyEnhancement` and therefore the same guards
+     * (the length nets, the 0.94 ratio, CR-1, CR-1c), but builds no modal and
+     * raises nothing. The sentence the modal would have shown comes back as
+     * `line`: the plain refusal sentence, or the applied sentence. The values
+     * the form feeds (model, engine, multi-pass) are instance state loaded by
+     * `loadEnhancerPreferences`, which the modal's own build also calls, so no
+     * form is read here. Refuses to run under an open correction modal.
+     *
+     * @param {{apply?: boolean}} [options] apply the reply once it has passed
+     * AT-2: when the reply was applied, `before` and `after` carry the two
+     * texts the correction compared (null otherwise), so the AI tab can show
+     * what changed through `renderDiffHighlighted`.
+     *
+     * @returns {Promise<{ran: boolean, applied: boolean, refused: boolean, line: string|null, before: string|null, after: string|null}>}
+     */
+    async runCorrection(options) {
+      const outcome = {
+        ran: false,
+        applied: false,
+        refused: false,
+        preflight: false,
+        line: null,
+        before: null,
+        after: null,
+      };
+      const finish = () => ({
+        ran: outcome.ran,
+        applied: outcome.applied,
+        refused: outcome.refused,
+        line: outcome.line,
+        before: outcome.before,
+        after: outcome.after,
+      });
+
+      if (this.isProcessing || this.currentModal) return finish();
+
+      if (!this.isEnhancementAvailable()) {
+        outcome.refused = true;
+        outcome.line = "AI Enhancement requires a PDF source with MMD content.";
+        return finish();
+      }
+
+      // The same resets openModal performs before it builds the form.
+      this.originalMMD = this.getCurrentMMD();
+      this.enhancedMMD = "";
+      this.lastError = null;
+      this.pdfRendered = false;
+      this.pdfDocument = null;
+      this.currentPdfScale = 1;
+      this.uncertaintyMetadata = [];
+      this.loadEnhancerPreferences();
+
+      this._quietRun = outcome;
+      try {
+        await this.startEnhancement();
+        outcome.ran = !outcome.preflight;
+        if (!outcome.refused && options && options.apply === true) {
+          if (this.enhancedMMD) {
+            await this.applyEnhancement();
+          } else {
+            outcome.refused = true;
+          }
+        }
+      } finally {
+        this._quietRun = null;
+      }
+      if (outcome.applied) {
+        outcome.before = this.originalMMD;
+        outcome.after = this.enhancedMMD;
+      }
+      return finish();
     }
 
     /**
@@ -6967,15 +7351,22 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // together.
   MathPixAIEnhancer.isProviderCutReply = isProviderCutReply;
 
+  // CR-1: the lost-picture predicate and its sentence builder, published on the
+  // same terms. startEnhancement calls the STATIC.
+  MathPixAIEnhancer.findLostPictures = findLostPictures;
+  MathPixAIEnhancer.extractPictureRefs = extractPictureRefs;
+  MathPixAIEnhancer.composePicturesLostLine = composePicturesLostLine;
+
   /** The stop reasons that mean truncation, so a guard row can pin them. */
   MathPixAIEnhancer.PROVIDER_CUT_FINISH_REASONS = PROVIDER_CUT_FINISH_REASONS;
 
   /** The literal a person is shown and hears when a reply was cut. */
   MathPixAIEnhancer.INCOMPLETE_REPLY_LINE = INCOMPLETE_REPLY_LINE;
 
-  /** The measured threshold, so a guard row can pin both sides of it. */
-  MathPixAIEnhancer.INCOMPLETE_REPLY_MIN_CHAR_RATIO =
-    INCOMPLETE_REPLY_MIN_CHAR_RATIO;
+  /** The two ratio values and the warn clause, so guard rows can pin them. */
+  MathPixAIEnhancer.RATIO_REFUSE_FLOOR = RATIO_REFUSE_FLOOR;
+  MathPixAIEnhancer.RATIO_WARN_BELOW = RATIO_WARN_BELOW;
+  MathPixAIEnhancer.SHORTER_REPLY_CLAUSE = SHORTER_REPLY_CLAUSE;
 
   // ==========================================================================
   // DEV-ONLY CONSOLE HARNESS GATE
@@ -7029,6 +7420,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
   window.MathPixAIEnhancer = MathPixAIEnhancer;
   window.getMathPixAIEnhancer = getMathPixAIEnhancer;
+
+  // S6-3a: a READ-ONLY peek at the singleton. getMathPixAIEnhancer() CREATES
+  // and initialises it, which the AI tab must not do merely to read the model
+  // the person has chosen. Returns null until something has made the instance.
+  window.peekMathPixAIEnhancer = () => enhancerInstance;
 
   // Global action functions for onclick handlers
   window.openAIEnhancementModal = () => {

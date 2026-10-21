@@ -60,6 +60,13 @@
       console.log(`[ControllerGenerate] ${message}`, ...args);
   }
 
+  // After a failed or cancelled run, how long after the holds are released
+  // before focus moves to Regenerate. NVDA's copy of the button lags the
+  // browser's tree, so focus arriving within ~40 ms was heard as "Regenerate
+  // button unavailable busy" (H-79, H-81); waits of 300 and 500 ms were heard
+  // clean, and 500 is chosen for margin.
+  const END_OF_RUN_FOCUS_DELAY_MS = 500;
+
   // ============================================================================
   // FOUNDRY PROXY CONFIGURATION
   // ============================================================================
@@ -143,6 +150,25 @@
   // The model is told in the prompt (OCR status below, worded in the format
   // module) and the person is told in the existing success line.
   const OCR_NOT_FINISHED_STATUS = "not-finished";
+
+  // "Detect text first?" (H-64): the question Generate asks when it is pressed
+  // before the person has answered "Detect text in this picture?". The first two
+  // answers are the question's own choice values (analysis.js TEXT_CHOICE).
+  const DETECT_FIRST_ANSWER = Object.freeze({
+    DETECT: "detect",
+    SKIP: "skip",
+    CANCEL: "cancel",
+  });
+  const DETECT_FIRST_TITLE = "Detect text first?";
+  const DETECT_FIRST_BODY =
+    "Text detection reads words and labels in the picture. It can take up to a minute.";
+  const DETECT_FIRST_DETECT_LABEL = "Detect text, then describe";
+  const DETECT_FIRST_SKIP_LABEL = "Describe without text";
+  const GENERATE_BUTTON_ID = "imgdesc-generate";
+  // Nothing is written until the modal has gone AND focus has been put back:
+  // 200ms close animation plus margin for the focus-restore write window
+  // (AGENTS.md § Announcements, setup-tool MODAL_CLOSE_ANNOUNCE_DELAY_MS).
+  const DETECT_FIRST_SETTLE_MS = 350;
   const SUCCESS_SUFFIX_BEFORE_OCR =
     " Written without detected text, because text detection had not finished.";
 
@@ -393,6 +419,11 @@
     announcement: "Description incomplete: the model stopped at its length limit.",
   });
 
+  // The closing line every finished description carries. Added by the tool's
+  // code (H-75), not asked of the model, so it is always present and never twice.
+  const AI_NOTICE =
+    "Description created using AI. Verify with a subject matter expert before use.";
+
   /**
    * Choose the sentence for one generation failure.
    *
@@ -448,15 +479,12 @@
       // promote it to "0" while follow-mode is active, restore on reset.
       this.elements.output.setAttribute("tabindex", "0");
       // Bring the output box into view so the user sees the thinking
-      // indicator and the stream as it starts. Respects reduced motion
-      // (streaming is already gated off in that case, but belt-and-braces).
+      // indicator and the stream as it starts. The jump is instant, so it
+      // needs no reduced-motion check.
       try {
-        const reduce = window.matchMedia(
-          "(prefers-reduced-motion: reduce)",
-        ).matches;
         this.elements.output.scrollIntoView({
           block: "start",
-          behavior: reduce ? "auto" : "smooth",
+          behavior: "instant",
         });
       } catch (e) {}
       // Camera-follow: observe subtree mutations and snap scrollTop to the
@@ -717,7 +745,7 @@
       // Learning objective
       const objective = this.elements.objective?.value?.trim();
       if (objective) {
-        parts.push(`**Learning Objective:** ${objective}`);
+        parts.push(`**Learning Outcome:** ${objective}`);
       }
 
       // Additional context
@@ -783,7 +811,7 @@
           // it has no analysis to correct. Assigning that unguarded replaced a
           // perfectly good lastAnalysis with null, and formatForPrompt(null)
           // returns "", so the ENTIRE machine pre-analysis block vanished from
-          // the prompt: OCR, colour, classification, depth and Florence alike.
+          // the prompt: OCR, colour and Florence alike.
           const corrected = window.ImageDescriberOverlay.getCorrectedAnalysis();
           if (corrected) {
             analysisToFormat = corrected;
@@ -808,8 +836,20 @@
             ocr: { status: OCR_NOT_FINISHED_STATUS },
           };
         }
-        const analysisText =
-          window.ImageDescriberAnalyser.formatForPrompt(analysisToFormat);
+        // A person's corrected or added text is never dropped by the fragment rule (H-64).
+        const personCorrected =
+          typeof window.ImageDescriberOverlay !== "undefined" &&
+          window.ImageDescriberOverlay.hasCorrections();
+        // H-78: the colour analysis follows the "Include colour descriptions" box.
+        // No box on the page = today's behaviour (include).
+        const colourBox = document.getElementById("imgdesc-includeColours");
+        const analysisText = window.ImageDescriberAnalyser.formatForPrompt(
+          analysisToFormat,
+          {
+            hasCorrections: personCorrected,
+            includeColour: colourBox ? colourBox.checked : true,
+          },
+        );
         if (analysisText) {
           parts.push("");
           parts.push(analysisText);
@@ -902,8 +942,7 @@
      * Appended below local model output so users can verify and correct
      * the AI description. The model never sees this data.
      *
-     * Includes: OCR detections with positions, colour palette,
-     * classification profile, depth zones.
+     * Includes: OCR detections with positions, colour palette.
      * Omits sections with no data. Returns empty string if nothing to show.
      *
      * @returns {string} Markdown text or empty string
@@ -978,7 +1017,11 @@
         analysis.colour.palette &&
         analysis.colour.palette.length > 0
       ) {
-        const colours = analysis.colour.palette.map(function (p) {
+        // Phase H-54: repeated names joined, colours under 3% left out.
+        const tidyPalette = fmt && typeof fmt.tidyPaletteForDisplay === "function"
+          ? fmt.tidyPaletteForDisplay(analysis.colour.palette)
+          : analysis.colour.palette;
+        const colours = tidyPalette.map(function (p) {
           const pct = Math.round((p.percentage || 0) * 100);
           const name = p.colourName
             ? p.colourName.charAt(0).toUpperCase() + p.colourName.slice(1)
@@ -987,51 +1030,6 @@
         });
         if (colours.length > 0) {
           sections.push("### Colour Palette\n" + colours.join(", "));
-        }
-      }
-
-      // --- Classification ---
-      if (analysis.classification && analysis.classification.profile) {
-        const cls = analysis.classification;
-        const pct = Math.round((cls.confidence || 0) * 100);
-        const capProfile = cls.profile.charAt(0).toUpperCase() + cls.profile.slice(1);
-        let line = "Type: " + capProfile + " (" + pct + "% confidence)";
-        if (
-          cls.clip &&
-          cls.clip.topLabel &&
-          cls.clip.topLabel.toLowerCase() !== cls.profile.toLowerCase()
-        ) {
-          const capClip = cls.clip.topLabel.charAt(0).toUpperCase() + cls.clip.topLabel.slice(1);
-          line += ", CLIP: \"" + capClip + "\"";
-        }
-        // Show user-selected profile if different from auto-classification
-        const selectedProfile = this.getSelectedProfile();
-        if (selectedProfile && selectedProfile !== "default" &&
-            selectedProfile.toLowerCase() !== cls.profile.toLowerCase()) {
-          const capSelected = selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1);
-          line += ", User profile: \"" + capSelected + "\"";
-        }
-        sections.push("### Image Classification\n" + line);
-      }
-
-      // --- Depth zones ---
-      if (
-        analysis.depth &&
-        analysis.depth.status === "success" &&
-        analysis.depth.hasSignificantDepth &&
-        analysis.depth.zones
-      ) {
-        const zones = analysis.depth.zones;
-        const zoneParts = [];
-        const zoneNames = ["foreground", "midground", "background"];
-        for (let z = 0; z < zoneNames.length; z++) {
-          const zone = zones[zoneNames[z]];
-          if (zone && zone.areaPercent >= 10) {
-            zoneParts.push(zoneNames[z].charAt(0).toUpperCase() + zoneNames[z].slice(1) + " (" + Math.round(zone.areaPercent) + "%)");
-          }
-        }
-        if (zoneParts.length > 1) {
-          sections.push("### Depth Zones\n" + zoneParts.join(", "));
         }
       }
 
@@ -1123,9 +1121,13 @@
         analysis.colour.palette &&
         analysis.colour.palette.length > 0
       ) {
+        // Phase H-54: repeated names joined, colours under 3% left out.
+        const tidyPalette = fmt && typeof fmt.tidyPaletteForDisplay === "function"
+          ? fmt.tidyPaletteForDisplay(analysis.colour.palette)
+          : analysis.colour.palette;
         const items = [];
-        for (let i = 0; i < analysis.colour.palette.length; i++) {
-          const p = analysis.colour.palette[i];
+        for (let i = 0; i < tidyPalette.length; i++) {
+          const p = tidyPalette[i];
           const pct = Math.round((p.percentage || 0) * 100);
           const name = p.colourName
             ? p.colourName.charAt(0).toUpperCase() + p.colourName.slice(1)
@@ -1137,69 +1139,6 @@
           sections.push(
             "<section>" +
             "<h3>Colour Palette</h3>" +
-            '<ul class="imgdesc-ref-inline-list">' + items.join("") + "</ul>" +
-            "</section>"
-          );
-        }
-      }
-
-      // --- Classification ---
-      if (analysis.classification && analysis.classification.profile) {
-        const cls = analysis.classification;
-        const pct = Math.round((cls.confidence || 0) * 100);
-        const capProfile = cls.profile.charAt(0).toUpperCase() + cls.profile.slice(1);
-        let dlContent =
-          "<dt>Type</dt>" +
-          "<dd>" + capProfile + " (" + pct + "% confidence)</dd>";
-        if (
-          cls.clip &&
-          cls.clip.topLabel &&
-          cls.clip.topLabel.toLowerCase() !== cls.profile.toLowerCase()
-        ) {
-          const capClip = cls.clip.topLabel.charAt(0).toUpperCase() + cls.clip.topLabel.slice(1);
-          dlContent +=
-            "<dt>CLIP</dt>" +
-            "<dd>" + capClip + "</dd>";
-        }
-        // Show user-selected profile if different from auto-classification
-        const selectedProfile = this.getSelectedProfile();
-        if (selectedProfile && selectedProfile !== "default" &&
-            selectedProfile.toLowerCase() !== cls.profile.toLowerCase()) {
-          const capSelected = selectedProfile.charAt(0).toUpperCase() + selectedProfile.slice(1);
-          dlContent +=
-            "<dt>User profile</dt>" +
-            "<dd>" + capSelected + "</dd>";
-        }
-        sections.push(
-          "<section>" +
-          "<h3>Image Classification</h3>" +
-          "<dl>" + dlContent + "</dl>" +
-          "</section>"
-        );
-      }
-
-      // --- Depth zones ---
-      if (
-        analysis.depth &&
-        analysis.depth.status === "success" &&
-        analysis.depth.hasSignificantDepth &&
-        analysis.depth.zones
-      ) {
-        const zones = analysis.depth.zones;
-        const items = [];
-        const zoneNames = ["foreground", "midground", "background"];
-        for (let z = 0; z < zoneNames.length; z++) {
-          const zone = zones[zoneNames[z]];
-          if (zone && zone.areaPercent >= 10) {
-            items.push(
-              "<li>" + zoneNames[z].charAt(0).toUpperCase() + zoneNames[z].slice(1) + " (" + Math.round(zone.areaPercent) + "%)</li>"
-            );
-          }
-        }
-        if (items.length > 1) {
-          sections.push(
-            "<section>" +
-            "<h3>Depth Zones</h3>" +
             '<ul class="imgdesc-ref-inline-list">' + items.join("") + "</ul>" +
             "</section>"
           );
@@ -1278,7 +1217,7 @@
       if (topic) lines.push("- **Topic:** " + topic);
 
       const objective = this.elements.objective?.value?.trim();
-      if (objective) lines.push("- **Learning Objective:** " + objective);
+      if (objective) lines.push("- **Learning Outcome:** " + objective);
 
       const context = this.elements.context?.value?.trim();
       if (context) lines.push("- **Additional Context:** " + context);
@@ -1316,7 +1255,7 @@
       if (topic) pairs.push("<dt>Topic</dt><dd>" + topic + "</dd>");
 
       const objective = this.elements.objective?.value?.trim();
-      if (objective) pairs.push("<dt>Learning Objective</dt><dd>" + objective + "</dd>");
+      if (objective) pairs.push("<dt>Learning Outcome</dt><dd>" + objective + "</dd>");
 
       const context = this.elements.context?.value?.trim();
       if (context) pairs.push("<dt>Additional Context</dt><dd>" + context + "</dd>");
@@ -1374,6 +1313,49 @@
         : this.lastRawHTML;
 
       logInfo("Educational context appended to output");
+    },
+
+    /**
+     * Removes the closing AI line from the end of a description, when present.
+     * The accuracy check judges the description, not the notice (H-75).
+     * @param {string} text
+     * @returns {string}
+     */
+    _stripAiNotice(text) {
+      if (typeof text !== "string") return text;
+      const trimmed = text.replace(/\s+$/, "");
+      if (!trimmed.endsWith(AI_NOTICE)) return text;
+      return trimmed.slice(0, trimmed.length - AI_NOTICE.length).replace(/\s+$/, "");
+    },
+
+    /**
+     * Adds the closing AI line as the last paragraph of a finished description,
+     * in lastRawOutput (Markdown) and in the rendered output. Exactly once: a
+     * surface that already ends with the line is left alone. Call once per run,
+     * AFTER any reference blocks and BEFORE lastRawHTML is final. Built with
+     * textContent, never innerHTML. No announcement: the description is not
+     * announced line by line.
+     */
+    _appendAiNotice() {
+      if (typeof this.lastRawOutput === "string" && this.lastRawOutput.trim() !== "") {
+        if (!this.lastRawOutput.trimEnd().endsWith(AI_NOTICE)) {
+          this.lastRawOutput = this.lastRawOutput.trimEnd() + "\n\n" + AI_NOTICE;
+        }
+      }
+
+      const output = this.elements.output;
+      if (output) {
+        const last = output.lastElementChild;
+        const alreadyLast = last && last.textContent.trim() === AI_NOTICE;
+        if (!alreadyLast) {
+          const p = document.createElement("p");
+          p.className = "imgdesc-ai-notice";
+          p.textContent = AI_NOTICE;
+          output.appendChild(p);
+        }
+      }
+
+      this.lastRawHTML = output ? output.innerHTML : this.lastRawHTML;
     },
 
     // ========================================================================
@@ -1915,9 +1897,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       this.currentStage = stage;
 
-      // Hide completion time from previous run
-      this.hideCompletionTime();
-
       // Show progress container
       if (this.elements.progress) {
         this.elements.progress.hidden = false;
@@ -1964,6 +1943,8 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       // Start timer if not already running
       if (!this.progressTimer) {
         this.progressStartTime = Date.now();
+        // Replace the markup's bare "0s" before it can be read
+        this.setCompactTime(this.elements.progressTime, 0);
         this.progressTimer = setInterval(() => this.updateProgressTime(), 1000);
       }
 
@@ -1981,8 +1962,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     _ANALYSIS_SLOTS: {
       ocr: { label: "Tesseract OCR" },
       colour: { label: "Colour sampling" },
-      clip: { label: "CLIP classification" },
-      depth: { label: "Depth estimation" },
       florenceCaption: { label: "Florence-2 caption" },
       florenceObjects: { label: "Florence-2 objects" },
     },
@@ -2050,7 +2029,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
     /**
      * Update a single analysis slot's display.
-     * @param {string} slotKey — "ocr", "colour", "clip"
+     * @param {string} slotKey — "ocr", "colour"
      * @param {string} status — "running", "complete", "skipped", "error", "cached"
      */
     _updateProgressSlot(slotKey, status) {
@@ -2143,7 +2122,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       if (!this.progressStartTime || !this.elements.progressTime) return;
 
       const elapsed = Math.floor((Date.now() - this.progressStartTime) / 1000);
-      this.elements.progressTime.textContent = `${elapsed}s`;
+      this.setCompactTime(this.elements.progressTime, elapsed);
 
       this._announceStillGenerating(elapsed);
     },
@@ -2169,7 +2148,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
       this._lastGeneratingAnnounceS = elapsed;
       this.announceStatus(
-        `Still generating. ${this.formatElapsedTime(elapsed)} elapsed.`,
+        `Still generating. ${this.formatElapsedWords(elapsed)} elapsed.`,
       );
     },
 
@@ -2197,30 +2176,52 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
-     * Show completion time after successful generation
-     * @param {number} seconds - Total elapsed seconds
+     * Format elapsed time in words, for every sentence a person reads or hears.
+     * A reader says "10s" as "tens", so sentences never carry the compact form.
+     * @param {number} seconds - Elapsed seconds
+     * @returns {string} e.g. "1 second", "10 seconds", "2 minutes 5 seconds"
      */
-    showCompletionTime(seconds) {
-      this.lastElapsedTime = seconds;
-
-      if (this.elements.finalTime) {
-        this.elements.finalTime.textContent = this.formatElapsedTime(seconds);
-      }
-
-      if (this.elements.completionTime) {
-        this.elements.completionTime.hidden = false;
-      }
-
-      logDebug("Completion time displayed:", this.formatElapsedTime(seconds));
+    formatElapsedWords(seconds) {
+      const unit = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      if (mins === 0) return unit(secs, "second");
+      if (secs === 0) return unit(mins, "minute");
+      return `${unit(mins, "minute")} ${unit(secs, "second")}`;
     },
 
     /**
-     * Hide completion time display
+     * Write the compact visible timer ("12s", "1m 5s") into an element with the
+     * words for a reader: the number is a text node, each unit letter is
+     * aria-hidden and followed by the unit in visually-hidden words.
+     * Built with DOM nodes; nothing dynamic goes through innerHTML.
+     * @param {HTMLElement} element - Timer element
+     * @param {number} seconds - Elapsed seconds
      */
-    hideCompletionTime() {
-      if (this.elements.completionTime) {
-        this.elements.completionTime.hidden = true;
+    setCompactTime(element, seconds) {
+      if (!element) return;
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      const nodes = [];
+      const part = (n, letter, word) => {
+        nodes.push(document.createTextNode(String(n)));
+        const letterSpan = document.createElement("span");
+        letterSpan.setAttribute("aria-hidden", "true");
+        letterSpan.textContent = letter;
+        const wordSpan = document.createElement("span");
+        wordSpan.className = "visually-hidden";
+        // A no-break space: .visually-hidden is out of flow, and a plain
+        // leading space there is trimmed, which leaves "12seconds" in the
+        // accessibility tree (measured H-72).
+        wordSpan.textContent = `\u00a0${word}${n === 1 ? "" : "s"}`;
+        nodes.push(letterSpan, wordSpan);
+      };
+      if (mins > 0) {
+        part(mins, "m", "minute");
+        nodes.push(document.createTextNode(" "));
       }
+      part(secs, "s", "second");
+      element.replaceChildren(...nodes);
     },
 
     /**
@@ -2289,6 +2290,11 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         //    are suspended in a hidden tab, so there the step waits until the
         //    tab is shown. A later end of run replaces the token, and a run
         //    started in between owns the progress area, so neither is touched.
+        //    H-82: the step also waits END_OF_RUN_FOCUS_DELAY_MS after the
+        //    release before asking for those two frames. A rendering update is
+        //    not enough on its own: the page's tree was clean at focus yet
+        //    NVDA still read the stale state until about 300 ms had passed
+        //    (H-79, H-81), so Cancel stays focused and visible for that long.
         const deferEnd = !focusDescription;
         const endToken = {};
         this._endOfRunToken = deferEnd ? endToken : null;
@@ -2314,7 +2320,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
             }
             progress.hidden = true;
           };
-          requestAnimationFrame(() => requestAnimationFrame(finishEnd));
+          setTimeout(
+            () => requestAnimationFrame(() => requestAnimationFrame(finishEnd)),
+            END_OF_RUN_FOCUS_DELAY_MS,
+          );
         }
 
         // 3. Move focus off Cancel BEFORE the hide (parcel 43). Hiding the
@@ -2578,6 +2587,52 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
     },
 
     /**
+     * Ask "Detect text first?" (H-64). Resolves with a DETECT_FIRST_ANSWER once
+     * the dialogue has closed, focus has gone back to Generate, and a short
+     * settle has passed, so whatever the caller writes next is not swallowed by
+     * the close window. Escape, the close cross and a click outside all cancel.
+     * Not safeConfirm: that dialogue ignores Escape by ruling (SC-2), and this
+     * one needs a way out that generates nothing.
+     * @returns {Promise<string>}
+     */
+    _askDetectTextFirst() {
+      this._detectTextFirstOpen = true;
+
+      return new Promise((resolve) => {
+        let answer = DETECT_FIRST_ANSWER.CANCEL;
+        const modal = new window.UniversalModal.Modal({
+          title: DETECT_FIRST_TITLE,
+          content:
+            `<div class="imgdesc-detect-first">` +
+            `<p>${DETECT_FIRST_BODY}</p>` +
+            `<div class="imgdesc-detect-first-actions">` +
+            `<button type="button" class="primary-button" data-answer="${DETECT_FIRST_ANSWER.DETECT}">${DETECT_FIRST_DETECT_LABEL}</button> ` +
+            `<button type="button" class="secondary-button" data-answer="${DETECT_FIRST_ANSWER.SKIP}">${DETECT_FIRST_SKIP_LABEL}</button>` +
+            `</div></div>`,
+          size: "small",
+          className: "imgdesc-detect-first-modal",
+          closeOnOverlayClick: true,
+          returnFocusTo: GENERATE_BUTTON_ID,
+          onOpen: (instance) => {
+            instance.modal.querySelectorAll("[data-answer]").forEach((button) => {
+              button.addEventListener("click", () => {
+                answer = button.getAttribute("data-answer");
+                instance.close();
+              });
+            });
+          },
+          onClose: () => {
+            window.setTimeout(() => {
+              this._detectTextFirstOpen = false;
+              resolve(answer);
+            }, DETECT_FIRST_SETTLE_MS);
+          },
+        });
+        modal.open();
+      });
+    },
+
+    /**
      * Generate image description
      */
     async generate() {
@@ -2591,14 +2646,23 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         return;
       }
 
+      // Generate before the question is answered (H-64): ask it first. Cancelling
+      // generates nothing and leaves focus on Generate.
+      let waitForTextDetection = false;
+      if (!this._hasTextChoice()) {
+        if (this._detectTextFirstOpen) return;
+        const answer = await this._askDetectTextFirst();
+        if (answer === DETECT_FIRST_ANSWER.CANCEL) {
+          logInfo("Detect text first? dismissed — nothing generated");
+          return;
+        }
+        waitForTextDetection = answer === DETECT_FIRST_ANSWER.DETECT;
+        // The answers are the question's own choice values (analysis.js TEXT_CHOICE)
+        this.handleTextChoice(answer);
+      }
+
       logInfo("Starting generation...");
       this.isGenerating = true;
-
-      // Hide profile suggestion banner during generation
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
 
       // Access config values via exposed _controllerConfig
       const cfg = this._controllerConfig || {};
@@ -2675,11 +2739,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           try {
             const previewImg = this.elements.preview?.querySelector("img");
             if (previewImg) {
-              const profile = this.getSelectedProfile();
               const analysisResult =
                 await window.ImageDescriberAnalyser.analyse(
                   previewImg,
-                  profile,
+                  "default",
                 );
 
               if (runSignal.aborted) {
@@ -2708,6 +2771,17 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           }
         } else {
           logDebug("ImageDescriberAnalyser not available — skipping analysis");
+        }
+
+        // "Detect text, then describe" (H-64): the request is built only after
+        // text detection has finished, however many times it was started again.
+        if (waitForTextDetection) {
+          this.showProgress("ANALYSING");
+          await this._awaitTextDetection();
+          if (runSignal.aborted) {
+            logInfo("Generation cancelled while waiting for text detection");
+            throw new DOMException("Aborted", "AbortError");
+          }
         }
 
         // Stage 4: Preparing
@@ -2899,6 +2973,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // This converts LaTeX notation ($...$, $$...$$) into rendered mathematics
         await this.typesetMathJax(this.elements.output);
 
+        // The closing AI line goes last, in the Markdown and the rendered
+        // output, once (H-75). It is also what makes lastRawHTML final here.
+        this._appendAiNotice();
+
         // Store original HTML before heading adjustment (Phase 2B.3)
         // This preserves H1 headings AND rendered MathJax for Copy Formatted and Copy HTML
         this.lastRawHTML = this.elements.output.innerHTML;
@@ -2927,11 +3005,20 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // ── Visual Verification Pass (conditional) ──────────────────
         let verificationResult = null;
 
+        // Every run starts with the panel hidden and empty: the previous
+        // verdict goes while the new check runs, and a focus() the check's
+        // embed makes on its own container (reduced motion) lands on a hidden
+        // element and does nothing, so the run ends on the description.
+        this.clearVerification();
+
         if (!replyCutOff && this.isVerificationEnabled()) {
           this.showProgress("VERIFYING");
 
           try {
-            verificationResult = await this.runVerification(this.lastRawOutput);
+            // The check judges the description, not the closing AI line (H-75).
+            verificationResult = await this.runVerification(
+              this._stripAiNotice(this.lastRawOutput),
+            );
             this.displayVerificationResults(verificationResult);
           } catch (verifyError) {
             // Verification failure is non-fatal — the description is still valid
@@ -2944,9 +3031,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
               model: this.getVerificationModel(),
             };
           }
-        } else {
-          // Clear any previous verification results (also taken for a cut-off reply)
-          this.clearVerification();
         }
 
         // Stage: Finalising
@@ -2972,7 +3056,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           // line says so (replaced, not added — one write each).
           const beforeOcr = this._descriptionWrittenBeforeOcr === true;
           this.showStatus(
-            `Description generated successfully in ${this.formatElapsedTime(
+            `Description generated successfully in ${this.formatElapsedWords(
               finalTime,
             )}!${beforeOcr ? SUCCESS_SUFFIX_BEFORE_OCR : ""}`,
             "success",
@@ -2980,7 +3064,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
           // Announce to screen reader
           this.announceStatus(
-            `Image description generated successfully in ${this.formatElapsedTime(
+            `Image description generated successfully in ${this.formatElapsedWords(
               finalTime,
             )}${beforeOcr ? "." + SUCCESS_SUFFIX_BEFORE_OCR : ""}`,
           );
@@ -3109,12 +3193,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       logInfo("Starting local generation with FastVLM...");
       this.isGenerating = true;
       this.lastGenerationSource = "local";
-
-      // Hide profile suggestion banner during generation
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
 
       // Create abort controller for cancellation: this run's own controller
       // and signal, before the try (parcel 43e-2; see generate()).
@@ -3285,6 +3363,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Append educational context below analysis reference (Phase 14I)
         this._appendEducationalContext();
 
+        // Closing AI line, last of all (H-75)
+        this._appendAiNotice();
+
         // Adjust headings for page hierarchy and unwrap loose list items (same as cloud path)
         this.adjustHeadingLevels(this.elements.output);
         this.unwrapLooseListItems(this.elements.output);
@@ -3390,12 +3471,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       logInfo("Starting local generation with Qwen3.5...");
       this.isGenerating = true;
       this.lastGenerationSource = "local";
-
-      // Hide profile suggestion banner during generation
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
 
       // Create abort controller for cancellation: this run's own controller
       // and signal, before the try (parcel 43e-2; see generate()).
@@ -3566,6 +3641,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Append educational context below analysis reference (Phase 14I)
         this._appendEducationalContext();
 
+        // Closing AI line, last of all (H-75)
+        this._appendAiNotice();
+
         // Adjust headings for page hierarchy (same as cloud path)
         this.adjustHeadingLevels(this.elements.output);
         this.unwrapLooseListItems(this.elements.output);
@@ -3674,12 +3752,6 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       logInfo("Starting local generation with LFM2-VL...");
       this.isGenerating = true;
       this.lastGenerationSource = "local";
-
-      // Hide profile suggestion banner during generation
-      const suggestionBanner = document.getElementById(
-        "imgdesc-profile-suggestion",
-      );
-      if (suggestionBanner) suggestionBanner.hidden = true;
 
       // Create abort controller for cancellation: this run's own controller
       // and signal, before the try (parcel 43e-2; see generate()).
@@ -3848,6 +3920,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
         // Append educational context below analysis reference (Phase 14I)
         this._appendEducationalContext();
+
+        // Closing AI line, last of all (H-75)
+        this._appendAiNotice();
 
         // Adjust headings for page hierarchy and unwrap loose list items (same as cloud path)
         this.adjustHeadingLevels(this.elements.output);

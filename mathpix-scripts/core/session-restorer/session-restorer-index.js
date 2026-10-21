@@ -138,6 +138,7 @@
       if (restorer.isFullscreen) {
         event.preventDefault();
         restorer.exitFullscreen();
+        restorer.announceToScreenReader("Fullscreen edit mode disabled");
         return;
       }
 

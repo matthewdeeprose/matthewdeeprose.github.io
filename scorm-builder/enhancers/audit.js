@@ -11,6 +11,12 @@
 //     long description into alt) and no adjacent long description. Off by default
 //     so builds stay quiet; see enhancers/long-descriptions.js for the fix.
 //
+//   svg-missing-name — an <svg role="img"> with no non-empty aria-label or
+//     aria-labelledby (WCAG 1.1.1). Skips MathJax svg inside <mjx-container>.
+//   svg-decorative-conflict — an aria-hidden="true" <svg> that also carries role,
+//     aria-label or aria-details, or is focusable (tabindex >= 0, focusable="true"
+//     or "auto"). A plain aria-hidden icon is NOT flagged.
+//
 // Each warning: { type, message, snippet }.
 
 const IMG_TAG = /<img\b[^>]*>/gi;
@@ -24,6 +30,65 @@ const LONG_ALT_THRESHOLD = 150;
 // A class attribute carrying a `longdesc` class, or an existing aria-details —
 // either means the author already supplied / linked a long description nearby.
 const LONGDESC_MARKER = /\bclass\s*=\s*("[^"]*\blongdesc\b[^"]*"|'[^']*\blongdesc\b[^']*')|\baria-details\s*=/i;
+
+const SVG_OPEN = /<svg\b(?:"[^"]*"|'[^']*'|[^>"'])*>/gi;
+
+// Value of attribute `name` on a start tag: the string (possibly empty) or null if absent.
+function attrValue(tag, name) {
+  const m = tag.match(new RegExp(`(?:^|[\\s"'/])${name}(?![\\w-])(?:\\s*=\\s*("[^"]*"|'[^']*'|[^\\s>]+))?`, "i"));
+  if (!m) return null;
+  return m[1] == null ? "" : m[1].replace(/^["']|["']$/g, "");
+}
+
+const snippetOf = (tag) => (tag.length > 120 ? tag.slice(0, 117) + "..." : tag);
+
+// Inline-SVG checks (figure-contract-v1). Pre-rendered MathJax svg inside an
+// <mjx-container> is deliberately skipped: it carries role="img" with no name by
+// design and is not an authored figure, so existing exports stay quiet.
+function auditSvgs(src, warnings) {
+  SVG_OPEN.lastIndex = 0;
+  let m;
+  while ((m = SVG_OPEN.exec(src)) !== null) {
+    const tag = m[0];
+    const before = src.slice(0, m.index);
+    const inMath = before.lastIndexOf("<mjx-container") > before.lastIndexOf("</mjx-container");
+    if (inMath) continue;
+
+    const hidden = attrValue(tag, "aria-hidden")?.trim().toLowerCase() === "true";
+    if (hidden) {
+      const tabindex = attrValue(tag, "tabindex");
+      const focusable = attrValue(tag, "focusable")?.trim().toLowerCase();
+      const conflicts =
+        attrValue(tag, "role") !== null ||
+        attrValue(tag, "aria-label") !== null ||
+        attrValue(tag, "aria-details") !== null ||
+        (tabindex !== null && Number(tabindex) >= 0) ||
+        focusable === "true" ||
+        focusable === "auto";
+      if (conflicts) {
+        warnings.push({
+          type: "svg-decorative-conflict",
+          message:
+            'SVG is hidden from assistive technology (aria-hidden="true") but also carries a role, a label, a long-description link or is focusable. ' +
+            'Make it either decorative (aria-hidden="true" focusable="false", nothing else) or a described image (role="img" with a name).',
+          snippet: snippetOf(tag),
+        });
+      }
+      continue;
+    }
+
+    if (attrValue(tag, "role")?.trim().toLowerCase() !== "img") continue;
+    const named = (attrValue(tag, "aria-label") || "").trim() || (attrValue(tag, "aria-labelledby") || "").trim();
+    if (!named) {
+      warnings.push({
+        type: "svg-missing-name",
+        message:
+          'SVG has role="img" but no accessible name. Add a descriptive aria-label (or aria-labelledby), or mark it decorative with aria-hidden="true".',
+        snippet: snippetOf(tag),
+      });
+    }
+  }
+}
 
 function altText(tag) {
   const m = tag.match(ALT_ATTR);
@@ -51,6 +116,8 @@ export function auditAccessibility(html, opts = {}) {
       });
     }
   }
+
+  auditSvgs(src, warnings);
 
   if (opts.warnMissingLongDescription) {
     IMG_TAG.lastIndex = 0;

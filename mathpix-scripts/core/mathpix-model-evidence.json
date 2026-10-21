@@ -1,0 +1,202 @@
+{
+  "schema": "mathpix-model-evidence/1",
+  "note": "Sibling record beside mathpix-model-registry.js (Q3-D1, Matthew, 19 October 2026). Read by people and by guard rows, never loaded by the page. The registry evidence field for each entry below points here by path in its notes. Figures were copied from the cited files on 20 October 2026.",
+  "records": {
+    "mmd-correction|openrouter": {
+      "modelId": "anthropic/claude-fable-5.1",
+      "incumbent": "anthropic/claude-fable-5",
+      "round": "Q3-1, read and key-opened at Q3-2",
+      "measured": "2026-10-20",
+      "rule": {
+        "id": "Q3-D5",
+        "decidedBy": "Matthew, 20 October 2026, by pasting the Q3-2 prompt",
+        "text": "For MMD correction, a candidate wins when the mechanical screen is clean, the blinded errors-first reading shows it no worse than the incumbent, and it is cheaper.",
+        "caveat": "Both arms sat at the error floor on the AW-21 fixture, so the reading shows parity, not superiority; the win is on cost at parity."
+      },
+      "cells": { "candidateLive": 15, "incumbentStored": 15, "documents": 5, "runsPerDocument": 3, "judge": "none (--no-judge)" },
+      "mechanical": {
+        "finishStop": { "candidate": 15, "incumbent": 15 },
+        "lengthFinishes": { "candidate": 0, "incumbent": 0 },
+        "ratioRefusalsOrWarnings": { "candidate": 0, "incumbent": 0 },
+        "cellsLosingPictures": { "candidate": 0, "incumbent": 0 },
+        "cellsBlankingAlts": { "candidate": 0, "incumbent": 0 }
+      },
+      "costUsdPerRun": {
+        "meanCandidate": 0.7684,
+        "meanIncumbent": 0.9604,
+        "ratio": 0.8,
+        "perDocument": {
+          "FEEG1050-thermofluids": { "candidate": 0.384, "incumbent": 0.52 },
+          "kinetic": { "candidate": 0.579, "incumbent": 0.607 },
+          "handwritten-maths-moderate-33": { "candidate": 0.557, "incumbent": 0.83 },
+          "gauss-law": { "candidate": 0.933, "incumbent": 1.353 },
+          "Revision1": { "candidate": 1.389, "incumbent": 1.492 }
+        },
+        "spendUsd": 11.52639,
+        "source": "candidate: each cell's wire usage.cost; incumbent: AW-21 stored cells (14.406 / 15)"
+      },
+      "goldDistance": {
+        "documents": "handwritten-maths-moderate-33, 3 cells, 151 lines",
+        "candidateLines": [14, 17, 17],
+        "incumbentLines": [15, 17, 16],
+        "meanFractionBothArms": 0.106
+      },
+      "blindedReading": {
+        "reader": "side-assist, deferred by standing instruction; not judged by Matthew",
+        "readingPath": ".claude/measurements/q3-1-fable-5-1-round/q3-1-side-assist-reading.md",
+        "readingCommit": "81fd1ef",
+        "keyPath": ".claude/measurements/q3-1-fable-5-1-round/q3-1-sealed-key.json",
+        "keyOpenedRecord": ".claude/measurements/q3-1-fable-5-1-round/q3-2-key-opened.md",
+        "blindDocuments": "1, 3, 4, 5; document 2 was NOT blind (blob id leak)",
+        "worseThanMedian": { "candidate": 1, "incumbent": 4 },
+        "sameAsMedian": { "candidate": 7, "incumbent": 6 },
+        "betterThanMedian": { "candidate": 4, "incumbent": 2 },
+        "repliesWithAWrongItem": { "candidate": 2, "incumbent": 3 },
+        "repliesWithAMissedItem": { "candidate": 8, "incumbent": 7 },
+        "countsCorrectedAt": "Q3-F0 (20 October 2026): the Q3-2 values were 3 and 2 for Wrong and a table of 7 and 8 for Missed, both with D5-A on the wrong arm or reversed; see q3-2-key-opened.md, note appended 20 October 2026",
+        "readingProvenanceNote": ".claude/measurements/q3-1-fable-5-1-round/q3-1-reading-provenance-note.md",
+        "mathsChangedWrong": 0
+      },
+      "promptHash": "eb3db7e929d68e79",
+      "promptHashBasis": "mathpix-ai-prompts.json with the models map and lastUpdated removed, sha256 first 16 hex; equal at the AW-21 unblinding commit 942d77d and at Q3-1",
+      "roundRecord": ".claude/measurements/q3-1-fable-5-1-round/README.md"
+    },
+    "context|openrouter": {
+      "modelId": "anthropic/claude-fable-5",
+      "challenger": "anthropic/claude-fable-5.1",
+      "round": "FV-2 and FV-3",
+      "measured": "2026-09-23",
+      "decision": "none: no rating and no default change; the default stays anthropic/claude-fable-5",
+      "cells": { "perModel": 18, "documents": 6, "runsPerDocument": 3, "finishStop": { "fable-5": 18, "fable-5.1": 18 } },
+      "costUsdPerCell": { "fable-5": 0.195846, "fable-5.1": 0.197756, "ratio": 1.01 },
+      "readingFindings": "fuller tier is fable-5.1 on 5 of 6 documents (34 of 36 letters); 2 contradictions in 162 fable-5.1 claims against 0 in 101 fable-5 claims, a weakened not overturned reading that the tiers do not differ in accuracy",
+      "records": [
+        ".claude/measurements/fv-2-context-round/fv2-reading.md",
+        ".claude/measurements/fv-2-context-round/fv2-result.md",
+        ".claude/measurements/fv-3-key-open/fv3-result.md"
+      ],
+      "readingCommit": "05a978d",
+      "q3Note": "Q3-1 did not re-run Context; Q3-D5 is stated for correction only",
+      "promptNote": "Added at Q3-F0 (20 October 2026), measured offline by loading the shipped context manager and context AI with buildPrompt: today's Context user prompt is not the prompt FV-2 sent. IDQ H-77 (01eeb9e, 19 October 2026) renamed the schema label Learning Objective to Learning Outcome, so the user scaffold is 1,582 characters today (user hash 3424cb76c4eb82b8) against the 1,584 of AW-27 and AW-34 (4a0b27926dbd738a). The FV-2 round (23 September 2026) postdates the PDF sentence (1e75d11) but predates H-77. No Context prompt hash was recorded for FV-2."
+    },
+    "mmd-correction|foundry": {
+      "modelId": "azure-openai/gpt-6.1-sol",
+      "incumbent": "azure-openai/gpt-5.6-sol",
+      "round": "Q3-F1 live round, read at Q3-F2, key-opened at Q3-F3",
+      "measured": "2026-10-20",
+      "status": "candidate adopted under Q3-D6",
+      "rule": {
+        "id": "Q3-D6",
+        "decidedBy": "Matthew, 20 October 2026, by pasting the Q3-F3 prompt",
+        "text": "On Foundry, the MMD correction default moves from azure-openai/gpt-5.6-sol to azure-openai/gpt-6.1-sol when the Q3-D5 rule holds (clean mechanical screen, no worse in the blinded errors-first reading, cheaper); the Foundry Context default stays azure-openai/gpt-5.6-sol.",
+        "caveat": "The candidate comments more and changes less: it left more visible errors in place (16 missed items against 13) and made fewer wrong changes (1 minor against 5, two of them changing maths). Parity or better on errors, not on completeness."
+      },
+      "decision": "default moved to azure-openai/gpt-6.1-sol at Q3-F3 (20 October 2026)",
+      "cells": { "candidateLive": 15, "incumbentStored": 15, "documents": 5, "runsPerDocument": 3, "judge": "none" },
+      "mechanical": {
+        "finishStop": { "candidate": 15, "incumbent": 15 },
+        "lengthFinishes": { "candidate": 0, "incumbent": 0 },
+        "ratioRefusalsOrWarnings": { "candidate": 0, "incumbent": 0 },
+        "cellsLosingPictures": { "candidate": 0, "incumbent": 2 },
+        "cellsBlankingAlts": { "candidate": 0, "incumbent": 0 },
+        "lostPictureCells": "incumbent AG and BV, document 06-gauss-law, 1 of 31 pictures each: the image line kept, its URL cut after top_left_y (the top_left_x parameter dropped); measured at Q3-F3 by q3f3-picture-loss.mjs",
+        "meanCellSeconds": { "candidate": 75.8, "incumbent": 58.6 },
+        "source": ".claude/measurements/q3-f1-foundry-round/q3f1-correction-score.txt"
+      },
+      "costUsdPerCellListPriceEstimate": {
+        "meanCandidate": 0.0859,
+        "meanIncumbent": 0.2833,
+        "perDocumentCandidate": { "06-gauss-law": 0.103, "FEEG1050-thermofluids": 0.042, "Handwritten-Maths-Moderate-33": 0.061, "kinetic": 0.064, "Revision1": 0.159 },
+        "perDocumentIncumbent": { "06-gauss-law": 0.327, "FEEG1050-thermofluids": 0.166, "Handwritten-Maths-Moderate-33": 0.212, "kinetic": 0.227, "Revision1": 0.485 },
+        "basis": "LIST-PRICE ESTIMATE, not wire: tokens times the costs in js/foundry-model-definitions.js (gpt-6.1-sol 2 and 10, gpt-5.6-sol 5 and 30 USD per million); Foundry is unpriced at the wire (Q3-D4). Not comparable with the OpenRouter wire figures above"
+      },
+      "blindedReading": {
+        "reader": "side-assist, deferred by standing instruction; not judged by Matthew",
+        "readingPath": ".claude/measurements/q3-f1-foundry-round/q3f3-side-assist-reading.md",
+        "readingCommit": "4a31b96",
+        "packPath": ".claude/measurements/q3-f1-foundry-round/q3f2-correction-reading-pack.md",
+        "keyPath": ".claude/measurements/q3-f1-foundry-round/q3f2-correction-sealed-key.json",
+        "keySha256Prefix": "3f48d3ed04909d3e",
+        "keyOpenedRecord": ".claude/measurements/q3-f1-foundry-round/q3f3-keys-opened.md",
+        "blindDocuments": "1 to 5; content partitions disclosed in the pack (em dash, length, AI comment), metadata leaks halted by the builder",
+        "worseThanMedian": { "candidate": 1, "incumbent": 3 },
+        "sameAsMedian": { "candidate": 13, "incumbent": 10 },
+        "betterThanMedian": { "candidate": 1, "incumbent": 2 },
+        "wrongChanges": { "candidate": 1, "incumbent": 5 },
+        "missedItems": { "candidate": 16, "incumbent": 13 },
+        "mathsChangedWrong": { "candidate": 0, "incumbent": 2 },
+        "maskedByBuilder": "the two incumbent picture losses were invisible to the reader, because the builder placeholders pictures by URL path; both were rated better than median"
+      },
+      "incumbentQ3F0": {
+        "round": "AW-19 and AW-21, scored offline at Q3-F0",
+        "status": "measured, no candidate",
+        "note": "The Q3-F0 record of the stored incumbent cells, kept whole when Q3-F3 moved the default. Its mechanical figures are the incumbent column above.",
+        "tokens": { "promptTotal": 372948, "completionTotal": 79524, "reasoningRange": "1160 to 2851 per cell" },
+        "costUsdPerCell": {
+          "meanListPriceEstimate": 0.2834,
+          "perDocument": {
+            "06-gauss-law": 0.3273,
+            "Handwritten-Maths-Moderate-33": 0.2115,
+            "FEEG1050-thermofluids": 0.1657,
+            "kinetic": 0.2271,
+            "Revision1": 0.4852
+          },
+          "basis": "LIST-PRICE ESTIMATE, not wire: prompt tokens times 5 and completion tokens times 30 USD per million (costs in js/foundry-model-definitions.js, Q3-D4); Foundry is unpriced at the wire. The OpenRouter figures in the records above are wire usage.cost and are not comparable with this one"
+        },
+        "scorer": ".claude/measurements/q3-0-assessment-scoping/q3-correction-score.mjs, unchanged; the usage figures are read from blind-key.json wireEnhance.usage"
+      },
+      "promptHash": "eb3db7e929d68e79",
+      "promptHashBasis": "mathpix-ai-prompts.json with the models map and lastUpdated removed, sha256 first 16 hex; equal at the AW-21 unblinding commit 942d77d, at Q3-F1 (q3f1-step1-prompt-hashes.txt) and after Q3-F3, whose prompts edit touched the models map only. The prompt JSON changed in content last at 0d8ee4b (25 May 2026), before AW-21",
+      "scorer": ".claude/measurements/q3-f1-foundry-round/q3f1-correction-score.mjs (shipped findLostPictures and isIncompleteReply)",
+      "records": [
+        ".claude/measurements/q3-f1-foundry-round/README.md",
+        ".claude/measurements/q3-f1-foundry-round/q3f3-keys-opened.md",
+        ".claude/measurements/aw-21-corpus-round/report-unblinded.md",
+        ".claude/measurements/aw-21-corpus-round/blind-key.json"
+      ]
+    },
+    "context|foundry": {
+      "modelId": "azure-openai/gpt-5.6-sol",
+      "challenger": "azure-openai/gpt-6.1-sol",
+      "round": "Q3-F1 live round, read at Q3-F2, key-opened at Q3-F3",
+      "measured": "2026-10-20",
+      "status": "incumbent kept under Q3-D6",
+      "decision": "none: the Foundry Context default stays azure-openai/gpt-5.6-sol (Q3-D6), because the candidate leaves the audience level empty even where the module code answers it",
+      "cells": { "perModel": 18, "documents": 6, "runsPerDocument": 3, "finishStop": { "gpt-5.6-sol": 18, "gpt-6.1-sol": 18 }, "lengthFinishes": { "gpt-5.6-sol": 0, "gpt-6.1-sol": 0 } },
+      "mechanical": {
+        "meanFieldsFilledOf8": { "gpt-5.6-sol": 6.5, "gpt-6.1-sol": 5.67 },
+        "invalidOrCoercedSelects": { "gpt-5.6-sol": 0, "gpt-6.1-sol": 0 },
+        "audienceLevelEmpty": { "gpt-5.6-sol": 3, "gpt-6.1-sol": 18 },
+        "audienceMechanism": "audienceLevel is the first select in the schema order; the candidate returns it present and explicitly empty in 18 of 18 cells, the incumbent in 3 of 18 (all thermofluids). The parser is proved two-sided on a stored cell (q3f2-first-select.txt), so the empty value is the reply, not the parser",
+        "meanCellSeconds": { "gpt-5.6-sol": 6.4, "gpt-6.1-sol": 10.1 },
+        "source": ".claude/measurements/q3-f1-foundry-round/q3f1-context-score.txt"
+      },
+      "costUsdPerCellListPriceEstimate": {
+        "gpt-5.6-sol": 0.0985,
+        "gpt-6.1-sol": 0.0393,
+        "basis": "LIST-PRICE ESTIMATE, not wire (Q3-D4); Foundry is unpriced at the wire"
+      },
+      "blindedReading": {
+        "reader": "side-assist, deferred by standing instruction; not judged by Matthew",
+        "readingPath": ".claude/measurements/q3-f1-foundry-round/q3f3-side-assist-reading.md",
+        "readingCommit": "4a31b96",
+        "packPath": ".claude/measurements/q3-f1-foundry-round/q3f2-context-reading-pack.md",
+        "keyPath": ".claude/measurements/q3-f1-foundry-round/q3f2-context-sealed-key.json",
+        "keySha256Prefix": "7e2cd81893200fed",
+        "keyOpenedRecord": ".claude/measurements/q3-f1-foundry-round/q3f3-keys-opened.md",
+        "emptyButAnswerableAudience": { "gpt-5.6-sol": 3, "gpt-6.1-sol": 9 },
+        "wrongClaims": { "gpt-5.6-sol": 0, "gpt-6.1-sol": 0 },
+        "worseThanMedian": { "gpt-5.6-sol": 0, "gpt-6.1-sol": 6 },
+        "sameAsMedian": { "gpt-5.6-sol": 18, "gpt-6.1-sol": 12 },
+        "betterThanMedian": { "gpt-5.6-sol": 0, "gpt-6.1-sol": 0 }
+      },
+      "promptHash": "fa242a66ab6cb3ee",
+      "promptNote": "Today's Context prompt (no PDF), measured at Q3-F1 step 1 (q3f1-step1-prompt-hashes.txt); the AW-27 cells were on 40953ee87a87d4bd, so both arms here were run live on today's prompt and the AW-27 cells are not part of this record",
+      "records": [
+        ".claude/measurements/q3-f1-foundry-round/README.md",
+        ".claude/measurements/q3-f1-foundry-round/q3f3-keys-opened.md",
+        ".claude/measurements/q3-f1-foundry-round/q3f2-first-select.txt"
+      ]
+    }
+  }
+}

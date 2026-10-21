@@ -96,7 +96,7 @@ window.ImageDescriberModelManager = (function () {
 
     /**
      * Known models with IDs, sizes, roles, ONNX paths.
-     * Each entry uses a short key (e.g. 'clip') for API calls.
+     * Each entry uses a short key (e.g. 'florence2') for API calls.
      *
      * Fields:
      *   key        — short identifier used in getModelState() etc.
@@ -112,18 +112,6 @@ window.ImageDescriberModelManager = (function () {
      */
     var MODEL_REGISTRY = [
         {
-            key: 'clip',
-            name: 'CLIP ViT-B/32',
-            modelId: 'Xenova/clip-vit-base-patch32',
-            role: 'Zero-shot image classification',
-            sizeMB: 151,
-            task: 'zero-shot-image-classification',
-            enabled: true,
-            status: 'active',
-            cachePrefix: 'https://huggingface.co/Xenova/clip-vit-base-patch32/',
-            components: null
-        },
-        {
             key: 'florence2',
             name: 'Florence-2',
             modelId: 'onnx-community/Florence-2-base-ft',
@@ -134,18 +122,6 @@ window.ImageDescriberModelManager = (function () {
             status: 'active',
             cachePrefix: 'https://huggingface.co/onnx-community/Florence-2-base-ft/',
             components: ['Florence2ForConditionalGeneration', 'AutoProcessor', 'AutoTokenizer']
-        },
-        {
-            key: 'depth',
-            name: 'Depth Anything V2 Small',
-            modelId: 'onnx-community/depth-anything-v2-small',
-            role: 'Monocular depth estimation',
-            sizeMB: 50,
-            task: 'depth-estimation',
-            enabled: true,
-            status: 'active',
-            cachePrefix: 'https://huggingface.co/onnx-community/depth-anything-v2-small/',
-            components: null
         },
         {
             key: 'fastvlm',
@@ -496,6 +472,69 @@ window.ImageDescriberModelManager = (function () {
     var TRANSFORMERS_CACHE_NAME = 'transformers-cache';
 
     /**
+     * Cache URL prefixes of models that have been removed from the Image Describer.
+     * Their files may still sit in people's browsers; clearRetiredModelFiles() deletes
+     * them once. Matching is "starts with", so a URL that merely mentions a name
+     * mid-path is never touched. Live models (Florence-2, the local models) are not listed.
+     */
+    var RETIRED_MODEL_CACHE_PREFIXES = Object.freeze([
+        'https://huggingface.co/Xenova/clip-vit-base-patch32/',               // CLIP, retired at H-56
+        'https://huggingface.co/onnx-community/depth-anything-v2-small/'      // Depth Anything, retired at H-61
+    ]);
+
+    /**
+     * Deletes cached files of retired models from the Transformers.js cache.
+     * Never throws: any failure is logged at WARN and the page carries on.
+     * @returns {Promise<{ removedCount: number, removedBytes: number }>}
+     */
+    async function clearRetiredModelFiles() {
+        var removedCount = 0;
+        var removedBytes = 0;
+
+        try {
+            if (typeof caches === 'undefined') {
+                logWarn('Cache API not available — retired model files not cleared');
+                return { removedCount: 0, removedBytes: 0 };
+            }
+
+            var cache = await caches.open(TRANSFORMERS_CACHE_NAME);
+            var requests = await cache.keys();
+
+            for (var i = 0; i < requests.length; i++) {
+                var url = requests[i].url;
+                var retired = RETIRED_MODEL_CACHE_PREFIXES.some(function (prefix) {
+                    return url.indexOf(prefix) === 0;
+                });
+                if (!retired) continue;
+
+                try {
+                    var response = await cache.match(requests[i]);
+                    if (response) {
+                        var blob = await response.clone().blob();
+                        removedBytes += blob.size;
+                    }
+                } catch (sizeErr) {
+                    // Size unknown — still delete
+                }
+
+                try {
+                    if (await cache.delete(requests[i])) {
+                        removedCount++;
+                    }
+                } catch (deleteErr) {
+                    logWarn('Could not delete retired model file ' + url + ':', deleteErr.message || deleteErr);
+                }
+            }
+        } catch (err) {
+            logWarn('Could not clear retired model files:', err.message || err);
+        }
+
+        logInfo('Cleared ' + removedCount + ' retired model files (' +
+            Math.round(removedBytes / (1024 * 1024)) + ' MB)');
+        return { removedCount: removedCount, removedBytes: removedBytes };
+    }
+
+    /**
      * Inspects the Cache API to find cached model files.
      * Groups files by model based on URL prefix matching.
      * @returns {Promise<Map<string, { files: number, totalBytes: number }>>}
@@ -817,7 +856,7 @@ window.ImageDescriberModelManager = (function () {
 
     /**
      * Unloads a model from memory (keeps cached files on disk).
-     * For CLIP/Depth, this destroys the gateway pipeline.
+     * This destroys the gateway pipelines (all vision models share them).
      * @param {string} modelKey
      * @returns {Promise<void>}
      */
@@ -920,7 +959,7 @@ window.ImageDescriberModelManager = (function () {
     });
 
     // Listen for gateway pipeline loads so UI stays in sync.
-    // When the analyser auto-loads a cached model (e.g. CLIP, Depth),
+    // When the analyser auto-loads a cached model (e.g. Florence-2),
     // the gateway emits library:status "ready" but the Model Manager
     // state was still "cached". This promotes it to "loaded" and the
     // UI row updates automatically via model:stateChange.
@@ -930,7 +969,7 @@ window.ImageDescriberModelManager = (function () {
         for (var ri = 0; ri < MODEL_REGISTRY.length; ri++) {
             var entry = MODEL_REGISTRY[ri];
             // Pipeline-based models use modelId → library mapping in gateway;
-            // the library ID happens to match the model key for clip, depth, florence2
+            // the library ID happens to match the model key for florence2
             LIBRARY_TO_KEY[entry.key] = entry.key;
         }
         window.EmbedEventEmitter.on('library:status', function (data) {
@@ -973,6 +1012,8 @@ window.ImageDescriberModelManager = (function () {
         preDownloadModel: preDownloadModel,
         cancelDownload: cancelDownload,
         removeCachedModel: removeCachedModel,
+        clearRetiredModelFiles: clearRetiredModelFiles,
+        RETIRED_MODEL_CACHE_PREFIXES: RETIRED_MODEL_CACHE_PREFIXES,
 
         // Memory management
         loadModel: loadModel,

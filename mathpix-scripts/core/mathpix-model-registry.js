@@ -342,17 +342,53 @@ const MathPixModelRegistry = (function () {
      * `claude-fable-5` and `gpt-5.6-sol` lead on mean weighted score, on mean
      * net improvement and on the side-assist's blind reading, and they lead by
      * more than the within-model spread on most documents.
+     *
+     * Q3-2 (20 October 2026) MOVED THE OPENROUTER DEFAULT to
+     * `anthropic/claude-fable-5.1` under Q3-D5: clean mechanical screen, a
+     * blinded reading no worse than the incumbent, and cheaper (0.77 against
+     * 0.96 USD a run). Both arms sat at the error floor, so this is parity at
+     * a lower cost, not superiority. At Q3-F0 (20 October 2026) the Foundry
+     * entry gained an evidence record, "measured, no candidate", from the
+     * stored AW-21 cells.
+     *
+     * Q3-F3 (20 October 2026) MOVED THE FOUNDRY DEFAULT to
+     * `azure-openai/gpt-6.1-sol` under Q3-D6, the Q3-D5 rule applied on
+     * Foundry: no picture lost against the incumbent's 2, a blinded reading
+     * no worse (1 worse-than-median reply against 3), and cheaper by list-price
+     * estimate. The Foundry Context default did NOT move (see CONTEXT below).
      */
     [PURPOSES.MMD_CORRECTION]: Object.freeze({
       [PROVIDERS.OPENROUTER]: entry(
-        "anthropic/claude-fable-5",
-        "AW-19 and AW-21",
-        "2026-09-08"
+        "anthropic/claude-fable-5.1",
+        "Q3-1 and Q3-2",
+        "2026-10-20",
+        {
+          instrument:
+            "Q3-1 live round, 5 documents by 3 runs against the stored AW-21 cells, mechanical screen plus a blinded errors-first side-assist reading (documents 1, 3, 4, 5 blind), rule Q3-D5",
+          promptHash: "eb3db7e929d68e79",
+          opponents: ["anthropic/claude-fable-5"],
+          margin:
+            "blind worse-than-median replies 1 against 4, better 4 against 2, no change that made the maths wrong; 0 pictures lost, 0 alts blanked, 0 ratio warnings in both arms; mean cost 0.768 against 0.960 USD a run, cheaper on all five documents; gold distance tied",
+          finishReasons: { stop: 15 },
+          notes:
+            "Evidence record: mathpix-scripts/core/mathpix-model-evidence.json (mmd-correction|openrouter). Both arms sat at the error floor, so the reading shows parity, not superiority; the win is on cost at parity. Document 2 of the reading was not blind (blob id leak). The incumbent arm is the 15 stored AW-21 cells, not a re-run.",
+        }
       ),
       [PROVIDERS.AZURE_OPENAI]: entry(
-        "azure-openai/gpt-5.6-sol",
-        "AW-19 and AW-21",
-        "2026-09-08"
+        "azure-openai/gpt-6.1-sol",
+        "Q3-F1 and Q3-F3",
+        "2026-10-20",
+        {
+          instrument:
+            "Q3-F1 live round, 5 documents by 3 runs against the 15 stored AW-21 gpt-5.6-sol cells, mechanical screen plus a blinded errors-first side-assist reading (all five documents blind, keys opened at Q3-F3), rule Q3-D6",
+          promptHash: "eb3db7e929d68e79",
+          opponents: ["azure-openai/gpt-5.6-sol"],
+          margin:
+            "blind worse-than-median replies 1 against 3, better 1 against 2, wrong changes 1 minor against 5 (2 of them changing maths); 0 pictures lost against 2 of 15 incumbent cells; list-price estimate 0.0859 against 0.2833 USD a cell, cheaper on all five documents",
+          finishReasons: { stop: 15 },
+          notes:
+            "Evidence record: mathpix-scripts/core/mathpix-model-evidence.json (mmd-correction|foundry). Foundry is unpriced at the wire; both costs are list-price estimates (Q3-D4), not wire figures. The candidate comments more and changes less, so it left more errors in place (16 missed items against 13). The incumbent's two picture losses cut a URL inside a kept image line, which the reading pack's placeholder hid. The incumbent arm is the stored AW-21 cells, not a re-run, on the same prompt hash.",
+        }
       ),
     }),
 
@@ -374,12 +410,34 @@ const MathPixModelRegistry = (function () {
       [PROVIDERS.OPENROUTER]: entry(
         "anthropic/claude-fable-5",
         "AW-27, re-verified AW-34",
-        "2026-09-11"
+        "2026-09-11",
+        {
+          instrument:
+            "FV-2 blinded Context round, 6 documents by 3 runs, fable-5 against fable-5.1, side-assist reading and FV-3 key opening; no rating produced",
+          promptHash: null,
+          opponents: ["anthropic/claude-fable-5.1"],
+          margin:
+            "no winner: fable-5.1 wrote the fuller reply on 5 of 6 documents, 2 contradictions in 162 of its claims against 0 in 101 for fable-5; cost per cell 0.198 against 0.196 USD",
+          finishReasons: { stop: 18 },
+          notes:
+            "Evidence record: mathpix-scripts/core/mathpix-model-evidence.json (context|openrouter). The default stays fable-5; FV-3 made no recommendation. finishReasons counts the 18 fable-5 cells; the 18 fable-5.1 cells also finished stop.",
+        }
       ),
       [PROVIDERS.AZURE_OPENAI]: entry(
         "azure-openai/gpt-5.6-sol",
         "AW-27, re-verified AW-34",
-        "2026-09-11"
+        "2026-09-11",
+        {
+          instrument:
+            "Q3-F1 live Context round on today's prompt, 6 documents by 3 runs, gpt-5.6-sol against gpt-6.1-sol, mechanical score plus a blinded errors-first side-assist reading, keys opened at Q3-F3",
+          promptHash: "fa242a66ab6cb3ee",
+          opponents: ["azure-openai/gpt-6.1-sol"],
+          margin:
+            "incumbent kept: the candidate left the audience level empty in 18 of 18 cells against 3 of 18, 9 of them where the module code answers it; blind worse-than-median replies 0 against 6, no wrong claims in either arm; mean fields filled 6.50 against 5.67 of 8",
+          finishReasons: { stop: 18 },
+          notes:
+            "Evidence record: mathpix-scripts/core/mathpix-model-evidence.json (context|foundry). Rule Q3-D6 keeps this default. The candidate was cheaper (list-price estimate 0.0393 against 0.0985 USD a cell, not wire figures). The round and date above still name AW-27 and AW-34, the rounds that chose the id; Q3-F1 re-measured it on today's prompt and kept it.",
+        }
       ),
     }),
   });

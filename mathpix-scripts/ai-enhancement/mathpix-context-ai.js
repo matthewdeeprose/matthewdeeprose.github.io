@@ -387,8 +387,40 @@ const MathPixContextAI = (function () {
     progress: "resume-context-ai-progress",
     summary: "resume-context-ai-summary",
     undoBtn: "resume-context-ai-undo",
+    undoLabel: "resume-context-ai-undo-label",
+    clearBtn: "resume-context-ai-clear",
     announce: "resume-context-ai-announce",
   };
+
+  /**
+   * AT-3 (AI-D4): the sentences and labels for "Clear all context fields".
+   * Frozen so a wording change is one edit, and the suite asserts the literals.
+   */
+  const CLEAR_COPY = Object.freeze({
+    confirmMessage: "Clear all eight context fields? You can undo this.",
+    confirmTitle: "Clear all context fields",
+    confirmText: "Clear",
+    cancelText: "Cancel",
+    cleared: "Context fields cleared.",
+    restored: "Context fields restored.",
+    undoClearLabel: "Undo clear",
+    undoFillLabel: "Undo AI fill",
+  });
+
+  /** Which action the single Undo snapshot belongs to. */
+  const SNAPSHOT_KIND = Object.freeze({ FILL: "fill", CLEAR: "clear" });
+
+  /**
+   * AT-3: how long to wait after the confirm resolves before moving focus and
+   * raising the line. safeConfirm resolves before the dialog is gone (200ms
+   * under no-preference) and the opener focus-restore lands at the end of that
+   * window, so an earlier focus move is overwritten and an earlier write is
+   * swallowed. Same constant and reason as setup-tool.js MODAL_CLOSE_ANNOUNCE_DELAY_MS.
+   */
+  const CLEAR_SETTLE_MS = 350;
+
+  /** The first of the eight fields; focus lands here after a clear. */
+  const FIRST_FIELD_ID = "resume-context-subjectArea";
 
   /**
    * MP-1 element IDs for the model picker. A SECOND map rather than six more
@@ -1527,15 +1559,15 @@ const MathPixContextAI = (function () {
         resolvedForRun: this._resolvedModel && this._resolvedModel.id,
         explicitOverride: options.model || null,
       });
-      // Read ONCE, so the announced and the thrown string are the same string
-      // by construction rather than by two reads happening to agree.
-      const refusal = _nonPdfRefusal();
-      if (typeof this._announce === "function") {
-        this._announce(refusal);
-      }
-      // Throw the SAME sentence the person hears, so a direct facade caller
-      // cannot proceed and cannot invent its own wording for this refusal.
-      throw new Error(refusal);
+      // H-50: this throw is the ONLY voice of the refusal. It is awaited inside
+      // handleAnalyseClick's try, so its catch raises the one error toast; an
+      // announcement here as well wrote the same sentence twice (measured).
+      // A direct facade caller still gets the sentence, as the thrown message,
+      // and cannot proceed or invent its own wording for this refusal.
+      // H-51: marked as a refusal so _bridgeError does not hand it to the
+      // central handler, whose FILE_PROCESSING pattern /file/i matches "files"
+      // in this sentence and starts a "chunked upload" recovery.
+      throw _refusalError(_nonPdfRefusal());
     }
 
     // AW-33 / AW-34 — tell the prompt what this run has actually been given,
@@ -1881,6 +1913,19 @@ const MathPixContextAI = (function () {
   }
 
   /**
+   * An Error carrying the refusal sentence, marked so _bridgeError leaves it
+   * to the caller's single toast (H-51).
+   *
+   * @param {string} message
+   * @returns {Error}
+   */
+  function _refusalError(message) {
+    const error = new Error(message);
+    error.isRefusal = true;
+    return error;
+  }
+
+  /**
    * Bridge an error to the central handler: classify, then handle.
    *
    * NOTE: the live singletons exposed on window (set in js/main.js) are
@@ -1895,6 +1940,14 @@ const MathPixContextAI = (function () {
    */
   function _bridgeError(error) {
     try {
+      // H-51: a refusal is the tool saying "not for this input", not a fault to
+      // recover from. The caller still raises its one toast; the shared handler
+      // would add recovery messages for something nothing can retry.
+      if (error && error.isRefusal === true) {
+        logInfo("_bridgeError: refusal not handed to the error handler.");
+        return null;
+      }
+
       let classification = null;
       if (
         window.errorClassification &&
@@ -2098,6 +2151,21 @@ const MathPixContextAI = (function () {
       elements.undoBtn.addEventListener("click", () => self.handleUndoClick());
       elements.undoBtn.dataset.contextAiBound = "true";
     }
+    if (elements.clearBtn && !elements.clearBtn.dataset.contextAiBound) {
+      elements.clearBtn.addEventListener("click", () =>
+        self.handleClearClick()
+      );
+      elements.clearBtn.dataset.contextAiBound = "true";
+    }
+    // AT-3: keep "Clear all context fields" in step with the fields. Typing
+    // reaches the manager through updateField, which raises this event.
+    if (!this._contextEditedHandler) {
+      this._contextEditedHandler = () => self._refreshClearState();
+      document.addEventListener(
+        "mathpix:context-edited",
+        this._contextEditedHandler
+      );
+    }
 
     // MP-1 — the picker: delegated change binding, one provider subscription,
     // one build. Bound with addEventListener and a dataset guard, matching the
@@ -2156,6 +2224,7 @@ const MathPixContextAI = (function () {
    * aria-describedby hint (#resume-context-ai-analyse-hint).
    */
   function refreshAvailability() {
+    this._refreshClearState();
     const btn = this.elements && this.elements.analyseBtn;
     if (!btn) return;
     // Never re-enable mid-run; the click handler restores state in finally.
@@ -2174,6 +2243,8 @@ const MathPixContextAI = (function () {
    * @param {string} message
    */
   function _announce(message) {
+    // S6-3b: a quiet run (handleAnalyseClick({ quiet: true })) raises nothing.
+    if (this._quietRun) return;
     const region = this.elements && this.elements.announce;
     if (!region || !message) return;
     region.textContent = message;
@@ -2181,6 +2252,27 @@ const MathPixContextAI = (function () {
     this._announceTimer = setTimeout(() => {
       region.textContent = "";
     }, ANNOUNCE_CLEAR_MS);
+  }
+
+  /**
+   * H-50: report a failure or refusal a person has to read and act on.
+   * An error toast stays on screen until it is dismissed and is announced once
+   * through the shared announcer, which the write-then-clear region above is
+   * not (it is screen-reader-only and emptied after ANNOUNCE_CLEAR_MS). The
+   * region is the fallback only where the notification system is absent, so
+   * the message is never lost. Do not also call _announce with the same text.
+   *
+   * @param {string} message
+   */
+  function _reportError(message) {
+    if (!message) return;
+    // S6-3b: a quiet run hands the sentence back as `line` instead.
+    if (this._quietRun) return;
+    if (typeof window.notifyError === "function") {
+      window.notifyError(message);
+      return;
+    }
+    this._announce(message);
   }
 
   /** Clear the generated summary list. */
@@ -2233,7 +2325,7 @@ const MathPixContextAI = (function () {
     this._scheduleProgressClear();
   }
 
-  /** Final failure state — an error icon; the announce region carries detail. */
+  /** Final failure state — an error icon; the error toast carries detail. */
   function _progressFail() {
     this._progressShow("Auto-fill could not complete", "error", {
       state: "error",
@@ -2429,24 +2521,44 @@ const MathPixContextAI = (function () {
    *
    * @returns {Promise<void>}
    */
-  async function handleAnalyseClick() {
+  async function handleAnalyseClick(options) {
+    // S6-3b: `{ quiet: true }` is the programmatic entry the AI tab uses. A
+    // click passes an Event here, whose `quiet` is undefined, so the wired
+    // button keeps its voice. The result is for the caller; the click ignores it.
+    const outcome = { ran: false, filled: false, line: null };
+    this._quietRun = !!(options && options.quiet === true);
+    try {
+      await this._analyseRun(outcome);
+    } finally {
+      this._quietRun = false;
+    }
+    return outcome;
+  }
+
+  async function _analyseRun(outcome) {
     if (this._busy) return;
+
+    // Every sentence the step raises is also recorded as the outcome line.
+    const fail = (message) => {
+      outcome.line = message;
+      this._reportError(message);
+    };
 
     const provider = this.provider;
     if (!provider) {
-      this._announce("Context auto-fill is not available.");
+      fail("Context auto-fill is not available.");
       return;
     }
 
     const pdf = provider.getSourcePDF();
     const mmd = provider.getMMDContent();
     if (!pdf) {
-      this._announce("Load a PDF before running context auto-fill.");
+      fail("Load a PDF before running context auto-fill.");
       this.refreshAvailability();
       return;
     }
     if (!mmd || mmd.trim() === "") {
-      this._announce("There is no document text to analyse yet.");
+      fail("There is no document text to analyse yet.");
       return;
     }
 
@@ -2483,7 +2595,7 @@ const MathPixContextAI = (function () {
       logWarn(
         "Context auto-fill refused: the shared model registry module is absent from the page, so no measured choice can be read for any provider. This is a page-configuration fault: check the script order in tools.html."
       );
-      this._announce(ABSENT_REGISTRY_REFUSAL);
+      fail(ABSENT_REGISTRY_REFUSAL);
       this._progressShow(ABSENT_REGISTRY_REFUSAL, "error", { state: "error" });
       this.refreshAvailability();
       return;
@@ -2498,7 +2610,7 @@ const MathPixContextAI = (function () {
       logWarn(
         "Context auto-fill refused: active provider has no PDF-capable model."
       );
-      this._announce(
+      fail(
         "This provider cannot read PDF files. Choose a different provider to run context auto-fill."
       );
       this.refreshAvailability();
@@ -2513,6 +2625,7 @@ const MathPixContextAI = (function () {
       [];
 
     this._busy = true;
+    outcome.ran = true;
     const btn = this.elements.analyseBtn;
     // Parcel 42: HOLD Analyse rather than natively disabling it. Native
     // `disabled` on the button the person just pressed blurred it to <body>,
@@ -2590,17 +2703,21 @@ const MathPixContextAI = (function () {
       document.dispatchEvent(new CustomEvent("mathpix:context-edited"));
 
       this._renderSummary(this._snapshot, filled, schema);
+      this._snapshotKind = SNAPSHOT_KIND.FILL;
+      this._setUndoLabel(CLEAR_COPY.undoFillLabel);
       if (this.elements.undoBtn) this.elements.undoBtn.hidden = false;
 
       this._progressDone();
       this._announce("Context fields filled. Review and edit them.");
+      outcome.filled = true;
+      outcome.line = "Context fields filled. Review and edit them.";
     } catch (error) {
       logError("Context auto-fill failed:", error);
       this._progressFail();
       // Every failure path bridges to the central handler (idempotent + silent)
       // and surfaces a recoverable message. No field has been written.
       this._bridgeError(error);
-      this._announce(
+      fail(
         error && error.message
           ? error.message
           : "Context auto-fill failed. Please try again."
@@ -2629,17 +2746,105 @@ const MathPixContextAI = (function () {
     if (!manager || typeof manager.setContext !== "function") return;
     if (!this._snapshot) return;
 
+    const wasClear = this._snapshotKind === SNAPSHOT_KIND.CLEAR;
+
     manager.setContext(this._snapshot);
     document.dispatchEvent(new CustomEvent("mathpix:context-edited"));
 
     if (this.elements.undoBtn) this.elements.undoBtn.hidden = true;
     this._clearSummary();
     this._snapshot = null;
+    this._snapshotKind = null;
+    this._refreshClearState();
 
     // The button-hide and summary-clear are visual only; announce the result so
     // a screen-reader user who activates Undo hears it (write-then-clear).
+    if (wasClear) {
+      // AT-3: the Undo button has just hidden itself, which would drop focus
+      // to the body. Return it to the control that made the clear.
+      const clearBtn = this.elements.clearBtn;
+      if (clearBtn && !clearBtn.disabled) clearBtn.focus();
+      this._announce(CLEAR_COPY.restored);
+      logInfo("Context clear undone (snapshot restored).");
+      return;
+    }
     this._announce("Context restored to its previous values.");
     logInfo("Context auto-fill undone (snapshot restored).");
+  }
+
+  /** Relabel the Undo button's text (it serves both the AI fill and a clear). */
+  function _setUndoLabel(text) {
+    const label = this.elements && this.elements.undoLabel;
+    if (label) label.textContent = text;
+  }
+
+  /** True when every one of the eight context fields is empty. */
+  function _contextIsEmpty() {
+    const manager = window.MathPixContextManager;
+    if (!manager || typeof manager.getContext !== "function") return true;
+    const context = manager.getContext();
+    return Object.keys(context).every((key) => !context[key]);
+  }
+
+  /**
+   * AT-3: enable "Clear all context fields" only while at least one field holds
+   * a value. Read from the manager's state, the one truth, not from the DOM.
+   */
+  function _refreshClearState() {
+    const btn = this.elements && this.elements.clearBtn;
+    if (!btn) return;
+    btn.disabled = this._contextIsEmpty();
+  }
+
+  /**
+   * AT-3 (AI-D4): clear all eight context fields after one confirm, with an
+   * undo. Reuses the AI fill's single snapshot and Undo button, relabelled
+   * "Undo clear" while the snapshot belongs to a clear. Empties through
+   * setContext with the schema blanks, so the form repaints and the mirror
+   * store is written (an empty record, not a removed key). Cancel changes
+   * nothing and raises nothing.
+   */
+  async function handleClearClick() {
+    const manager = window.MathPixContextManager;
+    if (!manager || typeof manager.setContext !== "function") return;
+    if (this._busy || this._clearing) return;
+    this._clearing = true;
+    try {
+      const confirmed = await window.safeConfirm(
+        CLEAR_COPY.confirmMessage,
+        CLEAR_COPY.confirmTitle,
+        {
+          confirmText: CLEAR_COPY.confirmText,
+          cancelText: CLEAR_COPY.cancelText,
+        }
+      );
+      if (!confirmed) return;
+
+      // Snapshot BEFORE writing so Undo restores the eight values exactly.
+      this._snapshot = manager.getContext();
+      this._snapshotKind = SNAPSHOT_KIND.CLEAR;
+
+      const blanks = {};
+      manager.getSchema().forEach((field) => {
+        blanks[field.key] = field.defaultValue;
+      });
+      manager.setContext(blanks);
+      document.dispatchEvent(new CustomEvent("mathpix:context-edited"));
+
+      this._clearSummary();
+      this._setUndoLabel(CLEAR_COPY.undoClearLabel);
+      if (this.elements.undoBtn) this.elements.undoBtn.hidden = false;
+      this._refreshClearState();
+
+      // Focus and the line wait out the dialog teardown (see CLEAR_SETTLE_MS).
+      await new Promise((resolve) => setTimeout(resolve, CLEAR_SETTLE_MS));
+      const first = document.getElementById(FIRST_FIELD_ID);
+      if (first) first.focus();
+      this._announce(CLEAR_COPY.cleared);
+      logInfo("Context fields cleared (snapshot held for undo).");
+    } finally {
+      this._clearing = false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -2716,11 +2921,15 @@ const MathPixContextAI = (function () {
     readFileAsBase64,
     sendWithTimeout,
     _bridgeError,
+    _reportError,
     _checkPdfSize,
     // Wiring (P4). State slots default here; init() populates provider/elements.
     provider: null,
     elements: null,
     _snapshot: null,
+    _snapshotKind: null,
+    _clearing: false,
+    _contextEditedHandler: null,
     _resolvedModel: null,
     _busy: false,
     // Parcel 42: the BusyControl handle holding Analyse for one run; null
@@ -2750,7 +2959,14 @@ const MathPixContextAI = (function () {
     PICKER_RADIO_NAME,
     refreshAvailability,
     handleAnalyseClick,
+    _analyseRun,
+    _quietRun: false,
     handleUndoClick,
+    handleClearClick,
+    _setUndoLabel,
+    _contextIsEmpty,
+    _refreshClearState,
+    CLEAR_COPY,
     _announce,
     _clearSummary,
     _renderCostPreview,

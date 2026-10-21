@@ -540,6 +540,7 @@
 
 .model-option-content {
   flex: 1;
+  min-width: 0; /* T-22b G4 (SC 1.4.12): lets the text wrap inside its card under wider text spacing */
 }
 
 .model-option-name {

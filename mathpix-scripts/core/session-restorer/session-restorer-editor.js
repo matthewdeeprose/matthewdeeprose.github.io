@@ -261,6 +261,16 @@
       mmdEditorTextarea.focus();
     }
 
+    // Keep keyboard focus inside the fullscreen layer (T-22a)
+    if (this.isFullscreen) {
+      window.MathPixFullscreenFocus?.hold(mmdCodeContainer, {
+        onLost: () => this.exitFullscreen(),
+      });
+    } else {
+      window.MathPixFullscreenFocus?.release(mmdCodeContainer);
+      this.refocusAfterFullscreenExit(); // Rescue focus if leaving fullscreen lost it
+    }
+
     // Announce to screen readers
     this.announceToScreenReader(
       this.isFullscreen
@@ -270,6 +280,19 @@
 
     logDebug("Fullscreen mode:", this.isFullscreen);
   };
+
+  /**
+   * Put keyboard focus back on the fullscreen button after leaving fullscreen.
+   * Moves focus only when leaving has lost it (it is on the page body, or on an element that is no longer
+   * rendered, such as the exit button); focus that is still in the text box stays there.
+   */
+  proto.refocusAfterFullscreenExit = function () {
+    const target = this.elements.mmdFullscreenBtn;
+    if (!target) return;
+    const active = document.activeElement;
+    const lost = !active || active === document.body || !active.getClientRects().length;
+    if (lost) target.focus();
+  }
 
   /**
    * Exit fullscreen mode
@@ -296,6 +319,9 @@
         );
         mmdFullscreenBtn.innerHTML = getIcon("fullscreenEnter");
       }
+
+      window.MathPixFullscreenFocus?.release(mmdCodeContainer); // T-22a
+      this.refocusAfterFullscreenExit(); // Rescue focus if leaving fullscreen lost it
 
       logDebug("Fullscreen mode exited");
     }
@@ -349,7 +375,7 @@
 
     // Restore scroll position
     if (this.savedScrollPosition !== undefined) {
-      window.scrollTo(0, this.savedScrollPosition);
+      window.scrollTo({ top: this.savedScrollPosition, left: 0, behavior: "instant" });
       this.savedScrollPosition = undefined;
     }
 

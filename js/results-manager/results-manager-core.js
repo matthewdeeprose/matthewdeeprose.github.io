@@ -1039,7 +1039,7 @@ class ResultsManagerCore {
    * Handle scroll behavior (restored from original)
    * @param {string} behavior - Scroll behavior
    */
-  handleScroll(behavior = "smooth") {
+  handleScroll(behavior = "instant") {
     if (this.resultsHeading) {
       this.resultsHeading.scrollIntoView({
         behavior: this.isReducedMotion ? "auto" : behavior,

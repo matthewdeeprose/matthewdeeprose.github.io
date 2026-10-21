@@ -3716,13 +3716,21 @@ ${fileList}
   }
 
   /**
-   * Create archive with real data (Phase 5 entry point)
-   * Phase 5.5: Updated to separate formats from response
+   * S6-1b — build the session archive and stop: everything createArchive did up
+   * to and including generateAsync and the DL-1 picture report. It does not
+   * trigger a download and raises no tail toast. (The image-block error toasts
+   * and the Document Health Check dialog stay here exactly as they were.)
+   * S6-1d: {interactive: false} skips the Health Check dialog, proceeds as
+   * "continue", and returns the dialog's findings as `health` (null when the
+   * check would not have fired). Default unchanged.
    * @param {Object} data - Real data from controller
-   * @returns {Promise<void>}
+   * @param {{interactive?: boolean}} [options]
+   * @returns {Promise<{blob: Blob, filename: string, report: Object, health: ?Object, entries: string[], imageCount: number}|null>}
+   *   null when the person cancels at the Document Health Check
    */
-  async createArchive(data) {
+  async buildArchive(data, { interactive = true } = {}) {
     logInfo("Creating archive with real data...");
+    let health = null;
 
     // Phase H.1: Store references for use in generateMetadata
     // These are needed because generateMetadata is called from collectDataFiles
@@ -3921,6 +3929,11 @@ ${fileList}
       // in-place, so the map points at the rendered PNG by check time.
       let effectiveImageRegistry = null;
       let effectiveFilenameMap = null;
+      // DL-1 — every picture the archive was planned to hold and does not.
+      // Each failure path pushes { id, filename, reason }; the ONE tail line
+      // and the report below read this, so no path raises a line of its own.
+      const missingPictures = [];
+      let plannedPictureCount = 0;
       try {
         if (
           data.imageRegistry &&
@@ -4018,12 +4031,22 @@ ${fileList}
                     `Failed to convert dataUri for ${img.id}: ${convError.message}`,
                   );
                   failed++;
+                  missingPictures.push({
+                    id: img.id,
+                    filename,
+                    reason: `could not read the picture data: ${convError.message}`,
+                  });
                 }
               } else {
                 logWarn(
                   `No blob or dataUri for image ${img.id} (status: ${img.status}) — skipping`,
                 );
                 failed++;
+                missingPictures.push({
+                  id: img.id,
+                  filename,
+                  reason: "no picture data held",
+                });
               }
 
               // ----------------------------------------------------------
@@ -4317,18 +4340,11 @@ ${fileList}
             // Phase 7C-7 chemistry replacement (above) updates mapEntry
             // filename in place where applicable.
             effectiveFilenameMap = newFilenameMap;
+            plannedPictureCount = imageCount;
 
-            // F-L Phase 2 — SC2 per-image loss summary. Loop logged each
-            // failure at logWarn already; surface a single user-facing
-            // notification at end-of-loop instead of per-image (avoid
-            // spamming the toast queue).
-            if (failed > 0) {
-              if (typeof window.notifyWarning === "function") {
-                window.notifyWarning(
-                  `${failed} of ${imageCount} image(s) could not be packaged — the archive may be incomplete.`,
-                );
-              }
-            }
+            // DL-1 — the per-image loss summary that stood here raised a
+            // second line beside the tail toast (rule C10). The failures are
+            // in missingPictures and the tail line carries them.
 
             // Write registry JSON to /metadata/
             const registryJson = liveRegistry.toJSON();
@@ -4337,6 +4353,7 @@ ${fileList}
               total: imageCount,
               succeeded,
               failed,
+              missing: missingPictures.map((m) => m.filename),
               source: "session-restorer",
               packagedAt: new Date().toISOString(),
             };
@@ -4711,19 +4728,27 @@ ${fileList}
               // mapEntry.filename in place where applicable, so this reference
               // points at the post-replacement filenames.
               effectiveFilenameMap = imageDownloadResult.filenameMap;
+              plannedPictureCount = imageCount;
+
+              // DL-1 — count by PICTURE (registry entry), not by unique URL:
+              // a picture whose fetch failed has no downloaded flag in the map.
+              for (const img of imageRegistry.getAllImages()) {
+                const mapEntry = imageDownloadResult.filenameMap[img.id];
+                if (mapEntry && mapEntry.downloaded) continue;
+                missingPictures.push({
+                  id: img.id,
+                  filename: mapEntry?.filename || `${docBaseName}-${img.id}`,
+                  reason: "the picture could not be fetched",
+                });
+              }
 
               // F-L Phase 2 — SC6: log loud when downloads partially or fully
-              // failed. The Health Check downstream is the user-facing safety
-              // net; this is the developer-visibility signal.
+              // failed. DL-1: the user-facing line is the tail toast (one
+              // line, rule C10); the error toast that stood here is gone.
               if (imageDownloadResult.succeeded < imageDownloadResult.total) {
                 logError(
                   `Image downloads partially failed: ${imageDownloadResult.succeeded}/${imageDownloadResult.total} succeeded`,
                 );
-                if (typeof window.notifyError === "function") {
-                  window.notifyError(
-                    `Image downloads failed (${imageDownloadResult.total - imageDownloadResult.succeeded} of ${imageDownloadResult.total}) — the archive may be incomplete.`,
-                  );
-                }
               }
 
               // Always add registry JSON to /metadata/
@@ -4733,6 +4758,7 @@ ${fileList}
                 total: imageDownloadResult.total,
                 succeeded: imageDownloadResult.succeeded,
                 failed: imageDownloadResult.failed,
+                missing: missingPictures.map((m) => m.filename),
                 elapsedMs: imageDownloadResult.elapsedMs,
                 downloadedAt: new Date().toISOString(),
               };
@@ -4824,10 +4850,11 @@ ${fileList}
           .filter((img) => !!img.blob || !!img.dataUri);
         const expected = imagesWithContent.length;
 
-        const actualInZip = imagesWithContent.filter((img) => {
+        const landedInZip = (img) => {
           const filename = effectiveFilenameMap?.[img.id]?.filename;
           return !!filename && zip.file(`images/${filename}`) !== null;
-        }).length;
+        };
+        const actualInZip = imagesWithContent.filter(landedInZip).length;
 
         if (expected > 0 && actualInZip < expected) {
           const isTotal = actualInZip === 0;
@@ -4841,11 +4868,26 @@ ${fileList}
             ? `This document contains ${expected} image(s), but none were saved to the ZIP. Saving will produce an incomplete archive — reloading it will show the document without its images. Save anyway?`
             : `${missing} of ${expected} images failed to save to the ZIP. Saving will produce an incomplete archive — reloading it will show the document missing those images. Save anyway?`;
 
+          // S6-1d: a non-interactive build asks nothing, proceeds as "continue"
+          // and hands the dialog's findings back to the caller instead.
+          if (!interactive) {
+            health = {
+              message,
+              title: "Image data missing from ZIP",
+              expected,
+              actualInZip,
+              entries: imagesWithContent
+                .filter((img) => !landedInZip(img))
+                .map((img) => img.id),
+            };
+          }
+
           // safeConfirm hard-codes autofocus on the confirm (Yes) button.
           // Override via onOpen so default focus lands on cancel — the safe
           // option for an action that produces an incomplete artefact.
-          const proceed =
-            typeof window.safeConfirm === "function"
+          const proceed = !interactive
+            ? true
+            : typeof window.safeConfirm === "function"
               ? await window.safeConfirm(message, "Image data missing from ZIP", {
                   confirmText: "Save anyway",
                   cancelText: "Cancel",
@@ -4856,6 +4898,8 @@ ${fileList}
                       );
                       if (cancelBtn && typeof cancelBtn.focus === "function") {
                         cancelBtn.focus();
+                        // Parcel T-09a: the manager focuses the dialog one frame later; make that call land on Cancel for this dialog alone.
+                        modalInstance.modal.focus = () => cancelBtn.focus();
                       }
                     } catch (focusError) {
                       logWarn(
@@ -4868,9 +4912,7 @@ ${fileList}
               : window.confirm(message);
 
           if (!proceed) {
-            if (typeof window.notifyInfo === "function") {
-              window.notifyInfo("Download cancelled.");
-            }
+            // S6-1b: the "Download cancelled." toast is raised by createArchive
             logInfo(
               "Document Health Check failed — user cancelled the download",
             );
@@ -4895,21 +4937,76 @@ ${fileList}
       const baseName = this.extractBaseNameFromSource(data.sourceState);
       const filename = this.generateFilename(baseName);
 
-      // Trigger download
-      logInfo(`Triggering download: ${filename}`);
-      this.triggerDownload(blob, filename);
+      logInfo("✓ Archive built successfully");
 
-      logInfo("✓ Archive created successfully");
-
-      // F-L Phase 2 — positive post-save notification. Turns silent success
-      // into visible success, with image count when applicable. The
-      // download-manager caller no longer fires its own generic notifySuccess
-      // (avoids double-toast).
       const finalImageCount =
         effectiveImageRegistry &&
         typeof effectiveImageRegistry.getAllImages === "function"
           ? effectiveImageRegistry.getAllImages().length
           : 0;
+      // DL-1 — the picture report: planned, present, and the missing named by
+      // file. S6-1b: returned here as well as spoken by createArchive.
+      const pictureReport = {
+        planned: plannedPictureCount,
+        present: plannedPictureCount - missingPictures.length,
+        missing: missingPictures.slice(),
+      };
+      this.lastPictureReport = pictureReport;
+      if (missingPictures.length > 0) {
+        logWarn(
+          `Picture report: ${pictureReport.planned} planned, ${pictureReport.present} present, missing: ${missingPictures.map((m) => m.filename).join(", ")}`,
+        );
+      }
+
+      const entries = Object.keys(zip.files).filter((p) => !zip.files[p].dir);
+
+      return {
+        blob,
+        filename,
+        report: pictureReport,
+        health,
+        entries,
+        imageCount: finalImageCount,
+      };
+    } catch (error) {
+      logError("Failed to create archive:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create archive with real data (Phase 5 entry point)
+   * Phase 5.5: Updated to separate formats from response
+   * S6-1b: now the thin wrapper — buildArchive, then the download and the one
+   * tail line, exactly as before the split.
+   * @param {Object} data - Real data from controller
+   * @returns {Promise<{filename: string, imageCount: number, pictureReport: Object}|null>}
+   */
+  async createArchive(data) {
+    const built = await this.buildArchive(data);
+
+    if (!built) {
+      if (typeof window.notifyInfo === "function") {
+        window.notifyInfo("Download cancelled.");
+      }
+      return null;
+    }
+
+    const { blob, filename, report: pictureReport, imageCount: finalImageCount } = built;
+
+    // Trigger download
+    logInfo(`Triggering download: ${filename}`);
+    this.triggerDownload(blob, filename);
+
+    logInfo("✓ Archive created successfully");
+
+    // F-L Phase 2 — positive post-save notification. Turns silent success
+    // into visible success, with image count when applicable. The
+    // download-manager caller no longer fires its own generic notifySuccess
+    // (avoids double-toast).
+    // DL-1 — the tail line is the ONE line (rule C10); it says so when any
+    // picture is missing and is the pre-DL-1 literal when none is.
+    if (pictureReport.missing.length === 0) {
       if (typeof window.notifySuccess === "function") {
         window.notifySuccess(
           finalImageCount > 0
@@ -4917,12 +5014,43 @@ ${fileList}
             : "Saved successfully",
         );
       }
-
-      return { filename, imageCount: finalImageCount };
-    } catch (error) {
-      logError("Failed to create archive:", error);
-      throw error;
+    } else if (typeof window.notifyWarning === "function") {
+      // A warning a person has to read stays until dismissed (duration 0).
+      window.notifyWarning(
+        this.composePictureLossMessage(pictureReport),
+        { duration: 0 },
+      );
     }
+
+    return { filename, imageCount: finalImageCount, pictureReport };
+  }
+
+  /**
+   * DL-1 — the single tail line when pictures are missing: the success
+   * sentence (with the count of pictures actually present) followed by the
+   * loss sentence.
+   * @param {{planned: number, present: number, missing: Array}} report
+   * @returns {string}
+   */
+  composePictureLossMessage(report) {
+    const success =
+      report.present > 0
+        ? `Saved successfully — includes ${report.present} image${report.present === 1 ? "" : "s"}`
+        : "Saved successfully";
+    return `${success}. ${this.composePictureLossSentence(report)}`;
+  }
+
+  /**
+   * S6-1e — DL-1's loss sentence on its own, so the Upload-to-Resume line
+   * reuses the wording instead of copying it.
+   * @param {{planned: number, missing: Array}} report
+   * @returns {string}
+   */
+  composePictureLossSentence(report) {
+    const missingCount = report.missing.length;
+    const noun = report.planned === 1 ? "picture" : "pictures";
+    const verb = missingCount === 1 ? "is" : "are";
+    return `${missingCount} of ${report.planned} ${noun} could not be downloaded and ${verb} missing from the archive.`;
   }
 
   /**

@@ -100,18 +100,174 @@
    */
   function escapeAltForLatex(text) {
     if (typeof text !== "string") return "";
-    return text.replace(/\\/g, "\\\\").replace(/\{/g, "\\{").replace(/\}/g, "\\}");
+    return encodeBracketEntities(
+      flattenLineBreaks(text)
+        .replace(/\\/g, "\\\\")
+        .replace(/\{/g, "\\{")
+        .replace(/\}/g, "\\}"),
+    );
   }
 
   /**
    * Decode a string previously processed by `escapeAltForLatex`.
-   * Reverse order: unescape braces, then backslashes.
+   * One left-to-right pass over the three escape tokens, after the bracket
+   * entities are decoded.
    * @param {string} text
    * @returns {string}
    */
   function unescapeAltFromLatex(text) {
     if (typeof text !== "string") return "";
-    return text.replace(/\\\{/g, "{").replace(/\\\}/g, "}").replace(/\\\\/g, "\\");
+    return decodeBracketEntities(text).replace(/\\([\\{}])/g, "$1");
+  }
+
+  // ============================================================================
+  // ROUND-TRIP ENCODING (UT-3, ledger entry 55)
+  // ============================================================================
+  //
+  // A caption title or an alt text is free text, and the MMD syntax around it
+  // reads certain characters as structure: a closing brace ends `\caption{}`, a
+  // right square bracket ends a markdown alt or the `[...]` options of
+  // `\includegraphics`, a line break splits the line every image parser reads.
+  // Written raw, each of those either changed the text on the way back or cost
+  // the picture. Each form now has an encode (used on every write) and the
+  // decode that inverts it (used on every read). Text with none of those
+  // characters is written byte-for-byte as before.
+  //
+  // The one deliberate normalisation: a line break in a title or an alt becomes
+  // a single space, because both are one line of plain prose.
+  //
+  // `]` has no backslash escape that survives the image parsers (every one of
+  // them stops at the first `]`), so it is written as the entity `&#93;`. To keep
+  // that invertible, a literal `&#93;` already in the text (or `&amp;#93;`, and so
+  // on) gains one `amp;` on write and loses one on read.
+
+  const BRACKET_ENTITY_RE = /&((?:amp;)*)#93;/g;
+  const AMP_ENTITY_UNIT = "amp;";
+
+  /**
+   * Line breaks become single spaces — alt text and titles are one line.
+   * @param {string} text
+   * @returns {string}
+   */
+  function flattenLineBreaks(text) {
+    if (typeof text !== "string") return "";
+    return text.replace(/\r\n|\r|\n/g, " ");
+  }
+
+  /**
+   * Write every `]` as `&#93;`, first adding one `amp;` to any literal entity
+   * run already present so the decode below cannot confuse the two.
+   * @param {string} text
+   * @returns {string}
+   */
+  function encodeBracketEntities(text) {
+    return text
+      .replace(BRACKET_ENTITY_RE, (m, amps) => `&${AMP_ENTITY_UNIT}${amps}#93;`)
+      .replace(/\]/g, "&#93;");
+  }
+
+  /**
+   * Inverse of `encodeBracketEntities`: a bare `&#93;` is `]`; a run with
+   * `amp;` units loses one.
+   * @param {string} text
+   * @returns {string}
+   */
+  function decodeBracketEntities(text) {
+    return text.replace(BRACKET_ENTITY_RE, (m, amps) =>
+      amps === "" ? "]" : `&${amps.slice(AMP_ENTITY_UNIT.length)}#93;`,
+    );
+  }
+
+  /**
+   * Encode a caption title for `\caption{...}`. A backslash before a backslash,
+   * a brace or the end of the text is doubled; the braces are left alone when
+   * they balance (so `$x_{1}$` and `\frac{1}{2}` are unchanged) and escaped
+   * individually when they do not.
+   * @param {string} title
+   * @returns {string}
+   */
+  function encodeCaptionTitle(title) {
+    if (typeof title !== "string") return "";
+    const doubled = flattenLineBreaks(title).replace(/\\(?=[\\{}]|$)/g, "\\\\");
+    let depth = 0;
+    let balanced = true;
+    for (let i = 0; i < doubled.length && balanced; i++) {
+      const ch = doubled[i];
+      if (ch === "\\") {
+        i++;
+      } else if (ch === "{") {
+        depth++;
+      } else if (ch === "}") {
+        depth--;
+        if (depth < 0) balanced = false;
+      }
+    }
+    if (balanced && depth === 0) return doubled;
+
+    let out = "";
+    for (let i = 0; i < doubled.length; i++) {
+      const ch = doubled[i];
+      if (ch === "\\") {
+        out += ch + (doubled[i + 1] || "");
+        i++;
+      } else if (ch === "{" || ch === "}") {
+        out += "\\" + ch;
+      } else {
+        out += ch;
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Decode the content of a `\caption{...}` written by `encodeCaptionTitle`.
+   * @param {string} raw
+   * @returns {string}
+   */
+  function decodeCaptionTitle(raw) {
+    if (typeof raw !== "string") return "";
+    return raw.replace(/\\([\\{}])/g, "$1");
+  }
+
+  /**
+   * Encode an alt text for a markdown `![alt](url)`. Brackets that balance and
+   * never form `](` are left alone; otherwise every `[` becomes `\[` and every
+   * `]` becomes `&#93;`. A backslash before a backslash, a `[` or the end of the
+   * text is doubled.
+   * @param {string} alt
+   * @returns {string}
+   */
+  function encodeAltForMarkdown(alt) {
+    if (typeof alt !== "string") return "";
+    const doubled = flattenLineBreaks(alt).replace(/\\(?=[\\[]|$)/g, "\\\\");
+    let depth = 0;
+    let safe = true;
+    for (let i = 0; i < doubled.length && safe; i++) {
+      const ch = doubled[i];
+      if (ch === "\\") {
+        if (doubled[i + 1] === "]") safe = false;
+        i++;
+      } else if (ch === "[") {
+        depth++;
+      } else if (ch === "]") {
+        depth--;
+        if (depth < 0 || doubled[i + 1] === "(") safe = false;
+      }
+    }
+    if (safe && depth === 0) {
+      return doubled.replace(BRACKET_ENTITY_RE, (m, amps) => `&${AMP_ENTITY_UNIT}${amps}#93;`);
+    }
+    return encodeBracketEntities(doubled).replace(/\[/g, "\\[");
+  }
+
+  /**
+   * Decode the alt of a markdown image written by `encodeAltForMarkdown`.
+   * @param {string} raw
+   * @returns {string}
+   */
+  function decodeAltFromMarkdown(raw) {
+    if (typeof raw !== "string") return "";
+    return decodeBracketEntities(raw).replace(/\\([\\[])/g, "$1");
   }
 
   /**
@@ -202,7 +358,7 @@
           `\\\\includegraphics\\s*(\\[[^\\]]*\\])?\\s*\\{${escapedUrl}\\}`,
         );
       } else {
-        pattern = new RegExp(`!\\[[^\\]]*\\]\\(${escapedUrl}\\)`);
+        pattern = new RegExp(`!\\[(?:[^\\]]|\\](?!\\())*\\]\\(${escapedUrl}\\)`);
       }
       for (let i = 0; i < lines.length; i++) {
         if (pattern.test(lines[i])) {
@@ -275,7 +431,9 @@
           if (singleLineCloseIdx !== -1) {
             captionIndex = i;
             captionEndIndex = i;
-            captionText = line.substring(openBraceIdx + 1, singleLineCloseIdx);
+            captionText = decodeCaptionTitle(
+              line.substring(openBraceIdx + 1, singleLineCloseIdx),
+            );
           } else {
             // Stage 1.B: span multiple lines until the closing brace is found
             // (or the end of the figure env). Flatten internal newlines to a
@@ -291,9 +449,11 @@
                 joined.substring(0, joinedCloseIdx + 1).split("\n").length - 1;
               captionIndex = i;
               captionEndIndex = i + lineOffset;
-              captionText = joined
-                .substring(openBraceIdx + 1, joinedCloseIdx)
-                .replace(/\n/g, " ");
+              captionText = decodeCaptionTitle(
+                joined
+                  .substring(openBraceIdx + 1, joinedCloseIdx)
+                  .replace(/\n/g, " "),
+              );
             }
           }
         }
@@ -335,7 +495,7 @@
   function _buildFigureBlock(url, altText, captionText, options) {
     const block = [FIGURE_BEGIN, _buildIncludegraphicsLine(url, altText, options)];
     if (options.suppressFigureNumbering) block.push(CAPTION_SETUP_LINE);
-    block.push(`\\caption{${captionText}}`);
+    block.push(`\\caption{${encodeCaptionTitle(captionText)}}`);
     block.push(FIGURE_END);
     return block;
   }
@@ -387,7 +547,7 @@
         return null;
       }
       url = parsed.url;
-      altForFigure = parsed.alt;
+      altForFigure = decodeAltFromMarkdown(parsed.alt);
     } else {
       const parsed = _parseIncludegraphics(line);
       if (!parsed) {
@@ -510,7 +670,7 @@
     }
     const alt = unescapeAltFromLatex(altRaw);
 
-    const bareLine = `![${alt}](${url})`;
+    const bareLine = `![${encodeAltForMarkdown(alt)}](${url})`;
     lines.splice(ctx.beginIndex, ctx.endIndex - ctx.beginIndex + 1, bareLine);
     return { lines, newMmdReference: bareLine, newSyntax: "markdown" };
   }
@@ -598,7 +758,7 @@
         return { mmd, transformed: false, action: "no-op" };
       }
       if (T !== "") {
-        const replaced = _replaceCaptionContent(lines, ctx, T);
+        const replaced = _replaceCaptionContent(lines, ctx, encodeCaptionTitle(T));
         if (replaced === null) {
           return { mmd, transformed: false, action: "no-op" };
         }
@@ -627,7 +787,7 @@
     if (T === "") {
       return { mmd, transformed: false, action: "no-op" };
     }
-    lines.splice(ctx.endIndex, 0, `\\caption{${T}}`);
+    lines.splice(ctx.endIndex, 0, `\\caption{${encodeCaptionTitle(T)}}`);
     return { mmd: lines.join("\n"), transformed: true, action: "insert-caption" };
   }
 
@@ -1727,6 +1887,12 @@
     findMatchingBrace,
     escapeAltForLatex,
     unescapeAltFromLatex,
+    // UT-3 — round-trip encodings for titles and alt text.
+    flattenLineBreaks,
+    encodeCaptionTitle,
+    decodeCaptionTitle,
+    encodeAltForMarkdown,
+    decodeAltFromMarkdown,
     // Stage 2.A
     detectShallowestHeading,
     // CTX-P1 — pure, exported so it can be gated with no page and no registry.

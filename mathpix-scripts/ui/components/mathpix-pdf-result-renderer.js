@@ -100,7 +100,9 @@ function logDebug(message, ...args) {
 }
 
 import MathPixBaseModule from "../../core/mathpix-base-module.js";
-import MATHPIX_CONFIG from "../../core/mathpix-config.js";
+import MATHPIX_CONFIG, {
+  MATHPIX_FORMAT_RESULT_KEYS,
+} from "../../core/mathpix-config.js";
 
 // =============================================================================
 // SVG Icons - from the shared icon library (icon-library.js)
@@ -1964,14 +1966,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
     try {
       // ✅ PHASE 3 FIX: Map UI format names to actual result keys
-      const formatMapping = {
-        mmd: "mmd",
-        html: "html",
-        latex: "tex.zip", // Critical fix: latex UI maps to tex.zip result key
-        docx: "docx",
-      };
-
-      const resultKey = formatMapping[format] || format;
+      const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format] || format;
 
       // Debug current state
       logDebug("Format export debug info", {
@@ -2500,19 +2495,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     });
 
     // Map UI formats to result keys
-    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The formatMapping and formats list below move together.
-    const formatMapping = {
-      mmd: "mmd",
-      md: "md", // Feature 3: Plain Markdown
-      html: "html",
-      pdf: "pdf", // Phase 1: PDF (HTML Rendering)
-      latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering)
-      latex: "tex.zip", // LaTeX comes as ZIP file
-      docx: "docx",
-      pptx: "pptx", // Phase 2: PowerPoint
-      xlsx: "xlsx", // SuperNet-200: Excel
-    };
-
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The MATHPIX_FORMAT_RESULT_KEYS table (mathpix-config.js) and the formats list below move together.
     const formats = [
       "mmd",
       "md",
@@ -2525,7 +2508,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
       "xlsx",
     ];
     const formatPromises = formats.map(async (format) => {
-      const resultKey = formatMapping[format];
+      const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
       const content = results[resultKey];
 
       logDebug(`Processing format ${format} (${resultKey})`, {
@@ -3253,22 +3236,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     });
 
     // Map UI formats to result keys for proper content checking
-    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The formatMapping and formats list below move together, and this pair is what un-hides a tab.
-    const formatMapping = {
-      mmd: "mmd",
-      md: "md", // Feature 3: Plain Markdown
-      html: "html",
-      pdf: "pdf", // Phase 1: PDF (HTML Rendering)
-      latexpdf: "latex.pdf", // Phase 1: PDF (LaTeX Rendering)
-      latex: "tex.zip",
-      docx: "docx",
-      pptx: "pptx", // Phase 2: PowerPoint
-      xlsx: "xlsx", // SuperNet-200: Excel
-      mmdzip: "mmd.zip", // Phase 2B: MMD Archive
-      mdzip: "md.zip", // Phase 2B: MD Archive
-      htmlzip: "html.zip", // Phase 2B: HTML Archive
-    };
-
+    // FORMAT-REGISTRY-SIBLING: adding/removing a format? grep FORMAT-REGISTRY-SIBLING and visit every hit (plus the tools.html checkbox/tab/panel blocks). The MATHPIX_FORMAT_RESULT_KEYS table (mathpix-config.js) and the formats list below move together, and this pair is what un-hides a tab.
     const formats = [
       "mmd",
       "md",
@@ -3290,7 +3258,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
 
       if (tabElement && panelElement) {
         // Use format mapping to check correct result key
-        const resultKey = formatMapping[format];
+        const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
         const resultContent = results[resultKey];
 
         // Check if content exists in results (be strict - only show if actually present)
@@ -3349,7 +3317,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
     let initialFormat = null;
     for (const format of formatPriority) {
       // Use format mapping to check correct result key
-      const resultKey = formatMapping[format];
+      const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format];
       const resultContent = results[resultKey];
 
       // Check for content using proper result key
@@ -4747,14 +4715,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
   getContentForCurrentView(format) {
     if (this.currentViewMode === "combined") {
       // Map UI format to result key
-      const formatMapping = {
-        mmd: "mmd",
-        html: "html",
-        latex: "tex.zip",
-        docx: "docx",
-      };
-
-      const resultKey = formatMapping[format] || format;
+      const resultKey = MATHPIX_FORMAT_RESULT_KEYS[format] || format;
       return this.currentResults[resultKey] || null;
     } else {
       // Page-by-page mode - ensure currentPage is properly set

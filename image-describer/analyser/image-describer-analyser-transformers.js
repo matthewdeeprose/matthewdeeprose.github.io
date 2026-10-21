@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════
  *
  * Manages Transformers.js library loading, pipeline caching,
- * and provides CLIP zero-shot image classification.
+ * and runs the Florence-2 and local vision-language models.
  *
  * The library is loaded dynamically via import() from jsdelivr
  * CDN. The reference stays in a closure — never on window.
@@ -20,7 +20,6 @@
  *   destroy()                        → Promise<void>
  *   loadPipeline(task, modelId, opts) → Promise<pipeline>
  *   getPipelineStatus(task, modelId) → string
- *   classifyImage(imageSource, labels) → Promise<ClassificationResult>
  *   ensureFlorence(options)          → Promise<{model, processor, tokenizer}>
  *   getFlorenceStatus()              → string
  *   generateCaption(imageSource, task) → Promise<CaptionResult>
@@ -84,7 +83,6 @@ window.ImageDescriberAnalyserTransformers = (function () {
     "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
   const CDN_V4 =
     "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.9";
-  const DEFAULT_CLIP_MODEL = "Xenova/clip-vit-base-patch32";
 
   // Florence-2 constants
   const FLORENCE_MODEL_ID = "onnx-community/Florence-2-base-ft";
@@ -109,22 +107,18 @@ window.ImageDescriberAnalyserTransformers = (function () {
 
   /**
    * Maps raw Transformers.js model IDs to the friendly library IDs used by the
-   * controller's library-status UI elements (e.g. imgdesc-lib-clip).
+   * controller's library-status UI elements (e.g. imgdesc-lib-florence2).
    * Keeps loadPipeline() generic — add entries here for future models.
    */
   const MODEL_TO_LIBRARY = {
-    "Xenova/clip-vit-base-patch32": "clip",
     "onnx-community/Florence-2-base-ft": "florence2",
-    "onnx-community/depth-anything-v2-small": "depth",
   };
-
-  const DEFAULT_DEPTH_MODEL = "onnx-community/depth-anything-v2-small";
 
   // ───────────────────────────────────────────────────────
   // Closure state — never exposed on window
   // ───────────────────────────────────────────────────────
 
-  /** @type {object|null} Transformers.js v3 module — used for CLIP, Depth (automatic pipeline) */
+  /** @type {object|null} Transformers.js v3 module (automatic pipeline) */
   let v3Module = null;
 
   /** @type {boolean} Whether v3 library loaded successfully */
@@ -193,7 +187,7 @@ window.ImageDescriberAnalyserTransformers = (function () {
   /**
    * Emit a library:status event if EmbedEventEmitter is available.
    * Matches the pattern used by the OCR module (Phase 4B).
-   * @param {string} library  — identifier, e.g. "transformers" or "clip-vit-b32"
+   * @param {string} library  — identifier, e.g. "transformers" or "florence2"
    * @param {string} status   — "loading" | "ready" | "error"
    * @param {object} [extra]  — additional data to merge into the event
    */
@@ -400,7 +394,7 @@ window.ImageDescriberAnalyserTransformers = (function () {
    * Loads (or returns cached) a Transformers.js pipeline.
    *
    * @param {string} task    — pipeline task, e.g. "zero-shot-image-classification"
-   * @param {string} modelId — model identifier, e.g. "Xenova/clip-vit-base-patch32"
+   * @param {string} modelId — model identifier, e.g. "onnx-community/Florence-2-base-ft"
    * @param {object} [pipelineOptions] — extra options forwarded to pipeline(),
    *   e.g. { dtype: "fp32" }. Omit to use Transformers.js defaults.
    * @returns {Promise<object>} The pipeline instance
@@ -430,7 +424,7 @@ window.ImageDescriberAnalyserTransformers = (function () {
     );
     pipelineStatusMap.set(key, "loading");
     // Use a friendly library ID so the controller can find the right
-    // status element (e.g. imgdesc-lib-clip rather than the raw model path).
+    // status element (e.g. imgdesc-lib-florence2 rather than the raw model path).
     const libraryId = MODEL_TO_LIBRARY[modelId] || modelId;
     emitStatus(libraryId, "loading");
 
@@ -471,110 +465,8 @@ window.ImageDescriberAnalyserTransformers = (function () {
   }
 
   // ───────────────────────────────────────────────────────
-  // CLIP classification
+  // Image input
   // ───────────────────────────────────────────────────────
-
-  /**
-   * Classifies an image against a set of candidate labels using
-   * CLIP zero-shot image classification.
-   *
-   * @param {HTMLImageElement|HTMLCanvasElement|string} imageSource
-   *   — an <img> element, a <canvas>, or an image URL
-   * @param {string[]} labels
-   *   — candidate labels to classify against
-   * @returns {Promise<object>} Classification result:
-   *   {
-   *     topLabel: string,
-   *     topConfidence: number,
-   *     suggestedProfile: string,   // placeholder — "unknown" until 5B-2
-   *     labels: [{ label, score }],
-   *     status: string,
-   *     duration: number
-   *   }
-   */
-  async function classifyImage(imageSource, labels) {
-    const t0 = performance.now();
-
-    // Validate inputs
-    if (!imageSource) {
-      logError("classifyImage called without image source");
-      return makeErrorResult("No image source provided", t0);
-    }
-    if (!Array.isArray(labels) || labels.length === 0) {
-      logError("classifyImage called without labels");
-      return makeErrorResult("No labels provided", t0);
-    }
-
-    // Check library availability
-    if (!v3Available) {
-      logWarn(
-        "Library not available — attempting to load before classification",
-      );
-      try {
-        await ensureLibrary();
-      } catch (err) {
-        return makeErrorResult(
-          "Transformers.js library unavailable: " + (err.message || err),
-          t0,
-        );
-      }
-    }
-
-    logInfo("Classifying image against", labels.length, "labels");
-
-    try {
-      // Load or retrieve cached CLIP pipeline
-      const classifier = await loadPipeline(
-        "zero-shot-image-classification",
-        DEFAULT_CLIP_MODEL,
-      );
-
-      // Determine image input for the pipeline
-      const imageInput = resolveImageInput(imageSource);
-
-      // Run classification
-      const output = await classifier(imageInput, labels);
-
-      // Transformers.js returns array of { label, score } sorted by score descending
-      const sortedLabels = Array.isArray(output)
-        ? output
-            .map(function (item) {
-              return { label: item.label, score: item.score };
-            })
-            .sort(function (a, b) {
-              return b.score - a.score;
-            })
-        : [];
-
-      const duration = performance.now() - t0;
-      const topItem = sortedLabels[0] || { label: "unknown", score: 0 };
-
-      logInfo(
-        "Classification complete in " +
-          duration.toFixed(0) +
-          "ms — top: " +
-          topItem.label +
-          " (" +
-          (topItem.score * 100).toFixed(1) +
-          "%)",
-      );
-
-      return {
-        topLabel: topItem.label,
-        topConfidence: topItem.score,
-        suggestedProfile: "unknown", // Placeholder — label-to-profile mapping added in Phase 5B-2
-        labels: sortedLabels,
-        status: "success",
-        duration: duration,
-      };
-    } catch (err) {
-      logError("Classification failed:", err.message || err);
-      return makeErrorResult(
-        "Classification failed: " + (err.message || err),
-        t0,
-      );
-    }
-  }
 
   /**
    * Resolves the image source into a format suitable for the pipeline.
@@ -608,24 +500,6 @@ window.ImageDescriberAnalyserTransformers = (function () {
     // Fallback — try to use as-is and let the pipeline handle it
     logWarn("Unrecognised image source type — passing through to pipeline");
     return source;
-  }
-
-  /**
-   * Creates a standardised error result object.
-   * @param {string} message
-   * @param {number} t0 — performance.now() timestamp at start
-   * @returns {object}
-   */
-  function makeErrorResult(message, t0) {
-    return {
-      topLabel: null,
-      topConfidence: 0,
-      suggestedProfile: null,
-      labels: [],
-      status: "error",
-      duration: performance.now() - t0,
-      error: message,
-    };
   }
 
   // ───────────────────────────────────────────────────────
@@ -1513,333 +1387,6 @@ window.ImageDescriberAnalyserTransformers = (function () {
   }
 
   // ───────────────────────────────────────────────────────
-  // Depth estimation (Phase 11A)
-  // ───────────────────────────────────────────────────────
-
-  /**
-   * Quadrant names for depth zone spatial analysis.
-   * @type {string[]}
-   */
-  const DEPTH_QUADRANT_NAMES = [
-    "top-left",
-    "top-right",
-    "bottom-left",
-    "bottom-right",
-    "centre",
-  ];
-
-  /**
-   * Estimates depth zones in an image using Depth Anything V2 Small.
-   * Returns foreground/midground/background zone breakdown with
-   * area percentages and dominant quadrant positions.
-   *
-   * Convention: 0 = closest (foreground), 1 = farthest (background).
-   *
-   * @param {HTMLImageElement|HTMLCanvasElement|string} imageSource
-   * @returns {Promise<object>} Depth estimation result
-   */
-  async function estimateDepth(imageSource) {
-    var t0 = performance.now();
-
-    if (!imageSource) {
-      logError("estimateDepth called without image source");
-      return makeDepthErrorResult("No image source provided", t0);
-    }
-
-    // Check library availability
-    if (!v3Available) {
-      logWarn(
-        "Library not available — attempting to load before depth estimation",
-      );
-      try {
-        await ensureLibrary();
-      } catch (err) {
-        return makeDepthErrorResult(
-          "Transformers.js library unavailable: " + (err.message || err),
-          t0,
-        );
-      }
-    }
-
-    logInfo("Running depth estimation with Depth Anything V2 Small");
-
-    try {
-      // Load or retrieve cached depth pipeline
-      var depthPipeline = await loadPipeline(
-        "depth-estimation",
-        DEFAULT_DEPTH_MODEL,
-      );
-
-      // Resolve image input to a URL/data URI
-      var imageInput = resolveImageInput(imageSource);
-
-      // Run depth estimation
-      var pipelineResult = await depthPipeline(imageInput);
-
-      // Extract depth data — check result.depth first, then result.predicted_depth
-      var depthData = null;
-      var depthWidth = 0;
-      var depthHeight = 0;
-
-      if (pipelineResult && pipelineResult.depth) {
-        // RawImage with .data, .width, .height
-        depthData = pipelineResult.depth.data;
-        depthWidth = pipelineResult.depth.width;
-        depthHeight = pipelineResult.depth.height;
-      } else if (pipelineResult && pipelineResult.predicted_depth) {
-        depthData = pipelineResult.predicted_depth.data;
-        depthWidth = pipelineResult.predicted_depth.width;
-        depthHeight = pipelineResult.predicted_depth.height;
-      }
-
-      if (!depthData || depthData.length === 0) {
-        return makeDepthErrorResult("No depth data returned from pipeline", t0);
-      }
-
-      // Handle both [height, width] tensor and flattened array
-      var totalPixels = depthWidth * depthHeight;
-      if (depthData.length !== totalPixels && depthData.length > 0) {
-        // Try to infer dimensions from array length if width*height doesn't match
-        logWarn(
-          "Depth data length (" +
-            depthData.length +
-            ") differs from " +
-            depthWidth +
-            "×" +
-            depthHeight +
-            " (" +
-            totalPixels +
-            "). Using data length.",
-        );
-        totalPixels = depthData.length;
-      }
-
-      // Find min and max for normalisation
-      var rawMin = Infinity;
-      var rawMax = -Infinity;
-      for (var i = 0; i < depthData.length; i++) {
-        var val = depthData[i];
-        if (val < rawMin) rawMin = val;
-        if (val > rawMax) rawMax = val;
-      }
-
-      var range = rawMax - rawMin;
-      if (range === 0) {
-        // Flat image — no depth variation
-        var duration = performance.now() - t0;
-        logInfo(
-          "Depth estimation complete in " +
-            duration.toFixed(0) +
-            "ms — flat image (no depth variation)",
-        );
-        return {
-          status: "success",
-          duration: duration,
-          rawDepthMap: {
-            width: depthWidth,
-            height: depthHeight,
-            data: depthData,
-          },
-          zones: {
-            foreground: {
-              minDepth: 0,
-              maxDepth: 0.33,
-              areaPercent: 100,
-              dominantQuadrants: DEPTH_QUADRANT_NAMES.slice(),
-            },
-            midground: {
-              minDepth: 0.33,
-              maxDepth: 0.66,
-              areaPercent: 0,
-              dominantQuadrants: [],
-            },
-            background: {
-              minDepth: 0.66,
-              maxDepth: 1.0,
-              areaPercent: 0,
-              dominantQuadrants: [],
-            },
-          },
-          depthRange: { min: rawMin, max: rawMax },
-          hasSignificantDepth: false,
-        };
-      }
-
-      // Depth Anything V2 convention: lower values = closer.
-      // Some models output the opposite — detect and invert if needed.
-      // Heuristic: if pixels near image bottom (typically foreground in photos)
-      // have higher raw values than top pixels, the model uses inverted convention.
-      // We keep: 0 = closest, 1 = farthest.
-      var bottomRowStart = (depthHeight - 1) * depthWidth;
-      var bottomSum = 0;
-      var topSum = 0;
-      var sampleCount = Math.min(depthWidth, 50);
-      var step = Math.max(1, Math.floor(depthWidth / sampleCount));
-      for (var s = 0; s < depthWidth; s += step) {
-        bottomSum += depthData[bottomRowStart + s];
-        topSum += depthData[s];
-      }
-      var invertDepth = bottomSum / sampleCount > topSum / sampleCount;
-
-      // Normalise to 0–1 and count zone pixels + quadrant distribution
-      var zoneCounts = { foreground: 0, midground: 0, background: 0 };
-      // Quadrant pixel counts per zone: { foreground: { 'top-left': n, ... }, ... }
-      var zoneQuadrantCounts = {
-        foreground: {},
-        midground: {},
-        background: {},
-      };
-      DEPTH_QUADRANT_NAMES.forEach(function (q) {
-        zoneQuadrantCounts.foreground[q] = 0;
-        zoneQuadrantCounts.midground[q] = 0;
-        zoneQuadrantCounts.background[q] = 0;
-      });
-
-      // Quadrant boundaries
-      var halfW = depthWidth / 2;
-      var halfH = depthHeight / 2;
-      var centreX0 = depthWidth / 3;
-      var centreX1 = (depthWidth * 2) / 3;
-      var centreY0 = depthHeight / 3;
-      var centreY1 = (depthHeight * 2) / 3;
-
-      for (var pi = 0; pi < depthData.length; pi++) {
-        var normalised = (depthData[pi] - rawMin) / range;
-        if (invertDepth) normalised = 1.0 - normalised;
-
-        // Determine zone
-        var zone;
-        if (normalised < 0.33) {
-          zone = "foreground";
-        } else if (normalised < 0.66) {
-          zone = "midground";
-        } else {
-          zone = "background";
-        }
-        zoneCounts[zone]++;
-
-        // Determine quadrant for this pixel
-        var px = pi % depthWidth;
-        var py = Math.floor(pi / depthWidth);
-
-        // Check centre first (overlaps with corner quadrants)
-        if (
-          px >= centreX0 &&
-          px < centreX1 &&
-          py >= centreY0 &&
-          py < centreY1
-        ) {
-          zoneQuadrantCounts[zone]["centre"]++;
-        }
-        // Also count corner quadrant (a pixel can be in centre AND a corner)
-        if (py < halfH) {
-          if (px < halfW) {
-            zoneQuadrantCounts[zone]["top-left"]++;
-          } else {
-            zoneQuadrantCounts[zone]["top-right"]++;
-          }
-        } else {
-          if (px < halfW) {
-            zoneQuadrantCounts[zone]["bottom-left"]++;
-          } else {
-            zoneQuadrantCounts[zone]["bottom-right"]++;
-          }
-        }
-      }
-
-      // Build zone results
-      var effectiveTotal = depthData.length || 1;
-      var zones = {};
-      var zoneNames = ["foreground", "midground", "background"];
-      var zoneBounds = [
-        { minDepth: 0, maxDepth: 0.33 },
-        { minDepth: 0.33, maxDepth: 0.66 },
-        { minDepth: 0.66, maxDepth: 1.0 },
-      ];
-
-      var maxZonePercent = 0;
-
-      for (var zi = 0; zi < zoneNames.length; zi++) {
-        var zName = zoneNames[zi];
-        var areaPct = parseFloat(
-          ((zoneCounts[zName] / effectiveTotal) * 100).toFixed(1),
-        );
-        if (areaPct > maxZonePercent) maxZonePercent = areaPct;
-
-        // Find dominant quadrants (>20% of this zone's pixels)
-        var dominant = [];
-        var zoneTotal = zoneCounts[zName] || 1;
-        DEPTH_QUADRANT_NAMES.forEach(function (q) {
-          if (zoneQuadrantCounts[zName][q] / zoneTotal > 0.2) {
-            dominant.push(q);
-          }
-        });
-
-        zones[zName] = {
-          minDepth: zoneBounds[zi].minDepth,
-          maxDepth: zoneBounds[zi].maxDepth,
-          areaPercent: areaPct,
-          dominantQuadrants: dominant,
-        };
-      }
-
-      var hasSignificantDepth = maxZonePercent <= 85;
-
-      var duration = performance.now() - t0;
-      logInfo(
-        "Depth estimation complete in " +
-          duration.toFixed(0) +
-          "ms — fg:" +
-          zones.foreground.areaPercent +
-          "% mg:" +
-          zones.midground.areaPercent +
-          "% bg:" +
-          zones.background.areaPercent +
-          "% significant:" +
-          hasSignificantDepth,
-      );
-
-      return {
-        status: "success",
-        duration: duration,
-        rawDepthMap: {
-          width: depthWidth,
-          height: depthHeight,
-          data: depthData,
-        },
-        zones: zones,
-        depthRange: { min: rawMin, max: rawMax },
-        hasSignificantDepth: hasSignificantDepth,
-        invertDepth: invertDepth,
-      };
-    } catch (err) {
-      logError("Depth estimation failed:", err.message || err);
-      return makeDepthErrorResult(
-        "Depth estimation failed: " + (err.message || err),
-        t0,
-      );
-    }
-  }
-
-  /**
-   * Creates a standardised depth error result object.
-   * @param {string} message
-   * @param {number} t0 — performance.now() timestamp at start
-   * @returns {object}
-   */
-  function makeDepthErrorResult(message, t0) {
-    return {
-      status: "error",
-      duration: performance.now() - t0,
-      error: message,
-      zones: null,
-      rawDepthMap: null,
-      depthRange: null,
-      hasSignificantDepth: false,
-    };
-  }
-
-  // ───────────────────────────────────────────────────────
   // LFM2-VL (Phase 15A)
   // ───────────────────────────────────────────────────────
 
@@ -2084,12 +1631,9 @@ window.ImageDescriberAnalyserTransformers = (function () {
     isAvailable: isAvailable,
     destroy: destroy,
 
-    // Pipeline management (CLIP etc.)
+    // Pipeline management
     loadPipeline: loadPipeline,
     getPipelineStatus: getPipelineStatus,
-
-    // CLIP classification
-    classifyImage: classifyImage,
 
     // Florence-2 (Phase 10A)
     ensureFlorence: ensureFlorence,
@@ -2097,9 +1641,6 @@ window.ImageDescriberAnalyserTransformers = (function () {
     generateCaption: generateCaption,
     detectObjects: detectObjects,
     extractOCR: extractOCR,
-
-    // Depth estimation (Phase 11A)
-    estimateDepth: estimateDepth,
 
     // FastVLM (Phase 13A)
     ensureFastVLM: ensureFastVLM,
@@ -2119,7 +1660,6 @@ window.ImageDescriberAnalyserTransformers = (function () {
     // Constants (exposed for tests and consumers)
     FLORENCE_MODEL_ID: FLORENCE_MODEL_ID,
     FLORENCE_TASKS: FLORENCE_TASKS,
-    DEFAULT_DEPTH_MODEL: DEFAULT_DEPTH_MODEL,
     FASTVLM_MODEL_ID: FASTVLM_MODEL_ID,
     QWEN35_MODEL_ID: QWEN35_MODEL_ID,
     LFM2VL_MODEL_ID: LFM2VL_MODEL_ID,

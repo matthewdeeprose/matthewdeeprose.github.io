@@ -378,11 +378,13 @@
       tabAnalysis: document.getElementById("resume-tab-analysis"),
       tabChemistry: document.getElementById("resume-tab-chemistry"), // Phase 6B
       tabContext: document.getElementById("resume-tab-context"), // Stage 7
+      tabAi: document.getElementById("resume-tab-ai"), // S6-3a (Resume-only)
       panelMmd: document.getElementById("resume-panel-mmd"),
       panelConfidence: document.getElementById("resume-panel-confidence"),
       panelAnalysis: document.getElementById("resume-panel-analysis"),
       panelChemistry: document.getElementById("resume-panel-chemistry"), // Phase 6B
       panelContext: document.getElementById("resume-panel-context"), // Stage 7
+      panelAi: document.getElementById("resume-panel-ai"), // S6-3a
 
       // MMD view controls
       mmdViewCodeBtn: document.getElementById("resume-mmd-view-code-btn"),
@@ -583,6 +585,12 @@
         this.switchTab("context"),
       );
     }
+    // S6-3a: AI tab
+    if (this.elements.tabAi) {
+      this.elements.tabAi.addEventListener("click", () =>
+        this.switchTab("ai"),
+      );
+    }
 
     // Stage 7 equalisation: a scoped keydown handler on each resume tab button
     // so arrows ACTIVATE (automatic-activation model), matching the upload
@@ -595,6 +603,7 @@
       this.elements.tabAnalysis,
       this.elements.tabChemistry,
       this.elements.tabContext,
+      this.elements.tabAi,
     ].forEach((tabBtn) => {
       if (tabBtn) {
         tabBtn.addEventListener("keydown", (e) =>
@@ -818,6 +827,7 @@
       { name: "analysis", element: this.elements.tabAnalysis },
       { name: "chemistry", element: this.elements.tabChemistry },
       { name: "context", element: this.elements.tabContext },
+      { name: "ai", element: this.elements.tabAi },
     ].filter((t) => t.element);
 
     // Restrict to VISIBLE tabs, mirroring handleTabKeydown's getComputedStyle

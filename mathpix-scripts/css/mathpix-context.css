@@ -342,6 +342,30 @@
 .mathpix-context-form .model-option .model-option-name {
   font-weight: 600;
 }
+/* T-27 (L4 from T-26a): narrow Resume Context model cards at phone width. */
+@media (max-width: 400px) {
+  .mathpix-context-form #resume-context-model-picker .model-option {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .mathpix-context-form #resume-context-model-picker .model-option input[type="radio"] {
+    align-self: flex-start;
+  }
+
+  .mathpix-context-form #resume-context-model-recommended:not([hidden]) {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  #resume-panel-context {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
 
 /* The advanced disclosure. `summary` keeps its native marker and native
    keyboard behaviour — it is a real disclosure, not a div with a role. */

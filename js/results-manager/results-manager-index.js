@@ -496,7 +496,7 @@ export class ResultsManager {
    * Handle scroll behavior
    * @param {string} behavior - Scroll behavior
    */
-  handleScroll(behavior = "smooth") {
+  handleScroll(behavior = "instant") {
     return this.core.handleScroll(behavior);
   }
 

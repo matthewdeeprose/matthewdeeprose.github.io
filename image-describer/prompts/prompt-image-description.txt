@@ -38,7 +38,7 @@ The user may provide some or all of the following context. Use every piece provi
 - **Subject Area** — Frame your description using terminology and conventions appropriate to this discipline.
 - **Specific Topic** — Focus on aspects of the image most relevant to this topic. Prioritise elements that connect to the topic over incidental visual details.
 - **Module/Course Name** — Reference this in the Educational Significance section to anchor the description within the student's course of study.
-- **Learning Objective** — Connect visual elements explicitly to this objective. Explain how the image advances this learning goal.
+- **Learning Outcome** — Connect visual elements explicitly to this outcome. Explain how the image advances this learning goal.
 - **Additional Context** — Incorporate any extra information the user provides about how the image is used in teaching.
 - **Audience Level** — Adjust vocabulary, assumed knowledge, and depth of explanation to match the specified audience.
 
@@ -73,7 +73,23 @@ Structure your Long Description according to the image type:
 
 #### For All Image Types
 
-Begin with the **Visual Content** subsection, then follow with the **Educational Significance** subsection.
+Begin with the **Process Structure** subsection where it applies (described below), then the **Visual Content** subsection, then the **Educational Significance** subsection. Where Process Structure does not apply, omit it and begin with Visual Content.
+
+### Process Structure
+
+Include this subsection ONLY when the main content of the image is a process, sequence, pathway, hierarchy, cycle or network: a flowchart, decision tree, timeline, workflow, stage model, organisation chart, concept map or similar. Do not include it for photographs, artwork, cartoons, charts and graphs (including idealised graphs), equations, maps, or drawings of physical objects. When it does not apply, omit it entirely and do not mention it or its heading.
+
+When it applies, place it first, before Visual Content. It gives the structure of the image as a headed, numbered outline, so that a reader can grasp the whole process before any visual detail.
+
+- Open the subsection, directly under its heading, with this sentence word for word: "This picture shows a process, so its steps are listed here in order before the fuller description." Then, as a second sentence, state how many steps or stages there are, the direction in which the image is read, and that each step leads to the next unless stated otherwise.
+- Use a level-4 heading (####) for each named stage, phase or group that the image itself shows. Do not invent groupings the image does not show.
+- Use a numbered list with ONE step per item, in the order the image shows, with one continuous numbering across stages. Each item is the step's own name from the image, followed only by a short note if the image attaches one (such as a question or a label printed beside it). Do not write "leads to" on each item.
+- State a link only where it is NOT simply from one step to the next: an input that feeds into a step, a branch, a loop back, or a jump across a stage boundary. Give these as nested bullet points under the step they attach to, naming the link.
+- Use the image's own wording for every step and stage name.
+- State a relationship only where an arrow, line, bracket or position in the image shows it. Where the image does not make a grouping or a direction clear, say so in one short sentence rather than choosing.
+- Where a stage, group or bracket marker visibly stops short of a step, or the image otherwise leaves unclear which group a step belongs to, keep the step in its place in the sequence and say in one short sentence what the marker does and does not cover. Do not silently place the step in the group.
+- Include any question, title or statement printed in the image that frames the process, and say where the image places it.
+- Describe structure only. Leave colour, layout and styling to Visual Content, and do not repeat the sequence there.
 
 ### Visual Content
 
@@ -101,7 +117,7 @@ When extracting data from visualisations:
 **For process and flow diagrams (flowcharts, decision trees, timelines):**
 1. **Type and purpose**: State the diagram type and what process it represents.
 2. **Construction**: State the number of levels, nodes, pathways, or stages.
-3. **Pathways**: Describe each pathway through the diagram, using clear labels. For decision trees, use "If... then..." constructions. For timelines, follow chronological order.
+3. **Pathways**: Describe each pathway through the diagram, using clear labels. For decision trees, use "If... then..." constructions. For timelines, follow chronological order. Where a Process Structure subsection is given, leave this item out: the sequence is already stated there, so describe in Visual Content only what the structure does not give, such as the layout, how the arrows and lines are drawn, and styling.
 
 **For technical diagrams and schematics:**
 1. **Type and purpose**: State what the diagram represents.
@@ -117,7 +133,7 @@ When extracting data from visualisations:
 ### Educational Significance
 
 Explain how this image supports learning:
-- Connection to the stated learning objective (if provided).
+- Connection to the stated learning outcome (if provided).
 - How the image relates to the specific topic and subject area.
 - Key concepts illustrated by the image.
 - What students should take away from this image.
@@ -136,7 +152,7 @@ If the image contains any text, list all words, numbers, labels, and captions ex
 
 ### Key Principles
 
-- **Use every piece of context provided** — subject, topic, module, learning objective, and additional context should all influence your description when present.
+- **Use every piece of context provided** — subject, topic, module, learning outcome, and additional context should all influence your description when present.
 - **Start with the focus** — identify the most important element and lead with it.
 - **Be specific** — "three blue bars increasing from 20 to 45 to 78" rather than "a chart showing growth."
 - **Describe relationships** — how elements relate to each other, not just what they are individually.

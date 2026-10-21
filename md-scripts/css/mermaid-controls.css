@@ -312,3 +312,90 @@
     position: relative;
   }
 }
+
+/* Parcel 18d (20 October 2026): the box shown when a diagram cannot be drawn
+   (mermaid-accessibility-core.js showErrorFallback). Layout and spacing only;
+   the text, the roles and the live-region attributes are unchanged. Colours
+   are the theme's own: the border is --accent-color (3:1 or more against the
+   page in both themes), and text and ground are inherited. No box-shadow or
+   outline on the buttons, so the site's global focus treatment applies. The
+   Copy button is absolutely placed inside the code block, so the block is
+   padded on the right to keep the code clear of it, and is tall enough to
+   contain it. */
+.mermaid-error-fallback {
+  box-sizing: border-box;
+  max-width: 100%;
+  /* Parcel 18j: no outer margin. Inside .mermaid (which carries its own
+     ground) a vertical margin showed that ground as a strip above and below
+     the box. */
+  margin: 0;
+  padding: 1rem;
+  border: 2px solid var(--accent-color, currentColor);
+  border-radius: 4px;
+  text-align: left;
+}
+
+.mermaid-error-fallback > * {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+}
+
+.mermaid-error-fallback > :last-child {
+  margin-bottom: 0;
+}
+
+.mermaid-error-fallback .mermaid-fallback-code {
+  box-sizing: border-box;
+  min-height: 3.5rem;
+  padding: 0.75rem 6.5rem 0.75rem 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mermaid-error-fallback .mermaid-retry-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* Parcel 18e (21 October 2026): the two looks around the failure box. Colours
+   are untouched; only the theme's thin side borders on .mermaid and the
+   spacing of the short holding line are handled here.
+   1. While the full box shows, the box carries its own border, so the
+      theme's left and right borders on the .mermaid div that wraps it showed
+      as short stubs above and below it. They go while the box is inside. */
+.mermaid-container > .mermaid:has(> .mermaid-error-fallback) {
+  border-left: 0 none;
+  border-right: 0 none;
+}
+
+/* 2. Parcel 18f (21 October 2026): the short holding line (mermaid-controls.js
+      noteRenderFailure, a <p> inserted before the .mermaid div inside the
+      .mermaid-container) reads as the same box as the full one. The holder
+      carries the box's border, radius and padding; the .mermaid div below the
+      line becomes the code panel (dotted border, padding, wrapping, as the
+      full box's panel), which also replaces the theme's thin side lines. The
+      line is removed when a render lands or the fuller box replaces it, so a
+      drawn diagram and the full box never match these rules. The panel keeps
+      the theme's own .mermaid ground: the full box's panel colour comes from
+      the theme sheets and is not a variable. */
+.mermaid-container:has(> .mermaid-render-failed-note) {
+  box-sizing: border-box;
+  margin-block: 0.5rem;
+  padding: 1rem;
+  border: 2px solid var(--accent-color, currentColor);
+  border-radius: 4px;
+}
+
+.mermaid-render-failed-note {
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+
+.mermaid-render-failed-note + .mermaid {
+  box-sizing: border-box;
+  padding: 0.75rem;
+  border: 1px dotted currentcolor;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

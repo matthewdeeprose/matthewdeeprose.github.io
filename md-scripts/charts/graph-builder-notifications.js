@@ -102,6 +102,8 @@ const GraphBuilderNotifications = (function () {
       this.toastCounter = 0;
       this.maxToasts = 5;
 
+      this._trackFocusOutside();
+
       this.initContainer();
     }
 
@@ -175,6 +177,7 @@ const GraphBuilderNotifications = (function () {
         type,
         timeout: null,
         persistent,
+        returnFocusTo: this._captureFocusOrigin(),
       });
 
       // Add to container
@@ -238,13 +241,20 @@ const GraphBuilderNotifications = (function () {
       // Add close functionality
       if (dismissible) {
         const closeBtn = toast.querySelector(".gb-toast-close");
-        closeBtn.addEventListener("click", () => this.dismiss(toastId));
+        // Focus returns whatever the input: a screen reader's browse mode clicks like a
+        // mouse. Only a key press (detail 0) also scrolls the control into view.
+        closeBtn.addEventListener("click", (e) =>
+          this.dismiss(toastId, {
+            returnFocus: true,
+            scrollIntoView: e.detail === 0,
+          }),
+        );
 
         // Keyboard support
         closeBtn.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            this.dismiss(toastId);
+            this.dismiss(toastId, { returnFocus: true, scrollIntoView: true });
           }
         });
 
@@ -326,7 +336,7 @@ const GraphBuilderNotifications = (function () {
      * Dismiss a toast
      * @param {string} toastId - Toast ID to dismiss
      */
-    dismiss(toastId) {
+    dismiss(toastId, options = {}) {
       const toastData = this.toasts.get(toastId);
       if (!toastData) return;
 
@@ -335,6 +345,10 @@ const GraphBuilderNotifications = (function () {
       // Clear timeout if exists
       if (toastData.timeout) {
         clearTimeout(toastData.timeout);
+      }
+
+      if (options.returnFocus) {
+        this._returnFocusAfterClose(toast, toastData, options);
       }
 
       // Add hide animation
@@ -348,6 +362,175 @@ const GraphBuilderNotifications = (function () {
         }
         this.toasts.delete(toastId);
       }, 300);
+    }
+
+    /**
+     * A focus move made by a real pointer press, or by a key press that is not
+     * Tab or a lone modifier, replaces where an open toast's close returns
+     * focus: a person who clicks on to another control, or moves on by arrow
+     * keys, is sent there. Focus that arrives with no press behind it (the
+     * browser handing focus back to the page, a screen reader's cursor passing a
+     * control) and a Tab walk to the toast leave the target alone. A pointer
+     * press counts from its pointerdown until just after its click, so a label
+     * handing focus to its input during the click is covered; a key press counts
+     * until the end of its own task, which covers focus moved by its handler or
+     * default action. Space counts on release as well as on press, because a
+     * button runs its Space action on release.
+     */
+    _trackFocusOutside() {
+      const PRESS_FALLBACK_MS = 400;
+      const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+      let tabHeld = false;
+      let pointerEvidence = false;
+      let keyEvidence = false;
+      let fallbackTimer = 0;
+      const inToastArea = (node) =>
+        node instanceof Element && node.closest(".gb-toast-container, .gb-toast") !== null;
+      const endEvidence = () => {
+        pointerEvidence = false;
+        keyEvidence = false;
+        clearTimeout(fallbackTimer);
+      };
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Tab") {
+          tabHeld = true;
+          return;
+        }
+        if (!e.isTrusted || MODIFIER_KEYS.has(e.key) || inToastArea(e.target)) return;
+        keyEvidence = true;
+        setTimeout(endEvidence, 0);
+      }, true);
+      document.addEventListener("keyup", (e) => {
+        tabHeld = false;
+        if (e.key !== " " || !e.isTrusted || inToastArea(e.target)) return;
+        keyEvidence = true;
+        setTimeout(endEvidence, 0);
+      }, true);
+      document.addEventListener("pointerdown", (e) => {
+        if (!e.isTrusted || inToastArea(e.target)) return;
+        pointerEvidence = true;
+      }, true);
+      document.addEventListener("pointerup", () => {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = setTimeout(endEvidence, PRESS_FALLBACK_MS);
+      }, true);
+      document.addEventListener("click", () => { setTimeout(endEvidence, 0); }, true);
+      document.addEventListener("pointercancel", endEvidence, true);
+      document.addEventListener("focusin", (e) => {
+        if (tabHeld || !(pointerEvidence || keyEvidence)) return;
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        if (target === document.body || target === document.documentElement) return;
+        if (target.closest(".gb-toast-container, .gb-toast")) return;
+        for (const toastData of this.toasts.values()) toastData.returnFocusTo = target;
+      });
+    }
+
+    /**
+     * The control that had focus when a toast appeared, so a keyboard close can
+     * send focus back to it. Null when focus was on the page itself or inside
+     * the toast area.
+     */
+    _captureFocusOrigin() {
+      const active = document.activeElement;
+      if (!active || active === document.body || active === document.documentElement) return null;
+      if (this.container && this.container.contains(active)) return null;
+      return active;
+    }
+
+    /**
+     * True when focus() on this element would land: it is still in the page,
+     * not disabled, not inert and not hidden by itself or any ancestor.
+     */
+    _canReceiveFocus(el) {
+      if (!el) return false;
+      if (!el.isConnected) return false;
+      if (el.disabled || el.closest("[inert]")) return false;
+      for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden") return false;
+      }
+      return true;
+    }
+
+    /**
+     * Focus an element. A pointer close leaves the page where it is while any
+     * part of the element is in view, so it never jumps under a mouse user, but
+     * scrolls the element in when it is entirely out of view, so the control
+     * focus returns to is never left off screen. A keyboard close
+     * (scrollIntoView) always makes sure the element is on screen: the page
+     * root can scroll smoothly, and a smooth scroll already under way can beat
+     * the one focus() starts, leaving the focused control outside the viewport.
+     * An instant "nearest" scroll moves nothing when the element is already
+     * fully in view.
+     */
+    _focusInView(el, scrollIntoView) {
+      if (!scrollIntoView) {
+        el.focus({ preventScroll: true });
+        const rect = el.getBoundingClientRect();
+        const offScreen = rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth;
+        if (!offScreen) return;
+      }
+      const place = () => {
+        el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+        // Pin the scroll position: an instant scroll to where the page already is
+        // cancels a smooth scroll still running from an earlier focus change.
+        window.scrollTo({ left: window.scrollX, top: window.scrollY, behavior: "instant" });
+      };
+      el.focus({ preventScroll: true });
+      place();
+      // A scroll the browser had already queued can still nudge the page on the
+      // next frame, so settle once more if focus has not moved on.
+      requestAnimationFrame(() => {
+        if (document.activeElement === el) place();
+      });
+    }
+
+    /**
+     * Close button of the first other toast that is not itself on its way out.
+     */
+    _nextCloseButton(closing) {
+      if (!this.container) return null;
+      for (const button of this.container.querySelectorAll(".gb-toast-close")) {
+        const owner = button.closest(".gb-toast");
+        if (owner && owner !== closing && owner.getAttribute("data-dismissing") !== "true") return button;
+      }
+      return null;
+    }
+
+    /**
+     * Closing the toast would drop focus on <body>, so place it deliberately.
+     * Order: the control that had focus when the toast appeared (or the one the
+     * person has since moved on to by a real press, see _trackFocusOutside), then
+     * the next toast's close button, then the first rendered heading in #main.
+     * options.scrollIntoView is set for a key press; see _focusInView for a pointer.
+     */
+    _returnFocusAfterClose(toast, toastData, options) {
+      if (toast.getAttribute("data-dismissing") === "true") return;
+      toast.setAttribute("data-dismissing", "true");
+
+      const scroll = options.scrollIntoView === true;
+      const origin = toastData.returnFocusTo;
+      if (this._canReceiveFocus(origin)) {
+        this._focusInView(origin, scroll);
+        return;
+      }
+
+      const next = this._nextCloseButton(toast);
+      if (next) {
+        this._focusInView(next, scroll);
+        return;
+      }
+
+      const heading = Array.from(document.querySelectorAll("#main h1, #main h2, #main h3, #main h4, #main h5, #main h6")).find(
+        (el) => !el.closest(".gb-toast-container") && this._canReceiveFocus(el),
+      );
+      if (!heading) return;
+      if (!heading.hasAttribute("tabindex")) {
+        heading.setAttribute("tabindex", "-1");
+        heading.addEventListener("blur", () => heading.removeAttribute("tabindex"), { once: true });
+      }
+      this._focusInView(heading, scroll);
     }
 
     /**

@@ -213,6 +213,7 @@
 
       this.hasUnsavedChanges = false;
       this.hasContextEdits = false;
+      this.setArchiveUnsaved(false); // SV-1: a ZIP now holds this document and its edits
 
       // Phase 9 Feature 1C: Clear image save warning after successful download
       this._clearImageSaveWarning();
@@ -804,8 +805,15 @@
       );
     }
 
+    // RR-2 (RR-D1): while the Image Manager is open its modal covers the
+    // preview, so the manager sets _deferPreviewRebuild and the rebuild (the
+    // freeze RR-1 profiled) is skipped here; it is paid once, by
+    // flushStalePreview, as the manager finishes closing. Writes with the
+    // manager closed leave the flag false and rebuild synchronously as before.
     if (typeof this.loadMMDContent === "function") {
-      this.loadMMDContent(newMmd, originalMmd);
+      this.loadMMDContent(newMmd, originalMmd, {
+        deferPreview: this._deferPreviewRebuild === true,
+      });
     }
 
     // Persist to the resume-session store so an Image Manager alt edit survives a

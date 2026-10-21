@@ -206,6 +206,28 @@ window.MermaidDiagramDetection = (function () {
     // upper-case `INFO` makes detectType throw, the scan answers `flowchart`,
     // and that misroute is register item 97's, not this row's.
     info: "info",
+    // Item 110, 9 October 2026: detectType returns "requirement" for a
+    // `requirementDiagram` opener; one entry suffices. Same reason as the info
+    // row above - without it the requirement generator registers and is never
+    // called, and a requirement source resolves to `unsupported:requirement`.
+    // The legacy keyword scan has no requirement branch either, and is left
+    // as found.
+    requirement: "requirement",
+    // Item 114, 15 October 2026: detectType returns "packet" for both the
+    // `packet` and `packet-beta` openers (census P17d); one entry suffices.
+    // Same reason as the requirement row above - without it the packet
+    // generator registers and is never called, and a packet source resolves
+    // to `unsupported:packet`. The legacy keyword scan has no packet branch
+    // either, and is left as found.
+    packet: "packet",
+    // Item 119, 21 October 2026: detectType returns "treemap" for both the
+    // `treemap` and `treemap-beta` openers (census); one entry suffices. Same
+    // reason as the packet row above - without it the treemap generator
+    // registers and is never called, and a treemap source resolves to
+    // `unsupported:treemap`. The legacy keyword scan has no treemap branch
+    // either, and is left as found (a mis-cased `Treemap-Beta` still routes
+    // to flowchart there: register item 97's misroute, not this row's).
+    treemap: "treemap",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

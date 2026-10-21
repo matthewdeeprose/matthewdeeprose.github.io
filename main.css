@@ -1400,11 +1400,6 @@ mark {
   white-space: nowrap;
 }
 
-/* Add smooth scrolling for the status container */
-.status-messages {
-  scroll-behavior: smooth;
-}
-
 /* parameter failover warning */
 .parameter-warning {
   padding: 0.5rem;
@@ -3133,6 +3128,22 @@ ol {
   margin: 0rem 0em 0rem 0.7rem;
 }
 
+/* Panel icons scale with the layout width, 24px to 50px */
+#panel svg {
+  width: clamp(1.5rem, 8vw, 3.125rem);
+  height: clamp(1.5rem, 8vw, 3.125rem);
+}
+
+/* Focused controls scroll clear of the fixed Top and Bottom buttons */
+html {
+  scroll-padding-bottom: 8.5rem;
+}
+@media screen and (max-width: 800px) {
+  html {
+    scroll-padding-bottom: 5.25rem;
+  }
+}
+
 /* Related images */
 aside img {
   width: 100%;
@@ -3318,9 +3329,6 @@ section.related {
 }
 
 @media only screen and (max-width: 400px) {
-  #myBtn2 {
-    display: none !important;
-  }
   #svgUP {
     margin-right: 0px;
     margin-left: 0px;
@@ -3475,7 +3483,16 @@ a:hover {
     outline: 0.1rem solid #00131d;
   }
   .panelLabel {
-    display: none;
+    /* hidden visually, still read as the button's name */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
@@ -3488,7 +3505,16 @@ a:hover {
     width: auto;
   }
   .panelLabel {
-    display: none;
+    /* hidden visually, still read as the button's name */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
@@ -4071,6 +4097,7 @@ a:hover {
   justify-content: space-between;
   align-items: center;
   min-height: 3.5rem;
+  min-width: 0; /* a fieldset defaults to min-content, which held the picker 3px wider than a 320px window */
   width: 100%;
 }
 
@@ -4159,6 +4186,7 @@ a:hover {
   #toolSelection .tool-option-wrapper {
     width: 100%;
     justify-content: flex-start;
+    white-space: normal; /* the pill is now only as wide as the nav, so a long name wraps inside it rather than past its border */
   }
 }
 

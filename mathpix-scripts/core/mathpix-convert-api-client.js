@@ -18,6 +18,12 @@
  * - Progress callbacks for UI integration
  * - Cancellation support for active conversions
  * - British English defaults and messaging
+ * - WD-2 (WD-D2, 14 October 2026): downloadResult repairs invalid w:ind measures
+ *   in every docx, so each mode receives the repaired file (module in
+ *   session-restorer-docx-headings.js stays the single implementation)
+ * - WD-4 (WD-D3, 14 October 2026): convertAndDownload restyles Word headings in
+ *   every docx against the MMD it sent, and reports the outcome as a `docx`
+ *   field on completionResult ({applied, expected, mapped, repaired, failed} or null)
  *
  * Integration:
  * - Uses existing credential management from MATHPIX_CONFIG
@@ -863,6 +869,85 @@ class MathPixConvertAPIClient {
   }
 
   /**
+   * Repairs invalid w:ind measures in a downloaded docx (WD-2, WD-D2). Returns
+   * the INPUT blob object when nothing was repaired or anything is missing or
+   * fails; never throws.
+   * @private
+   * @param {Blob} blob - The docx from the Convert API
+   * @returns {Promise<Blob>}
+   */
+  async _repairDocxBlob(blob) {
+    try {
+      const headings = window.MathPixDocxHeadings;
+      if (!headings || typeof headings.repairDocxBlob !== "function") {
+        logWarn("docx repair module not loaded, file delivered as received");
+        return blob;
+      }
+      if (typeof window.JSZip !== "function") {
+        logWarn("JSZip not loaded, docx delivered as received");
+        return blob;
+      }
+
+      const result = await headings.repairDocxBlob(blob);
+      if (result.repaired > 0) {
+        logWarn(`docx repaired ${result.repaired}`);
+      }
+      return result.blob;
+    } catch (error) {
+      logError("docx repair failed, file delivered as received:", error);
+      return blob;
+    }
+  }
+
+  /**
+   * Restyles Word headings in a downloaded docx against the MMD that was sent
+   * (WD-4, WD-D3). Never throws. Returns the input blob object and a null
+   * outcome when mmd is not a string or the module or JSZip is absent; stays
+   * silent about an absent module, because downloadResult has already warned.
+   * `failed` is true only when the MMD had headings and the map did not apply.
+   * @private
+   * @param {Blob} blob - The docx after downloadResult's repair
+   * @param {string} mmd - The MMD sent to the API
+   * @returns {Promise<{blob: Blob, outcome: Object|null}>}
+   */
+  async _restyleDocxBlob(blob, mmd) {
+    const headings = window.MathPixDocxHeadings;
+    if (
+      typeof mmd !== "string" ||
+      !headings ||
+      typeof headings.restyleDocxHeadings !== "function" ||
+      typeof window.JSZip !== "function"
+    ) {
+      return { blob, outcome: null };
+    }
+    try {
+      const result = await headings.restyleDocxHeadings(blob, mmd);
+      return {
+        blob: result.applied || result.repaired > 0 ? result.blob : blob,
+        outcome: {
+          applied: result.applied,
+          expected: result.expected,
+          mapped: result.mapped,
+          repaired: result.repaired,
+          failed: result.applied === false && result.expected > 0,
+        },
+      };
+    } catch (error) {
+      logError("docx heading restyle failed, file delivered as received:", error);
+      return {
+        blob,
+        outcome: {
+          applied: false,
+          expected: 0,
+          mapped: 0,
+          repaired: 0,
+          failed: true,
+        },
+      };
+    }
+  }
+
+  /**
    * Downloads a completed conversion
    * @param {string} conversionId - The conversion ID
    * @param {string} format - The format to download
@@ -912,6 +997,9 @@ class MathPixConvertAPIClient {
 
       const blob = await response.blob();
       logInfo(`Downloaded ${format}: ${blob.size} bytes`);
+
+      // WD-2: the one seam every mode downloads through.
+      if (format === "docx") return await this._repairDocxBlob(blob);
 
       return blob;
     } catch (error) {
@@ -974,9 +1062,18 @@ class MathPixConvertAPIClient {
       // Parcel T-01: a format whose download throws is a failure, not a completion.
       const downloadFailed = [];
       const downloadErrors = {};
+      let docxOutcome = null; // WD-4: null unless a docx was restyled
       for (const format of pollResult.completed) {
         try {
-          const blob = await this.downloadResult(conversionId, format);
+          let blob = await this.downloadResult(conversionId, format);
+
+          // WD-4 (WD-D3): restyle Word headings against the MMD this client
+          // sent, so every caller receives the styled file.
+          if (format === "docx") {
+            const restyled = await this._restyleDocxBlob(blob, mmd);
+            blob = restyled.blob;
+            docxOutcome = restyled.outcome;
+          }
           results.set(format, blob);
 
           if (onFormatComplete) {
@@ -1011,6 +1108,8 @@ class MathPixConvertAPIClient {
         ),
         failed: [...pollResult.failed, ...downloadFailed],
         errors: { ...pollResult.errors, ...downloadErrors },
+        // WD-4: { applied, expected, mapped, repaired, failed } or null
+        docx: downloadFailed.includes("docx") ? null : docxOutcome,
       };
 
       if (onComplete) {

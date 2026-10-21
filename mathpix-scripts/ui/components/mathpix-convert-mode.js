@@ -518,7 +518,6 @@ class MathPixConvertMode {
 
       // Phase 6.4: Editor toolbar elements
       editorToolbar: document.getElementById("convert-editor-toolbar"),
-      editBtn: document.getElementById("convert-edit-btn"),
       undoBtn: document.getElementById("convert-undo-btn"),
       redoBtn: document.getElementById("convert-redo-btn"),
       downloadMmdBtn: document.getElementById("convert-download-mmd-btn"),
@@ -530,7 +529,6 @@ class MathPixConvertMode {
       speakBtn: document.getElementById("convert-speak-btn"),
 
       // Phase 6.4: Edit overlay elements
-      editOverlay: document.getElementById("convert-edit-overlay"),
       editTextarea: document.getElementById("convert-edit-textarea"),
       fullscreenBtn: document.getElementById("convert-fullscreen-btn"),
     };
@@ -593,7 +591,14 @@ class MathPixConvertMode {
     }
 
     // Live preview on input (debounced)
+    // One undo step per typing burst (the pre-burst text is pushed on the first input after a pause)
     textarea.addEventListener("input", () => {
+      const UNDO_BURST_PAUSE_MS = this.previewDebounceDelay * 2;
+      const now = Date.now();
+      if (!this._lastInputAt || now - this._lastInputAt > UNDO_BURST_PAUSE_MS) {
+        this.pushUndoState();
+      }
+      this._lastInputAt = now;
       this.handleTextareaInput();
     });
 
@@ -624,6 +629,15 @@ class MathPixConvertMode {
         this.currentMMDContent = textarea.value;
       }
     });
+
+    // Escape leaves fullscreen from the text box or the fullscreen button
+    const escapeFullscreen = (e) => {
+      if (e.key !== "Escape" || !this.isFullscreen) return;
+      this.toggleFullscreen();
+      this.elements.fullscreenBtn?.focus();
+    };
+    textarea.addEventListener("keydown", escapeFullscreen);
+    this.elements.fullscreenBtn?.addEventListener("keydown", escapeFullscreen);
 
     logDebug("Textarea listeners attached");
   }
@@ -1430,6 +1444,7 @@ class MathPixConvertMode {
     // Clear undo/redo stacks
     this.undoStack = [];
     this.redoStack = [];
+    this.updateUndoRedoButtons();
 
     // Hide export section (standalone convert mode)
     const exportSection = document.getElementById(
@@ -1770,6 +1785,8 @@ class MathPixConvertMode {
 
     // Parcel O-02: MathPix's reason for each failed format, filled by onComplete
     let formatErrors = {};
+    // WD-4 (WD-D3): the client's Word headings outcome, filled by onComplete
+    let docxHeadingsFailed = false;
 
     try {
       // Convert all formats in one API call (more efficient)
@@ -1825,6 +1842,9 @@ class MathPixConvertMode {
           onComplete: (completionResult) => {
             if (!isCurrentRun()) return; // Parcel O-04
             formatErrors = completionResult.errors || {};
+            docxHeadingsFailed = Boolean(
+              completionResult.docx && completionResult.docx.failed,
+            );
             (completionResult.failed || []).forEach((format) => {
               this.updateProgressItem(
                 format,
@@ -1930,15 +1950,26 @@ class MathPixConvertMode {
       )
       .join(" ");
 
+    // WD-4 (WD-D3): the one line carries one clause when the docx heading map
+    // did not align (rule C10, never a second line). The full stop after the
+    // success lead is added only when the clause is present, so every other
+    // line stays byte-identical.
+    const headingsClause = docxHeadingsFailed
+      ? " Word headings could not be set."
+      : "";
+
+    // WD-5 (WD-D4): ONE line per code path (rule C10). The download sentence
+    // leads every success and warning line; showDownloads no longer raises its
+    // own copy into #convert-mode-status, which spoke a second line.
+    const fileWord = this.completedDownloads.size === 1 ? "file" : "files";
+    const downloadLead = `${this.completedDownloads.size} ${fileWord} ready for download.`;
+
     // Notify user
     if (this.completedDownloads.size > 0 && errors.length === 0) {
-      this.showNotification(
-        `Successfully converted to ${this.completedDownloads.size} format(s)`,
-        "success",
-      );
+      this.showNotification(`${downloadLead}${headingsClause}`, "success");
     } else if (this.completedDownloads.size > 0) {
       this.showNotification(
-        `Converted ${this.completedDownloads.size} format(s) with ${errors.length} error(s). ${failures}`,
+        `${downloadLead}${headingsClause} ${failures}`,
         "warning",
       );
     } else {
@@ -2096,11 +2127,8 @@ class MathPixConvertMode {
       downloadAllBtn.hidden = this.completedDownloads.size <= 1;
     }
 
-    // Announce to screen readers
-    const fileWord = this.completedDownloads.size === 1 ? "file" : "files";
-    this.announceToScreenReader(
-      `${this.completedDownloads.size} ${fileWord} ready for download`,
-    );
+    // WD-5 (WD-D4): no raise here. The download sentence is spoken once, by
+    // the notification the startConversion tail composes (rule C10).
 
     logDebug("Download links shown:", this.completedDownloads.size);
   }
@@ -2245,17 +2273,6 @@ class MathPixConvertMode {
   }
 
   /**
-   * Toggle edit mode on/off
-   */
-  toggleEditMode() {
-    if (this.isEditMode) {
-      this.exitEditMode();
-    } else {
-      this.enterEditMode();
-    }
-  }
-
-  /**
    * Toggle fullscreen edit mode
    */
   toggleFullscreen() {
@@ -2286,6 +2303,15 @@ class MathPixConvertMode {
       this.elements.editTextarea.focus();
     }
 
+    // Keep keyboard focus inside the fullscreen layer (T-22a)
+    if (this.isFullscreen) {
+      window.MathPixFullscreenFocus?.hold(sourcePane, {
+        onLost: () => this.exitFullscreen(),
+      });
+    } else {
+      window.MathPixFullscreenFocus?.release(sourcePane);
+    }
+
     this.announceToScreenReader(
       this.isFullscreen
         ? "Fullscreen edit mode enabled. Press Escape to exit."
@@ -2308,11 +2334,7 @@ class MathPixConvertMode {
       if (sourcePane) {
         sourcePane.classList.remove("fullscreen");
       }
-
-      // Also handle edit overlay if present
-      if (this.elements.editOverlay) {
-        this.elements.editOverlay.classList.remove("fullscreen");
-      }
+      window.MathPixFullscreenFocus?.release(sourcePane); // T-22a
 
       // Update button state
       if (this.elements.fullscreenBtn) {
@@ -2324,182 +2346,6 @@ class MathPixConvertMode {
       }
     }
   }
-  /**
-   * Enter edit mode - show textarea overlay
-   */
-  enterEditMode() {
-    const { editOverlay, editTextarea, editBtn, fullscreenBtn } = this.elements;
-
-    if (!editOverlay || !editTextarea) {
-      logWarn("Edit overlay elements not found");
-      return;
-    }
-
-    // Push current state to undo stack before editing
-    this.pushUndoState();
-
-    // Populate textarea with current content
-    editTextarea.value = this.currentMMDContent;
-
-    // Show overlay
-    editOverlay.hidden = false;
-    this.isEditMode = true;
-
-    // Show fullscreen button
-    if (fullscreenBtn) {
-      fullscreenBtn.hidden = false;
-    }
-
-    // Update button state
-    if (editBtn) {
-      editBtn.setAttribute("aria-pressed", "true");
-      editBtn.innerHTML = `${getIcon("check")} Done Editing`;
-    }
-
-    // Attach edit mode event listeners
-    this.attachEditModeListeners();
-
-    // Focus textarea
-    editTextarea.focus();
-
-    // Update status
-    this.updateEditorStatus("Editing...");
-    this.announceToScreenReader("Edit mode activated. Press Escape to exit.");
-
-    logInfo("Edit mode entered");
-  }
-
-  /**
-   * Exit edit mode - hide textarea overlay, update content
-   */
-  exitEditMode() {
-    const { editOverlay, editTextarea, editBtn, fullscreenBtn } = this.elements;
-
-    if (!editOverlay || !editTextarea) {
-      return;
-    }
-
-    // Get edited content
-    const newContent = editTextarea.value;
-
-    // Check if content changed
-    if (newContent !== this.currentMMDContent) {
-      this.currentMMDContent = newContent;
-      // Update preview with new content
-      this.showPreview(this.currentMMDContent);
-      this.updateEditorStatus("Changes applied");
-    } else {
-      this.updateEditorStatus("");
-    }
-
-    // Hide overlay
-    editOverlay.hidden = true;
-    this.isEditMode = false;
-
-    // Exit fullscreen and hide button
-    this.exitFullscreen();
-    if (fullscreenBtn) {
-      fullscreenBtn.hidden = true;
-    }
-
-    // Update button state
-    if (editBtn) {
-      editBtn.setAttribute("aria-pressed", "false");
-      editBtn.innerHTML = `${getIcon("pencil")} Edit MMD`;
-    }
-
-    // Remove edit mode event listeners
-    this.detachEditModeListeners();
-
-    // Update undo/redo button states
-    this.updateUndoRedoButtons();
-
-    this.announceToScreenReader("Edit mode exited");
-    logInfo("Edit mode exited");
-  }
-
-  /**
-   * Attach event listeners for edit mode
-   * @private
-   */
-  attachEditModeListeners() {
-    const { editTextarea } = this.elements;
-    if (!editTextarea) return;
-
-    // Store bound handlers for removal later
-    this._handleEditKeydown = (e) => this.handleEditKeydown(e);
-    this._handleEditInput = () => this.handleEditInput();
-
-    editTextarea.addEventListener("keydown", this._handleEditKeydown);
-    editTextarea.addEventListener("input", this._handleEditInput);
-
-    logDebug("Edit mode listeners attached");
-  }
-
-  /**
-   * Detach event listeners for edit mode
-   * @private
-   */
-  detachEditModeListeners() {
-    const { editTextarea } = this.elements;
-    if (!editTextarea) return;
-
-    if (this._handleEditKeydown) {
-      editTextarea.removeEventListener("keydown", this._handleEditKeydown);
-    }
-    if (this._handleEditInput) {
-      editTextarea.removeEventListener("input", this._handleEditInput);
-    }
-
-    logDebug("Edit mode listeners detached");
-  }
-
-  /**
-   * Handle keydown in edit mode
-   * @param {KeyboardEvent} e
-   * @private
-   */
-  handleEditKeydown(e) {
-    // Escape exits edit mode
-    if (e.key === "Escape") {
-      e.preventDefault();
-      this.exitEditMode();
-      return;
-    }
-
-    // Ctrl+Z for undo - allow default browser undo within textarea
-    if (e.ctrlKey && e.key === "z" && !e.shiftKey) {
-      return;
-    }
-
-    // Ctrl+Y or Ctrl+Shift+Z for redo - allow default browser redo
-    if (e.ctrlKey && (e.key === "y" || (e.shiftKey && e.key === "Z"))) {
-      return;
-    }
-  }
-
-  /**
-   * Handle input in edit mode - debounced preview update
-   * @private
-   */
-  handleEditInput() {
-    // Clear existing debounce timer
-    if (this.previewDebounceTimer) {
-      clearTimeout(this.previewDebounceTimer);
-    }
-
-    // Set new debounce timer for live preview
-    this.previewDebounceTimer = setTimeout(() => {
-      const { editTextarea } = this.elements;
-      if (editTextarea && this.isEditMode) {
-        const content = editTextarea.value;
-        // Update rendered preview only (not source pane while editing)
-        this.renderPreview(content);
-        logDebug("Live preview updated");
-      }
-    }, this.previewDebounceDelay);
-  }
-
   /**
    * Push current state to undo stack
    * @private
@@ -2803,15 +2649,6 @@ function getMathPixConvertMode() {
 // ----------------------------------------------------------------------------
 
 /**
- * Toggle edit mode in convert mode
- * Called by Edit MMD button onclick
- */
-function toggleConvertModeEdit() {
-  const mode = getMathPixConvertMode();
-  mode.toggleEditMode();
-}
-
-/**
  * Undo last edit in convert mode
  * Called by Undo button onclick
  */
@@ -3086,22 +2923,14 @@ function validatePhase64() {
   // Test Phase 6.4 DOM elements
   console.log("\n--- DOM Elements ---");
   test("Editor toolbar element cached", !!mode.elements.editorToolbar);
-  test("Edit button element cached", !!mode.elements.editBtn);
   test("Undo button element cached", !!mode.elements.undoBtn);
   test("Redo button element cached", !!mode.elements.redoBtn);
   test("Download MMD button cached", !!mode.elements.downloadMmdBtn);
   test("Upload MMD input cached", !!mode.elements.uploadMmdInput);
-  test("Edit overlay element cached", !!mode.elements.editOverlay);
   test("Edit textarea element cached", !!mode.elements.editTextarea);
 
   // Test Phase 6.4 methods
   console.log("\n--- Class Methods ---");
-  test(
-    "toggleEditMode method exists",
-    typeof mode.toggleEditMode === "function",
-  );
-  test("enterEditMode method exists", typeof mode.enterEditMode === "function");
-  test("exitEditMode method exists", typeof mode.exitEditMode === "function");
   test("undo method exists", typeof mode.undo === "function");
   test("redo method exists", typeof mode.redo === "function");
   test("pushUndoState method exists", typeof mode.pushUndoState === "function");
@@ -3125,10 +2954,6 @@ function validatePhase64() {
 
   // Test Phase 6.4 global functions
   console.log("\n--- Global Functions ---");
-  test(
-    "toggleConvertModeEdit exists",
-    typeof toggleConvertModeEdit === "function",
-  );
   test("undoConvertModeEdit exists", typeof undoConvertModeEdit === "function");
   test("redoConvertModeEdit exists", typeof redoConvertModeEdit === "function");
   test(
@@ -3169,7 +2994,6 @@ window.copyConvertModeSource = copyConvertModeSource;
 window.validatePhase63 = validatePhase63;
 
 // Phase 6.4: Editor toolbar global functions
-window.toggleConvertModeEdit = toggleConvertModeEdit;
 window.undoConvertModeEdit = undoConvertModeEdit;
 window.redoConvertModeEdit = redoConvertModeEdit;
 window.downloadConvertModeMMD = downloadConvertModeMMD;

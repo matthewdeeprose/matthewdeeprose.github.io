@@ -138,6 +138,9 @@
          not the point: it carries its own `#captions-fixer-app [hidden]` rule
          so the reveal does not depend on that sheet's global. -->
     <link rel="stylesheet" href="captions-fixer/captions-fixer.css" />
+    <!-- TikZ Studio (hidden Alpha). Layout only: the paper surface's colours
+         are in light.css and dark.css, like every other tool's. -->
+    <link rel="stylesheet" href="tikz-studio/tikz-studio.css" />
     <link rel="stylesheet" href="setup-tool/setup-tool.css" />
 
     <link
@@ -433,6 +436,14 @@
         }
       });
     </script>
+      <style>
+      /* T-23b C3: show the content of a closed <details> for printing without opening it, so no toggle listener fires. */
+      @media print {
+        details:not([open])::details-content {
+          content-visibility: visible;
+        }
+      }
+    </style>
   </head>
   <body>
     <script>
@@ -644,6 +655,7 @@
                 type="radio"
                 id="SetUp"
                 name="presentation"
+                autocomplete="off"
                 value="Set Up"
                 onclick="showSetUp()"
                 checked
@@ -676,6 +688,7 @@
                 type="radio"
                 id="OpenRouter"
                 name="presentation"
+                autocomplete="off"
                 value="OpenRouter"
                 onclick="showOpenRouter()"
               />
@@ -707,6 +720,7 @@
                 type="radio"
                 id="MarkdownEditorRadio"
                 name="presentation"
+                autocomplete="off"
                 value="Markdown Editor"
                 onclick="showMkdEd()"
               />
@@ -742,6 +756,7 @@
                 type="radio"
                 id="GraphBuilder"
                 name="presentation"
+                autocomplete="off"
                 value="Graph Builder"
                 onclick="showGrhBld()"
               />
@@ -776,6 +791,7 @@
                 type="radio"
                 id="MathPix"
                 name="presentation"
+                autocomplete="off"
                 value="MathPix"
                 onclick="showMathPix()"
               />
@@ -805,6 +821,7 @@
                 type="radio"
                 id="ImageDescTool"
                 name="presentation"
+                autocomplete="off"
                 value="Image Describer"
                 onclick="showImageDescTool()"
               />
@@ -838,6 +855,7 @@
                 type="radio"
                 id="AllyReporting"
                 name="presentation"
+                autocomplete="off"
                 value="Ally Reporting"
                 onclick="showAllyReporting()"
               />
@@ -874,6 +892,7 @@
                 type="radio"
                 id="LocalChat"
                 name="presentation"
+                autocomplete="off"
                 value="Local Chat"
                 onclick="showLocalChat()"
               />
@@ -906,6 +925,7 @@
                 type="radio"
                 id="Chat"
                 name="presentation"
+                autocomplete="off"
                 value="Chat"
                 onclick="showChat()"
               />
@@ -956,6 +976,7 @@
                 type="radio"
                 id="Transcribe"
                 name="presentation"
+                autocomplete="off"
                 value="Transcribe"
                 onclick="showTranscribeTool()"
               />
@@ -988,6 +1009,7 @@
                 type="radio"
                 id="CaptionsFixer"
                 name="presentation"
+                autocomplete="off"
                 value="Captions Fixer"
                 onclick="showCaptionsFixerTool()"
               />
@@ -997,6 +1019,28 @@
                 data-icon="write"
               ></span>
               <span class="radio">Captions Fixer</span>
+            </label>
+            <!-- TikZ Studio (alpha). js/tool-registry.js carries
+                 hidden: false, so this option is in the picker, and it is
+                 also reachable through showTikzStudio(). It is written out
+                 in full because TOOL_CONFIG, radioToTool and the registry's
+                 value check all key on it. The value must match the
+                 registry row exactly. -->
+            <label class="tool-option-wrapper" for="TikzStudio">
+              <input
+                type="radio"
+                id="TikzStudio"
+                name="presentation"
+                autocomplete="off"
+                value="TikZ Studio"
+                onclick="showTikzStudio()"
+              />
+              <span
+                class="tool-icon"
+                aria-hidden="true"
+                data-icon="graphBox"
+              ></span>
+              <span class="radio">TikZ Studio</span>
             </label>
           </fieldset>
         </nav>
@@ -1036,6 +1080,7 @@
               "showChat",
               "showTranscribeTool",
               "showCaptionsFixerTool",
+              "showTikzStudio",
             ];
             names.forEach(function (name) {
               window[name] = function () {
@@ -1355,9 +1400,11 @@
 
                 <dt>Chat</dt>
                 <dd>
-                  Hold a conversation with a wide range of cloud AI models,
-                  filtering them by cost, capability and provider. Requires an
-                  OpenRouter API key, or a Microsoft Foundry connection.
+                  Hold a conversation with a wide range of AI models, filtering
+                  them by cost, capability and provider. Use cloud models with
+                  an OpenRouter API key or a Microsoft Foundry connection, or
+                  download a local model below to chat with no credentials,
+                  keeping your data on your device.
                 </dd>
 
                 <dt>Local Chat</dt>
@@ -1402,6 +1449,16 @@
                   and download a corrected file with the original timings
                   intact. Alpha — expect rough edges. Requires an OpenRouter API
                   key, or a Microsoft Foundry connection.
+                </dd>
+
+                <!-- Hidden by the registry (hidden: true), which removes this
+                     pair from the list as it removes the picker option. -->
+                <dt>TikZ Studio</dt>
+                <dd>
+                  Write TikZ source and see the diagram beside it, with a text
+                  alternative, caption and long description, then download it
+                  as SVG or PNG or export it. Alpha — expect rough edges. Needs
+                  no key.
                 </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
@@ -2590,50 +2647,6 @@
                     aria-label="Analysis model status"
                     id="setup-mm-model-list"
                   >
-                    <!-- CLIP ViT-B/32 -->
-                    <div
-                      class="imgdesc-mm-model-item"
-                      role="listitem"
-                      id="setup-mm-model-clip"
-                      data-model-key="clip"
-                    >
-                      <span
-                        class="imgdesc-mm-status-icon"
-                        aria-hidden="true"
-                        data-icon="download"
-                      ></span>
-                      <div class="imgdesc-mm-model-info">
-                        <span class="imgdesc-mm-model-name">CLIP ViT-B/32</span>
-                        <span class="imgdesc-mm-model-role"
-                          >Zero-shot image classification</span
-                        >
-                      </div>
-                      <div class="imgdesc-mm-model-size">~151 MB</div>
-                      <div class="imgdesc-mm-model-status">
-                        <span class="imgdesc-mm-state-text">Checking…</span>
-                      </div>
-                      <div class="imgdesc-mm-model-actions">
-                        <!-- Buttons inserted by JS based on state -->
-                      </div>
-                      <div class="imgdesc-mm-progress" hidden>
-                        <div
-                          class="imgdesc-mm-progress-bar"
-                          role="progressbar"
-                          aria-label="CLIP download progress"
-                          aria-valuenow="0"
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                        >
-                          <div class="imgdesc-mm-progress-bar-fill"></div>
-                        </div>
-                        <span class="imgdesc-mm-progress-text"></span>
-                        <dl
-                          class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
-                        ></dl>
-                      </div>
-                    </div>
-
                     <!-- Florence-2 -->
                     <div
                       class="imgdesc-mm-model-item"
@@ -2664,52 +2677,6 @@
                           class="imgdesc-mm-progress-bar"
                           role="progressbar"
                           aria-label="Florence-2 download progress"
-                          aria-valuenow="0"
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                        >
-                          <div class="imgdesc-mm-progress-bar-fill"></div>
-                        </div>
-                        <span class="imgdesc-mm-progress-text"></span>
-                        <dl
-                          class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
-                        ></dl>
-                      </div>
-                    </div>
-
-                    <!-- Depth Anything V2 -->
-                    <div
-                      class="imgdesc-mm-model-item"
-                      role="listitem"
-                      id="setup-mm-model-depth"
-                      data-model-key="depth"
-                    >
-                      <span
-                        class="imgdesc-mm-status-icon"
-                        aria-hidden="true"
-                        data-icon="download"
-                      ></span>
-                      <div class="imgdesc-mm-model-info">
-                        <span class="imgdesc-mm-model-name"
-                          >Depth Anything V2</span
-                        >
-                        <span class="imgdesc-mm-model-role"
-                          >Monocular depth estimation</span
-                        >
-                      </div>
-                      <div class="imgdesc-mm-model-size">~50 MB</div>
-                      <div class="imgdesc-mm-model-status">
-                        <span class="imgdesc-mm-state-text">Checking…</span>
-                      </div>
-                      <div class="imgdesc-mm-model-actions">
-                        <!-- Buttons inserted by JS based on state -->
-                      </div>
-                      <div class="imgdesc-mm-progress" hidden>
-                        <div
-                          class="imgdesc-mm-progress-bar"
-                          role="progressbar"
-                          aria-label="Depth Anything download progress"
                           aria-valuenow="0"
                           aria-valuemin="0"
                           aria-valuemax="100"
@@ -3774,7 +3741,7 @@
                         <label for="cost-range-select">Input cost range:</label>
                         <select
                           id="cost-range-select"
-                          class="range-input"
+                          class="range-input tex2jax_ignore"
                           aria-describedby="cost-range-desc"
                         >
                           <option value="">Any cost</option>
@@ -4906,7 +4873,7 @@
           </details>
 
           <div class="editor-section">
-            <label for="markdown-input"
+            <label for="markdown-input" id="markdown-input-label"
               >Enter Markdown text. LaTeX math, charts and mermaid
               supported:</label
             >
@@ -4919,8 +4886,8 @@
             ></textarea>
             <p id="instructions" class="sr-only">
               Type or paste markdown content with LaTeX math expressions,
-              charts, or code. Press Ctrl+Enter to render, Esc to clear. The
-              content will be rendered as HTML below.
+              charts, or code. Press Ctrl+Enter to render. The content will be
+              rendered as HTML below.
             </p>
             <div
               id="editor-status"
@@ -5398,10 +5365,33 @@ Science,91</pre
                   <summary>Your original image</summary>
                   <img alt="" />
                 </details>
-                <!-- UX-5. Developer information, last in the panel so the Tab order above is
-                     unchanged. Filled by graph-builder-image.js through js/dev-panel.js.
-                     No live region: it updates silently; the copy buttons' confirmation is its
-                     only voice. -->
+              </div>
+              <!-- Data preview -->
+              <div
+                id="gb-data-preview"
+                class="gb-data-preview"
+                style="display: none"
+              >
+                <h3>Data Preview</h3>
+                <div class="gb-preview-info">
+                  <span id="gb-preview-stats" class="gb-preview-stats"></span>
+                </div>
+                <p id="gb-preview-edit-hint" class="gb-preview-edit-hint" hidden>You can correct any value here before you choose a chart.</p>
+                <div class="gb-preview-table-container">
+                  <table id="gb-preview-table" class="gb-preview-table">
+                    <caption>
+                      Preview of your data
+                    </caption>
+                    <thead id="gb-preview-thead"></thead>
+                    <tbody id="gb-preview-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <!-- UX-5, moved UX-20. Developer information, after the Data Preview so a person sees their table first.
+                   A direct child of this section, so it is not in the image tab panel: graph-builder.css hides it
+                   whenever the image tab is not the active one. Filled by graph-builder-image.js through js/dev-panel.js,
+                   which finds every part of it by id. No live region: it updates silently; the copy buttons'
+                   confirmation is its only voice. -->
                 <details class="gb-dev-panel" id="gb-image-dev-panel">
                   <summary>Developer information</summary>
                   <dl class="gb-dev-list">
@@ -5452,28 +5442,6 @@ Science,91</pre
                     </dd>
                   </dl>
                 </details>
-              </div>
-              <!-- Data preview -->
-              <div
-                id="gb-data-preview"
-                class="gb-data-preview"
-                style="display: none"
-              >
-                <h3>Data Preview</h3>
-                <div class="gb-preview-info">
-                  <span id="gb-preview-stats" class="gb-preview-stats"></span>
-                </div>
-                <p id="gb-preview-edit-hint" class="gb-preview-edit-hint" hidden>You can correct any value here before you choose a chart.</p>
-                <div class="gb-preview-table-container">
-                  <table id="gb-preview-table" class="gb-preview-table">
-                    <caption>
-                      Preview of your data
-                    </caption>
-                    <thead id="gb-preview-thead"></thead>
-                    <tbody id="gb-preview-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
 
               <!-- Navigation -->
               <div class="gb-navigation">
@@ -7479,9 +7447,23 @@ Science,91</pre
               <!-- Session Header -->
               <div class="resume-session-header">
                 <div class="resume-session-info">
-                  <span id="resume-source-name" class="resume-source-name"
-                    >document.pdf</span
+                  <!-- S6-1e: a real heading so the hand-over from Upload has somewhere to put focus (tabindex -1, never a tab stop). -->
+                  <h3
+                    id="resume-working-heading"
+                    class="resume-working-heading"
+                    tabindex="-1"
                   >
+                    <span id="resume-source-name" class="resume-source-name"
+                      >document.pdf</span
+                    >
+                  </h3>
+                  <!-- SV-3 (SV-D2): the outcome of Download ZIP now. Plain visible text, deliberately not a live region: focus lands HERE and the reader speaks it. Hidden and empty until that press. -->
+                  <p
+                    id="resume-save-status"
+                    class="resume-save-status"
+                    tabindex="-1"
+                    hidden
+                  ></p>
                   <!--
                     Parcel g-7 (7 August 2026): NOT a live region. This is an
                     ambient status INDICATOR that the autosave relabels, not an
@@ -7515,6 +7497,31 @@ Science,91</pre
                   >
                     <span aria-hidden="true" data-icon="refresh"></span> Upload
                     New ZIP
+                  </button>
+                </div>
+              </div>
+
+              <!-- SV-1: shown only when the person answers "Not now" to the save decision after Open in Resume mode. Plain visible text, deliberately not a live region (the dialog already carried the words); the control runs the Resume-mode save so later edits are included. -->
+              <div
+                id="resume-unsaved-notice"
+                class="resume-image-save-warning resume-unsaved-notice"
+                hidden
+              >
+                <div class="resume-image-save-warning-content">
+                  <span aria-hidden="true" data-icon="warning"></span>
+                  <p>
+                    This document has not been saved as a ZIP. Download it to
+                    come back later without running MathPix again.
+                  </p>
+                </div>
+                <div class="resume-image-save-warning-actions">
+                  <button
+                    type="button"
+                    id="resume-unsaved-download-btn"
+                    class="resume-btn resume-btn-primary resume-btn-small"
+                  >
+                    <span aria-hidden="true" data-icon="download"></span>
+                    Download ZIP
                   </button>
                 </div>
               </div>
@@ -7614,6 +7621,18 @@ Science,91</pre
                       tabindex="-1"
                     >
                       Context
+                    </button>
+                    <!-- S6-3a: AI tab for resume mode (Resume-only, like Context; no data-format). Registered in session-restorer-init.js and session-restorer-pdf.js. -->
+                    <button
+                      id="resume-tab-ai"
+                      type="button"
+                      class="mathpix-tab-header"
+                      role="tab"
+                      aria-selected="false"
+                      aria-controls="resume-panel-ai"
+                      tabindex="-1"
+                    >
+                      AI
                     </button>
                   </div>
                   <div
@@ -8763,7 +8782,7 @@ Science,91</pre
                       </div>
                       <div class="mathpix-context-field">
                         <label for="resume-context-learningObjective"
-                          >Learning Objective</label
+                          >Learning Outcome</label
                         >
                         <input
                           type="text"
@@ -8985,7 +9004,11 @@ Science,91</pre
                       <div id="resume-context-ai-summary"></div>
                       <button type="button" id="resume-context-ai-undo" hidden>
                         <span aria-hidden="true" data-icon="undo"></span>
-                        Undo AI fill
+                        <span id="resume-context-ai-undo-label">Undo AI fill</span>
+                      </button>
+                      <button type="button" id="resume-context-ai-clear" disabled>
+                        <span aria-hidden="true" data-icon="trash"></span>
+                        Clear all context fields
                       </button>
                       <div
                         id="resume-context-ai-announce"
@@ -8993,6 +9016,147 @@ Science,91</pre
                         aria-live="polite"
                       ></div>
                     </div>
+                  </form>
+                </div>
+
+                <!--
+                  S6-3a: AI panel for resume mode (must live inside #mathpix-resume-mode-container, like the Context panel).
+                  STATIC STRUCTURE HERE, POPULATED BY mathpix-scripts/ai-enhancement/mathpix-ai-tab.js: the ticks, the
+                  disabled state, the hint text and the three model lines depend on live state.
+                  ONE LIVE REGION in this panel, #resume-ai-announce, and nothing writes to it yet (S6-3b). No other live role.
+                -->
+                <div
+                  id="resume-panel-ai"
+                  class="mathpix-tab-panel"
+                  role="tabpanel"
+                  aria-labelledby="resume-tab-ai"
+                  hidden
+                >
+                  <form id="resume-ai-form" class="mathpix-context-form">
+                    <fieldset>
+                      <legend>Do it all</legend>
+                      <div class="mathpix-context-field">
+                        <label for="resume-ai-step-correction">
+                          <input
+                            type="checkbox"
+                            id="resume-ai-step-correction"
+                            data-ai-step="correction"
+                            aria-describedby="resume-ai-step-correction-hint"
+                          />
+                          MMD correction
+                        </label>
+                        <p
+                          id="resume-ai-step-correction-hint"
+                          class="field-hint"
+                        >
+                          Checks the converted text against the PDF and
+                          suggests corrections.
+                        </p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-ai-step-context">
+                          <input
+                            type="checkbox"
+                            id="resume-ai-step-context"
+                            data-ai-step="context"
+                            aria-describedby="resume-ai-step-context-hint"
+                          />
+                          Context auto-fill
+                        </label>
+                        <p id="resume-ai-step-context-hint" class="field-hint">
+                          Fills the context fields from the PDF.
+                        </p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-ai-step-pictures">
+                          <input
+                            type="checkbox"
+                            id="resume-ai-step-pictures"
+                            data-ai-step="pictures"
+                            aria-describedby="resume-ai-step-pictures-hint"
+                          />
+                          Picture descriptions
+                        </label>
+                        <p
+                          id="resume-ai-step-pictures-hint"
+                          class="field-hint"
+                        >
+                          Writes a caption, alt text and long description for
+                          each picture that has none.
+                        </p>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <label for="resume-ai-redescribe">
+                          <input
+                            type="checkbox"
+                            id="resume-ai-redescribe"
+                            aria-describedby="resume-ai-redescribe-hint"
+                          />
+                          Also re-describe pictures that already have a
+                          description
+                        </label>
+                        <p id="resume-ai-redescribe-hint" class="field-hint">
+                          Pictures with a description you wrote, edited or
+                          reviewed are kept.
+                        </p>
+                      </div>
+
+                      <div class="mathpix-context-field">
+                        <p id="resume-ai-model-correction" class="field-hint"></p>
+                        <button
+                          type="button"
+                          id="resume-ai-change-correction"
+                          class="mathpix-btn mathpix-btn-secondary"
+                        >
+                          Change the model for MMD correction
+                        </button>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <p id="resume-ai-model-context" class="field-hint"></p>
+                        <button
+                          type="button"
+                          id="resume-ai-change-context"
+                          class="mathpix-btn mathpix-btn-secondary"
+                        >
+                          Change the model for Context auto-fill
+                        </button>
+                      </div>
+                      <div class="mathpix-context-field">
+                        <p id="resume-ai-model-pictures" class="field-hint"></p>
+                        <button
+                          type="button"
+                          id="resume-ai-change-pictures"
+                          class="mathpix-btn mathpix-btn-secondary"
+                        >
+                          Change the model for Picture descriptions
+                        </button>
+                      </div>
+
+                      <p id="resume-ai-estimate">
+                        Estimated cost: not calculated yet.
+                      </p>
+                      <button type="button" id="resume-ai-run" disabled>
+                        <span aria-hidden="true" data-icon="aiSparkle"></span>
+                        Run the ticked steps
+                      </button>
+                      <p id="resume-ai-status" tabindex="-1" hidden></p>
+                      <ul id="resume-ai-outcomes" hidden></ul>
+                      <details id="resume-ai-correction-diff" hidden>
+                        <summary>What MMD correction changed</summary>
+                        <div id="resume-ai-correction-diff-body"></div>
+                      </details>
+                      <!-- AT-4 (AI-D5): dev-only. Hidden until a run has finished AND the page is in dev mode (?dev=1);
+                           mathpix-ai-tab.js owns the gate and never shows it to an ordinary user. -->
+                      <button type="button" id="resume-ai-save-log" hidden>
+                        <span aria-hidden="true" data-icon="download"></span>
+                        Save AI run log
+                      </button>
+                      <div
+                        id="resume-ai-announce"
+                        class="sr-only"
+                        aria-live="polite"
+                      ></div>
+                    </fieldset>
                   </form>
                 </div>
               </div>
@@ -9478,21 +9642,7 @@ Science,91</pre
                   id="resume-download-all-btn"
                   class="resume-download-all-btn"
                 >
-                  <svg
-                    aria-hidden="true"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    width="20"
-                  >
-                    <path
-                      d="M10 3v10m0 0l-4-4m4 4l4-4M3 17h14"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      fill="none"
-                    />
-                  </svg>
+                  <span aria-hidden="true" data-icon="download"></span>
                   <span>Download Updated ZIP</span>
                 </button>
                 <p class="resume-download-help">
@@ -9953,7 +10103,7 @@ Science,91</pre
                 <span>Download All Results</span>
                 <span class="visually-hidden">&nbsp;— as a ZIP archive</span>
               </button>
-
+              <!-- S6-1g: no Open in Resume mode control here. A Text or Strokes result has no document the Resume parser accepts. -->
               <div
                 id="mathpix-download-progress-text"
                 class="mathpix-download-progress"
@@ -12029,6 +12179,15 @@ Science,91</pre
                   <span>Download All Results</span>
                   <span class="visually-hidden">&nbsp;— as a ZIP archive</span>
                 </button>
+                <!-- S6-1e: hands this result to Resume mode. Speaks once, through the notification system; not a live region. -->
+                <button
+                  type="button"
+                  id="mathpix-open-in-resume-btn-pdf"
+                  class="mathpix-btn mathpix-btn-secondary"
+                >
+                  <span aria-hidden="true" data-icon="folder"></span> Open in
+                  Resume mode to describe pictures
+                </button>
 
                 <div
                   id="mathpix-download-progress-pdf"
@@ -13330,7 +13489,7 @@ Science,91</pre
                     </div>
                     <div class="mathpix-context-field">
                       <label for="context-learningObjective"
-                        >Learning Objective</label
+                        >Learning Outcome</label
                       >
                       <input
                         type="text"
@@ -14531,50 +14690,47 @@ Science,91</pre
                     </p>
                   </div>
                 </details>
-                <!-- Profile Suggestion Banner (Phase 5C) -->
+                <!-- Detect text in this picture? (H-64). Replaces the H-56 tick
+                     box. Hidden until a picture is loaded; both buttons start
+                     unpressed for every new picture, and text detection does not
+                     start until one is pressed. Not saved. -->
                 <div
-                  id="imgdesc-profile-suggestion"
-                  class="imgdesc-profile-suggestion"
-                  role="status"
-                  aria-live="polite"
+                  class="imgdesc-text-detection-option"
+                  id="imgdesc-text-choice"
+                  role="group"
+                  aria-labelledby="imgdesc-text-choice-label"
+                  aria-describedby="imgdesc-text-choice-hint"
                   hidden
                 >
+                  <span
+                    id="imgdesc-text-choice-label"
+                    class="imgdesc-text-choice-label"
+                    >Detect text in this picture?</span
+                  >
+                  <button
+                    type="button"
+                    id="imgdesc-text-choice-detect"
+                    class="secondary-button"
+                    aria-pressed="false"
+                  >
+                    Detect text
+                  </button>
+                  <button
+                    type="button"
+                    id="imgdesc-text-choice-skip"
+                    class="secondary-button"
+                    aria-pressed="false"
+                  >
+                    Skip text
+                  </button>
                   <p
-                    class="imgdesc-profile-suggestion-text"
-                    id="imgdesc-profile-suggestion-text"
-                  ></p>
-                  <label class="imgdesc-profile-suggestion-skip-ocr">
-                    <input type="checkbox" id="imgdesc-skip-ocr" />
-                    Skip text detection (saves about a minute). Select this only
-                    if you do not need any text in the image described.
-                  </label>
-                  <div class="imgdesc-profile-suggestion-actions">
-                    <button
-                      type="button"
-                      class="imgdesc-profile-suggestion-apply"
-                      onclick="
-                        ImageDescriberController.applyProfileSuggestion()
-                      "
-                    >
-                      Apply
-                    </button>
-                    <button
-                      type="button"
-                      class="imgdesc-profile-suggestion-choose"
-                      onclick="ImageDescriberController.chooseProfileManually()"
-                    >
-                      Choose another
-                    </button>
-                    <button
-                      type="button"
-                      class="imgdesc-profile-suggestion-dismiss"
-                      onclick="
-                        ImageDescriberController.dismissProfileSuggestion()
-                      "
-                    >
-                      Dismiss
-                    </button>
-                  </div>
+                    id="imgdesc-text-choice-hint"
+                    class="imgdesc-text-detection-hint"
+                  >
+                    Text detection reads words and labels, such as those on a
+                    diagram, chart or map. Choose Skip text for a painting or a
+                    photograph of a scene.
+                  </p>
                 </div>
                 <!-- Workspace wrapper — relocates into fullscreen modal (Phase 7A).
                      A new DIRECT child of this div is hidden in fullscreen by
@@ -14707,17 +14863,6 @@ Science,91</pre
                       <span aria-hidden="true" data-icon="search"></span>
                       Objects
                     </button>
-                    <button
-                      type="button"
-                      class="imgdesc-overlay-toggle"
-                      data-layer="depth"
-                      aria-pressed="false"
-                      onclick="ImageDescriberOverlay.toggleLayer('depth')"
-                      disabled
-                    >
-                      <span aria-hidden="true" data-icon="hierarchy"></span>
-                      Depth
-                    </button>
                     <span
                       class="imgdesc-overlay-separator"
                       aria-hidden="true"
@@ -14759,59 +14904,6 @@ Science,91</pre
                     class="visually-hidden"
                     id="imgdesc-overlay-review-count"
                   ></span>
-                  <!-- Phase 11B: Depth zone legend -->
-                  <div
-                    id="imgdesc-depth-legend"
-                    class="imgdesc-depth-legend"
-                    role="region"
-                    aria-label="Depth zone legend"
-                    hidden
-                  >
-                    <dl class="imgdesc-depth-legend-list">
-                      <div
-                        class="imgdesc-depth-legend-item"
-                        data-zone="foreground"
-                      >
-                        <dt>
-                          <span
-                            class="imgdesc-depth-swatch"
-                            data-zone="foreground"
-                            aria-hidden="true"
-                          ></span>
-                          Foreground (closest)
-                        </dt>
-                        <dd id="imgdesc-depth-legend-foreground">—</dd>
-                      </div>
-                      <div
-                        class="imgdesc-depth-legend-item"
-                        data-zone="midground"
-                      >
-                        <dt>
-                          <span
-                            class="imgdesc-depth-swatch"
-                            data-zone="midground"
-                            aria-hidden="true"
-                          ></span>
-                          Midground (intermediate)
-                        </dt>
-                        <dd id="imgdesc-depth-legend-midground">—</dd>
-                      </div>
-                      <div
-                        class="imgdesc-depth-legend-item"
-                        data-zone="background"
-                      >
-                        <dt>
-                          <span
-                            class="imgdesc-depth-swatch"
-                            data-zone="background"
-                            aria-hidden="true"
-                          ></span>
-                          Background (farthest)
-                        </dt>
-                        <dd id="imgdesc-depth-legend-bg">—</dd>
-                      </div>
-                    </dl>
-                  </div>
                   <!-- Phase 7B: Sidebar wrapper for review panels -->
                   <div
                     id="imgdesc-review-sidebar"
@@ -14830,7 +14922,7 @@ Science,91</pre
                         <label for="imgdesc-review-text">Detected text</label>
                         <input
                           type="text"
-                          id="imgdesc-review-text"
+                          id="imgdesc-review-text" spellcheck="true"
                           class="imgdesc-review-input"
                         />
                         <p class="imgdesc-help-note">
@@ -14965,7 +15057,7 @@ Science,91</pre
                           <label for="imgdesc-add-text">Text</label>
                           <input
                             type="text"
-                            id="imgdesc-add-text"
+                            id="imgdesc-add-text" spellcheck="true"
                             class="imgdesc-review-input"
                             placeholder="e.g. TH1"
                           />
@@ -15050,14 +15142,6 @@ Science,91</pre
                 </div>
                 <!-- end imgdesc-workspace -->
 
-                <button
-                  type="button"
-                  id="imgdesc-clear"
-                  class="secondary-button"
-                  style="display: none"
-                >
-                  <span aria-hidden="true" data-icon="close"></span> Clear Image
-                </button>
               </section>
             </div>
 
@@ -15068,257 +15152,6 @@ Science,91</pre
                 <!-- Section 1: Expert Mode (Phase 4A) -->
                 <section class="imgdesc-section" id="imgdesc-expert-section">
                   <h2>Expert Mode</h2>
-                  <details
-                    class="imgdesc-options-group"
-                    id="imgdesc-expert-panel"
-                  >
-                    <summary>
-                      <span aria-hidden="true" data-icon="gear"></span>
-                      Analysis Controls
-                    </summary>
-                    <div class="imgdesc-option-content">
-                      <p
-                        class="imgdesc-expert-description"
-                        id="imgdesc-expert-description"
-                      >
-                        Fine-tune how images are analysed before description
-                        generation. These controls are optional — the default
-                        settings work well for most images.
-                      </p>
-
-                      <!-- Phase 4C: Analysis Profile -->
-                      <div
-                        id="imgdesc-expert-profile"
-                        class="imgdesc-expert-subsection"
-                      >
-                        <h3 id="imgdesc-profile-heading">Analysis Profile</h3>
-                        <p class="imgdesc-expert-profile-description">
-                          Choose how the image is pre-analysed. Different
-                          profiles optimise OCR and colour sampling for
-                          different image types.
-                        </p>
-
-                        <div
-                          class="imgdesc-profile-group"
-                          role="radiogroup"
-                          aria-labelledby="imgdesc-profile-heading"
-                        >
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="default"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="default"
-                              checked
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Default</span>
-                              <span class="imgdesc-profile-desc"
-                                >General-purpose analysis for most image
-                                types</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr"
-                                  >OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour"
-                                  >Colour</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="chart"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="chart"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Chart</span>
-                              <span class="imgdesc-profile-desc"
-                                >Charts, graphs, and plots with labelled
-                                axes</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr"
-                                  >OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour-high"
-                                  >Colour+</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="diagram"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="diagram"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Diagram</span>
-                              <span class="imgdesc-profile-desc"
-                                >Technical diagrams, flow charts, and labelled
-                                drawings</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr"
-                                  >OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour"
-                                  >Colour</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="map"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="map"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Map</span>
-                              <span class="imgdesc-profile-desc"
-                                >Maps with colour-coded regions and text
-                                labels</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr"
-                                  >OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour-high"
-                                  >Colour+</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="equation"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="equation"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Equation</span>
-                              <span class="imgdesc-profile-desc"
-                                >Mathematical equations and formulae</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr"
-                                  >OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour-low"
-                                  >Colour−</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="photograph"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="photograph"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name"
-                                >Photograph</span
-                              >
-                              <span class="imgdesc-profile-desc"
-                                >Biology specimens, geological features, lab
-                                images</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr-off"
-                                  >No OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour"
-                                  >Colour</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-
-                          <label
-                            class="imgdesc-profile-option"
-                            data-profile="painting"
-                          >
-                            <input
-                              type="radio"
-                              name="imgdesc-profile"
-                              value="painting"
-                            />
-                            <span class="imgdesc-profile-label">
-                              <span class="imgdesc-profile-name">Painting</span>
-                              <span class="imgdesc-profile-desc"
-                                >Paintings, illustrations, and artistic
-                                works</span
-                              >
-                              <span class="imgdesc-profile-features">
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="ocr-off"
-                                  >No OCR</span
-                                >
-                                <span
-                                  class="imgdesc-profile-feature"
-                                  data-feature="colour-high"
-                                  >Colour+</span
-                                >
-                              </span>
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </details>
-
                   <!-- Phase 9D: Model Manager -->
                   <details
                     class="imgdesc-options-group"
@@ -15742,56 +15575,6 @@ Science,91</pre
                           aria-label="Analysis model status"
                           id="imgdesc-mm-model-list"
                         >
-                          <!-- CLIP ViT-B/32 -->
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-clip"
-                            data-model-key="clip"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >CLIP ViT-B/32</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Zero-shot image classification</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~151 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="CLIP download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-
                           <!-- Florence-2 -->
                           <div
                             class="imgdesc-mm-model-item"
@@ -15828,56 +15611,6 @@ Science,91</pre
                                 class="imgdesc-mm-progress-bar"
                                 role="progressbar"
                                 aria-label="Florence-2 download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-
-                          <!-- Depth Anything V2 -->
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-depth"
-                            data-model-key="depth"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >Depth Anything V2</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Monocular depth estimation</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~50 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="Depth Anything download progress"
                                 aria-valuenow="0"
                                 aria-valuemin="0"
                                 aria-valuemax="100"
@@ -16067,7 +15800,7 @@ Science,91</pre
                         <label for="imgdesc-subject">Subject Area</label>
                         <input
                           type="text"
-                          id="imgdesc-subject"
+                          id="imgdesc-subject" spellcheck="true"
                           placeholder="e.g., Mathematics, Biology, History"
                         />
                       </div>
@@ -16076,17 +15809,17 @@ Science,91</pre
                         <label for="imgdesc-topic">Specific Topic</label>
                         <input
                           type="text"
-                          id="imgdesc-topic"
+                          id="imgdesc-topic" spellcheck="true"
                           placeholder="e.g., Differential equations, Cell division"
                         />
                       </div>
 
                       <div class="imgdesc-field">
                         <label for="imgdesc-objective"
-                          >Learning Objective</label
+                          >Learning Outcome</label
                         >
                         <textarea
-                          id="imgdesc-objective"
+                          id="imgdesc-objective" spellcheck="true"
                           rows="2"
                           placeholder="What should students understand after engaging with this image?"
                         ></textarea>
@@ -16099,7 +15832,7 @@ Science,91</pre
                         </label>
                         <input
                           type="text"
-                          id="imgdesc-module"
+                          id="imgdesc-module" spellcheck="true"
                           placeholder="e.g., MATH2001 Calculus II"
                         />
                       </div>
@@ -16122,27 +15855,10 @@ Science,91</pre
                           <span class="imgdesc-optional">(Optional)</span>
                         </label>
                         <textarea
-                          id="imgdesc-context"
+                          id="imgdesc-context" spellcheck="true"
                           rows="3"
                           placeholder="Any other relevant information about how this image is used..."
                         ></textarea>
-                      </div>
-                    </div>
-                  </details>
-                </section>
-
-                <!-- Section 3: Options -->
-                <section class="imgdesc-section">
-                  <h2>Configure Options</h2>
-
-                  <details class="imgdesc-options-group" open>
-                    <summary>Additional Options</summary>
-                    <div class="imgdesc-option-content">
-                      <div
-                        class="imgdesc-option-group imgdesc-checkbox-group"
-                        id="imgdesc-checkbox-options"
-                      >
-                        <!-- Populated from config.json -->
                       </div>
                     </div>
                   </details>
@@ -16195,17 +15911,6 @@ Science,91</pre
                   >
                     <span aria-hidden="true" data-icon="close"></span> Cancel
                   </button>
-                </div>
-
-                <!-- Completion Timer (Phase 2A) -->
-                <div
-                  id="imgdesc-completion-time"
-                  class="imgdesc-completion-time"
-                  hidden
-                >
-                  <span aria-hidden="true" data-icon="clock"></span>
-                  <span>Completed in </span>
-                  <strong id="imgdesc-final-time">0s</strong>
                 </div>
 
                 <!-- The VISIBLE status only — deliberately not a live region.
@@ -16285,41 +15990,38 @@ Science,91</pre
 
                 <div class="imgdesc-output-actions">
                   <!-- Copy options group -->
-                  <div class="imgdesc-button-group imgdesc-copy-buttons">
-                    <span
+                  <fieldset class="imgdesc-button-group imgdesc-copy-buttons">
+                    <legend
                       class="imgdesc-button-group-label"
                       id="copy-options-label"
-                      >Copy as:</span
+                      ><strong>Copy the description</strong></legend
                     >
                     <button
                       type="button"
                       id="imgdesc-copy"
                       class="secondary-button"
-                      aria-describedby="copy-options-label"
                     >
                       <span aria-hidden="true" data-icon="clipboard"></span>
-                      Text
+                      Copy as Text
                     </button>
                     <button
                       type="button"
                       id="imgdesc-copy-formatted"
                       class="secondary-button"
-                      aria-describedby="copy-options-label"
                       disabled
                     >
                       <span aria-hidden="true" data-icon="document"></span>
-                      Formatted
+                      Copy as Formatted
                     </button>
                     <button
                       type="button"
                       id="imgdesc-copy-html"
                       class="secondary-button"
-                      aria-describedby="copy-options-label"
                       disabled
                     >
-                      <span aria-hidden="true">&lt;/&gt;</span> HTML
+                      <span aria-hidden="true">&lt;/&gt;</span> Copy as HTML
                     </button>
-                  </div>
+                  </fieldset>
 
                   <!-- Read aloud group — Phase 5 TTS integration -->
                   <div class="imgdesc-button-group imgdesc-read-aloud-group">
@@ -16421,11 +16123,10 @@ Science,91</pre
                   </div>
                 </div>
 
-                <!-- Debug Panel (Phase 2C) - Remove open="open" for production -->
+                <!-- Debug Panel (Phase 2C) - closed by default (H-48); the summary opens it -->
                 <details
                   class="imgdesc-debug-panel"
                   id="imgdesc-debug-panel"
-                  open="open"
                 >
                   <summary>
                     <span aria-hidden="true" data-icon="gear"></span> Debug
@@ -16494,8 +16195,6 @@ Science,91</pre
                     <section class="imgdesc-debug-section">
                       <h3>Image Pre-Analysis</h3>
                       <dl class="imgdesc-debug-list">
-                        <dt>Analysis Profile</dt>
-                        <dd id="imgdesc-debug-analysis-profile">-</dd>
                         <dt>OCR Labels</dt>
                         <dd id="imgdesc-debug-ocr-labels">-</dd>
                         <dt>OCR Time</dt>
@@ -16506,10 +16205,6 @@ Science,91</pre
                         <dd id="imgdesc-debug-colour-analysis">-</dd>
                         <dt>Analysis Time</dt>
                         <dd id="imgdesc-debug-analysis-time">-</dd>
-                        <dt>Classification</dt>
-                        <dd id="imgdesc-debug-classification">-</dd>
-                        <dt>CLIP Classification</dt>
-                        <dd id="imgdesc-debug-clip">-</dd>
                       </dl>
                     </section>
 
@@ -16572,7 +16267,7 @@ Science,91</pre
                         <dt>Topic</dt>
                         <dd id="imgdesc-debug-topic">-</dd>
 
-                        <dt>Learning Objective</dt>
+                        <dt>Learning Outcome</dt>
                         <dd id="imgdesc-debug-objective">-</dd>
 
                         <dt>Module</dt>
@@ -16649,8 +16344,22 @@ Science,91</pre
               </section>
             </div>
 
-            <!-- Generate Button - Full width below both columns (Phase 2B.2) -->
+          <!-- Generate area (Phase 2B.2). It is the LAST child of the layout, after both
+               columns, so the Tab order is picture, settings, Educational Context,
+               description options, Generate. From 1024px up the grid places it in the left
+               column directly under the picture (CSS only; nothing moves it at runtime).
+               Below 1024px the columns stack and it follows the settings, so the visual
+               order and the focus order agree. The description options sit inside it, so
+               they stay directly above Generate. Populated from config.json by the inline
+               script. -->
             <div class="imgdesc-generate-inline" id="imgdesc-generate-area">
+              <fieldset class="imgdesc-description-options">
+                <legend>Description options</legend>
+                <div
+                  class="imgdesc-option-group imgdesc-checkbox-group"
+                  id="imgdesc-checkbox-options"
+                ></div>
+              </fieldset>
               <div class="imgdesc-generate-action">
                 <button
                   type="button"
@@ -19032,6 +18741,7 @@ Science,91</pre
               <label for="chat-preset-select">Preset</label>
               <select id="chat-preset-select">
                 <option value="">None (custom)</option>
+                <option value="visual">Diagrams, charts and tables</option>
                 <option value="helpful">Helpful assistant</option>
                 <option value="concise">Concise answers</option>
                 <option value="ukhe">UK higher education</option>
@@ -20719,6 +20429,379 @@ Science,91</pre
           <div id="captions-fixer-embed-sink" hidden aria-live="off"></div>
         </article>
 
+        <!-- TikZ Studio (P3 of the TikZ programme; HIDDEN ALPHA — see the TOOLS
+             row in js/tool-registry.js). Everything a person meets is written
+             here: every control, label, region, the skip link and its target.
+             tikz-studio/tikz-studio-ui.js only populates and listens.
+
+             NO LIVE REGION IS CREATED HERE OR BY THE SCRIPT. The status line is
+             a plain paragraph. Announcements go through window.accessibilityHelpers
+             and the error list stays on screen until the state changes.
+
+             THE SOURCE IS A NATIVE <textarea>, never a code editor: Tab leaves
+             it, and a screen reader's own editing commands all work.
+
+             The kit under tikz-kit/ is NOT loaded with the page. The first switch
+             to this tool appends its four scripts (tikz-studio-controller.js).
+             The skip link, like Image Describer's overlay link, is a real href
+             that the script intercepts to move focus; without script it jumps. -->
+        <article
+          id="tikz-studio-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>TikZ Studio</h1>
+          <p class="tool-description">
+            Write TikZ source and see the diagram it draws. Add a text
+            alternative, a caption and a long description, then download the
+            figure or export it. Everything runs in your browser.
+          </p>
+
+          <!-- Layout wrapper only: two columns on a wide window, with the preview
+               placed in the right column by grid placement. DOM order is the
+               reading and Tab order and is not changed. -->
+          <div class="tikz-studio-layout">
+          <section aria-labelledby="tikz-studio-source-heading">
+            <h2 id="tikz-studio-source-heading">TikZ source</h2>
+            <div class="tikz-studio-template-row">
+              <label for="tikz-studio-template">Start from an example</label>
+              <select id="tikz-studio-template">
+                <option value="">Choose an example</option>
+              </select>
+              <button type="button" id="tikz-studio-template-load">
+                Use example
+              </button>
+            </div>
+            <label for="tikz-studio-source">TikZ source code</label>
+            <textarea
+              id="tikz-studio-source"
+              rows="16"
+              spellcheck="false"
+              autocomplete="off"
+              autocapitalize="off"
+              wrap="off"
+              aria-describedby="tikz-studio-source-hint"
+            >
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.16}
+\begin{tikzpicture}
+  \begin{axis}[view={50}{30}, xlabel={$x$}, ylabel={$y$}, zlabel={$z$}, colormap/viridis]
+    \addplot3[surf, domain=-2:2, samples=14] {exp(-x^2 - y^2)};
+  \end{axis}
+\end{tikzpicture}
+</textarea
+            >
+            <p id="tikz-studio-source-hint" class="tikz-studio-hint">
+              Tab moves on to the next control. Lines that start with % @alt:,
+              % @caption:, % @longdesc: or % @decorative above the picture are
+              the text alternative, caption, long description and decorative
+              setting; the fields below keep them in step.
+            </p>
+            <div class="tikz-studio-actions">
+              <button type="button" id="tikz-studio-render">
+                <span aria-hidden="true" data-icon="refresh"></span> Render
+              </button>
+              <button type="button" id="tikz-studio-stop" hidden>Stop</button>
+              <label class="tikz-studio-inline-label">
+                <input type="checkbox" id="tikz-studio-live" disabled />
+                Render as you type
+              </label>
+            </div>
+            <p id="tikz-studio-live-note" class="tikz-studio-hint" hidden></p>
+            <p id="tikz-studio-status" class="tikz-studio-status">Ready.</p>
+            <!-- K3: after a failed render the status line names the problem and this link takes focus to the problems heading.
+                 Shown exactly while the problems section is. Not a live region: the error announcement is the only voice. -->
+            <p id="tikz-studio-problems-link-wrap" class="tikz-studio-problems-link" hidden>
+              <a id="tikz-studio-problems-link" href="#tikz-studio-errors-heading">See the problems</a>
+            </p>
+            <!-- K2: a plain list of what the Studio changed to get the source to run. Not a live region: the render sentence is the only voice. -->
+            <div id="tikz-studio-notes" class="tikz-studio-notes" hidden>
+              <p id="tikz-studio-notes-intro"></p>
+              <ul id="tikz-studio-notes-list"></ul>
+            </div>
+            <!-- K2: filled from tikz-studio/supported-packages.json, which is built from the engine's own file set. -->
+            <details id="tikz-studio-supported" class="tikz-studio-supported">
+              <summary>What this Studio can draw</summary>
+              <h3>Packages</h3>
+              <p id="tikz-studio-supported-builtin"></p>
+              <ul id="tikz-studio-supported-packages"></ul>
+              <h3>TikZ libraries</h3>
+              <p id="tikz-studio-supported-libraries"></p>
+              <h3>Not available</h3>
+              <ul id="tikz-studio-unavailable"></ul>
+            </details>
+          </section>
+
+          <!-- P4c: Draw with AI. Nothing here is a live region: the press announces once through the shared announcer and the same
+               sentence sits in the plain paragraph below the button. The proposal is shown beside the author's diagram and changes nothing
+               until "Use this drawing" is pressed. -->
+          <section aria-labelledby="tikz-studio-generate-heading">
+            <h2 id="tikz-studio-generate-heading">Draw with AI</h2>
+            <div class="tikz-studio-field">
+              <label for="tikz-studio-generate-prompt">Describe the diagram you want</label>
+              <textarea
+                id="tikz-studio-generate-prompt"
+                rows="4"
+                autocomplete="off"
+                aria-describedby="tikz-studio-generate-prompt-hint"
+              ></textarea>
+              <p id="tikz-studio-generate-prompt-hint" class="tikz-studio-hint">
+                Say what the diagram shows and what each label says. The AI draws only what you ask for.
+              </p>
+            </div>
+            <!-- P5a: the house drop zone, as in Graph Builder's image tab (shared gb-* classes, no new colour). The label is the click target
+                 and the drop target; the input is its SIBLING so the theme's .gb-upload-area:focus-within rule draws the focus ring.
+                 aria-labelledby narrows the input's name to the first sentence; the help text and the status are its description; the
+                 chosen file's name is a plain paragraph so the control's name never changes with its value. Nothing here is a live
+                 region: choosing, dropping, pasting or removing a picture says nothing aloud. -->
+            <div class="tikz-studio-field">
+              <p class="tikz-studio-hint">Or start from a picture (optional).</p>
+              <div class="gb-upload-area">
+                <label for="tikz-studio-generate-picture" class="gb-file-label" id="tikz-studio-generate-picture-zone">
+                  <span class="gb-upload-icon" aria-hidden="true" data-icon="image"></span>
+                  <span class="gb-upload-text" id="tikz-studio-generate-picture-text">Choose a picture, or drop one here</span>
+                </label>
+                <input
+                  type="file"
+                  id="tikz-studio-generate-picture"
+                  accept="image/png,image/jpeg,image/webp"
+                  class="gb-file-input"
+                  aria-labelledby="tikz-studio-generate-picture-text"
+                  aria-describedby="tikz-studio-generate-picture-help tikz-studio-generate-picture-status"
+                />
+                <p id="tikz-studio-generate-picture-help" class="tikz-studio-hint">
+                  PNG, JPEG or WebP. You can also paste one from the clipboard (Ctrl+V).
+                </p>
+                <p id="tikz-studio-generate-picture-name" class="tikz-studio-picture-name">No picture chosen</p>
+                <p id="tikz-studio-generate-picture-status" class="tikz-studio-hint" hidden></p>
+                <button type="button" id="tikz-studio-generate-picture-remove" hidden>Remove picture</button>
+              </div>
+            </div>
+            <p id="tikz-studio-generate-note" class="tikz-studio-describe-note">
+              AI can get things wrong. Compare its drawing with what you need before you use it.
+            </p>
+            <div class="tikz-studio-actions">
+              <button type="button" id="tikz-studio-generate" aria-describedby="tikz-studio-generate-note">
+                Draw with AI
+              </button>
+            </div>
+            <p id="tikz-studio-generate-status" class="tikz-studio-hint" hidden></p>
+            <div id="tikz-studio-generate-result" class="tikz-studio-generate-result" hidden>
+              <h3 id="tikz-studio-generate-result-heading" tabindex="-1">Proposed drawing</h3>
+              <p id="tikz-studio-generate-stale" class="tikz-studio-describe-note" hidden>
+                Your source has changed since this drawing was made. Using it will replace what is there now.
+              </p>
+              <div class="tikz-studio-compare">
+                <figure>
+                  <div class="tikz-studio-paper tikz-studio-compare-paper">
+                    <div class="tikz-studio-compare-sheet">
+                      <img id="tikz-studio-compare-left-img" alt="" />
+                    </div>
+                    <p id="tikz-studio-compare-left-none" hidden>No diagram yet</p>
+                  </div>
+                  <figcaption id="tikz-studio-compare-left-caption"></figcaption>
+                </figure>
+                <figure>
+                  <div class="tikz-studio-paper tikz-studio-compare-paper">
+                    <div class="tikz-studio-compare-sheet">
+                      <img id="tikz-studio-compare-right-img" alt="" />
+                    </div>
+                  </div>
+                  <figcaption id="tikz-studio-compare-right-caption">AI's drawing</figcaption>
+                </figure>
+              </div>
+              <p id="tikz-studio-generate-summary"></p>
+              <p id="tikz-studio-generate-replaces">
+                This replaces your whole source, including the text alternative. You can undo it with Ctrl+Z.
+              </p>
+              <details>
+                <summary>See the code</summary>
+                <pre><code id="tikz-studio-generate-code"></code></pre>
+              </details>
+              <div class="tikz-studio-actions">
+                <button type="button" id="tikz-studio-generate-use">Use this drawing</button>
+                <button type="button" id="tikz-studio-generate-discard">Discard</button>
+              </div>
+            </div>
+            <div id="tikz-studio-generate-attempts"></div>
+          </section>
+
+          <section
+            id="tikz-studio-errors-section"
+            aria-labelledby="tikz-studio-errors-heading"
+            hidden
+          >
+            <h2 id="tikz-studio-errors-heading" tabindex="-1">Problems with the source</h2>
+            <ul id="tikz-studio-errors"></ul>
+            <!-- P4b: Fix with AI. The button exists only while this section shows. Nothing here is a live region: the press announces
+                 once through the shared announcer and the same sentence sits in the plain paragraph below. -->
+            <div class="tikz-studio-actions">
+              <button type="button" id="tikz-studio-fix">Fix with AI</button>
+            </div>
+            <p id="tikz-studio-fix-status" class="tikz-studio-hint" hidden></p>
+            <div id="tikz-studio-fix-result" class="tikz-studio-fix-result" hidden>
+              <h3 id="tikz-studio-fix-heading" tabindex="-1">Suggested fix</h3>
+              <p id="tikz-studio-fix-warning" class="tikz-studio-describe-note">
+                AI can get things wrong. Check the change before you apply it.
+              </p>
+              <p id="tikz-studio-fix-change"></p>
+              <ul id="tikz-studio-fix-diff" class="tikz-studio-fix-diff"></ul>
+              <div class="tikz-studio-actions">
+                <button type="button" id="tikz-studio-fix-apply">Apply fix</button>
+                <button type="button" id="tikz-studio-fix-discard">Discard</button>
+              </div>
+            </div>
+            <div id="tikz-studio-fix-attempts"></div>
+            <details id="tikz-studio-log" hidden>
+              <summary>TeX log</summary>
+              <pre id="tikz-studio-log-text"></pre>
+            </details>
+          </section>
+
+          <!-- P5e: the drawing and the downloads that save it share one wrapper, so a wide window can place them together in column 2.
+               The wrapper changes no DOM order, Tab order or reading order, and carries no role. -->
+          <div class="tikz-studio-preview-column">
+          <section aria-labelledby="tikz-studio-preview-heading">
+            <h2 id="tikz-studio-preview-heading">Preview</h2>
+            <a
+              id="tikz-studio-skip"
+              class="skip-link tikz-studio-skip"
+              href="#tikz-studio-export-heading"
+              >Skip the preview</a
+            >
+            <!-- F2: switches the drawing between TeX's own font and the site's sans serif, live and in memory only. A native radio group speaks its own state, so there is no live region. -->
+            <fieldset id="tikz-studio-font-group" class="tikz-studio-font-group">
+              <legend>Font in the drawing</legend>
+              <div class="tikz-studio-font-choices">
+                <label for="tikz-studio-font-tex"
+                  ><input type="radio" name="tikz-studio-font" id="tikz-studio-font-tex" value="tex" checked />
+                  TeX's own font</label
+                >
+                <label for="tikz-studio-font-sans"
+                  ><input type="radio" name="tikz-studio-font" id="tikz-studio-font-sans" value="sans" />
+                  Sans serif</label
+                >
+              </div>
+            </fieldset>
+            <div id="tikz-studio-paper" class="tikz-studio-paper">
+              <p id="tikz-studio-placeholder">Press Render to see the diagram.</p>
+              <!-- OD1: shown while the figure is the last drawing that worked and the source now has problems. Plain text, not a live region. -->
+              <p id="tikz-studio-out-of-date" class="tikz-studio-out-of-date" hidden>
+                <span aria-hidden="true" data-icon="warning"></span>
+                Out of date. This is the last drawing that worked. The source now has problems, so the drawing does not match it.
+              </p>
+              <div id="tikz-studio-figure"></div>
+              <!-- P5b: outside the figure's own HTML, so the exported figure is unchanged. Shown only when there is a description. -->
+              <div id="tikz-studio-description-actions" class="tikz-studio-description-actions" hidden>
+                <fieldset class="tikz-studio-actions tikz-studio-copy-group">
+                  <legend class="tikz-studio-copy-label">Copy the description</legend>
+                  <button type="button" id="tikz-studio-copy-text" class="secondary-button">
+                    <span aria-hidden="true" data-icon="clipboard"></span> Copy as Text
+                  </button>
+                  <button type="button" id="tikz-studio-copy-formatted" class="secondary-button">
+                    <span aria-hidden="true" data-icon="document"></span> Copy as Formatted
+                  </button>
+                  <button type="button" id="tikz-studio-copy-html" class="secondary-button">
+                    <span aria-hidden="true">&lt;/&gt;</span> Copy as HTML
+                  </button>
+                </fieldset>
+                <div class="tikz-studio-actions">
+                  <button type="button" id="tikz-studio-read-aloud" class="secondary-button" hidden>
+                    <span aria-hidden="true" data-icon="message"></span>
+                    <span id="tikz-studio-read-aloud-label">Read Aloud</span>
+                  </button>
+                  <span class="imgdesc-save-audio-split" role="group" aria-label="Save audio" id="tikz-studio-save-audio-group" hidden>
+                    <button type="button" id="tikz-studio-save-audio" class="secondary-button imgdesc-save-audio-main"><span aria-hidden="true" data-icon="download"></span> <span id="tikz-studio-save-audio-label">Save as MP3</span></button><button type="button" id="tikz-studio-save-audio-format" class="secondary-button imgdesc-format-toggle" aria-label="Change audio format. Currently MP3."><span aria-hidden="true" data-icon="arrowDown"></span><span class="visually-hidden" id="tikz-studio-save-audio-format-label">MP3</span></button>
+                  </span>
+                </div>
+                <small class="imgdesc-save-audio-note">Reading and saving are processed locally on your device.</small>
+              </div>
+            </div>
+          </section>
+
+          <!-- P5d: directly after the preview, because these buttons save what the preview shows. No SCORM or standalone-HTML control here: Download HTML saves the same accessible figure for later use. -->
+          <section aria-labelledby="tikz-studio-export-heading">
+            <h2 id="tikz-studio-export-heading" tabindex="-1">Download the diagram</h2>
+            <p class="tikz-studio-hint">
+              Render the diagram first. These buttons save what the preview shows.
+            </p>
+            <div class="tikz-studio-actions">
+              <button type="button" id="tikz-studio-download-svg">
+                <span aria-hidden="true" data-icon="download"></span> Download
+                SVG
+              </button>
+              <span class="tikz-studio-png-size-field">
+                <label for="tikz-studio-png-size">PNG size</label>
+                <select id="tikz-studio-png-size" aria-describedby="tikz-studio-png-size-note">
+                  <option value="1">Small (1×)</option>
+                  <option value="2" selected>Medium (2×)</option>
+                  <option value="4">Large (4×)</option>
+                  <option value="8">Extra large (8×)</option>
+                </select>
+              </span>
+              <button type="button" id="tikz-studio-download-png">
+                <span aria-hidden="true" data-icon="download"></span> Download
+                PNG
+              </button>
+              <button type="button" id="tikz-studio-download-html">
+                <span aria-hidden="true" data-icon="download"></span> Download
+                HTML
+              </button>
+            </div>
+            <!-- A plain paragraph, not a live region: the select points at it, so it is read when the select takes focus. -->
+            <p id="tikz-studio-png-size-note" class="tikz-studio-hint"></p>
+          </section>
+          </div>
+          <!-- P5e: end of the preview column -->
+
+          <section aria-labelledby="tikz-studio-describe-heading">
+            <h2 id="tikz-studio-describe-heading" tabindex="-1">
+              Describe the figure
+            </h2>
+            <p class="tikz-studio-hint">
+              These fields write the % @ lines in the source, and the source
+              writes them back.
+            </p>
+            <!-- P4f: a plain paragraph, not a live region; the button points at it so it is read when the button takes focus. -->
+            <p id="tikz-studio-describe-note" class="tikz-studio-describe-note">
+              AI can get things wrong. Check every description against the figure before you use it.
+            </p>
+            <div class="tikz-studio-actions">
+              <button type="button" id="tikz-studio-describe" aria-describedby="tikz-studio-describe-note">
+                Describe with AI
+              </button>
+            </div>
+            <p id="tikz-studio-describe-status" class="tikz-studio-hint" hidden></p>
+            <!-- The embed's output sink: hidden AND aria-live="off", nothing a person sees. See tikz-studio/tikz-studio-llm.js. -->
+            <div id="tikz-studio-embed-sink" hidden aria-live="off"></div>
+            <div class="tikz-studio-field">
+              <input type="checkbox" id="tikz-studio-decorative" />
+              <label for="tikz-studio-decorative">
+                This figure is decorative
+              </label>
+            </div>
+            <div class="tikz-studio-field">
+              <label for="tikz-studio-alt">Text alternative (alt text)</label>
+              <input type="text" id="tikz-studio-alt" autocomplete="off" />
+            </div>
+            <div class="tikz-studio-field">
+              <label for="tikz-studio-caption">Caption</label>
+              <input type="text" id="tikz-studio-caption" autocomplete="off" />
+            </div>
+            <div class="tikz-studio-field">
+              <label for="tikz-studio-longdesc">Long description</label>
+              <textarea
+                id="tikz-studio-longdesc"
+                rows="4"
+                autocomplete="off"
+              ></textarea>
+            </div>
+          </section>
+
+          </div>
+        </article>
+
         <!-- Local Chat Tool (Phase 11a) -->
         <article id="local-chat-app" style="display: none" aria-hidden="true">
           <h1>Local Chat</h1>
@@ -21002,11 +21085,9 @@ Science,91</pre
               viewBox="0 0 21 21"
               width="50"
               xmlns="http://www.w3.org/2000/svg"
-              role="img"
-              aria-labelledby="svgTitle2 svgDesc2"
+              aria-hidden="true"
+              focusable="false"
             >
-              <title id="svgTitle2">Top.</title>
-              <desc id="svgDesc2">Move to the top of the page.</desc>
               <g
                 fill="none"
                 fill-rule="evenodd"
@@ -21030,11 +21111,9 @@ Science,91</pre
               viewBox="0 0 21 21"
               width="50"
               xmlns="http://www.w3.org/2000/svg"
-              role="img"
-              aria-labelledby="svgTitle3 svgDesc3"
+              aria-hidden="true"
+              focusable="false"
             >
-              <title id="svgTitle3">Bottom.</title>
-              <desc id="svgDesc3">Move to the bottom of the page.</desc>
               <g
                 fill="none"
                 fill-rule="evenodd"
@@ -21134,6 +21213,7 @@ Science,91</pre
          global is published before any tool script (setup-tool, local-chat/*,
          chat/*) can call announceToScreenReader/announce. -->
     <script src="accessibility-announcer.js"></script>
+    <script src="mathpix-scripts/ui/mathpix-fullscreen-focus.js"></script>
     <!-- Shared busy-state helper (defines window.BusyControl). Plain IIFE, no
          dependencies; loaded directly after the announcer and before every tool
          script so any tool can hold a control busy WITHOUT native `disabled`,
@@ -21541,6 +21621,8 @@ Science,91</pre
     <script src="mathpix-scripts/ai-alt-text/alt-text-prompt-builder.js?v=1.0"></script>
     <!-- Phase 4 (Parcel BG-P1): batch runner — the sequential loop, the cancel flag, the tally and the outcome-line taxonomy for a Describe All run (window.MathPixAltTextBatchRunner). Makes NO DOM calls and takes no load-order dependency: the orchestrator instance is supplied to create() by the caller. -->
     <script src="mathpix-scripts/ai-alt-text/alt-text-batch-runner.js?v=1.0"></script>
+    <!-- S6-3a: the AI tab (window.MathPixAITab) — model lines and preconditions for the three steps. Reads the registry, the Context picker, the enhancer and the alt-text adapter at CALL time; placed after all of them. -->
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-tab.js?v=1.1"></script>
     <!-- Phase 2 Stage 1: Context auto-fill preflight harness (window.runContextAITests) -->
     <script
       type="application/dev-test"
@@ -21889,6 +21971,15 @@ Science,91</pre
          open the tool rather than opening one whose controls are dead. -->
     <script src="captions-fixer/captions-fixer-ui.js"></script>
 
+    <!-- TikZ Studio. These two are small and eager; the kit they drive
+         (tikz-kit/, about 480 KB of engine) is appended by the controller on
+         the FIRST switch to the tool, so a normal load never fetches it.
+         Nothing here runs until TOOL_CONFIG["TikZ Studio"].init() calls it.
+         Order matters: the ui reads window.TikzStudioController. -->
+    <script src="tikz-studio/tikz-studio-controller.js"></script>
+    <script src="tikz-studio/tikz-studio-ui.js"></script>
+    <script src="tikz-studio/tikz-studio-llm.js"></script>
+
     <!-- DEV-ONLY fixture loader for the Transcribe tool. Replays a real 657-row
          captured transcript through the shipped render path at ZERO SPEND, so
          work on register items 45 to 48 and the owed-listen row 40 sitting need
@@ -22170,7 +22261,6 @@ Science,91</pre
     <script src="image-describer/analyser/image-describer-analyser-ocr.js"></script>
     <script src="image-describer/analyser/image-describer-analyser-xref.js"></script>
     <script src="image-describer/analyser/image-describer-analyser-format.js"></script>
-    <script src="image-describer/analyser/image-describer-analyser-classify.js"></script>
     <script src="image-describer/analyser/image-describer-analyser-transformers.js"></script>
     <script src="image-describer/analyser/image-describer-analyser.js"></script>
 
@@ -22342,18 +22432,6 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="image-describer/testing/idq-fixture-export.js"
-    ></script>
-
-    <!-- Phase 11A: Depth Anything V2 integration tests -->
-    <script
-      type="application/dev-test"
-      data-src="image-describer/testing/tests-11a-depth.js"
-    ></script>
-
-    <!-- Phase 11B: Depth zone overlay tests -->
-    <script
-      type="application/dev-test"
-      data-src="image-describer/testing/tests-11b-depth-overlay.js"
     ></script>
 
     <!-- Phase 11C: Cache recall flow tests -->
@@ -22671,22 +22749,7 @@ Science,91</pre
           log: alert,
         });
 
-      // Print Handler
-      window.matchMedia("print").addEventListener("change", (evt) => {
-        if (evt.matches) {
-          elms = document.body.querySelectorAll("details:not([open])");
-          for (e of elms) {
-            e.setAttribute("open", "");
-            e.dataset.wasclosed = "";
-          }
-        } else {
-          elms = document.body.querySelectorAll("details[data-wasclosed]");
-          for (e of elms) {
-            e.removeAttribute("open");
-            delete e.dataset.wasclosed;
-          }
-        }
-      });
+      // Print: closed <details> content is shown by the @media print rule on ::details-content (no `open` change, so no toggle event).
 
       // Make functions available globally
       window.menuAction = menuAction;
@@ -24033,6 +24096,7 @@ Science,91</pre
     <script src="md-scripts/charts/chart-performance.js"></script>
     <script src="md-scripts/charts/chart-accessibility.js"></script>
     <script src="md-scripts/charts/chart-accessibility-export-utils.js"></script>
+    <script src="md-scripts/charts/chart-export-utils.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-utils.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-export-utils.js"></script>
     <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
@@ -24054,6 +24118,9 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-kanban.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-radar.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-info.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-requirement.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-packet.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-treemap.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>
@@ -24107,6 +24174,12 @@ Science,91</pre
           // 12 August 2026, docs/mermaid-item20-measure-2026-08-12.md. Omitting
           // the key resets it to Mermaid's default true.
           startOnLoad: false,
+          // suppressErrorRendering pinned true (parcel 18): a bare initialize
+          // resets it to false, and false makes a failed render leave
+          // Mermaid's own "Syntax error in text" picture in a <div> at the
+          // end of <body>, where Clear never reaches. render() still
+          // rejects; each render site shows its own line beside the diagram.
+          suppressErrorRendering: true,
         });
         window.AppLogging.logInfo(
           "Mermaid initialised with sequence numbers enabled",
@@ -24478,13 +24551,28 @@ Science,91</pre
                   config.checkboxOptions.forEach((opt) => {
                     const label = document.createElement("label");
                     label.className = "imgdesc-checkbox-label";
+                    const hintId = `imgdesc-${opt.id}-hint`;
                     label.innerHTML = `
                       <input type="checkbox" id="imgdesc-${opt.id}" ${
                         opt.default ? "checked" : ""
-                      }>
+                      } ${opt.hint ? `aria-describedby="${hintId}"` : ""}>
                       <span>${opt.label}</span>
                     `;
-                    checkboxContainer.appendChild(label);
+                    if (!opt.hint) {
+                      checkboxContainer.appendChild(label);
+                      return;
+                    }
+
+                    // Hint sits beside the label, not inside it, so it adds
+                    // to the box's description rather than its name.
+                    const item = document.createElement("div");
+                    item.className = "imgdesc-checkbox-item";
+                    const hint = document.createElement("span");
+                    hint.className = "imgdesc-hint imgdesc-checkbox-hint";
+                    hint.id = hintId;
+                    hint.textContent = opt.hint;
+                    item.append(label, hint);
+                    checkboxContainer.appendChild(item);
                   });
                 }
 
@@ -24589,6 +24677,39 @@ Science,91</pre
           },
         },
 
+        "TikZ Studio": {
+          articleId: "tikz-studio-app",
+          displayName: "TikZ Studio",
+          announceText: "Switched to TikZ Studio tool",
+          // Copied from the Captions Fixer entry above, for its stated reason:
+          // init RETURNS FALSE ON A GENUINE FAILURE. The Studio's init is
+          // async (it loads the kit on the first call) and resolves false if
+          // the kit would not load or start, so a broken tool refuses to open
+          // rather than opening with dead controls.
+          init: function () {
+            if (
+              !window.TikzStudio ||
+              typeof window.TikzStudio.init !== "function"
+            ) {
+              console.error(
+                "[TikzStudio] tikz-studio/tikz-studio-ui.js did not load",
+              );
+              return false;
+            }
+            return window.TikzStudio.init();
+          },
+          // Aborts a TeX run in flight (the kit terminates its Worker) and
+          // cancels any pending live render, so nothing outlives the tool.
+          cleanup: function () {
+            if (
+              window.TikzStudio &&
+              typeof window.TikzStudio.cleanup === "function"
+            ) {
+              window.TikzStudio.cleanup();
+            }
+          },
+        },
+
         "Local Chat": {
           articleId: "local-chat-app",
           displayName: "Local Chat",
@@ -24618,6 +24739,41 @@ Science,91</pre
 
       // Track current tool for cleanup purposes
       let currentTool = null;
+
+      // ---- Remember the open tool for this tab ----
+      const REMEMBER_KEY = "toolsOpenTool";
+      // Never restored: OpenRouter and Local Chat are hidden from the picker (js/tool-registry.js), so restoring one would show no selection.
+      const NOT_RESTORED = new Set(["OpenRouter", "Local Chat"]);
+      // How long a restored open stays quiet: until the first key or pointer press, or this long, whichever comes first.
+      const RESTORE_QUIET_MS = 4000;
+      // Name of the tool whose open the person did not ask for (a restore), while it must stay quiet; otherwise null.
+      window.restoredToolOpen = null;
+      function rememberOpenTool(toolName) {
+        try { window.sessionStorage.setItem(REMEMBER_KEY, toolName); } catch (e) { /* storage blocked: forget quietly */ }
+      }
+      function readRememberedTool(validNames) {
+        const stored = (function () {
+          try { return window.sessionStorage.getItem(REMEMBER_KEY); } catch (e) { return null; }
+        })();
+        if (!stored || NOT_RESTORED.has(stored)) return null;
+        return Object.prototype.hasOwnProperty.call(validNames, stored) ? stored : null;
+      }
+
+      // A tool that grabs focus or scrolls by itself checks window.restoredToolOpen and skips that move while it names the tool.
+      // Held until the first key or pointer press, or RESTORE_QUIET_MS.
+      function openRestoreQuietWindow(toolName) {
+        let released = false;
+        window.restoredToolOpen = toolName;
+        const release = () => {
+          if (released) return;
+          released = true;
+          window.restoredToolOpen = null;
+        };
+        ["keydown", "pointerdown"].forEach((type) =>
+          window.addEventListener(type, release, { capture: true, once: true }),
+        );
+        setTimeout(release, RESTORE_QUIET_MS);
+      }
 
       // ============================================================
       // CORE SWITCHING LOGIC - No modification needed when adding tools
@@ -24721,14 +24877,19 @@ Science,91</pre
       }
 
       /**
-       * Announce an error to screen readers
+       * Report a tool that failed to initialise. An error toast stays on
+       * screen until dismissed and is announced once by the shared announcer.
+       * The old write into #radioSRannounce was screen-reader-only and gone
+       * after 3 seconds, so a sighted person never saw it (H-50).
        */
       function announceError(toolDisplayName) {
-        const announcer = document.getElementById("radioSRannounce");
-        if (announcer) {
-          announcer.textContent = `Error: ${toolDisplayName} failed to initialise`;
-          setTimeout(() => (announcer.textContent = ""), 3000);
+        const message = `${toolDisplayName} failed to initialise. Reload the page to try again.`;
+        if (typeof window.notifyError === "function") {
+          window.notifyError(message);
+          return;
         }
+        // Notification system absent: keep the old spoken-only voice.
+        announceToolSwitch(message);
       }
 
       /**
@@ -24760,6 +24921,7 @@ Science,91</pre
 
         // Update current tool tracker
         currentTool = toolName;
+        if (isUserInitiated) rememberOpenTool(toolName);
 
         // Capture the triggering radio for potential focus restoration
         const triggeringRadio = document.querySelector(
@@ -24799,7 +24961,12 @@ Science,91</pre
 
         // Announce the switch
         if (isUserInitiated && TOOL_SWITCH_SETTINGS.announceSwitch) {
-          announceToolSwitch(config.announceText);
+          let switchText = config.announceText;
+          if (toolName === "Chat" && window.ChatPersistence && typeof window.ChatPersistence.takePendingRestoreLine === "function") {
+            const restoreLine = window.ChatPersistence.takePendingRestoreLine();
+            if (restoreLine) switchText += ". " + restoreLine;
+          }
+          announceToolSwitch(switchText);
         }
       }
 
@@ -24836,6 +25003,9 @@ Science,91</pre
       function showCaptionsFixerTool(isUserInitiated = true) {
         switchToTool("Captions Fixer", isUserInitiated);
       }
+      function showTikzStudio(isUserInitiated = true) {
+        switchToTool("TikZ Studio", isUserInitiated);
+      }
 
       function showAllyReporting(isUserInitiated = true) {
         switchToTool("Ally Reporting", isUserInitiated);
@@ -24867,6 +25037,7 @@ Science,91</pre
       // replacement is relying on a mechanism whose comment calls itself a
       // safety net.
       window.showCaptionsFixerTool = showCaptionsFixerTool;
+      window.showTikzStudio = showTikzStudio;
 
       // Replay a tool selection made while the page was still loading. The stubs
       // near the tool fieldset queue the request; the declarations above have just
@@ -24969,6 +25140,7 @@ Science,91</pre
           Chat: "Chat",
           Transcribe: "Transcribe",
           "Captions Fixer": "Captions Fixer",
+          "TikZ Studio": "TikZ Studio",
         };
 
         // MEASURED 2 September 2026, and the omission was NOT cosmetic: with
@@ -24978,7 +25150,18 @@ Science,91</pre
         // hidden: true in js/tool-registry.js, so the fallback served a tool
         // deliberately withdrawn from the picker. ensureVisibleSelection did
         // not catch it. Any tool added to the picker needs a row above.
-        const toolName = radioToTool[toolValue] || "OpenRouter";
+        let toolName = radioToTool[toolValue] || "OpenRouter";
+        const remembered = readRememberedTool(radioToTool);
+        if (remembered && remembered !== toolName) {
+          const rememberedRadio = document.querySelector(
+            `#toolSelection input[name="presentation"][value="${remembered}"]`,
+          );
+          if (rememberedRadio) {
+            rememberedRadio.checked = true;
+            toolName = remembered;
+            openRestoreQuietWindow(toolName, document.getElementById(TOOL_CONFIG[toolName].articleId));
+          }
+        }
         switchToTool(toolName, false); // false = not user-initiated
       }
 
@@ -25239,9 +25422,7 @@ Science,91</pre
           // Test the existing MarkdownEditor
           if (typeof window.MarkdownEditor.render === "function") {
             try {
-              const testResult = window.MarkdownEditor.render(
-                "- [x] Test task\n\n| Col1 | Col2 |\n|------|------|\n| A | B |",
-              );
+              const testResult = undefined; /* T-15b C4: the stray diagnostic render is not made */
 
               // Add null check for testResult
               if (testResult) {

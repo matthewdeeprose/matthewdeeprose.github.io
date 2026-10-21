@@ -83,11 +83,22 @@
       const completionTokens =
         tokens.completion || tokens.completion_tokens || 0;
 
-      // Claude Haiku 4.5 pricing (as of Nov 2025)
-      // Input: $0.80 per million tokens
-      // Output: $4.00 per million tokens
-      const inputCostPerMillion = 0.8;
-      const outputCostPerMillion = 4.0;
+      // Price from the model that ran, read the same way the cost estimate under
+      // the model list reads it: the option's data-input-cost / data-output-cost
+      // (dollars per million tokens). A model with no price on its option gets
+      // honest wording, never a guessed rate (H-48; this was Haiku 4.5's Nov 2025
+      // $0.80 / $4.00 for every model).
+      // The model named on the reply is the one that ran; with no name on the
+      // reply, the model that was selected and sent. A named model the list does
+      // not hold gets "price unknown" rather than the selected model's price.
+      const ranModelId = response.metadata.model || this.getSelectedModel();
+      const options = Array.from(this.elements.modelSelector?.options || []);
+      const modelOption = options.find((opt) => opt.value === ranModelId);
+      const inputCostPerMillion = parseFloat(modelOption?.dataset.inputCost);
+      const outputCostPerMillion = parseFloat(modelOption?.dataset.outputCost);
+      if (Number.isNaN(inputCostPerMillion) || Number.isNaN(outputCostPerMillion)) {
+        return "Price unknown for this model";
+      }
 
       const inputCost = (promptTokens / 1000000) * inputCostPerMillion;
       const outputCost = (completionTokens / 1000000) * outputCostPerMillion;
@@ -328,23 +339,15 @@
       }
 
       // Pre-analysis details (Local Analysis)
-      // Always show selected profile regardless of analysis results
-      setText(d.analysisProfile, this.getSelectedProfile());
-
       if (this.lastAnalysis) {
         const analysis = this.lastAnalysis;
-
-        // Show the profile that was actually used for this analysis
-        if (analysis.profile) {
-          setText(d.analysisProfile, analysis.profile);
-        }
 
         // OCR labels summary
         if (analysis.ocr && analysis.ocr.status === "complete") {
           const labelCount = analysis.ocr.labelCount || 0;
           if (labelCount > 0) {
             const labels = analysis.ocr.items
-              .map((i) => `"${i.text}" (${i.quadrant})`)
+              .map((i) => `"${i.text}" (${i.quadrant || "unknown position"})`)
               .join(", ");
             setText(d.ocrLabels, `${labelCount} labels: ${labels}`);
           } else {
@@ -397,41 +400,12 @@
           analysis.totalDuration ? `${analysis.totalDuration}ms` : "-",
         );
 
-        // Classification (Phase 5A)
-        if (d.classification) {
-          if (analysis.classification?.profile) {
-            const c = analysis.classification;
-            setText(
-              d.classification,
-              `${c.profile} (${Math.round(c.confidence * 100)}%, ${c.source})`,
-            );
-          } else if (analysis.classification === null) {
-            setText(d.classification, "No suggestion");
-          } else {
-            setText(d.classification, "-");
-          }
-        }
-
-        // CLIP detail (Phase 5B-2)
-        if (d.clip) {
-          const clipData = analysis.classification?.clip;
-          if (clipData && clipData.status === "success") {
-            setText(
-              d.clip,
-              `${clipData.topLabel} (${Math.round(clipData.topConfidence * 100)}%)`,
-            );
-          } else {
-            setText(d.clip, clipData ? clipData.status : "Not run");
-          }
-        }
       } else {
         setText(d.ocrLabels, "Not run");
         setText(d.ocrTime, "-");
         setText(d.noiseSuppression, "-");
         setText(d.colourAnalysis, "Not run");
         setText(d.analysisTime, "-");
-        setText(d.classification, "-");
-        if (d.clip) setText(d.clip, "-");
       }
 
       logDebug("Debug panel updated");

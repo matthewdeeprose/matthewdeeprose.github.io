@@ -69,6 +69,8 @@
     this.selectedEdit = null;
     this.hasUnsavedChanges = false;
     this.hasContextEdits = false;
+    this.setArchiveUnsaved(false); // SV-1: nothing held, nothing unsaved
+    this.clearSaveStatus?.(); // SV-3: and no outcome line left over
 
     // Phase 8F: Clear raw ZIP file reference
     this._rawZIPFile = null;
