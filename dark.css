@@ -3894,6 +3894,11 @@ pre[class*="language-"] {
   background: linear-gradient(to bottom, rgba(0, 46, 59, 0), #002e3b 85%);
 }
 
+/* The strip of pictures that would be sent (parcel P7): a thumbnail's border, the same as the card's. */
+.chat-attach-pictures-thumb {
+  border-color: #e1e8ec;
+}
+
 .mathpix-image-preview-container {
   border: 1px solid #e1e8ec;
   background: #00131d;

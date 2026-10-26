@@ -19301,6 +19301,14 @@ Science,91</pre
               class="chat-attachment-more"
               hidden
             ></div>
+            <p
+              id="chat-attachment-notice"
+              class="chat-attachment-notice"
+              role="status"
+              aria-live="off"
+              hidden
+            ></p>
+            </div>
             <!-- Wired by chat/chat-attach.js (parcel P3b). Shown only while a
                  Word or PowerPoint file with pictures to send is held and the
                  current model can read images; unticked on every attach. The
@@ -19310,20 +19318,23 @@ Science,91</pre
             <div id="chat-attach-pictures-wrap" hidden>
               <input type="checkbox" id="chat-attach-pictures" />
               <label for="chat-attach-pictures"
-                >Include <span id="chat-attach-pictures-kind">pictures</span> (<span
-                  id="chat-attach-pictures-count"
-                  >0</span
-                >
-                <span id="chat-attach-pictures-unit">found</span>)</label
+                >Include <span id="chat-attach-pictures-count">0</span>
+                <span id="chat-attach-pictures-kind">pictures</span></label
               >
-            </div>
-            <p
-              id="chat-attachment-notice"
-              class="chat-attachment-notice"
-              role="status"
-              aria-live="off"
-              hidden
-            ></p>
+              <p
+                id="chat-attach-pictures-note"
+                class="chat-attach-pictures-note"
+                hidden
+              >
+                These go with your message, and with each later message while
+                this file stays in the conversation.
+              </p>
+              <div
+                id="chat-attach-pictures-strip"
+                class="chat-attach-pictures-strip"
+                aria-hidden="true"
+                hidden
+              ></div>
             </div>
             </div>
           </div>

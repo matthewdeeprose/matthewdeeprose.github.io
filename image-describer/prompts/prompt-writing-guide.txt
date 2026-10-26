@@ -34,7 +34,7 @@ Place important information first and provide cues about what follows. Avoid con
 Apply these techniques actively throughout your descriptions:
 
 - **Commas for pauses** — separate data elements with commas so screen readers create natural pauses: "State 1, volume equals 0.5 cubic metres, pressure equals 200 kilopascals."
-- **"Equals" for data attachment** — attach values to their variables using the word "equals" rather than colons or dashes: "x equals 3, y equals 7" not "x: 3, y: 7." This is clearer when read aloud.
+- **"Equals" for data attachment** — attach values to their variables using the word "equals" rather than colons or dashes: "x equals 3, y equals 7" not "x: 3, y: 7." This is clearer when read aloud. For mathematical variables and formulae, give the LaTeX as well, as the formatting rules require (e.g., "x equals 3" alongside $x = 3$).
 - **Number sequences** — when listing multiple elements, number them explicitly: "Label 1, Q, positioned at the left. Label 2, P.V, positioned at the upper right. Label 3, U, positioned at the lower right."
 - **Consistent labelling** — name each element and use that name consistently. Do not switch between "the curve," "the line," and "the plot" for the same element.
 

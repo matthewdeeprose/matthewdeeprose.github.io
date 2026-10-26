@@ -20459,6 +20459,899 @@ window.MermaidParseAdapter = (function () {
     return treeViewHealthy;
   }
 
+  // ==========================================================================
+  // ISHIKAWA SURFACE (register item 125, 26 October 2026; the twenty-sixth)
+  // ==========================================================================
+  //
+  // Census: docs/mermaid-item-125-census-1-2026-10-26.md. Surface record:
+  // docs/mermaid-item-125-surface-2-2026-10-26.md. NO MODULE CONSUMES THIS YET;
+  // the module session flips the manifest rows.
+  //
+  // THE ROUTE. Payload: DB-ONLY. One non-db read sits inside the SAME queue
+  // slot: the source's own ishikawa config through `mermaid.parse(source)
+  // .config` (the kanban route: the db has no getConfig), called BEFORE the
+  // getDiagramFromText read because mermaid.parse is itself a parse and
+  // writes the shared title store. Every db read happens inside
+  // adapterParseQueue. The only accessor read is getRoot(): the grammar has
+  // no title, accTitle or accDescr token (such a line is a node and is
+  // drawn), the shared title slot holds the effect, and reading it would
+  // deliver one fact under two names. NO title key is delivered.
+  //
+  // THE DB. A NEW INSTANCE per diagram holding { text, children } per node in
+  // declaration order and nothing else (census Step 2). Only the title trio is
+  // a shared store. The queue keeps the shared trio apart; the eager SNAPSHOT
+  // (every node copied into plain objects in the same tick as the read) keeps
+  // a held delivery from sharing an object with the db.
+  //
+  // THE SHAPE. The root is the EFFECT (the head of the fish), its children are
+  // the CATEGORIES (the main bones) and theirs the CAUSES. A header-only
+  // source has no root at all: the canvas draws nothing and the app route
+  // ends in an init error (census H08, A14), so that is a STOP.
+  //
+  // DEPTH is computed HERE, by the walk, and nowhere else: a category is 0,
+  // a direct cause 1. authorIndex is the declaration order among SIBLINGS.
+  //
+  // LAYOUT, derived by the renderer's OWN rule (read out of the 11.17.2
+  // bundle: draw, drawBranch, flattenTree), in ONE place each:
+  //  - side and spineIndex: draw() puts category 2k above the spine and 2k+1
+  //    below it, pair k one step further from the head, so spineIndex is
+  //    floor(index / 2), 0 nearest the effect.
+  //  - drawnIndex: the rank of a cause among its siblings, top to bottom.
+  //    flattenTree walks an UPPER bone's siblings in reverse and a LOWER
+  //    bone's in order, each sibling's block taking the next place along the
+  //    bone, and drawBranch puts the place farthest from the spine at the top
+  //    of an upper bone and at the bottom of a lower one. The renderer also
+  //    alternates, by depth, whether a cause is placed before or after its
+  //    own sub-causes; that moves a cause relative to its CHILDREN and never
+  //    reorders siblings, so the shape has no key for it.
+  //
+  // DECODE: decodePlaceholdersBreaks (the break rule over the NO_ATTRIBUTES
+  // form set, then decodePlaceholders) on the effect, every category and every
+  // cause. The canvas splits a label on a bare <br> in every spelling (the db
+  // normalises <br/>, <br />, <BR> to <br>) and prints a <br> that carries an
+  // attribute, and every other tag, as characters. rawText carries the db's
+  // bytes. An empty label is delivered as the db holds it ("" stays ""); a
+  // label whose only content was a removed <script> is empty and the node is
+  // kept.
+  //
+  // CONFIG: the two keys of the ishikawa block, each at the value Mermaid
+  // applies. Defaults are Mermaid's SITE config (getSiteConfig), never the
+  // live one; the source's own keys (frontmatter and %%{init}%%, merged by
+  // Mermaid with the directive winning key by key) overlay them. A null or
+  // absent value, and an array or object value (which the canvas ignores),
+  // give the default. Other values are delivered VERBATIM, never cleaned.
+  //
+  // paddingDrawn is false when the canvas cannot form a finite viewBox: the
+  // renderer's padded box is bbox.x - padding and bbox.width + padding * 2, so
+  // a padding of "wide" or "10px" draws a viewBox of NaN and "Infinity" draws
+  // one of Infinity. A clipping (negative) or huge finite value still draws.
+  const ISHIKAWA_DIAGRAM_TYPE = "ishikawa";
+  const ISHIKAWA_DB_ACCESSORS = Object.freeze(["getRoot"]);
+  const ISHIKAWA_CONFIG_KEYS = Object.freeze(["diagramPadding", "useMaxWidth"]);
+  const ISHIKAWA_SIDE = Object.freeze({ UPPER: "upper", LOWER: "lower" });
+  const ISHIKAWA_NODE_KEYS = Object.freeze(["text", "children"]);
+  const ISHIKAWA_PAIR_SIZE = 2;
+  const ISHIKAWA_PADDING_FACTOR = 2;
+
+  let ishikawaMemoCode = null;
+  let ishikawaMemoPromise = null;
+  let ishikawaHealthy = null;
+  let ishikawaSelfCheckStarted = false;
+  let ishikawaSelfCheckPromise = null;
+
+  function ishikawaStop(message) {
+    return new Error("Ishikawa surface: " + message);
+  }
+
+  /**
+   * Mermaid's SITE ishikawa config: initialize's values over the built-in
+   * defaults. getSiteConfig() reads it without mutating anything.
+   * @returns {Object} The site's ishikawa block
+   */
+  function readIshikawaSiteDefaults() {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    let site = null;
+    if (api && typeof api.getSiteConfig === "function") {
+      site = api.getSiteConfig();
+    }
+    if ((!site || !site.ishikawa) && api && api.defaultConfig) {
+      site = api.defaultConfig;
+    }
+    if (!site || !site.ishikawa || typeof site.ishikawa !== "object") {
+      throw ishikawaStop("Mermaid's site config carries no ishikawa block");
+    }
+    return site.ishikawa;
+  }
+
+  /**
+   * THIS source's own ishikawa config, through mermaid.parse (frontmatter and
+   * %%{init}%% merged by Mermaid's rule, the directive winning). It runs
+   * inside the caller's queue slot and BEFORE getDiagramFromText. NEVER
+   * REJECTS: a source this route refuses reads as no config of its own, and
+   * the parse that follows reports the real error. Values are copied as they
+   * arrive (no JSON round trip, which would turn Infinity into null).
+   *
+   * @param {string} code - The Mermaid ishikawa source
+   * @returns {Promise<Object>} The source's own ishikawa keys, a plain copy
+   */
+  function readIshikawaOwnConfig(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      return Promise.resolve({});
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => {
+        const config = parsed && typeof parsed === "object" ? parsed.config : null;
+        const own = config && typeof config === "object" ? config.ishikawa : null;
+        const copy = {};
+        if (own && typeof own === "object") {
+          ISHIKAWA_CONFIG_KEYS.forEach((key) => {
+            copy[key] = own[key];
+          });
+        }
+        return copy;
+      })
+      .catch((error) => {
+        logDebug(`Ishikawa config read failed, reading as site defaults: ${error && error.message}`);
+        return {};
+      });
+  }
+
+  /**
+   * The config Mermaid applies: the source's own value where it has one that
+   * is neither null, absent, an array nor an object, the site default
+   * otherwise. Verbatim.
+   *
+   * @param {Object} site - The site's ishikawa block
+   * @param {Object} own - The source's own ishikawa keys
+   * @returns {Object} The two config keys
+   */
+  function mergeIshikawaConfig(site, own) {
+    const merged = {};
+    ISHIKAWA_CONFIG_KEYS.forEach((key) => {
+      const value = own[key];
+      const applied = value !== undefined && value !== null && typeof value !== "object" ? value : site[key];
+      if (applied === undefined) {
+        throw ishikawaStop(`neither the source nor the site config holds ishikawa.${key}`);
+      }
+      merged[key] = applied;
+    });
+    return merged;
+  }
+
+  /**
+   * Can the canvas form a finite viewBox? The renderer's own arithmetic, read
+   * from the 11.17.2 bundle (applyPaddedViewBox): x = bbox.x - padding and
+   * width = bbox.width + padding * 2 (JavaScript, so a numeric string is
+   * coerced and "wide" is NaN). A negative or enormous finite value still
+   * draws, so it stays true: that is the picture's fault, not ruled here.
+   *
+   * @param {Object} config - The merged config
+   * @returns {boolean} False when the canvas draws a viewBox that is not finite
+   */
+  function ishikawaPaddingDrawn(config) {
+    const padding = config.diagramPadding;
+    return Number.isFinite(0 - padding) && Number.isFinite(0 + padding * ISHIKAWA_PADDING_FACTOR);
+  }
+
+  /**
+   * THE ONE CHOKE POINT for where a category is drawn (the renderer's draw():
+   * pair k holds categories 2k above the spine and 2k+1 below it, and each pair
+   * sits one step further from the effect).
+   *
+   * @param {number} index - The category's declaration index
+   * @returns {{side: string, spineIndex: number}} Where the canvas puts it
+   */
+  function ishikawaCategoryPlacement(index) {
+    return {
+      side: index % ISHIKAWA_PAIR_SIZE === 0 ? ISHIKAWA_SIDE.UPPER : ISHIKAWA_SIDE.LOWER,
+      spineIndex: Math.floor(index / ISHIKAWA_PAIR_SIZE),
+    };
+  }
+
+  /**
+   * THE ONE CHOKE POINT for the order a cause is drawn among its siblings, top
+   * to bottom (flattenTree and drawBranch). The walk takes an upper bone's
+   * siblings in reverse and a lower bone's in order, so a sibling's PLACE along
+   * the bone is its position in that walk; the place farthest from the spine is
+   * the top of an upper bone and the bottom of a lower one.
+   *
+   * @param {number} authorIndex - The cause's declaration index among its siblings
+   * @param {number} siblingCount - How many siblings there are
+   * @param {string} side - ISHIKAWA_SIDE value of the bone the cause hangs from
+   * @returns {number} 0 for the topmost sibling
+   */
+  function ishikawaDrawnIndex(authorIndex, siblingCount, side) {
+    const walkPlace = side === ISHIKAWA_SIDE.UPPER ? siblingCount - 1 - authorIndex : authorIndex;
+    return side === ISHIKAWA_SIDE.UPPER ? siblingCount - 1 - walkPlace : walkPlace;
+  }
+
+  /**
+   * Copy the ishikawa db into plain data, ONCE and synchronously, walking
+   * iteratively. Every shape the reader cannot map is a STOP here.
+   *
+   * @param {Object} db - The diagram's db
+   * @returns {{effect: Object, nodes: Array<Object>, nodeCount: number, maxDepth: number}}
+   *   Plain copies, raw (not decoded); `nodes` is the pre-order list of every
+   *   node but the effect, each with its parent, depth and authorIndex
+   */
+  function snapshotIshikawaDb(db) {
+    for (const accessor of ISHIKAWA_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw ishikawaStop(
+          `db.${accessor} is not a function; the pinned Mermaid build's ishikawa ` +
+            "db no longer matches the 26 October 2026 census"
+        );
+      }
+    }
+    const rawRoot = db.getRoot();
+    if (rawRoot === undefined || rawRoot === null) {
+      throw ishikawaStop("the source holds no effect line, so there is no root to deliver");
+    }
+    const copyRecord = (raw, where) => {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+        throw ishikawaStop(`${where} is not an object`);
+      }
+      const unknown = Object.keys(raw).filter((key) => !ISHIKAWA_NODE_KEYS.includes(key));
+      if (unknown.length > 0) {
+        throw ishikawaStop(`${where} carries a field the census did not find: ${unknown.join(", ")}`);
+      }
+      if (typeof raw.text !== "string") {
+        throw ishikawaStop(`${where} has no string text`);
+      }
+      if (!Array.isArray(raw.children)) {
+        throw ishikawaStop(`${where} children is not an array`);
+      }
+      return { text: raw.text, depth: 0, authorIndex: null, siblingCount: 0, parent: null, children: [] };
+    };
+
+    const effect = copyRecord(rawRoot, "the effect");
+    effect.depth = -1;
+    const seen = new Set([rawRoot]);
+    const nodes = [];
+    let maxDepth = 0;
+    const stack = [[rawRoot, effect]];
+    while (stack.length > 0) {
+      const [raw, copy] = stack.pop();
+      if (copy !== effect) {
+        nodes.push(copy);
+        if (copy.depth > maxDepth) {
+          maxDepth = copy.depth;
+        }
+      }
+      const pending = raw.children.map((rawChild, index) => {
+        if (rawChild && typeof rawChild === "object" && seen.has(rawChild)) {
+          throw ishikawaStop("a node appears more than once in the tree");
+        }
+        seen.add(rawChild);
+        const childCopy = copyRecord(rawChild, `a child ${index} of ${copy === effect ? "the effect" : copy.text}`);
+        childCopy.depth = copy.depth + 1;
+        childCopy.authorIndex = index;
+        childCopy.siblingCount = raw.children.length;
+        childCopy.parent = copy;
+        copy.children.push(childCopy);
+        return [rawChild, childCopy];
+      });
+      for (let index = pending.length - 1; index >= 0; index -= 1) {
+        stack.push(pending[index]);
+      }
+    }
+    return { effect: effect, nodes: nodes, nodeCount: nodes.length, maxDepth: maxDepth };
+  }
+
+  /**
+   * Build the delivered categories from the snapshot, iteratively (the
+   * pre-order list puts every parent before its children and siblings in
+   * order).
+   * @param {Object} snapshot - snapshotIshikawaDb's result
+   * @returns {Array<Object>} The delivered categories
+   */
+  function buildIshikawaCategories(snapshot) {
+    const decode = (text) => decodePlaceholdersBreaks(text);
+    const categories = [];
+    const delivered = new Map();
+    const sideOf = new Map();
+    snapshot.nodes.forEach((copy) => {
+      const isCategory = copy.parent === snapshot.effect;
+      if (isCategory) {
+        const placement = ishikawaCategoryPlacement(copy.authorIndex);
+        sideOf.set(copy, placement.side);
+        const category = {
+          text: decode(copy.text),
+          rawText: copy.text,
+          authorIndex: copy.authorIndex,
+          side: placement.side,
+          spineIndex: placement.spineIndex,
+          causes: [],
+        };
+        delivered.set(copy, category);
+        categories.push(category);
+        return;
+      }
+      const side = sideOf.get(copy.parent);
+      sideOf.set(copy, side);
+      const cause = {
+        text: decode(copy.text),
+        rawText: copy.text,
+        depth: copy.depth,
+        authorIndex: copy.authorIndex,
+        drawnIndex: ishikawaDrawnIndex(copy.authorIndex, copy.siblingCount, side),
+        causes: [],
+      };
+      delivered.set(copy, cause);
+      delivered.get(copy.parent).causes.push(cause);
+    });
+    return categories;
+  }
+
+  /**
+   * Map one parsed ishikawa diagram to the normalised delivery. Every db read
+   * is the snapshot at the top, in the same tick as the call.
+   *
+   * @param {Object} diagram - The object getDiagramFromText resolved to
+   * @param {Object} [ownConfig] - The source's own ishikawa keys (mermaid.parse)
+   * @returns {Object} { diagramType, effect, categories, config, nodeCount, maxDepth, paddingDrawn }
+   */
+  function normaliseIshikawa(diagram, ownConfig) {
+    const snapshot = snapshotIshikawaDb(diagram.db);
+    const config = mergeIshikawaConfig(readIshikawaSiteDefaults(), ownConfig || {});
+    return {
+      diagramType: ISHIKAWA_DIAGRAM_TYPE,
+      effect: { text: decodePlaceholdersBreaks(snapshot.effect.text), rawText: snapshot.effect.text },
+      categories: buildIshikawaCategories(snapshot),
+      config: config,
+      nodeCount: snapshot.nodeCount,
+      maxDepth: snapshot.maxDepth,
+      paddingDrawn: ishikawaPaddingDrawn(config),
+    };
+  }
+
+  /**
+   * One ishikawa parse, FROM THE CONFIG READ TO THE DELIVERY, with no yield
+   * point between the parse and the db reads. It must run inside an adapter
+   * queue slot; parseIshikawa and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid ishikawa source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readIshikawaInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    return readIshikawaOwnConfig(code).then((ownConfig) =>
+      api.getDiagramFromText(code).then((diagram) => ({
+        diagram: diagram,
+        delivery: normaliseIshikawa(diagram, ownConfig),
+      }))
+    );
+  }
+
+  /**
+   * Parse an ishikawa diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and the db is
+   * read inside this call's own queue slot. THE QUEUE IS LOAD-BEARING for the
+   * shared title store that every parse writes (census S2, S8).
+   *
+   * @param {string} code - The Mermaid ishikawa source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseIshikawa(code) {
+    if (!ishikawaSelfCheckStarted) {
+      runIshikawaSelfCheck();
+    }
+
+    if (code === ishikawaMemoCode && ishikawaMemoPromise) {
+      logDebug("Returning memoised ishikawa parse for identical code string");
+      return ishikawaMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Ishikawa parse entering its queue slot, ${code.length} characters`);
+      return readIshikawaInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Ishikawa parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.nodeCount} node(s), depth ${delivery.maxDepth}`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Ishikawa parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    ishikawaMemoCode = code;
+    ishikawaMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed sc / SelfCheck.
+  // Sources parsed one after another in ONE queue slot, each fully normalised
+  // AND digested before the next parse.
+
+  // NEST: five categories (sides upper, lower, upper, lower, upper), three
+  // levels of cause under the first, a sub-cause under the second and three
+  // siblings under the last.
+  const ISHIKAWA_SELF_CHECK_NEST = [
+    "ishikawa-beta",
+    "  scEffect",
+    "    scCatA",
+    "      scA1",
+    "        scA1a",
+    "          scA1a1",
+    "      scA2",
+    "    scCatB",
+    "      scB1",
+    "      scB2",
+    "        scB2a",
+    "    scCatC",
+    "      scC1",
+    "    scCatD",
+    "    scCatE",
+    "      scE1",
+    "      scE2",
+    "      scE3",
+    "",
+  ].join("\n");
+
+  // TYPED: #quot; in the effect, a category and a cause.
+  const ISHIKAWA_SELF_CHECK_TYPED = [
+    "ishikawa-beta",
+    "  scE #quot;e#quot; end",
+    "    scC #quot;c#quot; end",
+    "      scK #quot;k#quot; end",
+    "",
+  ].join("\n");
+
+  // ESCAPED: a typed &amp; and a tag in the effect, a category and a cause.
+  const ISHIKAWA_SELF_CHECK_ESCAPED = [
+    "ishikawa-beta",
+    "  scE &amp; <b>e</b> end",
+    "    scC &amp; <b>c</b> end",
+    "      scK &amp; <b>k</b> end",
+    "",
+  ].join("\n");
+
+  // BREAKS: a bare break in the effect, a category and a cause (each in a
+  // different spelling the db normalises), a leading and trailing break and a
+  // run, and a break that carries an attribute.
+  const ISHIKAWA_SELF_CHECK_BREAKS = [
+    "ishikawa-beta",
+    "  scE1<br>scE2",
+    "    scC1<br/>scC2",
+    "      scK1<BR />scK2",
+    "      <br>scK3<br><br>scK4<br>",
+    '      scK5<br class="x">scK6',
+    "      scK7 <b>x</b> end",
+    "",
+  ].join("\n");
+
+  // EMPTY: a cause whose only content is a removed script element, between
+  // two plain ones.
+  const ISHIKAWA_SELF_CHECK_EMPTY = [
+    "ishikawa-beta",
+    "  scE",
+    "    scC",
+    "      scK1",
+    "      <script>x</script>",
+    "      scK3",
+    "",
+  ].join("\n");
+
+  // LINES: the grammar has no title, accTitle or accDescr statement, so such
+  // lines are categories.
+  const ISHIKAWA_SELF_CHECK_LINES = [
+    "ishikawa-beta",
+    "  scE",
+    "    accTitle: scAcc",
+    "    title scT",
+    "    accDescr: scD",
+    "",
+  ].join("\n");
+
+  // CFG: frontmatter sets both keys, a directive beats the padding key by key.
+  const ISHIKAWA_SELF_CHECK_CFG = [
+    "---",
+    "config:",
+    "  ishikawa:",
+    "    diagramPadding: 60",
+    "    useMaxWidth: false",
+    "---",
+    '%%{init: {"ishikawa": {"diagramPadding": 33}}}%%',
+    "ishikawa-beta",
+    "  scE",
+    "    scC",
+    "",
+  ].join("\n");
+
+  // CFGWIDE: a padding the canvas cannot draw.
+  const ISHIKAWA_SELF_CHECK_CFG_WIDE = [
+    "---",
+    "config:",
+    "  ishikawa:",
+    "    diagramPadding: wide",
+    "---",
+    "ishikawa-beta",
+    "  scE",
+    "    scC",
+    "",
+  ].join("\n");
+
+  const ISHIKAWA_SELF_CHECK_HEADER_ONLY = "ishikawa-beta\n";
+  const ISHIKAWA_SELF_CHECK_REJECTED = "ishikawa-beta \n  scE\n";
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessor
+   * names, the delivered shape, nesting, layout, the decode and break rows,
+   * the config route, the snapshot and the STOPs. Resolves true on a clean
+   * run; on any failure logs ONE ERROR naming every failed assertion, marks
+   * the surface unhealthy, and resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} The ishikawa health verdict
+   */
+  function runIshikawaSelfCheck() {
+    if (ishikawaSelfCheckPromise) {
+      return ishikawaSelfCheckPromise;
+    }
+    ishikawaSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readIshikawaInSlot(code).then(
+        (result) => ({
+          // The EAGER digest, taken in the same tick as the delivery: every
+          // row below reads this, so a later parse cannot reach it.
+          result: result,
+          digest: JSON.stringify(result.delivery),
+        }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      // A rendered directive leaves its settings in the GLOBAL config (packet
+      // R2): reset to the site's own before the defaults are read.
+      if (typeof window.mermaid.mermaidAPI.reset === "function") {
+        window.mermaid.mermaidAPI.reset();
+      }
+      const outcomes = {};
+      let chain = Promise.resolve();
+      [
+        ["nest", ISHIKAWA_SELF_CHECK_NEST],
+        ["typed", ISHIKAWA_SELF_CHECK_TYPED],
+        ["escaped", ISHIKAWA_SELF_CHECK_ESCAPED],
+        ["breaks", ISHIKAWA_SELF_CHECK_BREAKS],
+        ["empty", ISHIKAWA_SELF_CHECK_EMPTY],
+        ["lines", ISHIKAWA_SELF_CHECK_LINES],
+        ["cfg", ISHIKAWA_SELF_CHECK_CFG],
+        ["cfgWide", ISHIKAWA_SELF_CHECK_CFG_WIDE],
+        ["headerOnly", ISHIKAWA_SELF_CHECK_HEADER_ONLY],
+        ["rejected", ISHIKAWA_SELF_CHECK_REJECTED],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+          });
+      });
+
+      return chain.then(() => {
+        const d = (key) => (outcomes[key].digest ? JSON.parse(outcomes[key].digest) : null);
+        const dbOf = (key) => outcomes[key].result && outcomes[key].result.diagram.db;
+        const causesOf = (cause) => cause.causes.flatMap((child) => [child, ...causesOf(child)]);
+        const everyNode = (delivery) => delivery.categories.flatMap((category) => [category, ...causesOf(category)]);
+        const nest = d("nest");
+        const typed = d("typed");
+        const escaped = d("escaped");
+        const breaks = d("breaks");
+        const empty = d("empty");
+        const lines = d("lines");
+        const cfg = d("cfg");
+        const cfgWide = d("cfgWide");
+        const everything = [nest, typed, escaped, breaks, empty, lines, cfg, cfgWide];
+        const site = readIshikawaSiteDefaults();
+
+        const stubNode = (overrides) => Object.assign({ text: "scStub", children: [] }, overrides);
+        const stubDb = (overrides) =>
+          Object.assign(
+            { getRoot: () => stubNode({ text: "scEffect", children: [stubNode({ text: "scCat" })] }) },
+            overrides
+          );
+        const stubRefuses = (overrides, pattern) => {
+          try {
+            normaliseIshikawa({ db: stubDb(overrides) }, {});
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const shared = stubNode({});
+        const siteStub = { diagramPadding: "site-padding", useMaxWidth: "site-width" };
+        const mergedStub = mergeIshikawaConfig(siteStub, { diagramPadding: null, useMaxWidth: 0 });
+        const mergedObjects = mergeIshikawaConfig(siteStub, { diagramPadding: [5], useMaxWidth: { a: 1 } });
+        const catKeys = ["text", "rawText", "authorIndex", "side", "spineIndex", "causes"];
+        const causeKeys = ["text", "rawText", "depth", "authorIndex", "drawnIndex", "causes"];
+        const cat = (delivery, index) => delivery.categories[index];
+
+        return [
+          [
+            "IC01 the accessor, the config route and the site block the surface reads exist on the pinned build",
+            !!dbOf("nest") &&
+              ISHIKAWA_DB_ACCESSORS.every((name) => typeof dbOf("nest")[name] === "function") &&
+              same(ISHIKAWA_DB_ACCESSORS, ["getRoot"]) &&
+              typeof window.mermaid.parse === "function" &&
+              typeof window.mermaid.mermaidAPI.getSiteConfig === "function" &&
+              ISHIKAWA_CONFIG_KEYS.every((key) => key in site),
+          ],
+          [
+            "IC02 every delivery carries exactly the seven keys in order (no title, accTitle or accDescr), the two config keys, the effect two, every category six and every cause six",
+            everything.every(
+              (delivery) =>
+                !!delivery &&
+                same(Object.keys(delivery), [
+                  "diagramType",
+                  "effect",
+                  "categories",
+                  "config",
+                  "nodeCount",
+                  "maxDepth",
+                  "paddingDrawn",
+                ]) &&
+                delivery.diagramType === "ishikawa" &&
+                same(Object.keys(delivery.effect), ["text", "rawText"]) &&
+                same(Object.keys(delivery.config), ISHIKAWA_CONFIG_KEYS) &&
+                delivery.categories.every((category) => same(Object.keys(category), catKeys)) &&
+                delivery.categories.every((category) =>
+                  causesOf(category).every((cause) => same(Object.keys(cause), causeKeys))
+                )
+            ),
+          ],
+          [
+            "IC03 NESTING: three levels of cause, a sub-cause, siblings; depth walked (a direct cause is 1), authorIndex among siblings, nodeCount 16 (the effect not counted) and maxDepth 3",
+            !!nest &&
+              same(
+                everyNode(nest).map((node) => [node.text, node.depth === undefined ? "cat" : node.depth, node.authorIndex, node.causes.length]),
+                [
+                  ["scCatA", "cat", 0, 2],
+                  ["scA1", 1, 0, 1],
+                  ["scA1a", 2, 0, 1],
+                  ["scA1a1", 3, 0, 0],
+                  ["scA2", 1, 1, 0],
+                  ["scCatB", "cat", 1, 2],
+                  ["scB1", 1, 0, 0],
+                  ["scB2", 1, 1, 1],
+                  ["scB2a", 2, 0, 0],
+                  ["scCatC", "cat", 2, 1],
+                  ["scC1", 1, 0, 0],
+                  ["scCatD", "cat", 3, 0],
+                  ["scCatE", "cat", 4, 3],
+                  ["scE1", 1, 0, 0],
+                  ["scE2", 1, 1, 0],
+                  ["scE3", 1, 2, 0],
+                ]
+              ) &&
+              nest.nodeCount === 16 &&
+              nest.maxDepth === 3,
+          ],
+          [
+            "IC04 SIDE and SPINE: categories alternate upper, lower, upper, lower, upper and pair k sits k steps from the effect (0, 0, 1, 1, 2)",
+            !!nest &&
+              same(
+                nest.categories.map((category) => [category.text, category.side, category.spineIndex]),
+                [
+                  ["scCatA", "upper", 0],
+                  ["scCatB", "lower", 0],
+                  ["scCatC", "upper", 1],
+                  ["scCatD", "lower", 1],
+                  ["scCatE", "upper", 2],
+                ]
+              ),
+          ],
+          [
+            "IC05 DRAWN INDEX: the topmost sibling is 0, on an upper bone (A, E) and a lower bone (B), and a sub-cause is ranked among its own siblings",
+            !!nest &&
+              same(cat(nest, 0).causes.map((cause) => [cause.text, cause.authorIndex, cause.drawnIndex]), [["scA1", 0, 0], ["scA2", 1, 1]]) &&
+              same(cat(nest, 4).causes.map((cause) => [cause.text, cause.authorIndex, cause.drawnIndex]), [["scE1", 0, 0], ["scE2", 1, 1], ["scE3", 2, 2]]) &&
+              same(cat(nest, 1).causes.map((cause) => [cause.text, cause.authorIndex, cause.drawnIndex]), [["scB1", 0, 0], ["scB2", 1, 1]]) &&
+              cat(nest, 1).causes[1].causes[0].drawnIndex === 0 &&
+              ishikawaDrawnIndex(0, 3, ISHIKAWA_SIDE.UPPER) === 0 &&
+              ishikawaDrawnIndex(2, 3, ISHIKAWA_SIDE.UPPER) === 2 &&
+              ishikawaDrawnIndex(0, 3, ISHIKAWA_SIDE.LOWER) === 0 &&
+              ishikawaDrawnIndex(2, 3, ISHIKAWA_SIDE.LOWER) === 2,
+          ],
+          [
+            "IC06 DECODE typed: #quot; becomes a quotation mark in the effect, a category and a cause",
+            !!typed &&
+              typed.effect.text === 'scE "e" end' &&
+              typed.categories[0].text === 'scC "c" end' &&
+              typed.categories[0].causes[0].text === 'scK "k" end',
+          ],
+          [
+            "IC07 DECODE escaped: a typed &amp; and a tag are LEFT AS TYPED in the effect, a category and a cause, and decodeAuthorText is not the same decoder",
+            !!escaped &&
+              escaped.effect.text === "scE &amp; <b>e</b> end" &&
+              escaped.categories[0].text === "scC &amp; <b>c</b> end" &&
+              escaped.categories[0].causes[0].text === "scK &amp; <b>k</b> end" &&
+              decodeAuthorText(escaped.categories[0].causes[0].rawText) !== escaped.categories[0].causes[0].text,
+          ],
+          [
+            "IC08 RAW keys carry the db's bytes before decode: the delimiter bytes survive in rawText at all three positions and the bare break stays a tag",
+            !!typed &&
+              !!breaks &&
+              typed.effect.rawText.includes(PLACEHOLDER_NAMED) &&
+              typed.categories[0].rawText.includes(PLACEHOLDER_NAMED) &&
+              typed.categories[0].causes[0].rawText.includes(PLACEHOLDER_NAMED) &&
+              breaks.effect.rawText === "scE1<br>scE2" &&
+              breaks.categories[0].rawText === "scC1<br>scC2",
+          ],
+          [
+            "IC09 DRAWN BREAK: a bare break in any spelling reads as one space in the effect, a category and a cause; a leading and trailing break is removed and a run is one space",
+            !!breaks &&
+              breaks.effect.text === "scE1 scE2" &&
+              breaks.categories[0].text === "scC1 scC2" &&
+              breaks.categories[0].causes[0].text === "scK1 scK2" &&
+              breaks.categories[0].causes[1].text === "scK3 scK4",
+          ],
+          [
+            "IC10 PRINTED TAG: a break that carries an attribute and a formatting tag are read as characters, the tag as typed",
+            !!breaks &&
+              breaks.categories[0].causes[2].text === 'scK5<br class="x">scK6' &&
+              breaks.categories[0].causes[3].text === "scK7 <b>x</b> end",
+          ],
+          [
+            "IC11 EMPTY label: a cause whose only content was a removed script element is delivered as the db holds it (empty), the node is kept and counted",
+            !!empty &&
+              same(
+                empty.categories[0].causes.map((cause) => [cause.text, cause.rawText, cause.authorIndex]),
+                [["scK1", "scK1", 0], ["", "", 1], ["scK3", "scK3", 2]]
+              ) &&
+              empty.nodeCount === 4,
+          ],
+          [
+            "IC12 AUTHOR LINES are nodes: accTitle:, title and accDescr: lines arrive as categories, in order, counted",
+            !!lines &&
+              same(lines.categories.map((category) => category.text), ["accTitle: scAcc", "title scT", "accDescr: scD"]) &&
+              lines.nodeCount === 3,
+          ],
+          [
+            "IC13 CONFIG route: frontmatter sets both keys, the directive beats the padding key by key, and an absent source reads as the site's own values",
+            !!cfg &&
+              cfg.config.diagramPadding === 33 &&
+              cfg.config.useMaxWidth === false &&
+              !!nest &&
+              nest.config.diagramPadding === site.diagramPadding &&
+              nest.config.useMaxWidth === site.useMaxWidth &&
+              !!cfgWide &&
+              cfgWide.config.diagramPadding === "wide",
+          ],
+          [
+            "IC14 CONFIG discard: a null gives the site default, a falsy value that is not null is kept, and an array or object is ignored as the canvas ignores it",
+            mergedStub.diagramPadding === "site-padding" &&
+              mergedStub.useMaxWidth === 0 &&
+              mergedObjects.diagramPadding === "site-padding" &&
+              mergedObjects.useMaxWidth === "site-width",
+          ],
+          [
+            "IC15 PADDING DRAWN: false only when the viewBox is not finite: wide, 10px and Infinity are false; 20, 60, 0, -40, a numeric string, an empty string and true are true; a delivery carries it",
+            ["wide", "10px", "Infinity", "1e400", Infinity, NaN].every((value) => !ishikawaPaddingDrawn({ diagramPadding: value })) &&
+              [20, 60, 0, -40, "60", "", true, 100000].every((value) => ishikawaPaddingDrawn({ diagramPadding: value })) &&
+              !!nest &&
+              nest.paddingDrawn === true &&
+              normaliseIshikawa({ db: stubDb({}) }, { diagramPadding: "wide" }).paddingDrawn === false &&
+              normaliseIshikawa({ db: stubDb({}) }, { diagramPadding: "60" }).paddingDrawn === true,
+          ],
+          [
+            "IC16 a STOP, never a silent drop: a missing accessor, no root, a node that is not an object, a text that is not a string, children that are not an array, a node carrying a field the census did not find and a node reached twice each refuse; a header-only source and a source Mermaid rejects reject; and the stub itself is accepted",
+            normaliseIshikawa({ db: stubDb({}) }, {}).categories.length === 1 &&
+              stubRefuses({ getRoot: undefined }, /getRoot is not a function/) &&
+              stubRefuses({ getRoot: () => undefined }, /no effect line/) &&
+              stubRefuses({ getRoot: () => stubNode({ children: [3] }) }, /is not an object/) &&
+              stubRefuses({ getRoot: () => stubNode({ children: [stubNode({ text: 3 })] }) }, /no string text/) &&
+              stubRefuses({ getRoot: () => stubNode({ children: [stubNode({ children: {} })] }) }, /children is not an array/) &&
+              stubRefuses({ getRoot: () => stubNode({ children: [stubNode({ id: 7 })] }) }, /did not find: id/) &&
+              stubRefuses({ getRoot: () => stubNode({ children: [shared, shared] }) }, /more than once/) &&
+              !!outcomes.headerOnly.error &&
+              /no effect line/.test(String(outcomes.headerOnly.error.message)) &&
+              !!outcomes.rejected.error &&
+              /Expecting|Parse error|Lexer error|Parsing failed/.test(String(outcomes.rejected.error.message)),
+          ],
+          [
+            "IC17 the SNAPSHOT: a delivery shares no object with the db it was read from; a node added to the db afterwards, and a node's text changed, do not reach the delivery",
+            (() => {
+              const first = outcomes.nest.result;
+              const root = first && first.diagram.db.getRoot();
+              if (!root) {
+                return false;
+              }
+              root.children[0].children.push({ text: "scLate", children: [] });
+              root.children[0].text = "scChanged";
+              return JSON.stringify(first.delivery) === outcomes.nest.digest && first.delivery.categories[0].causes.length === 2;
+            })(),
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    ishikawaSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.filter(([, pass]) => !pass);
+        if (failed.length > 0) {
+          logError(
+            `Ishikawa self-check FAILED at assertion(s): ${failed.map(([label]) => label).join(" || ")}. ` +
+              "Either the pinned Mermaid build's ishikawa internals no longer " +
+              "match the 26 October 2026 census, or the surface has drifted; " +
+              "do not trust ishikawa adapter output."
+          );
+          ishikawaHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Ishikawa self-check passed: accessor, shape, nesting, layout, decode, " +
+            "break, config, snapshot and stop assertions all hold"
+        );
+        ishikawaHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Ishikawa self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        ishikawaHealthy = false;
+        return false;
+      });
+
+    return ishikawaSelfCheckPromise;
+  }
+
+  /**
+   * Report the ishikawa surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the ishikawa self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isIshikawaHealthy() {
+    return ishikawaHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -20514,6 +21407,9 @@ window.MermaidParseAdapter = (function () {
     parseTreeView: parseTreeView,
     runTreeViewSelfCheck: runTreeViewSelfCheck,
     isTreeViewHealthy: isTreeViewHealthy,
+    parseIshikawa: parseIshikawa,
+    runIshikawaSelfCheck: runIshikawaSelfCheck,
+    isIshikawaHealthy: isIshikawaHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

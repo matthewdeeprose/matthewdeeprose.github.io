@@ -645,8 +645,7 @@ const GraphBuilderUI = (function () {
             <div class="gb-preview-actions">
               <button 
                 type="button" 
-                class="gb-show-more-button"
-                aria-label="Show ${Math.min(increment, remaining)} more rows">
+                class="gb-show-more-button">
                 Show ${Math.min(increment, remaining)} more rows
               </button>
               ${
@@ -654,17 +653,15 @@ const GraphBuilderUI = (function () {
                   ? `
                 <button 
                   type="button" 
-                  class="gb-show-less-button"
-                  aria-label="Show fewer rows">
-                  Show less
+                  class="gb-show-less-button">
+                  Show fewer rows
                 </button>`
                   : ""
               }
               <button 
                 type="button" 
-                class="gb-show-all-button"
-                aria-label="Show all ${totalRows} rows">
-                Show all (${totalRows})
+                class="gb-show-all-button">
+                Show all ${totalRows} rows
               </button>
             </div>
           `;
@@ -702,9 +699,8 @@ const GraphBuilderUI = (function () {
             <div class="gb-preview-actions">
               <button 
                 type="button" 
-                class="gb-show-less-button"
-                aria-label="Show fewer rows">
-                Show less
+                class="gb-show-less-button">
+                Show fewer rows
               </button>
             </div>
           `;

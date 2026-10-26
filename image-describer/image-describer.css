@@ -850,7 +850,7 @@
 
 .imgdesc-generate-action > button:first-child {
   width: 100%;
-  flex: 1;
+  flex: 0 0 auto;
   min-height: 3.25rem;
 }
 

@@ -1171,10 +1171,18 @@
   min-width: 0;
 }
 
+/* Parcel P7: the pictures box is the third item of the body. From 600px the card is as tall as
+ * the details column at rest and as wide as its picture's own shape makes it (chat-attach.js
+ * fitCard() sets --chat-card-w and --chat-card-h on the body; until it has, the P4b column and
+ * a natural height apply). With the pictures box showing, 1200px and wider gives three columns
+ * (card, details, pictures); from 600px to 1199px the pictures box takes the full width below
+ * the card and details; under 600px everything stacks. The switch points come from the measured
+ * body width: 1200px is a body of about 1000px, where a card of about 210px, the 18.5rem pictures
+ * column and the gaps still leave the details column about 460px. */
 @media (min-width: 600px) {
   .chat-attach-body:has(> .chat-attachment-card-host:not([hidden])) {
     display: grid;
-    grid-template-columns: clamp(8rem, 30%, 14rem) minmax(0, 1fr);
+    grid-template-columns: var(--chat-card-w, clamp(8rem, 30%, 14rem)) minmax(0, 1fr);
     gap: 1rem;
     align-items: start;
     margin-top: 0.5rem;
@@ -1183,6 +1191,39 @@
   .chat-attachment-card-host {
     max-width: none;
     margin: 0;
+    height: var(--chat-card-h, auto);
+  }
+
+  /* The card fills its host top to bottom; a picture keeps its shape inside it (centred if the
+   * card is capped narrower than the picture's shape would make it). */
+  .chat-attachment-card-host .chat-attachment-card,
+  .chat-attachment-card-host .chat-attachment-thumb,
+  .chat-attachment-card-host .chat-attachment-doc-icon {
+    height: 100%;
+  }
+
+  .chat-attachment-card-host .chat-attachment-textpage {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+
+  /* Below the card and details, the whole width. */
+  .chat-attach-body > #chat-attach-pictures-wrap:not([hidden]) {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1200px) {
+  .chat-attach-body:has(> .chat-attachment-card-host:not([hidden])):has(> #chat-attach-pictures-wrap:not([hidden])) {
+    grid-template-columns: var(--chat-card-w, clamp(8rem, 30%, 14rem)) minmax(0, 1fr) 18.5rem;
+  }
+
+  /* Its own column: no divider above it. */
+  .chat-attach-body > #chat-attach-pictures-wrap:not([hidden]) {
+    grid-column: auto;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
 }
 
@@ -1403,7 +1444,8 @@
     content: ", " / "";
   }
 
-  .chat-attachment-size::before {
+  .chat-attachment-size::before,
+  .chat-attachment-dimensions::before {
     content: " · ";
     content: " · " / "";
   }
@@ -1461,21 +1503,74 @@
 
 /* Windows High Contrast: pin the card border to a system colour. */
 @media (forced-colors: active) {
-  .chat-attachment-card {
+  .chat-attachment-card,
+  .chat-attach-pictures-thumb {
     border-color: CanvasText;
   }
 }
 
-/* The "Include pictures" row: a thin divider above, a label at least 44px tall to
- * click, and a native check box at least 24px square. [hidden] keeps hiding it
- * because the layout display is on :not([hidden]). */
+/* The "Include pictures" box (parcel P7: its own column or row): a thin divider above when it sits
+ * below the details, a label at least 44px tall to click, and a native check box at least 24px
+ * square. The checkbox and label share the first row; the note sits under the label and the
+ * strip spans the box. [hidden] keeps hiding it because the layout display is on :not([hidden]). */
 #chat-attach-pictures-wrap:not([hidden]) {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  column-gap: 0.5rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid currentcolor;
+}
+
+.chat-attach-pictures-note {
+  grid-column: 2;
+  margin: 0 0 0.5rem;
+}
+
+/* The strip of pictures that would be sent: small, in order, each over its caption. Five across in
+ * the 18.5rem column, many more when it has the full width. */
+.chat-attach-pictures-strip:not([hidden]) {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.25rem, 1fr));
+  gap: 0.5rem 0.4rem;
+  margin-top: 0.25rem;
+}
+
+.chat-attach-pictures-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.chat-attach-pictures-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  box-sizing: border-box;
+  object-fit: contain;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 2px;
+}
+
+.chat-attach-pictures-caption {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* The note on a sent turn that carried a document's pictures. The separator is generated, with an
+ * empty spoken alternative where that is supported. A sent bubble keeps its spaces (pre-wrap), so the
+ * gap before the dot is a margin and the one real space after it is in the note's own text. */
+.chat-bubble-attachment-sent::before {
+  content: "·";
+  content: "·" / "";
+  margin-inline-start: 0.35em;
 }
 
 #chat-attach-pictures-wrap input[type="checkbox"] {

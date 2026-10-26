@@ -174,6 +174,44 @@
     return parts.join("");
   }
 
+  // The words of the note on a sent turn that carried a document's pictures (parcel P7). {n} is the
+  // number of pictures; the "page" variants are for a PDF sent as page pictures. The separator before
+  // the note is CSS (.chat-bubble-attachment-sent::before), so it is not spoken where that is supported.
+  const PICTURES_SENT_WORDS = Object.freeze({
+    one: "1 picture sent",
+    many: "{n} pictures sent",
+    pageOne: "1 page picture sent",
+    pageMany: "{n} page pictures sent",
+  });
+  const PICTURE_KIND_PAGE = "page"; // the reader's kind for a PDF page picture
+
+  /**
+   * The pictures a live document part sent: { count, pages }, or null when it sent none. Only a part
+   * whose includeImages is true (the box was showing and ticked at send time) counts, and only the
+   * pictures with a data URL, which are exactly the ones the reader's toParts sends. A restored
+   * reference has no part, so it never reaches here.
+   */
+  function picturesSentBy(part) {
+    if (part.includeImages !== true || !part.doc || !Array.isArray(part.doc.images)) return null;
+    const sent = part.doc.images.filter(function (image) {
+      return image && image.dataUrl;
+    });
+    if (!sent.length) return null;
+    return {
+      count: sent.length,
+      pages: sent.every(function (image) {
+        return image.kind === PICTURE_KIND_PAGE;
+      }),
+    };
+  }
+
+  function picturesSentNote(pictures) {
+    const words = pictures.pages
+      ? pictures.count === 1 ? PICTURES_SENT_WORDS.pageOne : PICTURES_SENT_WORDS.pageMany
+      : pictures.count === 1 ? PICTURES_SENT_WORDS.one : PICTURES_SENT_WORDS.many;
+    return words.replace("{n}", String(pictures.count));
+  }
+
   /**
    * Classify the attachment element of array content — image OR pdf:
    *   { kind:"live", media:"image", url }                       — a live image turn (has base64 bytes)
@@ -207,6 +245,7 @@
           kind: "live",
           media: "document",
           filename: (p.doc && p.doc.name) || "Document",
+          pictures: picturesSentBy(p),
         };
       }
       if (p.kind === "document") {
@@ -293,6 +332,14 @@
     label.textContent =
       att.kind === "reference" ? filename + " — attached, not restored" : filename;
     chip.appendChild(label);
+    if (att.pictures) {
+      // A real space inside the text keeps the filename and the note apart for a reader that joins
+      // inline elements; the visible separator is CSS.
+      const sent = document.createElement("span");
+      sent.className = "chat-bubble-attachment-sent";
+      sent.textContent = " " + picturesSentNote(att.pictures);
+      chip.appendChild(sent);
+    }
     // data-icon injected dynamically — populate now (auto-populator ran at load).
     if (window.IconLibrary && typeof window.IconLibrary.populateIcons === "function") {
       window.IconLibrary.populateIcons(chip);

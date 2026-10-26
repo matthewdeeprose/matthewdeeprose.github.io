@@ -85,6 +85,10 @@ window.ChatAttach = (function () {
   let _readToken = 0; // bumped per selection: a later file wins, an earlier result is dropped
   let _freeShown = false; // whether the free-model sentence is currently showing
   let _reading = false; // true while a document read is in flight
+  let _boxWired = false; // idempotency guard for the pictures box's change listener
+  let _stripFor = null; // the attachment the strip's items were built for (a different one rebuilds them)
+  let _bodyObserver = null; // one ResizeObserver on the box body, refits the card on a width change only
+  let _fitBodyWidth = 0; // the body width the card was last fitted at
 
   // ── Spoken and visible wording ──────────────────────────────────────────────
   // One announce() call per attach builds ONE string from these; the advice
@@ -116,11 +120,35 @@ window.ChatAttach = (function () {
     pageCapped:
       "It has {total} pages. The first {n} can be sent as pictures. To send them, tick Include page pictures.",
   });
-  // The visible label of the "Include pictures" box: "Include <kind> (<count> <unit>)".
+  // The visible label of the "Include pictures" box: "Include <count> <kind>", where the count is
+  // what can be sent (parcel P7). The word "found" now lives only in the "How we read this file" rows.
   const PICTURES_LABEL = Object.freeze({
-    pictures: Object.freeze({ kind: "pictures", unitOne: "found", unitMany: "found" }),
-    pages: Object.freeze({ kind: "page pictures", unitOne: "page", unitMany: "pages" }),
+    pictures: Object.freeze({ one: "picture", many: "pictures" }),
+    pages: Object.freeze({ one: "page picture", many: "page pictures" }),
   });
+  // The strip of pictures that would be sent (parcel P7). Thumbnails are a canvas downscale made
+  // once per attachment on the first tick, about 2.5 times the size they are shown at, held in
+  // memory only and dropped with the attachment. The captions use the same words as the labels
+  // the reader puts before each picture on the wire ("Page n:" / "Image n:").
+  const THUMB_MAX_PX = 160;
+  const THUMB_MIME = "image/jpeg";
+  const THUMB_QUALITY = 0.75;
+  const THUMB_BACKGROUND = "#ffffff"; // a transparent picture is flattened onto white, as a page is
+  const PICTURE_KIND_PAGE = "page"; // the reader's kind for a PDF page picture
+  const STRIP_CAPTIONS = Object.freeze({ page: "Page", image: "Image" });
+  // The attachment card fills its row (parcel P7). The card's width follows the picture's own
+  // shape at the height of the details column, up to half the box; the column and height are set
+  // as custom properties on the box body (chat.css reads them).
+  const WIDE_BOX_QUERY = "(min-width: 600px)";
+  const CARD_MAX_SHARE = 0.5;
+  const CARD_MIN_PX = 64;
+  const CARD_DEFAULT_SHARE = 0.3;
+  const CARD_FIT_MAX_PASSES = 5;
+  const CARD_FIT_EPSILON_PX = 0.5;
+  const TEXT_PAGE_ASPECT = 1 / 1.414; // matches .chat-attachment-textpage in chat.css
+  const CARD_WIDTH_VAR = "--chat-card-w";
+  const CARD_HEIGHT_VAR = "--chat-card-h";
+  const DIMENSIONS_WORDS = Object.freeze({ times: " × ", unit: " px" });
   // The count shown beside the type in the attachment card: which reader meta field, and its words.
   // `label` is the small heading over the count on a wide box (parcel P4c).
   const COUNT_UNITS = Object.freeze({
@@ -129,7 +157,7 @@ window.ChatAttach = (function () {
     xlsx: Object.freeze({ key: "sheets", one: "sheet", many: "sheets", label: "Sheets" }),
   });
   // The headings over the type and size facts (parcel P4c).
-  const FACT_LABELS = Object.freeze({ type: "Type", size: "Size" });
+  const FACT_LABELS = Object.freeze({ type: "Type", size: "Size", dimensions: "Dimensions" });
   // "How we read this file" (parcel P4c): the disclosure's heading and the words of its rows.
   // Every value is built from a field the reader returns; a field it does not return gives no row.
   const MORE_WORDS = Object.freeze({
@@ -343,6 +371,7 @@ window.ChatAttach = (function () {
     const wasFree = _freeShown;
     renderAdvice();
     renderPictures();
+    fitCard(); // the free-model sentence or the pictures column may have changed the details column
     if (_freeShown && !wasFree) announce(ADVICE.free);
   }
 
@@ -363,8 +392,12 @@ window.ChatAttach = (function () {
     return document.getElementById(elId("attach-pictures-kind"));
   }
 
-  function picturesUnitEl() {
-    return document.getElementById(elId("attach-pictures-unit"));
+  function picturesNoteEl() {
+    return document.getElementById(elId("attach-pictures-note"));
+  }
+
+  function picturesStripEl() {
+    return document.getElementById(elId("attach-pictures-strip"));
   }
 
   // A PDF sends its PAGES as pictures; Word and PowerPoint send the pictures inside them.
@@ -410,16 +443,113 @@ window.ChatAttach = (function () {
     const offered = picturesOffered();
     const kept = offered ? keptPictureCount() : 0;
     const words = PICTURES_LABEL[offered && picturesArePages() ? "pages" : "pictures"];
-    const unit = kept === 1 ? words.unitOne : words.unitMany;
     for (const [el, text] of [
       [picturesCountEl(), String(kept)],
-      [picturesKindEl(), words.kind],
-      [picturesUnitEl(), unit],
+      [picturesKindEl(), kept === 1 ? words.one : words.many],
     ]) {
       if (el && el.textContent !== text) el.textContent = text;
     }
     const wrap = picturesWrapEl();
     if (wrap) wrap.hidden = !offered;
+    renderStrip();
+  }
+
+  // ── The strip of pictures that would be sent (parcel P7) ─────────────────────
+  // Decorative: the host is aria-hidden, each picture has an empty alt, nothing in it is
+  // focusable, and the box's label is its text equivalent. SILENT: no live region, no announce().
+
+  // The held pictures the reader would send: those with a data URL, in order, each with the number
+  // and kind the wire labels it with ("Page n:" / "Image n:", openrouter-embed-documents.js toParts).
+  function sendablePictures() {
+    const images = attachment && attachment.doc && attachment.doc.images;
+    if (!Array.isArray(images)) return [];
+    const pictures = [];
+    images.forEach(function (image, index) {
+      if (!(image && image.dataUrl)) return;
+      pictures.push({
+        dataUrl: image.dataUrl,
+        number: Number.isFinite(image.number) ? image.number : index + 1,
+        kind: image.kind === PICTURE_KIND_PAGE ? PICTURE_KIND_PAGE : "image",
+      });
+    });
+    return pictures;
+  }
+
+  // A small copy of one picture, made on a canvas and flattened onto white. Resolves null on any
+  // failure, so one bad picture leaves a caption with no thumbnail rather than breaking the strip.
+  function makeThumbnail(dataUrl) {
+    return new Promise(function (resolve) {
+      const source = new Image();
+      source.onload = function () {
+        const longest = Math.max(source.naturalWidth, source.naturalHeight);
+        if (!(longest > 0)) return resolve(null);
+        const scale = Math.min(1, THUMB_MAX_PX / longest);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(source.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(source.naturalHeight * scale));
+        const context = canvas.getContext("2d");
+        if (!context) return resolve(null);
+        context.fillStyle = THUMB_BACKGROUND;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(source, 0, 0, canvas.width, canvas.height);
+        try {
+          resolve(canvas.toDataURL(THUMB_MIME, THUMB_QUALITY));
+        } catch (e) {
+          logWarn("thumbnail could not be encoded");
+          resolve(null);
+        }
+      };
+      source.onerror = function () {
+        resolve(null);
+      };
+      source.src = dataUrl;
+    });
+  }
+
+  // Builds the items for the held attachment (captions at once, thumbnails one after another as
+  // they are made). Held on the DOM only: nothing here is stored or sent.
+  function buildStripItems(strip) {
+    strip.textContent = "";
+    const held = attachment;
+    _stripFor = held;
+    const pending = [];
+    sendablePictures().forEach(function (picture) {
+      const item = document.createElement("div");
+      item.className = "chat-attach-pictures-item";
+      const thumb = document.createElement("img");
+      thumb.className = "chat-attach-pictures-thumb";
+      thumb.alt = ""; // decorative: the box's label says what is being sent
+      item.appendChild(thumb);
+      const caption = document.createElement("span");
+      caption.className = "chat-attach-pictures-caption";
+      caption.textContent = STRIP_CAPTIONS[picture.kind] + " " + picture.number;
+      item.appendChild(caption);
+      strip.appendChild(item);
+      pending.push({ thumb: thumb, dataUrl: picture.dataUrl });
+    });
+    (async function () {
+      for (const entry of pending) {
+        const small = await makeThumbnail(entry.dataUrl);
+        if (_stripFor !== held) return; // removed or replaced meanwhile
+        if (small) entry.thumb.src = small;
+      }
+    })();
+  }
+
+  // The strip and its note show only while the box is showing AND ticked. Items persist (hidden)
+  // across an untick, and are dropped when the held attachment changes or goes.
+  function renderStrip() {
+    const strip = picturesStripEl();
+    const note = picturesNoteEl();
+    if (!strip || !note) return;
+    if (_stripFor && _stripFor !== attachment) {
+      strip.textContent = "";
+      _stripFor = null;
+    }
+    const show = picturesIncluded();
+    note.hidden = !show;
+    if (show && _stripFor !== attachment) buildStripItems(strip);
+    strip.hidden = !show;
   }
 
   // Pictures cost tokens, so every new attach and every removal starts unticked.
@@ -834,7 +964,10 @@ window.ChatAttach = (function () {
       moreHost.textContent = "";
       moreHost.hidden = true;
     }
-    if (!attachment) return;
+    if (!attachment) {
+      fitCard(); // clears the card's size
+      return;
+    }
 
     const chip = document.createElement("div");
     chip.className = "chat-attachment-chip";
@@ -901,6 +1034,9 @@ window.ChatAttach = (function () {
       window.refreshIcons(chip);
       if (cardHost) window.refreshIcons(cardHost);
     }
+
+    observeBody();
+    fitCard(); // a picture card refits again when its picture has loaded
   }
 
   // The count beside the type: "15 pages", "8 slides", "3 sheets", with the heading it
@@ -938,6 +1074,25 @@ window.ChatAttach = (function () {
     if (count) addFact(list, count.label, count.text, "chat-attachment-count");
     addFact(list, FACT_LABELS.size, formatFileSize(held.size), "chat-attachment-size");
     return list;
+  }
+
+  // An image's Dimensions, from the card picture's own natural size once it has loaded (parcel P7).
+  // Never shown as 0, and only for an image: a document's pages have no single size. The facts list
+  // carries no live role, so the late addition is silent.
+  function addDimensionsFact(held, picture) {
+    if (held.kind !== "image") return;
+    const width = picture.naturalWidth;
+    const height = picture.naturalHeight;
+    if (!(width > 0 && height > 0)) return;
+    const host = previewEl();
+    const list = host && host.querySelector(".chat-attachment-facts");
+    if (!list || list.querySelector(".chat-attachment-dimensions")) return;
+    addFact(
+      list,
+      FACT_LABELS.dimensions,
+      formatNumber(width) + DIMENSIONS_WORDS.times + formatNumber(height) + DIMENSIONS_WORDS.unit,
+      "chat-attachment-dimensions"
+    );
   }
 
   // ── "How we read this file" (parcel P4c) ────────────────────────────────────
@@ -1098,6 +1253,14 @@ window.ChatAttach = (function () {
     if (previewSrc) {
       const thumb = document.createElement("img");
       thumb.className = "chat-attachment-thumb";
+      // Once the picture has loaded its own shape is known: an image's Dimensions join the facts and
+      // the card is fitted to its row at that shape (parcel P7).
+      const held = attachment;
+      thumb.addEventListener("load", function () {
+        if (held !== attachment) return; // removed or replaced before it loaded
+        addDimensionsFact(held, thumb);
+        fitCard();
+      });
       thumb.src = previewSrc;
       thumb.alt = ""; // decorative — the filename is shown as visible text beside it
       card.appendChild(thumb);
@@ -1122,6 +1285,97 @@ window.ChatAttach = (function () {
     docIcon.setAttribute("data-icon", attachment.kind === "pdf" ? "pdf" : "fileText");
     card.appendChild(docIcon);
     return card;
+  }
+
+  // ── The card fills its row (parcel P7) ───────────────────────────────────────
+  // From 600px the card is as tall as the details column at rest (its disclosure closed) and as
+  // wide as the picture's own shape makes it at that height, up to half the box. CSS cannot size
+  // a box from a sibling's height, so this measures the column and sets two custom properties on
+  // the box body, which chat.css reads. It runs on attach, Remove, replace, a model change, the
+  // card picture loading and a change in the body's WIDTH; never on a tick or a disclosure toggle,
+  // so those cannot resize the card. The observer below reacts to width only, so the card's own
+  // size (which moves the body's height, not its width) cannot start a loop.
+  function bodyEl() {
+    const zone = dropzoneEl();
+    return zone ? zone.querySelector(".chat-attach-body") : null;
+  }
+
+  function mainEl() {
+    const body = bodyEl();
+    return body ? body.querySelector(".chat-attach-main") : null;
+  }
+
+  function clearCardVars(body) {
+    body.style.removeProperty(CARD_WIDTH_VAR);
+    body.style.removeProperty(CARD_HEIGHT_VAR);
+    _fitBodyWidth = 0;
+  }
+
+  // The card picture's width over its height; null until a picture has loaded. A text page and a
+  // document icon use the A4 shape the text page is drawn at.
+  function cardAspect(host) {
+    const picture = host.querySelector("img.chat-attachment-thumb");
+    if (!picture) return TEXT_PAGE_ASPECT;
+    return picture.complete && picture.naturalWidth > 0 && picture.naturalHeight > 0
+      ? picture.naturalWidth / picture.naturalHeight
+      : null;
+  }
+
+  function fitCard() {
+    const body = bodyEl();
+    const host = cardHostEl();
+    const main = mainEl();
+    if (!body || !host || !main) return;
+    if (!attachment || host.hidden || !window.matchMedia(WIDE_BOX_QUERY).matches) {
+      clearCardVars(body);
+      return;
+    }
+    const aspect = cardAspect(host);
+    const bodyWidth = body.clientWidth;
+    if (!aspect || !(bodyWidth > 0)) return; // not loaded, or not laid out (the tool is hidden)
+    _fitBodyWidth = bodyWidth;
+
+    // The resting height is with every disclosure closed; an open one is put back afterwards.
+    const reopen = Array.from(main.querySelectorAll("details[open]"));
+    reopen.forEach(function (details) {
+      details.open = false;
+    });
+
+    // The picture sits inside the card's border, so the shape applies to the box inside it.
+    const card = host.querySelector(".chat-attachment-card");
+    const cardStyle = card ? window.getComputedStyle(card) : null;
+    const chrome = cardStyle ? (parseFloat(cardStyle.borderLeftWidth) || 0) + (parseFloat(cardStyle.borderRightWidth) || 0) : 0;
+    const maxWidth = bodyWidth * CARD_MAX_SHARE;
+    const previous = parseFloat(body.style.getPropertyValue(CARD_WIDTH_VAR));
+    let width = Number.isFinite(previous) ? previous : bodyWidth * CARD_DEFAULT_SHARE;
+    let height = 0;
+    for (let pass = 0; pass < CARD_FIT_MAX_PASSES; pass++) {
+      body.style.setProperty(CARD_WIDTH_VAR, width + "px");
+      height = main.getBoundingClientRect().height;
+      const next = Math.min(maxWidth, Math.max(CARD_MIN_PX, (height - chrome) * aspect + chrome));
+      if (Math.abs(next - width) < CARD_FIT_EPSILON_PX) break;
+      width = next;
+    }
+    // The details column is measured at the width the card ends on.
+    body.style.setProperty(CARD_WIDTH_VAR, width + "px");
+    height = main.getBoundingClientRect().height;
+    body.style.setProperty(CARD_HEIGHT_VAR, height + "px");
+
+    reopen.forEach(function (details) {
+      details.open = true;
+    });
+  }
+
+  // One observer for the page's lifetime. It refits on a change of the body's width and ignores
+  // every other resize, which is what keeps it from looping on its own writes.
+  function observeBody() {
+    if (_bodyObserver || typeof window.ResizeObserver !== "function") return;
+    const body = bodyEl();
+    if (!body) return;
+    _bodyObserver = new window.ResizeObserver(function () {
+      if (Math.abs(body.clientWidth - _fitBodyWidth) > CARD_FIT_EPSILON_PX) fitCard();
+    });
+    _bodyObserver.observe(body);
   }
 
   // ── Wiring ──────────────────────────────────────────────────────────────────
@@ -1276,6 +1530,16 @@ window.ChatAttach = (function () {
     wireClickToPick();
     // Open MathPix button — bound once, independently.
     wireOpenMathPix();
+    // The pictures box's tick shows or hides the strip and its note — bound once, silent.
+    wirePicturesBox();
+  }
+
+  function wirePicturesBox() {
+    if (_boxWired) return;
+    const box = picturesBoxEl();
+    if (!box) return;
+    box.addEventListener("change", renderStrip);
+    _boxWired = true;
   }
 
   function wireOpenMathPix() {

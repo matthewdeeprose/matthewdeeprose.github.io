@@ -3810,6 +3810,11 @@ pre[class*="language-"] {
   background: linear-gradient(to bottom, rgba(255, 253, 249, 0), #fffdf9 85%);
 }
 
+/* The strip of pictures that would be sent (parcel P7): a thumbnail's border, the same as the card's. */
+.chat-attach-pictures-thumb {
+  border-color: #00131d;
+}
+
 /* ===== Modal COLOUR SECTION ===== */
 
 dialog {
