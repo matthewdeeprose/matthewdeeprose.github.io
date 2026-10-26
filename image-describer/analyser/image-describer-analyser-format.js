@@ -115,6 +115,10 @@
   // The heading of the text section, in the three places it is built (H-64; wording chosen after H-65).
   const OCR_HEADING = "### OCR results";
 
+  // H-96: the heading for text a person typed when detection did not complete or found nothing.
+  // Wording confirmed by Matthew 22 October 2026 (plan entry: idq-dispatch-h-96.md § 0); change it here only.
+  const PERSON_ENTERED_HEADING = "### Text in the image, entered by the person";
+
   // R3(0.9) from H-63: an item is a fragment at this many trimmed characters or fewer, and the
   // text section is left out when at least this share of the listed items are fragments.
   const FRAGMENT_MAX_CHARS = 2;
@@ -130,11 +134,49 @@
   }
 
   /**
+   * One label line: `- "text" — position (confidence)`, plus the reading direction when
+   * the text is not horizontal. withConfidence is false for text a person typed, which
+   * has no detector to be confident about (H-96).
+   */
+  function ocrItemLine(u, item, withConfidence) {
+    // The position is one of nine thirds words taken from the label's own box (H-7c
+    // measured it against the five-word quadrant; H-7d confirmed the shipped boxes give
+    // the right word). An item with no usable box keeps the quadrant word it printed before.
+    // An item with neither box nor quadrant has no position to print (H-39); the line
+    // then carries no dash and no word, rather than the text "undefined".
+    const position = u.getItemPositionWord(item) || item.quadrant;
+    const positionPart = position ? ` — ${position}` : "";
+    const confidencePart = withConfidence
+      ? ` (${confidenceWord(item.confidence)})`
+      : "";
+    let line = `- "${item.text}"${positionPart}${confidencePart}`;
+
+    if (item.orientation && item.orientation !== "horizontal") {
+      const orientLabel =
+        item.orientation === "vertical-up"
+          ? "vertical, reads upward"
+          : "vertical, reads downward";
+      line += `, ${orientLabel}`;
+    }
+    return line;
+  }
+
+  /**
    * Formats the OCR section of the prompt.
    * Returns empty string if nothing meaningful to report.
    */
   function formatOCRForPrompt(ocr, confidenceThreshold, options = {}) {
     const u = utils();
+    // H-96: text detection found nothing (or did not run) and the person typed the text
+    // themselves. Their words go under a heading of their own, with no confidence word,
+    // and replace the "did not finish" line, which would then be false. Never filtered.
+    if (ocr && ocr.personEntered && ocr.items && ocr.items.length > 0) {
+      return (
+        `${PERSON_ENTERED_HEADING}\n` +
+        ocr.items.map((item) => ocrItemLine(u, item, false)).join("\n") +
+        "\n"
+      );
+    }
     // Text detection ran and did not return (H-31). Without this the model
     // cannot tell "no text in the picture" from "text detection failed".
     if (ocr && OCR_UNFINISHED_WORDING[ocr.status]) {
@@ -177,14 +219,7 @@
     let text = `${OCR_HEADING}\n`;
 
     included.forEach((item) => {
-      // The position is one of nine thirds words taken from the label's own box (H-7c
-      // measured it against the five-word quadrant; H-7d confirmed the shipped boxes give
-      // the right word). An item with no usable box keeps the quadrant word it printed before.
-      // An item with neither box nor quadrant has no position to print (H-39); the line
-      // then carries no dash and no word, rather than the text "undefined".
-      const position = u.getItemPositionWord(item) || item.quadrant;
-      const positionPart = position ? ` \u2014 ${position}` : "";
-      let line = `- "${item.text}"${positionPart} (${confidenceWord(item.confidence)})`;
+      let line = ocrItemLine(u, item, true);
 
       // WITHHELD at Stage F-iii, and deliberately not reworded. `nearbyColour` is
       // sampled from a ring around the label's own bounding box, so it names whatever
@@ -198,14 +233,6 @@
       // wrong for a second, independent reason. `sampleNearbyColour` and the
       // `nearbyColour` field are left in place: they are correct code doing what
       // their names say, and the fault was the sentence. KB § 9.44.
-
-      if (item.orientation && item.orientation !== "horizontal") {
-        const orientLabel =
-          item.orientation === "vertical-up"
-            ? "vertical, reads upward"
-            : "vertical, reads downward";
-        line += `, ${orientLabel}`;
-      }
 
       text += line + "\n";
     });

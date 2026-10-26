@@ -105,7 +105,7 @@ Follow this structure within Visual Content:
 1. **Type and purpose**: State the chart type and what it represents.
 2. **Construction**: Describe axes, scales, units, number of data points or categories, and any legends.
 3. **Summary**: Describe the overall trends, patterns, or key findings.
-4. **Data**: Present the actual data values. Where the data suit a tabular format, use a markdown table for screen reader accessibility. Order data logically: chronologically for time series, highest-to-lowest for ranked data, or clockwise from 12 o'clock for radial charts.
+4. **Data**: Present the actual data values. Where the data suit a tabular format, use a markdown table for screen reader accessibility. Directly before every table, write a short title on its own line, in the form "Table: what the table shows", in no more than 12 words. Order data logically: chronologically for time series, highest-to-lowest for ranked data, or clockwise from 12 o'clock for radial charts.
 
 When extracting data from visualisations:
 - Always include actual numeric values where legible.

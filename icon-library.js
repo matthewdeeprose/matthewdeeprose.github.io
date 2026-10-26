@@ -14,6 +14,11 @@
  * Icons are automatically populated on DOMContentLoaded for any element
  * with a data-icon attribute.
  *
+ * Every icon is vertical-align: middle by default (a style this file adds once;
+ * see ensureBaseStyle). A component can still choose its own alignment with a
+ * selector more specific than a plain ".icon". Logging is quiet by default: only
+ * warnings and errors print, and DEBUG shows how many icons each call filled.
+ *
  * For elements injected after DOMContentLoaded (dynamic HTML, state-swap
  * via setAttribute('data-icon', ...), etc.), re-run the populator after the
  * insertion/mutation:
@@ -131,6 +136,35 @@
 
 (function () {
   "use strict";
+
+  // Logging configuration
+  const LOG_LEVELS = { ERROR: 0, WARN: 1, INFO: 2, DEBUG: 3 };
+  const DEFAULT_LOG_LEVEL = LOG_LEVELS.WARN;
+  const ENABLE_ALL_LOGGING = false;
+  const DISABLE_ALL_LOGGING = false;
+
+  function shouldLog(level) {
+    if (DISABLE_ALL_LOGGING) return false;
+    if (ENABLE_ALL_LOGGING) return true;
+    return level <= DEFAULT_LOG_LEVEL;
+  }
+
+  function logError(message, ...args) {
+    if (shouldLog(LOG_LEVELS.ERROR))
+      console.error("[IconLibrary]", message, ...args);
+  }
+  function logWarn(message, ...args) {
+    if (shouldLog(LOG_LEVELS.WARN))
+      console.warn("[IconLibrary]", message, ...args);
+  }
+  function logInfo(message, ...args) {
+    if (shouldLog(LOG_LEVELS.INFO))
+      console.log("[IconLibrary]", message, ...args);
+  }
+  function logDebug(message, ...args) {
+    if (shouldLog(LOG_LEVELS.DEBUG))
+      console.log("[IconLibrary]", message, ...args);
+  }
 
   /**
    * SVG icons registry
@@ -384,6 +418,17 @@
 
     // Lock (🔒)
     lock: '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" transform="translate(4 1)"><path d="m2.5 8.5-.00586729-1.99475098c-.00728549-4.00349935 1.32800361-6.00524902 4.00586729-6.00524902s4.0112203 2.00174967 4.0000699 6.00524902v1.99475098m-8.0000699 0h8.0225317c1.0543618 0 1.9181652.81587779 1.9945143 1.8507377l.0054778.1548972-.0169048 6c-.0031058 1.1023652-.8976224 1.9943651-1.999992 1.9943651h-8.005627c-1.1045695 0-2-.8954305-2-2v-6c0-1.1045695.8954305-2 2-2z" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="13.5" fill="currentColor" r="1.5"/></g></svg>',
+
+    // Sigma (summation sign): the same stroke as the inline Σ on the MathPix
+    // tool radio, drawn at 1.5 on the 21 grid. Used for the MathJax readout.
+    sigma:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" transform="translate(5.5 3)"><polyline points="9,0 0,0 5,7.5 0,15 9,15"/></g></svg>',
+
+    // A shield outline with a tick, drawn for this library on the 21 grid (the
+    // icon named "shield" below is a circled tick, not a shield shape). Used
+    // for the signed-in state in the status bar.
+    shieldCheck:
+      '<svg height="21" viewBox="0 0 21 21" width="21" xmlns="http://www.w3.org/2000/svg"><g fill="none" fill-rule="evenodd" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" transform="translate(2.5 2)"><path d="m8 .5 6.5 2.5v5.5c0 4-2.8 7-6.5 8.5-3.7-1.5-6.5-4.5-6.5-8.5v-5.5z"/><path d="m5 8.5 2.2 2.2 3.8-4.4"/></g></svg>',
 
     // Shield/Protection (🛡️)
     shield:
@@ -1361,7 +1406,7 @@
   function getIcon(name, options = {}) {
     const svg = ICONS[name];
     if (!svg) {
-      console.warn(`[IconLibrary] Unknown icon requested: "${name}"`);
+      logWarn(`Unknown icon requested: "${name}"`);
       return "";
     }
 
@@ -1416,16 +1461,39 @@
         );
         populatedCount++;
       } else {
-        console.warn(`[IconLibrary] Unknown icon in data-icon: "${iconName}"`);
+        logWarn(`Unknown icon in data-icon: "${iconName}"`);
         errorCount++;
       }
     });
 
     if (populatedCount > 0 || errorCount > 0) {
-      console.log(
-        `[IconLibrary] Populated ${populatedCount} icons${errorCount > 0 ? `, ${errorCount} errors` : ""}`,
+      logDebug(
+        `Populated ${populatedCount} icons${errorCount > 0 ? `, ${errorCount} errors` : ""}`,
       );
     }
+  }
+
+  /**
+   * Gives every library icon a default of vertical-align: middle, so an icon
+   * beside text sits on the text's middle and not on its baseline (which left
+   * it 1 to 2px low). Added once, from here, because the library also loads on
+   * pages that do not use main.css.
+   *
+   * The selector's specificity is exactly that of a plain ".icon" (0,1,0), on
+   * purpose. mathpix-convert.css and mathpix-mmd-preview.css each set a plain
+   * ".icon { vertical-align: -0.125em }" as a site-wide default, which is what
+   * left icons low; this is added later in the page, so it wins that tie. A
+   * component that sets its own alignment with anything more specific (such as
+   * ".mathpix-progress-status .icon" or "h4 .icon") still wins over this.
+   * It has no effect on an icon that is a flex item or display:block.
+   */
+  function ensureBaseStyle() {
+    const STYLE_ID = "icon-library-base-style";
+    if (document.getElementById(STYLE_ID)) return;
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
+    style.textContent = ":where(svg).icon { vertical-align: middle; }";
+    (document.head || document.documentElement).appendChild(style);
   }
 
   /**
@@ -1444,6 +1512,8 @@
   function hasIcon(name) {
     return ICONS.hasOwnProperty(name);
   }
+
+  ensureBaseStyle();
 
   // Auto-populate icons on DOMContentLoaded
   if (document.readyState === "loading") {

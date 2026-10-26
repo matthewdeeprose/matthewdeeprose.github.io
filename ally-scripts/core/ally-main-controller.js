@@ -3262,6 +3262,7 @@ const ALLY_MAIN_CONTROLLER = (function () {
    */
   function attemptPageLoadWarmUp() {
     // Check if page-load warm-up is enabled
+    // (isSignedInWithoutToken and warmUpSkippedForNoToken are defined below.)
     const warmOnPageLoad =
       typeof ALLY_CONFIG !== "undefined" &&
       ALLY_CONFIG.API_STATUS &&
@@ -3302,6 +3303,21 @@ const ALLY_MAIN_CONTROLLER = (function () {
         logDebug("Page-load warm-up skipped - no stored credentials");
         return;
       }
+
+      // On the sign-in worker transport (no stored token), an account that is
+      // cached but has no usable token would send this request unauthenticated
+      // for a certain 401, and fetchOverall force-renews the token first, which
+      // repeats a failed fetch the sign-in module has just made. Skip, and let
+      // the "renewed" event below try again once a token exists.
+      if (!savedToken && isSignedInWithoutToken()) {
+        warmUpSkippedForNoToken = true;
+        logInfo(
+          "Page-load warm-up skipped - signed in but no usable token yet; " +
+            "it will retry if the token recovers",
+        );
+        return;
+      }
+      warmUpSkippedForNoToken = false;
 
       logInfo("Found stored credentials, initiating background warm-up...");
 
@@ -3347,6 +3363,35 @@ const ALLY_MAIN_CONTROLLER = (function () {
    */
   let pageLoadWarmUpComplete = false;
 
+  /**
+   * True when the last page-load warm-up attempt was skipped because the person
+   * is signed in but has no usable token. Lets the "renewed" event retry it.
+   * @type {boolean}
+   */
+  let warmUpSkippedForNoToken = false;
+
+  // The scope name the API client asks EntraAuth for (ally-api-client.js).
+  const WARM_UP_TOKEN_SCOPE = "foundry";
+
+  /**
+   * An account is cached (isSignedIn) but getCachedToken has nothing usable.
+   * Reads window.EntraAuth at call time: the module is a deferred script.
+   * @returns {boolean}
+   */
+  function isSignedInWithoutToken() {
+    const auth = window.EntraAuth;
+    if (
+      !auth ||
+      typeof auth.isSignedIn !== "function" ||
+      typeof auth.getCachedToken !== "function"
+    ) {
+      return false;
+    }
+    return (
+      auth.isSignedIn() === true && auth.getCachedToken(WARM_UP_TOKEN_SCOPE) === null
+    );
+  }
+
   // Schedule page-load warm-up
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", attemptPageLoadWarmUp);
@@ -3376,7 +3421,13 @@ const ALLY_MAIN_CONTROLLER = (function () {
     (window.EntraAuth && window.EntraAuth.CHANGE_EVENT) || "entra:changed",
     function (event) {
       const detail = (event && event.detail) || {};
-      if (detail.isSignedIn !== true || signInWarmUpAttempted) return;
+      // One attempt per page, except that a token recovering ("renewed") after
+      // a skip for want of one gets a fresh try.
+      const recovered =
+        detail.reason === "renewed" && warmUpSkippedForNoToken;
+      if (detail.isSignedIn !== true || (signInWarmUpAttempted && !recovered)) {
+        return;
+      }
       signInWarmUpAttempted = true;
       logInfo("Sign-in arrived after page load — retrying warm-up");
       // attemptPageLoadWarmUp guards its own preconditions.

@@ -22,7 +22,7 @@
  *   getAvailableModels(tier?)                → Array<ModelDef>
  *   ensureModel(key)                         → Promise<{model, tokeniser}>
  *   preDownloadModel(key, onProgress)        → Promise<void>
- *   cancelDownload(key)                      → void
+ *   cancelDownload(key)                      → Promise<void> (settles once the download is aborted, unwound and its saved files removed)
  *   isModelCached(key)                       → Promise<boolean>
  *   getModelStatus(key)                      → string
  *   generate(key, prompt, opts)              → Promise<result>
@@ -92,6 +92,13 @@ window.LocalTextModelGatewayClass = (function () {
   /** Shared cache store name — same as VLM gateway */
   const CACHE_NAME = "transformers-cache";
 
+  /** A cancelled download's error name, and the pause that lets in-flight cache writes land before removal (H-128) */
+  const CANCEL = Object.freeze({
+    ERROR_NAME: "AbortError",
+    MESSAGE: "Download cancelled",
+    SETTLE_MS: 250,
+  });
+
   /** Threshold for classifying a GPU as discrete (2048MB maxBufferSize) */
   const DISCRETE_GPU_BUFFER_THRESHOLD = 2147483648; // 2048MB
 
@@ -110,6 +117,13 @@ window.LocalTextModelGatewayClass = (function () {
 
   /** @type {Map<string, string>} Model status by key */
   const modelStatuses = new Map();
+
+  /**
+   * Pre-downloads in progress, by model key: { controller, done }. Cancel aborts the
+   * controller and waits for `done` (settled when the download has unwound).
+   * @type {Map<string, {controller: AbortController, done: Promise<void>}>}
+   */
+  const downloadRuns = new Map();
 
   /** @type {Map<string, Object>} Active stopping criteria per model key (for cancel) */
   const activeStoppingCriteria = new Map();
@@ -464,6 +478,34 @@ window.LocalTextModelGatewayClass = (function () {
 
     setModelStatus(key, "downloading");
 
+    // Cancel (H-128): one controller per download. Its signal reaches the model's Hugging Face
+    // requests through a ResilientFetch abort scope, and `abortRace` lets a Cancel settle
+    // from_pretrained, which Transformers.js never settles once its requests are aborted.
+    const controller = new AbortController();
+    let markDone;
+    const done = new Promise(function (resolve) {
+      markDone = resolve;
+    });
+    downloadRuns.set(key, { controller: controller, done: done });
+    const removeAbortScope =
+      window.ResilientFetch && typeof window.ResilientFetch.addAbortScope === "function"
+        ? window.ResilientFetch.addAbortScope(modelDef.hfModelId, controller.signal)
+        : function () {};
+    const abortRace = new Promise(function (resolve, reject) {
+      controller.signal.addEventListener(
+        "abort",
+        function () {
+          reject(new DOMException(CANCEL.MESSAGE, CANCEL.ERROR_NAME));
+        },
+        { once: true },
+      );
+    });
+    abortRace.catch(function () {}); // observed by the races below; stops a lone rejection being reported
+    const raceAbort = function (promise) {
+      promise.catch(function () {}); // a download that fails after a Cancel is not reported separately
+      return Promise.race([promise, abortRace]);
+    };
+
     // Bridge ResilientFetch chunk progress into the onProgress callback
     // so the Model Manager progress bar advances during large downloads.
     var bridgeListener = null;
@@ -487,7 +529,7 @@ window.LocalTextModelGatewayClass = (function () {
     }
 
     try {
-      const mod = await ensureLibrary();
+      const mod = await raceAbort(ensureLibrary());
       const ModelClass = mod[modelDef.className];
 
       if (!ModelClass) {
@@ -498,10 +540,10 @@ window.LocalTextModelGatewayClass = (function () {
         );
       }
 
-      // Build progress callback
+      // Build progress callback: silent once a Cancel has been pressed
       const progressCallback = onProgress
         ? function (progress) {
-            if (onProgress) {
+            if (onProgress && !controller.signal.aborted) {
               onProgress(progress);
             }
           }
@@ -509,9 +551,11 @@ window.LocalTextModelGatewayClass = (function () {
 
       // Download tokeniser and model (this populates the cache)
       logInfo("Downloading tokeniser for", key, "…");
-      await mod.AutoTokenizer.from_pretrained(modelDef.hfModelId, {
-        progress_callback: progressCallback,
-      });
+      await raceAbort(
+        mod.AutoTokenizer.from_pretrained(modelDef.hfModelId, {
+          progress_callback: progressCallback,
+        }),
+      );
 
       logInfo("Downloading model weights for", key, "…");
       const downloadOptions = {
@@ -522,7 +566,7 @@ window.LocalTextModelGatewayClass = (function () {
       if (modelDef.useExternalDataFormat) {
         downloadOptions.use_external_data_format = true;
       }
-      await ModelClass.from_pretrained(modelDef.hfModelId, downloadOptions);
+      await raceAbort(ModelClass.from_pretrained(modelDef.hfModelId, downloadOptions));
 
       setModelStatus(key, "cached");
       logInfo("Model", key, "downloaded and cached successfully");
@@ -533,6 +577,13 @@ window.LocalTextModelGatewayClass = (function () {
       // But we didn't store the reference. For pre-download, we'll load and
       // immediately unload. This is acceptable because the cache persists.
     } catch (err) {
+      // A Cancel is not a failure: the status stays "downloading" until cancelDownload()
+      // has removed what was saved, so the "already downloading" guards hold meanwhile.
+      if (controller.signal.aborted) {
+        logInfo("Download cancelled for", key);
+        throw new DOMException(CANCEL.MESSAGE, CANCEL.ERROR_NAME);
+      }
+
       setModelStatus(key, "download-error");
       logError("Download failed for", key, ":", err.message || err);
 
@@ -553,30 +604,43 @@ window.LocalTextModelGatewayClass = (function () {
           (err.message || "Unknown error"),
       );
     } finally {
-      // Clean up the progress bridge listener
+      // Clean up the progress bridge listener and the abort scope
       if (bridgeListener && window.ResilientFetch && typeof window.ResilientFetch.offProgress === "function") {
         window.ResilientFetch.offProgress(bridgeListener);
         logInfo("Progress bridge unregistered for", key);
       }
+      removeAbortScope();
+      downloadRuns.delete(key);
+      markDone();
     }
   }
 
   /**
-   * Cancels an in-progress download.
-   * Note: Transformers.js does not currently support download cancellation
-   * natively. This sets the status but cannot abort the network requests.
+   * Cancels an in-progress download: aborts its requests, waits for the download to
+   * unwind, removes what was saved, and only then sets the status to "not-downloaded".
+   * The returned promise settles when all of that is done.
    *
    * @param {string} key — Model key
+   * @returns {Promise<void>}
    */
-  function cancelDownload(key) {
-    if (getModelStatus(key) === "downloading") {
-      setModelStatus(key, "not-downloaded");
-      logInfo(
-        "Download cancelled for",
-        key,
-        "(note: in-flight network requests may complete)",
-      );
+  async function cancelDownload(key) {
+    const run = downloadRuns.get(key);
+    if (!run) {
+      if (getModelStatus(key) === "downloading") {
+        setModelStatus(key, "not-downloaded");
+        logInfo("Download cancelled for", key, "(no active download to abort)");
+      }
+      return;
     }
+
+    run.controller.abort();
+    await run.done;
+    await new Promise(function (resolve) {
+      setTimeout(resolve, CANCEL.SETTLE_MS);
+    });
+    await removeCachedModel(key);
+    setModelStatus(key, "not-downloaded");
+    logInfo("Download cancelled for", key, "— requests aborted, saved files removed");
   }
 
   /**

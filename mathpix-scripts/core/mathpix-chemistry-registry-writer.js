@@ -391,6 +391,11 @@
   // registry no-ops on propagation rather than re-escaping.
   function _unescapeAltFromLatex(text) {
     if (typeof text !== "string") return "";
+    // UT-4: use the serialiser codec so the `]` entity is decoded as well.
+    const serialiser = window.MathPixAltTextMMDSerialiser;
+    if (serialiser?.unescapeAltFromLatex) {
+      return serialiser.unescapeAltFromLatex(text);
+    }
     return text
       .replace(/\\\{/g, "{")
       .replace(/\\\}/g, "}")
@@ -448,7 +453,12 @@
       const md = mdRe.exec(line);
       if (md) {
         const url = (md[2] || "").trim();
-        if (url && !map.has(url)) map.set(url, md[1]);
+        // UT-4: decode as _extractCurrentAlt does (markdown alt is entity-encoded).
+        const mdSerialiser = window.MathPixAltTextMMDSerialiser;
+        const mdAlt = mdSerialiser?.decodeAltFromMarkdown
+          ? mdSerialiser.decodeAltFromMarkdown(md[1])
+          : md[1];
+        if (url && !map.has(url)) map.set(url, mdAlt);
       }
     }
     return map;

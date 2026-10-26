@@ -1377,6 +1377,24 @@ window.MermaidThemes = (function () {
   /** Attribute marking the defs block this pass owns, so a re-run rebuilds it. */
   const SEQUENCE_ENCODING_ATTRIBUTE = "data-sequence-encoding";
 
+  /**
+   * TEXT CASING (theming re-open 2, standard rule 56). A message text whose box
+   * meets an author `rect` region and whose ink cannot clear 4.5:1 against that
+   * region is given a halo in the page ground: the text's own stroke, painted
+   * behind its fill. The ink is never changed and nothing is written on the rect.
+   * The halo width was 3 px in the measurement (re-open 1) and is not varied.
+   */
+  const SEQUENCE_CASING_WIDTH_PX = 3;
+  const SEQUENCE_CASING_PROPERTIES = Object.freeze([
+    "stroke",
+    "stroke-width",
+    "paint-order",
+    "stroke-linejoin",
+  ]);
+
+  /** Records, as JSON on the text, the inline values the casing displaced. */
+  const SEQUENCE_CASING_OWNED_ATTRIBUTE = "data-sequence-casing-owned";
+
   /** Where a line's ORIGINAL marker references are parked, for idempotency. */
   const SEQUENCE_MARKER_REFS = Object.freeze([
     "marker-start",
@@ -1494,6 +1512,25 @@ window.MermaidThemes = (function () {
     // --- sweep what a previous run owned ------------------------------------
     const ownedDefs = svg.querySelector(`defs[${SEQUENCE_ENCODING_ATTRIBUTE}]`);
     if (ownedDefs) ownedDefs.remove();
+
+    // Give back what a previous run's casing displaced, so a re-application on
+    // the same SVG finds the author's values and not its own (item 118).
+    svg
+      .querySelectorAll(`[${SEQUENCE_CASING_OWNED_ATTRIBUTE}]`)
+      .forEach((owned) => {
+        let prior = {};
+        try {
+          prior = JSON.parse(owned.getAttribute(SEQUENCE_CASING_OWNED_ATTRIBUTE)) || {};
+        } catch (error) {
+          prior = {};
+        }
+        for (const property of SEQUENCE_CASING_PROPERTIES) {
+          const held = prior[property];
+          if (held) owned.style.setProperty(property, held);
+          else owned.style.removeProperty(property);
+        }
+        owned.removeAttribute(SEQUENCE_CASING_OWNED_ATTRIBUTE);
+      });
 
     const parkMarkerRefs = (element) => {
       SEQUENCE_MARKER_REFS.forEach((ref) => {
@@ -1849,6 +1886,59 @@ window.MermaidThemes = (function () {
     const digits = [...svg.querySelectorAll("text.sequenceNumber")];
     digits.forEach((text) => text.style.setProperty("fill", digit.ink));
     applied.counts.autonumberDigit = digits.length;
+
+    // --- message text casing ------------------------------------------------
+    // A GEOMETRIC test, in one client space: the text's box against each painted
+    // region's box (never elementFromPoint, which fails on the export's
+    // off-screen second copy). The ink is read against the region's computed,
+    // composited fill. The halo is the page ground, so the reading becomes ink
+    // against page (an edge reading: counters stay on the ground behind).
+    const sequenceCasingTargets = () =>
+      [...svg.querySelectorAll("text.messageText")].filter((text) => {
+        const box = text.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) return false;
+
+        const computed = window.getComputedStyle(text);
+        const declared = parsePaint(computed.fill);
+        if (!declared) return false;
+        const ink = {
+          ...declared,
+          a:
+            declared.a *
+            opacityValue(computed.fillOpacity) *
+            opacityValue(computed.opacity),
+        };
+
+        return paintedRegions.some((region) => {
+          const meets =
+            box.left < region.box.right &&
+            box.right > region.box.left &&
+            box.top < region.box.bottom &&
+            box.bottom > region.box.top;
+          if (!meets) return false;
+
+          const inkHex = paintToHex(
+            compositeOver(ink, parsePaint(region.ground))
+          );
+          return (
+            calculateContrastRatio(inkHex, region.ground) < SEQUENCE_TEXT_TARGET
+          );
+        });
+      });
+
+    const casingTargets = sequenceCasingTargets();
+    casingTargets.forEach((text) => {
+      const prior = {};
+      SEQUENCE_CASING_PROPERTIES.forEach((property) => {
+        prior[property] = text.style.getPropertyValue(property);
+      });
+      text.setAttribute(SEQUENCE_CASING_OWNED_ATTRIBUTE, JSON.stringify(prior));
+      text.style.setProperty("stroke", pageGround);
+      text.style.setProperty("stroke-width", `${SEQUENCE_CASING_WIDTH_PX}px`);
+      text.style.setProperty("paint-order", "stroke");
+      text.style.setProperty("stroke-linejoin", "round");
+    });
+    applied.counts.messageCasing = casingTargets.length;
 
     if (encodingDefs.childNodes.length) {
       svg.insertBefore(encodingDefs, svg.firstChild);
@@ -7564,6 +7654,1544 @@ window.MermaidThemes = (function () {
   }
 
   // -----------------------------------------------------------------------
+  // TREEMAP DIAGRAM ENCODING (register item 119 session 7, 22 October 2026)
+  // -----------------------------------------------------------------------
+
+  const TREEMAP_ROLEDESCRIPTION = "treemap";
+
+  /** SC 1.4.11 for every box outline. */
+  const TREEMAP_OBJECT_TARGET = 3;
+
+  /** SC 1.4.3 for every name, value and title. */
+  const TREEMAP_TEXT_TARGET = 4.5;
+
+  /**
+   * The OUTLINE INKS OF RECORD (presentation standard § 1.4): the pair every
+   * other after-render pass offers, both offered to every derivation rather
+   * than selected by mode (rule 18). The ramp is reached only where neither
+   * clears both sides of an edge.
+   */
+  const TREEMAP_INKS = REQUIREMENT_INKS;
+  const TREEMAP_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const TREEMAP_ENCODING_ATTRIBUTE = "data-treemap-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const TREEMAP_OWNED_LIST_ATTRIBUTE = "data-treemap-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON. A `classDef` reaches a treemap rect as inline `!important` `fill`,
+   * `stroke` and `stroke-width`, the very properties written here, so the sweep
+   * gives them back (rule 20, widened).
+   */
+  const TREEMAP_PRIOR_ATTRIBUTE = "data-treemap-encoding-prior";
+
+  /**
+   * Minimum outline width of a section box and of a leaf box, in user units. The
+   * renderer draws 2 and 3. A section's stroke is the renderer's partly
+   * transparent tint and a leaf's is the section's hue, so on a flat treemap, or
+   * on the thirteenth section, nothing else marks the edge.
+   */
+  const TREEMAP_SECTION_WIDTH = 2;
+  const TREEMAP_LEAF_WIDTH = 3;
+
+  /** Points sampled along each of a box's four edges, on both sides of the stroke. */
+  const TREEMAP_EDGE_STEPS = [0.2, 0.5, 0.8];
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const TREEMAP_EDGE_OFFSET = 1;
+
+  /**
+   * Apply the accessibility encoding to a rendered treemap: an outline ink on
+   * EVERY drawn box, section and leaf alike, transparent ones included, and a
+   * text ink WHERE AND ONLY WHERE a text fails against the ground it actually
+   * sits on. BOX FILLS ARE NEVER TOUCHED.
+   *
+   * WHY IT EXISTS: measured before this pass (item 119 session 7, 22 October
+   * 2026: the six gold exemplars, a flat treemap, the fourteen-section and the
+   * 100-leaf sources, nine theme cells, pass off, interior sampling) every box
+   * boundary and every box fill fails 3:1 in every cell (183 of 183 of each, in
+   * each of the nine): the renderer draws a box in a tint of one hue, its stroke
+   * is the same tint, and the best of them is 2.8:1 against the page. The only
+   * thing that tells a sighted reader where a box ends, and so which box a size
+   * belongs to and which sits inside which, is that boundary. Labels fail only
+   * in `default` and `neutral` (white on a pale fill). A flat treemap draws every
+   * box with NO fill at all (75 of 75 flat sources) and so does the thirteenth
+   * section, so there the outline is the only mark of the box.
+   *
+   * THE FILL OF A TRANSPARENT BOX STAYS AS THE RENDERER DREW IT. A transparent
+   * box with a visible edge is honest: it is what the renderer meant, and
+   * painting it would be a colour change the author did not ask for.
+   *
+   * NOTHING IS CARRIED BY COLOUR ALONE: a name and a value are text, and the
+   * nesting is containment, a section's box lying inside its parent's with a
+   * header carrying the name. What colour alone carried was the visibility of
+   * the edge, which this pass supplies, one ink for every box (rule 24: no
+   * non-colour channel is added, and none is stamped as such).
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION (rule 19): a rect that is a direct
+   * child of a group inside the diagram, outside any clipPath, and the largest
+   * of the rects in its group, is a box. The renderer's header strip (no fill,
+   * no stroke) is the smaller sibling and is counted, never written. A box with
+   * no area (the hidden root section) is undrawn and counted as `undrawn`. Any
+   * other stroked shape is `strayStroked` and left alone, which is 0 on
+   * everything Mermaid draws.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): a box's grounds are read at three
+   * points along each edge, just inside and just outside the stroke, each
+   * composited from the area shapes that precede the subject. The box's own fill
+   * lies under its own stroke, so the inside read uses the shape's index + 1.
+   *
+   * AUTHOR STROKES (rule 42): a `classDef` reaches a rect as an inline `stroke`.
+   * One that clears 3:1 against every ground it sits on is KEPT and written
+   * back as the owned stroke; one that fails is re-inked. Author fills are never
+   * touched.
+   *
+   * OPACITY: the pass never writes `opacity`, and every ground, stroke and text
+   * is read at the opacity of the element and ALL its ancestors.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep runs first and restores every inline
+   * value it displaced, so every derivation reads the renderer's and the
+   * author's values and never this pass's own output. It never calls
+   * applyTheme; it is reached FROM the re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyTreemapEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === TREEMAP_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(
+            `svg[aria-roledescription="${TREEMAP_ROLEDESCRIPTION}"]`
+          );
+
+    if (!svg) {
+      logDebug("No treemap SVG in this container - treemap encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${TREEMAP_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(TREEMAP_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(TREEMAP_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      Object.keys(prior).forEach((property) =>
+        owned.style.setProperty(
+          property,
+          prior[property].value,
+          prior[property].priority
+        )
+      );
+      owned.removeAttribute(TREEMAP_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(TREEMAP_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(TREEMAP_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const SHAPE_TAGS = ["rect", "path", "circle", "ellipse", "polygon", "line", "polyline"];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /** Painted area shapes in document order, with their client box and fill. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      painted.push({ element, index, box, paint: fill });
+    });
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        const box = shape.box;
+        if (x < box.x || x > box.x + box.width) continue;
+        if (y < box.y || y > box.y + box.height) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) =>
+        seen.add(paintToHex(groundAt(point[0], point[1], before)))
+      );
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+    // Points along each of a box's four edges, just inside and just outside the
+    // stroke. An offset larger than a quarter of a side is clamped so a thin
+    // box's inside points stay inside it.
+    const straddlePoints = (box, reach) => {
+      const dx = Math.min(reach, box.width / 4);
+      const dy = Math.min(reach, box.height / 4);
+      const points = [];
+      TREEMAP_EDGE_STEPS.forEach((step) => {
+        const px = box.x + box.width * step;
+        const py = box.y + box.height * step;
+        points.push(
+          [px, box.y + dy], [px, box.y - reach],
+          [px, box.y + box.height - dy], [px, box.y + box.height + reach],
+          [box.x + dx, py], [box.x - reach, py],
+          [box.x + box.width - dx, py], [box.x + box.width + reach, py]
+        );
+      });
+      return points;
+    };
+
+    // AUTHOR STROKES (rule 42): `classDef` reaches a treemap rect as an inline
+    // `stroke`; the renderer's own is CSS only.
+    const authorLedger = authorStrokeLedger(
+      "an inline style stroke on the box rect (classDef)",
+      (element) => {
+        if (!element.style.getPropertyValue("stroke")) return null;
+        const computed = window.getComputedStyle(element);
+        const declared = parsePaint(computed.stroke);
+        if (!declared) return null;
+        return {
+          ...declared,
+          a: declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element),
+        };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        sectionOutlines: 0,
+        leafOutlines: 0,
+        headerStrips: 0,
+        undrawn: 0,
+        strayStroked: 0,
+        texts: 0,
+      },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(TREEMAP_INKS, grounds);
+      return record.worst >= target
+        ? record
+        : pickInkAgainst(TREEMAP_INK_RAMP, grounds);
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = {
+            value: before,
+            priority: element.style.getPropertyPriority(property),
+          };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(TREEMAP_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(TREEMAP_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(TREEMAP_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) {
+        applied.worst = reading.ratio;
+      }
+    };
+
+    // --- boxes, by position: the largest rect directly inside a group --------
+    const boxes = new Map();
+    all.forEach((element, index) => {
+      if (element.tagName !== "rect" || offstage(element)) return;
+      const group = element.parentElement;
+      if (!group || group.tagName !== "g") return;
+      const area = (() => {
+        const rect = element.getBoundingClientRect();
+        return rect.width * rect.height;
+      })();
+      const held = boxes.get(group);
+      if (!held || area >= held.area) boxes.set(group, { element, index, area });
+    });
+
+    const boxElements = new Set();
+    boxes.forEach((entry, group) => {
+      boxElements.add(entry.element);
+      const siblings = [...group.children].filter(
+        (child) => child.tagName === "rect" && child !== entry.element && !offstage(child)
+      );
+      applied.subjects.headerStrips += siblings.length;
+      const box = boxOf(entry.element);
+      if (!box) {
+        applied.subjects.undrawn += 1;
+        return;
+      }
+
+      // By position: a section's group holds its header strip beside its box, a
+      // leaf's group holds the box alone.
+      const isLeaf = siblings.length === 0;
+      const element = entry.element;
+      const computed = window.getComputedStyle(element);
+      const minWidth = isLeaf ? TREEMAP_LEAF_WIDTH : TREEMAP_SECTION_WIDTH;
+      const width = Math.max(parseFloat(computed.strokeWidth) || 0, minWidth);
+      let scale = 1;
+      try {
+        const matrix = element.getScreenCTM();
+        scale = matrix ? Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1 : 1;
+      } catch (error) {
+        scale = 1;
+      }
+      const reach = (width * scale) / 2 + TREEMAP_EDGE_OFFSET;
+      // index + 1: the box's own fill lies under its own stroke.
+      const grounds = groundsOver(straddlePoints(box, reach), entry.index + 1);
+      const author = keepsAuthorStroke(element, grounds, TREEMAP_OBJECT_TARGET, authorLedger);
+      const chosen =
+        author && author.kept
+          ? { ink: author.ink, worst: author.worst }
+          : pick(grounds, TREEMAP_OBJECT_TARGET);
+      const kind = isLeaf ? "leafOutline" : "sectionOutline";
+      applied.subjects[isLeaf ? "leafOutlines" : "sectionOutlines"] += 1;
+      write(
+        element,
+        kind,
+        {
+          stroke: chosen.ink,
+          "stroke-opacity":
+            author && author.kept
+              ? String(
+                  Math.min(
+                    1,
+                    Number((author.opacity / (chainOpacity(element) || 1)).toFixed(3))
+                  )
+                )
+              : "1",
+          "stroke-width": `${width}px`,
+        },
+        grounds,
+        chosen,
+        TREEMAP_OBJECT_TARGET,
+        author ? { authorStroke: author.kept ? "kept" : "reinked" } : null
+      );
+    });
+
+    // Any other stroked shape is counted and left alone.
+    all.forEach((element) => {
+      if (!SHAPE_TAGS.includes(element.tagName) || offstage(element)) return;
+      if (boxElements.has(element)) return;
+      if (paintOf(element, window.getComputedStyle(element), "stroke")) {
+        applied.subjects.strayStroked += 1;
+      }
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      if (!declared) return;
+      const alpha =
+        declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      if (alpha <= 0.05) return;
+      applied.subjects.texts += 1;
+
+      const grounds = groundsOver(spreadPoints(box), index);
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= TREEMAP_TEXT_TARGET) return;
+
+      const chosen = pick(grounds, TREEMAP_TEXT_TARGET);
+      const classes = element.classList;
+      const kind = classes.contains("treemapTitle")
+        ? "titleInk"
+        : classes.contains("treemapSectionLabel")
+          ? "sectionLabelInk"
+          : classes.contains("treemapSectionValue")
+            ? "sectionValueInk"
+            : classes.contains("treemapLabel")
+              ? "labelInk"
+              : classes.contains("treemapValue")
+                ? "valueInk"
+                : "textInk";
+      write(
+        element,
+        kind,
+        { fill: chosen.ink },
+        grounds,
+        chosen,
+        TREEMAP_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+
+    logInfo(
+      `Treemap encoding applied: ${applied.subjects.sectionOutlines} section and ${applied.subjects.leafOutlines} leaf outlines, ` +
+        `${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length
+          ? `, ${applied.shortfalls.length} below target and recorded`
+          : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // VENN DIAGRAM ENCODING (register item 121 session 8, 23 October 2026)
+  // -----------------------------------------------------------------------
+
+  const VENN_ROLEDESCRIPTION = "venn";
+
+  /** SC 1.4.11 for every circle outline. */
+  const VENN_OBJECT_TARGET = 3;
+
+  /**
+   * The working margin a DERIVED outline ink is taken to (standard § 2). A hue-kept
+   * ink stops at the first lightness that clears the target, which would land on
+   * 3.00 to 3.02 and be one sample point from a failure in another tool.
+   */
+  const VENN_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for the title, the set and region labels and the items. */
+  const VENN_TEXT_TARGET = 4.5;
+
+  /** The outline inks of record (standard § 1.4), for text and for the outline fallback. */
+  const VENN_INKS = REQUIREMENT_INKS;
+  const VENN_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const VENN_ENCODING_ATTRIBUTE = "data-venn-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const VENN_OWNED_LIST_ATTRIBUTE = "data-venn-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON. The renderer writes a circle's `stroke`, `stroke-opacity` and
+   * `stroke-width` inline, the very properties written here, so the sweep gives
+   * them back (rule 44).
+   */
+  const VENN_PRIOR_ATTRIBUTE = "data-venn-encoding-prior";
+
+  /**
+   * THE NON-COLOUR CHANNEL's identity: the ordinal of a circle's set among the
+   * distinct sets in declaration order, stamped on first sight and read from the
+   * stamp afterwards (standard rule 24). It is in no owned list, so no sweep
+   * removes it.
+   */
+  const VENN_SET_ATTRIBUTE = "data-venn-set";
+
+  /** Points taken round each circle's outline, on both sides of the stroke. */
+  const VENN_OUTLINE_SAMPLES = 24;
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const VENN_EDGE_OFFSET = 1;
+
+  /** A path is a circle when its box is square and its length is pi times its width. */
+  const VENN_SQUARE_TOLERANCE = 0.01;
+  const VENN_LENGTH_TOLERANCE = 0.02;
+
+  /**
+   * THE DASH CHANNEL, one form per set in declaration order (standard rule 55).
+   * The arrays are the project's own, `SERIES_DASHES`, in the order the radar pass
+   * uses, solid first; every cap is `butt` (rule 25). The renderer's stroke width
+   * of 2.5 is left as it is. A seventh set CYCLES back to the first and the pass
+   * reports that it did: from the seventh set on, only hue separates two outlines.
+   */
+  const VENN_DASH_CHANNEL = Object.freeze([
+    Object.freeze({ name: "solid", dash: null }),
+    Object.freeze({ name: "dashed", dash: SERIES_DASHES[0] }),
+    Object.freeze({ name: "dotted", dash: SERIES_DASHES[1] }),
+    Object.freeze({ name: "dash-dot", dash: SERIES_DASHES[2] }),
+    Object.freeze({ name: "long-dash-short-dash", dash: SERIES_DASHES[3] }),
+    Object.freeze({ name: "short-dash-long-dash", dash: SERIES_DASHES[4] }),
+  ]);
+  const VENN_DASH_CAP = "butt";
+
+  /**
+   * Apply the accessibility encoding to a rendered venn diagram: an outline ink
+   * and a DASH on every circle, and a text ink WHERE AND ONLY WHERE a text fails
+   * against the ground it actually sits on. FILLS ARE NEVER TOUCHED and `opacity`
+   * and `fill-opacity` are never written.
+   *
+   * WHY IT EXISTS (item 121 census step 4 and session 8 step 1, 23 October 2026):
+   * every circle outline is the renderer's own tint of its fill, the same colour at
+   * 0.95 opacity, and it fails 3:1 in most cells; two adjacent sets can be two
+   * greys or two cyans 14 units apart, and the ninth set repeats the first. A
+   * region and an item belong to the circles that enclose them, and which circles
+   * bound an overlap is told by their outlines alone, so the outlines must be
+   * distinguishable without hue (rule 24). The set labels, the title and the
+   * region labels take the renderer's per-circle shade of black, and in the dark
+   * cells that is as low as 1.47:1.
+   *
+   * THE SUBJECTS ARE SELECTED BY GEOMETRY, never by class (rule 19) and not by the
+   * `data-venn-sets` key alone, because an id that holds an underscore makes the
+   * key of a circle read like the key of a union: a path inside a group that holds
+   * that attribute, whose box is square and whose length is pi times its width, is
+   * a circle. A union's region is never square.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): every outline sample is
+   * getPointAtLength mapped through getScreenCTM, the ground at a point is decided
+   * by isPointInFill in that shape's own space, and a canary asserts that every
+   * mapped sample lies within its circle's client box.
+   *
+   * AUTHOR STROKES (rule 42): the renderer draws a circle's stroke in the colour of
+   * its fill, so an inline stroke that differs from the fill is the author's. One
+   * that clears 3:1 on every ground is KEPT; one that fails is re-inked. An author
+   * `stroke: none` is an undrawn outline and is never painted. An author dash is
+   * kept. An author style that dims (`fill-opacity: 0`) is the author's.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced
+   * before anything is derived. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyVennEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === VENN_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${VENN_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No venn SVG in this container - venn encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${VENN_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      (owned.getAttribute(VENN_OWNED_LIST_ATTRIBUTE) || "")
+        .split(",")
+        .filter(Boolean)
+        .forEach((property) => owned.style.removeProperty(property));
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(VENN_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      Object.keys(prior).forEach((property) =>
+        owned.style.setProperty(property, prior[property].value, prior[property].priority)
+      );
+      owned.removeAttribute(VENN_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(VENN_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(VENN_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /** Painted area shapes in document order. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      painted.push({ element, index, box, paint: fill });
+    });
+
+    // Does a painted shape cover a client point? isPointInFill in the shape's own
+    // space, with the box as the fallback where the browser has no such method.
+    const covers = (shape, x, y) => {
+      const element = shape.element;
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      const box = shape.box;
+      return x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!covers(shape, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    // AUTHOR STROKES (rule 42). The renderer strokes a circle in the colour of its
+    // fill; an inline stroke that differs from it is the author's.
+    const authorLedger = authorStrokeLedger(
+      "an inline style stroke on the circle path that differs from its fill (style)",
+      (element) => {
+        if (!element.style.getPropertyValue("stroke")) return null;
+        const computed = window.getComputedStyle(element);
+        const stroke = parsePaint(computed.stroke);
+        const fill = parsePaint(computed.fill);
+        if (!stroke) return null;
+        if (fill && stroke.r === fill.r && stroke.g === fill.g && stroke.b === fill.b) return null;
+        return { ...stroke, a: stroke.a * opacityValue(computed.strokeOpacity) * chainOpacity(element) };
+      }
+    );
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {
+        circles: 0,
+        undrawnCircles: 0,
+        regions: 0,
+        titles: 0,
+        texts: 0,
+        htmlTexts: 0,
+      },
+      dashTable: [],
+      cycled: 0,
+      reach: { walkedByKey: 0, circles: 0, stamped: 0 },
+      canary: { checked: 0, inside: 0 },
+      worst: null,
+      authorStrokes: null,
+    };
+
+    const pick = (grounds, target) => {
+      const record = pickInkAgainst(VENN_INKS, grounds);
+      return record.worst >= target ? record : pickInkAgainst(VENN_INK_RAMP, grounds);
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(VENN_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(VENN_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(VENN_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) applied.worst = reading.ratio;
+    };
+
+    // --- the circles, by geometry ---------------------------------------------
+    const isCircle = (path) => {
+      if (path.tagName !== "path" || typeof path.getBBox !== "function") return false;
+      const group = path.parentElement;
+      if (!group || !group.hasAttribute("data-venn-sets")) return false;
+      let bbox;
+      let length;
+      try {
+        bbox = path.getBBox();
+        length = path.getTotalLength();
+      } catch (error) {
+        return false;
+      }
+      if (!(bbox.width > 0) || !(bbox.height > 0) || !(length > 0)) return false;
+      const wide = Math.max(bbox.width, bbox.height);
+      if (Math.abs(bbox.width - bbox.height) / wide > VENN_SQUARE_TOLERANCE) return false;
+      const expected = (Math.PI * (bbox.width + bbox.height)) / 2;
+      return Math.abs(length - expected) / expected <= VENN_LENGTH_TOLERANCE;
+    };
+
+    const circles = [];
+    const ordinalOfKey = new Map();
+    all.forEach((element, index) => {
+      if (offstage(element) || !isCircle(element)) return;
+      const key = element.parentElement.getAttribute("data-venn-sets");
+      if (!ordinalOfKey.has(key)) ordinalOfKey.set(key, ordinalOfKey.size);
+      circles.push({ element, index, key, ordinal: ordinalOfKey.get(key) });
+    });
+    const circleElements = new Set(circles.map((entry) => entry.element));
+    applied.reach.circles = circles.length;
+    applied.reach.walkedByKey = all.filter(
+      (element) =>
+        element.tagName === "path" &&
+        element.parentElement &&
+        /^[^_]+$/.test(element.parentElement.getAttribute("data-venn-sets") || "") &&
+        !offstage(element)
+    ).length;
+
+    circles.forEach((entry) => {
+      const element = entry.element;
+      const computed = window.getComputedStyle(element);
+
+      // THE STAMP: identity on first sight, read from the stamp afterwards.
+      let ordinal = Number(element.getAttribute(VENN_SET_ATTRIBUTE));
+      if (!element.hasAttribute(VENN_SET_ATTRIBUTE) || !Number.isFinite(ordinal)) {
+        ordinal = entry.ordinal;
+        element.setAttribute(VENN_SET_ATTRIBUTE, String(ordinal));
+      }
+
+      // AN UNDRAWN OUTLINE IS NEVER PAINTED: `stroke: none`, a width of 0, or a
+      // stroke too faint to see is the author's choice and is left as drawn.
+      const drawn = paintOf(element, computed, "stroke");
+      const width = parseFloat(computed.strokeWidth) || 0;
+      const box = boxOf(element);
+      if (!drawn || width <= 0 || !box) {
+        applied.subjects.undrawnCircles += 1;
+        return;
+      }
+      applied.subjects.circles += 1;
+
+      // Sample the outline in one client space, on both sides of the stroke.
+      let scale = 1;
+      let matrix = null;
+      try {
+        matrix = element.getScreenCTM();
+        scale = matrix ? Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1 : 1;
+      } catch (error) {
+        matrix = null;
+      }
+      const reach = (width * scale) / 2 + VENN_EDGE_OFFSET;
+      const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      const length = element.getTotalLength();
+      const points = [];
+      for (let step = 0; matrix && step < VENN_OUTLINE_SAMPLES; step += 1) {
+        const local = element.getPointAtLength((length * step) / VENN_OUTLINE_SAMPLES);
+        const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+        applied.canary.checked += 1;
+        const slack = (width * scale) / 2 + 1;
+        if (
+          client.x >= box.x - slack &&
+          client.x <= box.x + box.width + slack &&
+          client.y >= box.y - slack &&
+          client.y <= box.y + box.height + slack
+        ) {
+          applied.canary.inside += 1;
+        }
+        const dx = client.x - centre.x;
+        const dy = client.y - centre.y;
+        const norm = Math.hypot(dx, dy) || 1;
+        points.push([client.x + (dx / norm) * reach, client.y + (dy / norm) * reach]);
+        points.push([client.x - (dx / norm) * reach, client.y - (dy / norm) * reach]);
+      }
+      // index + 1: the circle's own fill lies under its own stroke.
+      const grounds = groundsOver(points, entry.index + 1);
+
+      const author = keepsAuthorStroke(element, grounds, VENN_OBJECT_TARGET, authorLedger);
+      let chosen;
+      if (author && author.kept) {
+        chosen = { ink: author.ink, worst: author.worst };
+      } else {
+        // THE INK KEEPS ITS HUE FAMILY and moves only as far as the margin needs.
+        const rendererInk = paintToHex({ ...parsePaint(computed.stroke), a: 1 });
+        const hue = pickKanbanHueInk(rendererInk, grounds, VENN_OBJECT_MARGIN);
+        chosen = hue.cleared
+          ? { ink: hue.ink, worst: hue.worst }
+          : (() => {
+              const record = pick(grounds, VENN_OBJECT_TARGET);
+              return record.worst >= hue.worst ? record : { ink: hue.ink, worst: hue.worst };
+            })();
+      }
+
+      // THE NON-COLOUR CHANNEL. An author's own dash is kept.
+      const channel = VENN_DASH_CHANNEL[ordinal % VENN_DASH_CHANNEL.length];
+      if (ordinal >= VENN_DASH_CHANNEL.length) applied.cycled += 1;
+      const authorDash = element.style.getPropertyValue("stroke-dasharray");
+      const keepsDash = !!authorDash && authorDash !== "none";
+      const properties = {
+        stroke: chosen.ink,
+        "stroke-opacity":
+          author && author.kept
+            ? String(Math.min(1, Number((author.opacity / (chainOpacity(element) || 1)).toFixed(3))))
+            : "1",
+      };
+      if (!keepsDash) {
+        properties["stroke-dasharray"] = channel.dash === null ? "none" : channel.dash;
+        properties["stroke-linecap"] = VENN_DASH_CAP;
+      }
+      if (!applied.dashTable.some((row) => row.ordinal === ordinal)) {
+        applied.dashTable.push({
+          ordinal,
+          key: entry.key,
+          name: keepsDash ? "author" : channel.name,
+          dash: keepsDash ? authorDash : channel.dash,
+          cap: keepsDash ? null : VENN_DASH_CAP,
+          cycled: ordinal >= VENN_DASH_CHANNEL.length,
+        });
+      }
+      write(
+        element,
+        "circleOutline",
+        properties,
+        grounds,
+        chosen,
+        VENN_OBJECT_TARGET,
+        {
+          ordinal,
+          rendererInk: paintToHex({ ...parsePaint(computed.stroke), a: 1 }),
+          ...(author ? { authorStroke: author.kept ? "kept" : "reinked" } : null),
+        }
+      );
+      applied.reach.stamped += 1;
+    });
+
+    // Every other area path (a union's region) draws no outline of its own.
+    all.forEach((element) => {
+      if (element.tagName !== "path" || offstage(element) || circleElements.has(element)) return;
+      if (element.parentElement && element.parentElement.hasAttribute("data-venn-sets")) {
+        applied.subjects.regions += 1;
+      }
+    });
+
+    // --- TEXT, and ONLY where it fails against the ground it sits on ---------
+    const considerText = (element, baseGrounds, backgrounds, channel, kind) => {
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed[channel]);
+      if (!declared) return;
+      const alpha =
+        declared.a * (channel === "fill" ? opacityValue(computed.fillOpacity) : 1) * chainOpacity(element);
+      if (alpha <= 0.05) return;
+      const grounds = baseGrounds.map((ground) =>
+        paintToHex(
+          backgrounds.reduce((under, background) => compositeOver(background, under), parsePaint(ground))
+        )
+      );
+      const worstNow = grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+      if (worstNow >= VENN_TEXT_TARGET) return;
+      const chosen = pick(grounds, VENN_TEXT_TARGET);
+      write(
+        element,
+        kind,
+        { [channel === "fill" ? "fill" : "color"]: chosen.ink },
+        grounds,
+        chosen,
+        VENN_TEXT_TARGET,
+        { wasAt: Number(worstNow.toFixed(2)) }
+      );
+    };
+
+    // SVG <text>: the title, the set labels and the region labels.
+    all.forEach((element, index) => {
+      if (element.tagName !== "text" || offstage(element)) return;
+      const box = boxOf(element);
+      if (!box) return;
+      applied.subjects.texts += 1;
+      const grounds = groundsOver(spreadPoints(box), index);
+      const group = element.parentElement;
+      const owner = group && group.hasAttribute("data-venn-sets") ? group.querySelector("path") : null;
+      const kind =
+        group === svg
+          ? "titleInk"
+          : owner && circleElements.has(owner)
+            ? "setLabelInk"
+            : "regionLabelInk";
+      if (kind === "titleInk") applied.subjects.titles += 1;
+      considerText(element, grounds, [], "fill", kind);
+
+      // The glyphs are painted by the TSPANS, and an author's colour can travel as
+      // an inline `fill` on a leaf tspan (rule 46).
+      element.querySelectorAll("tspan").forEach((span) => {
+        const holdsText = [...span.childNodes].some(
+          (node) => node.nodeType === 3 && node.textContent.trim().length > 0
+        );
+        if (!holdsText) return;
+        if (window.getComputedStyle(span).fill === window.getComputedStyle(element).fill) return;
+        considerText(span, grounds, [], "fill", "tspanInk");
+      });
+    });
+
+    // HTML in a foreignObject: every item; the ink is `color`.
+    svg.querySelectorAll("foreignObject").forEach((host) => {
+      const hostBox = boxOf(host);
+      if (!hostBox) return;
+      const baseGrounds = groundsOver(spreadPoints(hostBox), all.indexOf(host));
+      const leaves = [...host.querySelectorAll("*")].filter((element) =>
+        [...element.childNodes].some((node) => node.nodeType === 3 && node.textContent.trim().length > 0)
+      );
+      leaves.forEach((leaf) => {
+        applied.subjects.htmlTexts += 1;
+        const backgrounds = [];
+        for (let node = leaf; node && node !== host; node = node.parentElement) {
+          const background = parsePaint(window.getComputedStyle(node).backgroundColor);
+          if (background && background.a > 0.05) backgrounds.unshift(background);
+        }
+        considerText(leaf, baseGrounds, backgrounds, "color", "itemInk");
+      });
+    });
+
+    applied.authorStrokes = summariseAuthorStrokes(authorLedger);
+    applied.dashTable.sort((a, b) => a.ordinal - b.ordinal);
+
+    logInfo(
+      `Venn encoding applied: ${applied.subjects.circles} circle outlines inked and dashed (${applied.cycled} cycled), ` +
+        `${applied.reached} of ${applied.walked} walked elements painted, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
+  // TREEVIEW ENCODING (register item 122 session 8, 25 October 2026)
+  // -----------------------------------------------------------------------
+
+  const TREEVIEW_ROLEDESCRIPTION = "treeView";
+
+  /** SC 1.4.11 for connectors, the highlight outline and the icons. */
+  const TREEVIEW_OBJECT_TARGET = 3;
+
+  /**
+   * The working margin a DERIVED object ink is taken to (standard § 2), so a
+   * hue-kept ink is not left one sample point from a failure in another tool.
+   */
+  const TREEVIEW_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for every word the canvas draws. */
+  const TREEVIEW_TEXT_TARGET = 4.5;
+
+  /** The margin a hue-kept TEXT ink is taken to. */
+  const TREEVIEW_TEXT_MARGIN = 4.6;
+
+  /** The outline inks of record (standard § 1.4), and the grey ramp behind them. */
+  const TREEVIEW_INKS = REQUIREMENT_INKS;
+  const TREEVIEW_INK_RAMP = REQUIREMENT_INK_RAMP;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const TREEVIEW_ENCODING_ATTRIBUTE = "data-treeview-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const TREEVIEW_OWNED_LIST_ATTRIBUTE = "data-treeview-encoding-owned";
+
+  /**
+   * The inline values an element held for a property this pass then wrote, as
+   * JSON. The renderer writes the "?" glyph's `fill` inline, the very property
+   * written there, so the sweep gives it back (item 118 lesson, rule 44).
+   */
+  const TREEVIEW_PRIOR_ATTRIBUTE = "data-treeview-encoding-prior";
+
+  /**
+   * THE STAMP: an element's role on first sight, read from the stamp afterwards
+   * so a second run and a theme flip never classify from the ink this pass
+   * wrote. It is in no owned list, so no sweep removes it.
+   */
+  const TREEVIEW_ROLE_ATTRIBUTE = "data-treeview-role";
+
+  /** The roles, chosen by position in the SVG and never by class alone. */
+  const TREEVIEW_ROLES = Object.freeze({
+    label: "label",
+    description: "description",
+    connector: "connector",
+    highlight: "highlight",
+    icon: "icon",
+    glyphBody: "glyphBody",
+    glyphText: "glyphText",
+  });
+
+  /** Fractions of a connector's length at which the ground beneath it is read. */
+  const TREEVIEW_LINE_FRACTIONS = Object.freeze([0.02, 0.1, 0.3, 0.5, 0.7, 0.9, 0.98]);
+
+  /** Client pixels beyond half the stroke at which the grounds either side are read. */
+  const TREEVIEW_EDGE_OFFSET = 1;
+
+  /** Fractions along a highlight edge at which the grounds either side are read. */
+  const TREEVIEW_EDGE_FRACTIONS = Object.freeze([0.2, 0.5, 0.8]);
+
+  /** An ink whose HSL saturation is below this has no hue to keep. */
+  const TREEVIEW_ACHROMATIC_SATURATION = 0.1;
+
+  /** The visible width, in client pixels, of an outline given to a "?" glyph body. */
+  const TREEVIEW_GLYPH_OUTLINE_PX = 1.2;
+
+  /**
+   * Apply the accessibility encoding to a rendered treeView: an ink on every
+   * word, connector, highlight outline and icon WHERE AND ONLY WHERE it fails
+   * against the ground it actually sits on. FILLS ARE NEVER WRITTEN and neither
+   * `opacity` nor `fill-opacity` is touched; no renderer inline value is deleted.
+   *
+   * WHY IT EXISTS (item 122 census step 4, 24 October 2026): the renderer
+   * hard-codes the label and connector ink to black, so in the three dark cells
+   * 78 of 81 readings fail at 1.45:1; in every cell the descriptions are a green
+   * at 3.04:1 and the `:::highlight` row is a 15 per cent amber tint (1.08:1)
+   * inside an amber outline (1.60:1). The theme engine does not move treeView.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION IN THE SVG (rule 19): a `line` outside
+   * a glyph's own nested svg is a connector; a `rect` outside one is a highlight
+   * box; a `text` outside one is a label (the first text of its row group) or a
+   * description (a later one); inside a nested svg a `path` is an icon, a `rect`
+   * the "?" glyph's body and a `text` its mark. Each is stamped on first sight.
+   *
+   * THE HIGHLIGHT is told apart by its OUTLINE, a non-colour channel: the fill
+   * stays as drawn (rule 18) and, once the outline clears 3:1, is not a reading
+   * (rule 40).
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): connector samples are
+   * getPointAtLength mapped through getScreenCTM, a ground is decided by
+   * isPointInFill in the shape's own space, and a canary asserts every mapped
+   * sample lies within its connector's client box. getBBox is never used.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced
+   * before anything is derived. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyTreeViewEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === TREEVIEW_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${TREEVIEW_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No treeView SVG in this container - treeView encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${TREEVIEW_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      const written = (owned.getAttribute(TREEVIEW_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      for (const name of written) {
+        owned.style.removeProperty(name);
+      }
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(TREEVIEW_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const property of Object.keys(prior)) {
+        owned.style.setProperty(property, prior[property].value, prior[property].priority);
+      }
+      owned.removeAttribute(TREEVIEW_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(TREEVIEW_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(TREEVIEW_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    // The composited alpha a computed style paints with, for fill and stroke.
+    const paintOf = (element, computed, channel) => {
+      const declared = parsePaint(computed[channel]);
+      const alpha =
+        (declared ? declared.a : 0) *
+        opacityValue(computed[`${channel}Opacity`]) *
+        chainOpacity(element);
+      return declared && alpha > 0.05 ? { ...declared, a: alpha } : null;
+    };
+
+    /** Painted area shapes in document order, measured BEFORE anything is written. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const fill = paintOf(element, window.getComputedStyle(element), "fill");
+      const box = boxOf(element);
+      if (!fill || !box) return;
+      painted.push({ element, index, box, paint: fill });
+    });
+
+    // Does a painted shape cover a client point? isPointInFill in the shape's own
+    // space, with the box as the fallback where the browser has no such method.
+    const covers = (shape, x, y) => {
+      const element = shape.element;
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      const box = shape.box;
+      return x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!covers(shape, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {},
+      reach: { found: 0, stamped: 0 },
+      canary: { checked: 0, inside: 0 },
+      worst: null,
+    };
+
+    /** Choose an ink: the renderer's own hue where it has one, else an ink of record. */
+    const choose = (rendererHex, grounds, target, margin) => {
+      const hsl = kanbanHexToHsl(rendererHex);
+      let hue = null;
+      if (hsl.s >= TREEVIEW_ACHROMATIC_SATURATION) {
+        hue = pickKanbanHueInk(rendererHex, grounds, margin);
+        if (hue.cleared) return { ink: hue.ink, worst: hue.worst };
+      }
+      const record = pickInkAgainst(TREEVIEW_INKS, grounds);
+      const chosen = record.worst >= target ? record : pickInkAgainst(TREEVIEW_INK_RAMP, grounds);
+      return hue && hue.worst > chosen.worst ? { ink: hue.ink, worst: hue.worst } : chosen;
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(TREEVIEW_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(TREEVIEW_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(TREEVIEW_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) applied.worst = reading.ratio;
+    };
+
+    /** The worst ratio of a computed paint, alpha folded in, against each ground. */
+    const worstOf = (declared, alpha, grounds) =>
+      grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+
+    // --- THE STAMP: a role on first sight, from position in the svg ----------
+    const roleOf = (element) => {
+      const stamped = element.getAttribute(TREEVIEW_ROLE_ATTRIBUTE);
+      if (stamped) return stamped;
+
+      const tag = element.tagName;
+      const nested = element.closest("svg") !== svg;
+      let role = null;
+      if (tag === "line" && !nested) role = TREEVIEW_ROLES.connector;
+      else if (tag === "rect") role = nested ? TREEVIEW_ROLES.glyphBody : TREEVIEW_ROLES.highlight;
+      else if (tag === "path" && nested) role = TREEVIEW_ROLES.icon;
+      else if (tag === "text") {
+        if (nested) role = TREEVIEW_ROLES.glyphText;
+        else {
+          const first = element.parentElement.querySelector(":scope > text");
+          role = first === element ? TREEVIEW_ROLES.label : TREEVIEW_ROLES.description;
+        }
+      }
+      if (role) element.setAttribute(TREEVIEW_ROLE_ATTRIBUTE, role);
+      return role;
+    };
+
+    all.forEach((element, index) => {
+      if (offstage(element)) return;
+      const role = roleOf(element);
+      if (!role) return;
+      applied.reach.found += 1;
+      applied.reach.stamped += element.hasAttribute(TREEVIEW_ROLE_ATTRIBUTE) ? 1 : 0;
+      applied.subjects[role] = (applied.subjects[role] || 0) + 1;
+
+      const computed = window.getComputedStyle(element);
+
+      // --- TEXT, and ONLY where it fails against the ground it sits on -------
+      if (role === TREEVIEW_ROLES.label || role === TREEVIEW_ROLES.description || role === TREEVIEW_ROLES.glyphText) {
+        const box = boxOf(element);
+        const declared = parsePaint(computed.fill);
+        if (!box || !declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= TREEVIEW_TEXT_TARGET) return;
+        const chosen = choose(paintToHex({ ...declared, a: 1 }), grounds, TREEVIEW_TEXT_TARGET, TREEVIEW_TEXT_MARGIN);
+        write(element, `${role}Ink`, { fill: chosen.ink }, grounds, chosen, TREEVIEW_TEXT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- CONNECTORS: sampled along the line in one client space -------------
+      if (role === TREEVIEW_ROLES.connector) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const box = boxOf(element);
+        const matrix = element.getScreenCTM && element.getScreenCTM();
+        if (!declared || width <= 0 || !matrix || typeof element.getTotalLength !== "function") return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const length = element.getTotalLength();
+        const points = TREEVIEW_LINE_FRACTIONS.map((fraction) => {
+          const local = element.getPointAtLength(length * fraction);
+          const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+          if (box) {
+            applied.canary.checked += 1;
+            const slack = width + 1;
+            if (
+              client.x >= box.x - slack &&
+              client.x <= box.x + box.width + slack &&
+              client.y >= box.y - slack &&
+              client.y <= box.y + box.height + slack
+            ) {
+              applied.canary.inside += 1;
+            }
+          }
+          return [client.x, client.y];
+        });
+        const grounds = groundsOver(points, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= TREEVIEW_OBJECT_TARGET) return;
+        const chosen = choose(
+          paintToHex({ ...declared, a: 1 }),
+          grounds,
+          TREEVIEW_OBJECT_TARGET,
+          TREEVIEW_OBJECT_MARGIN
+        );
+        write(element, "connectorInk", { stroke: chosen.ink }, grounds, chosen, TREEVIEW_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- THE HIGHLIGHT BOX: its OUTLINE is the non-colour channel ----------
+      if (role === TREEVIEW_ROLES.highlight) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const box = boxOf(element);
+        if (!declared || width <= 0 || !box) return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const reach = width / 2 + TREEVIEW_EDGE_OFFSET;
+        const points = [];
+        TREEVIEW_EDGE_FRACTIONS.forEach((fraction) => {
+          const x = box.x + box.width * fraction;
+          const y = box.y + box.height * fraction;
+          points.push([x, box.y - reach], [x, box.y + reach]);
+          points.push([x, box.y + box.height - reach], [x, box.y + box.height + reach]);
+          points.push([box.x - reach, y], [box.x + reach, y]);
+          points.push([box.x + box.width - reach, y], [box.x + box.width + reach, y]);
+        });
+        // index + 1: the highlight's own tint lies under the inner side of its edge.
+        const grounds = groundsOver(points, index + 1);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= TREEVIEW_OBJECT_TARGET) return;
+        const chosen = choose(
+          paintToHex({ ...declared, a: 1 }),
+          grounds,
+          TREEVIEW_OBJECT_TARGET,
+          TREEVIEW_OBJECT_MARGIN
+        );
+        write(element, "highlightOutline", { stroke: chosen.ink }, grounds, chosen, TREEVIEW_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- ICONS: a non-text graphic, re-inked only where it fails 3:1 --------
+      if (role === TREEVIEW_ROLES.icon) {
+        const declared = parsePaint(computed.fill);
+        const box = boxOf(element);
+        if (!declared || !box) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= TREEVIEW_OBJECT_TARGET) return;
+        const chosen = choose(
+          paintToHex({ ...declared, a: 1 }),
+          grounds,
+          TREEVIEW_OBJECT_TARGET,
+          TREEVIEW_OBJECT_MARGIN
+        );
+        write(element, "iconInk", { fill: chosen.ink }, grounds, chosen, TREEVIEW_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- THE "?" GLYPH BODY: its fill is the renderer's and is never written
+      // (rule 18), so a body that fails 3:1 against its ground is given an
+      // OUTLINE, which under rule 40 then stands for it.
+      if (role === TREEVIEW_ROLES.glyphBody) {
+        const declared = parsePaint(computed.fill);
+        const box = boxOf(element);
+        const matrix = element.getScreenCTM && element.getScreenCTM();
+        if (!declared || !box || !matrix) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= TREEVIEW_OBJECT_TARGET) return;
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        // Doubled: the glyph's own nested svg clips the outer half of a stroke.
+        const strokeWidth = Number(((TREEVIEW_GLYPH_OUTLINE_PX * 2) / scale).toFixed(3));
+        const chosen = choose(
+          paintToHex({ ...declared, a: 1 }),
+          grounds,
+          TREEVIEW_OBJECT_TARGET,
+          TREEVIEW_OBJECT_MARGIN
+        );
+        write(
+          element,
+          "glyphOutline",
+          { stroke: chosen.ink, "stroke-width": String(strokeWidth) },
+          grounds,
+          chosen,
+          TREEVIEW_OBJECT_TARGET,
+          { wasAt: Number(worstNow.toFixed(2)) }
+        );
+      }
+    });
+
+    logInfo(
+      `TreeView encoding applied: ${applied.reached} of ${applied.reach.found} stamped elements re-inked, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
   // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
   // -----------------------------------------------------------------------
 
@@ -7877,6 +9505,24 @@ window.MermaidThemes = (function () {
     // applyErEncoding never calls applyTheme, so it cannot recurse.
     const erEncoding = applyErEncoding(root);
 
+    // TREEMAP DISPATCH, added 22 October 2026 (register item 119 session 7), at the
+    // same seam and for the same wiring reason as the eleven above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyTreemapEncoding never calls applyTheme, so it cannot recurse.
+    const treemapEncoding = applyTreemapEncoding(root);
+
+    // VENN DISPATCH, added 23 October 2026 (register item 121 session 8), at the
+    // same seam and for the same wiring reason as the twelve above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyVennEncoding never calls applyTheme, so it cannot recurse.
+    const vennEncoding = applyVennEncoding(root);
+
+    // TREEVIEW DISPATCH, added 25 October 2026 (register item 122 session 8), at the
+    // same seam and for the same wiring reason as the thirteen above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyTreeViewEncoding never calls applyTheme, so it cannot recurse.
+    const treeViewEncoding = applyTreeViewEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -7897,8 +9543,11 @@ window.MermaidThemes = (function () {
       if (flowchartEncoding) return { flowchart: flowchartEncoding };
       if (classEncoding) return { class: classEncoding };
       if (erEncoding) return { er: erEncoding };
+      if (treemapEncoding) return { treemap: treemapEncoding };
+      if (vennEncoding) return { venn: vennEncoding };
+      if (treeViewEncoding) return { treeView: treeViewEncoding };
       logDebug(
-        "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class or er SVG in this container - series encoding skipped"
+        "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn or treeView SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -9960,6 +11609,9 @@ window.MermaidThemes = (function () {
     applyFlowchartEncoding: applyFlowchartEncoding,
     applyClassEncoding: applyClassEncoding,
     applyErEncoding: applyErEncoding,
+    applyTreemapEncoding: applyTreemapEncoding,
+    applyVennEncoding: applyVennEncoding,
+    applyTreeViewEncoding: applyTreeViewEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

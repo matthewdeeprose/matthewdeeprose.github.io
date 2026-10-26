@@ -668,22 +668,20 @@
     },
 
     /**
-     * True when a saved record can stand in for analysing the picture now: the
-     * Default profile and the same answer to "Detect text in this picture?"
-     * (H-56, H-64). The one test, used by the lookup in startBackgroundAnalysis
-     * and by _detectTextOrRestore (H-98), so the two cannot drift apart.
+     * True when the person has answered "Detect text in this picture?" and a
+     * saved record was made with that same answer (H-56, H-64). The one answer
+     * test, used by the lookup in startBackgroundAnalysis and by
+     * _detectTextOrRestore (H-98), so the two cannot drift apart. The profile
+     * comparison stays inline in each caller: a marker row in
+     * tests-11c-cache-recall.js reads it in startBackgroundAnalysis's source.
      * @param {object} cached - a record from ImageDescriberCache.load
-     * @param {string} profile - the profile name in use
      * @returns {boolean}
      */
-    _savedAnalysisMatchesAnswer(cached, profile) {
+    _savedAnalysisHoldsThisAnswer(cached) {
       if (!cached || !cached.analysis || !this._hasTextChoice()) return false;
       const cachedOcrSkipped =
         !!cached.analysis.ocr && cached.analysis.ocr.status === "skipped";
-      return (
-        cached.analysis.profile === profile &&
-        cachedOcrSkipped === this._isSkipOcrTicked()
-      );
+      return cachedOcrSkipped === this._isSkipOcrTicked();
     },
 
     /**
@@ -714,7 +712,12 @@
           logWarn("Saved analysis lookup failed:", err.message);
         }
         if (runId !== this._analysisRunId) return null;
-        if (this._savedAnalysisMatchesAnswer(cached, profile)) {
+        if (
+          cached &&
+          cached.analysis &&
+          cached.analysis.profile === profile &&
+          this._savedAnalysisHoldsThisAnswer(cached)
+        ) {
           logInfo("Saved analysis found for this answer — restoring it");
           this._skipSavedLookupOnce = true;
           this.startBackgroundAnalysis();
@@ -863,7 +866,10 @@
               const cachedProfile = cached.analysis.profile;
               const cachedOcrSkipped =
                 !!cached.analysis.ocr && cached.analysis.ocr.status === "skipped";
-              if (this._savedAnalysisMatchesAnswer(cached, profile)) {
+              if (
+                cachedProfile === profile &&
+                this._savedAnalysisHoldsThisAnswer(cached)
+              ) {
                 logInfo(
                   `Cache hit for ${this.currentFileHash.substring(0, 16)}... — restoring analysis (profile: ${profile})`,
                 );

@@ -4842,14 +4842,23 @@ const CaptionsFixerUI = (function () {
         const input = event.target;
         handleFile(input && input.files ? input.files[0] : null);
       });
-      bindDragAndDrop(elements.dropZone, handleFile);
+      // Bound to the visible box (the wrapper), not the label inside it, so a
+      // drop on the box's padding or its file-name line is taken too.
+      bindDragAndDrop(
+        elements.dropZone.closest(".captions-fixer-upload-area") || elements.dropZone,
+        handleFile,
+      );
       // STAGE 10, DECISION 7. The second input copies the first: same change
       // listener shape, same bindDragAndDrop, its own handler.
       elements.contextInput.addEventListener("change", (event) => {
         const input = event.target;
         handleContextFile(input && input.files ? input.files[0] : null);
       });
-      bindDragAndDrop(elements.contextDropZone, handleContextFile);
+      bindDragAndDrop(
+        elements.contextDropZone.closest(".captions-fixer-upload-area") ||
+          elements.contextDropZone,
+        handleContextFile,
+      );
       // THE COST LINE FOLLOWS THE GLOSSARY — Stage 15. The estimate reads the
       // field, so a cost written before a person typed into it describes a
       // different send from the one Run would make. Through `renderCost`, the

@@ -274,6 +274,12 @@
   opacity: 0.8;
 }
 
+/* A hint between a field's label and the field (replaces a placeholder). */
+.setup-input-group > .setup-field-hint {
+  margin-top: 0;
+  margin-bottom: 0.4rem;
+}
+
 /* Inline field validation message, shown beside the input it describes and
  * referenced from its aria-describedby.
  *
@@ -417,6 +423,78 @@
 .setup-model-card-dl {
   font-size: 0.875rem;
 }
+/* ------------------------------------------------------------
+ * OpenRouter key details (dl of label/value rows, like the Status Summary)
+ * Colours: the headline row reuses .setup-status-partial's fill bar from
+ * light.css / dark.css; .setup-key-low swaps it for the warning palette.
+ * ------------------------------------------------------------ */
+.setup-key-details {
+  margin-top: 1.25rem;
+}
+
+.setup-key-details h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1rem;
+}
+
+.setup-key-details-message {
+  margin: 0 0 0.5rem 0;
+}
+
+/* Tile grid: each dt/dd pair is a small tile, label above value. The tiles
+ * wrap to as many columns as fit, down to one on a narrow screen or at high
+ * zoom. The headline row spans the full width. */
+.setup-key-details-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.5rem;
+}
+
+.setup-key-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color, #ddd);
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.setup-key-row dt {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+}
+
+.setup-key-row dt .icon {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+}
+
+.setup-key-row dd {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.setup-key-headline {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+
+.setup-key-headline dd {
+  font-size: 1.15rem;
+}
+
 /* ------------------------------------------------------------
  * Button Group (Save + Clear)
  * ------------------------------------------------------------ */

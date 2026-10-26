@@ -151,6 +151,7 @@
 .imgdesc-file-info {
   margin: 0;
   font-size: 0.875rem;
+  overflow-wrap: anywhere;
 }
 
 /* Fullscreen button (Phase 2E) */
@@ -200,6 +201,7 @@
 .imgdesc-field textarea {
   resize: vertical;
   min-height: 3rem;
+  width: 100%;
 }
 
 /* ==============================================
@@ -227,15 +229,15 @@
    ============================================== */
 
 .imgdesc-option-group select {
-  width: 90%;
+  width: 95%;
   padding: 0.5rem;
-  border: 1px solid currentColor;
   border-radius: 0.25rem;
   font-family: inherit;
   font-size: inherit;
   background: transparent;
   color: inherit;
   cursor: pointer;
+  margin-left: 0px;
 }
 
 /* ==============================================
@@ -600,7 +602,9 @@
 @media (min-width: 1024px) {
   .imgdesc-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* H-102b: a floor of 0 on each column, so a panel that opens wider (Model & Generation
+       Settings) cannot widen its column and shift the other; #imgdesc-model is capped below. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 2rem;
     align-items: start;
   }
@@ -616,7 +620,7 @@
      column directly under the picture. Row 1 is sized by the left column; row 2 is the
      flexible remainder under the right column's overhang. Below 1024px nothing is placed. */
   .imgdesc-layout {
-    grid-template-rows: auto 1fr;
+    grid-template-rows: auto auto 1fr;
   }
 
   .imgdesc-input-column {
@@ -626,7 +630,7 @@
 
   .imgdesc-output-column {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
   }
 
   #imgdesc-generate-area {
@@ -635,12 +639,37 @@
     align-self: start;
     margin-top: 0;
   }
+
+  /* === H-101 OPTIONAL SETTINGS PLACEMENT (layout Q) — ONE BLOCK, EASY TO CHANGE ===
+     Optional Settings (was Expert Mode) is the last child of the layout, after Generate in
+     the DOM and the Tab order. From 1024px it sits in the LEFT column directly under
+     Generate (row 3). Generate does not move: the output column now spans rows 1-3 and
+     row 3 is the flexible remainder. To put it back in the right column, change only this
+     rule (and the row count above). Arms P1 (right column, row 2) and P2 (right column,
+     row 3) were measured and rejected: P1 moves Generate (+37 px with a picture, +636 px
+     with none), P2 leaves 313-652 px empty under Add Context. CSS for both, and the
+     numbers, are in image-describer/docs/idq-phase-h-plan.md (H-101) and
+     .claude/measurements/h101/. */
+  #imgdesc-expert-section {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+  }
+  /* === end H-101 placement block === */
+}
+
+/* H-101: Optional Settings belongs to the settings panel, so it hides whenever the panel
+   does (output mode: during and after generation) and shows again when the panel does.
+   showOutputUI / showConfigurationUI toggle imgdesc-output-mode and the panel's hidden
+   attribute together. */
+.imgdesc-layout.imgdesc-output-mode #imgdesc-expert-section {
+  display: none;
 }
 
 /* Large desktop: Better proportions */
 @media (min-width: 1200px) {
   .imgdesc-layout {
-    grid-template-columns: 1.2fr 1fr; /* Slightly wider left column */
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); /* Slightly wider left column; H-102b: floor of 0, as above */
   }
 }
 
@@ -710,6 +739,7 @@
 /* Custom disclosure triangle */
 .imgdesc-options-group summary::before {
   content: "▶";
+  content: "▶" / ""; /* H-113: decorative arrow, empty alternative keeps it out of the accessible name; revert by deleting this line */
   font-size: 0.7rem;
   transition: transform 0.2s ease;
   flex-shrink: 0;
@@ -1411,6 +1441,13 @@
    MODEL SELECTION (Stage 1)
    ============================================================================ */
 
+/* H-102b: the list's width is its longest option, wider than a half column; keep it inside its column
+   (a long selected name shows shortened when closed; the open list shows every name in full). */
+#imgdesc-model {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 /* Model selector dropdown */
 .imgdesc-model-selector {
   padding: 0.5rem;
@@ -1544,6 +1581,15 @@
   font-size: 0.85rem;
 }
 
+/* H-110: the hint under a text field's label sits flush left; the indent above is for a checkbox. */
+.imgdesc-field > .imgdesc-hint-text,
+.imgdesc-add-field > .imgdesc-hint-text,
+.imgdesc-filter-field > .imgdesc-hint-text {
+  margin-left: 0;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
 .imgdesc-checkbox-label {
   display: flex;
   align-items: center;
@@ -1651,6 +1697,7 @@
 
 .imgdesc-camera-section summary::before {
   content: "▶";
+  content: "▶" / ""; /* H-113: decorative arrow, empty alternative keeps it out of the accessible name; revert by deleting this line */
   font-size: 0.7rem;
   transition: transform 0.2s ease;
   flex-shrink: 0;
@@ -2088,6 +2135,8 @@
   font-size: 0.82rem;
   font-weight: 500;
 }
+
+/* H-127b: the state text's focus glow lives in light.css and dark.css (next to the buttons' glow), so it follows the site's Dark / Light switch. The transparent outline is kept so forced colours still draws its own ring. */
 
 /* Action buttons */
 .imgdesc-mm-model-actions {
@@ -3486,6 +3535,61 @@
 
 .tts-nudge a {
   font-weight: 600;
+}
+
+/* --- Description tables: the responsive card pattern, without sorting (H-100) --- */
+
+/* The pattern (md-scripts/css/sortable-table.css) is borrowed by class name. Its
+   cell floors (min-width: 120px) and min-width: max-content would force an
+   eight-column table wider than the output, so they are reset here only. */
+#imgdesc-output .mdSortableTable-data-table {
+  min-width: 100%;
+  table-layout: auto;
+}
+
+#imgdesc-output .mdSortableTable-data-table td,
+#imgdesc-output .mdSortableTable-data-table th {
+  min-width: 0;
+  max-width: none;
+}
+
+/* The line between items inside a card takes the card's own outline colour, so it
+   meets 3:1 in both themes; the shared themes' faint line is 1.7:1 / 1.1:1 (H-100b). */
+@media (max-width: 900px) {
+  #imgdesc-output .mdSortableTable-data-table tbody td {
+    border-bottom-color: inherit;
+  }
+}
+
+/* H-109 begin */
+/* In the card layout the shared sheet leaves the table and its tbody as block boxes, and
+   a block box keeps the whitespace between rows as empty lines a screen reader read as
+   "blank" (before row 1 and between rows). A flex container makes no box for that
+   whitespace, as the rows already do. Measured and heard at H-104 / H-109. */
+@media (max-width: 900px) {
+  #imgdesc-output .mdSortableTable-data-table,
+  #imgdesc-output .mdSortableTable-data-table tbody {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #imgdesc-output .mdSortableTable-data-table tbody {
+    width: 100%;
+  }
+}
+/* H-109 end */
+
+/* Below 480px the label sits on its own line above the value, so a value is not
+   squeezed into what is left beside its label. */
+@media (max-width: 480px) {
+  #imgdesc-output .mdSortableTable-data-table tbody td {
+    flex-direction: column;
+  }
+
+  #imgdesc-output .mdSortableTable-data-table tbody td::before {
+    min-width: 0;
+    padding-right: 0;
+  }
 }
 
 /* --- Reduced motion --- */

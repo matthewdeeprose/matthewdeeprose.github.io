@@ -100,9 +100,10 @@ export function renderMathJaxHead(opts = {}) {
     // deliberately never read from here — see the loader note below for why it
     // cannot be honoured at build time.
     // Default speech ruleset domain for SRE. ClearSpeak is clearer/more natural
-    // than the terse MathSpeak default; it governs the wording used by Read Aloud
-    // (via the aria-label speech below). It does NOT govern the Explorer's walk or the
-    // equations' screen-reader labels, which are MathSpeak whatever is saved (RA-31).
+    // than the terse MathSpeak default. It is the style used when the reader has saved
+    // none, for Read Aloud AND, since RA-57, for the Explorer's walk and the equations'
+    // screen-reader labels (set at load through options.sre below). A saved
+    // `user-maths-speech` choice overrides it.
     speechDomain: "clearspeak",
     ...(opts.settings || {}),
   };
@@ -225,14 +226,17 @@ export function renderMathJaxHead(opts = {}) {
   // something the reader can actually see.
   //
   // About `speechRules`, which the menu settings in the literal below deliberately omit
-  // (kept here for the same size reason). Nothing sets it at load time. updateExplorer()
-  // in mathjax-controls.js no longer touches the menu (RA-29), so the only writer is
-  // updateSpeechRules(domain), which runs when the reader changes their speech style in
-  // the page. Measured at RA-31 (explorer on, cold and warm, over http): this MathJax's
-  // menu.settings has no `speechRules` key at all, this config sets no options.sre, and
-  // SRE's domain is MathJax's default, mathspeak, whichever style the reader saved. Do
-  // not read the `speechDomain` option above as controlling the Explorer's walk: it does
-  // not on this build.
+  // (kept here for the same size reason). Nothing sets it. MathJax 3.2.2 builds the
+  // Explorer's labels and walk from `document.options.sre` ({ domain, style }) and from
+  // nothing else: measured at RA-54 that the menu `speechRules`, `options.a11y.speechRules`
+  // and a top-level `sre` are all ignored, and the shipped updateSpeechRules(domain) in
+  // mathjax-controls.js changes nothing already typeset. So RA-57 (register 48) sets
+  // `options.sre` right after the config literal, from the saved `user-maths-speech`
+  // (anything but 'mathspeak' or 'clearspeak' falls back to speechDomain above), and
+  // before MathJax starts. It reads only localStorage, inside a try, and adds nothing to
+  // `loader.load`. The labels are baked at typeset, so a change of style applies on
+  // reload, as the panel says.
+  const speechDefaultJson = JSON.stringify(s.speechDomain === "mathspeak" ? "mathspeak" : "clearspeak");
 
   const configScript = `<script>
 (function () {
@@ -266,6 +270,7 @@ window.MathJax = {
   loader: { load: ['ui/menu', ${a11yLoad}].concat(mjxExplorer ? ['a11y/explorer'] : []) },
   chtml: { displayAlign: 'left'${chtmlAdaptive} }
 };
+window.MathJax.options.sre = { domain: (function(){ try { var d = localStorage.getItem('user-maths-speech'); return d === 'mathspeak' || d === 'clearspeak' ? d : ${speechDefaultJson}; } catch (e) { return ${speechDefaultJson}; } })(), style: 'default' };
 
 // Watchdog: if exploration was requested but MathJax does not start up, give up on
 // exploration for this load only. The saved choice is kept.

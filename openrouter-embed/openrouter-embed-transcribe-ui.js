@@ -6876,6 +6876,44 @@ const OpenRouterEmbedTranscribeUI = (function () {
     logInfo(`file accepted: ${file.name}, ${file.size} bytes`);
   }
 
+  // --------------------------------------------------------------------------
+  // DROP ZONE
+  // --------------------------------------------------------------------------
+
+  // Added to the zone while a file is dragged over it; transcribe.css draws the
+  // solid 3px border from it.
+  const DRAG_OVER_CLASS = "transcribe-drag-over";
+
+  function handleZoneDragOver(event) {
+    event.preventDefault();
+    const area = event.currentTarget;
+    area.classList.add(DRAG_OVER_CLASS);
+  }
+
+  function handleZoneDragLeave(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove(DRAG_OVER_CLASS);
+  }
+
+  /**
+   * A drop RUNS THE CHOOSE PATH and nothing else: the dropped files are put on
+   * the input and a change event is dispatched, so handleFileChange validates,
+   * names and announces exactly as choosing the same file does. No announce(),
+   * toast or status text is added here; whatever choosing says, dropping says,
+   * once.
+   */
+  function handleZoneDrop(event) {
+    event.preventDefault();
+    event.currentTarget.classList.remove(DRAG_OVER_CLASS);
+
+    const dropped = event.dataTransfer ? event.dataTransfer.files : null;
+    const input = el("transcribe-file-input");
+    if (!input || !dropped || dropped.length === 0) return;
+
+    input.files = dropped;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   async function handleRun() {
     // Re-entry is refused by this flag rather than by disabling the button.
     // THE BUTTON STAYS ENABLED AND KEEPS FOCUS ON PURPOSE: disabling a focused
@@ -7184,6 +7222,18 @@ const OpenRouterEmbedTranscribeUI = (function () {
     }
 
     el("transcribe-file-input").addEventListener("change", handleFileChange);
+
+    // The zone is the file input's wrapper (it has no id of its own). A missing
+    // wrapper costs the drop only: choosing a file still works.
+    const dropZone = el("transcribe-file-input").closest(".transcribe-upload-area");
+    if (dropZone) {
+      dropZone.addEventListener("dragover", handleZoneDragOver);
+      dropZone.addEventListener("dragleave", handleZoneDragLeave);
+      dropZone.addEventListener("drop", handleZoneDrop);
+    } else {
+      logWarn("the upload area is missing — choosing a file still works, dropping does not");
+    }
+
     el("transcribe-run").addEventListener("click", handleRun);
     el("transcribe-copy").addEventListener("click", handleCopy);
     el("transcribe-download-txt").addEventListener("click", handleDownloadTxt);

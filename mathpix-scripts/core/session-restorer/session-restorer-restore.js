@@ -484,6 +484,10 @@
     logInfo("Restoring session from ZIP archive");
     // S6-1d: a quiet restore leaves its outcome here instead of speaking it.
     this.lastRestoreOutcome = null;
+    // UT-10: the figures this archive points to but does not carry, kept for the
+    // image manager's empty state. lastRestoreOutcome is null on the default
+    // path, so the count has its own field. A new restore starts from 0.
+    this.missingFigureCount = 0;
     this._restoreQuiet = quiet === true;
 
     try {
@@ -580,6 +584,7 @@
         // image files restores silently with zero images; say so instead.
         // RD-3: decided here, SPOKEN once at the end in place of the success line.
         figuresOutcome = this._figuresNotRestoredOutcome(imageResult);
+        this.missingFigureCount = figuresOutcome.count || 0;
       } catch (imageError) {
         // Non-fatal: images failing should not block session restore
         logWarn("Image restore failed (non-fatal):", imageError);

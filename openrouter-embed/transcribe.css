@@ -120,14 +120,37 @@
  * is the cheaper coupling.
  *
  * Values match image-describer.css:36-42 so the two tools look like siblings.
- * The `transition` is deliberately NOT copied — Transcribe has no drag-over
- * state to transition to, so it would animate nothing.
+ * The `transition` is deliberately NOT copied: hover, drag and focus are
+ * instant shape changes, and nothing here should animate.
  */
 .transcribe-upload-area {
   border: 2px dashed currentColor;
   border-radius: 0.5rem;
   padding: 2rem;
   text-align: center;
+}
+
+/* Pointing at the zone turns the dashed border solid, as in the Image
+ * Describer. A shape change, never colour alone (colour is in the theme sheets). */
+.transcribe-upload-area:hover {
+  border-style: solid;
+}
+
+/* The drop handler in openrouter-embed-transcribe-ui.js adds this class while a
+ * file is dragged over the zone. */
+.transcribe-upload-area.transcribe-drag-over {
+  border-style: solid;
+  border-width: 3px;
+}
+
+/* The real control is #transcribe-file-input, which is .visually-hidden (its own
+ * outline is drawn on a 1px box nobody can see), so the wrapper carries the
+ * indicator. The wrapper holds only the label, the input and the file-name line,
+ * so nothing else can light it. Colour comes from light.css / dark.css. */
+.transcribe-upload-area:focus-within {
+  outline-width: 3px;
+  outline-style: solid;
+  outline-offset: 2px;
 }
 
 /* =========================================================================

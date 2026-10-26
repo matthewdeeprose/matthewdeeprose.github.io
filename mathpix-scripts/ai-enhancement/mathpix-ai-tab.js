@@ -12,8 +12,11 @@
  *   (b) the three preconditions (a PDF is loaded, pictures with empty fields
  *       exist, a key is set for the provider), ticking or unticking each step
  *       and writing the reason into its hint when it cannot run;
- *   (c) the three "Change the model" buttons, which move the person to that
- *       step's own picker.
+ *   (c) AV-1, 26 October 2026 (decision AV-D1): under each model line, a
+ *       disclosure "Change the model for <step>" holding a native select bound
+ *       to the same stored setting as that step's own workflow picker. It
+ *       replaces the three "Change the model" buttons, which left the tab or
+ *       opened a dialog. See the section marked AV-1.
  *
  *   (d) S6-3c, 14 October 2026: the estimate line, and "Run the ticked steps".
  *       Run opens ONE safeConfirm naming the estimate and the ticked steps,
@@ -86,6 +89,7 @@
   const REASONS = Object.freeze({
     NO_PDF: "No PDF is loaded.",
     ALL_DESCRIBED: "Every picture already has a description.",
+    ALL_DESCRIBED_WITH_FILE: "Every picture with a file already has a description.",
     NO_PICTURES: "There are no pictures in this document.",
     NO_KEY: "No AI provider key is set.",
   });
@@ -228,49 +232,30 @@
   const stepId = (step) => `resume-ai-step-${step.key}`;
   const hintId = (step) => `resume-ai-step-${step.key}-hint`;
   const modelLineId = (step) => `resume-ai-model-${step.key}`;
-  const changeId = (step) => `resume-ai-change-${step.key}`;
+  /** AV-1: the disclosure and the native select that change one step's model. */
+  const advancedId = (step) => `resume-ai-advanced-${step.key}`;
+  const selectId = (step) => `resume-ai-select-${step.key}`;
 
-  /** How long a "Change the model" move waits for its picker to exist. */
-  const PICKER_WAIT_MS = 4000;
-  const PICKER_POLL_MS = 50;
-  /** Floor on the wait for a frame, for a page whose frames are paused. */
-  const FRAME_FALLBACK_MS = 1000;
-
-  const PICKER_FOCUS_TARGETS = Object.freeze({
-    context: Object.freeze({
-      root: "resume-context-model-picker",
-      radios: "#resume-context-model-options input[type='radio']",
-      override: "resume-context-model-override",
-      details: "resume-context-model-advanced",
-    }),
-    correction: Object.freeze({
-      root: null, // the enhancer builds its modal on demand; no fixed root id
-      radios: "input[name='ai-model']",
-      override: "ai-advanced-model-select",
-      details: null,
-    }),
-    pictures: Object.freeze({
-      root: "edit-alt-model-picker",
-      radios: "#edit-alt-model-options input[type='radio']",
-      override: "edit-alt-model-override",
-      details: "edit-alt-model-advanced",
-    }),
-  });
-
-  const MANAGER_EDIT_VIEW_ID = "mmd-image-manager-edit-view";
-  const ENHANCE_BUTTON_ID = "resume-ai-enhance-btn";
-  const CONTEXT_TAB_KEY = "context";
+  /** Said once, in the option text, of the registry's default model. */
+  const RECOMMENDED_SUFFIX = ", recommended";
 
   // ==========================================================================
   // STATE READERS (all at call time)
   // ==========================================================================
 
   /** running: a run (confirm included) is in progress. watching: the restore observer is attached. */
-  const state = { running: false, watching: false, log: null, logSecrets: null };
+  const state = {
+    running: false,
+    watching: false,
+    watchingDialogs: false,
+    watchingProvider: false,
+    choiceCache: new Map(),
+    log: null,
+    logSecrets: null,
+  };
 
   const byId = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
   function activeProviderId() {
     const switcher = window.ProviderSwitcher;
@@ -322,10 +307,24 @@
         adapter && typeof adapter._getUserModelChoice === "function"
           ? adapter._getUserModelChoice()
           : null;
+      // AV-1: a pick left over from another provider is dropped, not shown.
+      if (
+        pick &&
+        typeof adapter._isModelProviderAvailable === "function" &&
+        !adapter._isModelProviderAvailable(pick)
+      ) {
+        adapter._setUserModelChoice(null);
+        return null;
+      }
       return pick || null;
     }
     const peek = window.peekMathPixAIEnhancer;
     const enhancer = typeof peek === "function" ? peek() : null;
+    // AV-1: a selection from another provider is replaced before it is read,
+    // so the line and the run cannot disagree on Foundry.
+    if (enhancer && typeof enhancer.syncModelToProvider === "function") {
+      enhancer.syncModelToProvider();
+    }
     const selected = enhancer && enhancer.selectedModel;
     return typeof selected === "string" && selected && selected !== recommendedId
       ? selected
@@ -419,9 +418,26 @@
    * unreviewed AI one; a description a person wrote or reviewed never is.
    */
   function uncoveredPictures() {
+    return partitionPictures().targets;
+  }
+
+  /** UT-D7a: the targets, and how many would-be targets were left out for a missing file. */
+  function partitionPictures() {
     const runner = window.MathPixAltTextBatchRunner;
-    if (!runner || typeof runner.selectTargets !== "function") return [];
-    return runner.selectTargets(imageEntries(), { includeDescribed: redescribeOn() });
+    if (!runner || typeof runner.partitionTargets !== "function") {
+      return { targets: [], skippedMissing: 0 };
+    }
+    // UT-D7: a picture with no file is not counted, so the estimate and the
+    // hint charge only for pictures the run can actually describe.
+    const restorer =
+      typeof window.getMathPixSessionRestorer === "function"
+        ? window.getMathPixSessionRestorer()
+        : null;
+    return runner.partitionTargets(imageEntries(), {
+      includeDescribed: redescribeOn(),
+      skipMissingFiles: true,
+      blobUrlMap: restorer && restorer.imageBlobUrlMap,
+    });
   }
 
   /**
@@ -432,7 +448,11 @@
     if (!hasProviderKey()) return REASONS.NO_KEY;
     if (step.key === "pictures") {
       if (imageEntries().length === 0) return REASONS.NO_PICTURES;
-      return uncoveredPictures().length === 0 ? REASONS.ALL_DESCRIBED : null;
+      const { targets, skippedMissing } = partitionPictures();
+      if (targets.length > 0) return null;
+      return skippedMissing > 0
+        ? REASONS.ALL_DESCRIBED_WITH_FILE
+        : REASONS.ALL_DESCRIBED;
     }
     return hasPdf() ? null : REASONS.NO_PDF;
   }
@@ -496,10 +516,8 @@
   function refresh() {
     if (!byId(ELEMENT_IDS.panel)) return false;
     applyRedescribeBox();
-    STEPS.forEach((step) => {
-      applyStep(step);
-      setText(byId(modelLineId(step)), modelLineFor(step));
-    });
+    STEPS.forEach((step) => applyStep(step));
+    refreshModels();
     watchRestore();
     updateEstimate();
     updateRunButton();
@@ -1297,98 +1315,185 @@
   }
 
   // ==========================================================================
-  // "CHANGE THE MODEL" — move the person to the step's own picker
+  // "CHANGE THE MODEL" — a native select in a disclosure, in place (AV-1)
   // ==========================================================================
+  // Each step's select is bound to the SAME stored setting as that step's own
+  // workflow picker, and both directions agree: choosing here calls the setter
+  // the picker calls, then asks the picker to show it; a pick made in a picker
+  // is read back here on every refresh and when a dialog closes. The select
+  // moves no focus and writes no live region (it speaks its own change).
 
-  const isShown = (el) =>
-    Boolean(el) &&
-    !el.hidden &&
-    (typeof el.checkVisibility === "function"
-      ? el.checkVisibility()
-      : el.getClientRects().length > 0);
-
-  /** The first control of a picker: the checked radio, else the override select. */
-  function firstPickerControl(target) {
-    const radios = [...document.querySelectorAll(target.radios)].filter(isShown);
-    const checked = radios.find((r) => r.checked);
-    if (checked || radios[0]) return checked || radios[0];
-    const select = byId(target.override);
-    if (!select) return null;
-    const details = target.details ? byId(target.details) : null;
-    if (details && !details.open) details.open = true;
-    return isShown(select) ? select : null;
-  }
-
-  async function waitForControl(target) {
-    const deadline = performance.now() + PICKER_WAIT_MS;
-    while (performance.now() < deadline) {
-      const control = firstPickerControl(target);
-      if (control) return control;
-      await sleep(PICKER_POLL_MS);
-    }
-    return null;
-  }
-
-  async function goToContext() {
-    const restorer = window.getMathPixSessionRestorer?.();
-    if (restorer && typeof restorer.switchTab === "function") {
-      restorer.switchTab(CONTEXT_TAB_KEY);
-    }
-    return waitForControl(PICKER_FOCUS_TARGETS.context);
-  }
-
-  async function goToCorrection() {
-    const button = byId(ENHANCE_BUTTON_ID);
-    if (!button || button.disabled) return null;
-    button.click();
-    return waitForControl(PICKER_FOCUS_TARGETS.correction);
-  }
-
-  async function goToPictures() {
-    const target = PICKER_FOCUS_TARGETS.pictures;
-    // The picker lives in the manager's edit view, so the manager has to be
-    // open and an edit view showing. Open the manager only if it is not open.
-    const editView = () => byId(MANAGER_EDIT_VIEW_ID);
-    if (!editView() && typeof window.openImageManager === "function") {
-      window.openImageManager();
-    }
-    // Wait for the manager to settle: the picker is built after the run
-    // pipeline, in the manager's own animation-frame callback.
-    const settleDeadline = performance.now() + PICKER_WAIT_MS;
-    while (
-      performance.now() < settleDeadline &&
-      !(byId(target.root) && !byId(target.root).hidden)
-    ) {
-      await sleep(PICKER_POLL_MS);
-    }
-    if (!isShown(editView()) && typeof window.openEditAltText === "function") {
-      const entries = uncoveredPictures();
-      const first = entries[0] || imageEntries()[0];
-      if (first) window.openEditAltText(first.id);
-    }
-    return waitForControl(target);
-  }
-
-  const GO_TO = Object.freeze({
-    correction: goToCorrection,
-    context: goToContext,
-    pictures: goToPictures,
+  /** Setter per step: store `modelId`, and return whether it was accepted. */
+  const MODEL_SETTERS = Object.freeze({
+    correction: (modelId) => {
+      const enhancer = window.getMathPixAIEnhancer?.();
+      if (!enhancer || typeof enhancer.handleModelChange !== "function") return false;
+      // handleModelChange needs no dialog (AV-1 step 1b); it stores the choice
+      // in selectedModel and in the saved preferences.
+      enhancer.handleModelChange(modelId);
+      return true;
+    },
+    context: (modelId, recommendedId) => {
+      const ctx = window.MathPixContextAI;
+      if (!ctx || typeof ctx._setUserModelChoice !== "function") return false;
+      // Choosing the recommendation clears the pick, as the picker's radio does.
+      const accepted = ctx._setUserModelChoice(
+        modelId === recommendedId ? null : modelId,
+      );
+      if (accepted && typeof ctx._syncPickerToChoice === "function") {
+        ctx._syncPickerToChoice();
+      }
+      return accepted;
+    },
+    pictures: (modelId, recommendedId) => {
+      const adapter = window.MathPixAltTextCloudAdapter;
+      if (!adapter || typeof adapter._setUserModelChoice !== "function") return false;
+      return adapter._setUserModelChoice(
+        modelId === recommendedId ? null : modelId,
+      );
+    },
   });
 
-  async function changeModel(step) {
-    const control = await GO_TO[step.key]();
-    if (!control) {
-      logWarn(`changeModel: no picker control reached for ${step.key}`);
-      return false;
+  /** The capability a model needs for the step: the PDF for two, an image for pictures. */
+  function canServeStep(step, modelId) {
+    const capability = window.MathPixModelCapability;
+    if (!capability) return true;
+    const readsInput =
+      step.key === "pictures"
+        ? capability.isModelVisionCapable
+        : capability.isModelPdfCapable;
+    if (typeof readsInput === "function" && !readsInput(modelId)) return false;
+    return typeof capability.isModelProviderAvailable !== "function"
+      ? true
+      : capability.isModelProviderAvailable(modelId);
+  }
+
+  /**
+   * Every model the active provider serves that can do what the step needs,
+   * { id, name }. Asking the capability facade per model costs about 200 ms for
+   * a whole catalogue, so the answer is kept per provider and capability: the
+   * two PDF steps share one list. Pass `fresh` to recompute.
+   */
+  function servableModelsFor(step, fresh) {
+    const providerId = activeProviderId();
+    const capability = step.key === "pictures" ? "image" : "pdf";
+    const cacheKey = `${capability}|${providerId}`;
+    if (!fresh && state.choiceCache.has(cacheKey)) return state.choiceCache.get(cacheKey);
+
+    const selector = window.EmbedModelSelector;
+    let all = [];
+    if (selector && typeof selector.getEligibleModels === "function") {
+      try {
+        all = selector.getEligibleModels({ providerId, capabilities: [] });
+      } catch (error) {
+        logWarn("servableModelsFor: getEligibleModels threw", error);
+      }
     }
-    control.focus();
-    // A modal takes focus in an animation frame it schedules when it is shown
-    // (universal-modal.js displayModal), which is queued before this callback,
-    // so one frame later that move has happened. S6-3b: this replaces a 400 ms
-    // timer. The race is a floor for a page whose frames are paused.
-    await Promise.race([nextFrame(), sleep(FRAME_FALLBACK_MS)]);
-    if (document.activeElement !== control) control.focus();
-    return document.activeElement === control;
+    const servable = (Array.isArray(all) ? all : [])
+      .filter((model) => model && typeof model.id === "string")
+      .filter((model) => canServeStep(step, model.id))
+      .map((model) => ({ id: model.id, name: model.name || model.id }));
+    state.choiceCache.set(cacheKey, servable);
+    return servable;
+  }
+
+  /** The models a step's select offers on the active provider: { id, name }, by name. */
+  function modelChoicesFor(step, recommendedId) {
+    const choices = servableModelsFor(step).slice();
+    if (recommendedId && !choices.some((choice) => choice.id === recommendedId)) {
+      choices.push({
+        id: recommendedId,
+        name: displayNameFor(recommendedId, activeProviderId()) || recommendedId,
+      });
+    }
+    return choices.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  /** The model the step will use now: the stored pick, else the recommendation. */
+  function storedModelFor(step) {
+    const recommendedId = recommendedIdFor(step.purpose, activeProviderId());
+    return chosenIdFor(step, recommendedId) || recommendedId;
+  }
+
+  /**
+   * Fill and set one step's select from the stored value. The options are
+   * rebuilt only when the list changes, so a refresh never disturbs a select
+   * the person is using.
+   */
+  function applyModelSelect(step) {
+    const select = byId(selectId(step));
+    if (!select) return;
+
+    // The select sits in a closed disclosure and nobody can reach it there, so
+    // nothing is built until it is opened (the toggle listener calls this again).
+    const details = byId(advancedId(step));
+    if (details && !details.open) return;
+
+    const recommendedId = recommendedIdFor(step.purpose, activeProviderId());
+    const choices = modelChoicesFor(step, recommendedId);
+    const signature = choices
+      .map((choice) => `${choice.id}|${choice.id === recommendedId}`)
+      .join(",");
+    if (select.dataset.aiOptions !== signature) {
+      select.replaceChildren(
+        ...choices.map((choice) => {
+          const option = document.createElement("option");
+          option.value = choice.id;
+          option.textContent =
+            choice.id === recommendedId
+              ? `${choice.name}${RECOMMENDED_SUFFIX}`
+              : choice.name;
+          return option;
+        }),
+      );
+      select.dataset.aiOptions = signature;
+    }
+
+    const stored = storedModelFor(step);
+    if (stored && select.value !== stored) select.value = stored;
+  }
+
+  /** Lines, selects and the estimate, from the stored values. No tick state, no focus. */
+  function refreshModels() {
+    STEPS.forEach((step) => {
+      setText(byId(modelLineId(step)), modelLineFor(step));
+      applyModelSelect(step);
+    });
+    updateEstimate();
+  }
+
+  /** The select changed: store it through the step's own setter, then re-read. */
+  function handleModelSelect(step) {
+    const select = byId(selectId(step));
+    if (!select) return;
+    const recommendedId = recommendedIdFor(step.purpose, activeProviderId());
+    const accepted = MODEL_SETTERS[step.key](select.value, recommendedId);
+    if (!accepted) logWarn(`handleModelSelect: ${step.key} refused ${select.value}`);
+    logInfo("Model changed in place", { step: step.key, model: select.value, accepted });
+    refreshModels();
+  }
+
+  /**
+   * Re-read the stored values whenever a dialog that holds a picker has closed
+   * (the correction dialog and the image manager both change the stored value).
+   * Dialogs are children of the body, so one observer on it sees them go.
+   */
+  function watchPickerClose() {
+    if (state.watchingDialogs) return;
+    state.watchingDialogs = true;
+    let wasOpen = Boolean(document.querySelector("dialog[open]"));
+    const check = () => {
+      const isOpen = Boolean(document.querySelector("dialog[open]"));
+      if (wasOpen && !isOpen) refreshModels();
+      wasOpen = isOpen;
+    };
+    // A second observe() on one observer would replace the first's options.
+    new MutationObserver(check).observe(document.body, { childList: true });
+    new MutationObserver(check).observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["open"],
+    });
   }
 
   // ==========================================================================
@@ -1397,22 +1502,34 @@
 
   function init() {
     STEPS.forEach((step) => {
-      const button = byId(changeId(step));
-      if (!button || button.dataset.aiBound === "true") return;
-      button.dataset.aiBound = "true";
-      button.addEventListener("click", () => {
-        changeModel(step).catch((error) =>
-          logError(`changeModel(${step.key}) threw`, error),
-        );
-      });
+      // Each binding stands alone: a missing select must not skip the tick.
+      const select = byId(selectId(step));
+      if (select && select.dataset.aiBound !== "true") {
+        select.dataset.aiBound = "true";
+        select.addEventListener("change", () => handleModelSelect(step));
+      }
+      const details = byId(advancedId(step));
+      if (details && details.dataset.aiBound !== "true") {
+        details.dataset.aiBound = "true";
+        details.addEventListener("toggle", () => applyModelSelect(step));
+      }
       const box = byId(stepId(step));
-      if (!box || box.dataset.aiChangeBound === "true") return;
-      box.dataset.aiChangeBound = "true";
-      box.addEventListener("change", () => {
-        updateEstimate();
-        updateRunButton();
-      });
+      if (box && box.dataset.aiChangeBound !== "true") {
+        box.dataset.aiChangeBound = "true";
+        box.addEventListener("change", () => {
+          updateEstimate();
+          updateRunButton();
+        });
+      }
     });
+
+    watchPickerClose();
+    if (!state.watchingProvider) {
+      state.watchingProvider = true;
+      window.addEventListener("provider:changed", () => {
+        if (!state.running) refresh();
+      });
+    }
 
     const redescribe = byId(ELEMENT_IDS.redescribe);
     if (redescribe && redescribe.dataset.aiBound !== "true") {
@@ -1458,7 +1575,9 @@
     refresh,
     modelLineFor,
     reasonFor,
-    changeModel,
+    refreshModels,
+    modelChoicesFor,
+    handleModelSelect,
     run,
     estimateLine,
     tickedSteps,
@@ -1476,6 +1595,7 @@
     stepId,
     hintId,
     modelLineId,
-    changeId,
+    advancedId,
+    selectId,
   };
 })();

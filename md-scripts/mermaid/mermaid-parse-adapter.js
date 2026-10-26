@@ -261,7 +261,23 @@ window.MermaidParseAdapter = (function () {
   // as `<br>`; the pattern is wider than the delivery on purpose, so a Mermaid
   // change that stops normalising does not reopen the escaped-versus-typed
   // question. A RUN of breaks, with the whitespace around it, is ONE break.
-  const TYPED_LINE_BREAK_RUN = /(?:\s*<br\s*\/?>\s*)+/gi;
+  const TYPED_LINE_BREAK_RUN_BARE = /(?:\s*<br\s*\/?>\s*)+/gi;
+
+  // ITEM 112, ENACT 3 (24 October 2026), R2d: "A break tag carrying attributes,
+  // in any case, is read as the plain break tag of the same form is read at
+  // that position." Measured 24 October 2026 (docs/mermaid-item-112-enact-3-
+  // 2026-10-24.md): at every HTML-label position (flowchart, class, state, ER,
+  // mindmap, block, kanban, requirement) the canvas draws a break for all seven
+  // attributed spellings exactly as for the bare one; at sequence and c4 it
+  // PRINTS them, and at timeline and architecture it prints them too. So the
+  // attributed form joins the default pattern (the HTML-label callers) and the
+  // sequence and c4 callers take the bare pattern by name (NO_ATTRIBUTES).
+  // After the tag name: either the bare close (`>`, `/>`, whitespace before the
+  // slash) or whitespace, or a slash then whitespace, then attributes (quoted
+  // values kept whole) up to `>`. `<br//>` and an unclosed quote still match
+  // nothing, as before.
+  const TYPED_LINE_BREAK_RUN =
+    /(?:\s*<br(?:\s*\/?>|(?:\s*\/\s+|\s+)(?:"[^"]*"|'[^']*'|[^<>"'])*>)\s*)+/gi;
 
   // ITEM 82, ENACTMENT 5 (3 October 2026): the per-call FORM SET. The surfaces
   // above all draw a break on every typed spelling, so they take ALL. Three
@@ -276,9 +292,11 @@ window.MermaidParseAdapter = (function () {
     ALL: "all",
     BR_ONLY: "br-only",
     NOT_UPPER_CASE: "not-upper-case",
+    NO_ATTRIBUTES: "no-attributes",
   });
   const TYPED_LINE_BREAK_RUN_BY_FORMS = Object.freeze({
     [LINE_BREAK_FORMS.ALL]: TYPED_LINE_BREAK_RUN,
+    [LINE_BREAK_FORMS.NO_ATTRIBUTES]: TYPED_LINE_BREAK_RUN_BARE,
     [LINE_BREAK_FORMS.BR_ONLY]: /(?:\s*<br>\s*)+/g,
     [LINE_BREAK_FORMS.NOT_UPPER_CASE]: /(?:\s*<br\s*\/?>\s*)+/g,
   });
@@ -387,6 +405,31 @@ window.MermaidParseAdapter = (function () {
   const DRAWN_IMAGE_ALT =
     /(?:^|\s)alt\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i;
   const DRAWN_ANCHOR_TAG = /<\/?a(?=[\s/>])(?:"[^"]*"|'[^']*'|[^<>"'])*>/gi;
+
+  // ITEM 112, ENACT 1 (23 October 2026): the two options behind the 23 tags the
+  // rule above does not list (measurement 1, docs/mermaid-item-112-measure-1-
+  // 2026-10-23.md). Both are off by default, so no caller moves until its own
+  // iteration turns them on.
+  //   contentTags         every other tag reads as its inner text (open, close,
+  //                       unclosed, any attributes, nested); `input` reads as
+  //                       its value attribute's text, or nothing; and a lone
+  //                       `<` followed by a letter cuts the label there, as the
+  //                       canvas draws `a` for `a<b`.
+  //   deleteWholeElements `script`, `style` and `iframe` read as nothing,
+  //                       content included (an unclosed one to the end).
+  // The four whole-element tags are never "content tags": with the second
+  // option off they are left as written. Entity-escaped forms contain no `<`
+  // and so are never touched by either.
+  const DRAWN_WHOLE_ELEMENT_PAIR =
+    /<(script|style|iframe)(?=[\s/>])(?:"[^"]*"|'[^']*'|[^<>"'])*>[\s\S]*?(?:<\/\1\s*>|$)/gi;
+  const DRAWN_WHOLE_ELEMENT_STRAY_CLOSE = /<\/(?:script|style|iframe)\s*>/gi;
+  const DRAWN_INPUT_TAG = /<input(?=[\s/>])((?:"[^"]*"|'[^']*'|[^<>"'])*)>/gi;
+  const DRAWN_INPUT_VALUE =
+    /(?:^|\s)value\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i;
+  const DRAWN_CONTENT_TAG =
+    /<\/?(?!(?:script|style|iframe|input)(?![\w-]))[a-zA-Z][\w-]*(?=[\s/>])(?:"[^"]*"|'[^']*'|[^<>"'])*>/gi;
+  const DRAWN_LONE_BRACKET =
+    /<(?=[a-zA-Z])(?!(?:"[^"]*"|'[^']*'|[^<>"'])*>)/;
 
   // Markdown, for the sinks whose canvas draws it. Two independent options,
   // because the sinks differ on them (measurement 3 § 3.2; enactment 2 of the
@@ -549,9 +592,14 @@ window.MermaidParseAdapter = (function () {
   // draw emphasis, both print backticks (measured at all six positions, 5
   // October 2026). Flowchart PRINTS emphasis (measurement 3 § 3.2), so it is
   // read as written.
+  // Item 112, enact 1 (23 October 2026): group P, sanitised before the helper
+  // (measurement 1 § 3), so the 23 further tags read as text and the whole-
+  // element four are already gone; the cut at a lone `<` applies here too.
   const FLOWCHART_DRAWN_MARKUP = Object.freeze({
     emphasis: false,
     codespan: false,
+    contentTags: true,
+    deleteWholeElements: false,
   });
   // Item 116, part 2 (20 October 2026): a flowchart whose EFFECTIVE global
   // `htmlLabels` is false draws every label as SVG text, which PRINTS tags,
@@ -562,15 +610,60 @@ window.MermaidParseAdapter = (function () {
     emphasis: false,
     codespan: false,
   });
-  const CLASS_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
-  const ER_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
+  // Item 112, enact 1 (23 October 2026): the class label and both relation
+  // labels are group P (sanitised before the helper); the note is group Q (its
+  // raw string reaches the helper), so it also deletes the whole-element four.
+  const CLASS_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: false,
+  });
+  const CLASS_NOTE_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
+  });
+  // Item 112, enact 1 (23 October 2026): all three ER positions (relationship
+  // label, entity alias, attribute comment) are group Q: the raw string
+  // reaches the helper, so the whole-element four are deleted as well.
+  const ER_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
+  });
   // Block PRINTS emphasis and backticks at both its positions (measurement 3
   // § 3.2, rechecked 5 October 2026), so only the tags are read as text.
-  const BLOCK_DRAWN_MARKUP = Object.freeze({ emphasis: false, codespan: false });
+  // Item 112, enact 1 (23 October 2026): both block positions are group P
+  // (sanitised before the helper), so the whole-element four are left to
+  // Mermaid, which has already removed them.
+  const BLOCK_DRAWN_MARKUP = Object.freeze({
+    emphasis: false,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: false,
+  });
   // Kanban DRAWS emphasis and PRINTS backticks at all five of its text
   // positions: column, card label, ticket, assigned (measurement 3 § 3.2, and
   // re-read per position on 5 October 2026 in enactment 3's draft table).
-  const KANBAN_DRAWN_MARKUP = Object.freeze({ emphasis: true, codespan: false });
+  // Item 112, enact 1 (23 October 2026): the card label, quoted card label and
+  // column are group P (sanitised before the helper); the ticket text and
+  // `assigned` are group Q (the raw string reaches the helper), so they also
+  // delete the whole-element four. `ticketUrl` is never transformed.
+  const KANBAN_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: false,
+  });
+  const KANBAN_RAW_DRAWN_MARKUP = Object.freeze({
+    emphasis: true,
+    codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
+  });
 
   /**
    * The markup rule: formatting the picture draws is read as the text it
@@ -583,7 +676,11 @@ window.MermaidParseAdapter = (function () {
    * @param {string} raw - A RAW db string, after the break rule
    * @param {Object} [options] - `tags: false` leaves tags, images and links
    *   as written (default true); `emphasis: true` also reads drawn markdown
-   *   emphasis as its text; `codespan: true` also removes code-span backticks
+   *   emphasis as its text; `codespan: true` also removes code-span backticks;
+   *   `contentTags: true` reads every other tag as its inner text, `input` as
+   *   its value and cuts at a lone `<` before a letter; `deleteWholeElements:
+   *   true` reads script, style and iframe as nothing (item 112, both default
+   *   false)
    * @returns {string} The string with drawn markup read as its text
    */
   function replaceDrawnMarkup(raw, options) {
@@ -621,6 +718,11 @@ window.MermaidParseAdapter = (function () {
     // rules stay under it, because that sink prints those tags too.
     const readTags = !options || options.tags !== false;
     let text = raw;
+    if (readTags && options && options.deleteWholeElements === true) {
+      text = text
+        .replace(DRAWN_WHOLE_ELEMENT_PAIR, () => mark(""))
+        .replace(DRAWN_WHOLE_ELEMENT_STRAY_CLOSE, () => mark(""));
+    }
     if (readTags) {
       text = text.replace(DRAWN_IMAGE_TAG, (tag, attributes) => {
         const alt = attributes.match(DRAWN_IMAGE_ALT);
@@ -632,6 +734,20 @@ window.MermaidParseAdapter = (function () {
       // this pass reads a link as its text alone.
       text = text.replace(DRAWN_ANCHOR_TAG, () => mark(""));
       text = text.replace(DRAWN_FORMATTING_TAG, () => mark(""));
+    }
+    if (readTags && options && options.contentTags === true) {
+      text = text.replace(DRAWN_INPUT_TAG, (tag, attributes) => {
+        const value = attributes.match(DRAWN_INPUT_VALUE);
+        return mark(
+          value ? [value[1], value[2], value[3]].find((v) => v !== undefined) : ""
+        );
+      });
+      text = text.replace(DRAWN_CONTENT_TAG, () => mark(""));
+      const lone = text.search(DRAWN_LONE_BRACKET);
+      if (lone !== -1) {
+        mark("");
+        text = text.slice(0, lone);
+      }
     }
     if (options && (options.emphasis === true || options.codespan === true)) {
       const read = readDrawnMarkdown(text, options);
@@ -816,7 +932,9 @@ window.MermaidParseAdapter = (function () {
     if (typeof text !== "string" || text === "") {
       return text;
     }
-    return decodePlaceholders(replaceTypedLineBreaks(text));
+    return decodePlaceholders(
+      replaceTypedLineBreaks(text, LINE_BREAK_FORMS.NO_ATTRIBUTES)
+    );
   }
 
   /**
@@ -1573,6 +1691,61 @@ window.MermaidParseAdapter = (function () {
           [
             "escaped break kept as characters (node E 'three<br>four')",
             graph.nodes[4] && graph.nodes[4].label === "three<br>four",
+          ],
+          // Item 112, enact 1: the helper's two options, called directly (no
+          // parse). Typed and escaped rows for each; a default row binds "off".
+          [
+            "content tags read as text, input as its value, lone < cuts",
+            replaceDrawnMarkup("A<kbd>x</kbd>B<input value=y>C<d", {
+              contentTags: true,
+            }) === "AxByC",
+          ],
+          [
+            "escaped content tag kept as characters",
+            replaceDrawnMarkup("A&lt;kbd&gt;x&lt;/kbd&gt;B", {
+              contentTags: true,
+            }) === "A&lt;kbd&gt;x&lt;/kbd&gt;B",
+          ],
+          [
+            "whole elements deleted with their content",
+            replaceDrawnMarkup(
+              "A<script>alert(1)</script>B<style>p{}</style>C",
+              { deleteWholeElements: true }
+            ) === "ABC",
+          ],
+          [
+            "escaped whole element kept as characters",
+            replaceDrawnMarkup("A&lt;script&gt;alert(1)&lt;/script&gt;B", {
+              deleteWholeElements: true,
+            }) === "A&lt;script&gt;alert(1)&lt;/script&gt;B",
+          ],
+          [
+            "both options default off",
+            replaceDrawnMarkup("A<kbd>x</kbd><script>y</script>B", {}) ===
+              "A<kbd>x</kbd><script>y</script>B",
+          ],
+          // Item 112, enact 3 (R2d): the break rule's attributed forms, called
+          // directly. The default reads every attributed spelling as one space
+          // (HTML-label positions), an escaped one stays characters, and the
+          // timeline form set leaves an attributed tag alone while it still
+          // reads a bare `<br>` (the canvas prints the attributed forms there).
+          [
+            "attributed break tags read as one space",
+            replaceTypedLineBreaks(
+              "A<br class='x'>B<BR CLASS=x>C<br/ class=x>D<br data-a='1'/>E<br id=y>F"
+            ) === "A B C D E F",
+          ],
+          [
+            "escaped attributed break kept as characters",
+            replaceTypedLineBreaks("A&lt;br class='x'&gt;B") ===
+              "A&lt;br class='x'&gt;B",
+          ],
+          [
+            "timeline form set leaves an attributed break printed",
+            replaceTypedLineBreaks(
+              "A<br class='x'/>B<br>C",
+              LINE_BREAK_FORMS.BR_ONLY
+            ) === "A<br class='x'/>B C",
           ],
           [
             "node A label 'Start'",
@@ -2855,7 +3028,7 @@ window.MermaidParseAdapter = (function () {
     // parser rejects every authorable anchor there but the relative and
     // protocol-relative forms, and those are drawn as working links.
     const notes = classNotesToArray(db.getNotes()).map((note) => {
-      const read = readLabelWithLinks(note.text, CLASS_DRAWN_MARKUP);
+      const read = readLabelWithLinks(note.text, CLASS_NOTE_DRAWN_MARKUP);
       return {
         text: read.label,
         attachedTo: typeof note.class === "string" ? note.class : "",
@@ -9212,7 +9385,9 @@ window.MermaidParseAdapter = (function () {
     if (!wrapped || typeof wrapped.text !== "string") {
       return null;
     }
-    return resolveC4CanvasEntities(replaceTypedLineBreaks(wrapped.text));
+    return resolveC4CanvasEntities(
+      replaceTypedLineBreaks(wrapped.text, LINE_BREAK_FORMS.NO_ATTRIBUTES)
+    );
   }
 
   /**
@@ -10573,7 +10748,7 @@ window.MermaidParseAdapter = (function () {
     const assignedRead =
       rawAssigned === null
         ? null
-        : readLabelWithLinks(rawAssigned, KANBAN_DRAWN_MARKUP);
+        : readLabelWithLinks(rawAssigned, KANBAN_RAW_DRAWN_MARKUP);
     return {
       id: id,
       // decodeAuthorText, per the ruling above. A card whose db label is absent
@@ -10602,7 +10777,7 @@ window.MermaidParseAdapter = (function () {
       ticket:
         rawTicket === null
           ? null
-          : decodeAuthorTextBreaks(rawTicket, KANBAN_DRAWN_MARKUP),
+          : decodeAuthorTextBreaks(rawTicket, KANBAN_RAW_DRAWN_MARKUP),
       assigned: assignedRead ? assignedRead.label : null,
       ...(assignedRead && assignedRead.segments
         ? { assignedSegments: assignedRead.segments }
@@ -13093,9 +13268,14 @@ window.MermaidParseAdapter = (function () {
   // recorded, and an accessor that returns the wrong container all throw, so
   // the consumer reaches the honest-unsupported fallback rather than a diagram
   // with something missing from it.
+  // Item 112, enact 1 (23 October 2026): all three requirement positions
+  // (text, name, element docref) are group Q: the raw string reaches the
+  // helper, so the whole-element four are deleted as well.
   const REQUIREMENT_DRAWN_MARKUP = Object.freeze({
     emphasis: true,
     codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
   });
 
   // The seven top-level keys, in order. The dispatch listed five; accTitle and
@@ -16313,8 +16493,10 @@ window.MermaidParseAdapter = (function () {
   const TREEMAP_UNPLACED =
     "the frontmatter names a treemap setting the reader could not place";
   const TREEMAP_HEADER_PATTERN = /^[ \t]*(?:treemap-beta|treemap)(?![\w-])[ \t]*$/;
+  // A trailing `%%` comment after the name or the value is part of the line
+  // (Mermaid draws it); a `%%` inside the quotes is part of the name.
   const TREEMAP_NODE_PATTERN =
-    /^([ \t]*)("[^"]*"|'[^']*')(?:[ \t]*:::[ \t]*\S+?)?(?:[ \t]*[:,][ \t]*([0-9_.,]+)(?:[ \t]*:::[ \t]*\S+)?)?[ \t]*$/;
+    /^([ \t]*)("[^"]*"|'[^']*')(?:[ \t]*:::[ \t]*\S+?)?(?:[ \t]*[:,][ \t]*([0-9_.,]+)(?:[ \t]*:::[ \t]*\S+)?)?[ \t]*(?:%%.*)?$/;
   // d3-format's own specifier pattern: a string it does not match throws
   // "invalid format", which the renderer catches and draws as ",".
   const TREEMAP_FORMAT_SPEC =
@@ -16471,14 +16653,9 @@ window.MermaidParseAdapter = (function () {
       } catch (error) {
         parsed = null;
       }
-      if (parsed === null || typeof parsed !== "object") {
-        if (TREEMAP_CONFIG_WORDS.test(match[1])) {
-          throw treemapStop(
-            "a directive names a treemap setting but does not parse as JSON"
-          );
-        }
-        continue;
-      }
+      // A directive Mermaid cannot parse is ignored by Mermaid (it draws the
+      // diagram with the settings it had), so it is ignored here (sweep F3, R3).
+      if (parsed === null || typeof parsed !== "object") continue;
       const treemap = parsed.treemap;
       if (!treemap || typeof treemap !== "object") continue;
       for (const key of TREEMAP_CONFIG_KEYS) {
@@ -16710,9 +16887,22 @@ window.MermaidParseAdapter = (function () {
       const source = sourceNodes[authorIndex] || null;
       const leaf = !dbNode.hasChildren;
       const rawValue = leaf && source ? source.valueToken : null;
-      const stored = leaf ? dbNode.value : null;
+      // A token such as `.` or `..` is stored as NaN. The canvas sums it as 0
+      // and draws a nameless empty box, so it is delivered as the zero the
+      // canvas shows, with a note (item 119 sweep F1, ruling R1). A value past
+      // 1.8e308 is stored as Infinity and takes the same reading (F9, seat
+      // ruling 22 October 2026).
+      const storedAsNonFinite = leaf && !Number.isFinite(dbNode.value);
+      const stored = leaf ? (storedAsNonFinite ? 0 : dbNode.value) : null;
       let valueNote = null;
-      if (leaf && rawValue !== null && Number(rawValue.replace(/,/g, "")) !== stored) {
+      if (storedAsNonFinite) {
+        valueNote =
+          "The author wrote " +
+          rawValue +
+          "; the diagram stores " +
+          String(dbNode.value) +
+          " and draws an empty box.";
+      } else if (leaf && rawValue !== null && Number(rawValue.replace(/,/g, "")) !== stored) {
         valueNote =
           "The author wrote " + rawValue + "; the diagram stores and draws " + stored + ".";
       }
@@ -17027,6 +17217,23 @@ window.MermaidParseAdapter = (function () {
     "",
   ].join("\n");
 
+  // A value token Mermaid stores as NaN (`.`), beside a plain leaf.
+  const TREEMAP_SELF_CHECK_NAN = [
+    "treemap-beta",
+    '"SelfCheck nan": .',
+    '"SelfCheck five": 5',
+    "",
+  ].join("\n");
+
+  // A value of 309 digits, which Mermaid stores as Infinity (F9), beside a
+  // plain leaf.
+  const TREEMAP_SELF_CHECK_INFINITE = [
+    "treemap-beta",
+    '"SelfCheck inf": ' + "9".repeat(309),
+    '"SelfCheck five": 5',
+    "",
+  ].join("\n");
+
   /**
    * Parse the self-check sources in one queue slot and assert the accessor
    * names, the same-tick snapshot, the title route, the tree and its totals,
@@ -17077,6 +17284,8 @@ window.MermaidParseAdapter = (function () {
         ["showDir", TREEMAP_SELF_CHECK_SHOW_DIR],
         ["text", TREEMAP_SELF_CHECK_TEXT],
         ["title", TREEMAP_SELF_CHECK_TITLE],
+        ["nan", TREEMAP_SELF_CHECK_NAN],
+        ["inf", TREEMAP_SELF_CHECK_INFINITE],
       ].forEach(([key, code]) => {
         chain = chain
           .then(() => settle(code))
@@ -17098,7 +17307,9 @@ window.MermaidParseAdapter = (function () {
         const showDir = d("showDir");
         const text = d("text");
         const title = d("title");
-        const everything = [main, showFm, directive, showDir, text, title];
+        const nan = d("nan");
+        const inf = d("inf");
+        const everything = [main, showFm, directive, showDir, text, title, nan, inf];
 
         const defaults = { showValues: true, valueFormat: "," };
         const SRC = (head, lines) =>
@@ -17341,6 +17552,46 @@ window.MermaidParseAdapter = (function () {
               title.title === "SelfCheck a & b <3",
           ],
           [
+            "A VALUE MERMAID STORES AS NaN (`.`) is delivered as the 0 the " +
+              "canvas draws, with the author's token and a note, summed as 0 " +
+              "and sorted last; the total is the plain leaf's alone",
+            !!nan &&
+              (() => {
+                const leaves = flatten(nan.root, []);
+                const nanLeaf = byName(leaves, "SelfCheck nan");
+                return (
+                  nan.root.total === 5 &&
+                  nanLeaf.value === 0 &&
+                  nanLeaf.total === 0 &&
+                  nanLeaf.rawValue === "." &&
+                  /stores NaN/.test(nanLeaf.valueNote) &&
+                  same(nan.root.children.map((n) => n.name), [
+                    "SelfCheck five",
+                    "SelfCheck nan",
+                  ]) &&
+                  Number.isNaN(nan.crossCheck.dbNodes[0].value)
+                );
+              })(),
+          ],
+          [
+            "A VALUE MERMAID STORES AS Infinity (309 digits) is delivered as " +
+              "the 0 the canvas draws, with the author's token and a note, and " +
+              "the group total stays finite",
+            !!inf &&
+              (() => {
+                const leaves = flatten(inf.root, []);
+                const infLeaf = byName(leaves, "SelfCheck inf");
+                return (
+                  inf.root.total === 5 &&
+                  infLeaf.value === 0 &&
+                  infLeaf.total === 0 &&
+                  infLeaf.rawValue === "9".repeat(309) &&
+                  /stores Infinity/.test(infLeaf.valueNote) &&
+                  inf.crossCheck.dbNodes[0].value === Infinity
+                );
+              })(),
+          ],
+          [
             "the crossCheck carries the db's flat list verbatim, and the " +
               "source reader agrees with the db on every self-check source " +
               "(count, decoded name, section or leaf)",
@@ -17383,6 +17634,41 @@ window.MermaidParseAdapter = (function () {
               stubRefuses({ getNodes: () => ({}) }, /db\.getNodes must return an Array/) &&
               stubRefuses({ getAccTitle: undefined }, /db\.getAccTitle is not a function/) &&
               stubRefuses({ levels: {} }, /db\.levels must be a Map/),
+          ],
+          [
+            "FORMS MERMAID ACCEPTS AND THE READER ONCE REFUSED: a trailing %% " +
+              "comment after a leaf, a section or a classed node belongs to " +
+              "the line, a %% inside the quotes stays in the name, and a " +
+              "directive Mermaid cannot parse is ignored; a line Mermaid " +
+              "rejects is still refused (sweep F2, F3)",
+            (() => {
+              try {
+                const got = readTreemapSource(
+                  SRC(
+                    "",
+                    '"a": 2 %% trailing\n"b" %% group\n"c":::k: 3 %%x\n"d %% e": 4\n'
+                  ),
+                  defaults
+                );
+                return (
+                  same(
+                    got.nodes.map((n) => [n.rawName, n.valueToken]),
+                    [["a", "2"], ["b", null], ["c", "3"], ["d %% e", "4"]]
+                  )
+                );
+              } catch (error) {
+                return false;
+              }
+            })() &&
+              appliedAs(
+                SRC(DIR('{"treemap": {showValues: false}}')),
+                true,
+                ","
+              ) &&
+              readerRefuses(
+                'treemap-beta\n"ok": 1\n"a": 2 trailing\n',
+                /Treemap source reader: cannot read/
+              ),
           ],
           [
             "CONFIG FORMS: block, flow and flow-under-block frontmatter, with " +
@@ -17533,6 +17819,2646 @@ window.MermaidParseAdapter = (function () {
     return treemapHealthy;
   }
 
+  // ---------------------------------------------------------------------------
+  // VENN SURFACE (register item 121, session 2, 22 October 2026)
+  //
+  // A DB-ONLY surface, on the sequence precedent: no source reader, because
+  // the db delivers every name, label, size and membership the canvas draws
+  // (census 1: the canvas agrees with the db wherever it draws anything). What
+  // it does NOT deliver is geometry, in-source config and the accessible
+  // trio, and this surface does not pretend to: there is NO accTitle or
+  // accDescr field because the grammar rejects both lines (census R04, R05,
+  // R06, R13), so a field for them could never hold anything but "".
+  //
+  // THE DB IS A MODULE-LEVEL SINGLETON (census S1): `pa.db === pb.db` and its
+  // arrays are the same objects, so a second parse overwrites what a held
+  // reference reads. Two things keep a delivery honest and they are NOT the
+  // same thing. The adapter-wide QUEUE keeps overlapping parseVenn calls from
+  // overwriting one another (an eager snapshot alone does not: two bare
+  // overlapping parses both read the later one, measured SN2b). The EAGER
+  // SNAPSHOT, taken in the same tick as the parse resolves, makes the
+  // delivered object plain data that no later parse can change. The surface
+  // needs both.
+  //
+  // A PARSE DURING A RENDER IS NOT THIS SURFACE'S TO FIX (census S9, item 22):
+  // a parseVenn that runs while a mermaid.render is in flight changes what
+  // that render draws. Measured again this session (RR1): the render of B
+  // drew A's first circle label. Recorded, not defended.
+  //
+  // THE TITLE is the one trio member and the grammar's `title` line cannot
+  // hold `#` or `;`. A frontmatter title is never delivered by a plain parse
+  // (S7) and is read from the source and passed as `{ title }`, as the
+  // treemap and block surfaces do. The db keeps a BODY title over a metadata
+  // one. Through the metadata route the string arrives verbatim and equals
+  // the canvas on every item 82 form (6 of 6, step 0); `#quot;` is printed raw
+  // by the canvas there, and decodePlaceholders leaves it alone.
+  //
+  // DECODE: decodePlaceholders at every position, measured against the canvas
+  // at set name, set label, union label, item id, item label and body title
+  // (39 of 39 comparable cells; decodeAuthorText matched 23 of 39). The set
+  // names, labels and item labels are SVG text, so an author-typed entity
+  // prints literally and must NOT be resolved.
+  //
+  // WHAT THE CANVAS DRAWS THAT THE DB DOES NOT HOLD: for a union of three or
+  // more sets, a PAIR for every two of its sets that has no region of its own.
+  // deriveVennPairs reproduces the renderer's own rule, read out of the
+  // pinned 11.17.2 bundle: the pair's key is the sorted ids joined by "|"; a
+  // pair is skipped when ANY region (of any size) already has that key,
+  // including one an earlier union derived; its size is min of the two sets'
+  // sizes over four (the last-declared size for a repeated name), 2.5 when
+  // either set has no size entry; its label is "". VR18 (23 October 2026):
+  // a pair naming a set whose size is not above 0 is NOT derived, because the
+  // canvas draws no region for it (sweep 6, P01); the declared union that
+  // names the zero set is still delivered in `unions`. The derived pairs are
+  // delivered in their OWN list, flagged `derived: true`, and never merged
+  // into `unions`.
+  //
+  // DELIVERED AS THE DB HOLDS IT, and never corrected: an item whose set
+  // combination has no region (the canvas omits it), a set declared twice
+  // (two entries; the canvas draws two circles and gives both the later
+  // label), a size of zero or less (the canvas blanks or drops it), and a
+  // `sets` list sorted by name so the author's order is lost. A statement
+  // the reader cannot map to this shape is a STOP, never a silent drop.
+  const VENN_DB_ACCESSORS = Object.freeze([
+    "getSubsetData",
+    "getTextData",
+    "getStyleData",
+    "getDiagramTitle",
+  ]);
+  const VENN_DIAGRAM_TYPE = "venn";
+  const VENN_PAIR_KEY_JOIN = "|";
+  const VENN_PAIR_SIZE_DIVISOR = 4;
+  const VENN_PAIR_FALLBACK_SIZE = 2.5;
+  const VENN_MIN_UNION_SETS = 3;
+  const VENN_DIMENSION_KEYS = Object.freeze(["width", "height"]);
+  const VENN_SVG_NUMBER = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+
+  let vennMemoCode = null;
+  let vennMemoPromise = null;
+  let vennHealthy = null;
+  let vennSelfCheckStarted = false;
+  let vennSelfCheckPromise = null;
+
+  function vennStop(message) {
+    return new Error("Venn surface: " + message);
+  }
+
+  /**
+   * Copy the venn db into plain data, ONCE and synchronously. The db's arrays
+   * are module variables that the next parse refills, so nothing downstream
+   * may hold a reference into them. Every shape the reader cannot map is a
+   * STOP here, before any delivery is built.
+   *
+   * @param {Object} db - The diagram's db
+   * @returns {{title: string, subsets: Array<Object>, texts: Array<Object>,
+   *   styles: Array<Object>}} Plain copies, raw (not decoded)
+   */
+  function snapshotVennDb(db) {
+    for (const accessor of VENN_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw vennStop(
+          `db.${accessor} is not a function; the pinned Mermaid build's venn ` +
+            "db no longer matches the 22 October 2026 census"
+        );
+      }
+    }
+    const subsets = db.getSubsetData();
+    const texts = db.getTextData();
+    const styles = db.getStyleData();
+    if (!Array.isArray(subsets) || !Array.isArray(texts) || !Array.isArray(styles)) {
+      throw vennStop("the db did not deliver its subset, text and style data as arrays");
+    }
+    const names = (list, what) => {
+      if (
+        !Array.isArray(list) ||
+        list.length === 0 ||
+        !list.every((name) => typeof name === "string")
+      ) {
+        throw vennStop(`${what} does not hold a non-empty list of strings`);
+      }
+      return list.slice();
+    };
+    const optionalText = (value, what) => {
+      if (value !== undefined && typeof value !== "string") {
+        throw vennStop(`${what} is neither a string nor absent`);
+      }
+      return value;
+    };
+    const title = db.getDiagramTitle();
+    if (title !== undefined && title !== null && typeof title !== "string") {
+      throw vennStop("the diagram title is not a string");
+    }
+    return {
+      title: title || "",
+      subsets: subsets.map((subset, index) => {
+        const where = `subset ${index}`;
+        if (!subset || typeof subset.size !== "number") {
+          throw vennStop(`${where} has no numeric size`);
+        }
+        return {
+          sets: names(subset.sets, `${where} sets`),
+          size: subset.size,
+          label: optionalText(subset.label, `${where} label`),
+        };
+      }),
+      texts: texts.map((text, index) => {
+        const where = `text ${index}`;
+        if (!text || typeof text.id !== "string") {
+          throw vennStop(`${where} has no string id`);
+        }
+        return {
+          sets: names(text.sets, `${where} sets`),
+          id: text.id,
+          label: optionalText(text.label, `${where} label`),
+        };
+      }),
+      styles: styles.map((style, index) => {
+        const where = `style ${index}`;
+        if (!style || !style.styles || typeof style.styles !== "object") {
+          throw vennStop(`${where} has no style object`);
+        }
+        const copied = {};
+        Object.keys(style.styles).forEach((key) => {
+          if (typeof style.styles[key] !== "string") {
+            throw vennStop(`${where} value for ${key} is not a string`);
+          }
+          copied[key] = style.styles[key];
+        });
+        return { targets: names(style.targets, `${where} targets`), styles: copied };
+      }),
+    };
+  }
+
+  /**
+   * VR18 (23 October 2026): the canvas draws no region that names a set of size
+   * 0 (sweep 6, P01: the six three-way and four-way sources drew every pair
+   * among the live sets and none naming the zero set). A set with no size
+   * entry is live: the derive rule gives its pairs the fallback size.
+   * @param {number|undefined} size - A set's last-declared size
+   * @returns {boolean} True when pairs naming this set are drawn
+   */
+  function vennSizeIsLive(size) {
+    return size === undefined || size > 0;
+  }
+
+  /**
+   * The pairs the canvas draws for a union of three or more sets that no
+   * region of its own covers. ONE function, on the RAW snapshot, so the rule
+   * lives in one place (see the block comment above).
+   *
+   * @param {Array<{sets: string[], size: number}>} subsets - Raw db subsets
+   * @returns {Array<{sets: string[], size: number}>} Derived pairs, in the
+   *   order the canvas appends them
+   */
+  function deriveVennPairs(subsets) {
+    const taken = new Set(
+      subsets.map((subset) => [...subset.sets].sort().join(VENN_PAIR_KEY_JOIN))
+    );
+    const sizeBySet = new Map(
+      subsets
+        .filter((subset) => subset.sets.length === 1)
+        .map((subset) => [subset.sets[0], subset.size])
+    );
+    const derived = [];
+    subsets.forEach((subset) => {
+      if (subset.sets.length < VENN_MIN_UNION_SETS) {
+        return;
+      }
+      const ids = [...subset.sets].sort();
+      for (let first = 0; first < ids.length - 1; first += 1) {
+        for (let second = first + 1; second < ids.length; second += 1) {
+          const pair = [ids[first], ids[second]];
+          const key = pair.join(VENN_PAIR_KEY_JOIN);
+          if (taken.has(key)) {
+            continue;
+          }
+          taken.add(key);
+          const sizeA = sizeBySet.get(pair[0]);
+          const sizeB = sizeBySet.get(pair[1]);
+          if (!vennSizeIsLive(sizeA) || !vennSizeIsLive(sizeB)) {
+            continue;
+          }
+          derived.push({
+            sets: pair,
+            size:
+              sizeA !== undefined && sizeB !== undefined
+                ? Math.min(sizeA, sizeB) / VENN_PAIR_SIZE_DIVISOR
+                : VENN_PAIR_FALLBACK_SIZE,
+          });
+        }
+      }
+    });
+    return derived;
+  }
+
+  /**
+   * The LAST body `title` line of a venn source, as typed, or null when there
+   * is none. Not trimmed of a `%%` comment: the venn lexer has no comment rule
+   * on a title line and the canvas prints the `%%` text (measured 22 October
+   * 2026). An empty `title` line reads "" (the line swallows the next one,
+   * census FB1), which is not null.
+   *
+   * @param {string} code - The Mermaid source, frontmatter included
+   * @returns {string|null} The body title as typed, or null
+   */
+  function readVennBodyTitle(code) {
+    if (typeof code !== "string") {
+      return null;
+    }
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    const text = fence ? code.slice(fence[0].length) : code;
+    let found = null;
+    text.split(/\r?\n/).forEach((line) => {
+      const match = /^[ \t]*title(?![\w-])(.*)$/.exec(line);
+      if (match) {
+        found = match[1].trim();
+      }
+    });
+    return found;
+  }
+
+  /**
+   * The title to narrate (gold VN11, rulings VR8 and VR9).
+   *
+   * EVERY title goes through the resolver the packet and treemap surfaces
+   * share (VR9, VR16): the author's characters when its own reading of the
+   * source agrees with the drawn title, the drawn title with the sanitiser's
+   * codes folded back otherwise (a typed tag removed), a quotation mark for
+   * `#quot;` (VR8) and one space for a line break (VR22). The body title wins
+   * over a frontmatter one, as on the canvas. No source to read (a stubbed db
+   * in the self-check) keeps the plain placeholder decode.
+   *
+   * @param {*} rawTitle - db.getDiagramTitle() as snapshotted
+   * @param {string} [code] - The Mermaid source
+   * @returns {string|null} The title, or null when there is none
+   */
+  function resolveVennTitle(rawTitle, code) {
+    if (typeof rawTitle !== "string" || rawTitle === "") {
+      return null;
+    }
+    if (typeof code !== "string") {
+      return decodePlaceholders(rawTitle);
+    }
+    // VR16 (23 October 2026): a FRONTMATTER title goes through the same
+    // resolver as a body title, so a typed tag is removed as the canvas removes
+    // it and a typed `#quot;` still reads a quotation mark (VR8). The resolver
+    // also folds a line break to one space (VR22: a block scalar, sweep 6 F6).
+    return resolvePacketTitle(rawTitle, readVennBodyTitle(code), readFrontmatterTitle(code));
+  }
+
+  /**
+   * VR23 (23 October 2026): is one configured venn dimension one the canvas
+   * cannot draw? An absent value (or a null the config merge drops) draws at
+   * the default. Otherwise the value must read as a finite number above 0 in
+   * the SVG number grammar, which is what `viewBox="0 0 WIDTH HEIGHT"` parses:
+   * a quoted "400" and " 400 " and "4e2" and "+400" DRAW (measured), while
+   * "wide", "", "400.", "0x190", "400px", "Infinity", a boolean, 0 and a
+   * negative number leave the canvas blank. A plain finite-number test would
+   * wrongly call the quoted "400" blank.
+   *
+   * @param {*} value - config.venn.width or config.venn.height
+   * @returns {boolean} True when the canvas is blank for this value
+   */
+  function vennDimensionBlank(value) {
+    if (value === undefined || value === null) {
+      return false;
+    }
+    if (typeof value === "number") {
+      return !(Number.isFinite(value) && value > 0);
+    }
+    if (typeof value !== "string") {
+      return true;
+    }
+    const text = value.trim();
+    return !(VENN_SVG_NUMBER.test(text) && Number.isFinite(Number(text)) && Number(text) > 0);
+  }
+
+  /**
+   * Is the canvas blank because THIS source configures an undrawable width or
+   * height? Read through `mermaid.parse(source).config.venn` (the kanban
+   * surface's route, 20 September 2026: it merges frontmatter and a
+   * `%%{init}%%` directive by Mermaid's own rule, directive winning, and is
+   * not contaminated by a render or by a parse in flight; all three re-measured
+   * for venn on 23 October 2026). It runs inside the caller's queue slot and
+   * BEFORE getDiagramFromText, so the db read stays the last thing in the slot.
+   * NEVER REJECTS: a source this route refuses reads as not blank, and the
+   * parse that follows reports the real error.
+   *
+   * @param {string} code - The Mermaid venn source
+   * @returns {Promise<boolean>} True only when a configured dimension is undrawable
+   */
+  function readVennCanvasBlank(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      return Promise.resolve(false);
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => {
+        const config = parsed && typeof parsed === "object" ? parsed.config : null;
+        const venn = config && typeof config === "object" ? config.venn : null;
+        if (!venn || typeof venn !== "object") {
+          return false;
+        }
+        return VENN_DIMENSION_KEYS.some((key) => vennDimensionBlank(venn[key]));
+      })
+      .catch((error) => {
+        logDebug(`Venn canvas-blank read failed, reading as drawn: ${error && error.message}`);
+        return false;
+      });
+  }
+
+  /**
+   * Map one parsed venn diagram to the normalised delivery. Every db read is
+   * the snapshot at the top, in the same tick as the call.
+   *
+   * @param {Object} diagram - The object getDiagramFromText resolved to
+   * @param {string} [code] - The Mermaid source
+   * @param {boolean} [canvasBlank] - VR23: the source configures an undrawable width or height
+   * @returns {Object} { diagramType, title, sets, items, unions, derivedPairs, canvasBlank }
+   */
+  function normaliseVenn(diagram, code, canvasBlank) {
+    const snapshot = snapshotVennDb(diagram.db);
+    const rawText = (value) => (typeof value === "string" && value !== "" ? value : null);
+    const decodedText = (value) => {
+      const raw = rawText(value);
+      return raw === null ? null : decodePlaceholders(raw);
+    };
+    const decodeAll = (list) => list.map((name) => decodePlaceholders(name));
+
+    // The author's style for one set, every statement naming it in order.
+    const styleOf = (rawId) => {
+      const merged = {};
+      snapshot.styles.forEach((statement) => {
+        if (statement.targets.includes(rawId)) {
+          Object.assign(merged, statement.styles);
+        }
+      });
+      return merged;
+    };
+
+    const sets = snapshot.subsets
+      .filter((subset) => subset.sets.length === 1)
+      .map((subset) => ({
+        id: decodePlaceholders(subset.sets[0]),
+        label: decodedText(subset.label),
+        rawLabel: rawText(subset.label),
+        size: subset.size,
+        style: styleOf(subset.sets[0]),
+      }));
+
+    const unions = snapshot.subsets
+      .filter((subset) => subset.sets.length > 1)
+      .map((subset) => ({
+        setIds: decodeAll(subset.sets),
+        label: decodedText(subset.label),
+        size: subset.size,
+      }));
+
+    // The canvas draws `label ?? id`, so an item with no label is delivered
+    // with its id as the drawn text. An item label of "" stays "".
+    const items = snapshot.texts.map((text) => {
+      const drawn = typeof text.label === "string" ? text.label : text.id;
+      return {
+        label: decodePlaceholders(drawn),
+        rawLabel: drawn,
+        setIds: decodeAll(text.sets),
+      };
+    });
+
+    const derivedPairs = deriveVennPairs(snapshot.subsets).map((pair) => ({
+      setIds: decodeAll(pair.sets),
+      label: null,
+      size: pair.size,
+      derived: true,
+    }));
+
+    return {
+      diagramType: VENN_DIAGRAM_TYPE,
+      title: resolveVennTitle(snapshot.title, code),
+      sets: sets,
+      items: items,
+      unions: unions,
+      derivedPairs: derivedPairs,
+      canvasBlank: canvasBlank === true,
+    };
+  }
+
+  /**
+   * One venn parse, FROM THE TITLE READ TO THE DELIVERY, with no yield point
+   * between the parse and the db reads (the VR23 config read runs first, before
+   * getDiagramFromText, as the kanban surface's does). It must run inside an
+   * adapter queue slot; parseVenn and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid venn source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readVennInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    return readVennCanvasBlank(code).then((canvasBlank) => {
+      const parsed =
+        title === null
+          ? api.getDiagramFromText(code)
+          : api.getDiagramFromText(code, { title: title });
+      return parsed.then((diagram) => ({
+        diagram: diagram,
+        delivery: normaliseVenn(diagram, code, canvasBlank),
+      }));
+    });
+  }
+
+  /**
+   * Parse a venn diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and the db is
+   * read inside this call's own queue slot. THE QUEUE IS LOAD-BEARING: the
+   * venn db is a module singleton (census S1), so two overlapping parses
+   * both read the later one (S8, S8b).
+   *
+   * @param {string} code - The Mermaid venn source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseVenn(code) {
+    if (!vennSelfCheckStarted) {
+      runVennSelfCheck();
+    }
+
+    if (code === vennMemoCode && vennMemoPromise) {
+      logDebug("Returning memoised venn parse for identical code string");
+      return vennMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Venn parse entering its queue slot, ${code.length} characters`);
+      return readVennInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Venn parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.sets.length} set(s), ${delivery.unions.length} union(s), ` +
+              `${delivery.items.length} item(s), ${delivery.derivedPairs.length} derived pair(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Venn parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    vennMemoCode = code;
+    vennMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed SelfCheck. Sources
+  // parsed one after another in ONE queue slot, each fully normalised before
+  // the next parse replaces the shared (singleton) db.
+
+  // TWO: a body title, a sized set with a label, a bare set, a union written
+  // in REVERSE order (the db sorts it), an explicit item in both sets, an item
+  // with no label, a third set, and an item whose combination (A and C) has no
+  // region: delivered, though the canvas omits it.
+  const VENN_SELF_CHECK_TWO = [
+    "venn-beta",
+    "  title SelfCheck two title",
+    '  set scA["SelfCheck A"]:20',
+    "  set scB:10",
+    "  set scC",
+    '  union scB,scA["SelfCheck AB"]:4',
+    'text scA,scB scX["SelfCheck item X"]',
+    "text scA scY",
+    'text scA,scC scZ["SelfCheck no region item"]',
+    "",
+  ].join("\n");
+
+  // THREE: a union of three sets (two pairs derived, one declared AFTER it),
+  // distinct set sizes so the min-over-four rule is visible, an author style,
+  // and an item in two sets and one in three.
+  const VENN_SELF_CHECK_THREE = [
+    "venn-beta",
+    '  set scP["SelfCheck P"]:30',
+    "  set scQ:6",
+    "  set scR:8",
+    '  union scP,scQ,scR["SelfCheck PQR"]:3',
+    '  union scP,scQ["SelfCheck PQ"]',
+    "  style scP fill:#ff0000, stroke:#00ff00",
+    "text scP pOnly",
+    'text scP,scQ pq["SelfCheck pq item"]',
+    "text scP,scQ,scR pqr",
+    "",
+  ].join("\n");
+
+  // FOUR: a four-way union and a declared pair; five of the six pairs derive.
+  const VENN_SELF_CHECK_FOUR = [
+    "venn-beta",
+    "  set s1",
+    "  set s2",
+    "  set s3",
+    "  set s4",
+    "  union s1,s2,s3,s4",
+    "  union s1,s2",
+    "",
+  ].join("\n");
+
+  // SWALLOW: an empty title line, which swallows the NEXT line as the title
+  // (census FB1), so scSwallowed is never a set.
+  const VENN_SELF_CHECK_SWALLOW = [
+    "venn-beta",
+    "  title",
+    "  set scSwallowed",
+    "  set scKept",
+    "",
+  ].join("\n");
+
+  // DUP: a set declared twice (two entries, the later label last), a blank
+  // label, and #quot;, a typed tag and an author &amp; in a name, a label and
+  // an item.
+  const VENN_SELF_CHECK_DUP = [
+    "venn-beta",
+    '  set scDup["SelfCheck dup first"]',
+    "  set scOther",
+    '  set scDup["SelfCheck dup later"]',
+    '  set scBlank[" "]',
+    '  set "SelfCheck q #quot;x#quot;"["SelfCheck l <b>t</b> &amp; #quot;y#quot;"]',
+    'text scOther "SelfCheck item #quot;z#quot;"',
+    "",
+  ].join("\n");
+
+  // The title route: frontmatter only, frontmatter under a body title, none.
+  const VENN_SELF_CHECK_FM = [
+    "---",
+    "title: SelfCheck frontmatter title",
+    "---",
+    "venn-beta",
+    "  set scF1",
+    "  set scF2",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_FM_BODY = [
+    "---",
+    "title: SelfCheck frontmatter loses",
+    "---",
+    "venn-beta",
+    "  title SelfCheck body wins",
+    "  set scF1",
+    "",
+  ].join("\n");
+  // The title RESOLUTIONS (gold VR8, VR9): a frontmatter title with #quot;,
+  // and one with a typed &amp;; a body title with bare ampersands, and one
+  // holding a typed tag (the canvas prints the tag removed and the ampersands
+  // as &amp;).
+  const VENN_SELF_CHECK_FM_QUOT = [
+    "---",
+    'title: "SelfCheck #quot;fm#quot; title"',
+    "---",
+    "venn-beta",
+    "  set scQ1",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_FM_AMP = [
+    "---",
+    "title: SelfCheck fm x &amp; y",
+    "---",
+    "venn-beta",
+    "  set scQ1",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_BODY_AMP = [
+    "venn-beta",
+    "  title SelfCheck Tom & Jerry",
+    "  set scQ1",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_BODY_TAG = [
+    "venn-beta",
+    "  title SelfCheck R&D <team> & co",
+    "  set scQ1",
+    "",
+  ].join("\n");
+  // VR18: a four-way union naming a set of size 0, beside a declared pair that
+  // names it. Three sets of size 1 so the derived size (1 over four) is not
+  // the default 2.5 and an over-wide filter cannot hide.
+  const VENN_SELF_CHECK_ZERO_FOUR = [
+    "venn-beta",
+    "  set scZA:1",
+    "  set scZB:1",
+    "  set scZC:1",
+    "  set scZZ:0",
+    "  union scZA,scZB,scZC,scZZ",
+    "  union scZA,scZZ",
+    "",
+  ].join("\n");
+  // VR22: a block scalar title over two lines; and a single-line title with two
+  // spaces, which must be left as typed.
+  const VENN_SELF_CHECK_FM_BLOCK = [
+    "---",
+    "title: |",
+    "  SelfCheck first line",
+    "  SelfCheck second line",
+    "---",
+    "venn-beta",
+    "  set scBl",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_FM_SPACES = [
+    "---",
+    "title: SelfCheck a  b",
+    "---",
+    "venn-beta",
+    "  set scSp",
+    "",
+  ].join("\n");
+  // VR16: a FRONTMATTER title holding a typed tag and bare ampersands, and one
+  // that also holds a typed code beside the tag.
+  const VENN_SELF_CHECK_FM_TAG = [
+    "---",
+    "title: SelfCheck fm R&D <team> & co",
+    "---",
+    "venn-beta",
+    "  set scTg",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_FM_TAG_CODE = [
+    "---",
+    "title: SelfCheck x &amp; y <team>",
+    "---",
+    "venn-beta",
+    "  set scTc",
+    "",
+  ].join("\n");
+  // VR23: a width Mermaid accepts and the canvas cannot draw (frontmatter), a
+  // height of 0 (directive), a quoted "400" and a plain 400 (both drawn).
+  const VENN_SELF_CHECK_WIDE = [
+    "---",
+    "config:",
+    "  venn:",
+    "    width: wide",
+    "---",
+    "venn-beta",
+    "  set scWd",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_HEIGHT_ZERO = [
+    '%%{init: {"venn": {"height": 0}}}%%',
+    "venn-beta",
+    "  set scHz",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_WIDTH_QUOTED = [
+    "---",
+    "config:",
+    "  venn:",
+    '    width: "400"',
+    "---",
+    "venn-beta",
+    "  set scWq",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_WIDTH_NUMBER = [
+    "---",
+    "config:",
+    "  venn:",
+    "    width: 400",
+    "---",
+    "venn-beta",
+    "  set scWn",
+    "",
+  ].join("\n");
+  const VENN_SELF_CHECK_NONE = "venn-beta\n  set scN1\n";
+  const VENN_SELF_CHECK_HEADER_ONLY = "venn-beta\n";
+  const VENN_SELF_CHECK_UNKNOWN_UNION = "venn-beta\n  union scU1,scU2\n";
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessor
+   * names, the delivered shape, the title route, the derived pairs, the
+   * decode, the snapshot and the STOPs. Resolves true on a clean run; on any
+   * failure logs ONE ERROR naming the first failed assertion, marks the
+   * surface unhealthy, and resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} The venn health verdict
+   */
+  function runVennSelfCheck() {
+    if (vennSelfCheckPromise) {
+      return vennSelfCheckPromise;
+    }
+    vennSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readVennInSlot(code).then(
+        (result) => ({ result: result }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      const outcomes = {};
+      let chain = Promise.resolve();
+      [
+        ["two", VENN_SELF_CHECK_TWO],
+        ["three", VENN_SELF_CHECK_THREE],
+        ["four", VENN_SELF_CHECK_FOUR],
+        ["swallow", VENN_SELF_CHECK_SWALLOW],
+        ["dup", VENN_SELF_CHECK_DUP],
+        ["fm", VENN_SELF_CHECK_FM],
+        ["fmBody", VENN_SELF_CHECK_FM_BODY],
+        ["fmQuot", VENN_SELF_CHECK_FM_QUOT],
+        ["fmAmp", VENN_SELF_CHECK_FM_AMP],
+        ["zeroFour", VENN_SELF_CHECK_ZERO_FOUR],
+        ["fmBlock", VENN_SELF_CHECK_FM_BLOCK],
+        ["fmSpaces", VENN_SELF_CHECK_FM_SPACES],
+        ["fmTag", VENN_SELF_CHECK_FM_TAG],
+        ["fmTagCode", VENN_SELF_CHECK_FM_TAG_CODE],
+        ["wide", VENN_SELF_CHECK_WIDE],
+        ["heightZero", VENN_SELF_CHECK_HEIGHT_ZERO],
+        ["widthQuoted", VENN_SELF_CHECK_WIDTH_QUOTED],
+        ["widthNumber", VENN_SELF_CHECK_WIDTH_NUMBER],
+        ["bodyAmp", VENN_SELF_CHECK_BODY_AMP],
+        ["bodyTag", VENN_SELF_CHECK_BODY_TAG],
+        ["none", VENN_SELF_CHECK_NONE],
+        ["headerOnly", VENN_SELF_CHECK_HEADER_ONLY],
+        ["unknownUnion", VENN_SELF_CHECK_UNKNOWN_UNION],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+          });
+      });
+
+      return chain.then(() => {
+        const dbOf = (key) => outcomes[key].result && outcomes[key].result.diagram.db;
+        const d = (key) => (outcomes[key].result ? outcomes[key].result.delivery : null);
+        const two = d("two");
+        const three = d("three");
+        const four = d("four");
+        const swallow = d("swallow");
+        const dup = d("dup");
+        const fm = d("fm");
+        const fmBody = d("fmBody");
+        const none = d("none");
+        const headerOnly = d("headerOnly");
+        const everything = [two, three, four, swallow, dup, fm, fmBody, none, headerOnly, d("wide")];
+        const accessorsPresent =
+          !!dbOf("three") &&
+          VENN_DB_ACCESSORS.every((name) => typeof dbOf("three")[name] === "function");
+
+        // The SNAPSHOT: the delivery of `two` was taken before `three` was
+        // parsed, and `two`'s db now reads `three`'s data (the singleton).
+        // The first half is the surface's promise; the second is the premise
+        // that makes it matter, so a Mermaid that stopped sharing the db
+        // would redden here and say so.
+        const twoDb = dbOf("two");
+        const singletonPremise =
+          !!twoDb &&
+          !!dbOf("none") &&
+          twoDb.getSubsetData() === dbOf("none").getSubsetData() &&
+          twoDb.getSubsetData().length !== 4;
+
+        const stubDb = (overrides) =>
+          Object.assign(
+            {
+              getSubsetData: () => [],
+              getTextData: () => [],
+              getStyleData: () => [],
+              getDiagramTitle: () => "",
+            },
+            overrides
+          );
+        const stubRefuses = (overrides, pattern) => {
+          try {
+            normaliseVenn({ db: stubDb(overrides) });
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const dbSubset = (sets, size, label) => ({ sets: sets, size: size, label: label });
+
+        return [
+          [
+            "the accessor names the surface reads exist on the pinned db",
+            accessorsPresent,
+          ],
+          [
+            "every delivery carries exactly the seven keys, in order, canvasBlank a boolean",
+            everything.every(
+              (delivery) =>
+                !!delivery &&
+                same(Object.keys(delivery), [
+                  "diagramType",
+                  "title",
+                  "sets",
+                  "items",
+                  "unions",
+                  "derivedPairs",
+                  "canvasBlank",
+                ]) &&
+                delivery.diagramType === "venn" &&
+                typeof delivery.canvasBlank === "boolean"
+            ),
+          ],
+          [
+            "TWO SETS plus a third: ids, labels, sizes and the default size, in declaration order; a label-less set delivers null for both label fields",
+            !!two &&
+              same(
+                two.sets.map((set) => [set.id, set.label, set.rawLabel, set.size]),
+                [
+                  ["scA", "SelfCheck A", "SelfCheck A", 20],
+                  ["scB", null, null, 10],
+                  ["scC", null, null, 10],
+                ]
+              ),
+          ],
+          [
+            "a UNION written in reverse is delivered sorted, with its label and its own size",
+            !!two &&
+              same(two.unions, [
+                { setIds: ["scA", "scB"], label: "SelfCheck AB", size: 4 },
+              ]),
+          ],
+          [
+            "ITEMS: one in two sets, one in one set with no label (the drawn text is its id), and one whose combination has NO region, delivered all the same",
+            !!two &&
+              same(two.items, [
+                {
+                  label: "SelfCheck item X",
+                  rawLabel: "SelfCheck item X",
+                  setIds: ["scA", "scB"],
+                },
+                { label: "scY", rawLabel: "scY", setIds: ["scA"] },
+                {
+                  label: "SelfCheck no region item",
+                  rawLabel: "SelfCheck no region item",
+                  setIds: ["scA", "scC"],
+                },
+              ]) &&
+              !two.unions.some((union) => same(union.setIds, ["scA", "scC"])) &&
+              two.derivedPairs.length === 0,
+          ],
+          [
+            "the BODY TITLE is delivered, and a source with no title delivers null",
+            !!two && two.title === "SelfCheck two title" && !!none && none.title === null,
+          ],
+          [
+            "THREE SETS: a three-way union and a declared pair are BOTH unions, an item in two sets and one in three keep their combinations",
+            !!three &&
+              same(
+                three.unions.map((union) => [union.setIds, union.label, union.size]),
+                [
+                  [["scP", "scQ", "scR"], "SelfCheck PQR", 3],
+                  [["scP", "scQ"], "SelfCheck PQ", 2.5],
+                ]
+              ) &&
+              same(
+                three.items.map((item) => item.setIds),
+                [["scP"], ["scP", "scQ"], ["scP", "scQ", "scR"]]
+              ),
+          ],
+          [
+            "DERIVED PAIRS of a three-way union: only the two pairs no declared region covers (P with R at 30,8 over four is 2; Q with R at 6,8 over four is 1.5), flagged derived, label null, and NOT merged into unions",
+            !!three &&
+              same(three.derivedPairs, [
+                { setIds: ["scP", "scR"], label: null, size: 2, derived: true },
+                { setIds: ["scQ", "scR"], label: null, size: 1.5, derived: true },
+              ]) &&
+              three.unions.length === 2 &&
+              three.unions.every((union) => union.derived === undefined),
+          ],
+          [
+            "a FOUR-way union with one declared pair derives the other five, each at the default 10 over four, 2.5",
+            !!four &&
+              four.derivedPairs.length === 5 &&
+              four.derivedPairs.every((pair) => pair.size === 2.5 && pair.derived === true) &&
+              !four.derivedPairs.some((pair) => same(pair.setIds, ["s1", "s2"])) &&
+              four.unions.length === 2,
+          ],
+          [
+            "the derive rule on its own: a pair an earlier union derived is not derived again, a repeated set name takes its LAST size, and a set with no size entry gives 2.5",
+            (() => {
+              const once = deriveVennPairs([
+                dbSubset(["a"], 4),
+                dbSubset(["b"], 8),
+                dbSubset(["c"], 8),
+                dbSubset(["a"], 20),
+                dbSubset(["a", "b", "c"], 1),
+                dbSubset(["a", "b", "c"], 1),
+              ]);
+              const unsized = deriveVennPairs([
+                dbSubset(["a"], 20),
+                dbSubset(["a", "b", "c"], 1),
+              ]);
+              return (
+                same(once, [
+                  { sets: ["a", "b"], size: 2 },
+                  { sets: ["a", "c"], size: 2 },
+                  { sets: ["b", "c"], size: 2 },
+                ]) && unsized.length === 3 && unsized.every((pair) => pair.size === 2.5)
+              );
+            })(),
+          ],
+          [
+            "a DUPLICATED set is delivered TWICE as the db holds it, the later label last (the canvas gives that label to both circles), and a blank label delivers null",
+            !!dup &&
+              same(
+                dup.sets.slice(0, 3).map((set) => [set.id, set.label]),
+                [
+                  ["scDup", "SelfCheck dup first"],
+                  ["scOther", null],
+                  ["scDup", "SelfCheck dup later"],
+                ]
+              ) &&
+              dup.sets[3].id === "scBlank" &&
+              dup.sets[3].label === null &&
+              dup.sets[3].rawLabel === null,
+          ],
+          [
+            "DECODE: #quot; becomes a quote in a set name, a set label and an item label; a typed <b> and an author &amp; are LEFT AS TYPED; the raw label keeps the delimiter bytes",
+            !!dup &&
+              dup.sets[4].id === 'SelfCheck q "x"' &&
+              dup.sets[4].label === 'SelfCheck l <b>t</b> &amp; "y"' &&
+              dup.sets[4].rawLabel.includes(PLACEHOLDER_NAMED) &&
+              dup.items[0].label === 'SelfCheck item "z"' &&
+              dup.items[0].rawLabel.includes(PLACEHOLDER_NAMED),
+          ],
+          [
+            "the two decoders are not the same one: decodeAuthorText would turn that &amp; into & where the canvas prints &amp;",
+            !!dup &&
+              decodeAuthorText(dup.sets[4].rawLabel) !== dup.sets[4].label &&
+              decodeAuthorText(dup.sets[4].rawLabel).includes("& ") &&
+              !dup.sets[4].label.includes("& "),
+          ],
+          [
+            "the author's STYLE reaches the set it names and no other",
+            !!three &&
+              same(three.sets.map((set) => set.style), [
+                { fill: "#ff0000", stroke: "#00ff00" },
+                {},
+                {},
+              ]),
+          ],
+          [
+            "the TITLE ROUTE: a frontmatter title is delivered, a body title beats it, and neither leaks into the next parse",
+            !!fm &&
+              fm.title === "SelfCheck frontmatter title" &&
+              !!fmBody &&
+              fmBody.title === "SelfCheck body wins" &&
+              !!none &&
+              none.title === null,
+          ],
+          [
+            "VR8 typed: a FRONTMATTER title written with #quot; is delivered with a quotation mark, where the canvas prints the code",
+            !!d("fmQuot") && d("fmQuot").title === 'SelfCheck "fm" title',
+          ],
+          [
+            "VR8 escaped: a FRONTMATTER title with a typed &amp; is delivered as typed",
+            !!d("fmAmp") && d("fmAmp").title === "SelfCheck fm x &amp; y",
+          ],
+          [
+            "VR9 typed: a BODY title with bare ampersands and no tag is delivered as typed",
+            !!d("bodyAmp") && d("bodyAmp").title === "SelfCheck Tom & Jerry",
+          ],
+          [
+            "VR9 escaped: a BODY title holding a typed tag is delivered as the author's characters with the tag removed and the canvas's spacing (two spaces), never as &amp;",
+            !!d("bodyTag") && d("bodyTag").title === "SelfCheck R&D  & co",
+          ],
+          [
+            "VR18 typed: a pair naming a set of size 0 is not derived, and a declared union naming it is still delivered",
+            !!d("zeroFour") &&
+              d("zeroFour").derivedPairs.every((pair) => !pair.setIds.includes("scZZ")) &&
+              d("zeroFour").unions.length === 2 &&
+              d("zeroFour").unions.some((union) => same(union.setIds, ["scZA", "scZZ"])) &&
+              d("zeroFour").unions.some((union) => same(union.setIds, ["scZA", "scZB", "scZC", "scZZ"])),
+          ],
+          [
+            "VR18 kept: the pairs among the sets of size above 0 are still derived, each at its own size over four",
+            !!d("zeroFour") &&
+              same(d("zeroFour").derivedPairs.filter((pair) => !pair.setIds.includes("scZZ")), [
+                { setIds: ["scZA", "scZB"], label: null, size: 0.25, derived: true },
+                { setIds: ["scZA", "scZC"], label: null, size: 0.25, derived: true },
+                { setIds: ["scZB", "scZC"], label: null, size: 0.25, derived: true },
+              ]),
+          ],
+          [
+            "VR22 typed: a block-scalar FRONTMATTER title over two lines is delivered with its line break read as one space",
+            !!d("fmBlock") && d("fmBlock").title === "SelfCheck first line SelfCheck second line",
+          ],
+          [
+            "VR22 kept: plain white space inside a single-line title is left as typed",
+            !!d("fmSpaces") && d("fmSpaces").title === "SelfCheck a  b",
+          ],
+          [
+            "VR16 typed: a FRONTMATTER title holding a typed tag and bare ampersands is delivered as the author's characters with the tag removed and the canvas's spacing (two spaces), never as &amp;",
+            !!d("fmTag") && d("fmTag").title === "SelfCheck fm R&D  & co",
+          ],
+          [
+            "VR16 escaped: a FRONTMATTER title with a typed &amp; beside a tag keeps the typed code as drawn",
+            !!d("fmTagCode") && d("fmTagCode").title === "SelfCheck x &amp; y ",
+          ],
+          [
+            "VR23 typed: a FRONTMATTER width of wide and a DIRECTIVE height of 0 each deliver canvasBlank true",
+            !!d("wide") && d("wide").canvasBlank === true && !!d("heightZero") && d("heightZero").canvasBlank === true,
+          ],
+          [
+            "VR23 escaped: a quoted \"400\", a plain 400 and no config at all each deliver canvasBlank false",
+            !!d("widthQuoted") &&
+              d("widthQuoted").canvasBlank === false &&
+              !!d("widthNumber") &&
+              d("widthNumber").canvasBlank === false &&
+              !!none &&
+              none.canvasBlank === false,
+          ],
+          [
+            "the EMPTY TITLE LINE swallows the next line, delivered as the db holds it: the title is the swallowed line and that set is never declared",
+            !!swallow &&
+              swallow.title === "  set scSwallowed" &&
+              same(swallow.sets.map((set) => set.id), ["scKept"]),
+          ],
+          [
+            "a header-only source delivers empty lists, as the db holds it (the canvas throws at render; this surface does not repeat that)",
+            !!headerOnly &&
+              headerOnly.sets.length === 0 &&
+              headerOnly.items.length === 0 &&
+              headerOnly.unions.length === 0 &&
+              headerOnly.derivedPairs.length === 0 &&
+              headerOnly.title === null,
+          ],
+          [
+            "a source Mermaid rejects rejects here with Mermaid's own error",
+            !!outcomes.unknownUnion.error &&
+              /unknown set identifier/.test(String(outcomes.unknownUnion.error.message)),
+          ],
+          [
+            "the SNAPSHOT: the delivery taken from the first source is plain data a later parse cannot change, while the db it was read from now reads another parse's data (the singleton)",
+            !!two &&
+              two.sets.length === 3 &&
+              two.sets[0].id === "scA" &&
+              two.unions.length === 1 &&
+              singletonPremise,
+          ],
+          [
+            "a STOP, never a silent drop: a missing accessor, a subset with no sets, a non-numeric size, a text with no string id and a non-array each refuse",
+            stubRefuses({ getTextData: undefined }, /getTextData is not a function/) &&
+              stubRefuses({ getSubsetData: () => [dbSubset([], 1)] }, /non-empty list/) &&
+              stubRefuses(
+                { getSubsetData: () => [dbSubset(["a"], "1")] },
+                /no numeric size/
+              ) &&
+              stubRefuses(
+                { getTextData: () => [{ sets: ["a"], id: 3 }] },
+                /no string id/
+              ) &&
+              stubRefuses({ getStyleData: () => ({}) }, /as arrays/),
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    vennSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.find(([, pass]) => !pass);
+        if (failed) {
+          logError(
+            `Venn self-check FAILED at assertion: ${failed[0]}. ` +
+              "Either the pinned Mermaid build's venn internals no longer " +
+              "match the 22 October 2026 census, or the surface or its derive " +
+              "rule has drifted; do not trust venn adapter output."
+          );
+          vennHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Venn self-check passed: accessor, shape, derived-pair, decode, " +
+            "title-route, snapshot and stop assertions all hold"
+        );
+        vennHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Venn self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        vennHealthy = false;
+        return false;
+      });
+
+    return vennSelfCheckPromise;
+  }
+
+  /**
+   * Report the venn surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the venn self-check has run;
+   *   null when it has not yet run (or not yet settled)
+   */
+  function isVennHealthy() {
+    return vennHealthy;
+  }
+
+  // ==========================================================================
+  // TREEVIEW SURFACE (register item 122, 24 October 2026; the twenty-fifth)
+  // ==========================================================================
+  //
+  // Census: docs/mermaid-item-122-census-1-2026-10-24.md. Surface record:
+  // docs/mermaid-item-122-surface-2-2026-10-24.md. NO MODULE CONSUMES THIS YET;
+  // the module session flips the manifest rows.
+  //
+  // THE ROUTE. Payload: DB-ONLY. Two non-db reads sit inside the SAME queue
+  // slot: (a) the source's own treeView config through
+  // `mermaid.parse(source).config` (the kanban route: the in-source config is
+  // NOT in getConfig() at parse time, census FP-C01..C04), called BEFORE the
+  // getDiagramFromText read because mermaid.parse is itself a parse and clears
+  // the shared store; (b) the frontmatter title through readFrontmatterTitle
+  // and getDiagramFromText(code, { title }) (the requirement and venn route).
+  // Every db read happens inside adapterParseQueue.
+  //
+  // THE DB. The db OBJECT is a module-level singleton and its RECORDS are
+  // fresh per parse, and CONCURRENT PARSES MERGE (census S1, S8, S8b: three
+  // started together all read the same nine nodes). The QUEUE keeps
+  // overlapping parses apart; the eager SNAPSHOT (everything copied into plain
+  // objects in the same tick as the read) only keeps a held delivery from
+  // changing afterwards. A parse during a RENDER changes what that render
+  // draws (S9, item 22): recorded, not defended.
+  //
+  // THE ROOT. The canvas draws a bold "/" above every tree and the source
+  // never holds it. It is in the db as getRoot() (id 0, level -1) and is
+  // delivered as the root node with drawnRoot: true, never counted in
+  // nodeCount.
+  //
+  // DEPTH is computed HERE, by the walk, and nowhere else. `level` is the
+  // author's raw indent CHARACTER count (a tab is 1), not a depth; nesting is
+  // relative (census N08, N09, N11), so rawLevel is delivered verbatim beside
+  // it. authorIndex is declaration order over author nodes; the db's ids are
+  // 1..n in declaration order and equal pre-order (98 of 98 sources, step 0),
+  // which this walk asserts and refuses to deliver if it ever stops holding.
+  //
+  // `isDirectory` IS THE TRAILING-SLASH FLAG AND NOTHING ELSE. The db's
+  // nodeType says nothing about children (a node with children and no slash
+  // is a file). `classes` is the db's one cssClass string split on white
+  // space as the renderer splits it (the last :::class wins, census A02).
+  //
+  // DECODE: decodePlaceholders on name, description and title, no break,
+  // markup or link rule (node labels are group R and the canvas prints tags;
+  // description and title arrive already sanitised and are printed as text).
+  // 57 of 57 comparable cells against the canvas. accTitle and accDescr take
+  // NO transform (the standing carve-out). raw* keys carry the db's bytes.
+  //
+  // THE TITLE is the DRAWN-TITLE PRECEDENCE the db itself applies: a body
+  // title beats a frontmatter title passed as `{ title }` (census R10, S6).
+  // The canvas draws no title at all. ITEM 122 SESSION 7 (25 October 2026):
+  // the title and every description are read as the AUTHOR typed them where the
+  // picture would print an entity code for a character typed plainly (TF1, the
+  // carve-out of 6 October 2026), a frontmatter title decodes its placeholders
+  // as a body title does (TF2) and a line break in a title reads as one space
+  // (TF4). rawTitle and rawDescription still carry the db's bytes.
+  //
+  // CONFIG: the nine treeView keys the canvas applies, each at the value
+  // Mermaid applies. Defaults are Mermaid's SITE config (getSiteConfig), never
+  // the live one; the source's own keys (frontmatter and %%{init}%%, merged by
+  // Mermaid with the directive winning key by key) overlay them; a null or
+  // absent value gives the default. Values are delivered VERBATIM: a string
+  // showIcons "false" is truthy and draws icons, a rowIndent "wide" draws NaN
+  // (step 0, KC07..KC09).
+  //
+  // ICONS: iconDrawn is the glyph the canvas draws for a node ("folder",
+  // "file", "?" for a name no registered pack holds, or null), computed by the
+  // renderer's OWN rule (getNodeIcon, detectIcon and qualifyIcon in the pinned
+  // 11.17.2 bundle) in ONE place. Agreement with the canvas, per node: 202 of
+  // 202 sources that render, 4,065 node readings (step 0, IC). A name the
+  // renderer cannot draw at all (a prototype name such as toString, which
+  // makes the render throw) is a STOP. iconName (25 October 2026, SA1) is the
+  // name the author WROTE, verbatim from the db (null when none; "none"
+  // included); iconDrawn stays the ONE source of what is drawn.
+  //
+  // nestingDrawn (25 October 2026, SA2) is false when the canvas cannot place
+  // rows by depth: the renderer's x = depth * (rowIndent + paddingX) is not a
+  // finite number (rowIndent "wide" or "10px" draws NaN). A clipped or huge
+  // value still places rows and stays true.
+  const TREEVIEW_DIAGRAM_TYPE = "treeView";
+  const TREEVIEW_DB_ACCESSORS = Object.freeze([
+    "getRoot",
+    "getCount",
+    "getAccTitle",
+    "getAccDescription",
+    "getDiagramTitle",
+  ]);
+  const TREEVIEW_CONFIG_KEYS = Object.freeze([
+    "useMaxWidth",
+    "rowIndent",
+    "paddingX",
+    "paddingY",
+    "lineThickness",
+    "showIcons",
+    "defaultIconPack",
+    "filenameIcons",
+    "extensionIcons",
+  ]);
+  const TREEVIEW_NODE_TYPE = Object.freeze({ DIRECTORY: "directory", FILE: "file" });
+  const TREEVIEW_ROOT_NAME = "/";
+  const TREEVIEW_ROOT_ID = 0;
+  const TREEVIEW_ROOT_LEVEL = -1;
+  const TREEVIEW_ICON_PACK = "mermaid-treeview";
+  const TREEVIEW_BUILTIN_ICONS = Object.freeze({ folder: true, file: true });
+  const TREEVIEW_GLYPH = Object.freeze({ FOLDER: "folder", FILE: "file", UNKNOWN: "?" });
+  const TREEVIEW_ICON_NONE = "none";
+
+  let treeViewMemoCode = null;
+  let treeViewMemoPromise = null;
+  let treeViewHealthy = null;
+  let treeViewSelfCheckStarted = false;
+  let treeViewSelfCheckPromise = null;
+
+  function treeViewStop(message) {
+    return new Error("TreeView surface: " + message);
+  }
+
+  function clonePlainData(value) {
+    return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+  }
+
+  /**
+   * Mermaid's SITE treeView config: initialize's values over the built-in
+   * defaults. getSiteConfig() reads it without mutating anything.
+   * @returns {Object} The site's treeView block
+   */
+  function readTreeViewSiteDefaults() {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    let site = null;
+    if (api && typeof api.getSiteConfig === "function") {
+      site = api.getSiteConfig();
+    }
+    if ((!site || !site.treeView) && api && api.defaultConfig) {
+      site = api.defaultConfig;
+    }
+    if (!site || !site.treeView || typeof site.treeView !== "object") {
+      throw treeViewStop("Mermaid's site config carries no treeView block");
+    }
+    return site.treeView;
+  }
+
+  /**
+   * THIS source's own treeView config, through mermaid.parse (frontmatter and
+   * %%{init}%% merged by Mermaid's rule, the directive winning). It runs
+   * inside the caller's queue slot and BEFORE getDiagramFromText. NEVER
+   * REJECTS: a source this route refuses reads as no config of its own, and
+   * the parse that follows reports the real error.
+   *
+   * @param {string} code - The Mermaid treeView source
+   * @returns {Promise<Object>} The source's own treeView keys, a plain copy
+   */
+  function readTreeViewOwnConfig(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      return Promise.resolve({});
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => {
+        const config = parsed && typeof parsed === "object" ? parsed.config : null;
+        const own = config && typeof config === "object" ? config.treeView : null;
+        return own && typeof own === "object" ? clonePlainData(own) : {};
+      })
+      .catch((error) => {
+        logDebug(`TreeView config read failed, reading as site defaults: ${error && error.message}`);
+        return {};
+      });
+  }
+
+  /**
+   * The config Mermaid applies: the source's own value where it has one that
+   * is neither null nor absent, the site default otherwise. Verbatim, cloned.
+   *
+   * @param {Object} site - The site's treeView block
+   * @param {Object} own - The source's own treeView keys
+   * @returns {Object} The nine config keys
+   */
+  function mergeTreeViewConfig(site, own) {
+    const merged = {};
+    TREEVIEW_CONFIG_KEYS.forEach((key) => {
+      const value = own[key] !== undefined && own[key] !== null ? own[key] : site[key];
+      if (value === undefined) {
+        throw treeViewStop(`neither the source nor the site config holds treeView.${key}`);
+      }
+      merged[key] = clonePlainData(value);
+    });
+    return merged;
+  }
+
+  /**
+   * The file-name and extension icon lookup of the renderer's detectIcon.
+   * @param {string} name - The db name (raw, slash stripped)
+   * @param {Object} config - The merged config
+   * @returns {*} The mapped icon, or undefined
+   */
+  function detectTreeViewIcon(name, config) {
+    const byName = config.filenameIcons ? config.filenameIcons[name] : undefined;
+    if (byName) {
+      return byName;
+    }
+    const dot = name.lastIndexOf(".");
+    if (dot <= 0) {
+      return undefined;
+    }
+    const extension = name.substring(dot).toLowerCase();
+    const map = config.extensionIcons;
+    return map ? (map[extension] ?? map[extension.slice(1)]) : undefined;
+  }
+
+  /**
+   * THE ONE CHOKE POINT for the glyph the canvas draws (the renderer's
+   * getNodeIcon, qualifyIcon and the built-in pack, read out of the 11.17.2
+   * bundle). The module never re-derives it.
+   *
+   * @param {{name: string, nodeType: string, icon: (string|undefined)}} raw - A raw db node
+   * @param {Object} config - The merged config
+   * @returns {string|null} "folder", "file", "?" or null
+   */
+  function treeViewIconDrawn(raw, config) {
+    if (raw.icon === TREEVIEW_ICON_NONE) {
+      return null;
+    }
+    let target = raw.icon;
+    if (!target) {
+      if (!config.showIcons) {
+        return null;
+      }
+      target = raw.nodeType === TREEVIEW_NODE_TYPE.FILE ? detectTreeViewIcon(raw.name, config) : undefined;
+      if (target === TREEVIEW_ICON_NONE) {
+        return null;
+      }
+      if (!target) {
+        return raw.nodeType === TREEVIEW_NODE_TYPE.DIRECTORY ? TREEVIEW_GLYPH.FOLDER : TREEVIEW_GLYPH.FILE;
+      }
+    }
+    if (typeof target !== "string") {
+      throw treeViewStop("an icon map value is not a string, which the renderer cannot draw");
+    }
+    const builtin = target in TREEVIEW_BUILTIN_ICONS;
+    const pack = target.includes(":") ? null : builtin || !config.defaultIconPack ? TREEVIEW_ICON_PACK : config.defaultIconPack;
+    if (builtin && !Object.prototype.hasOwnProperty.call(TREEVIEW_BUILTIN_ICONS, target)) {
+      throw treeViewStop(`the icon name ${target} is an object-prototype name, which makes the renderer throw`);
+    }
+    const qualified = pack === null ? target : `${pack}:${target}`;
+    if (qualified === `${TREEVIEW_ICON_PACK}:folder`) {
+      return TREEVIEW_GLYPH.FOLDER;
+    }
+    if (qualified === `${TREEVIEW_ICON_PACK}:file`) {
+      return TREEVIEW_GLYPH.FILE;
+    }
+    return TREEVIEW_GLYPH.UNKNOWN;
+  }
+
+  // ITEM 122 SESSION 7 (25 October 2026), TF1. THE SOURCE READER. Mermaid's
+  // sanitiser writes `&amp;`, `&lt;` and `&gt;` for a bare & < > as soon as a
+  // string holds a `<`, and delivers a TYPED `&amp;` as the same bytes, so a
+  // description or title cannot say which the author meant (sweep 6, P21). The
+  // author's own characters are therefore read from the SOURCE, by a
+  // tokeniser that follows the pinned grammar's terminals in their order
+  // (CLASS, ICON, DESCRIPTION, INDENTATION, QUOTED, comment, BARE; read from the
+  // 11.17.2 bundle). It is a READER, not a parser: its node list is used only
+  // when it agrees with the db's own walk on the count, every level and every
+  // folder flag, and a description is taken only when it then agrees with the
+  // db's string (treeViewAuthorText). Anything else delivers the db's string.
+  const TREEVIEW_SOURCE_LINES = Object.freeze({
+    HEADER: /^[ \t]*treeView-beta$/,
+    SKIPPED: /^[ \t]*(?:%%.*)?$/,
+    TITLE: /^[ \t]*title(?:[ \t]+(.*))?$/,
+    ACC_LINE: /^[ \t]*acc(?:Title|Descr)[ \t]*:/,
+    ACC_BLOCK_OPEN: /^[ \t]*accDescr[ \t]*\{/,
+  });
+  const TREEVIEW_SOURCE_LEXER = Object.freeze([
+    ["class", /[ \t]+:::[ \t]*[A-Za-z_][\w-]*/y],
+    ["icon", /[ \t]+icon\([\w-]*(?::[\w-]+)?\)/y],
+    ["description", /[ \t]+##[^\n\r]*/y],
+    ["indentation", /[ \t]+/y],
+    ["quoted", /"[^"]*"|'[^']*'/y],
+    ["comment", /%%[^\n]*/y],
+    [
+      "bare",
+      /(?!:::|icon\(|##)[^ \t\n\r"'](?:(?![ \t]+:::[ \t]*[A-Za-z_]|[ \t]+icon\(|[ \t]+##)[^\n\r])*/y,
+    ],
+  ]);
+
+  /**
+   * Tokenise one node line into nodes. A description swallows the rest of the
+   * line, so it belongs to the LAST node read before it; a name that follows a
+   * name on the same line takes the whitespace between them as its level.
+   * @param {string} line - One body line
+   * @param {Array<Object>} nodes - Receives { level, name, isDirectory, description }
+   * @returns {boolean} False when the line holds something the lexer would not read as a node
+   */
+  function tokeniseTreeViewLine(line, nodes) {
+    let position = 0;
+    let level = 0;
+    let current = null;
+    const openNode = (name) => {
+      current = { level: level, name: name, isDirectory: name.endsWith("/"), description: null };
+      nodes.push(current);
+      level = 0;
+    };
+    while (position < line.length) {
+      let token = null;
+      for (const [kind, pattern] of TREEVIEW_SOURCE_LEXER) {
+        pattern.lastIndex = position;
+        const match = pattern.exec(line);
+        if (match !== null) {
+          token = { kind: kind, text: match[0] };
+          break;
+        }
+      }
+      if (token === null) {
+        return false;
+      }
+      position += token.text.length;
+      if (token.kind === "indentation") {
+        level = token.text.length;
+      } else if (token.kind === "quoted") {
+        openNode(token.text.slice(1, -1));
+      } else if (token.kind === "bare") {
+        openNode(token.text.replace(/[ \t]+$/, ""));
+      } else if (token.kind === "comment") {
+        position = line.length;
+      } else if (current === null) {
+        return false;
+      } else if (token.kind === "description") {
+        current.description = token.text.replace(/^[ \t]+##/, "").trim();
+        position = line.length;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Read the body of a treeView source: the LAST body `title` line as typed
+   * (cut at a `%%`, which ends a title line) and the node list in declaration
+   * order. Returns null when the header cannot be found, a block never closes
+   * or a node line cannot be read.
+   * @param {string} code - The Mermaid source, frontmatter included
+   * @returns {{bodyTitle: (string|null), nodes: Array<Object>}|null}
+   */
+  function readTreeViewSource(code) {
+    if (typeof code !== "string") {
+      return null;
+    }
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    const lines = (fence ? code.slice(fence[0].length) : code).split(/\r?\n/);
+    let index = 0;
+    while (index < lines.length && TREEVIEW_SOURCE_LINES.SKIPPED.test(lines[index])) {
+      index += 1;
+    }
+    if (index >= lines.length || !TREEVIEW_SOURCE_LINES.HEADER.test(lines[index])) {
+      return null;
+    }
+    index += 1;
+    let bodyTitle = null;
+    for (; index < lines.length; index += 1) {
+      const line = lines[index];
+      const title = TREEVIEW_SOURCE_LINES.TITLE.exec(line);
+      if (title) {
+        bodyTitle = (title[1] || "").split("%%")[0].trim();
+        continue;
+      }
+      if (TREEVIEW_SOURCE_LINES.ACC_BLOCK_OPEN.test(line)) {
+        while (index < lines.length && !lines[index].includes("}")) {
+          index += 1;
+        }
+        if (index >= lines.length) {
+          return null;
+        }
+        continue;
+      }
+      if (TREEVIEW_SOURCE_LINES.SKIPPED.test(line) || TREEVIEW_SOURCE_LINES.ACC_LINE.test(line)) {
+        continue;
+      }
+      break;
+    }
+    const nodes = [];
+    for (; index < lines.length; index += 1) {
+      if (TREEVIEW_SOURCE_LINES.SKIPPED.test(lines[index])) {
+        continue;
+      }
+      if (!tokeniseTreeViewLine(lines[index], nodes)) {
+        return null;
+      }
+    }
+    return { bodyTitle: bodyTitle, nodes: nodes };
+  }
+
+  /**
+   * Does the source reader see the SAME nodes as the db's walk? The count, every
+   * level (the author's indentation characters) and every folder flag must
+   * agree, in declaration order (the order the snapshot proves).
+   * @param {Array<Object>} sourceNodes - readTreeViewSource(...).nodes
+   * @param {Array<Object>} copies - The snapshot's pre-order list, drawn root first
+   * @returns {boolean} True when the source's descriptions can be mapped by position
+   */
+  function treeViewSourceAgrees(sourceNodes, copies) {
+    const authored = copies.slice(1);
+    return (
+      sourceNodes.length === authored.length &&
+      authored.every(
+        (copy, index) =>
+          sourceNodes[index].level === copy.level &&
+          sourceNodes[index].isDirectory === (copy.nodeType === TREEVIEW_NODE_TYPE.DIRECTORY)
+      )
+    );
+  }
+
+  /**
+   * TF1: the author's characters, taken ONLY when the author's own reading of
+   * the source text agrees with the db's string once the three sanitiser codes
+   * are folded on both sides (the test resolvePacketTitleText applies). Anything
+   * else delivers the db's string unchanged, as ruled: this does NOT re-fold the
+   * codes in a string the sanitiser changed some other way.
+   * @param {string} drawn - The db's string, placeholders decoded
+   * @param {string|null} source - The author's text as typed, or null
+   * @returns {string} The text to narrate
+   */
+  function treeViewAuthorText(drawn, source) {
+    if (typeof source !== "string" || source === "") {
+      return drawn;
+    }
+    const author = decodeSourcePlaceholders(source);
+    return foldSanitisedForms(author) === foldSanitisedForms(drawn) ? author : drawn;
+  }
+
+  /**
+   * The title to narrate: TF1 (the author's characters), TF2 (a frontmatter
+   * title decodes its placeholders as a body title does: the db keeps the
+   * author's `#quot;`, `#amp;` and `#lt;` bytes on that route) and TF4 (a line
+   * break reads as one space). The body title wins over a frontmatter one, as
+   * the db does. No source to read (a stubbed db) keeps the plain decode.
+   * @param {string|null} rawTitle - The db's title, or null when none
+   * @param {string} [code] - The Mermaid source
+   * @returns {string|null} The title, or null when there is none
+   */
+  function resolveTreeViewTitle(rawTitle, code) {
+    if (rawTitle === null) {
+      return null;
+    }
+    if (typeof code !== "string") {
+      return decodePlaceholders(rawTitle);
+    }
+    const read = readTreeViewSource(code);
+    const bodyTitle = read === null ? null : read.bodyTitle;
+    const frontmatterTitle = readFrontmatterTitle(code);
+    const fromFrontmatter = bodyTitle === null && frontmatterTitle !== null;
+    const drawn = decodePlaceholders(fromFrontmatter ? decodeSourcePlaceholders(rawTitle) : rawTitle);
+    const title = collapsePacketLineBreaks(
+      treeViewAuthorText(drawn, bodyTitle !== null ? bodyTitle : frontmatterTitle)
+    );
+    return title === "" ? null : title;
+  }
+
+  /**
+   * Copy the treeView db into plain data, ONCE and synchronously, walking
+   * iteratively. Every shape the reader cannot map is a STOP here.
+   *
+   * @param {Object} db - The diagram's db
+   * @returns {{title: string, accTitle: string, accDescr: string, nodes: Array<Object>,
+   *   nodeCount: number, maxDepth: number}} Plain copies, raw (not decoded); `nodes`
+   *   is the pre-order list with the drawn root first
+   */
+  function snapshotTreeViewDb(db) {
+    for (const accessor of TREEVIEW_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw treeViewStop(
+          `db.${accessor} is not a function; the pinned Mermaid build's treeView ` +
+            "db no longer matches the 24 October 2026 census"
+        );
+      }
+    }
+    const textOrEmpty = (value, what) => {
+      if (value !== undefined && value !== null && typeof value !== "string") {
+        throw treeViewStop(`${what} is neither a string nor absent`);
+      }
+      return value || "";
+    };
+    const optionalText = (value, what) => {
+      if (value !== undefined && typeof value !== "string") {
+        throw treeViewStop(`${what} is neither a string nor absent`);
+      }
+      return value;
+    };
+    const isNodeType = (value) => value === TREEVIEW_NODE_TYPE.DIRECTORY || value === TREEVIEW_NODE_TYPE.FILE;
+    const copyRecord = (raw, where) => {
+      if (!raw || typeof raw !== "object") {
+        throw treeViewStop(`${where} is not an object`);
+      }
+      if (!Number.isInteger(raw.id) || !Number.isInteger(raw.level)) {
+        throw treeViewStop(`${where} has no integer id and level`);
+      }
+      if (typeof raw.name !== "string") {
+        throw treeViewStop(`${where} has no string name`);
+      }
+      if (!isNodeType(raw.nodeType)) {
+        throw treeViewStop(`${where} has an unknown nodeType`);
+      }
+      if (!Array.isArray(raw.children)) {
+        throw treeViewStop(`${where} children is not an array`);
+      }
+      return {
+        id: raw.id,
+        level: raw.level,
+        name: raw.name,
+        nodeType: raw.nodeType,
+        icon: optionalText(raw.icon, `${where} icon`),
+        cssClass: optionalText(raw.cssClass, `${where} cssClass`),
+        description: optionalText(raw.description, `${where} description`),
+        depth: 0,
+        authorIndex: null,
+        parent: null,
+        children: [],
+      };
+    };
+
+    const rawRoot = db.getRoot();
+    const count = db.getCount();
+    const title = textOrEmpty(db.getDiagramTitle(), "the diagram title");
+    const accTitle = textOrEmpty(db.getAccTitle(), "the accTitle");
+    const accDescr = textOrEmpty(db.getAccDescription(), "the accDescr");
+
+    const root = copyRecord(rawRoot, "the root");
+    if (root.id !== TREEVIEW_ROOT_ID || root.level !== TREEVIEW_ROOT_LEVEL || root.name !== TREEVIEW_ROOT_NAME) {
+      throw treeViewStop("the root is not the drawn / root the census measured");
+    }
+    const seen = new Set([rawRoot]);
+    const nodes = [];
+    let authorNodes = 0;
+    let maxDepth = 0;
+    const stack = [[rawRoot, root]];
+    while (stack.length > 0) {
+      const [raw, copy] = stack.pop();
+      nodes.push(copy);
+      if (copy !== root) {
+        if (raw.id !== authorNodes + 1) {
+          throw treeViewStop(
+            `node id ${raw.id} is not at declaration order ${authorNodes + 1}; the walk cannot place it`
+          );
+        }
+        copy.authorIndex = authorNodes;
+        authorNodes += 1;
+        maxDepth = Math.max(maxDepth, copy.depth);
+      }
+      const pending = raw.children.map((rawChild, index) => {
+        if (rawChild && typeof rawChild === "object" && seen.has(rawChild)) {
+          throw treeViewStop("a node appears more than once in the tree");
+        }
+        seen.add(rawChild);
+        const childCopy = copyRecord(rawChild, `a child ${index} of ${copy === root ? "the root" : copy.name}`);
+        childCopy.depth = copy.depth + 1;
+        childCopy.parent = copy;
+        copy.children.push(childCopy);
+        return [rawChild, childCopy];
+      });
+      for (let index = pending.length - 1; index >= 0; index -= 1) {
+        stack.push(pending[index]);
+      }
+    }
+    if (!Number.isInteger(count) || authorNodes !== count - 1) {
+      throw treeViewStop(`the walk placed ${authorNodes} node(s) but the db's count says ${count - 1}`);
+    }
+    return { title: title, accTitle: accTitle, accDescr: accDescr, nodes: nodes, nodeCount: authorNodes, maxDepth: maxDepth };
+  }
+
+  /**
+   * Build the delivered tree from the snapshot, iteratively (the pre-order
+   * list puts every parent before its children and siblings in order).
+   * @param {Array<Object>} copies - The snapshot's pre-order list, drawn root first
+   * @param {Object} config - The merged config
+   * @param {Array<string|null>} [sourceDescriptions] - The source's descriptions by
+   *   authorIndex, when the source reader agrees with the db's walk (TF1)
+   * @returns {Object} The delivered root node
+   */
+  function buildTreeViewNodes(copies, config, sourceDescriptions) {
+    const classesOf = (cssClass) => (typeof cssClass === "string" ? cssClass.split(/\s+/).filter(Boolean) : []);
+    const rawText = (value) => (typeof value === "string" && value !== "" ? value : null);
+    const descriptionText = (copy) => {
+      const raw = rawText(copy.description);
+      if (raw === null) {
+        return null;
+      }
+      const source = sourceDescriptions ? sourceDescriptions[copy.authorIndex] : null;
+      return treeViewAuthorText(decodePlaceholders(raw), source);
+    };
+    const delivered = new Map();
+    copies.forEach((copy) => {
+      const isRoot = copy.parent === null;
+      const node = {
+        name: decodePlaceholders(copy.name),
+        rawName: copy.name,
+        depth: copy.depth,
+        rawLevel: copy.level,
+        isDirectory: copy.nodeType === TREEVIEW_NODE_TYPE.DIRECTORY,
+        classes: classesOf(copy.cssClass),
+        description: descriptionText(copy),
+        rawDescription: rawText(copy.description),
+        authorIndex: copy.authorIndex,
+        iconDrawn: treeViewIconDrawn(copy, config),
+        iconName: copy.icon === undefined ? null : copy.icon,
+        children: [],
+      };
+      if (isRoot) {
+        node.drawnRoot = true;
+      } else {
+        delivered.get(copy.parent).children.push(node);
+      }
+      delivered.set(copy, node);
+    });
+    return delivered.get(copies[0]);
+  }
+
+  /**
+   * Can the canvas place rows by depth? The renderer's own arithmetic, read
+   * from the 11.17.2 bundle: a row at depth d sits at x = d * (rowIndent +
+   * paddingX) (JavaScript +, so a string rowIndent is concatenated), and its
+   * connector stub starts at x - rowIndent. A rowIndent such as "wide" or
+   * "10px" makes both NaN, so every row falls to x 0 and the nesting is not
+   * drawn. A clipped (negative) or enormous value still places rows, so it
+   * stays true: that is the picture's fault, not ruled here.
+   *
+   * @param {Object} config - The merged config
+   * @returns {boolean} False when the canvas cannot place rows by depth
+   */
+  function treeViewNestingDrawn(config) {
+    const x = 1 * (config.rowIndent + config.paddingX);
+    const stub = x - config.rowIndent;
+    return Number.isFinite(x) && Number.isFinite(stub);
+  }
+
+  /**
+   * Map one parsed treeView diagram to the normalised delivery. Every db read
+   * is the snapshot at the top, in the same tick as the call.
+   *
+   * @param {Object} diagram - The object getDiagramFromText resolved to
+   * @param {Object} [ownConfig] - The source's own treeView keys (mermaid.parse)
+   * @param {string} [code] - The Mermaid source; absent (a stubbed db) reads no source
+   * @returns {Object} { diagramType, title, rawTitle, accTitle, accDescr, config, root, nodeCount, maxDepth, nestingDrawn }
+   */
+  function normaliseTreeView(diagram, ownConfig, code) {
+    const snapshot = snapshotTreeViewDb(diagram.db);
+    const config = mergeTreeViewConfig(readTreeViewSiteDefaults(), ownConfig || {});
+    const rawTitle = snapshot.title === "" ? null : snapshot.title;
+    const read = readTreeViewSource(code);
+    const sourceDescriptions =
+      read !== null && treeViewSourceAgrees(read.nodes, snapshot.nodes)
+        ? read.nodes.map((node) => node.description)
+        : null;
+    const deliveredRoot = buildTreeViewNodes(snapshot.nodes, config, sourceDescriptions);
+    return {
+      diagramType: TREEVIEW_DIAGRAM_TYPE,
+      title: resolveTreeViewTitle(rawTitle, code),
+      rawTitle: rawTitle,
+      // NO transform on accTitle or accDescr: the standing carve-out.
+      accTitle: snapshot.accTitle === "" ? null : snapshot.accTitle,
+      accDescr: snapshot.accDescr === "" ? null : snapshot.accDescr,
+      config: config,
+      root: deliveredRoot,
+      nodeCount: snapshot.nodeCount,
+      maxDepth: snapshot.maxDepth,
+      nestingDrawn: treeViewNestingDrawn(config),
+    };
+  }
+
+  /**
+   * One treeView parse, FROM THE CONFIG READ TO THE DELIVERY, with no yield
+   * point between the parse and the db reads. It must run inside an adapter
+   * queue slot; parseTreeView and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid treeView source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readTreeViewInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    return readTreeViewOwnConfig(code).then((ownConfig) => {
+      const parsed =
+        title === null
+          ? api.getDiagramFromText(code)
+          : api.getDiagramFromText(code, { title: title });
+      return parsed.then((diagram) => ({
+        diagram: diagram,
+        delivery: normaliseTreeView(diagram, ownConfig, code),
+      }));
+    });
+  }
+
+  /**
+   * Parse a treeView diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and the db is
+   * read inside this call's own queue slot. THE QUEUE IS LOAD-BEARING:
+   * overlapping parses MERGE in the singleton (census S8, S8b).
+   *
+   * @param {string} code - The Mermaid treeView source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseTreeView(code) {
+    if (!treeViewSelfCheckStarted) {
+      runTreeViewSelfCheck();
+    }
+
+    if (code === treeViewMemoCode && treeViewMemoPromise) {
+      logDebug("Returning memoised treeView parse for identical code string");
+      return treeViewMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`TreeView parse entering its queue slot, ${code.length} characters`);
+      return readTreeViewInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `TreeView parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.nodeCount} node(s), depth ${delivery.maxDepth}`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `TreeView parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    treeViewMemoCode = code;
+    treeViewMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed sc / SelfCheck.
+  // Sources parsed one after another in ONE queue slot, each fully normalised
+  // AND digested before the next parse replaces the shared (singleton) db.
+
+  // NEST: three levels, a dedent back to level 2, an over-indent that skips
+  // levels (nine spaces) and an over-dedent between two levels (six spaces,
+  // a sibling of the over-indented node), then a top-level node again.
+  // Directory without children (scMid has children and a slash), file with
+  // children (scMidB has children and no slash).
+  const TREEVIEW_SELF_CHECK_NEST = [
+    "treeView-beta",
+    "scTop/",
+    "  scMid/",
+    "    scDeep",
+    "    scDeep2",
+    "  scMidB",
+    "         scOver",
+    "      scDedent",
+    "scLast",
+    "",
+  ].join("\n");
+
+  // ANNOT: a file with children, a directory with none, a class and a
+  // description, two classes (the last wins) and no description.
+  const TREEVIEW_SELF_CHECK_ANNOT = [
+    "treeView-beta",
+    "scBranch",
+    "  scLeafDir/",
+    "  scPlain :::scClass ## SelfCheck note",
+    "  scTwo :::scA :::scB",
+    "",
+  ].join("\n");
+
+  // TYPED: #quot; in a title, a name and a description.
+  const TREEVIEW_SELF_CHECK_TYPED = [
+    "treeView-beta",
+    "title SelfCheck t #quot;x#quot; end",
+    "scQ #quot;n#quot; end ## SelfCheck d #quot;y#quot; end",
+    "",
+  ].join("\n");
+
+  // ESCAPED: an author-typed &amp; and a tag in a title, a name and a
+  // description: left as typed, as the canvas prints them.
+  const TREEVIEW_SELF_CHECK_ESCAPED = [
+    "treeView-beta",
+    "title SelfCheck e &amp; t",
+    "scE &amp; <b>n</b> end ## SelfCheck d &amp; <b>y</b> end",
+    "",
+  ].join("\n");
+
+  // BARE (TF1): a bare & and > beside a tag, in a body title and a description;
+  // the sanitiser writes the codes, the author typed the characters.
+  const TREEVIEW_SELF_CHECK_BARE = [
+    "treeView-beta",
+    "title SelfCheck b & <i>t</i> end",
+    "scB ## SelfCheck d & <i>y</i> > z end",
+    "",
+  ].join("\n");
+
+  // FMBARE (TF1): the same bare & beside a tag, in a frontmatter title.
+  const TREEVIEW_SELF_CHECK_FM_BARE = [
+    "---",
+    "title: SelfCheck f & <i>t</i> end",
+    "---",
+    "treeView-beta",
+    "scA",
+    "",
+  ].join("\n");
+
+  // TYPEDTAG (TF1): a TYPED &amp; beside a tag reads as typed, in a body title
+  // and a description (the db bytes are the same as the bare ones).
+  const TREEVIEW_SELF_CHECK_TYPED_TAG = [
+    "treeView-beta",
+    "title SelfCheck e &amp; <i>t</i> end",
+    "scT ## SelfCheck d &amp; <i>y</i> end",
+    "",
+  ].join("\n");
+
+  // MAP (TF1): descriptions land on the right node: a typed one, a bare one on a
+  // line holding two nodes (it belongs to the second), a typed one again.
+  const TREEVIEW_SELF_CHECK_MAP = [
+    "treeView-beta",
+    "scO ## SelfCheck o &amp; <i>a</i>",
+    '"scP" "scQ" ## SelfCheck q & <i>b</i>',
+    "scR ## SelfCheck r &amp; <i>c</i>",
+    "",
+  ].join("\n");
+
+  // FMPH (TF2): placeholders in a frontmatter title, which the db keeps as typed.
+  const TREEVIEW_SELF_CHECK_FM_PH = [
+    "---",
+    'title: "SelfCheck #quot;q#quot; #amp; #lt; z"',
+    "---",
+    "treeView-beta",
+    "scA",
+    "",
+  ].join("\n");
+
+  // BLOCK (TF4): a YAML block scalar title holds a line break.
+  const TREEVIEW_SELF_CHECK_BLOCK = [
+    "---",
+    "title: |",
+    "  SelfCheck first",
+    "  SelfCheck second",
+    "---",
+    "treeView-beta",
+    "scA",
+    "",
+  ].join("\n");
+
+  // DECLINE (TF1): the sanitiser removes a script element, so the author's text
+  // and the db's string disagree and the db's string is delivered.
+  const TREEVIEW_SELF_CHECK_DECLINE = [
+    "treeView-beta",
+    "scC ## SelfCheck c & <script>x</script><i>z</i> end",
+    "",
+  ].join("\n");
+
+  const TREEVIEW_SELF_CHECK_ACC = [
+    "treeView-beta",
+    "accTitle: SelfCheck acc #quot;t#quot; &amp; end",
+    "accDescr: SelfCheck descr #quot;d#quot; end",
+    "scA",
+    "",
+  ].join("\n");
+
+  const TREEVIEW_SELF_CHECK_FM = [
+    "---",
+    "title: SelfCheck frontmatter title",
+    "---",
+    "treeView-beta",
+    "scA",
+    "",
+  ].join("\n");
+
+  const TREEVIEW_SELF_CHECK_FM_BODY = [
+    "---",
+    "title: SelfCheck fm loses",
+    "---",
+    "treeView-beta",
+    "title SelfCheck body wins",
+    "scA",
+    "",
+  ].join("\n");
+
+  const TREEVIEW_SELF_CHECK_HEADER_ONLY = "treeView-beta\n";
+
+  // ICONS (default config, so showIcons is off): an explicit icon on a
+  // directory, an unknown name and icon(none).
+  const TREEVIEW_SELF_CHECK_ICONS = [
+    "treeView-beta",
+    "scDir/",
+    "  scFile",
+    "  scIconFile/ icon(file)",
+    "  scIconNope icon(nope)",
+    "  scIconNone icon(none)",
+    "",
+  ].join("\n");
+
+  // CFG: frontmatter sets showIcons and rowIndent 30, a directive then sets
+  // rowIndent 12 (the directive wins, key by key) and paddingX 9.
+  const TREEVIEW_SELF_CHECK_CFG = [
+    "---",
+    "config:",
+    "  treeView:",
+    "    showIcons: true",
+    "    rowIndent: 30",
+    "---",
+    '%%{init: {"treeView": {"rowIndent": 12, "paddingX": 9}}}%%',
+    "treeView-beta",
+    "scDir/",
+    "  scFile.md",
+    "",
+  ].join("\n");
+
+  const TREEVIEW_SELF_CHECK_REJECTED = 'treeView-beta\n"scBad\n';
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessor
+   * names, the delivered shape, nesting, the root, the decode, the icon rule,
+   * the config route, the title route, the snapshot and the STOPs. Resolves
+   * true on a clean run; on any failure logs ONE ERROR naming every failed
+   * assertion, marks the surface unhealthy, and resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} The treeView health verdict
+   */
+  function runTreeViewSelfCheck() {
+    if (treeViewSelfCheckPromise) {
+      return treeViewSelfCheckPromise;
+    }
+    treeViewSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readTreeViewInSlot(code).then(
+        (result) => ({
+          // The EAGER digest, taken in the same tick as the delivery: every
+          // row below reads this, so a later parse cannot reach it.
+          result: result,
+          digest: JSON.stringify(result.delivery),
+        }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      // A rendered directive leaves its settings in the GLOBAL config (packet
+      // R2): reset to the site's own before the defaults are read.
+      if (typeof window.mermaid.mermaidAPI.reset === "function") {
+        window.mermaid.mermaidAPI.reset();
+      }
+      const outcomes = {};
+      let chain = Promise.resolve();
+      [
+        ["nest", TREEVIEW_SELF_CHECK_NEST],
+        ["annot", TREEVIEW_SELF_CHECK_ANNOT],
+        ["typed", TREEVIEW_SELF_CHECK_TYPED],
+        ["escaped", TREEVIEW_SELF_CHECK_ESCAPED],
+        ["acc", TREEVIEW_SELF_CHECK_ACC],
+        ["fm", TREEVIEW_SELF_CHECK_FM],
+        ["fmBody", TREEVIEW_SELF_CHECK_FM_BODY],
+        ["icons", TREEVIEW_SELF_CHECK_ICONS],
+        ["cfg", TREEVIEW_SELF_CHECK_CFG],
+        ["bare", TREEVIEW_SELF_CHECK_BARE],
+        ["fmBare", TREEVIEW_SELF_CHECK_FM_BARE],
+        ["typedTag", TREEVIEW_SELF_CHECK_TYPED_TAG],
+        ["map", TREEVIEW_SELF_CHECK_MAP],
+        ["fmPh", TREEVIEW_SELF_CHECK_FM_PH],
+        ["block", TREEVIEW_SELF_CHECK_BLOCK],
+        ["decline", TREEVIEW_SELF_CHECK_DECLINE],
+        ["headerOnly", TREEVIEW_SELF_CHECK_HEADER_ONLY],
+        ["rejected", TREEVIEW_SELF_CHECK_REJECTED],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+          });
+      });
+
+      return chain.then(() => {
+        const d = (key) => (outcomes[key].digest ? JSON.parse(outcomes[key].digest) : null);
+        const dbOf = (key) => outcomes[key].result && outcomes[key].result.diagram.db;
+        const flat = (node) => node.children.flatMap((child) => [child, ...flat(child)]);
+        const nest = d("nest");
+        const annot = d("annot");
+        const typed = d("typed");
+        const escaped = d("escaped");
+        const acc = d("acc");
+        const icons = d("icons");
+        const cfg = d("cfg");
+        const headerOnly = d("headerOnly");
+        const everything = [
+          nest,
+          annot,
+          typed,
+          escaped,
+          acc,
+          d("fm"),
+          d("fmBody"),
+          icons,
+          cfg,
+          headerOnly,
+          d("bare"),
+          d("fmBare"),
+          d("typedTag"),
+          d("map"),
+          d("fmPh"),
+          d("block"),
+          d("decline"),
+        ];
+        const site = readTreeViewSiteDefaults();
+
+        const stubRoot = (children) => ({
+          id: TREEVIEW_ROOT_ID,
+          level: TREEVIEW_ROOT_LEVEL,
+          name: TREEVIEW_ROOT_NAME,
+          nodeType: "directory",
+          children: children,
+        });
+        const stubNode = (overrides) =>
+          Object.assign(
+            {
+              id: 1,
+              level: 0,
+              name: "scStub",
+              nodeType: "file",
+              icon: undefined,
+              cssClass: undefined,
+              description: undefined,
+              children: [],
+            },
+            overrides
+          );
+        const stubDb = (overrides) =>
+          Object.assign(
+            {
+              getRoot: () => stubRoot([stubNode({})]),
+              getCount: () => 2,
+              getAccTitle: () => "",
+              getAccDescription: () => "",
+              getDiagramTitle: () => "",
+            },
+            overrides
+          );
+        const stubRefuses = (overrides, pattern) => {
+          try {
+            normaliseTreeView({ db: stubDb(overrides) }, {});
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const shared = stubNode({});
+        const iconCfg = {
+          showIcons: true,
+          defaultIconPack: "",
+          filenameIcons: { Makefile: "none", "pkg.json": "folder" },
+          extensionIcons: { ".md": "file", js: "folder" },
+        };
+        const rule = (node, config) => treeViewIconDrawn(Object.assign({ icon: undefined }, node), config || iconCfg);
+        const siteStub = Object.fromEntries(TREEVIEW_CONFIG_KEYS.map((key) => [key, "site-" + key]));
+        const ownStub = { filenameIcons: { scA: "scB" } };
+        const mergedStub = mergeTreeViewConfig(siteStub, Object.assign({ paddingX: null, showIcons: 0 }, ownStub));
+
+        return [
+          [
+            "TV01 the accessors, the config route and the site block the surface reads exist on the pinned build",
+            !!dbOf("nest") &&
+              ["getRoot", "getCount", "getAccTitle", "getAccDescription", "getDiagramTitle"].every(
+                (name) => typeof dbOf("nest")[name] === "function"
+              ) &&
+              typeof window.mermaid.parse === "function" &&
+              typeof window.mermaid.mermaidAPI.getSiteConfig === "function" &&
+              TREEVIEW_CONFIG_KEYS.every((key) => key in site),
+          ],
+          [
+            "TV02 every delivery carries exactly the ten keys in order, the nine config keys in order, and every node the twelve node keys (the root one more, drawnRoot)",
+            everything.every(
+              (delivery) =>
+                !!delivery &&
+                same(Object.keys(delivery), [
+                  "diagramType",
+                  "title",
+                  "rawTitle",
+                  "accTitle",
+                  "accDescr",
+                  "config",
+                  "root",
+                  "nodeCount",
+                  "maxDepth",
+                  "nestingDrawn",
+                ]) &&
+                delivery.diagramType === "treeView" &&
+                same(Object.keys(delivery.config), TREEVIEW_CONFIG_KEYS) &&
+                same(Object.keys(delivery.root), [
+                  "name",
+                  "rawName",
+                  "depth",
+                  "rawLevel",
+                  "isDirectory",
+                  "classes",
+                  "description",
+                  "rawDescription",
+                  "authorIndex",
+                  "iconDrawn",
+                  "iconName",
+                  "children",
+                  "drawnRoot",
+                ]) &&
+                flat(delivery.root).every((node) =>
+                  same(Object.keys(node), [
+                    "name",
+                    "rawName",
+                    "depth",
+                    "rawLevel",
+                    "isDirectory",
+                    "classes",
+                    "description",
+                    "rawDescription",
+                    "authorIndex",
+                    "iconDrawn",
+                    "iconName",
+                    "children",
+                  ])
+                )
+            ),
+          ],
+          [
+            "TV03 NESTING: three levels, a dedent, an over-indent that skips levels and an over-dedent between two; depth walked, rawLevel the author's character count, authorIndex in declaration order, maxDepth 3",
+            !!nest &&
+              same(
+                flat(nest.root).map((node) => [node.name, node.depth, node.rawLevel, node.authorIndex, node.children.length]),
+                [
+                  ["scTop", 1, 0, 0, 2],
+                  ["scMid", 2, 2, 1, 2],
+                  ["scDeep", 3, 4, 2, 0],
+                  ["scDeep2", 3, 4, 3, 0],
+                  ["scMidB", 2, 2, 4, 2],
+                  ["scOver", 3, 9, 5, 0],
+                  ["scDedent", 3, 6, 6, 0],
+                  ["scLast", 1, 0, 7, 0],
+                ]
+              ) &&
+              nest.maxDepth === 3,
+          ],
+          [
+            "TV04 the drawn ROOT: depth 0, rawLevel -1, a directory named /, drawnRoot, no author index, not counted in nodeCount (8 and 4), and a header-only source delivers it alone with a count of 0",
+            !!nest &&
+              !!annot &&
+              !!headerOnly &&
+              nest.root.name === "/" &&
+              nest.root.rawName === "/" &&
+              nest.root.depth === 0 &&
+              nest.root.rawLevel === -1 &&
+              nest.root.isDirectory === true &&
+              nest.root.drawnRoot === true &&
+              nest.root.authorIndex === null &&
+              nest.nodeCount === 8 &&
+              annot.nodeCount === 4 &&
+              headerOnly.nodeCount === 0 &&
+              headerOnly.maxDepth === 0 &&
+              headerOnly.root.children.length === 0,
+          ],
+          [
+            "TV05 ANNOTATIONS: isDirectory is the trailing slash and not the children (a file with children is false, a directory with none is true); a class is an array and the last wins; a description is delivered and an absent one is null",
+            !!annot &&
+              same(
+                flat(annot.root).map((node) => [node.name, node.isDirectory, node.classes, node.description, node.rawDescription]),
+                [
+                  ["scBranch", false, [], null, null],
+                  ["scLeafDir", true, [], null, null],
+                  ["scPlain", false, ["scClass"], "SelfCheck note", "SelfCheck note"],
+                  ["scTwo", false, ["scB"], null, null],
+                ]
+              ),
+          ],
+          [
+            "TV06 DECODE typed: #quot; becomes a quotation mark in a name, a description and a title",
+            !!typed &&
+              typed.title === 'SelfCheck t "x" end' &&
+              typed.root.children[0].name === 'scQ "n" end' &&
+              typed.root.children[0].description === 'SelfCheck d "y" end',
+          ],
+          [
+            "TV07 DECODE escaped: an author-typed &amp; and a tag are LEFT AS TYPED in a name, a description and a title, and decodeAuthorText is not the same decoder",
+            !!escaped &&
+              escaped.title === "SelfCheck e &amp; t" &&
+              escaped.root.children[0].name === "scE &amp; <b>n</b> end" &&
+              escaped.root.children[0].description === "SelfCheck d &amp; <b>y</b> end" &&
+              decodeAuthorText(escaped.root.children[0].rawName) !== escaped.root.children[0].name,
+          ],
+          [
+            "TV08 RAW keys carry the db's bytes before decode: the delimiter bytes survive in rawName, rawDescription and rawTitle, and a title with none is null",
+            !!typed &&
+              !!nest &&
+              typed.rawTitle.includes(PLACEHOLDER_NAMED) &&
+              typed.root.children[0].rawName.includes(PLACEHOLDER_NAMED) &&
+              typed.root.children[0].rawDescription.includes(PLACEHOLDER_NAMED) &&
+              nest.rawTitle === null,
+          ],
+          [
+            "TV09 ICONS: the glyph the canvas draws, by the renderer's own rule: explicit names with the default config off; and, with it on, a folder, a file, a file-name map, an extension map in either spelling and either case, a name with no extension, a pack and the none arm",
+            !!icons &&
+              icons.root.iconDrawn === null &&
+              same(flat(icons.root).map((node) => [node.name, node.iconDrawn]), [
+                ["scDir", null],
+                ["scFile", null],
+                ["scIconFile", "file"],
+                ["scIconNope", "?"],
+                ["scIconNone", null],
+              ]) &&
+              rule({ name: "d", nodeType: "directory" }) === "folder" &&
+              rule({ name: "f", nodeType: "file" }) === "file" &&
+              rule({ name: "d", nodeType: "directory", icon: "file" }) === "file" &&
+              rule({ name: "f", nodeType: "file", icon: "nope" }) === "?" &&
+              rule({ name: "f", nodeType: "file", icon: "none" }) === null &&
+              rule({ name: "Makefile", nodeType: "file" }) === null &&
+              rule({ name: "pkg.json", nodeType: "file" }) === "folder" &&
+              rule({ name: "a.MD", nodeType: "file" }) === "file" &&
+              rule({ name: "b.JS", nodeType: "file" }) === "folder" &&
+              rule({ name: "b.js", nodeType: "file" }) === "folder" &&
+              rule({ name: ".gitignore", nodeType: "file" }) === "file" &&
+              rule({ name: "x", nodeType: "file", icon: "folder" }, Object.assign({}, iconCfg, { defaultIconPack: "logos" })) === "folder" &&
+              rule({ name: "x", nodeType: "file", icon: "github" }, Object.assign({}, iconCfg, { defaultIconPack: "logos" })) === "?" &&
+              rule({ name: "x", nodeType: "file" }, Object.assign({}, iconCfg, { showIcons: false })) === null,
+          ],
+          [
+            "TV10 CONFIG: frontmatter sets showIcons and rowIndent, a directive beats it key by key, and a key neither sets keeps the site's value; the root then draws an icon",
+            !!cfg &&
+              cfg.config.showIcons === true &&
+              cfg.config.rowIndent === 12 &&
+              cfg.config.paddingX === 9 &&
+              cfg.config.lineThickness === site.lineThickness &&
+              cfg.config.useMaxWidth === site.useMaxWidth &&
+              typeof cfg.root.iconDrawn === "string",
+          ],
+          [
+            "TV11 CONFIG discard: a null value gives the site default, a falsy value that is not null is kept, and a map is a copy",
+            mergedStub.paddingX === "site-paddingX" &&
+              mergedStub.showIcons === 0 &&
+              mergedStub.rowIndent === "site-rowIndent" &&
+              same(mergedStub.filenameIcons, ownStub.filenameIcons) &&
+              mergedStub.filenameIcons !== ownStub.filenameIcons,
+          ],
+          [
+            "TV12 the TITLE ROUTE: a frontmatter title is delivered, a body title beats it, and none is null",
+            !!d("fm") &&
+              d("fm").title === "SelfCheck frontmatter title" &&
+              !!d("fmBody") &&
+              d("fmBody").title === "SelfCheck body wins" &&
+              !!nest &&
+              nest.title === null,
+          ],
+          [
+            "TV13 accTitle and accDescr take NO transform: the delimiter bytes and a typed &amp; survive, and absent ones are null",
+            !!acc &&
+              acc.accTitle.includes(PLACEHOLDER_NAMED) &&
+              acc.accTitle.includes("&amp;") &&
+              acc.accDescr.includes(PLACEHOLDER_NAMED) &&
+              !!nest &&
+              nest.accTitle === null &&
+              nest.accDescr === null,
+          ],
+          [
+            "TV14 a STOP, never a silent drop: a missing accessor, an unknown nodeType, children that are not an array, a name that is not a string, a count that disagrees with the walk, an id out of declaration order, a node reached twice and a root that is not the drawn one each refuse; a source Mermaid rejects rejects; and the stub itself is accepted",
+            normaliseTreeView({ db: stubDb({}) }, {}).root.children.length === 1 &&
+              stubRefuses({ getRoot: undefined }, /getRoot is not a function/) &&
+              stubRefuses({ getRoot: () => stubRoot([stubNode({ nodeType: "symlink" })]) }, /unknown nodeType/) &&
+              stubRefuses({ getRoot: () => stubRoot([stubNode({ children: {} })]) }, /children is not an array/) &&
+              stubRefuses({ getRoot: () => stubRoot([stubNode({ name: 3 })]) }, /no string name/) &&
+              stubRefuses({ getCount: () => 5 }, /db's count/) &&
+              stubRefuses({ getRoot: () => stubRoot([stubNode({ id: 3 })]) }, /declaration order/) &&
+              stubRefuses({ getRoot: () => stubRoot([shared, shared]), getCount: () => 3 }, /more than once/) &&
+              stubRefuses({ getRoot: () => Object.assign(stubRoot([]), { name: "x" }) }, /not the drawn/) &&
+              !!outcomes.rejected.error &&
+              /Lexer error|Parsing failed/.test(String(outcomes.rejected.error.message)),
+          ],
+          [
+            "TV15 the SNAPSHOT: the delivery taken from the first source is plain data a later parse cannot change, while the db it was read from now reads another parse's data (the singleton)",
+            !!outcomes.nest.result &&
+              JSON.stringify(outcomes.nest.result.delivery) === outcomes.nest.digest &&
+              outcomes.nest.result.diagram.db.getCount() !== 9,
+          ],
+          [
+            "TV16 ICON NAME (SA1): iconName is the name the author wrote, verbatim from the db (none included), and null when none was written; iconDrawn stays the glyph, so a written name and a drawn glyph are two keys",
+            !!icons &&
+              same(flat(icons.root).map((node) => [node.name, node.iconName, node.iconDrawn]), [
+                ["scDir", null, null],
+                ["scFile", null, null],
+                ["scIconFile", "file", "file"],
+                ["scIconNope", "nope", "?"],
+                ["scIconNone", "none", null],
+              ]) &&
+              icons.root.iconName === null,
+          ],
+          [
+            "TV17 NESTING DRAWN (SA2): false only when the renderer's own arithmetic, x = depth * (rowIndent + paddingX) and the stub x - rowIndent, is not a finite number: \"wide\" and \"10px\" are false; 10, 12, \"30\", \"4e1\", 0, \"\", true, -10 and 100000 are true; a delivery carries it",
+            [10, 12, "30", "4e1", 0, "", true, -10, 100000].every((value) => treeViewNestingDrawn({ rowIndent: value, paddingX: 5 })) &&
+              ["wide", "10px"].every((value) => !treeViewNestingDrawn({ rowIndent: value, paddingX: 5 })) &&
+              !!nest &&
+              nest.nestingDrawn === true &&
+              normaliseTreeView({ db: stubDb({}) }, { rowIndent: "wide" }).nestingDrawn === false &&
+              normaliseTreeView({ db: stubDb({}) }, { rowIndent: "30" }).nestingDrawn === true,
+          ],
+          [
+            "TV18 TF1 BARE ARM: a bare & and > beside a tag read as the characters typed (the db holds &amp; and &gt;) in a body title, a frontmatter title and a description; the raw keys keep the db's bytes",
+            !!d("bare") &&
+              !!d("fmBare") &&
+              d("bare").title === "SelfCheck b & <i>t</i> end" &&
+              d("bare").rawTitle === "SelfCheck b &amp; <i>t</i> end" &&
+              d("bare").root.children[0].description === "SelfCheck d & <i>y</i> > z end" &&
+              d("bare").root.children[0].rawDescription === "SelfCheck d &amp; <i>y</i> &gt; z end" &&
+              d("fmBare").title === "SelfCheck f & <i>t</i> end" &&
+              d("fmBare").rawTitle === "SelfCheck f &amp; <i>t</i> end",
+          ],
+          [
+            "TV19 TF1 TYPED ARM: a TYPED &amp; beside a tag reads as typed, in a body title and a description (the same db bytes as the bare arm)",
+            !!d("typedTag") &&
+              d("typedTag").title === "SelfCheck e &amp; <i>t</i> end" &&
+              d("typedTag").root.children[0].description === "SelfCheck d &amp; <i>y</i> end" &&
+              d("typedTag").rawTitle === d("typedTag").title &&
+              d("typedTag").root.children[0].rawDescription === d("typedTag").root.children[0].description,
+          ],
+          [
+            "TV20 TF1 MAPPING: a description belongs to the node it follows, by position: typed, then a bare one on a line holding two nodes (the second), then typed",
+            !!d("map") &&
+              same(
+                flat(d("map").root).map((node) => [node.name, node.rawLevel, node.description]),
+                [
+                  ["scO", 0, "SelfCheck o &amp; <i>a</i>"],
+                  ["scP", 0, null],
+                  ["scQ", 1, "SelfCheck q & <i>b</i>"],
+                  ["scR", 0, "SelfCheck r &amp; <i>c</i>"],
+                ]
+              ),
+          ],
+          [
+            "TV21 TF2: a frontmatter title decodes #quot;, #amp; and #lt; as a body title does, and the raw key keeps the author's bytes",
+            !!d("fmPh") &&
+              d("fmPh").title === 'SelfCheck "q" & < z' &&
+              d("fmPh").rawTitle === "SelfCheck #quot;q#quot; #amp; #lt; z",
+          ],
+          [
+            "TV22 TF4: a line break in a title reads as one space; the raw key keeps it",
+            !!d("block") &&
+              d("block").title === "SelfCheck first SelfCheck second" &&
+              d("block").rawTitle === "SelfCheck first\nSelfCheck second",
+          ],
+          [
+            "TV23 TF1 DECLINE: when the sanitiser changed the string some other way (a script element removed) the db's string is delivered unchanged, the code and all",
+            !!d("decline") &&
+              d("decline").root.children[0].description === "SelfCheck c &amp; <i>z</i> end" &&
+              d("decline").root.children[0].rawDescription === d("decline").root.children[0].description,
+          ],
+          [
+            "TV24 TF1 AGREEMENT: the source reader's nodes are used only when the count, every level and every folder flag agree with the db's walk, in declaration order",
+            (() => {
+              const walkOf = (...entries) =>
+                [{ parent: null }].concat(entries.map(([level, nodeType]) => ({ parent: {}, level: level, nodeType: nodeType })));
+              const readOf = (...entries) => entries.map(([level, isDirectory]) => ({ level: level, isDirectory: isDirectory }));
+              const FILE = TREEVIEW_NODE_TYPE.FILE;
+              const DIRECTORY = TREEVIEW_NODE_TYPE.DIRECTORY;
+              const walk = walkOf([0, FILE], [2, DIRECTORY]);
+              return (
+                treeViewSourceAgrees(readOf([0, false], [2, true]), walk) === true &&
+                treeViewSourceAgrees(readOf([0, false]), walk) === false &&
+                treeViewSourceAgrees(readOf([0, false], [1, true]), walk) === false &&
+                treeViewSourceAgrees(readOf([0, false], [2, false]), walk) === false
+              );
+            })(),
+          ],
+          [
+            "TV25 TF1 SOURCE READER: a title line ends at a %% and the last one wins, an accDescr block is skipped whole, a quoted name holding ## is a name and not a description, a level is the indentation's character count, a trailing slash is a folder, and a source without the header reads as null",
+            (() => {
+              const read = readTreeViewSource(
+                ["%% c", "treeView-beta", "title first", "accDescr {", "fake ## not", "}", "title second %% cut", '"a ## b" ## real', "  c/", ""].join("\n")
+              );
+              const bare = readTreeViewSource("treeView-beta\n");
+              return (
+                !!read &&
+                read.bodyTitle === "second" &&
+                same(read.nodes, [
+                  { level: 0, name: "a ## b", isDirectory: false, description: "real" },
+                  { level: 2, name: "c/", isDirectory: true, description: null },
+                ]) &&
+                !!bare &&
+                bare.bodyTitle === null &&
+                bare.nodes.length === 0 &&
+                readTreeViewSource("not a header\n") === null
+              );
+            })(),
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    treeViewSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.filter(([, pass]) => !pass);
+        if (failed.length > 0) {
+          logError(
+            `TreeView self-check FAILED at assertion(s): ${failed.map(([label]) => label).join(" || ")}. ` +
+              "Either the pinned Mermaid build's treeView internals no longer " +
+              "match the 24 October 2026 census, or the surface has drifted; " +
+              "do not trust treeView adapter output."
+          );
+          treeViewHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "TreeView self-check passed: accessor, shape, nesting, root, decode, " +
+            "icon, config, title-route, snapshot and stop assertions all hold"
+        );
+        treeViewHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "TreeView self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        treeViewHealthy = false;
+        return false;
+      });
+
+    return treeViewSelfCheckPromise;
+  }
+
+  /**
+   * Report the treeView surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the treeView self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isTreeViewHealthy() {
+    return treeViewHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -17582,6 +20508,12 @@ window.MermaidParseAdapter = (function () {
     parseTreemap: parseTreemap,
     runTreemapSelfCheck: runTreemapSelfCheck,
     isTreemapHealthy: isTreemapHealthy,
+    parseVenn: parseVenn,
+    runVennSelfCheck: runVennSelfCheck,
+    isVennHealthy: isVennHealthy,
+    parseTreeView: parseTreeView,
+    runTreeViewSelfCheck: runTreeViewSelfCheck,
+    isTreeViewHealthy: isTreeViewHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

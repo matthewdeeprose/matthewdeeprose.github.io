@@ -227,7 +227,7 @@ const ALLY_CONFIG = (function () {
 
     /**
      * Built-in default Ally client id, used when no CLIENT_ID is configured.
-     * NOT a secret: it already appears verbatim in the placeholder text of both
+     * NOT a secret: it already appears verbatim in the visible example hint of both
      * Ally forms in tools.html, and it identifies an institution rather than
      * authorising anything on its own. It is nonetheless supplied ONLY to a
      * colleague with an institutional sign-in — read it through

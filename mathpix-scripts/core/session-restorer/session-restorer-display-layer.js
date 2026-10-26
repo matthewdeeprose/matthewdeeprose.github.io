@@ -135,8 +135,9 @@
         }
       }
 
+      // UT-9 (UT-D4): proper singular and plural; zero takes the plural.
       this.showNotification(
-        `${collapsedCount} image reference(s) collapsed`,
+        `${collapsedCount} image ${collapsedCount === 1 ? "reference" : "references"} collapsed`,
         "info",
       );
       logInfo(`Image collapse turned ON: ${collapsedCount} collapsed`);

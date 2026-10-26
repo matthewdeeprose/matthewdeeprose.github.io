@@ -158,6 +158,24 @@ const GraphBuilderNotifications = (function () {
         return null;
       }
 
+      // While a dialog is open this notifier's toast would be painted under the
+      // dialog, inert and outside the accessibility tree. Hand the message to the
+      // page notifier, which shows it in the dialog's own message bar. Both
+      // globals are resolved at call time, and forceToast keeps an explicit choice.
+      const pageNotifier = window.UniversalNotifications;
+      const modal = window.UniversalModal;
+      if (
+        !options.forceToast &&
+        pageNotifier &&
+        pageNotifier !== window.GraphBuilderNotifications &&
+        typeof pageNotifier.show === "function" &&
+        modal &&
+        typeof modal.isModalActive === "function" &&
+        modal.isModalActive()
+      ) {
+        return pageNotifier.show(message, type, options);
+      }
+
       const {
         duration = this.getDefaultDuration(type),
         dismissible = true,
@@ -454,25 +472,48 @@ const GraphBuilderNotifications = (function () {
     }
 
     /**
+     * True when the element lies entirely outside the box of an ancestor that
+     * clips it and actually overflows (a scrolling panel that has scrolled the
+     * element out of its own window). Such a control is on the page but hidden.
+     */
+    _isClippedOut(el, rect) {
+      for (let node = el.parentElement; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        const clips = ["auto", "scroll", "hidden"];
+        if (!clips.includes(style.overflowX) && !clips.includes(style.overflowY)) continue;
+        if (node.scrollHeight <= node.clientHeight && node.scrollWidth <= node.clientWidth) continue;
+        const box = node.getBoundingClientRect();
+        const left = box.left + node.clientLeft;
+        const top = box.top + node.clientTop;
+        const right = left + node.clientWidth;
+        const bottom = top + node.clientHeight;
+        if (rect.bottom <= top || rect.top >= bottom || rect.right <= left || rect.left >= right) return true;
+      }
+      return false;
+    }
+
+    /**
      * Focus an element. A pointer close leaves the page where it is while any
      * part of the element is in view, so it never jumps under a mouse user, but
-     * scrolls the element in when it is entirely out of view, so the control
-     * focus returns to is never left off screen. A keyboard close
+     * scrolls the element in when it is entirely out of view (off the viewport,
+     * or scrolled out of the window of its own scrolling panel), so the control
+     * focus returns to is never left hidden. A keyboard close
      * (scrollIntoView) always makes sure the element is on screen: the page
      * root can scroll smoothly, and a smooth scroll already under way can beat
      * the one focus() starts, leaving the focused control outside the viewport.
      * An instant "nearest" scroll moves nothing when the element is already
-     * fully in view.
+     * fully in view, and brings a clipped element into every scrolling ancestor.
      */
     _focusInView(el, scrollIntoView) {
       if (!scrollIntoView) {
         el.focus({ preventScroll: true });
         const rect = el.getBoundingClientRect();
-        const offScreen = rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth;
+        const offScreen = rect.bottom <= 0 || rect.top >= window.innerHeight || rect.right <= 0 || rect.left >= window.innerWidth || this._isClippedOut(el, rect);
         if (!offScreen) return;
       }
       const place = () => {
         el.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+        this._keepClearOfToasts(el);
         // Pin the scroll position: an instant scroll to where the page already is
         // cancels a smooth scroll still running from an earlier focus change.
         window.scrollTo({ left: window.scrollX, top: window.scrollY, behavior: "instant" });
@@ -484,6 +525,43 @@ const GraphBuilderNotifications = (function () {
       requestAnimationFrame(() => {
         if (document.activeElement === el) place();
       });
+    }
+
+    /**
+     * Where the toast container is fixed over the page (the strip along the top
+     * of a narrow page), a control the scroll above has pinned to the page edge
+     * can sit under a toast that is staying. Move the page, and then any
+     * scrolling panel the control is in, so the control sits just below the
+     * live toasts. A toast on its way out does not count. A control taller than
+     * the space left is aligned to the top of that space.
+     */
+    _keepClearOfToasts(el) {
+      if (!this.container || getComputedStyle(this.container).position !== "fixed") return;
+      const clearancePx = 8; // 0.5rem, the gap the strip keeps from the page edge
+      const rect = el.getBoundingClientRect();
+      // A control that already runs above the top of the screen stays where the
+      // person scrolled it; moving the page to clear it would throw them to the
+      // top of the control. One the scroll above has pinned to the edge reads
+      // within a pixel of zero, so that much slack is allowed.
+      const pinnedSlackPx = 1;
+      if (rect.top < -pinnedSlackPx) return;
+      let needed = 0;
+      for (const toast of this.container.querySelectorAll(".gb-toast")) {
+        if (toast.getAttribute("data-dismissing") === "true") continue;
+        const box = toast.getBoundingClientRect();
+        const overlaps = box.left < rect.right && box.right > rect.left && box.top < rect.bottom && box.bottom > rect.top;
+        if (overlaps) needed = Math.max(needed, box.bottom + clearancePx - rect.top);
+      }
+      if (needed <= 0) return;
+      window.scrollBy({ top: -needed, behavior: "instant" });
+      let remaining = needed - (el.getBoundingClientRect().top - rect.top);
+      for (let node = el.parentElement; node && remaining > 0 && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        if (!["auto", "scroll"].includes(style.overflowY) || node.scrollTop <= 0) continue;
+        const before = node.scrollTop;
+        node.scrollTop = Math.max(0, before - remaining);
+        remaining -= before - node.scrollTop;
+      }
     }
 
     /**

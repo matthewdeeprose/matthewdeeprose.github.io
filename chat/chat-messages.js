@@ -202,6 +202,22 @@
           filename: (p.file && p.file.filename) || "Document",
         };
       }
+      if (p.type === "document") {
+        return {
+          kind: "live",
+          media: "document",
+          filename: (p.doc && p.doc.name) || "Document",
+        };
+      }
+      if (p.kind === "document") {
+        return {
+          kind: "reference",
+          media: "document",
+          filename: p.filename,
+          mimeType: p.mimeType,
+          size: p.size,
+        };
+      }
       if (p.kind === "image") {
         return {
           kind: "reference",
@@ -266,10 +282,13 @@
     chip.classList.add("chat-bubble-attachment-reference");
     const icon = document.createElement("span");
     icon.setAttribute("aria-hidden", "true");
-    icon.setAttribute("data-icon", att.media === "pdf" ? "pdf" : "image");
+    icon.setAttribute(
+      "data-icon",
+      att.media === "pdf" ? "pdf" : att.media === "document" ? "fileText" : "image",
+    );
     chip.appendChild(icon);
     const label = document.createElement("span");
-    const fallbackName = att.media === "pdf" ? "Document" : "Image";
+    const fallbackName = att.media === "image" ? "Image" : "Document";
     const filename = att.filename || fallbackName;
     label.textContent =
       att.kind === "reference" ? filename + " — attached, not restored" : filename;

@@ -1406,6 +1406,26 @@ const MathPixContextAI = (function () {
   }
 
   /**
+   * AV-1: show the stored pick in the picker, when it was set from outside the
+   * picker (the AI tab's own select). The stored value is the one source: no
+   * pick checks the recommended radio and resets the override select, a pick
+   * unchecks the radios and shows in the override select. Announces nothing.
+   */
+  function _syncPickerToChoice() {
+    const els = this.elements;
+    if (!els || !els.pickerOverride) return;
+
+    const choice = _userModelChoice;
+    els.pickerOverride.value = choice || PICKER_OVERRIDE_PLACEHOLDER;
+
+    if (!els.pickerOptions) return;
+    const radios = els.pickerOptions.querySelectorAll('input[type="radio"]');
+    radios.forEach((radio, index) => {
+      radio.checked = !choice && index === 0;
+    });
+  }
+
+  /**
    * The advanced override select changed. Also does not announce, for the same
    * reason as the radio handler above.
    *
@@ -2949,6 +2969,7 @@ const MathPixContextAI = (function () {
     _buildModelPicker,
     _handleModelRadioChange,
     _handleModelOverrideChange,
+    _syncPickerToChoice,
     _setUserModelChoice,
     _getUserModelChoice,
     _pdfCapableModelsFor,

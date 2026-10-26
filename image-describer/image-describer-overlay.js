@@ -61,6 +61,24 @@
   const RESTORED_ATTR = "data-restored";
   const REVIEW_EDIT_HINT = ". Press Enter to edit";
 
+  // H-96: the review screen when text detection ended with nothing to review. Every
+  // word that changes lives here, with the words they swap back to when something was
+  // detected (plan entry: idq-dispatch-h-96.md § 0). Change a wording here only.
+  const NO_DETECTION_WORDING = Object.freeze({
+    BUTTON_LABEL: "Add text items",
+    BUTTON_LABEL_DETECTED: "Review OCR",
+    BUTTON_DESCRIPTION:
+      "No text was detected in this picture. You can type any text it contains and mark where it sits.",
+    PANEL_REGION_NAME: "Edit text item",
+    PANEL_REGION_NAME_DETECTED: "Edit OCR item",
+    LIST_REGION_NAME: "Your text items list",
+    LIST_REGION_NAME_DETECTED: "Detected text items list",
+    LIST_NAME: "Your text items",
+    LIST_NAME_DETECTED: "Detected text items",
+  });
+  // The OCR statuses that mean detection has ended (so there is nothing left to wait for).
+  const NO_DETECTION_ENDED_STATUSES = Object.freeze(["complete", "skipped", "timed-out", "failed"]);
+
   // ── HTML escaping ────────────────────────────────────────────────────
   const esc =
     window.escapeHtml ||
@@ -517,6 +535,10 @@
       if (this._layers.ocr) {
         this._layers.ocr.innerHTML = "";
       }
+
+      // H-96: the sorted list is written only by _renderOCRLayer, so an analysis with no
+      // detected items must not keep the previous analysis's items for the review screen.
+      this._sortedItems = [];
 
       // Clear existing colour regions (Phase 5D-4)
       if (this._layers.colour) {
@@ -1146,7 +1168,7 @@
         );
       }
 
-      // Review OCR button
+      // Review OCR button (H-96: also the "Add text items" button when nothing was detected)
       const reviewBtn = document.getElementById("imgdesc-overlay-review-btn");
       if (reviewBtn) {
         const hasItems =
@@ -1154,12 +1176,74 @@
           result.ocr &&
           result.ocr.items &&
           result.ocr.items.length > 0;
-        reviewBtn.disabled = !hasItems;
+        const noDetection = this._hasNoDetectedText();
+        reviewBtn.disabled = !(hasItems || noDetection);
         this._setReviewCountDescription(
           reviewBtn,
           hasItems ? result.ocr.items.length : 0,
         );
+        this._applyNoDetectionWording(reviewBtn, noDetection);
       }
+    },
+
+    /**
+     * H-96: has text detection ENDED with no detected text?
+     * True when it was skipped, timed out, failed, or completed with no detected
+     * items. H-102: items suppressed as noise do not count, so a picture where
+     * detection found only noise is still "nothing detected"; the review list
+     * shows those fragments (restorable), and whatever the person keeps is their
+     * own choice. While detection is still running (no status yet, or any other
+     * status) this is false, so the button stays disabled until there is
+     * something to decide. This one predicate drives the button's enabled state,
+     * its words, the panel names, enterReviewMode and the person-entered flag.
+     * @returns {boolean}
+     * @private
+     */
+    _hasNoDetectedText() {
+      const ocr = this._analysisRef && this._analysisRef.ocr;
+      if (!ocr || !NO_DETECTION_ENDED_STATUSES.includes(ocr.status)) return false;
+      const detected = ocr.items ? ocr.items.length : 0;
+      return detected === 0;
+    },
+
+    /**
+     * H-96: set (or restore) the words that change when nothing was detected:
+     * the button's label, its description, and the three review panel names.
+     * Every string comes from NO_DETECTION_WORDING. Writes only when changed.
+     * @param {HTMLElement} reviewBtn - the Review OCR control
+     * @param {boolean} noDetection - whether to use the no-detection words
+     * @private
+     */
+    _applyNoDetectionWording(reviewBtn, noDetection) {
+      const W = NO_DETECTION_WORDING;
+
+      // The label is the button's last non-empty text node; the icon span is left alone.
+      const labelNode = Array.from(reviewBtn.childNodes)
+        .reverse()
+        .find((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+      if (labelNode) {
+        const wanted = noDetection ? W.BUTTON_LABEL : W.BUTTON_LABEL_DETECTED;
+        if (labelNode.textContent.trim() !== wanted) labelNode.textContent = " " + wanted + " ";
+      }
+
+      if (noDetection) {
+        const target = document.getElementById(REVIEW_COUNT_ID);
+        if (target) {
+          target.textContent = W.BUTTON_DESCRIPTION;
+          reviewBtn.setAttribute("aria-describedby", REVIEW_COUNT_ID);
+        }
+      }
+
+      const names = [
+        ["imgdesc-overlay-review-panel", W.PANEL_REGION_NAME, W.PANEL_REGION_NAME_DETECTED],
+        ["imgdesc-review-list-panel", W.LIST_REGION_NAME, W.LIST_REGION_NAME_DETECTED],
+        ["imgdesc-review-list", W.LIST_NAME, W.LIST_NAME_DETECTED],
+      ];
+      names.forEach(([id, own, detected]) => {
+        const el = document.getElementById(id);
+        const wanted = noDetection ? own : detected;
+        if (el && el.getAttribute("aria-label") !== wanted) el.setAttribute("aria-label", wanted);
+      });
     },
 
     /**

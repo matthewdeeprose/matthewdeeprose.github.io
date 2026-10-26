@@ -220,6 +220,54 @@
     // ========================================================================
 
     /**
+     * Values used to keep keyboard focus on a card when its buttons are rebuilt
+     * (H-125). The state text takes a programmatic-only tab stop while a state
+     * has no button for focus to land on (Downloading, Loading).
+     */
+    var FOCUS_KEEP = Object.freeze({
+        BUTTON_SELECTOR: "button",
+        TABINDEX_ATTRIBUTE: "tabindex",
+        TABINDEX_PROGRAMMATIC: "-1"
+    });
+
+    /**
+     * Is keyboard focus inside this card's actions, or on its state text?
+     * Read before the buttons are rebuilt, because the rebuild destroys the
+     * focused button and focus then falls to <body>. Anywhere else (another
+     * card, a text field, the page at load) is false, so a background change
+     * never pulls focus.
+     * @param {HTMLElement} actionsEl
+     * @param {HTMLElement|null} stateTextEl
+     * @returns {boolean}
+     */
+    function focusIsOnCard(actionsEl, stateTextEl) {
+        var active = document.activeElement;
+        if (!active) return false;
+        return actionsEl.contains(active) || (!!stateTextEl && active === stateTextEl);
+    }
+
+    /**
+     * Put focus back on the card after a rebuild: the first button of the new
+     * state, or, when the state has none (Downloading, Loading), the card's
+     * state text, so focus stays on the card and its current state. When
+     * buttons return while focus is on the state text, the first button takes
+     * it and the state text gives up its tab stop.
+     * @param {HTMLElement} actionsEl
+     * @param {HTMLElement|null} stateTextEl
+     */
+    function restoreCardFocus(actionsEl, stateTextEl) {
+        var firstButton = actionsEl.querySelector(FOCUS_KEEP.BUTTON_SELECTOR);
+        if (firstButton) {
+            firstButton.focus();
+            if (stateTextEl) stateTextEl.removeAttribute(FOCUS_KEEP.TABINDEX_ATTRIBUTE);
+            return;
+        }
+        if (!stateTextEl) return;
+        stateTextEl.setAttribute(FOCUS_KEEP.TABINDEX_ATTRIBUTE, FOCUS_KEEP.TABINDEX_PROGRAMMATIC);
+        stateTextEl.focus();
+    }
+
+    /**
      * Render appropriate action buttons based on model state.
      * @param {object} cached - Cached DOM elements for the card
      * @param {string} modelKey
@@ -280,7 +328,9 @@
                 break;
         }
 
+        var keepFocus = focusIsOnCard(cached.actions, cached.stateText);
         cached.actions.innerHTML = buttons.join("");
+        if (keepFocus) restoreCardFocus(cached.actions, cached.stateText);
     }
 
     /**

@@ -988,6 +988,13 @@ const UniversalModal = (function () {
         ? modal.querySelector(".universal-modal-body")
         : null;
 
+      // One timer per message: a message shown again must not be hidden by the
+      // older message's auto-hide, nor wiped by an earlier hide's delayed clear.
+      const timers = this.statusTimersFor(modalId);
+      this.cancelStatusTimers(timers);
+
+      this.beginStatusFocusReturn(modalId, statusArea, modal);
+
       const iconElement = statusArea.querySelector(
         ".universal-modal-status-icon",
       );
@@ -1065,12 +1072,34 @@ const UniversalModal = (function () {
         dismissBtn.style.display = "none";
       }
 
+      // The rebuild above removes a focused action button (Undo) from under the
+      // person; place focus now rather than leaving it on <body> until the close.
+      this.placeFocusIfStatusDroppedIt(modalId, statusArea, modal);
+
       requestAnimationFrame(() => {
         this.updateStatusPosition(modalId);
+
+        // A message that opens while a control inside the dialog has focus can cover
+        // that control or push it out of view. Focus stays where it is; the control is
+        // scrolled clear, as it is when a message closes.
+        const active = document.activeElement;
+        if (
+          modal &&
+          active &&
+          active !== document.body &&
+          active !== modal &&
+          modal.contains(active) &&
+          !statusArea.contains(active)
+        ) {
+          this.keepControlVisible(modal, statusArea, active);
+        }
       });
 
       if (options.duration && options.duration > 0) {
-        setTimeout(() => this.hideModalStatus(modalId), options.duration);
+        timers.hide = setTimeout(
+          () => this.hideModalStatus(modalId),
+          options.duration,
+        );
       }
 
       logDebug(`Modal status shown: ${type} - ${message}`);
@@ -1085,13 +1114,35 @@ const UniversalModal = (function () {
         ? modal.querySelector(".universal-modal-body")
         : null;
 
+      // Hiding the message removes the control that had focus (Undo, Dismiss),
+      // which drops focus on <body>. Place it deliberately, but only when the
+      // person's focus was in the status area: an auto-hide while they are
+      // working elsewhere must not move them.
+      const focusState = this.statusFocusStates
+        ? this.statusFocusStates.get(modalId)
+        : null;
+      if (focusState) {
+        this.statusFocusStates.delete(modalId);
+        if (focusState.stopTracking) focusState.stopTracking();
+        const active = document.activeElement;
+        const focusWasInStatus =
+          statusArea.contains(active) ||
+          (focusState.droppedByRender &&
+            (!active || active === document.body));
+        if (focusWasInStatus) {
+          this.returnFocusAfterStatus(modal, statusArea, focusState.target);
+        }
+      }
+
       statusArea.classList.remove("show");
 
       if (modalBody) {
         modalBody.classList.remove("has-status");
       }
 
-      setTimeout(() => {
+      const timers = this.statusTimersFor(modalId);
+      this.cancelStatusTimers(timers);
+      timers.clear = setTimeout(() => {
         if (statusArea) {
           statusArea.querySelector(".universal-modal-status-text").textContent =
             "";
@@ -1106,6 +1157,343 @@ const UniversalModal = (function () {
       }, 300);
 
       logDebug("Modal status hidden");
+    }
+
+    /**
+     * While a status message is up, a focus move made by a real pointer press,
+     * or by a key press that is not Tab or a lone modifier, replaces where the
+     * message's close returns focus: a person who clicks on to another control
+     * is sent there. Focus that arrives with no press behind it and a Tab walk
+     * to the message leave the target alone. A pointer press counts from its
+     * pointerdown until just after its click; a key press counts until the end
+     * of its own task. Space counts on release as well, because a button runs
+     * its Space action on release. Returns a function that removes the listeners.
+     */
+    trackStatusFocusMoves(statusArea, modal, state) {
+      const PRESS_FALLBACK_MS = 400;
+      const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta"]);
+      const stops = [];
+      let tabHeld = false;
+      let pointerEvidence = false;
+      let keyEvidence = false;
+      let fallbackTimer = 0;
+      const inStatus = (node) =>
+        node instanceof Element && statusArea.contains(node);
+      const endEvidence = () => {
+        pointerEvidence = false;
+        keyEvidence = false;
+        clearTimeout(fallbackTimer);
+      };
+      const listen = (type, handler) => {
+        document.addEventListener(type, handler, true);
+        stops.push(() => document.removeEventListener(type, handler, true));
+      };
+      listen("keydown", (e) => {
+        if (e.key === "Tab") {
+          tabHeld = true;
+          return;
+        }
+        if (!e.isTrusted || MODIFIER_KEYS.has(e.key) || inStatus(e.target)) return;
+        keyEvidence = true;
+        setTimeout(endEvidence, 0);
+      });
+      listen("keyup", (e) => {
+        tabHeld = false;
+        if (e.key !== " " || !e.isTrusted || inStatus(e.target)) return;
+        keyEvidence = true;
+        setTimeout(endEvidence, 0);
+      });
+      listen("pointerdown", (e) => {
+        if (!e.isTrusted || inStatus(e.target)) return;
+        pointerEvidence = true;
+      });
+      listen("pointerup", () => {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = setTimeout(endEvidence, PRESS_FALLBACK_MS);
+      });
+      listen("click", () => {
+        setTimeout(endEvidence, 0);
+      });
+      listen("pointercancel", endEvidence);
+      listen("focusin", (e) => {
+        if (tabHeld || !(pointerEvidence || keyEvidence)) return;
+        const target = e.target;
+        if (!(target instanceof Element)) return;
+        if (target === document.body || target === document.documentElement) return;
+        if (!modal.contains(target) || statusArea.contains(target)) return;
+        state.target = target;
+      });
+      return () => {
+        stops.forEach((stop) => stop());
+        endEvidence();
+      };
+    }
+
+    /**
+     * Records where focus should go when this modal's status message closes:
+     * the control that had focus, inside the modal and outside the status area,
+     * when the message appeared. A message shown again while one is up keeps
+     * the original target.
+     */
+    beginStatusFocusReturn(modalId, statusArea, modal) {
+      if (!this.statusFocusStates) this.statusFocusStates = new Map();
+      const active = document.activeElement;
+      let state = this.statusFocusStates.get(modalId);
+      if (!state) {
+        const target =
+          modal && active && modal.contains(active) && !statusArea.contains(active)
+            ? active
+            : null;
+        state = { target, droppedByRender: false, stopTracking: null };
+        this.statusFocusStates.set(modalId, state);
+        state.stopTracking = this.trackStatusFocusMoves(statusArea, modal, state);
+      }
+      // Showing a message re-renders the status area, which removes a focused
+      // action button from under the person; note it so the message can place
+      // focus at once, and so the close can tell.
+      state.droppedByRender = statusArea.contains(active);
+    }
+
+    /**
+     * Closing the message would drop focus on <body>, so place it deliberately.
+     * Order: the recorded target if it can still take focus inside the modal
+     * (or its rebuilt copy, when a re-render replaced it),
+     * then the first focusable control in the modal body, then the modal's
+     * close button. The control is then kept wholly visible (see
+     * keepControlVisible): inside the viewport, above the status message when
+     * that is fixed over the dialog, and inside every scrolling ancestor.
+     */
+    returnFocusAfterStatus(modal, statusArea, target) {
+      const FOCUSABLE =
+        "a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex='-1'])";
+      const canTakeFocus = (el) =>
+        !!el &&
+        el.isConnected &&
+        modal.contains(el) &&
+        !statusArea.contains(el) &&
+        !el.disabled &&
+        !el.closest("[inert], [hidden]") &&
+        el.getClientRects().length > 0 &&
+        getComputedStyle(el).visibility !== "hidden";
+
+      // A re-render can replace the recorded control with a rebuilt copy. Accept
+      // exactly one element of the same tag carrying the same data-* values.
+      const refindRebuilt = (gone) => {
+        if (!gone || gone.isConnected) return null;
+        const wanted = Array.from(gone.attributes).filter((a) =>
+          a.name.startsWith("data-"),
+        );
+        if (wanted.length === 0) return null;
+        const matches = Array.from(modal.querySelectorAll(gone.tagName)).filter(
+          (el) => wanted.every((a) => el.getAttribute(a.name) === a.value),
+        );
+        return matches.length === 1 && canTakeFocus(matches[0]) ? matches[0] : null;
+      };
+
+      let next = canTakeFocus(target) ? target : refindRebuilt(target);
+      if (!next) {
+        const body = modal.querySelector(".universal-modal-body");
+        const candidates = body ? Array.from(body.querySelectorAll(FOCUSABLE)) : [];
+        next = candidates.find(canTakeFocus) || null;
+      }
+      if (!next) {
+        const close = modal.querySelector(".universal-modal-close");
+        if (canTakeFocus(close)) next = close;
+      }
+      if (!next) return;
+
+      // A smooth scroll still running (the Tab walk to the message starts one)
+      // would carry the control out of view after it lands, so stop each
+      // scrolling ancestor where it is before focusing.
+      for (let node = next.parentElement; node; node = node.parentElement) {
+        const { overflowX, overflowY } = getComputedStyle(node);
+        if (/(auto|scroll)/.test(overflowX + overflowY)) {
+          node.scrollTo({ left: node.scrollLeft, top: node.scrollTop, behavior: "instant" });
+        }
+        if (node === modal) break;
+      }
+
+      next.focus({ preventScroll: true });
+      this.keepControlVisible(modal, statusArea, next);
+    }
+
+    /**
+     * If showing the message just removed the control that had focus, put focus
+     * back at once, in the same order the close uses. The recorded target is
+     * kept, so the message's own later close moves nothing.
+     */
+    placeFocusIfStatusDroppedIt(modalId, statusArea, modal) {
+      const state = this.statusFocusStates
+        ? this.statusFocusStates.get(modalId)
+        : null;
+      if (!state || !state.droppedByRender) return;
+      state.droppedByRender = false;
+      const active = document.activeElement;
+      if (active && active !== document.body) return;
+      this.returnFocusAfterStatus(modal, statusArea, state.target);
+    }
+
+    /**
+     * The pending timers of a modal's status message: the auto-hide set when the
+     * message was shown, and the delayed clear set when it was hidden.
+     */
+    statusTimersFor(modalId) {
+      if (!this.statusTimers) this.statusTimers = new Map();
+      let timers = this.statusTimers.get(modalId);
+      if (!timers) {
+        timers = { hide: 0, clear: 0 };
+        this.statusTimers.set(modalId, timers);
+      }
+      return timers;
+    }
+
+    cancelStatusTimers(timers) {
+      clearTimeout(timers.hide);
+      clearTimeout(timers.clear);
+    }
+
+    /**
+     * The box in which a control counts as visible: the viewport, cut at the top
+     * edge of the status message while that is shown and fixed over the dialog
+     * (it covers the bottom of a small screen), and cut by every scrolling
+     * ancestor up to the body.
+     */
+    visibleBoxFor(statusArea, el) {
+      const box = {
+        top: 0,
+        left: 0,
+        bottom: window.innerHeight,
+        right: document.documentElement.clientWidth,
+      };
+      if (statusArea.classList.contains("show")) {
+        box.bottom = Math.min(box.bottom, statusArea.getBoundingClientRect().top);
+      }
+      for (let node = el.parentElement; node && node !== document.body; node = node.parentElement) {
+        const { overflowX, overflowY } = getComputedStyle(node);
+        if (!/(auto|scroll)/.test(overflowX + overflowY)) continue;
+        const rect = node.getBoundingClientRect();
+        box.top = Math.max(box.top, rect.top);
+        box.left = Math.max(box.left, rect.left);
+        box.bottom = Math.min(box.bottom, rect.bottom);
+        box.right = Math.min(box.right, rect.right);
+      }
+      return box;
+    }
+
+    /**
+     * A control that is not wholly inside its visible box is scrolled, by its
+     * nearest scrolling ancestor, until it is (centred when it was out of
+     * vertical range). A control already wholly visible does not move.
+     */
+    ensureControlVisible(statusArea, el) {
+      this.reserveRoomForStatus(statusArea, el);
+      const box = this.visibleBoxFor(statusArea, el);
+      if (box.bottom <= box.top || box.right <= box.left) return;
+      const rect = el.getBoundingClientRect();
+      const insideVertically = rect.top >= box.top && rect.bottom <= box.bottom;
+      const insideHorizontally = rect.left >= box.left && rect.right <= box.right;
+      if (insideVertically && insideHorizontally) return;
+
+      // Each direction is moved by the nearest ancestor that can scroll that way: a
+      // box that only overflows sideways cannot take a vertical scroll.
+      const nearestScroller = (vertical) => {
+        for (let node = el.parentElement; node; node = node.parentElement) {
+          const { overflowX, overflowY } = getComputedStyle(node);
+          const scrolls = vertical
+            ? /(auto|scroll)/.test(overflowY) && node.scrollHeight > node.clientHeight
+            : /(auto|scroll)/.test(overflowX) && node.scrollWidth > node.clientWidth;
+          if (scrolls) return node;
+        }
+        return null;
+      };
+      const verticalScroller = insideVertically ? null : nearestScroller(true);
+      const horizontalScroller = insideHorizontally ? null : nearestScroller(false);
+      if (!insideVertically && !verticalScroller) {
+        el.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
+        return;
+      }
+      let left = 0;
+      if (rect.left < box.left) left = rect.left - box.left;
+      else if (rect.right > box.right) left = rect.right - box.right;
+      const top = insideVertically
+        ? 0
+        : (rect.top + rect.bottom) / 2 - (box.top + box.bottom) / 2;
+      if (verticalScroller && verticalScroller === horizontalScroller) {
+        verticalScroller.scrollBy({ left, top, behavior: "instant" });
+        return;
+      }
+      if (verticalScroller) verticalScroller.scrollBy({ top, behavior: "instant" });
+      if (horizontalScroller) horizontalScroller.scrollBy({ left, behavior: "instant" });
+    }
+
+    /**
+     * While a message covers the bottom of the dialog, the scrolling content
+     * needs at least its height as bottom padding, or the last control cannot be
+     * scrolled clear of it. The stylesheet's own padding is kept when it is
+     * already enough. The room is never reduced while the dialog is open, so the
+     * content does not jump when the message leaves; finishClose removes it.
+     */
+    reserveRoomForStatus(statusArea, el) {
+      const ROOM_PX = 16;
+      const body = el.closest(".universal-modal-body");
+      if (!body) return;
+      if (!statusArea.classList.contains("show")) return;
+      const own = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      const needed = Math.ceil(statusArea.getBoundingClientRect().height) + ROOM_PX;
+      if (needed > own) body.style.paddingBottom = needed + "px";
+    }
+
+    /**
+     * Makes the control visible now, then keeps checking for a second while the
+     * content settles (images loading and the status message taking its place
+     * both move things after focus has landed).
+     */
+    keepControlVisible(modal, statusArea, el) {
+      this.ensureControlVisible(statusArea, el);
+      this.watchControlWhileSettling(statusArea, el);
+    }
+
+    /**
+     * Re-applies ensureControlVisible on each animation frame for up to a
+     * second while focus is still on the control. Any real key press, pointer
+     * press, wheel or touch ends it at once, so it never fights a person who has
+     * started to move.
+     */
+    watchControlWhileSettling(statusArea, el) {
+      const SETTLE_MS = 1000;
+      const INPUT_EVENTS = ["keydown", "pointerdown", "wheel", "touchstart"];
+      if (!this.statusSettleStops) this.statusSettleStops = new WeakMap();
+      const earlier = this.statusSettleStops.get(statusArea);
+      if (earlier) earlier();
+
+      let frame = 0;
+      const started = performance.now();
+      const onInput = (e) => {
+        if (e.isTrusted) stop();
+      };
+      const stop = () => {
+        cancelAnimationFrame(frame);
+        INPUT_EVENTS.forEach((type) => document.removeEventListener(type, onInput, true));
+        if (this.statusSettleStops.get(statusArea) === stop) {
+          this.statusSettleStops.delete(statusArea);
+        }
+      };
+      this.statusSettleStops.set(statusArea, stop);
+      INPUT_EVENTS.forEach((type) => document.addEventListener(type, onInput, true));
+
+      const tick = () => {
+        if (
+          !el.isConnected ||
+          document.activeElement !== el ||
+          performance.now() - started > SETTLE_MS
+        ) {
+          stop();
+          return;
+        }
+        this.ensureControlVisible(statusArea, el);
+        frame = requestAnimationFrame(tick);
+      };
+      frame = requestAnimationFrame(tick);
     }
 
     updateModalStatus(modalId, message, type = "info", options = {}) {
@@ -1276,6 +1664,10 @@ const UniversalModal = (function () {
       if (!modalData) return;
 
       const modal = modalData.element;
+
+      // The room reserved under the body for a status message ends with the dialog.
+      const closingBody = modal.querySelector(".universal-modal-body");
+      if (closingBody) closingBody.style.paddingBottom = "";
 
       this.cleanupStatusPositionHandlers(modalId);
       this.cleanupBackgroundCloseHandler(modalId);

@@ -95,6 +95,10 @@ window.MermaidAccessibilityExport = (function () {
     }
   }
 
+  // Items 115 and 120 (24 October 2026): what goes between two table cells
+  // when a row is written as one line of text.
+  const TABLE_CELL_SEPARATOR = " | ";
+
   /**
    * Copy the HTML content to clipboard
    * @param {HTMLElement} element - The element to copy
@@ -687,6 +691,59 @@ window.MermaidAccessibilityExport = (function () {
         break;
       }
 
+      case "TABLE": {
+        // Items 115 and 120, ruling X2 (24 October 2026): a table reads as its
+        // caption on a line, then one line per row with " | " between cells.
+        // The default branch ran every cell of the table onto a single line.
+        if (!context.lastNodeWasBlock) {
+          result += "\n\n";
+        }
+
+        const readCell = (cell) => {
+          let text = "";
+          for (const child of cell.childNodes) {
+            text += processNodeToTextEnhanced(child, {
+              ...context,
+              parentNode: cell,
+              lastNodeWasBlock: false,
+            });
+          }
+          return text.replace(/\s+/g, " ").trim();
+        };
+
+        const caption = node.caption ? readCell(node.caption) : "";
+        if (caption) result += caption + "\n";
+
+        for (const row of node.rows) {
+          result += [...row.cells].map(readCell).join(TABLE_CELL_SEPARATOR) + "\n";
+        }
+
+        result += "\n";
+        context.lastNodeWasBlock = true;
+        break;
+      }
+
+      case "A": {
+        // Items 115 and 120, ruling X5: a link keeps its address, in angle
+        // brackets after its text, because plain text has nowhere else to put
+        // it. A fragment, an empty href or an address equal to the text adds
+        // nothing the reader does not already have.
+        for (const child of node.childNodes) {
+          result += processNodeToTextEnhanced(child, {
+            ...context,
+            parentNode: node,
+          });
+        }
+
+        const href = (node.getAttribute("href") || "").trim();
+        if (href && !href.startsWith("#") && href !== result.trim()) {
+          result += ` <${href}>`;
+        }
+
+        context.lastNodeWasBlock = false;
+        break;
+      }
+
       case "DIV":
       case "SECTION":
       case "ARTICLE": {
@@ -914,6 +971,78 @@ window.MermaidAccessibilityExport = (function () {
   }
 
   /**
+   * Items 115 and 120, ruling X1 (24 October 2026): a table as a pipe table
+   * with its caption as a bold line above it. The first row is the header when
+   * it is all header cells; otherwise the header row is empty, since a pipe
+   * table must have one. A cell's own "|" is escaped. Shared by the Turndown
+   * rule and the fallback converter, so the two cannot drift.
+   * @param {HTMLTableElement} table - The table
+   * @param {function(Element): string} readInline - Reads an element as one line of Markdown
+   * @returns {string} The table block, or "" when it has no rows
+   */
+  function tableToMarkdown(table, readInline) {
+    if (!table.rows || !table.rows.length) return "";
+
+    const cellText = (cell) => readInline(cell).replace(/\|/g, "\\|");
+    const rows = [...table.rows].map((row) => [...row.cells].map(cellText));
+    const width = Math.max(...rows.map((row) => row.length));
+    const line = (cells) =>
+      "| " +
+      cells.concat(Array(width - cells.length).fill("")).join(" | ") +
+      " |";
+
+    const firstRowIsHeader = [...table.rows[0].cells].every(
+      (cell) => cell.nodeName === "TH"
+    );
+    const header = firstRowIsHeader ? rows.shift() : [];
+    const lines = [line(header), line(Array(width).fill("---")), ...rows.map(line)];
+
+    const caption = table.caption ? readInline(table.caption) : "";
+    return `\n\n${caption ? `**${caption}**\n\n` : ""}${lines.join("\n")}\n\n`;
+  }
+
+  /**
+   * Items 115 and 120, ruling X4: a definition list as one paragraph per pair,
+   * "**Term:** detail", the form the plain-text export already has.
+   * @param {HTMLElement} list - The dl element
+   * @param {function(Element): string} readInline - Reads an element as one line of Markdown
+   * @returns {string} The paragraphs
+   */
+  function definitionListToMarkdown(list, readInline) {
+    const paragraphs = [];
+    let term = null;
+
+    for (const child of list.children) {
+      if (child.nodeName === "DT") {
+        if (term) paragraphs.push(`**${term}**`);
+        term = readInline(child);
+      } else if (child.nodeName === "DD") {
+        const detail = readInline(child);
+        paragraphs.push(term ? `**${term}:** ${detail}` : detail);
+        term = null;
+      }
+    }
+    if (term) paragraphs.push(`**${term}**`);
+
+    return `\n\n${paragraphs.join("\n\n")}\n\n`;
+  }
+
+  /**
+   * Item 115 and 120, ruling X6: a "<" in author text is escaped so the
+   * Markdown Editor reads it as a character and not the start of a tag.
+   * Ruling X8: the same for an "&" that begins what looks like a character
+   * reference ("&amp;" typed by the author), which the Editor would read as
+   * the one character it names. A bare "&" is read as itself and is left alone.
+   * @param {string} text - Text from a text node
+   * @returns {string} The text with "<" and entity-looking "&" escaped
+   */
+  function escapeAngleBrackets(text) {
+    return text
+      .replace(/</g, "\\<")
+      .replace(/&(?=#\d+;|#[xX][0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]*;)/g, "\\&");
+  }
+
+  /**
    * Convert HTML to Markdown using TurndownJS
    * @param {HTMLElement} element - The element to convert
    * @returns {string} Markdown text
@@ -988,42 +1117,80 @@ window.MermaidAccessibilityExport = (function () {
       });
 
       // Handle list items in diagram descriptions better
+      // Items 115 and 120, ruling X3 (24 October 2026): a child list is
+      // indented by its PARENT's marker width (3 under "1. ", 2 under "* ",
+      // 4 under "10. "), because a child indented less than the parent's text
+      // is read as a continuation of the parent and not as a nested list. The
+      // old rule indented every level by 2 whatever the marker. Each item
+      // indents its own continuation lines, so the widths add up at any depth.
       turndownService.addRule("listItems", {
         filter: "li",
         replacement: function (content, node) {
           let prefix = "*"; // Default for ul items
-          let parent = node.parentNode;
-
-          // Calculate indentation level
-          let level = 0;
-          let currentNode = node;
-          while (
-            currentNode.parentNode &&
-            (currentNode.parentNode.nodeName === "UL" ||
-              currentNode.parentNode.nodeName === "OL")
-          ) {
-            level++;
-            currentNode = currentNode.parentNode;
-          }
-
-          // Use proper indentation for nested lists
-          const indent = "  ".repeat(Math.max(0, level - 1));
+          const parent = node.parentNode;
 
           // Handle ordered lists
           if (parent.nodeName === "OL") {
             // Find position in parent's children
-            let index = Array.prototype.indexOf.call(parent.children, node) + 1;
+            const index = Array.prototype.indexOf.call(parent.children, node) + 1;
             prefix = `${index}.`;
           }
 
-          // Ensure proper spacing for nested content
-          content = content
+          const markerWidth = prefix.length + 1;
+          const body = content
             .replace(/^\s+/, "")
-            .replace(/\n/gm, "\n" + indent + "  ");
+            .replace(/\n+$/, "")
+            .replace(/\n/g, "\n" + " ".repeat(markerWidth));
 
-          return `\n${indent}${prefix} ${content}`;
+          return `\n${prefix} ${body}`;
         },
       });
+
+      // A list inside a list item follows its parent's text on the next line
+      // with no blank line between (a blank line makes the list loose).
+      turndownService.addRule("nestedLists", {
+        filter: function (node) {
+          return (
+            (node.nodeName === "UL" || node.nodeName === "OL") &&
+            node.parentNode &&
+            node.parentNode.nodeName === "LI"
+          );
+        },
+        replacement: function (content) {
+          return "\n" + content.replace(/^\n+/, "").replace(/\n+$/, "");
+        },
+      });
+
+      // Items 115 and 120, rulings X1 and X4 (24 October 2026). A cell or a
+      // definition read as one line of Markdown text.
+      const readInline = (element) =>
+        turndownService
+          .turndown(element)
+          .replace(/\s*\n+\s*/g, " ")
+          .trim();
+
+      // X1: see tableToMarkdown.
+      turndownService.addRule("tables", {
+        filter: "table",
+        replacement: function (content, node) {
+          return tableToMarkdown(node, readInline) || content;
+        },
+      });
+
+      // X4: a definition list is one paragraph per pair, "**Term:** detail",
+      // the form the plain-text export already has.
+      turndownService.addRule("definitionLists", {
+        filter: "dl",
+        replacement: function (content, node) {
+          return definitionListToMarkdown(node, readInline);
+        },
+      });
+
+      // X6: author text the panel shows as characters stays characters. A "<"
+      // in a text node would otherwise reach the Markdown Editor as the start
+      // of a tag (packet E6's x<br>y was drawn as a line break there).
+      const escapeText = turndownService.escape.bind(turndownService);
+      turndownService.escape = (text) => escapeAngleBrackets(escapeText(text));
 
       // Handle special elements that need extra spacing
       turndownService.addRule("doubleLineBreaks", {
@@ -1063,6 +1230,21 @@ window.MermaidAccessibilityExport = (function () {
   }
 
   /**
+   * Read an element's contents as one line of Markdown, for a table cell or a
+   * definition (items 115 and 120). Reads the children, so a link or bold text
+   * inside the cell keeps its markup.
+   * @param {Element} element - The cell, caption, term or detail
+   * @returns {string} One line of Markdown
+   */
+  function readInlineFallback(element) {
+    let markdown = "";
+    for (const child of element.childNodes) {
+      markdown += processNodeToMarkdown(child, 0);
+    }
+    return markdown.replace(/\s+/g, " ").trim();
+  }
+
+  /**
    * Process a node and its children to Markdown
    * @param {Node} node - The node to process
    * @param {number} indentLevel - Current indentation level
@@ -1073,7 +1255,7 @@ window.MermaidAccessibilityExport = (function () {
 
     // Text node - just return the content
     if (node.nodeType === Node.TEXT_NODE) {
-      return node.textContent;
+      return escapeAngleBrackets(node.textContent);
     }
 
     // Skip script, style and hidden elements
@@ -1092,7 +1274,6 @@ window.MermaidAccessibilityExport = (function () {
 
     // Handle different element types
     let result = "";
-    const indent = "  ".repeat(indentLevel);
 
     switch (node.nodeName) {
       case "H1":
@@ -1125,7 +1306,8 @@ window.MermaidAccessibilityExport = (function () {
         result += "*" + getTextContent(node) + "*";
         break;
       case "CODE":
-        result += "`" + getTextContent(node) + "`";
+        // Raw text: a backslash inside a code span would show.
+        result += "`" + node.textContent + "`";
         break;
       case "A":
         const href = node.getAttribute("href");
@@ -1133,28 +1315,41 @@ window.MermaidAccessibilityExport = (function () {
         result += "[" + text + "](" + (href || "#") + ")";
         break;
       case "UL":
-        result += "\n";
+      case "OL": {
+        // Items 115 and 120, ruling X3: each item indents its own continuation
+        // lines (a nested list among them) by its marker width, so a child list
+        // sits 3 columns in under "1. " and 2 under "* ", at any depth, with no
+        // blank line between an item and its child list.
+        const isOrdered = node.nodeName === "OL";
+        const items = [];
+        let position = 1;
         for (const child of node.childNodes) {
-          if (child.nodeName === "LI") {
-            // For UL items, add asterisk with proper indentation
-            const childContent = processNodeToMarkdown(child, indentLevel + 1);
-            result += indent + "* " + childContent.trim() + "\n";
-          }
+          if (child.nodeName !== "LI") continue;
+
+          const marker = isOrdered ? `${position}.` : "*";
+          position++;
+          // The whitespace between an item's text and its child list is not a
+          // paragraph break, and a blank line would make the list loose.
+          const body = processNodeToMarkdown(child, 0)
+            .trim()
+            .replace(/\n[ \t]*(?=\n)/g, "")
+            .replace(/\n/g, "\n" + " ".repeat(marker.length + 1));
+          items.push(`${marker} ${body}`);
         }
-        result += "\n";
+
+        const nestedInItem = node.parentNode && node.parentNode.nodeName === "LI";
+        result += nestedInItem
+          ? "\n" + items.join("\n")
+          : "\n" + items.join("\n") + "\n\n";
         break;
-      case "OL":
-        result += "\n";
-        let i = 1;
-        for (const child of node.childNodes) {
-          if (child.nodeName === "LI") {
-            // For OL items, add number with proper indentation
-            const childContent = processNodeToMarkdown(child, indentLevel + 1);
-            result += indent + i + ". " + childContent.trim() + "\n";
-            i++;
-          }
-        }
-        result += "\n";
+      }
+      case "TABLE":
+        // Item 115, ruling X1, shared with the Turndown rule.
+        result += tableToMarkdown(node, readInlineFallback) || getTextContent(node);
+        break;
+      case "DL":
+        // Item 115, ruling X4, shared with the Turndown rule.
+        result += definitionListToMarkdown(node, readInlineFallback);
         break;
       case "LI":
         // Process children of list items, but don't add bullets/numbers (parent list will do that)
@@ -1230,7 +1425,7 @@ window.MermaidAccessibilityExport = (function () {
     let result = "";
 
     if (node.nodeType === Node.TEXT_NODE) {
-      result += node.textContent;
+      result += escapeAngleBrackets(node.textContent);
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       for (const child of node.childNodes) {
         result += getTextContent(child);

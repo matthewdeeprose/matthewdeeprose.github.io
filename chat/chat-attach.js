@@ -17,7 +17,12 @@
  *   hasAttachment()            → boolean
  *   getAttachmentPart()        → image: { type:"image_url", image_url:{ url:"data:…" } }
  *                                pdf:   { type:"file", file:{ filename, file_data:"data:…" } } | null
+ *                              document: { type:"document", doc, includeImages }  (a text/Office file, or a
+ *                              readable PDF on a model that cannot read PDFs — decided at CALL time;
+ *                              includeImages is true only while the "Include pictures" box is showing AND ticked)
  *   buildReference()           → { kind:"image"|"pdf", filename, mimeType, size } | null  (byte-free)
+ *                              or { kind:"document", docType, filename, mimeType, size, chars }
+ *   refreshAdvice()            → void   (chat.js calls it on a model change: the free-model sentence)
  *   clearAttachment()          → void   (also resets the file input + preview)
  *   modelAcceptsImages(id)     → boolean (generic vision-capability gate — see below)
  *   modelAcceptsPDF(id)        → boolean (pdf token AND an "azure-openai/" OR "azure-responses/" id — see below)
@@ -76,6 +81,106 @@ window.ChatAttach = (function () {
   let _pasteCleanup = null; // teardown handle from bindClipboardPaste (or null)
   let _clickWired = false; // idempotency guard for the whole-box click-to-pick
   let _clickCleanup = null; // teardown handle for the box click listener (or null)
+  let _mathPixWired = false; // idempotency guard for the Open MathPix button
+  let _readToken = 0; // bumped per selection: a later file wins, an earlier result is dropped
+  let _freeShown = false; // whether the free-model sentence is currently showing
+  let _reading = false; // true while a document read is in flight
+
+  // ── Spoken and visible wording ──────────────────────────────────────────────
+  // One announce() call per attach builds ONE string from these; the advice
+  // paragraph shows the same sentences 2 and 3 without a second announcement.
+  const KIND_LABELS = Object.freeze({
+    pdf: "PDF",
+    text: "Text file",
+    document: "Document",
+    docx: "Word document",
+    xlsx: "Excel workbook",
+    pptx: "PowerPoint presentation",
+  });
+  const ADVICE = Object.freeze({
+    mathsPdf:
+      "It looks like it contains maths. For a more accurate reading, convert it with the MathPix tool and attach the .mmd file it gives you.",
+    mathsWord:
+      "It looks like it contains maths. For a more accurate reading, save it as a PDF, convert that with the MathPix tool, and attach the .mmd file it gives you.",
+    scan: "This looks like a scan. MathPix can read handwriting and maths.",
+    free: "Free models may keep what you send.",
+  });
+  // The sentence in the attach line that names the pictures (spoken only while the
+  // "Include pictures" box is showing). {n} is the number that would be sent and {total}
+  // the pages in the PDF. The page variants (parcel P4) are for a PDF sent as page pictures.
+  const PICTURES_SENTENCE = Object.freeze({
+    one: "It has 1 picture. To send it, tick Include pictures.",
+    many: "It has {n} pictures. To send them, tick Include pictures.",
+    pageOne: "It has 1 page that can be sent as a picture. To send it, tick Include page pictures.",
+    pageMany: "It has {n} pages that can be sent as pictures. To send them, tick Include page pictures.",
+    pageCapped:
+      "It has {total} pages. The first {n} can be sent as pictures. To send them, tick Include page pictures.",
+  });
+  // The visible label of the "Include pictures" box: "Include <kind> (<count> <unit>)".
+  const PICTURES_LABEL = Object.freeze({
+    pictures: Object.freeze({ kind: "pictures", unitOne: "found", unitMany: "found" }),
+    pages: Object.freeze({ kind: "page pictures", unitOne: "page", unitMany: "pages" }),
+  });
+  // The count shown beside the type in the attachment card: which reader meta field, and its words.
+  // `label` is the small heading over the count on a wide box (parcel P4c).
+  const COUNT_UNITS = Object.freeze({
+    pdf: Object.freeze({ key: "pagesTotal", one: "page", many: "pages", label: "Pages" }),
+    pptx: Object.freeze({ key: "slides", one: "slide", many: "slides", label: "Slides" }),
+    xlsx: Object.freeze({ key: "sheets", one: "sheet", many: "sheets", label: "Sheets" }),
+  });
+  // The headings over the type and size facts (parcel P4c).
+  const FACT_LABELS = Object.freeze({ type: "Type", size: "Size" });
+  // "How we read this file" (parcel P4c): the disclosure's heading and the words of its rows.
+  // Every value is built from a field the reader returns; a field it does not return gives no row.
+  const MORE_WORDS = Object.freeze({
+    summary: "How we read this file",
+    textRead: "Text read",
+    allOfIt: ", all of it",
+    pagesRead: "Pages read",
+    scan: "Looks like a scan",
+    maths: "Maths",
+    pagePictures: "Page pictures",
+    pictures: "Pictures",
+    charts: "Charts",
+    slides: "Slides",
+    hiddenSlides: "Hidden slides",
+    sheets: "Sheets",
+    hiddenSheets: "Hidden sheets",
+    cutSheets: "Sheets cut short",
+    yes: "Yes",
+    no: "No",
+    detected: "Detected",
+    notDetected: "Not detected",
+    noneFound: "None found",
+  });
+  // The en-GB thousands separator, as the reader's own cut-short notes use.
+  const NUMBER_LOCALE = "en-GB";
+  // The attachment card (parcel P4): a text file's "page" holds this many characters of the text.
+  const TEXT_PAGE_CHARS = 600;
+  // Enough raw text to yield TEXT_PAGE_CHARS of plain text even when markup takes a share.
+  const TEXT_PAGE_SOURCE_CHARS = 4000;
+  const OFFICE_NAMES = Object.freeze({
+    docx: "Word",
+    xlsx: "Excel",
+    pptx: "PowerPoint",
+  });
+  const LEGACY_OFFICE_MESSAGE =
+    "Save it as a .docx, .xlsx or .pptx file first, then attach it.";
+  // {verb} is "Attach" for the picker and drop, "Paste" for the clipboard.
+  const TYPE_REJECTED_MESSAGE =
+    "That file type is not supported. {verb} an image (JPEG, PNG or WebP), a PDF, a text, Markdown or LaTeX file, or a Word, Excel or PowerPoint file.";
+  const MATHPIX_RADIO_ID = "MathPix";
+  const PASTE_ACCEPTED_TYPES = Object.freeze([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ]);
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
   // Human-readable file size for the attachment chip (bytes → KB or MB).
@@ -110,6 +215,14 @@ window.ChatAttach = (function () {
     return document.getElementById(elId("attachment-preview"));
   }
 
+  function cardHostEl() {
+    return document.getElementById(elId("attachment-card-host"));
+  }
+
+  function moreHostEl() {
+    return document.getElementById(elId("attachment-more"));
+  }
+
   function dropzoneEl() {
     return document.getElementById(elId("attach-dropzone"));
   }
@@ -123,10 +236,225 @@ window.ChatAttach = (function () {
 
   // Ask chat.js to re-evaluate the blocked-attachment notice + send gate (Stage 6).
   // Guarded — a load-order gap or a chat.js without the hook is a silent no-op.
+  // SILENT: it never announces. It returns the blocked sentence ("" when nothing
+  // is blocked) so the attach path can fold it into its one spoken line.
   function refreshBlockedNotice() {
     if (window.Chat && typeof window.Chat.updateAttachmentNotice === "function") {
-      window.Chat.updateAttachmentNotice();
+      return window.Chat.updateAttachmentNotice() || "";
     }
+    return "";
+  }
+
+  function adviceEl() {
+    return document.getElementById(elId("attachment-advice"));
+  }
+
+  function openMathPixEl() {
+    return document.getElementById(elId("open-mathpix"));
+  }
+
+  function reader() {
+    return window.EmbedDocumentReader || null;
+  }
+
+  // True while `token` is still the latest selection (a later file wins).
+  function isCurrent(token) {
+    return token === _readToken;
+  }
+
+  function setBusy(isBusy) {
+    const zone = dropzoneEl();
+    if (!zone) return;
+    if (isBusy) zone.setAttribute("aria-busy", "true");
+    else zone.removeAttribute("aria-busy");
+  }
+
+  // Free-model test for the CURRENT model. A local model runs in the browser and
+  // sends nothing anywhere, so the "may keep what you send" warning would be
+  // false for it: only a hosted free model qualifies.
+  function currentModelIsFree() {
+    const Chat = window.Chat;
+    const s = state();
+    if (!s || !Chat) return false;
+    if (typeof Chat.getModelEntry !== "function") return false;
+    if (typeof Chat._isFreeModel !== "function") return false;
+    const entry = Chat.getModelEntry(s.currentModel);
+    if (!entry || entry.providerId === "local") return false;
+    return Chat._isFreeModel(entry) === true;
+  }
+
+  function kindLabel(held) {
+    if (held.kind === "image") return "Image";
+    if (held.kind === "pdf") return KIND_LABELS.pdf;
+    return KIND_LABELS[held.doc && held.doc.docType] || KIND_LABELS.document;
+  }
+
+  // Sentence 2: maths wins over scan; neither → "". Reads the reader's own meta.
+  function adviceSentence(held) {
+    const doc = held && held.doc;
+    const meta = doc && doc.meta;
+    if (!meta) return "";
+    if (meta.maths && meta.maths.detected) {
+      return doc.docType === "pdf" ? ADVICE.mathsPdf : ADVICE.mathsWord;
+    }
+    if (doc.docType === "pdf" && meta.scan && meta.scan.likely) {
+      return ADVICE.scan;
+    }
+    return "";
+  }
+
+  // Sentence 3: only for a held document (an image has no extracted text).
+  function freeSentence(held) {
+    return held && held.doc && currentModelIsFree() ? ADVICE.free : "";
+  }
+
+  // The visible copy of sentences 2 and 3. A plain paragraph with no live role,
+  // so writing it is silent; the ONE spoken line is announced by the caller.
+  function renderAdvice() {
+    const el = adviceEl();
+    const btn = openMathPixEl();
+    const s2 = adviceSentence(attachment);
+    const s3 = freeSentence(attachment);
+    const text = [s2, s3].filter(Boolean).join(" ");
+    if (el) {
+      if (el.textContent !== text) el.textContent = text;
+      el.hidden = !text;
+    }
+    if (btn) btn.hidden = !s2;
+    _freeShown = !!s3;
+  }
+
+  // Visible "Reading <name>…" status while a file is read. Nothing is announced.
+  function renderReading(name) {
+    const el = adviceEl();
+    const btn = openMathPixEl();
+    if (el) {
+      el.textContent = "Reading " + name + "…";
+      el.hidden = false;
+    }
+    if (btn) btn.hidden = true;
+  }
+
+  // Called by chat.js on a model change. Refreshes the free-model sentence
+  // visibly, and announces it ONLY when it newly appears — never the attach line.
+  // It also shows or hides the "Include pictures" box for the new model, silently.
+  function refreshAdvice() {
+    if (_reading) return;
+    const wasFree = _freeShown;
+    renderAdvice();
+    renderPictures();
+    if (_freeShown && !wasFree) announce(ADVICE.free);
+  }
+
+  // ── "Include pictures" box (parcel P3b) ─────────────────────────────────────
+  function picturesWrapEl() {
+    return document.getElementById(elId("attach-pictures-wrap"));
+  }
+
+  function picturesBoxEl() {
+    return document.getElementById(elId("attach-pictures"));
+  }
+
+  function picturesCountEl() {
+    return document.getElementById(elId("attach-pictures-count"));
+  }
+
+  function picturesKindEl() {
+    return document.getElementById(elId("attach-pictures-kind"));
+  }
+
+  function picturesUnitEl() {
+    return document.getElementById(elId("attach-pictures-unit"));
+  }
+
+  // A PDF sends its PAGES as pictures; Word and PowerPoint send the pictures inside them.
+  function picturesArePages() {
+    return !!(attachment && attachment.doc && attachment.doc.docType === "pdf");
+  }
+
+  // Pages in the PDF beyond the ones that can be sent (the reader renders at most CAPS.MAX_IMAGES).
+  function pagesOverCap() {
+    const meta = attachment && attachment.doc && attachment.doc.meta;
+    const summary = meta && meta.pictureSummary;
+    return !!summary && Number(meta.pagesTotal) > Number(summary.found);
+  }
+
+  // The pictures that WOULD be sent from the held document: the reader's own count
+  // of kept pictures (a scan or maths PDF counts its page pictures). An image, a prose
+  // PDF and a text file carry no summary and read 0.
+  function keptPictureCount() {
+    const summary =
+      attachment && attachment.doc && attachment.doc.meta && attachment.doc.meta.pictureSummary;
+    const kept = summary ? Number(summary.kept) : 0;
+    return Number.isFinite(kept) && kept > 0 ? kept : 0;
+  }
+
+  // Offered only for a held document with pictures to send, on a model that can
+  // read images. Decided at CALL time, like isSentAsDocument().
+  function picturesOffered() {
+    if (!isSentAsDocument() || keptPictureCount() === 0) return false;
+    const s = state();
+    return modelAcceptsImages(s ? s.currentModel : null);
+  }
+
+  // The choice that travels with the turn: true only while the box is showing AND
+  // ticked at this moment, so a model that cannot read images never gets pictures.
+  function picturesIncluded() {
+    const box = picturesBoxEl();
+    return picturesOffered() && !!box && box.checked === true;
+  }
+
+  // Shows or hides the box and writes its count. SILENT: the block has no live
+  // region and nothing is announced; the one attach line names the pictures.
+  function renderPictures() {
+    const offered = picturesOffered();
+    const kept = offered ? keptPictureCount() : 0;
+    const words = PICTURES_LABEL[offered && picturesArePages() ? "pages" : "pictures"];
+    const unit = kept === 1 ? words.unitOne : words.unitMany;
+    for (const [el, text] of [
+      [picturesCountEl(), String(kept)],
+      [picturesKindEl(), words.kind],
+      [picturesUnitEl(), unit],
+    ]) {
+      if (el && el.textContent !== text) el.textContent = text;
+    }
+    const wrap = picturesWrapEl();
+    if (wrap) wrap.hidden = !offered;
+  }
+
+  // Pictures cost tokens, so every new attach and every removal starts unticked.
+  function resetPicturesChoice() {
+    const box = picturesBoxEl();
+    if (box) box.checked = false;
+  }
+
+  // The attach-line sentence naming the pictures; "" unless the box is showing.
+  function picturesSentence() {
+    if (!picturesOffered()) return "";
+    const kept = keptPictureCount();
+    if (picturesArePages()) {
+      if (pagesOverCap()) {
+        return PICTURES_SENTENCE.pageCapped
+          .replace("{total}", String(attachment.doc.meta.pagesTotal))
+          .replace("{n}", String(kept));
+      }
+      return kept === 1
+        ? PICTURES_SENTENCE.pageOne
+        : PICTURES_SENTENCE.pageMany.replace("{n}", String(kept));
+    }
+    return kept === 1
+      ? PICTURES_SENTENCE.one
+      : PICTURES_SENTENCE.many.replace("{n}", String(kept));
+  }
+
+  function openMathPix() {
+    const radio = document.getElementById(MATHPIX_RADIO_ID);
+    if (!radio) {
+      logWarn("openMathPix: the MathPix mode radio was not found");
+      return;
+    }
+    radio.click(); // the existing mode switcher sets MathPix's own tab state
+    radio.focus();
   }
 
   // ── Public: capability gate (shared with the wire) ──────────────────────────
@@ -181,8 +509,22 @@ window.ChatAttach = (function () {
     return attachment !== null;
   }
 
+  // A readable PDF is sent as extracted text unless the current model reads PDFs
+  // itself. Decided at CALL time from ChatState.currentModel, so a model change
+  // between attach and send changes the shape without any re-read.
+  function isSentAsDocument() {
+    if (!attachment) return false;
+    if (attachment.kind === "document") return true;
+    if (attachment.kind !== "pdf" || !attachment.doc) return false;
+    const s = state();
+    return !modelAcceptsPDF(s ? s.currentModel : null);
+  }
+
   function getAttachmentPart() {
     if (!attachment) return null;
+    if (isSentAsDocument()) {
+      return { type: "document", doc: attachment.doc, includeImages: picturesIncluded() };
+    }
     if (attachment.kind === "pdf") {
       // Same shape preparePDFContent builds — produced inline (no call into it).
       return {
@@ -206,7 +548,17 @@ window.ChatAttach = (function () {
     if (!attachment) return null;
     // Byte-free either way: filename / type / size only, kind echoed from the
     // held attachment. Persistence and the restore chip read this — NEVER the
-    // base64.
+    // base64 and never the document text (chars is a count only).
+    if (isSentAsDocument()) {
+      return {
+        kind: "document",
+        docType: attachment.doc.docType,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType,
+        size: attachment.size,
+        chars: attachment.doc.text.length,
+      };
+    }
     return {
       kind: attachment.kind === "pdf" ? "pdf" : "image",
       filename: attachment.filename,
@@ -220,13 +572,18 @@ window.ChatAttach = (function () {
     const clearedKind = attachment ? attachment.kind : null;
     attachment = null;
     renderPreview();
+    renderAdvice(); // hides the advice line and Open MathPix
+    resetPicturesChoice();
+    renderPictures(); // hides the "Include pictures" box
     const input = inputEl();
     if (input) input.value = ""; // so re-picking the SAME file still fires change
     if (had) {
       announce(
         clearedKind === "pdf"
           ? "PDF attachment removed."
-          : "Image attachment removed."
+          : clearedKind === "document"
+            ? "Document removed."
+            : "Image attachment removed."
       );
     }
     refreshBlockedNotice(); // removing an attachment clears any blocked-model gate
@@ -234,11 +591,118 @@ window.ChatAttach = (function () {
   }
 
   // ── Selection flow ──────────────────────────────────────────────────────────
+  function resetInput() {
+    const input = inputEl();
+    if (input) input.value = "";
+  }
+
+  function notify(level, message, options) {
+    const fn = window[level];
+    if (typeof fn === "function") fn(message, options);
+    else logWarn("notification unavailable: " + level);
+  }
+
+  // Wording for a document the reader refused. Filenames only, never content.
+  function readFailureMessage(error, name, route) {
+    const code = error && error.code;
+    if (code === "unsupported-format" && OFFICE_NAMES[route]) {
+      // The module exists but failed to load: this is a fault, not "coming soon".
+      return (
+        OFFICE_NAMES[route] +
+        " files cannot be read right now. Try again, or save it as a PDF and attach that."
+      );
+    }
+    if (code === "too-large") return name + " is too large to attach.";
+    return (
+      "Could not read " +
+      name +
+      ". Check that it is not damaged or password-protected, then try again."
+    );
+  }
+
+  function displayNameFor(file, fallbackName) {
+    return file.name && file.name.trim() ? file.name : fallbackName;
+  }
+
+  // Text, Markdown, LaTeX and Office files: read through the reader, hold the
+  // result as a document. One announce() on success; a failure is one
+  // notifyError and nothing is held.
+  async function setDocumentFromFile(file, route) {
+    const token = ++_readToken;
+    const displayName = displayNameFor(file, "Pasted document");
+    _reading = true;
+    setBusy(true);
+    renderReading(displayName);
+
+    let doc;
+    try {
+      doc = await reader().read(file);
+    } catch (e) {
+      if (!isCurrent(token)) return;
+      logWarn("Document read failed", e && e.code);
+      _reading = false;
+      setBusy(false);
+      renderAdvice();
+      resetInput();
+      notify("notifyError", readFailureMessage(e, displayName, route));
+      return;
+    }
+    if (!isCurrent(token)) return; // a later file won
+
+    attachment = {
+      file: file,
+      base64: null,
+      doc: doc,
+      filename: displayName,
+      mimeType: file.type || "text/plain",
+      size: file.size,
+      kind: "document",
+    };
+    _reading = false;
+    setBusy(false);
+    renderPreview();
+    renderAdvice();
+    resetPicturesChoice();
+    renderPictures();
+    announceAttached(refreshBlockedNotice());
+    logInfo("Document attached", { size: file.size, docType: doc.docType });
+  }
+
+  // The ONE spoken line for an attach: sentence 1, then the same sentences 2 and
+  // 3 the advice paragraph shows, then the blocked-model sentence when the
+  // current model cannot read this attachment. One call, one utterance. The
+  // pictures sentence (only while the "Include pictures" box is showing) sits
+  // after the advice sentence and before the free-model sentence.
+  function announceAttached(blockedSentence) {
+    const parts = [
+      kindLabel(attachment) + " attached: " + attachment.filename + ".",
+      adviceSentence(attachment),
+      picturesSentence(),
+      freeSentence(attachment),
+      blockedSentence,
+    ];
+    announce(parts.filter(Boolean).join(" "));
+  }
+
   async function setFromFile(file) {
+    const route = reader() ? reader().detect(file) : null;
+    if (route && typeof route === "object") {
+      notify("notifyError", LEGACY_OFFICE_MESSAGE);
+      resetInput();
+      return;
+    }
+    if (route === "text" || OFFICE_NAMES[route]) {
+      return setDocumentFromFile(file, route);
+    }
+
     const utils = fileUtils();
     if (!utils) {
       logError("EmbedFileUtils unavailable — cannot build the attachment");
-      announce("Could not attach the image: the file utility is unavailable.");
+      // The toast is the voice and stays on screen: no announce() beside it.
+      notify(
+        "notifyError",
+        "Could not attach the image: the file utility is unavailable."
+      );
       return;
     }
 
@@ -253,9 +717,7 @@ window.ChatAttach = (function () {
       logDebug("Attachment type accepted", { isImage, isPDF, kind });
     } catch (e) {
       logWarn("Rejected attachment (type)", e && e.message);
-      announce(
-        "That file type is not supported. Attach a JPEG, PNG, WebP image or a PDF."
-      );
+      notify("notifyError", TYPE_REJECTED_MESSAGE.replace("{verb}", "Attach"));
       const input = inputEl();
       if (input) input.value = "";
       return;
@@ -266,19 +728,7 @@ window.ChatAttach = (function () {
       utils.validateFileSize(file);
     } catch (e) {
       logWarn("Rejected attachment (size)", e && e.message);
-      announce((e && e.message) || "That image is too large.");
-      const input = inputEl();
-      if (input) input.value = "";
-      return;
-    }
-
-    // Bytes. Compression is left to the embed default at send time.
-    let base64;
-    try {
-      base64 = await utils.fileToBase64(file);
-    } catch (e) {
-      logError("fileToBase64 failed", e && e.message);
-      announce("Could not read the image. Try again or choose another file.");
+      notify("notifyError", (e && e.message) || "That image is too large.");
       const input = inputEl();
       if (input) input.value = "";
       return;
@@ -290,22 +740,82 @@ window.ChatAttach = (function () {
     // a PDF is unlikely, but "Pasted document" keeps it honest. Input- and drop-
     // picked files always carry a name, so this is a no-op for those paths.
     const fallbackName = kind === "pdf" ? "Pasted document" : "Pasted image";
-    const displayName =
-      file.name && file.name.trim() ? file.name : fallbackName;
+    const displayName = displayNameFor(file, fallbackName);
 
+    // Both gates passed: this is the latest selection. A PDF also shows the
+    // visible reading status; an image is quick enough not to need it.
+    const token = ++_readToken;
+    if (kind === "pdf") {
+      _reading = true;
+      setBusy(true);
+      renderReading(displayName);
+    }
+
+    // Bytes. Compression is left to the embed default at send time.
+    let base64;
+    try {
+      base64 = await utils.fileToBase64(file);
+    } catch (e) {
+      if (!isCurrent(token)) return;
+      logError("fileToBase64 failed", e && e.message);
+      _reading = false;
+      setBusy(false);
+      renderAdvice();
+      notify(
+        "notifyError",
+        "Could not read the image. Try again or choose another file."
+      );
+      resetInput();
+      return;
+    }
+
+    // A PDF is ALSO read for its text, so a model that cannot read PDFs can still
+    // be sent the words. If the reader refuses, the raw PDF is held exactly as
+    // before (doc: null) and one persistent warning says so.
+    let doc = null;
+    let readFailed = false;
+    if (kind === "pdf" && reader()) {
+      try {
+        doc = await reader().read(file);
+      } catch (e) {
+        readFailed = true;
+        logWarn("PDF text read failed", e && e.code);
+      }
+    }
+    if (!isCurrent(token)) return; // a later file won
+
+    _reading = false;
+    setBusy(false);
     attachment = {
       file: file,
       base64: base64,
+      doc: doc,
       filename: displayName,
       mimeType: file.type,
       size: file.size,
       kind: kind,
     };
     renderPreview();
-    announce(
-      (kind === "pdf" ? "PDF attached: " : "Image attached: ") + displayName + "."
-    );
-    refreshBlockedNotice(); // attaching to an incapable model shows the gate now
+    renderAdvice();
+    resetPicturesChoice();
+    renderPictures(); // shows the box for a scan or maths PDF (page pictures); hides a previous document's box otherwise
+    // Attaching to an incapable model shows the gate now. Asked for silently and
+    // BEFORE speaking, so the blocked sentence rides in the one line below.
+    const blockedSentence = refreshBlockedNotice();
+    if (readFailed) {
+      // The warning toast is the voice for this event: no announce() beside it,
+      // so the blocked sentence (if any) is appended to the toast text.
+      notify(
+        "notifyWarning",
+        "Could not read the text of " +
+          displayName +
+          ". It can still be sent to a model that reads PDFs." +
+          (blockedSentence ? " " + blockedSentence : ""),
+        { duration: 0 }
+      );
+    } else {
+      announceAttached(blockedSentence);
+    }
     logInfo("Attachment set", { filename: file.name, size: file.size, type: file.type, kind: kind });
   }
 
@@ -313,70 +823,62 @@ window.ChatAttach = (function () {
   function renderPreview() {
     const host = previewEl();
     if (!host) return;
-    host.textContent = ""; // clear
+    const cardHost = cardHostEl();
+    host.textContent = ""; // clear every host; each stays hidden until something is placed in it
+    if (cardHost) {
+      cardHost.textContent = "";
+      cardHost.hidden = true;
+    }
+    const moreHost = moreHostEl();
+    if (moreHost) {
+      moreHost.textContent = "";
+      moreHost.hidden = true;
+    }
     if (!attachment) return;
 
     const chip = document.createElement("div");
     chip.className = "chat-attachment-chip";
-    chip.style.display = "inline-flex";
-    chip.style.alignItems = "center";
-    chip.style.gap = "0.5em";
 
-    // Leading visual: an image gets its data-URL thumbnail; a PDF gets a
-    // decorative document icon of roughly matching visual weight (the filename
-    // carries the meaning). The filename span + Remove control below are shared.
-    if (attachment.kind === "image") {
-      const thumb = document.createElement("img");
-      thumb.className = "chat-attachment-thumb";
-      thumb.src = "data:" + attachment.mimeType + ";base64," + attachment.base64;
-      thumb.alt = ""; // decorative — the filename is shown as visible text below
-      thumb.style.height = "2.5rem";
-      thumb.style.width = "auto";
-      thumb.style.borderRadius = "4px";
-      chip.appendChild(thumb);
-    } else if (attachment.kind === "pdf") {
-      const docIcon = document.createElement("span");
-      docIcon.className = "chat-attachment-doc-icon";
-      docIcon.setAttribute("aria-hidden", "true"); // decorative — filename names it
-      docIcon.setAttribute("data-icon", "pdf");
-      docIcon.style.display = "inline-flex";
-      docIcon.style.fontSize = "2rem"; // ≈ the thumbnail's visual weight
-      chip.appendChild(docIcon);
+    // The card is decorative, so it sits beside the "Selected attachment" region in
+    // its own host rather than inside it; the region keeps the name, type, size and Remove.
+    const card = buildPreviewCard();
+    if (cardHost) {
+      cardHost.appendChild(card);
+      cardHost.hidden = false;
+    } else {
+      chip.appendChild(card);
     }
+
+    // Beside the card: the name with Remove straight after it (one row on a wide box, and
+    // the page order is the visual order), then the facts. Layout and colour live in
+    // chat.css and the theme sheets, so nothing here is styled inline.
+    const details = document.createElement("div");
+    details.className = "chat-attachment-details";
+    chip.appendChild(details);
+
+    const head = document.createElement("div");
+    head.className = "chat-attachment-head";
+    details.appendChild(head);
 
     const name = document.createElement("span");
     name.className = "chat-attachment-filename";
     name.textContent = attachment.filename; // textContent — never innerHTML (safe)
-    chip.appendChild(name);
-
-    // PDF-only: the formatted file size after the filename. Omitted (not shown
-    // empty) when the size is unknown / zero.
-    if (attachment.kind === "pdf") {
-      const sizeText = formatFileSize(attachment.size);
-      if (sizeText) {
-        const sizeSpan = document.createElement("span");
-        sizeSpan.className = "chat-attachment-size";
-        sizeSpan.textContent = sizeText;
-        chip.appendChild(sizeSpan);
-      }
-    }
+    head.appendChild(name);
 
     const remove = document.createElement("button");
     remove.type = "button";
-    remove.className = "chat-attachment-remove";
-    // Adequate target size (SC 2.5.8) — set inline as this is dynamic markup.
-    remove.style.display = "inline-flex";
-    remove.style.alignItems = "center";
-    remove.style.gap = "0.35em";
-    remove.style.minHeight = "44px";
-    remove.style.cursor = "pointer";
+    remove.className = "chat-attachment-remove"; // 44px target (SC 2.5.8) is set in chat.css
     const icon = document.createElement("span");
     icon.setAttribute("aria-hidden", "true");
     icon.setAttribute("data-icon", "close");
     remove.appendChild(icon);
     remove.appendChild(
       document.createTextNode(
-        attachment.kind === "pdf" ? "Remove PDF" : "Remove image"
+        attachment.kind === "pdf"
+          ? "Remove PDF"
+          : attachment.kind === "document"
+            ? "Remove document"
+            : "Remove image"
       )
     );
     remove.addEventListener("click", function () {
@@ -384,26 +886,242 @@ window.ChatAttach = (function () {
       const input = inputEl();
       if (input && typeof input.focus === "function") input.focus();
     });
-    chip.appendChild(remove);
+    head.appendChild(remove);
+
+    details.appendChild(buildFacts(attachment));
 
     host.appendChild(chip);
+    renderMore(moreHost);
 
     // Dynamically-inserted data-icon spans are not auto-populated — do it now.
     if (window.IconLibrary && typeof window.IconLibrary.populateIcons === "function") {
       window.IconLibrary.populateIcons(chip);
+      if (cardHost) window.IconLibrary.populateIcons(cardHost); // the card's document icon lives outside the chip
     } else if (typeof window.refreshIcons === "function") {
       window.refreshIcons(chip);
+      if (cardHost) window.refreshIcons(cardHost);
+    }
+  }
+
+  // The count beside the type: "15 pages", "8 slides", "3 sheets", with the heading it
+  // sits under. The count is the reader's own; Word and a text file have none (null).
+  function countFact(held) {
+    const unit = held.doc && COUNT_UNITS[held.doc.docType];
+    if (!unit) return null;
+    const count = Number(held.doc.meta && held.doc.meta[unit.key]);
+    if (!Number.isFinite(count) || count <= 0) return null;
+    return { label: unit.label, text: count + " " + (count === 1 ? unit.one : unit.many) };
+  }
+
+  // One heading-and-value pair in a definition list. A value that is empty gives no pair,
+  // so a missing field is left out rather than shown as 0 or "No".
+  function addFact(list, label, value, valueClass) {
+    if (!value) return;
+    const row = document.createElement("div");
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const def = document.createElement("dd");
+    if (valueClass) def.className = valueClass;
+    def.textContent = value;
+    row.appendChild(term);
+    row.appendChild(def);
+    list.appendChild(row);
+  }
+
+  // The facts under the name: type, the count where the reader has one, and size. A wide
+  // box shows a heading over each value; a narrow one joins the values on one line.
+  function buildFacts(held) {
+    const list = document.createElement("dl");
+    list.className = "chat-attachment-facts";
+    addFact(list, FACT_LABELS.type, kindLabel(held), "chat-attachment-type");
+    const count = countFact(held);
+    if (count) addFact(list, count.label, count.text, "chat-attachment-count");
+    addFact(list, FACT_LABELS.size, formatFileSize(held.size), "chat-attachment-size");
+    return list;
+  }
+
+  // ── "How we read this file" (parcel P4c) ────────────────────────────────────
+  function formatNumber(value) {
+    return Number(value).toLocaleString(NUMBER_LOCALE);
+  }
+
+  function countWords(value, one, many) {
+    return formatNumber(value) + " " + (Number(value) === 1 ? one : many);
+  }
+
+  // The text the model is sent. The cut-short case is the reader's own `truncated`; "all of
+  // it" is also withheld when a PDF was read only to its page limit or an Excel file has
+  // sheets cut short, because the characters then stop short of the file.
+  function textReadValue(doc) {
+    if (typeof doc.text !== "string") return "";
+    const meta = doc.meta || {};
+    const cut = meta.truncated;
+    if (cut && Number.isFinite(cut.kept) && Number.isFinite(cut.total)) {
+      return "the first " + formatNumber(cut.kept) + " of " + formatNumber(cut.total) + " characters";
+    }
+    const characters = countWords(doc.text.length, "character", "characters");
+    const pagesCut = Number(meta.pages) < Number(meta.pagesTotal);
+    const sheetsCut = Number(meta.cutSheets) > 0;
+    return pagesCut || sheetsCut ? characters : characters + MORE_WORDS.allOfIt;
+  }
+
+  // Pictures found in a Word or PowerPoint file, from the reader's own picture summary.
+  function picturesValue(meta) {
+    const summary = meta.pictureSummary;
+    if (!summary || !Number.isFinite(summary.found) || !Number.isFinite(summary.kept)) return "";
+    if (summary.found === 0) return MORE_WORDS.noneFound;
+    const skipped = Number(meta.skippedPictures);
+    const value = formatNumber(summary.found) + " found, " + formatNumber(summary.kept) + " can be sent";
+    return skipped > 0 ? value + ", " + formatNumber(skipped) + " skipped" : value;
+  }
+
+  // The page pictures of a scan or maths PDF.
+  function pagePicturesValue(meta) {
+    const summary = meta.pictureSummary;
+    if (!summary || !Number.isFinite(summary.kept)) return "";
+    const sendable = summary.kept === 0 ? "None" : formatNumber(summary.kept);
+    const value = sendable + " can be sent";
+    const skipped = Number(meta.skippedPictures);
+    return skipped > 0 ? value + ", " + formatNumber(skipped) + " skipped" : value;
+  }
+
+  // Maths in a PDF is a yes or no. In Word and PowerPoint the reader's score is the number
+  // of equations it found. A PDF's score is a share of characters, which is not plain, so it
+  // is left out.
+  function mathsValue(doc) {
+    const maths = doc.meta && doc.meta.maths;
+    if (!maths || typeof maths.detected !== "boolean") return "";
+    if (doc.docType === "pdf") return maths.detected ? MORE_WORDS.detected : MORE_WORDS.notDetected;
+    if (!maths.detected) return MORE_WORDS.noneFound;
+    return Number.isFinite(maths.score)
+      ? countWords(maths.score, "equation", "equations")
+      : MORE_WORDS.detected;
+  }
+
+  // A plain whole-number field, or "" when the reader did not return one.
+  function numberValue(value) {
+    return Number.isFinite(value) ? formatNumber(value) : "";
+  }
+
+  // A count that is only worth a row when it is above 0.
+  function positiveValue(value) {
+    return Number.isFinite(value) && value > 0 ? formatNumber(value) : "";
+  }
+
+  // The rows of the disclosure, as [heading, value] pairs, for one held document.
+  function readingRows(doc) {
+    const meta = doc.meta || {};
+    const rows = [];
+    const add = (label, value) => {
+      if (value) rows.push([label, value]);
+    };
+    add(MORE_WORDS.textRead, textReadValue(doc));
+
+    if (doc.docType === "pdf") {
+      const pagesKnown = Number.isFinite(meta.pages) && Number.isFinite(meta.pagesTotal);
+      add(MORE_WORDS.pagesRead, pagesKnown ? formatNumber(meta.pages) + " of " + formatNumber(meta.pagesTotal) : "");
+      const scan = meta.scan;
+      add(MORE_WORDS.scan, scan && typeof scan.likely === "boolean" ? (scan.likely ? MORE_WORDS.yes : MORE_WORDS.no) : "");
+      add(MORE_WORDS.maths, mathsValue(doc));
+      add(MORE_WORDS.pagePictures, pagePicturesValue(meta));
+    } else if (doc.docType === "docx") {
+      add(MORE_WORDS.pictures, picturesValue(meta));
+      add(
+        MORE_WORDS.charts,
+        Number.isFinite(meta.charts)
+          ? meta.charts > 0
+            ? countWords(meta.charts, "chart", "charts")
+            : MORE_WORDS.noneFound
+          : ""
+      );
+      add(MORE_WORDS.maths, mathsValue(doc));
+    } else if (doc.docType === "pptx") {
+      add(MORE_WORDS.slides, numberValue(meta.slides));
+      add(MORE_WORDS.hiddenSlides, positiveValue(meta.hiddenCount));
+      add(MORE_WORDS.pictures, picturesValue(meta));
+      add(MORE_WORDS.maths, mathsValue(doc));
+    } else if (doc.docType === "xlsx") {
+      add(MORE_WORDS.sheets, numberValue(meta.sheets));
+      add(MORE_WORDS.hiddenSheets, positiveValue(meta.hiddenCount));
+      add(MORE_WORDS.cutSheets, positiveValue(meta.cutSheets));
+    }
+    return rows;
+  }
+
+  // Fills the (still hidden) host with a CLOSED disclosure for a held document. An image,
+  // and a PDF the reader could not read, hold no `doc`, so the host stays hidden. Nothing
+  // here is a live region: opening it is silent apart from the browser's own expanded state.
+  function renderMore(host) {
+    if (!host || !attachment || !attachment.doc) return;
+    const rows = readingRows(attachment.doc);
+    if (!rows.length) return;
+
+    const disclosure = document.createElement("details");
+    disclosure.className = "chat-attachment-more-details";
+    const summary = document.createElement("summary");
+    summary.textContent = MORE_WORDS.summary;
+    disclosure.appendChild(summary);
+
+    const list = document.createElement("dl");
+    list.className = "chat-attachment-read";
+    rows.forEach((row) => addFact(list, row[0], row[1], "chat-attachment-read-value"));
+    disclosure.appendChild(list);
+
+    host.appendChild(disclosure);
+    host.hidden = false;
+  }
+
+  // The first characters of a document as plain text. DOMParser builds an inert
+  // document, so no script or resource in the text runs or loads.
+  function firstLinesOf(text) {
+    const source = String(text).slice(0, TEXT_PAGE_SOURCE_CHARS);
+    const plain = new DOMParser().parseFromString(source, "text/html").body.textContent || "";
+    return Array.from(plain.trim()).slice(0, TEXT_PAGE_CHARS).join("");
+  }
+
+  // The card that lets a person recognise the file they chose. An image shows
+  // itself, a PDF shows its first page, and a Word, PowerPoint, Excel or text file
+  // shows a small "page" holding the first lines of its text. Every picture here is
+  // decorative: the file name beside the card names the file.
+  function buildPreviewCard() {
+    const card = document.createElement("div");
+    card.className = "chat-attachment-card";
+
+    let previewSrc = null;
+    if (attachment.kind === "image") {
+      previewSrc = "data:" + attachment.mimeType + ";base64," + attachment.base64;
+    } else if (attachment.kind === "pdf") {
+      const firstPage = attachment.doc && attachment.doc.meta && attachment.doc.meta.preview;
+      if (firstPage && firstPage.dataUrl) previewSrc = firstPage.dataUrl;
     }
 
-    // The library SVGs ship fixed 21px width/height attributes; a CSS width/height
-    // on the element overrides them, so scale the PDF document icon up to ≈2rem to
-    // match the image thumbnail's visual weight. Decorative — no-op for the image
-    // chip (which has no doc icon) and harmless if population found no SVG.
-    const docSvg = chip.querySelector(".chat-attachment-doc-icon svg");
-    if (docSvg) {
-      docSvg.style.width = "2rem";
-      docSvg.style.height = "2rem";
+    if (previewSrc) {
+      const thumb = document.createElement("img");
+      thumb.className = "chat-attachment-thumb";
+      thumb.src = previewSrc;
+      thumb.alt = ""; // decorative — the filename is shown as visible text beside it
+      card.appendChild(thumb);
+      return card;
     }
+
+    if (attachment.kind === "document" && attachment.doc) {
+      const page = document.createElement("div");
+      page.className = "chat-attachment-textpage";
+      // Hidden from a screen reader because the file name already names the file.
+      // It holds no focusable child, so this does not hide a control (Rule 4).
+      page.setAttribute("aria-hidden", "true");
+      page.textContent = firstLinesOf(attachment.doc.text);
+      card.appendChild(page);
+      return card;
+    }
+
+    // A PDF the reader could not preview: a decorative document icon.
+    const docIcon = document.createElement("span");
+    docIcon.className = "chat-attachment-doc-icon";
+    docIcon.setAttribute("aria-hidden", "true"); // decorative — filename names it
+    docIcon.setAttribute("data-icon", attachment.kind === "pdf" ? "pdf" : "fileText");
+    card.appendChild(docIcon);
+    return card;
   }
 
   // ── Wiring ──────────────────────────────────────────────────────────────────
@@ -483,7 +1201,7 @@ window.ChatAttach = (function () {
     try {
       _pasteCleanup = utils.bindClipboardPaste({
         containerSelector: "#chat-app",
-        acceptedTypes: ["image/jpeg", "image/png", "image/webp", "application/pdf"],
+        acceptedTypes: PASTE_ACCEPTED_TYPES.slice(),
         preventInInputs: true,
         onPaste: function (file) {
           setFromFile(file); // SAME entry as the input + drop paths
@@ -492,9 +1210,7 @@ window.ChatAttach = (function () {
           // The helper filters wrong types before setFromFile sees them, so it
           // owns this rejection cue; mirror setFromFile's type-rejection wording.
           logWarn("Rejected paste (type)", err && err.message);
-          announce(
-            "That file type is not supported. Paste a JPEG, PNG, WebP image or a PDF."
-          );
+          notify("notifyError", TYPE_REJECTED_MESSAGE.replace("{verb}", "Paste"));
         },
       });
       _pasteWired = true;
@@ -558,6 +1274,16 @@ window.ChatAttach = (function () {
     wirePaste();
     // Whole-box click-to-pick enhancement — bound once, independently.
     wireClickToPick();
+    // Open MathPix button — bound once, independently.
+    wireOpenMathPix();
+  }
+
+  function wireOpenMathPix() {
+    if (_mathPixWired) return;
+    const btn = openMathPixEl();
+    if (!btn) return;
+    btn.addEventListener("click", openMathPix);
+    _mathPixWired = true;
   }
 
   // Self-initialise once the DOM is ready (the input is static markup in tools.html).
@@ -574,6 +1300,7 @@ window.ChatAttach = (function () {
     clearAttachment: clearAttachment,
     modelAcceptsImages: modelAcceptsImages,
     modelAcceptsPDF: modelAcceptsPDF,
+    refreshAdvice: refreshAdvice,
     init: init,
     // Inspection / teardown handles (never production entry points).
     _setFromFile: setFromFile,

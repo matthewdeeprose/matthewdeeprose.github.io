@@ -93,7 +93,7 @@
     return;
   }
 
-  /** TR1, TR10: significant digits kept when a sum is written (trims float noise). */
+  /** TR1, TR10: significant digits kept when a fractional sum is written (trims float noise). */
   const VALUE_SIGNIFICANT_DIGITS = 12;
 
   /** TM4: the base of a share, as a percentage. */
@@ -153,13 +153,28 @@
   }
 
   /**
-   * TM9: the author's number as digits, with no separator and no format.
-   * Float noise from the surface's sums is trimmed (TR10).
-   * @param {number} n - A value or a total
-   * @returns {string} The number as digits
+   * TM9, TR10: an item's own value, written exactly as stored. A value is
+   * never trimmed.
+   * @param {number} n - An item's value
+   * @returns {string} The value as positional digits
    */
   function digits(n) {
-    return String(Number(Number(n).toPrecision(VALUE_SIGNIFICANT_DIGITS)));
+    return common().positionalDigits(n); // TM9, shared since VR15
+  }
+
+  /**
+   * TM9, TR10: a DERIVED sum (a group's total, the whole). Adding decimals can
+   * leave float noise (0.6000000000000001), so a sum with a fractional part is
+   * trimmed to twelve significant digits. A whole-number sum within the safe
+   * range (below 2^53) is exact, so it is written as it is; a larger one has
+   * already been rounded by the addition and is trimmed like the rest.
+   * @param {number} n - A group's total or the whole
+   * @returns {string} The sum as positional digits
+   */
+  function sumDigits(n) {
+    const sum = Number(n);
+    if (Number.isSafeInteger(sum)) return common().positionalDigits(sum);
+    return common().positionalDigits(Number(sum.toPrecision(VALUE_SIGNIFICANT_DIGITS)));
   }
 
   /**
@@ -194,7 +209,7 @@
     const share = sharePercent(value, base);
     if (share === null) return null;
     if (share === 0 && value !== 0) return UNDER_ONE;
-    if (share === PERCENT && digits(value) !== digits(base)) return OVER_NINETY_NINE;
+    if (share === PERCENT && value !== base) return OVER_NINETY_NINE;
     return `${share} per cent`;
   }
 
@@ -311,7 +326,7 @@
       counts.groups > 0
         ? ` in ${count(counts.groups)} ${plural(counts.groups, "group", "groups")}`
         : "";
-    return `A treemap${title} with ${items}${groups}, totalling ${digits(delivery.root.total)}.`;
+    return `A treemap${title} with ${items}${groups}, totalling ${sumDigits(delivery.root.total)}.`;
   }
 
   // ---------------------------------------------------------------------
@@ -359,7 +374,7 @@
     const nested = g > 0 ? ` in ${count(g)} ${plural(g, "group", "groups")}` : "";
     const share = perCent(node.total, whole);
     const ofWhole = share === null ? "" : ` (${share} of the whole)`;
-    const head = `<li>${atHead(node, counts)}, total ${digits(node.total)}${ofWhole}, ${items}${nested}.`;
+    const head = `<li>${atHead(node, counts)}, total ${sumDigits(node.total)}${ofWhole}, ${items}${nested}.`;
     if (node.children.length === 0) {
       return [`${head.slice(0, -1)} (${ZERO_DISCLOSURE}).</li>`];
     }
@@ -390,11 +405,13 @@
 
   /**
    * Ties are all named, in drawn order, as a comma list with "and" before the
-   * last name (packet amendment 4).
+   * last name (packet amendment 4). An empty list joins to nothing: without
+   * this it read " and undefined" (item 119 sweep F1).
    * @param {Array<string>} names - The already-written names
    * @returns {string} The joined names
    */
   function joinTie(names) {
+    if (names.length === 0) return "";
     if (names.length === 1) return names[0];
     return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
   }
@@ -437,7 +454,7 @@
    */
   function renderSummary(delivery, counts) {
     const whole = delivery.root.total;
-    const lines = ["<h4>Summary</h4>", "<dl>", `<dt>Total</dt><dd>${digits(whole)}</dd>`];
+    const lines = ["<h4>Summary</h4>", "<dl>", `<dt>Total</dt><dd>${sumDigits(whole)}</dd>`];
 
     // TR6: the largest group is chosen from the top level only.
     const tops = delivery.root.children.filter((child) => !child.leaf);

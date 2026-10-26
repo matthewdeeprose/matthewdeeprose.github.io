@@ -124,6 +124,21 @@
    * the fallback.
    */
   function deriveReferenceFromContent(content) {
+    // A document part: text-free and byte-free by construction (counts only).
+    const docPart = content.find(function (p) {
+      return p && p.type === "document" && p.doc;
+    });
+    if (docPart) {
+      const doc = docPart.doc;
+      return {
+        kind: "document",
+        docType: doc.docType,
+        filename: doc.name,
+        mimeType: "",
+        size: doc.meta ? doc.meta.bytes : 0,
+        chars: typeof doc.text === "string" ? doc.text.length : 0,
+      };
+    }
     const imgPart = content.find(function (p) {
       return p && p.type === "image_url";
     });
@@ -187,7 +202,9 @@
           (p.type === "image_url" ||
             p.kind === "image" ||
             p.type === "file" ||
-            p.kind === "pdf")
+            p.kind === "pdf" ||
+            p.type === "document" ||
+            p.kind === "document")
         );
       });
       if (!hasAttachment) return m; // text-only array (unusual) — leave as-is
@@ -198,7 +215,7 @@
       // Preserve an already-byte-free reference part if one is present (re-save
       // of a restored image or PDF turn), otherwise use the resolved ref.
       const existingRef = m.content.find(function (p) {
-        return p && (p.kind === "image" || p.kind === "pdf");
+        return p && (p.kind === "image" || p.kind === "pdf" || p.kind === "document");
       });
       const attachmentEl = existingRef || ref;
       const newContent = attachmentEl

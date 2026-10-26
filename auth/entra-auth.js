@@ -121,6 +121,24 @@ window.EntraAuth = (function () {
   // True only while runInit is priming the token cache — see fireChange().
   let suppressChangeEvents = false;
 
+  // null until the first acquire() settles; false after a failure, true after
+  // a success. Drives the one-off "renewed" event on recovery, and keeps a
+  // failure that repeats (a retry that fails again) from firing a second event.
+  let lastTokenOk = null;
+
+  // Recovery attempts: a returning tab, a network coming back, or a request the
+  // proxy rejected with 401. One attempt in flight at a time, and none within
+  // RECOVERY_MIN_INTERVAL_MS of the last, so a run of rejected requests cannot
+  // become a run of token requests to Microsoft.
+  const RECOVERY_MIN_INTERVAL_MS = 30000;
+  let recoveryInFlight = false;
+  let lastRecoveryAt = 0;
+
+  // Dispatched on window by the Foundry providers when the proxy answers 401 to
+  // a request that carried a user token. Not a public member: consumers dispatch
+  // it by name and nothing here exposes it.
+  const TOKEN_REJECTED_EVENT = "entra:token-rejected";
+
   // scope name → { token, iat, exp, renewAt } — seconds since the epoch.
   const tokenCache = new Map();
   // scope name → setTimeout handle for the scheduled renewal.
@@ -207,6 +225,9 @@ window.EntraAuth = (function () {
       reason: reason,
       isSignedIn: account !== null,
       username: account ? account.username : null,
+      // Whether a usable token is cached RIGHT NOW. isSignedIn only says an
+      // account is cached; this says the token fetch actually worked.
+      tokenOk: getCachedToken("foundry") !== null,
     };
     logDebug("Dispatching " + CHANGE_EVENT, detail);
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: detail }));
@@ -336,12 +357,22 @@ window.EntraAuth = (function () {
       });
       cacheToken(scopeName, result.accessToken);
       logInfo("Token acquired for scope '" + scopeName + "'");
+      // Recovery after a failure fires once, so a status display can leave its
+      // "needs refreshing" state without a reload. Not fired on ordinary
+      // renewals (lastTokenOk is not false) and suppressed during priming.
+      const recovered = lastTokenOk === false;
+      lastTokenOk = true;
+      if (recovered) fireChange("renewed");
       return result.accessToken;
     } catch (error) {
       logError("Silent token acquisition failed for scope '" + scopeName + "'", error);
       tokenCache.delete(scopeName);
       clearRenewalTimer(scopeName);
-      fireChange("renewal-failed");
+      // Only the first failure is news. A recovery attempt that fails again
+      // must not re-fire, or a returning tab would re-announce the state.
+      const firstFailure = lastTokenOk !== false;
+      lastTokenOk = false;
+      if (firstFailure) fireChange("renewal-failed");
       return null;
     }
   }
@@ -366,7 +397,48 @@ window.EntraAuth = (function () {
   function onVisibilityChange() {
     if (document.visibilityState === "visible" && account) {
       renewDueScopes("document became visible");
+      recoverMissingToken("document became visible");
     }
+  }
+
+  /**
+   * renewDueScopes only walks tokens that ARE cached, so after a failed fetch
+   * (empty cache) nothing ever retried and the person stayed on "sign in" until
+   * they clicked it. This tries once, silently, when there is an account but no
+   * usable token. A success fires "renewed" through acquire(); a repeat failure
+   * is silent (see acquire()).
+   *
+   * @param {string} reason - for the log only
+   * @param {boolean} force - skip the "already have a usable token" check, for
+   *   a token the proxy has just rejected
+   */
+  async function recoverMissingToken(reason, force) {
+    if (!account || !msalClient || recoveryInFlight) return;
+    if (!force && isUsable(tokenCache.get("foundry"))) return;
+    if (Date.now() - lastRecoveryAt < RECOVERY_MIN_INTERVAL_MS) {
+      logDebug("Recovery skipped (" + reason + ") — one was tried a moment ago");
+      return;
+    }
+
+    recoveryInFlight = true;
+    lastRecoveryAt = Date.now();
+    logInfo("Trying to recover the token (" + reason + ")");
+    try {
+      await acquire("foundry", true);
+    } finally {
+      recoveryInFlight = false;
+    }
+  }
+
+  function onNetworkOnline() {
+    recoverMissingToken("network came back");
+  }
+
+  // The proxy said 401 to a request that carried a token, so the cached one may
+  // be stale even though it has not reached its own expiry. Renew it silently:
+  // if that works the next request is fine; if it fails the bar shows Sign in.
+  function onTokenRejected() {
+    recoverMissingToken("the proxy rejected the token", true);
   }
 
   async function runInit() {
@@ -462,6 +534,8 @@ window.EntraAuth = (function () {
       }
 
       document.addEventListener("visibilitychange", onVisibilityChange);
+      window.addEventListener("online", onNetworkOnline);
+      window.addEventListener(TOKEN_REJECTED_EVENT, onTokenRejected);
       logInfo("Initialised; signed in: " + (account !== null));
     } catch (error) {
       logError("Initialisation failed", error);

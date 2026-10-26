@@ -385,6 +385,32 @@ window.MermaidAccessibilityCommon = (function () {
       : String(value);
   }
 
+  /** The letter String(number) puts between the digits and the exponent. */
+  const EXPONENT_MARK = "e";
+
+  /**
+   * A number as positional digits at every magnitude, never in exponent form
+   * (treemap TM9, venn VN9; moved here at item 121 session 7, VR15, so the two
+   * modules share ONE writer). JavaScript's own String() switches to exponent
+   * form at 1e21 and above and below 1e-6 (measured, 22 October 2026), and a
+   * screen reader announces "1e+24" as letters and symbols. The digits
+   * String() already chose (the shortest that round-trips) are kept and the
+   * point is moved.
+   * @param {number} n - A value, a total or a declared size
+   * @returns {string} The number as positional digits
+   */
+  function positionalDigits(n) {
+    const text = String(n);
+    const exponentAt = text.indexOf(EXPONENT_MARK);
+    if (exponentAt < 0) return text;
+    const [whole, fraction = ""] = text.slice(0, exponentAt).split(".");
+    const mantissa = whole + fraction;
+    const pointAt = whole.length + Number(text.slice(exponentAt + 1));
+    if (pointAt <= 0) return `0.${"0".repeat(-pointAt)}${mantissa}`;
+    if (pointAt >= mantissa.length) return mantissa + "0".repeat(pointAt - mantissa.length);
+    return `${mantissa.slice(0, pointAt)}.${mantissa.slice(pointAt)}`;
+  }
+
   // pluraliseName was deleted here on 12 August 2026, with its last two
   // callers (register item 26). Author names are never inflected: the plural
   // now attaches to a noun the generator owns — "records" in the ER module,
@@ -531,6 +557,7 @@ window.MermaidAccessibilityCommon = (function () {
     countDiagramElements,
     capitalize,
     narrationNumber,
+    positionalDigits,
     labelFullStop,
     escapeHtml,
     renderSegmentsHtml,

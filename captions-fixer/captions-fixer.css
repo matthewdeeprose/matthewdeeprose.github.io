@@ -22,7 +22,11 @@
  * CSSOM on 7 September 2026, the sheet declares exactly six colour-valued
  * properties, and they are:
  *
- *   outline-color: currentcolor                  (the drag-active state)
+ *   border-*-color: currentcolor                 (the upload box, four sides; CHANGED
+ *                                                 24 Oct 2026, P3c: this line read
+ *                                                 "outline-color: currentcolor (the
+ *                                                 drag-active state)" until the drag
+ *                                                 cue moved to the box's border)
  *   border-*-color: rgba(128, 128, 128, 0.35)    (the fieldset, four sides)
  *   border-bottom-color: rgba(128, 128, 128, 0.35)  (the table rules)
  *
@@ -39,10 +43,11 @@
  *
  * Two consequences worth stating rather than leaving to be rediscovered:
  *
- *   - The drag-active state on the drop zone is an OUTLINE in `currentColor`,
- *     not a tint. An outline in the text colour is guaranteed to reach the
- *     3:1 that SC 1.4.11 asks of a non-text indicator, because the text it
- *     borrows from already clears 4.5:1 against the same surface.
+ *   - The drag-active state on the drop zone is a solid 3px BORDER in
+ *     `currentColor` (P3c, 24 Oct 2026; it was an outline), not a tint. A
+ *     border in the text colour is guaranteed to reach the 3:1 that SC 1.4.11
+ *     asks of a non-text indicator, because the text it borrows from already
+ *     clears 4.5:1 against the same surface.
  *   - The table's rules and the fieldset's separators are `currentColor` at a
  *     stated alpha, so they composite over whatever surface the theme
  *     supplies. They are SURFACE marks and never text.
@@ -122,30 +127,55 @@
    UPLOAD
    ========================================================================= */
 
+/*
+ * The resting box, copied from .transcribe-upload-area (which copies the Image
+ * Describer's .imgdesc-upload-area). The shared .imgdesc-upload-label supplies
+ * only the contents' layout, not a frame, so without this the zone had no
+ * visible edge at all.
+ */
 .captions-fixer-upload-area {
   margin-bottom: 1rem;
+  border: 2px dashed currentColor;
+  border-radius: 0.5rem;
+  padding: 2rem;
+  text-align: center;
 }
 
 /*
  * The label IS the drop zone — the drag handlers in captions-fixer-ui.js bind
  * to it, following setupDragAndDrop in md-scripts/charts/graph-builder-core.js.
- * Its resting appearance comes from .imgdesc-upload-label, which this tool
- * shares with the Image Describer and Transcribe; only the drag state is
- * declared here.
+ * The class below is still set on the label; the visible box is the wrapper.
  */
 .captions-fixer-upload-area .imgdesc-upload-label {
   cursor: pointer;
 }
 
-/*
- * DRAG-ACTIVE. An outline rather than a tint, in currentColor, for the reason
- * given in the header. `outline-offset` keeps it clear of the label's own
- * border so the two read as separate marks rather than a thickened edge.
- */
-.captions-fixer-upload-area .imgdesc-upload-label.captions-fixer-drag-active {
-  outline: 3px dashed currentColor;
-  outline-offset: 3px;
+/* Pointing at the zone turns the dashed border solid. A shape change, never
+ * colour alone (colour is in the theme sheets). */
+.captions-fixer-upload-area:hover {
+  border-style: solid;
 }
+
+/*
+ * DRAG-ACTIVE. The solid 3px border on the wrapper, which now carries the class
+ * itself (the script binds the drag handlers to the wrapper). This replaces
+ * the old dashed outline on the label, which would now clash with the focus
+ * outline below.
+ */
+.captions-fixer-upload-area.captions-fixer-drag-active {
+  border-style: solid;
+  border-width: 3px;
+}
+
+/*
+ * FOCUS. The real control is the .visually-hidden file input (its own outline
+ * is drawn on a 1px box nobody can see), so the wrapper carries the indicator.
+ * The wrapper holds only the label, the input and the file-name line. THE RULE
+ * IS NOT IN THIS FILE: the Captions Fixer UI suite (row "8b.12 canary:
+ * captions-fixer.css declares no :focus rule of any kind") requires every focus
+ * rule to live in light.css / dark.css, so the 3px solid ring, its 2px offset
+ * and its colour are declared there, beside the Image Describer's.
+ */
 
 #captions-fixer-file-name {
   margin: 0.5rem 0 0;

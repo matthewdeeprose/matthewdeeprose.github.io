@@ -1991,13 +1991,25 @@ div[data-latex-addition="true"] pre:focus-visible,
   color: #fcbc00;
 }
 
-#mathjax-status {
+#status-bar {
   background: #00131d;
   border: #9fb1bd solid 1px;
   box-shadow: 0 1px 3px rgba(255, 255, 255, 0.5);
 }
 
-#mathjax-status[data-ready="false"] #mathjax-status-value {
+/* A confirmed signed-in name, in light blue, the counterpart of light mode's
+   blue. Clearly apart from the amber that marks "No" and "Error". */
+#signin-status[data-state="signed-in"] #signin-status-text {
+  color: #74c9e5;
+}
+
+/* Smaller glow for the status bar's buttons; sizes live in main.css. */
+#status-bar button:is(:hover, :focus-visible) {
+  box-shadow: 0 0 0 0.2rem #c1d100 !important;
+}
+
+#mathjax-status[data-ready="false"] #mathjax-status-value,
+#mathjax-status[data-ready="error"] #mathjax-status-value {
   color: #fcbc00;
 }
 
@@ -3845,12 +3857,41 @@ pre[class*="language-"] {
   outline-color: #c1d100;
 }
 
-.imgdesc-upload-area:hover {
+.imgdesc-upload-area:hover,
+.chat-attach:hover,
+.transcribe-upload-area:hover,
+.captions-fixer-upload-area:hover {
   border-color: #c1d100;
 }
 
-.imgdesc-upload-area:focus-within {
+.imgdesc-upload-area:focus-within,
+.chat-attach-label:focus-within,
+.transcribe-upload-area:focus-within {
   outline-color: #c1d100;
+}
+
+/* Captions Fixer's upload boxes: the whole ring is declared here, not in
+   captions-fixer.css, which its UI suite requires to hold no focus rule. */
+.captions-fixer-upload-area:focus-within {
+  outline: 3px solid #c1d100;
+  outline-offset: 2px;
+}
+
+/* Chat attachment preview card (parcel P4). Same look as the MathPix preview card in
+   this theme (.mathpix-image-preview-container below). The text-page is a dark surface
+   with light text, never a white block; the ::after fade runs to the page colour. */
+.chat-attachment-card {
+  border-color: #e1e8ec;
+  background-color: #00131d;
+}
+
+.chat-attachment-textpage {
+  background-color: #002e3b;
+  color: #e1e8ec;
+}
+
+.chat-attachment-textpage::after {
+  background: linear-gradient(to bottom, rgba(0, 46, 59, 0), #002e3b 85%);
 }
 
 .mathpix-image-preview-container {
@@ -6879,6 +6920,11 @@ button:focus-visible {
   border: 0.2rem solid #231f20 !important;
 }
 
+/* H-127b: the state text of a model card gets the glow a focused button gets, from this sheet, so it follows the site's Dark / Light switch. */
+.imgdesc-mm-state-text:focus-visible {
+  box-shadow: 0 0 0 0.3rem #c1d100;
+}
+
 button.regButton:focus:not(:focus-visible) {
   color: #e1e8ec;
   background: #231f20;
@@ -7288,6 +7334,18 @@ pre.language-json {
     #2a2a2a 100%
   );
   color: #6ec990;
+}
+
+/* Key details headline when credit is low — see light.css. */
+.setup-status-partial.setup-key-low {
+  background-image: linear-gradient(
+    to right,
+    #3a2a1a 0,
+    #3a2a1a var(--setup-fill, 0%),
+    #2a2a2a var(--setup-fill, 0%),
+    #2a2a2a 100%
+  );
+  color: #d4a058;
 }
 
 .setup-credential-section {

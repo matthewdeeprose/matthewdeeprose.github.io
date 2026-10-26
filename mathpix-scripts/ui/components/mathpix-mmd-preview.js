@@ -809,6 +809,11 @@ class MathPixMMDPreview {
    */
   _decodeLatexAlt(text) {
     if (typeof text !== "string") return "";
+    // UT-4: use the serialiser codec so the `]` entity is decoded as well.
+    const serialiser = window.MathPixAltTextMMDSerialiser;
+    if (serialiser?.unescapeAltFromLatex) {
+      return serialiser.unescapeAltFromLatex(text);
+    }
     return text
       .replace(/\\\{/g, "{")
       .replace(/\\\}/g, "}")
@@ -898,6 +903,35 @@ class MathPixMMDPreview {
       restored,
     });
     return restored;
+  }
+
+  /**
+   * UT-7: decode the alt of every MARKDOWN-form image after render. The library
+   * writes a markdown alt raw, so the stored closing-bracket entity (and the
+   * backslash before an opening bracket) reached the img alt as literal
+   * characters. Images whose alt `_restoreFigureAlts` already set are skipped:
+   * that alt is decoded, and a second decode would change it.
+   *
+   * @param {HTMLElement} targetElement - The preview DOM element
+   * @returns {number} How many images had their alt changed
+   * @private
+   */
+  _decodeMarkdownAlts(targetElement) {
+    const decode = window.MathPixAltTextMMDSerialiser?.decodeAltFromMarkdown;
+    if (typeof decode !== "function" || !targetElement) return 0;
+
+    const figureAlts = this._figureAltsByUrl;
+    let changed = 0;
+    for (const img of targetElement.querySelectorAll("img")) {
+      if (figureAlts && figureAlts.has(img.getAttribute("src"))) continue;
+      const raw = img.getAttribute("alt");
+      if (!raw) continue;
+      const decoded = decode(raw);
+      if (decoded === raw) continue;
+      img.setAttribute("alt", decoded);
+      changed++;
+    }
+    return changed;
   }
 
   // ============================================================================
@@ -1599,6 +1633,7 @@ class MathPixMMDPreview {
 
       // AL-2: restore the alt text the preprocess strip removed
       this._restoreFigureAlts(targetElement);
+      this._decodeMarkdownAlts(targetElement); // UT-7
 
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");

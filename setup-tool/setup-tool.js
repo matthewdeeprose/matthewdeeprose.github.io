@@ -49,6 +49,10 @@ window.SetUpTool = (function () {
       orApiKeyInput: document.getElementById("setup-or-api-key"),
       orToggleBtn: document.getElementById("setup-or-toggle-btn"),
       orStatusBadge: document.getElementById("setup-or-status-badge"),
+      orCheckBtn: document.getElementById("setup-or-check-btn"),
+      orKeyDetails: document.getElementById("setup-or-key-details"),
+      orKeyMessage: document.getElementById("setup-or-key-message"),
+      orKeyList: document.getElementById("setup-or-key-list"),
 
       // MathPix credential inputs
       mpAppIdInput: document.getElementById("setup-mp-app-id"),
@@ -268,6 +272,8 @@ window.SetUpTool = (function () {
       elements.orApiKeyInput.value = storedKey;
     } else {
       elements.orApiKeyInput.value = "";
+      // A key removed elsewhere (credentials:changed) must not leave stale details.
+      clearOrKeyDetails();
     }
 
     updateOpenRouterStatus(!!storedKey);
@@ -297,6 +303,8 @@ window.SetUpTool = (function () {
     emitCredentialChange("openrouter", "saved");
     announce("OpenRouter API key saved successfully.");
     logInfo("OpenRouter key saved");
+    // Silent: fills the visible key-details list, announces nothing.
+    fetchOpenRouterKeyInfo({ force: true });
   }
 
   function clearOpenRouterKey() {
@@ -325,6 +333,7 @@ window.SetUpTool = (function () {
     }
 
     updateOpenRouterStatus(false);
+    clearOrKeyDetails();
     emitCredentialChange("openrouter", "cleared");
     // Reached only through the confirmation modal — see announceAfterModalClose.
     announceAfterModalClose("OpenRouter API key cleared.");
@@ -355,6 +364,303 @@ window.SetUpTool = (function () {
         btn.appendChild(iconSpan);
         btn.appendChild(document.createTextNode(" Show"));
       }
+    }
+  }
+
+  // ============================================================
+  // OpenRouter key details (credit remaining, spend, expiry)
+  // ============================================================
+  // Read from OpenRouter's /auth/key reply — the same endpoint main.js's
+  // checkCredits() uses for the Developer Information panel. Nothing here
+  // announces: the visible list is the record, and main.js's low-credit line
+  // is the one voice (see the note above the Status Summary in tools.html).
+  const OR_KEY_INFO_URL = "https://openrouter.ai/api/v1/auth/key";
+  const OR_KEY_INFO_TIMEOUT_MS = 15000;
+  // Do not re-ask on every open of the card; the button forces a fresh read.
+  const OR_KEY_INFO_MIN_GAP_MS = 30000;
+  // Matches the < 20% threshold in main.js checkCredits().
+  const OR_LOW_CREDIT_PERCENT = 20;
+  const OR_KEY_DISPLAY_CURRENCY = "USD";
+
+  let orKeyInfoInFlight = false;
+  let orKeyInfoLastFetchMs = 0;
+
+  // en-US so USD prints as "$4.20", as credit-formatter.js does; en-GB would
+  // print "US$4.20".
+  const orMoneyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: OR_KEY_DISPLAY_CURRENCY,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  function formatOrMoney(value) {
+    return orMoneyFormatter.format(value);
+  }
+
+  function isFiniteNumber(value) {
+    return typeof value === "number" && Number.isFinite(value);
+  }
+
+  // OpenRouter sends numbers; tolerate numeric strings, as main.js does.
+  function toNumberOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const parsed = Number(value);
+    return isFiniteNumber(parsed) ? parsed : null;
+  }
+
+  function showOrKeyMessage(text) {
+    if (!elements || !elements.orKeyDetails || !elements.orKeyMessage) return;
+    elements.orKeyDetails.hidden = false;
+    elements.orKeyMessage.textContent = text;
+    elements.orKeyMessage.hidden = !text;
+  }
+
+  function clearOrKeyDetails() {
+    if (!elements || !elements.orKeyDetails) return;
+    elements.orKeyDetails.hidden = true;
+    elements.orKeyList.textContent = "";
+    elements.orKeyMessage.textContent = "";
+    elements.orKeyMessage.hidden = true;
+    orKeyInfoLastFetchMs = 0;
+  }
+
+  // One dt/dd pair inside a div, so CSS can lay each pair out as
+  // label-left / value-right like the Status Summary rows.
+  function addOrKeyRow(label, valueContent, extraClass, iconName) {
+    const row = document.createElement("div");
+    row.className = "setup-key-row" + (extraClass ? " " + extraClass : "");
+
+    const term = document.createElement("dt");
+    if (iconName) {
+      const icon = document.createElement("span");
+      icon.setAttribute("aria-hidden", "true");
+      icon.setAttribute("data-icon", iconName);
+      term.appendChild(icon);
+    }
+    term.appendChild(document.createTextNode(label));
+
+    const detail = document.createElement("dd");
+    if (typeof valueContent === "string") {
+      detail.textContent = valueContent;
+    } else {
+      detail.appendChild(valueContent);
+    }
+
+    row.appendChild(term);
+    row.appendChild(detail);
+    elements.orKeyList.appendChild(row);
+    return row;
+  }
+
+  // A real date becomes a <time>; a schedule word such as "monthly" stays text.
+  function buildOrDateNode(value) {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return document.createTextNode(String(value));
+    }
+    const time = document.createElement("time");
+    time.setAttribute("dateTime", parsed.toISOString());
+    time.textContent = parsed.toLocaleString("en-GB", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    return time;
+  }
+
+  function renderOrKeyDetails(data) {
+    elements.orKeyList.textContent = "";
+    elements.orKeyMessage.textContent = "";
+    elements.orKeyMessage.hidden = true;
+    elements.orKeyDetails.hidden = false;
+
+    const limit = toNumberOrNull(data.limit);
+    const usage = toNumberOrNull(data.usage);
+    let remaining = toNumberOrNull(data.limit_remaining);
+    if (remaining === null && limit !== null && usage !== null) {
+      remaining = limit - usage;
+    }
+
+    // Headline row. Its background reuses the Status Summary fill bar
+    // (.setup-status-partial): decorative, with the text as the source of truth.
+    if (limit !== null && remaining !== null) {
+      const clamped = Math.max(0, remaining);
+      const percent = limit > 0 ? Math.min(100, (clamped / limit) * 100) : 0;
+      const isLow = percent < OR_LOW_CREDIT_PERCENT;
+      const text =
+        (isLow ? "Low: " : "") +
+        formatOrMoney(clamped) +
+        " left of " +
+        formatOrMoney(limit) +
+        " (" +
+        Math.round(percent) +
+        "%)";
+      const row = addOrKeyRow(
+        "Credit remaining",
+        text,
+        "setup-key-headline setup-status-partial" +
+          (isLow ? " setup-key-low" : ""),
+        "wallet",
+      );
+      row.style.setProperty("--setup-fill", Math.round(percent) + "%");
+    } else {
+      addOrKeyRow(
+        "Credit remaining",
+        "No spending limit is set on this key, so it draws on your OpenRouter account balance, which this check cannot show.",
+        "setup-key-headline",
+        "wallet",
+      );
+    }
+
+    if (usage !== null) {
+      addOrKeyRow("Used in total", formatOrMoney(usage), "", "coins");
+    }
+
+    const periods = [
+      ["Used today", data.usage_daily, "calendarDay"],
+      ["Used this week", data.usage_weekly, "calendarWeek"],
+      ["Used this month", data.usage_monthly, "calendarMonth"],
+    ];
+    periods.forEach(function (pair) {
+      const amount = toNumberOrNull(pair[1]);
+      if (amount !== null) {
+        addOrKeyRow(pair[0], formatOrMoney(amount), "", pair[2]);
+      }
+    });
+
+    // Spend through the person's own provider keys (BYOK), counted apart.
+    const byokTotal = toNumberOrNull(data.byok_usage);
+    if (byokTotal) {
+      addOrKeyRow("Own provider keys", formatOrMoney(byokTotal), "", "lock");
+    }
+
+    // The reply carries the reset schedule both top-level (a word such as
+    // "monthly") and inside effective_budget (a date); prefer the date.
+    const budget = data.effective_budget || {};
+    const resetValue = budget.resets_at || data.limit_reset;
+    if (resetValue) {
+      addOrKeyRow("Limit resets", buildOrDateNode(resetValue), "", "reset");
+    }
+
+    const freeRequests = data.free_model_daily_requests;
+    if (
+      freeRequests &&
+      isFiniteNumber(freeRequests.used) &&
+      isFiniteNumber(freeRequests.limit)
+    ) {
+      addOrKeyRow(
+        "Free requests today",
+        freeRequests.used + " of " + freeRequests.limit,
+        "",
+        "gift",
+      );
+    }
+    if (data.expires_at) {
+      addOrKeyRow(
+        "Key expires",
+        buildOrDateNode(data.expires_at),
+        "",
+        "alarmClock",
+      );
+    }
+    if (typeof data.is_free_tier === "boolean") {
+      addOrKeyRow("Free tier", data.is_free_tier ? "Yes" : "No", "", "ticket");
+    }
+    if (data.label) addOrKeyRow("Key label", String(data.label), "", "tag");
+
+    addOrKeyRow(
+      "Last checked",
+      buildOrDateNode(new Date().toISOString()),
+      "",
+      "clock",
+    );
+
+    // These rows are built after the page-load populator ran, so fill them.
+    if (window.IconLibrary && window.IconLibrary.populateIcons) {
+      window.IconLibrary.populateIcons(elements.orKeyList);
+    }
+  }
+
+  async function fetchOpenRouterKeyInfo(options) {
+    if (!elements || !elements.orKeyDetails) return;
+
+    const force = !!(options && options.force);
+    const key = localStorage.getItem("openrouter_api_key");
+    if (!key) {
+      clearOrKeyDetails();
+      return;
+    }
+    if (orKeyInfoInFlight) return;
+    if (!force && Date.now() - orKeyInfoLastFetchMs < OR_KEY_INFO_MIN_GAP_MS) {
+      return;
+    }
+
+    orKeyInfoInFlight = true;
+    // aria-busy, not disabled: disabling the focused button drops focus to <body>.
+    if (elements.orCheckBtn) elements.orCheckBtn.setAttribute("aria-busy", "true");
+
+    // A toast, so a refresh that returns the same figures (identical tiles)
+    // still visibly does something. The toast announces through the shared
+    // announcer, so nothing else announces this.
+    if (typeof window.notifyInfo === "function") {
+      window.notifyInfo("Checking OpenRouter…");
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(function () {
+      controller.abort();
+    }, OR_KEY_INFO_TIMEOUT_MS);
+
+    try {
+      const response = await fetch(OR_KEY_INFO_URL, {
+        headers: { Authorization: "Bearer " + key },
+        signal: controller.signal,
+      });
+      if (response.status === 401 || response.status === 403) {
+        showOrKeyMessage(
+          "OpenRouter rejected this key. Check it was copied in full.",
+        );
+        elements.orKeyList.textContent = "";
+        return;
+      }
+      if (!response.ok) {
+        showOrKeyMessage(
+          "OpenRouter could not report on this key (status " +
+            response.status +
+            "). Try again shortly.",
+        );
+        elements.orKeyList.textContent = "";
+        return;
+      }
+      const body = await response.json();
+      if (!body || !body.data) {
+        showOrKeyMessage("OpenRouter sent a reply this page could not read.");
+        elements.orKeyList.textContent = "";
+        return;
+      }
+      // The key may have been cleared or replaced while the request ran.
+      if (localStorage.getItem("openrouter_api_key") !== key) return;
+      orKeyInfoLastFetchMs = Date.now();
+      renderOrKeyDetails(body.data);
+      showOrKeyMessage(
+        "Updated at " +
+          new Date().toLocaleTimeString("en-GB", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          }) +
+          ".",
+      );
+    } catch (error) {
+      logWarn("OpenRouter key details unavailable:", error);
+      showOrKeyMessage(
+        "Could not reach OpenRouter to check this key. Check your connection and try again.",
+      );
+      elements.orKeyList.textContent = "";
+    } finally {
+      clearTimeout(timer);
+      orKeyInfoInFlight = false;
+      if (elements.orCheckBtn) elements.orCheckBtn.removeAttribute("aria-busy");
     }
   }
 
@@ -2198,15 +2504,154 @@ window.SetUpTool = (function () {
     CHECKING: "checking",
     SIGNED_OUT: "signedOut",
     SIGNED_IN: "signedIn",
+    // An account is cached but no usable token could be fetched (typically a
+    // failed silent renewal while the page was loading). Deliberately not
+    // EXPIRED: the sign-in has not expired, so the wording must not say so.
+    NO_TOKEN: "signedInNoToken",
     EXPIRED: "expired",
     UNAVAILABLE: "unavailable",
   });
 
+  // The status bar in the page header (#status-bar in tools.html): the sign-in
+  // half is driven from here, the MathJax half by its own updater. It mirrors
+  // the card's state but is SILENT: no live region, no announce(). The card
+  // stays the only voice. Visible text is kept as short as possible; the
+  // accessible name carries the fuller wording in visually hidden text.
+  //   text    visible status text (null = none, an action button shows instead)
+  //   action  visible action text, always "Sign in" when present
+  const SIGN_IN_CHIP = Object.freeze({
+    STORAGE_KEY: "status-bar-collapsed",
+    // The hide/show button's icons. THE ONE PLACE to change them: they are set
+    // on every state change and once at start-up. The icon in tools.html is
+    // only what shows before this file runs. Direction: the button sits at the
+    // right-hand end of the bar, so the chevron points in to tuck the bar away
+    // and out to bring it back.
+    ICON_HIDE: "chevronLeft",
+    ICON_SHOW: "chevronRight",
+    ACTION_TEXT: "Sign in",
+    STATE_ATTRIBUTE: Object.freeze({
+      [SIGN_IN_STATES.CHECKING]: { state: "checking", icon: "hourglass", text: "Checking" },
+      [SIGN_IN_STATES.SIGNED_OUT]: { state: "signed-out", icon: "enter", action: "" },
+      [SIGN_IN_STATES.SIGNED_IN]: { state: "signed-in", icon: "shieldCheck" },
+      [SIGN_IN_STATES.NO_TOKEN]: {
+        state: "signed-in-no-token",
+        icon: "warning",
+        action: ", access needs refreshing",
+      },
+      [SIGN_IN_STATES.EXPIRED]: {
+        state: "expired",
+        icon: "warning",
+        action: ", session expired",
+      },
+      [SIGN_IN_STATES.UNAVAILABLE]: { state: "unavailable", icon: "error", text: "Unavailable" },
+    }),
+  });
+
   let lastSignInAnnouncement = null;
+  let signInChipWired = false;
+
+  function readChipCollapsedChoice() {
+    try {
+      return window.localStorage.getItem(SIGN_IN_CHIP.STORAGE_KEY) === "true";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // The SVG child does not follow a changed data-icon on its own.
+  function setChipIcon(container, name) {
+    const icon = container.querySelector("[data-icon]");
+    if (!icon || icon.getAttribute("data-icon") === name) return;
+    icon.setAttribute("data-icon", name);
+    if (window.IconLibrary && window.IconLibrary.populateIcons) {
+      window.IconLibrary.populateIcons(container);
+    }
+  }
+
+  // Wires the hide/show toggle and the sign-in action once. The toggle's
+  // choice is stored; the sign-in action is never collapsed away in CSS.
+  function initSignInChip() {
+    const bar = document.getElementById("status-bar");
+    const toggle = document.getElementById("status-bar-toggle");
+    const action = document.getElementById("signin-action");
+    if (!bar || !toggle || signInChipWired) return;
+    signInChipWired = true;
+
+    // The name is constant ("Status details") and aria-expanded carries the
+    // state; swapping the name as well would say it twice.
+    const setCollapsed = function (collapsed) {
+      bar.dataset.collapsed = String(collapsed);
+      toggle.setAttribute("aria-expanded", String(!collapsed));
+      setChipIcon(
+        toggle,
+        collapsed ? SIGN_IN_CHIP.ICON_SHOW : SIGN_IN_CHIP.ICON_HIDE,
+      );
+    };
+    // While the button is display:none (main.css) the bar is always expanded:
+    // a stored "collapsed" must not leave it collapsed with nothing to reopen
+    // it. Deleting that one CSS rule brings the button and the stored choice
+    // back together.
+    const toggleAvailable = window.getComputedStyle(toggle).display !== "none";
+    setCollapsed(toggleAvailable ? readChipCollapsedChoice() : false);
+
+    toggle.addEventListener("click", function () {
+      const collapsed = bar.dataset.collapsed !== "true";
+      setCollapsed(collapsed);
+      try {
+        window.localStorage.setItem(SIGN_IN_CHIP.STORAGE_KEY, String(collapsed));
+      } catch (error) {
+        logWarn("Could not store the status bar choice", error);
+      }
+    });
+
+    // Same function as the card's Sign in button, so the provider-switch
+    // marker is written before the redirect on this route too.
+    if (action) action.addEventListener("click", signInWithEntra);
+  }
+
+  // Short display name: "Md4@soton.ac.uk" becomes "md4".
+  function shortUserName(username) {
+    return String(username || "").split("@")[0].toLowerCase();
+  }
+
+  function renderSignInChip(state, username) {
+    const chip = document.getElementById("signin-status");
+    const textEl = document.getElementById("signin-status-text");
+    const textSr = document.getElementById("signin-status-sr");
+    const action = document.getElementById("signin-action");
+    const actionText = document.getElementById("signin-action-text");
+    const actionSr = document.getElementById("signin-action-sr");
+    const spec = SIGN_IN_CHIP.STATE_ATTRIBUTE[state];
+    if (!chip || !textEl || !spec) return;
+
+    chip.dataset.state = spec.state;
+
+    const showText = state === SIGN_IN_STATES.SIGNED_IN || typeof spec.text === "string";
+    textEl.hidden = !showText;
+    textEl.textContent =
+      state === SIGN_IN_STATES.SIGNED_IN ? shortUserName(username) : spec.text || "";
+    if (textSr) {
+      textSr.textContent =
+        state === SIGN_IN_STATES.SIGNED_IN ? ", signed in as " + username : "";
+    }
+
+    const showAction = typeof spec.action === "string";
+    if (action) action.hidden = !showAction;
+    if (actionText) actionText.textContent = SIGN_IN_CHIP.ACTION_TEXT;
+    if (actionSr) actionSr.textContent = showAction ? spec.action : "";
+
+    setChipIcon(chip, spec.icon);
+  }
+
+  // One mapping for the change event and the settled read, so they cannot
+  // drift. tokenOk is undefined on an event from a build without it: treat that
+  // as fine rather than inventing a problem.
+  function signInStateFor(isSignedIn, tokenOk) {
+    if (!isSignedIn) return SIGN_IN_STATES.SIGNED_OUT;
+    return tokenOk === false ? SIGN_IN_STATES.NO_TOKEN : SIGN_IN_STATES.SIGNED_IN;
+  }
 
   function renderSignInState(state, username) {
-    if (!elements) return;
-
     let badgeText;
     switch (state) {
       case SIGN_IN_STATES.CHECKING:
@@ -2214,6 +2659,9 @@ window.SetUpTool = (function () {
         break;
       case SIGN_IN_STATES.SIGNED_IN:
         badgeText = "Signed in as " + username;
+        break;
+      case SIGN_IN_STATES.NO_TOKEN:
+        badgeText = "Signed in, access needs refreshing";
         break;
       case SIGN_IN_STATES.EXPIRED:
         badgeText = "Sign-in expired, please sign in again";
@@ -2224,6 +2672,11 @@ window.SetUpTool = (function () {
       default:
         badgeText = "Not signed in";
     }
+
+    // Before the elements guard: the status bar is in the page header and must
+    // work whether or not the Set Up card was ever built.
+    renderSignInChip(state, username);
+    if (!elements) return;
 
     if (elements.signinStatusBadge) {
       setStatusText(elements.signinStatusBadge, badgeText);
@@ -2240,7 +2693,9 @@ window.SetUpTool = (function () {
     }
     if (elements.signoutBtn) {
       elements.signoutBtn.hidden =
-        state !== SIGN_IN_STATES.SIGNED_IN && state !== SIGN_IN_STATES.EXPIRED;
+        state !== SIGN_IN_STATES.SIGNED_IN &&
+        state !== SIGN_IN_STATES.NO_TOKEN &&
+        state !== SIGN_IN_STATES.EXPIRED;
       elements.signoutBtn.disabled = false;
     }
 
@@ -2259,6 +2714,7 @@ window.SetUpTool = (function () {
   async function initSignIn() {
     // Render immediately so the card never sits on the static markup's
     // "Not yet available" while the promise settles.
+    initSignInChip();
     renderSignInState(SIGN_IN_STATES.CHECKING, null);
 
     // EntraAuth fires NO change event when window.msal is absent — its runInit
@@ -2284,10 +2740,11 @@ window.SetUpTool = (function () {
       const detail = event && event.detail ? event.detail : {};
       if (detail.reason === "renewal-failed") {
         renderSignInState(SIGN_IN_STATES.EXPIRED, null);
-      } else if (detail.isSignedIn === true) {
-        renderSignInState(SIGN_IN_STATES.SIGNED_IN, detail.username);
       } else {
-        renderSignInState(SIGN_IN_STATES.SIGNED_OUT, null);
+        renderSignInState(
+          signInStateFor(detail.isSignedIn === true, detail.tokenOk),
+          detail.username,
+        );
       }
     });
 
@@ -2303,11 +2760,13 @@ window.SetUpTool = (function () {
 
     const account = window.EntraAuth.getAccount();
     const signedIn = window.EntraAuth.isSignedIn() && !!account;
-    if (signedIn) {
-      renderSignInState(SIGN_IN_STATES.SIGNED_IN, account.username);
-    } else {
-      renderSignInState(SIGN_IN_STATES.SIGNED_OUT, null);
-    }
+    renderSignInState(
+      signInStateFor(
+        signedIn,
+        signedIn && window.EntraAuth.getCachedToken("foundry") !== null,
+      ),
+      signedIn ? account.username : null,
+    );
 
     // The same settled read, for the Foundry summary (F2 stage 15a). The
     // sign-in card has always guarded against a missed change event by reading
@@ -2629,6 +3088,15 @@ window.SetUpTool = (function () {
       logDebug('Model state change listener registered');
     }
 
+    // Read the key's credit when the OpenRouter card is opened (never at load,
+    // so Set Up makes no extra network call on arrival).
+    const orCard = document.getElementById("setup-openrouter");
+    if (orCard) {
+      orCard.addEventListener("toggle", function () {
+        if (orCard.open) fetchOpenRouterKeyInfo({ force: false });
+      });
+    }
+
     // Foundry proxy picker (unit 4b-ii). A single DELEGATED change listener on
     // the fieldset, matching the convention provider-switcher-ui.js already
     // uses for the provider radios. No window.setup* global is added, so the
@@ -2731,6 +3199,10 @@ window.SetUpTool = (function () {
 
   window.setupToggleOpenRouter = function () {
     toggleOpenRouterVisibility();
+  };
+
+  window.setupCheckOpenRouter = function () {
+    fetchOpenRouterKeyInfo({ force: true });
   };
 
   window.setupSaveMathPix = function () {

@@ -108,7 +108,8 @@
     enterReviewMode() {
       if (!this._analysisRef || !this._layers.ocr) return;
       const hasItems = this._sortedItems.length > 0;
-      if (!hasItems) return;
+      // H-96: with nothing detected a person can still type the text and mark where it sits
+      if (!hasItems && !this._hasNoDetectedText()) return;
 
       this._inReviewMode = true;
 
@@ -1416,6 +1417,12 @@
         // took the whole generate path with it; return what we have instead.
         logWarn("Corrected analysis has no ocr block — returning it unchanged");
         return corrected;
+      }
+
+      // H-96: where detection found nothing, the whole list is the person's own typing.
+      // The formatter reads this flag to give it a heading of its own (no detector claim).
+      if (this._hasNoDetectedText()) {
+        corrected.ocr.personEntered = true;
       }
 
       corrected.ocr.items = newItems;

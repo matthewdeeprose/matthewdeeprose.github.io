@@ -228,6 +228,19 @@ window.MermaidDiagramDetection = (function () {
     // either, and is left as found (a mis-cased `Treemap-Beta` still routes
     // to flowchart there: register item 97's misroute, not this row's).
     treemap: "treemap",
+    // Item 121, 22 October 2026: detectType returns "venn" for a `venn-beta`
+    // source (census). Same reason as the treemap row above - without it the
+    // venn generator registers and is never called, and a venn source resolves
+    // to `unsupported:venn`. The legacy keyword scan has no venn branch either,
+    // and is left as found.
+    venn: "venn",
+    // Item 122, 25 October 2026: detectType returns "treeView" for a
+    // `treeView-beta` source (census). Same reason as the venn row above -
+    // without it the tree view generator registers and is never called, and a
+    // tree view source resolves to `unsupported:treeView`. The legacy keyword
+    // scan has no tree view branch either, and is left as found: the spellings
+    // that misroute to flowchart are recorded in the gold (TV14), not here.
+    treeView: "treeView",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

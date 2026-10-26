@@ -335,6 +335,62 @@
   }
 
   /**
+   * Values used to keep keyboard focus on a card when its buttons are rebuilt
+   * (H-125). The state text takes a programmatic-only tab stop while a state
+   * has no button for focus to land on.
+   */
+  var FOCUS_KEEP = Object.freeze({
+    BUTTON_SELECTOR: "button",
+    STATE_TEXT_SELECTOR: ".imgdesc-mm-state-text",
+    TABINDEX_ATTRIBUTE: "tabindex",
+    TABINDEX_PROGRAMMATIC: "-1",
+  });
+
+  /**
+   * Is keyboard focus inside this card's actions, or on its state text?
+   * Read before the buttons are rebuilt, because the rebuild destroys the
+   * focused button and focus then falls to <body>. Anywhere else (another
+   * card, a text field, the page at load) is false, so a background change
+   * never pulls focus.
+   * @param {HTMLElement} actionsEl
+   * @param {HTMLElement|null} stateTextEl
+   * @returns {boolean}
+   */
+  function focusIsOnCard(actionsEl, stateTextEl) {
+    var active = document.activeElement;
+    if (!active) return false;
+    return (
+      actionsEl.contains(active) || (!!stateTextEl && active === stateTextEl)
+    );
+  }
+
+  /**
+   * Put focus back on the card after a rebuild: the first button of the new
+   * state, or, when the state has none (Loading), the card's state text, so
+   * focus stays on the card and its current state. When buttons return while
+   * focus is on the state text, the first button takes it and the state text
+   * gives up its tab stop.
+   * @param {HTMLElement} actionsEl
+   * @param {HTMLElement|null} stateTextEl
+   */
+  function restoreCardFocus(actionsEl, stateTextEl) {
+    var firstButton = actionsEl.querySelector(FOCUS_KEEP.BUTTON_SELECTOR);
+    if (firstButton) {
+      firstButton.focus();
+      if (stateTextEl) {
+        stateTextEl.removeAttribute(FOCUS_KEEP.TABINDEX_ATTRIBUTE);
+      }
+      return;
+    }
+    if (!stateTextEl) return;
+    stateTextEl.setAttribute(
+      FOCUS_KEEP.TABINDEX_ATTRIBUTE,
+      FOCUS_KEEP.TABINDEX_PROGRAMMATIC,
+    );
+    stateTextEl.focus();
+  }
+
+  /**
    * Render appropriate action buttons based on model state.
    * @param {HTMLElement} item - The model item element
    * @param {string} modelKey
@@ -423,7 +479,10 @@
         break;
     }
 
+    var stateTextEl = item.querySelector(FOCUS_KEEP.STATE_TEXT_SELECTOR);
+    var keepFocus = focusIsOnCard(actionsEl, stateTextEl);
     actionsEl.innerHTML = buttons.join("");
+    if (keepFocus) restoreCardFocus(actionsEl, stateTextEl);
   }
 
   /**
@@ -552,6 +611,12 @@
       completeDownloadProgress(modelKey);
       refreshStorage();
     } catch (err) {
+      // A Cancel ends the download with AbortError: not a failure, and nothing is complete
+      if (err && err.name === "AbortError") {
+        logInfo('Download cancelled for "' + modelKey + '"');
+        delete downloadTracking[modelKey];
+        return;
+      }
       logError('Download failed for "' + modelKey + '":', err.message || err);
     }
   };
@@ -656,6 +721,16 @@
    *  ResilientFetch chunk events provide smooth, infrequent progress data */
   var DETAIL_THROTTLE_MS = 500;
 
+  /** Files under this size (tiny config/json files) are left out of the
+   *  aggregate: they finish instantly and would spike the percentage. */
+  var MIN_FILE_SIZE = 1024 * 1024; // 1 MB
+
+  /** Words of the one line spoken per finished file: "<model>: 2 of 4 files downloaded". */
+  var FILE_DONE_ANNOUNCE = Object.freeze({
+    SEPARATOR: " of ",
+    SUFFIX: " files downloaded",
+  });
+
   /**
    * Format bytes into a human-readable string (e.g. "134 MB").
    * @param {number} bytes
@@ -692,12 +767,63 @@
   }
 
   /**
+   * Announce one finished file — "Florence-2: 2 of 4 files downloaded".
+   *
+   * Called once per file, per model (not once per card: the caller passes the
+   * first card only).  The counts are the counted files known at this moment.
+   * The progress list is aria-live="off", so this is the only spoken progress.
+   *
+   * Says nothing for the last file (finished count equals the counted total):
+   * "Loaded" follows it, and on a real download the two were written in the
+   * same animation frame, so the last file line may never be heard (H-115 § 4).
+   *
+   * @param {HTMLElement} item the model card to take the display name from
+   * @param {string} modelKey
+   * @param {object} track the model's aggregate tracking object
+   */
+  function announceFileDone(item, modelKey, track) {
+    var announcer = window.accessibilityHelpers;
+    if (!announcer || typeof announcer.announce !== "function") return;
+
+    var counted = 0;
+    var finishedCount = 0;
+    var keys = Object.keys(track.files);
+    for (var k = 0; k < keys.length; k++) {
+      var f = track.files[keys[k]];
+      if (f.total < MIN_FILE_SIZE) continue;
+      counted++;
+      if (f.done) finishedCount++;
+    }
+    if (finishedCount === counted) return;
+
+    var nameEl = item ? item.querySelector(".imgdesc-mm-model-name") : null;
+    var displayName = nameEl ? nameEl.textContent.trim() : modelKey;
+    announcer.announce(
+      displayName +
+        ": " +
+        finishedCount +
+        FILE_DONE_ANNOUNCE.SEPARATOR +
+        counted +
+        FILE_DONE_ANNOUNCE.SUFFIX,
+    );
+  }
+
+  /**
    * Update the progress bar for a downloading model.
    *
    * Aggregates progress across all files (Florence-2 downloads multiple ONNX
    * files in parallel — vision_encoder, decoder, embeddings, etc.).  Tracks
-   * each file by its path, sums loaded/total across all known files, and
-   * enforces monotonic percentage so the bar never goes backwards.
+   * each file by its FILE NAME (not its path), because one file reaches this
+   * function under two keys — "onnx/x.onnx" from Transformers.js and "x.onnx"
+   * from the ResilientFetch bridge — and each must land on one entry.  Per
+   * file it keeps the larger `loaded` of the two sources (bytes known to have
+   * arrived) and sums loaded/total across the known files.  The percentage is
+   * NOT clamped: it can fall only if the total grows (a file registering late)
+   * or a source reports fewer bytes than another already has.
+   *
+   * Each finished counted file (at least MIN_FILE_SIZE) is announced once, per
+   * model, through the shared announcer.  The progress list itself is silent
+   * (aria-live="off" in tools.html).
    *
    * UI updates are throttled to UI_THROTTLE_MS to prevent flickering.
    *
@@ -742,7 +868,7 @@
 
     if (!progress) return;
 
-    var fileKey = progress.file || progress.name || "unknown";
+    var fileKey = shortFileName(progress.file) || progress.name || "unknown";
 
     // ── Handle "initiate" — register a new file ──
     if (progress.status === "initiate") {
@@ -759,9 +885,14 @@
     // We do NOT try to detect "all files done" here — that races with
     // initiate events and causes false 100% on tiny config files.
     if (progress.status === "done") {
-      if (track.files[fileKey]) {
-        track.files[fileKey].loaded = track.files[fileKey].total;
-        track.files[fileKey].done = true;
+      var finished = track.files[fileKey];
+      if (finished) {
+        var wasDone = finished.done;
+        finished.loaded = finished.total;
+        finished.done = true;
+        if (!wasDone && finished.total >= MIN_FILE_SIZE) {
+          announceFileDone(items[0], modelKey, track);
+        }
       }
       // Fall through to recalculate aggregate
     }
@@ -775,7 +906,10 @@
           done: false,
         };
       }
-      track.files[fileKey].loaded = progress.loaded;
+      track.files[fileKey].loaded = Math.max(
+        track.files[fileKey].loaded,
+        progress.loaded,
+      );
       track.files[fileKey].total = progress.total;
       track.currentFile = shortFileName(fileKey);
     }
@@ -784,7 +918,6 @@
     // Tiny config/json files (<1 MB) are excluded — they complete
     // instantly and would spike the percentage to 100% before real
     // download files have even registered.
-    var MIN_FILE_SIZE = 1024 * 1024; // 1 MB
     var totalBytes = 0;
     var loadedBytes = 0;
     var filesDone = 0;

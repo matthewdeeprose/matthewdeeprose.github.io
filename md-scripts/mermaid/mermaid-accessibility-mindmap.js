@@ -281,10 +281,18 @@ const MermaidAccessibilityMindmap = (function () {
   // characters the canvas prints. A node the
   // transform would EMPTY (only tags) is an unlabelled node (held empties,
   // above).
+  //
+  // ITEM 112, ENACT 2 (23 October 2026): the node text is group Q (the raw
+  // string reaches the helper), so both of its options are on. The canvas draws
+  // the inner text of the 23 tags the rule above does not list, draws an
+  // `input` as a text box holding its value, cuts a label at a lone `<` before
+  // a letter, and draws nothing for script, style or iframe.
   const MINDMAP_DRAWN_MARKUP = Object.freeze({
     tags: true,
     emphasis: true,
     codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
   });
   let warnedMarkupRuleMissing = false;
 

@@ -31,6 +31,7 @@
  *   ensureQwen(options)              → Promise<{model, processor}>
  *   getQwenStatus()                  → string
  *   generateQwenDescription(imageSource, options) → Promise<DescriptionResult>
+ *   markDownloadCancelled(modelKey)  → boolean
  *
  * Shared engine: consumed by the MathPix alt-text lane
  * (see mathpix-scripts/docs/alt-text/local-describer-plan.md).
@@ -81,6 +82,9 @@ window.ImageDescriberAnalyserTransformers = (function () {
   // ───────────────────────────────────────────────────────
   const CDN_V3 =
     "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1";
+  /** The property ResilientFetch sets on the abort error it raises for a scoped Cancel (H-128) */
+  const SCOPED_ABORT_MARK = "resilientFetchScopedAbort";
+
   const CDN_V4 =
     "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.0.0-next.9";
 
@@ -182,6 +186,17 @@ window.ImageDescriberAnalyserTransformers = (function () {
    */
   function pipelineKey(task, modelId) {
     return task + ":" + modelId;
+  }
+
+  /**
+   * Whether an error is the abort ResilientFetch raises for a Cancel on the Model Manager
+   * (H-128). That is not a load failure: no "error" status, no error log, and the status
+   * goes back to "not-loaded" so the next Download starts clean.
+   * @param {*} err
+   * @returns {boolean}
+   */
+  function isCancelledDownload(err) {
+    return !!err && err[SCOPED_ABORT_MARK] === true;
   }
 
   /**
@@ -605,6 +620,10 @@ window.ImageDescriberAnalyserTransformers = (function () {
         tokenizer: florenceTokenizer,
       };
     } catch (err) {
+      if (isCancelledDownload(err)) {
+        florenceStatus = "not-loaded";
+        throw err;
+      }
       florenceStatus = "error";
       florenceModel = null;
       florenceProcessor = null;
@@ -988,6 +1007,10 @@ window.ImageDescriberAnalyserTransformers = (function () {
         processor: fastvlmProcessor,
       };
     } catch (err) {
+      if (isCancelledDownload(err)) {
+        fastvlmStatus = "not-loaded";
+        throw err;
+      }
       fastvlmStatus = "error";
       fastvlmModel = null;
       fastvlmProcessor = null;
@@ -1232,6 +1255,10 @@ window.ImageDescriberAnalyserTransformers = (function () {
         processor: qwen35Processor,
       };
     } catch (err) {
+      if (isCancelledDownload(err)) {
+        qwen35Status = "not-loaded";
+        throw err;
+      }
       qwen35Status = "error";
       qwen35Model = null;
       qwen35Processor = null;
@@ -1479,6 +1506,10 @@ window.ImageDescriberAnalyserTransformers = (function () {
         processor: lfm2vlProcessor,
       };
     } catch (err) {
+      if (isCancelledDownload(err)) {
+        lfm2vlStatus = "not-loaded";
+        throw err;
+      }
       lfm2vlStatus = "error";
       lfm2vlModel = null;
       lfm2vlProcessor = null;
@@ -1619,6 +1650,39 @@ window.ImageDescriberAnalyserTransformers = (function () {
   }
 
   // ───────────────────────────────────────────────────────
+  // Cancelled downloads (H-134)
+  // ───────────────────────────────────────────────────────
+
+  /**
+   * Each picture model's own load status, keyed by the Model Manager's model key.
+   * A Cancel can leave a status at "loading": the library never settles a cancelled
+   * load (H-126), so the isCancelledDownload() catch above never runs for it.
+   */
+  const CANCELLABLE_STATUS = Object.freeze({
+    florence2: Object.freeze({ read: () => florenceStatus, reset: () => { florenceStatus = "not-loaded"; } }),
+    fastvlm: Object.freeze({ read: () => fastvlmStatus, reset: () => { fastvlmStatus = "not-loaded"; } }),
+    qwen35: Object.freeze({ read: () => qwen35Status, reset: () => { qwen35Status = "not-loaded"; } }),
+    lfm2vl: Object.freeze({ read: () => lfm2vlStatus, reset: () => { lfm2vlStatus = "not-loaded"; } }),
+  });
+
+  /**
+   * Puts one model's own status back to "not-loaded" after the Model Manager has
+   * cancelled its download, but only while that status is still "loading". A model
+   * that finished loading ("ready") and every other model are left alone.
+   *
+   * @param {string} modelKey — Model Manager key, e.g. "qwen35"
+   * @returns {boolean} true if the status was reset
+   */
+  function markDownloadCancelled(modelKey) {
+    const entry = CANCELLABLE_STATUS[modelKey];
+    if (!entry || entry.read() !== "loading") return false;
+
+    entry.reset();
+    logInfo("Cancelled download — status reset to not-loaded:", modelKey);
+    return true;
+  }
+
+  // ───────────────────────────────────────────────────────
   // Public API
   // ───────────────────────────────────────────────────────
 
@@ -1656,6 +1720,9 @@ window.ImageDescriberAnalyserTransformers = (function () {
     ensureLfm2Vl: ensureLfm2Vl,
     getLfm2VlStatus: getLfm2VlStatus,
     generateLfm2VlDescription: generateLfm2VlDescription,
+
+    // Cancelled downloads (H-134)
+    markDownloadCancelled: markDownloadCancelled,
 
     // Constants (exposed for tests and consumers)
     FLORENCE_MODEL_ID: FLORENCE_MODEL_ID,

@@ -347,12 +347,10 @@
         navigator.clipboard
           .writeText(text)
           .then(function () {
-            btn.innerHTML =
-              '<span aria-hidden="true" data-icon="check"></span> Copied';
+            setButtonIconLabel(btn, "check", "Copied");
             S.announceToScreenReader("Code copied to clipboard.");
             setTimeout(function () {
-              btn.innerHTML =
-                '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy code';
+              setButtonIconLabel(btn, "clipboardCopy", "Copy code");
             }, 2000);
           })
           .catch(function () {
@@ -364,6 +362,16 @@
   }
 
   // ── Copy response button ────────────────────────────────────────────────
+
+  // Swap a button's icon and label, and populate the icon. Markup inserted after
+  // page load is NOT auto-populated by icon-library.js, so without the refresh
+  // the swapped-in icon stays an empty span (the copy buttons lost their icon
+  // after the first copy).
+  function setButtonIconLabel(btn, iconName, label) {
+    btn.innerHTML =
+      '<span aria-hidden="true" data-icon="' + iconName + '"></span> ' + label;
+    if (typeof window.refreshIcons === "function") window.refreshIcons(btn);
+  }
 
   function getOrCreateActions(bubble) {
     var actions = bubble.querySelector(".local-chat-bubble-actions");
@@ -391,12 +399,11 @@
       navigator.clipboard
         .writeText(text)
         .then(function () {
-          copyBtn.innerHTML =
-            '<span aria-hidden="true" data-icon="check"></span> Copied';
+          setButtonIconLabel(copyBtn, "check", "Copied");
           S.announceToScreenReader("Response copied to clipboard.");
           setTimeout(function () {
-            copyBtn.innerHTML =
-              '<span aria-hidden="true" data-icon="copy"></span> Copy';
+            // "copy" is not a library icon; this button starts as clipboardCopy.
+            setButtonIconLabel(copyBtn, "clipboardCopy", "Copy");
           }, 2000);
         })
         .catch(function () {
@@ -454,12 +461,11 @@
             }),
           ])
           .then(function () {
-            btn.innerHTML =
-              '<span aria-hidden="true" data-icon="check"></span> Copied';
+            setButtonIconLabel(btn, "check", "Copied");
             S.announceToScreenReader("Formatted response copied to clipboard.");
             setTimeout(function () {
-              btn.innerHTML =
-                '<span aria-hidden="true" data-icon="clipboard"></span> Copy formatted';
+              // Back to the icon the button started with (it was "clipboard").
+              setButtonIconLabel(btn, "clipboardCopy", "Copy formatted");
             }, 2000);
           })
           .catch(function () {
@@ -479,12 +485,10 @@
     navigator.clipboard
       .writeText(text)
       .then(function () {
-        btn.innerHTML =
-          '<span aria-hidden="true" data-icon="check"></span> Copied';
+        setButtonIconLabel(btn, "check", "Copied");
         S.announceToScreenReader("Response copied to clipboard.");
         setTimeout(function () {
-          btn.innerHTML =
-            '<span aria-hidden="true" data-icon="clipboardCopy"></span> Copy formatted';
+          setButtonIconLabel(btn, "clipboardCopy", "Copy formatted");
         }, 2000);
       })
       .catch(function () {

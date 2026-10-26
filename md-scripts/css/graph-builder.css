@@ -83,7 +83,6 @@
 .gb-show-more-button,
 .gb-show-less-button,
 .gb-show-all-button {
-  border-width: 1px;
   border-style: solid;
 }
 .gb-file-label {
@@ -1204,12 +1203,15 @@ fieldset.gb-image-field textarea {
     align-items: start;
   }
   #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > h2,
-  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-input-methods,
-  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-navigation {
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active))
+    > .gb-input-methods,
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active))
+    > .gb-navigation {
     grid-column: 1 / -1;
   }
   /* Beside the panel there is nothing to separate it from above, so the stacked gap and rule go */
-  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active)) > .gb-data-preview {
+  #gb-data-input.gb-has-preview:not(:has(#gb-image-panel.active))
+    > .gb-data-preview {
     margin-top: 0;
     padding-top: 0;
     border-top-width: 0;
@@ -1256,8 +1258,10 @@ fieldset.gb-image-field textarea {
     align-items: start;
   }
   #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > h2,
-  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > #gb-chart-type-note,
-  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden])) > .gb-navigation {
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden]))
+    > #gb-chart-type-note,
+  #gb-chart-type.active:has(> #gb-image-original-type:not([hidden]))
+    > .gb-navigation {
     grid-column: 1 / -1;
   }
   #gb-chart-type.active > #gb-image-original-type:not([hidden]) {
@@ -1280,13 +1284,16 @@ fieldset.gb-image-field textarea {
 /* UX-19 BEGIN: Configure, wide screens, while the original image is showing. The live preview chart takes the wider left column and the image the right (placed by DOM order, nothing reordered); the settings card keeps its own column. The breakpoint is the first width at which the drawn chart reaches 400px, the old frame cap, so the chart never gets smaller. With no image Configure is as before. */
 @media (min-width: 1319px) {
   /* UX-19 G */
-  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) {
+  #gb-configure
+    .gb-config-preview:has(> #gb-image-original-config:not([hidden])) {
     display: grid;
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
     column-gap: 2rem;
     align-items: start;
   }
-  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) > h3 {
+  #gb-configure
+    .gb-config-preview:has(> #gb-image-original-config:not([hidden]))
+    > h3 {
     grid-column: 1 / -1;
   }
   #gb-configure .gb-config-preview > #gb-image-original-config:not([hidden]) {
@@ -1294,7 +1301,9 @@ fieldset.gb-image-field textarea {
   }
   /* UX-19 G END */
   /* UX-19 L */
-  #gb-configure .gb-config-preview:has(> #gb-image-original-config:not([hidden])) .gb-chart-preview-frame {
+  #gb-configure
+    .gb-config-preview:has(> #gb-image-original-config:not([hidden]))
+    .gb-chart-preview-frame {
     max-width: 800px;
   }
   /* UX-19 L END */

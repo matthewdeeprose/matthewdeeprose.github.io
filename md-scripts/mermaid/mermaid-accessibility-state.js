@@ -517,10 +517,19 @@
   // empty state and is named by its id (readAliasBreaks). An alias containing a double quote never
   // reaches this site: the alias declaration's pattern stops at the first
   // inner quote, so the alias is dropped before any rule runs.
+  //
+  // ITEM 112, ENACT 2 (23 October 2026): the alias name and the transition label
+  // are group Q (the raw string reaches the helper), so both of its options are
+  // on. The canvas draws the inner text of the 23 tags the rule above does not
+  // list, an `input` as a text box holding its value, a label cut at a lone `<`
+  // before a letter, and nothing for script, style or iframe. The transition
+  // label's cut at its first `;` runs BEFORE this rule (cutTransitionLabel).
   const STATE_DRAWN_MARKUP = Object.freeze({
     tags: true,
     emphasis: true,
     codespan: false,
+    contentTags: true,
+    deleteWholeElements: true,
   });
   let warnedMarkupRuleMissing = false;
 

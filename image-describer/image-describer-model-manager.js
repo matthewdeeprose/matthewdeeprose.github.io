@@ -116,7 +116,7 @@ window.ImageDescriberModelManager = (function () {
             name: 'Florence-2',
             modelId: 'onnx-community/Florence-2-base-ft',
             role: 'Captioning, object detection, OCR',
-            sizeMB: 200,
+            sizeMB: 1092,
             task: null,
             enabled: true,
             status: 'active',
@@ -212,8 +212,21 @@ window.ImageDescriberModelManager = (function () {
      */
     var modelStates = {};
 
-    /** Active download abort controllers, keyed by model key */
+    /** Active download abort controllers, keyed by model key (assigned for the length of a download, Cancel's unwind included) */
     var downloadAbortControllers = {};
+
+    /** Settles when a download has unwound after its controller was aborted (H-128), keyed by model key */
+    var downloadDones = {};
+
+    /** Cancels in progress: model key → promise that settles when the download is aborted, unwound and its saved files removed */
+    var cancelUnwinds = {};
+
+    /** A cancelled download's error name, and the pause that lets in-flight cache writes land before removal (H-128) */
+    var CANCEL = Object.freeze({
+        ERROR_NAME: 'AbortError',
+        MESSAGE: 'Download cancelled',
+        SETTLE_MS: 250
+    });
 
     /**
      * Initialise all model states to 'not-downloaded'.
@@ -319,6 +332,8 @@ window.ImageDescriberModelManager = (function () {
     /**
      * Returns the current state of a model.
      * Also checks gateway pipeline status for loaded state.
+     * A gateway that is still loading is returned as 'loading' but never stored (H-134):
+     * that is a transient, and a read must not write it into the state a Cancel resets.
      * @param {string} modelKey
      * @returns {string}
      */
@@ -337,7 +352,6 @@ window.ImageDescriberModelManager = (function () {
                 return 'loaded';
             }
             if (textGwStatus === 'loading') {
-                modelStates[modelKey] = 'loading';
                 return 'loading';
             }
         }
@@ -352,7 +366,6 @@ window.ImageDescriberModelManager = (function () {
                 return 'loaded';
             }
             if (pipelineStatus === 'loading') {
-                modelStates[modelKey] = 'loading';
                 return 'loading';
             }
         }
@@ -367,7 +380,6 @@ window.ImageDescriberModelManager = (function () {
                     return 'loaded';
                 }
                 if (fastvlmStatus === 'loading') {
-                    modelStates[modelKey] = 'loading';
                     return 'loading';
                 }
             }
@@ -383,7 +395,6 @@ window.ImageDescriberModelManager = (function () {
                     return 'loaded';
                 }
                 if (qwenStatus === 'loading') {
-                    modelStates[modelKey] = 'loading';
                     return 'loading';
                 }
             }
@@ -399,7 +410,6 @@ window.ImageDescriberModelManager = (function () {
                     return 'loaded';
                 }
                 if (lfm2vlStatus === 'loading') {
-                    modelStates[modelKey] = 'loading';
                     return 'loading';
                 }
             }
@@ -641,7 +651,37 @@ window.ImageDescriberModelManager = (function () {
         if (!model.enabled) {
             throw new Error('Model "' + modelKey + '" is not enabled');
         }
+        // One download per model at a time, a Cancel's unwind included (the controller is
+        // assigned until the download has unwound)
+        if (downloadAbortControllers[modelKey]) {
+            logWarn('Already downloading "' + modelKey + '"');
+            return;
+        }
         setUserState(modelKey, 'downloading');
+
+        // Cancel (H-128): the controller's signal reaches this model's Hugging Face requests
+        // through a ResilientFetch abort scope, and the race below lets a Cancel settle the
+        // download even where the library never settles its own promise.
+        var controller = new AbortController();
+        downloadAbortControllers[modelKey] = controller;
+        var markDone;
+        downloadDones[modelKey] = new Promise(function (resolve) { markDone = resolve; });
+        var removeAbortScope = window.ResilientFetch && typeof window.ResilientFetch.addAbortScope === 'function'
+            ? window.ResilientFetch.addAbortScope(model.modelId, controller.signal)
+            : function () {};
+        var abortRace = new Promise(function (resolve, reject) {
+            controller.signal.addEventListener('abort', function () {
+                reject(new DOMException(CANCEL.MESSAGE, CANCEL.ERROR_NAME));
+            }, { once: true });
+        });
+        abortRace.catch(function () {}); // observed by the races below; stops a lone rejection being reported
+        var raceAbort = function (promise) {
+            promise.catch(function () {}); // a download that fails after a Cancel is not reported separately
+            return Promise.race([promise, abortRace]);
+        };
+        var guardedProgress = onProgress
+            ? function (progress) { if (!controller.signal.aborted) onProgress(progress); }
+            : null;
 
         try {
             // Text model routing — delegate to LocalTextModelGateway
@@ -650,7 +690,7 @@ window.ImageDescriberModelManager = (function () {
                 if (!textGateway) {
                     throw new Error('LocalTextModelGateway not available for text model: ' + modelKey);
                 }
-                await textGateway.preDownloadModel(modelKey, onProgress);
+                await raceAbort(textGateway.preDownloadModel(modelKey, guardedProgress || onProgress));
                 setUserState(modelKey, 'cached');
                 return;
             }
@@ -660,64 +700,107 @@ window.ImageDescriberModelManager = (function () {
                 throw new Error('Transformers.js gateway not available');
             }
 
-            await gateway.ensureLibrary();
+            await raceAbort(gateway.ensureLibrary());
 
             // For pipeline-based models, use pipeline() which auto-downloads and caches
             if (model.task) {
-                await gateway.loadPipeline(model.task, model.modelId);
+                await raceAbort(gateway.loadPipeline(model.task, model.modelId));
                 // After download+load, unload from memory (we only wanted to cache)
                 // The pipeline is now cached by the gateway — leave it loaded
                 // (no point unloading just to reload later)
                 setUserState(modelKey, 'loaded');
             } else if (modelKey === 'florence2' && typeof gateway.ensureFlorence === 'function') {
                 // Florence-2 uses ensureFlorence() from Phase 10A gateway
-                await gateway.ensureFlorence({
-                    progressCallback: onProgress || null,
-                });
+                await raceAbort(gateway.ensureFlorence({
+                    progressCallback: guardedProgress,
+                }));
                 setUserState(modelKey, 'loaded');
             } else if (modelKey === 'fastvlm' && typeof gateway.ensureFastVLM === 'function') {
                 // FastVLM uses ensureFastVLM() from Phase 13A gateway
-                await gateway.ensureFastVLM({
-                    progressCallback: onProgress || null,
-                });
+                await raceAbort(gateway.ensureFastVLM({
+                    progressCallback: guardedProgress,
+                }));
                 setUserState(modelKey, 'loaded');
             } else if (modelKey === 'qwen35' && typeof gateway.ensureQwen === 'function') {
                 // Qwen3.5 uses ensureQwen() from Phase 14A gateway
-                await gateway.ensureQwen({
-                    progressCallback: onProgress || null,
-                });
+                await raceAbort(gateway.ensureQwen({
+                    progressCallback: guardedProgress,
+                }));
                 setUserState(modelKey, 'loaded');
             } else if (modelKey === 'lfm2vl' && typeof gateway.ensureLfm2Vl === 'function') {
                 // LFM2-VL uses ensureLfm2Vl() from Phase 15A gateway
-                await gateway.ensureLfm2Vl({
-                    progressCallback: onProgress || null,
-                });
+                await raceAbort(gateway.ensureLfm2Vl({
+                    progressCallback: guardedProgress,
+                }));
                 setUserState(modelKey, 'loaded');
             } else {
                 logWarn('Pre-download for "' + modelKey + '" — no download method available');
                 setUserState(modelKey, 'not-downloaded');
             }
         } catch (err) {
+            // A Cancel is neither a failure nor a success: wait for its unwind to put the
+            // state back to 'not-downloaded', and never land on 'download-error'.
+            if (controller.signal.aborted && cancelUnwinds[modelKey]) {
+                logInfo('Pre-download cancelled for "' + modelKey + '"');
+                removeAbortScope();
+                markDone(); // the unwind waits for this, so release it before waiting on the unwind
+                await cancelUnwinds[modelKey];
+                throw new DOMException(CANCEL.MESSAGE, CANCEL.ERROR_NAME);
+            }
             logError('Pre-download failed for "' + modelKey + '":', err.message || err);
             setUserState(modelKey, 'download-error');
             throw err;
+        } finally {
+            removeAbortScope();
+            markDone();
+            delete downloadDones[modelKey];
+            // After a Cancel the controller stays assigned until its unwind has finished,
+            // so a Download pressed meanwhile is refused; cancelDownload() releases it.
+            if (!controller.signal.aborted) delete downloadAbortControllers[modelKey];
         }
     }
 
     /**
-     * Cancels an in-progress download.
+     * Cancels an in-progress download: aborts its requests, waits for the download to
+     * unwind, removes what was saved, then goes back to 'not-downloaded'. The returned
+     * promise settles when all of that is done.
      * @param {string} modelKey
+     * @returns {Promise<void>|undefined}
      */
     function cancelDownload(modelKey) {
         var controller = downloadAbortControllers[modelKey];
-        if (controller) {
-            controller.abort();
-            delete downloadAbortControllers[modelKey];
-            setUserState(modelKey, 'not-downloaded');
-            logInfo('Download cancelled for "' + modelKey + '"');
-        } else {
+        if (!controller) {
             logWarn('No active download to cancel for "' + modelKey + '"');
+            return undefined;
         }
+        if (cancelUnwinds[modelKey]) return cancelUnwinds[modelKey];
+
+        var done = downloadDones[modelKey];
+        var model = findModel(modelKey);
+        controller.abort();
+        cancelUnwinds[modelKey] = (async function () {
+            try {
+                if (done) await done;
+                // A text model in this list is downloaded by the text gateway, which has its own run
+                if (model && model.type === 'text' && window.LocalTextModelGateway) {
+                    await window.LocalTextModelGateway.cancelDownload(modelKey);
+                }
+                await new Promise(function (resolve) { setTimeout(resolve, CANCEL.SETTLE_MS); });
+                // The library never settles a cancelled load (H-126), so this model's own gateway
+                // status is still 'loading'; put it back before the state change below can be read (H-134)
+                var cancelGateway = window.ImageDescriberAnalyserTransformers;
+                if (cancelGateway && typeof cancelGateway.markDownloadCancelled === 'function') {
+                    cancelGateway.markDownloadCancelled(modelKey);
+                }
+                await removeCachedModel(modelKey);
+                if (modelStates[modelKey] !== 'not-downloaded') setUserState(modelKey, 'not-downloaded');
+                logInfo('Download cancelled for "' + modelKey + '" — requests aborted, saved files removed');
+            } finally {
+                delete downloadAbortControllers[modelKey];
+                delete cancelUnwinds[modelKey];
+            }
+        })();
+        return cancelUnwinds[modelKey];
     }
 
     /**
@@ -980,9 +1063,11 @@ window.ImageDescriberModelManager = (function () {
                 // The analyser loading a model is analysis-caused. But the
                 // gateway also reports ready while loadModel() is in flight, and
                 // then the person did ask for it: a state of 'loading' can only
-                // have been set by a user Load, so the completion is theirs too.
-                // Without this, "Loaded" would go silent after a Load click.
-                var cause = modelStates[modelKey] === 'loading'
+                // have been set by a user Load, and 'downloading' only by a user
+                // Download (preDownloadModel loads the model as its last step), so
+                // the completion is theirs too. Without this, "Loaded" would go
+                // silent after a Load click, and after a Download (H-105).
+                var cause = modelStates[modelKey] === 'loading' || modelStates[modelKey] === 'downloading'
                     ? STATE_CAUSE.USER
                     : STATE_CAUSE.ANALYSIS;
                 setState(modelKey, 'loaded', cause);

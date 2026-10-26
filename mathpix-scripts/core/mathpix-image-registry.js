@@ -553,7 +553,11 @@
           try {
             const entry = this._createEntryFromDetection({
               url: match[2],
-              altText: match[1],
+              // UT-4: the stored markdown alt is encoded (`]` as an entity);
+              // the registry holds the plain text, as the integrator reads it.
+              altText: window.MathPixAltTextMMDSerialiser?.decodeAltFromMarkdown
+                ? window.MathPixAltTextMMDSerialiser.decodeAltFromMarkdown(match[1])
+                : match[1],
               fullMatch: match[0],
               lineNumber: lineNum,
               syntax: "markdown",

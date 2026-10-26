@@ -32,6 +32,11 @@ window.LocalTextModelManager = (function () {
     var modelStates = new Map();
     var loadedModelKey = null;
 
+    // Cancels in progress (H-128): key → promise that settles once the download has been
+    // aborted, unwound and its saved files removed. The state stays 'downloading' until then.
+    var cancelUnwinds = new Map();
+    var CANCEL_ERROR_NAME = 'AbortError';
+
     // Event emission
     function emitEvent(eventName, data) {
         if (window.EmbedEventEmitter) {
@@ -105,6 +110,12 @@ window.LocalTextModelManager = (function () {
             }
             setState(key, 'cached');
         } catch (error) {
+            // A Cancel is neither a failure nor a success: wait for its unwind to put the
+            // state back, and never set 'cached' or 'download-error' over it.
+            if (error && error.name === CANCEL_ERROR_NAME && cancelUnwinds.has(key)) {
+                await cancelUnwinds.get(key);
+                throw error;
+            }
             setState(key, 'download-error');
             logError('Pre-download failed for ' + key + ':', error);
             throw error;
@@ -122,7 +133,16 @@ window.LocalTextModelManager = (function () {
         }
 
         if (!isWebLLM(modelDef)) {
-            gateway.cancelDownload(key);
+            // Abort, wait for the download to unwind, remove what was saved, THEN go back
+            // to 'not-downloaded' — so a second Download press meanwhile does nothing.
+            if (cancelUnwinds.has(key)) return cancelUnwinds.get(key);
+            var unwind = gateway.cancelDownload(key).then(function () {
+                setState(key, 'not-downloaded');
+            }).finally(function () {
+                cancelUnwinds.delete(key);
+            });
+            cancelUnwinds.set(key, unwind);
+            return unwind;
         }
         // WebLLM has no cancel-download API; the load will complete or fail
 

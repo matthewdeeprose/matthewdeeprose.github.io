@@ -1718,7 +1718,7 @@ class MathPixPDFResultRenderer extends MathPixBaseModule {
         zipInfo.innerHTML = `
         <p style="margin: 0 0 0.5rem 0;"><strong>${getIcon("folderClosed", INLINE_ICON_OPTIONS)} LaTeX ZIP extracted:</strong> ${
           texFiles.length
-        } .tex file(s) found</p>
+        } .tex ${texFiles.length === 1 ? "file" : "files"} found</p>
         <p style="margin: 0;"><strong>Displaying:</strong> ${this.escapeHtml(
           mainFile.name,
         )}</p>

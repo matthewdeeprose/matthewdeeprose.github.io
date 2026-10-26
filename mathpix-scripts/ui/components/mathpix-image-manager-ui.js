@@ -645,8 +645,13 @@ const MathPixImageManagerUI = (function () {
 
   // Visible-only strings for the three views.
   const BATCH_UNAVAILABLE_TEXT = "Batch description is unavailable.";
+  // UT-D7: shown on a card whose picture file is missing (plain visible text).
+  const FILE_MISSING_CARD_TEXT = "Picture file missing";
   const BATCH_NO_TARGETS_TEXT =
     "Every image already has alt text, or is marked decorative. There is nothing to describe.";
+  // UT-D7a: the same sentence when some pictures were left out for a missing file.
+  const BATCH_NO_TARGETS_TEXT_SKIPPED =
+    "Every picture with a file already has alt text, or is marked decorative. There is nothing to describe.";
   const BATCH_START_INTRO_SINGULAR =
     "One image has no alt text and is not decorative. It will be described using AI.";
   const BATCH_START_INTRO_PLURAL =
@@ -923,6 +928,55 @@ const MathPixImageManagerUI = (function () {
   // so a marker count of it here is a true zero rather than a prose hit.
   const STATUS_ADD_TEXT = "Image added to document.";
   const STATUS_SWAP_TEXT = "Image replaced.";
+
+  // --- UT-10: the empty state when the restore found missing pictures ---
+  // The archive's text points to pictures the file does not carry (entry 37).
+  // No next-step sentence: UT-11 made Add image work here, but it adds a new,
+  // separate picture and does not fill a missing crop, so the message keeps no
+  // next-step sentence.
+  const EMPTY_STATE_DEFAULT_TEXT = "No images in this document.";
+  function composeEmptyStateText(missingCount) {
+    if (!(missingCount > 0)) return EMPTY_STATE_DEFAULT_TEXT;
+    const pictures = missingCount === 1 ? "1 picture that is" : `${missingCount} pictures that are`;
+    return `No pictures are saved in this file. The text points to ${pictures} not here. The AI cannot describe a picture it does not have.`;
+  }
+  // Written only when the words differ: an identical-value textContent write is
+  // still a DOM mutation, and refresh() runs on every registry change.
+  function setEmptyStateText(emptyMsg, missingCount) {
+    const want = composeEmptyStateText(missingCount);
+    if (emptyMsg.textContent.replace(/\s+/g, " ").trim() === want) return;
+    emptyMsg.textContent = want;
+  }
+
+  // --- UT-11: plain sentences for failed gestures ---
+  // Each says what failed and what to try. The program text of the error stays
+  // in the module log (logError at the catch), never in the status.
+  const STATUS_FILE_FAILED_TEXT =
+    "That picture could not be used. Try a different picture file.";
+  const STATUS_SWAP_FAILED_TEXT =
+    "The picture could not be replaced. Try a different picture file.";
+  const STATUS_ADD_FAILED_TEXT =
+    "The picture could not be added. Try a different picture file.";
+  const STATUS_REMOVE_FAILED_TEXT =
+    "The picture could not be removed. Close the manager and try again.";
+
+  // --- UT-11: the dialog description in the missing-pictures state ---
+  // The manager body holds controls, so UniversalModal refuses to describe the
+  // dialog by it. The manager points aria-describedby at the empty-state
+  // paragraph itself, only while that paragraph carries the missing-pictures
+  // message, and removes the pointer only if it is the one it set.
+  const EMPTY_MESSAGE_ID = "image-manager-empty";
+  function syncMissingDescription(dialog, showingMissingMessage) {
+    if (!dialog) return;
+    const current = dialog.getAttribute("aria-describedby");
+    if (showingMissingMessage) {
+      if (current === EMPTY_MESSAGE_ID) return;
+      if (current) return; // a pointer we did not set belongs to someone else
+      dialog.setAttribute("aria-describedby", EMPTY_MESSAGE_ID);
+      return;
+    }
+    if (current === EMPTY_MESSAGE_ID) dialog.removeAttribute("aria-describedby");
+  }
 
   // --- Parcel g-4: the remove outcome sentence, and the stack-top wait ---
   // Same full-stop rule as the two above: the clause joins with a single
@@ -1805,6 +1859,7 @@ ${
             <dt class="visually-hidden">Status</dt>
             <dd class="image-manager-status" data-status="${this._escapeAttr(entry.status)}">${this._escapeHTML(statusLabel)}</dd>
             ${this._buildCaptionMetaHTML(entry)}
+            ${this._buildFileMissingMetaHTML(entry)}
           </dl>
           <div class="image-manager-actions">
             <button type="button" class="image-manager-btn image-manager-swap-btn"
@@ -1837,6 +1892,27 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       if (caption.trim().length === 0) return "";
       return `<dt class="visually-hidden image-manager-caption-term">Caption</dt>
             <dd class="image-manager-caption">${this._escapeHTML(caption)}</dd>`;
+    }
+
+    /**
+     * UT-D7: "Picture file missing" as plain visible text on a card whose
+     * picture has no file (a crop link the ZIP never held), as a dt/dd pair
+     * beside the caption lines. Empty string when the file is there, or when
+     * the batch runner (which owns the test) has not loaded.
+     * @param {Object} entry - Image registry entry
+     * @returns {string} HTML string
+     * @private
+     */
+    _buildFileMissingMetaHTML(entry) {
+      const runnerModule = window.MathPixAltTextBatchRunner;
+      if (!runnerModule || typeof runnerModule.hasImageFile !== "function") {
+        return "";
+      }
+      if (runnerModule.hasImageFile(entry, this.restorer?.imageBlobUrlMap)) {
+        return "";
+      }
+      return `<dt class="visually-hidden image-manager-missing-file-term">File</dt>
+            <dd class="image-manager-missing-file">${FILE_MISSING_CARD_TEXT}</dd>`;
     }
 
     /**
@@ -3716,18 +3792,17 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       if (this._isEditViewOpen()) return none(DESCRIBE_ALL_BLOCKED_BY_EDIT_LINE);
       if (this._batchDialogOpen) return none(null);
 
-      const registry = this.restorer?.imageRegistry;
       const runnerModule = window.MathPixAltTextBatchRunner;
       if (!runnerModule || typeof runnerModule.create !== "function") {
         return none(BATCH_UNAVAILABLE_TEXT);
       }
-      const targets = runnerModule.selectTargets(
-        registry && typeof registry.getAllImages === "function"
-          ? registry.getAllImages()
-          : [],
+      const { targets, skippedMissing } = this._partitionBatchTargets(
+        runnerModule,
         { includeDescribed: Boolean(options && options.includeDescribed === true) },
       );
-      if (targets.length === 0) return none(BATCH_NO_TARGETS_TEXT);
+      if (targets.length === 0) {
+        return none(this._noTargetsLine(skippedMissing));
+      }
 
       const model = options && options.model;
       if (model && !this._chooseAltModelFromScript(model)) {
@@ -3738,9 +3813,67 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         instance: null,
         root: null,
         targets,
+        skippedMissing,
         resolveOnce: () => {},
         quiet: true,
       });
+    }
+
+    /**
+     * UT-D7 — the batch targets, with pictures whose file is missing left out
+     * and counted. One place for both entry points (the dialog and the quiet
+     * run), reading the restorer's blob URL map so an OCR crop link with no
+     * file in the ZIP is recognised.
+     * @param {Object} runnerModule - window.MathPixAltTextBatchRunner
+     * @param {{includeDescribed?: boolean}} [options]
+     * @returns {{targets: Array<Object>, skippedMissing: number}}
+     * @private
+     */
+    _partitionBatchTargets(runnerModule, options) {
+      const registry = this.restorer?.imageRegistry;
+      const entries =
+        registry && typeof registry.getAllImages === "function"
+          ? registry.getAllImages()
+          : [];
+      return runnerModule.partitionTargets(entries, {
+        includeDescribed: Boolean(options && options.includeDescribed === true),
+        skipMissingFiles: true,
+        blobUrlMap: this.restorer?.imageBlobUrlMap,
+      });
+    }
+
+    /**
+     * UT-D7a — the nothing-to-describe line. With pictures skipped for a missing
+     * file the first sentence says "with a file" so it stays true, and the
+     * skipped clause follows; with none skipped the line is unchanged.
+     * @param {number} skippedMissing
+     * @returns {string}
+     * @private
+     */
+    _noTargetsLine(skippedMissing) {
+      const skipped = typeof skippedMissing === "number" && skippedMissing > 0;
+      return this._withSkippedClause(
+        skipped ? BATCH_NO_TARGETS_TEXT_SKIPPED : BATCH_NO_TARGETS_TEXT,
+        skippedMissing,
+      );
+    }
+
+    /**
+     * UT-D7 — a sentence with the skipped-pictures clause joined on, or the
+     * sentence unchanged when nothing was skipped. Composed into ONE string so
+     * it goes out on one raise (rule C10).
+     * @param {string} sentence
+     * @param {number} skippedMissing
+     * @returns {string}
+     * @private
+     */
+    _withSkippedClause(sentence, skippedMissing) {
+      const runnerModule = window.MathPixAltTextBatchRunner;
+      const clause =
+        runnerModule && typeof runnerModule.composeSkippedClause === "function"
+          ? runnerModule.composeSkippedClause(skippedMissing)
+          : "";
+      return clause ? `${sentence} ${clause}` : sentence;
     }
 
     /**
@@ -3754,7 +3887,6 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * @private
      */
     async _openBatchDialog() {
-      const registry = this.restorer?.imageRegistry;
       const runnerModule = window.MathPixAltTextBatchRunner;
 
       if (!runnerModule || typeof runnerModule.create !== "function") {
@@ -3763,17 +3895,14 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         return;
       }
 
-      const allEntries =
-        registry && typeof registry.getAllImages === "function"
-          ? registry.getAllImages()
-          : [];
       // Uncovered-only targeting (A6) comes from the RUNNER, never re-derived
-      // here — one predicate, one place.
-      const targets = runnerModule.selectTargets(allEntries);
+      // here — one predicate, one place. UT-D7: pictures with no file are left
+      // out and counted.
+      const { targets, skippedMissing } = this._partitionBatchTargets(runnerModule);
 
       if (targets.length === 0) {
         logInfo("_openBatchDialog: no uncovered targets");
-        this._showStatus(BATCH_NO_TARGETS_TEXT, "info");
+        this._showStatus(this._noTargetsLine(skippedMissing), "info");
         return;
       }
 
@@ -3818,7 +3947,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
             if (confirmBtn) {
               confirmBtn.addEventListener("click", () => {
-                this._runBatch({ instance, root, targets, resolveOnce });
+                this._runBatch({ instance, root, targets, skippedMissing, resolveOnce });
               });
             } else {
               logWarn("_openBatchDialog: confirm button not found in DOM");
@@ -3882,7 +4011,14 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * Parcel BG-P2 — drive the runner and place the outcome line.
      * @private
      */
-    async _runBatch({ instance, root, targets, resolveOnce, quiet = false }) {
+    async _runBatch({
+      instance,
+      root,
+      targets,
+      skippedMissing = 0,
+      resolveOnce,
+      quiet = false,
+    }) {
       const runnerModule = window.MathPixAltTextBatchRunner;
       const orchestrator = this._buildBatchOrchestrator(root);
 
@@ -3944,6 +4080,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       try {
         result = await this._batchRunner.run({
           targets,
+          skippedMissing,
           onProgress: ({ phase, index, total }) => {
             if (phase !== runnerModule.PHASE.STARTING) return;
             if (countEl) countEl.textContent = `${index + 1} of ${total}`;
@@ -5161,8 +5298,13 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         keepRequested && adapter && typeof adapter._getUserModelChoice === "function"
           ? adapter._getUserModelChoice()
           : null;
+      // AV-1: a pick made in the AI tab's own select never passes through this
+      // picker, so no provider was recorded for it (null). It is kept too; the
+      // candidate check below drops it when the active provider does not offer it.
       const keepChoice =
-        !!heldChoice && this._altPickProvider === this._activeAltProviderId();
+        !!heldChoice &&
+        (this._altPickProvider == null ||
+          this._altPickProvider === this._activeAltProviderId());
       if (!keepChoice && adapter && typeof adapter._setUserModelChoice === "function") {
         adapter._setUserModelChoice(null);
       }
@@ -6437,6 +6579,10 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
               label: TOAST_SUCCESS_UNDO_LABEL,
               ariaLabel: TOAST_SUCCESS_UNDO_ARIA_LABEL,
               onClick: () => this._undoSave(imageId, snapshot, dirtyKeys),
+              // In the dialog, "Changes undone." replaces this message and has to
+              // stay for its own duration, so the click must not hide it at once.
+              // A page toast keeps the default.
+              ...(options.forceToast ? {} : { dismissOnClick: false }),
             },
           ],
           ...(options.forceToast ? { forceToast: true } : {}),
@@ -7428,7 +7574,10 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
             `_materialiseImageFile: failed to read blob URL for ${entryId}`,
             error,
           );
-          throw new Error(`${MATERIALISE_ERROR_PREFIX}${error.message}`);
+          // UT-11: the program text stays in the log above, not in the status.
+          throw new Error(
+            `${MATERIALISE_ERROR_PREFIX}the stored image could not be read`,
+          );
         } finally {
           clearTimeout(timeoutId);
         }
@@ -7486,7 +7635,14 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       if (!registry) {
         logWarn("No image registry on restorer");
         grid.innerHTML = "";
-        if (emptyMsg) emptyMsg.hidden = false;
+        if (emptyMsg) {
+          setEmptyStateText(emptyMsg, this.restorer.missingFigureCount);
+          emptyMsg.hidden = false;
+        }
+        syncMissingDescription(
+          this.currentModal?.modal,
+          !!emptyMsg && this.restorer.missingFigureCount > 0,
+        );
         if (countEl) countEl.textContent = "";
         this._updateCoverageCounter();
         return;
@@ -7497,13 +7653,23 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       if (total === 0) {
         grid.innerHTML = "";
-        if (emptyMsg) emptyMsg.hidden = false;
+        if (emptyMsg) {
+          setEmptyStateText(emptyMsg, this.restorer.missingFigureCount);
+          emptyMsg.hidden = false;
+        }
+        syncMissingDescription(
+          this.currentModal?.modal,
+          !!emptyMsg && this.restorer.missingFigureCount > 0,
+        );
         if (countEl) countEl.textContent = "0 images";
         this._updateCoverageCounter();
         return;
       }
 
       if (emptyMsg) emptyMsg.hidden = true;
+      syncMissingDescription(this.currentModal?.modal, false);
+      // UT-10: the registry holds pictures now, so the missing-pictures count is spent.
+      this.restorer.missingFigureCount = 0;
       if (countEl) {
         countEl.textContent = `${total} image${total !== 1 ? "s" : ""}`;
       }
@@ -7566,7 +7732,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
           await this._handleFileSelected(file);
         } catch (error) {
           logError("File handling error:", error);
-          this._showStatus(`Error: ${error.message}`, "error");
+          this._showStatus(STATUS_FILE_FAILED_TEXT, "error");
         }
       });
 
@@ -7658,7 +7824,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         this.refresh();
       } catch (error) {
         logError("Swap failed:", error);
-        this._showStatus(`Replace failed: ${error.message}`, "error");
+        this._showStatus(STATUS_SWAP_FAILED_TEXT, "error");
       }
     }
 
@@ -7691,13 +7857,25 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       logInfo("Executing add image");
 
       try {
+        // UT-11: an archive with crop links but no image files restores with no
+        // registry. Make an empty one with the constructor the restore uses, so
+        // the picture is added as a new, separate picture.
+        if (!this.restorer.imageRegistry) {
+          this.restorer.imageRegistry = new window.MathPixImageRegistry();
+          if (this.restorer.restoredSession) {
+            this.restorer.restoredSession.imageRegistry =
+              this.restorer.imageRegistry;
+          }
+          logInfo("Add image: no registry existed, created an empty one");
+        }
+
         await this.restorer.addImageToDocument(fileData);
         // Parcel g-3: coverage clause as the second sentence, same helper.
         this._showStatus(this._withCoverageClause(STATUS_ADD_TEXT), "success");
         this.refresh();
       } catch (error) {
         logError("Add failed:", error);
-        this._showStatus(`Add failed: ${error.message}`, "error");
+        this._showStatus(STATUS_ADD_FAILED_TEXT, "error");
       }
     }
 
@@ -7816,7 +7994,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         }
       } catch (error) {
         logError("Delete failed:", error);
-        this._showStatus(`Remove failed: ${error.message}`, "error");
+        this._showStatus(STATUS_REMOVE_FAILED_TEXT, "error");
       }
     }
 
@@ -8230,6 +8408,18 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
   return {
     MathPixImageManagerUI,
     getInstance,
+    // UT-10 — the empty-state wording, exposed on the single-source rule: the
+    // rows READ the composer and the default rather than retyping them.
+    composeEmptyStateText,
+    EMPTY_STATE_DEFAULT_TEXT,
+    // UT-11 — the dialog pointer helper and the plain failure sentences, exposed
+    // so the rows read them rather than retyping them.
+    syncMissingDescription,
+    EMPTY_MESSAGE_ID,
+    STATUS_ADD_FAILED_TEXT,
+    STATUS_SWAP_FAILED_TEXT,
+    STATUS_REMOVE_FAILED_TEXT,
+    STATUS_FILE_FAILED_TEXT,
     // Exposed for Stage 5 tests (Phase D Fix 1): asserts the body class
     // string the manager toggles is the one the scoped CSS rule targets.
     BODY_CLASS_MANAGER_OPEN,

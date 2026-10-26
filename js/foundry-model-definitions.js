@@ -426,6 +426,17 @@ const GPT_5_6_SOL_MAX_OUTPUT_TOKENS = 16000;
 const GPT_6_SOL_REASONING_EFFORT = "low";
 const GPT_6_SOL_MAX_OUTPUT_TOKENS = 16000;
 
+// REQUEST OPTIONS FOR gpt-5, o4-mini, gpt-6-luna AND grok-4.7 (H-123, 24 October 2026).
+// Unlike the two pairs above these are MEASURED, not CHOICES: H-121 sent each model
+// 16,000 and "low" against 8,000 and none (7 pictures x 3 runs, report at
+// .claude/measurements/h121/report.md) and all four accepted "low" (HTTP 200). gpt-5,
+// o4-mini and gpt-6-luna were at least 20 % cheaper or faster with no accuracy loss;
+// grok-4.7 went from a median 121 s a description to 36 s, with one description in 18
+// slipping. Decided by Matthew, 24 October 2026. One shared pair: the four values
+// are the same and were measured together.
+const MEASURED_FOUNDRY_REASONING_EFFORT = "low";
+const MEASURED_FOUNDRY_MAX_OUTPUT_TOKENS = 16000;
+
 // Built by a function, not held as a literal, so that
 // FoundryModelFactory.registerFoundryModels() can rebuild every registration
 // through the factory (stage ro's proof, prove-request-options.mjs).
@@ -794,6 +805,10 @@ const buildFoundryModels = () => [
     ],
     imageSupportNote:
       "Vision empirically verified on this deployment via the Image Describer (4 June 2026). Initially registered text-only pending this verification (cf. gpt-oss-120b, which proved text-only).",
+    // H-123, 24 October 2026: MEASURED, not a choice. H-121 (.claude/measurements/h121/report.md)
+    // sent these two against 8,000 and none: gpt-5 cheaper by 46 % and faster by 53 %, whole-pass 100 both.
+    reasoningEffort: MEASURED_FOUNDRY_REASONING_EFFORT,
+    maxOutputTokens: MEASURED_FOUNDRY_MAX_OUTPUT_TOKENS,
   }),
 
   // ── gpt-5.1 (vision verified 4 June 2026; PDF verified 23 June 2026 — initially registered text-only) ──
@@ -1252,6 +1267,10 @@ const buildFoundryModels = () => [
     ],
     imageSupportNote:
       "Vision empirically verified on this deployment via the Image Describer (6 June 2026). Initially registered text-only pending this verification.",
+    // H-123, 24 October 2026: MEASURED, not a choice. H-121 (.claude/measurements/h121/report.md)
+    // sent these two against 8,000 and none: o4-mini cheaper by a third, faster by 38 %, whole-pass 90.5 to 100.
+    reasoningEffort: MEASURED_FOUNDRY_REASONING_EFFORT,
+    maxOutputTokens: MEASURED_FOUNDRY_MAX_OUTPUT_TOKENS,
   }),
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1465,6 +1484,10 @@ const buildFoundryModels = () => [
     ],
     imageSupportNote:
       "Vision measured on this deployment 13 October 2026: accepted-reads on all three sampled runs (ratio 1.00), sentinel named. PDF attachments refused (HTTP 400).",
+    // H-123, 24 October 2026: MEASURED, not a choice. H-121 (.claude/measurements/h121/report.md)
+    // sent these two against 8,000 and none: grok-4.7 from a median 121 s a description (3 of 3 timeouts on one picture) to 36 s.
+    reasoningEffort: MEASURED_FOUNDRY_REASONING_EFFORT,
+    maxOutputTokens: MEASURED_FOUNDRY_MAX_OUTPUT_TOKENS,
   }),
 
   // ── DeepSeek-V3.1 (DeepSeek format — non-reasoning, text-only) ───────────
@@ -2884,6 +2907,10 @@ const buildFoundryModels = () => [
     ],
     imageSupportNote:
       "Vision measured on this deployment 27 September 2026: median accepted-reads over three sampled runs (spread 0.67-0.83), sentinel named.",
+    // H-123, 24 October 2026: MEASURED, not a choice. H-121 (.claude/measurements/h121/report.md)
+    // sent these two against 8,000 and none: gpt-6-luna cheaper by a third and faster by nearly half.
+    reasoningEffort: MEASURED_FOUNDRY_REASONING_EFFORT,
+    maxOutputTokens: MEASURED_FOUNDRY_MAX_OUTPUT_TOKENS,
   }),
 
   // ── gpt-6-sol (chat — reasoning; deployed 27 September 2026 by the owner, registered the same day) ──

@@ -146,14 +146,6 @@
     /**
      * Refresh all text model cards with current state.
      */
-    // Until the first full refresh has run, state changes are INITIALISATION, not
-    // news. The cards ship "Checking…" and settle to their real state on load; with
-    // aria-live on the status wrapper that spoke a bare "Not downloaded" or "Cached"
-    // once per card — thirteen utterances before the user reached the page, none of
-    // them naming which model they described. The markup is no longer a live region;
-    // announceState() below is the channel, and it stays quiet until this flips.
-    var hasSettledInitialStates = false;
-
     function refreshAll() {
         if (!window.LocalTextModelManager) return;
 
@@ -162,11 +154,31 @@
             updateModelUI(models[i].key, models[i].state);
         }
         refreshGPUStatus();
-        hasSettledInitialStates = true;
+    }
+
+    // A state change is spoken only while a PERSON's action on that model is in
+    // progress (Download, Cancel, Load, Unload, Remove). The cards ship "Checking…"
+    // and settle to their real state on load, which with aria-live on the status
+    // wrapper spoke a bare "Not downloaded" or "Cached" once per card — thirteen
+    // utterances before the user reached the page, none naming the model. The
+    // manager's model:stateChange event carries no cause, so the click handlers
+    // record it here: a depth count per model key (a Cancel runs inside the
+    // Download it cancels, so a flag would be cleared too early). Nothing at page
+    // load raises it, so a cache check that settles late stays silent without
+    // depending on when it settles. Same shape as H-105 for the picture models.
+    var personActionDepth = {};
+
+    function beginPersonAction(modelKey) {
+        personActionDepth[modelKey] = (personActionDepth[modelKey] || 0) + 1;
+    }
+
+    function endPersonAction(modelKey) {
+        personActionDepth[modelKey] = Math.max(0, (personActionDepth[modelKey] || 0) - 1);
     }
 
     /**
-     * Announce a model's new state, naming the model.
+     * Announce a model's new state, naming the model — for a change the person
+     * made, and only that.
      *
      * The status wrapper used to be aria-live, which announced the label alone —
      * "Cached", with no way to tell which of a dozen models it referred to. Routing
@@ -177,21 +189,33 @@
      * @param {string} label human-readable state label
      */
     function announceState(modelKey, label) {
-        if (!hasSettledInitialStates) return;
+        if (!personActionDepth[modelKey]) return;
         var announcer = window.accessibilityHelpers;
         if (!announcer || typeof announcer.announce !== "function") return;
 
+        announcer.announce(getDisplayName(modelKey) + ": " + label);
+    }
+
+    /**
+     * The name on the model's card (the registry's userInfo.displayName, which
+     * getRegisteredModels() carries on each entry), or its key if it has none.
+     * Spoken lines use this so they match the name a person can see (SC 2.5.3).
+     * @param {string} modelKey
+     * @returns {string}
+     */
+    function getDisplayName(modelKey) {
         var displayName = modelKey;
         if (window.LocalTextModelManager) {
             var models = window.LocalTextModelManager.getRegisteredModels();
             for (var i = 0; i < models.length; i++) {
                 if (models[i].key === modelKey) {
-                    displayName = models[i].displayName || modelKey;
+                    var info = models[i].userInfo;
+                    displayName = (info && info.displayName) || modelKey;
                     break;
                 }
             }
         }
-        announcer.announce(displayName + ": " + label);
+        return displayName;
     }
 
     /**
@@ -236,6 +260,54 @@
     // ========================================================================
     // ACTION BUTTONS
     // ========================================================================
+
+    /**
+     * Values used to keep keyboard focus on a card when its buttons are rebuilt
+     * (H-125). The state text takes a programmatic-only tab stop while a state
+     * has no button for focus to land on.
+     */
+    var FOCUS_KEEP = Object.freeze({
+        BUTTON_SELECTOR: "button",
+        TABINDEX_ATTRIBUTE: "tabindex",
+        TABINDEX_PROGRAMMATIC: "-1"
+    });
+
+    /**
+     * Is keyboard focus inside this card's actions, or on its state text?
+     * Read before the buttons are rebuilt, because the rebuild destroys the
+     * focused button and focus then falls to <body>. Anywhere else (another
+     * card, a text field, the page at load) is false, so a background change
+     * never pulls focus.
+     * @param {HTMLElement} actionsEl
+     * @param {HTMLElement|null} stateTextEl
+     * @returns {boolean}
+     */
+    function focusIsOnCard(actionsEl, stateTextEl) {
+        var active = document.activeElement;
+        if (!active) return false;
+        return actionsEl.contains(active) || (!!stateTextEl && active === stateTextEl);
+    }
+
+    /**
+     * Put focus back on the card after a rebuild: the first button of the new
+     * state, or, when the state has none (Loading), the card's state text, so
+     * focus stays on the card and its current state. When buttons return while
+     * focus is on the state text, the first button takes it and the state text
+     * gives up its tab stop.
+     * @param {HTMLElement} actionsEl
+     * @param {HTMLElement|null} stateTextEl
+     */
+    function restoreCardFocus(actionsEl, stateTextEl) {
+        var firstButton = actionsEl.querySelector(FOCUS_KEEP.BUTTON_SELECTOR);
+        if (firstButton) {
+            firstButton.focus();
+            if (stateTextEl) stateTextEl.removeAttribute(FOCUS_KEEP.TABINDEX_ATTRIBUTE);
+            return;
+        }
+        if (!stateTextEl) return;
+        stateTextEl.setAttribute(FOCUS_KEEP.TABINDEX_ATTRIBUTE, FOCUS_KEEP.TABINDEX_PROGRAMMATIC);
+        stateTextEl.focus();
+    }
 
     /**
      * Render appropriate action buttons based on model state.
@@ -298,7 +370,9 @@
                 break;
         }
 
+        var keepFocus = focusIsOnCard(cached.actions, cached.stateText);
         cached.actions.innerHTML = buttons.join("");
+        if (keepFocus) restoreCardFocus(cached.actions, cached.stateText);
     }
 
     /**
@@ -347,6 +421,58 @@
 
     /** Detail text update interval */
     var DETAIL_THROTTLE_MS = 500;
+
+    /** Files under this size (tiny config/json files) are left out of the aggregate. */
+    var MIN_FILE_SIZE = 1024 * 1024; // 1 MB
+
+    /** Words of the one line spoken per finished file: "<model>: 2 of 4 files downloaded". */
+    var FILE_DONE_ANNOUNCE = Object.freeze({
+        SEPARATOR: " of ",
+        SUFFIX: " files downloaded"
+    });
+
+    /**
+     * Extract a short file name from a path ("onnx/x.onnx" -> "x.onnx").
+     * @param {string} filePath
+     * @returns {string}
+     */
+    function shortFileName(filePath) {
+        if (!filePath) return "";
+        var parts = filePath.split("/");
+        return parts[parts.length - 1];
+    }
+
+    /**
+     * Announce one finished file: "Model name: 2 of 4 files downloaded".
+     *
+     * Called once per file, per model.  The counts are the counted files known
+     * at this moment.  The progress list is aria-live="off", so this is the only
+     * spoken per-file progress.  Says nothing for the last file (finished count
+     * equals the counted total): the state line that follows it covers the end.
+     *
+     * @param {string} modelKey
+     * @param {object} track the model's aggregate tracking object
+     */
+    function announceFileDone(modelKey, track) {
+        var announcer = window.accessibilityHelpers;
+        if (!announcer || typeof announcer.announce !== "function") return;
+
+        var counted = 0;
+        var finishedCount = 0;
+        var keys = Object.keys(track.files);
+        for (var k = 0; k < keys.length; k++) {
+            var f = track.files[keys[k]];
+            if (f.total < MIN_FILE_SIZE) continue;
+            counted++;
+            if (f.done) finishedCount++;
+        }
+        if (finishedCount === counted) return;
+
+        announcer.announce(
+            getDisplayName(modelKey) + ": " + finishedCount +
+            FILE_DONE_ANNOUNCE.SEPARATOR + counted + FILE_DONE_ANNOUNCE.SUFFIX
+        );
+    }
 
     /**
      * Format bytes into a human-readable string.
@@ -415,7 +541,11 @@
             detailText = progress.text || "";
         } else {
             // ONNX multi-file format
-            var fileKey = progress.file || progress.name || "unknown";
+            // Keyed by FILE NAME, not path: one file reaches this function under
+            // two keys ("onnx/x.onnx" from Transformers.js, "x.onnx" from the
+            // ResilientFetch bridge) and each must land on one entry.  Per file the
+            // larger `loaded` is kept.  The percentage is NOT clamped.
+            var fileKey = shortFileName(progress.file) || progress.name || "unknown";
 
             if (progress.status === "initiate") {
                 if (!track.files[fileKey]) {
@@ -425,20 +555,23 @@
             }
 
             if (progress.status === "done" && track.files[fileKey]) {
+                var wasDone = track.files[fileKey].done;
                 track.files[fileKey].loaded = track.files[fileKey].total;
                 track.files[fileKey].done = true;
+                if (!wasDone && track.files[fileKey].total >= MIN_FILE_SIZE) {
+                    announceFileDone(modelKey, track);
+                }
             }
 
             if (progress.total > 0) {
                 if (!track.files[fileKey]) {
                     track.files[fileKey] = { loaded: 0, total: progress.total, done: false };
                 }
-                track.files[fileKey].loaded = progress.loaded;
+                track.files[fileKey].loaded = Math.max(track.files[fileKey].loaded, progress.loaded);
                 track.files[fileKey].total = progress.total;
             }
 
             // Aggregate across large files only (skip tiny config files)
-            var MIN_FILE_SIZE = 1024 * 1024;
             var aggKeys = Object.keys(track.files);
             for (var ai = 0; ai < aggKeys.length; ai++) {
                 var f = track.files[aggKeys[ai]];
@@ -598,24 +731,39 @@
 
     window.localTMDownload = async function (key) {
         if (!window.LocalTextModelManager) return;
+        beginPersonAction(key);
         try {
             await window.LocalTextModelManager.preDownloadModel(key, function (progress) {
                 updateDownloadProgress(key, progress);
             });
             completeDownloadProgress(key);
         } catch (err) {
+            // A Cancel ends the download with AbortError: not a failure, and nothing is complete
+            if (err && err.name === "AbortError") {
+                logInfo('Download cancelled for "' + key + '"');
+                delete downloadTracking[key];
+                return;
+            }
             logError('Download failed for "' + key + '":', err.message || err);
+        } finally {
+            endPersonAction(key);
         }
     };
 
     window.localTMCancelDownload = function (key) {
         if (!window.LocalTextModelManager) return;
-        window.LocalTextModelManager.cancelDownload(key);
+        beginPersonAction(key);
+        try {
+            window.LocalTextModelManager.cancelDownload(key);
+        } finally {
+            endPersonAction(key);
+        }
         delete downloadTracking[key];
     };
 
     window.localTMLoad = async function (key) {
         if (!window.LocalTextModelManager) return;
+        beginPersonAction(key);
         try {
             // GPU safety check
             if (window.LocalGPUMonitor && typeof window.LocalGPUMonitor.checkBeforeLoadAsync === "function") {
@@ -629,15 +777,20 @@
             await window.LocalTextModelManager.loadModel(key);
         } catch (err) {
             logError('Load failed for "' + key + '":', err.message || err);
+        } finally {
+            endPersonAction(key);
         }
     };
 
     window.localTMUnload = async function (key) {
         if (!window.LocalTextModelManager) return;
+        beginPersonAction(key);
         try {
             await window.LocalTextModelManager.unloadModel(key);
         } catch (err) {
             logError('Unload failed for "' + key + '":', err.message || err);
+        } finally {
+            endPersonAction(key);
         }
     };
 
@@ -656,7 +809,12 @@
             var confirmed = await confirmFn("Remove " + displayName + " from cache?");
             if (!confirmed) return;
 
-            await window.LocalTextModelManager.removeCachedModel(key);
+            beginPersonAction(key);
+            try {
+                await window.LocalTextModelManager.removeCachedModel(key);
+            } finally {
+                endPersonAction(key);
+            }
         } catch (err) {
             logError('Remove failed for "' + key + '":', err.message || err);
         }

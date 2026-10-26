@@ -937,8 +937,16 @@
  * flex item until something unhides it. */
 #chat-app .chat-input-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: flex-end;
+}
+
+/* The visible "Your message" label takes the first line (placeholder removed).
+ * Wrapping is safe: the textarea (flex:1, min-width:0) and buttons still fit one line
+ * beneath it, as the comment above records. */
+#chat-app .chat-input-bar label {
+  flex: 0 0 100%;
 }
 
 #chat-app .chat-input-bar textarea {
@@ -1104,6 +1112,25 @@
   border-width: 3px;
 }
 
+/* Pointing at the box turns its dashed border solid, as the Image Describer's
+ * drop area does. A shape change, never colour alone (colour comes from the
+ * theme sheets). */
+.chat-attach:hover {
+  border-style: solid;
+}
+
+/* The real control is #chat-attach-input, which is .visually-hidden (its own
+ * outline is drawn on a 1px box nobody can see). The indicator sits on the
+ * LABEL, not the box: the box also holds Remove, Open MathPix and the pictures
+ * checkbox, and a :focus-within on the box would ring it whenever any of those
+ * had focus. The input sits inside the label, so only the input lights it.
+ * Colour comes from light.css / dark.css. */
+.chat-attach-label:focus-within {
+  outline-width: 3px;
+  outline-style: solid;
+  outline-offset: 2px;
+}
+
 /* Windows High Contrast: pin the drop-target border to a system colour so both
  * the resting and drag-over cues stay perceivable under forced-colors. */
 @media (forced-colors: active) {
@@ -1118,6 +1145,355 @@
   .chat-attach {
     transition: none;
   }
+}
+
+/* ── Attachment preview card (parcel P4) ──────────────────────────────────────
+ * What a person sees after choosing a file: a card that lets them recognise it
+ * (the picture itself, a PDF's first page, or the first lines of a document's
+ * text) with the name, type, size and Remove beside it. Reading small text in the
+ * card is not the point. Layout only here; the card's border, fill and the
+ * text-page colours are in light.css / dark.css (one block, so a theme change
+ * touches one place). The Remove button keeps the global button focus treatment.
+ *
+ * Two columns (parcel P4b): .chat-attach-body holds the card host and .chat-attach-main
+ * (the "Selected attachment" region, advice line, Open MathPix, pictures box and notice).
+ * At 600px and wider, with a card shown, the card fills the left column against the box's
+ * left edge and everything else sits on the right; below 600px they stack, the card first
+ * at the full width of the box (capped at 18rem) and Remove spans the width, so nothing
+ * scrolls sideways at 320px. The grid is switched on only while the host is shown, so with
+ * no file chosen the main block takes the whole width as before. */
+.chat-attachment-card-host {
+  max-width: 18rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.chat-attach-main {
+  min-width: 0;
+}
+
+@media (min-width: 600px) {
+  .chat-attach-body:has(> .chat-attachment-card-host:not([hidden])) {
+    display: grid;
+    grid-template-columns: clamp(8rem, 30%, 14rem) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+    margin-top: 0.5rem;
+  }
+
+  .chat-attachment-card-host {
+    max-width: none;
+    margin: 0;
+  }
+}
+
+.chat-attachment-chip {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 0 0 0.5rem;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* The card fills its host (a column at 600px and wider, the box width below): no padding,
+ * the picture runs edge to edge inside the 1px border. */
+.chat-attachment-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 0; /* picture edge to edge */
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 4px;
+}
+
+/* A picture or a PDF's first page: the card's full width at the picture's own shape. */
+.chat-attachment-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  object-fit: contain;
+}
+
+/* A Word, PowerPoint, Excel or text file: a small "page" holding the first lines of its
+ * text, the card's full width at A4 shape, clipped and fading out at the bottom (the fade
+ * colour is in the theme sheets). */
+.chat-attachment-textpage {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1.414;
+  overflow: hidden;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chat-attachment-textpage::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 45%;
+}
+
+/* A PDF the reader could not preview: a decorative document icon. */
+.chat-attachment-doc-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 6rem;
+  padding: 1.5rem 0;
+}
+
+.chat-attachment-doc-icon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* The right column (parcel P4c). The name and Remove share one row (the name grows, Remove
+ * sits at the right, and Remove is straight after the name in the page order so the Tab
+ * order and the picture agree); under them a row of facts with a small heading over each
+ * value; the advice line and Open MathPix share a row; "How we read this file" spans the
+ * column. Nothing here is a colour or a focus rule: both come from the theme sheets. */
+.chat-attachment-details {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex: 1 1 12rem;
+  min-width: 0;
+}
+
+.chat-attachment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.chat-attachment-filename {
+  flex: 1 1 10rem;
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.chat-attachment-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35em;
+  min-height: 44px; /* adequate target size (SC 2.5.8) */
+  cursor: pointer;
+}
+
+/* Type, count and size: a heading over each value. */
+.chat-attachment-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 2rem;
+  margin: 0.25rem 0 0;
+}
+
+.chat-attachment-facts > div {
+  min-width: 0;
+}
+
+.chat-attachment-facts dt {
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.chat-attachment-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Advice beside Open MathPix. Hidden children take no space, so an empty row is flat. */
+.chat-attach-advice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 1rem;
+}
+
+.chat-attach-advice-row > .chat-attachment-advice {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0.5rem 0;
+}
+
+.chat-attach-advice-row > .chat-open-mathpix {
+  flex: none;
+  margin-left: auto;
+}
+
+/* "How we read this file": a native disclosure. main.css gives <details> a 1rem margin and
+ * the theme sheets its outline, so only the margin is reset here. */
+.chat-attachment-more {
+  margin-top: 0.5rem;
+}
+
+.chat-attachment-more > details {
+  margin: 0;
+}
+
+.chat-attachment-read {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.chat-attachment-read > div {
+  display: contents;
+}
+
+.chat-attachment-read dt {
+  font-weight: 600;
+}
+
+.chat-attachment-read dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 599px) {
+  /* Type, count and size join on one line: "PDF, 15 pages · 2.4 MB". The headings stay for a
+   * screen reader and are hidden from the eye. The second declaration of each separator gives
+   * it an empty spoken alternative where that is supported. */
+  .chat-attachment-facts {
+    display: block;
+  }
+
+  .chat-attachment-facts > div,
+  .chat-attachment-facts dd {
+    display: inline;
+  }
+
+  .chat-attachment-facts dt {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    border: 0;
+    white-space: nowrap;
+  }
+
+  .chat-attachment-count::before {
+    content: ", ";
+    content: ", " / "";
+  }
+
+  .chat-attachment-size::before {
+    content: " · ";
+    content: " · " / "";
+  }
+
+  .chat-attachment-chip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-attachment-details {
+    flex-basis: auto;
+  }
+
+  .chat-attachment-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-attachment-filename {
+    flex-basis: auto;
+  }
+
+  .chat-attachment-remove {
+    justify-content: center;
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .chat-attach-advice-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .chat-attach-advice-row > .chat-attachment-advice {
+    flex-basis: auto;
+  }
+
+  .chat-attach-advice-row > .chat-open-mathpix {
+    width: 100%;
+    margin-left: 0;
+    box-sizing: border-box;
+  }
+
+  /* One column: a heading sits close over its value, with the space between pairs. */
+  .chat-attachment-read {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  .chat-attachment-read dd {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Windows High Contrast: pin the card border to a system colour. */
+@media (forced-colors: active) {
+  .chat-attachment-card {
+    border-color: CanvasText;
+  }
+}
+
+/* The "Include pictures" row: a thin divider above, a label at least 44px tall to
+ * click, and a native check box at least 24px square. [hidden] keeps hiding it
+ * because the layout display is on :not([hidden]). */
+#chat-attach-pictures-wrap:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid currentcolor;
+}
+
+#chat-attach-pictures-wrap input[type="checkbox"] {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin: 0;
+}
+
+/* Block flow, not flex: the label holds text and spans, and flex would drop the
+ * spaces between them ("Includepage pictures(15pages)"). Padding gives the 44px. */
+#chat-attach-pictures-wrap label {
+  display: block;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0.6rem 0;
+  cursor: pointer;
 }
 
 /* ── Starter prompts: welcome region + chips ──────────────────────────────────

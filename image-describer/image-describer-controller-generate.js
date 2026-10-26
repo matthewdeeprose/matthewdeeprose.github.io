@@ -424,6 +424,20 @@
   const AI_NOTICE =
     "Description created using AI. Verify with a subject matter expert before use.";
 
+  // Description tables reuse the responsive card pattern (md-scripts/css/sortable-table.css)
+  // without its sorting, row stops or "Show more" (H-100). Only the pattern's class names are
+  // borrowed; the "sortable-table" class is never given, because the sortable-tables observer
+  // would convert any table that carries it.
+  const TABLE_PATTERN = Object.freeze({
+    TABLE_CLASS: "mdSortableTable-data-table",
+    NAME_PREFIX: "Table ",
+    HEADING_ID_PREFIX: "imgdesc-table-heading-",
+    // The prompt asks for a visible "Table: …" line directly before every table (H-114);
+    // a paragraph that starts this way names the table that follows it.
+    TITLE_TEST: /^Table:\s*\S/,
+    TITLE_ID_PREFIX: "imgdesc-table-title-",
+  });
+
   /**
    * Choose the sentence for one generation failure.
    *
@@ -1358,6 +1372,74 @@
       this.lastRawHTML = output ? output.innerHTML : this.lastRawHTML;
     },
 
+    /**
+     * Gives every table in a finished description the responsive card pattern's
+     * markup (H-100): its class, ARIA roles, scope on column headers, a
+     * data-label on every body cell, and a name. No sort buttons, no aria-sort,
+     * no row tabindex. Call ONCE per final render, AFTER lastRawHTML is taken, so
+     * Copy text, formatted and HTML keep the plain table. A table that already
+     * carries the class is left alone, so a second call cannot double-wrap.
+     * A table directly after a heading is named by it; a table directly after a
+     * paragraph starting "Table:" is named by that visible line (H-114); any other
+     * gets an aria-label "Table N" (no caption element), N counting the tables in this description.
+     *
+     * @param {HTMLElement} outputEl - the description container
+     * @returns {number} how many tables were enhanced
+     */
+    _enhanceDescriptionTables(outputEl) {
+      if (!outputEl) return 0;
+
+      const tables = outputEl.querySelectorAll("table");
+      let enhanced = 0;
+
+      tables.forEach((table, index) => {
+        if (table.classList.contains(TABLE_PATTERN.TABLE_CLASS)) return;
+
+        table.classList.add(TABLE_PATTERN.TABLE_CLASS);
+        table.setAttribute("role", "table");
+
+        // Name: the heading directly before the table, else a "Table: …" line directly
+        // before it, else aria-label "Table N". The title line stays visible for everyone.
+        // Not a <caption>: a caption is the name AND a content node, so a screen
+        // reader says the name on entering the table and again as "caption … out of caption".
+        const before = table.previousElementSibling;
+        if (before && /^H[1-6]$/.test(before.tagName)) {
+          if (!before.id) before.id = TABLE_PATTERN.HEADING_ID_PREFIX + (index + 1);
+          table.setAttribute("aria-labelledby", before.id);
+        } else if (
+          before &&
+          before.tagName === "P" &&
+          TABLE_PATTERN.TITLE_TEST.test(before.textContent.trim())
+        ) {
+          if (!before.id) before.id = TABLE_PATTERN.TITLE_ID_PREFIX + (index + 1);
+          table.setAttribute("aria-labelledby", before.id);
+        } else if (!table.querySelector("caption")) {
+          table.setAttribute("aria-label", TABLE_PATTERN.NAME_PREFIX + (index + 1));
+        }
+
+        table.querySelectorAll("thead, tbody").forEach((group) => group.setAttribute("role", "rowgroup"));
+        table.querySelectorAll("tr").forEach((row) => row.setAttribute("role", "row"));
+
+        const labels = Array.from(table.querySelectorAll("thead th")).map((th) =>
+          th.textContent.replace(/\s+/g, " ").trim(),
+        );
+        table.querySelectorAll("th").forEach((th) => {
+          th.setAttribute("role", "columnheader");
+          th.setAttribute("scope", "col");
+        });
+        table.querySelectorAll("tbody tr").forEach((row) => {
+          Array.from(row.cells).forEach((cell, i) => {
+            cell.setAttribute("role", "cell");
+            cell.setAttribute("data-label", labels[i] || "");
+          });
+        });
+
+        enhanced++;
+      });
+
+      return enhanced;
+    },
+
     // ========================================================================
     // VISUAL VERIFICATION (Two-Pass)
     // ========================================================================
@@ -1439,7 +1521,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
     /**
      * Get or create the verification embed instance
-     * Uses a separate instance so it can have a different model
+     * Uses a separate instance so it can have a different model.
+     * A Foundry registration's declared output limit (capped at the verification
+     * ceiling) and reasoning effort are applied to the new instance (H-130).
      * @returns {OpenRouterEmbed}
      */
     getOrCreateVerificationEmbed() {
@@ -1451,6 +1535,15 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       const verifyModel = this.getVerificationModel();
       logInfo("Creating verification embed with model:", verifyModel);
 
+      // H-130: a Foundry registration's declared output limit and reasoning
+      // effort apply to the accuracy check as well as to the description.
+      // The helper caps at the description ceiling, so cap again at this one.
+      const declared = this._declaredFoundryRequestOptions(verifyModel);
+      const verifyLimit =
+        declared.maxOutputTokens !== null
+          ? Math.min(declared.maxOutputTokens, VERIFICATION_TOKEN_CEILING)
+          : this._resolveVerificationBudget(verifyModel);
+
       const embedConfig = {
         containerId: "imgdesc-verification-output",
 
@@ -1461,7 +1554,7 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         announceContainer: false,
         model: verifyModel,
         temperature: 0.2, // Lower temperature for accuracy checking
-        max_tokens: this._resolveVerificationBudget(verifyModel),
+        max_tokens: verifyLimit,
         showNotifications: false,
         showStreamingProgress: false,
         enableCompression: false, // Image already compressed from pass 1
@@ -1490,6 +1583,12 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       }
 
       this.verificationEmbedInstance = new window.OpenRouterEmbed(embedConfig);
+      if (declared.reasoningEffort !== null) {
+        this.verificationEmbedInstance.configureReasoning({
+          enabled: true,
+          effort: declared.reasoningEffort,
+        });
+      }
       return this.verificationEmbedInstance;
     },
 
@@ -2989,6 +3088,10 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Unwrap <p> tags inside list items to prevent loose-list spacing issues
         this.unwrapLooseListItems(this.elements.output);
 
+        // Responsive card markup for description tables, after the final snapshot
+        // so the copy routes keep the plain table (H-100)
+        this._enhanceDescriptionTables(this.elements.output);
+
         // Extract and apply alt text to images (Phase 2E)
         this.extractAndApplyAltText();
 
@@ -3370,6 +3473,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         this.adjustHeadingLevels(this.elements.output);
         this.unwrapLooseListItems(this.elements.output);
 
+        // Responsive card markup for description tables, after the final snapshot (H-100)
+        this._enhanceDescriptionTables(this.elements.output);
+
         // Stage: Finalising
         this.showProgress("FINALISING_LOCAL");
         await new Promise((r) => setTimeout(r, 200));
@@ -3647,6 +3753,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         // Adjust headings for page hierarchy (same as cloud path)
         this.adjustHeadingLevels(this.elements.output);
         this.unwrapLooseListItems(this.elements.output);
+
+        // Responsive card markup for description tables, after the final snapshot (H-100)
+        this._enhanceDescriptionTables(this.elements.output);
 
         // Stage: Finalising
         this.showProgress("FINALISING_QWEN");
@@ -3928,6 +4037,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
         this.adjustHeadingLevels(this.elements.output);
         this.unwrapLooseListItems(this.elements.output);
 
+        // Responsive card markup for description tables, after the final snapshot (H-100)
+        this._enhanceDescriptionTables(this.elements.output);
+
         // Stage: Finalising
         this.showProgress("FINALISING_LFM2VL");
         await new Promise((r) => setTimeout(r, 200));
@@ -4179,6 +4291,16 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
      * @param {string} modelId The model actually being sent to
      */
     _applyOutputBudget(embed, modelId) {
+      // H-120: a Foundry registration may declare its own limit and reasoning
+      // effort. Read first, so the effort is applied even if the resolver is absent.
+      const declared = this._declaredFoundryRequestOptions(modelId);
+      this._applyDeclaredReasoningEffort(embed, declared.reasoningEffort);
+
+      if (declared.maxOutputTokens !== null) {
+        embed.setMaxTokens(declared.maxOutputTokens);
+        logInfo("Description output limit (registration)", modelId, declared);
+        return;
+      }
       if (!window.ModelOutputBudget) {
         logError(
           "ModelOutputBudget is not loaded; the description limit stays at its construction value",
@@ -4191,6 +4313,82 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
       });
       embed.setMaxTokens(resolved.budget);
       logInfo("Description output limit", modelId, resolved);
+    },
+
+    /**
+     * What a Foundry registration declares for its requests (H-120), the way
+     * the Captions Fixer reads it: `metadata.maxOutputTokens` when a positive
+     * whole number (capped at DESCRIPTION_TOKEN_CEILING), and
+     * `metadata.reasoningEffort` when a non-empty string. A model that declares
+     * neither, and every non-Foundry model, returns nulls and keeps its body.
+     * @param {string} modelId
+     * @returns {{ maxOutputTokens: number|null, reasoningEffort: string|null }}
+     */
+    _declaredFoundryRequestOptions(modelId) {
+      const none = { maxOutputTokens: null, reasoningEffort: null };
+      const isFoundry =
+        typeof modelId === "string" &&
+        FOUNDRY_SURFACE_IDS.some((id) => modelId.startsWith(id + "/"));
+      if (!isFoundry) return none;
+
+      const registry = window.modelRegistry;
+      if (!registry || typeof registry.getModel !== "function") return none;
+      let metadata = null;
+      try {
+        const model = registry.getModel(modelId, true);
+        metadata = model && model.metadata ? model.metadata : null;
+      } catch (error) {
+        logWarn("Registry lookup failed for", modelId, error);
+      }
+      if (!metadata) return none;
+
+      const declared = { ...none };
+      const limit = metadata.maxOutputTokens;
+      if (limit !== undefined && limit !== null) {
+        if (Number.isInteger(limit) && limit >= 1) {
+          declared.maxOutputTokens = Math.min(limit, DESCRIPTION_TOKEN_CEILING);
+          if (limit > DESCRIPTION_TOKEN_CEILING) {
+            logWarn(
+              `${modelId} declares maxOutputTokens ${limit}; capped at ${DESCRIPTION_TOKEN_CEILING}`,
+            );
+          }
+        } else {
+          logWarn(
+            `${modelId} declares maxOutputTokens ${String(limit)}, which is not a positive whole number; ignored`,
+          );
+        }
+      }
+      const effort = metadata.reasoningEffort;
+      if (typeof effort === "string" && effort.trim()) {
+        declared.reasoningEffort = effort;
+      }
+      return declared;
+    },
+
+    /**
+     * Put a declared reasoning effort on the cached embed, or take back what an
+     * earlier send put there (H-120). The embed is reused across model changes,
+     * so a model that declares no effort must not inherit the previous one's.
+     * Only what this method set is undone; nothing else is touched.
+     * @param {OpenRouterEmbed} embed
+     * @param {string|null} effort
+     */
+    _applyDeclaredReasoningEffort(embed, effort) {
+      if (effort !== null) {
+        if (!this._reasoningBeforeDeclared) {
+          const found = embed.getReasoningConfig();
+          this._reasoningBeforeDeclared = {
+            enabled: found.enabled === true,
+            effort: found.effort === undefined ? null : found.effort,
+          };
+        }
+        embed.configureReasoning({ enabled: true, effort });
+        return;
+      }
+      if (this._reasoningBeforeDeclared) {
+        embed.configureReasoning(this._reasoningBeforeDeclared);
+        this._reasoningBeforeDeclared = null;
+      }
     },
 
     /**

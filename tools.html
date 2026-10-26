@@ -436,7 +436,7 @@
         }
       });
     </script>
-      <style>
+    <style>
       /* T-23b C3: show the content of a closed <details> for printing without opening it, so no toggle listener fires. */
       @media print {
         details:not([open])::details-content {
@@ -1123,17 +1123,39 @@
           aria-live="assertive"
           id="a11y-sr-alert"
         ></span>
-        <!-- MathJax status indicator for power users -->
-        <!-- A visible diagnostic readout, deliberately NOT a live region. It sits
-             above the page's only <h1>, and as a live region it announced "MathJax
-             Loaded: No" eight times and then "Yes" during a single load — before the
-             user had reached any content. Nobody arrives at this page waiting to be
-             told MathJax finished. aria-atomic made it worse by re-speaking the
-             label with the value each time, which is where the run-together
-             "MathJax Loaded:Yes" a listener reported came from. -->
-        <div id="mathjax-status" data-ready="false">
-          <span class="mathjax-label">MathJax Loaded:</span>
-          <span id="mathjax-status-value">No</span>
+        <!-- Status bar, centred above the h1: the University sign-in state and
+             the MathJax readout as one unit, with a button to collapse it to
+             icons only. Both halves are visible diagnostics, deliberately NOT
+             live regions. The MathJax one announced "MathJax Loaded: No" eight
+             times and then "Yes" in a single load, before anybody had reached
+             any content, and aria-atomic re-spoke its label each time. The Set
+             Up sign-in card's announce() is the only voice for sign-in. A live
+             region on a control would also speak its state changes. Collapsed
+             text stays in the DOM, visually hidden, so names are the real words.
+             The sign-in half is driven by setup-tool.js from entra:changed.
+             The action button only shows when signing in is the next step. -->
+        <div id="status-bar" data-collapsed="false">
+          <div id="signin-status" data-state="checking">
+            <span aria-hidden="true" data-icon="hourglass"></span>
+            <span class="sr-only">Sign-in: </span>
+            <span id="signin-status-text">Checking</span>
+            <span class="sr-only" id="signin-status-sr"></span>
+            <button type="button" id="signin-action" hidden>
+              <span id="signin-action-text">Sign in</span>
+              <span class="sr-only" id="signin-action-sr"></span>
+            </button>
+          </div>
+          <div id="mathjax-status" data-ready="false">
+            <span aria-hidden="true" data-icon="sigma"></span>
+            <span class="mathjax-label">MathJax:</span>
+            <span id="mathjax-status-value">No</span>
+          </div>
+          <button type="button" id="status-bar-toggle" aria-expanded="true">
+            <!-- Pre-script placeholder only: setup-tool.js (SIGN_IN_CHIP.ICON_HIDE
+                 and ICON_SHOW) sets the real icon. Keep this one in step. -->
+            <span aria-hidden="true" data-icon="chevronLeft"></span>
+            <span class="sr-only">Status details</span>
+          </button>
         </div>
         <!-- Shared audio-export progress surface (D2, 18 August 2026).
 
@@ -1456,9 +1478,9 @@
                 <dt>TikZ Studio</dt>
                 <dd>
                   Write TikZ source and see the diagram beside it, with a text
-                  alternative, caption and long description, then download it
-                  as SVG or PNG or export it. Alpha — expect rough edges. Needs
-                  no key.
+                  alternative, caption and long description, then download it as
+                  SVG or PNG or export it. Alpha — expect rough edges. Needs no
+                  key.
                 </dd>
               </dl>
               <!-- Order the list to match the tool picker NOW, rather than at
@@ -1770,16 +1792,23 @@
               </summary>
               <div class="setup-credential-body">
                 <div class="setup-input-group">
-                  <label for="setup-or-api-key">OpenRouter API Key</label>
+                  <label id="setup-or-api-key-label" for="setup-or-api-key">OpenRouter API Key</label>
+                  <p
+                    id="setup-or-api-key-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    It starts with sk-or-v1-.
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="password"
                       id="setup-or-api-key"
+                      aria-labelledby="setup-or-api-key-label"
                       name="openrouter_credential_api_key_setup"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
-                      placeholder="sk-or-v1-..."
+                      aria-describedby="setup-or-api-key-hint"
                     />
                     <button
                       type="button"
@@ -1811,6 +1840,30 @@
                   >
                     <span aria-hidden="true" data-icon="trash"></span> Clear Key
                   </button>
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    id="setup-or-check-btn"
+                    onclick="setupCheckOpenRouter()"
+                  >
+                    <span aria-hidden="true" data-icon="refresh"></span> Check
+                    credit
+                  </button>
+                </div>
+                <!-- Key details: filled by setup-tool.js from OpenRouter's
+                     /auth/key reply. Deliberately NOT a live region — the
+                     visible list is the record, and the low-credit line in
+                     main.js is the one voice (see the note above Status
+                     Summary). Rows are built in JS because the fields present
+                     vary by key; each pair is a dt/dd inside a div. -->
+                <div class="setup-key-details" id="setup-or-key-details" hidden>
+                  <h3 id="setup-or-key-details-heading">Key details</h3>
+                  <p
+                    class="setup-key-details-message"
+                    id="setup-or-key-message"
+                    hidden
+                  ></p>
+                  <dl class="setup-key-details-list" id="setup-or-key-list"></dl>
                 </div>
               </div>
             </details>
@@ -1837,30 +1890,30 @@
               </summary>
               <div class="setup-credential-body">
                 <div class="setup-input-group">
-                  <label for="setup-mp-app-id">App ID</label>
+                  <label id="setup-mp-app-id-label" for="setup-mp-app-id">App ID</label>
                   <div class="setup-input-row">
                     <input
                       type="text"
                       id="setup-mp-app-id"
+                      aria-labelledby="setup-mp-app-id-label"
                       name="mathpix_credential_app_id_setup"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
-                      placeholder="Enter your MathPix App ID"
                     />
                   </div>
                 </div>
                 <div class="setup-input-group">
-                  <label for="setup-mp-app-key">App Key</label>
+                  <label id="setup-mp-app-key-label" for="setup-mp-app-key">App Key</label>
                   <div class="setup-input-row">
                     <input
                       type="password"
                       id="setup-mp-app-key"
+                      aria-labelledby="setup-mp-app-key-label"
                       name="mathpix_credential_app_key_setup"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
-                      placeholder="Enter your MathPix App Key"
                     />
                     <button
                       type="button"
@@ -1934,30 +1987,37 @@
               </summary>
               <div class="setup-credential-body">
                 <div class="setup-input-group">
-                  <label for="setup-fdy-proxy-url"
+                  <label id="setup-fdy-proxy-url-label" for="setup-fdy-proxy-url"
                     >Cloudflare Worker Proxy URL</label
                   >
+                  <p
+                    id="setup-fdy-proxy-url-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example: https://your-proxy.workers.dev
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="url"
                       id="setup-fdy-proxy-url"
+                      aria-labelledby="setup-fdy-proxy-url-label"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="https://your-proxy.workers.dev"
+                      aria-describedby="setup-fdy-proxy-url-hint"
                     />
                   </div>
                 </div>
                 <div class="setup-input-group">
-                  <label for="setup-fdy-user-token"
+                  <label id="setup-fdy-user-token-label" for="setup-fdy-user-token"
                     >User token (optional)</label
                   >
                   <div class="setup-input-row">
                     <input
                       type="password"
                       id="setup-fdy-user-token"
+                      aria-labelledby="setup-fdy-user-token-label"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="Optional access token"
                     />
                     <button
                       type="button"
@@ -2053,30 +2113,37 @@
                   </p>
                 </div>
                 <div class="setup-input-group">
-                  <label for="setup-ally-client-id">Client ID</label>
+                  <label id="setup-ally-client-id-label" for="setup-ally-client-id">Client ID</label>
+                  <p
+                    id="setup-ally-client-id-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example: 577
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="text"
                       id="setup-ally-client-id"
+                      aria-labelledby="setup-ally-client-id-label"
                       name="ally_credential_client_id_setup"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
-                      placeholder="e.g., 577"
+                      aria-describedby="setup-ally-client-id-hint"
                     />
                   </div>
                 </div>
                 <div class="setup-input-group">
-                  <label for="setup-ally-token">API Token</label>
+                  <label id="setup-ally-token-label" for="setup-ally-token">API Token</label>
                   <div class="setup-input-row">
                     <input
                       type="password"
                       id="setup-ally-token"
+                      aria-labelledby="setup-ally-token-label"
                       name="ally_credential_api_token_setup"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
-                      placeholder="Bearer token from Institutional Report"
                     />
                     <button
                       type="button"
@@ -2095,17 +2162,23 @@
                   </p>
                 </div>
                 <div class="setup-input-group">
-                  <label for="setup-ally-worker-url"
+                  <label id="setup-ally-worker-url-label" for="setup-ally-worker-url"
                     >Proxy Worker URL (alternative to an API token)</label
                   >
+                  <p
+                    id="setup-ally-worker-url-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example: https://your-proxy.workers.dev
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="url"
                       id="setup-ally-worker-url"
+                      aria-labelledby="setup-ally-worker-url-label"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="https://your-proxy.workers.dev"
-                      aria-describedby="setup-ally-worker-url-help setup-ally-worker-url-error"
+                      aria-describedby="setup-ally-worker-url-hint setup-ally-worker-url-help setup-ally-worker-url-error"
                     />
                   </div>
                   <p
@@ -2182,17 +2255,23 @@
                   name; it carries NO course data and no reports.
                 -->
                 <div class="setup-input-group">
-                  <label for="setup-ally-tenant-name"
+                  <label id="setup-ally-tenant-name-label" for="setup-ally-tenant-name"
                     >Institution name (optional)</label
                   >
+                  <p
+                    id="setup-ally-tenant-name-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example: University of Southampton
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="text"
                       id="setup-ally-tenant-name"
+                      aria-labelledby="setup-ally-tenant-name-label"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="e.g., University of Southampton"
-                      aria-describedby="setup-ally-tenant-name-help"
+                      aria-describedby="setup-ally-tenant-name-hint setup-ally-tenant-name-help"
                     />
                   </div>
                   <p class="setup-help-text" id="setup-ally-tenant-name-help">
@@ -2358,15 +2437,21 @@
                     for="setup-ally-data-url"
                     >Fetch course data from a URL</label
                   >
+                  <p
+                    id="setup-ally-data-url-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example:
+                    https://your-institution.github.io/ally/ally-course-payload.json
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="url"
                       id="setup-ally-data-url"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="https://your-institution.github.io/ally/ally-course-payload.json"
                       aria-labelledby="setup-ally-data-url-label"
-                      aria-describedby="setup-ally-data-url-help setup-ally-data-url-error"
+                      aria-describedby="setup-ally-data-url-hint setup-ally-data-url-help setup-ally-data-url-error"
                     />
                   </div>
                   <p
@@ -2547,7 +2632,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                     </div>
@@ -2589,7 +2674,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                     </div>
@@ -2631,7 +2716,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                     </div>
@@ -2665,7 +2750,7 @@
                           >Captioning, object detection, OCR</span
                         >
                       </div>
-                      <div class="imgdesc-mm-model-size">~200 MB</div>
+                      <div class="imgdesc-mm-model-size">~1.1 GB</div>
                       <div class="imgdesc-mm-model-status">
                         <span class="imgdesc-mm-state-text">Checking…</span>
                       </div>
@@ -2686,7 +2771,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                     </div>
@@ -2755,7 +2840,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -2847,7 +2932,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -2941,7 +3026,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -3035,7 +3120,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -3129,7 +3214,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -3223,7 +3308,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                       <details
@@ -3330,7 +3415,7 @@
                         <span class="imgdesc-mm-progress-text"></span>
                         <dl
                           class="imgdesc-mm-progress-detail"
-                          aria-live="polite"
+                          aria-live="off"
                         ></dl>
                       </div>
                     </div>
@@ -5214,7 +5299,6 @@
                     id="gb-csv-input"
                     class="gb-csv-textarea"
                     rows="8"
-                    placeholder="Paste your CSV data here..."
                     aria-describedby="gb-csv-help"
                   ></textarea>
                   <div id="gb-csv-help" class="gb-help-text">
@@ -5305,8 +5389,8 @@ Science,91</pre
                     aria-describedby="gb-image-input-help"
                   />
                   <p id="gb-image-input-help" class="gb-help-text">
-                    PNG, JPEG or WebP. You can also paste one from the
-                    clipboard (Ctrl+V).
+                    PNG, JPEG or WebP. You can also paste one from the clipboard
+                    (Ctrl+V).
                   </p>
                   <p id="gb-image-file-name">No image chosen</p>
                 </div>
@@ -5345,12 +5429,21 @@ Science,91</pre
                   <label for="gb-image-model">Model</label>
                   <select id="gb-image-model"></select>
                 </div>
-                <button type="button" id="gb-image-extract" class="gb-action-button" disabled>
+                <button
+                  type="button"
+                  id="gb-image-extract"
+                  class="gb-action-button"
+                  disabled
+                >
                   Extract data
                 </button>
                 <div id="gb-image-progress" hidden>
                   <p id="gb-image-progress-text" class="gb-help-text"></p>
-                  <button type="button" id="gb-image-stop" class="gb-back-button">
+                  <button
+                    type="button"
+                    id="gb-image-stop"
+                    class="gb-back-button"
+                  >
                     <span aria-hidden="true" data-icon="close"></span> Stop
                   </button>
                 </div>
@@ -5376,7 +5469,13 @@ Science,91</pre
                 <div class="gb-preview-info">
                   <span id="gb-preview-stats" class="gb-preview-stats"></span>
                 </div>
-                <p id="gb-preview-edit-hint" class="gb-preview-edit-hint" hidden>You can correct any value here before you choose a chart.</p>
+                <p
+                  id="gb-preview-edit-hint"
+                  class="gb-preview-edit-hint"
+                  hidden
+                >
+                  You can correct any value here before you choose a chart.
+                </p>
                 <div class="gb-preview-table-container">
                   <table id="gb-preview-table" class="gb-preview-table">
                     <caption>
@@ -5392,56 +5491,62 @@ Science,91</pre
                    whenever the image tab is not the active one. Filled by graph-builder-image.js through js/dev-panel.js,
                    which finds every part of it by id. No live region: it updates silently; the copy buttons'
                    confirmation is its only voice. -->
-                <details class="gb-dev-panel" id="gb-image-dev-panel">
-                  <summary>Developer information</summary>
-                  <dl class="gb-dev-list">
-                    <dt>Finish reason</dt>
-                    <dd id="gb-image-dev-finish-reason">Not reported</dd>
+              <details class="gb-dev-panel" id="gb-image-dev-panel">
+                <summary>Developer information</summary>
+                <dl class="gb-dev-list">
+                  <dt>Finish reason</dt>
+                  <dd id="gb-image-dev-finish-reason">Not reported</dd>
 
-                    <dt>Request</dt>
-                    <dd>
-                      <p id="gb-image-dev-request-note" class="gb-dev-note" hidden></p>
-                      <pre
-                        id="gb-image-dev-request-pre"
-                        tabindex="0"
-                        aria-label="Request JSON"
-                      ><code id="gb-image-dev-request" class="language-json"></code></pre>
-                      <button
-                        type="button"
-                        id="gb-image-dev-expand-request"
-                        class="gb-dev-copy"
-                        aria-expanded="false"
-                        aria-controls="gb-image-dev-request-pre"
-                      >Show the whole request</button>
-                      <button
-                        type="button"
-                        id="gb-image-dev-copy-request"
-                        class="gb-dev-copy"
-                        aria-label="Copy request JSON"
-                      >
-                        <span aria-hidden="true" data-icon="clipboardCopy"></span>
-                        Copy request
-                      </button>
-                    </dd>
+                  <dt>Request</dt>
+                  <dd>
+                    <p
+                      id="gb-image-dev-request-note"
+                      class="gb-dev-note"
+                      hidden
+                    ></p>
+                    <pre
+                      id="gb-image-dev-request-pre"
+                      tabindex="0"
+                      aria-label="Request JSON"
+                    ><code id="gb-image-dev-request" class="language-json"></code></pre>
+                    <button
+                      type="button"
+                      id="gb-image-dev-expand-request"
+                      class="gb-dev-copy"
+                      aria-expanded="false"
+                      aria-controls="gb-image-dev-request-pre"
+                    >
+                      Show the whole request
+                    </button>
+                    <button
+                      type="button"
+                      id="gb-image-dev-copy-request"
+                      class="gb-dev-copy"
+                      aria-label="Copy request JSON"
+                    >
+                      <span aria-hidden="true" data-icon="clipboardCopy"></span>
+                      Copy request
+                    </button>
+                  </dd>
 
-                    <dt>Response</dt>
-                    <dd>
-                      <pre
-                        tabindex="0"
-                        aria-label="Response JSON"
-                      ><code id="gb-image-dev-response" class="language-json"></code></pre>
-                      <button
-                        type="button"
-                        id="gb-image-dev-copy-response"
-                        class="gb-dev-copy"
-                        aria-label="Copy response JSON"
-                      >
-                        <span aria-hidden="true" data-icon="clipboardCopy"></span>
-                        Copy response
-                      </button>
-                    </dd>
-                  </dl>
-                </details>
+                  <dt>Response</dt>
+                  <dd>
+                    <pre
+                      tabindex="0"
+                      aria-label="Response JSON"
+                    ><code id="gb-image-dev-response" class="language-json"></code></pre>
+                    <button
+                      type="button"
+                      id="gb-image-dev-copy-response"
+                      class="gb-dev-copy"
+                      aria-label="Copy response JSON"
+                    >
+                      <span aria-hidden="true" data-icon="clipboardCopy"></span>
+                      Copy response
+                    </button>
+                  </dd>
+                </dl>
+              </details>
 
               <!-- Navigation -->
               <div class="gb-navigation">
@@ -5462,7 +5567,9 @@ Science,91</pre
               class="gb-screen"
               aria-labelledby="gb-chart-heading"
             >
-              <h2 id="gb-chart-heading" tabindex="-1">Step 2: Choose Chart Type</h2>
+              <h2 id="gb-chart-heading" tabindex="-1">
+                Step 2: Choose Chart Type
+              </h2>
               <!-- UX-6: says why Combo or Bubble is missing; filled by refreshAvailability. Static text, not a live region -->
               <p id="gb-chart-type-note" class="gb-help-text" hidden></p>
 
@@ -5820,7 +5927,9 @@ Science,91</pre
               class="gb-screen"
               aria-labelledby="gb-config-heading"
             >
-              <h2 id="gb-config-heading" tabindex="-1">Step 3: Configure Your Chart</h2>
+              <h2 id="gb-config-heading" tabindex="-1">
+                Step 3: Configure Your Chart
+              </h2>
 
               <div class="gb-config-layout">
                 <!-- Live preview -->
@@ -5850,7 +5959,6 @@ Science,91</pre
                       type="text"
                       id="gb-chart-title"
                       name="chart-title"
-                      placeholder="Enter chart title"
                     />
                   </div>
 
@@ -5860,7 +5968,6 @@ Science,91</pre
                       type="text"
                       id="gb-x-axis-title"
                       name="x-axis-title"
-                      placeholder="X-axis label"
                     />
                   </div>
 
@@ -5870,7 +5977,6 @@ Science,91</pre
                       type="text"
                       id="gb-y-axis-title"
                       name="y-axis-title"
-                      placeholder="Y-axis label"
                     />
                   </div>
 
@@ -6038,7 +6144,12 @@ Science,91</pre
                     checked
                   />
 
-                  <span class="mode-icon" aria-hidden="true" data-icon="upload" data-icon-class="mathpix-inline-icon"></span>
+                  <span
+                    class="mode-icon"
+                    aria-hidden="true"
+                    data-icon="upload"
+                    data-icon-class="mathpix-inline-icon"
+                  ></span>
                   <span class="mode-label">Upload File</span>
                 </label>
 
@@ -6049,7 +6160,12 @@ Science,91</pre
                     value="draw"
                     id="mathpix-draw-mode-radio"
                   />
-                  <span class="mode-icon" aria-hidden="true" data-icon="write" data-icon-class="mathpix-inline-icon"></span>
+                  <span
+                    class="mode-icon"
+                    aria-hidden="true"
+                    data-icon="write"
+                    data-icon-class="mathpix-inline-icon"
+                  ></span>
                   <span class="mode-label">Draw Mathematics</span>
                 </label>
 
@@ -6261,7 +6377,11 @@ Science,91</pre
               class="help-text"
               style="margin-top: 0.75rem; text-align: center"
             >
-              <span aria-hidden="true" data-icon="clipboard" data-icon-class="icon-16"></span>
+              <span
+                aria-hidden="true"
+                data-icon="clipboard"
+                data-icon-class="icon-16"
+              ></span>
               <strong>Quick tip:</strong> You can paste images directly from
               your clipboard (Ctrl+V or Cmd+V)
             </p>
@@ -6278,7 +6398,11 @@ Science,91</pre
 
             <div class="mathpix-canvas-wrapper">
               <p class="mathpix-canvas-instructions">
-                <span aria-hidden="true" data-icon="write" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
+                <span
+                  aria-hidden="true"
+                  data-icon="write"
+                  data-icon-class="mathpix-inline-icon mathpix-icon-in-text"
+                ></span>
                 Draw your mathematical expression using your mouse or touch
                 input. The system will recognise handwritten mathematics.
               </p>
@@ -6380,7 +6504,11 @@ Science,91</pre
                   class="mathpix-canvas-btn mathpix-clear-btn"
                   disabled
                 >
-                  <span aria-hidden="true" data-icon="close" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="close"
+                    data-icon-class="mathpix-inline-icon mathpix-icon-in-text"
+                  ></span>
                   Clear Canvas
                 </button>
 
@@ -6391,7 +6519,11 @@ Science,91</pre
                   aria-label="Undo last stroke"
                   disabled
                 >
-                  <span aria-hidden="true" data-icon="undo" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="undo"
+                    data-icon-class="mathpix-inline-icon mathpix-icon-in-text"
+                  ></span>
                   Undo
                 </button>
 
@@ -6402,7 +6534,11 @@ Science,91</pre
                   aria-describedby="mathpix-strokes-cost-notice"
                   disabled
                 >
-                  <span aria-hidden="true" data-icon="cloudUploadAlt" data-icon-class="mathpix-inline-icon mathpix-icon-in-text"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="cloudUploadAlt"
+                    data-icon-class="mathpix-inline-icon mathpix-icon-in-text"
+                  ></span>
                   Process Drawing
                   <span class="visually-hidden">
                     — recognises the handwritten mathematics you have drawn
@@ -6531,7 +6667,11 @@ Science,91</pre
                   onclick="toggleMathPixCameraMirror()"
                   disabled
                 >
-                  <span aria-hidden="true" data-icon="flip" data-icon-class="mathpix-inline-icon button-icon"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="flip"
+                    data-icon-class="mathpix-inline-icon button-icon"
+                  ></span>
                   <span>Mirror Preview</span>
                 </button>
                 <button
@@ -7851,11 +7991,15 @@ Science,91</pre
                             class="visually-hidden"
                             >Edit MMD content</label
                           >
+                          <p id="resume-mmd-editor-hint" class="help-text">
+                            The MathPix Markdown for this result. You can edit
+                            it here.
+                          </p>
                           <textarea
                             id="resume-mmd-editor-textarea"
                             class="mmd-editor-textarea"
                             spellcheck="false"
-                            placeholder="MMD content will appear here..."
+                            aria-describedby="resume-mmd-editor-hint"
                           ></textarea>
                         </div>
                       </div>
@@ -7871,18 +8015,30 @@ Science,91</pre
                           onclick="downloadResumeMMD()"
                           aria-label="Save File"
                         >
-                          <span aria-hidden="true" data-icon="disk" data-icon-class="mathpix-inline-icon"></span>
+                          <span
+                            aria-hidden="true"
+                            data-icon="disk"
+                            data-icon-class="mathpix-inline-icon"
+                          ></span>
                           <span class="btn-label">Save File</span>
                         </button>
                         <button
                           type="button"
                           id="resume-mmd-upload-label"
                           class="mmd-toolbar-btn mmd-upload-label"
-                          onclick="document.getElementById('resume-mmd-upload-input').click()"
+                          onclick="
+                            document
+                              .getElementById('resume-mmd-upload-input')
+                              .click()
+                          "
                           aria-describedby="resume-mmd-upload-help"
                           aria-label="Load File"
                         >
-                          <span aria-hidden="true" data-icon="fileUpload" data-icon-class="mathpix-inline-icon"></span>
+                          <span
+                            aria-hidden="true"
+                            data-icon="fileUpload"
+                            data-icon-class="mathpix-inline-icon"
+                          ></span>
                           <span class="btn-label">Load File</span>
                         </button>
                         <input
@@ -7939,7 +8095,11 @@ Science,91</pre
                           disabled
                           aria-describedby="ai-enhance-btn-desc"
                         >
-                          <span aria-hidden="true" data-icon="aiSparkle" data-icon-class="mathpix-inline-icon"></span>
+                          <span
+                            aria-hidden="true"
+                            data-icon="aiSparkle"
+                            data-icon-class="mathpix-inline-icon"
+                          ></span>
                           <span class="btn-label">Enhance with AI</span>
                         </button>
                         <span id="ai-enhance-btn-desc" class="visually-hidden">
@@ -9004,9 +9164,15 @@ Science,91</pre
                       <div id="resume-context-ai-summary"></div>
                       <button type="button" id="resume-context-ai-undo" hidden>
                         <span aria-hidden="true" data-icon="undo"></span>
-                        <span id="resume-context-ai-undo-label">Undo AI fill</span>
+                        <span id="resume-context-ai-undo-label"
+                          >Undo AI fill</span
+                        >
                       </button>
-                      <button type="button" id="resume-context-ai-clear" disabled>
+                      <button
+                        type="button"
+                        id="resume-context-ai-clear"
+                        disabled
+                      >
                         <span aria-hidden="true" data-icon="trash"></span>
                         Clear all context fields
                       </button>
@@ -9049,8 +9215,8 @@ Science,91</pre
                           id="resume-ai-step-correction-hint"
                           class="field-hint"
                         >
-                          Checks the converted text against the PDF and
-                          suggests corrections.
+                          Checks the converted text against the PDF and suggests
+                          corrections.
                         </p>
                       </div>
                       <div class="mathpix-context-field">
@@ -9077,10 +9243,7 @@ Science,91</pre
                           />
                           Picture descriptions
                         </label>
-                        <p
-                          id="resume-ai-step-pictures-hint"
-                          class="field-hint"
-                        >
+                        <p id="resume-ai-step-pictures-hint" class="field-hint">
                           Writes a caption, alt text and long description for
                           each picture that has none.
                         </p>
@@ -9103,33 +9266,42 @@ Science,91</pre
 
                       <div class="mathpix-context-field">
                         <p id="resume-ai-model-correction" class="field-hint"></p>
-                        <button
-                          type="button"
-                          id="resume-ai-change-correction"
-                          class="mathpix-btn mathpix-btn-secondary"
+                        <details
+                          id="resume-ai-advanced-correction"
+                          class="mathpix-context-model-advanced"
                         >
-                          Change the model for MMD correction
-                        </button>
+                          <summary>Change the model for MMD correction</summary>
+                          <label for="resume-ai-select-correction"
+                            >Model for MMD correction</label
+                          >
+                          <select id="resume-ai-select-correction"></select>
+                        </details>
                       </div>
                       <div class="mathpix-context-field">
                         <p id="resume-ai-model-context" class="field-hint"></p>
-                        <button
-                          type="button"
-                          id="resume-ai-change-context"
-                          class="mathpix-btn mathpix-btn-secondary"
+                        <details
+                          id="resume-ai-advanced-context"
+                          class="mathpix-context-model-advanced"
                         >
-                          Change the model for Context auto-fill
-                        </button>
+                          <summary>Change the model for Context auto-fill</summary>
+                          <label for="resume-ai-select-context"
+                            >Model for Context auto-fill</label
+                          >
+                          <select id="resume-ai-select-context"></select>
+                        </details>
                       </div>
                       <div class="mathpix-context-field">
                         <p id="resume-ai-model-pictures" class="field-hint"></p>
-                        <button
-                          type="button"
-                          id="resume-ai-change-pictures"
-                          class="mathpix-btn mathpix-btn-secondary"
+                        <details
+                          id="resume-ai-advanced-pictures"
+                          class="mathpix-context-model-advanced"
                         >
-                          Change the model for Picture descriptions
-                        </button>
+                          <summary>Change the model for Picture descriptions</summary>
+                          <label for="resume-ai-select-pictures"
+                            >Model for Picture descriptions</label
+                          >
+                          <select id="resume-ai-select-pictures"></select>
+                        </details>
                       </div>
 
                       <p id="resume-ai-estimate">
@@ -9705,7 +9877,8 @@ Science,91</pre
             <!-- Verification Actions -->
             <div class="upload-preview-actions">
               <button id="upload-preview-confirm" class="primary-button">
-                <span aria-hidden="true" data-icon="check"></span> Yes, this is the PDF!
+                <span aria-hidden="true" data-icon="check"></span> Yes, this is
+                the PDF!
               </button>
               <button id="upload-preview-cancel" class="secondary-button">
                 <span aria-hidden="true" data-icon="error"></span> No, I want to
@@ -9744,7 +9917,11 @@ Science,91</pre
                 onclick="rotateMathPixPreview()"
                 aria-label="Rotate preview 90 degrees clockwise"
               >
-                <span aria-hidden="true" data-icon="jumpRight" data-icon-class="mathpix-inline-icon"></span>
+                <span
+                  aria-hidden="true"
+                  data-icon="jumpRight"
+                  data-icon-class="mathpix-inline-icon"
+                ></span>
                 Rotate
               </button>
               <button
@@ -9754,7 +9931,11 @@ Science,91</pre
                 onclick="flipMathPixPreview()"
                 aria-label="Flip preview horizontally"
               >
-                <span aria-hidden="true" data-icon="shuffle" data-icon-class="mathpix-inline-icon"></span>
+                <span
+                  aria-hidden="true"
+                  data-icon="shuffle"
+                  data-icon-class="mathpix-inline-icon"
+                ></span>
                 Flip
               </button>
               <span
@@ -9874,9 +10055,9 @@ Science,91</pre
               <span aria-hidden="true" data-icon="coins"></span>
               <span class="mathpix-cost-notice-text"
                 >Processing sends this image to MathPix: about
-                <strong>$0.002</strong>, or up to <strong>$0.005</strong> if
-                the image holds more than 12 rows of text (MathPix list price,
-                US dollars).</span
+                <strong>$0.002</strong>, or up to <strong>$0.005</strong> if the
+                image holds more than 12 rows of text (MathPix list price, US
+                dollars).</span
               >
             </p>
 
@@ -11230,14 +11411,14 @@ Science,91</pre
                   class="mathpix-custom-range"
                   style="display: none"
                 >
-                  <label for="pdf-page-numbers"
-                    >Page numbers (e.g., 1-5, 7, 10-12):</label
-                  >
+                  <label for="pdf-page-numbers">Page numbers:</label>
+                  <p id="pdf-page-numbers-hint" class="help-text">
+                    For example: 1-5, 7, 10-12
+                  </p>
                   <input
                     type="text"
                     id="pdf-page-numbers"
-                    placeholder="1-5, 7, 10-12"
-                    aria-describedby="pdf-range-help"
+                    aria-describedby="pdf-page-numbers-hint pdf-range-help"
                   />
                   <div id="pdf-range-help" class="help-text">
                     Use commas for individual pages, hyphens for ranges
@@ -11586,7 +11767,7 @@ Science,91</pre
                         type="text"
                         id="pdf-inline-delim-start"
                         value="$"
-                        placeholder="e.g., $"
+                        aria-describedby="pdf-inline-delim-hint"
                         maxlength="10"
                       />
                     </label>
@@ -11599,10 +11780,13 @@ Science,91</pre
                         type="text"
                         id="pdf-inline-delim-end"
                         value="$"
-                        placeholder="e.g., $"
+                        aria-describedby="pdf-inline-delim-hint"
                         maxlength="10"
                       />
                     </label>
+                    <p id="pdf-inline-delim-hint" class="help-text">
+                      For example: $
+                    </p>
                   </div>
 
                   <div class="delimiter-input-group">
@@ -11615,7 +11799,7 @@ Science,91</pre
                         type="text"
                         id="pdf-display-delim-start"
                         value="$$"
-                        placeholder="e.g., $$"
+                        aria-describedby="pdf-display-delim-hint"
                         maxlength="10"
                       />
                     </label>
@@ -11628,10 +11812,13 @@ Science,91</pre
                         type="text"
                         id="pdf-display-delim-end"
                         value="$$"
-                        placeholder="e.g., $$"
+                        aria-describedby="pdf-display-delim-hint"
                         maxlength="10"
                       />
                     </label>
+                    <p id="pdf-display-delim-hint" class="help-text">
+                      For example: $$
+                    </p>
                   </div>
 
                   <p class="help-text">
@@ -11805,7 +11992,11 @@ Science,91</pre
                   class="mathpix-process-btn"
                   aria-describedby="mathpix-pdf-cost-notice"
                 >
-                  <span aria-hidden="true" data-icon="cloudUploadAlt" data-icon-class="mathpix-inline-icon"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="cloudUploadAlt"
+                    data-icon-class="mathpix-inline-icon"
+                  ></span>
                   Process PDF Document
                 </button>
                 <button
@@ -11868,15 +12059,18 @@ Science,91</pre
               <div class="progress-header">
                 <div class="progress-title-section">
                   <h3 class="progress-title">
-                    <span id="pdf-progress-icon" class="progress-icon" aria-hidden="true"></span>
+                    <span
+                      id="pdf-progress-icon"
+                      class="progress-icon"
+                      aria-hidden="true"
+                    ></span>
                     <span id="pdf-progress-title">Processing Document</span>
                   </h3>
                   <div id="pdf-progress-subtitle" class="progress-subtitle">
                     Preparing your document for analysis...
                   </div>
                 </div>
-                <div class="progress-actions">
-                </div>
+                <div class="progress-actions"></div>
               </div>
 
               <!-- Progress Bar Section -->
@@ -12580,17 +12774,27 @@ Science,91</pre
                           class="mmd-toolbar-btn"
                           onclick="downloadEditedMMD()"
                         >
-                          <span aria-hidden="true" data-icon="disk" data-icon-class="mathpix-inline-icon"></span>
+                          <span
+                            aria-hidden="true"
+                            data-icon="disk"
+                            data-icon-class="mathpix-inline-icon"
+                          ></span>
                           Save File
                         </button>
                         <button
                           type="button"
                           id="mmd-upload-label"
                           class="mmd-toolbar-btn mmd-upload-label"
-                          onclick="document.getElementById('mmd-upload-input').click()"
+                          onclick="
+                            document.getElementById('mmd-upload-input').click()
+                          "
                           aria-describedby="mmd-upload-help"
                         >
-                          <span aria-hidden="true" data-icon="fileUpload" data-icon-class="mathpix-inline-icon"></span>
+                          <span
+                            aria-hidden="true"
+                            data-icon="fileUpload"
+                            data-icon-class="mathpix-inline-icon"
+                          ></span>
                           Load File
                         </button>
                         <input
@@ -12825,12 +13029,15 @@ Science,91</pre
                             class="visually-hidden"
                             >Edit MMD content</label
                           >
+                          <p id="mmd-editor-hint" class="help-text">
+                            The MathPix Markdown for this result. You can edit
+                            it here.
+                          </p>
                           <textarea
                             id="mmd-editor-textarea"
                             class="mmd-editor-textarea"
                             spellcheck="false"
-                            aria-describedby="mmd-editor-status"
-                            placeholder="MMD content will appear here when you start editing..."
+                            aria-describedby="mmd-editor-hint mmd-editor-status"
                           ></textarea>
                           <span
                             id="mmd-editor-status"
@@ -13091,7 +13298,11 @@ Science,91</pre
                       data-format="mmd"
                       data-action="copy"
                     >
-                      <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
+                      <span
+                        aria-hidden="true"
+                        data-icon="clipboard"
+                        data-icon-class="mathpix-inline-icon"
+                      ></span>
                       Copy
                     </button>
                     <button
@@ -13099,7 +13310,11 @@ Science,91</pre
                       class="mathpix-download-btn"
                       data-format="mmd"
                     >
-                      <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
+                      <span
+                        aria-hidden="true"
+                        data-icon="fileDownload"
+                        data-icon-class="mathpix-inline-icon"
+                      ></span>
                       Download
                     </button>
 
@@ -13112,7 +13327,11 @@ Science,91</pre
                       hidden
                       aria-describedby="upload-ai-enhance-btn-desc"
                     >
-                      <span aria-hidden="true" data-icon="aiSparkle" data-icon-class="mathpix-inline-icon"></span>
+                      <span
+                        aria-hidden="true"
+                        data-icon="aiSparkle"
+                        data-icon-class="mathpix-inline-icon"
+                      ></span>
                       Enhance with AI
                     </button>
                     <span
@@ -13158,8 +13377,7 @@ Science,91</pre
                 >
                   <div class="mathpix-format-header">
                     <h4>Plain Markdown (MD) Output</h4>
-                    <div class="mathpix-format-actions">
-                    </div>
+                    <div class="mathpix-format-actions"></div>
                   </div>
                   <div class="code-block-wrapper">
                     <pre><code id="mathpix-pdf-content-md" class="language-markdown"></code></pre>
@@ -13181,7 +13399,11 @@ Science,91</pre
                         class="mathpix-copy-btn"
                         data-format="html"
                       >
-                        <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
+                        <span
+                          aria-hidden="true"
+                          data-icon="clipboard"
+                          data-icon-class="mathpix-inline-icon"
+                        ></span>
                         Copy
                       </button>
                       <button
@@ -13189,7 +13411,11 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="html"
                       >
-                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
+                        <span
+                          aria-hidden="true"
+                          data-icon="fileDownload"
+                          data-icon-class="mathpix-inline-icon"
+                        ></span>
                         Download
                       </button>
                       <button
@@ -13236,7 +13462,11 @@ Science,91</pre
                         class="mathpix-copy-btn"
                         data-format="latex"
                       >
-                        <span aria-hidden="true" data-icon="clipboard" data-icon-class="mathpix-inline-icon"></span>
+                        <span
+                          aria-hidden="true"
+                          data-icon="clipboard"
+                          data-icon-class="mathpix-inline-icon"
+                        ></span>
                         Copy
                       </button>
                       <button
@@ -13244,7 +13474,11 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="latex"
                       >
-                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
+                        <span
+                          aria-hidden="true"
+                          data-icon="fileDownload"
+                          data-icon-class="mathpix-inline-icon"
+                        ></span>
                         Download
                       </button>
                     </div>
@@ -13269,12 +13503,19 @@ Science,91</pre
                         class="mathpix-download-btn"
                         data-format="docx"
                       >
-                        <span aria-hidden="true" data-icon="fileDownload" data-icon-class="mathpix-inline-icon"></span>
+                        <span
+                          aria-hidden="true"
+                          data-icon="fileDownload"
+                          data-icon-class="mathpix-inline-icon"
+                        ></span>
                         Download DOCX
                       </button>
                     </div>
                   </div>
-                  <div id="mathpix-pdf-content-docx" class="mathpix-docx-info"></div>
+                  <div
+                    id="mathpix-pdf-content-docx"
+                    class="mathpix-docx-info"
+                  ></div>
                 </div>
 
                 <!-- PowerPoint (PPTX) Results Panel -->
@@ -13286,8 +13527,7 @@ Science,91</pre
                 >
                   <div class="mathpix-format-header">
                     <h4>PowerPoint (PPTX) Output</h4>
-                    <div class="mathpix-format-actions">
-                    </div>
+                    <div class="mathpix-format-actions"></div>
                   </div>
                   <div class="mathpix-binary-format-message">
                     <p>
@@ -13312,8 +13552,7 @@ Science,91</pre
                 >
                   <div class="mathpix-format-header">
                     <h4>Excel (XLSX) Output</h4>
-                    <div class="mathpix-format-actions">
-                    </div>
+                    <div class="mathpix-format-actions"></div>
                   </div>
                   <div class="mathpix-binary-format-message">
                     <p>
@@ -13338,8 +13577,7 @@ Science,91</pre
                 >
                   <div class="mathpix-format-header">
                     <h4>PDF (HTML Rendering) Output</h4>
-                    <div class="mathpix-format-actions">
-                    </div>
+                    <div class="mathpix-format-actions"></div>
                   </div>
                   <div class="mathpix-binary-format-message">
                     <p>
@@ -13363,8 +13601,7 @@ Science,91</pre
                 >
                   <div class="mathpix-format-header">
                     <h4>PDF (LaTeX Rendering) Output</h4>
-                    <div class="mathpix-format-actions">
-                    </div>
+                    <div class="mathpix-format-actions"></div>
                   </div>
                   <div class="mathpix-binary-format-message">
                     <p>
@@ -14067,7 +14304,11 @@ Science,91</pre
                   id="mathpix-process-another-pdf"
                   class="mathpix-process-another-btn"
                 >
-                  <span aria-hidden="true" data-icon="documentWords" data-icon-class="mathpix-inline-icon"></span>
+                  <span
+                    aria-hidden="true"
+                    data-icon="documentWords"
+                    data-icon-class="mathpix-inline-icon"
+                  ></span>
                   Process Another PDF
                 </button>
                 <button
@@ -14360,24 +14601,28 @@ Science,91</pre
               onsubmit="return false;"
               autocomplete="off"
             >
-              <label for="mathpix-app-id">App ID:</label>
+              <label id="mathpix-app-id-label" for="mathpix-app-id"
+                >App ID:</label
+              >
               <input
                 type="text"
                 id="mathpix-app-id"
                 name="mathpix_credential_app_id_legacy"
-                placeholder="Enter MathPix App ID"
+                aria-labelledby="mathpix-app-id-label"
                 autocomplete="new-password"
                 spellcheck="false"
                 data-form-type="other"
               />
 
-              <label for="mathpix-app-key">App Key:</label>
+              <label id="mathpix-app-key-label" for="mathpix-app-key"
+                >App Key:</label
+              >
               <div class="api-key-input-group">
                 <input
                   type="password"
                   id="mathpix-app-key"
                   name="mathpix_credential_app_key_legacy"
-                  placeholder="Enter MathPix App Key"
+                  aria-labelledby="mathpix-app-key-label"
                   autocomplete="new-password"
                   spellcheck="false"
                   data-form-type="other"
@@ -14922,7 +15167,8 @@ Science,91</pre
                         <label for="imgdesc-review-text">Detected text</label>
                         <input
                           type="text"
-                          id="imgdesc-review-text" spellcheck="true"
+                          id="imgdesc-review-text"
+                          spellcheck="true"
                           class="imgdesc-review-input"
                         />
                         <p class="imgdesc-help-note">
@@ -15055,11 +15301,17 @@ Science,91</pre
                       >
                         <div class="imgdesc-add-field">
                           <label for="imgdesc-add-text">Text</label>
+                          <span
+                            id="imgdesc-add-text-hint"
+                            class="imgdesc-hint-text"
+                            >For example: TH1.</span
+                          >
                           <input
                             type="text"
-                            id="imgdesc-add-text" spellcheck="true"
+                            id="imgdesc-add-text"
+                            spellcheck="true"
                             class="imgdesc-review-input"
-                            placeholder="e.g. TH1"
+                            aria-describedby="imgdesc-add-text-hint"
                           />
                         </div>
                         <div class="imgdesc-add-field">
@@ -15141,7 +15393,6 @@ Science,91</pre
                   <!-- end imgdesc-review-sidebar -->
                 </div>
                 <!-- end imgdesc-workspace -->
-
               </section>
             </div>
 
@@ -15149,646 +15400,6 @@ Science,91</pre
             <div class="imgdesc-output-column">
               <!-- Configuration Panel - Hidden during/after generation -->
               <div id="imgdesc-config-panel" class="imgdesc-config-panel">
-                <!-- Section 1: Expert Mode (Phase 4A) -->
-                <section class="imgdesc-section" id="imgdesc-expert-section">
-                  <h2>Expert Mode</h2>
-                  <!-- Phase 9D: Model Manager -->
-                  <details
-                    class="imgdesc-options-group"
-                    id="imgdesc-model-manager-panel"
-                  >
-                    <summary>
-                      <span aria-hidden="true" data-icon="robot"
-                        ><svg
-                          aria-hidden="true"
-                          class="icon"
-                          height="21"
-                          viewBox="0 0 21 21"
-                          width="21"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <g
-                            fill="none"
-                            fill-rule="evenodd"
-                            stroke="currentColor"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            transform="translate(2 4)"
-                          >
-                            <path
-                              d="m4.5 0c.55228475 0 1 .44771525 1 1v2c0 .55228475-.44771525 1-1 1s-1-.44771525-1-1v-2c0-.55228475.44771525-1 1-1z"
-                            ></path>
-                            <path d="m16.5 2h-11"></path>
-                            <path d="m3.5 2h-3"></path>
-                            <path
-                              d="m4.5 10c.55228475 0 1 .4477153 1 1v2c0 .5522847-.44771525 1-1 1s-1-.4477153-1-1v-2c0-.5522847.44771525-1 1-1z"
-                            ></path>
-                            <path d="m16.5 12h-11"></path>
-                            <path d="m3.5 12h-3"></path>
-                            <path
-                              d="m12.5 5c.5522847 0 1 .44771525 1 1v2c0 .55228475-.4477153 1-1 1s-1-.44771525-1-1v-2c0-.55228475.4477153-1 1-1z"
-                            ></path>
-                            <path d="m11.5 7h-11"></path>
-                            <path d="m16.5 7h-3"></path>
-                          </g></svg
-                      ></span>
-                      Model &amp; Generation Settings
-                    </summary>
-                    <div class="imgdesc-option-content">
-                      <!-- Cloud Generation -->
-                      <section
-                        class="imgdesc-expert-subsection"
-                        id="imgdesc-model-section"
-                      >
-                        <h3 id="image-cloud-generation-heading">
-                          Cloud Generation
-                        </h3>
-                        <div class="imgdesc-field">
-                          <label for="imgdesc-model">
-                            Select AI Model
-                            <span class="imgdesc-optional"
-                              >(Choose quality vs. cost)</span
-                            >
-                          </label>
-                          <!-- Model filter bar (family + search + count + reset) -->
-                          <div
-                            class="imgdesc-model-filterbar"
-                            role="group"
-                            aria-label="Filter available models"
-                          >
-                            <div class="imgdesc-filter-field">
-                              <label for="imgdesc-model-family">Family</label>
-                              <select
-                                id="imgdesc-model-family"
-                                class="imgdesc-model-family-select"
-                              >
-                                <option value="">All families</option>
-                              </select>
-                            </div>
-                            <div
-                              class="imgdesc-filter-field imgdesc-filter-search"
-                            >
-                              <label for="imgdesc-model-search">Search</label>
-                              <input
-                                type="search"
-                                id="imgdesc-model-search"
-                                class="imgdesc-model-search-input"
-                                placeholder="Search by name or provider…"
-                                autocomplete="off"
-                              />
-                            </div>
-                            <div class="imgdesc-filter-actions">
-                              <span
-                                id="imgdesc-model-count"
-                                class="imgdesc-model-count"
-                                role="status"
-                                aria-live="polite"
-                                aria-atomic="true"
-                              ></span>
-                              <button
-                                type="button"
-                                id="imgdesc-model-filter-reset"
-                                class="imgdesc-model-filter-reset"
-                              >
-                                <span
-                                  aria-hidden="true"
-                                  data-icon="reset"
-                                ></span>
-                                Reset
-                              </button>
-                            </div>
-                          </div>
-                          <select
-                            id="imgdesc-model"
-                            class="imgdesc-model-selector"
-                            aria-describedby="imgdesc-cost-estimate"
-                          >
-                            <option value="">Loading models...</option>
-                          </select>
-                        </div>
-
-                        <div
-                          id="imgdesc-cost-estimate"
-                          class="imgdesc-cost-estimate"
-                          role="status"
-                          aria-live="polite"
-                          aria-atomic="true"
-                        >
-                          Estimated cost: Calculating...
-                        </div>
-                        <!-- Health Indicator (Stage 7 - Optional) -->
-                        <div
-                          id="imgdesc-health-indicator"
-                          class="imgdesc-health-indicator health-unknown"
-                          role="status"
-                          aria-live="polite"
-                          aria-label="Connection status: Checking"
-                          hidden
-                        >
-                          <span aria-hidden="true">&#9898;</span>
-                          <span class="imgdesc-health-text"
-                            >Connection: Checking...</span
-                          >
-                        </div>
-
-                        <div
-                          class="imgdesc-option-group imgdesc-model-preference"
-                        >
-                          <label class="imgdesc-checkbox-label">
-                            <input
-                              type="checkbox"
-                              id="imgdesc-remember-model"
-                              aria-describedby="imgdesc-remember-hint"
-                            />
-                            <span>Remember my choice</span>
-                          </label>
-                          <span
-                            id="imgdesc-remember-hint"
-                            class="imgdesc-hint-text"
-                          >
-                            Your model preference will be saved for future
-                            sessions
-                          </span>
-                        </div>
-                        <div class="imgdesc-show-all-models">
-                          <input type="checkbox" id="imgdesc-show-all-models" />
-                          <label for="imgdesc-show-all-models"
-                            >Show all models
-                            <span class="imgdesc-hint"
-                              >(including those not confirmed for vision)</span
-                            ></label
-                          >
-                        </div>
-
-                        <!-- Visual Verification sub-group -->
-                        <div
-                          id="imgdesc-verify-section"
-                          class="imgdesc-verify-subgroup"
-                        >
-                          <h4>Visual Verification</h4>
-                          <div class="imgdesc-option-group">
-                            <label class="imgdesc-checkbox-label">
-                              <input
-                                type="checkbox"
-                                id="imgdesc-verify-enabled"
-                              />
-                              <span>Enable visual accuracy check</span>
-                            </label>
-                            <span class="imgdesc-hint-text">
-                              Sends a second request to verify the description
-                              matches the image. Uses an additional AI request.
-                            </span>
-                          </div>
-
-                          <div
-                            class="imgdesc-field"
-                            id="imgdesc-verify-model-group"
-                            hidden
-                          >
-                            <label for="imgdesc-verify-model">
-                              Verification Model
-                              <span class="imgdesc-optional"
-                                >(Can differ from description model)</span
-                              >
-                            </label>
-                            <select
-                              id="imgdesc-verify-model"
-                              class="imgdesc-model-selector"
-                            >
-                              <option value="">Loading models...</option>
-                            </select>
-                            <span
-                              class="imgdesc-hint-text"
-                              id="imgdesc-verify-cost-hint"
-                            >
-                              A smaller, cheaper model often works well for
-                              verification.
-                            </span>
-                          </div>
-                        </div>
-                      </section>
-
-                      <!-- Local Generation: FastVLM + Qwen3.5 (Phase 14C) -->
-                      <section class="imgdesc-expert-subsection">
-                        <h3>Local Generation</h3>
-                        <p class="imgdesc-mm-local-desc">
-                          Generate image descriptions locally — no API key or
-                          internet connection required after initial download.
-                        </p>
-                        <div class="imgdesc-local-model-selector">
-                          <label for="imgdesc-local-model">Local model</label>
-                          <select
-                            id="imgdesc-local-model"
-                            aria-describedby="imgdesc-local-model-hint"
-                          >
-                            <option value="fastvlm">
-                              FastVLM 0.5B — Fast, free-form (~22s)
-                            </option>
-                            <option value="qwen35">
-                              Qwen3.5-0.8B — Structured, slower (~60s)
-                            </option>
-                            <option value="lfm2vl">
-                              LFM2-VL 450M — Compact, fast (~7s)
-                            </option>
-                          </select>
-                          <p class="imgdesc-hint" id="imgdesc-local-model-hint">
-                            FastVLM and LFM2-VL produce free-form prose
-                            descriptions. Qwen3.5 produces structured sections
-                            (title, alt text, long description, text content)
-                            but may contain factual errors.
-                          </p>
-                        </div>
-                        <div
-                          id="imgdesc-pre-generation-warning"
-                          class="imgdesc-accuracy-warning"
-                          role="status"
-                          aria-live="polite"
-                          hidden
-                        >
-                          <p>
-                            <span aria-hidden="true" data-icon="warning"></span>
-                            This model may produce factual errors. Please check
-                            all details carefully against the original image
-                            before use.
-                          </p>
-                        </div>
-                        <div
-                          class="imgdesc-mm-model-list"
-                          role="list"
-                          aria-label="Local generation model status"
-                        >
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-fastvlm"
-                            data-model-key="fastvlm"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >FastVLM 0.5B</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Local description generation (no API key
-                                needed)</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~350 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="FastVLM download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-qwen35"
-                            data-model-key="qwen35"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >Qwen3.5-0.8B</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Structured local descriptions</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~1,000 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="Qwen3.5 download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-lfm2vl"
-                            data-model-key="lfm2vl"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >LFM2-VL 450M</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Compact local descriptions (no API key
-                                needed)</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~349 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="LFM2-VL download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-                        </div>
-                      </section>
-
-                      <!-- Analysis Pipeline -->
-                      <section class="imgdesc-expert-subsection">
-                        <h3>Analysis Pipeline</h3>
-                        <div
-                          class="imgdesc-mm-model-list"
-                          role="list"
-                          aria-label="Analysis model status"
-                          id="imgdesc-mm-model-list"
-                        >
-                          <!-- Florence-2 -->
-                          <div
-                            class="imgdesc-mm-model-item"
-                            role="listitem"
-                            id="imgdesc-mm-model-florence2"
-                            data-model-key="florence2"
-                          >
-                            <span
-                              class="imgdesc-mm-status-icon"
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            <div class="imgdesc-mm-model-info">
-                              <span class="imgdesc-mm-model-name"
-                                >Florence-2</span
-                              >
-                              <span class="imgdesc-mm-model-role"
-                                >Captioning, object detection, OCR</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-size">~200 MB</div>
-                            <div
-                              class="imgdesc-mm-model-status"
-                            >
-                              <span class="imgdesc-mm-state-text"
-                                >Checking…</span
-                              >
-                            </div>
-                            <div class="imgdesc-mm-model-actions">
-                              <!-- Buttons inserted by JS based on state -->
-                            </div>
-                            <div class="imgdesc-mm-progress" hidden>
-                              <div
-                                class="imgdesc-mm-progress-bar"
-                                role="progressbar"
-                                aria-label="Florence-2 download progress"
-                                aria-valuenow="0"
-                                aria-valuemin="0"
-                                aria-valuemax="100"
-                              >
-                                <div class="imgdesc-mm-progress-bar-fill"></div>
-                              </div>
-                              <span class="imgdesc-mm-progress-text"></span>
-                              <dl
-                                class="imgdesc-mm-progress-detail"
-                                aria-live="polite"
-                              ></dl>
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Florence-2 Enhancement (opt-in, Phase 10C-fix) -->
-                        <div
-                          class="imgdesc-expert-subsection"
-                          id="imgdesc-florence2-optin"
-                          hidden
-                        >
-                          <h4>Florence-2 Enhancement</h4>
-                          <p class="imgdesc-florence2-optin-desc">
-                            Run Florence-2 to enrich your description with an
-                            AI-generated caption. This is optional and takes
-                            approximately 30 seconds.
-                          </p>
-                          <fieldset
-                            class="imgdesc-florence2-options"
-                            id="imgdesc-florence2-options"
-                          >
-                            <legend class="sr-only">
-                              Florence-2 analysis tasks
-                            </legend>
-                            <label class="imgdesc-florence2-option">
-                              <input
-                                type="checkbox"
-                                id="imgdesc-florence2-caption"
-                                checked
-                              />
-                              AI Caption (~30 seconds)
-                            </label>
-                            <label class="imgdesc-florence2-option">
-                              <input
-                                type="checkbox"
-                                id="imgdesc-florence2-ocr"
-                              />
-                              Supplementary OCR (~30 seconds)
-                            </label>
-                          </fieldset>
-                          <button
-                            type="button"
-                            class="imgdesc-florence2-run-btn"
-                            id="imgdesc-florence2-run-btn"
-                            disabled
-                            onclick="
-                              ImageDescriberController.runFlorenceAnalysis()
-                            "
-                          >
-                            <span
-                              aria-hidden="true"
-                              data-icon="aiSparkle"
-                            ></span>
-                            Run Florence-2
-                          </button>
-                          <div
-                            class="imgdesc-florence2-status"
-                            id="imgdesc-florence2-status"
-                            role="status"
-                            aria-live="polite"
-                            hidden
-                          ></div>
-                        </div>
-                      </section>
-
-                      <!-- Storage & Cache -->
-                      <section class="imgdesc-expert-subsection">
-                        <h3>Storage &amp; Cache</h3>
-
-                        <!-- Storage Summary -->
-                        <div
-                          class="imgdesc-mm-storage"
-                          id="imgdesc-mm-storage"
-                          aria-label="Browser storage summary"
-                        >
-                          <div class="imgdesc-mm-storage-text">
-                            <span id="imgdesc-mm-storage-label"
-                              >Storage: checking…</span
-                            >
-                            <span
-                              class="imgdesc-mm-persistent-badge"
-                              id="imgdesc-mm-persistent-badge"
-                              hidden
-                            >
-                              <span aria-hidden="true" data-icon="lock"></span>
-                              Persistent
-                            </span>
-                          </div>
-                          <div
-                            class="imgdesc-mm-storage-bar"
-                            role="progressbar"
-                            aria-label="Storage usage"
-                            aria-valuenow="0"
-                            aria-valuemin="0"
-                            aria-valuemax="100"
-                            id="imgdesc-mm-storage-bar"
-                          >
-                            <div
-                              class="imgdesc-mm-storage-bar-fill"
-                              id="imgdesc-mm-storage-bar-fill"
-                            ></div>
-                          </div>
-                          <button
-                            class="imgdesc-mm-persist-btn"
-                            id="imgdesc-mm-persist-btn"
-                            hidden
-                            onclick="imgdescMMRequestPersist()"
-                          >
-                            <span aria-hidden="true" data-icon="lock"></span>
-                            Request Persistent Storage
-                          </button>
-                        </div>
-
-                        <!-- Analysis Cache (IndexedDB) -->
-                        <div
-                          class="imgdesc-mm-cache-panel"
-                          id="imgdesc-mm-cache-panel"
-                        >
-                          <p
-                            class="imgdesc-mm-cache-stats"
-                            id="imgdesc-mm-cache-stats"
-                          >
-                            Checking cache…
-                          </p>
-                          <button
-                            class="imgdesc-mm-cache-clear-btn"
-                            id="imgdesc-mm-cache-clear-btn"
-                            onclick="imgdescMMClearCache()"
-                            disabled
-                          >
-                            <span aria-hidden="true" data-icon="trash"></span>
-                            Clear Cache
-                          </button>
-                        </div>
-
-                        <!-- Status Legend -->
-                        <div class="imgdesc-mm-legend">
-                          <span class="imgdesc-mm-legend-item">
-                            <span
-                              aria-hidden="true"
-                              data-icon="checkCircle"
-                            ></span>
-                            Loaded (in memory)
-                          </span>
-                          <span class="imgdesc-mm-legend-item">
-                            <span aria-hidden="true" data-icon="disk"></span>
-                            Cached (on disk)
-                          </span>
-                          <span class="imgdesc-mm-legend-item">
-                            <span
-                              aria-hidden="true"
-                              data-icon="download"
-                            ></span>
-                            Not downloaded
-                          </span>
-                          <span class="imgdesc-mm-legend-item">
-                            <span
-                              aria-hidden="true"
-                              data-icon="hourglass"
-                            ></span>
-                            Downloading…
-                          </span>
-                        </div>
-                      </section>
-                    </div>
-                  </details>
-                </section>
-
                 <!-- Section 2: Context -->
                 <section class="imgdesc-section">
                   <h2>Add Context</h2>
@@ -15798,30 +15409,46 @@ Science,91</pre
                     <div class="imgdesc-option-content">
                       <div class="imgdesc-field">
                         <label for="imgdesc-subject">Subject Area</label>
+                        <span
+                          id="imgdesc-subject-hint"
+                          class="imgdesc-hint-text"
+                          >For example: Mathematics, Biology, History.</span
+                        >
                         <input
                           type="text"
-                          id="imgdesc-subject" spellcheck="true"
-                          placeholder="e.g., Mathematics, Biology, History"
+                          id="imgdesc-subject"
+                          spellcheck="true"
+                          aria-describedby="imgdesc-subject-hint"
                         />
                       </div>
 
                       <div class="imgdesc-field">
                         <label for="imgdesc-topic">Specific Topic</label>
+                        <span id="imgdesc-topic-hint" class="imgdesc-hint-text"
+                          >For example: differential equations, cell
+                          division.</span
+                        >
                         <input
                           type="text"
-                          id="imgdesc-topic" spellcheck="true"
-                          placeholder="e.g., Differential equations, Cell division"
+                          id="imgdesc-topic"
+                          spellcheck="true"
+                          aria-describedby="imgdesc-topic-hint"
                         />
                       </div>
 
                       <div class="imgdesc-field">
-                        <label for="imgdesc-objective"
-                          >Learning Outcome</label
+                        <label for="imgdesc-objective">Learning Outcome</label>
+                        <span
+                          id="imgdesc-objective-hint"
+                          class="imgdesc-hint-text"
+                          >What should students understand after engaging with
+                          this image?</span
                         >
                         <textarea
-                          id="imgdesc-objective" spellcheck="true"
+                          id="imgdesc-objective"
+                          spellcheck="true"
                           rows="2"
-                          placeholder="What should students understand after engaging with this image?"
+                          aria-describedby="imgdesc-objective-hint"
                         ></textarea>
                       </div>
 
@@ -15830,10 +15457,14 @@ Science,91</pre
                           Module/Course Name
                           <span class="imgdesc-optional">(Optional)</span>
                         </label>
+                        <span id="imgdesc-module-hint" class="imgdesc-hint-text"
+                          >For example: MATH2001.</span
+                        >
                         <input
                           type="text"
-                          id="imgdesc-module" spellcheck="true"
-                          placeholder="e.g., MATH2001 Calculus II"
+                          id="imgdesc-module"
+                          spellcheck="true"
+                          aria-describedby="imgdesc-module-hint"
                         />
                       </div>
                       <div class="imgdesc-field">
@@ -15854,10 +15485,17 @@ Science,91</pre
                           Extra Information
                           <span class="imgdesc-optional">(Optional)</span>
                         </label>
+                        <span
+                          id="imgdesc-context-hint"
+                          class="imgdesc-hint-text"
+                          >Any other relevant information about how this image
+                          is used.</span
+                        >
                         <textarea
-                          id="imgdesc-context" spellcheck="true"
+                          id="imgdesc-context"
+                          spellcheck="true"
                           rows="3"
-                          placeholder="Any other relevant information about how this image is used..."
+                          aria-describedby="imgdesc-context-hint"
                         ></textarea>
                       </div>
                     </div>
@@ -15994,8 +15632,9 @@ Science,91</pre
                     <legend
                       class="imgdesc-button-group-label"
                       id="copy-options-label"
-                      ><strong>Copy the description</strong></legend
                     >
+                      <strong>Copy the description</strong>
+                    </legend>
                     <button
                       type="button"
                       id="imgdesc-copy"
@@ -16124,10 +15763,7 @@ Science,91</pre
                 </div>
 
                 <!-- Debug Panel (Phase 2C) - closed by default (H-48); the summary opens it -->
-                <details
-                  class="imgdesc-debug-panel"
-                  id="imgdesc-debug-panel"
-                >
+                <details class="imgdesc-debug-panel" id="imgdesc-debug-panel">
                   <summary>
                     <span aria-hidden="true" data-icon="gear"></span> Debug
                     Information
@@ -16344,7 +15980,7 @@ Science,91</pre
               </section>
             </div>
 
-          <!-- Generate area (Phase 2B.2). It is the LAST child of the layout, after both
+            <!-- Generate area (Phase 2B.2). It is the LAST child of the layout, after both
                columns, so the Tab order is picture, settings, Educational Context,
                description options, Generate. From 1024px up the grid places it in the left
                column directly under the picture (CSS only; nothing moves it at runtime).
@@ -16486,6 +16122,604 @@ Science,91</pre
                 </label>
               </div>
             </div>
+
+            <!-- Optional Settings (was Expert Mode, Phase 4A). H-101: the LAST child of the layout, after the Generate area, so the Tab order is picture, Add Context, description options, Generate, Optional Settings. From 1024px the grid puts it in the left column under Generate (image-describer.css, H-101 block). Hidden with the config panel in output mode. The id stays: the controller looks it up. -->
+            <section class="imgdesc-section" id="imgdesc-expert-section">
+              <h2>Optional Settings</h2>
+              <!-- Phase 9D: Model Manager -->
+              <details
+                class="imgdesc-options-group"
+                id="imgdesc-model-manager-panel"
+              >
+                <summary>
+                  <span aria-hidden="true" data-icon="robot"
+                    ><svg
+                      aria-hidden="true"
+                      class="icon"
+                      height="21"
+                      viewBox="0 0 21 21"
+                      width="21"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <g
+                        fill="none"
+                        fill-rule="evenodd"
+                        stroke="currentColor"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        transform="translate(2 4)"
+                      >
+                        <path
+                          d="m4.5 0c.55228475 0 1 .44771525 1 1v2c0 .55228475-.44771525 1-1 1s-1-.44771525-1-1v-2c0-.55228475.44771525-1 1-1z"
+                        ></path>
+                        <path d="m16.5 2h-11"></path>
+                        <path d="m3.5 2h-3"></path>
+                        <path
+                          d="m4.5 10c.55228475 0 1 .4477153 1 1v2c0 .5522847-.44771525 1-1 1s-1-.4477153-1-1v-2c0-.5522847.44771525-1 1-1z"
+                        ></path>
+                        <path d="m16.5 12h-11"></path>
+                        <path d="m3.5 12h-3"></path>
+                        <path
+                          d="m12.5 5c.5522847 0 1 .44771525 1 1v2c0 .55228475-.4477153 1-1 1s-1-.44771525-1-1v-2c0-.55228475.4477153-1 1-1z"
+                        ></path>
+                        <path d="m11.5 7h-11"></path>
+                        <path d="m16.5 7h-3"></path>
+                      </g></svg
+                  ></span>
+                  Model &amp; Generation Settings
+                </summary>
+                <div class="imgdesc-option-content">
+                  <!-- Cloud Generation -->
+                  <section
+                    class="imgdesc-expert-subsection"
+                    id="imgdesc-model-section"
+                  >
+                    <h3 id="image-cloud-generation-heading">
+                      Cloud Generation
+                    </h3>
+                    <div class="imgdesc-field">
+                      <label for="imgdesc-model">
+                        Select AI Model
+                        <span class="imgdesc-optional"
+                          >(Choose quality vs. cost)</span
+                        >
+                      </label>
+                      <!-- Model filter bar (family + search + count + reset) -->
+                      <div
+                        class="imgdesc-model-filterbar"
+                        role="group"
+                        aria-label="Filter available models"
+                      >
+                        <div class="imgdesc-filter-field">
+                          <label for="imgdesc-model-family">Family</label>
+                          <select
+                            id="imgdesc-model-family"
+                            class="imgdesc-model-family-select"
+                          >
+                            <option value="">All families</option>
+                          </select>
+                        </div>
+                        <div class="imgdesc-filter-field imgdesc-filter-search">
+                          <label for="imgdesc-model-search">Search</label>
+                          <span
+                            id="imgdesc-model-search-hint"
+                            class="imgdesc-hint-text"
+                            >Search by name or provider.</span
+                          >
+                          <input
+                            type="search"
+                            id="imgdesc-model-search"
+                            class="imgdesc-model-search-input"
+                            aria-describedby="imgdesc-model-search-hint"
+                            autocomplete="off"
+                          />
+                        </div>
+                        <div class="imgdesc-filter-actions">
+                          <span
+                            id="imgdesc-model-count"
+                            class="imgdesc-model-count"
+                            role="status"
+                            aria-live="polite"
+                            aria-atomic="true"
+                          ></span>
+                          <button
+                            type="button"
+                            id="imgdesc-model-filter-reset"
+                            class="imgdesc-model-filter-reset"
+                          >
+                            <span aria-hidden="true" data-icon="reset"></span>
+                            Reset
+                          </button>
+                        </div>
+                      </div>
+                      <select
+                        id="imgdesc-model"
+                        class="imgdesc-model-selector"
+                        aria-describedby="imgdesc-cost-estimate"
+                      >
+                        <option value="">Loading models...</option>
+                      </select>
+                    </div>
+
+                    <div
+                      id="imgdesc-cost-estimate"
+                      class="imgdesc-cost-estimate"
+                      role="status"
+                      aria-live="polite"
+                      aria-atomic="true"
+                    >
+                      Estimated cost: Calculating...
+                    </div>
+                    <!-- Health Indicator (Stage 7 - Optional) -->
+                    <div
+                      id="imgdesc-health-indicator"
+                      class="imgdesc-health-indicator health-unknown"
+                      role="status"
+                      aria-live="polite"
+                      aria-label="Connection status: Checking"
+                      hidden
+                    >
+                      <span aria-hidden="true">&#9898;</span>
+                      <span class="imgdesc-health-text"
+                        >Connection: Checking...</span
+                      >
+                    </div>
+
+                    <div class="imgdesc-option-group imgdesc-model-preference">
+                      <label class="imgdesc-checkbox-label">
+                        <input
+                          type="checkbox"
+                          id="imgdesc-remember-model"
+                          aria-describedby="imgdesc-remember-hint"
+                        />
+                        <span>Remember my choice</span>
+                      </label>
+                      <span
+                        id="imgdesc-remember-hint"
+                        class="imgdesc-hint-text"
+                      >
+                        Your model preference will be saved for future sessions
+                      </span>
+                    </div>
+                    <div class="imgdesc-show-all-models">
+                      <input type="checkbox" id="imgdesc-show-all-models" />
+                      <label for="imgdesc-show-all-models"
+                        >Show all models
+                        <span class="imgdesc-hint"
+                          >(including those not confirmed for vision)</span
+                        ></label
+                      >
+                    </div>
+
+                    <!-- Visual Verification sub-group -->
+                    <div
+                      id="imgdesc-verify-section"
+                      class="imgdesc-verify-subgroup"
+                    >
+                      <h4>Visual Verification</h4>
+                      <div class="imgdesc-option-group">
+                        <label class="imgdesc-checkbox-label">
+                          <input type="checkbox" id="imgdesc-verify-enabled" />
+                          <span>Enable visual accuracy check</span>
+                        </label>
+                        <span class="imgdesc-hint-text">
+                          Sends a second request to verify the description
+                          matches the image. Uses an additional AI request.
+                        </span>
+                      </div>
+
+                      <div
+                        class="imgdesc-field"
+                        id="imgdesc-verify-model-group"
+                        hidden
+                      >
+                        <label for="imgdesc-verify-model">
+                          Verification Model
+                          <span class="imgdesc-optional"
+                            >(Can differ from description model)</span
+                          >
+                        </label>
+                        <select
+                          id="imgdesc-verify-model"
+                          class="imgdesc-model-selector"
+                        >
+                          <option value="">Loading models...</option>
+                        </select>
+                        <span
+                          class="imgdesc-hint-text"
+                          id="imgdesc-verify-cost-hint"
+                        >
+                          A smaller, cheaper model often works well for
+                          verification.
+                        </span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- Local Generation: FastVLM + Qwen3.5 (Phase 14C) -->
+                  <section class="imgdesc-expert-subsection">
+                    <h3>Local Generation</h3>
+                    <p class="imgdesc-mm-local-desc">
+                      Generate image descriptions locally — no API key or
+                      internet connection required after initial download.
+                    </p>
+                    <div class="imgdesc-local-model-selector">
+                      <label for="imgdesc-local-model">Local model</label>
+                      <select
+                        id="imgdesc-local-model"
+                        aria-describedby="imgdesc-local-model-hint"
+                      >
+                        <option value="fastvlm">
+                          FastVLM 0.5B — Fast, free-form (~22s)
+                        </option>
+                        <option value="qwen35">
+                          Qwen3.5-0.8B — Structured, slower (~60s)
+                        </option>
+                        <option value="lfm2vl">
+                          LFM2-VL 450M — Compact, fast (~7s)
+                        </option>
+                      </select>
+                      <p class="imgdesc-hint" id="imgdesc-local-model-hint">
+                        FastVLM and LFM2-VL produce free-form prose
+                        descriptions. Qwen3.5 produces structured sections
+                        (title, alt text, long description, text content) but
+                        may contain factual errors.
+                      </p>
+                    </div>
+                    <div
+                      id="imgdesc-pre-generation-warning"
+                      class="imgdesc-accuracy-warning"
+                      role="status"
+                      aria-live="polite"
+                      hidden
+                    >
+                      <p>
+                        <span aria-hidden="true" data-icon="warning"></span>
+                        This model may produce factual errors. Please check all
+                        details carefully against the original image before use.
+                      </p>
+                    </div>
+                    <div
+                      class="imgdesc-mm-model-list"
+                      role="list"
+                      aria-label="Local generation model status"
+                    >
+                      <div
+                        class="imgdesc-mm-model-item"
+                        role="listitem"
+                        id="imgdesc-mm-model-fastvlm"
+                        data-model-key="fastvlm"
+                      >
+                        <span
+                          class="imgdesc-mm-status-icon"
+                          aria-hidden="true"
+                          data-icon="download"
+                        ></span>
+                        <div class="imgdesc-mm-model-info">
+                          <span class="imgdesc-mm-model-name"
+                            >FastVLM 0.5B</span
+                          >
+                          <span class="imgdesc-mm-model-role"
+                            >Local description generation (no API key
+                            needed)</span
+                          >
+                        </div>
+                        <div class="imgdesc-mm-model-size">~350 MB</div>
+                        <div class="imgdesc-mm-model-status">
+                          <span class="imgdesc-mm-state-text">Checking…</span>
+                        </div>
+                        <div class="imgdesc-mm-model-actions">
+                          <!-- Buttons inserted by JS based on state -->
+                        </div>
+                        <div class="imgdesc-mm-progress" hidden>
+                          <div
+                            class="imgdesc-mm-progress-bar"
+                            role="progressbar"
+                            aria-label="FastVLM download progress"
+                            aria-valuenow="0"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          >
+                            <div class="imgdesc-mm-progress-bar-fill"></div>
+                          </div>
+                          <span class="imgdesc-mm-progress-text"></span>
+                          <dl
+                            class="imgdesc-mm-progress-detail"
+                            aria-live="off"
+                          ></dl>
+                        </div>
+                      </div>
+                      <div
+                        class="imgdesc-mm-model-item"
+                        role="listitem"
+                        id="imgdesc-mm-model-qwen35"
+                        data-model-key="qwen35"
+                      >
+                        <span
+                          class="imgdesc-mm-status-icon"
+                          aria-hidden="true"
+                          data-icon="download"
+                        ></span>
+                        <div class="imgdesc-mm-model-info">
+                          <span class="imgdesc-mm-model-name"
+                            >Qwen3.5-0.8B</span
+                          >
+                          <span class="imgdesc-mm-model-role"
+                            >Structured local descriptions</span
+                          >
+                        </div>
+                        <div class="imgdesc-mm-model-size">~1,000 MB</div>
+                        <div class="imgdesc-mm-model-status">
+                          <span class="imgdesc-mm-state-text">Checking…</span>
+                        </div>
+                        <div class="imgdesc-mm-model-actions">
+                          <!-- Buttons inserted by JS based on state -->
+                        </div>
+                        <div class="imgdesc-mm-progress" hidden>
+                          <div
+                            class="imgdesc-mm-progress-bar"
+                            role="progressbar"
+                            aria-label="Qwen3.5 download progress"
+                            aria-valuenow="0"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          >
+                            <div class="imgdesc-mm-progress-bar-fill"></div>
+                          </div>
+                          <span class="imgdesc-mm-progress-text"></span>
+                          <dl
+                            class="imgdesc-mm-progress-detail"
+                            aria-live="off"
+                          ></dl>
+                        </div>
+                      </div>
+                      <div
+                        class="imgdesc-mm-model-item"
+                        role="listitem"
+                        id="imgdesc-mm-model-lfm2vl"
+                        data-model-key="lfm2vl"
+                      >
+                        <span
+                          class="imgdesc-mm-status-icon"
+                          aria-hidden="true"
+                          data-icon="download"
+                        ></span>
+                        <div class="imgdesc-mm-model-info">
+                          <span class="imgdesc-mm-model-name"
+                            >LFM2-VL 450M</span
+                          >
+                          <span class="imgdesc-mm-model-role"
+                            >Compact local descriptions (no API key
+                            needed)</span
+                          >
+                        </div>
+                        <div class="imgdesc-mm-model-size">~349 MB</div>
+                        <div class="imgdesc-mm-model-status">
+                          <span class="imgdesc-mm-state-text">Checking…</span>
+                        </div>
+                        <div class="imgdesc-mm-model-actions">
+                          <!-- Buttons inserted by JS based on state -->
+                        </div>
+                        <div class="imgdesc-mm-progress" hidden>
+                          <div
+                            class="imgdesc-mm-progress-bar"
+                            role="progressbar"
+                            aria-label="LFM2-VL download progress"
+                            aria-valuenow="0"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          >
+                            <div class="imgdesc-mm-progress-bar-fill"></div>
+                          </div>
+                          <span class="imgdesc-mm-progress-text"></span>
+                          <dl
+                            class="imgdesc-mm-progress-detail"
+                            aria-live="off"
+                          ></dl>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <!-- Analysis Pipeline -->
+                  <section class="imgdesc-expert-subsection">
+                    <h3>Analysis Pipeline</h3>
+                    <div
+                      class="imgdesc-mm-model-list"
+                      role="list"
+                      aria-label="Analysis model status"
+                      id="imgdesc-mm-model-list"
+                    >
+                      <!-- Florence-2 -->
+                      <div
+                        class="imgdesc-mm-model-item"
+                        role="listitem"
+                        id="imgdesc-mm-model-florence2"
+                        data-model-key="florence2"
+                      >
+                        <span
+                          class="imgdesc-mm-status-icon"
+                          aria-hidden="true"
+                          data-icon="download"
+                        ></span>
+                        <div class="imgdesc-mm-model-info">
+                          <span class="imgdesc-mm-model-name">Florence-2</span>
+                          <span class="imgdesc-mm-model-role"
+                            >Captioning, object detection, OCR</span
+                          >
+                        </div>
+                        <div class="imgdesc-mm-model-size">~1.1 GB</div>
+                        <div class="imgdesc-mm-model-status">
+                          <span class="imgdesc-mm-state-text">Checking…</span>
+                        </div>
+                        <div class="imgdesc-mm-model-actions">
+                          <!-- Buttons inserted by JS based on state -->
+                        </div>
+                        <div class="imgdesc-mm-progress" hidden>
+                          <div
+                            class="imgdesc-mm-progress-bar"
+                            role="progressbar"
+                            aria-label="Florence-2 download progress"
+                            aria-valuenow="0"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                          >
+                            <div class="imgdesc-mm-progress-bar-fill"></div>
+                          </div>
+                          <span class="imgdesc-mm-progress-text"></span>
+                          <dl
+                            class="imgdesc-mm-progress-detail"
+                            aria-live="off"
+                          ></dl>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Florence-2 Enhancement (opt-in, Phase 10C-fix) -->
+                    <div
+                      class="imgdesc-expert-subsection"
+                      id="imgdesc-florence2-optin"
+                      hidden
+                    >
+                      <h4>Florence-2 Enhancement</h4>
+                      <p class="imgdesc-florence2-optin-desc">
+                        Run Florence-2 to enrich your description with an
+                        AI-generated caption. This is optional and takes
+                        approximately 30 seconds.
+                      </p>
+                      <fieldset
+                        class="imgdesc-florence2-options"
+                        id="imgdesc-florence2-options"
+                      >
+                        <legend class="sr-only">
+                          Florence-2 analysis tasks
+                        </legend>
+                        <label class="imgdesc-florence2-option">
+                          <input
+                            type="checkbox"
+                            id="imgdesc-florence2-caption"
+                            checked
+                          />
+                          AI Caption (~30 seconds)
+                        </label>
+                        <label class="imgdesc-florence2-option">
+                          <input type="checkbox" id="imgdesc-florence2-ocr" />
+                          Supplementary OCR (~30 seconds)
+                        </label>
+                      </fieldset>
+                      <button
+                        type="button"
+                        class="imgdesc-florence2-run-btn"
+                        id="imgdesc-florence2-run-btn"
+                        disabled
+                        onclick="ImageDescriberController.runFlorenceAnalysis()"
+                      >
+                        <span aria-hidden="true" data-icon="aiSparkle"></span>
+                        Run Florence-2
+                      </button>
+                      <div
+                        class="imgdesc-florence2-status"
+                        id="imgdesc-florence2-status"
+                        role="status"
+                        aria-live="polite"
+                        hidden
+                      ></div>
+                    </div>
+                  </section>
+
+                  <!-- Storage & Cache -->
+                  <section class="imgdesc-expert-subsection">
+                    <h3>Storage &amp; Cache</h3>
+
+                    <!-- Storage Summary -->
+                    <div
+                      class="imgdesc-mm-storage"
+                      id="imgdesc-mm-storage"
+                      aria-label="Browser storage summary"
+                    >
+                      <div class="imgdesc-mm-storage-text">
+                        <span id="imgdesc-mm-storage-label"
+                          >Storage: checking…</span
+                        >
+                        <span
+                          class="imgdesc-mm-persistent-badge"
+                          id="imgdesc-mm-persistent-badge"
+                          hidden
+                        >
+                          <span aria-hidden="true" data-icon="lock"></span>
+                          Persistent
+                        </span>
+                      </div>
+                      <div
+                        class="imgdesc-mm-storage-bar"
+                        role="progressbar"
+                        aria-label="Storage usage"
+                        aria-valuenow="0"
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        id="imgdesc-mm-storage-bar"
+                      >
+                        <div
+                          class="imgdesc-mm-storage-bar-fill"
+                          id="imgdesc-mm-storage-bar-fill"
+                        ></div>
+                      </div>
+                      <button
+                        class="imgdesc-mm-persist-btn"
+                        id="imgdesc-mm-persist-btn"
+                        hidden
+                        onclick="imgdescMMRequestPersist()"
+                      >
+                        <span aria-hidden="true" data-icon="lock"></span>
+                        Request Persistent Storage
+                      </button>
+                    </div>
+
+                    <!-- Analysis Cache (IndexedDB) -->
+                    <div
+                      class="imgdesc-mm-cache-panel"
+                      id="imgdesc-mm-cache-panel"
+                    >
+                      <p
+                        class="imgdesc-mm-cache-stats"
+                        id="imgdesc-mm-cache-stats"
+                      >
+                        Checking cache…
+                      </p>
+                      <button
+                        class="imgdesc-mm-cache-clear-btn"
+                        id="imgdesc-mm-cache-clear-btn"
+                        onclick="imgdescMMClearCache()"
+                        disabled
+                      >
+                        <span aria-hidden="true" data-icon="trash"></span>
+                        Clear Cache
+                      </button>
+                    </div>
+
+                    <!-- Status Legend -->
+                    <div class="imgdesc-mm-legend">
+                      <span class="imgdesc-mm-legend-item">
+                        <span aria-hidden="true" data-icon="checkCircle"></span>
+                        Loaded (in memory)
+                      </span>
+                      <span class="imgdesc-mm-legend-item">
+                        <span aria-hidden="true" data-icon="disk"></span>
+                        Cached (on disk)
+                      </span>
+                      <span class="imgdesc-mm-legend-item">
+                        <span aria-hidden="true" data-icon="download"></span>
+                        Not downloaded
+                      </span>
+                      <span class="imgdesc-mm-legend-item">
+                        <span aria-hidden="true" data-icon="hourglass"></span>
+                        Downloading…
+                      </span>
+                    </div>
+                  </section>
+                </div>
+              </details>
+            </section>
           </div>
         </article>
 
@@ -18110,12 +18344,18 @@ Science,91</pre
                 </div>
 
                 <div class="ally-form-group">
-                  <label for="ally-client-id">Client ID</label>
+                  <label id="ally-client-id-label" for="ally-client-id"
+                    >Client ID</label
+                  >
+                  <p id="ally-client-id-hint" class="ally-help-text">
+                    For example: 577
+                  </p>
                   <input
                     type="text"
                     id="ally-client-id"
                     name="ally_credential_client_id_legacy"
-                    placeholder="e.g., 577"
+                    aria-labelledby="ally-client-id-label"
+                    aria-describedby="ally-client-id-hint"
                     autocomplete="new-password"
                     spellcheck="false"
                     data-form-type="other"
@@ -18123,13 +18363,16 @@ Science,91</pre
                 </div>
 
                 <div class="ally-form-group ally-token-group">
-                  <label for="ally-api-token">API Token</label>
+                  <label id="ally-api-token-label" for="ally-api-token"
+                    >API Token</label
+                  >
                   <div class="ally-token-input-wrapper">
                     <input
                       type="password"
                       id="ally-api-token"
                       name="ally_credential_api_token_legacy"
-                      placeholder="Bearer token from Institutional Report"
+                      aria-labelledby="ally-api-token-label"
+                      aria-describedby="ally-api-token-help"
                       autocomplete="new-password"
                       spellcheck="false"
                       data-form-type="other"
@@ -18144,23 +18387,26 @@ Science,91</pre
                       <span aria-hidden="true" data-icon="eye"></span>
                     </button>
                   </div>
-                  <p class="ally-help-text">
+                  <p id="ally-api-token-help" class="ally-help-text">
                     Obtain from: Institutional Report → Export → Connect
                     external tool
                   </p>
                 </div>
 
                 <div class="ally-form-group">
-                  <label for="ally-worker-url"
+                  <label id="ally-worker-url-label" for="ally-worker-url"
                     >Proxy Worker URL (alternative to an API token)</label
                   >
+                  <p id="ally-worker-url-hint" class="ally-help-text">
+                    For example: https://your-proxy.workers.dev
+                  </p>
                   <input
                     type="url"
                     id="ally-worker-url"
-                    placeholder="https://your-proxy.workers.dev"
+                    aria-labelledby="ally-worker-url-label"
                     autocomplete="off"
                     spellcheck="false"
-                    aria-describedby="ally-worker-url-help ally-worker-url-error"
+                    aria-describedby="ally-worker-url-hint ally-worker-url-help ally-worker-url-error"
                   />
                   <p
                     class="credential-field-error"
@@ -18277,15 +18523,20 @@ Science,91</pre
                   <label id="ally-tenant-name-label" for="ally-tenant-name"
                     >Institution name (optional)</label
                   >
+                  <p
+                    id="ally-tenant-name-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example: University of Southampton
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="text"
                       id="ally-tenant-name"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="e.g., University of Southampton"
                       aria-labelledby="ally-tenant-name-label"
-                      aria-describedby="ally-tenant-name-help"
+                      aria-describedby="ally-tenant-name-hint ally-tenant-name-help"
                     />
                   </div>
                   <!--
@@ -18421,15 +18672,21 @@ Science,91</pre
                     for="ally-tenant-data-url"
                     >Fetch course data from a URL</label
                   >
+                  <p
+                    id="ally-tenant-data-url-hint"
+                    class="setup-help-text setup-field-hint"
+                  >
+                    For example:
+                    https://your-institution.github.io/ally/ally-course-payload.json
+                  </p>
                   <div class="setup-input-row">
                     <input
                       type="url"
                       id="ally-tenant-data-url"
                       autocomplete="off"
                       spellcheck="false"
-                      placeholder="https://your-institution.github.io/ally/ally-course-payload.json"
                       aria-labelledby="ally-tenant-data-url-label"
-                      aria-describedby="ally-tenant-data-url-help ally-tenant-data-url-error"
+                      aria-describedby="ally-tenant-data-url-hint ally-tenant-data-url-help ally-tenant-data-url-error"
                     />
                   </div>
                   <p
@@ -18749,13 +19006,21 @@ Science,91</pre
                 <option value="explain">Explain simply</option>
               </select>
             </div>
-            <label for="chat-system" class="visually-hidden"
+            <label
+              id="chat-system-label"
+              for="chat-system"
+              class="visually-hidden"
               >System prompt text</label
             >
+            <p id="chat-system-hint" class="help-text">
+              Optional instructions for the model. For example: Answer in plain
+              English
+            </p>
             <textarea
               id="chat-system"
               rows="3"
-              placeholder="Optional instructions for the model…"
+              aria-labelledby="chat-system-label"
+              aria-describedby="chat-system-hint"
             ></textarea>
           </details>
 
@@ -18985,41 +19250,88 @@ Science,91</pre
                 cursor: pointer;
               "
             >
-              <span aria-hidden="true" data-icon="image"></span>
-              <span>Attach an image, or drag and drop</span>
+              <span aria-hidden="true" data-icon="paperclip"></span>
+              <span>Attach a file, or drag and drop</span>
               <input
                 type="file"
                 id="chat-attach-input"
                 class="visually-hidden"
-                accept="image/jpeg,image/png,image/webp,application/pdf"
+                accept="image/jpeg,image/png,image/webp,application/pdf,.txt,.md,.tex,.mmd,text/plain,text/markdown,.docx,.xlsx,.pptx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 aria-describedby="chat-attach-hint"
               />
             </label>
             <p id="chat-attach-hint" class="chat-attach-hint">
-              JPEG, PNG or WebP up to 10MB, or PDF up to 25MB.
+              Images (JPEG, PNG or WebP) up to 10MB, PDF up to 25MB, a text,
+              Markdown or LaTeX file, or a Word, Excel or PowerPoint file.
             </p>
+            <div class="chat-attach-body">
+            <div
+              id="chat-attachment-card-host"
+              class="chat-attachment-card-host"
+              hidden
+            ></div>
+            <div class="chat-attach-main">
             <div
               id="chat-attachment-preview"
               class="chat-attachment-preview"
               role="region"
-              aria-label="Selected image attachment"
+              aria-label="Selected attachment"
             ></div>
+            <!-- Plain paragraph, NO live role: reading status, maths or scan
+                 advice and the free-model notice. The single spoken line is one
+                 announce() call in chat-attach.js; this is its visible copy. -->
+            <div class="chat-attach-advice-row">
+            <p
+              id="chat-attachment-advice"
+              class="chat-attachment-advice"
+              hidden
+            ></p>
+            <button
+              type="button"
+              id="chat-open-mathpix"
+              class="chat-open-mathpix"
+              hidden
+            >
+              <span aria-hidden="true" data-icon="arrowRight"></span>
+              Open MathPix
+            </button>
+            </div>
+            <div
+              id="chat-attachment-more"
+              class="chat-attachment-more"
+              hidden
+            ></div>
+            <!-- Wired by chat/chat-attach.js (parcel P3b). Shown only while a
+                 Word or PowerPoint file with pictures to send is held and the
+                 current model can read images; unticked on every attach. The
+                 count is the pictures that would be sent. Native checkbox, and
+                 no live region here: showing or hiding it is silent, and the
+                 one attach line names the pictures. -->
+            <div id="chat-attach-pictures-wrap" hidden>
+              <input type="checkbox" id="chat-attach-pictures" />
+              <label for="chat-attach-pictures"
+                >Include <span id="chat-attach-pictures-kind">pictures</span> (<span
+                  id="chat-attach-pictures-count"
+                  >0</span
+                >
+                <span id="chat-attach-pictures-unit">found</span>)</label
+              >
+            </div>
             <p
               id="chat-attachment-notice"
               class="chat-attachment-notice"
               role="status"
+              aria-live="off"
               hidden
             ></p>
+            </div>
+            </div>
           </div>
 
           <!-- Input area -->
           <div class="chat-input-bar">
-            <label for="chat-input" class="visually-hidden">Your message</label>
-            <textarea
-              id="chat-input"
-              rows="2"
-              placeholder="Type a message…"
-            ></textarea>
+            <label for="chat-input">Your message</label>
+            <textarea id="chat-input" rows="2"></textarea>
             <button id="chat-send" type="button">Send</button>
             <button id="chat-cancel" type="button" hidden>Cancel</button>
           </div>
@@ -19158,7 +19470,9 @@ Science,91</pre
                   class="chat-dev-copy"
                   aria-expanded="false"
                   aria-controls="chat-dev-request-pre"
-                >Show the whole request</button>
+                >
+                  Show the whole request
+                </button>
                 <button
                   type="button"
                   id="chat-dev-copy-request"
@@ -20462,27 +20776,27 @@ Science,91</pre
                placed in the right column by grid placement. DOM order is the
                reading and Tab order and is not changed. -->
           <div class="tikz-studio-layout">
-          <section aria-labelledby="tikz-studio-source-heading">
-            <h2 id="tikz-studio-source-heading">TikZ source</h2>
-            <div class="tikz-studio-template-row">
-              <label for="tikz-studio-template">Start from an example</label>
-              <select id="tikz-studio-template">
-                <option value="">Choose an example</option>
-              </select>
-              <button type="button" id="tikz-studio-template-load">
-                Use example
-              </button>
-            </div>
-            <label for="tikz-studio-source">TikZ source code</label>
-            <textarea
-              id="tikz-studio-source"
-              rows="16"
-              spellcheck="false"
-              autocomplete="off"
-              autocapitalize="off"
-              wrap="off"
-              aria-describedby="tikz-studio-source-hint"
-            >
+            <section aria-labelledby="tikz-studio-source-heading">
+              <h2 id="tikz-studio-source-heading">TikZ source</h2>
+              <div class="tikz-studio-template-row">
+                <label for="tikz-studio-template">Start from an example</label>
+                <select id="tikz-studio-template">
+                  <option value="">Choose an example</option>
+                </select>
+                <button type="button" id="tikz-studio-template-load">
+                  Use example
+                </button>
+              </div>
+              <label for="tikz-studio-source">TikZ source code</label>
+              <textarea
+                id="tikz-studio-source"
+                rows="16"
+                spellcheck="false"
+                autocomplete="off"
+                autocapitalize="off"
+                wrap="off"
+                aria-describedby="tikz-studio-source-hint"
+              >
 \usepackage{pgfplots}
 \pgfplotsset{compat=1.16}
 \begin{tikzpicture}
@@ -20491,314 +20805,515 @@ Science,91</pre
   \end{axis}
 \end{tikzpicture}
 </textarea
-            >
-            <p id="tikz-studio-source-hint" class="tikz-studio-hint">
-              Tab moves on to the next control. Lines that start with % @alt:,
-              % @caption:, % @longdesc: or % @decorative above the picture are
-              the text alternative, caption, long description and decorative
-              setting; the fields below keep them in step.
-            </p>
-            <div class="tikz-studio-actions">
-              <button type="button" id="tikz-studio-render">
-                <span aria-hidden="true" data-icon="refresh"></span> Render
-              </button>
-              <button type="button" id="tikz-studio-stop" hidden>Stop</button>
-              <label class="tikz-studio-inline-label">
-                <input type="checkbox" id="tikz-studio-live" disabled />
-                Render as you type
-              </label>
-            </div>
-            <p id="tikz-studio-live-note" class="tikz-studio-hint" hidden></p>
-            <p id="tikz-studio-status" class="tikz-studio-status">Ready.</p>
-            <!-- K3: after a failed render the status line names the problem and this link takes focus to the problems heading.
+              >
+              <p id="tikz-studio-source-hint" class="tikz-studio-hint">
+                Tab moves on to the next control. Lines that start with % @alt:,
+                % @caption:, % @longdesc: or % @decorative above the picture are
+                the text alternative, caption, long description and decorative
+                setting; the fields below keep them in step.
+              </p>
+              <div class="tikz-studio-actions">
+                <button type="button" id="tikz-studio-render">
+                  <span aria-hidden="true" data-icon="refresh"></span> Render
+                </button>
+                <button type="button" id="tikz-studio-stop" hidden>Stop</button>
+                <label class="tikz-studio-inline-label">
+                  <input type="checkbox" id="tikz-studio-live" disabled />
+                  Render as you type
+                </label>
+              </div>
+              <p id="tikz-studio-live-note" class="tikz-studio-hint" hidden></p>
+              <p id="tikz-studio-status" class="tikz-studio-status">Ready.</p>
+              <!-- K3: after a failed render the status line names the problem and this link takes focus to the problems heading.
                  Shown exactly while the problems section is. Not a live region: the error announcement is the only voice. -->
-            <p id="tikz-studio-problems-link-wrap" class="tikz-studio-problems-link" hidden>
-              <a id="tikz-studio-problems-link" href="#tikz-studio-errors-heading">See the problems</a>
-            </p>
-            <!-- K2: a plain list of what the Studio changed to get the source to run. Not a live region: the render sentence is the only voice. -->
-            <div id="tikz-studio-notes" class="tikz-studio-notes" hidden>
-              <p id="tikz-studio-notes-intro"></p>
-              <ul id="tikz-studio-notes-list"></ul>
-            </div>
-            <!-- K2: filled from tikz-studio/supported-packages.json, which is built from the engine's own file set. -->
-            <details id="tikz-studio-supported" class="tikz-studio-supported">
-              <summary>What this Studio can draw</summary>
-              <h3>Packages</h3>
-              <p id="tikz-studio-supported-builtin"></p>
-              <ul id="tikz-studio-supported-packages"></ul>
-              <h3>TikZ libraries</h3>
-              <p id="tikz-studio-supported-libraries"></p>
-              <h3>Not available</h3>
-              <ul id="tikz-studio-unavailable"></ul>
-            </details>
-          </section>
+              <p
+                id="tikz-studio-problems-link-wrap"
+                class="tikz-studio-problems-link"
+                hidden
+              >
+                <a
+                  id="tikz-studio-problems-link"
+                  href="#tikz-studio-errors-heading"
+                  >See the problems</a
+                >
+              </p>
+              <!-- K2: a plain list of what the Studio changed to get the source to run. Not a live region: the render sentence is the only voice. -->
+              <div id="tikz-studio-notes" class="tikz-studio-notes" hidden>
+                <p id="tikz-studio-notes-intro"></p>
+                <ul id="tikz-studio-notes-list"></ul>
+              </div>
+              <!-- K2: filled from tikz-studio/supported-packages.json, which is built from the engine's own file set. -->
+              <details id="tikz-studio-supported" class="tikz-studio-supported">
+                <summary>What this Studio can draw</summary>
+                <h3>Packages</h3>
+                <p id="tikz-studio-supported-builtin"></p>
+                <ul id="tikz-studio-supported-packages"></ul>
+                <h3>TikZ libraries</h3>
+                <p id="tikz-studio-supported-libraries"></p>
+                <h3>Not available</h3>
+                <ul id="tikz-studio-unavailable"></ul>
+              </details>
+            </section>
 
-          <!-- P4c: Draw with AI. Nothing here is a live region: the press announces once through the shared announcer and the same
+            <!-- P4c: Draw with AI. Nothing here is a live region: the press announces once through the shared announcer and the same
                sentence sits in the plain paragraph below the button. The proposal is shown beside the author's diagram and changes nothing
                until "Use this drawing" is pressed. -->
-          <section aria-labelledby="tikz-studio-generate-heading">
-            <h2 id="tikz-studio-generate-heading">Draw with AI</h2>
-            <div class="tikz-studio-field">
-              <label for="tikz-studio-generate-prompt">Describe the diagram you want</label>
-              <textarea
-                id="tikz-studio-generate-prompt"
-                rows="4"
-                autocomplete="off"
-                aria-describedby="tikz-studio-generate-prompt-hint"
-              ></textarea>
-              <p id="tikz-studio-generate-prompt-hint" class="tikz-studio-hint">
-                Say what the diagram shows and what each label says. The AI draws only what you ask for.
-              </p>
-            </div>
-            <!-- P5a: the house drop zone, as in Graph Builder's image tab (shared gb-* classes, no new colour). The label is the click target
+            <section aria-labelledby="tikz-studio-generate-heading">
+              <h2 id="tikz-studio-generate-heading">Draw with AI</h2>
+              <div class="tikz-studio-field">
+                <label for="tikz-studio-generate-prompt"
+                  >Describe the diagram you want</label
+                >
+                <textarea
+                  id="tikz-studio-generate-prompt"
+                  rows="4"
+                  autocomplete="off"
+                  aria-describedby="tikz-studio-generate-prompt-hint"
+                ></textarea>
+                <p
+                  id="tikz-studio-generate-prompt-hint"
+                  class="tikz-studio-hint"
+                >
+                  Say what the diagram shows and what each label says. The AI
+                  draws only what you ask for.
+                </p>
+              </div>
+              <!-- P5a: the house drop zone, as in Graph Builder's image tab (shared gb-* classes, no new colour). The label is the click target
                  and the drop target; the input is its SIBLING so the theme's .gb-upload-area:focus-within rule draws the focus ring.
                  aria-labelledby narrows the input's name to the first sentence; the help text and the status are its description; the
                  chosen file's name is a plain paragraph so the control's name never changes with its value. Nothing here is a live
                  region: choosing, dropping, pasting or removing a picture says nothing aloud. -->
-            <div class="tikz-studio-field">
-              <p class="tikz-studio-hint">Or start from a picture (optional).</p>
-              <div class="gb-upload-area">
-                <label for="tikz-studio-generate-picture" class="gb-file-label" id="tikz-studio-generate-picture-zone">
-                  <span class="gb-upload-icon" aria-hidden="true" data-icon="image"></span>
-                  <span class="gb-upload-text" id="tikz-studio-generate-picture-text">Choose a picture, or drop one here</span>
-                </label>
-                <input
-                  type="file"
-                  id="tikz-studio-generate-picture"
-                  accept="image/png,image/jpeg,image/webp"
-                  class="gb-file-input"
-                  aria-labelledby="tikz-studio-generate-picture-text"
-                  aria-describedby="tikz-studio-generate-picture-help tikz-studio-generate-picture-status"
-                />
-                <p id="tikz-studio-generate-picture-help" class="tikz-studio-hint">
-                  PNG, JPEG or WebP. You can also paste one from the clipboard (Ctrl+V).
+              <div class="tikz-studio-field">
+                <p class="tikz-studio-hint">
+                  Or start from a picture (optional).
                 </p>
-                <p id="tikz-studio-generate-picture-name" class="tikz-studio-picture-name">No picture chosen</p>
-                <p id="tikz-studio-generate-picture-status" class="tikz-studio-hint" hidden></p>
-                <button type="button" id="tikz-studio-generate-picture-remove" hidden>Remove picture</button>
-              </div>
-            </div>
-            <p id="tikz-studio-generate-note" class="tikz-studio-describe-note">
-              AI can get things wrong. Compare its drawing with what you need before you use it.
-            </p>
-            <div class="tikz-studio-actions">
-              <button type="button" id="tikz-studio-generate" aria-describedby="tikz-studio-generate-note">
-                Draw with AI
-              </button>
-            </div>
-            <p id="tikz-studio-generate-status" class="tikz-studio-hint" hidden></p>
-            <div id="tikz-studio-generate-result" class="tikz-studio-generate-result" hidden>
-              <h3 id="tikz-studio-generate-result-heading" tabindex="-1">Proposed drawing</h3>
-              <p id="tikz-studio-generate-stale" class="tikz-studio-describe-note" hidden>
-                Your source has changed since this drawing was made. Using it will replace what is there now.
-              </p>
-              <div class="tikz-studio-compare">
-                <figure>
-                  <div class="tikz-studio-paper tikz-studio-compare-paper">
-                    <div class="tikz-studio-compare-sheet">
-                      <img id="tikz-studio-compare-left-img" alt="" />
-                    </div>
-                    <p id="tikz-studio-compare-left-none" hidden>No diagram yet</p>
-                  </div>
-                  <figcaption id="tikz-studio-compare-left-caption"></figcaption>
-                </figure>
-                <figure>
-                  <div class="tikz-studio-paper tikz-studio-compare-paper">
-                    <div class="tikz-studio-compare-sheet">
-                      <img id="tikz-studio-compare-right-img" alt="" />
-                    </div>
-                  </div>
-                  <figcaption id="tikz-studio-compare-right-caption">AI's drawing</figcaption>
-                </figure>
-              </div>
-              <p id="tikz-studio-generate-summary"></p>
-              <p id="tikz-studio-generate-replaces">
-                This replaces your whole source, including the text alternative. You can undo it with Ctrl+Z.
-              </p>
-              <details>
-                <summary>See the code</summary>
-                <pre><code id="tikz-studio-generate-code"></code></pre>
-              </details>
-              <div class="tikz-studio-actions">
-                <button type="button" id="tikz-studio-generate-use">Use this drawing</button>
-                <button type="button" id="tikz-studio-generate-discard">Discard</button>
-              </div>
-            </div>
-            <div id="tikz-studio-generate-attempts"></div>
-          </section>
-
-          <section
-            id="tikz-studio-errors-section"
-            aria-labelledby="tikz-studio-errors-heading"
-            hidden
-          >
-            <h2 id="tikz-studio-errors-heading" tabindex="-1">Problems with the source</h2>
-            <ul id="tikz-studio-errors"></ul>
-            <!-- P4b: Fix with AI. The button exists only while this section shows. Nothing here is a live region: the press announces
-                 once through the shared announcer and the same sentence sits in the plain paragraph below. -->
-            <div class="tikz-studio-actions">
-              <button type="button" id="tikz-studio-fix">Fix with AI</button>
-            </div>
-            <p id="tikz-studio-fix-status" class="tikz-studio-hint" hidden></p>
-            <div id="tikz-studio-fix-result" class="tikz-studio-fix-result" hidden>
-              <h3 id="tikz-studio-fix-heading" tabindex="-1">Suggested fix</h3>
-              <p id="tikz-studio-fix-warning" class="tikz-studio-describe-note">
-                AI can get things wrong. Check the change before you apply it.
-              </p>
-              <p id="tikz-studio-fix-change"></p>
-              <ul id="tikz-studio-fix-diff" class="tikz-studio-fix-diff"></ul>
-              <div class="tikz-studio-actions">
-                <button type="button" id="tikz-studio-fix-apply">Apply fix</button>
-                <button type="button" id="tikz-studio-fix-discard">Discard</button>
-              </div>
-            </div>
-            <div id="tikz-studio-fix-attempts"></div>
-            <details id="tikz-studio-log" hidden>
-              <summary>TeX log</summary>
-              <pre id="tikz-studio-log-text"></pre>
-            </details>
-          </section>
-
-          <!-- P5e: the drawing and the downloads that save it share one wrapper, so a wide window can place them together in column 2.
-               The wrapper changes no DOM order, Tab order or reading order, and carries no role. -->
-          <div class="tikz-studio-preview-column">
-          <section aria-labelledby="tikz-studio-preview-heading">
-            <h2 id="tikz-studio-preview-heading">Preview</h2>
-            <a
-              id="tikz-studio-skip"
-              class="skip-link tikz-studio-skip"
-              href="#tikz-studio-export-heading"
-              >Skip the preview</a
-            >
-            <!-- F2: switches the drawing between TeX's own font and the site's sans serif, live and in memory only. A native radio group speaks its own state, so there is no live region. -->
-            <fieldset id="tikz-studio-font-group" class="tikz-studio-font-group">
-              <legend>Font in the drawing</legend>
-              <div class="tikz-studio-font-choices">
-                <label for="tikz-studio-font-tex"
-                  ><input type="radio" name="tikz-studio-font" id="tikz-studio-font-tex" value="tex" checked />
-                  TeX's own font</label
-                >
-                <label for="tikz-studio-font-sans"
-                  ><input type="radio" name="tikz-studio-font" id="tikz-studio-font-sans" value="sans" />
-                  Sans serif</label
-                >
-              </div>
-            </fieldset>
-            <div id="tikz-studio-paper" class="tikz-studio-paper">
-              <p id="tikz-studio-placeholder">Press Render to see the diagram.</p>
-              <!-- OD1: shown while the figure is the last drawing that worked and the source now has problems. Plain text, not a live region. -->
-              <p id="tikz-studio-out-of-date" class="tikz-studio-out-of-date" hidden>
-                <span aria-hidden="true" data-icon="warning"></span>
-                Out of date. This is the last drawing that worked. The source now has problems, so the drawing does not match it.
-              </p>
-              <div id="tikz-studio-figure"></div>
-              <!-- P5b: outside the figure's own HTML, so the exported figure is unchanged. Shown only when there is a description. -->
-              <div id="tikz-studio-description-actions" class="tikz-studio-description-actions" hidden>
-                <fieldset class="tikz-studio-actions tikz-studio-copy-group">
-                  <legend class="tikz-studio-copy-label">Copy the description</legend>
-                  <button type="button" id="tikz-studio-copy-text" class="secondary-button">
-                    <span aria-hidden="true" data-icon="clipboard"></span> Copy as Text
+                <div class="gb-upload-area">
+                  <label
+                    for="tikz-studio-generate-picture"
+                    class="gb-file-label"
+                    id="tikz-studio-generate-picture-zone"
+                  >
+                    <span
+                      class="gb-upload-icon"
+                      aria-hidden="true"
+                      data-icon="image"
+                    ></span>
+                    <span
+                      class="gb-upload-text"
+                      id="tikz-studio-generate-picture-text"
+                      >Choose a picture, or drop one here</span
+                    >
+                  </label>
+                  <input
+                    type="file"
+                    id="tikz-studio-generate-picture"
+                    accept="image/png,image/jpeg,image/webp"
+                    class="gb-file-input"
+                    aria-labelledby="tikz-studio-generate-picture-text"
+                    aria-describedby="tikz-studio-generate-picture-help tikz-studio-generate-picture-status"
+                  />
+                  <p
+                    id="tikz-studio-generate-picture-help"
+                    class="tikz-studio-hint"
+                  >
+                    PNG, JPEG or WebP. You can also paste one from the clipboard
+                    (Ctrl+V).
+                  </p>
+                  <p
+                    id="tikz-studio-generate-picture-name"
+                    class="tikz-studio-picture-name"
+                  >
+                    No picture chosen
+                  </p>
+                  <p
+                    id="tikz-studio-generate-picture-status"
+                    class="tikz-studio-hint"
+                    hidden
+                  ></p>
+                  <button
+                    type="button"
+                    id="tikz-studio-generate-picture-remove"
+                    hidden
+                  >
+                    Remove picture
                   </button>
-                  <button type="button" id="tikz-studio-copy-formatted" class="secondary-button">
-                    <span aria-hidden="true" data-icon="document"></span> Copy as Formatted
-                  </button>
-                  <button type="button" id="tikz-studio-copy-html" class="secondary-button">
-                    <span aria-hidden="true">&lt;/&gt;</span> Copy as HTML
-                  </button>
-                </fieldset>
-                <div class="tikz-studio-actions">
-                  <button type="button" id="tikz-studio-read-aloud" class="secondary-button" hidden>
-                    <span aria-hidden="true" data-icon="message"></span>
-                    <span id="tikz-studio-read-aloud-label">Read Aloud</span>
-                  </button>
-                  <span class="imgdesc-save-audio-split" role="group" aria-label="Save audio" id="tikz-studio-save-audio-group" hidden>
-                    <button type="button" id="tikz-studio-save-audio" class="secondary-button imgdesc-save-audio-main"><span aria-hidden="true" data-icon="download"></span> <span id="tikz-studio-save-audio-label">Save as MP3</span></button><button type="button" id="tikz-studio-save-audio-format" class="secondary-button imgdesc-format-toggle" aria-label="Change audio format. Currently MP3."><span aria-hidden="true" data-icon="arrowDown"></span><span class="visually-hidden" id="tikz-studio-save-audio-format-label">MP3</span></button>
-                  </span>
                 </div>
-                <small class="imgdesc-save-audio-note">Reading and saving are processed locally on your device.</small>
               </div>
-            </div>
-          </section>
+              <p
+                id="tikz-studio-generate-note"
+                class="tikz-studio-describe-note"
+              >
+                AI can get things wrong. Compare its drawing with what you need
+                before you use it.
+              </p>
+              <div class="tikz-studio-actions">
+                <button
+                  type="button"
+                  id="tikz-studio-generate"
+                  aria-describedby="tikz-studio-generate-note"
+                >
+                  Draw with AI
+                </button>
+              </div>
+              <p
+                id="tikz-studio-generate-status"
+                class="tikz-studio-hint"
+                hidden
+              ></p>
+              <div
+                id="tikz-studio-generate-result"
+                class="tikz-studio-generate-result"
+                hidden
+              >
+                <h3 id="tikz-studio-generate-result-heading" tabindex="-1">
+                  Proposed drawing
+                </h3>
+                <p
+                  id="tikz-studio-generate-stale"
+                  class="tikz-studio-describe-note"
+                  hidden
+                >
+                  Your source has changed since this drawing was made. Using it
+                  will replace what is there now.
+                </p>
+                <div class="tikz-studio-compare">
+                  <figure>
+                    <div class="tikz-studio-paper tikz-studio-compare-paper">
+                      <div class="tikz-studio-compare-sheet">
+                        <img id="tikz-studio-compare-left-img" alt="" />
+                      </div>
+                      <p id="tikz-studio-compare-left-none" hidden>
+                        No diagram yet
+                      </p>
+                    </div>
+                    <figcaption
+                      id="tikz-studio-compare-left-caption"
+                    ></figcaption>
+                  </figure>
+                  <figure>
+                    <div class="tikz-studio-paper tikz-studio-compare-paper">
+                      <div class="tikz-studio-compare-sheet">
+                        <img id="tikz-studio-compare-right-img" alt="" />
+                      </div>
+                    </div>
+                    <figcaption id="tikz-studio-compare-right-caption">
+                      AI's drawing
+                    </figcaption>
+                  </figure>
+                </div>
+                <p id="tikz-studio-generate-summary"></p>
+                <p id="tikz-studio-generate-replaces">
+                  This replaces your whole source, including the text
+                  alternative. You can undo it with Ctrl+Z.
+                </p>
+                <details>
+                  <summary>See the code</summary>
+                  <pre><code id="tikz-studio-generate-code"></code></pre>
+                </details>
+                <div class="tikz-studio-actions">
+                  <button type="button" id="tikz-studio-generate-use">
+                    Use this drawing
+                  </button>
+                  <button type="button" id="tikz-studio-generate-discard">
+                    Discard
+                  </button>
+                </div>
+              </div>
+              <div id="tikz-studio-generate-attempts"></div>
+            </section>
 
-          <!-- P5d: directly after the preview, because these buttons save what the preview shows. No SCORM or standalone-HTML control here: Download HTML saves the same accessible figure for later use. -->
-          <section aria-labelledby="tikz-studio-export-heading">
-            <h2 id="tikz-studio-export-heading" tabindex="-1">Download the diagram</h2>
-            <p class="tikz-studio-hint">
-              Render the diagram first. These buttons save what the preview shows.
-            </p>
-            <div class="tikz-studio-actions">
-              <button type="button" id="tikz-studio-download-svg">
-                <span aria-hidden="true" data-icon="download"></span> Download
-                SVG
-              </button>
-              <span class="tikz-studio-png-size-field">
-                <label for="tikz-studio-png-size">PNG size</label>
-                <select id="tikz-studio-png-size" aria-describedby="tikz-studio-png-size-note">
-                  <option value="1">Small (1×)</option>
-                  <option value="2" selected>Medium (2×)</option>
-                  <option value="4">Large (4×)</option>
-                  <option value="8">Extra large (8×)</option>
-                </select>
-              </span>
-              <button type="button" id="tikz-studio-download-png">
-                <span aria-hidden="true" data-icon="download"></span> Download
-                PNG
-              </button>
-              <button type="button" id="tikz-studio-download-html">
-                <span aria-hidden="true" data-icon="download"></span> Download
-                HTML
-              </button>
-            </div>
-            <!-- A plain paragraph, not a live region: the select points at it, so it is read when the select takes focus. -->
-            <p id="tikz-studio-png-size-note" class="tikz-studio-hint"></p>
-          </section>
-          </div>
-          <!-- P5e: end of the preview column -->
+            <section
+              id="tikz-studio-errors-section"
+              aria-labelledby="tikz-studio-errors-heading"
+              hidden
+            >
+              <h2 id="tikz-studio-errors-heading" tabindex="-1">
+                Problems with the source
+              </h2>
+              <ul id="tikz-studio-errors"></ul>
+              <!-- P4b: Fix with AI. The button exists only while this section shows. Nothing here is a live region: the press announces
+                 once through the shared announcer and the same sentence sits in the plain paragraph below. -->
+              <div class="tikz-studio-actions">
+                <button type="button" id="tikz-studio-fix">Fix with AI</button>
+              </div>
+              <p
+                id="tikz-studio-fix-status"
+                class="tikz-studio-hint"
+                hidden
+              ></p>
+              <div
+                id="tikz-studio-fix-result"
+                class="tikz-studio-fix-result"
+                hidden
+              >
+                <h3 id="tikz-studio-fix-heading" tabindex="-1">
+                  Suggested fix
+                </h3>
+                <p
+                  id="tikz-studio-fix-warning"
+                  class="tikz-studio-describe-note"
+                >
+                  AI can get things wrong. Check the change before you apply it.
+                </p>
+                <p id="tikz-studio-fix-change"></p>
+                <ul id="tikz-studio-fix-diff" class="tikz-studio-fix-diff"></ul>
+                <div class="tikz-studio-actions">
+                  <button type="button" id="tikz-studio-fix-apply">
+                    Apply fix
+                  </button>
+                  <button type="button" id="tikz-studio-fix-discard">
+                    Discard
+                  </button>
+                </div>
+              </div>
+              <div id="tikz-studio-fix-attempts"></div>
+              <details id="tikz-studio-log" hidden>
+                <summary>TeX log</summary>
+                <pre id="tikz-studio-log-text"></pre>
+              </details>
+            </section>
 
-          <section aria-labelledby="tikz-studio-describe-heading">
-            <h2 id="tikz-studio-describe-heading" tabindex="-1">
-              Describe the figure
-            </h2>
-            <p class="tikz-studio-hint">
-              These fields write the % @ lines in the source, and the source
-              writes them back.
-            </p>
-            <!-- P4f: a plain paragraph, not a live region; the button points at it so it is read when the button takes focus. -->
-            <p id="tikz-studio-describe-note" class="tikz-studio-describe-note">
-              AI can get things wrong. Check every description against the figure before you use it.
-            </p>
-            <div class="tikz-studio-actions">
-              <button type="button" id="tikz-studio-describe" aria-describedby="tikz-studio-describe-note">
-                Describe with AI
-              </button>
-            </div>
-            <p id="tikz-studio-describe-status" class="tikz-studio-hint" hidden></p>
-            <!-- The embed's output sink: hidden AND aria-live="off", nothing a person sees. See tikz-studio/tikz-studio-llm.js. -->
-            <div id="tikz-studio-embed-sink" hidden aria-live="off"></div>
-            <div class="tikz-studio-field">
-              <input type="checkbox" id="tikz-studio-decorative" />
-              <label for="tikz-studio-decorative">
-                This figure is decorative
-              </label>
-            </div>
-            <div class="tikz-studio-field">
-              <label for="tikz-studio-alt">Text alternative (alt text)</label>
-              <input type="text" id="tikz-studio-alt" autocomplete="off" />
-            </div>
-            <div class="tikz-studio-field">
-              <label for="tikz-studio-caption">Caption</label>
-              <input type="text" id="tikz-studio-caption" autocomplete="off" />
-            </div>
-            <div class="tikz-studio-field">
-              <label for="tikz-studio-longdesc">Long description</label>
-              <textarea
-                id="tikz-studio-longdesc"
-                rows="4"
-                autocomplete="off"
-              ></textarea>
-            </div>
-          </section>
+            <!-- P5e: the drawing and the downloads that save it share one wrapper, so a wide window can place them together in column 2.
+               The wrapper changes no DOM order, Tab order or reading order, and carries no role. -->
+            <div class="tikz-studio-preview-column">
+              <section aria-labelledby="tikz-studio-preview-heading">
+                <h2 id="tikz-studio-preview-heading">Preview</h2>
+                <a
+                  id="tikz-studio-skip"
+                  class="skip-link tikz-studio-skip"
+                  href="#tikz-studio-export-heading"
+                  >Skip the preview</a
+                >
+                <!-- F2: switches the drawing between TeX's own font and the site's sans serif, live and in memory only. A native radio group speaks its own state, so there is no live region. -->
+                <fieldset
+                  id="tikz-studio-font-group"
+                  class="tikz-studio-font-group"
+                >
+                  <legend>Font in the drawing</legend>
+                  <div class="tikz-studio-font-choices">
+                    <label for="tikz-studio-font-tex"
+                      ><input
+                        type="radio"
+                        name="tikz-studio-font"
+                        id="tikz-studio-font-tex"
+                        value="tex"
+                        checked
+                      />
+                      TeX's own font</label
+                    >
+                    <label for="tikz-studio-font-sans"
+                      ><input
+                        type="radio"
+                        name="tikz-studio-font"
+                        id="tikz-studio-font-sans"
+                        value="sans"
+                      />
+                      Sans serif</label
+                    >
+                  </div>
+                </fieldset>
+                <div id="tikz-studio-paper" class="tikz-studio-paper">
+                  <p id="tikz-studio-placeholder">
+                    Press Render to see the diagram.
+                  </p>
+                  <!-- OD1: shown while the figure is the last drawing that worked and the source now has problems. Plain text, not a live region. -->
+                  <p
+                    id="tikz-studio-out-of-date"
+                    class="tikz-studio-out-of-date"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="warning"></span>
+                    Out of date. This is the last drawing that worked. The
+                    source now has problems, so the drawing does not match it.
+                  </p>
+                  <div id="tikz-studio-figure"></div>
+                  <!-- P5b: outside the figure's own HTML, so the exported figure is unchanged. Shown only when there is a description. -->
+                  <div
+                    id="tikz-studio-description-actions"
+                    class="tikz-studio-description-actions"
+                    hidden
+                  >
+                    <fieldset
+                      class="tikz-studio-actions tikz-studio-copy-group"
+                    >
+                      <legend class="tikz-studio-copy-label">
+                        Copy the description
+                      </legend>
+                      <button
+                        type="button"
+                        id="tikz-studio-copy-text"
+                        class="secondary-button"
+                      >
+                        <span aria-hidden="true" data-icon="clipboard"></span>
+                        Copy as Text
+                      </button>
+                      <button
+                        type="button"
+                        id="tikz-studio-copy-formatted"
+                        class="secondary-button"
+                      >
+                        <span aria-hidden="true" data-icon="document"></span>
+                        Copy as Formatted
+                      </button>
+                      <button
+                        type="button"
+                        id="tikz-studio-copy-html"
+                        class="secondary-button"
+                      >
+                        <span aria-hidden="true">&lt;/&gt;</span> Copy as HTML
+                      </button>
+                    </fieldset>
+                    <div class="tikz-studio-actions">
+                      <button
+                        type="button"
+                        id="tikz-studio-read-aloud"
+                        class="secondary-button"
+                        hidden
+                      >
+                        <span aria-hidden="true" data-icon="message"></span>
+                        <span id="tikz-studio-read-aloud-label"
+                          >Read Aloud</span
+                        >
+                      </button>
+                      <span
+                        class="imgdesc-save-audio-split"
+                        role="group"
+                        aria-label="Save audio"
+                        id="tikz-studio-save-audio-group"
+                        hidden
+                      >
+                        <button
+                          type="button"
+                          id="tikz-studio-save-audio"
+                          class="secondary-button imgdesc-save-audio-main"
+                        >
+                          <span aria-hidden="true" data-icon="download"></span>
+                          <span id="tikz-studio-save-audio-label"
+                            >Save as MP3</span
+                          ></button
+                        ><button
+                          type="button"
+                          id="tikz-studio-save-audio-format"
+                          class="secondary-button imgdesc-format-toggle"
+                          aria-label="Change audio format. Currently MP3."
+                        >
+                          <span aria-hidden="true" data-icon="arrowDown"></span
+                          ><span
+                            class="visually-hidden"
+                            id="tikz-studio-save-audio-format-label"
+                            >MP3</span
+                          >
+                        </button>
+                      </span>
+                    </div>
+                    <small class="imgdesc-save-audio-note"
+                      >Reading and saving are processed locally on your
+                      device.</small
+                    >
+                  </div>
+                </div>
+              </section>
 
+              <!-- P5d: directly after the preview, because these buttons save what the preview shows. No SCORM or standalone-HTML control here: Download HTML saves the same accessible figure for later use. -->
+              <section aria-labelledby="tikz-studio-export-heading">
+                <h2 id="tikz-studio-export-heading" tabindex="-1">
+                  Download the diagram
+                </h2>
+                <p class="tikz-studio-hint">
+                  Render the diagram first. These buttons save what the preview
+                  shows.
+                </p>
+                <div class="tikz-studio-actions">
+                  <button type="button" id="tikz-studio-download-svg">
+                    <span aria-hidden="true" data-icon="download"></span>
+                    Download SVG
+                  </button>
+                  <span class="tikz-studio-png-size-field">
+                    <label for="tikz-studio-png-size">PNG size</label>
+                    <select
+                      id="tikz-studio-png-size"
+                      aria-describedby="tikz-studio-png-size-note"
+                    >
+                      <option value="1">Small (1×)</option>
+                      <option value="2" selected>Medium (2×)</option>
+                      <option value="4">Large (4×)</option>
+                      <option value="8">Extra large (8×)</option>
+                    </select>
+                  </span>
+                  <button type="button" id="tikz-studio-download-png">
+                    <span aria-hidden="true" data-icon="download"></span>
+                    Download PNG
+                  </button>
+                  <button type="button" id="tikz-studio-download-html">
+                    <span aria-hidden="true" data-icon="download"></span>
+                    Download HTML
+                  </button>
+                </div>
+                <!-- A plain paragraph, not a live region: the select points at it, so it is read when the select takes focus. -->
+                <p id="tikz-studio-png-size-note" class="tikz-studio-hint"></p>
+              </section>
+            </div>
+            <!-- P5e: end of the preview column -->
+
+            <section aria-labelledby="tikz-studio-describe-heading">
+              <h2 id="tikz-studio-describe-heading" tabindex="-1">
+                Describe the figure
+              </h2>
+              <p class="tikz-studio-hint">
+                These fields write the % @ lines in the source, and the source
+                writes them back.
+              </p>
+              <!-- P4f: a plain paragraph, not a live region; the button points at it so it is read when the button takes focus. -->
+              <p
+                id="tikz-studio-describe-note"
+                class="tikz-studio-describe-note"
+              >
+                AI can get things wrong. Check every description against the
+                figure before you use it.
+              </p>
+              <div class="tikz-studio-actions">
+                <button
+                  type="button"
+                  id="tikz-studio-describe"
+                  aria-describedby="tikz-studio-describe-note"
+                >
+                  Describe with AI
+                </button>
+              </div>
+              <p
+                id="tikz-studio-describe-status"
+                class="tikz-studio-hint"
+                hidden
+              ></p>
+              <!-- The embed's output sink: hidden AND aria-live="off", nothing a person sees. See tikz-studio/tikz-studio-llm.js. -->
+              <div id="tikz-studio-embed-sink" hidden aria-live="off"></div>
+              <div class="tikz-studio-field">
+                <input type="checkbox" id="tikz-studio-decorative" />
+                <label for="tikz-studio-decorative">
+                  This figure is decorative
+                </label>
+              </div>
+              <div class="tikz-studio-field">
+                <label for="tikz-studio-alt">Text alternative (alt text)</label>
+                <input type="text" id="tikz-studio-alt" autocomplete="off" />
+              </div>
+              <div class="tikz-studio-field">
+                <label for="tikz-studio-caption">Caption</label>
+                <input
+                  type="text"
+                  id="tikz-studio-caption"
+                  autocomplete="off"
+                />
+              </div>
+              <div class="tikz-studio-field">
+                <label for="tikz-studio-longdesc">Long description</label>
+                <textarea
+                  id="tikz-studio-longdesc"
+                  rows="4"
+                  autocomplete="off"
+                ></textarea>
+              </div>
+            </section>
           </div>
         </article>
 
@@ -21494,6 +22009,7 @@ Science,91</pre
     <script src="mathpix-scripts/core/session-restorer/session-restorer-scorm-export.js"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-index.js?v=8.2"></script>
     <script src="mathpix-scripts/core/session-restorer/session-restorer-docx-headings.js?v=1.0"></script>
+    <script src="mathpix-scripts/core/session-restorer/session-restorer-docx-alt.js?v=1.0"></script>
     <script
       type="application/dev-test"
       data-module="true"
@@ -21750,6 +22266,7 @@ Science,91</pre
       type="module"
       src="openrouter-embed/openrouter-embed-file.js"
     ></script>
+    <script src="openrouter-embed/openrouter-embed-documents.js"></script>
     <script src="openrouter-embed/openrouter-embed-prompt-loader.js"></script>
 
     <!-- Capability concept resolver. ONE implementation of "does this model do vision /
@@ -22950,21 +23467,27 @@ Science,91</pre
        * Shows "Yes" or "No" for power users to quickly see MathJax state
        * @param {boolean} isReady - Whether MathJax is ready
        */
-      function updateMathJaxStatusIndicator(isReady) {
+      function updateMathJaxStatusIndicator(isReady, startupFailed) {
         const statusEl = document.getElementById("mathjax-status");
         const valueEl = document.getElementById("mathjax-status-value");
 
+        // "Error" is its own state, not a flavour of "Yes". The ready FLAG is
+        // still set after a startup error so nothing deadlocks waiting for it,
+        // but the readout must not say MathJax loaded when it did not.
+        const text = startupFailed ? "Error" : isReady ? "Yes" : "No";
+
         if (statusEl) {
-          statusEl.setAttribute("data-ready", isReady ? "true" : "false");
+          statusEl.setAttribute(
+            "data-ready",
+            startupFailed ? "error" : isReady ? "true" : "false",
+          );
         }
 
         if (valueEl) {
-          valueEl.textContent = isReady ? "Yes" : "No";
+          valueEl.textContent = text;
         }
 
-        console.log(
-          `🔧 [MathJax Status] Indicator updated: ${isReady ? "Yes" : "No"}`,
-        );
+        console.log(`🔧 [MathJax Status] Indicator updated: ${text}`);
       }
 
       function showMathJaxLoading() {
@@ -23118,7 +23641,9 @@ Science,91</pre
                     setTimeout(() => {
                       window.MathJaxEnhancementReady = true;
                       window.MathJaxStartupClean = false; // NEW: Explicitly mark as unclean startup
-                      updateMathJaxStatusIndicator(true); // Still mark as ready for degraded operation
+                      // The flag above lets the system carry on; the readout says
+                      // what happened.
+                      updateMathJaxStatusIndicator(false, true);
                       console.warn(
                         "⚠️ MathJax ready flag set despite startup error (allowing degraded operation)",
                       );
@@ -23144,7 +23669,9 @@ Science,91</pre
             "⚠️ MathJaxEnhancementReady timeout - forcing flag for recovery",
           );
           window.MathJaxEnhancementReady = true;
-          updateMathJaxStatusIndicator(true);
+          // The flag is forced so nothing waits forever, but MathJax has not
+          // finished: the readout stays "No", and a late clean start still
+          // turns it to "Yes".
         }
       }, 20000); // 20 second absolute maximum wait
 
@@ -24121,6 +24648,8 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-requirement.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-packet.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-treemap.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-venn.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-treeview.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>
@@ -24749,14 +25278,24 @@ Science,91</pre
       // Name of the tool whose open the person did not ask for (a restore), while it must stay quiet; otherwise null.
       window.restoredToolOpen = null;
       function rememberOpenTool(toolName) {
-        try { window.sessionStorage.setItem(REMEMBER_KEY, toolName); } catch (e) { /* storage blocked: forget quietly */ }
+        try {
+          window.sessionStorage.setItem(REMEMBER_KEY, toolName);
+        } catch (e) {
+          /* storage blocked: forget quietly */
+        }
       }
       function readRememberedTool(validNames) {
         const stored = (function () {
-          try { return window.sessionStorage.getItem(REMEMBER_KEY); } catch (e) { return null; }
+          try {
+            return window.sessionStorage.getItem(REMEMBER_KEY);
+          } catch (e) {
+            return null;
+          }
         })();
         if (!stored || NOT_RESTORED.has(stored)) return null;
-        return Object.prototype.hasOwnProperty.call(validNames, stored) ? stored : null;
+        return Object.prototype.hasOwnProperty.call(validNames, stored)
+          ? stored
+          : null;
       }
 
       // A tool that grabs focus or scrolls by itself checks window.restoredToolOpen and skips that move while it names the tool.
@@ -24962,7 +25501,11 @@ Science,91</pre
         // Announce the switch
         if (isUserInitiated && TOOL_SWITCH_SETTINGS.announceSwitch) {
           let switchText = config.announceText;
-          if (toolName === "Chat" && window.ChatPersistence && typeof window.ChatPersistence.takePendingRestoreLine === "function") {
+          if (
+            toolName === "Chat" &&
+            window.ChatPersistence &&
+            typeof window.ChatPersistence.takePendingRestoreLine === "function"
+          ) {
             const restoreLine = window.ChatPersistence.takePendingRestoreLine();
             if (restoreLine) switchText += ". " + restoreLine;
           }
@@ -25159,7 +25702,10 @@ Science,91</pre
           if (rememberedRadio) {
             rememberedRadio.checked = true;
             toolName = remembered;
-            openRestoreQuietWindow(toolName, document.getElementById(TOOL_CONFIG[toolName].articleId));
+            openRestoreQuietWindow(
+              toolName,
+              document.getElementById(TOOL_CONFIG[toolName].articleId),
+            );
           }
         }
         switchToTool(toolName, false); // false = not user-initiated
@@ -25422,7 +25968,8 @@ Science,91</pre
           // Test the existing MarkdownEditor
           if (typeof window.MarkdownEditor.render === "function") {
             try {
-              const testResult = undefined; /* T-15b C4: the stray diagnostic render is not made */
+              const testResult =
+                undefined; /* T-15b C4: the stray diagnostic render is not made */
 
               // Add null check for testResult
               if (testResult) {

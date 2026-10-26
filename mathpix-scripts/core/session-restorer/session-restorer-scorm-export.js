@@ -798,12 +798,19 @@
         `_buildScormExportContent: ${stats.misses.length} <img> src(s) did not resolve to a registry entry`,
         stats.misses,
       );
+      // UT-9 (UT-D4): proper singular and plural; zero takes the plural.
       setStatus(
-        `${stats.misses.length} image(s) are not in the registry and will not be embedded.`,
+        stats.misses.length === 1
+          ? "1 image is not in the registry and will not be embedded."
+          : `${stats.misses.length} images are not in the registry and will not be embedded.`,
       );
     }
     if (stats.missingAlt.length) {
-      setStatus(`${stats.missingAlt.length} image(s) have no alt text.`);
+      setStatus(
+        stats.missingAlt.length === 1
+          ? "1 image has no alt text."
+          : `${stats.missingAlt.length} images have no alt text.`,
+      );
     }
 
     const { metadata, context, titleSource } = this._buildScormExportMetadata();
@@ -1075,16 +1082,23 @@
     const stats = build.stats || {};
     const notes = [];
     const missingAlt = (stats.missingAlt || []).length;
-    if (missingAlt) notes.push(`${missingAlt} image(s) have no alt text.`);
+    if (missingAlt) {
+      notes.push(
+        missingAlt === 1
+          ? "1 image has no alt text."
+          : `${missingAlt} images have no alt text.`,
+      );
+    }
 
     const unembedded =
       (stats.misses || []).length +
       ((build.resolverStats && build.resolverStats.skipped) || []).length;
     if (unembedded) {
-      notes.push(`${unembedded} image(s) could not be embedded.`);
+      const unembeddedNoun = unembedded === 1 ? "1 image" : `${unembedded} images`;
+      notes.push(`${unembeddedNoun} could not be embedded.`);
       if (typeof this.showNotification === "function") {
         this.showNotification(
-          `${unembedded} image(s) could not be embedded in the export.`,
+          `${unembeddedNoun} could not be embedded in the export.`,
           "warning",
         );
       }

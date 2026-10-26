@@ -5,7 +5,7 @@
 
 import { escapeXML } from "../util/escape-xml.js";
 
-const EMPTY_TOC = `<nav id="toc" class="table-of-contents" aria-label="Table of contents" tabindex="-1" hidden></nav>`;
+const EMPTY_TOC = `<nav id="toc" class="table-of-contents" aria-label="Table of contents" hidden></nav>`;
 
 /**
  * @param {Array<{level:number,text:string,id:string}>} sections
@@ -47,7 +47,7 @@ export function renderToc(sections = [], opts = {}) {
   }
   html += "</ol>"; // close the outermost list
 
-  return `<nav id="toc" class="table-of-contents" aria-label="Table of contents" tabindex="-1">
+  return `<nav id="toc" class="table-of-contents" aria-label="Table of contents">
   <h2>${escapeXML(opts.heading || "Table of Contents")}</h2>
   ${html}
 </nav>`;

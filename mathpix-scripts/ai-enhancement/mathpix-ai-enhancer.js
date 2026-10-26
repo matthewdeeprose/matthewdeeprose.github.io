@@ -979,6 +979,13 @@
       this._providerChangedHandler = null;
       this._lastModelOptionsCount = -1;
 
+      // AV-1: keep the selection servable whenever the provider moves, with or
+      // without a dialog open. The AI tab also asks at read time, so the order
+      // of listeners does not matter.
+      window.addEventListener("provider:changed", () =>
+        this.syncModelToProvider(),
+      );
+
       /**
        * Cached DOM elements
        * @type {Object}
@@ -2721,6 +2728,32 @@
       logDebug("Subscribed to provider:changed for the enhancer picker");
     }
 
+    /**
+     * AV-1: bring `selectedModel` back to a model the ACTIVE provider serves.
+     *
+     * A pick made under one provider used to survive a switch to another when
+     * no dialog was open (the subscriber above only acts on an open modal), so
+     * the AI tab's model line read "chosen" with an OpenRouter id on Foundry
+     * and the run then refused with "not available with the current provider".
+     * Only a stale selection is replaced, by the provider's default, so a valid
+     * pick is never lost. Saved preferences are left alone: a later switch back
+     * restores them through loadEnhancerPreferences.
+     *
+     * @returns {boolean} true when the selection was replaced
+     */
+    syncModelToProvider() {
+      const current = this.selectedModel;
+      if (current && this._isProviderAvailable(current)) return false;
+      const next = this._defaultModelForProvider();
+      if (!next || next === current) return false;
+      logInfo("Selected model is not served by the active provider; reseeding", {
+        from: current,
+        to: next,
+      });
+      this.selectedModel = next;
+      return true;
+    }
+
     /** Remove the provider:changed subscriber. Idempotent. */
     _unsubscribeProviderChanged() {
       if (!this._providerChangedHandler) return;
@@ -4076,8 +4109,8 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const hasCritical = warnings.some((w) => w.severity === "critical");
       const summaryIcon = hasCritical ? "error" : "warning";
       const summaryText = hasCritical
-        ? `Critical: ${warnings.length} validation issue(s)`
-        : `${warnings.length} validation warning(s)`;
+        ? `Critical: ${warnings.length} validation ${warnings.length === 1 ? "issue" : "issues"}`
+        : `${warnings.length} validation ${warnings.length === 1 ? "warning" : "warnings"}`;
 
       const warningItems = warnings
         .map((w) => {
@@ -5648,7 +5681,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
             severity === "critical"
               ? "Critical: All image references removed"
               : `Image references reduced`,
-          detail: `Original: ${originalImages} image(s), Enhanced: ${enhancedImages} image(s) (${removed} removed)`,
+          detail: `Original: ${originalImages} ${originalImages === 1 ? "image" : "images"}, Enhanced: ${enhancedImages} ${enhancedImages === 1 ? "image" : "images"} (${removed} removed)`,
         });
       }
 
@@ -5672,7 +5705,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         warnings.push({
           severity: "warning",
           message: "LaTeX environments reduced",
-          detail: `Original: ${originalBegins} \\begin{} (${originalEnds} \\end{}), Enhanced: ${enhancedBegins} \\begin{} (${enhancedEnds} \\end{}) — ${removed} environment(s) may have been removed`,
+          detail: `Original: ${originalBegins} \\begin{} (${originalEnds} \\end{}), Enhanced: ${enhancedBegins} \\begin{} (${enhancedEnds} \\end{}) — ${removed === 1 ? "1 environment may have" : `${removed} environments may have`} been removed`,
         });
       }
 

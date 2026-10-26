@@ -155,6 +155,11 @@
   // Default caption sent when a PDF is attached without a typed caption — the
   // embed core rejects an empty prompt, so a caption-less PDF send needs one.
   const DEFAULT_ATTACHMENT_CAPTION = "Please review the attached file";
+  // Replaces an earlier image or PDF part the CURRENT model cannot read (REGISTER item 2).
+  const IMAGE_HISTORY_NOTE =
+    "[An image was attached here. The current model cannot read images, so it was not sent.]";
+  const PDF_HISTORY_NOTE =
+    "[A PDF was attached here. The current model cannot read PDFs, so it was not sent.]";
 
   // Plain-language error text for the HTTP statuses the Foundry proxy actually
   // returns for a sign-in problem. Keyed by NUMERIC status; postError checks
@@ -424,7 +429,7 @@
     const userMax = S.getMaxTokens();
     const systemPrompt = S.els.systemInput ? S.els.systemInput.value.trim() : "";
     const thread = S.messages.concat(extraTurn ? [extraTurn] : []).map(function (m) {
-      return { role: m.role, content: normaliseTurnForWire(m.content) };
+      return { role: m.role, content: normaliseTurnForWire(m.content, model) };
     });
     const contextLimit = window.Chat.getContextLimit(model);
     const windowed = applyTokenWindow({
@@ -1156,28 +1161,100 @@
   }
 
   /**
+   * Expand a { type:"document", doc } part into the wire parts for the CURRENT
+   * model. The reader is resolved at call time (its <script> tag arrives with
+   * P1b-2). With no reader the part is dropped and the caption kept: document
+   * text is never sent outside its <document> wrapper.
+   *
+   * Pictures: the part carries the person's "Include pictures" choice as
+   * `includeImages` (true only when the box was showing and ticked when the part
+   * was built), and toParts adds them only for a model that can read images. A
+   * document turn is re-expanded on EVERY later send while it stays in the window
+   * (planSend maps the whole thread through normaliseTurnForWire), so its pictures
+   * are sent again each time, exactly as an attached image is today. Nothing here
+   * is stored: persistence replaces the document part with a byte-free reference.
+   */
+  function expandDocumentPart(part, model) {
+    const reader = window.EmbedDocumentReader;
+    if (!reader || typeof reader.toParts !== "function") {
+      logError("document part dropped: EmbedDocumentReader is unavailable");
+      return [];
+    }
+    const attach = window.ChatAttach;
+    const vision =
+      !!attach && typeof attach.modelAcceptsImages === "function"
+        ? !!attach.modelAcceptsImages(model)
+        : false;
+    return reader.toParts(part.doc, {
+      includeImages: part.includeImages === true,
+      vision: vision,
+    });
+  }
+
+  /**
+   * History for a model that cannot read the parts: an image_url or file part
+   * the CURRENT model cannot read becomes one text note (REGISTER item 2).
+   * Returns the part unchanged when ChatAttach is missing (today's behaviour).
+   */
+  function noteUnreadablePart(part, model) {
+    if (!model) return part; // no model to judge against (direct test call)
+    const attach = window.ChatAttach;
+    if (!attach) {
+      logWarn("history not stripped: window.ChatAttach is unavailable");
+      return part;
+    }
+    if (part.type === "image_url" && !attach.modelAcceptsImages(model)) {
+      return { type: "text", text: IMAGE_HISTORY_NOTE };
+    }
+    if (part.type === "file" && !attach.modelAcceptsPDF(model)) {
+      return { type: "text", text: PDF_HISTORY_NOTE };
+    }
+    return part;
+  }
+
+  /**
    * Normalise ONE turn's content for the wire.
    *   - String content passes through unchanged.
    *   - Live array content (a real image_url part, or a PDF file part, + text) is
    *     PRESERVED as an array (never stringified) so the image or PDF file part
-   *     reaches the provider.
+   *     reaches the provider, unless the CURRENT model cannot read it, when a
+   *     one-line text note takes its place.
+   *   - A { type:"document", doc } part is EXPANDED through the reader's toParts
+   *     for the current model; this is the single place a document reaches the
+   *     wire, so the token window and the refusal measure the expanded form.
    *   - A restored turn whose only attachment element is a BYTE-FREE reference
-   *     ({ kind:"image"|"pdf", … }, no bytes) has no sendable image or file part,
-   *     so it collapses to its text string — the honest outcome (a restored image
-   *     or PDF cannot be re-sent).
+   *     ({ kind:"image"|"pdf"|"document", … }, no bytes) has no sendable part,
+   *     so it collapses to its text string — the honest outcome (a restored
+   *     attachment cannot be re-sent).
    * Non-text, non-attachment parts (e.g. a stray reference) are dropped from live
    * arrays.
+   * @param {*} content a turn's content
+   * @param {string} [model] the model the turn is being sent to
    */
-  function normaliseTurnForWire(content) {
+  function normaliseTurnForWire(content, model) {
     if (!Array.isArray(content)) return content;
     const hasLiveAttachment = content.some(function (p) {
-      return p && (p.type === "image_url" || p.type === "file");
+      return p && (p.type === "image_url" || p.type === "file" || p.type === "document");
     });
     if (!hasLiveAttachment) return extractTextFromContent(content);
-    return content.filter(function (p) {
-      if (typeof p === "string") return true;
-      return p && (p.type === "text" || p.type === "image_url" || p.type === "file");
+    const wire = [];
+    content.forEach(function (p) {
+      if (typeof p === "string") {
+        wire.push(p);
+        return;
+      }
+      if (!p) return;
+      if (p.type === "document") {
+        Array.prototype.push.apply(wire, expandDocumentPart(p, model));
+        return;
+      }
+      if (p.type === "image_url" || p.type === "file") {
+        wire.push(noteUnreadablePart(p, model));
+        return;
+      }
+      if (p.type === "text") wire.push(p);
     });
+    return wire;
   }
 
   /**
@@ -1217,6 +1294,25 @@
 
   // ── Send flow ──────────────────────────────────────────────────────────────
 
+  /**
+   * Send the typed message, with the held attachment if there is one.
+   *
+   * CONTRACT with window.ChatAttach (P1b-2 implements the document half):
+   *   hasAttachment()       → boolean
+   *   buildReference()      → byte-free and text-free, one of
+   *                           { kind:"image"|"pdf", filename, mimeType, size }
+   *                           { kind:"document", docType, filename, mimeType, size, chars }
+   *                           where chars is doc.text.length
+   *   getAttachmentPart()   → { type:"image_url", … } | { type:"file", … } |
+   *                           { type:"document", doc } where doc is exactly what
+   *                           EmbedDocumentReader.read() resolved
+   *   clearAttachment()     → drops the held attachment
+   *   modelAcceptsImages(id), modelAcceptsPDF(id) → boolean
+   * A stored document turn is
+   *   { role:"user", content:[ { type:"document", doc }, { type:"text", text } ],
+   *     attachment:<the reference> }
+   * and normaliseTurnForWire is the only place doc.text reaches the wire.
+   */
   function sendMessage() {
     const els = S.els;
     if (!els.input) return;
@@ -1243,19 +1339,20 @@
         ? attach.buildReference() // { kind, filename, mimeType, size } | null
         : null;
     const kind = held ? held.kind : null;
+    // A held document always passes: it is sent as text, which every model takes.
     const modelAcceptsHeld =
       kind === "pdf"
         ? attach.modelAcceptsPDF(S.currentModel)
         : kind === "image"
         ? attach.modelAcceptsImages(S.currentModel)
-        : false;
+        : kind === "document";
     const useAttachment = !!held && modelAcceptsHeld;
 
-    // A caption-less PDF that will actually send gets the neutral default caption
-    // (the embed core rejects an empty prompt). Caption-less IMAGE sends stay
-    // blocked by the empty-text guard, exactly as before — PDF-only by decision.
+    // A caption-less PDF or document that will actually send gets the neutral
+    // default caption (the embed core rejects an empty prompt). Caption-less IMAGE
+    // sends stay blocked by the empty-text guard, exactly as before.
     const text =
-      !rawText && useAttachment && kind === "pdf"
+      !rawText && useAttachment && (kind === "pdf" || kind === "document")
         ? DEFAULT_ATTACHMENT_CAPTION
         : rawText;
     if (!text) return;

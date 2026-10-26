@@ -340,10 +340,8 @@ const ALLY_FILTER_BUILDER = (function () {
           input.min = "0";
           input.max = "100";
           input.step = "1";
-          input.placeholder = "0-100%";
+          // The visible "Enter percentage (0-100)" hint carries the format.
           input.setAttribute("aria-describedby", rowId + "-value-hint");
-        } else {
-          input.placeholder = "Enter number...";
         }
         break;
 
@@ -354,7 +352,6 @@ const ALLY_FILTER_BUILDER = (function () {
         input.id = rowId + "-value";
         input.className = "ally-filter-value ally-filter-value-text";
         input.setAttribute("aria-label", "Filter value");
-        input.placeholder = "Enter text...";
         break;
     }
 

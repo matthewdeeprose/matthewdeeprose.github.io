@@ -4865,7 +4865,7 @@ ${fileList}
           );
 
           const message = isTotal
-            ? `This document contains ${expected} image(s), but none were saved to the ZIP. Saving will produce an incomplete archive — reloading it will show the document without its images. Save anyway?`
+            ? `This document contains ${expected === 1 ? "1 image" : `${expected} images`}, but none were saved to the ZIP. Saving will produce an incomplete archive — reloading it will show the document without its images. Save anyway?`
             : `${missing} of ${expected} images failed to save to the ZIP. Saving will produce an incomplete archive — reloading it will show the document missing those images. Save anyway?`;
 
           // S6-1d: a non-interactive build asks nothing, proceeds as "continue"
@@ -5410,7 +5410,7 @@ ${fileList}
     ).length;
     const aiNote =
       aiCount > 0
-        ? `\n  Note: ${aiCount} version(s) include AI enhancements (marked with [AI])`
+        ? `\n  Note: ${aiCount === 1 ? "1 version includes" : `${aiCount} versions include`} AI enhancements (marked with [AI])`
         : "";
 
     return `

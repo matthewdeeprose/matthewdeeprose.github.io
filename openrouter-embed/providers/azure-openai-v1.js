@@ -481,6 +481,20 @@
   }
 
   /**
+   * Tell the sign-in module the proxy rejected a token it was sent, so it can
+   * renew silently and the status bar can follow what the server accepts rather
+   * than what is merely cached. Fire-and-forget on window: no EntraAuth member
+   * is called, and nothing happens if the module is absent.
+   * @param {number} status - HTTP status of the failed response
+   * @param {Object} headers - the request headers that were sent
+   * @private
+   */
+  function notifyTokenRejected(status, headers) {
+    if (status !== 401 || !headers || !headers["x-user-token"]) return;
+    window.dispatchEvent(new CustomEvent("entra:token-rejected"));
+  }
+
+  /**
    * Resolve the proxy URL + optional user token for the next request.
    *
    * Precedence (Task 3.2c — providerConfig-wins decision):
@@ -1107,6 +1121,7 @@
           );
           err.status = response.status;
           err.body = errorBody;
+          notifyTokenRejected(response.status, headers);
           throw err;
         }
 
@@ -1322,6 +1337,7 @@
         );
         err.status = response.status;
         err.body = errorBody;
+        notifyTokenRejected(response.status, headers);
         throw err;
       }
 

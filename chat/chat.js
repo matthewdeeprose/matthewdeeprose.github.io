@@ -741,11 +741,23 @@
    *
    * Called from reflectSelection (model change) and from chat-attach.js (attach /
    * remove), so the gate tracks BOTH the model and the attachment.
+   *
+   * SILENT BY DEFAULT. It speaks only with { announce: true } (reflectSelection).
+   * It always returns the blocked sentence, or "" when nothing is blocked, so the
+   * attach path can fold that sentence into its own single announcement.
    */
-  function updateAttachmentNotice() {
+  function updateAttachmentNotice(options) {
+    const shouldAnnounce = !!(options && options.announce);
     const noticeEl = document.getElementById(S.elId("attachment-notice"));
     const sendBtn = document.getElementById(S.elId("send"));
     const attach = window.ChatAttach;
+    // A model change can add or remove the free-model sentence under a held
+    // document. ChatAttach refreshes it visibly and announces it only when it
+    // newly appears. A readable PDF reports kind "document" on a model that
+    // cannot read PDFs, so the capability check below needs no PDF special case.
+    if (attach && typeof attach.refreshAdvice === "function") {
+      attach.refreshAdvice();
+    }
     // Derive the held attachment's kind from its byte-free reference, then choose
     // the acceptor by kind. The per-method typeof guards keep a load-order gap a
     // safe no-op, exactly as the image-only gate did.
@@ -779,7 +791,7 @@
       // mid-reply — a model or attachment change during a send — would outlive
       // the reply, because enableSend no longer clears it.
       if (sendBtn) sendBtn.disabled = false;
-      return;
+      return "";
     }
 
     const entry = getModelEntry(S.currentModel);
@@ -792,15 +804,18 @@
           " cannot read images. Choose an image-capable model, or remove the image, to send.";
     if (noticeEl) {
       noticeEl.textContent = text; // populate while hidden…
-      noticeEl.hidden = false; // …then reveal (single announce via the call below)
+      noticeEl.hidden = false; // …then reveal (the region is aria-live="off")
     }
     if (sendBtn) sendBtn.disabled = true;
+    // The key is set on the silent path too, so a later model change to a model
+    // with the same text does not repeat what the attach line already said.
     if (text !== lastAttachmentNoticeKey) {
-      if (typeof S.announceToScreenReader === "function") {
+      if (shouldAnnounce && typeof S.announceToScreenReader === "function") {
         S.announceToScreenReader(text);
       }
       lastAttachmentNoticeKey = text;
     }
+    return text;
   }
 
   // Dim the sampling sliders the selected model ignores, mirroring
@@ -857,7 +872,7 @@
     updateSamplingControlStates(S.currentModel, noticeProviderId);
     // Re-evaluate the blocked-attachment notice + send gate for the new model
     // (silent unless an image is attached to an image-incapable model).
-    updateAttachmentNotice();
+    updateAttachmentNotice({ announce: true });
     // Recompute the draft token counter's percentage + over-half warning against
     // the newly-selected model's context window (Stage B). Guarded — no-op if the
     // core has not registered its refresh hook yet.

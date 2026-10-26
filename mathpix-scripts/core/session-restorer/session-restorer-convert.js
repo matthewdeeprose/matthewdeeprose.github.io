@@ -500,6 +500,8 @@
     this.conversionResults = new Map();
     this._appendixCopiesDropped = false;
     this._docxHeadingsFailed = false; // HW-1b
+    this._docxAltFailed = false; // UT-7
+    this._htmlAltFailed = false; // UT-8
     // Parcel O-04: this run's token; an abandoned run finds it out of date.
     this._runToken = (this._runToken || 0) + 1;
     const runToken = this._runToken;
@@ -597,14 +599,28 @@
     const headingsClause = this._docxHeadingsFailed
       ? " Word headings could not be set."
       : "";
+    // UT-7 (UT-D2): the same line carries one more clause when the Word alt text
+    // could not be set from the registry and the file was kept as received.
+    const altClause = this._docxAltFailed
+      ? " Word alt text could not be set."
+      : "";
+    // UT-8 (UT-D3): and one more, after the Word clause, when the converter HTML
+    // alt text could not be set. Same line, never a second raise.
+    const htmlAltClause = this._htmlAltFailed
+      ? " HTML alt text could not be set."
+      : "";
+    // UT-9 (UT-D4): a proper singular and plural, never "format(s)", which a
+    // screen reader speaks as "format s". Zero takes the plural.
+    const readyCount = this.conversionResults.size;
+    const readyLine = `${readyCount} ${readyCount === 1 ? "format" : "formats"} ready to download.`;
     if (this.conversionResults.size > 0 && failureLines === "") {
       this.showNotification(
-        `${this.conversionResults.size} format(s) ready to download.${copiesClause}${headingsClause}`,
+        `${readyLine}${copiesClause}${headingsClause}${altClause}${htmlAltClause}`,
         "success",
       );
     } else if (this.conversionResults.size > 0) {
       this.showNotification(
-        `${this.conversionResults.size} format(s) ready to download.${copiesClause}${headingsClause} ${failureLines}`,
+        `${readyLine}${copiesClause}${headingsClause}${altClause}${htmlAltClause} ${failureLines}`,
         "warning",
       );
     } else if (failureLines !== "") {
@@ -731,9 +747,11 @@
     const maxBytes = this._getConvertSizeLimit();
     let mmdContent;
     let embeddedSize;
+    let altSourceMMD; // UT-7: the conversion copy before embedding, for the alt pass
     try {
       const projection = await this._projectConvertPayload(rawMMD, apiFormats);
       mmdContent = projection.mmd;
+      altSourceMMD = projection.sourceMMD;
       embeddedSize = projection.bytes;
 
       // Say so once in the success line when the copies were dropped to fit.
@@ -868,9 +886,61 @@
           }
         });
       }
+
+      // UT-7 (UT-D2 option 1): after the heading map, set every picture's alt
+      // text from the registry. An abandoned run was returned from above.
+      await this._setConvertedAltText(altSourceMMD);
     } catch (error) {
       logError("API conversion failed:", error);
       failAll(error.message);
+    }
+  };
+
+  /**
+   * UT-7 (UT-D2 option 1): the converter mangles a lone square bracket in alt
+   * text (UT-6), so after conversion the Word file and the converter HTML take
+   * their alt text from the registry, all or nothing per file. A Word mismatch
+   * sets `_docxAltFailed`, which the convert outcome line turns into one clause
+   * (rule C10). UT-8 (UT-D3): an HTML mismatch sets `_htmlAltFailed`, one more
+   * clause on the same line, after the Word clause. Never throws.
+   * @param {string} sourceMMD - the conversion copy of the MMD, before embedding
+   * @returns {Promise<void>}
+   * @private
+   */
+  proto._setConvertedAltText = async function (sourceMMD) {
+    const altText = window.MathPixDocxAltText;
+    if (!altText || typeof sourceMMD !== "string") return;
+    try {
+      const expected = altText.expectedAltsFromMMD(
+        sourceMMD,
+        this.imageRegistry,
+        this.imageBlobUrlMap,
+      );
+      if (!expected) return;
+
+      const docx = this.conversionResults.get("docx");
+      if (docx) {
+        const result = await altText.setDocxAltText(
+          docx,
+          expected.alts,
+          expected.decorative,
+        );
+        this.conversionResults.set("docx", result.blob);
+        this._docxAltFailed = result.failed;
+        logInfo(`Convert: Word alt text ${result.reason} (${result.changed} set)`);
+      }
+
+      const html = this.conversionResults.get("html");
+      if (html) {
+        const result = await altText.setHtmlAltText(html, expected.alts);
+        this.conversionResults.set("html", result.blob);
+        this._htmlAltFailed = result.failed;
+        logInfo(`Convert: HTML alt text ${result.reason} (${result.changed} set)`);
+      }
+    } catch (error) {
+      logError("Convert: alt text pass failed, files delivered as received", error);
+      if (this.conversionResults.has("docx")) this._docxAltFailed = true;
+      if (this.conversionResults.has("html")) this._htmlAltFailed = true;
     }
   };
 

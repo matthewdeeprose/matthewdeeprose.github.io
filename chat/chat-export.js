@@ -182,7 +182,7 @@
       metaSrc = m.attachment;
     } else {
       metaSrc = content.find(function (p) {
-        return p && (p.kind === "image" || p.kind === "pdf");
+        return p && (p.kind === "image" || p.kind === "pdf" || p.kind === "document");
       });
     }
     if (!metaSrc) return null; // array content but no attachment — nothing to emit
@@ -330,6 +330,10 @@
    */
   function renderAttachmentHTML(att) {
     const fn = escapeHTML(att.filename);
+    // A document's text is never exported, in any format.
+    if (att.kind === "document") {
+      return '<p class="attachment-ref">Attachment: ' + fn + " (document) — text not included.</p>";
+    }
     if (!att.bytesIncluded) {
       return (
         '<p class="attachment-ref">Attachment: ' +

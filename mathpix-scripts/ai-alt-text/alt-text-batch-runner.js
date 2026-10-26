@@ -131,6 +131,14 @@ const MathPixAltTextBatchRunner = (function () {
   const CLAUSE_FAILED = "{count} failed.";
   const CLAUSE_REMAINING = "{count} remaining.";
 
+  /** UT-D7a: pictures left out of a run because their file is missing. Words below ten, digits from 10. */
+  const CLAUSE_SKIPPED_SINGULAR = "One picture was skipped because its file is missing.";
+  const CLAUSE_SKIPPED_PLURAL =
+    "{count} pictures were skipped because their files are missing.";
+
+  /** The scheme a reachable picture file carries (an object URL). */
+  const BLOB_URL_PREFIX = "blob:";
+
   /** Substitution token and the single pattern that matches it. */
   const COUNT_TOKEN = "{count}";
   const TOKEN_PATTERN = /\{count\}/g;
@@ -241,9 +249,54 @@ const MathPixAltTextBatchRunner = (function () {
       [COUNT_TOKEN]: countWord(remaining),
     });
 
-    return [generatedClause, failedClause, remainingClause].join(
-      CLAUSE_SEPARATOR,
-    );
+    const clauses = [generatedClause, failedClause, remainingClause];
+
+    // UT-D7: one more clause, only when something was skipped. Zero adds none.
+    const skippedClause = composeSkippedClause(t.skippedMissing);
+    if (skippedClause) clauses.push(skippedClause);
+
+    return clauses.join(CLAUSE_SEPARATOR);
+  }
+
+  /**
+   * UT-D7: the clause for pictures left out because their file is missing.
+   * Empty string for zero (or anything that is not a positive count).
+   *
+   * @param {number} count
+   * @returns {string}
+   */
+  function composeSkippedClause(count) {
+    if (typeof count !== "number" || !Number.isFinite(count) || count < 1) {
+      return "";
+    }
+    if (count === 1) return CLAUSE_SKIPPED_SINGULAR;
+    return fillTemplate(CLAUSE_SKIPPED_PLURAL, { [COUNT_TOKEN]: countWord(count) });
+  }
+
+  /**
+   * UT-D7: does a registry entry have a picture file a run could read? The
+   * same test `_materialiseImageFile` applies before it refuses: an attached
+   * blob, or an object URL (the entry's own, or the restorer's map entry for
+   * an OCR crop link). Synchronous, and mirrors that method rather than
+   * fetching, so a revoked object URL still counts as present here and fails
+   * at run time as before.
+   *
+   * @param {Object} entry - registry entry
+   * @param {Map<string,string>} [blobUrlMap] - the restorer's imageBlobUrlMap
+   * @returns {boolean}
+   */
+  function hasImageFile(entry, blobUrlMap) {
+    if (!entry || typeof entry !== "object") return false;
+    if (typeof Blob !== "undefined" && entry.blob instanceof Blob) return true;
+
+    const url = typeof entry.originalUrl === "string" ? entry.originalUrl : "";
+    if (url.startsWith(BLOB_URL_PREFIX)) return true;
+
+    const mapped =
+      url && blobUrlMap && typeof blobUrlMap.get === "function"
+        ? blobUrlMap.get(url)
+        : null;
+    return typeof mapped === "string" && mapped.startsWith(BLOB_URL_PREFIX);
   }
 
   /**
@@ -259,26 +312,57 @@ const MathPixAltTextBatchRunner = (function () {
    * target too. Every other source stays out, so the write stage's freeze set
    * (user, ai-reviewed, ai-edited) is never asked to overwrite anything.
    *
+   * UT-D7: with `skipMissingFiles`, a picture that WOULD be a target but has no
+   * file (see `hasImageFile`, read against `blobUrlMap`) is left out and counted
+   * in `skippedMissing` by `partitionTargets`. Off by default, so a caller that
+   * passes bare entries is unchanged.
+   *
    * @param {Array<Object>} entries - registry entries, as `getAllImages()` returns
-   * @param {{includeDescribed?: boolean}} [options]
-   * @returns {Array<Object>} the subset that is a target, order preserved
+   * @param {{includeDescribed?: boolean, skipMissingFiles?: boolean, blobUrlMap?: Map}} [options]
+   * @returns {{targets: Array<Object>, skippedMissing: number}} targets in
+   *   order, and how many would-be targets were left out for a missing file
    */
-  function selectTargets(entries, options) {
+  function partitionTargets(entries, options) {
     if (!Array.isArray(entries)) {
       logWarn("selectTargets(): entries is not an array — returning none");
-      return [];
+      return { targets: [], skippedMissing: 0 };
     }
 
     const includeDescribed = Boolean(options && options.includeDescribed === true);
+    const skipMissingFiles = Boolean(options && options.skipMissingFiles === true);
+    const blobUrlMap = options && options.blobUrlMap;
 
-    return entries.filter((entry) => {
-      if (!entry || typeof entry !== "object") return false;
-      if (entry.decorative) return false;
+    const targets = [];
+    let skippedMissing = 0;
+
+    entries.forEach((entry) => {
+      if (!entry || typeof entry !== "object") return;
+      if (entry.decorative) return;
 
       const alt = entry.altText;
-      if (typeof alt !== "string" || alt.trim() === "") return true;
-      return includeDescribed && entry.altTextSource === REDESCRIBABLE_SOURCE;
+      const wanted =
+        typeof alt !== "string" ||
+        alt.trim() === "" ||
+        (includeDescribed && entry.altTextSource === REDESCRIBABLE_SOURCE);
+      if (!wanted) return;
+
+      if (skipMissingFiles && !hasImageFile(entry, blobUrlMap)) {
+        skippedMissing++;
+        return;
+      }
+      targets.push(entry);
     });
+
+    return { targets, skippedMissing };
+  }
+
+  /**
+   * @param {Array<Object>} entries
+   * @param {Object} [options] see `partitionTargets`
+   * @returns {Array<Object>} the subset that is a target, order preserved
+   */
+  function selectTargets(entries, options) {
+    return partitionTargets(entries, options).targets;
   }
 
   // ============================================================================
@@ -342,7 +426,7 @@ const MathPixAltTextBatchRunner = (function () {
      *   line, results }` — the three counts numeric, `line` the composed
      *   outcome line, `results` one entry per attempted image.
      */
-    async function run({ targets, onProgress } = {}) {
+    async function run({ targets, onProgress, skippedMissing = 0 } = {}) {
       const list = Array.isArray(targets) ? targets : [];
       if (!Array.isArray(targets)) {
         logWarn("run(): targets is not an array — treating it as empty");
@@ -433,7 +517,9 @@ const MathPixAltTextBatchRunner = (function () {
         running = false;
       }
 
-      const tally = { generated, failed, remaining };
+      // UT-D7: pictures the caller left out for a missing file are reported,
+      // never counted as failed. They were never attempted.
+      const tally = { generated, failed, remaining, skippedMissing };
       const line = composeOutcomeLine(tally);
 
       logInfo(`batch settled: ${line}`);
@@ -442,6 +528,7 @@ const MathPixAltTextBatchRunner = (function () {
         generated,
         failed,
         remaining,
+        skippedMissing,
         cancelled,
         line,
         results,
@@ -458,6 +545,9 @@ const MathPixAltTextBatchRunner = (function () {
     // Exposed so the dialog can count and preview targets before confirming, and
     // so the whole taxonomy can be gated with no page and no orchestrator.
     selectTargets,
+    partitionTargets,
+    hasImageFile,
+    composeSkippedClause,
     composeOutcomeLine,
     countWord,
     // Exposed so a row can assert against the constants literally rather than

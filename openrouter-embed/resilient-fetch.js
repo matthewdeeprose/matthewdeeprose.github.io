@@ -57,6 +57,50 @@
   const HF_BASE = 'https://huggingface.co';
   const BYTES_PER_MB = 1024 * 1024;
 
+  // Abort scopes (H-128): an abort signal registered against a model's Hugging Face id.
+  // Transformers.js passes no signal of its own, so a Cancel could not reach the requests;
+  // the fetch that create() returns adds the matching scope's signal when the caller gave none.
+  const ABORT = Object.freeze({
+    ERROR_NAME: 'AbortError',
+    MESSAGE: 'Download aborted by user',
+    SCOPE_MARK: 'resilientFetchScopedAbort'
+  });
+  const abortScopes = [];
+
+  // An abort error raised for a SCOPE's signal carries this mark. Transformers.js leaves one
+  // such rejection unhandled inside its own file loader after a Cancel; the listener below
+  // silences exactly those, and nothing that lacks the mark.
+  function abortError(fromScope) {
+    const err = new DOMException(ABORT.MESSAGE, ABORT.ERROR_NAME);
+    if (fromScope) err[ABORT.SCOPE_MARK] = true;
+    return err;
+  }
+
+  window.addEventListener('unhandledrejection', function (event) {
+    if (event.reason && event.reason[ABORT.SCOPE_MARK] === true) event.preventDefault();
+  });
+
+  /**
+   * Register an abort signal for every Hugging Face request whose URL contains
+   * urlFragment (the model's id). Returns a function that removes the scope again.
+   */
+  function addAbortScope(urlFragment, signal) {
+    if (!urlFragment || !signal) return function () {};
+    const scope = { urlFragment: urlFragment, signal: signal };
+    abortScopes.push(scope);
+    return function removeAbortScope() {
+      const idx = abortScopes.indexOf(scope);
+      if (idx >= 0) abortScopes.splice(idx, 1);
+    };
+  }
+
+  function findScopedSignal(urlStr) {
+    for (let k = 0; k < abortScopes.length; k++) {
+      if (urlStr.includes(abortScopes[k].urlFragment)) return abortScopes[k].signal;
+    }
+    return null;
+  }
+
   // ═══════════════════════════════════════════════════════════════════
   // Diagnostic tracker — queryable from console via ResilientFetch.getDiagnostics()
   // ═══════════════════════════════════════════════════════════════════
@@ -248,13 +292,20 @@
      */
     return async function resilientFetch(url, fetchOptions) {
       const urlStr = typeof url === 'string' ? url : url.toString();
-      const signal = (fetchOptions && fetchOptions.signal) || null;
+      let signal = (fetchOptions && fetchOptions.signal) || null;
 
       // Step 1: URL filter — only intercept HuggingFace URLs
       if (!urlStr.includes('huggingface.co')) {
         trackPassthrough(urlStr);
         logDebug('Passthrough (non-HF): ' + filenameFromUrl(urlStr));
         return opts.originalFetch(url, fetchOptions);
+      }
+
+      // A caller that passed no signal gets the registered scope's, if one matches (H-128)
+      let signalFromScope = false;
+      if (!signal) {
+        signal = findScopedSignal(urlStr);
+        signalFromScope = signal !== null;
       }
 
       logInfo('Intercepted HF fetch: ' + filenameFromUrl(urlStr) + ' (' + urlStr.substring(0, 120) + ')');
@@ -275,6 +326,7 @@
           firstResponse = await opts.originalFetch(urlStr, firstFetchOptions);
           break; // success
         } catch (firstErr) {
+          if (signal && signal.aborted) throw abortError(signalFromScope);
           if (firstErr.name === 'AbortError') throw firstErr;
           logError('First chunk fetch failed for ' + filename + ' (attempt ' + (firstAttempt + 1) + '/' + (opts.maxRetries + 1) + '): ' + firstErr.message);
           diagnostics.errors.push({
@@ -326,6 +378,8 @@
         firstBuffer = await firstResponse.arrayBuffer();
         logDebug('First chunk body read OK: ' + toMB(firstBuffer.byteLength) + 'MB');
       } catch (bodyErr) {
+        // An abort mid-body arrives as a plain Error; the signal is the reliable test
+        if (signal && signal.aborted) throw abortError(signalFromScope);
         const msg = 'Failed to read first chunk body for ' + filename + ': ' + bodyErr.message;
         logError(msg);
         diagnostics.errors.push({ time: new Date().toISOString(), filename: filename, chunk: 'first-body-read', error: bodyErr.message });
@@ -396,7 +450,7 @@
 
       for (let i = 2; i <= totalChunks; i++) {
         if (signal && signal.aborted) {
-          throw new DOMException('Download aborted by user', 'AbortError');
+          throw abortError(signalFromScope);
         }
 
         const start = (i - 1) * chunkSize;
@@ -409,7 +463,7 @@
         // Fetch chunk with retry
         for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
           if (signal && signal.aborted) {
-            throw new DOMException('Download aborted by user', 'AbortError');
+            throw abortError(signalFromScope);
           }
 
           try {
@@ -423,6 +477,7 @@
             if (response.status === 206) break;
             throw new Error('Expected 206 but received ' + response.status);
           } catch (err) {
+            if (signal && signal.aborted) throw abortError(signalFromScope);
             if (err.name === 'AbortError') throw err;
 
             if (attempt < opts.maxRetries) {
@@ -445,6 +500,10 @@
         try {
           buffer = await response.arrayBuffer();
         } catch (bodyErr) {
+          if (signal && signal.aborted) {
+            trackComplete(trackId, 'ABORTED');
+            throw abortError(signalFromScope);
+          }
           const msg = 'Chunk ' + i + '/' + totalChunks + ' body read failed for ' + filename + ': ' + bodyErr.message;
           logError(msg);
           trackRetry(trackId, i, 'body-read', bodyErr.message);
@@ -577,6 +636,12 @@
   window.ResilientFetch = {
     create,
     testRangeSupport,
+    /**
+     * Register an abort signal for one model's Hugging Face requests (H-128).
+     * addAbortScope(modelId, signal) returns a function that removes the scope.
+     * Requests that already carry a signal, and non-Hugging-Face requests, are untouched.
+     */
+    addAbortScope,
     /**
      * Subscribe to global download progress events.
      * Listener receives: { filename, url, loaded, total, chunks: { current, total } }

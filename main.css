@@ -4214,25 +4214,122 @@ fieldset.boiler {
   max-width: 100%;
   padding: 0.5em 0;
 }
-#mathjax-status {
+/* Status bar: the sign-in state and the MathJax readout as one centred unit
+   above the h1, with a button to collapse it to icons. Fill and border colours
+   live in light.css and dark.css. */
+#status-bar {
   position: absolute;
   top: 1rem;
   left: 50%;
   transform: translateX(-50%);
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  gap: 0.5rem;
+  max-width: calc(100% - 1rem);
   margin: 0;
-  padding: 0.2rem 0.75rem;
+  padding: 0.2rem 0.5rem;
   font-size: 0.75rem;
   font-family: inherit;
   border-radius: 4px;
-  transition: opacity 0.2s ease;
   z-index: 10;
 }
 
+#signin-status,
+#mathjax-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#signin-status-text {
+  font-weight: 600;
+}
+
+/* Icons are flex items centred on the bar's cross axis. As plain inline boxes
+   they sat on the text baseline, 1 to 2px low against the words. */
+#status-bar [data-icon] {
+  display: inline-flex;
+  align-items: center;
+}
+
+#status-bar [data-icon] svg {
+  display: block;
+}
+
+/* The buttons in the bar override the global button's thick border, margin and
+   padding but keep a 24 by 24 target (SC 2.5.8). Their resting fill and text
+   are set only while not hovered or focused, so the global button hover and
+   focus treatment (inverted fill, glow) still applies on top. */
+#signin-action,
+#status-bar-toggle {
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  margin: 0;
+  padding: 0.1rem 0.25rem;
+  border-width: 1px;
+  border-radius: 4px;
+  font: inherit;
+  cursor: pointer;
+}
+
+#status-bar button:not(:hover):not(:focus-visible) {
+  background-color: transparent;
+  color: inherit;
+  border-color: transparent;
+}
+
+/* Hover and focus keep the bar's buttons the same size. The global treatment
+   swaps in a 0.2rem border (dark.css forces it with !important, which made
+   each button grow by 4px) and a glow of 0.3 to 0.4rem, wider than the bar's
+   own padding, so it spilled outside. The glow is shrunk to 0.2rem in
+   light.css and dark.css, which own its colour. The outline is transparent
+   rather than none so forced-colours mode still draws a focus ring. */
+#status-bar button:is(:hover, :focus-visible) {
+  border-width: 1px !important;
+  outline: 0.1rem solid transparent !important;
+}
+
+/* THE HIDE/SHOW BUTTON IS SWITCHED OFF for now (25 October 2026): the bar always
+   shows expanded. To bring the button back, delete this one rule. Nothing else
+   needs changing: setup-tool.js reads this computed display and, while it is
+   "none", ignores any stored collapse so nobody is left with a collapsed bar and
+   no button to reopen it. display none also removes it from the tab order and
+   the accessibility tree. */
+#status-bar-toggle {
+  display: none;
+}
+
+/* The sign-in action reads as a link (underline) while staying a button. */
+#signin-action-text {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  font-weight: 600;
+}
+
+/* Collapsed = icons plus the one word that matters. The signed-in name and the
+   MathJax label go visually hidden, still in the DOM, so accessible names are
+   the real text (SC 2.5.3). The MathJax Yes / No / Error stays visible: it is
+   the signifier, and an icon alone cannot say which. The sign-in action is
+   never collapsed: it is the next step, and it is already two words. A
+   MathJax startup error keeps its label too (data-ready="error"). */
+#status-bar[data-collapsed="true"] #signin-status-text,
+#status-bar[data-collapsed="true"]
+  #mathjax-status:not([data-ready="error"])
+  .mathjax-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @media print {
-  #mathjax-status {
+  #status-bar {
     display: none;
   }
 }
@@ -4249,7 +4346,7 @@ fieldset.boiler {
   opacity: 1;
 }
 @media screen and (max-width: 350px) {
-  #mathjax-status {
+  #status-bar {
     display: none;
   }
 }
