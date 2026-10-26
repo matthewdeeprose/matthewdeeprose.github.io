@@ -299,6 +299,12 @@
         ctx && typeof ctx._getUserModelChoice === "function"
           ? ctx._getUserModelChoice()
           : null;
+      // AV-1b: a pick the Context picker does not offer is dropped, not shown.
+      if (pick && isStrandedPick(step, pick)) {
+        ctx._setUserModelChoice(null);
+        if (typeof ctx._syncPickerToChoice === "function") ctx._syncPickerToChoice();
+        return null;
+      }
       return pick || null;
     }
     if (step.key === "pictures") {
@@ -316,6 +322,11 @@
         adapter._setUserModelChoice(null);
         return null;
       }
+      // AV-1b: and so is a pick the image manager's picker does not offer.
+      if (pick && isStrandedPick(step, pick)) {
+        adapter._setUserModelChoice(null);
+        return null;
+      }
       return pick || null;
     }
     const peek = window.peekMathPixAIEnhancer;
@@ -326,9 +337,17 @@
       enhancer.syncModelToProvider();
     }
     const selected = enhancer && enhancer.selectedModel;
-    return typeof selected === "string" && selected && selected !== recommendedId
-      ? selected
-      : null;
+    if (typeof selected !== "string" || !selected || selected === recommendedId) {
+      return null;
+    }
+    // AV-1b: a selection the correction dialog does not offer is replaced by the
+    // registry default, as syncModelToProvider replaces one from another provider.
+    // Set on the enhancer directly, so nothing is written to the saved preferences.
+    if (recommendedId && isStrandedPick(step, selected)) {
+      enhancer.selectedModel = recommendedId;
+      return null;
+    }
+    return selected;
   }
 
   /**
@@ -1369,32 +1388,93 @@
   }
 
   /**
-   * Every model the active provider serves that can do what the step needs,
-   * { id, name }. Asking the capability facade per model costs about 200 ms for
-   * a whole catalogue, so the answer is kept per provider and capability: the
-   * two PDF steps share one list. Pass `fresh` to recompute.
+   * AV-1b: the list each step's own workflow picker offers, from the function
+   * that picker builds it with (AV-D1a). Each returns an array of { id, name, ... }
+   * or null when that function is not on the page.
    */
-  function servableModelsFor(step, fresh) {
-    const providerId = activeProviderId();
-    const capability = step.key === "pictures" ? "image" : "pdf";
-    const cacheKey = `${capability}|${providerId}`;
-    if (!fresh && state.choiceCache.has(cacheKey)) return state.choiceCache.get(cacheKey);
+  const PICKER_LISTS = Object.freeze({
+    // The correction dialog: its recommended radios, then its advanced select.
+    correction: (providerId) => {
+      const enhancer = window.getMathPixAIEnhancer?.();
+      if (
+        !enhancer ||
+        typeof enhancer.getRecommendedModels !== "function" ||
+        typeof enhancer.getRegistryModels !== "function"
+      ) {
+        return null;
+      }
+      const recommended = Object.values(enhancer.getRecommendedModels(providerId)).map((entry) => ({
+        id: entry.id,
+        name: displayNameFor(entry.id, providerId) || entry.label || entry.name || entry.id,
+      }));
+      const registry = enhancer.getRegistryModels();
+      return [...recommended, ...registry.low, ...registry.medium, ...registry.high];
+    },
+    context: (providerId) => {
+      const ctx = window.MathPixContextAI;
+      return ctx && typeof ctx._pdfCapableModelsFor === "function"
+        ? ctx._pdfCapableModelsFor(providerId)
+        : null;
+    },
+    pictures: (providerId) => {
+      const manager = window.MathPixImageManagerUI?.getInstance?.();
+      return manager && typeof manager._visionCapableModelsForProvider === "function"
+        ? manager._visionCapableModelsForProvider(providerId)
+        : null;
+    },
+  });
 
+  /** The catalogue filtered by the step's capability: the fallback when a picker's own function is absent. */
+  function catalogueModelsFor(step, providerId) {
     const selector = window.EmbedModelSelector;
     let all = [];
     if (selector && typeof selector.getEligibleModels === "function") {
       try {
         all = selector.getEligibleModels({ providerId, capabilities: [] });
       } catch (error) {
-        logWarn("servableModelsFor: getEligibleModels threw", error);
+        logWarn("catalogueModelsFor: getEligibleModels threw", error);
       }
     }
-    const servable = (Array.isArray(all) ? all : [])
-      .filter((model) => model && typeof model.id === "string")
-      .filter((model) => canServeStep(step, model.id))
+    return (Array.isArray(all) ? all : []).filter(
+      (model) => model && typeof model.id === "string" && canServeStep(step, model.id),
+    );
+  }
+
+  /**
+   * Every model the step's own workflow picker offers on the active provider,
+   * { id, name }. The lists cost about 200 ms each to build, so the answer is
+   * kept per step and provider. Pass `fresh` to recompute.
+   */
+  function servableModelsFor(step, fresh) {
+    const providerId = activeProviderId();
+    const cacheKey = `${step.key}|${providerId}`;
+    if (!fresh && state.choiceCache.has(cacheKey)) return state.choiceCache.get(cacheKey);
+
+    let all = null;
+    try {
+      all = PICKER_LISTS[step.key](providerId);
+    } catch (error) {
+      logWarn(`servableModelsFor: the ${step.key} picker list threw`, error);
+    }
+    if (!Array.isArray(all)) all = catalogueModelsFor(step, providerId);
+
+    const seen = new Set();
+    const servable = all
+      .filter((model) => model && typeof model.id === "string" && !seen.has(model.id) && seen.add(model.id))
       .map((model) => ({ id: model.id, name: model.name || model.id }));
-    state.choiceCache.set(cacheKey, servable);
+    // An empty answer means the catalogue was not ready, so it is not kept.
+    if (servable.length > 0) state.choiceCache.set(cacheKey, servable);
     return servable;
+  }
+
+  /**
+   * True when the step's own picker does not offer `modelId` (AV-D1a). An empty
+   * list says nothing about the pick (the catalogue is not loaded), so it never
+   * strands one.
+   */
+  function isStrandedPick(step, modelId) {
+    const offered = servableModelsFor(step);
+    return offered.length > 0 && !offered.some((model) => model.id === modelId);
   }
 
   /** The models a step's select offers on the active provider: { id, name }, by name. */
@@ -1577,6 +1657,7 @@
     reasonFor,
     refreshModels,
     modelChoicesFor,
+    servableModelsFor,
     handleModelSelect,
     run,
     estimateLine,

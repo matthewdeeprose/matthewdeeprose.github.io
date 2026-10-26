@@ -14938,7 +14938,11 @@ Science,91</pre
                 <!-- Detect text in this picture? (H-64). Replaces the H-56 tick
                      box. Hidden until a picture is loaded; both buttons start
                      unpressed for every new picture, and text detection does not
-                     start until one is pressed. Not saved. -->
+                     start until one is pressed. Not saved.
+                     HIDDEN ONCE A DESCRIPTION IS GENERATED: any control added
+                     here, above #imgdesc-workspace, is pre-generation only and
+                     must be hidden in showOutputUI() and restored in
+                     showConfigurationUI() (image-describer-controller-ui.js). -->
                 <div
                   class="imgdesc-text-detection-option"
                   id="imgdesc-text-choice"
@@ -24661,6 +24665,7 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-treemap.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-venn.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-treeview.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-ishikawa.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>

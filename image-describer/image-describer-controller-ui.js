@@ -890,6 +890,10 @@
         this._updateFlorenceOCRPrompt();
       }
 
+      // Restore the "Detect text in this picture?" question only while a
+      // picture is loaded (reset clears currentFile before calling this).
+      this._showTextChoice(!!this.currentFile);
+
       // Show the "Upload Image" heading
       const uploadHeading = document.querySelector(
         ".imgdesc-input-column .imgdesc-section h2",
@@ -924,6 +928,12 @@
      */
     showOutputUI() {
       logDebug("Showing output UI");
+
+      // KEEP IN SYNC: every pre-generation control above the workspace (config
+      // panel, camera, overlay toolbar, Florence prompt, text-detection
+      // question) is hidden here and restored in showConfigurationUI(). If you
+      // add content there, hide it below and restore it there, or it will sit
+      // above the finished description.
 
       // Add output mode class to layout for single-column styling
       const layout = document.querySelector(".imgdesc-layout");
@@ -968,6 +978,10 @@
       // Hide Florence-2 OCR prompt during generation output (Phase 14J)
       const florenceOCRPrompt = document.getElementById("imgdesc-florence-ocr-prompt");
       if (florenceOCRPrompt) florenceOCRPrompt.hidden = true;
+
+      // Hide the "Detect text in this picture?" question: it only matters
+      // before a description exists (restored in showConfigurationUI).
+      this._showTextChoice(false);
 
       // Hide camera section during generation output (Phase 5E fix)
       const cameraSection = document.getElementById("imgdesc-camera-section");

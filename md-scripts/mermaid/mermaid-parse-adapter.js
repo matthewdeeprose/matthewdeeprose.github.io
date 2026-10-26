@@ -20514,6 +20514,17 @@ window.MermaidParseAdapter = (function () {
   // label whose only content was a removed <script> is empty and the node is
   // kept.
   //
+  // ITEM 125 SESSION 3b (26 October 2026), SA1 (the carve-out of 6 October
+  // 2026): the effect, every category and every cause are read as the AUTHOR
+  // typed them where the picture would print an entity code for a character
+  // typed plainly. Mermaid writes &amp; and &lt; for a bare & and < once a
+  // string holds a tag and delivers a TYPED &amp; as the same bytes, so the
+  // text is read from the SOURCE (readIshikawaSource), mapped to the db's
+  // nodes by position when the whole tree agrees (ishikawaSourceAgrees), and
+  // taken ONLY when it agrees with the db's string once the three codes are
+  // folded on both sides (ishikawaAuthorText, which calls the treeView test).
+  // Anything else delivers the db's string. rawText keeps the db's bytes.
+  //
   // CONFIG: the two keys of the ishikawa block, each at the value Mermaid
   // applies. Defaults are Mermaid's SITE config (getSiteConfig), never the
   // live one; the source's own keys (frontmatter and %%{init}%%, merged by
@@ -20532,6 +20543,14 @@ window.MermaidParseAdapter = (function () {
   const ISHIKAWA_NODE_KEYS = Object.freeze(["text", "children"]);
   const ISHIKAWA_PAIR_SIZE = 2;
   const ISHIKAWA_PADDING_FACTOR = 2;
+  // ITEM 125 SESSION 3b (26 October 2026), SA1: the lines the SOURCE READER sees. A header line, then every line
+  // that is not blank and not a whole-line %% comment is a text line (measured: the db's pre-order equals the
+  // order of those lines, and "50%% off" inside a line is text).
+  const ISHIKAWA_SOURCE_LINES = Object.freeze({
+    HEADER: /^[ \t]*ishikawa(?:-beta)?$/i,
+    SKIPPED: /^[ \t]*(?:%%.*)?$/,
+    TEXT: /^([ \t]*)(.*?)[ \t]*$/,
+  });
 
   let ishikawaMemoCode = null;
   let ishikawaMemoPromise = null;
@@ -20667,6 +20686,106 @@ window.MermaidParseAdapter = (function () {
   }
 
   /**
+   * ITEM 125 SESSION 3b (26 October 2026), SA1: the author's text lines, read from the SOURCE. Mermaid's
+   * sanitiser writes &amp; and &lt; for a bare & and < once a string holds a tag, and delivers a TYPED &amp; as
+   * the same bytes, so the db cannot say which the author meant. A READER, not a parser: its lines are used only
+   * when ishikawaSourceAgrees finds the db's own tree in them.
+   * @param {string} code - The Mermaid ishikawa source, frontmatter included
+   * @returns {Array<{indent: number, text: string}>|null} Every text line in declaration order (the effect
+   *   first), or null when the header cannot be found as a bare ishikawa or ishikawa-beta
+   */
+  function readIshikawaSource(code) {
+    if (typeof code !== "string") {
+      return null;
+    }
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    const lines = (fence ? code.slice(fence[0].length) : code).split(/\r?\n/);
+    let index = 0;
+    while (index < lines.length && ISHIKAWA_SOURCE_LINES.SKIPPED.test(lines[index])) {
+      index += 1;
+    }
+    if (index >= lines.length || !ISHIKAWA_SOURCE_LINES.HEADER.test(lines[index])) {
+      return null;
+    }
+    const read = [];
+    for (index += 1; index < lines.length; index += 1) {
+      if (ISHIKAWA_SOURCE_LINES.SKIPPED.test(lines[index])) {
+        continue;
+      }
+      const match = ISHIKAWA_SOURCE_LINES.TEXT.exec(lines[index]);
+      read.push({ indent: match[1].length, text: match[2] });
+    }
+    return read;
+  }
+
+  /**
+   * Does the source reader see the SAME tree as the db? The count, and every line's parent by the db's own
+   * indentation rule, must equal the db's parent in pre-order. THE RULE (measured 26 October 2026, probe-rule):
+   * a line at or below the indentation of the FIRST line after the effect is a category, a child of the effect,
+   * wherever it stands; a deeper line takes the nearest earlier line indented less. A line that does not agree
+   * makes the whole diagram decline.
+   * @param {Array<{indent: number, text: string}>} lines - readIshikawaSource's result
+   * @param {Object} snapshot - snapshotIshikawaDb's result
+   * @returns {boolean} True when the lines can be mapped to the db's nodes by position
+   */
+  function ishikawaSourceAgrees(lines, snapshot) {
+    const ordered = [snapshot.effect, ...snapshot.nodes];
+    if (lines.length !== ordered.length) {
+      return false;
+    }
+    const placeOf = new Map(ordered.map((copy, place) => [copy, place]));
+    const open = [];
+    for (let place = 1; place < lines.length; place += 1) {
+      while (open.length > 0 && lines[open[open.length - 1]].indent >= lines[place].indent) {
+        open.pop();
+      }
+      const isCategory = lines[place].indent <= lines[1].indent;
+      const parent = isCategory || open.length === 0 ? 0 : open[open.length - 1];
+      if (placeOf.get(ordered[place].parent) !== parent) {
+        return false;
+      }
+      open.push(place);
+    }
+    return true;
+  }
+
+  /**
+   * The text of every node as the AUTHOR typed it, by node, or an empty map when the source cannot be read or
+   * does not agree with the db (every label then reads as the db delivers it).
+   * @param {Object} snapshot - snapshotIshikawaDb's result
+   * @param {string} [code] - The Mermaid ishikawa source
+   * @returns {Map<Object, string>} Snapshot copy to the author's line text
+   */
+  function readIshikawaSourceTexts(snapshot, code) {
+    const lines = readIshikawaSource(code);
+    const texts = new Map();
+    if (lines === null || !ishikawaSourceAgrees(lines, snapshot)) {
+      return texts;
+    }
+    [snapshot.effect, ...snapshot.nodes].forEach((copy, place) => {
+      texts.set(copy, lines[place].text);
+    });
+    return texts;
+  }
+
+  /**
+   * SA1 (Matthew's carve-out of 6 October 2026): where the picture prints an entity code for a character the
+   * author typed plainly, the words read the author's character. The author's characters are taken ONLY when the
+   * author's own reading, after the break rule, agrees with the db's drawn string once the three sanitiser codes
+   * are folded on both sides (treeViewAuthorText, the packet, treemap, venn and treeView test: no second
+   * resolver). Otherwise the db's string is delivered unchanged.
+   * @param {string} drawn - The db's string after the break rule and the placeholder decode
+   * @param {string|undefined} source - The author's line text, or undefined when there is none
+   * @returns {string} The text to narrate
+   */
+  function ishikawaAuthorText(drawn, source) {
+    if (typeof source !== "string") {
+      return drawn;
+    }
+    return treeViewAuthorText(drawn, replaceTypedLineBreaks(source, LINE_BREAK_FORMS.NO_ATTRIBUTES));
+  }
+
+  /**
    * Copy the ishikawa db into plain data, ONCE and synchronously, walking
    * iteratively. Every shape the reader cannot map is a STOP here.
    *
@@ -20744,10 +20863,12 @@ window.MermaidParseAdapter = (function () {
    * pre-order list puts every parent before its children and siblings in
    * order).
    * @param {Object} snapshot - snapshotIshikawaDb's result
+   * @param {Map<Object, string>} [sourceTexts] - The author's line text by node (SA1)
    * @returns {Array<Object>} The delivered categories
    */
-  function buildIshikawaCategories(snapshot) {
+  function buildIshikawaCategories(snapshot, sourceTexts) {
     const decode = (text) => decodePlaceholdersBreaks(text);
+    const label = (copy) => ishikawaAuthorText(decode(copy.text), sourceTexts ? sourceTexts.get(copy) : undefined);
     const categories = [];
     const delivered = new Map();
     const sideOf = new Map();
@@ -20757,7 +20878,7 @@ window.MermaidParseAdapter = (function () {
         const placement = ishikawaCategoryPlacement(copy.authorIndex);
         sideOf.set(copy, placement.side);
         const category = {
-          text: decode(copy.text),
+          text: label(copy),
           rawText: copy.text,
           authorIndex: copy.authorIndex,
           side: placement.side,
@@ -20771,7 +20892,7 @@ window.MermaidParseAdapter = (function () {
       const side = sideOf.get(copy.parent);
       sideOf.set(copy, side);
       const cause = {
-        text: decode(copy.text),
+        text: label(copy),
         rawText: copy.text,
         depth: copy.depth,
         authorIndex: copy.authorIndex,
@@ -20790,15 +20911,20 @@ window.MermaidParseAdapter = (function () {
    *
    * @param {Object} diagram - The object getDiagramFromText resolved to
    * @param {Object} [ownConfig] - The source's own ishikawa keys (mermaid.parse)
+   * @param {string} [code] - The Mermaid ishikawa source (SA1: the author's characters; absent reads the db's)
    * @returns {Object} { diagramType, effect, categories, config, nodeCount, maxDepth, paddingDrawn }
    */
-  function normaliseIshikawa(diagram, ownConfig) {
+  function normaliseIshikawa(diagram, ownConfig, code) {
     const snapshot = snapshotIshikawaDb(diagram.db);
     const config = mergeIshikawaConfig(readIshikawaSiteDefaults(), ownConfig || {});
+    const sourceTexts = readIshikawaSourceTexts(snapshot, code);
     return {
       diagramType: ISHIKAWA_DIAGRAM_TYPE,
-      effect: { text: decodePlaceholdersBreaks(snapshot.effect.text), rawText: snapshot.effect.text },
-      categories: buildIshikawaCategories(snapshot),
+      effect: {
+        text: ishikawaAuthorText(decodePlaceholdersBreaks(snapshot.effect.text), sourceTexts.get(snapshot.effect)),
+        rawText: snapshot.effect.text,
+      },
+      categories: buildIshikawaCategories(snapshot, sourceTexts),
       config: config,
       nodeCount: snapshot.nodeCount,
       maxDepth: snapshot.maxDepth,
@@ -20819,7 +20945,7 @@ window.MermaidParseAdapter = (function () {
     return readIshikawaOwnConfig(code).then((ownConfig) =>
       api.getDiagramFromText(code).then((diagram) => ({
         diagram: diagram,
-        delivery: normaliseIshikawa(diagram, ownConfig),
+        delivery: normaliseIshikawa(diagram, ownConfig, code),
       }))
     );
   }
@@ -20999,6 +21125,71 @@ window.MermaidParseAdapter = (function () {
     "",
   ].join("\n");
 
+  // BARE (SA1, IC18): a bare & beside a tag in the effect, a category and a cause, and a bare & and < with no tag.
+  const ISHIKAWA_SELF_CHECK_BARE = [
+    "ishikawa-beta",
+    "  scBare & <b>e</b> end",
+    "    scBare & <b>c</b> end",
+    "      scBare & <b>k</b> end",
+    "      scBare2 x & y < z",
+    "",
+  ].join("\n");
+
+  // TYPEDAMP (SA1, IC19): a TYPED &amp; beside a tag in the effect, a category and a cause (the same db bytes as
+  // BARE), and a typed &amp; and &lt; with no tag.
+  const ISHIKAWA_SELF_CHECK_TYPEDAMP = [
+    "ishikawa-beta",
+    "  scTyped &amp; <u>e</u> end",
+    "    scTyped &amp; <u>c</u> end",
+    "      scTyped &amp; <u>k</u> end",
+    "      scTyped2 x &amp; y &lt; z",
+    "",
+  ].join("\n");
+
+  // MAP (SA1, IC20): two categories, a typed and a bare cause under the first and a pair that differs only in
+  // the arm under the second, so a mapping that is not the db's pre-order reads an arm wrongly.
+  const ISHIKAWA_SELF_CHECK_MAP = [
+    "ishikawa-beta",
+    "  scMap",
+    "    scMapCat1 &amp; <i>1</i>",
+    "      scMapA &amp; <i>1</i>",
+    "      scMapB & <i>1</i>",
+    "    scMapCat2 & <i>1</i>",
+    "      scMapDup &amp; <i>1</i>",
+    "      scMapDup & <i>1</i>",
+    "",
+  ].join("\n");
+
+  // ODD (SA1, IC20): lines at or below the first category's indentation are categories wherever they stand
+  // (the db's rule): a category dedented, one at indent 1, a title-like line at indent 0 and a line at the
+  // categories' own indentation straight after it, which a plain indent stack would hang under the title line.
+  const ISHIKAWA_SELF_CHECK_ODD = [
+    "ishikawa-beta",
+    "  scOdd",
+    "    scOddA & <i>1</i>",
+    "      scOddB & <i>2</i>",
+    "  scOddC & <i>3</i>",
+    "      scOddD &amp; <i>4</i>",
+    " scOddE & <i>5</i>",
+    "title scOddT",
+    "    scOddF & <i>6</i>",
+    "",
+  ].join("\n");
+
+  // DECLINE (SA1, IC21): the sanitiser removes a script element, so the author's text cannot agree with the db's
+  // string and the db's string is delivered, the code and all.
+  const ISHIKAWA_SELF_CHECK_DECLINE = [
+    "ishikawa-beta",
+    "  scDecline",
+    "    scDecline cat",
+    "      scDecline <script>x</script> & <i>y</i>",
+    "",
+  ].join("\n");
+
+  // READER (SA1, IC22): frontmatter, whole-line comments, blank lines, tabs, CRLF and trailing white space.
+  const ISHIKAWA_SELF_CHECK_READER_SOURCE =
+    "---\nconfig:\n  ishikawa:\n    diagramPadding: 30\n---\n%% note\n\nISHIKAWA-BETA\n  scEff  \n\n\t\tscTab\r\n    %% inner\n    scPct 50%% off\n";
+
   const ISHIKAWA_SELF_CHECK_HEADER_ONLY = "ishikawa-beta\n";
   const ISHIKAWA_SELF_CHECK_REJECTED = "ishikawa-beta \n  scE\n";
 
@@ -21057,6 +21248,11 @@ window.MermaidParseAdapter = (function () {
         ["lines", ISHIKAWA_SELF_CHECK_LINES],
         ["cfg", ISHIKAWA_SELF_CHECK_CFG],
         ["cfgWide", ISHIKAWA_SELF_CHECK_CFG_WIDE],
+        ["bare", ISHIKAWA_SELF_CHECK_BARE],
+        ["typedAmp", ISHIKAWA_SELF_CHECK_TYPEDAMP],
+        ["map", ISHIKAWA_SELF_CHECK_MAP],
+        ["odd", ISHIKAWA_SELF_CHECK_ODD],
+        ["decline", ISHIKAWA_SELF_CHECK_DECLINE],
         ["headerOnly", ISHIKAWA_SELF_CHECK_HEADER_ONLY],
         ["rejected", ISHIKAWA_SELF_CHECK_REJECTED],
       ].forEach(([key, code]) => {
@@ -21080,7 +21276,12 @@ window.MermaidParseAdapter = (function () {
         const lines = d("lines");
         const cfg = d("cfg");
         const cfgWide = d("cfgWide");
-        const everything = [nest, typed, escaped, breaks, empty, lines, cfg, cfgWide];
+        const bare = d("bare");
+        const typedAmp = d("typedAmp");
+        const mapped = d("map");
+        const odd = d("odd");
+        const decline = d("decline");
+        const everything = [nest, typed, escaped, breaks, empty, lines, cfg, cfgWide, bare, typedAmp, mapped, odd, decline];
         const site = readIshikawaSiteDefaults();
 
         const stubNode = (overrides) => Object.assign({ text: "scStub", children: [] }, overrides);
@@ -21299,6 +21500,83 @@ window.MermaidParseAdapter = (function () {
               root.children[0].text = "scChanged";
               return JSON.stringify(first.delivery) === outcomes.nest.digest && first.delivery.categories[0].causes.length === 2;
             })(),
+          ],
+          [
+            "IC18 SA1 BARE ARM: a bare & and < read as the characters typed (the db holds &amp; and &lt;) in the effect, a category and a cause; the raw keys keep the db's bytes",
+            !!bare &&
+              bare.effect.text === "scBare & <b>e</b> end" &&
+              bare.categories[0].text === "scBare & <b>c</b> end" &&
+              bare.categories[0].causes[0].text === "scBare & <b>k</b> end" &&
+              bare.categories[0].causes[1].text === "scBare2 x & y < z" &&
+              bare.effect.rawText === "scBare &amp; <b>e</b> end" &&
+              bare.categories[0].rawText === "scBare &amp; <b>c</b> end" &&
+              bare.categories[0].causes[0].rawText === "scBare &amp; <b>k</b> end" &&
+              bare.categories[0].causes[1].rawText === "scBare2 x &amp; y &lt; z",
+          ],
+          [
+            "IC19 SA1 TYPED ARM: a TYPED &amp; and &lt; read as typed, in the effect, a category and a cause (the same db bytes as the bare arm, opposite words)",
+            !!typedAmp &&
+              typedAmp.effect.text === "scTyped &amp; <u>e</u> end" &&
+              typedAmp.categories[0].text === "scTyped &amp; <u>c</u> end" &&
+              typedAmp.categories[0].causes[0].text === "scTyped &amp; <u>k</u> end" &&
+              typedAmp.categories[0].causes[1].text === "scTyped2 x &amp; y &lt; z" &&
+              typedAmp.effect.rawText === "scTyped &amp; <u>e</u> end" &&
+              typedAmp.categories[0].causes[1].rawText === "scTyped2 x &amp; y &lt; z",
+          ],
+          [
+            "IC20 SA1 MAPPING AND GUARD: a label belongs to the node it follows in the db's pre-order (typed, bare, then a typed and a bare duplicate under the next category); the source's lines are used only when the count and every parent agree with the db's tree",
+            !!mapped &&
+              same(
+                everyNode(mapped).map((node) => node.text),
+                [
+                  "scMapCat1 &amp; <i>1</i>",
+                  "scMapA &amp; <i>1</i>",
+                  "scMapB & <i>1</i>",
+                  "scMapCat2 & <i>1</i>",
+                  "scMapDup &amp; <i>1</i>",
+                  "scMapDup & <i>1</i>",
+                ]
+              ) &&
+              !!odd &&
+              same(
+                odd.categories.map((category) => [category.text, category.causes.map((cause) => cause.text)]),
+                [
+                  ["scOddA & <i>1</i>", ["scOddB & <i>2</i>"]],
+                  ["scOddC & <i>3</i>", ["scOddD &amp; <i>4</i>"]],
+                  ["scOddE & <i>5</i>", []],
+                  ["title scOddT", []],
+                  ["scOddF & <i>6</i>", []],
+                ]
+              ) &&
+              (() => {
+                const mapSnapshot = snapshotIshikawaDb(dbOf("map"));
+                const mapLines = readIshikawaSource(ISHIKAWA_SELF_CHECK_MAP);
+                return (
+                  ishikawaSourceAgrees(mapLines, mapSnapshot) &&
+                  !ishikawaSourceAgrees(mapLines.slice(0, -1), mapSnapshot) &&
+                  !ishikawaSourceAgrees(mapLines.map((line, index) => (index === 3 ? { indent: 1, text: line.text } : line)), mapSnapshot) &&
+                  readIshikawaSourceTexts(mapSnapshot, ISHIKAWA_SELF_CHECK_MAP).size === 7 &&
+                  readIshikawaSourceTexts(mapSnapshot, ISHIKAWA_SELF_CHECK_MAP + "      scExtra\n").size === 0
+                );
+              })(),
+          ],
+          [
+            "IC21 SA1 DECLINE: when the sanitiser changed the string some other way (a script element removed) the db's string is delivered unchanged, the code and all",
+            !!decline &&
+              decline.categories[0].causes[0].text === decline.categories[0].causes[0].rawText &&
+              decline.categories[0].causes[0].text.includes("&amp;") &&
+              !decline.categories[0].causes[0].text.includes("script"),
+          ],
+          [
+            "IC22 SA1 SOURCE READER: frontmatter, a whole-line %% comment and a blank line are skipped, the header is found in any case, a level is the indentation's character count (a tab is one), CRLF and trailing white space are dropped, %% inside a line is text, and a source with no bare ishikawa header (ishikawa-alpha, a non-string) reads as null",
+            same(readIshikawaSource(ISHIKAWA_SELF_CHECK_READER_SOURCE), [
+              { indent: 2, text: "scEff" },
+              { indent: 2, text: "scTab" },
+              { indent: 4, text: "scPct 50%% off" },
+            ]) &&
+              readIshikawaSource("scEff\n") === null &&
+              readIshikawaSource("ishikawa-alpha\n  scEff\n") === null &&
+              readIshikawaSource(5) === null,
           ],
         ];
       });

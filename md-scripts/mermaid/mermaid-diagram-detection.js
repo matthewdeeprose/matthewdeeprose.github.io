@@ -241,6 +241,13 @@ window.MermaidDiagramDetection = (function () {
     // scan has no tree view branch either, and is left as found: the spellings
     // that misroute to flowchart are recorded in the gold (TV14), not here.
     treeView: "treeView",
+    // Item 125, 26 October 2026: detectType returns "ishikawa" for an
+    // `ishikawa-beta` or `ishikawa` source (census). Same reason as the
+    // treeView row above - without it the ishikawa generator registers and is
+    // never called, and an ishikawa source resolves to `unsupported:ishikawa`.
+    // The legacy keyword scan has no ishikawa branch either, and is left as
+    // found: the spellings that misroute are recorded in the gold (IK14).
+    ishikawa: "ishikawa",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

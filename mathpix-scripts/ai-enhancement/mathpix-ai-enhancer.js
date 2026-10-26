@@ -2739,9 +2739,14 @@
      * pick is never lost. Saved preferences are left alone: a later switch back
      * restores them through loadEnhancerPreferences.
      *
+     * AV-1c: the models map is re-read first, so a run started from the AI tab
+     * after a switch reads the same per-model settings (reasoning mode) as one
+     * started from the dialog, which re-reads it when it builds.
+     *
      * @returns {boolean} true when the selection was replaced
      */
     syncModelToProvider() {
+      this.refreshModelsForProvider();
       const current = this.selectedModel;
       if (current && this._isProviderAvailable(current)) return false;
       const next = this._defaultModelForProvider();
@@ -2751,6 +2756,25 @@
         to: next,
       });
       this.selectedModel = next;
+      return true;
+    }
+
+    /**
+     * AV-1c: point `this.models` at the ACTIVE provider's recommended set.
+     *
+     * The one read both journeys share: the dialog calls it when it builds its
+     * radios, and syncModelToProvider calls it on every provider switch, dialog
+     * or none. Needs no DOM. Before the prompts JSON has loaded there is no set
+     * to read, and the map is left as it is.
+     *
+     * @returns {boolean} true when the map was re-read
+     */
+    refreshModelsForProvider() {
+      if (!this.recommendedByProvider) return false;
+      this.models = this.getRecommendedModels();
+      logDebug("Models map re-read for the active provider", {
+        keys: Object.keys(this.models || {}),
+      });
       return true;
     }
 
@@ -2896,9 +2920,7 @@
       // rebuildConfigurationBody reaches buildConfigurationContent, which
       // reaches here, so the open path and the rebuild path share one read
       // rather than needing two that must be kept in step.
-      if (this.recommendedByProvider) {
-        this.models = this.getRecommendedModels();
-      }
+      this.refreshModelsForProvider();
 
       if (!this.models) {
         // Not an empty PROVIDER result — a missing config. Leave the count

@@ -1110,6 +1110,11 @@ window.MermaidAccessibility = (function () {
     // 89). The `unsupported:treeView` twin above is kept and is unreachable
     // while the MERMAID_TYPE_TO_KEY row stands.
     treeView: "a tree view",
+    // Item 125, 26 October 2026. The same bare-key row, added WITH the ishikawa
+    // generator so a generation failure still names the diagram (item 89). The
+    // `unsupported:ishikawa` twin above is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    ishikawa: "an Ishikawa diagram",
   });
 
   /** Last-resort phrase when the type is genuinely unknown to us. */
