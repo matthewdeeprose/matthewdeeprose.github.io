@@ -5420,6 +5420,12 @@ input[type="file"] {
   border-left-color: #fcbc00;
 }
 
+/* Summary row rule; see the light.css counterpart. #6f8089 is 3.98:1 on
+   #231f20. */
+.mermaid-detailed-description .mermaid-section {
+  --mermaid-summary-rule: #6f8089;
+}
+
 /* Accent cycles by position; see the light.css counterpart for why that
    conveys nothing and is safe under SC 1.4.1. */
 .mermaid-detailed-description .mermaid-section:nth-of-type(3n + 1) {

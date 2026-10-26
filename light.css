@@ -5254,6 +5254,14 @@ input[type="file"] {
   border-left-color: #495961;
 }
 
+/* The row rule in a Summary definition list (layout in
+   md-scripts/css/mermaid-description-styles.css). A rule that separates rows
+   is a non-text graphic, so it needs 3:1 against the card ground: #667a87 is
+   4.22:1 on #f3f9ff. */
+.mermaid-detailed-description .mermaid-section {
+  --mermaid-summary-rule: #667a87;
+}
+
 /* Chart.js gives its three named sections three accents. Mermaid sections
    carry no semantics the shell can read, so the accent CYCLES by position
    instead of encoding anything. Nothing is conveyed by the colour — the

@@ -1276,6 +1276,78 @@ h4.mermaid-details-heading::before {
   font-weight: 600;
 }
 
+/* Summary definition list. Emitted by the requirement, packet, treemap,
+   venn and treeView generators as one dt and one dd per row, directly inside
+   a `.mermaid-section`. Scoped to that child so the state generator's own
+   nested dl (inside `.state-transitions-section`, which is not a direct
+   parent) is untouched. Markup, reading order and exports are unchanged: this
+   is presentation only. The rule colour is --mermaid-summary-rule, defined in
+   light.css and dark.css; no colour is declared here.
+
+   The section is made a size container so the narrow layout answers to the
+   room the panel actually has, not to the viewport. :has() keeps that
+   containment off every section that carries no such list. */
+.mermaid-detailed-description .mermaid-section:has(> dl) {
+  container-type: inline-size;
+}
+
+.mermaid-detailed-description .mermaid-section > dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 0;
+  max-width: 40rem;
+}
+
+.mermaid-detailed-description .mermaid-section > dl > dt,
+.mermaid-detailed-description .mermaid-section > dl > dd {
+  margin: 0;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--mermaid-summary-rule);
+}
+
+/* The 1.5rem between term and value is the term's right padding, not a grid
+   gap, so the row rule runs unbroken under both cells. */
+.mermaid-detailed-description .mermaid-section > dl > dt {
+  padding-right: 1.5rem;
+}
+
+/* The values carry the weight; the terms stay at the panel's own. */
+.mermaid-detailed-description .mermaid-section > dl > dd {
+  font-weight: 600;
+}
+
+/* No rule after the last pair, and no dead space under it. */
+.mermaid-detailed-description .mermaid-section > dl > dt:has(+ dd:last-child),
+.mermaid-detailed-description .mermaid-section > dl > dd:last-child {
+  border-bottom-width: 0;
+  padding-bottom: 0;
+}
+
+/* Narrow: one column, the value indented under its term, the rule under the
+   value only. */
+@container (max-width: 30rem) {
+  .mermaid-detailed-description .mermaid-section > dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mermaid-detailed-description .mermaid-section > dl > dt {
+    border-bottom-width: 0;
+    padding-bottom: 0.125rem;
+  }
+
+  .mermaid-detailed-description .mermaid-section > dl > dd {
+    margin-left: 1rem;
+    padding-top: 0.125rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .mermaid-detailed-description .mermaid-section > dl > dt,
+  .mermaid-detailed-description .mermaid-section > dl > dd {
+    border-bottom-color: CanvasText;
+  }
+}
+
 /* was @media (max-width: 768px) { */
 @media (max-width: 1024px) {
   .mermaid-description,
