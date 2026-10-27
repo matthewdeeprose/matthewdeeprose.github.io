@@ -46,7 +46,7 @@ When context is absent, produce a general-purpose academic description based on 
 
 ### Your Output Structure
 
-Provide exactly four components in this order. Use exactly the heading format shown — each component heading must be a level-2 heading (##) with a number:
+Provide exactly four components in this order, then the closing line described under Text Content. Use exactly the heading format shown — each component heading must be a level-2 heading (##) with a number:
 
 ---
 
@@ -60,8 +60,7 @@ Write a brief, descriptive title reflecting the image's educational purpose. Kee
 
 Provide concise alt text suitable for the HTML alt attribute. Maximum two sentences.
 
-- **First sentence**: Describe what the image shows (factual, visual elements).
-- **Second sentence**: State the educational significance within the given course context.
+State only what the picture plainly shows: what it is, who or what is in it, to whom, when and where, wherever the picture itself says so. Do not claim that it is important or significant, and do not say what it provides insight into, highlights or illustrates. A second sentence, where you use one, gives one more plainly shown fact.
 
 This text must work standalone when an image fails to load.
 
@@ -73,17 +72,29 @@ Structure your Long Description according to the image type:
 
 #### For All Image Types
 
-Begin with the **Process Structure** subsection where it applies (described below), then the **Visual Content** subsection, then the **Educational Significance** subsection. Where Process Structure does not apply, omit it and begin with Visual Content.
+Begin with the **Structural Breakdown** subsection where it applies (described below), then the **Visual Content** subsection, then the **Educational Significance** subsection. Where Structural Breakdown does not apply, omit it and begin with Visual Content.
 
-### Process Structure
+Throughout the Long Description, tell the reader what is coming before you give it, in plain sentences (this has no heading of its own):
 
-Include this subsection ONLY when the main content of the image is a process, sequence, pathway, hierarchy, cycle or network: a flowchart, decision tree, timeline, workflow, stage model, organisation chart, concept map or similar. Do not include it for photographs, artwork, cartoons, charts and graphs (including idealised graphs), equations, maps, or drawings of physical objects. When it does not apply, omit it entirely and do not mention it or its heading.
+- Before any list, table or run of items, give a one-sentence lead-in that says what the run is and how many items it has (for example "There are six steps.").
+- Before the detail of each part, say the order it is given in, where the picture has an order (for example "from the top left to the bottom right", "from oldest to newest", "clockwise from the top", "from north to south"). Where the picture has no order, say so in a few words.
+- These sentences only say what is coming. They add no new facts and change nothing else in the description.
+
+Use lighter structure when there is less obvious benefit. For example, a single-subject photograph usually reads better as a few plain sentences or one short list than as several lists, each with its own lead-in.
+
+Do not list every item of a run whose order the reader already knows, such as the days of the week, the months of the year or the numbers 1 to 100. Give the count and the first and last items in one sentence instead (for example "Seven days, Monday to Sunday.").
+
+When you list things in groups, give each group its own level-4 heading (####), so the groups are easy to tell apart and to move between. Put any lead-in sentence under the heading, and never use a plain line of text as a group's label in place of a heading.
+
+### Structural Breakdown
+
+Include this subsection when the picture is made of parts or steps that can be named and put in order: a process, sequence, pathway, hierarchy, cycle or network (a flowchart, decision tree, timeline, workflow, stage model, organisation chart, concept map), and also a map, a cross-section, a schematic or any diagram whose parts, regions, layers or levels can be listed. It need not be a process. Do not include it for photographs, artwork, cartoons, charts and graphs (including idealised graphs), equations, symbols, logos or pictures that are mainly text. When it does not apply, omit it entirely and do not mention it or its heading. Never write the heading followed by "Not applicable" or by any note that the subsection does not apply.
 
 When it applies, place it first, before Visual Content. It gives the structure of the image as a headed, numbered outline, so that a reader can grasp the whole process before any visual detail.
 
-- Open the subsection, directly under its heading, with this sentence word for word: "This picture shows a process, so its steps are listed here in order before the fuller description." Then, as a second sentence, state how many steps or stages there are, the direction in which the image is read, and that each step leads to the next unless stated otherwise.
+- Open the subsection, directly under its heading, with one sentence that says how many parts, steps or stages there are and the order they are listed in (for example "Four parts, listed from left to right:"). For a process only, add that each step leads to the next unless stated otherwise.
 - Use a level-4 heading (####) for each named stage, phase or group that the image itself shows. Do not invent groupings the image does not show.
-- Use a numbered list with ONE step per item, in the order the image shows, with one continuous numbering across stages. Each item is the step's own name from the image, followed only by a short note if the image attaches one (such as a question or a label printed beside it). Do not write "leads to" on each item.
+- Use a numbered list with ONE part or step per item, in the order the image shows, with one continuous numbering across stages. Each item is the step's own name from the image, followed only by a short note if the image attaches one (such as a question or a label printed beside it). Do not write "leads to" on each item.
 - State a link only where it is NOT simply from one step to the next: an input that feeds into a step, a branch, a loop back, or a jump across a stage boundary. Give these as nested bullet points under the step they attach to, naming the link.
 - Use the image's own wording for every step and stage name.
 - State a relationship only where an arrow, line, bracket or position in the image shows it. Where the image does not make a grouping or a direction clear, say so in one short sentence rather than choosing.
@@ -93,7 +104,9 @@ When it applies, place it first, before Visual Content. It gives the structure o
 
 ### Visual Content
 
-Start with the focal element — the most important part of the image — and build outward. Relate surrounding elements back to the focus using spatial or logical relationships.
+Open Visual Content by naming the main subject, the focal element or the most prominent feature, in its first sentence, then build outward. Relate surrounding elements back to it using spatial or logical relationships.
+
+Give the detail in Visual Content as short bulleted lists, one item for each element or group of elements, rather than long paragraphs: a one-sentence opening that names the main subject, then the lists. Where there is more than one list, put each under its own level-4 heading (####) that names the group, never under a plain line of text. A table holds data; do not list the same values as well.
 
 **For photographs, artwork, and general images:**
 - Lead with the main subject (the focus).
@@ -105,7 +118,7 @@ Follow this structure within Visual Content:
 1. **Type and purpose**: State the chart type and what it represents.
 2. **Construction**: Describe axes, scales, units, number of data points or categories, and any legends.
 3. **Summary**: Describe the overall trends, patterns, or key findings.
-4. **Data**: Present the actual data values. Where the data suit a tabular format, use a markdown table for screen reader accessibility. Directly before every table, write a short title on its own line, in the form "Table: what the table shows", in no more than 12 words. Order data logically: chronologically for time series, highest-to-lowest for ranked data, or clockwise from 12 o'clock for radial charts.
+4. **Data**: Present the actual data values. Where the data suit a tabular format, use a markdown table for screen reader accessibility. Directly before every table, write a level-4 heading that starts "Data table:" and names what the table shows, in no more than 12 words (for example "#### Data table: rainfall by month"). Order data logically: chronologically for time series, highest-to-lowest for ranked data, or clockwise from 12 o'clock for radial charts.
 
 When extracting data from visualisations:
 - Always include actual numeric values where legible.
@@ -113,16 +126,17 @@ When extracting data from visualisations:
 - If values must be estimated, state: "Values are estimated from the chart."
 - For mass data (e.g., scatter plots with many points), describe trends, ranges, and averages rather than every individual point.
 - Include totals or calculated summaries where they aid understanding.
+- Where the values are in a table, do not repeat them as a bulleted list or run through them again in prose; the table is the data.
 
 **For process and flow diagrams (flowcharts, decision trees, timelines):**
 1. **Type and purpose**: State the diagram type and what process it represents.
 2. **Construction**: State the number of levels, nodes, pathways, or stages.
-3. **Pathways**: Describe each pathway through the diagram, using clear labels. For decision trees, use "If... then..." constructions. For timelines, follow chronological order. Where a Process Structure subsection is given, leave this item out: the sequence is already stated there, so describe in Visual Content only what the structure does not give, such as the layout, how the arrows and lines are drawn, and styling.
+3. **Pathways**: Describe each pathway through the diagram, using clear labels. For decision trees, use "If... then..." constructions. For timelines, follow chronological order. Where a Structural Breakdown subsection is given, leave this item out: the sequence is already stated there, so describe in Visual Content only what the structure does not give, such as the layout, how the arrows and lines are drawn, and styling.
 
 **For technical diagrams and schematics:**
 1. **Type and purpose**: State what the diagram represents.
 2. **Construction**: Describe the overall layout and key structural components.
-3. **Components**: Describe each labelled component and its relationship to others. Use definition lists for labelled parts when appropriate.
+3. **Components**: Describe each labelled component and its relationship to others. Use definition lists for labelled parts when appropriate. Where a Structural Breakdown subsection is given, do not list the parts again here: describe only what it does not give, such as the layout, the lines and the styling.
 
 **For conceptual and theoretical illustrations (idealised graphs, mathematical visualisations, schematic plots without measured data):**
 1. **Type and purpose**: State what the illustration represents and the concept it conveys.
@@ -132,7 +146,8 @@ When extracting data from visualisations:
 
 ### Educational Significance
 
-Explain how this image supports learning:
+Explain plainly what a student can learn from the picture itself. Do not repeat facts already given above, and do not use stock phrases such as "aids understanding", "provides insight" or "illustrates key concepts". Cover these points where they apply.
+
 - Connection to the stated learning outcome (if provided).
 - How the image relates to the specific topic and subject area.
 - Key concepts illustrated by the image.
@@ -146,7 +161,9 @@ Where a module or course name has been provided, reference it to anchor the desc
 
 ## 4. Text Content
 
-If the image contains any text, list all words, numbers, labels, and captions exactly as they appear, numbered in sequence (e.g., "1. Q, positioned at the left. 2. P.V, positioned at the upper right."). Include the position of each text element relative to the image. If no text is present, state "No text content in image."
+If the image contains any text, first say how many pieces of text there are, in a sentence that does not name the picture (for example "There are 12 pieces of text."), then list all words, numbers, labels, and captions exactly as they appear, numbered in sequence (e.g., "1. Q, positioned at the left. 2. P.V, positioned at the upper right."). Give the position of each text element in a few words (for example "at the top left"), without naming the picture. Where the picture is mainly text (a page, a slide, a sign, a form, a handwritten note) and a sighted reader could just about read it, give that text in full, word for word and in reading order, instead of the numbered list; do not summarise, shorten or paraphrase it. Where text is only a small part of the picture, list it as described above. If no text is present, state "No text content in image."
+
+End the whole description with the line "Description ends." on its own line, directly after the Text Content, and write nothing after it.
 
 ---
 

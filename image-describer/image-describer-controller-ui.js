@@ -1520,6 +1520,19 @@
     },
 
     /**
+     * Prepare tables in clipboard HTML for Word.
+     * Header row goes in <thead> (Word: "Repeat as header row"), and every
+     * row is marked unbreakable (Word: "Allow row to break across pages" off).
+     * Works on a detached copy; the preview DOM is untouched.
+     * @param {string} rawHtml - HTML fragment
+     * @returns {string} HTML fragment with tables prepared
+     */
+    prepareTablesForWord(rawHtml) {
+      // Shared helper (js/word-table-prep.js); copying still works without it
+      return window.WordTablePrep ? window.WordTablePrep.prepare(rawHtml) : rawHtml;
+    },
+
+    /**
      * Copy formatted text to clipboard (Phase 2B.3)
      * Preserves bold, headings, lists when pasted into Word/Google Docs
      * Uses original HTML (with H1 headings) for standalone context
@@ -1540,7 +1553,7 @@
         // the wrapper, Word pastes the headings as Normal style.
         const html =
           "<!DOCTYPE html><html><head><meta charset=\"utf-8\"></head><body>" +
-          rawHtml +
+          this.prepareTablesForWord(rawHtml) +
           "</body></html>";
 
         // Also create plain text fallback

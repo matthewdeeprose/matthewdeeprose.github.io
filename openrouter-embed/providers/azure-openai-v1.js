@@ -202,6 +202,12 @@
     // sampling parameters refused with the same code pair as gpt-6-sol.
     // Anchored exactly, per the parcel-9 rule above.
     /^gpt-6\.1-sol$/i,
+
+    // Added 27 October 2026, MR-9T. Deployed by the owner that day and PROBED
+    // BEFORE REGISTRATION (results/probe-gpt-6.1-terra-2026-10-27.json): all
+    // four sampling parameters refused with the same code pair as gpt-6.1-sol.
+    // Anchored exactly, per the parcel-9 rule above.
+    /^gpt-6\.1-terra$/i,
   ];
 
   // Deployment-name patterns for models whose strict MaaS schema rejects
@@ -275,6 +281,12 @@
     // (results/probe-gpt-6.1-sol-2026-10-13.json), so the standard floor is
     // sufficient.
     /^gpt-6\.1-sol$/i,
+
+    // Added 27 October 2026, MR-9T. gpt-6.1-terra's image task produced 102 /
+    // 55 / 82 completion tokens across three runs, never empty at a high cap
+    // (results/probe-gpt-6.1-terra-2026-10-27.json), so the standard floor is
+    // sufficient.
+    /^gpt-6\.1-terra$/i,
 
     // Added 13 October 2026, MR-7. grok-4.7 spends hidden reasoning: 25 / 26 /
     // 29 reasoning tokens on the effort rows, and 3 completion tokens on each

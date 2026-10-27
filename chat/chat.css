@@ -1383,6 +1383,13 @@
   margin-left: auto;
 }
 
+/* The optional-cost note sits on its own line under the advice and the button. */
+.chat-attach-advice-row > .chat-open-mathpix-note {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0.25rem 0 0.5rem;
+}
+
 /* "How we read this file": a native disclosure. main.css gives <details> a 1rem margin and
  * the theme sheets its outline, so only the margin is reset here. */
 .chat-attachment-more {

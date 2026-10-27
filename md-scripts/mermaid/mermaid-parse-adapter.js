@@ -19410,14 +19410,15 @@ window.MermaidParseAdapter = (function () {
    * codes in a string the sanitiser changed some other way.
    * @param {string} drawn - The db's string, placeholders decoded
    * @param {string|null} source - The author's text as typed, or null
+   * @param {function(string): string} [fold] - The fold applied to both sides (item 125 IF3 passes its own)
    * @returns {string} The text to narrate
    */
-  function treeViewAuthorText(drawn, source) {
+  function treeViewAuthorText(drawn, source, fold = foldSanitisedForms) {
     if (typeof source !== "string" || source === "") {
       return drawn;
     }
     const author = decodeSourcePlaceholders(source);
-    return foldSanitisedForms(author) === foldSanitisedForms(drawn) ? author : drawn;
+    return fold(author) === fold(drawn) ? author : drawn;
   }
 
   /**
@@ -20546,10 +20547,31 @@ window.MermaidParseAdapter = (function () {
   // ITEM 125 SESSION 3b (26 October 2026), SA1: the lines the SOURCE READER sees. A header line, then every line
   // that is not blank and not a whole-line %% comment is a text line (measured: the db's pre-order equals the
   // order of those lines, and "50%% off" inside a line is text).
+  //
+  // ITEM 125 SESSION 7 (27 October 2026), IF2: the lexer counts any JavaScript \s run as indentation and
+  // trims a text with trim() (rules \s*%%.*, [\s]+[\n], [\s]+ and [^\n]+, read from the 11.17.2 bundle), so
+  // SKIPPED and TEXT use \s, not [ \t]; the lexer splits only on \n, and a leading BOM is white space to it.
+  // IF1: TEXT reads [\s\S] so no line can fail to match, and U+2028 and U+2029 (which . excludes) make the
+  // whole reader decline. The header keeps [ \t]: the bundle's grammar takes an indented header as an error.
   const ISHIKAWA_SOURCE_LINES = Object.freeze({
     HEADER: /^[ \t]*ishikawa(?:-beta)?$/i,
-    SKIPPED: /^[ \t]*(?:%%.*)?$/,
-    TEXT: /^([ \t]*)(.*?)[ \t]*$/,
+    SKIPPED: /^\s*(?:%%.*)?$/,
+    TEXT: /^(\s*)([\s\S]*?)\s*$/,
+    BYTE_ORDER_MARK: /^\uFEFF/,
+    LINE_SEPARATORS: /[\u2028\u2029]/,
+  });
+
+  // IF3 (the carve-out of 6 October 2026): ISHIKAWA ONLY. The sanitiser prints &nbsp; for a no-break space the
+  // author typed plainly once a label holds a < or a tag, and delivers a TYPED &nbsp; as the same bytes, so
+  // both forms fold to U+00A0 for the agree test and the author's own text is then the one read. One pass,
+  // so a typed &amp;nbsp; is never folded twice. The shared fold (packet, treemap, venn, treeView) is untouched.
+  const ISHIKAWA_NO_BREAK_SPACE = "\u00A0";
+  const ISHIKAWA_SANITISED_FORMS = /&(?:amp|lt|gt|nbsp);/g;
+  const ISHIKAWA_SANITISED_CHARACTERS = Object.freeze({
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&nbsp;": ISHIKAWA_NO_BREAK_SPACE,
   });
 
   let ishikawaMemoCode = null;
@@ -20692,14 +20714,16 @@ window.MermaidParseAdapter = (function () {
    * when ishikawaSourceAgrees finds the db's own tree in them.
    * @param {string} code - The Mermaid ishikawa source, frontmatter included
    * @returns {Array<{indent: number, text: string}>|null} Every text line in declaration order (the effect
-   *   first), or null when the header cannot be found as a bare ishikawa or ishikawa-beta
+   *   first), or null when the header cannot be found as a bare ishikawa or ishikawa-beta, the source holds a
+   *   U+2028 or U+2029, or a line cannot be read (IF1: the reader declines, it never throws)
    */
   function readIshikawaSource(code) {
-    if (typeof code !== "string") {
+    if (typeof code !== "string" || ISHIKAWA_SOURCE_LINES.LINE_SEPARATORS.test(code)) {
       return null;
     }
     const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
     const lines = (fence ? code.slice(fence[0].length) : code).split(/\r?\n/);
+    lines[0] = lines[0].replace(ISHIKAWA_SOURCE_LINES.BYTE_ORDER_MARK, "");
     let index = 0;
     while (index < lines.length && ISHIKAWA_SOURCE_LINES.SKIPPED.test(lines[index])) {
       index += 1;
@@ -20713,6 +20737,9 @@ window.MermaidParseAdapter = (function () {
         continue;
       }
       const match = ISHIKAWA_SOURCE_LINES.TEXT.exec(lines[index]);
+      if (match === null) {
+        return null;
+      }
       read.push({ indent: match[1].length, text: match[2] });
     }
     return read;
@@ -20757,10 +20784,16 @@ window.MermaidParseAdapter = (function () {
    * @returns {Map<Object, string>} Snapshot copy to the author's line text
    */
   function readIshikawaSourceTexts(snapshot, code) {
-    const lines = readIshikawaSource(code);
     const texts = new Map();
-    if (lines === null || !ishikawaSourceAgrees(lines, snapshot)) {
-      return texts;
+    let lines = null;
+    try {
+      lines = readIshikawaSource(code);
+      if (lines === null || !ishikawaSourceAgrees(lines, snapshot)) {
+        return texts;
+      }
+    } catch (error) {
+      logDebug(`Ishikawa source reader declined: ${error && error.message}`);
+      return new Map();
     }
     [snapshot.effect, ...snapshot.nodes].forEach((copy, place) => {
       texts.set(copy, lines[place].text);
@@ -20782,7 +20815,18 @@ window.MermaidParseAdapter = (function () {
     if (typeof source !== "string") {
       return drawn;
     }
-    return treeViewAuthorText(drawn, replaceTypedLineBreaks(source, LINE_BREAK_FORMS.NO_ATTRIBUTES));
+    return treeViewAuthorText(drawn, replaceTypedLineBreaks(source, LINE_BREAK_FORMS.NO_ATTRIBUTES), foldIshikawaForms);
+  }
+
+  /**
+   * IF3: the agree test's fold for ishikawa: the three sanitiser codes AND &nbsp; fold to the character, and a
+   * plain U+00A0 folds to itself, so a typed no-break space and a typed &nbsp; both agree with the db's
+   * &nbsp; and each is then read as typed.
+   * @param {string} text - A label
+   * @returns {string} The label with the sanitiser's codes folded
+   */
+  function foldIshikawaForms(text) {
+    return text.replace(ISHIKAWA_SANITISED_FORMS, (form) => ISHIKAWA_SANITISED_CHARACTERS[form] || form);
   }
 
   /**
@@ -21190,6 +21234,29 @@ window.MermaidParseAdapter = (function () {
   const ISHIKAWA_SELF_CHECK_READER_SOURCE =
     "---\nconfig:\n  ishikawa:\n    diagramPadding: 30\n---\n%% note\n\nISHIKAWA-BETA\n  scEff  \n\n\t\tscTab\r\n    %% inner\n    scPct 50%% off\n";
 
+  // LINESEP (IF1, IC23): a U+2028 inside a label, with a bare & beside a tag. Mermaid draws it; the reader
+  // declines (. cannot match the separator) and the db's string is delivered. Written as escapes: ASCII only.
+  const ISHIKAWA_SELF_CHECK_LINESEP =
+    "ishikawa-beta\n  scLs\n    scLsCat\n      scLs a\u2028b & <i>x</i>\n";
+  // The same separator in a whole-line comment, and a lone CR inside a label: reader-level sources.
+  const ISHIKAWA_SELF_CHECK_LINESEP_COMMENT = "ishikawa-beta\n  scLs\n    %% c\u2029d\n    scLsCat\n";
+  const ISHIKAWA_SELF_CHECK_LONE_CR = "ishikawa-beta\n  scCr\n    scCr a\rb\n";
+
+  // BOM (IF2, IC24): a leading byte order mark before the header, with a bare & and < and no tag.
+  const ISHIKAWA_SELF_CHECK_BOM = "\uFEFFishikawa-beta\n  scBom\n    scBomCat\n      scBom & x < y\n";
+
+  // NBSPINDENT (IF2, IC25): indentation made of no-break spaces, which Mermaid's lexer counts as indentation,
+  // the same bare & and < and a whole line of no-break spaces between two nodes.
+  const ISHIKAWA_SELF_CHECK_NBSP_INDENT =
+    "ishikawa-beta\n\u00A0\u00A0scNi\n\u00A0\u00A0\u00A0\u00A0scNiCat\n" +
+    "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0scNi & x < y\n" +
+    "\u00A0\u00A0\n" +
+    "\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0scNi2 & x < y\n";
+
+  // NBSPFOLD (IF3, IC26): a typed no-break space beside a < and beside a tag, and a typed &nbsp; beside a <.
+  const ISHIKAWA_SELF_CHECK_NBSP_FOLD =
+    "ishikawa-beta\n  scNb\n    scNbCat\n      scNb\u00A0a < b\n      scNb&nbsp;a < b\n      scNb\u00A0a <i>b</i>\n";
+
   const ISHIKAWA_SELF_CHECK_HEADER_ONLY = "ishikawa-beta\n";
   const ISHIKAWA_SELF_CHECK_REJECTED = "ishikawa-beta \n  scE\n";
 
@@ -21253,6 +21320,10 @@ window.MermaidParseAdapter = (function () {
         ["map", ISHIKAWA_SELF_CHECK_MAP],
         ["odd", ISHIKAWA_SELF_CHECK_ODD],
         ["decline", ISHIKAWA_SELF_CHECK_DECLINE],
+        ["lineSep", ISHIKAWA_SELF_CHECK_LINESEP],
+        ["bom", ISHIKAWA_SELF_CHECK_BOM],
+        ["nbspIndent", ISHIKAWA_SELF_CHECK_NBSP_INDENT],
+        ["nbspFold", ISHIKAWA_SELF_CHECK_NBSP_FOLD],
         ["headerOnly", ISHIKAWA_SELF_CHECK_HEADER_ONLY],
         ["rejected", ISHIKAWA_SELF_CHECK_REJECTED],
       ].forEach(([key, code]) => {
@@ -21281,7 +21352,22 @@ window.MermaidParseAdapter = (function () {
         const mapped = d("map");
         const odd = d("odd");
         const decline = d("decline");
-        const everything = [nest, typed, escaped, breaks, empty, lines, cfg, cfgWide, bare, typedAmp, mapped, odd, decline];
+        const lineSep = d("lineSep");
+        const bom = d("bom");
+        const nbspIndent = d("nbspIndent");
+        const nbspFold = d("nbspFold");
+        const everything = [
+          nest, typed, escaped, breaks, empty, lines, cfg, cfgWide, bare, typedAmp, mapped, odd, decline,
+          lineSep, bom, nbspIndent, nbspFold,
+        ];
+        // A reader that throws must redden its own row, not the whole run.
+        const attempt = (run) => {
+          try {
+            return run();
+          } catch (error) {
+            return "threw";
+          }
+        };
         const site = readIshikawaSiteDefaults();
 
         const stubNode = (overrides) => Object.assign({ text: "scStub", children: [] }, overrides);
@@ -21577,6 +21663,47 @@ window.MermaidParseAdapter = (function () {
               readIshikawaSource("scEff\n") === null &&
               readIshikawaSource("ishikawa-alpha\n  scEff\n") === null &&
               readIshikawaSource(5) === null,
+          ],
+          [
+            "IC23 IF1 NEVER THROWS: a U+2028 in a label (the delivery still arrives and carries the db's string, code and all), a U+2029 in a comment and a U+2028 anywhere make the reader decline, a lone CR inside a label is read as text, and the texts reader returns an empty map for a source it cannot read",
+            !!lineSep &&
+              lineSep.categories[0].causes[0].text === lineSep.categories[0].causes[0].rawText &&
+              lineSep.categories[0].causes[0].text.includes("&amp;") &&
+              attempt(() => readIshikawaSource(ISHIKAWA_SELF_CHECK_LINESEP)) === null &&
+              attempt(() => readIshikawaSource(ISHIKAWA_SELF_CHECK_LINESEP_COMMENT)) === null &&
+              same(attempt(() => readIshikawaSource(ISHIKAWA_SELF_CHECK_LONE_CR)), [
+                { indent: 2, text: "scCr" },
+                { indent: 4, text: "scCr a\rb" },
+              ]) &&
+              attempt(() => readIshikawaSourceTexts(snapshotIshikawaDb(dbOf("lineSep")), ISHIKAWA_SELF_CHECK_LINESEP)).size === 0,
+          ],
+          [
+            "IC24 IF2 BOM: a byte order mark before the header is stripped before the header test, and a bare & and < in a cause then read as typed",
+            !!bom &&
+              attempt(() => readIshikawaSource(ISHIKAWA_SELF_CHECK_BOM)) !== null &&
+              bom.categories[0].causes[0].text === "scBom & x < y" &&
+              bom.categories[0].causes[0].rawText === "scBom &amp; x &lt; y",
+          ],
+          [
+            "IC25 IF2 NBSP INDENTATION: no-break spaces count as indentation as Mermaid's lexer counts them, a line of only no-break spaces is skipped as blank, and a bare & and < read as typed",
+            !!nbspIndent &&
+              same(attempt(() => readIshikawaSource(ISHIKAWA_SELF_CHECK_NBSP_INDENT)).map((line) => line.indent), [2, 4, 6, 6]) &&
+              nbspIndent.categories[0].causes.length === 2 &&
+              nbspIndent.categories[0].causes[0].text === "scNi & x < y" &&
+              nbspIndent.categories[0].causes[1].text === "scNi2 & x < y" &&
+              nbspIndent.categories[0].causes[0].rawText === "scNi &amp; x &lt; y",
+          ],
+          [
+            "IC26 IF3 NO-BREAK SPACE FOLD: a typed no-break space beside a < and beside a tag reads as typed (the db holds &nbsp;), a typed &nbsp; beside a < reads as typed, the fold is one pass, and the shared fold does not know &nbsp;",
+            !!nbspFold &&
+              nbspFold.categories[0].causes[0].text === "scNb\u00A0a < b" &&
+              nbspFold.categories[0].causes[1].text === "scNb&nbsp;a < b" &&
+              nbspFold.categories[0].causes[2].text === "scNb\u00A0a <i>b</i>" &&
+              nbspFold.categories[0].causes[0].rawText === "scNb&nbsp;a &lt; b" &&
+              nbspFold.categories[0].causes[1].rawText === "scNb&nbsp;a &lt; b" &&
+              foldIshikawaForms("x&amp;nbsp;y") === "x&nbsp;y" &&
+              foldIshikawaForms("x&nbsp;y") === foldIshikawaForms("x\u00A0y") &&
+              foldSanitisedForms("x&nbsp;y") === "x&nbsp;y",
           ],
         ];
       });

@@ -331,7 +331,14 @@ window.MermaidAccessibilityExport = (function () {
       `;
 
       // Add the content to the div
-      formattedDiv.appendChild(cleanElement.cloneNode(true));
+      const cleanCopy = cleanElement.cloneNode(true);
+
+      // Tables paste into Word with a repeating header row and unsplit rows
+      if (window.WordTablePrep) {
+        cleanCopy.innerHTML = window.WordTablePrep.prepare(cleanCopy.innerHTML);
+      }
+
+      formattedDiv.appendChild(cleanCopy);
 
       // Get the HTML content
       const formattedHtml = formattedDiv.innerHTML;

@@ -4741,8 +4741,9 @@ span.ally-sp-disclosure-text {
 /* Left group holds Close + Back; the primary action sits on the right. */
 .ally-iq-nav-left {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  align-items: center;
+  align-items: stretch;
 }
 .ally-iq-nav .ally-iq-back[disabled] {
   visibility: hidden;

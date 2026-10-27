@@ -96,6 +96,7 @@
       DEFAULT_VISIBLE: 10,
       SHOW_MORE_INCREMENT: 20,
       SCROLL_THRESHOLD: 20, // Show top scrollbar if more than this many visible rows
+      ANNOUNCE_SETTLE_MS: 1000, // Row-count line waits this long after focus moves (from Graph Builder's SHOW_ROWS_ANNOUNCE_SETTLE_MS)
     },
 
     // Class names (will be prefixed)
@@ -280,6 +281,7 @@
       // Row display state
       this.visibleRows = CONFIG.ROW_DISPLAY.DEFAULT_VISIBLE;
       this.totalRows = 0;
+      this.announceToken = 0;
 
       // Extract data from the original table
       const extracted = extractTableData(this.originalTable);
@@ -564,10 +566,6 @@
         );
 
         showMoreButton.textContent = `Show ${increment} more rows`;
-        showMoreButton.setAttribute(
-          "aria-label",
-          `Show ${increment} more rows`
-        );
         showMoreButton.addEventListener("click", () => this.showMoreRows());
 
         actionsDiv.appendChild(showMoreButton);
@@ -576,11 +574,7 @@
         const showAllButton = document.createElement("button");
         showAllButton.type = "button";
         showAllButton.className = getClassName("show-all-button");
-        showAllButton.textContent = `Show all (${this.totalRows})`;
-        showAllButton.setAttribute(
-          "aria-label",
-          `Show all ${this.totalRows} rows`
-        );
+        showAllButton.textContent = `Show all ${this.totalRows} rows`;
         showAllButton.addEventListener("click", () => this.showAllRows());
 
         actionsDiv.appendChild(showAllButton);
@@ -590,10 +584,6 @@
         showLessButton.type = "button";
         showLessButton.className = getClassName("show-less-button");
         showLessButton.textContent = `Show fewer rows`;
-        showLessButton.setAttribute(
-          "aria-label",
-          `Show only first ${CONFIG.ROW_DISPLAY.DEFAULT_VISIBLE} rows`
-        );
         showLessButton.addEventListener("click", () => this.showDefaultRows());
 
         actionsDiv.appendChild(showLessButton);
@@ -613,53 +603,72 @@
       const increment = CONFIG.ROW_DISPLAY.SHOW_MORE_INCREMENT;
       this.visibleRows = Math.min(this.visibleRows + increment, this.totalRows);
       this.renderRows();
+      this.moveFocusAfterRowChange(["show-more-button", "show-less-button"]);
 
       // Update scroll sync after DOM has updated
       setTimeout(() => {
         this.updateScrollSync();
       }, 50);
 
-      // Announce to screen readers
-      const announcement = `Now showing ${this.getVisibleRowCount()} of ${
-        this.totalRows
-      } rows`;
-      setTimeout(() => {
-        this.announcement.textContent = announcement;
-      }, 100);
+      // Announce to screen readers, after focus has settled
+      this.announceRowChange(`Now showing ${this.getVisibleRowCount()} of ${this.totalRows} rows`);
     }
 
     showAllRows() {
       this.visibleRows = this.totalRows;
       this.renderRows();
+      this.moveFocusAfterRowChange(["show-less-button"]);
 
       // Update scroll sync after DOM has updated
       setTimeout(() => {
         this.updateScrollSync();
       }, 50);
 
-      // Announce to screen readers
-      const announcement = `Now showing all ${this.totalRows} rows`;
-      setTimeout(() => {
-        this.announcement.textContent = announcement;
-      }, 100);
+      // Announce to screen readers, after focus has settled
+      this.announceRowChange(`Now showing all ${this.totalRows} rows`);
     }
 
     showDefaultRows() {
       this.visibleRows = CONFIG.ROW_DISPLAY.DEFAULT_VISIBLE;
       this.renderRows();
+      this.moveFocusAfterRowChange(["show-more-button"]);
 
       // Update scroll sync after DOM has updated
       setTimeout(() => {
         this.updateScrollSync();
       }, 50);
 
-      // Announce to screen readers
-      const announcement = `Now showing ${this.getVisibleRowCount()} of ${
-        this.totalRows
-      } rows`;
+      // Announce to screen readers, after focus has settled
+      this.announceRowChange(`Now showing ${this.getVisibleRowCount()} of ${this.totalRows} rows`);
+    }
+
+    /**
+     * The footer is rebuilt on every row change, so the pressed button is gone.
+     * Focus the first footer button that matches, in preference order.
+     */
+    moveFocusAfterRowChange(classKeys) {
+      for (const key of classKeys) {
+        const button = this.tfoot.querySelector(`button.${getClassName(key)}`);
+        if (button) {
+          button.focus();
+          return;
+        }
+      }
+      logWarn(`No footer button to focus after a row change (${classKeys.join(", ")})`);
+    }
+
+    /**
+     * Speak the row count once focus has settled. A later press supersedes a pending line.
+     */
+    announceRowChange(message) {
+      this.announceToken += 1;
+      const token = this.announceToken;
       setTimeout(() => {
-        this.announcement.textContent = announcement;
-      }, 100);
+        if (token !== this.announceToken) {
+          return;
+        }
+        this.announcement.textContent = message;
+      }, CONFIG.ROW_DISPLAY.ANNOUNCE_SETTLE_MS);
     }
 
     updateCaption() {

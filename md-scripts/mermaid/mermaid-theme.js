@@ -9192,6 +9192,488 @@ window.MermaidThemes = (function () {
   }
 
   // -----------------------------------------------------------------------
+  // ISHIKAWA ENCODING (register item 125 session 8, 27 October 2026)
+  // -----------------------------------------------------------------------
+
+  const ISHIKAWA_ROLEDESCRIPTION = "ishikawa";
+
+  /** SC 1.4.11 for every box outline, bone, spine and arrowhead. */
+  const ISHIKAWA_OBJECT_TARGET = 3;
+
+  /** The working margin a DERIVED object ink is taken to (standard § 2). */
+  const ISHIKAWA_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for every word the canvas draws. */
+  const ISHIKAWA_TEXT_TARGET = 4.5;
+
+  /** The margin a hue-kept TEXT ink is taken to. */
+  const ISHIKAWA_TEXT_MARGIN = 4.6;
+
+  /** An ink whose HSL saturation is below this has no hue to keep. */
+  const ISHIKAWA_ACHROMATIC_SATURATION = 0.1;
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const ISHIKAWA_ENCODING_ATTRIBUTE = "data-ishikawa-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const ISHIKAWA_OWNED_LIST_ATTRIBUTE = "data-ishikawa-encoding-owned";
+
+  /** The inline values an element held for a property this pass then wrote. */
+  const ISHIKAWA_PRIOR_ATTRIBUTE = "data-ishikawa-encoding-prior";
+
+  /**
+   * THE STAMP: an element's role on first sight, read from the stamp afterwards
+   * so a second run and a theme flip never classify from the ink this pass
+   * wrote. It is in no owned list, so no sweep removes it.
+   */
+  const ISHIKAWA_ROLE_ATTRIBUTE = "data-ishikawa-role";
+
+  /** The roles, chosen by position in the SVG and never by class alone. */
+  const ISHIKAWA_ROLES = Object.freeze({
+    spine: "spine",
+    bone: "bone",
+    subBone: "subBone",
+    arrowhead: "arrowhead",
+    headBox: "headBox",
+    categoryBox: "categoryBox",
+    headLabel: "headLabel",
+    categoryLabel: "categoryLabel",
+    causeLabel: "causeLabel",
+  });
+
+  /** Fractions of a bone's length at which the ground beneath it is read (interior). */
+  const ISHIKAWA_LINE_FRACTIONS = Object.freeze([0.1, 0.3, 0.5, 0.7, 0.9]);
+
+  /** Points around an outline at which the ground beside it is read. */
+  const ISHIKAWA_OUTLINE_POINTS = 16;
+
+  /** Client pixels beyond half the stroke at which the ground beside an outline is read. */
+  const ISHIKAWA_EDGE_OFFSET = 2;
+
+  /** Step along a path, in local units, used to find its direction at a point. */
+  const ISHIKAWA_TANGENT_STEP = 0.5;
+
+  /**
+   * Apply the accessibility encoding to a rendered ishikawa (fishbone): an ink
+   * on every box outline, bone, spine, arrowhead and word WHERE AND ONLY WHERE it
+   * fails against the ground it actually sits on. AREA FILLS ARE NEVER WRITTEN
+   * and neither `opacity` nor `fill-opacity` is touched; no renderer inline
+   * value is deleted.
+   *
+   * WHY IT EXISTS (item 125 census step 4, 26 October 2026): in accessibleDark
+   * the category box takes a #2C3E50 fill and a #6082B6 outline (2.81:1) and,
+   * where a box lies over another #2C3E50 shape, its outline reads against that
+   * shape instead of the page. Every other cell clears.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION IN THE SVG (rule 19): a `line` that
+   * is a child of the picture's root group is the spine; a `line` in a pair
+   * group beside a label group is a bone, one in a sub-group a sub-bone; a
+   * `path` or `rect` in a head group is the effect box, a `rect` in a label
+   * group a category box; a `path` in a marker is an arrowhead; a `text` takes
+   * the role of the group that holds it. Each is stamped on first sight.
+   *
+   * ISHIKAWA HAS NO AUTHOR PAINT ROUTE: the grammar has no style, class or
+   * colour statement and the renderer writes no inline style, so an author
+   * colour can arrive only as a theme variable, which reaches the computed
+   * value. A computed ink that clears is kept; one that fails is moved along
+   * its own hue.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): points on a line or an outline
+   * are getPointAtLength mapped through getScreenCTM, a ground is decided by
+   * isPointInFill in the shape's own space, and a canary asserts every mapped
+   * line sample lies within its element's client box. getBBox is never used.
+   * An outline is read on the side the subject does NOT cover.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced
+   * before anything is derived. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyIshikawaEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === ISHIKAWA_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${ISHIKAWA_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No ishikawa SVG in this container - ishikawa encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${ISHIKAWA_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      const written = (owned.getAttribute(ISHIKAWA_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      for (const propertyName of written) {
+        owned.style.removeProperty(propertyName);
+      }
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(ISHIKAWA_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const property of Object.keys(prior)) {
+        owned.style.setProperty(property, prior[property].value, prior[property].priority);
+      }
+      owned.removeAttribute(ISHIKAWA_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(ISHIKAWA_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(ISHIKAWA_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    /** Painted area shapes in document order, measured BEFORE anything is written. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      const box = boxOf(element);
+      if (!declared || alpha <= 0.05 || !box) return;
+      painted.push({ element, index, box, paint: { ...declared, a: alpha } });
+    });
+
+    // Does a shape cover a client point? isPointInFill in the shape's own space,
+    // with the box as the fallback where the browser has no such method.
+    const coversElement = (element, box, x, y) => {
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      return !!box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!coversElement(shape.element, shape.box, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {},
+      reach: { found: 0, stamped: 0 },
+      canary: { checked: 0, inside: 0 },
+      worst: null,
+    };
+
+    /** Choose an ink: the renderer's own hue where it has one, else an ink of record. */
+    const choose = (rendererHex, grounds, target, margin) => {
+      const hsl = kanbanHexToHsl(rendererHex);
+      let hue = null;
+      if (hsl.s >= ISHIKAWA_ACHROMATIC_SATURATION) {
+        hue = pickKanbanHueInk(rendererHex, grounds, margin);
+        if (hue.cleared) return { ink: hue.ink, worst: hue.worst };
+      }
+      const record = pickInkAgainst(REQUIREMENT_INKS, grounds);
+      const chosen = record.worst >= target ? record : pickInkAgainst(REQUIREMENT_INK_RAMP, grounds);
+      return hue && hue.worst > chosen.worst ? { ink: hue.ink, worst: hue.worst } : chosen;
+    };
+
+    /** Write a derived value, own it, keep what it displaced, and record the reading. */
+    const write = (element, kind, properties, grounds, chosen, target, extra) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(ISHIKAWA_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(ISHIKAWA_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(ISHIKAWA_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const reading = {
+        kind,
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target,
+        ...(extra || {}),
+      };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(reading);
+      if (reading.ratio < target) applied.shortfalls.push(reading);
+      if (applied.worst === null || reading.ratio < applied.worst) applied.worst = reading.ratio;
+    };
+
+    /** The worst ratio of a computed paint, alpha folded in, against each ground. */
+    const worstOf = (declared, alpha, grounds) =>
+      grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+
+    // --- THE STAMP: a role on first sight, from position in the svg ----------
+    const roleOf = (element) => {
+      const stamped = element.getAttribute(ISHIKAWA_ROLE_ATTRIBUTE);
+      if (stamped) return stamped;
+
+      const tag = element.tagName;
+      const parent = element.parentElement;
+      // The head group holds the effect's shape and word; a label group holds a
+      // category's box and word; a pair or the root group holds bones.
+      const holdsBox = (group) => !!group && !!group.querySelector(":scope > rect");
+      const holdsHeadShape = (group) => !!group && !!group.querySelector(":scope > path");
+      let role = null;
+      if (tag === "path" && element.closest("marker")) role = ISHIKAWA_ROLES.arrowhead;
+      else if (tag === "path" && parent && parent.tagName === "g" && holdsHeadShape(parent)) {
+        role = ISHIKAWA_ROLES.headBox;
+      } else if (tag === "rect") role = ISHIKAWA_ROLES.categoryBox;
+      else if (tag === "line") {
+        const pairGroup = parent && parent.tagName === "g" ? parent : null;
+        const siblingLabelGroup = pairGroup && pairGroup.querySelector(":scope > g > rect");
+        // The spine is the one line whose group also holds the head group.
+        if (pairGroup && pairGroup.querySelector(":scope > g > path")) {
+          role = ISHIKAWA_ROLES.spine;
+        } else if (siblingLabelGroup) role = ISHIKAWA_ROLES.bone;
+        else role = ISHIKAWA_ROLES.subBone;
+      } else if (tag === "text") {
+        if (holdsHeadShape(parent) && !holdsBox(parent)) role = ISHIKAWA_ROLES.headLabel;
+        else if (holdsBox(parent)) role = ISHIKAWA_ROLES.categoryLabel;
+        else role = ISHIKAWA_ROLES.causeLabel;
+      }
+      if (role) element.setAttribute(ISHIKAWA_ROLE_ATTRIBUTE, role);
+      return role;
+    };
+
+    // Is a marker referenced by anything? An unreferenced marker is not drawn.
+    const markerReferenced = (marker) => {
+      if (!marker || !marker.id) return false;
+      return all.some((element) =>
+        ["marker-start", "marker-mid", "marker-end"].some((name) => {
+          const reference = element.getAttribute(name) || element.style.getPropertyValue(name);
+          return reference && reference.includes(`#${marker.id}`);
+        })
+      );
+    };
+
+    /** Points around an outline, each on the side the subject does not cover. */
+    const outlinePoints = (element, widthPx, box) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      const distance = widthPx / 2 + ISHIKAWA_EDGE_OFFSET;
+      const toClient = (local) => new DOMPoint(local.x, local.y).matrixTransform(matrix);
+      const points = [];
+      for (let i = 0; i < ISHIKAWA_OUTLINE_POINTS; i += 1) {
+        const at = (length * (i + 0.5)) / ISHIKAWA_OUTLINE_POINTS;
+        const here = toClient(element.getPointAtLength(at));
+        const ahead = toClient(element.getPointAtLength(Math.min(length, at + ISHIKAWA_TANGENT_STEP)));
+        const behind = toClient(element.getPointAtLength(Math.max(0, at - ISHIKAWA_TANGENT_STEP)));
+        const dx = ahead.x - behind.x;
+        const dy = ahead.y - behind.y;
+        const size = Math.hypot(dx, dy);
+        if (!(size > 0)) continue;
+        [[-dy / size, dx / size], [dy / size, -dx / size]].forEach((normal) => {
+          const x = here.x + normal[0] * distance;
+          const y = here.y + normal[1] * distance;
+          if (!coversElement(element, box, x, y)) points.push([x, y]);
+        });
+      }
+      return points;
+    };
+
+    all.forEach((element, index) => {
+      if (offstage(element)) return;
+      const role = roleOf(element);
+      if (!role) return;
+      applied.reach.found += 1;
+      applied.reach.stamped += element.hasAttribute(ISHIKAWA_ROLE_ATTRIBUTE) ? 1 : 0;
+      applied.subjects[role] = (applied.subjects[role] || 0) + 1;
+
+      const computed = window.getComputedStyle(element);
+
+      // --- TEXT, and ONLY where it fails against the ground it sits on -------
+      if (
+        role === ISHIKAWA_ROLES.headLabel ||
+        role === ISHIKAWA_ROLES.categoryLabel ||
+        role === ISHIKAWA_ROLES.causeLabel
+      ) {
+        const box = boxOf(element);
+        const declared = parsePaint(computed.fill);
+        if (!box || !declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= ISHIKAWA_TEXT_TARGET) return;
+        const chosen = choose(paintToHex({ ...declared, a: 1 }), grounds, ISHIKAWA_TEXT_TARGET, ISHIKAWA_TEXT_MARGIN);
+        write(element, `${role}Ink`, { fill: chosen.ink }, grounds, chosen, ISHIKAWA_TEXT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- ARROWHEAD: a marker shape, read against the diagram ground ---------
+      if (role === ISHIKAWA_ROLES.arrowhead) {
+        if (!markerReferenced(element.closest("marker"))) return;
+        const declared = parsePaint(computed.fill);
+        if (!declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity);
+        if (alpha <= 0.05) return;
+        const grounds = [paintToHex(svgGroundPaint)];
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= ISHIKAWA_OBJECT_TARGET) return;
+        const chosen = choose(paintToHex({ ...declared, a: 1 }), grounds, ISHIKAWA_OBJECT_TARGET, ISHIKAWA_OBJECT_MARGIN);
+        write(element, "arrowheadInk", { fill: chosen.ink }, grounds, chosen, ISHIKAWA_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- BONES AND THE SPINE: sampled along the line in one client space ----
+      if (
+        role === ISHIKAWA_ROLES.spine ||
+        role === ISHIKAWA_ROLES.bone ||
+        role === ISHIKAWA_ROLES.subBone
+      ) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const box = boxOf(element);
+        const matrix = element.getScreenCTM && element.getScreenCTM();
+        if (!declared || width <= 0 || !matrix || typeof element.getTotalLength !== "function") return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const length = element.getTotalLength();
+        const points = ISHIKAWA_LINE_FRACTIONS.map((fraction) => {
+          const local = element.getPointAtLength(length * fraction);
+          const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+          if (box) {
+            applied.canary.checked += 1;
+            const slack = width + 1;
+            if (
+              client.x >= box.x - slack &&
+              client.x <= box.x + box.width + slack &&
+              client.y >= box.y - slack &&
+              client.y <= box.y + box.height + slack
+            ) {
+              applied.canary.inside += 1;
+            }
+          }
+          return [client.x, client.y];
+        });
+        const grounds = groundsOver(points, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= ISHIKAWA_OBJECT_TARGET) return;
+        const chosen = choose(paintToHex({ ...declared, a: 1 }), grounds, ISHIKAWA_OBJECT_TARGET, ISHIKAWA_OBJECT_MARGIN);
+        write(element, `${role}Ink`, { stroke: chosen.ink }, grounds, chosen, ISHIKAWA_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- BOX OUTLINES: the effect's head and each category box ---------------
+      // Only the STROKE is written. The fill is the renderer's and is never
+      // written (rule 18); once the outline clears 3:1 it is not a reading (rule 40).
+      if (role === ISHIKAWA_ROLES.headBox || role === ISHIKAWA_ROLES.categoryBox) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const box = boxOf(element);
+        const matrix = element.getScreenCTM && element.getScreenCTM();
+        if (!declared || width <= 0 || !box || !matrix) return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        const points = outlinePoints(element, width * scale, box);
+        if (!points || !points.length) return;
+        const grounds = groundsOver(points, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= ISHIKAWA_OBJECT_TARGET) return;
+        const chosen = choose(paintToHex({ ...declared, a: 1 }), grounds, ISHIKAWA_OBJECT_TARGET, ISHIKAWA_OBJECT_MARGIN);
+        write(element, `${role}Outline`, { stroke: chosen.ink }, grounds, chosen, ISHIKAWA_OBJECT_TARGET, {
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+      }
+    });
+
+    logInfo(
+      `Ishikawa encoding applied: ${applied.reached} of ${applied.reach.found} stamped elements re-inked, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
   // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
   // -----------------------------------------------------------------------
 
@@ -9523,6 +10005,12 @@ window.MermaidThemes = (function () {
     // applyTreeViewEncoding never calls applyTheme, so it cannot recurse.
     const treeViewEncoding = applyTreeViewEncoding(root);
 
+    // ISHIKAWA DISPATCH, added 27 October 2026 (register item 125 session 8), at the
+    // same seam and for the same wiring reason as the fourteen above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyIshikawaEncoding never calls applyTheme, so it cannot recurse.
+    const ishikawaEncoding = applyIshikawaEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -9546,8 +10034,9 @@ window.MermaidThemes = (function () {
       if (treemapEncoding) return { treemap: treemapEncoding };
       if (vennEncoding) return { venn: vennEncoding };
       if (treeViewEncoding) return { treeView: treeViewEncoding };
+      if (ishikawaEncoding) return { ishikawa: ishikawaEncoding };
       logDebug(
-        "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn or treeView SVG in this container - series encoding skipped"
+        "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn, treeView or ishikawa SVG in this container - series encoding skipped"
       );
       return null;
     }
@@ -11612,6 +12101,7 @@ window.MermaidThemes = (function () {
     applyTreemapEncoding: applyTreemapEncoding,
     applyVennEncoding: applyVennEncoding,
     applyTreeViewEncoding: applyTreeViewEncoding,
+    applyIshikawaEncoding: applyIshikawaEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

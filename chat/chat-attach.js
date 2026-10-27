@@ -82,6 +82,8 @@ window.ChatAttach = (function () {
   let _clickWired = false; // idempotency guard for the whole-box click-to-pick
   let _clickCleanup = null; // teardown handle for the box click listener (or null)
   let _mathPixWired = false; // idempotency guard for the Open MathPix button
+  let _keyWindowWired = false; // credentials:changed on window, bound once
+  let _keyEmitterWired = false; // credentials:changed on EmbedEventEmitter, bound once
   let _readToken = 0; // bumped per selection: a later file wins, an earlier result is dropped
   let _freeShown = false; // whether the free-model sentence is currently showing
   let _reading = false; // true while a document read is in flight
@@ -198,6 +200,28 @@ window.ChatAttach = (function () {
   const TYPE_REJECTED_MESSAGE =
     "That file type is not supported. {verb} an image (JPEG, PNG or WebP), a PDF, a text, Markdown or LaTeX file, or a Word, Excel or PowerPoint file.";
   const MATHPIX_RADIO_ID = "MathPix";
+  // Parcel P6: "Open this file in MathPix". The key check reads presence only (never a value).
+  const MATHPIX_KEY_STORAGE = Object.freeze({
+    appId: "mathpix-app-id",
+    appKey: "mathpix-app-key",
+  });
+  const MATHPIX_UPLOAD_RADIO_ID = "mathpix-upload-mode-radio";
+  // MathPix's own boxes that mean "MathPix already holds a file" before the file is stored.
+  const MATHPIX_HELD_BOX_IDS = Object.freeze([
+    "mathpix-upload-preview",
+    "mathpix-file-confirmation",
+  ]);
+  // The file types MathPix's own upload step takes, by the doc type Chat holds.
+  const MATHPIX_HANDOFF_MIME = Object.freeze({
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  });
+  const MATHPIX_FOCUS_CHECK_MS = 600;
+  const MATHPIX_WAIT_MS = 15000;
+  const MATHPIX_POLL_MS = 50;
+  const MATHPIX_HANDOFF_FAILED_MESSAGE =
+    "MathPix is open, but the file could not be passed to it. Choose the file again there.";
   const PASTE_ACCEPTED_TYPES = Object.freeze([
     "image/jpeg",
     "image/png",
@@ -281,6 +305,10 @@ window.ChatAttach = (function () {
     return document.getElementById(elId("open-mathpix"));
   }
 
+  function openMathPixNoteEl() {
+    return document.getElementById(elId("open-mathpix-note"));
+  }
+
   function reader() {
     return window.EmbedDocumentReader || null;
   }
@@ -323,7 +351,8 @@ window.ChatAttach = (function () {
     const meta = doc && doc.meta;
     if (!meta) return "";
     if (meta.maths && meta.maths.detected) {
-      return doc.docType === "pdf" ? ADVICE.mathsPdf : ADVICE.mathsWord;
+      // MathPix takes PDF, Word and PowerPoint directly; Excel and text still go via a PDF.
+      return MATHPIX_HANDOFF_MIME[doc.docType] ? ADVICE.mathsPdf : ADVICE.mathsWord;
     }
     if (doc.docType === "pdf" && meta.scan && meta.scan.likely) {
       return ADVICE.scan;
@@ -340,7 +369,6 @@ window.ChatAttach = (function () {
   // so writing it is silent; the ONE spoken line is announced by the caller.
   function renderAdvice() {
     const el = adviceEl();
-    const btn = openMathPixEl();
     const s2 = adviceSentence(attachment);
     const s3 = freeSentence(attachment);
     const text = [s2, s3].filter(Boolean).join(" ");
@@ -348,8 +376,45 @@ window.ChatAttach = (function () {
       if (el.textContent !== text) el.textContent = text;
       el.hidden = !text;
     }
-    if (btn) btn.hidden = !s2;
+    renderOpenMathPix(!!s2);
     _freeShown = !!s3;
+  }
+
+  // True only when both MathPix key fields hold something. Presence only: a value is never
+  // logged, stored, copied or compared (parcel P6, R-2).
+  function mathPixKeySaved() {
+    try {
+      return (
+        !!(localStorage.getItem(MATHPIX_KEY_STORAGE.appId) || "").trim() &&
+        !!(localStorage.getItem(MATHPIX_KEY_STORAGE.appKey) || "").trim()
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // The doc type MathPix can take straight from Chat ("pdf", "docx" or "pptx"), else "".
+  function handOffDocType(held) {
+    if (!held) return "";
+    if (held.kind === "pdf") return "pdf";
+    const type = held.doc && held.doc.docType;
+    return MATHPIX_HANDOFF_MIME[type] ? type : "";
+  }
+
+  // Shows or hides Open MathPix and its note, and sets the label. Silent: nothing is announced.
+  // The button needs advice to show AND a saved MathPix key; the note and the file label
+  // show only for a file MathPix can take.
+  function renderOpenMathPix(adviceShown) {
+    const btn = openMathPixEl();
+    if (!btn) return;
+    const show = adviceShown && mathPixKeySaved();
+    const forFile = show && !!handOffDocType(attachment);
+    const label = btn.querySelector(".chat-open-mathpix-label");
+    const wanted = forFile ? btn.dataset.labelFile : btn.dataset.labelTool;
+    if (label && wanted && label.textContent !== wanted) label.textContent = wanted;
+    btn.hidden = !show;
+    const note = openMathPixNoteEl();
+    if (note) note.hidden = !forFile;
   }
 
   // Visible "Reading <name>…" status while a file is read. Nothing is announced.
@@ -361,6 +426,8 @@ window.ChatAttach = (function () {
       el.hidden = false;
     }
     if (btn) btn.hidden = true;
+    const note = openMathPixNoteEl();
+    if (note) note.hidden = true;
   }
 
   // Called by chat.js on a model change. Refreshes the free-model sentence
@@ -577,14 +644,147 @@ window.ChatAttach = (function () {
       : PICTURES_SENTENCE.many.replace("{n}", String(kept));
   }
 
-  function openMathPix() {
+  // True when a MathPix box is on show (display is checked on the element itself).
+  function mathPixBoxShown(id) {
+    const el = document.getElementById(id);
+    return !!el && !el.hidden && window.getComputedStyle(el).display !== "none";
+  }
+
+  // MathPix scrolls its PDF preview into view itself, but a Word or PowerPoint file's "is this the
+  // file?" box opens below the fold (measured at y=979 in a 900 px window). Bring it up, silently
+  // and without moving focus, only when it is below the window.
+  function scrollMathPixBoxIntoView() {
+    const id = MATHPIX_HELD_BOX_IDS.find(mathPixBoxShown);
+    const box = id ? document.getElementById(id) : null;
+    if (!box || box.getBoundingClientRect().top < window.innerHeight) return;
+    box.scrollIntoView({ behavior: "instant", block: "start" });
+  }
+
+  // Does MathPix hold something a new file would clear (parcel P6, R-5)? Grounded by measurement:
+  // currentPDFFile is set only AFTER MathPix's confirm, uploadVerification.pdfFile at the PDF
+  // preview, and no controller field sees a Word or PowerPoint file at its confirmation step, so
+  // the two boxes are read too. A restored Resume session (session restorer's restoredSession) and
+  // Draw strokes (strokesCanvas.hasStrokes()) are read as well (parcel P6b).
+  function mathPixHoldsSessionOrDrawing(ctl) {
+    const restorer = typeof window.getMathPixSessionRestorer === "function" ? window.getMathPixSessionRestorer() : null;
+    if (restorer && restorer.restoredSession) return true;
+    const canvas = ctl.strokesCanvas;
+    return !!canvas && typeof canvas.hasStrokes === "function" && canvas.hasStrokes();
+  }
+
+  function mathPixHoldsFile() {
+    const ctl = typeof window.getMathPixController === "function" ? window.getMathPixController() : null;
+    if (!ctl) return false; // MathPix never loaded: nothing to lose
+    if (mathPixHoldsSessionOrDrawing(ctl)) return true;
+    const files = ctl.fileHandler;
+    const pdf = ctl.pdfHandler;
+    if (files && (files.currentUploadedFile || files.currentFile)) return true;
+    if (pdf && (pdf.currentPDFFile || pdf.currentPDFResults)) return true;
+    if (pdf && pdf.uploadVerification && pdf.uploadVerification.pdfFile) return true;
+    if (ctl.pdfResultRenderer && ctl.pdfResultRenderer.currentResults) return true;
+    return MATHPIX_HELD_BOX_IDS.some(mathPixBoxShown);
+  }
+
+  // Resolves to MathPix's own file input once the controller exists (loaded on first use), else null.
+  function waitForMathPixInput() {
+    return new Promise((resolve) => {
+      const started = Date.now();
+      const poll = () => {
+        const ctl = typeof window.getMathPixController === "function" ? window.getMathPixController() : null;
+        const input = ctl && ctl.elements && ctl.elements["file-input"];
+        if (input) return resolve(input);
+        if (Date.now() - started >= MATHPIX_WAIT_MS) return resolve(null);
+        setTimeout(poll, MATHPIX_POLL_MS);
+      };
+      poll();
+    });
+  }
+
+  // Asks before replacing a file MathPix already holds. Cancel (or no confirm dialogue) keeps it.
+  async function confirmReplaceInMathPix(btn, name) {
+    if (typeof window.safeConfirm !== "function") return false;
+    const text = (btn.dataset.confirmReplace || "").replace("{name}", name);
+    if (!text) return false;
+    return (await window.safeConfirm(text, btn.dataset.confirmTitle || "Replace the file?", {
+      returnFocusTo: btn.id,
+    })) === true;
+  }
+
+  // Gives MathPix the file through its OWN input, so MathPix's routing, preview, confirm and cost
+  // notice are its own. Chat keeps its attachment. Never reaches a MathPix server: it stops at
+  // MathPix's "is this the file?" step.
+  async function handOffToMathPix(file, docType) {
+    const input = await waitForMathPixInput();
+    if (!input) throw new Error("MathPix did not become ready");
+    // Select Upload explicitly (mode-switcher invariant: never infer it).
+    const upload = document.getElementById(MATHPIX_UPLOAD_RADIO_ID);
+    if (upload && !upload.checked) upload.click();
+    const mime = MATHPIX_HANDOFF_MIME[docType];
+    const typed = file.type === mime ? file : new File([file], file.name, { type: mime });
+    const transfer = new DataTransfer();
+    transfer.items.add(typed);
+    input.files = transfer.files;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  let _handingOff = false; // a second press while the hand-off is under way does nothing
+
+  async function openMathPix() {
     const radio = document.getElementById(MATHPIX_RADIO_ID);
     if (!radio) {
       logWarn("openMathPix: the MathPix mode radio was not found");
       return;
     }
-    radio.click(); // the existing mode switcher sets MathPix's own tab state
-    radio.focus();
+    const docType = handOffDocType(attachment);
+    if (!docType) {
+      // Excel and text: only switch tool, as before.
+      radio.click(); // the existing mode switcher sets MathPix's own tab state
+      radio.focus();
+      return;
+    }
+    if (_handingOff) return;
+    _handingOff = true;
+    try {
+      const btn = openMathPixEl();
+      if (mathPixHoldsFile() && !(await confirmReplaceInMathPix(btn, attachment.filename))) return;
+      radio.click();
+      radio.focus(); // straight away, as the Excel and text path does, so focus never rests on <body>
+      try {
+        await handOffToMathPix(attachment.file, docType);
+      } catch (e) {
+        logWarn("openMathPix: hand-off failed", e && e.message);
+        notify("notifyWarning", MATHPIX_HANDOFF_FAILED_MESSAGE, { duration: 0 });
+        radio.focus();
+        return;
+      }
+      // MathPix's tool switch moves focus itself shortly after it starts; only if nothing has
+      // taken it does the radio, as before (never a button that starts processing).
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || active === document.body) radio.focus();
+        scrollMathPixBoxIntoView();
+      }, MATHPIX_FOCUS_CHECK_MS);
+    } finally {
+      _handingOff = false;
+    }
+  }
+
+  // Re-renders the button when a MathPix key is saved or removed, silently.
+  function onMathPixKeyChange() {
+    if (_reading) return;
+    renderOpenMathPix(!!adviceSentence(attachment));
+  }
+
+  function wireKeyListeners() {
+    if (!_keyWindowWired) {
+      window.addEventListener("credentials:changed", onMathPixKeyChange);
+      _keyWindowWired = true;
+    }
+    const emitter = window.EmbedEventEmitter;
+    if (!_keyEmitterWired && emitter && typeof emitter.on === "function") {
+      emitter.on("credentials:changed", onMathPixKeyChange);
+      _keyEmitterWired = true;
+    }
   }
 
   // ── Public: capability gate (shared with the wire) ──────────────────────────
@@ -1543,6 +1743,7 @@ window.ChatAttach = (function () {
   }
 
   function wireOpenMathPix() {
+    wireKeyListeners(); // the emitter may arrive later than the first call; the bind is retried here
     if (_mathPixWired) return;
     const btn = openMathPixEl();
     if (!btn) return;

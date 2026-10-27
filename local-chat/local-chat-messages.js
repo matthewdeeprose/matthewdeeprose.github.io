@@ -448,6 +448,10 @@
         el.removeAttribute("tabindex");
       });
       var htmlContent = clone.innerHTML;
+      // Tables paste into Word with a repeating header row and unsplit rows
+      if (window.WordTablePrep) {
+        htmlContent = window.WordTablePrep.prepare(htmlContent);
+      }
 
       // Try ClipboardItem API for rich copy
       if (typeof ClipboardItem !== "undefined") {

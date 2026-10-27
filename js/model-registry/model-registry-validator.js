@@ -27,8 +27,27 @@ const VALIDATED_COST_KEYS = ["input", "output"];
  * Cost keys that exist in the registry today and are knowingly tolerated: `image` has one
  * user-visible reader (js/modules/model-manager.js), `video` is a hard-coded 0 on 150 entries
  * that nothing reads, and `meters` is validated above. Everything else is reported.
+ *
+ * The eleven keys after `meters` (MR-9E, 27 October 2026) are billing extras held as data:
+ * nothing reads any of them, and their units are inconsistent (`webSearch` mixes them).
+ * They are tolerated so a real new key still stands out; they are not endorsed.
  */
-const REPORTED_COST_KEYS = ["image", "video", "meters"];
+const REPORTED_COST_KEYS = [
+  "image",
+  "video",
+  "meters",
+  "requests",
+  "request",
+  "additionalCosts",
+  "images",
+  "imageInput",
+  "webSearch",
+  "audio",
+  "cacheRead",
+  "cacheCreation",
+  "pdf",
+  "file",
+];
 
 /**
  * PROVIDER STREAMS — the rule `findBestFallbackMatch` is held to, and where this set comes from.
@@ -500,7 +519,11 @@ export class ModelRegistryValidator {
     const invalidFallbacks = new Map();
 
     models.forEach((model) => {
-      if (model.fallbackTo) {
+      // A disabled entry is never offered in a picker, so its fallback is never
+      // followed (MR-9E E1: the only followers are request-handler-model-fallback.js
+      // and recovery-strategies.js, both starting from a picker selection). Skipped
+      // in this three-condition check ONLY - the cycle walk below still sees it.
+      if (model.fallbackTo && !model.disabled) {
         const fallbackModel = getModel(model.fallbackTo, true);
         if (!fallbackModel) {
           invalidFallbacks.set(model.id, {

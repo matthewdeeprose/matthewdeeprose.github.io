@@ -3089,6 +3089,96 @@ const buildFoundryModels = () => [
       "Vision measured on this deployment 13 October 2026: accepted-reads on all three sampled runs (ratio 1.00 each), sentinel named.",
   }),
 
+  // ── gpt-6.1-terra (chat — reasoning; deployed 27 October 2026 by the owner, registered the same day) ──
+  // MR-9T. Probed BEFORE registration. Measured 27 October 2026 by
+  // .claude/foundry-catalogue/probe.mjs, 13 requests (0 retries), artefact
+  // results/probe-gpt-6.1-terra-2026-10-27.json:
+  //   token field : max_completion_tokens (max_tokens refused,
+  //                 unsupported_parameter)
+  //   sampling    : ALL FOUR refused — temperature unsupported_value, top_p /
+  //                 presence_penalty / frequency_penalty unsupported_parameter.
+  //   image       : accepted-reads, 3 of 3 runs, ratio 1.00 each, sentinel named
+  //   pdf         : accepted-reads, ratio 0.83 (5 of 6 letters; the platform
+  //                 preprocesses the attachment, so unattributed to the model)
+  //   effort triad: omitted / explicit-default / explicit-high ALL accepted.
+  // Completion tokens on the image task were 102 / 55 / 82, never empty at a
+  // high cap, so the STANDARD REASONING_BUDGET_FLOOR (1024) is sufficient.
+  // "reasoning" capability: INDIRECT, on the v1 adapter's own signature (all
+  // four sampling parameters refused), not on observed reasoning tokens.
+  // Nothing is copied from gpt-6.1-sol that was not measured here.
+  createFoundryModel({
+    deploymentName: "gpt-6.1-terra",
+    displayName: "GPT-6.1 Terra",
+    description:
+      "GPT-6.1 low-cost tier, the cheapest of the GPT-6.1 family. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 October 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
+    // Source: OpenAI's model page, https://developers.openai.com/api/docs/models/gpt-6.1-terra,
+    // read 27 October 2026: $1 input / $5 output per 1M tokens up to 272K input
+    // tokens (2x input and 1.5x output above that; this entry records the
+    // short-context rate only). NOT the Azure retail list: that list
+    // (prices.azure.com, 40 pages, 39,157 rows, read 27 October 2026) carries
+    // eight "6.1-sol" Std Gl meters and NO "6.1 terra" meter, so the Foundry
+    // rate is unpublished and this is OpenAI's list price. Control: gpt-6-astra
+    // read 10 / 50 on the same pass, as registered. Re-check when Azure
+    // publishes the meter (--check-prices).
+    costs: { input: 1.0, output: 5.0 },
+    capabilities: [
+      "text",
+      "dialogue",
+      "reasoning",
+      "vision",
+      "pdf",
+    ],
+    // Source: OpenAI's model page, read 27 October 2026 ("1,050,000 context
+    // window"; 922,000 maximum input tokens; 128,000 max output tokens). The
+    // Foundry catalogue row carries no context field.
+    maxContext: 1050000,
+    // Never cross the provider streams (register item 107). NOT gpt-5.6-terra,
+    // the nearest same-tier entry: its maxContext is 1,000,000, below this
+    // entry's 1,050,000, so the shipped suitability rule refuses it (measured
+    // 27 October 2026, MR-9T fallback check). gpt-6.1-sol is the same
+    // generation with the same context and capability set, a step up in price
+    // (2 / 10), and its own chain (gpt-6.1-sol -> gpt-6-sol -> gpt-5.5 -> end)
+    // terminates.
+    fallbackTo: "azure-openai/gpt-6.1-sol",
+    // The deployment's model version (az deployment list, 27 October 2026);
+    // OpenAI's page gives no release date.
+    releaseDate: "2026-10-26",
+    categoryDescription:
+      "Newest-generation low-cost tier routed via Microsoft Foundry",
+    modelArchitecture: {
+      parameters: "Unknown",
+      type: "reasoning-instruction-tuned",
+      optimisedFor: "general-purpose-capability",
+    },
+    bestFor: [
+      "high-volume everyday work",
+      "image-led tasks",
+      "document-heavy tasks",
+      "UK data residency requirements",
+    ],
+    preferredFor: [
+      "foundry-routed-workloads",
+      "uk-data-residency",
+      "general-purpose-capability",
+      "adapter-smoke-testing",
+    ],
+    supportedParams: [
+      "reasoning",
+      "include_reasoning",
+      "seed",
+      "max_tokens",
+      "response_format",
+      "system-prompt",
+    ],
+    features: [
+      "reasoning-support",
+      "vision-inputs",
+      "system-prompt",
+    ],
+    imageSupportNote:
+      "Vision measured on this deployment 27 October 2026: accepted-reads on all three sampled runs (ratio 1.00 each), sentinel named.",
+  }),
+
   // ══════════════════════════════════════════════════════════════════════════
   // RESPONSES-API SURFACE (eight Codex/pro deployments — apiSurface: "responses")
   // ══════════════════════════════════════════════════════════════════════════

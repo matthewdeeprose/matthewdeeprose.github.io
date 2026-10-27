@@ -113,6 +113,18 @@
   font-size: 0.9rem;
 }
 
+/* Parcel T-62a: the charge note under a conversion Cancel. It takes its own
+   row, and hides with its Cancel through the sibling rule (no script). */
+.mathpix-cancel-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.mathpix-convert-actions button[hidden] + .mathpix-cancel-note {
+  display: none;
+}
+
 .mathpix-convert-size-readout,
 .mathpix-convert-size-detail {
   flex-basis: 100%;

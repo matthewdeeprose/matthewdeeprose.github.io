@@ -11,6 +11,8 @@ Across all sections:
 - Prefer active voice, but use passive where it reads more naturally in visual descriptions.
 - Eliminate filler words: very, really, just, quite, somewhat, rather, basically.
 - Choose precise verbs over adverb-verb combinations.
+- Never open with "The image shows": do not begin a sentence with "The image", "This image", "The picture" or "This picture", and do not call the thing you are describing "the image" or "the picture". Name what it is, or start with what is in it.
+- Write directly: state each fact plainly, in as few words as it needs. Leave out lead-ins and scene-setting that carry no fact.
 
 ## Description Quality Principles
 

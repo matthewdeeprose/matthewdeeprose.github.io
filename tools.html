@@ -148,6 +148,7 @@
       href="md-scripts/css/mermaid-description-styles.css"
     />
     <script src="js/universal-notifications.js"></script>
+    <script src="js/word-table-prep.js"></script>
     <link rel="stylesheet" href="icon-library.css" />
     <meta
       property="og:title"
@@ -1791,6 +1792,14 @@
                 >
               </summary>
               <div class="setup-credential-body">
+               <form role="presentation" onsubmit="return false;" autocomplete="off">
+                <input
+                  type="text"
+                  name="openrouter_credential_username_setup"
+                  aria-label="Username (not used)"
+                  autocomplete="username"
+                  hidden
+                />
                 <div class="setup-input-group">
                   <label id="setup-or-api-key-label" for="setup-or-api-key">OpenRouter API Key</label>
                   <p
@@ -1865,6 +1874,7 @@
                   ></p>
                   <dl class="setup-key-details-list" id="setup-or-key-list"></dl>
                 </div>
+               </form>
               </div>
             </details>
 
@@ -1889,6 +1899,7 @@
                 >
               </summary>
               <div class="setup-credential-body">
+               <form role="presentation" onsubmit="return false;" autocomplete="off">
                 <div class="setup-input-group">
                   <label id="setup-mp-app-id-label" for="setup-mp-app-id">App ID</label>
                   <div class="setup-input-row">
@@ -1958,6 +1969,7 @@
                     <span class="visually-hidden">&nbsp;— MathPix</span>
                   </button>
                 </div>
+               </form>
               </div>
             </details>
 
@@ -1986,6 +1998,7 @@
                 >
               </summary>
               <div class="setup-credential-body">
+               <form role="presentation" onsubmit="return false;" autocomplete="off">
                 <div class="setup-input-group">
                   <label id="setup-fdy-proxy-url-label" for="setup-fdy-proxy-url"
                     >Cloudflare Worker Proxy URL</label
@@ -2070,6 +2083,7 @@
                     Connection
                   </button>
                 </div>
+               </form>
               </div>
             </details>
 
@@ -2092,6 +2106,7 @@
                 >
               </summary>
               <div class="setup-credential-body">
+               <form role="presentation" onsubmit="return false;" autocomplete="off">
                 <div class="setup-input-group">
                   <label id="setup-ally-region-label" for="setup-ally-region"
                     >Region</label
@@ -2562,6 +2577,7 @@
                     <span class="visually-hidden">&nbsp;— Ally</span>
                   </button>
                 </div>
+               </form>
               </div>
             </details>
           </section>
@@ -4618,6 +4634,13 @@
                 onsubmit="return false;"
                 autocomplete="off"
               >
+                <input
+                  type="text"
+                  name="openrouter_credential_username_legacy"
+                  aria-label="Username (not used)"
+                  autocomplete="username"
+                  hidden
+                />
                 <label for="openrouter-api-key">API Key:</label>
                 <div class="api-key-input-group">
                   <input
@@ -5067,8 +5090,7 @@
               id="output"
               class="output"
               role="region"
-              aria-live="polite"
-              aria-atomic="true"
+              aria-live="off"
             ></div>
           </section>
 
@@ -7330,10 +7352,15 @@ Science,91</pre
                     id="convert-mode-cancel-btn"
                     class="mathpix-btn mathpix-btn-secondary"
                     onclick="cancelConvertModeConversion()"
+                    aria-describedby="convert-mode-cancel-note"
                     hidden
                   >
                     <span aria-hidden="true" data-icon="close"></span> Cancel
                   </button>
+
+                  <p id="convert-mode-cancel-note" class="help-text mathpix-cancel-note">
+                    Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                  </p>
 
                   <span
                     id="convert-mode-status"
@@ -9199,111 +9226,33 @@ Science,91</pre
                   hidden
                 >
                   <form id="resume-ai-form" class="mathpix-context-form">
-                    <fieldset>
-                      <legend>Do it all</legend>
-                      <div class="mathpix-context-field">
-                        <label for="resume-ai-step-correction">
-                          <input
-                            type="checkbox"
-                            id="resume-ai-step-correction"
-                            data-ai-step="correction"
-                            aria-describedby="resume-ai-step-correction-hint"
-                          />
-                          MMD correction
-                        </label>
-                        <p
-                          id="resume-ai-step-correction-hint"
-                          class="field-hint"
-                        >
-                          Checks the converted text against the PDF and suggests
-                          corrections.
+                    <h4 id="resume-ai-heading" class="ai-heading">
+                      <span aria-hidden="true" data-icon="aiSparkle"></span>
+                      Do it all
+                    </h4>
+                    <div class="ai-summary">
+                      <div class="ai-summary-chips">
+                        <p class="ai-summary-provider">
+                          Provider:
+                          <span class="ai-chip resume-session-badge"
+                            ><span aria-hidden="true" data-icon="robot"></span
+                            ><span
+                              id="resume-ai-provider-name"
+                              class="ai-chip-text"
+                            ></span
+                          ></span>
+                        </p>
+                        <p class="ai-summary-count">
+                          <span
+                            class="ai-chip resume-session-badge resume-session-badge-current"
+                            ><span aria-hidden="true" data-icon="check"></span
+                            ><span
+                              id="resume-ai-ticked-count"
+                              class="ai-chip-text"
+                            ></span
+                          ></span>
                         </p>
                       </div>
-                      <div class="mathpix-context-field">
-                        <label for="resume-ai-step-context">
-                          <input
-                            type="checkbox"
-                            id="resume-ai-step-context"
-                            data-ai-step="context"
-                            aria-describedby="resume-ai-step-context-hint"
-                          />
-                          Context auto-fill
-                        </label>
-                        <p id="resume-ai-step-context-hint" class="field-hint">
-                          Fills the context fields from the PDF.
-                        </p>
-                      </div>
-                      <div class="mathpix-context-field">
-                        <label for="resume-ai-step-pictures">
-                          <input
-                            type="checkbox"
-                            id="resume-ai-step-pictures"
-                            data-ai-step="pictures"
-                            aria-describedby="resume-ai-step-pictures-hint"
-                          />
-                          Picture descriptions
-                        </label>
-                        <p id="resume-ai-step-pictures-hint" class="field-hint">
-                          Writes a caption, alt text and long description for
-                          each picture that has none.
-                        </p>
-                      </div>
-                      <div class="mathpix-context-field">
-                        <label for="resume-ai-redescribe">
-                          <input
-                            type="checkbox"
-                            id="resume-ai-redescribe"
-                            aria-describedby="resume-ai-redescribe-hint"
-                          />
-                          Also re-describe pictures that already have a
-                          description
-                        </label>
-                        <p id="resume-ai-redescribe-hint" class="field-hint">
-                          Pictures with a description you wrote, edited or
-                          reviewed are kept.
-                        </p>
-                      </div>
-
-                      <div class="mathpix-context-field">
-                        <p id="resume-ai-model-correction" class="field-hint"></p>
-                        <details
-                          id="resume-ai-advanced-correction"
-                          class="mathpix-context-model-advanced"
-                        >
-                          <summary>Change the model for MMD correction</summary>
-                          <label for="resume-ai-select-correction"
-                            >Model for MMD correction</label
-                          >
-                          <select id="resume-ai-select-correction"></select>
-                        </details>
-                      </div>
-                      <div class="mathpix-context-field">
-                        <p id="resume-ai-model-context" class="field-hint"></p>
-                        <details
-                          id="resume-ai-advanced-context"
-                          class="mathpix-context-model-advanced"
-                        >
-                          <summary>Change the model for Context auto-fill</summary>
-                          <label for="resume-ai-select-context"
-                            >Model for Context auto-fill</label
-                          >
-                          <select id="resume-ai-select-context"></select>
-                        </details>
-                      </div>
-                      <div class="mathpix-context-field">
-                        <p id="resume-ai-model-pictures" class="field-hint"></p>
-                        <details
-                          id="resume-ai-advanced-pictures"
-                          class="mathpix-context-model-advanced"
-                        >
-                          <summary>Change the model for Picture descriptions</summary>
-                          <label for="resume-ai-select-pictures"
-                            >Model for Picture descriptions</label
-                          >
-                          <select id="resume-ai-select-pictures"></select>
-                        </details>
-                      </div>
-
                       <p id="resume-ai-estimate">
                         Estimated cost: not calculated yet.
                       </p>
@@ -9323,12 +9272,119 @@ Science,91</pre
                         <span aria-hidden="true" data-icon="download"></span>
                         Save AI run log
                       </button>
-                      <div
-                        id="resume-ai-announce"
-                        class="sr-only"
-                        aria-live="polite"
-                      ></div>
-                    </fieldset>
+                    </div>
+
+                    <ol class="ai-steps">
+                      <li class="ai-step" id="ai-card-correction">
+                        <div class="ai-step-head">
+                          <label for="resume-ai-step-correction">
+                            <input
+                              type="checkbox"
+                              id="resume-ai-step-correction"
+                              data-ai-step="correction"
+                              aria-describedby="resume-ai-step-correction-hint"
+                            />
+                            <span aria-hidden="true" data-icon="pencil"></span>
+                            MMD correction
+                          </label>
+                        </div>
+                        <p
+                          id="resume-ai-step-correction-hint"
+                          class="field-hint"
+                        >
+                          Checks the converted text against the PDF and suggests
+                          corrections.
+                        </p>
+                        <p id="resume-ai-model-correction" class="ai-model"></p>
+                        <details
+                          id="resume-ai-advanced-correction"
+                          class="mathpix-context-model-advanced ai-change"
+                        >
+                          <summary>Change the model for MMD correction</summary>
+                          <label for="resume-ai-select-correction"
+                            >Model for MMD correction</label
+                          >
+                          <select id="resume-ai-select-correction"></select>
+                        </details>
+                      </li>
+                      <li class="ai-step" id="ai-card-context">
+                        <div class="ai-step-head">
+                          <label for="resume-ai-step-context">
+                            <input
+                              type="checkbox"
+                              id="resume-ai-step-context"
+                              data-ai-step="context"
+                              aria-describedby="resume-ai-step-context-hint"
+                            />
+                            <span aria-hidden="true" data-icon="document"></span>
+                            Context auto-fill
+                          </label>
+                        </div>
+                        <p id="resume-ai-step-context-hint" class="field-hint">
+                          Fills the context fields from the PDF.
+                        </p>
+                        <p id="resume-ai-model-context" class="ai-model"></p>
+                        <details
+                          id="resume-ai-advanced-context"
+                          class="mathpix-context-model-advanced ai-change"
+                        >
+                          <summary>Change the model for Context auto-fill</summary>
+                          <label for="resume-ai-select-context"
+                            >Model for Context auto-fill</label
+                          >
+                          <select id="resume-ai-select-context"></select>
+                        </details>
+                      </li>
+                      <li class="ai-step" id="ai-card-pictures">
+                        <div class="ai-step-head">
+                          <label for="resume-ai-step-pictures">
+                            <input
+                              type="checkbox"
+                              id="resume-ai-step-pictures"
+                              data-ai-step="pictures"
+                              aria-describedby="resume-ai-step-pictures-hint"
+                            />
+                            <span aria-hidden="true" data-icon="picture"></span>
+                            Picture descriptions
+                          </label>
+                        </div>
+                        <p id="resume-ai-step-pictures-hint" class="field-hint">
+                          Writes a caption, alt text and long description for
+                          each picture that has none.
+                        </p>
+                        <p id="resume-ai-model-pictures" class="ai-model"></p>
+                        <details
+                          id="resume-ai-advanced-pictures"
+                          class="mathpix-context-model-advanced ai-change"
+                        >
+                          <summary>Change the model for Picture descriptions</summary>
+                          <label for="resume-ai-select-pictures"
+                            >Model for Picture descriptions</label
+                          >
+                          <select id="resume-ai-select-pictures"></select>
+                        </details>
+                        <div class="ai-sub">
+                          <label for="resume-ai-redescribe">
+                            <input
+                              type="checkbox"
+                              id="resume-ai-redescribe"
+                              aria-describedby="resume-ai-redescribe-hint"
+                            />
+                            Also re-describe pictures that already have a
+                            description
+                          </label>
+                          <p id="resume-ai-redescribe-hint" class="field-hint">
+                            Pictures with a description you wrote, edited or
+                            reviewed are kept.
+                          </p>
+                        </div>
+                      </li>
+                    </ol>
+                    <div
+                      id="resume-ai-announce"
+                      class="sr-only"
+                      aria-live="polite"
+                    ></div>
                   </form>
                 </div>
               </div>
@@ -9718,10 +9774,15 @@ Science,91</pre
                       type="button"
                       id="resume-convert-cancel-btn"
                       class="mathpix-btn mathpix-btn-secondary"
+                      aria-describedby="resume-convert-cancel-note"
                       hidden
                     >
                       <span aria-hidden="true" data-icon="close"></span> Cancel
                     </button>
+
+                    <p id="resume-convert-cancel-note" class="help-text mathpix-cancel-note">
+                      Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                    </p>
 
                     <span
                       id="resume-convert-status"
@@ -14201,10 +14262,15 @@ Science,91</pre
                       id="mathpix-convert-cancel-btn"
                       class="mathpix-btn mathpix-btn-secondary"
                       onclick="cancelMMDConversion()"
+                      aria-describedby="mathpix-convert-cancel-note"
                       hidden
                     >
                       <span aria-hidden="true" data-icon="close"></span> Cancel
                     </button>
+
+                    <p id="mathpix-convert-cancel-note" class="help-text mathpix-cancel-note">
+                      Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                    </p>
 
                     <span
                       id="convert-status"
@@ -19294,11 +19360,20 @@ Science,91</pre
               type="button"
               id="chat-open-mathpix"
               class="chat-open-mathpix"
+              data-label-file="Open this file in MathPix"
+              data-label-tool="Open MathPix"
+              data-confirm-replace="MathPix already has a file open. Open {name} there instead? What MathPix has now will be cleared."
+              data-confirm-title="Replace the file in MathPix?"
               hidden
             >
               <span aria-hidden="true" data-icon="arrowRight"></span>
-              Open MathPix
+              <span class="chat-open-mathpix-label">Open MathPix</span>
             </button>
+            <p
+              id="chat-open-mathpix-note"
+              class="chat-open-mathpix-note"
+              hidden
+            >Optional, and MathPix charges for it. It reads the file and lets you correct the text, and AI models usually do better with the corrected text. It opens ready to upload, shows the cost, and sends nothing until you confirm there.</p>
             </div>
             <div
               id="chat-attachment-more"

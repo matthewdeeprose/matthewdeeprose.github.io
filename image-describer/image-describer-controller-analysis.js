@@ -320,6 +320,19 @@
     },
 
     /**
+     * True while the description view is showing (showOutputUI) rather than the
+     * setup view. Anything that finishes asynchronously and would reveal a
+     * setup-view control (toolbar, banner, question) must check this first, or
+     * it reappears above the finished description.
+     * @returns {boolean}
+     */
+    _isOutputMode() {
+      return !!document
+        .querySelector(".imgdesc-layout")
+        ?.classList.contains("imgdesc-output-mode");
+    },
+
+    /**
      * Show the cache recall banner with the date the analysis was created.
      * @param {number} createdAt - Timestamp from the cached record
      * @param {boolean} [hasCuration] - whether the restored record carries
@@ -329,6 +342,10 @@
       const banner = this.elements.cacheRecallBanner;
       const textEl = this.elements.cacheRecallText;
       if (!banner || !textEl) return;
+
+      // The cache lookup is asynchronous and can resolve after Generate, once
+      // the description is on screen; the banner belongs to the setup view.
+      if (this._isOutputMode()) return;
 
       // Format date as "24 Mar 2026"
       const date = new Date(createdAt);
@@ -537,8 +554,11 @@
       // Update overlay with analysis data (Phase 5D-1)
       if (typeof window.ImageDescriberOverlay !== "undefined") {
         window.ImageDescriberOverlay.setAnalysis(result);
+        // Not while the description is on screen: analysis can finish after
+        // Generate, and showOutputUI() has already hidden the toolbar.
+        // showConfigurationUI() reveals it again when the person goes back.
         const toolbar = document.getElementById(OVERLAY_TOOLBAR_ID);
-        if (toolbar) toolbar.hidden = false;
+        if (toolbar && !this._isOutputMode()) toolbar.hidden = false;
       }
 
       // Phase 10C-fix: update Florence-2 opt-in button state

@@ -170,6 +170,15 @@
     }),
   });
 
+  /** AV-3 (AV-D3 E2): the two cost words on a model line. */
+  const COST_WORDS = Object.freeze({
+    MEASURED: "cost measured",
+    NOT_MEASURED: "cost not measured",
+  });
+
+  /** The catalogue tags Foundry names "GPT-6.1 Sol (Foundry)"; the provider is said once, in the bar (AV-D3 E3). */
+  const PROVIDER_NAME_SUFFIX = /\s*\(Foundry\)$/;
+
   const ESTIMATE_PREFIX = "Estimated cost:";
   const NOT_MEASURED_TEXT = "not measured for this model";
   const PICTURE_COST_DECIMALS = 4;
@@ -202,6 +211,8 @@
     status: "resume-ai-status",
     outcomes: "resume-ai-outcomes",
     estimate: "resume-ai-estimate",
+    provider: "resume-ai-provider-name",
+    ticked: "resume-ai-ticked-count",
     redescribe: "resume-ai-redescribe",
     diff: "resume-ai-correction-diff",
     diffBody: "resume-ai-correction-diff-body",
@@ -236,8 +247,11 @@
   const advancedId = (step) => `resume-ai-advanced-${step.key}`;
   const selectId = (step) => `resume-ai-select-${step.key}`;
 
-  /** Said once, in the option text, of the registry's default model. */
-  const RECOMMENDED_SUFFIX = ", recommended";
+  /** AV-D4: the two option groups of a model select. The default sits alone in the first. */
+  const SELECT_GROUP_LABELS = Object.freeze({
+    RECOMMENDED: "Recommended",
+    OTHER: "Other models",
+  });
 
   // ==========================================================================
   // STATE READERS (all at call time)
@@ -371,28 +385,103 @@
     }
   }
 
-  /** "Display name (id, Provider)", or "id (Provider)" when no name is known. */
-  function modelLabel(modelId, providerId, provider) {
-    const name = displayNameFor(modelId, providerId);
-    return name && name !== modelId
-      ? `${name} (${modelId}, ${provider})`
-      : `${modelId} (${provider})`;
-  }
-
-  /** The model line text for one step. */
-  function modelLineFor(step) {
+  /**
+   * AV-3 (AV-D3 E1, E2): the parts of one step's model line. The provider is
+   * said once, in the summary bar, so the line carries the model's name, how
+   * it was picked and whether its cost has been measured. `name` is null when
+   * no model is recommended for the provider.
+   */
+  function modelPartsFor(step) {
     const providerId = activeProviderId();
-    const provider = providerLabel(providerId);
+    const lead = `Model for ${step.label}:`;
     const recommendedId = recommendedIdFor(step.purpose, providerId);
     const chosenId = chosenIdFor(step, recommendedId);
+    const modelId = chosenId || recommendedId;
 
-    if (chosenId) {
-      return `Model for ${step.label}: ${modelLabel(chosenId, providerId, provider)}, ${BASIS.CHOSEN}`;
+    if (!modelId) {
+      return { lead, name: null, plain: `none recommended for ${providerLabel(providerId)}` };
     }
-    if (recommendedId) {
-      return `Model for ${step.label}: ${modelLabel(recommendedId, providerId, provider)}, ${BASIS.RECOMMENDED}`;
+    const measured = typeof MEASURED_COST_USD[step.key][modelId] === "number";
+    return {
+      lead,
+      name: (displayNameFor(modelId, providerId) || modelId).replace(PROVIDER_NAME_SUFFIX, ""),
+      basis: chosenId ? BASIS.CHOSEN : BASIS.RECOMMENDED,
+      cost: measured ? COST_WORDS.MEASURED : COST_WORDS.NOT_MEASURED,
+    };
+  }
+
+  /** The model line text for one step: "Model for X: Name, recommended, cost not measured." */
+  function modelLineFor(step) {
+    const parts = modelPartsFor(step);
+    if (parts.name === null) return `${parts.lead} ${parts.plain}`;
+    return `${parts.lead} ${parts.name}, ${parts.basis}, ${parts.cost}.`;
+  }
+
+  /** One chip: a decorative icon beside visible words (the words carry the meaning). */
+  function buildChip(iconName, text, isCurrent) {
+    const chip = document.createElement("span");
+    chip.className = isCurrent
+      ? "ai-chip resume-session-badge resume-session-badge-current"
+      : "ai-chip resume-session-badge";
+    const icon = document.createElement("span");
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("data-icon", iconName);
+    const words = document.createElement("span");
+    words.className = "ai-chip-text";
+    words.textContent = text;
+    chip.append(icon, words);
+    return chip;
+  }
+
+  /**
+   * A comma and its space, or a full stop, that is read but not drawn. The space
+   * lives INSIDE the span and the span keeps it (white-space: pre in
+   * mathpix-context.css): a trailing space in a nowrap hidden box collapses, and
+   * the accessibility tree and a braille display then ran the words together.
+   */
+  function buildSeparator(text) {
+    const sep = document.createElement("span");
+    sep.className = "sr-only ai-sep";
+    sep.textContent = text;
+    return sep;
+  }
+
+  /**
+   * Write one step's model line as a name and two chips, with hidden commas so
+   * the accessible text reads as one phrase. Rebuilt only when it changes, so a
+   * refresh never disturbs the line, and the textContent equals modelLineFor.
+   */
+  function writeModelLine(step) {
+    const line = byId(modelLineId(step));
+    if (!line) return;
+    const parts = modelPartsFor(step);
+    const signature = modelLineFor(step);
+    if (line.dataset.aiLine === signature) return;
+
+    const lead = document.createElement("span");
+    lead.className = "ai-model-lead";
+    lead.textContent = parts.lead;
+    if (parts.name === null) {
+      line.replaceChildren(lead, ` ${parts.plain}`);
+    } else {
+      const name = document.createElement("span");
+      name.className = "ai-model-name";
+      name.textContent = parts.name;
+      line.replaceChildren(
+        lead,
+        " ",
+        name,
+        buildSeparator(", "),
+        buildChip("check", parts.basis, parts.basis === BASIS.RECOMMENDED),
+        buildSeparator(", "),
+        buildChip("coins", parts.cost, parts.cost === COST_WORDS.MEASURED),
+        buildSeparator("."),
+      );
+      if (window.IconLibrary && typeof window.IconLibrary.populateIcons === "function") {
+        window.IconLibrary.populateIcons(line);
+      }
     }
-    return `Model for ${step.label}: none recommended for ${provider}`;
+    line.dataset.aiLine = signature;
   }
 
   function hasProviderKey() {
@@ -604,6 +693,21 @@
   function updateEstimate() {
     if (state.running) return;
     setText(byId(ELEMENT_IDS.estimate), estimateLine());
+  }
+
+  /**
+   * AV-3 (AV-D3 E3, E4): the provider's name and "N of 3 steps ticked" in the
+   * summary bar. Both are plain text inside a paragraph with no live role, so a
+   * tick or a provider switch changes them silently. Not touched mid-run, when
+   * the boxes are disabled and would read as unticked.
+   */
+  function updateSummary() {
+    if (state.running) return;
+    setText(byId(ELEMENT_IDS.provider), providerLabel(activeProviderId()));
+    setText(
+      byId(ELEMENT_IDS.ticked),
+      `${tickedSteps().length} of ${STEPS.length} steps ticked`,
+    );
   }
 
   // ==========================================================================
@@ -1515,17 +1619,26 @@
       .map((choice) => `${choice.id}|${choice.id === recommendedId}`)
       .join(",");
     if (select.dataset.aiOptions !== signature) {
-      select.replaceChildren(
-        ...choices.map((choice) => {
+      // AV-D4: the registry default first, alone, in "Recommended"; the rest in "Other models".
+      // The option text is the bare name, without the Foundry catalogue suffix (the bar names the
+      // provider, as the model lines do), so the closed select shows it whole.
+      const buildGroup = (label, members) => {
+        const group = document.createElement("optgroup");
+        group.label = label;
+        members.forEach((choice) => {
           const option = document.createElement("option");
           option.value = choice.id;
-          option.textContent =
-            choice.id === recommendedId
-              ? `${choice.name}${RECOMMENDED_SUFFIX}`
-              : choice.name;
-          return option;
-        }),
-      );
+          option.textContent = choice.name.replace(PROVIDER_NAME_SUFFIX, "");
+          group.appendChild(option);
+        });
+        return group;
+      };
+      const recommended = choices.filter((choice) => choice.id === recommendedId);
+      const others = choices.filter((choice) => choice.id !== recommendedId);
+      const groups = [];
+      if (recommended.length) groups.push(buildGroup(SELECT_GROUP_LABELS.RECOMMENDED, recommended));
+      if (others.length) groups.push(buildGroup(SELECT_GROUP_LABELS.OTHER, others));
+      select.replaceChildren(...groups);
       select.dataset.aiOptions = signature;
     }
 
@@ -1536,10 +1649,11 @@
   /** Lines, selects and the estimate, from the stored values. No tick state, no focus. */
   function refreshModels() {
     STEPS.forEach((step) => {
-      setText(byId(modelLineId(step)), modelLineFor(step));
+      writeModelLine(step);
       applyModelSelect(step);
     });
     updateEstimate();
+    updateSummary();
   }
 
   /** The select changed: store it through the step's own setter, then re-read. */
@@ -1598,6 +1712,7 @@
         box.dataset.aiChangeBound = "true";
         box.addEventListener("change", () => {
           updateEstimate();
+          updateSummary();
           updateRunButton();
         });
       }

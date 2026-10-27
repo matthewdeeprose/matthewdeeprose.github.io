@@ -745,13 +745,19 @@ class MathPixConvertUI {
    * Cancel the active conversion
    */
   cancelConversion() {
-    if (!this.isConverting || !this.activeConversionId) {
+    if (!this.isConverting) {
       logWarn("No active conversion to cancel");
       return;
     }
 
+    // Parcel T-62a: a Cancel pressed before the conversion id exists (the
+    // request is still in flight) used to be ignored. Retiring the run token
+    // makes that run an abandoned one: onStart cancels the id the moment it
+    // arrives, and nothing late is stored, shown or said (Parcel O-04).
+    this._runToken = (this._runToken || 0) + 1;
+
     const client = window.getMathPixConvertClient?.();
-    if (client) {
+    if (client && this.activeConversionId) {
       client.cancelConversion(this.activeConversionId);
     }
 
