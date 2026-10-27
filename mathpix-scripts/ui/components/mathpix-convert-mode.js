@@ -1724,7 +1724,6 @@ class MathPixConvertMode {
     this.isConverting = true;
     this.completedDownloads = new Map();
     // Parcel 10l: Cancel needs the id, and may come before it exists.
-    this.cancelRequested = false;
     this.activeConversionId = null;
     // Parcel O-04: this run's token; an abandoned run finds it out of date.
     this._runToken = (this._runToken || 0) + 1;
@@ -1801,9 +1800,8 @@ class MathPixConvertMode {
               apiClient.cancelConversion(conversionId);
               return;
             }
-            // Parcel 10l: remember the id; honour a Cancel that came first.
+            // Parcel 10l: remember the id so Cancel can stop the polling.
             this.activeConversionId = conversionId;
-            if (this.cancelRequested) apiClient.cancelConversion(conversionId);
             // Mark all as processing
             selectedFormats.forEach((format) => {
               this.updateProgressItem(format, "processing", "Processing...");
@@ -1890,8 +1888,8 @@ class MathPixConvertMode {
       logError("Conversion failed:", error);
       if (!isCurrentRun()) return; // Parcel O-04
 
-      // Mark all incomplete formats as failed (not after a Cancel: Parcel 10l)
-      if (!this.cancelRequested) selectedFormats.forEach((format) => {
+      // Mark all incomplete formats as failed (a Cancel returned above: Parcel T-64)
+      selectedFormats.forEach((format) => {
         if (!this.completedDownloads.has(format)) {
           const progressItem = document.getElementById(
             `convert-progress-${format.replace(/\./g, "-")}`,
@@ -1912,14 +1910,6 @@ class MathPixConvertMode {
     this.updateConvertButtonState();
     if (cancelBtn) cancelBtn.hidden = true;
     if (cancelHadFocus && convertBtn) convertBtn.focus();
-
-    // A cancelled run shows nothing it may have fetched.
-    if (this.cancelRequested) {
-      this.cancelRequested = false;
-      this.completedDownloads = new Map();
-      if (progressSection) progressSection.hidden = true;
-      return;
-    }
 
     // Determine errors (formats that were selected but not completed)
     const errors = selectedFormats
@@ -2013,12 +2003,16 @@ class MathPixConvertMode {
   cancelConversion() {
     // Parcel 10l: stop the client polling. It cannot stop the request
     // MathPix already received, so this saves no charge.
-    if (!this.isConverting || this.cancelRequested) return;
-    this.cancelRequested = true;
-    const apiClient = window.getMathPixConvertClient?.();
-    if (apiClient && this.activeConversionId) {
-      apiClient.cancelConversion(this.activeConversionId);
-    }
+    // Parcel T-64: reset at once instead of waiting for the poll loop to wake.
+    // The token bump makes every late callback and the run's tail do nothing,
+    // and an id that arrives later is cancelled in onStart.
+    if (!this.isConverting) return;
+    const cancelBtn = document.getElementById("convert-mode-cancel-btn");
+    const convertBtn = document.getElementById("convert-mode-convert-btn");
+    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
+    this._abandonRun();
+    this.completedDownloads = new Map();
+    if (cancelHadFocus && convertBtn) convertBtn.focus();
     this.showNotification("Conversion cancelled", "info");
     logInfo("Conversion cancelled by user");
   }

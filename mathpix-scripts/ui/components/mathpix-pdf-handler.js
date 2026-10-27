@@ -2563,8 +2563,14 @@ class MathPixPDFHandler extends MathPixBaseModule {
    * @updated 2.1.1 - Unified drop zone reset implementation
    */
   cancelPDFProcessing() {
-    // Hide PDF options interface
+    // Read where focus is before anything is hidden: hiding the options takes
+    // the focused Cancel button with it, and focus would drop to the page
     const pdfOptionsContainer = document.getElementById("mathpix-pdf-options");
+    const focusWasInOptions =
+      !!pdfOptionsContainer &&
+      pdfOptionsContainer.contains(document.activeElement);
+
+    // Hide PDF options interface
     if (pdfOptionsContainer) {
       pdfOptionsContainer.style.display = "none";
     }
@@ -2584,6 +2590,11 @@ class MathPixPDFHandler extends MathPixBaseModule {
 
     // UNIFIED DROP ZONE: Reset main drop zone to initial state
     this.resetDropZoneToInitial();
+
+    // Put focus back on the drop zone, the control the person started from
+    if (focusWasInOptions) {
+      document.getElementById("mathpix-drop-zone")?.focus();
+    }
 
     this.showNotification("PDF processing cancelled", "info");
     logInfo("PDF processing cancelled by user");
