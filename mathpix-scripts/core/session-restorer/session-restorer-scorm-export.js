@@ -112,6 +112,8 @@
     htmlTags: true,
     width: 0,
     outMath: { output_format: "latex" },
+    // Keeps "(c)" as typed: the library's "replacements" rule would turn it into a copyright sign
+    disableRules: ["replacements"],
   });
 
   /** Registry stub that makes writeAppendix REMOVE the appendix wholesale. */

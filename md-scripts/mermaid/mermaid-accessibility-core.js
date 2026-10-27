@@ -157,9 +157,13 @@ window.MermaidAccessibility = (function () {
 
   // The one sentence a failed diagram is described by, on every path. Same
   // wording as the short line in mermaid-controls.js (noteRenderFailure); the
-  // technical message stays inside the "Technical Error Details" disclosure.
+  // technical message goes to the console only (parcel 18r).
   const FAILURE_MESSAGE =
     "This diagram could not be drawn. Its source text is shown instead.";
+
+  // The short "could not be drawn" line a render site writes when its render
+  // has already rejected (mermaid-controls.js noteRenderFailure).
+  const RENDER_FAILED_NOTE_SELECTOR = ".mermaid-render-failed-note";
 
   // A box inside one of these is already read by it, so it adds no live role.
   const LIVE_ANCESTOR_SELECTOR = [
@@ -328,6 +332,14 @@ window.MermaidAccessibility = (function () {
   ) {
     const retryKey = `${diagramId}-retry`;
 
+    // A rejected render never produces an SVG, so there is nothing to wait
+    // for once its short line is present (parcels 18o and 18r). Waiting on
+    // anyway made the full error box arrive ~4.4 s later and speak the
+    // sentence again.
+    if (container.querySelector(RENDER_FAILED_NOTE_SELECTOR)) {
+      return null;
+    }
+
     // Check if we're already retrying this diagram
     if (retryStore.has(retryKey)) {
       logInfo(
@@ -360,7 +372,28 @@ window.MermaidAccessibility = (function () {
       }
 
       // Wait for the specified delay
-      await new Promise((resolve) => setTimeout(resolve, delay));
+      // The delay ends early if the short line arrives meanwhile (Chat starts
+      // waiting before its render rejects).
+      await new Promise((resolve) => {
+        let timer = null;
+        const observer = new MutationObserver(() => {
+          if (container.querySelector(RENDER_FAILED_NOTE_SELECTOR)) {
+            finish();
+          }
+        });
+        function finish() {
+          clearTimeout(timer);
+          observer.disconnect();
+          resolve();
+        }
+        timer = setTimeout(finish, delay);
+        observer.observe(container, { childList: true, subtree: true });
+      });
+
+      if (container.querySelector(RENDER_FAILED_NOTE_SELECTOR)) {
+        retryStore.delete(retryKey);
+        return null;
+      }
 
       attempts++;
       const retryState = retryStore.get(retryKey);
@@ -724,10 +757,11 @@ window.MermaidAccessibility = (function () {
     const errorContainer = document.createElement("div");
     errorContainer.className = "mermaid-error-fallback";
 
-    // Say it once: where a live region already holds the diagram (the editor's
-    // #output, Chat's message list) the box is read by it, and its own alert
-    // would speak the same text again. Only a surface with no live ancestor
-    // (the OpenRouter results panel) keeps the box's own announcement.
+    // Say it once: where a live region already holds the diagram (Chat's
+    // message list) the box is read by it, and its own alert would speak the
+    // same text again. A surface with no live ancestor keeps the box's own
+    // announcement: the OpenRouter results panel, and the editor's #output,
+    // which is not live since 27 October 2026 (4733a3f).
     if (!mermaidDiv.closest(LIVE_ANCESTOR_SELECTOR)) {
       errorContainer.setAttribute("role", "alert");
       errorContainer.setAttribute("aria-live", "polite");
@@ -737,28 +771,12 @@ window.MermaidAccessibility = (function () {
     errorPara.className = "mermaid-error-message";
     errorPara.textContent = errorAnalysis.userFriendlyMessage;
 
-    // Technical error details (collapsible)
-    let technicalDetails = null;
+    // No technical disclosure in the box: the technical message stays in the
+    // console (parcel 18r, Matthew's ruling of 22 October 2026).
     if (originalError && originalError.message) {
-      technicalDetails = document.createElement("details");
-      technicalDetails.className = "mermaid-error-details";
-
-      const summary = document.createElement("summary");
-      summary.textContent = "Technical Error Details";
-      summary.style.cursor = "pointer";
-      summary.style.marginBottom = "0.5em";
-
-      const errorDetails = document.createElement("pre");
-      errorDetails.className = "mermaid-error-technical";
-      errorDetails.style.fontSize = "0.9em";
-      errorDetails.style.color = "#666";
-      errorDetails.style.background = "#f5f5f5";
-      errorDetails.style.padding = "0.5em";
-      errorDetails.style.borderRadius = "3px";
-      errorDetails.textContent = originalError.message;
-
-      technicalDetails.appendChild(summary);
-      technicalDetails.appendChild(errorDetails);
+      logWarn(
+        `[Mermaid Accessibility] Diagram ${diagramId} failed: ${originalError.message}`
+      );
     }
 
     // Code display
@@ -799,9 +817,6 @@ window.MermaidAccessibility = (function () {
 
     // Assemble error fallback
     errorContainer.appendChild(errorPara);
-    if (technicalDetails) {
-      errorContainer.appendChild(technicalDetails);
-    }
     errorContainer.appendChild(codeBlock);
     if (retryContainer.children.length > 0) {
       errorContainer.appendChild(retryContainer);

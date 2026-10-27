@@ -867,6 +867,8 @@ const MATHPIX_CONFIG = {
         include_table_html: true, // HTML table output (default, explicit)
         include_error: true, // Surface parse errors for debugging
       },
+      // Keeps "(c)" as typed: the library's "replacements" rule would turn it into a copyright sign
+      disableRules: ["replacements"],
     },
 
     /**
