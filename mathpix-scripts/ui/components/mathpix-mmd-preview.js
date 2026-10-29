@@ -121,6 +121,32 @@ const MAX_HEADING_LEVEL = 6;
 // surrounding level, so rendered content starts at h4 as it does there.
 const FALLBACK_BASE_HEADING_LEVEL = 3;
 
+// PN-2 (PN-D1, PN-D1a): the renderer writes every paragraph as a bare <div>. A bare
+// div that holds none of these becomes a <p>. mjx-container is NOT listed: it is
+// phrasing content, so a paragraph with maths in it is still a paragraph.
+const PARAGRAPH_BLOCK_SELECTOR =
+  "div, p, table, figure, ul, ol, li, pre, blockquote, h1, h2, h3, h4, h5, h6, hr, section, article, details, dl, form, nav, aside, header, footer";
+
+// RA-72 (register 56): the SCORM export knows the siunitx-style commands (\SI, \si, \unit, \num, \ang
+// and the prefix and unit names); the CDN library does not and draws an empty equation. The page
+// publishes the export's table as window.SI_UNIT_MACROS; renderToString expands the outermost
+// commands before the library sees them and puts the author's own TeX back into the hidden copy.
+const SI_TABLE_GLOBAL = "SI_UNIT_MACROS";
+// \qty: the export's siunitx \qty is a different command from the physics one some libraries carry,
+// so the preview leaves it alone (RA-71 P7).
+const SI_EXPAND_EXCLUDED = Object.freeze(["qty"]);
+// Nested commands (\SI{5}{\micro\farad}) need repeated passes; the deepest table entry is two levels.
+const SI_EXPAND_MAX_PASSES = 8;
+// A name the document defines for itself is the author's, whatever the table says.
+const SI_AUTHOR_DEFINITION_PATTERN =
+  /\\(?:(?:re|provide)?newcommand\*?|DeclareMathOperator\*?|def|let)\s*\{?\s*\\([A-Za-z]+)/g;
+// The commands mean something only inside maths, so prose and code are never touched. These are the
+// \begin{...} environments that are maths without a $ or \( delimiter.
+const SI_MATH_ENVIRONMENT_PATTERN =
+  /\\begin\{(equation|align|gather|multline|eqnarray|displaymath|math)(\*?)\}/y;
+// The library keeps the TeX of each equation in a hidden <latex> element; that is the copy put back.
+const SI_HIDDEN_LATEX_PATTERN = /(<latex\b[^>]*>)([\s\S]*?)(<\/latex>)/g;
+
 /**
  * @class MathPixMMDPreview
  * @description CDN Loader and Preview Renderer for MathPix Markdown
@@ -146,6 +172,284 @@ const FALLBACK_BASE_HEADING_LEVEL = 3;
  * @since 4.0.0
  */
 class MathPixMMDPreview {
+  /**
+   * @method expandSIUnitCommands
+   * @static
+   * @description
+   * RA-72: expands the outermost SI-family commands in `src` to plain TeX the library can draw.
+   * Names the document defines itself are left alone, as are `\\` line breaks. Returns the expanded
+   * text and the [expanded, original] pairs needed to restore the author's TeX afterwards.
+   *
+   * @param {string} src - MMD source
+   * @param {Object} table - window.SI_UNIT_MACROS: name to text, or name to [text, argument count]
+   * @returns {{text: string, pairs: Array<[string, string]>}}
+   * @since RA-72
+   */
+  static expandSIUnitCommands(src, table) {
+    const arity = (def) => (Array.isArray(def) ? def[1] : 0);
+    const body = (def) => (Array.isArray(def) ? def[0] : def);
+
+    const authorDefined = new Set();
+    for (const match of src.matchAll(SI_AUTHOR_DEFINITION_PATTERN)) {
+      authorDefined.add(match[1]);
+    }
+
+    // Longest first, so \degreeCelsius is not read as \degree
+    const names = Object.keys(table)
+      .filter((n) => !SI_EXPAND_EXCLUDED.includes(n) && !authorDefined.has(n))
+      .sort((a, b) => b.length - a.length);
+
+    const readGroup = (s, i) => {
+      if (s[i] !== "{") return null;
+      let depth = 0;
+      for (let j = i; j < s.length; j++) {
+        if (s[j] === "\\") {
+          j++;
+          continue;
+        }
+        if (s[j] === "{") depth++;
+        else if (s[j] === "}" && --depth === 0) return [s.slice(i + 1, j), j + 1];
+      }
+      return null;
+    };
+
+    // The command starting at s[i], with its end and expansion, or null
+    const readCommand = (s, i, recurse) => {
+      const name = names.find(
+        (n) => s.startsWith(n, i + 1) && !/[A-Za-z]/.test(s[i + 1 + n.length] || ""),
+      );
+      if (!name) return null;
+      let pos = i + 1 + name.length;
+      const args = [];
+      for (let k = 0; k < arity(table[name]); k++) {
+        while (s[pos] === " ") pos++;
+        const group = readGroup(s, pos);
+        if (!group) return null;
+        args.push(group[0]);
+        pos = group[1];
+      }
+      let expansion = body(table[name]);
+      args.forEach((arg, k) => {
+        expansion = expansion.split("#" + (k + 1)).join(arg);
+      });
+      return { end: pos, expansion: recurse ? recurse(expansion) : expansion };
+    };
+
+    // Every command inside a piece of text, repeatedly, until none is left
+    const expandAll = (text) => {
+      let out = text;
+      for (let pass = 0; pass < SI_EXPAND_MAX_PASSES; pass++) {
+        let result = "";
+        let changed = false;
+        for (let i = 0; i < out.length; i++) {
+          if (out[i] === "\\" && out[i + 1] === "\\") {
+            result += "\\\\";
+            i++;
+            continue;
+          }
+          const found = out[i] === "\\" ? readCommand(out, i, null) : null;
+          if (!found) {
+            result += out[i];
+            continue;
+          }
+          result += found.expansion;
+          changed = true;
+          i = found.end - 1;
+        }
+        out = result;
+        if (!changed) break;
+      }
+      return out;
+    };
+
+    // Walk the maths spans only; everything between them is copied through untouched
+    let text = "";
+    const expansions = [];
+    let copied = 0;
+    for (const [from, to] of MathPixMMDPreview.findMathSpans(src)) {
+      text += src.slice(copied, from);
+      copied = to;
+      for (let i = from; i < to; i++) {
+        if (src[i] === "\\" && src[i + 1] === "\\") {
+          text += "\\\\";
+          i++;
+          continue;
+        }
+        const found = src[i] === "\\" ? readCommand(src, i, expandAll) : null;
+        if (!found || found.end > to) {
+          text += src[i];
+          continue;
+        }
+        const original = src.slice(i, found.end);
+        if (found.expansion !== original) {
+          expansions.push({ expanded: found.expansion, original, start: text.length });
+        }
+        text += found.expansion;
+        i = found.end - 1;
+      }
+    }
+    text += src.slice(copied);
+    return { text, expansions };
+  }
+
+  /**
+   * @method findMathSpans
+   * @static
+   * @description
+   * RA-72: the [start, end) offsets of the maths inside `src` ($...$, $$...$$, \(...\), \[...\] and
+   * the maths environments), skipping code spans and escaped dollars. A single $ pair never crosses
+   * a blank line, so a stray dollar sign in prose does not swallow the paragraphs after it.
+   *
+   * @param {string} src - MMD source
+   * @returns {Array<[number, number]>}
+   * @since RA-72
+   */
+  static findMathSpans(src) {
+    const spans = [];
+    // The next occurrence of `needle` at or after `from` that is not backslash-escaped, or -1
+    const findUnescaped = (needle, from) => {
+      for (let at = src.indexOf(needle, from); at >= 0; at = src.indexOf(needle, at + 1)) {
+        let slashes = 0;
+        while (src[at - 1 - slashes] === "\\") slashes++;
+        if (slashes % 2 === 0) return at;
+      }
+      return -1;
+    };
+
+    let i = 0;
+    while (i < src.length) {
+      const ch = src[i];
+
+      if (ch === "`") {
+        let run = 1;
+        while (src[i + run] === "`") run++;
+        const close = src.indexOf("`".repeat(run), i + run);
+        i = close >= 0 ? close + run : i + run;
+        continue;
+      }
+
+      if (ch === "\\") {
+        const pair = src.slice(i, i + 2);
+        const closer = pair === "\\(" ? "\\)" : pair === "\\[" ? "\\]" : null;
+        const end = closer ? src.indexOf(closer, i + 2) : -1;
+        if (end >= 0) {
+          spans.push([i + 2, end]);
+          i = end + 2;
+          continue;
+        }
+        SI_MATH_ENVIRONMENT_PATTERN.lastIndex = i;
+        const env = SI_MATH_ENVIRONMENT_PATTERN.exec(src);
+        if (env) {
+          const bodyStart = i + env[0].length;
+          const endTag = "\\end{" + env[1] + env[2] + "}";
+          const endAt = src.indexOf(endTag, bodyStart);
+          if (endAt >= 0) {
+            spans.push([bodyStart, endAt]);
+            i = endAt + endTag.length;
+            continue;
+          }
+        }
+        i += 2; // a backslash and the character it escapes, \$ included
+        continue;
+      }
+
+      if (ch === "$") {
+        const delimiter = src[i + 1] === "$" ? "$$" : "$";
+        const end = findUnescaped(delimiter, i + delimiter.length);
+        const crossesBlankLine =
+          end >= 0 && delimiter === "$" && /\n\s*\n/.test(src.slice(i, end));
+        if (end >= 0 && !crossesBlankLine) {
+          spans.push([i + delimiter.length, end]);
+          i = end + delimiter.length;
+          continue;
+        }
+        i += delimiter.length;
+        continue;
+      }
+
+      i++;
+    }
+    return spans;
+  }
+
+  /**
+   * @method restoreSIUnitTex
+   * @static
+   * @description
+   * RA-72: puts the author's own TeX back into the hidden <latex> copy of each equation, so the
+   * page's hidden TeX is what the author typed. Nothing outside those elements is touched: a short
+   * expansion such as "3" or "/" would otherwise be found all over the markup.
+   *
+   * Occurrences are matched to the source by order, so a copy the author typed themselves (the
+   * very text an expansion produces) stays as typed. If the counts disagree the expansion is left
+   * in the hidden copy rather than risk rewriting the author's own TeX.
+   *
+   * @param {string} html - Rendered HTML
+   * @param {{text: string, expansions: Array<{expanded: string, original: string, start: number}>}} prepared - From expandSIUnitCommands
+   * @returns {string}
+   * @since RA-72
+   */
+  static restoreSIUnitTex(html, prepared) {
+    if (!prepared.expansions.length) return html;
+
+    const escapeHtml = (s) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const occurrences = (haystack, needle) => {
+      const at = [];
+      for (let i = haystack.indexOf(needle); i >= 0; i = haystack.indexOf(needle, i + needle.length)) {
+        at.push(i);
+      }
+      return at;
+    };
+
+    // Only the source's maths counts: an expansion's twin in prose or code never reaches a hidden copy
+    const mathSpans = MathPixMMDPreview.findMathSpans(prepared.text);
+    const inMaths = (at) => mathSpans.some(([from, to]) => at >= from && at < to);
+
+    const byExpanded = new Map();
+    prepared.expansions.forEach((e) => {
+      if (!byExpanded.has(e.expanded)) byExpanded.set(e.expanded, []);
+      byExpanded.get(e.expanded).push(e);
+    });
+
+    // Longest expansion first, so one that contains another is put back whole
+    [...byExpanded.keys()]
+      .sort((a, b) => b.length - a.length)
+      .forEach((expanded) => {
+        const originalAt = new Map(byExpanded.get(expanded).map((e) => [e.start, e.original]));
+        // In source order: the original for an occurrence we made, null for one the author typed
+        const wanted = occurrences(prepared.text, expanded)
+          .filter(inMaths)
+          .map((at) => originalAt.get(at) ?? null);
+        const escaped = escapeHtml(expanded);
+
+        let inHidden = 0;
+        html.replace(SI_HIDDEN_LATEX_PATTERN, (match, open, body) => {
+          inHidden += occurrences(body, escaped).length;
+          return match;
+        });
+        if (inHidden !== wanted.length) {
+          logWarn("SI unit restore skipped: hidden copies do not line up with the source", {
+            expanded,
+          });
+          return;
+        }
+
+        let k = 0;
+        html = html.replace(SI_HIDDEN_LATEX_PATTERN, (match, open, body, close) => {
+          let out = "";
+          let from = 0;
+          for (const at of occurrences(body, escaped)) {
+            const original = wanted[k++];
+            out += body.slice(from, at) + (original === null ? escaped : escapeHtml(original));
+            from = at + escaped.length;
+          }
+          return open + out + body.slice(from) + close;
+        });
+      });
+    return html;
+  }
+
   /**
    * @method findBaseHeadingLevel
    * @static
@@ -201,6 +505,54 @@ class MathPixMMDPreview {
     }
 
     return FALLBACK_BASE_HEADING_LEVEL;
+  }
+
+  /**
+   * @method promoteParagraphs
+   * @static
+   * @description
+   * Turns each bare <div> (no attributes at all) that holds text and inline
+   * elements only into a <p>, so a screen-reader user can move paragraph by
+   * paragraph. A div with any attribute, or with a block-level descendant
+   * (see PARAGRAPH_BLOCK_SELECTOR), is left alone; so is an empty one.
+   *
+   * Shared by the Resume preview (after render, before typeset) and the
+   * standalone HTML and SCORM export post-pass; it works on the rendered DOM
+   * only. Children are MOVED, never copied, so MathJax nodes survive.
+   *
+   * @param {Element} root - Container holding freshly rendered HTML
+   * @param {object} [options]
+   * @param {string} [options.skipWithin] - CSS selector; a div inside a match
+   *   is left alone (the export uses it to keep description panels as they are)
+   * @returns {number} Number of divs promoted
+   * @since PN-2
+   */
+  static promoteParagraphs(root, { skipWithin = null } = {}) {
+    if (!root) {
+      logWarn("No root provided for paragraph promotion");
+      return 0;
+    }
+
+    const doc = root.ownerDocument;
+    let promoted = 0;
+
+    Array.from(root.querySelectorAll("div")).forEach((div) => {
+      if (div.attributes.length > 0) return;
+      if (div.firstChild === null) return;
+      if (skipWithin && div.closest(skipWithin)) return;
+      if (div.querySelector(PARAGRAPH_BLOCK_SELECTOR)) return;
+
+      const paragraph = doc.createElement("p");
+
+      // Move, do not copy - preserves MathJax nodes inside the paragraph
+      while (div.firstChild) paragraph.appendChild(div.firstChild);
+
+      div.replaceWith(paragraph);
+      promoted++;
+    });
+
+    logDebug("Paragraphs promoted", { promoted });
+    return promoted;
   }
 
   /**
@@ -1560,9 +1912,18 @@ class MathPixMMDPreview {
       // where the blob map is already populated from a previous render)
       const chemRewritten = this._rewriteChemistryUrls(processedContent);
 
-      const html = window.markdownToHTML(
-        chemRewritten,
-        this.config.RENDER_OPTIONS,
+      // RA-72: the SI unit commands the library does not know, expanded before it sees them
+      const siTable = window[SI_TABLE_GLOBAL];
+      if (!siTable) {
+        logWarn("SI unit table not loaded - \\SI and friends render as before");
+      }
+      const siPrepared = siTable
+        ? MathPixMMDPreview.expandSIUnitCommands(chemRewritten, siTable)
+        : { text: chemRewritten, expansions: [] };
+
+      const html = MathPixMMDPreview.restoreSIUnitTex(
+        window.markdownToHTML(siPrepared.text, this.config.RENDER_OPTIONS),
+        siPrepared,
       );
       logDebug("Content rendered to string", {
         inputLength: mmdContent.length,
@@ -1634,6 +1995,9 @@ class MathPixMMDPreview {
       // AL-2: restore the alt text the preprocess strip removed
       this._restoreFigureAlts(targetElement);
       this._decodeMarkdownAlts(targetElement); // UT-7
+
+      // PN-2: bare text divs become paragraphs, before MathJax reconciliation
+      MathPixMMDPreview.promoteParagraphs(targetElement);
 
       // Check if CDN already rendered math (look for mjx-container elements)
       const hasRenderedMath = targetElement.querySelector("mjx-container");

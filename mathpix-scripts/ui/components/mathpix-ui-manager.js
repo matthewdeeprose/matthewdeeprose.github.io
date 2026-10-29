@@ -907,7 +907,8 @@ class MathPixUIManager extends MathPixBaseModule {
         }
 
         if (this.controller.modeSwitcher) {
-          this.controller.modeSwitcher.switchToUploadMode();
+          // T-68a: the person just chose this option; the radio state and the panel already say so
+          this.controller.modeSwitcher.switchToUploadMode({ quiet: true });
           logDebug("Switched to upload mode via UI");
         }
       };
@@ -964,7 +965,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
         // NOW switch to draw mode (modeSwitcher exists now)
         if (this.controller.modeSwitcher) {
-          this.controller.modeSwitcher.switchToDrawMode();
+          this.controller.modeSwitcher.switchToDrawMode({ quiet: true });
           logDebug("Switched to draw mode via UI");
         } else {
           logError("Mode switcher not available after initialization");
@@ -1042,7 +1043,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
         // Switch to convert mode via mode switcher
         if (this.controller.modeSwitcher) {
-          this.controller.modeSwitcher.switchToConvertMode();
+          this.controller.modeSwitcher.switchToConvertMode({ quiet: true });
           logDebug("Switched to convert mode via UI");
         } else {
           logWarn(
@@ -1082,7 +1083,7 @@ class MathPixUIManager extends MathPixBaseModule {
 
         // Switch to resume mode via mode switcher
         if (this.controller.modeSwitcher) {
-          this.controller.modeSwitcher.switchToResumeMode();
+          this.controller.modeSwitcher.switchToResumeMode({ quiet: true });
           logDebug("Switched to resume mode via UI");
         } else {
           logWarn(
@@ -1496,19 +1497,14 @@ class MathPixUIManager extends MathPixBaseModule {
 
       // Store original focus and scroll position
       const originalFocus = document.activeElement;
-      const originalScrollPos =
-        window.pageYOffset || document.documentElement.scrollTop;
+      const originalScrollPos = window.scrollY;
 
-      // Prevent background scrolling
-      const originalBodyOverflow = document.body.style.overflow;
-      const originalBodyPosition = document.body.style.position;
-      const originalBodyTop = document.body.style.top;
-      const originalBodyWidth = document.body.style.width;
-
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${originalScrollPos}px`;
-      document.body.style.width = "100%";
+      // Prevent background scrolling by hiding overflow on <html>, the same
+      // lock UniversalModal uses. The old fixed-body lock clipped the page to
+      // body's 100vh box (see preventBackgroundScroll in js/universal-modal.js).
+      const root = document.documentElement;
+      const originalHtmlOverflowY = root.style.overflowY;
+      root.style.overflowY = "hidden";
 
       // Make background inert
       const mainElements = document.querySelectorAll(
@@ -1591,13 +1587,16 @@ class MathPixUIManager extends MathPixBaseModule {
         backdrop.removeEventListener("click", closeModal);
 
         // Restore background
-        document.body.style.overflow = originalBodyOverflow;
-        document.body.style.position = originalBodyPosition;
-        document.body.style.top = originalBodyTop;
-        document.body.style.width = originalBodyWidth;
+        root.style.overflowY = originalHtmlOverflowY;
 
-        // Restore scroll position
-        window.scrollTo({ top: originalScrollPos, left: 0, behavior: "instant" });
+        // The lock stops the person scrolling, not code; put the page back
+        // only if something moved it while the viewer was open.
+        if (window.scrollY !== originalScrollPos) {
+          logWarn(
+            `Page scrolled from ${originalScrollPos}px to ${window.scrollY}px while the full screen view was open; restoring`,
+          );
+          window.scrollTo({ top: originalScrollPos, left: 0, behavior: "instant" });
+        }
 
         // Remove inert from background elements
         mainElements.forEach((el) => el.removeAttribute("inert"));

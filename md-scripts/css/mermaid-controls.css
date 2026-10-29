@@ -352,12 +352,6 @@
   overflow-wrap: anywhere;
 }
 
-.mermaid-error-fallback .mermaid-retry-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
 /* Parcel 18e (21 October 2026): the two looks around the failure box. Colours
    are untouched; only the theme's thin side borders on .mermaid and the
    spacing of the short holding line are handled here.

@@ -295,16 +295,21 @@ window.MermaidAccessibilityUtils = (function () {
 
     if (!code) return result;
 
-    // Look for accTitle and accDescr directives
-    const titleMatch = code.match(/accTitle\s*:\s*(.*?)(?:\n|$)/);
-    const descrMatch = code.match(/accDescr\s*:\s*(.*?)(?:\n|$)/);
+    // Look for accTitle and accDescr directives. The gap after the colon is
+    // spaces and tabs only: `\s*` there ran across the newline, so an empty
+    // `accTitle:` line took the NEXT source line as its value (item 130 sweep
+    // 6, F1). A value that trims to nothing is no override.
+    const titleMatch = code.match(/accTitle\s*:[ \t]*(.*?)(?:\n|$)/);
+    const descrMatch = code.match(/accDescr\s*:[ \t]*(.*?)(?:\n|$)/);
+    const titleText = titleMatch ? titleMatch[1].trim() : "";
+    const descrText = descrMatch ? descrMatch[1].trim() : "";
 
-    if (titleMatch && titleMatch[1]) {
-      result.title = decodeAuthorEscapes(titleMatch[1].trim());
+    if (titleText) {
+      result.title = decodeAuthorEscapes(titleText);
     }
 
-    if (descrMatch && descrMatch[1]) {
-      result.description = decodeAuthorEscapes(descrMatch[1].trim());
+    if (descrText) {
+      result.description = decodeAuthorEscapes(descrText);
     }
 
     // Also check for multi-line descriptions
@@ -557,6 +562,62 @@ window.MermaidAccessibilityUtils = (function () {
     },
   };
 
+  /** Prefix of the id given to a table caption that names its scrolling wrapper. */
+  const TABLE_CAPTION_ID_PREFIX = "mermaid-data-table-caption-";
+
+  /** Marks a wrapper whose region role, name and tab stop this module wrote. */
+  const TABLE_SCROLL_REGION_ATTRIBUTE = "data-scroll-region";
+
+  let tableCaptionCounter = 0;
+
+  /**
+   * Make a table's scroll wrapper reachable and named WHILE it scrolls (SC 2.1.1,
+   * 4.1.2, 1.4.10). A table too wide for its wrapper scrolls inside it; a keyboard
+   * or screen-reader user then needs to land on the scroller and to hear what it
+   * holds. Measured 28 October 2026 on the wardley Components table at 320 px: the
+   * wrapper scrolled (132 px of content in 127) and carried no role, name or
+   * tabindex, so it was reached only by the browser's own keyboard-focusable-scroller
+   * behaviour and spoken with no name. The wrapper takes the table's caption as its
+   * name and a tab stop only while it overflows, so a table that fits adds nothing
+   * to the tab order. Colours are untouched.
+   *
+   * @param {HTMLElement} wrapper - The `.mermaid-data-table-wrapper`
+   * @param {HTMLTableElement} table - The table inside it
+   */
+  function syncScrollableTableWrapper(wrapper, table) {
+    const caption = table.querySelector("caption");
+    if (!caption) return;
+
+    const sync = function () {
+      const scrolls = wrapper.scrollWidth > wrapper.clientWidth;
+      const marked = wrapper.hasAttribute(TABLE_SCROLL_REGION_ATTRIBUTE);
+      if (scrolls && !marked) {
+        if (!caption.id) {
+          tableCaptionCounter += 1;
+          caption.id = TABLE_CAPTION_ID_PREFIX + tableCaptionCounter;
+        }
+        wrapper.setAttribute("tabindex", "0");
+        wrapper.setAttribute("role", "region");
+        wrapper.setAttribute("aria-labelledby", caption.id);
+        wrapper.setAttribute(TABLE_SCROLL_REGION_ATTRIBUTE, "true");
+      } else if (!scrolls && marked) {
+        wrapper.removeAttribute("tabindex");
+        wrapper.removeAttribute("role");
+        wrapper.removeAttribute("aria-labelledby");
+        wrapper.removeAttribute(TABLE_SCROLL_REGION_ATTRIBUTE);
+      }
+    };
+
+    sync();
+    // The fragment is detached when it is decorated, so the first reading is 0: the
+    // observer reads again once the panel is laid out, and on every resize after.
+    if (typeof ResizeObserver === "function") {
+      const observer = new ResizeObserver(sync);
+      observer.observe(wrapper);
+      observer.observe(table);
+    }
+  }
+
   // DOM utility functions
   const DOMUtils = {
     /**
@@ -670,6 +731,7 @@ window.MermaidAccessibilityUtils = (function () {
           table.parentNode.insertBefore(wrapper, table);
           wrapper.appendChild(table);
         }
+        syncScrollableTableWrapper(table.parentElement, table);
 
         // data-label on each body cell, derived from the column's header.
         // Cheap, so it is done: the column index must count th AND td,

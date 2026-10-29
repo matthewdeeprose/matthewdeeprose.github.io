@@ -64,6 +64,24 @@
   const CHAT_OUTPUT_FALLBACK = 4096;
   const LOCAL_MODEL_PREFIX = "local/";
   const LOCAL_OUTPUT_CEILING = 4096;
+  // Chat's own list of Foundry output limits (parcel P12). The resolver knows no
+  // Foundry ceiling, so these ids would stop at 4,096. The seven numbers are
+  // Microsoft's published maximum output (REGISTER item 10, R10c, Microsoft Learn
+  // model table, read 29 Oct 2026). grok-4.7 has no published output cap (one
+  // 500,000 window shared by input and output), so it takes Chat's own ceiling.
+  // The resolver is shared with other tools and is not changed. Passed as its
+  // `fallback`, so the slider tops out at the smaller of this and CHAT_OUTPUT_CEILING.
+  const FOUNDRY_PUBLISHED_OUTPUT = 128000;
+  const FOUNDRY_OUTPUT_LIMIT = Object.freeze({
+    "azure-openai/gpt-6-sol": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-6-luna": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-6.1-sol": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-5.6-sol": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-5.6-terra": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-5.4-mini": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/gpt-5": FOUNDRY_PUBLISHED_OUTPUT,
+    "azure-openai/grok-4.7": CHAT_OUTPUT_CEILING,
+  });
 
   // Answer room for the Foundry thinking models (parcel 16b). These models spend
   // part of max_tokens on reasoning before the answer, so at the 1,024 default
@@ -135,8 +153,56 @@
     const base = tableAnswerRoomFor(model);
     if (!model || model.indexOf(LOCAL_MODEL_PREFIX) === 0) return base;
     const systemBox = S.els ? S.els.systemInput : null;
-    if (!systemBox || systemBox.value !== FOUNDRY_DEFAULT_SYSTEM_PROMPT) return base;
-    return Math.max(base, DEFAULT_PROMPT_ANSWER_ROOM);
+    const promptRoom =
+      systemBox && systemBox.value === FOUNDRY_DEFAULT_SYSTEM_PROMPT
+        ? Math.max(base, DEFAULT_PROMPT_ANSWER_ROOM)
+        : base;
+    return Math.max(promptRoom, fileAnswerRoomFor(model));
+  }
+  // Parcel P8b: with a file in the conversation a model starts at 8,192 (owner,
+  // 28 Oct 2026: "Default: 8,192 while a file is in the conversation"; R10b found
+  // no cut-off at 1,024 to 16,384 for a 3,750-token document, a long answer was
+  // not measured). Never more than a quarter of the model's context, because the
+  // answer reservation comes out of the context before the thread is windowed, so
+  // a large reservation on a small model would drop earlier turns and the file
+  // sooner. Aligned DOWN to a slider step; never below today's rule (the caller
+  // takes the larger); no raise when the context is not a positive finite number.
+  // Parcel P12: a Foundry model starts at 16,384 with a file (owner, 29 Oct 2026;
+  // R10d: all six tested finished a detailed answer at 16,384, two were still cut
+  // at 8,192). Same guards. OpenRouter and on-device ids keep 8,192.
+  const FILE_ANSWER_ROOM = 8192;
+  const FOUNDRY_FILE_ANSWER_ROOM = 16384;
+  const FILE_ANSWER_ROOM_CONTEXT_SHARE = 0.25;
+  const FILE_PART_TYPES = Object.freeze(["document", "file", "image_url"]);
+  // A file is in the conversation when one is held in the attach box or a live
+  // turn still carries a file part. A turn restored from a saved session keeps only
+  // a byte-free reference (no `type`), so it does not count: the next send carries
+  // no file.
+  function conversationHoldsFile() {
+    const attach = window.ChatAttach;
+    if (attach && typeof attach.hasAttachment === "function" && attach.hasAttachment()) {
+      return true;
+    }
+    return S.messages.some(function (m) {
+      return (
+        m &&
+        Array.isArray(m.content) &&
+        m.content.some(function (p) {
+          return p && FILE_PART_TYPES.indexOf(p.type) !== -1;
+        })
+      );
+    });
+  }
+  function fileAnswerRoomFor(model) {
+    if (!model || model.indexOf(LOCAL_MODEL_PREFIX) === 0) return 0;
+    if (!conversationHoldsFile()) return 0;
+    const context = window.Chat ? window.Chat.getContextLimit(model) : NaN;
+    if (!(Number.isFinite(context) && context > 0)) return 0;
+    const room = model.indexOf(FOUNDRY_ID_PREFIX) === 0 ? FOUNDRY_FILE_ANSWER_ROOM : FILE_ANSWER_ROOM;
+    const wanted = Math.min(room, Math.floor(context * FILE_ANSWER_ROOM_CONTEXT_SHARE));
+    const r = maxTokenRange();
+    if (wanted < r.min) return 0;
+    return r.min + Math.floor((wanted - r.min) / r.step) * r.step;
   }
   // The value this code last wrote, so a value the person set is told apart from
   // one it set. null until the first write.
@@ -360,7 +426,7 @@
     if (!isLocal && window.ModelOutputBudget) {
       ceiling = window.ModelOutputBudget.for(model, {
         toolCeiling: CHAT_OUTPUT_CEILING,
-        fallback: CHAT_OUTPUT_FALLBACK,
+        fallback: FOUNDRY_OUTPUT_LIMIT[model] || CHAT_OUTPUT_FALLBACK,
       });
     }
     const base = r.min + Math.max(0, Math.floor((ceiling - r.min) / r.step)) * r.step;
@@ -1816,6 +1882,14 @@
         // The answer room follows the box (parcel 15f).
         if (S.currentModel) /*15F-REAPPLY-MENU*/ applyModelTokenRange(S.currentModel);
         S.logInfo("Chat system-prompt preset changed to:", key || "none (custom)");
+      });
+    }
+    // Parcel P8a: the room follows the box (parcel 15f), so it is re-applied when the
+    // person types, pastes, cuts or empties it, not only at Send; otherwise the slider
+    // shows one value and Send uses another. Silent, as applyModelTokenRange is.
+    if (els.systemInput) {
+      els.systemInput.addEventListener("input", function () {
+        if (S.currentModel) /*P8A-REAPPLY-INPUT*/ applyModelTokenRange(S.currentModel);
       });
     }
     wired = true;

@@ -432,8 +432,9 @@
     TABLE_CLASS: "mdSortableTable-data-table",
     NAME_PREFIX: "Table ",
     HEADING_ID_PREFIX: "imgdesc-table-heading-",
-    // The prompt asks for a visible "Table: …" line directly before every table (H-114);
-    // a paragraph that starts this way names the table that follows it.
+    // The prompt now asks for a level-4 "Data table: …" heading directly before every table,
+    // which the heading branch in _enhanceDescriptionTables names. Before that (H-114) it asked
+    // for a visible "Table: …" line; a paragraph that starts this way still names the table.
     TITLE_TEST: /^Table:\s*\S/,
     TITLE_ID_PREFIX: "imgdesc-table-title-",
   });

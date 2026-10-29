@@ -1731,3 +1731,16 @@
 #chat-model-search {
   border-radius: 4px;
 }
+
+/* Owner's preference (28 Oct 2026): a framed attach box, and smaller Remove and Open in MathPix buttons. */
+/* The frame shows only while the box has something in it: the card host, or the advice line ("Reading <name>…") before the card appears (owner's pick, 28 Oct 2026). */
+.chat-attach-body:has(> .chat-attachment-card-host:not([hidden]), #chat-attachment-advice:not([hidden])) {
+  border: 1px solid currentcolor;
+  padding: 10px;
+  border-radius: 4px;
+}
+
+.chat-attachment-remove,
+.chat-open-mathpix {
+  font-size: 0.8rem;
+}

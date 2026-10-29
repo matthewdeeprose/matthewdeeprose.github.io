@@ -123,13 +123,6 @@ const GraphBuilderUI = (function () {
     switchTo(screenName) {
       logInfo(`[Graph Builder UI] Switching to screen: ${screenName}`);
 
-      // Hide all screens
-      Object.values(this.screens).forEach((screen) => {
-        if (screen) {
-          screen.classList.remove("active");
-        }
-      });
-
       // Map kebab-case to camelCase for screen names
       const screenMap = {
         "data-input": "dataInput",
@@ -142,7 +135,22 @@ const GraphBuilderUI = (function () {
       const targetScreen = this.screens[targetScreenKey];
 
       if (targetScreen) {
+        // Show the target and focus its heading BEFORE hiding the old screen,
+        // so focus never rests on <body> while the screens swap (a screen
+        // reader reads the whole new screen from the top when it does).
         targetScreen.classList.add("active");
+        const heading = targetScreen.querySelector("h2");
+        if (heading) {
+          heading.focus();
+        }
+
+        // Hide every other screen
+        Object.values(this.screens).forEach((screen) => {
+          if (screen && screen !== targetScreen) {
+            screen.classList.remove("active");
+          }
+        });
+
         state.currentScreen = screenName;
 
         // Phase 3.1.b — Refresh chart-type availability whenever the user
@@ -159,16 +167,14 @@ const GraphBuilderUI = (function () {
           chartTypeSelector.refreshAvailability();
         }
 
-        // Focus management for accessibility
-        setTimeout(() => {
-          const heading = targetScreen.querySelector("h2");
-          if (heading) {
-            heading.focus();
-          }
-        }, 50); // Reduced timeout since we're not waiting for scroll anymore
-
         logInfo(`[Graph Builder UI] Successfully switched to ${screenName}`);
       } else {
+        // Unknown screen: keep the old behaviour of showing none
+        Object.values(this.screens).forEach((screen) => {
+          if (screen) {
+            screen.classList.remove("active");
+          }
+        });
         logError(`[Graph Builder UI] Screen not found: ${screenName}`);
         GraphBuilderNotifications.error(
           `Error: Could not switch to ${screenName}`

@@ -248,6 +248,13 @@ window.MermaidDiagramDetection = (function () {
     // The legacy keyword scan has no ishikawa branch either, and is left as
     // found: the spellings that misroute are recorded in the gold (IK14).
     ishikawa: "ishikawa",
+    // Item 130, 28 October 2026: detectType returns "wardley" for a
+    // `wardley-beta` source (census). Same reason as the ishikawa row above -
+    // without it the wardley generator registers and is never called, and a
+    // Wardley source resolves to `unsupported:wardley`. The upper-case header
+    // and bare `wardley` spellings that misroute or are refused are recorded
+    // in the gold (WD16), not here.
+    wardley: "wardley",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

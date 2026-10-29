@@ -4939,9 +4939,26 @@
               <pre><code class="language-json">
 "descriptions": {
     "short": "Your concise chart description here.",
-    "detailed": "Your detailed HTML description here. You can use paragraphs, lists, and other HTML elements."
+    "detailed": "Your detailed HTML description here. You can use paragraphs, lists, tables and links.",
+    "detailedFormat": "html"
   }
           </code></pre>
+              <p>
+                The detailed description is checked before it is shown. It keeps
+                paragraphs, headings, lists, definition lists, tables (with
+                captions and <code>scope</code>), links, and basic text
+                formatting. Scripts, styles, forms, images, embedded content and
+                event handlers are removed. Links must be <code>http</code>,
+                <code>https</code>, <code>mailto</code> or relative. Top-level
+                headings (<code>h1</code>, <code>h2</code>) are shown as
+                level-4 headings, because the panel already uses level 3.
+              </p>
+              <p>
+                Set <code>detailedFormat</code> to <code>"text"</code> to write
+                plain text instead: blank lines start new paragraphs and any
+                angle brackets are shown literally. The default is
+                <code>"html"</code>.
+              </p>
               <h3>Creating charts</h3>
               <p>Chart.js is supported.</p>
               <div class="codeWrapper">
@@ -7549,7 +7566,7 @@ Science,91</pre
                 <p
                   id="resume-storage-summary"
                   class="resume-storage-summary"
-                  aria-live="polite"
+                  aria-live="off"
                 >
                   Calculating…
                 </p>
@@ -22842,6 +22859,9 @@ Science,91</pre
     <!-- TTS SRE Loader — Stage 0: shared Clearspeak engine loader -->
     <script src="tts/tts-sre-loader.js"></script>
 
+    <!-- Shared maths speech rules (RA-69): the same repairs the export's Read Aloud makes before SRE reads an equation. Vendored from scorm-builder; consumed by tts-rewriters.js -->
+    <script src="scorm-builder/source/templates/js/maths-speech-rules.js"></script>
+
     <!-- TTS Rewriters — Stage 2: shared per-element rewriter helpers (tables, …) -->
     <script src="tts/tts-rewriters.js"></script>
 
@@ -23606,10 +23626,14 @@ Science,91</pre
         window._mathJaxErrorNotification = null;
       });
     </script>
+    <!-- The export's SI unit commands (\SI, \qty, \si ...) as window.SI_UNIT_MACROS; must load before the MathJax configuration below. -->
+    <script src="scorm-builder/source/templates/js/si-macros.js"></script>
     <script>
       // Simplified, robust MathJax configuration with interactive features
       window.MathJax = {
         tex: {
+          // The same SI unit macros an export's MathJax gets (RA-71), from the one shared table.
+          macros: window.SI_UNIT_MACROS || {},
           inlineMath: [
             ["$", "$"],
             ["\\(", "\\)"],
@@ -24741,6 +24765,7 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-venn.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-treeview.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-ishikawa.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-wardley.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>

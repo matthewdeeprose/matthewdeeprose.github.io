@@ -1157,9 +1157,11 @@ class MathPixConvertUI {
     const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
     if (cancelHadFocus) this.updateConvertButtonState();
 
+    // Parcel T-69b: focus moves BEFORE the focused Cancel is hidden, so it
+    // never rests on <body>.
     if (convertBtn) convertBtn.hidden = false;
-    if (cancelBtn) cancelBtn.hidden = true;
     if (cancelHadFocus && convertBtn) convertBtn.focus();
+    if (cancelBtn) cancelBtn.hidden = true;
   }
 
   /**

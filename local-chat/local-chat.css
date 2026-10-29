@@ -979,6 +979,9 @@
 }
 
 .local-chat-preset-bar select {
+  /* Let the menu shrink to its bar: it overflowed at 320px (found by P9, 29 Oct 2026). */
+  min-width: 0;
+  max-width: 100%;
   padding: 0.25rem 0.4rem;
   border-radius: 0.25rem;
   font-size: inherit;

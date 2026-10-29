@@ -1109,8 +1109,8 @@ window.ChartControls = (function () {
       adjustContainerPadding(container);
     }, 100);
 
-    // Apply the current palette
-    applyPalette(container, canvasElement, savedPalette);
+    // Apply the current palette (T-68a: the starting palette is not announced)
+    applyPalette(container, canvasElement, savedPalette, { announce: false });
 
     // Validate PNG export for newly created chart (if enabled)
     if (PngExportValidator.config.validateOnInit) {
@@ -1185,8 +1185,15 @@ window.ChartControls = (function () {
    * @param {HTMLElement} container - The chart container
    * @param {HTMLElement} canvasElement - The canvas element
    * @param {string} paletteName - Name of the palette to apply
+   * @param {Object} [options]
+   * @param {boolean} [options.announce=true] - false applies the palette without saying so (T-68a: the first palette applied to a new chart is not a change the person made)
    */
-  function applyPalette(container, canvasElement, paletteName) {
+  function applyPalette(
+    container,
+    canvasElement,
+    paletteName,
+    { announce = true } = {}
+  ) {
     debugLog("theme", "info", `Applying palette: ${paletteName}`);
 
     // Get the palette
@@ -1756,7 +1763,9 @@ window.ChartControls = (function () {
     }
 
     // Announce to screen readers
-    announceToScreenReader(`Chart palette changed to ${paletteName}`);
+    if (announce) {
+      announceToScreenReader(`Chart palette changed to ${paletteName}`);
+    }
   }
 
   /**

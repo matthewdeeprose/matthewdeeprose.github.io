@@ -1,5 +1,9 @@
 /* Dark mode */
 
+.chat-attach-body {
+  background-color: #00131d;
+}
+
 #chat-model-search {
   background: #00131d;
   border-color: #e3e8eb;
@@ -4344,7 +4348,6 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   color: #e1e8ec;
 }
 .gb-data-type-boolean::before {
-
 }
 .gb-preview-control-row {
   border-top-color: #74c9e5;
@@ -4392,13 +4395,15 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
 .gb-file-input:focus + .gb-file-label,
 .gb-file-input:focus-visible + .gb-file-label {
   outline: 3px solid #c1d100;
-  box-shadow: 0 0 0 1px #00131d,
+  box-shadow:
+    0 0 0 1px #00131d,
     0 0 0 4px #c1d100;
   background-color: rgba(116, 201, 229, 0.05);
 }
 .gb-file-label:focus-within {
   outline: 3px solid #c1d100;
-  box-shadow: 0 0 0 1px #00131d,
+  box-shadow:
+    0 0 0 1px #00131d,
     0 0 0 4px #c1d100;
   background-color: rgba(116, 201, 229, 0.05);
 }
@@ -4414,13 +4419,15 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
 }
 .gb-file-label.gb-drag-active:focus-within {
   outline-color: #c1d100;
-  box-shadow: 0 0 0 1px #00131d,
+  box-shadow:
+    0 0 0 1px #00131d,
     0 0 0 4px #c1d100,
     0 0 0 6px rgba(193, 209, 0, 0.3);
 }
 .gb-upload-area:focus-within .gb-file-label {
   outline: 3px solid #c1d100;
-  box-shadow: 0 0 0 1px #00131d,
+  box-shadow:
+    0 0 0 1px #00131d,
     0 0 0 4px #c1d100;
   background-color: rgba(116, 201, 229, 0.05);
 }
@@ -4497,8 +4504,9 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   .gb-file-input:focus + .gb-file-label,
   .gb-file-input:focus-visible + .gb-file-label,
   .gb-file-label:focus-within {
-    box-shadow: 0 0 0 2px #00131d,
-        0 0 0 6px currentColor;
+    box-shadow:
+      0 0 0 2px #00131d,
+      0 0 0 6px currentColor;
   }
 }
 /* Dark only. The Enter Data fields are #231f20 with a #231f20 border, which used to sit on a cream row (16:1); on the
@@ -7848,7 +7856,6 @@ pre.language-json {
   color: #c1d100;
   border-color: #c1d100;
 }
-
 
 /* TikZ Studio (P3 of the TikZ programme, hidden Alpha; P3L). The preview frame follows the page. The drawing's own box is the same
  * white sheet with black ink as in light.css, deliberately not inverted: TeX draws in colours chosen for white. It is dimmed to

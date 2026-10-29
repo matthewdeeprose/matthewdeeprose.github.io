@@ -847,6 +847,74 @@
     };
   }
 
+  /**
+   * Both appendix marker kinds, one pattern: `<!-- img-desc:ID -->` opens an
+   * entry's long description and `<!-- img-text:ID -->` its text-in-image
+   * subsection (written by `buildAppendix` in mathpix-alt-text-mmd-serialiser.js).
+   * Global, so `matchAll` walks every marker in a document.
+   */
+  const APPENDIX_MARKER_PATTERN =
+    /<!--\s*(img-desc|img-text):([^\s>][^\s>]*?)\s*-->/g;
+
+  /** Shown and spoken when a correction drops an appendix marker the input held. */
+  function composeDescriptionsLostLine(lostCount, totalCount) {
+    return (
+      `The correction was not applied because it lost the description of ` +
+      `${lostCount} of ${totalCount} pictures.`
+    );
+  }
+
+  /**
+   * Decide whether a corrected document lost an appendix marker the original
+   * held.
+   *
+   * CR-2 (CR-D2). A correction can delete the `img-desc` and `img-text` marker
+   * comments and nothing else, which `findLostPictures` cannot see because it
+   * reads picture references only (TR-1, ledger entry 145). A picture id is
+   * lost when ANY marker kind the input held for it is absent from the output.
+   * Marker PRESENCE only: the check is set membership, so a reordered appendix
+   * is not a loss, a marker the output adds is not a loss, and a kept marker
+   * with an emptied body is not read here.
+   *
+   * MODULE SCOPE and pure for the same reason `findLostPictures` is.
+   *
+   * @param {string} originalMMD
+   * @param {string} replyMMD
+   * @returns {{ lost: boolean, lostCount: number, totalCount: number,
+   *   missingIds: string[], line: string }}
+   */
+  function findLostDescriptions(originalMMD, replyMMD) {
+    const markerKinds = (mmd) => {
+      const text = String(mmd === undefined || mmd === null ? "" : mmd);
+      const byId = new Map();
+      for (const m of text.matchAll(APPENDIX_MARKER_PATTERN)) {
+        const kinds = byId.get(m[2]);
+        if (kinds) kinds.add(m[1]);
+        else byId.set(m[2], new Set([m[1]]));
+      }
+      return byId;
+    };
+
+    const inputIds = markerKinds(originalMMD);
+    const outputIds = markerKinds(replyMMD);
+
+    const missingIds = [];
+    for (const [id, kinds] of inputIds) {
+      const kept = outputIds.get(id);
+      if ([...kinds].some((kind) => !kept || !kept.has(kind))) {
+        missingIds.push(id);
+      }
+    }
+
+    return {
+      lost: missingIds.length > 0,
+      lostCount: missingIds.length,
+      totalCount: inputIds.size,
+      missingIds,
+      line: composeDescriptionsLostLine(missingIds.length, inputIds.size),
+    };
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -5314,6 +5382,29 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           return;
         }
 
+        // CR-2 (CR-D2): refuse a correction that drops an appendix marker the
+        // input held. The picture guard above reads picture references only,
+        // so a reply that deletes the img-desc and img-text comments passed it
+        // (TR-1, entry 145). Static, for the same reason as the guard above.
+        const descriptions = MathPixAIEnhancer.findLostDescriptions(
+          this.originalMMD,
+          replyMMD,
+        );
+        if (descriptions.lost) {
+          logWarn("Refusing a correction that lost appendix markers", {
+            lostCount: descriptions.lostCount,
+            totalCount: descriptions.totalCount,
+            missingIds: descriptions.missingIds,
+          });
+          this.showError(
+            descriptions.line,
+            `Missing from the reply (${descriptions.lostCount} of ` +
+              `${descriptions.totalCount}): ${descriptions.missingIds.join(", ")}\n` +
+              `The document was not changed.`,
+          );
+          return;
+        }
+
         this.enhancedMMD = replyMMD;
 
         // Phase 7.5H1/2: Multi-pass verification
@@ -5348,6 +5439,27 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
                   pass2Pictures.line,
                   `Missing from the reply (${pass2Pictures.lostCount} of ` +
                     `${pass2Pictures.totalCount}):\n${pass2Pictures.missingUrls.join("\n")}\n` +
+                    `The document was not changed.`,
+                );
+                return;
+              }
+              // CR-2: the marker check covers Pass 2 as well, against the
+              // Pass 1 text it would replace, with the same whole-run refusal.
+              const pass2Descriptions = MathPixAIEnhancer.findLostDescriptions(
+                replyMMD,
+                verifiedMMD,
+              );
+              if (pass2Descriptions.lost) {
+                logWarn("Refusing a Pass 2 result that lost appendix markers", {
+                  lostCount: pass2Descriptions.lostCount,
+                  totalCount: pass2Descriptions.totalCount,
+                  missingIds: pass2Descriptions.missingIds,
+                });
+                this.enhancedMMD = "";
+                this.showError(
+                  pass2Descriptions.line,
+                  `Missing from the reply (${pass2Descriptions.lostCount} of ` +
+                    `${pass2Descriptions.totalCount}): ${pass2Descriptions.missingIds.join(", ")}\n` +
                     `The document was not changed.`,
                 );
                 return;
@@ -7411,6 +7523,8 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   MathPixAIEnhancer.findLostPictures = findLostPictures;
   MathPixAIEnhancer.extractPictureRefs = extractPictureRefs;
   MathPixAIEnhancer.composePicturesLostLine = composePicturesLostLine;
+  MathPixAIEnhancer.findLostDescriptions = findLostDescriptions;
+  MathPixAIEnhancer.composeDescriptionsLostLine = composeDescriptionsLostLine;
 
   /** The stop reasons that mean truncation, so a guard row can pin them. */
   MathPixAIEnhancer.PROVIDER_CUT_FINISH_REASONS = PROVIDER_CUT_FINISH_REASONS;

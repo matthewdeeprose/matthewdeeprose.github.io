@@ -340,6 +340,17 @@ class MathPixController {
    */
   init() {
     try {
+      // MR-1: every tool switch back to MathPix runs init() again. The one-time
+      // start-up (element cache, listeners, download manager, mode switcher)
+      // must not repeat, or the switcher is rebuilt and the person's mode, file
+      // and tab are reset to Upload. Only what can change while away refreshes.
+      if (this.isInitialised && this.modeSwitcher) {
+        this.uiManager.loadStoredConfig();
+        this.updateFeatureAvailability();
+        logDebug("MathPixController re-entered: start-up skipped, state kept");
+        return true;
+      }
+
       this.uiManager.cacheElements();
       this.uiManager.attachEventListeners();
       this.uiManager.loadStoredConfig();

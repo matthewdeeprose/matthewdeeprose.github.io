@@ -805,19 +805,11 @@ const GraphBuilderCharts = (function () {
         totalButtons: allControlButtons.length,
       });
 
+      // T-68a: createChart() in graph-builder-core.js raises "Chart created successfully!" 3 ms later, so the
+      // success toasts that used to sit here said the same thing twice. The limited-features warning below stays.
       if (csvButton && tableButton && descButton) {
-        if (window.GraphBuilderNotifications?.success) {
-          GraphBuilderNotifications.success(
-            "Chart with full accessibility features created successfully!"
-          );
-        }
         logInfo("Full accessibility features verified");
       } else if (allControlButtons.length > 0) {
-        if (window.GraphBuilderNotifications?.success) {
-          GraphBuilderNotifications.success(
-            "Chart created with accessibility features"
-          );
-        }
         logInfo("Partial accessibility features verified");
       } else {
         logWarn("No accessibility features detected in verification");

@@ -75,7 +75,6 @@ const MarkdownCodeCopy = (function () {
     successText: "Copied",
     failText: "Failed to copy",
     successDuration: 2000, // Time in ms to show success message
-    ariaLiveRegionId: "sr-announcer",
     buttonClass: "code-copy-button",
   };
 
@@ -306,43 +305,9 @@ const MarkdownCodeCopy = (function () {
    * @param {string} message - Message to announce
    */
   function announceToScreenReader(message) {
-    // Find or create screen reader announcer
-    let announcer = document.getElementById(config.ariaLiveRegionId);
-
-    if (!announcer) {
-      logDebug("Creating screen reader announcer element");
-      // Create screen reader announcer element
-      announcer = document.createElement("div");
-      announcer.id = config.ariaLiveRegionId;
-      announcer.className = "sr-only";
-      announcer.setAttribute("aria-live", "polite");
-      announcer.setAttribute("aria-atomic", "true");
-      document.body.appendChild(announcer);
-
-      // Add necessary CSS if not already present
-      if (!document.getElementById("sr-styles")) {
-        logDebug("Adding screen reader CSS styles");
-        const style = document.createElement("style");
-        style.id = "sr-styles";
-        style.textContent = `
-                    .sr-only {
-                        position: absolute;
-                        width: 1px;
-                        height: 1px;
-                        padding: 0;
-                        margin: -1px;
-                        overflow: hidden;
-                        clip: rect(0, 0, 0, 0);
-                        white-space: nowrap;
-                        border: 0;
-                    }
-                `;
-        document.head.appendChild(style);
-      }
-    }
-
-    // Set the message to be announced
-    announcer.textContent = message;
+    // Shared announcer, resolved at call time. A region created here and
+    // written in the same tick is not registered in time and never speaks.
+    window.accessibilityHelpers?.announce(message, "polite");
     logDebug(`Announced to screen reader: ${message}`);
   }
 

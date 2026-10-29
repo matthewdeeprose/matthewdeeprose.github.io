@@ -218,6 +218,11 @@ window.ChatAttach = (function () {
     pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   });
   const MATHPIX_FOCUS_CHECK_MS = 600;
+  // The box check waits until the page has stopped scrolling (MathPix's own smooth scroll and focus
+  // moves run on after the hand-off, longer under load), but never longer than the maximum.
+  const MATHPIX_SCROLL_SETTLE_MS = 150;
+  const MATHPIX_SCROLL_MAX_WAIT_MS = 3000;
+  const MATHPIX_SCROLL_POLL_MS = 50;
   const MATHPIX_WAIT_MS = 15000;
   const MATHPIX_POLL_MS = 50;
   const MATHPIX_HANDOFF_FAILED_MESSAGE =
@@ -245,6 +250,16 @@ window.ChatAttach = (function () {
 
   function state() {
     return window.ChatState || null;
+  }
+
+  // Parcel P8b: a file held (or no longer held) changes the answer length a model
+  // starts with, so the slider is re-applied here, silently, and stays equal to
+  // what Send will use.
+  function reapplyAnswerRoom() {
+    const s = state();
+    if (s && window.ChatCore && window.ChatCore._applyModelTokenRange) {
+      window.ChatCore._applyModelTokenRange(s.currentModel);
+    }
   }
 
   function announce(text) {
@@ -660,6 +675,27 @@ window.ChatAttach = (function () {
     box.scrollIntoView({ behavior: "instant", block: "start" });
   }
 
+  // Runs the check above once scrollY has held still for MATHPIX_SCROLL_SETTLE_MS, or after the
+  // maximum wait. Reading the position first is kept: scrolling blind would jump a box already in view.
+  function scrollMathPixBoxIntoViewWhenSettled() {
+    const started = Date.now();
+    let lastY = window.scrollY;
+    let lastMoved = started;
+    const poll = () => {
+      const now = Date.now();
+      if (window.scrollY !== lastY) {
+        lastY = window.scrollY;
+        lastMoved = now;
+      }
+      if (now - lastMoved >= MATHPIX_SCROLL_SETTLE_MS || now - started >= MATHPIX_SCROLL_MAX_WAIT_MS) {
+        scrollMathPixBoxIntoView();
+        return;
+      }
+      setTimeout(poll, MATHPIX_SCROLL_POLL_MS);
+    };
+    poll();
+  }
+
   // Does MathPix hold something a new file would clear (parcel P6, R-5)? Grounded by measurement:
   // currentPDFFile is set only AFTER MathPix's confirm, uploadVerification.pdfFile at the PDF
   // preview, and no controller field sees a Word or PowerPoint file at its confirmation step, so
@@ -762,7 +798,7 @@ window.ChatAttach = (function () {
       setTimeout(() => {
         const active = document.activeElement;
         if (!active || active === document.body) radio.focus();
-        scrollMathPixBoxIntoView();
+        scrollMathPixBoxIntoViewWhenSettled();
       }, MATHPIX_FOCUS_CHECK_MS);
     } finally {
       _handingOff = false;
@@ -901,6 +937,7 @@ window.ChatAttach = (function () {
     const had = attachment !== null;
     const clearedKind = attachment ? attachment.kind : null;
     attachment = null;
+    reapplyAnswerRoom();
     renderPreview();
     renderAdvice(); // hides the advice line and Open MathPix
     resetPicturesChoice();
@@ -988,6 +1025,7 @@ window.ChatAttach = (function () {
       size: file.size,
       kind: "document",
     };
+    reapplyAnswerRoom();
     _reading = false;
     setBusy(false);
     renderPreview();
@@ -1125,6 +1163,7 @@ window.ChatAttach = (function () {
       size: file.size,
       kind: kind,
     };
+    reapplyAnswerRoom();
     renderPreview();
     renderAdvice();
     resetPicturesChoice();
@@ -1337,7 +1376,10 @@ window.ChatAttach = (function () {
     const sendable = summary.kept === 0 ? "None" : formatNumber(summary.kept);
     const value = sendable + " can be sent";
     const skipped = Number(meta.skippedPictures);
-    return skipped > 0 ? value + ", " + formatNumber(skipped) + " skipped" : value;
+    const withSkipped = skipped > 0 ? value + ", " + formatNumber(skipped) + " skipped" : value;
+    // Pages beyond the limit were never rendered, so they are not in "skipped"; say how many there are.
+    const over = Number(meta.pagesTotal) - summary.found;
+    return over > 0 ? withSkipped + ", " + formatNumber(over) + " over the limit of " + formatNumber(summary.found) : withSkipped;
   }
 
   // Maths in a PDF is a yes or no. In Word and PowerPoint the reader's score is the number

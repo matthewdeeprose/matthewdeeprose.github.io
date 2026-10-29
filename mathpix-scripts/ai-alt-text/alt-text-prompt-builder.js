@@ -131,7 +131,7 @@ Use markdown structure wherever it aids comprehension, rather than as decoration
 - a markdown table where the content is genuinely tabular, so a screen-reader user can navigate it by row and column;
 - headings to separate the distinct parts of a longer description.
 
-Where the image carries data, give the actual values, in a table if they suit one, and order them logically — chronologically for a time series, or highest to lowest for ranked data.
+Where the image carries data, such as a value for each category, place or time, give the actual values in a markdown table with a header row instead of a list, and give each value once. Introduce the table with one sentence that says what it holds. Order the rows logically — chronologically for a time series, or highest to lowest for ranked data. A picture with no such data needs no table.
 
 Write mathematical expressions as inline LaTeX between dollar signs, and display equations between double dollar signs, matching the notation used in the surrounding document. This description is written into the same MathPix Markdown document as the surrounding text, so every expression must be valid there. This applies to the long description and the text content only: the alt text stays plain prose, with no LaTeX and no markdown.
 

@@ -76,8 +76,12 @@ const TTSSreLoader = (function () {
   // STATE
   // ==========================================================================
 
+  // Pinned to the version an export's own MathJax carries (4.0.6), so a formula is
+  // spoken with the same engine as Read Aloud in an export. The floating
+  // `@4` range resolved to 4.1.5, which words bold letters and logarithms
+  // differently (RA-67, RA-69).
   const SRE_CDN_URL =
-    "https://cdn.jsdelivr.net/npm/speech-rule-engine@4/lib/sre.js";
+    "https://cdn.jsdelivr.net/npm/speech-rule-engine@4.0.6/lib/sre.js";
   let _srePromise = null;
   let _isLoaded = false;
 

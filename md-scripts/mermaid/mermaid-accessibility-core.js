@@ -104,8 +104,6 @@ window.MermaidAccessibility = (function () {
     // Maximum number of actors to list in sequence diagram descriptions
     maxActors: 5,
     // NEW: Retry and error recovery settings
-    enableRetryButtons: true, // Global flag for retry buttons
-    retryButtonMode: "single", // "single" or "full" or "both" - configurable retry mode
     retrySchedule: [100, 300, 1000, 3000], // Exponential backoff schedule in ms
     maxRetryAttempts: 4,
     retryTimeout: 10000, // Maximum time to wait for SVG (10 seconds)
@@ -122,6 +120,10 @@ window.MermaidAccessibility = (function () {
   // times.
   const startedContainers = new WeakSet();
   const observedContainers = new WeakSet();
+
+  // Parcel 18x. The IntersectionObserver watching each container, so a diagram
+  // whose render has already failed can be taken off it and set up at once.
+  const lazyObservers = new WeakMap();
 
   // Description generators storage
   const descriptionGenerators = {};
@@ -438,283 +440,7 @@ window.MermaidAccessibility = (function () {
   }
 
   /**
-   * Put keyboard focus back after a single-diagram retry has settled.
-   * The retry empties the diagram, which removes the pressed button, so focus
-   * would otherwise fall to <body>. A failed retry builds a new Retry button
-   * with the same id; a successful one has no Retry button, so focus goes to the
-   * first button of the redrawn diagram's own toolbar, or failing that to the
-   * diagram itself.
-   * @param {HTMLElement} container - The diagram container
-   * @param {HTMLElement} pressedButton - The Retry button that was pressed
-   */
-  function restoreFocusAfterRetry(container, pressedButton) {
-    // The pressed button survived (the retry returned early): nothing was lost.
-    if (pressedButton.isConnected) return;
-
-    const newRetryButton = document.getElementById(pressedButton.id);
-    if (newRetryButton) {
-      newRetryButton.focus();
-      return;
-    }
-
-    const toolbarButton = container.querySelector(
-      ".mermaid-controls button, .mermaid-view-controls button"
-    );
-    if (toolbarButton) {
-      toolbarButton.focus();
-      return;
-    }
-
-    const mermaidDiv = container.querySelector(".mermaid");
-    if (!mermaidDiv) return;
-    mermaidDiv.setAttribute("tabindex", "-1");
-    mermaidDiv.addEventListener(
-      "blur",
-      () => mermaidDiv.removeAttribute("tabindex"),
-      { once: true }
-    );
-    mermaidDiv.focus();
-  }
-
-  /**
-   * Create retry button for failed diagrams
-   * @param {HTMLElement} container - The diagram container
-   * @param {string} diagramId - Unique identifier for the diagram
-   * @param {string} diagramCode - The original mermaid code
-   * @param {string} mode - "single" or "full" retry mode
-   * @returns {HTMLElement} The retry button element
-   */
-  function createRetryButton(
-    container,
-    diagramId,
-    diagramCode,
-    mode = "single"
-  ) {
-    const button = document.createElement("button");
-    button.id = `mermaid-retry-${diagramId}`;
-    button.className = "mermaid-retry-button";
-
-    if (mode === "full") {
-      // No aria-label: the visible text is the accessible name (SC 2.5.3).
-      button.textContent = "Re-render entire content";
-    } else {
-      button.textContent = "Retry diagram";
-    }
-
-    button.addEventListener("click", async () => {
-      // Read before anything is removed: only a person whose focus is on this
-      // button is put back; one who clicked and moved on, or tabbed away during
-      // the wait, is left where they are.
-      const hadFocus = document.activeElement === button;
-
-      button.disabled = true;
-      button.textContent = mode === "full" ? "Re-rendering..." : "Retrying...";
-
-      try {
-        if (mode === "full") {
-          await retryFullContentRender(container, diagramId);
-        } else {
-          await retrySingleDiagram(container, diagramId, diagramCode);
-          if (hadFocus) {
-            restoreFocusAfterRetry(container, button);
-          }
-        }
-      } catch (error) {
-        logError(
-          `[Mermaid Accessibility] Retry failed for diagram ${diagramId}:`,
-          error
-        );
-        button.textContent = "Retry failed";
-      }
-    });
-
-    return button;
-  }
-
-  /**
-   * Retry rendering a single diagram
-   * @param {HTMLElement} container - The diagram container
-   * @param {string} diagramId - Unique identifier for the diagram
-   * @param {string} diagramCode - The original mermaid code
-   */
-  async function retrySingleDiagram(container, diagramId, diagramCode) {
-    logInfo(`[Mermaid Accessibility] Retrying single diagram ${diagramId}`);
-
-    const mermaidDiv = container.querySelector(".mermaid");
-    if (!mermaidDiv) {
-      logError(
-        `[Mermaid Accessibility] No mermaid div found for retry of diagram ${diagramId}`
-      );
-      return;
-    }
-
-    // Clear previous SVG content
-    mermaidDiv.innerHTML = "";
-
-    // Reset accessibility initialization flag
-    container.removeAttribute("data-accessibility-initialized");
-    container.removeAttribute("data-mermaid-error");
-
-    // Remove view controls to allow fresh initialization
-    container.classList.remove("view-controls-added");
-    const existingViewControls = container.querySelector(
-      ".mermaid-view-controls"
-    );
-    if (existingViewControls) {
-      existingViewControls.remove();
-    }
-
-    // Remove existing mermaid controls to allow fresh initialization
-    const existingMermaidControls =
-      container.querySelector(".mermaid-controls");
-    if (existingMermaidControls) {
-      existingMermaidControls.remove();
-    }
-
-    try {
-      // Re-render the mermaid diagram
-      if (window.mermaid && typeof window.mermaid.render === "function") {
-        const result = await window.mermaid.render(
-          `${diagramId}-retry-svg`,
-          diagramCode
-        );
-        mermaidDiv.innerHTML = result.svg;
-
-        // A fresh SVG has landed. Series encoding and size are re-applied
-        // through reapplyAfterRender — the ONE named after-render step, in
-        // mermaid-controls.js — rather than this path keeping its own copy of
-        // the list. That is the whole point of the helper: the next thing a
-        // render has to restore is one edit there, not four across the tree.
-        //
-        // This path does ALSO reach the same work indirectly, through
-        // initializeAllControls -> addControlsToContainer -> addThemeSelector
-        // -> applyTheme, which re-renders and re-applies in its own .then.
-        // That coverage is INCIDENTAL rather than designed: it holds only
-        // while MermaidThemes is present and the theme selector is actually
-        // added, and it lands one async re-render later than the accessibility
-        // features that read this SVG. Register item 56 was opened against a
-        // gap here that measurement then showed did not exist — the indirect
-        // route was already covering it. The explicit call is kept because it
-        // makes the guarantee this path's own instead of borrowing it.
-        if (
-          window.MermaidControls &&
-          typeof window.MermaidControls.reapplyAfterRender === "function"
-        ) {
-          window.MermaidControls.reapplyAfterRender(container, mermaidDiv, {
-            index: diagramId,
-          });
-          logDebug(
-            `[Mermaid Accessibility] reapplyAfterRender run after retry for diagram ${diagramId}`
-          );
-        }
-
-        // Initialize all control systems first
-        initializeAllControls(container, diagramId);
-
-        // Retry is the one legitimate re-initialisation, so it lifts the
-        // once-per-container mark (parcel 18k). A retry that fails never
-        // reaches this line, and its container stays marked.
-        startedContainers.delete(container);
-
-        // Then initialize accessibility features
-        await initAccessibilityFeatures(container, diagramId);
-
-        logInfo(
-          `[Mermaid Accessibility] Successfully retried diagram ${diagramId}`
-        );
-      } else {
-        throw new Error("Mermaid library not available");
-      }
-    } catch (error) {
-      logError(
-        `[Mermaid Accessibility] Failed to retry diagram ${diagramId}:`,
-        error
-      );
-      showErrorFallback(
-        container,
-        diagramId,
-        diagramCode,
-        error.message,
-        error
-      );
-    }
-  }
-
-  /**
-   * Retry rendering entire content using markdown editor pipeline
-   * @param {HTMLElement} container - The diagram container
-   * @param {string} diagramId - Unique identifier for the diagram
-   */
-  async function retryFullContentRender(container, diagramId) {
-    logInfo(
-      `[Mermaid Accessibility] Attempting full content re-render for diagram ${diagramId}`
-    );
-
-    // Check if MarkdownEditor is available
-    if (
-      typeof window.MarkdownEditor === "undefined" ||
-      typeof window.MarkdownEditor.processContent !== "function"
-    ) {
-      logError(
-        `[Mermaid Accessibility] MarkdownEditor not available for full content retry`
-      );
-      return;
-    }
-
-    try {
-      // Find the main content container
-      const contentContainer =
-        document.getElementById("results") ||
-        document.querySelector(".content-container") ||
-        document.querySelector("main");
-
-      if (!contentContainer) {
-        logError(
-          `[Mermaid Accessibility] No content container found for full re-render`
-        );
-        return;
-      }
-
-      // Get all mermaid code from the page
-      const allMermaidContainers =
-        document.querySelectorAll(".mermaid-container");
-      const mermaidCodes = Array.from(allMermaidContainers)
-        .map((container) => {
-          const code = container.getAttribute("data-diagram-code");
-          return code ? decodeURIComponent(code) : "";
-        })
-        .filter((code) => code.length > 0);
-
-      if (mermaidCodes.length === 0) {
-        logWarn(
-          `[Mermaid Accessibility] No mermaid codes found for full re-render`
-        );
-        return;
-      }
-
-      // Reconstruct markdown content with mermaid blocks
-      const reconstructedContent = mermaidCodes
-        .map((code) => `\`\`\`mermaid\n${code}\n\`\`\``)
-        .join("\n\n");
-
-      // Process through MarkdownEditor pipeline
-      const processedContent = await window.MarkdownEditor.processContent(
-        reconstructedContent
-      );
-
-      // Replace content
-      contentContainer.innerHTML = processedContent;
-
-      logInfo(
-        `[Mermaid Accessibility] Successfully completed full content re-render`
-      );
-    } catch (error) {
-      logError(`[Mermaid Accessibility] Full content re-render failed:`, error);
-    }
-  }
-
-  /**
-   * Show error fallback with raw mermaid code and retry options
+   * Show error fallback with the raw mermaid code
    * @param {HTMLElement} container - The diagram container
    * @param {string} diagramId - Unique identifier for the diagram
    * @param {string} diagramCode - The original mermaid code
@@ -786,59 +512,13 @@ window.MermaidAccessibility = (function () {
     codeElement.textContent = diagramCode;
     codeBlock.appendChild(codeElement);
 
-    // Retry buttons container
-    const retryContainer = document.createElement("div");
-    retryContainer.className = "mermaid-retry-container";
-
-    if (config.enableRetryButtons) {
-      // Standard retry button
-      const singleRetryButton = createRetryButton(
-        container,
-        diagramId,
-        diagramCode,
-        "single"
-      );
-      retryContainer.appendChild(singleRetryButton);
-
-      // Full content retry button (if enabled)
-      if (
-        config.retryButtonMode === "full" ||
-        config.retryButtonMode === "both"
-      ) {
-        const fullRetryButton = createRetryButton(
-          container,
-          diagramId,
-          diagramCode,
-          "full"
-        );
-        retryContainer.appendChild(fullRetryButton);
-      }
-    }
-
     // Assemble error fallback
     errorContainer.appendChild(errorPara);
     errorContainer.appendChild(codeBlock);
-    if (retryContainer.children.length > 0) {
-      errorContainer.appendChild(retryContainer);
-    }
-
-    // A box rebuilt while keyboard focus is on its Retry button would drop
-    // focus to <body> (Chat rebuilds it a second time about 4.5 s after a
-    // retry, under a new diagram id). Read before the old box is removed.
-    const retryHadFocus =
-      mermaidDiv.contains(document.activeElement) &&
-      document.activeElement.classList.contains("mermaid-retry-button");
 
     // Replace mermaid div content
     mermaidDiv.innerHTML = "";
     mermaidDiv.appendChild(errorContainer);
-
-    if (retryHadFocus) {
-      const newRetryButton = retryContainer.querySelector("button");
-      if (newRetryButton) {
-        newRetryButton.focus();
-      }
-    }
 
     // Mark as having error fallback
     container.setAttribute("data-mermaid-error", "true");
@@ -1130,6 +810,11 @@ window.MermaidAccessibility = (function () {
     // `unsupported:ishikawa` twin above is kept and is unreachable while the
     // MERMAID_TYPE_TO_KEY row stands.
     ishikawa: "an Ishikawa diagram",
+    // Item 130, 28 October 2026. The same bare-key row, added WITH the wardley
+    // generator so a generation failure still names the diagram (item 89). The
+    // `unsupported:wardley` twin above is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    wardley: "a Wardley map",
   });
 
   /** Last-resort phrase when the type is genuinely unknown to us. */
@@ -1575,6 +1260,36 @@ window.MermaidAccessibility = (function () {
   }
 
   /**
+   * Parcel 18x: a diagram that has already failed does not wait to be scrolled
+   * to. The Markdown Editor writes the short line from its render rejection, and
+   * with the output below the window the observer below would hold the failure
+   * box (and so its alert) back until the person scrolled (parcel 18w). Stops any
+   * watch on the container and starts its set-up now. A diagram that draws
+   * never carries the line, so it keeps its lazy set-up.
+   * @param {HTMLElement} container - A .mermaid-container
+   */
+  function startFailedNow(container) {
+    if (!container || startedContainers.has(container)) return;
+    if (container.getAttribute("data-accessibility-initialized") === "true") {
+      return;
+    }
+
+    const watcher = lazyObservers.get(container);
+    if (watcher) {
+      watcher.unobserve(container);
+      lazyObservers.delete(container);
+    }
+    observedContainers.delete(container);
+
+    const diagramId =
+      container.id || `mermaid-${Math.random().toString(36).substring(2, 10)}`;
+    logDebug(
+      `[Mermaid Accessibility] Diagram ${diagramId} has already failed, setting up now`
+    );
+    initAccessibilityFeatures(container, diagramId);
+  }
+
+  /**
    * Initialize accessibility features using Intersection Observer for performance
    * @param {HTMLElement} container - Container to observe (defaults to document)
    */
@@ -1603,6 +1318,14 @@ window.MermaidAccessibility = (function () {
         !observedContainers.has(candidate) && !startedContainers.has(candidate)
     );
 
+    // Parcel 18x: one that already holds the short line is set up now, not watched.
+    for (let i = mermaidContainers.length - 1; i >= 0; i--) {
+      if (mermaidContainers[i].querySelector(RENDER_FAILED_NOTE_SELECTOR)) {
+        startFailedNow(mermaidContainers[i]);
+        mermaidContainers.splice(i, 1);
+      }
+    }
+
     if (mermaidContainers.length === 0) {
       logInfo(
         "[Mermaid Accessibility] No mermaid containers found for lazy loading"
@@ -1628,6 +1351,7 @@ window.MermaidAccessibility = (function () {
             // and let a later pass watch it again only if it stays unbuilt.
             observer.unobserve(container);
             observedContainers.delete(container);
+            lazyObservers.delete(container);
 
             // Add accessibility features if not already initialised
             if (
@@ -1655,6 +1379,7 @@ window.MermaidAccessibility = (function () {
     // Start observing each container
     mermaidContainers.forEach((container) => {
       observedContainers.add(container);
+      lazyObservers.set(container, observer);
       observer.observe(container);
     });
   }
@@ -1676,6 +1401,15 @@ window.MermaidAccessibility = (function () {
           mutation.addedNodes.forEach(function (node) {
             if (node.nodeType === 1) {
               // Element node
+              // Parcel 18x: the short "could not be drawn" line landing in a
+              // container still waiting to be scrolled to starts its set-up now.
+              const failedNotes = node.matches(RENDER_FAILED_NOTE_SELECTOR)
+                ? [node]
+                : Array.from(node.querySelectorAll(RENDER_FAILED_NOTE_SELECTOR));
+              failedNotes.forEach(function (note) {
+                startFailedNow(note.closest(".mermaid-container"));
+              });
+
               // Check if this is a mermaid container or contains one
               if (
                 node.classList &&
@@ -1759,7 +1493,7 @@ window.MermaidAccessibility = (function () {
     initAccessibilityFeatures(testContainer, testId);
 
     logInfo(
-      "[Mermaid Accessibility] Test container created. Check the page for error fallback with retry buttons."
+      "[Mermaid Accessibility] Test container created. Check the page for the error fallback."
     );
 
     return testContainer;
@@ -1837,7 +1571,7 @@ window.MermaidAccessibility = (function () {
     );
 
     logInfo(
-      "[Mermaid Accessibility] Test container with syntax error created. Check for the error fallback and its Retry button."
+      "[Mermaid Accessibility] Test container with syntax error created. Check for the error fallback."
     );
 
     return testContainer;

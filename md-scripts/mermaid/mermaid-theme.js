@@ -9674,6 +9674,765 @@ window.MermaidThemes = (function () {
   }
 
   // -----------------------------------------------------------------------
+  // WARDLEY ENCODING (register item 130 session 8, 28 October 2026)
+  // -----------------------------------------------------------------------
+
+  const WARDLEY_ROLEDESCRIPTION = "wardley";
+
+  /** SC 1.4.11 for every line, outline, dot and arrowhead. */
+  const WARDLEY_OBJECT_TARGET = 3;
+
+  /** The working margin a DERIVED object ink is taken to (standard § 2). */
+  const WARDLEY_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for every word the canvas draws. */
+  const WARDLEY_TEXT_TARGET = 4.5;
+
+  /** The margin a hue-kept TEXT ink is taken to. */
+  const WARDLEY_TEXT_MARGIN = 4.6;
+
+  /** An ink whose HSL saturation is below this has no hue to keep. */
+  const WARDLEY_ACHROMATIC_SATURATION = 0.1;
+
+  /** Lightness step of the hue-kept search, as a fraction of the range. */
+  const WARDLEY_HUE_STEP = 0.01;
+
+  /**
+   * Every 8-bit grey: the last-resort ink search. Measured 28 October 2026: black and
+   * white grounds leave a window of luminance 0.175 to 0.183 that the shared 65-step
+   * ramp steps over (best 4.49:1 where #757575 reads 4.56:1).
+   */
+  const WARDLEY_GREY_RAMP = Object.freeze(
+    Array.from({ length: 256 }, (unused, value) => rgbToHex(value, value, value))
+  );
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const WARDLEY_ENCODING_ATTRIBUTE = "data-wardley-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const WARDLEY_OWNED_LIST_ATTRIBUTE = "data-wardley-encoding-owned";
+
+  /** The inline values an element held for a property this pass then wrote. */
+  const WARDLEY_PRIOR_ATTRIBUTE = "data-wardley-encoding-prior";
+
+  /** THE STAMP: an element's role on first sight (position in the SVG). In no owned list. */
+  const WARDLEY_ROLE_ATTRIBUTE = "data-wardley-role";
+
+  /** THE SOURCING STAMP (rule 24): which strategy a carrier draws, read on first sight. In no owned list. */
+  const WARDLEY_SOURCING_ATTRIBUTE = "data-wardley-sourcing";
+
+  /** The roles, chosen by position in the SVG and never by class alone. */
+  const WARDLEY_ROLES = Object.freeze({
+    label: "label",
+    line: "line",
+    outline: "outline",
+    sourcingCarrier: "sourcingCarrier",
+    marketMark: "marketMark",
+    arrowhead: "arrowhead",
+    background: "background",
+  });
+
+  /** The four strategies the renderer draws. */
+  const WARDLEY_SOURCING = Object.freeze({
+    build: "build",
+    buy: "buy",
+    outsource: "outsource",
+    market: "market",
+  });
+
+  /**
+   * What the renderer fills a strategy's overlay with. Hard-coded, not a theme
+   * variable (census step 4), so it is the witness to the strategy until the
+   * stamp is written. A market has no such fill: it is recognised by its dots.
+   */
+  const WARDLEY_OVERLAY_FILLS = Object.freeze({
+    "#eeeeee": WARDLEY_SOURCING.build,
+    "#cccccc": WARDLEY_SOURCING.buy,
+    "#666666": WARDLEY_SOURCING.outsource,
+  });
+
+  /** A market is the carrier that holds at least this many smaller circles (its dots). */
+  const WARDLEY_MARKET_DOT_MINIMUM = 3;
+
+  /**
+   * The outline form of each strategy, from SERIES_DASHES (rules 24, 25, 55).
+   * build and market are solid (a market is told from a build by its dots).
+   */
+  const WARDLEY_SOURCING_DASH = Object.freeze({
+    [WARDLEY_SOURCING.build]: null,
+    [WARDLEY_SOURCING.buy]: SERIES_DASHES[0],
+    [WARDLEY_SOURCING.outsource]: SERIES_DASHES[1],
+    [WARDLEY_SOURCING.market]: null,
+  });
+
+  /** A dotted form needs a butt cap or it collapses to solid (rule 25). */
+  const WARDLEY_SOURCING_CAP = "butt";
+
+  /** Fractions of a line's length at which the ground beneath it is read (interior). */
+  const WARDLEY_LINE_FRACTIONS = Object.freeze([0.1, 0.3, 0.5, 0.7, 0.9]);
+
+  /** Points around an outline at which the ground beside it is read. */
+  const WARDLEY_OUTLINE_POINTS = 16;
+
+  /** Client pixels beyond half the stroke at which the ground beside an outline is read. */
+  const WARDLEY_EDGE_OFFSET = 2;
+
+  /** Step along a path, in local units, used to find its direction at a point. */
+  const WARDLEY_TANGENT_STEP = 0.5;
+
+  /** Rule 56's casing: the halo's width, and the room a neighbouring word must be given. */
+  const WARDLEY_CASING_WIDTH_PX = 3;
+
+  /** Tolerance, in client pixels, when asking whether one box lies within another. */
+  const WARDLEY_WITHIN_SLACK = 0.75;
+
+  /**
+   * Apply the accessibility encoding to a rendered wardley map: an ink on every
+   * word, line, outline, dot and arrowhead WHERE AND ONLY WHERE it fails against
+   * the ground it actually sits on, and a NON-COLOUR CHANNEL on the sourcing
+   * strategy of a component. AREA FILLS ARE NEVER WRITTEN (rule 18) and neither
+   * `opacity` nor `fill-opacity` is touched; no renderer inline value is deleted.
+   *
+   * WHY IT EXISTS (item 130 census step 4, 27 October 2026): the renderer hard-codes
+   * black for stage dividers and anchor labels and white for the annotation box
+   * and the market dots, none of which follows the theme, so 135 of 1,460
+   * readings failed, worst in the dark cells. A component's sourcing (build, buy,
+   * outsource, market) was drawn by the grey of a larger circle behind it alone.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION IN THE SVG (rule 19), each stamped
+   * `data-wardley-role` on first sight: a text is a label; a line is a line (a
+   * marketMark inside a market carrier); the first rect child of the map group
+   * is the background; a path in a marker an arrowhead; a circle that holds a
+   * smaller circle of its own group is a sourcing carrier; a circle inside a
+   * market carrier a marketMark; any other rect, circle or path an outline.
+   *
+   * SOURCING (rules 24, 25, 55): the strategy is read on first sight from the
+   * carrier (a market holds three or more dots; the others are told by the
+   * renderer's hard-coded fill) and stamped `data-wardley-sourcing`. The carrier's
+   * OUTLINE then takes a form: build solid, buy `5,5`, outsource `2,2` with a
+   * butt cap, market solid with its dots. No fill is written.
+   *
+   * WORDS over two grounds that no ink clears take rule 56's casing (the map's
+   * ground as the text's own stroke, painted behind its fill), only where the
+   * halo would touch no neighbouring word.
+   *
+   * wardley's grammar has no style, class or colour statement and the renderer
+   * writes no inline style, so it cannot carry an inline author stroke: a computed
+   * ink that clears is kept (rule 42), one that fails is moved along its own hue.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): points on a line or an outline are
+   * getPointAtLength mapped through getScreenCTM, a ground is decided by
+   * isPointInFill in the shape's own space, and a canary asserts every mapped
+   * line sample lies within its element's client box. getBBox is never used.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced
+   * before anything is derived. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyWardleyEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === WARDLEY_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${WARDLEY_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No wardley SVG in this container - wardley encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${WARDLEY_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      const written = (owned.getAttribute(WARDLEY_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      for (const wardleyProperty of written) {
+        owned.style.removeProperty(wardleyProperty);
+      }
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(WARDLEY_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const property of Object.keys(prior)) {
+        owned.style.setProperty(property, prior[property].value, prior[property].priority);
+      }
+      owned.removeAttribute(WARDLEY_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(WARDLEY_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(WARDLEY_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    // A horizontal or vertical line has a zero-sized box, which boxOf refuses.
+    const lineBoxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    /** Painted area shapes in document order, measured BEFORE anything is written. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      const box = boxOf(element);
+      if (!declared || alpha <= 0.05 || !box) return;
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      painted.push({
+        element,
+        index,
+        box,
+        paint: { ...declared, a: alpha },
+        inverse: matrix ? matrix.inverse() : null,
+        stroked: !!parsePaint(computed.stroke) && (parseFloat(computed.strokeWidth) || 0) > 0,
+      });
+    });
+
+    // Does a painted shape cover a client point? The box is a cheap first cut. A
+    // point on the shape's own stroke counts as covered: that is what a hit test
+    // finds, and the shape's fill is the nearest ground behind that stroke.
+    const coversShape = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x || x > box.x + box.width || y < box.y || y > box.y + box.height) return false;
+      if (typeof shape.element.isPointInFill === "function" && shape.inverse) {
+        try {
+          const local = new DOMPoint(x, y).matrixTransform(shape.inverse);
+          return (
+            shape.element.isPointInFill(local) ||
+            (shape.stroked && shape.element.isPointInStroke(local))
+          );
+        } catch (error) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // Does the subject itself cover a client point? (An outline is read where it does not.)
+    const coversElement = (element, box, x, y) => {
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      return !!box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!coversShape(shape, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    // The map group and its ground: the first g under the svg, and its first rect child.
+    const mapGroup = svg.querySelector(":scope > g");
+    const backgroundRect = mapGroup ? mapGroup.querySelector(":scope > rect") : null;
+    let mapGround = svgGround;
+    if (backgroundRect) {
+      const computed = window.getComputedStyle(backgroundRect);
+      const declared = parsePaint(computed.fill);
+      if (declared) {
+        mapGround = paintToHex(
+          compositeOver(
+            { ...declared, a: declared.a * opacityValue(computed.fillOpacity) },
+            svgGroundPaint
+          )
+        );
+      }
+    }
+
+    const textBoxes = all
+      .filter((element) => element.tagName === "text" && !offstage(element))
+      .map((element) => ({ element, box: boxOf(element) }))
+      .filter((entry) => entry.box);
+
+    const applied = {
+      svgGround,
+      mapGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {},
+      sourcing: {},
+      reach: { found: 0, stamped: 0 },
+      canary: { checked: 0, inside: 0 },
+      worst: null,
+    };
+
+    /** The worst ratio of a computed paint, alpha folded in, against each ground. */
+    const worstOf = (declared, alpha, grounds) =>
+      grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+
+    /**
+     * Choose an ink: the renderer's own hue where it has one, moved in lightness
+     * only as far as the margin needs (alpha folded in, because a divider drawn at
+     * 0.8 opacity is read through it), else an ink of record, then the grey ramp.
+     */
+    const chooseInk = (rendererHex, alpha, grounds, target, margin) => {
+      const reading = (hex) => worstOf(parsePaint(hex), alpha, grounds);
+      const bestOf = (candidates) =>
+        candidates.reduce(
+          (best, hex) => {
+            const worst = reading(hex);
+            return worst > best.worst ? { ink: hex, worst } : best;
+          },
+          { ink: candidates[0], worst: -1 }
+        );
+
+      const hsl = kanbanHexToHsl(rendererHex);
+      let hueBest = null;
+      if (hsl.s >= WARDLEY_ACHROMATIC_SATURATION) {
+        const steps = Math.round(1 / WARDLEY_HUE_STEP);
+        for (let step = 1; step <= steps; step += 1) {
+          const delta = step * WARDLEY_HUE_STEP;
+          for (const lightness of [hsl.l - delta, hsl.l + delta]) {
+            if (lightness < 0 || lightness > 1) continue;
+            const hex = kanbanHslToHex(hsl.h, hsl.s, lightness);
+            const worst = reading(hex);
+            if (worst >= margin) return { ink: hex, worst };
+            if (!hueBest || worst > hueBest.worst) hueBest = { ink: hex, worst };
+          }
+        }
+      }
+      const record = bestOf(REQUIREMENT_INKS);
+      const chosen = record.worst >= target ? record : bestOf(WARDLEY_GREY_RAMP);
+      return hueBest && hueBest.worst > chosen.worst ? hueBest : chosen;
+    };
+
+    /** Write derived values, own them, keep what they displaced, and record the reading. */
+    const write = (element, kind, properties, reading) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(WARDLEY_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(WARDLEY_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(WARDLEY_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const record = { kind, ...reading };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(record);
+      if (record.ratio !== undefined && record.ratio < record.target) applied.shortfalls.push(record);
+      if (record.ratio !== undefined && (applied.worst === null || record.ratio < applied.worst)) {
+        applied.worst = record.ratio;
+      }
+    };
+
+    // --- THE STAMP: a role on first sight, from position in the svg ----------
+    const within = (inner, outer) =>
+      inner &&
+      outer &&
+      inner.x >= outer.x - WARDLEY_WITHIN_SLACK &&
+      inner.y >= outer.y - WARDLEY_WITHIN_SLACK &&
+      inner.x + inner.width <= outer.x + outer.width + WARDLEY_WITHIN_SLACK &&
+      inner.y + inner.height <= outer.y + outer.height + WARDLEY_WITHIN_SLACK;
+
+    // A carrier is a circle that holds a smaller circle of its own group.
+    const carrierCache = new Map();
+    const carrierOf = (group) => {
+      if (!group) return null;
+      if (carrierCache.has(group)) return carrierCache.get(group);
+      const circles = [...group.children].filter((child) => child.tagName === "circle");
+      const boxes = new Map(circles.map((circle) => [circle, boxOf(circle)]));
+      let found = null;
+      for (const outer of circles) {
+        const outerBox = boxes.get(outer);
+        if (!outerBox) continue;
+        const holds = circles.filter((inner) => {
+          const innerBox = boxes.get(inner);
+          return inner !== outer && innerBox && innerBox.width < outerBox.width && within(innerBox, outerBox);
+        });
+        if (holds.length) {
+          found = { element: outer, box: outerBox, held: holds.length };
+          break;
+        }
+      }
+      carrierCache.set(group, found);
+      return found;
+    };
+
+    const roleOf = (element) => {
+      const stamped = element.getAttribute(WARDLEY_ROLE_ATTRIBUTE);
+      if (stamped) return stamped;
+
+      const tag = element.tagName;
+      const parent = element.parentElement;
+      const carrier = parent && parent.tagName === "g" ? carrierOf(parent) : null;
+      const isMarket = !!carrier && carrier.held >= WARDLEY_MARKET_DOT_MINIMUM;
+      let role = null;
+      if (tag === "text") role = WARDLEY_ROLES.label;
+      else if (tag === "line") {
+        role =
+          isMarket && within(lineBoxOf(element), carrier.box)
+            ? WARDLEY_ROLES.marketMark
+            : WARDLEY_ROLES.line;
+      } else if (tag === "path" && element.closest("marker")) role = WARDLEY_ROLES.arrowhead;
+      else if (tag === "rect" && parent === mapGroup && element === backgroundRect) {
+        role = WARDLEY_ROLES.background;
+      } else if (tag === "circle") {
+        if (carrier && carrier.element === element) role = WARDLEY_ROLES.sourcingCarrier;
+        else if (isMarket && within(boxOf(element), carrier.box)) role = WARDLEY_ROLES.marketMark;
+        else role = WARDLEY_ROLES.outline;
+      } else if (tag === "rect" || tag === "path") role = WARDLEY_ROLES.outline;
+
+      if (role) element.setAttribute(WARDLEY_ROLE_ATTRIBUTE, role);
+      return role;
+    };
+
+    // The strategy a carrier draws, read on first sight and stamped.
+    const sourcingOf = (element) => {
+      const stamped = element.getAttribute(WARDLEY_SOURCING_ATTRIBUTE);
+      if (stamped) return stamped;
+      const carrier = carrierOf(element.parentElement);
+      let strategy = null;
+      if (carrier && carrier.element === element && carrier.held >= WARDLEY_MARKET_DOT_MINIMUM) {
+        strategy = WARDLEY_SOURCING.market;
+      } else {
+        const fill = parsePaint(window.getComputedStyle(element).fill);
+        strategy = (fill && WARDLEY_OVERLAY_FILLS[paintToHex(fill).toLowerCase()]) || null;
+      }
+      if (strategy) element.setAttribute(WARDLEY_SOURCING_ATTRIBUTE, strategy);
+      return strategy;
+    };
+
+    // Is a marker referenced by anything? An unreferenced marker is not drawn.
+    const markerReferenced = (marker) => {
+      if (!marker || !marker.id) return false;
+      return all.some((element) =>
+        ["marker-start", "marker-mid", "marker-end"].some((name) => {
+          const reference = element.getAttribute(name) || element.style.getPropertyValue(name);
+          return reference && reference.includes(`#${marker.id}`);
+        })
+      );
+    };
+
+    /** Points around an outline, each on the side the subject does not cover. */
+    const outlinePoints = (element, widthPx, box) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      const distance = widthPx / 2 + WARDLEY_EDGE_OFFSET;
+      const toClient = (local) => new DOMPoint(local.x, local.y).matrixTransform(matrix);
+      const points = [];
+      for (let i = 0; i < WARDLEY_OUTLINE_POINTS; i += 1) {
+        const at = (length * (i + 0.5)) / WARDLEY_OUTLINE_POINTS;
+        const here = toClient(element.getPointAtLength(at));
+        const ahead = toClient(element.getPointAtLength(Math.min(length, at + WARDLEY_TANGENT_STEP)));
+        const behind = toClient(element.getPointAtLength(Math.max(0, at - WARDLEY_TANGENT_STEP)));
+        const dx = ahead.x - behind.x;
+        const dy = ahead.y - behind.y;
+        const size = Math.hypot(dx, dy);
+        if (!(size > 0)) continue;
+        [[-dy / size, dx / size], [dy / size, -dx / size]].forEach((normal) => {
+          const x = here.x + normal[0] * distance;
+          const y = here.y + normal[1] * distance;
+          if (!coversElement(element, box, x, y)) points.push([x, y]);
+        });
+      }
+      return points;
+    };
+
+    /** Would a halo on this word touch another word? */
+    const casingTouchesNeighbour = (element, box) => {
+      // A stroke painted behind the fill reaches half its width beyond each glyph edge.
+      const margin = WARDLEY_CASING_WIDTH_PX / 2;
+      return textBoxes.some(
+        (other) =>
+          other.element !== element &&
+          box.x - margin < other.box.x + other.box.width &&
+          box.x + box.width + margin > other.box.x &&
+          box.y - margin < other.box.y + other.box.height &&
+          box.y + box.height + margin > other.box.y
+      );
+    };
+
+    all.forEach((element, index) => {
+      if (offstage(element)) return;
+      const role = roleOf(element);
+      if (!role) return;
+      applied.reach.found += 1;
+      applied.reach.stamped += element.hasAttribute(WARDLEY_ROLE_ATTRIBUTE) ? 1 : 0;
+      applied.subjects[role] = (applied.subjects[role] || 0) + 1;
+      if (role === WARDLEY_ROLES.background) return;
+
+      const computed = window.getComputedStyle(element);
+
+      // --- WORDS, and ONLY where they fail against the ground they sit on ------
+      if (role === WARDLEY_ROLES.label) {
+        const box = boxOf(element);
+        const declared = parsePaint(computed.fill);
+        if (!box || !declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= WARDLEY_TEXT_TARGET) return;
+        const rendererHex = paintToHex({ ...declared, a: 1 });
+        const chosen = chooseInk(rendererHex, alpha, grounds, WARDLEY_TEXT_TARGET, WARDLEY_TEXT_MARGIN);
+        const reading = { grounds, target: WARDLEY_TEXT_TARGET, wasAt: Number(worstNow.toFixed(2)) };
+        if (chosen.worst >= WARDLEY_TEXT_TARGET) {
+          write(element, `${role}Ink`, { fill: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+          });
+          return;
+        }
+        // Rule 56: no ink clears both grounds, so the word stops standing on both.
+        const overPainted = grounds.some((ground) => ground !== mapGround);
+        if (overPainted && !casingTouchesNeighbour(element, box)) {
+          const cased = chooseInk(rendererHex, alpha, [mapGround], WARDLEY_TEXT_TARGET, WARDLEY_TEXT_MARGIN);
+          if (cased.worst >= WARDLEY_TEXT_TARGET) {
+            write(
+              element,
+              `${role}Casing`,
+              {
+                fill: cased.ink,
+                stroke: mapGround,
+                "stroke-width": `${WARDLEY_CASING_WIDTH_PX}px`,
+                "paint-order": "stroke",
+                "stroke-linejoin": "round",
+              },
+              {
+                ...reading,
+                ink: cased.ink,
+                ratio: Number(cased.worst.toFixed(2)),
+                groundBehind: mapGround,
+                bestWithoutCasing: Number(chosen.worst.toFixed(2)),
+              }
+            );
+            return;
+          }
+        }
+        // Insoluble and uncased: write the best ink there is and record the shortfall.
+        if (chosen.worst > worstNow) {
+          write(element, `${role}Ink`, { fill: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+            casingRefused: overPainted ? "touches a neighbouring word" : "not over a painted region",
+          });
+        }
+        return;
+      }
+
+      // --- ARROWHEAD: a marker shape, read against the grounds it can land on --
+      if (role === WARDLEY_ROLES.arrowhead) {
+        if (!markerReferenced(element.closest("marker"))) return;
+        const declared = parsePaint(computed.fill);
+        if (!declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity);
+        if (alpha <= 0.05) return;
+        const grounds = [...new Set([paintToHex(svgGroundPaint), mapGround])];
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= WARDLEY_OBJECT_TARGET) return;
+        const chosen = chooseInk(
+          paintToHex({ ...declared, a: 1 }),
+          alpha,
+          grounds,
+          WARDLEY_OBJECT_TARGET,
+          WARDLEY_OBJECT_MARGIN
+        );
+        write(element, "arrowheadInk", { fill: chosen.ink }, {
+          ink: chosen.ink,
+          grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: WARDLEY_OBJECT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- LINES: sampled along the line in one client space -------------------
+      if (element.tagName === "line") {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const box = lineBoxOf(element);
+        const matrix = element.getScreenCTM && element.getScreenCTM();
+        if (!declared || width <= 0 || !matrix || typeof element.getTotalLength !== "function") return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const length = element.getTotalLength();
+        const points = WARDLEY_LINE_FRACTIONS.map((fraction) => {
+          const local = element.getPointAtLength(length * fraction);
+          const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+          if (box) {
+            applied.canary.checked += 1;
+            const slack = width + 1;
+            if (
+              client.x >= box.x - slack &&
+              client.x <= box.x + box.width + slack &&
+              client.y >= box.y - slack &&
+              client.y <= box.y + box.height + slack
+            ) {
+              applied.canary.inside += 1;
+            }
+          }
+          return [client.x, client.y];
+        });
+        const grounds = groundsOver(points, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= WARDLEY_OBJECT_TARGET) return;
+        const chosen = chooseInk(
+          paintToHex({ ...declared, a: 1 }),
+          alpha,
+          grounds,
+          WARDLEY_OBJECT_TARGET,
+          WARDLEY_OBJECT_MARGIN
+        );
+        write(element, `${role}Ink`, { stroke: chosen.ink }, {
+          ink: chosen.ink,
+          grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: WARDLEY_OBJECT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- OUTLINES: components, dots, carriers, boxes, pipeline boxes ---------
+      // Only the STROKE (and, on a carrier, its dash form) is written. The fill is
+      // the renderer's and is never written (rule 18); once the outline clears 3:1
+      // it is not a reading (rule 40).
+      const strategy = role === WARDLEY_ROLES.sourcingCarrier ? sourcingOf(element) : null;
+      const declared = parsePaint(computed.stroke);
+      const width = parseFloat(computed.strokeWidth) || 0;
+      const box = boxOf(element);
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      const properties = {};
+      const reading = { target: WARDLEY_OBJECT_TARGET };
+
+      if (declared && width > 0 && box && matrix) {
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+        const points = alpha > 0.05 ? outlinePoints(element, width * scale, box) : null;
+        if (points && points.length) {
+          const grounds = groundsOver(points, index);
+          const worstNow = worstOf(declared, alpha, grounds);
+          reading.grounds = grounds;
+          reading.ratio = Number(worstNow.toFixed(2));
+          if (worstNow < WARDLEY_OBJECT_TARGET) {
+            const chosen = chooseInk(
+              paintToHex({ ...declared, a: 1 }),
+              alpha,
+              grounds,
+              WARDLEY_OBJECT_TARGET,
+              WARDLEY_OBJECT_MARGIN
+            );
+            properties.stroke = chosen.ink;
+            reading.ink = chosen.ink;
+            reading.ratio = Number(chosen.worst.toFixed(2));
+            reading.wasAt = Number(worstNow.toFixed(2));
+          }
+        }
+      }
+
+      // The non-colour channel: a form on the carrier's outline (rules 24, 25, 55).
+      if (strategy) {
+        applied.sourcing[strategy] = (applied.sourcing[strategy] || 0) + 1;
+        const dash = WARDLEY_SOURCING_DASH[strategy];
+        if (dash && declared && width > 0) {
+          properties["stroke-dasharray"] = dash;
+          properties["stroke-linecap"] = WARDLEY_SOURCING_CAP;
+          reading.sourcing = strategy;
+          reading.dash = dash;
+        }
+      }
+
+      if (Object.keys(properties).length) {
+        write(element, strategy ? `${strategy}Sourcing` : `${role}Ink`, properties, reading);
+      }
+    });
+
+    logInfo(
+      `Wardley encoding applied: ${applied.reached} of ${applied.reach.found} stamped elements re-inked, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
   // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
   // -----------------------------------------------------------------------
 
@@ -10011,6 +10770,12 @@ window.MermaidThemes = (function () {
     // applyIshikawaEncoding never calls applyTheme, so it cannot recurse.
     const ishikawaEncoding = applyIshikawaEncoding(root);
 
+    // WARDLEY DISPATCH, added 28 October 2026 (register item 130 session 8), at the
+    // same seam and for the same wiring reason as the fifteen above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyWardleyEncoding never calls applyTheme, so it cannot recurse.
+    const wardleyEncoding = applyWardleyEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -10035,6 +10800,7 @@ window.MermaidThemes = (function () {
       if (vennEncoding) return { venn: vennEncoding };
       if (treeViewEncoding) return { treeView: treeViewEncoding };
       if (ishikawaEncoding) return { ishikawa: ishikawaEncoding };
+      if (wardleyEncoding) return { wardley: wardleyEncoding };
       logDebug(
         "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn, treeView or ishikawa SVG in this container - series encoding skipped"
       );
@@ -12102,6 +12868,7 @@ window.MermaidThemes = (function () {
     applyVennEncoding: applyVennEncoding,
     applyTreeViewEncoding: applyTreeViewEncoding,
     applyIshikawaEncoding: applyIshikawaEncoding,
+    applyWardleyEncoding: applyWardleyEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

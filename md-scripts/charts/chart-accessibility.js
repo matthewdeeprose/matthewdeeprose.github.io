@@ -58,6 +58,162 @@ const ChartAccessibility = (function () {
     minDataPointsForAdvanced: 5,
     generateAdvancedInsights: true,
   };
+  // ---- Custom detailed description: sanitiser (allow-list over an inert parse) ----
+  const DETAILED_FORMAT = Object.freeze({ HTML: "html", TEXT: "text" });
+
+  // Removed together with their contents.
+  const DROP_WITH_CONTENTS = Object.freeze(
+    new Set([
+      "script", "style", "template", "iframe", "object", "embed", "noscript",
+      "svg", "math", "form", "input", "button", "select", "textarea", "link",
+      "meta", "base", "img", "video", "audio", "source", "frame", "frameset",
+    ])
+  );
+
+  // Kept as-is. Anything not listed here or in DROP_WITH_CONTENTS is unwrapped.
+  const KEEP_ELEMENTS = Object.freeze(
+    new Set([
+      "p", "br", "h3", "h4", "h5", "h6", "ul", "ol", "li", "dl", "dt", "dd",
+      "table", "caption", "thead", "tbody", "tfoot", "tr", "th", "td",
+      "strong", "em", "b", "i", "code", "pre", "blockquote", "q", "sub", "sup",
+      "abbr", "span", "a",
+    ])
+  );
+
+  // The panel already owns h3 ("Detailed Description"), so author h1/h2 sit one level below it.
+  const DEMOTED_HEADINGS = Object.freeze({ h1: "h4", h2: "h4" });
+
+  const ALLOWED_HREF_SCHEMES = Object.freeze(new Set(["http", "https", "mailto"]));
+  const CELL_ELEMENTS = Object.freeze(new Set(["th", "td"]));
+  const CELL_ATTRIBUTE_PATTERNS = Object.freeze({
+    scope: /^(row|col|rowgroup|colgroup)$/i,
+    colspan: /^\d{1,4}$/,
+    rowspan: /^\d{1,4}$/,
+    headers: /^[\w\s-]*$/,
+  });
+  const GLOBAL_ATTRIBUTE_PATTERNS = Object.freeze({
+    lang: /^[A-Za-z0-9-]{1,35}$/,
+    dir: /^(ltr|rtl|auto)$/i,
+  });
+  const URL_SCHEME_PATTERN = /^([a-z][a-z0-9+.-]*):/i;
+  // Whitespace and control characters that browsers ignore inside a URL scheme.
+  const URL_IGNORED_CHARS = /[\u0000- \u007f-\u009f]/g;
+
+  /**
+   * Decide whether an href is safe. The DOM has already decoded entities.
+   * @param {string} value - Raw attribute value
+   * @returns {boolean} True for http, https, mailto or a relative URL
+   */
+  function isSafeHref(value) {
+    const compact = String(value).replace(URL_IGNORED_CHARS, "");
+    const match = URL_SCHEME_PATTERN.exec(compact);
+    if (!match) return true; // relative
+    return ALLOWED_HREF_SCHEMES.has(match[1].toLowerCase());
+  }
+
+  /**
+   * Copy the allowed attributes of a source element onto its clean counterpart.
+   * @param {Element} source - Element from the inert parse
+   * @param {Element} target - Clean element being built
+   */
+  function copyAllowedAttributes(source, target) {
+    const tag = target.localName;
+    Object.keys(GLOBAL_ATTRIBUTE_PATTERNS).forEach((name) => {
+      const value = source.getAttribute(name);
+      if (value !== null && GLOBAL_ATTRIBUTE_PATTERNS[name].test(value)) {
+        target.setAttribute(name, value);
+      }
+    });
+    if (CELL_ELEMENTS.has(tag)) {
+      Object.keys(CELL_ATTRIBUTE_PATTERNS).forEach((name) => {
+        const value = source.getAttribute(name);
+        if (value !== null && CELL_ATTRIBUTE_PATTERNS[name].test(value)) {
+          target.setAttribute(name, value);
+        }
+      });
+    }
+    if (tag === "a") {
+      const href = source.getAttribute("href");
+      if (href !== null && isSafeHref(href)) {
+        target.setAttribute("href", href.trim());
+      }
+    }
+  }
+
+  /**
+   * Rebuild the children of an inert node into a clean parent, keeping only allow-listed content.
+   * @param {Node} sourceParent - Node from the inert parse
+   * @param {Node} targetParent - Clean node receiving the output
+   */
+  function sanitiseChildren(sourceParent, targetParent) {
+    sourceParent.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        targetParent.appendChild(document.createTextNode(node.nodeValue));
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return; // comments etc. are dropped
+
+      // Only HTML-namespace elements are considered; foreign content is removed with its contents.
+      const tag = node.localName;
+      if (node.namespaceURI !== "http://www.w3.org/1999/xhtml") return;
+      if (DROP_WITH_CONTENTS.has(tag)) return;
+
+      const outputTag = DEMOTED_HEADINGS[tag] || tag;
+      if (!KEEP_ELEMENTS.has(outputTag)) {
+        sanitiseChildren(node, targetParent); // unwrap
+        return;
+      }
+      const clean = document.createElement(outputTag);
+      copyAllowedAttributes(node, clean);
+      sanitiseChildren(node, clean);
+      targetParent.appendChild(clean);
+    });
+  }
+
+  /**
+   * Sanitise author HTML. The parse happens in a template, whose content is inert:
+   * no script runs and no resource loads while it is built and walked.
+   * @param {string} html - Author-supplied HTML
+   * @returns {string} Safe HTML containing only allow-listed semantic elements
+   */
+  function sanitiseDetailedHtml(html) {
+    const template = document.createElement("template");
+    template.innerHTML = String(html);
+    const holder = document.createElement("div");
+    sanitiseChildren(template.content, holder);
+    return holder.innerHTML;
+  }
+
+  /**
+   * Turn plain text into escaped paragraphs, splitting on blank lines.
+   * @param {string} text - Author-supplied text
+   * @returns {string} HTML made of escaped <p> elements
+   */
+  function plainTextToParagraphs(text) {
+    return String(text)
+      .split(/\r?\n[ \t]*\r?\n/)
+      .map((chunk) => chunk.trim())
+      .filter((chunk) => chunk.length > 0)
+      .map((chunk) => `<p>${escapeDetailedHtml(chunk)}</p>`)
+      .join("");
+  }
+
+  /**
+   * Prepare a custom detailed description for insertion as HTML.
+   * @param {string} detailed - descriptions.detailed from the chart configuration
+   * @param {string} [format] - descriptions.detailedFormat: "html" (default) or "text"
+   * @returns {string} Safe HTML
+   */
+  function renderCustomDetailed(detailed, format) {
+    if (format === DETAILED_FORMAT.TEXT) return plainTextToParagraphs(detailed);
+    if (format !== undefined && format !== DETAILED_FORMAT.HTML) {
+      console.warn(
+        `[Chart Accessibility] Unknown detailedFormat "${format}", treating as "html"`
+      );
+    }
+    return sanitiseDetailedHtml(detailed);
+  }
+
   /**
    * Extract description from chart data or generate one if not provided
    * @param {Object} chartInstance - The Chart.js instance
@@ -90,7 +246,10 @@ const ChartAccessibility = (function () {
 
     // Use custom detailed description if provided, otherwise generate one
     if (customDescriptions.detailed) {
-      descriptions.detailed = customDescriptions.detailed;
+      descriptions.detailed = renderCustomDetailed(
+        customDescriptions.detailed,
+        customDescriptions.detailedFormat
+      );
       console.log("[Chart Accessibility] Using custom detailed description");
     } else {
       descriptions.detailed = generateDetailedDescription(
@@ -2765,6 +2924,25 @@ const ChartAccessibility = (function () {
     return basicDescription;
   }
 
+  // Characters that must not reach innerHTML from author data (chart labels, titles, insights).
+  const HTML_ESCAPE_MAP = Object.freeze({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  });
+
+  /**
+   * Escape author text for insertion into the detailed description HTML.
+   * Applied at HTML assembly only: the plain-text short description must stay unescaped.
+   * @param {*} value - Author-supplied text (or a value that stringifies to it)
+   * @returns {string} HTML-safe text
+   */
+  function escapeDetailedHtml(value) {
+    return String(value).replace(/[&<>"']/g, (ch) => HTML_ESCAPE_MAP[ch]);
+  }
+
   /**
    * Generate a detailed description for a chart
    * @param {Object} chartInstance - The Chart.js instance
@@ -2773,6 +2951,9 @@ const ChartAccessibility = (function () {
    * @returns {string} A detailed description with HTML formatting
    */
   function generateDetailedDescription(chartInstance, chartData, chartType) {
+    // Values may be non-numeric author strings (formatValue returns those as-is), so escape the result.
+    const fmtEsc = (value) => escapeDetailedHtml(formatValue(value));
+
     // Initialize the detailed description container
     let description = `<div class="chart-detailed-description">`;
     // Get basic chart information
@@ -2817,7 +2998,7 @@ const ChartAccessibility = (function () {
     switch (chartType) {
       case "bar":
         // For bar charts - use the already-determined xAxisDescriptor which prefers explicit labels
-        description += `<p>This ${chartType} chart titled "${title}" shows ${valueDescriptorLowercase} for ${xAxisDescriptor}.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" shows ${escapeDetailedHtml(valueDescriptorLowercase)} for ${escapeDetailedHtml(xAxisDescriptor)}.</p>`;
 
         if (datasets.length > 1) {
           description += `<p>The chart has ${formatNumberToWord(
@@ -2829,7 +3010,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -2838,7 +3019,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -2849,12 +3030,12 @@ const ChartAccessibility = (function () {
           )} data points${datasets.length > 1 ? " per series" : ""}:</p>`;
           description += `<ul>`;
           labels.forEach((label) => {
-            description += `<li>${label.toString().toLowerCase()}</li>`;
+            description += `<li>${escapeDetailedHtml(label.toString().toLowerCase())}</li>`;
           });
           description += `</ul>`;
         }
 
-        description += `<p>${xAxisDescriptorCapitalized} are plotted on the x-axis and ${valueDescriptorLowercase} are plotted on the y-axis.</p>`;
+        description += `<p>${escapeDetailedHtml(xAxisDescriptorCapitalized)} are plotted on the x-axis and ${escapeDetailedHtml(valueDescriptorLowercase)} are plotted on the y-axis.</p>`;
 
         // Add key insights/data analysis with heading
         description += `</section>
@@ -2873,10 +3054,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (analysis.primaryTakeaway) {
-          description += `<li><strong>${analysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(analysis.primaryTakeaway)}</strong></li>`;
         }
         analysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -2886,18 +3067,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             analysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             analysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             analysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             analysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             analysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -2921,16 +3102,16 @@ const ChartAccessibility = (function () {
 
           // Format data points consistently
           const dataPointDesc = dataValues
-            .map((dv) => `${dv.label}: ${formatValue(dv.value)}`)
+            .map((dv) => `${escapeDetailedHtml(dv.label)}: ${fmtEsc(dv.value)}`)
             .join(", ");
-          description += `<li>${label}: ${dataPointDesc}</li>`;
+          description += `<li>${escapeDetailedHtml(label)}: ${dataPointDesc}</li>`;
         });
         description += `</ul>`;
         break;
 
       case "line":
         // Use the already-determined xAxisDescriptor which prefers explicit labels
-        description += `<p>This ${chartType} chart titled "${title}" shows trends over ${xAxisDescriptor}.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" shows trends over ${escapeDetailedHtml(xAxisDescriptor)}.</p>`;
 
         // Add dataset information as bullet list if multiple datasets
         if (datasets.length > 1) {
@@ -2943,7 +3124,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -2952,7 +3133,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -2963,12 +3144,12 @@ const ChartAccessibility = (function () {
           )} data points${datasets.length > 1 ? " per series" : ""}:</p>`;
           description += `<ul>`;
           labels.forEach((label) => {
-            description += `<li>${label.toString().toLowerCase()}</li>`;
+            description += `<li>${escapeDetailedHtml(label.toString().toLowerCase())}</li>`;
           });
           description += `</ul>`;
         }
 
-        description += `<p>${xAxisDescriptorCapitalized} are shown on the x-axis and ${valueDescriptorLowercase} on the y-axis.</p>`;
+        description += `<p>${escapeDetailedHtml(xAxisDescriptorCapitalized)} are shown on the x-axis and ${escapeDetailedHtml(valueDescriptorLowercase)} on the y-axis.</p>`;
 
         // Add key insights with heading
         description += `</section>
@@ -2987,10 +3168,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (lineAnalysis.primaryTakeaway) {
-          description += `<li><strong>${lineAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(lineAnalysis.primaryTakeaway)}</strong></li>`;
         }
         lineAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3000,18 +3181,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             lineAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             lineAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             lineAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             lineAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             lineAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3023,10 +3204,10 @@ const ChartAccessibility = (function () {
           <h4 class="chart-details-heading">Complete Data Points</h4>`;
         description += `<ul>`;
         labels.forEach((label, index) => {
-          description += `<li>${label}: `;
+          description += `<li>${escapeDetailedHtml(label)}: `;
           const points = datasets
             .map(
-              (d) => `${d.label || "Dataset"}: ${formatValue(d.data[index])}`
+              (d) => `${escapeDetailedHtml(d.label || "Dataset")}: ${fmtEsc(d.data[index])}`
             )
             .join(", ");
           description += `${points}</li>`;
@@ -3036,7 +3217,7 @@ const ChartAccessibility = (function () {
 
       case "pie":
       case "doughnut":
-        description += `<p>This ${chartType} chart titled "${title}" shows the distribution of categories.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" shows the distribution of categories.</p>`;
 
         // Add data points as bullet list
         if (labels.length > 0) {
@@ -3045,7 +3226,7 @@ const ChartAccessibility = (function () {
           )} categories:</p>`;
           description += `<ul>`;
           labels.forEach((label) => {
-            description += `<li>${label.toString().toLowerCase()}</li>`;
+            description += `<li>${escapeDetailedHtml(label.toString().toLowerCase())}</li>`;
           });
           description += `</ul>`;
         }
@@ -3067,10 +3248,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (pieAnalysis.primaryTakeaway) {
-          description += `<li><strong>${pieAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(pieAnalysis.primaryTakeaway)}</strong></li>`;
         }
         pieAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3080,18 +3261,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             pieAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             pieAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             pieAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             pieAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             pieAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3108,7 +3289,7 @@ const ChartAccessibility = (function () {
         labels.forEach((label, index) => {
           const value = pieData[index];
           const percentage = ((value / total) * 100).toFixed(1);
-          description += `<li>${label}: ${formatValue(
+          description += `<li>${escapeDetailedHtml(label)}: ${fmtEsc(
             value
           )} (${percentage}%)</li>`;
         });
@@ -3116,9 +3297,7 @@ const ChartAccessibility = (function () {
         break;
 
       case "scatter":
-        description += `<p>This ${chartType} chart titled "${title}" shows the relationship between ${
-          xAxisLabel || "x-values"
-        } and ${yAxisLabel || "y-values"}.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" shows the relationship between ${escapeDetailedHtml(xAxisLabel || "x-values")} and ${escapeDetailedHtml(yAxisLabel || "y-values")}.</p>`;
 
         // Add dataset information as bullet list if multiple datasets
         if (datasets.length > 1) {
@@ -3131,7 +3310,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -3140,7 +3319,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -3165,10 +3344,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (scatterAnalysis.primaryTakeaway) {
-          description += `<li><strong>${scatterAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(scatterAnalysis.primaryTakeaway)}</strong></li>`;
         }
         scatterAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3178,18 +3357,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             scatterAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             scatterAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             scatterAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             scatterAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             scatterAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3202,10 +3381,10 @@ const ChartAccessibility = (function () {
         description += `<ul>`;
         datasets.forEach((dataset) => {
           const samplePoints = dataset.data.slice(0, 10);
-          description += `<li>${dataset.label || "Dataset"}: `;
+          description += `<li>${escapeDetailedHtml(dataset.label || "Dataset")}: `;
           description += samplePoints
             .map(
-              (point) => `(${formatValue(point.x)}, ${formatValue(point.y)})`
+              (point) => `(${fmtEsc(point.x)}, ${fmtEsc(point.y)})`
             )
             .join(", ");
           description += `</li>`;
@@ -3221,9 +3400,7 @@ const ChartAccessibility = (function () {
         break;
 
       case "bubble":
-        description += `<p>This ${chartType} chart titled "${title}" shows the relationship between ${
-          xAxisLabel || "x-values"
-        }, ${yAxisLabel || "y-values"}, and bubble size.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" shows the relationship between ${escapeDetailedHtml(xAxisLabel || "x-values")}, ${escapeDetailedHtml(yAxisLabel || "y-values")}, and bubble size.</p>`;
 
         // Add dataset information as bullet list if multiple datasets
         if (datasets.length > 1) {
@@ -3236,7 +3413,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -3245,7 +3422,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -3270,10 +3447,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (bubbleAnalysis.primaryTakeaway) {
-          description += `<li><strong>${bubbleAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(bubbleAnalysis.primaryTakeaway)}</strong></li>`;
         }
         bubbleAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3283,18 +3460,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             bubbleAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             bubbleAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             bubbleAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             bubbleAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             bubbleAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3307,13 +3484,13 @@ const ChartAccessibility = (function () {
         description += `<ul>`;
         datasets.forEach((dataset) => {
           const samplePoints = dataset.data.slice(0, 10);
-          description += `<li>${dataset.label || "Dataset"}: `;
+          description += `<li>${escapeDetailedHtml(dataset.label || "Dataset")}: `;
           description += samplePoints
             .map(
               (point) =>
-                `(${formatValue(point.x)}, ${formatValue(
+                `(${fmtEsc(point.x)}, ${fmtEsc(
                   point.y
-                )}, size: ${formatValue(point.r)})`
+                )}, size: ${fmtEsc(point.r)})`
             )
             .join(", ");
           description += `</li>`;
@@ -3323,7 +3500,7 @@ const ChartAccessibility = (function () {
 
       case "radar":
       case "polarArea":
-        description += `<p>This ${chartType} chart titled "${title}" compares multiple metrics across categories.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" compares multiple metrics across categories.</p>`;
 
         // Add categories information as bullet list
         if (labels.length > 0) {
@@ -3332,7 +3509,7 @@ const ChartAccessibility = (function () {
           )} categories:</p>`;
           description += `<ul>`;
           labels.forEach((label) => {
-            description += `<li>${label.toString().toLowerCase()}</li>`;
+            description += `<li>${escapeDetailedHtml(label.toString().toLowerCase())}</li>`;
           });
           description += `</ul>`;
         }
@@ -3348,7 +3525,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -3357,7 +3534,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -3378,10 +3555,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (radarAnalysis.primaryTakeaway) {
-          description += `<li><strong>${radarAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(radarAnalysis.primaryTakeaway)}</strong></li>`;
         }
         radarAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3391,18 +3568,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             radarAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             radarAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             radarAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             radarAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             radarAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3414,11 +3591,11 @@ const ChartAccessibility = (function () {
           <h4 class="chart-details-heading">Complete Data Points</h4>`;
         description += `<ul>`;
         labels.forEach((label, index) => {
-          description += `<li>${label}: `;
+          description += `<li>${escapeDetailedHtml(label)}: `;
           description += datasets
             .map(
               (dataset) =>
-                `${dataset.label || "Dataset"}: ${formatValue(
+                `${escapeDetailedHtml(dataset.label || "Dataset")}: ${fmtEsc(
                   dataset.data[index]
                 )}`
             )
@@ -3429,7 +3606,7 @@ const ChartAccessibility = (function () {
         break;
 
       default:
-        description += `<p>This ${chartType} chart titled "${title}" presents data in a ${chartType} format.</p>`;
+        description += `<p>This ${chartType} chart titled "${escapeDetailedHtml(title)}" presents data in a ${chartType} format.</p>`;
 
         // Add categories information as bullet list
         if (labels.length > 0) {
@@ -3438,7 +3615,7 @@ const ChartAccessibility = (function () {
           )} categories:</p>`;
           description += `<ul>`;
           labels.forEach((label) => {
-            description += `<li>${label.toString().toLowerCase()}</li>`;
+            description += `<li>${escapeDetailedHtml(label.toString().toLowerCase())}</li>`;
           });
           description += `</ul>`;
         }
@@ -3454,7 +3631,7 @@ const ChartAccessibility = (function () {
             const labelText = dataset.label
               ? dataset.label.toLowerCase()
               : "unlabelled dataset";
-            description += `<li>${labelText}</li>`;
+            description += `<li>${escapeDetailedHtml(labelText)}</li>`;
           });
           description += `</ul>`;
         } else {
@@ -3463,7 +3640,7 @@ const ChartAccessibility = (function () {
             ? datasets[0].label.toLowerCase()
             : "";
           description += `<p>The chart has one data series${
-            singleLabelText ? `: ${singleLabelText}` : ""
+            singleLabelText ? `: ${escapeDetailedHtml(singleLabelText)}` : ""
           }.</p>`;
         }
 
@@ -3484,10 +3661,10 @@ const ChartAccessibility = (function () {
         }
         description += `<ul>`;
         if (defaultAnalysis.primaryTakeaway) {
-          description += `<li><strong>${defaultAnalysis.primaryTakeaway}</strong></li>`;
+          description += `<li><strong>${escapeDetailedHtml(defaultAnalysis.primaryTakeaway)}</strong></li>`;
         }
         defaultAnalysis.insights.forEach((insight) => {
-          description += `<li>${insight}</li>`;
+          description += `<li>${escapeDetailedHtml(insight)}</li>`;
         });
         description += `</ul>`;
 
@@ -3497,18 +3674,18 @@ const ChartAccessibility = (function () {
           <section class="chart-section chart-statistics-section">
             <h4 class="chart-details-heading">Statistical Summary</h4>`;
           description += `<ul>`;
-          description += `<li>Mean: ${formatValue(
+          description += `<li>Mean: ${fmtEsc(
             defaultAnalysis.statistics.mean
           )}</li>`;
-          description += `<li>Median: ${formatValue(
+          description += `<li>Median: ${fmtEsc(
             defaultAnalysis.statistics.median
           )}</li>`;
-          description += `<li>Standard Deviation: ${formatValue(
+          description += `<li>Standard Deviation: ${fmtEsc(
             defaultAnalysis.statistics.standardDeviation
           )}</li>`;
-          description += `<li>95% Confidence Interval: ${formatValue(
+          description += `<li>95% Confidence Interval: ${fmtEsc(
             defaultAnalysis.statistics.confidenceInterval.lower
-          )} to ${formatValue(
+          )} to ${fmtEsc(
             defaultAnalysis.statistics.confidenceInterval.upper
           )}</li>`;
           description += `</ul>`;
@@ -3520,11 +3697,11 @@ const ChartAccessibility = (function () {
           <h4 class="chart-details-heading">Data Points</h4>`;
         description += `<ul>`;
         labels.forEach((label, index) => {
-          description += `<li>${label}: `;
+          description += `<li>${escapeDetailedHtml(label)}: `;
           description += datasets
             .map(
               (dataset) =>
-                `${dataset.label || "Dataset"}: ${formatValue(
+                `${escapeDetailedHtml(dataset.label || "Dataset")}: ${fmtEsc(
                   dataset.data[index]
                 )}`
             )

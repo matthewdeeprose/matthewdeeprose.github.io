@@ -412,10 +412,7 @@ const UniversalModal = (function () {
       this.activeModalElement = null;
 
       // Background scroll prevention properties
-      this.originalBodyOverflow = null;
-      this.originalBodyPosition = null;
-      this.originalBodyTop = null;
-      this.originalBodyWidth = null;
+      this.originalHtmlOverflowY = null;
       this.originalScrollPosition = null;
       this.isScrollPrevented = false;
 
@@ -477,17 +474,22 @@ const UniversalModal = (function () {
 
       logDebug("Preventing background scroll");
 
-      this.originalScrollPosition =
-        window.pageYOffset || document.documentElement.scrollTop;
-      this.originalBodyOverflow = document.body.style.overflow;
-      this.originalBodyPosition = document.body.style.position;
-      this.originalBodyTop = document.body.style.top;
-      this.originalBodyWidth = document.body.style.width;
-
-      document.body.style.overflow = "hidden";
-      document.body.style.position = "fixed";
-      document.body.style.top = `-${this.originalScrollPosition}px`;
-      document.body.style.width = "100%";
+      // Lock the page at the root, not the body. The old "fixed body" lock
+      // (body position: fixed, top: -scrollY, overflow: hidden) left the
+      // bottom of the viewport blank whenever the page had been scrolled:
+      // main.css gives body height: 100vh, and because <html> has its own
+      // overflow-y the body's overflow: hidden clipped the body box instead of
+      // reaching the viewport, so everything below that shifted box vanished
+      // behind the backdrop (measured 29 October 2026, headless: a 600px band
+      // at scrollY 600). Hiding overflow on <html> stops wheel, keyboard and
+      // scrollbar scrolling without moving the page, and scrollbar-gutter:
+      // stable in main.css keeps the gutter so nothing shifts sideways.
+      // Old iOS Safari (before 16) ignored this for touch; the background is
+      // inert while a modal is open in any case.
+      const root = document.documentElement;
+      this.originalScrollPosition = window.scrollY;
+      this.originalHtmlOverflowY = root.style.overflowY;
+      root.style.overflowY = "hidden";
 
       this.isScrollPrevented = true;
       logDebug(
@@ -500,25 +502,21 @@ const UniversalModal = (function () {
 
       logDebug("Restoring background scroll");
 
-      document.body.style.overflow = this.originalBodyOverflow || "";
-      document.body.style.position = this.originalBodyPosition || "";
-      document.body.style.top = this.originalBodyTop || "";
-      document.body.style.width = this.originalBodyWidth || "";
+      document.documentElement.style.overflowY = this.originalHtmlOverflowY || "";
 
-      if (this.originalScrollPosition !== null) {
-        // Restore the pre-open scroll position instantly. The global
-        // html { scroll-behavior: smooth } rule would otherwise animate this
-        // jump over ~400ms on every modal close; "instant" defeats that for
-        // this one call, matching the established pattern used elsewhere in the
-        // repo. Reduced-motion users are already served by the global
-        // scroll-behavior: auto override, so no separate guard is needed here.
-        window.scrollTo({ top: this.originalScrollPosition, left: 0, behavior: "instant" });
+      // The root lock stops the person scrolling but not code: a scrollIntoView
+      // or scrollTo can still move the page while a modal is open. Put the page
+      // back only if that happened, instantly so the global
+      // html { scroll-behavior: smooth } rule does not animate the jump.
+      const scrollPosition = this.originalScrollPosition;
+      if (scrollPosition !== null && window.scrollY !== scrollPosition) {
+        logWarn(
+          `Page scrolled from ${scrollPosition}px to ${window.scrollY}px while a modal was open; restoring`,
+        );
+        window.scrollTo({ top: scrollPosition, left: 0, behavior: "instant" });
       }
 
-      this.originalBodyOverflow = null;
-      this.originalBodyPosition = null;
-      this.originalBodyTop = null;
-      this.originalBodyWidth = null;
+      this.originalHtmlOverflowY = null;
       this.originalScrollPosition = null;
       this.isScrollPrevented = false;
 
@@ -1727,8 +1725,8 @@ const UniversalModal = (function () {
       //     session removes the button that opened the manager). #main is the
       //     one always-present, always-visible, id-stable anchor on the page.
       //     tabindex="-1" is set at runtime (native <main> is not focusable),
-      //     and { preventScroll: true } stops the focus yanking the viewport,
-      //     which would undo the instant scroll-restore above.
+      //     and { preventScroll: true } stops the focus yanking the viewport
+      //     away from where the page was when the modal opened.
       //  3. If neither is reachable, focus is left to the browser's native
       //     <dialog> handling.
       //

@@ -97,6 +97,7 @@
 
   /** Selector for headings, and for the blocks whose headings do not count. */
   const HEADING_SELECTOR = "h1,h2,h3,h4,h5,h6";
+  const MAX_HEADING_LEVEL = 6;
   const DESCRIPTION_BLOCK_SELECTOR = ".image-long-description, .longdesc";
 
   /** Class the mathpix figure normaliser uses to spot an image wrapper. */
@@ -545,22 +546,35 @@
         img.setAttribute("alt", UNDESCRIBED_ALT);
       }
 
-      if (str(entry.longDescription)) {
+      // SX-1 (SX-D1): the serialiser's own test decides what is writable, so the
+      // sentinel and blank values are excluded exactly as the appendix excludes them.
+      const textInImage = window.MathPixAltTextMMDSerialiser?.writableTextInImage?.(entry) ?? null;
+
+      if (str(entry.longDescription) || textInImage !== null) {
         // Read the section level now, synchronously, before any await.
         described.push({
           img,
           entry,
+          textInImage,
           sectionLevel: nearestPrecedingHeadingLevel(doc, img),
         });
       }
     }
 
     const fragments = await Promise.all(
-      described.map((d) =>
-        renderDescriptionFragment(
-          demoteDescriptionHeadings(d.entry.longDescription, d.sectionLevel),
-        ),
-      ),
+      described.map(async (d) => {
+        const description = str(d.entry.longDescription)
+          ? renderDescriptionFragment(
+              demoteDescriptionHeadings(d.entry.longDescription, d.sectionLevel),
+            )
+          : "";
+        if (d.textInImage === null) return { description, text: "" };
+        // One level below the description headings (section level plus one).
+        const hashes = "#".repeat(Math.min(MAX_HEADING_LEVEL, d.sectionLevel + 2));
+        const heading = window.MathPixAltTextMMDSerialiser.TEXT_IN_IMAGE_HEADING;
+        const text = renderDescriptionFragment(`${hashes} ${heading}\n\n${d.textInImage}`);
+        return { description, text };
+      }),
     );
 
     // Synchronous DOM walk from here down.
@@ -570,7 +584,8 @@
 
       const caption = str(entry.title);
       const describedIndex = described.findIndex((d) => d.img === img);
-      const fragment = describedIndex >= 0 ? fragments[describedIndex] : "";
+      const parts = describedIndex >= 0 ? fragments[describedIndex] : { description: "", text: "" };
+      const fragment = parts.description + parts.text;
 
       if (!caption && !fragment) continue;
 
@@ -595,7 +610,8 @@
         container.className = LONGDESC_CLASS;
         container.innerHTML = fragment;
         host.appendChild(container);
-        stats.longDescriptions.push(entry.id);
+        if (parts.description) stats.longDescriptions.push(entry.id);
+        if (parts.text) stats.textInImage.push(entry.id);
       }
     }
   };
@@ -740,6 +756,7 @@
       decorative: [],
       captions: [],
       longDescriptions: [],
+      textInImage: [],
       imgCount: 0,
       chemistry: null,
       appendixRemoved: false,
@@ -793,6 +810,15 @@
       "text/html",
     );
     await this._applyRegistryToExportDom(doc, index, stats);
+
+    // PN-2: bare text divs become paragraphs, by the preview's own function.
+    // The body and the long descriptions are promoted by the same rule (PN-D1c).
+    // Absent is not fatal: the export keeps the divs and says so.
+    if (typeof window.MathPixMMDPreview?.promoteParagraphs === "function") {
+      window.MathPixMMDPreview.promoteParagraphs(doc.body);
+    } else {
+      logWarn("scorm export: paragraph promotion unavailable, paragraphs stay as divs");
+    }
     const content = doc.body.innerHTML;
 
     if (stats.misses.length) {
@@ -851,7 +877,8 @@
     logInfo(
       `_buildScormExportContent: ${stats.imgCount} image(s), ${stats.altApplied.length} with alt, ` +
         `${stats.decorative.length} decorative, ${stats.captions.length} caption(s), ` +
-        `${stats.longDescriptions.length} long description(s), ${stats.misses.length} unresolved`,
+        `${stats.longDescriptions.length} long description(s), ${stats.textInImage.length} text-in-image subsection(s), ` +
+        `${stats.misses.length} unresolved`,
     );
     setStatus("Document ready to export.");
     return content;
@@ -1092,9 +1119,13 @@
       );
     }
 
-    const unembedded =
-      (stats.misses || []).length +
-      ((build.resolverStats && build.resolverStats.skipped) || []).length;
+    // EX-1: one picture that cannot be embedded is pushed by the registry pass,
+    // the resolver and the library callback (and again for each format), so
+    // count distinct sources, not pushes.
+    const unembedded = new Set([
+      ...(stats.misses || []),
+      ...((build.resolverStats && build.resolverStats.skipped) || []),
+    ]).size;
     if (unembedded) {
       const unembeddedNoun = unembedded === 1 ? "1 image" : `${unembedded} images`;
       notes.push(`${unembeddedNoun} could not be embedded.`);

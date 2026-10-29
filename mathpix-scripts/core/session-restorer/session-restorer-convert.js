@@ -557,9 +557,14 @@
       if (isCurrentRun()) {
         this.isConverting = false;
         this.activeConversionId = null;
+        const cancelBtn = this.elements.convertCancelBtn;
+        const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
         this.updateConvertButtonState();
-        if (this.elements.convertCancelBtn)
-          this.elements.convertCancelBtn.hidden = true;
+        // Parcel T-69c: hand focus to Convert BEFORE hiding the focused
+        // Cancel, so it never rests on <body> (as T-69b did for Convert mode).
+        if (cancelHadFocus && this.elements.convertBtn)
+          this.elements.convertBtn.focus();
+        if (cancelBtn) cancelBtn.hidden = true;
         this.hideConvertProgress();
       }
     }
@@ -951,10 +956,17 @@
    * back to idle and writes no status or toast; the new session's own restore
    * line is the voice. A late return finds its token out of date. A browser-only
    * build already under way cannot be stopped from here.
+   * Parcel T-69b: `handFocusTo` is the element that takes focus if Cancel has
+   * it, before Cancel is hidden; a replaced session passes nothing and focus
+   * is left alone.
+   * Parcel T-69c: returns true if a run was abandoned, so a replaced-session
+   * caller logs it; a user Cancel does not.
+   * @param {{handFocusTo?: HTMLElement|null}} [options]
+   * @returns {boolean}
    * @private
    */
-  proto._abandonRun = function () {
-    if (!this.isConverting) return;
+  proto._abandonRun = function ({ handFocusTo = null } = {}) {
+    if (!this.isConverting) return false;
     this._runToken = (this._runToken || 0) + 1;
 
     const client = window.getMathPixConvertClient?.();
@@ -963,11 +975,13 @@
     }
     this.activeConversionId = null;
     this.isConverting = false;
-    if (this.elements.convertCancelBtn)
-      this.elements.convertCancelBtn.hidden = true;
-    this.hideConvertProgress();
+    const cancelBtn = this.elements.convertCancelBtn;
+    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
     this.updateConvertButtonState();
-    logInfo("Conversion abandoned: its session was replaced");
+    if (cancelHadFocus && handFocusTo) handFocusTo.focus();
+    if (cancelBtn) cancelBtn.hidden = true;
+    this.hideConvertProgress();
+    return true;
   };
 
   /**
@@ -984,13 +998,9 @@
    */
   proto.cancelConversion = function () {
     if (!this.isConverting) return;
-    const cancelHadFocus =
-      this.elements.convertCancelBtn &&
-      document.activeElement === this.elements.convertCancelBtn;
-    this._abandonRun();
-    if (cancelHadFocus && this.elements.convertBtn) {
-      this.elements.convertBtn.focus();
-    }
+    // Parcel T-69b: the hand-over to Convert happens inside _abandonRun,
+    // before it hides the focused Cancel.
+    this._abandonRun({ handFocusTo: this.elements.convertBtn });
     this.showNotification("Conversion cancelled", "info");
     logInfo("Conversion cancelled by user");
   };
@@ -1188,7 +1198,8 @@
    */
   proto.clearConversionResults = function () {
     // Parcel O-04: a run still going belongs to the session being replaced.
-    this._abandonRun();
+    if (this._abandonRun())
+      logInfo("Conversion abandoned: its session was replaced");
     const store = window.getMathPixConvertUI?.()?.completedDownloads;
     if (store && this.conversionResults) {
       this.conversionResults.forEach((blob, format) => {

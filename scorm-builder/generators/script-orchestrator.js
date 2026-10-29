@@ -26,8 +26,10 @@ const FEATURE_SCRIPTS = {
   // exposes window.saveCompleteDocument (has a clean-DOM fallback, so it works
   // even without the base64 self-reference embed)
   save: ["document-save-functionality.js"],
-  // self-instantiating; browser-native TTS (speechSynthesis), no dependency
-  readAloud: ["read-aloud.js"],
+  // self-instantiating; browser-native TTS (speechSynthesis), no dependency. The maths
+  // speech rules are a plain global (window.MathsSpeechRules) listed first so Read Aloud
+  // finds it; the same file is vendored for the host's own speech.
+  readAloud: ["maths-speech-rules.js", "read-aloud.js"],
   // self-instantiating; reading guide + colour overlay, injected at runtime
   visualAids: ["visual-aids.js"],
   // self-instantiating; progress bar, back-to-top, TOC current-section

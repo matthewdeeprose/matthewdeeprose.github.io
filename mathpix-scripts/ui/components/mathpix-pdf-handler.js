@@ -2667,10 +2667,13 @@ class MathPixPDFHandler extends MathPixBaseModule {
         }
       }
 
-      this.showNotification(
-        "PDF processing completed successfully!",
-        "success",
-      );
+      // T-68a: the result renderer already says "Document processing complete! ..."; this line speaks only on the fallback path.
+      if (!this.controller.pdfResultRenderer) {
+        this.showNotification(
+          "PDF processing completed successfully!",
+          "success",
+        );
+      }
       logInfo("PDF results displayed", {
         availableFormats: Object.keys(results),
         fileName: this.currentPDFFile?.name,

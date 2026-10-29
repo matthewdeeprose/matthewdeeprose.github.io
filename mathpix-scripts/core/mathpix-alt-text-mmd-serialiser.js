@@ -1905,6 +1905,9 @@
     APPENDIX_ACTIONS,
     // TC-1 — the text-in-image marker, read by the chemistry writer's parse.
     TEXT_IN_IMAGE_MARKER_RE,
+    // SX-1 — the browser exports read the same test and heading text, never a copy.
+    writableTextInImage: _writableTextInImage,
+    TEXT_IN_IMAGE_HEADING,
   };
 
   // ============================================================================

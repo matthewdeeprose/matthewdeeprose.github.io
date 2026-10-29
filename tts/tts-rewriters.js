@@ -581,11 +581,88 @@ const TTSRewriters = (function () {
     if (!sre || !el) return null;
     const mathEl = el.querySelector("math");
     if (!mathEl) return null;
+    const shared = sharedRulesSpeech(mathEl, sre);
+    if (shared) return shared;
     try {
       const speech = sre.toSpeech(mathEl.outerHTML);
       return speech && typeof speech === "string" ? speech.trim() : null;
     } catch (err) {
       logWarn("SRE.toSpeech failed for formula — using fallback", err);
+      return null;
+    }
+  }
+
+  // The page's assistive MathML carries invisible-times operators its
+  // enrichment wrote (U+2062); the export's MathML has none, and one after a
+  // logical-not sign makes ClearSpeak say "not times open paren" (RA-69).
+  const INVISIBLE_TIMES = "⁢";
+
+  // The contour-integral signs U+222E to U+2233 (∮ ∯ ∰ ∱ ∲ ∳). The Convert and
+  // MathPix result preview is typeset by mathpix-markdown-it's own MathJax, whose
+  // \oint macro draws the sign as text inside an OP mrow holding a VCENTER mrow,
+  // so ClearSpeak says "sub C" where the export (a plain <mo>) says "over C"
+  // (RA-70, RA-71). Rebuilt on the speech copy only, as the export's <mo>.
+  const CONTOUR_INTEGRAL_SIGNS = Object.freeze([
+    "∮",
+    "∯",
+    "∰",
+    "∱",
+    "∲",
+    "∳",
+  ]);
+  const TEXCLASS_ATTRIBUTE = "data-mjx-texclass";
+  const TEXCLASS_OP = "OP";
+  const TEXCLASS_VCENTER = "VCENTER";
+
+  /**
+   * Speak an equation with the shared maths speech rules (the repairs an
+   * export's Read Aloud makes before SRE reads the MathML), on a COPY of the
+   * <math>: the live page's MathML is never touched. Returns null when the
+   * rules file is absent or anything throws, so the caller falls back to
+   * today's plain SRE reading.
+   *
+   * @param {Element} mathEl - the <math> element.
+   * @param {Object} sre - the resolved SRE engine from TTSSreLoader.loadSRE().
+   * @returns {string|null}
+   */
+  function sharedRulesSpeech(mathEl, sre) {
+    const rules = window.MathsSpeechRules;
+    if (!rules || typeof rules.forSpeech !== "function") return null;
+    try {
+      const copy = mathEl.cloneNode(true);
+      copy.querySelectorAll("mo").forEach(function (mo) {
+        if (mo.textContent === INVISIBLE_TIMES) mo.remove();
+      });
+      copy.querySelectorAll("mtext").forEach(function (text) {
+        if (!CONTOUR_INTEGRAL_SIGNS.includes(text.textContent)) return;
+        const centred = text.parentElement;
+        if (
+          !centred ||
+          centred.getAttribute(TEXCLASS_ATTRIBUTE) !== TEXCLASS_VCENTER
+        )
+          return;
+        const operator = centred.parentElement;
+        if (
+          !operator ||
+          operator.getAttribute(TEXCLASS_ATTRIBUTE) !== TEXCLASS_OP
+        )
+          return;
+        const sign = operator.ownerDocument.createElementNS(
+          operator.namespaceURI,
+          "mo",
+        );
+        sign.setAttribute(TEXCLASS_ATTRIBUTE, TEXCLASS_OP);
+        sign.textContent = text.textContent;
+        operator.replaceWith(sign);
+      });
+      const prepared = rules.forSpeech(copy, "clearspeak");
+      const speech = rules.restoreLabels(
+        sre.toSpeech(prepared.mathml),
+        prepared.labels,
+      );
+      return speech && typeof speech === "string" ? speech.trim() : null;
+    } catch (err) {
+      logWarn("Shared maths rules failed for formula — using plain SRE", err);
       return null;
     }
   }

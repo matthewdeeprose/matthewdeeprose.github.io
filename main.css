@@ -3469,14 +3469,25 @@ a:hover {
 }
 
 @media screen and (max-width: 800px) {
+  /* Owner's pick A, 29 Oct 2026: Top and Bottom stack in their own column at the
+     right edge and the page keeps that column empty, so they never cover text or
+     controls. The column is always reserved (also before the buttons show after
+     660px of scroll) so nothing shifts sideways. Scoped to pages that carry the panel. */
   #panel {
     bottom: 0.5rem;
-    right: 1rem;
+    right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  /* icon (same clamp as #panel svg) + border, outline, SVG margins and panel gaps */
+  body:has(#panel) {
+    padding-right: calc(clamp(1.5rem, 8vw, 3.125rem) + 1.75rem);
   }
   #myBtn,
   #myBtn2 {
     padding: 0rem;
-    margin: 0.5rem 1rem 0.2rem 0.5rem;
+    margin: 0.25rem 0;
     border-radius: 4px;
     width: auto;
     border: 0.1rem solid #fffff4;
@@ -3500,7 +3511,7 @@ a:hover {
   #myBtn,
   #myBtn2 {
     padding: 0rem;
-    margin: 0.5rem 1rem 0.2rem 0.5rem;
+    margin: 0.25rem 0;
     border-radius: 4px;
     width: auto;
   }

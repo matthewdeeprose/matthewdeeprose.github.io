@@ -1025,7 +1025,7 @@ class MathPixConvertMode {
     if (!libraryReady) {
       // Verbatim Resume loading markup (CSS class .mmd-preview-loading already styled)
       container.innerHTML = `
-        <div class="mmd-preview-loading" role="status">
+        <div class="mmd-preview-loading">
           <p>Loading preview renderer...</p>
           <p class="mmd-preview-fallback-note">
             <small>Mathematical content will render when the library loads.</small>
@@ -1422,7 +1422,8 @@ class MathPixConvertMode {
     this.revokeDownloadUrls();
 
     // Parcel O-04: a run still going belongs to the document being cleared.
-    this._abandonRun();
+    if (this._abandonRun())
+      logInfo("Conversion abandoned: its document was cleared or replaced");
 
     // Reset state
     this.currentMMDContent = "";
@@ -1524,7 +1525,8 @@ class MathPixConvertMode {
   clearConversionResults() {
     // Parcel O-04: new content replaces the document a running conversion
     // belongs to, so that run is abandoned rather than left to deliver here.
-    this._abandonRun();
+    if (this._abandonRun())
+      logInfo("Conversion abandoned: its document was cleared or replaced");
 
     this.revokeDownloadUrls();
     this.completedDownloads = new Map();
@@ -1908,8 +1910,10 @@ class MathPixConvertMode {
     const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
     if (convertHold) convertHold.release();
     this.updateConvertButtonState();
-    if (cancelBtn) cancelBtn.hidden = true;
+    // Parcel T-69b: hand focus over BEFORE hiding the focused Cancel, so it
+    // never rests on <body> while the browser blurs it to nothing.
     if (cancelHadFocus && convertBtn) convertBtn.focus();
+    if (cancelBtn) cancelBtn.hidden = true;
 
     // Determine errors (formats that were selected but not completed)
     const errors = selectedFormats
@@ -1972,10 +1976,17 @@ class MathPixConvertMode {
    * been cleared or replaced. Stops the client polling (as Cancel does), puts
    * the controls back to idle and writes no status or toast; the gesture that
    * caused it already speaks. A late return finds its token out of date.
+   * Parcel T-69b: `handFocusTo` is the element that takes focus if Cancel has
+   * it. The hand-over happens before Cancel is hidden; a replaced document
+   * passes nothing and focus is left alone.
+   * Parcel T-69c: returns true if a run was abandoned, so a replaced-document
+   * caller logs it; a user Cancel does not.
+   * @param {{handFocusTo?: HTMLElement|null}} [options]
+   * @returns {boolean}
    * @private
    */
-  _abandonRun() {
-    if (!this.isConverting) return;
+  _abandonRun({ handFocusTo = null } = {}) {
+    if (!this.isConverting) return false;
     this._runToken = (this._runToken || 0) + 1;
 
     const apiClient = window.getMathPixConvertClient?.();
@@ -1985,16 +1996,18 @@ class MathPixConvertMode {
     this.activeConversionId = null;
     this.isConverting = false;
 
+    const cancelBtn = document.getElementById("convert-mode-cancel-btn");
+    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
     if (this._runHold) {
       this._runHold.release();
       this._runHold = null;
     }
-    const cancelBtn = document.getElementById("convert-mode-cancel-btn");
+    this.updateConvertButtonState();
+    if (cancelHadFocus && handFocusTo) handFocusTo.focus();
     if (cancelBtn) cancelBtn.hidden = true;
     const progressSection = document.getElementById("convert-mode-progress");
     if (progressSection) progressSection.hidden = true;
-    this.updateConvertButtonState();
-    logInfo("Conversion abandoned: its document was cleared or replaced");
+    return true;
   }
 
   /**
@@ -2007,12 +2020,11 @@ class MathPixConvertMode {
     // The token bump makes every late callback and the run's tail do nothing,
     // and an id that arrives later is cancelled in onStart.
     if (!this.isConverting) return;
-    const cancelBtn = document.getElementById("convert-mode-cancel-btn");
     const convertBtn = document.getElementById("convert-mode-convert-btn");
-    const cancelHadFocus = cancelBtn && document.activeElement === cancelBtn;
-    this._abandonRun();
+    // Parcel T-69b: the hand-over to Convert Selected happens inside
+    // _abandonRun, before it hides the focused Cancel.
+    this._abandonRun({ handFocusTo: convertBtn });
     this.completedDownloads = new Map();
-    if (cancelHadFocus && convertBtn) convertBtn.focus();
     this.showNotification("Conversion cancelled", "info");
     logInfo("Conversion cancelled by user");
   }

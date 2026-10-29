@@ -21757,6 +21757,1249 @@ window.MermaidParseAdapter = (function () {
     return ishikawaHealthy;
   }
 
+  // ===========================================================================
+  // WARDLEY SURFACE (register item 130, session 2, 27 October 2026)
+  // ===========================================================================
+  //
+  // parseWardley(code) delivers the wardley-beta map as plain data. The census
+  // (docs/mermaid-item-130-census-1-2026-10-27.md) found the db delivers every
+  // fact the canvas draws, with the author's coordinates as 0 to 100
+  // percentages (x evolution, y visibility), so the surface is DB-ONLY for the
+  // payload (seat ruling WS1). The one non-db read is the frontmatter title,
+  // which the canvas draws and the db does not hold: it is read from the
+  // source (readFrontmatterTitle) and handed to Mermaid through
+  // getDiagramFromText(code, { title }), the requirement and venn route, inside
+  // the SAME queue slot as the db read. No config is read (census: only the
+  // site-level `wardley-beta` key is honoured, and this app sets none).
+  //
+  // THE DB IS A MODULE-LEVEL SINGLETON AND CONCURRENT PARSES ACCUMULATE IN IT
+  // (census: Promise.all of two parses read both maps' nodes in both). Two
+  // things protect a delivery, as on venn (WS2): the adapter queue keeps
+  // overlapping parses apart, and an eager snapshot, taken in the same tick as
+  // the parse resolves, keeps a held delivery from changing afterwards. The
+  // builder hands out its own record objects (getWardleyData copies only the
+  // arrays), so every record is copied field by field. A parse started during
+  // a render puts another map's component on the canvas (census); that is the
+  // item 22 shape and is recorded, not defended, here.
+  //
+  // Three facts the canvas draws that the db does not hold as drawn are each
+  // computed in ONE function, by the renderer's own rule read out of the
+  // pinned 11.17.2 bundle (WS4): a pipeline parent's drawn position
+  // (wardleyDrawnPositions), the stage names, bands and axis labels
+  // (wardleyStages, WARDLEY_AXIS_LABELS), and which links the canvas draws
+  // (wardleyLinkDrawn). Every label prints literally (group R): the decode is
+  // decodePlaceholders and nothing else (WS5). A record the reader cannot map
+  // is a STOP (WS8), never a silent drop.
+  const WARDLEY_DIAGRAM_TYPE = "wardley";
+  const WARDLEY_DB_ACCESSORS = Object.freeze([
+    "getWardleyData",
+    "getDiagramTitle",
+    "getAccTitle",
+    "getAccDescription",
+  ]);
+  const WARDLEY_DATA_KEYS = Object.freeze([
+    "nodes", "links", "trends", "pipelines", "annotations", "notes",
+    "accelerators", "deaccelerators", "annotationsBox", "axes", "size",
+  ]);
+  const WARDLEY_NODE_KEYS = Object.freeze([
+    "id", "label", "x", "y", "className", "labelOffsetX", "labelOffsetY",
+    "inertia", "sourceStrategy", "isPipelineParent", "inPipeline",
+  ]);
+  const WARDLEY_LINK_KEYS = Object.freeze(["source", "target", "dashed", "label", "flow"]);
+  const WARDLEY_TREND_KEYS = Object.freeze(["nodeId", "targetX", "targetY"]);
+  const WARDLEY_PIPELINE_KEYS = Object.freeze(["nodeId", "componentIds"]);
+  const WARDLEY_ANNOTATION_KEYS = Object.freeze(["number", "coordinates", "text"]);
+  const WARDLEY_NOTE_KEYS = Object.freeze(["text", "x", "y"]);
+  const WARDLEY_MARKER_KEYS = Object.freeze(["name", "x", "y"]);
+  const WARDLEY_POINT_KEYS = Object.freeze(["x", "y"]);
+  const WARDLEY_SIZE_KEYS = Object.freeze(["width", "height"]);
+  const WARDLEY_AXES_KEYS = Object.freeze(["stages", "stageBoundaries"]);
+  const WARDLEY_KINDS = Object.freeze(["anchor", "component", "pipeline-component"]);
+  const WARDLEY_STRATEGIES = Object.freeze(["build", "buy", "outsource", "market"]);
+  const WARDLEY_FLOWS = Object.freeze(["forward", "backward", "bidirectional"]);
+
+  // The renderer's constants (bundle `c8t`, `h8t` and the axis-label
+  // fallbacks), not db facts: the four default stage names, the axis labels,
+  // and the geometry the pipeline-parent rule needs.
+  const WARDLEY_DEFAULT_STAGES = Object.freeze(["Genesis", "Custom Built", "Product", "Commodity"]);
+  const WARDLEY_AXIS_LABELS = Object.freeze({ x: "Evolution", y: "Visibility" });
+  const WARDLEY_DEFAULT_HEIGHT = 600;
+  const WARDLEY_PADDING = 48;
+  const WARDLEY_NODE_RADIUS = 6;
+  // A pipeline parent is drawn half a box height (2 radii) plus a sixth of its
+  // square's side (1.6 radii) above its children's line: 13.6 px by default.
+  const WARDLEY_PARENT_LIFT_PX = WARDLEY_NODE_RADIUS * 2 + (WARDLEY_NODE_RADIUS * 1.6) / 6;
+  const WARDLEY_PERCENT = 100;
+
+  let wardleyMemoCode = null;
+  let wardleyMemoPromise = null;
+  let wardleyHealthy = null;
+  let wardleySelfCheckStarted = false;
+  let wardleySelfCheckPromise = null;
+
+  function wardleyStop(message) {
+    return new Error("Wardley surface: " + message);
+  }
+
+  /**
+   * Copy one db record into a plain object, refusing any key the census did
+   * not find. A key present with the value undefined is allowed (the builder
+   * spreads optional fields as undefined).
+   * @param {*} record - The db's record
+   * @param {ReadonlyArray<string>} keys - The keys the census found
+   * @param {string} where - Names the record in a STOP
+   * @returns {Object} The record's own values, unconverted
+   */
+  function copyWardleyRecord(record, keys, where) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      throw wardleyStop(`${where} is not an object`);
+    }
+    Object.keys(record).forEach((key) => {
+      if (!keys.includes(key)) {
+        throw wardleyStop(`${where} carries a field the census did not find: ${key}`);
+      }
+    });
+    const copy = {};
+    keys.forEach((key) => {
+      copy[key] = record[key];
+    });
+    return copy;
+  }
+
+  function wardleyNumber(value, where) {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      throw wardleyStop(`${where} is not a finite number`);
+    }
+    return value;
+  }
+
+  function wardleyString(value, where) {
+    if (typeof value !== "string") {
+      throw wardleyStop(`${where} is not a string`);
+    }
+    return value;
+  }
+
+  function wardleyOptionalString(value, where) {
+    return value === undefined ? null : wardleyString(value, where);
+  }
+
+  function wardleyOptionalNumber(value, where) {
+    return value === undefined ? null : wardleyNumber(value, where);
+  }
+
+  function wardleyOptionalBoolean(value, where) {
+    if (value === undefined) {
+      return false;
+    }
+    if (typeof value !== "boolean") {
+      throw wardleyStop(`${where} is neither true, false nor absent`);
+    }
+    return value;
+  }
+
+  function wardleyOneOf(value, allowed, where) {
+    if (value === undefined) {
+      return null;
+    }
+    if (!allowed.includes(value)) {
+      throw wardleyStop(`${where} is not one the census found: ${JSON.stringify(value)}`);
+    }
+    return value;
+  }
+
+  function wardleyList(value, where) {
+    if (!Array.isArray(value)) {
+      throw wardleyStop(`${where} is not an array`);
+    }
+    return value;
+  }
+
+  function wardleyPoint(record, where) {
+    const point = copyWardleyRecord(record, WARDLEY_POINT_KEYS, where);
+    return { x: wardleyNumber(point.x, `${where} x`), y: wardleyNumber(point.y, `${where} y`) };
+  }
+
+  /**
+   * Copy the wardley db into plain data, ONCE and synchronously, in the same
+   * tick as the parse resolved (WS2). The trio is read here too, straight after
+   * the parse (WS6): the shared store is wiped by every parse. Every shape the
+   * reader cannot map is a STOP here, before any delivery is built (WS8).
+   *
+   * @param {Object} db - The diagram's db
+   * @returns {Object} Plain copies, raw (not decoded)
+   */
+  function snapshotWardleyDb(db) {
+    for (const accessor of WARDLEY_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw wardleyStop(
+          `db.${accessor} is not a function; the pinned Mermaid build's wardley ` +
+            "db no longer matches the 27 October 2026 census"
+        );
+      }
+    }
+    const data = db.getWardleyData();
+    if (!data || typeof data !== "object") {
+      throw wardleyStop("getWardleyData did not deliver an object");
+    }
+    Object.keys(data).forEach((key) => {
+      if (!WARDLEY_DATA_KEYS.includes(key)) {
+        throw wardleyStop(`the db delivered a collection the census did not find: ${key}`);
+      }
+    });
+
+    const nodes = wardleyList(data.nodes, "nodes").map((raw, index) => {
+      const where = `node ${index}`;
+      const node = copyWardleyRecord(raw, WARDLEY_NODE_KEYS, where);
+      return {
+        id: wardleyString(node.id, `${where} id`),
+        label: wardleyString(node.label, `${where} label`),
+        x: wardleyNumber(node.x, `${where} x`),
+        y: wardleyNumber(node.y, `${where} y`),
+        className: wardleyOneOf(node.className, WARDLEY_KINDS, `${where} kind`),
+        labelOffsetX: wardleyOptionalNumber(node.labelOffsetX, `${where} labelOffsetX`),
+        labelOffsetY: wardleyOptionalNumber(node.labelOffsetY, `${where} labelOffsetY`),
+        inertia: wardleyOptionalBoolean(node.inertia, `${where} inertia`),
+        sourceStrategy: wardleyOneOf(node.sourceStrategy, WARDLEY_STRATEGIES, `${where} sourceStrategy`),
+        isPipelineParent: wardleyOptionalBoolean(node.isPipelineParent, `${where} isPipelineParent`),
+        inPipeline: wardleyOptionalBoolean(node.inPipeline, `${where} inPipeline`),
+      };
+    });
+    nodes.forEach((node, index) => {
+      if (node.className === null) {
+        throw wardleyStop(`node ${index} has no kind`);
+      }
+    });
+
+    const links = wardleyList(data.links, "links").map((raw, index) => {
+      const where = `link ${index}`;
+      const link = copyWardleyRecord(raw, WARDLEY_LINK_KEYS, where);
+      if (typeof link.dashed !== "boolean") {
+        throw wardleyStop(`${where} dashed is not true or false`);
+      }
+      return {
+        source: wardleyString(link.source, `${where} source`),
+        target: wardleyString(link.target, `${where} target`),
+        dashed: link.dashed,
+        label: wardleyOptionalString(link.label, `${where} label`),
+        flow: wardleyOneOf(link.flow, WARDLEY_FLOWS, `${where} flow`),
+      };
+    });
+
+    const trends = wardleyList(data.trends, "trends").map((raw, index) => {
+      const where = `trend ${index}`;
+      const trend = copyWardleyRecord(raw, WARDLEY_TREND_KEYS, where);
+      return {
+        nodeId: wardleyString(trend.nodeId, `${where} nodeId`),
+        targetX: wardleyNumber(trend.targetX, `${where} targetX`),
+        targetY: wardleyNumber(trend.targetY, `${where} targetY`),
+      };
+    });
+
+    const pipelines = wardleyList(data.pipelines, "pipelines").map((raw, index) => {
+      const where = `pipeline ${index}`;
+      const pipeline = copyWardleyRecord(raw, WARDLEY_PIPELINE_KEYS, where);
+      return {
+        nodeId: wardleyString(pipeline.nodeId, `${where} nodeId`),
+        componentIds: wardleyList(pipeline.componentIds, `${where} componentIds`).map((id, at) =>
+          wardleyString(id, `${where} componentIds ${at}`)
+        ),
+      };
+    });
+
+    const annotations = wardleyList(data.annotations, "annotations").map((raw, index) => {
+      const where = `annotation ${index}`;
+      const annotation = copyWardleyRecord(raw, WARDLEY_ANNOTATION_KEYS, where);
+      return {
+        number: wardleyNumber(annotation.number, `${where} number`),
+        coordinates: wardleyList(annotation.coordinates, `${where} coordinates`).map((point, at) =>
+          wardleyPoint(point, `${where} coordinate ${at}`)
+        ),
+        text: wardleyString(annotation.text, `${where} text`),
+      };
+    });
+
+    const notes = wardleyList(data.notes, "notes").map((raw, index) => {
+      const where = `note ${index}`;
+      const note = copyWardleyRecord(raw, WARDLEY_NOTE_KEYS, where);
+      return {
+        text: wardleyString(note.text, `${where} text`),
+        x: wardleyNumber(note.x, `${where} x`),
+        y: wardleyNumber(note.y, `${where} y`),
+      };
+    });
+
+    const markers = (list, what) =>
+      wardleyList(list, what).map((raw, index) => {
+        const where = `${what} ${index}`;
+        const marker = copyWardleyRecord(raw, WARDLEY_MARKER_KEYS, where);
+        return {
+          name: wardleyString(marker.name, `${where} name`),
+          x: wardleyNumber(marker.x, `${where} x`),
+          y: wardleyNumber(marker.y, `${where} y`),
+        };
+      });
+
+    let size = null;
+    if (data.size !== undefined) {
+      const raw = copyWardleyRecord(data.size, WARDLEY_SIZE_KEYS, "size");
+      size = {
+        width: wardleyNumber(raw.width, "size width"),
+        height: wardleyNumber(raw.height, "size height"),
+      };
+    }
+
+    const axes = copyWardleyRecord(data.axes, WARDLEY_AXES_KEYS, "axes");
+    const stageNames =
+      axes.stages === undefined
+        ? []
+        : wardleyList(axes.stages, "axes stages").map((name, at) => wardleyString(name, `stage ${at}`));
+    const stageBoundaries =
+      axes.stageBoundaries === undefined
+        ? null
+        : wardleyList(axes.stageBoundaries, "axes stageBoundaries").map((value, at) =>
+            wardleyNumber(value, `stage boundary ${at}`)
+          );
+
+    const trio = (value, what) => {
+      if (value === undefined || value === null) {
+        return "";
+      }
+      return wardleyString(value, what);
+    };
+
+    return {
+      title: trio(db.getDiagramTitle(), "the diagram title"),
+      accTitle: trio(db.getAccTitle(), "the accTitle"),
+      accDescr: trio(db.getAccDescription(), "the accDescr"),
+      nodes: nodes,
+      links: links,
+      trends: trends,
+      pipelines: pipelines,
+      annotations: annotations,
+      notes: notes,
+      accelerators: markers(data.accelerators, "accelerator"),
+      deaccelerators: markers(data.deaccelerators, "deaccelerator"),
+      annotationsBox:
+        data.annotationsBox === undefined ? null : wardleyPoint(data.annotationsBox, "annotationsBox"),
+      size: size,
+      stageNames: stageNames,
+      stageBoundaries: stageBoundaries,
+    };
+  }
+
+  /**
+   * WS4(a), THE ONE PIPELINE-PARENT FUNCTION (bundle `draw`, the pipelines
+   * block): a parent whose pipeline holds a drawn child is moved to its
+   * children's x midpoint and lifted WARDLEY_PARENT_LIFT_PX above the LAST
+   * child's line; every other node is drawn where the db says. The projection
+   * is linear in x, so the pixel midpoint is the percentage midpoint; the lift
+   * is a pixel constant, turned into percentage units with the canvas height
+   * (the db's `size`, else the renderer default) less two paddings.
+   *
+   * @param {Array<Object>} nodes - Snapshot nodes
+   * @param {Array<Object>} pipelines - Snapshot pipelines
+   * @param {Object|null} size - Snapshot size
+   * @returns {Map<string, {x: number, y: number}>} Drawn position per node id
+   */
+  function wardleyDrawnPositions(nodes, pipelines, size) {
+    const height = size ? size.height : WARDLEY_DEFAULT_HEIGHT;
+    const lift = (WARDLEY_PARENT_LIFT_PX * WARDLEY_PERCENT) / (height - 2 * WARDLEY_PADDING);
+    const drawn = new Map(nodes.map((node) => [node.id, { x: node.x, y: node.y }]));
+    pipelines.forEach((pipeline) => {
+      let min = Infinity;
+      let max = -Infinity;
+      let line = null;
+      pipeline.componentIds.forEach((id) => {
+        const child = drawn.get(id);
+        if (!child) {
+          return;
+        }
+        min = Math.min(min, child.x);
+        max = Math.max(max, child.x);
+        line = child.y;
+      });
+      const parent = drawn.get(pipeline.nodeId);
+      if (line === null || !parent) {
+        return;
+      }
+      drawn.set(pipeline.nodeId, { x: (min + max) / 2, y: line + lift });
+    });
+    return drawn;
+  }
+
+  /**
+   * WS4(c), THE ONE LINK FUNCTION (bundle `draw`, the links filter): the
+   * canvas draws a link only when both ends are nodes, and never one from a
+   * pipeline child to its own parent.
+   *
+   * @param {Object} link - Snapshot link
+   * @param {Set<string>} ids - Every node id
+   * @param {Map<string, Set<string>>} members - Pipeline children per parent id
+   * @returns {boolean} True when the canvas draws the link
+   */
+  function wardleyLinkDrawn(link, ids, members) {
+    if (!ids.has(link.source) || !ids.has(link.target)) {
+      return false;
+    }
+    const children = members.get(link.target);
+    return !(children && children.has(link.source));
+  }
+
+  /**
+   * WS4(b), THE ONE STAGE FUNCTION (bundle `draw`, the stages block): the
+   * author's stage names when `evolution` wrote any, else the renderer's four;
+   * the author's boundaries only when there is one for EVERY stage (each read
+   * as a 0 to 1 fraction, so `@20.0` is drawn off the canvas), else equal
+   * widths. Delivered in percentage units. A default name has rawName null.
+   *
+   * @param {Array<string>} names - Snapshot stage names (raw)
+   * @param {Array<number>|null} boundaries - Snapshot stage boundaries
+   * @returns {Array<{name: string, rawName: string|null, start: number, end: number}>}
+   */
+  function wardleyStages(names, boundaries) {
+    const authored = names.length > 0;
+    const drawnNames = authored ? names : WARDLEY_DEFAULT_STAGES;
+    const bands = [];
+    if (boundaries && boundaries.length === drawnNames.length) {
+      let start = 0;
+      boundaries.forEach((end) => {
+        bands.push({ start: start, end: end });
+        start = end;
+      });
+    } else {
+      const width = 1 / drawnNames.length;
+      drawnNames.forEach((name, index) => {
+        bands.push({ start: index * width, end: (index + 1) * width });
+      });
+    }
+    return drawnNames.map((name, index) => ({
+      name: authored ? decodePlaceholders(name) : name,
+      rawName: authored ? name : null,
+      start: bands[index].start * WARDLEY_PERCENT,
+      end: bands[index].end * WARDLEY_PERCENT,
+    }));
+  }
+
+  /**
+   * The LAST body `title` line of a wardley source, as the TITLE token reads
+   * it: the text after `title` up to a `%%` comment, trimmed (measured 27
+   * October 2026: `title Tea %% a comment` draws `Tea`, a later title line
+   * wins). Lines of a frontmatter block and of an `accDescr { ... }` block are
+   * skipped. Null when there is none.
+   *
+   * @param {string} code - The Mermaid source, frontmatter included
+   * @returns {string|null} The body title as typed, or null
+   */
+  function readWardleyBodyTitle(code) {
+    if (typeof code !== "string") {
+      return null;
+    }
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    const text = fence ? code.slice(fence[0].length) : code;
+    let found = null;
+    let inBlock = false;
+    text.split(/\r?\n/).forEach((line) => {
+      if (inBlock) {
+        inBlock = !line.includes("}");
+        return;
+      }
+      if (/^[\t ]*accDescr\s*\{/.test(line)) {
+        inBlock = !line.includes("}");
+        return;
+      }
+      const match = /^[\t ]*title(?:[\t ]([^\r\n]*))?$/.exec(line);
+      if (match) {
+        found = (match[1] || "").split("%%")[0].trim();
+      }
+    });
+    return found;
+  }
+
+  /**
+   * The title to narrate (WS5): every title goes through the resolver the
+   * packet, treemap and venn surfaces share, so a frontmatter `#quot;` reads a
+   * quotation mark (VR8), a typed tag is removed as the canvas removes it
+   * (VR9, VR16) and a line break reads as one space (VR22). The body title
+   * wins over a frontmatter one, as on the canvas.
+   *
+   * @param {string} rawTitle - db.getDiagramTitle() as snapshotted
+   * @param {string} [code] - The Mermaid source
+   * @returns {string|null} The title, or null when there is none
+   */
+  function resolveWardleyTitle(rawTitle, code) {
+    if (typeof rawTitle !== "string" || rawTitle === "") {
+      return null;
+    }
+    if (typeof code !== "string") {
+      return decodePlaceholders(rawTitle);
+    }
+    return resolvePacketTitle(rawTitle, readWardleyBodyTitle(code), readFrontmatterTitle(code));
+  }
+
+  /**
+   * Map one snapshot to the normalised delivery (WS3). Positions are the db's
+   * percentages (x evolution, y visibility), numbers as the db holds them
+   * (WS7). Names and texts are decodePlaceholders of the db string; every raw*
+   * key carries the db's bytes.
+   *
+   * @param {Object} snapshot - snapshotWardleyDb's result
+   * @param {string} [code] - The Mermaid source
+   * @returns {Object} The delivery
+   */
+  function normaliseWardley(snapshot, code) {
+    const ids = new Set(snapshot.nodes.map((node) => node.id));
+    const members = new Map(
+      snapshot.pipelines.map((pipeline) => [pipeline.nodeId, new Set(pipeline.componentIds)])
+    );
+    const drawnAt = wardleyDrawnPositions(snapshot.nodes, snapshot.pipelines, snapshot.size);
+    const decoded = (value) => (value === null ? null : decodePlaceholders(value));
+    const nonEmpty = (value) => (value === "" ? null : value);
+
+    const components = snapshot.nodes.map((node, index) => ({
+      id: node.id,
+      name: decodePlaceholders(node.label),
+      rawName: node.label,
+      kind: node.className,
+      evolution: node.x,
+      visibility: node.y,
+      authorIndex: index,
+      labelOffsetX: node.labelOffsetX,
+      labelOffsetY: node.labelOffsetY,
+      inertia: node.inertia,
+      sourceStrategy: node.sourceStrategy,
+      isPipelineParent: node.isPipelineParent,
+      inPipeline: node.inPipeline,
+      drawnEvolution: drawnAt.get(node.id).x,
+      drawnVisibility: drawnAt.get(node.id).y,
+      // Every db node is drawn (bundle: one group and one label per node).
+      drawn: true,
+    }));
+
+    return {
+      diagramType: WARDLEY_DIAGRAM_TYPE,
+      title: resolveWardleyTitle(snapshot.title, code),
+      rawTitle: nonEmpty(snapshot.title),
+      accTitle: nonEmpty(snapshot.accTitle),
+      accDescr: nonEmpty(snapshot.accDescr),
+      components: components,
+      links: snapshot.links.map((link) => ({
+        source: link.source,
+        target: link.target,
+        dashed: link.dashed,
+        flow: link.flow,
+        label: decoded(link.label),
+        rawLabel: link.label,
+        drawn: wardleyLinkDrawn(link, ids, members),
+      })),
+      trends: snapshot.trends.map((trend) => ({
+        nodeId: trend.nodeId,
+        targetX: trend.targetX,
+        targetY: trend.targetY,
+      })),
+      pipelines: snapshot.pipelines.map((pipeline) => ({
+        nodeId: pipeline.nodeId,
+        componentIds: pipeline.componentIds.slice(),
+      })),
+      notes: snapshot.notes.map((note) => ({
+        text: decodePlaceholders(note.text),
+        rawText: note.text,
+        x: note.x,
+        y: note.y,
+      })),
+      annotations: snapshot.annotations.map((annotation) => ({
+        number: annotation.number,
+        coordinates: annotation.coordinates.map((point) => ({ x: point.x, y: point.y })),
+        text: decodePlaceholders(annotation.text),
+        rawText: annotation.text,
+      })),
+      annotationsBox: snapshot.annotationsBox,
+      accelerators: snapshot.accelerators.map((marker) => ({
+        name: decodePlaceholders(marker.name),
+        rawName: marker.name,
+        x: marker.x,
+        y: marker.y,
+      })),
+      deaccelerators: snapshot.deaccelerators.map((marker) => ({
+        name: decodePlaceholders(marker.name),
+        rawName: marker.name,
+        x: marker.x,
+        y: marker.y,
+      })),
+      size: snapshot.size,
+      stages: wardleyStages(snapshot.stageNames, snapshot.stageBoundaries),
+      axes: { x: WARDLEY_AXIS_LABELS.x, y: WARDLEY_AXIS_LABELS.y },
+    };
+  }
+
+  /**
+   * One wardley parse, FROM THE TITLE READ TO THE DELIVERY, with no yield
+   * point between the parse resolving and the snapshot. It must run inside an
+   * adapter queue slot; parseWardley and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid wardley source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readWardleyInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    const parsed =
+      title === null ? api.getDiagramFromText(code) : api.getDiagramFromText(code, { title: title });
+    return parsed.then((diagram) => {
+      const snapshot = snapshotWardleyDb(diagram.db);
+      return { diagram: diagram, delivery: normaliseWardley(snapshot, code) };
+    });
+  }
+
+  /**
+   * Parse a wardley map and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and the db is
+   * read inside this call's own queue slot. THE QUEUE IS LOAD-BEARING: the
+   * wardley db is a module singleton and overlapping parses accumulate in it
+   * (census, Singleton, held references, concurrency).
+   *
+   * @param {string} code - The Mermaid wardley source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseWardley(code) {
+    if (!wardleySelfCheckStarted) {
+      runWardleySelfCheck();
+    }
+
+    if (code === wardleyMemoCode && wardleyMemoPromise) {
+      logDebug("Returning memoised wardley parse for identical code string");
+      return wardleyMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Wardley parse entering its queue slot, ${code.length} characters`);
+      return readWardleyInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Wardley parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.components.length} component(s), ${delivery.links.length} link(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Wardley parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    wardleyMemoCode = code;
+    wardleyMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed sc / SelfCheck.
+  // Sources parsed one after another in ONE queue slot, each delivery digested
+  // in the same tick it is produced, before the next parse clears the store.
+
+  // MAIN: every statement kind. A size, four stages with a boundary each, an
+  // anchor, a component with a label offset, a strategy and inertia, a market,
+  // a pipeline parent with two children (one with its own label offset), a
+  // coordinate written as a percentage (50.0) and the two ends (1.0 and 0.0),
+  // every link form, a link to an undeclared name, a link from a child to its
+  // own parent, an evolve arrow, a note, two annotations (one in integers), the
+  // annotation box, an accelerator and a deaccelerator.
+  const WARDLEY_SELF_CHECK_MAIN = [
+    "wardley-beta",
+    "title SelfCheck main title",
+    "size [1100, 800]",
+    "evolution scGen @0.25 -> scCustom @0.5 -> scProduct @0.875 -> scCommodity @1.0",
+    "anchor scUser [0.95, 0.60]",
+    "component scApp [0.80, 0.55] label [-30, 12] (build) inertia",
+    "component scDb [0.50, 50.0] (market)",
+    "component scHost [0.30, 0.40]",
+    "component scPlain [1.0, 0.0]",
+    "scUser -> scApp",
+    "scApp --> scDb; scLinkLabel",
+    "scDb -.-> scHost",
+    "scApp +'scFlow'> scPlain",
+    "scHost +<> scPlain",
+    "scUser -> scGhost",
+    "evolve scDb 0.80",
+    "pipeline scHost {",
+    "  component scVm [0.20]",
+    "  component scBare [0.60] label [4, -6]",
+    "}",
+    "scVm -> scHost",
+    "scHost -> scBare",
+    'note "SelfCheck note" [0.20, 0.70]',
+    "annotations [0.05, 0.10]",
+    'annotation 1,[0.40,0.45] "SelfCheck first"',
+    'annotation 2,[30, 60] "SelfCheck second"',
+    "accelerator scFast [0.60, 0.85]",
+    "deaccelerator scSlow [0.40, 0.85]",
+    "",
+  ].join("\n");
+
+  // DEFAULTS: no evolution statement (the renderer's four names, equal bands),
+  // no size, no title, a pipeline parent on the default canvas.
+  const WARDLEY_SELF_CHECK_DEFAULTS = [
+    "wardley-beta",
+    "component scParent [0.50, 0.50]",
+    "pipeline scParent {",
+    "  component scLeft [0.10]",
+    "  component scRight [0.30]",
+    "}",
+    "",
+  ].join("\n");
+
+  // PARTIAL: three stages and two boundaries, so the bands are equal thirds.
+  const WARDLEY_SELF_CHECK_PARTIAL = [
+    "wardley-beta",
+    "evolution scEarly @0.1 -> scMiddle @0.3 -> scLate / scLater",
+    "component scOne [0.50, 0.50]",
+    "",
+  ].join("\n");
+
+  // TYPED: #quot; in a component name, a link label, a note and a stage.
+  const WARDLEY_SELF_CHECK_TYPED = [
+    "wardley-beta",
+    'evolution "SelfCheck #quot;s#quot;" -> scStageTwo',
+    'component "SelfCheck #quot;c#quot; end" [0.50, 0.50]',
+    "component scTo [0.20, 0.20]",
+    "scTo -> scTo; SelfCheck #quot;l#quot; end",
+    'note "SelfCheck #quot;n#quot; end" [0.30, 0.30]',
+    "",
+  ].join("\n");
+
+  // ESCAPED: a typed entity, a typed tag and a typed break, all printed as
+  // characters by the canvas (group R).
+  const WARDLEY_SELF_CHECK_ESCAPED = [
+    "wardley-beta",
+    'component "SelfCheck x&lt;br&gt;y &amp; <b>z</b>" [0.50, 0.50]',
+    "component scTo [0.20, 0.20]",
+    "scTo -> scTo; SelfCheck a<br>b &amp; c",
+    "",
+  ].join("\n");
+
+  // The title route: a frontmatter title alone, under a body title, none.
+  const WARDLEY_SELF_CHECK_FM = [
+    "---",
+    "title: SelfCheck frontmatter title",
+    "---",
+    "wardley-beta",
+    "component scF [0.50, 0.50]",
+    "",
+  ].join("\n");
+  const WARDLEY_SELF_CHECK_FM_BODY = [
+    "---",
+    "title: SelfCheck frontmatter loses",
+    "---",
+    "wardley-beta",
+    "title SelfCheck body wins %% a comment",
+    "component scF [0.50, 0.50]",
+    "",
+  ].join("\n");
+  // The title resolutions: a frontmatter #quot; (VR8), a body title holding a
+  // typed tag and bare ampersands (VR9), a frontmatter one likewise (VR16), a
+  // block-scalar frontmatter title over two lines (VR22).
+  const WARDLEY_SELF_CHECK_FM_QUOT = [
+    "---",
+    'title: "SelfCheck #quot;fm#quot; title"',
+    "---",
+    "wardley-beta",
+    "component scQ [0.50, 0.50]",
+    "",
+  ].join("\n");
+  const WARDLEY_SELF_CHECK_BODY_TAG = [
+    "wardley-beta",
+    "title SelfCheck R&D <team> one",
+    "component scQ [0.50, 0.50]",
+    "",
+  ].join("\n");
+  const WARDLEY_SELF_CHECK_FM_TAG = [
+    "---",
+    "title: SelfCheck R&D <team> two",
+    "---",
+    "wardley-beta",
+    "component scQ [0.50, 0.50]",
+    "",
+  ].join("\n");
+  const WARDLEY_SELF_CHECK_FM_BLOCK = [
+    "---",
+    "title: |",
+    "  SelfCheck line one",
+    "  SelfCheck line two",
+    "---",
+    "wardley-beta",
+    "component scQ [0.50, 0.50]",
+    "",
+  ].join("\n");
+
+  // ACC: an accTitle the db sanitises and an accDescr block it does not; a
+  // title line inside the block is not the body title.
+  const WARDLEY_SELF_CHECK_ACC = [
+    "wardley-beta",
+    "accTitle: SelfCheck a & b < c",
+    "accDescr {",
+    "  SelfCheck line & one",
+    "  title SelfCheck not a title",
+    "}",
+    "component scAcc [0.50, 0.50]",
+    "",
+  ].join("\n");
+
+  // ACCUMULATION: two maps with disjoint names, parsed in sequence.
+  const WARDLEY_SELF_CHECK_ACCUM_A = [
+    "wardley-beta",
+    "component scAccumA1 [0.50, 0.50]",
+    "component scAccumA2 [0.40, 0.40]",
+    "scAccumA1 -> scAccumA2",
+    "",
+  ].join("\n");
+  const WARDLEY_SELF_CHECK_ACCUM_B = [
+    "wardley-beta",
+    "component scAccumB1 [0.30, 0.30]",
+    "",
+  ].join("\n");
+
+  // SNAPSHOT: changed through the db after its delivery.
+  const WARDLEY_SELF_CHECK_SNAPSHOT = [
+    "wardley-beta",
+    "component scSnap [0.50, 0.50]",
+    "",
+  ].join("\n");
+
+  const WARDLEY_SELF_CHECK_HEADER_ONLY = "wardley-beta\n";
+  // The parser keyword is case-sensitive: detected as wardley, then rejected.
+  const WARDLEY_SELF_CHECK_REJECTED = "WARDLEY-BETA\ncomponent scR [0.50, 0.50]\n";
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessors,
+   * the delivered shape, the components and every collection, the decode,
+   * the title route and resolutions, the accTitle pair, the three WS4 choke
+   * points, accumulation, the snapshot and the STOPs. Resolves true on a
+   * clean run; on any failure logs ONE ERROR naming every failed assertion,
+   * marks the surface unhealthy, and resolves false. Never throws.
+   *
+   * @returns {Promise<boolean>} The wardley health verdict
+   */
+  function runWardleySelfCheck() {
+    if (wardleySelfCheckPromise) {
+      return wardleySelfCheckPromise;
+    }
+    wardleySelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const near = (a, b) => typeof a === "number" && Math.abs(a - b) < 1e-9;
+    const settle = (code) =>
+      readWardleyInSlot(code).then(
+        (result) => ({
+          // The EAGER digest, taken in the same tick as the delivery: every
+          // row reads this, so a later parse cannot reach it.
+          result: result,
+          digest: JSON.stringify(result.delivery),
+        }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      const outcomes = {};
+      let snapshotLive = null;
+      let chain = Promise.resolve();
+      // Header-only first, so no earlier parse could reach its empty lists;
+      // every count ACROSS parses is asserted by WC15 alone.
+      [
+        ["headerOnly", WARDLEY_SELF_CHECK_HEADER_ONLY],
+        ["main", WARDLEY_SELF_CHECK_MAIN],
+        ["defaults", WARDLEY_SELF_CHECK_DEFAULTS],
+        ["partial", WARDLEY_SELF_CHECK_PARTIAL],
+        ["typed", WARDLEY_SELF_CHECK_TYPED],
+        ["escaped", WARDLEY_SELF_CHECK_ESCAPED],
+        ["fm", WARDLEY_SELF_CHECK_FM],
+        ["fmBody", WARDLEY_SELF_CHECK_FM_BODY],
+        ["fmQuot", WARDLEY_SELF_CHECK_FM_QUOT],
+        ["bodyTag", WARDLEY_SELF_CHECK_BODY_TAG],
+        ["fmTag", WARDLEY_SELF_CHECK_FM_TAG],
+        ["fmBlock", WARDLEY_SELF_CHECK_FM_BLOCK],
+        ["acc", WARDLEY_SELF_CHECK_ACC],
+        ["accumA", WARDLEY_SELF_CHECK_ACCUM_A],
+        ["accumB", WARDLEY_SELF_CHECK_ACCUM_B],
+        ["snapshot", WARDLEY_SELF_CHECK_SNAPSHOT],
+        ["rejected", WARDLEY_SELF_CHECK_REJECTED],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+            if (key !== "snapshot" || !outcome.result) {
+              return;
+            }
+            // The snapshot row's change, made through the live db at once:
+            // a node added and a held record's label changed.
+            const db = outcome.result.diagram.db;
+            db.addNode("scIntruder", "scIntruder", 10, 10, "component");
+            const live = db.getWardleyData().nodes.find((node) => node.id === "scSnap");
+            if (live) {
+              live.label = "scChanged";
+            }
+            snapshotLive = db.getWardleyData().nodes.map((node) => node.label).join(",");
+          });
+      });
+
+      return chain.then(() => {
+        const d = (key) => (outcomes[key].digest ? JSON.parse(outcomes[key].digest) : null);
+        const main = d("main");
+        const defaults = d("defaults");
+        const partial = d("partial");
+        const typed = d("typed");
+        const escaped = d("escaped");
+        const fm = d("fm");
+        const fmBody = d("fmBody");
+        const fmQuot = d("fmQuot");
+        const bodyTag = d("bodyTag");
+        const fmTag = d("fmTag");
+        const fmBlock = d("fmBlock");
+        const acc = d("acc");
+        const accumA = d("accumA");
+        const accumB = d("accumB");
+        const byId = (delivery, id) =>
+          delivery ? delivery.components.find((component) => component.id === id) || null : null;
+        const row = (component, keys) => (component ? keys.map((key) => component[key]) : null);
+        const lift800 = (WARDLEY_PARENT_LIFT_PX * WARDLEY_PERCENT) / (800 - 2 * WARDLEY_PADDING);
+        const lift600 = (WARDLEY_PARENT_LIFT_PX * WARDLEY_PERCENT) / (600 - 2 * WARDLEY_PADDING);
+
+        const stubData = (overrides) =>
+          Object.assign(
+            {
+              nodes: [{ id: "scStub", label: "scStub", x: 50, y: 50, className: "component" }],
+              links: [], trends: [], pipelines: [], annotations: [], notes: [],
+              accelerators: [], deaccelerators: [], axes: {},
+            },
+            overrides
+          );
+        const stubDb = (data) => ({
+          getWardleyData: () => data,
+          getDiagramTitle: () => "",
+          getAccTitle: () => "",
+          getAccDescription: () => "",
+        });
+        const stubRefuses = (data, pattern) => {
+          try {
+            snapshotWardleyDb(stubDb(data));
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const stubNode = (overrides) =>
+          [Object.assign({ id: "scStub", label: "scStub", x: 50, y: 50, className: "component" }, overrides)];
+
+        return [
+          [
+            "WC01 the accessors the surface reads exist on the db (getWardleyData and the trio) and the API (getDiagramFromText), and the { title } route reaches the delivery",
+            !!outcomes.main.result &&
+              WARDLEY_DB_ACCESSORS.every(
+                (accessor) => typeof outcomes.main.result.diagram.db[accessor] === "function"
+              ) &&
+              !!fm &&
+              fm.title === "SelfCheck frontmatter title" &&
+              fm.rawTitle === "SelfCheck frontmatter title",
+          ],
+          [
+            "WC02 the delivery has exactly the seventeen keys in order, and each record exactly its own keys",
+            !!main &&
+              Object.keys(main).join(",") ===
+                "diagramType,title,rawTitle,accTitle,accDescr,components,links,trends,pipelines," +
+                  "notes,annotations,annotationsBox,accelerators,deaccelerators,size,stages,axes" &&
+              main.diagramType === "wardley" &&
+              Object.keys(main.components[0]).join(",") ===
+                "id,name,rawName,kind,evolution,visibility,authorIndex,labelOffsetX,labelOffsetY," +
+                  "inertia,sourceStrategy,isPipelineParent,inPipeline,drawnEvolution,drawnVisibility,drawn" &&
+              Object.keys(main.links[0]).join(",") === "source,target,dashed,flow,label,rawLabel,drawn" &&
+              Object.keys(main.trends[0]).join(",") === "nodeId,targetX,targetY" &&
+              Object.keys(main.pipelines[0]).join(",") === "nodeId,componentIds" &&
+              Object.keys(main.notes[0]).join(",") === "text,rawText,x,y" &&
+              Object.keys(main.annotations[0]).join(",") === "number,coordinates,text,rawText" &&
+              Object.keys(main.accelerators[0]).join(",") === "name,rawName,x,y" &&
+              Object.keys(main.stages[0]).join(",") === "name,rawName,start,end" &&
+              Object.keys(main.axes).join(",") === "x,y",
+          ],
+          [
+            "WC03 components: the db's order (anchors, then components, then pipeline children), kinds, the author's numbers as percentages (0.50 and 50.0 are 50, 1.0 is 100), offsets, strategy, inertia and the pipeline flags",
+            !!main &&
+              same(main.components.map((c) => c.id), [
+                "scUser", "scApp", "scDb", "scHost", "scPlain", "scHost_scVm", "scHost_scBare",
+              ]) &&
+              same(main.components.map((c) => c.authorIndex), [0, 1, 2, 3, 4, 5, 6]) &&
+              same(main.components.map((c) => c.kind), [
+                "anchor", "component", "component", "component", "component",
+                "pipeline-component", "pipeline-component",
+              ]) &&
+              // As the db holds it (WS7): 0.55 times 100 is 55.00000000000001, not rounded.
+              same(row(byId(main, "scApp"), ["name", "evolution", "visibility", "labelOffsetX", "labelOffsetY", "inertia", "sourceStrategy"]),
+                ["scApp", 0.55 * 100, 80, -30, 12, true, "build"]) &&
+              same(row(byId(main, "scDb"), ["evolution", "visibility", "inertia", "sourceStrategy"]), [50, 50, false, "market"]) &&
+              same(row(byId(main, "scPlain"), ["evolution", "visibility", "labelOffsetX", "sourceStrategy"]), [0, 100, null, null]) &&
+              same(row(byId(main, "scUser"), ["kind", "evolution", "visibility", "inertia"]), ["anchor", 60, 95, false]) &&
+              same(row(byId(main, "scHost"), ["isPipelineParent", "inPipeline"]), [true, false]) &&
+              same(row(byId(main, "scHost_scVm"), ["name", "evolution", "visibility", "inPipeline", "isPipelineParent"]), ["scVm", 20, 30, true, false]) &&
+              same(row(byId(main, "scHost_scBare"), ["labelOffsetX", "labelOffsetY"]), [4, -6]),
+          ],
+          [
+            "WC04 links: ids resolved by the db (a pipeline child by its name), dashed, flow from an arrow and from a port, labels from an arrow and from a trailing label, in the db's order",
+            !!main &&
+              same(main.links.map((l) => [l.source, l.target, l.dashed, l.flow, l.label]), [
+                ["scUser", "scApp", false, null, null],
+                ["scApp", "scDb", false, null, "scLinkLabel"],
+                ["scDb", "scHost", true, null, null],
+                ["scApp", "scPlain", false, "forward", "scFlow"],
+                ["scHost", "scPlain", false, "bidirectional", null],
+                ["scUser", "scGhost", false, null, null],
+                ["scHost_scVm", "scHost", false, null, null],
+                ["scHost", "scHost_scBare", false, null, null],
+              ]),
+          ],
+          [
+            "WC05 the other collections: the evolve arrow, the pipeline, the note, both annotations (visibility first, an integer pair as percentages), the box, the accelerators and the size",
+            !!main &&
+              same(main.trends, [{ nodeId: "scDb", targetX: 80, targetY: 50 }]) &&
+              same(main.pipelines, [{ nodeId: "scHost", componentIds: ["scHost_scVm", "scHost_scBare"] }]) &&
+              same(main.notes, [{ text: "SelfCheck note", rawText: "SelfCheck note", x: 70, y: 20 }]) &&
+              same(main.annotations.map((a) => [a.number, a.coordinates, a.text]), [
+                [1, [{ x: 45, y: 40 }], "SelfCheck first"],
+                [2, [{ x: 60, y: 30 }], "SelfCheck second"],
+              ]) &&
+              same(main.annotationsBox, { x: 10, y: 5 }) &&
+              same(main.accelerators, [{ name: "scFast", rawName: "scFast", x: 85, y: 60 }]) &&
+              same(main.deaccelerators, [{ name: "scSlow", rawName: "scSlow", x: 85, y: 40 }]) &&
+              same(main.size, { width: 1100, height: 800 }) &&
+              !!defaults &&
+              defaults.size === null &&
+              defaults.annotationsBox === null &&
+              defaults.title === null &&
+              defaults.rawTitle === null,
+          ],
+          [
+            "WC06 decode, typed: #quot; reads a quotation mark in a component name, a link label, a note and a stage name",
+            !!typed &&
+              typed.components[0].name === 'SelfCheck "c" end' &&
+              typed.links[0].label === 'SelfCheck "l" end' &&
+              typed.notes[0].text === 'SelfCheck "n" end' &&
+              typed.stages[0].name === 'SelfCheck "s"',
+          ],
+          [
+            "WC07 decode, escaped: a typed entity, a typed tag and a typed break print as typed, and decodeAuthorText is not the decoder",
+            !!escaped &&
+              escaped.components[0].name === "SelfCheck x&lt;br&gt;y &amp; <b>z</b>" &&
+              escaped.links[0].label === "SelfCheck a<br>b &amp; c" &&
+              decodeAuthorText(escaped.components[0].rawName) !== escaped.components[0].name,
+          ],
+          [
+            "WC08 every raw key carries the db's bytes: a #quot; arrives as placeholder bytes (the code word, no quotation mark) in a name, a link label, a note and a stage, and a typed entity and tag as typed",
+            !!typed &&
+              [
+                typed.components[0].rawName,
+                typed.links[0].rawLabel,
+                typed.notes[0].rawText,
+                typed.stages[0].rawName,
+              ].every((raw) => typeof raw === "string" && raw.includes("quot") && !raw.includes('"')) &&
+              !!escaped &&
+              escaped.components[0].rawName === "SelfCheck x&lt;br&gt;y &amp; <b>z</b>" &&
+              escaped.links[0].rawLabel === "SelfCheck a<br>b &amp; c",
+          ],
+          [
+            "WC09 the title route: a frontmatter title through { title }, a body title beating it (its %% comment cut), none is null",
+            !!fm &&
+              fm.title === "SelfCheck frontmatter title" &&
+              !!fmBody &&
+              fmBody.title === "SelfCheck body wins" &&
+              fmBody.rawTitle === "SelfCheck body wins" &&
+              !!main &&
+              main.title === "SelfCheck main title" &&
+              !!defaults &&
+              defaults.title === null &&
+              readWardleyBodyTitle(WARDLEY_SELF_CHECK_ACC) === null,
+          ],
+          [
+            "WC10 the title resolutions: a frontmatter #quot; reads a quotation mark (VR8), a typed tag beside a bare & in a body or frontmatter title reads as the canvas without the tag (VR9, VR16), a block-scalar line break reads as one space (VR22)",
+            !!fmQuot &&
+              fmQuot.title === 'SelfCheck "fm" title' &&
+              !!bodyTag &&
+              bodyTag.title === "SelfCheck R&D  one" &&
+              !!fmTag &&
+              fmTag.title === "SelfCheck R&D  two" &&
+              !!fmBlock &&
+              fmBlock.title === "SelfCheck line one SelfCheck line two",
+          ],
+          [
+            "WC11 accTitle and accDescr are delivered with NO transform: the accTitle as the db sanitised it, the accDescr block as the db holds it, null when absent",
+            !!acc &&
+              acc.accTitle === "SelfCheck a &amp; b &lt; c" &&
+              acc.accDescr === "SelfCheck line & one\ntitle SelfCheck not a title" &&
+              acc.title === null &&
+              !!main &&
+              main.accTitle === null &&
+              main.accDescr === null,
+          ],
+          [
+            "WC12 WS4(a) the pipeline parent is drawn at its children's midpoint and lifted 13.6 px above their line (on an 800 and a 600 px canvas); every other node where the db says",
+            !!main &&
+              near(byId(main, "scHost").drawnEvolution, 40) &&
+              near(byId(main, "scHost").drawnVisibility, 30 + lift800) &&
+              near(byId(main, "scHost").visibility, 30) &&
+              near(byId(main, "scApp").drawnEvolution, 55) &&
+              near(byId(main, "scApp").drawnVisibility, 80) &&
+              near(byId(main, "scHost_scVm").drawnVisibility, 30) &&
+              !!defaults &&
+              near(byId(defaults, "scParent").drawnEvolution, 20) &&
+              near(byId(defaults, "scParent").drawnVisibility, 50 + lift600) &&
+              same(wardleyDrawnPositions([{ id: "p", x: 5, y: 5 }], [{ nodeId: "p", componentIds: ["gone"] }], null).get("p"), { x: 5, y: 5 }),
+          ],
+          [
+            "WC13 WS4(b) stages: the author's names and boundaries when every stage has one, equal bands when not, the renderer's four (rawName null) when none, and the two axis labels",
+            !!main &&
+              same(main.stages.map((s) => [s.name, s.start, s.end]), [
+                ["scGen", 0, 25], ["scCustom", 25, 50], ["scProduct", 50, 87.5], ["scCommodity", 87.5, 100],
+              ]) &&
+              !!partial &&
+              same(partial.stages.map((s) => s.name), ["scEarly", "scMiddle", "scLate / scLater"]) &&
+              near(partial.stages[1].start, 100 / 3) &&
+              near(partial.stages[2].end, 100) &&
+              !!defaults &&
+              same(defaults.stages.map((s) => [s.name, s.rawName, s.start, s.end]), [
+                ["Genesis", null, 0, 25], ["Custom Built", null, 25, 50], ["Product", null, 50, 75], ["Commodity", null, 75, 100],
+              ]) &&
+              same(main.axes, { x: "Evolution", y: "Visibility" }),
+          ],
+          [
+            "WC14 WS4(c) drawn flags: a link to an undeclared name and a link from a child to its own parent are not drawn, every other link and every component is",
+            !!main &&
+              same(main.links.map((l) => l.drawn), [true, true, true, true, true, false, false, true]) &&
+              main.components.every((c) => c.drawn === true),
+          ],
+          [
+            "WC15 accumulation: two maps parsed in sequence through the surface each deliver only their own components",
+            !!accumA &&
+              same(accumA.components.map((c) => c.id), ["scAccumA1", "scAccumA2"]) &&
+              accumA.links.length === 1 &&
+              !!accumB &&
+              same(accumB.components.map((c) => c.id), ["scAccumB1"]) &&
+              accumB.links.length === 0,
+          ],
+          [
+            "WC16 the snapshot: a node added through the db and a held record's label changed after the delivery do not reach it (and the db did change)",
+            !!outcomes.snapshot.result &&
+              snapshotLive === "scChanged,scIntruder" &&
+              JSON.stringify(outcomes.snapshot.result.delivery) === outcomes.snapshot.digest &&
+              outcomes.snapshot.result.delivery.components[0].name === "scSnap" &&
+              !outcomes.snapshot.result.delivery.components.some((c) => c.name === "scIntruder"),
+          ],
+          [
+            "WC17 STOPs: an unknown collection, node field, kind, strategy, flow, axes field and a non-number coordinate each refuse; the stub itself is accepted; a header-only map delivers empty lists and a rejected source rejects",
+            stubRefuses(stubData({ markets: [] }), /collection the census did not find: markets/) &&
+              stubRefuses(stubData({ nodes: stubNode({ colour: "red" }) }), /field the census did not find: colour/) &&
+              stubRefuses(stubData({ nodes: stubNode({ className: "evolved" }) }), /node 0 kind is not one/) &&
+              stubRefuses(stubData({ nodes: stubNode({ sourceStrategy: "rent" }) }), /sourceStrategy is not one/) &&
+              stubRefuses(stubData({ links: [{ source: "a", target: "b", dashed: false, flow: "sideways" }] }), /link 0 flow is not one/) &&
+              stubRefuses(stubData({ axes: { xLabel: "x" } }), /axes carries a field the census did not find: xLabel/) &&
+              stubRefuses(stubData({ nodes: stubNode({ x: "50" }) }), /node 0 x is not a finite number/) &&
+              stubRefuses(stubData({ notes: "none" }), /notes is not an array/) &&
+              (() => {
+                try {
+                  snapshotWardleyDb(stubDb(stubData({})));
+                  return true;
+                } catch (error) {
+                  return false;
+                }
+              })() &&
+              !!outcomes.headerOnly.digest &&
+              JSON.parse(outcomes.headerOnly.digest).components.length === 0 &&
+              JSON.parse(outcomes.headerOnly.digest).stages.length === 4 &&
+              !!outcomes.rejected.error &&
+              !outcomes.rejected.digest,
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    wardleySelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.filter(([, pass]) => !pass);
+        if (failed.length > 0) {
+          logError(
+            `Wardley self-check FAILED at assertion(s): ${failed.map(([label]) => label).join(" || ")}. ` +
+              "Either the pinned Mermaid build's wardley internals no longer " +
+              "match the 27 October 2026 census, or the surface has drifted; " +
+              "do not trust wardley adapter output."
+          );
+          wardleyHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Wardley self-check passed: accessor, shape, component, collection, decode, " +
+            "title, accTitle, drawn-position, stage, drawn-flag, accumulation, snapshot " +
+            "and stop assertions all hold"
+        );
+        wardleyHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Wardley self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        wardleyHealthy = false;
+        return false;
+      });
+
+    return wardleySelfCheckPromise;
+  }
+
+  /**
+   * Report the wardley surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the wardley self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isWardleyHealthy() {
+    return wardleyHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -21815,6 +23058,9 @@ window.MermaidParseAdapter = (function () {
     parseIshikawa: parseIshikawa,
     runIshikawaSelfCheck: runIshikawaSelfCheck,
     isIshikawaHealthy: isIshikawaHealthy,
+    parseWardley: parseWardley,
+    runWardleySelfCheck: runWardleySelfCheck,
+    isWardleyHealthy: isWardleyHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

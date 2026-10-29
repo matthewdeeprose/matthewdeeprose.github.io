@@ -211,7 +211,7 @@ const MarkdownEditor = (function () {
         // Use UniversalNotifications for error display
         if (window.UniversalNotifications) {
           window.UniversalNotifications.error(message, {
-            duration: 5000,
+            duration: 0,
             dismissible: true,
           });
         } else {
@@ -1816,7 +1816,7 @@ const MarkdownEditor = (function () {
             if (window.UniversalNotifications) {
               window.UniversalNotifications.warning(
                 "Live syntax highlighting could not be initialised. Editor will function normally without it.",
-                { duration: 5000, dismissible: true }
+                { duration: 0, dismissible: true }
               );
             }
           }
@@ -1937,7 +1937,9 @@ const MarkdownEditor = (function () {
     loadContent: function (markdownText) {
       if (elements.markdownInput) {
         elements.markdownInput.value = markdownText;
-        state.notifyNextRender = true;
+        // T-68a: the only caller is the examples loader, whose "Loaded: <title>" toast already reports this event,
+        // so the render that follows does not add "Content rendered successfully" (Render and Ctrl+Enter still do).
+        state.notifyNextRender = false;
         renderMarkdown();
         Logger.info("Content loaded into editor");
       } else {

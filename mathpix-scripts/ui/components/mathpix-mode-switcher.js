@@ -287,8 +287,8 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     // Attach event listeners
     this.attachEventListeners();
 
-    // Set initial mode (upload by default). A restored open of this tool (tools.html) raises no line of its own.
-    this.switchToUploadMode({ quiet: window.restoredToolOpen === "MathPix" });
+    // Set initial mode (upload by default). Choosing the tool is not a mode change the person made, and the tool switch already says "Switched to ...", so entry raises no line of its own (T-68a).
+    this.switchToUploadMode({ quiet: true });
 
     this.isInitialised = true;
     logInfo("Mode switcher initialised successfully");
@@ -400,7 +400,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    *
    * @since 1.0.0
    */
-  switchToDrawMode() {
+  switchToDrawMode({ quiet = false } = {}) {
     logDebug("Switching to draw mode");
 
     // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
@@ -427,11 +427,13 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.convertRadio) this.convertRadio.checked = false;
     if (this.resumeRadio) this.resumeRadio.checked = false;
 
-    // Notify user
-    this.showNotification(
-      "Draw mode active. Use mouse or touch to draw mathematics.",
-      "info"
-    );
+    // Notify user (T-68a: a quiet switch raises no line of its own)
+    if (!quiet) {
+      this.showNotification(
+        "Draw mode active. Use mouse or touch to draw mathematics.",
+        "info"
+      );
+    }
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("draw");
@@ -512,7 +514,7 @@ class MathPixModeSwitcher extends MathPixBaseModule {
    *
    * @since Phase 6.3
    */
-  switchToConvertMode() {
+  switchToConvertMode({ quiet = false } = {}) {
     logDebug("Switching to convert mode");
 
     // Phase 8A-9 D-8: restore chemistry DOM ownership before clearing
@@ -539,11 +541,13 @@ class MathPixModeSwitcher extends MathPixBaseModule {
     if (this.convertRadio) this.convertRadio.checked = true;
     if (this.resumeRadio) this.resumeRadio.checked = false;
 
-    // Notify user
-    this.showNotification(
-      "Convert mode active. Paste or upload MMD content to convert.",
-      "info"
-    );
+    // Notify user (T-68a: a quiet switch raises no line of its own)
+    if (!quiet) {
+      this.showNotification(
+        "Convert mode active. Paste or upload MMD content to convert.",
+        "info"
+      );
+    }
 
     // Trigger mode change callback if available
     this.triggerModeChangeCallback("convert");

@@ -319,7 +319,7 @@ html:not([data-theme="dark"]) img.${CHART_EXPORT.imageClass}[${EXPORT_MODE_ATTRI
       document.body.appendChild(host);
 
       chart = new window.Chart(canvas, source);
-      controls.applyPalette(host, canvas, paletteName);
+      controls.applyPalette(host, canvas, paletteName, { announce: false });
       chart.update("none");
 
       const palette = controls.palettes && controls.palettes[paletteName];
