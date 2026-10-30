@@ -122,6 +122,24 @@
         grid-column: 1/-1 !important;
         grid-row: auto !important;
       }
+
+      /* Put the heading anchor link on the same line as its heading.
+         The anchor is a sibling after the heading, not a child, so the
+         heading becomes inline-block and the anchor flows beside it. */
+      article.standard :is(h2, h3, h4, h5, h6):has(+ .header-anchor) {
+        display: inline-block;
+        margin-inline-end: 0.5rem;
+        vertical-align: middle;
+      }
+
+      article.standard .header-anchor {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 24px;
+        min-height: 24px;
+        vertical-align: middle;
+      }
     </style>
   </head>
 
