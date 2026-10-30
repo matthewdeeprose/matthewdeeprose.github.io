@@ -28,10 +28,19 @@
  *
  *   (e) AT-1, 14 October 2026 (ruling AI-D2a): after Run, "Running the ticked
  *       steps." goes into the focusable, non-live #resume-ai-status and focus
- *       moves there once the confirm has closed. The Context line is not written
- *       when it ends if the pictures step follows (the manager would swallow it);
- *       it is composed with the pictures line and the Done line into one write
- *       after the manager closes.
+ *       moves there once the confirm has closed. (Its held Context line and the
+ *       AT-6 focus move after the manager closed were retired at RP-1.)
+ *
+ *   (g) RP-1, 29 October 2026 (rulings RP-D1 to RP-D3): the pictures step runs
+ *       with the manager CLOSED (describeAllImages openManager false), so the
+ *       only dialog in a run is the confirm. One polite line per step end, "MMD
+ *       correction finished in twelve seconds." plus the step's own sentence,
+ *       at least LINE_GAP_MS apart, the last carrying Done. Each card carries a
+ *       static status line (Waiting, Started with an aria-hidden MM:SS ticker,
+ *       Finished in, Not applied, Failed, Skipped). While a run is in progress
+ *       the MMD editor is read-only and Save File and Convert are disabled.
+ *       RP-2 (RP-D4): the outcomes list under the Run row is retired; the
+ *       cards carry every outcome, a refused card showing its own line alone.
  *
  *   (f) AT-4, 15 October 2026 (ruling AI-D5): in dev mode (?dev=1) only, a run
  *       records each step's sends and replies in memory, and "Save AI run log"
@@ -193,6 +202,36 @@
   const NO_LINE_TEXT = "no message was returned.";
   const THREW_TEXT = "stopped unexpectedly.";
 
+  /**
+   * RP-1 (RP-D1): the status line on each step card. Static text with no live
+   * role; the spoken line comes from #resume-ai-announce. A failed step's own
+   * line follows its word, as "Failed: <line>"; a refused step's card shows
+   * its line alone (RP-D4), since that line already says it was not applied.
+   */
+  const STATUS_WORDS = Object.freeze({
+    WAITING: "Waiting",
+    STARTED: "Started",
+    FINISHED: "Finished in",
+    FAILED: "Failed",
+    SKIPPED: "Skipped",
+  });
+
+  /**
+   * RP-D2: consecutive spoken lines of one run are at least this far apart.
+   * BORROWED, not measured: the placement contract's 1,000 ms reporting bound
+   * (rule C10). Tune it only from a listen.
+   */
+  const LINE_GAP_MS = 1000;
+  /** The visual ticker beside "Started" updates once a second. */
+  const TICK_MS = 1000;
+  const MS_PER_SECOND = 1000;
+  const SECONDS_PER_MINUTE = 60;
+  /** RP-D1: counts below ten are words, from 10 digits (UT-D7a). */
+  const NUMBER_WORDS = Object.freeze([
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  ]);
+  const UNDER_A_SECOND_TEXT = "under a second";
+
   /** Longest wait for every dialog to close before a line is written anyway. */
   const MODAL_CLEAR_MAX_MS = 5000;
   const MODAL_CLEAR_POLL_MS = 50;
@@ -209,7 +248,6 @@
     run: "resume-ai-run",
     announce: "resume-ai-announce",
     status: "resume-ai-status",
-    outcomes: "resume-ai-outcomes",
     estimate: "resume-ai-estimate",
     provider: "resume-ai-provider-name",
     ticked: "resume-ai-ticked-count",
@@ -217,6 +255,10 @@
     diff: "resume-ai-correction-diff",
     diffBody: "resume-ai-correction-diff-body",
     saveLog: "resume-ai-save-log",
+    // RP-D3: locked for the length of a run (the editor read-only, the two buttons disabled).
+    editor: "resume-mmd-editor-textarea",
+    saveFile: "resume-mmd-save-file-btn",
+    convert: "resume-convert-btn",
   });
 
   /** AT-4 (AI-D5): the run log's shape name and how a removed secret reads. */
@@ -246,6 +288,10 @@
   /** AV-1: the disclosure and the native select that change one step's model. */
   const advancedId = (step) => `resume-ai-advanced-${step.key}`;
   const selectId = (step) => `resume-ai-select-${step.key}`;
+  /** RP-1 (RP-D1): a card's status line, its text and its aria-hidden ticker. */
+  const progressId = (step) => `resume-ai-progress-${step.key}`;
+  const progressTextId = (step) => `resume-ai-progress-${step.key}-text`;
+  const progressTimerId = (step) => `resume-ai-progress-${step.key}-timer`;
 
   /** AV-D4: the two option groups of a model select. The default sits alone in the first. */
   const SELECT_GROUP_LABELS = Object.freeze({
@@ -266,6 +312,9 @@
     choiceCache: new Map(),
     log: null,
     logSecrets: null,
+    // RP-1: the ticker's interval id, and when the last line of this run was written.
+    ticker: null,
+    lastLineAt: null,
   };
 
   const byId = (id) => document.getElementById(id);
@@ -771,14 +820,6 @@
     await sleep(ANNOUNCE_SETTLE_MS);
   }
 
-  /** S6-3d: empty the visible outcomes list and hide it, at the start of a run. */
-  function clearOutcomes() {
-    const list = byId(ELEMENT_IDS.outcomes);
-    if (!list) return;
-    list.replaceChildren();
-    list.hidden = true;
-  }
-
   /** AT-2: empty the correction diff and hide it, at the start of a run. */
   function clearCorrectionDiff() {
     const details = byId(ELEMENT_IDS.diff);
@@ -813,24 +854,19 @@
     details.hidden = false;
   }
 
-  /** S6-3d: the same string the region speaks, as one plain list item. */
-  function showOutcome(text) {
-    const list = byId(ELEMENT_IDS.outcomes);
-    if (!list) return;
-    const item = document.createElement("li");
-    item.textContent = text;
-    list.appendChild(item);
-    list.hidden = false;
-  }
-
   /**
-   * One line into the tab's own polite region (each line REPLACES the last),
-   * and the same string appended to the visible list, which has no live role.
+   * One line into the tab's own polite region (each line REPLACES the last).
+   * RP-D2: a line lands at least LINE_GAP_MS after the run's previous one.
+   * RP-D4: the step cards show every outcome, so nothing else is written here.
    */
-  async function speak(text, listText = text) {
+  async function speak(text) {
     await whenModalsClear();
+    if (state.lastLineAt !== null) {
+      const wait = state.lastLineAt + LINE_GAP_MS - performance.now();
+      if (wait > 0) await sleep(wait);
+    }
     setText(byId(ELEMENT_IDS.announce), text);
-    showOutcome(listText);
+    state.lastLineAt = performance.now();
   }
 
   /** AT-1: the status paragraph carries plain text and is moved to by focus, never live. */
@@ -848,47 +884,126 @@
     if (status && !status.hidden) status.focus();
   }
 
+  // ==========================================================================
+  // RP-1: THE LOCK, THE CARD STATUS LINES AND THE TICKER
+  // ==========================================================================
+
   /**
-   * AT-6: resolve in the same task the last dialog stops being open (a
-   * MutationObserver callback), so focus can be moved before anything else
-   * runs; falls through after MODAL_CLEAR_MAX_MS.
+   * RP-D3: for the length of a run the MMD editor is read-only (never
+   * disabled, so it keeps its place in the Tab order and reads as read-only)
+   * and Save File and Convert are disabled. Returns the release, which puts
+   * back exactly the state each control had; run() calls it in its finally.
+   * The Run button is held by state.running (updateRunButton).
    */
-  function whenNoDialogOpen() {
-    return new Promise((resolve) => {
-      if (!document.querySelector("dialog[open]")) {
-        resolve();
-        return;
-      }
-      let timer = null;
-      const observer = new MutationObserver(() => {
-        if (document.querySelector("dialog[open]")) return;
-        observer.disconnect();
-        clearTimeout(timer);
-        resolve();
+  function lockDocument() {
+    const restores = [];
+    const editor = byId(ELEMENT_IDS.editor);
+    if (editor) {
+      const wasReadOnly = editor.readOnly;
+      editor.readOnly = true;
+      restores.push(() => {
+        editor.readOnly = wasReadOnly;
       });
-      observer.observe(document.body, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        attributeFilter: ["open"],
+    }
+    [ELEMENT_IDS.saveFile, ELEMENT_IDS.convert].forEach((id) => {
+      const button = byId(id);
+      if (!button) return;
+      const wasDisabled = button.disabled;
+      button.disabled = true;
+      restores.push(() => {
+        button.disabled = wasDisabled;
       });
-      timer = setTimeout(() => {
-        observer.disconnect();
-        logWarn("whenNoDialogOpen: a dialog stayed open; moving focus anyway");
-        resolve();
-      }, MODAL_CLEAR_MAX_MS);
+    });
+    return () => restores.forEach((restore) => restore());
+  }
+
+  /** "1 second", "seven seconds", "12 seconds": words below ten, digits from 10. */
+  function countWords(count, singular, plural, { words }) {
+    const number = words && count < NUMBER_WORDS.length ? NUMBER_WORDS[count] : String(count);
+    return `${number} ${count === 1 ? singular : plural}`;
+  }
+
+  /**
+   * RP-D1 (the composer, pinned by rp1-1): a whole-second duration in words.
+   * Under one second: "under a second". Under a minute: the seconds, words
+   * below ten ("seven seconds", "one second"), digits from 10 ("12 seconds").
+   * From a minute: digits throughout, "1 minute 32 seconds", "2 minutes" (a
+   * zero seconds part is dropped). Seconds are floored, never rounded up.
+   */
+  function durationWords(ms) {
+    const totalSeconds = Math.floor(Math.max(0, Number(ms) || 0) / MS_PER_SECOND);
+    if (totalSeconds === 0) return UNDER_A_SECOND_TEXT;
+    if (totalSeconds < SECONDS_PER_MINUTE) {
+      return countWords(totalSeconds, "second", "seconds", { words: true });
+    }
+    const minutes = Math.floor(totalSeconds / SECONDS_PER_MINUTE);
+    const seconds = totalSeconds % SECONDS_PER_MINUTE;
+    const minutePart = countWords(minutes, "minute", "minutes", { words: false });
+    if (seconds === 0) return minutePart;
+    return `${minutePart} ${countWords(seconds, "second", "seconds", { words: false })}`;
+  }
+
+  /** The visual ticker: MM:SS of whole seconds elapsed. */
+  function tickerText(ms) {
+    const totalSeconds = Math.floor(Math.max(0, Number(ms) || 0) / MS_PER_SECOND);
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${pad(Math.floor(totalSeconds / SECONDS_PER_MINUTE))}:${pad(totalSeconds % SECONDS_PER_MINUTE)}`;
+  }
+
+  /** Write one card's status line; an empty text hides it. */
+  function setCardStatus(step, text) {
+    const line = byId(progressId(step));
+    setText(byId(progressTextId(step)), text);
+    if (line) line.hidden = !text;
+  }
+
+  function stopTicker() {
+    if (state.ticker !== null) {
+      clearInterval(state.ticker);
+      state.ticker = null;
+    }
+    STEPS.forEach((step) => setText(byId(progressTimerId(step)), ""));
+  }
+
+  /** "Started" on the card, and its MM:SS ticker counting from startedAt. */
+  function startStepStatus(step, startedAt) {
+    stopTicker();
+    setCardStatus(step, STATUS_WORDS.STARTED);
+    const timer = byId(progressTimerId(step));
+    const tick = () => setText(timer, tickerText(Date.now() - startedAt));
+    tick();
+    state.ticker = setInterval(tick, TICK_MS);
+  }
+
+  /** At a run's start: every ticked card reads Waiting, every other card's line is hidden. */
+  function resetCardStatuses(steps) {
+    stopTicker();
+    STEPS.forEach((step) => {
+      setCardStatus(step, steps.includes(step) ? STATUS_WORDS.WAITING : "");
     });
   }
 
   /**
-   * AT-6: the manager's close leaves focus on the mode radio. The moment the
-   * dialog is gone, focus goes to the status paragraph; the composed line is
-   * written later, after the settle in speak().
+   * The card's line when its step ends: Finished in, Failed or Skipped, or a
+   * refused step's own line alone (RP-D4: it already says it was not applied).
    */
-  async function focusStatusAfterManagerClose() {
-    await whenNoDialogOpen();
-    const status = byId(ELEMENT_IDS.status);
-    if (status && !status.hidden) status.focus();
+  function endStatusText(outcome, elapsedMs) {
+    if (outcome.skipped) return `${STATUS_WORDS.SKIPPED}: ${outcome.line}`;
+    if (outcome.threw) return `${STATUS_WORDS.FAILED}: ${outcome.line}`;
+    if (!outcome.ok) return upperFirst(outcome.line);
+    return `${STATUS_WORDS.FINISHED} ${durationWords(elapsedMs)}`;
+  }
+
+  const upperFirst = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+
+  /**
+   * RP-D2: the spoken line for one step end, "MMD correction finished in
+   * twelve seconds." and then the step's own outcome sentence. A step that
+   * never ran keeps today's "<step>: skipped, <reason>." (it has no duration).
+   */
+  function stepEndLine(step, outcome, elapsedMs) {
+    if (outcome.skipped) return `${step.label}: ${outcome.line}`;
+    return `${step.label} finished in ${durationWords(elapsedMs)}. ${upperFirst(outcome.line)}`;
   }
 
   /** AT-1: after a Cancel, focus is on the Run button, which is enabled. */
@@ -1294,18 +1409,13 @@
       return outcomeOf(Boolean(result && result.filled), result && result.line);
     },
     pictures: async () => {
-      const options = { quiet: true };
+      // RP-1: the manager stays closed, so no dialog opens mid-run and the
+      // tab's own region stays exposed for every step's line.
+      const options = { quiet: true, openManager: false };
       const chosenId = chosenIdFor(STEPS[2], null);
       if (chosenId) options.model = chosenId;
       if (redescribeOn()) options.includeDescribed = true;
-      let result;
-      try {
-        result = await window.describeAllImages(options);
-      } finally {
-        // The manager is a dialog; the body-child region is ignored while it
-        // is open, so it closes through its own path before any line is written.
-        window.closeImageManager?.();
-      }
+      const result = await window.describeAllImages(options);
       return outcomeOf(
         Boolean(result && result.ran && result.generated > 0),
         result && result.line,
@@ -1331,15 +1441,22 @@
     } catch (error) {
       logError(`runStep(${step.key}) threw`, error);
       const outcome = outcomeOf(false, THREW_TEXT);
-      return finished({ ...outcome, detail: outcome.line });
+      return finished({ ...outcome, threw: true, detail: outcome.line });
     }
   }
 
-  /** "Done: 3 of 3 steps ran." or "Done: 2 of 3; <step> was not applied: <line>". */
+  /**
+   * "Done: 3 of 3 steps ran." A step that returned its own refusal line (RP-D4a)
+   * follows the count with that line alone: "Done: 2 of 3 steps ran. <line>".
+   * A skipped or thrown step keeps "Done: 2 of 3; <step> was not applied: <line>".
+   */
   function finalLine(results) {
     const ran = results.filter((entry) => entry.outcome.ok).length;
     const missed = results.filter((entry) => !entry.outcome.ok);
     if (missed.length === 0) return `Done: ${ran} of ${results.length} steps ran.`;
+    if (missed.every((entry) => !entry.outcome.skipped && !entry.outcome.threw)) {
+      return `Done: ${ran} of ${results.length} steps ran. ${missed.map((entry) => entry.outcome.detail).join(" ")}`;
+    }
     const named = missed.map(
       (entry) =>
         `${entry.step.label} was ${entry.outcome.skipped ? "skipped" : "not applied"}: ${entry.outcome.detail.replace(/\.$/, "")}`,
@@ -1359,8 +1476,11 @@
 
   /**
    * The Run button's handler. One confirm; then the ticked steps in order, each
-   * awaited, one line per step; the last step's line and the final line in one
-   * write. Resolves with the outcomes, or null when nothing ran.
+   * awaited. RP-D2: one line per step end, at least LINE_GAP_MS apart, the last
+   * step's line and the final line in one write. RP-D1: each ticked card reads
+   * Waiting, Started (with its ticker), then its end status. RP-D3: the
+   * document is locked from the confirm to the end. Resolves with the
+   * outcomes, or null when nothing ran.
    */
   async function run() {
     if (state.running) return null;
@@ -1369,6 +1489,7 @@
 
     state.running = true;
     let recorder = null;
+    let releaseLock = null;
     try {
       const names = steps.map((step) => step.label).join(", ");
       const confirmed = await window.safeConfirm(
@@ -1386,50 +1507,35 @@
       }
 
       setRunning(true);
+      releaseLock = lockDocument();
       // AT-4: dev mode only. A new run replaces the last log; the button waits for this one to finish.
       state.log = null;
       state.logSecrets = null;
       recorder = devLogGate.enabled() ? createRunRecorder(steps) : null;
       updateSaveLogButton();
-      clearOutcomes();
       clearCorrectionDiff();
+      resetCardStatuses(steps);
+      state.lastLineAt = null;
       showStatus(RUNNING_TEXT);
       await focusStatusAfterClose();
       const results = [];
-      // AT-1 (AI-D2a): the Context line is held while the pictures step will
-      // open the manager (a modal swallows a body-child write), and is composed
-      // with the pictures line and the Done line into one write after it closes.
-      let heldContext = "";
       for (let i = 0; i < steps.length; i += 1) {
         const step = steps[i];
+        const startedAt = Date.now();
+        startStepStatus(step, startedAt);
         const outcome = await runStep(step, recorder);
-        results.push({ step, outcome });
-        const line = `${step.label}: ${outcome.line}`;
-        const isLast = i === steps.length - 1;
-        if (step.key === "context" && steps[i + 1]?.key === "pictures") {
-          heldContext = line;
-          showOutcome(line);
-          continue;
-        }
-        const lead = heldContext ? `${heldContext} ` : "";
-        heldContext = "";
-        if (step.key === "pictures" && !outcome.skipped) {
-          // AT-6: the manager's close leaves focus on a radio. "Finished." goes
-          // into the status paragraph first, focus follows once the dialog is
-          // gone, and the composed line (speak settles again) comes last.
-          if (isLast) showStatus(FINISHED_TEXT);
-          await focusStatusAfterManagerClose();
-        }
-        if (isLast) {
-          const done = finalLine(results);
-          await speak(`${lead}${line} ${done}`, `${line} ${done}`);
-        } else {
-          await speak(`${lead}${line}`, line);
-        }
+        const elapsedMs = Date.now() - startedAt;
+        stopTicker();
+        setCardStatus(step, endStatusText(outcome, elapsedMs));
+        results.push({ step, outcome, elapsedMs });
+        const spoken = stepEndLine(step, outcome, elapsedMs);
+        await speak(i === steps.length - 1 ? `${spoken} ${finalLine(results)}` : spoken);
       }
       showStatus(FINISHED_TEXT);
       return results;
     } finally {
+      stopTicker();
+      if (releaseLock) releaseLock();
       finishRunLog(recorder);
       state.running = false;
       setRunning(false);
@@ -1775,6 +1881,15 @@
     servableModelsFor,
     handleModelSelect,
     run,
+    // RP-1: the composer, the ticker text and the run's status words, for rows and rigs.
+    durationWords,
+    tickerText,
+    STATUS_WORDS,
+    LINE_GAP_MS,
+    tickerRunning: () => state.ticker !== null,
+    progressId,
+    progressTextId,
+    progressTimerId,
     estimateLine,
     tickedSteps,
     restoreSettled,

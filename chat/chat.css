@@ -233,6 +233,9 @@
   align-items: center;
   gap: 0.5rem;
   min-height: 44px;
+  /* Wrap, so a select that keeps the width of its longest option moves its label onto the line
+     above in a narrow panel instead of being squeezed. */
+  flex-wrap: wrap;
 }
 
 /* The control itself meets the SC 2.5.8 minimum target (24×24 CSS px). */
@@ -605,7 +608,9 @@
  * page, and the Clear button stays the single dark action control beside them. Both
  * take their text colour by INHERITANCE rather than pinning per-theme values, so they
  * follow whatever the page paints in either theme; both carry a 0.2rem border in
- * currentcolor, a 0.25rem corner radius, and a min-height levelled to the select's 47px,
+ * currentcolor, a 0.25rem corner radius, and a 47px min-height on the select, the search
+ * box and the Clear button alike (the select's own 47px used to come from the global select
+ * font size, which SEL-1 changed, so the select now pins it itself),
  * with box-sizing:border-box keeping border and padding inside that height so each box
  * lands at exactly 47px.
  *
@@ -628,6 +633,7 @@
  * NOTE: the select's ellipsis/size guard and its flex sizing live near the top of this
  * file and are deliberately NOT touched here — this rule is colour and shape only. */
 #chat-app .chat-model-bar #chat-model-select {
+  min-height: 47px;
   color: inherit;
   border: 0.2rem solid currentcolor;
   border-radius: 0.25rem;
@@ -1578,6 +1584,46 @@
   content: "·";
   content: "·" / "";
   margin-inline-start: 0.35em;
+}
+
+/* The attachment in a sent turn sits on its own line with room above and below, so the question's
+ * last word cannot run into the file name. A block (not inline) also separates the two for a reader
+ * that joins inline elements. The sent bubble is pre-wrap; the chip sets normal so its own parts
+ * collapse. Colours are in light.css and dark.css. */
+.chat-bubble-attachment {
+  display: block;
+  margin-block: 0.5rem;
+  white-space: normal;
+}
+
+/* A file (or a restored reference) is a pill sized to its content. A live picture keeps no pill. */
+.chat-bubble-attachment-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.4rem;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.3rem 0.6rem;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.5rem;
+}
+
+.chat-bubble-attachment-reference > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The name takes the room beside the icon and wraps there, so a long name hangs under itself. */
+.chat-bubble-attachment-reference > :nth-child(2) {
+  flex: 1 1 14ch;
+  min-width: 8ch;
+}
+
+.chat-bubble-attachment-reference > [data-icon] {
+  flex: none;
 }
 
 #chat-attach-pictures-wrap input[type="checkbox"] {

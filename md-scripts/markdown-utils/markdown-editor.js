@@ -301,7 +301,10 @@ const MarkdownEditor = (function () {
         elements.loading.classList.add("visible");
       }
       if (elements.renderBtn) {
-        elements.renderBtn.disabled = true;
+        // aria-disabled, not disabled: disabling the focused button drops
+        // focus to <body>. renderMarkdown()'s isRendering guard (and the
+        // click/Ctrl+Enter handlers) make a press while rendering do nothing.
+        elements.renderBtn.setAttribute("aria-disabled", "true");
       }
     },
 
@@ -310,7 +313,7 @@ const MarkdownEditor = (function () {
         elements.loading.classList.remove("visible");
       }
       if (elements.renderBtn) {
-        elements.renderBtn.disabled = false;
+        elements.renderBtn.removeAttribute("aria-disabled");
       }
     },
   };
@@ -1446,7 +1449,8 @@ const MarkdownEditor = (function () {
       }
 
       if (state.notifyNextRender) {
-        NotificationHandler.showSuccess("Content rendered successfully");
+        // T-76b: diagrams and charts finish after this line, so it must not claim success; a failed one says so after it.
+        NotificationHandler.showSuccess("Preview updated");
       }
       if (config.autoSave) {
         AutoSave.save();
@@ -1469,6 +1473,7 @@ const MarkdownEditor = (function () {
   function handleKeyboardShortcuts(event) {
     if (event.ctrlKey && event.key === "Enter") {
       event.preventDefault();
+      if (state.isRendering) return;
       state.notifyNextRender = true;
       renderMarkdown();
     } else if (event.key === "Escape") {
@@ -1832,6 +1837,8 @@ const MarkdownEditor = (function () {
 
     // Event listeners
     elements.renderBtn.addEventListener("click", () => {
+      // The button stays enabled while rendering (to keep focus), so ignore a press mid-render.
+      if (state.isRendering) return;
       state.notifyNextRender = true;
       renderMarkdown();
     });
@@ -1938,7 +1945,7 @@ const MarkdownEditor = (function () {
       if (elements.markdownInput) {
         elements.markdownInput.value = markdownText;
         // T-68a: the only caller is the examples loader, whose "Loaded: <title>" toast already reports this event,
-        // so the render that follows does not add "Content rendered successfully" (Render and Ctrl+Enter still do).
+        // so the render that follows does not add "Preview updated" (Render and Ctrl+Enter still do).
         state.notifyNextRender = false;
         renderMarkdown();
         Logger.info("Content loaded into editor");

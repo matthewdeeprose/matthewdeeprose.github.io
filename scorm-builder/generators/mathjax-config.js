@@ -70,12 +70,22 @@ export const SI_COMMANDS = Object.freeze({
   kilogram: "\\kilo\\gram",
 });
 
-// The `macros` object, built from the three tables above.
+// The bracketed-quantity commands of the physics package. MathPix writes them, MathJax does not
+// know them, and an unknown command draws as red source text. One argument each; `\qty` stays
+// the siunitx two-argument form above and `\qty(…)` is not rewritten (RA-77, register 56).
+export const QUANTITY_BRACKET_COMMANDS = Object.freeze({
+  pqty: ["\\left(#1\\right)", 1],
+  bqty: ["\\left[#1\\right]", 1],
+  abs: ["\\left|#1\\right|", 1],
+});
+
+// The `macros` object, built from the four tables above.
 export function buildSiMacros() {
   const macros = {};
   for (const [name, symbol] of Object.entries(SI_PREFIXES)) macros[name] = SI_UPRIGHT(symbol);
   for (const [name, symbol] of Object.entries(SI_UNITS)) macros[name] = SI_UPRIGHT(symbol);
   for (const [name, def] of Object.entries(SI_COMMANDS)) macros[name] = def;
+  for (const [name, def] of Object.entries(QUANTITY_BRACKET_COMMANDS)) macros[name] = def;
   return macros;
 }
 

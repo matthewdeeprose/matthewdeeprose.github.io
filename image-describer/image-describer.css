@@ -234,7 +234,6 @@
   border-radius: 0.25rem;
   font-family: inherit;
   font-size: inherit;
-  background: transparent;
   color: inherit;
   cursor: pointer;
   margin-left: 0px;
@@ -1453,7 +1452,6 @@
   padding: 0.5rem;
   border-radius: 4px;
   font-size: 1rem;
-  background-color: inherit;
   color: inherit;
   cursor: pointer;
   margin-bottom: 0.5rem;
@@ -1520,7 +1518,6 @@
   font-family: inherit;
   font-size: 1rem;
   line-height: 1.5;
-  background-color: inherit;
   color: inherit;
 }
 

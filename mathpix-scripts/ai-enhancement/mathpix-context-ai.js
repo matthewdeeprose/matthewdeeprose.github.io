@@ -432,19 +432,18 @@ const MathPixContextAI = (function () {
    */
   const PICKER_ELEMENT_IDS = {
     pickerRoot: "resume-context-model-picker",
-    pickerFieldset: "resume-context-model-recommended",
-    pickerOptions: "resume-context-model-options",
-    pickerMeasured: "resume-context-model-measured",
     pickerNone: "resume-context-model-none",
     pickerUnavailable: "resume-context-model-unavailable",
+    // T-80: the wrapper of the one model select (the id predates the
+    // disclosure's removal).
     pickerAdvanced: "resume-context-model-advanced",
     pickerOverride: "resume-context-model-override",
   };
 
-  /** The radio group's shared name — one constant, used by build and by reset. */
-  const PICKER_RADIO_NAME = "resume-context-model";
+  /** The select's hint paragraph, its standing description. */
+  const PICKER_OVERRIDE_HINT_ID = "resume-context-model-override-hint";
 
-  /** The override <select>'s placeholder value: "use the recommendation". */
+  /** The select's "Choose a model" value, used when there is no recommendation. */
   const PICKER_OVERRIDE_PLACEHOLDER = "";
 
   /**
@@ -981,7 +980,7 @@ const MathPixContextAI = (function () {
   // markup carries no live region and no live role. Every string it writes is
   // visible text, read when a person reaches it — the arrangement the enhancer
   // already uses for its own empty-state message. What a change WOULD say, if a
-  // later parcel decides it should, is recorded in `_handleModelRadioChange`.
+  // later parcel decides it should, is recorded in `_handleModelOverrideChange`.
 
   /**
    * The ACTIVE provider id, resolved at CALL time and never captured.
@@ -1201,79 +1200,40 @@ const MathPixContextAI = (function () {
   }
 
   /**
-   * One recommended radio, as DOM rather than as an HTML string.
+   * Fill the model select with every PDF-capable model for this provider.
    *
-   * BUILT WITH createElement AND textContent, NOT innerHTML. This module has no
-   * escaping helper, and a model name reaching innerHTML unescaped is a defect
-   * waiting for a catalogue entry to contain a bracket. Building nodes removes
-   * the question rather than answering it.
-   *
-   * The accessible name comes from the WRAPPING LABEL's visible text — the
-   * model's display name, the recommended marker, and the id beneath it — which
-   * is the enhancer's own arrangement. No aria-label, no title.
-   *
-   * @param {Object} model a catalogue entry
-   * @param {boolean} checked
-   * @returns {HTMLLabelElement}
-   */
-  function _buildRecommendedRadio(model, checked) {
-    const label = document.createElement("label");
-    label.className = "model-option";
-
-    const input = document.createElement("input");
-    input.type = "radio";
-    input.name = PICKER_RADIO_NAME;
-    input.value = model.id;
-    if (checked) {
-      // BOTH, deliberately. `defaultChecked` writes the content attribute, so
-      // the recommendation survives a native form reset — this picker lives
-      // inside #resume-context-form, and a reset would otherwise leave the
-      // group with nothing checked and no way to get back to it.
-      input.defaultChecked = true;
-      input.checked = true;
-    }
-
-    const content = document.createElement("span");
-    content.className = "model-option-content";
-
-    const name = document.createElement("span");
-    name.className = "model-option-name";
-    name.textContent = `${model.name || model.id} (Recommended)`;
-
-    const description = document.createElement("span");
-    description.className = "model-option-description";
-    description.textContent = model.id;
-
-    content.appendChild(name);
-    content.appendChild(description);
-    label.appendChild(input);
-    label.appendChild(content);
-    return label;
-  }
-
-  /**
-   * Fill the override select with every PDF-capable model for this provider.
+   * T-80: the measured recommendation leads, written "<name> (recommended)",
+   * and is selected; with none, a "Choose a model" first option stands in its
+   * place. BUILT WITH createElement AND textContent, never innerHTML, so a
+   * model name containing a bracket cannot become markup.
    *
    * @param {HTMLSelectElement|null} select
    * @param {Array<Object>} candidates
+   * @param {Object|null} recommended the recommended catalogue entry, or null
    */
-  function _populateOverrideSelect(select, candidates) {
+  function _populateOverrideSelect(select, candidates, recommended) {
     if (!select) return;
     select.textContent = "";
 
-    const placeholder = document.createElement("option");
-    placeholder.value = PICKER_OVERRIDE_PLACEHOLDER;
-    placeholder.textContent = "Use the recommended model above";
-    select.appendChild(placeholder);
+    const first = document.createElement("option");
+    if (recommended) {
+      first.value = recommended.id;
+      first.textContent = `${recommended.name || recommended.id} (recommended)`;
+    } else {
+      first.value = PICKER_OVERRIDE_PLACEHOLDER;
+      first.textContent = "Choose a model";
+    }
+    select.appendChild(first);
 
     for (const model of candidates) {
+      if (recommended && model.id === recommended.id) continue;
       const option = document.createElement("option");
       option.value = model.id;
       const providerPrefix = String(model.id).split("/")[0] || "";
       option.textContent = `${model.name || model.id} (${providerPrefix})`;
       select.appendChild(option);
     }
-    select.value = PICKER_OVERRIDE_PLACEHOLDER;
+    select.value = first.value;
   }
 
   /**
@@ -1305,7 +1265,7 @@ const MathPixContextAI = (function () {
    */
   function _buildModelPicker() {
     const els = this.elements;
-    if (!els || !els.pickerRoot || !els.pickerOptions) {
+    if (!els || !els.pickerRoot || !els.pickerOverride) {
       logDebug("_buildModelPicker: no picker markup on this page.");
       return false;
     }
@@ -1313,9 +1273,8 @@ const MathPixContextAI = (function () {
     // Every build starts from a clean slate, so no state can be left over from
     // the provider that was active a moment ago.
     _userModelChoice = null;
-    els.pickerOptions.textContent = "";
-    if (els.pickerMeasured) els.pickerMeasured.textContent = "";
-    if (els.pickerFieldset) els.pickerFieldset.hidden = true;
+    els.pickerOverride.textContent = "";
+    els.pickerOverride.setAttribute("aria-describedby", PICKER_OVERRIDE_HINT_ID);
     if (els.pickerNone) els.pickerNone.hidden = true;
     if (els.pickerUnavailable) els.pickerUnavailable.hidden = true;
     if (els.pickerAdvanced) els.pickerAdvanced.hidden = false;
@@ -1339,7 +1298,6 @@ const MathPixContextAI = (function () {
 
     const providerId = _activeProviderId();
     const candidates = _pdfCapableModelsFor(providerId);
-    _populateOverrideSelect(els.pickerOverride, candidates);
 
     const entry = _recommendedEntryFor(providerId);
     const recommendedId =
@@ -1348,9 +1306,15 @@ const MathPixContextAI = (function () {
       ? candidates.find((model) => model.id === recommendedId) || null
       : null;
 
+    _populateOverrideSelect(els.pickerOverride, candidates, recommended);
+
     // --- STATE 2: no measured recommendation this provider can use ----------
     if (!recommended) {
       if (els.pickerNone) els.pickerNone.hidden = false;
+      els.pickerOverride.setAttribute(
+        "aria-describedby",
+        `${PICKER_OVERRIDE_HINT_ID} ${PICKER_ELEMENT_IDS.pickerNone}`
+      );
       logWarn(
         `_buildModelPicker: no measured recommendation is available for provider '${providerId}' that it can also use to read a PDF; offering the override list with nothing preselected rather than fabricating a default.`,
         { registryId: recommendedId, pdfCapableCount: candidates.length }
@@ -1359,11 +1323,7 @@ const MathPixContextAI = (function () {
     }
 
     // --- STATE 1: the measured recommendation -------------------------------
-    if (els.pickerFieldset) els.pickerFieldset.hidden = false;
-    els.pickerOptions.appendChild(_buildRecommendedRadio(recommended, true));
-    if (els.pickerMeasured) {
-      els.pickerMeasured.textContent = `Chosen by measurement round ${entry.round}, measured ${_formatMeasuredDate(entry.measured)}.`;
-    }
+    els.pickerOverride.setAttribute("aria-describedby", PICKER_OVERRIDE_HINT_ID);
     logDebug("_buildModelPicker: built", {
       providerId,
       recommended: recommended.id,
@@ -1373,73 +1333,53 @@ const MathPixContextAI = (function () {
   }
 
   /**
-   * A recommended radio was chosen.
+   * The value the select shows when no pick is held: the recommended option's
+   * id, or the "Choose a model" placeholder when there is no recommendation.
+   * It is the select's own first option, which `_populateOverrideSelect` made.
    *
-   * IT DOES NOT ANNOUNCE, AND THAT IS A DECISION RATHER THAN AN OMISSION.
-   * Parcel MP-1 carries no screen-reader listen, and AGENTS.md § Announcements
-   * is explicit that a silent event is a worse outcome than a doubled one — so
-   * a line added here without being heard could be the defect it was meant to
-   * prevent. A radio reports its own new state when the person moves it, which
-   * is what a reader already speaks. WERE one added, the wording would be
-   * "Context auto-fill will use <model name>." and it would owe a sitting on
-   * both motion arms before it shipped.
-   *
-   * @param {string} modelId the radio's value
+   * @param {HTMLSelectElement} select
+   * @returns {string}
    */
-  function _handleModelRadioChange(modelId) {
-    const recommendedId = _defaultModelForProvider();
-    if (modelId === recommendedId) {
-      // Choosing the recommendation CLEARS the pick, so the run resolves down
-      // the measured-default rung exactly as it did before MP-1 — the pre-MP-1
-      // path is preserved rather than re-created by a pick that happens to
-      // agree with it. The general branch below is what keeps this correct if a
-      // later parcel puts more than one radio in the group.
-      _setUserModelChoice(null);
-    } else {
-      _setUserModelChoice(modelId);
-    }
-
-    const els = this.elements;
-    if (els && els.pickerOverride) {
-      els.pickerOverride.value = PICKER_OVERRIDE_PLACEHOLDER;
-    }
+  function _selectRestingValue(select) {
+    const first = select.options[0];
+    return first ? first.value : PICKER_OVERRIDE_PLACEHOLDER;
   }
 
   /**
    * AV-1: show the stored pick in the picker, when it was set from outside the
    * picker (the AI tab's own select). The stored value is the one source: no
-   * pick checks the recommended radio and resets the override select, a pick
-   * unchecks the radios and shows in the override select. Announces nothing.
+   * pick shows the select's first option (the recommendation, or "Choose a
+   * model"), a pick shows its own option. Announces nothing.
    */
   function _syncPickerToChoice() {
     const els = this.elements;
     if (!els || !els.pickerOverride) return;
 
-    const choice = _userModelChoice;
-    els.pickerOverride.value = choice || PICKER_OVERRIDE_PLACEHOLDER;
-
-    if (!els.pickerOptions) return;
-    const radios = els.pickerOptions.querySelectorAll('input[type="radio"]');
-    radios.forEach((radio, index) => {
-      radio.checked = !choice && index === 0;
-    });
+    els.pickerOverride.value =
+      _userModelChoice || _selectRestingValue(els.pickerOverride);
   }
 
   /**
-   * The advanced override select changed. Also does not announce, for the same
-   * reason as the radio handler above.
+   * The model select changed.
    *
-   * @param {string} modelId a model id, or "" for the placeholder
+   * IT DOES NOT ANNOUNCE, AND THAT IS A DECISION RATHER THAN AN OMISSION.
+   * A native select says its own new value when the person moves it, and
+   * AGENTS.md § Announcements is explicit that a silent event is a worse
+   * outcome than a doubled one. WERE a line added, the wording would be
+   * "Context auto-fill will use <model name>." and it would owe a sitting on
+   * both motion arms before it shipped.
+   *
+   * T-80: choosing the recommended option (or the "Choose a model" option)
+   * CLEARS the pick, so the run resolves down the measured-default rung
+   * exactly as it did before MP-1; any other option sets it.
+   *
+   * @param {string} modelId a model id, or "" for the "Choose a model" option
    */
   function _handleModelOverrideChange(modelId) {
     const els = this.elements;
 
-    if (!modelId) {
+    if (!modelId || modelId === _defaultModelForProvider()) {
       _setUserModelChoice(null);
-      if (els && els.pickerOptions) {
-        const first = els.pickerOptions.querySelector('input[type="radio"]');
-        if (first) first.checked = true;
-      }
       return;
     }
 
@@ -1447,14 +1387,9 @@ const MathPixContextAI = (function () {
       // Refused. Put the control back where it was rather than leaving it
       // showing a model that will not be sent.
       if (els && els.pickerOverride) {
-        els.pickerOverride.value = PICKER_OVERRIDE_PLACEHOLDER;
+        els.pickerOverride.value =
+          _userModelChoice || _selectRestingValue(els.pickerOverride);
       }
-      return;
-    }
-
-    if (els && els.pickerOptions) {
-      const radios = els.pickerOptions.querySelectorAll('input[type="radio"]');
-      for (const radio of radios) radio.checked = false;
     }
   }
 
@@ -2201,13 +2136,6 @@ const MathPixContextAI = (function () {
       elements.pickerRoot.addEventListener("change", (event) => {
         const target = event && event.target;
         if (!target) return;
-        if (
-          target.type === "radio" &&
-          target.name === PICKER_RADIO_NAME
-        ) {
-          self._handleModelRadioChange(target.value);
-          return;
-        }
         if (target.id === PICKER_ELEMENT_IDS.pickerOverride) {
           self._handleModelOverrideChange(target.value);
         }
@@ -2967,7 +2895,6 @@ const MathPixContextAI = (function () {
     // `_resolveModel` cannot say whether the PICKER offered the id it resolved.
     // ------------------------------------------------------------------------
     _buildModelPicker,
-    _handleModelRadioChange,
     _handleModelOverrideChange,
     _syncPickerToChoice,
     _setUserModelChoice,
@@ -2977,7 +2904,6 @@ const MathPixContextAI = (function () {
     _formatMeasuredDate,
     _resolveUserChoice,
     PICKER_ELEMENT_IDS,
-    PICKER_RADIO_NAME,
     refreshAvailability,
     handleAnalyseClick,
     _analyseRun,

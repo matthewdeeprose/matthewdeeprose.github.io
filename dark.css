@@ -279,7 +279,7 @@
   background: #00131d;
 }
 .imgdesc-review-input {
-  background: #fffff4;
+  background: #231f20;
 }
 /* ── Add Item Controls (Phase 5D-3) ── */
 .imgdesc-overlay-box[data-status="user-added"] {
@@ -6681,6 +6681,8 @@ button[disabled],
 #imgdesc-generate-local[aria-disabled="true"],
 #imgdesc-regenerate[aria-disabled="true"],
 #convert-mode-convert-btn[aria-disabled="true"],
+#pdf-vis-prev[aria-disabled="true"],
+#pdf-vis-next[aria-disabled="true"],
 #imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #758d9a !important;
@@ -7452,6 +7454,17 @@ pre.language-json {
 .local-chat-bubble-user {
   background-color: #1a2a3a;
   color: #e1e8ec;
+}
+
+/* The attached file in a sent Chat question (P15). Border and icon use the focus-glow colour. */
+.chat-bubble-attachment-reference {
+  background-color: #10202e;
+  border-color: #c1d100;
+  color: #e1e8ec;
+}
+
+.chat-bubble-attachment-reference > [data-icon] {
+  color: #c1d100;
 }
 
 .local-chat-bubble-assistant {

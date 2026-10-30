@@ -1,0 +1,83 @@
+/* Chat question navigation (parcel P10). Loads after chat/chat.css.
+   Colours come from currentColor and the shared button rules; there is no theme-sheet entry. */
+
+/* ── The heading at the top of each question bubble ── */
+.local-chat-bubble-user .chat-turn-heading {
+  margin: 0 0 0.25rem;
+  padding: 0;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.5;
+  color: inherit;
+  white-space: normal;
+}
+
+/* A move puts focus here by script, so keyboard users must see where it landed. */
+.chat-turn-heading:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* ── Previous / Next question, in the fixed Top / Bottom panel ── */
+.chat-turn-nav-btn[hidden] {
+  display: none;
+}
+
+.chat-turn-nav-label {
+  line-height: 1.2;
+}
+
+/* aria-disabled keeps the button focusable; show it is inactive without removing it */
+.chat-turn-nav-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Wide layout: two full-width rows above the Top / Bottom pair, so the panel keeps its width
+   (and covers no more of the page). width: 0 with a min-width keeps the labels from making
+   the panel wider than Top + Bottom. */
+@media screen and (min-width: 801px) {
+  .chat-turn-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 0;
+    min-width: calc(100% - 0.7rem);
+    min-height: 3.125rem; /* "Previous question" wraps to two lines; keep both rows the same height */
+    margin: 0 0 0.4rem 0.7rem;
+    padding: 0.3rem 0.5rem;
+    border: 0.3rem solid currentColor;
+    border-radius: 4px;
+  }
+
+  .chat-turn-nav-label {
+    font-size: 0.85rem;
+    text-align: left;
+  }
+
+  #panel .chat-turn-nav-btn svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+  }
+}
+
+/* The same shape the panel gives #myBtn and #myBtn2 at 800px and below (main.css), which those
+   id selectors do not reach for these buttons. The label is hidden visually by .panelLabel. */
+@media screen and (max-width: 800px) {
+  .chat-turn-nav-btn {
+    padding: 0;
+    margin: 0.25rem 0;
+    border-radius: 4px;
+    width: auto;
+    border: 0.1rem solid #fffff4;
+    outline: 0.1rem solid #00131d;
+  }
+
+  /* the 2px side margins #svgUP gives the Top icon, so the column is as wide as Top and Bottom */
+  #panel .chat-turn-nav-btn svg {
+    margin: 0 2px;
+  }
+}

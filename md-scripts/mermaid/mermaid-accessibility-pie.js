@@ -56,25 +56,25 @@ const MermaidAccessibilityPieChart = (function () {
 
   // Utility function aliases
   const Utils = window.MermaidAccessibilityUtils;
-  const Common = window.MermaidAccessibilityCommon;
 
   /**
-   * Render a segment value or total at the precision the author wrote it
-   *
-   * An integer renders bare, so a count of 142 is not read out as "142.0";
-   * a value the author wrote with decimals renders exactly as the number
-   * holds it. This is the single choke point for VALUE rendering, so a site
-   * added later cannot reintroduce a fixed precision on its own.
-   *
-   * PERCENTAGES do not come through here. They are computed rather than
-   * authored, and one decimal place is the right precision for them, so they
-   * keep their own toFixed(1).
-   *
-   * @param {number} value - The segment value or total
-   * @returns {string} The value as text, with no imposed precision
+   * The shared chart-description builders (vendor/chart-describe/src/charts.js),
+   * resolved at call time and never cached, so load order cannot leave a stale
+   * capture. If charts.js is missing, the first call throws and the core's
+   * generator-failed fallback speaks, rather than wrong text being returned.
+   * @returns {Object} ChartDescribeCharts
    */
-  function formatValue(value) {
-    return String(value);
+  function chartsCore() {
+    return window.ChartDescribeCharts;
+  }
+
+  const NO_TITLE = "";
+
+  /** The author's title, or NO_TITLE. Code first, then the drawn title. */
+  function extractTitle(code, svgElement) {
+    const titleMatch = code.match(/pie\s+title\s+([^\n]+)/i);
+    if (titleMatch) return titleMatch[1].trim();
+    return svgElement.querySelector(".pieTitleText")?.textContent.trim() || NO_TITLE;
   }
 
   /**
@@ -87,81 +87,14 @@ const MermaidAccessibilityPieChart = (function () {
     logDebug("Generating short description for pie chart");
 
     // Extract title from code or SVG
-    const titleMatch = code.match(/pie\s+title\s+([^\n]+)/i);
-    const title = titleMatch
-      ? titleMatch[1].trim()
-      : svgElement.querySelector(".pieTitleText")?.textContent.trim() ||
-        "Pie Chart";
+    const title = extractTitle(code, svgElement);
 
     logDebug("Chart title extracted: " + title);
 
     // Parse segments to enable insights
     const segments = parseSegments(code, svgElement);
 
-    // Sort segments by value (descending)
-    segments.sort((a, b) => b.value - a.value);
-
-    logDebug("Processed " + segments.length + " segments");
-
-    // Diagram-source text is escaped once, here, where it enters an HTML
-    // string. The PLAIN tier below deliberately keeps the raw values: it feeds
-    // the SVG aria-label and the textContent fallback, neither of which parses
-    // HTML, so entities there would be read out literally.
-    const safeTitle = Common.escapeHtml(title);
-
-    // Basic description - HTML version
-    let htmlDescription = `A pie chart titled "<span class="diagram-title">${safeTitle}</span>" showing the distribution of ${
-      segments.length || "multiple"
-    } categories.`;
-
-    // Plain text version for screen readers and textContent scenarios
-    let plainTextDescription = `A pie chart titled "${title}" showing the distribution of ${
-      segments.length || "multiple"
-    } categories.`;
-
-    // Add enhanced information about largest segment if available
-    if (segments.length > 0) {
-      const largestSegment = segments[0];
-      const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-      const percentage = ((largestSegment.value / total) * 100).toFixed(1);
-
-      logDebug(
-        "Largest segment: " + largestSegment.name + " at " + percentage + "%"
-      );
-
-      // Add proportion context
-      let proportion = "";
-      if (percentage > 50) {
-        proportion = "over half";
-      } else if (percentage > 33) {
-        proportion = "over a third";
-      } else if (percentage > 25) {
-        proportion = "over a quarter";
-      }
-
-      // HTML version
-      htmlDescription += ` <span class="diagram-segment">${Common.escapeHtml(
-        largestSegment.name
-      )}</span> is the largest segment at <span class="diagram-percentage">${percentage}%</span>${
-        proportion
-          ? `, representing <span class="diagram-proportion">${proportion}</span> of the total`
-          : ""
-      }.`;
-
-      // Plain text version
-      plainTextDescription += ` ${
-        largestSegment.name
-      } is the largest segment at ${percentage}%${
-        proportion ? `, representing ${proportion} of the total` : ""
-      }.`;
-    }
-
-    logDebug("Short description generated successfully");
-
-    return {
-      html: htmlDescription,
-      text: plainTextDescription,
-    };
+    return chartsCore().buildPieShort(title, segments);
   }
 
   /**
@@ -237,213 +170,14 @@ const MermaidAccessibilityPieChart = (function () {
     logInfo("Generating detailed pie chart description");
 
     // Extract title from code or SVG
-    const titleMatch = code.match(/pie\s+title\s+([^\n]+)/i);
-    const title = titleMatch
-      ? titleMatch[1].trim()
-      : svgElement.querySelector(".pieTitleText")?.textContent.trim() ||
-        "Pie Chart";
+    const title = extractTitle(code, svgElement);
 
     logDebug("Processing chart titled: " + title);
 
     // Get segments from parsing function
     let segments = parseSegments(code, svgElement);
 
-    // Sort segments from highest to lowest value
-    segments.sort((a, b) => b.value - a.value);
-
-    // Calculate total for percentage calculation
-    const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-
-    logDebug("Total value across all segments: " + total);
-
-    // Create structured description
-    let description = "";
-
-    // 1. Chart Construction Section
-    description += `<section class="mermaid-section chart-construction">
-          <h4 class="mermaid-details-heading">Chart Construction</h4>
-          <p>This pie chart titled "<span class="diagram-title">${Common.escapeHtml(
-            title
-          )}</span>" shows the distribution of categories.</p>`;
-
-    if (segments.length > 0) {
-      description += `<p>The chart shows <span class="diagram-count">${segments.length}</span> categories:</p><ul class="diagram-segment-list">`;
-      segments.forEach((segment) => {
-        // The author's name, as written. This list used to lower-case it while
-        // Key Insights and Complete Data Points did not, so one description
-        // spelled the same category two ways.
-        description += `<li><span class="diagram-segment">${Common.escapeHtml(
-          segment.name
-        )}</span></li>`;
-      });
-      description += `</ul>`;
-    } else {
-      logWarn("No segments available for detailed description");
-      description += `<p>The chart is divided into segments in a circular layout, with each segment's size representing its proportion of the whole.</p>`;
-    }
-
-    description += `</section>`;
-
-    // 2. Key Insights Section
-    description += `<section class="mermaid-section chart-insights">
-          <h4 class="mermaid-details-heading">Key Insights</h4><ul class="diagram-insights-list">`;
-
-    // Add largest segment insight
-    if (segments.length > 0) {
-      const largestSegment = segments[0];
-      const largestPercentage = ((largestSegment.value / total) * 100).toFixed(
-        1
-      );
-
-      logDebug(
-        "Largest segment analysis: " +
-          largestSegment.name +
-          " (" +
-          largestPercentage +
-          "%)"
-      );
-
-      // Add proportion context
-      let proportion = "";
-      if (largestPercentage > 50) {
-        proportion = "over half";
-      } else if (largestPercentage > 33) {
-        proportion = "over a third";
-      } else if (largestPercentage > 25) {
-        proportion = "over a quarter";
-      }
-
-      description += `<li class="diagram-insight diagram-insight-primary"><strong><span class="diagram-segment">${Common.escapeHtml(
-        largestSegment.name
-      )}</span> is the largest segment at <span class="diagram-percentage">${largestPercentage}%</span>${
-        proportion
-          ? `, representing <span class="diagram-proportion">${proportion}</span> of the total`
-          : ""
-      }.</strong></li>`;
-    }
-
-    // Add total
-    description += `<li class="diagram-insight diagram-insight-total">Total: <span class="diagram-value">${formatValue(total)}</span></li>`;
-
-    // Add largest and smallest segments
-    if (segments.length > 0) {
-      const largestSegment = segments[0];
-      const smallestSegment = segments[segments.length - 1];
-
-      const largestPercentage = ((largestSegment.value / total) * 100).toFixed(
-        1
-      );
-      description += `<li class="diagram-insight diagram-insight-largest">Largest segment: <span class="diagram-segment">${Common.escapeHtml(
-        largestSegment.name
-      )}</span> (<span class="diagram-value">${formatValue(largestSegment.value)}</span>, <span class="diagram-percentage">${largestPercentage}%</span>)</li>`;
-
-      const smallestPercentage = (
-        (smallestSegment.value / total) *
-        100
-      ).toFixed(1);
-      description += `<li class="diagram-insight diagram-insight-smallest">Smallest segment: <span class="diagram-segment">${Common.escapeHtml(
-        smallestSegment.name
-      )}</span> (<span class="diagram-value">${formatValue(smallestSegment.value)}</span>, <span class="diagram-percentage">${smallestPercentage}%</span>)</li>`;
-    }
-
-    description += `</ul></section>`;
-
-    // 3. Complete Data Points Section
-    description += `<section class="mermaid-section chart-data">
-          <h4 class="mermaid-details-heading">Complete Data Points</h4>
-          <ul class="diagram-data-list">`;
-
-    // Add all segments with values and percentages
-    segments.forEach((segment) => {
-      const percentage = ((segment.value / total) * 100).toFixed(1);
-      description += `<li class="diagram-data-item"><span class="diagram-segment">${Common.escapeHtml(
-        segment.name
-      )}</span>: <span class="diagram-value">${formatValue(segment.value)}</span> (<span class="diagram-percentage">${percentage}%</span>)</li>`;
-    });
-
-    description += `</ul></section>`;
-
-    // Add data pattern section if we have enough segments to identify patterns
-    if (segments.length >= 3) {
-      logDebug(
-        "Generating pattern analysis for " + segments.length + " segments"
-      );
-      description += generatePatternSection(segments, total);
-    }
-
-    logInfo("Detailed pie chart description generated successfully");
-    return description;
-  }
-
-  /**
-   * Generate a section describing patterns in the pie chart data
-   * @param {Array} segments - Array of segment objects
-   * @param {number} total - Total value of all segments
-   * @returns {string} HTML for pattern section
-   */
-  function generatePatternSection(segments, total) {
-    logDebug("Analysing distribution patterns");
-
-    // Calculate distribution characteristics
-    const averageValue = total / segments.length;
-    const avgPercentage = (100 / segments.length).toFixed(1);
-
-    // Check if distribution is fairly even or heavily skewed
-    const topSegmentValue = segments[0].value;
-    const topSegmentPercentage = ((topSegmentValue / total) * 100).toFixed(1);
-
-    // Calculate if top segment is significantly larger than average
-    const isSkewed = topSegmentValue > averageValue * 1.5;
-
-    logDebug(
-      "Distribution analysis - Average: " +
-        avgPercentage +
-        "%, Top segment: " +
-        topSegmentPercentage +
-        "%, Skewed: " +
-        isSkewed
-    );
-
-    // Create pattern section
-    let patternSection = `<section class="mermaid-section chart-patterns">
-      <h4 class="mermaid-details-heading">Distribution Pattern</h4>
-      <p>`;
-
-    if (isSkewed) {
-      patternSection += `This chart shows a <span class="diagram-pattern diagram-pattern-skewed">skewed distribution</span> where <span class="diagram-segment">${Common.escapeHtml(segments[0].name)}</span> 
-        at <span class="diagram-percentage">${topSegmentPercentage}%</span> is significantly larger than the average segment size 
-        of <span class="diagram-percentage">${avgPercentage}%</span>.`;
-    } else {
-      patternSection += `This chart shows a <span class="diagram-pattern diagram-pattern-balanced">relatively balanced distribution</span> 
-        with an average segment size of <span class="diagram-percentage">${avgPercentage}%</span>.`;
-    }
-
-    // Add group information if there are more than 4 segments
-    if (segments.length > 4) {
-      // Calculate the combined percentage of the smallest segments (bottom half)
-      const bottomHalfIndex = Math.floor(segments.length / 2);
-      const bottomHalf = segments.slice(bottomHalfIndex);
-      const bottomHalfTotal = bottomHalf.reduce(
-        (sum, segment) => sum + segment.value,
-        0
-      );
-      const bottomHalfPercentage = ((bottomHalfTotal / total) * 100).toFixed(1);
-
-      logDebug(
-        "Bottom " +
-          bottomHalf.length +
-          " segments represent " +
-          bottomHalfPercentage +
-          "% of total"
-      );
-
-      patternSection += ` The bottom <span class="diagram-count">${bottomHalf.length}</span> segments 
-        collectively represent <span class="diagram-percentage">${bottomHalfPercentage}%</span> of the total.`;
-    }
-
-    patternSection += `</p></section>`;
-
-    return patternSection;
+    return chartsCore().buildPieDetailed(title, segments);
   }
 
   /**

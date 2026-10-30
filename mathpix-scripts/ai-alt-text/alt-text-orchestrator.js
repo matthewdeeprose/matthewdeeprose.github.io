@@ -514,6 +514,74 @@ List every word, number and label visible in the image as a numbered list, one i
   }
 
   /**
+   * Point the entry's `lineNumber` at where its picture is in the LIVE text.
+   *
+   * The registry's `lineNumber` is the line at creation and goes stale once an
+   * engine result is applied or a session is restored, so a window centred on it
+   * misses the picture. `findImage` is the codebase's single locator (the
+   * caption writer, alt-text writer and image manager use it). It picks its
+   * regex from `originalSyntax`, the syntax AT CREATION, so after a figure-wrap
+   * the stored value misses a live `\includegraphics` line: try it as stored,
+   * then once more on a shallow copy with the other syntax.
+   *
+   * Never writes to the registry or the entry: a located shallow copy is
+   * returned, or the entry itself when the picture is not found.
+   *
+   * @param {string|undefined} mmd - the working MMD.
+   * @param {Object|undefined} entry - the registry entry.
+   * @returns {Object|undefined} the entry, or a copy carrying the live line.
+   */
+  function _entryAtLiveLine(mmd, entry) {
+    if (typeof mmd !== "string" || !entry || typeof entry !== "object") {
+      return entry;
+    }
+    const serialiser = window.MathPixAltTextMMDSerialiser;
+    if (!serialiser || typeof serialiser.findImage !== "function") {
+      logDebug("excerpt locate: serialiser unavailable, stored line used");
+      return entry;
+    }
+
+    try {
+      const restorer =
+        typeof window.getMathPixSessionRestorer === "function"
+          ? window.getMathPixSessionRestorer()
+          : null;
+      const blobMap = restorer ? restorer.imageBlobUrlMap : null;
+
+      let found = serialiser.findImage(mmd, entry, blobMap);
+      let route = "as stored";
+      if (!found || !found.found) {
+        const otherSyntax =
+          entry.originalSyntax === "includegraphics"
+            ? "markdown"
+            : "includegraphics";
+        found = serialiser.findImage(
+          mmd,
+          { ...entry, originalSyntax: otherSyntax },
+          blobMap,
+        );
+        route = "other syntax";
+      }
+
+      if (!found || !found.found) {
+        logDebug("excerpt locate: not found, stored line used", {
+          id: entry.id,
+        });
+        return entry;
+      }
+      logDebug(`excerpt locate: ${route}`, {
+        id: entry.id,
+        storedLine: entry.lineNumber,
+        liveLine: found.lineIndex + 1,
+      });
+      return { ...entry, lineNumber: found.lineIndex + 1 };
+    } catch (err) {
+      logDebug("excerpt locate: threw, stored line used", err);
+      return entry;
+    }
+  }
+
+  /**
    * Resolve the prompt for ONE run.
    *
    * | Source | When it wins |
@@ -615,7 +683,7 @@ List every word, number and label visible in the image as a numbered list, one i
       built = builder.buildDescriptionPrompt({
         context,
         mmd,
-        entry,
+        entry: _entryAtLiveLine(mmd, entry),
         allEntries,
       });
     } catch (err) {

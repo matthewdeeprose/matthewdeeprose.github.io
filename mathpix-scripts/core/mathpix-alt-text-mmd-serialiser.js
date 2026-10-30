@@ -350,22 +350,29 @@
     }
     candidateUrls.push(entry.originalUrl);
 
+    // For each URL, the stored syntax is tried first and the other syntax
+    // second: a figure-wrap or restore can leave the MMD in the other form
+    // while the entry still records the syntax it was created in.
     for (const url of candidateUrls) {
       const escapedUrl = escapeRegExp(url);
-      let pattern;
-      if (entry.originalSyntax === "includegraphics") {
-        pattern = new RegExp(
-          `\\\\includegraphics\\s*(\\[[^\\]]*\\])?\\s*\\{${escapedUrl}\\}`,
-        );
-      } else {
-        pattern = new RegExp(`!\\[(?:[^\\]]|\\](?!\\())*\\]\\(${escapedUrl}\\)`);
-      }
-      for (let i = 0; i < lines.length; i++) {
-        if (pattern.test(lines[i])) {
-          logWarn(
-            `findImage(): fell back to URL regex for entry ${entry.id || "?"} (mmdReference no longer matches)`,
-          );
-          return { found: true, lineIndex: i, viaFallback: true };
+      const includegraphicsPattern = new RegExp(
+        `\\\\includegraphics\\s*(\\[[^\\]]*\\])?\\s*\\{${escapedUrl}\\}`,
+      );
+      const markdownPattern = new RegExp(
+        `!\\[(?:[^\\]]|\\](?!\\())*\\]\\(${escapedUrl}\\)`,
+      );
+      const patterns =
+        entry.originalSyntax === "includegraphics"
+          ? [includegraphicsPattern, markdownPattern]
+          : [markdownPattern, includegraphicsPattern];
+      for (const pattern of patterns) {
+        for (let i = 0; i < lines.length; i++) {
+          if (pattern.test(lines[i])) {
+            logWarn(
+              `findImage(): fell back to URL regex for entry ${entry.id || "?"} (mmdReference no longer matches)`,
+            );
+            return { found: true, lineIndex: i, viaFallback: true };
+          }
         }
       }
     }

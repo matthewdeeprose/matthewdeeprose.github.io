@@ -17,9 +17,16 @@
 .local-chat-restore-banner-btn,
 .local-chat-chip,
 .local-chat-edit-textarea,
-.local-chat-edit-buttons button,
-.local-chat-preset-bar select {
+.local-chat-edit-buttons button {
   background: inherit;
+  color: inherit;
+}
+
+/* The preset menu takes its text colour from the bar but NOT its background: a select needs an
+   opaque fill (the theme sheet's) because the browser paints the open list from it, and an
+   inherited transparent one left the options at 1.24:1 in dark theme. Chat's preset menu reuses
+   this bar, so this also covers #chat-preset-select. */
+.local-chat-preset-bar select {
   color: inherit;
 }
 

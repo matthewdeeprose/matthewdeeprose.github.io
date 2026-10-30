@@ -1276,6 +1276,89 @@ h4.mermaid-details-heading::before {
   font-weight: 600;
 }
 
+/* Responsive data table (29 October 2026). The panel shell sets
+   data-stacked on a table that cannot be read as a table in the room it has
+   (measured with words whole, see syncScrollableTableWrapper); the table then
+   reads as one group per row, each value beside or under its column heading.
+
+   The pattern is the card layout in scorm-builder/assets/css.js
+   ("tables/table-responsive.css", enhancers/enhance-tables.js) and the label
+   rule in md-scripts/css/sortable-table.css: head row hidden but kept, the
+   column heading drawn from the cell's data-label with content: attr().
+   Two differences, both measured. No ARIA roles are written back: Chromium
+   keeps table, row, columnheader and cell roles under display: block. And the
+   drawn label carries an empty alternative (content: ... / ""), so the heading
+   is not read a second time on each cell.
+
+   The room is the wrapper's own width, not the viewport's. No colour is
+   declared here: the rules draw in the text colour the sheets already set. */
+.mermaid-data-table-wrapper {
+  container-type: inline-size;
+}
+
+.mermaid-data-table[data-measure-whole-words],
+.mermaid-data-table[data-measure-whole-words] * {
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.mermaid-data-table[data-stacked] {
+  position: relative;
+}
+
+.mermaid-data-table[data-stacked],
+.mermaid-data-table[data-stacked] caption,
+.mermaid-data-table[data-stacked] tbody,
+.mermaid-data-table[data-stacked] tr,
+.mermaid-data-table[data-stacked] th,
+.mermaid-data-table[data-stacked] td {
+  display: block;
+}
+
+/* The head row stays in the accessibility tree, off screen. */
+.mermaid-data-table[data-stacked] thead {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.mermaid-data-table[data-stacked] tbody tr {
+  padding: 0.5rem 0;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+}
+
+.mermaid-data-table[data-stacked] tbody tr:last-child {
+  border-bottom-width: 0;
+}
+
+.mermaid-data-table[data-stacked] th,
+.mermaid-data-table[data-stacked] td {
+  padding: 0.25rem 0;
+  border-bottom-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mermaid-data-table[data-stacked] td[data-label]::before {
+  content: attr(data-label) ": ";
+  content: attr(data-label) ": " / "";
+  display: block;
+  font-weight: 600;
+}
+
+/* With room for it, the heading sits beside the value. */
+@container (min-width: 24rem) {
+  .mermaid-data-table[data-stacked] td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(6rem, 35%) minmax(0, 1fr);
+    column-gap: 0.75rem;
+  }
+}
+
 /* Summary definition list. Emitted by the requirement, packet, treemap,
    venn and treeView generators as one dt and one dd per row, directly inside
    a `.mermaid-section`. Scoped to that child so the state generator's own

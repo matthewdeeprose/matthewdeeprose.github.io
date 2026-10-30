@@ -191,6 +191,25 @@ window.MermaidAccessibilityExport = (function () {
       logDebug("Removed export controls from cloned element");
     }
 
+    // Every attribute the panel shell adds at run time to suit the reader's
+    // window is a screen state, not content, so no export carries one and an
+    // export is the same at any viewport width (see MermaidAccessibilityUtils,
+    // syncScrollableTableWrapper). That is the stacked-table switch, and the
+    // scroll region it writes on a wrapper: its tab stop, role, name link and
+    // marker, plus the caption id minted to name it.
+    clone.querySelectorAll("[data-stacked]").forEach(function (stacked) {
+      stacked.removeAttribute("data-stacked");
+    });
+    clone.querySelectorAll("[data-scroll-region]").forEach(function (region) {
+      region.removeAttribute("tabindex");
+      region.removeAttribute("role");
+      region.removeAttribute("aria-labelledby");
+      region.removeAttribute("data-scroll-region");
+    });
+    clone.querySelectorAll("caption[id^='mermaid-data-table-caption-']").forEach(function (caption) {
+      caption.removeAttribute("id");
+    });
+
     return clone;
   }
 

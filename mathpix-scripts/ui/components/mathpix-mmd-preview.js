@@ -132,9 +132,6 @@ const PARAGRAPH_BLOCK_SELECTOR =
 // publishes the export's table as window.SI_UNIT_MACROS; renderToString expands the outermost
 // commands before the library sees them and puts the author's own TeX back into the hidden copy.
 const SI_TABLE_GLOBAL = "SI_UNIT_MACROS";
-// \qty: the export's siunitx \qty is a different command from the physics one some libraries carry,
-// so the preview leaves it alone (RA-71 P7).
-const SI_EXPAND_EXCLUDED = Object.freeze(["qty"]);
 // Nested commands (\SI{5}{\micro\farad}) need repeated passes; the deepest table entry is two levels.
 const SI_EXPAND_MAX_PASSES = 8;
 // A name the document defines for itself is the author's, whatever the table says.
@@ -178,11 +175,11 @@ class MathPixMMDPreview {
    * @description
    * RA-72: expands the outermost SI-family commands in `src` to plain TeX the library can draw.
    * Names the document defines itself are left alone, as are `\\` line breaks. Returns the expanded
-   * text and the [expanded, original] pairs needed to restore the author's TeX afterwards.
+   * text and the {expanded, original, start} records needed to restore the author's TeX afterwards.
    *
    * @param {string} src - MMD source
    * @param {Object} table - window.SI_UNIT_MACROS: name to text, or name to [text, argument count]
-   * @returns {{text: string, pairs: Array<[string, string]>}}
+   * @returns {{text: string, expansions: Array<{expanded: string, original: string, start: number}>}}
    * @since RA-72
    */
   static expandSIUnitCommands(src, table) {
@@ -196,7 +193,7 @@ class MathPixMMDPreview {
 
     // Longest first, so \degreeCelsius is not read as \degree
     const names = Object.keys(table)
-      .filter((n) => !SI_EXPAND_EXCLUDED.includes(n) && !authorDefined.has(n))
+      .filter((n) => !authorDefined.has(n))
       .sort((a, b) => b.length - a.length);
 
     const readGroup = (s, i) => {

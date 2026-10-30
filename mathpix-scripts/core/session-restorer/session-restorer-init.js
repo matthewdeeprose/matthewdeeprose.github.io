@@ -433,9 +433,6 @@
       mmdUndoBtn: document.getElementById("resume-mmd-undo-btn"),
       mmdRedoBtn: document.getElementById("resume-mmd-redo-btn"),
       mmdRestoreBtn: document.getElementById("resume-mmd-restore-btn"),
-      mmdClearSessionBtn: document.getElementById(
-        "resume-mmd-clear-session-btn",
-      ),
       mmdDownloadBtn: document.getElementById("resume-mmd-download-btn"),
       mmdUploadInput: document.getElementById("resume-mmd-upload-input"),
       mmdSessionStatus: document.getElementById("resume-mmd-session-status"),
@@ -664,11 +661,6 @@
     if (this.elements.mmdRestoreBtn) {
       this.elements.mmdRestoreBtn.addEventListener("click", () =>
         this.restoreOriginal(),
-      );
-    }
-    if (this.elements.mmdClearSessionBtn) {
-      this.elements.mmdClearSessionBtn.addEventListener("click", () =>
-        this.clearSession(),
       );
     }
     // Phase 8G: Collapse images toggle

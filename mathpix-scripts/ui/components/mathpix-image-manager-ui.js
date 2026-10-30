@@ -303,6 +303,12 @@ const MathPixImageManagerUI = (function () {
   // `hidden` attribute specifically is load-bearing here.
   const EDIT_VIEW_AI_EMBED_SINK_ID = "edit-alt-ai-embed-sink";
 
+  // RP-1: the embed's container for a quiet run with the manager CLOSED (the AI
+  // tab's pictures step). One hidden div on <body>, made once and reused; never
+  // inside a live region or a dialog, so the aria-live the embed stamps on it is
+  // inert, exactly as on the manager's own sink.
+  const CLOSED_RUN_EMBED_SINK_ID = "image-manager-closed-run-embed-sink";
+
   // Parcel 8d-pre: the running indication. The progress block gives the
   // injected progress controller somewhere to paint between the Generate
   // button and the status region. It carries NO aria-live, no role="status"
@@ -325,16 +331,12 @@ const MathPixImageManagerUI = (function () {
   // and both the single-image run and the batch run resolve through the SAME
   // adapter._resolveModel() rung this picker feeds (confirmed at MP-2 step 1).
   const EDIT_VIEW_MODEL_PICKER_ID = "edit-alt-model-picker";
-  const EDIT_VIEW_MODEL_RECOMMENDED_ID = "edit-alt-model-recommended";
-  const EDIT_VIEW_MODEL_OPTIONS_ID = "edit-alt-model-options";
-  const EDIT_VIEW_MODEL_MEASURED_ID = "edit-alt-model-measured";
   const EDIT_VIEW_MODEL_NONE_ID = "edit-alt-model-none";
   const EDIT_VIEW_MODEL_UNAVAILABLE_ID = "edit-alt-model-unavailable";
+  /** T-77: the wrapper of the one model select (the id predates the disclosure's removal). */
   const EDIT_VIEW_MODEL_ADVANCED_ID = "edit-alt-model-advanced";
   const EDIT_VIEW_MODEL_OVERRIDE_ID = "edit-alt-model-override";
   const EDIT_VIEW_MODEL_OVERRIDE_HINT_ID = "edit-alt-model-override-hint";
-  /** The radio group's shared name — one constant, used by build and reset. */
-  const EDIT_VIEW_MODEL_RADIO_NAME = "edit-alt-model";
   /** The override <select>'s placeholder value: "use the recommendation". */
   const EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER = "";
 
@@ -2196,41 +2198,29 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
                 <div id="${EDIT_VIEW_MODEL_PICKER_ID}"
                      class="mathpix-alt-model-picker"
                      hidden>
-                  <fieldset id="${EDIT_VIEW_MODEL_RECOMMENDED_ID}"
-                            class="mathpix-alt-model-recommended"
-                            hidden>
-                    <legend>AI model for the description</legend>
-                    <div id="${EDIT_VIEW_MODEL_OPTIONS_ID}"
-                         class="model-options"></div>
-                    <p id="${EDIT_VIEW_MODEL_MEASURED_ID}"
-                       class="field-help"></p>
-                  </fieldset>
-                  <p id="${EDIT_VIEW_MODEL_NONE_ID}"
-                     class="field-help"
-                     hidden>
-                    No measured recommendation is available for the AI
-                    provider you have selected. Choose a model from the
-                    advanced list below.
-                  </p>
+                  <div id="${EDIT_VIEW_MODEL_ADVANCED_ID}"
+                       class="field-group"
+                       hidden>
+                    <label for="${EDIT_VIEW_MODEL_OVERRIDE_ID}">AI model for the description</label>
+                    <select id="${EDIT_VIEW_MODEL_OVERRIDE_ID}"
+                            aria-describedby="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}">
+                    </select>
+                    <p id="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}"
+                       class="field-help">
+                      The list shows only models the AI provider you have
+                      selected can use to process an image.
+                    </p>
+                    <p id="${EDIT_VIEW_MODEL_NONE_ID}"
+                       class="field-help"
+                       hidden>
+                      No measured recommendation is available for the AI
+                      provider you have selected. Choose a model from the
+                      list.
+                    </p>
+                  </div>
                   <p id="${EDIT_VIEW_MODEL_UNAVAILABLE_ID}"
                      class="field-help"
                      hidden></p>
-                  <details id="${EDIT_VIEW_MODEL_ADVANCED_ID}"
-                            class="mathpix-alt-model-advanced">
-                    <summary>Use a different model</summary>
-                    <div class="field-group">
-                      <label for="${EDIT_VIEW_MODEL_OVERRIDE_ID}">Override model</label>
-                      <select id="${EDIT_VIEW_MODEL_OVERRIDE_ID}"
-                              aria-describedby="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}">
-                        <option value="">Use the recommended model above</option>
-                      </select>
-                      <p id="${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID}"
-                         class="field-help">
-                        The list shows only models the AI provider you have
-                        selected can use to process an image.
-                      </p>
-                    </div>
-                  </details>
                 </div>
                 <!--
                   Cycle 2b — the button opens OPERABLE. aria-disabled (never the
@@ -3775,16 +3765,99 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * outcome sentence comes back as `line`; nothing is raised on any sink.
      * The manager is left open, as the person would leave it.
      *
-     * @param {{model?: string, includeDescribed?: boolean}} [options] AT-2:
+     * RP-1: with `openManager: false` and the manager not showing, nothing
+     * opens. `_prepareClosedQuietRun` does the open sequence's two non-DOM jobs
+     * (the embed and the registry reconcile), the grid refresh is skipped, and
+     * the preview rebuild is deferred and paid once at the end. A manager the
+     * person already has open is waited on as before.
+     *
+     * @param {{model?: string, includeDescribed?: boolean, openManager?: boolean}} [options] AT-2:
      *   `includeDescribed` adds pictures whose description is "ai-generated"
      * @returns {Promise<{ran: boolean, generated: number, failed: number, line: string|null}>}
      * @private
      */
     async _describeAllQuiet(options) {
       const none = (line) => ({ ran: false, generated: 0, failed: 0, line });
+      const closedRoute =
+        Boolean(options && options.openManager === false) && !this._isManagerShowing();
+
+      if (closedRoute) {
+        await this._prepareClosedQuietRun();
+        try {
+          return await this._describeAllQuietBody(options, none, closedRoute);
+        } finally {
+          this._settleClosedQuietRun();
+        }
+      }
 
       if (!this.currentModal) this.open();
       if (this._openSettled) await this._openSettled;
+      return this._describeAllQuietBody(options, none, closedRoute);
+    }
+
+    /**
+     * RP-1: true when the manager's dialog is in the page and open. A manager
+     * closed by its cross can leave a stale `currentModal`, so the instance
+     * field alone does not say the person can see it.
+     * @returns {boolean}
+     * @private
+     */
+    _isManagerShowing() {
+      return Boolean(document.querySelector("dialog[open].image-manager-modal-wrapper"));
+    }
+
+    /**
+     * RP-1: what a closed-manager quiet run needs from open(), and nothing
+     * else. (i) The embed, built on a hidden sink on <body>; a stale adapter
+     * from an earlier open holds the embed built on that open's sink, which
+     * left with the manager's DOM, so it is dropped (the next open rebuilds
+     * both). (ii) The registry reconcile against the current MMD, which the
+     * correction step may have shifted. The preview rebuild is deferred first,
+     * so a reconcile that writes the MMD (a chemistry document) and the batch's
+     * own write cost one rebuild, paid by `_settleClosedQuietRun`.
+     * @private
+     */
+    async _prepareClosedQuietRun() {
+      if (!document.getElementById(CLOSED_RUN_EMBED_SINK_ID)) {
+        const sink = document.createElement("div");
+        sink.id = CLOSED_RUN_EMBED_SINK_ID;
+        sink.hidden = true;
+        document.body.appendChild(sink);
+      }
+      this._constructEditAltEmbed(CLOSED_RUN_EMBED_SINK_ID);
+      this._editAltAdapter = null;
+
+      if (this.restorer) this.restorer._deferPreviewRebuild = true;
+      try {
+        await this._reconcileOnOpen();
+      } catch (err) {
+        logError("RP-1 closed-run reconcile failed:", err);
+      }
+    }
+
+    /**
+     * RP-1: stop deferring and pay the preview debt once, unless the person
+     * opened the manager during the run (its own close settles it then).
+     * @private
+     */
+    _settleClosedQuietRun() {
+      if (!this.restorer || this._isManagerShowing()) return;
+      this.restorer._deferPreviewRebuild = false;
+      try {
+        const pending = this.restorer.flushStalePreview?.();
+        if (pending && typeof pending.catch === "function") {
+          pending.catch((error) => logWarn("RP-1 closed-run preview rebuild failed:", error));
+        }
+      } catch (error) {
+        logError("RP-1 closed-run preview rebuild threw:", error);
+      }
+    }
+
+    /**
+     * The checks and the batch shared by both routes of `_describeAllQuiet`.
+     * @private
+     */
+    async _describeAllQuietBody(options, none, closedRoute) {
 
       if (this._editAltGenerating === true) {
         return none(DESCRIBE_ALL_BLOCKED_BY_RUN_LINE);
@@ -3816,6 +3889,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         skippedMissing,
         resolveOnce: () => {},
         quiet: true,
+        skipGridRefresh: closedRoute,
       });
     }
 
@@ -4018,6 +4092,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       skippedMissing = 0,
       resolveOnce,
       quiet = false,
+      skipGridRefresh = false,
     }) {
       const runnerModule = window.MathPixAltTextBatchRunner;
       const orchestrator = this._buildBatchOrchestrator(root);
@@ -4099,11 +4174,15 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         this._batchRunning = false;
       }
 
-      // Refresh the grid and the counters — the registry has moved.
-      try {
-        this.refresh();
-      } catch (refreshErr) {
-        logWarn("_runBatch: grid refresh failed after the batch", refreshErr);
+      // Refresh the grid and the counters — the registry has moved. RP-1: a
+      // closed-manager run has no grid (refresh() would only warn); the next
+      // open renders the registry anyway.
+      if (!skipGridRefresh) {
+        try {
+          this.refresh();
+        } catch (refreshErr) {
+          logWarn("_runBatch: grid refresh failed after the batch", refreshErr);
+        }
       }
 
       // BW-1 — registry-is-truth: the batch wrote the registry, so push the
@@ -4749,10 +4828,6 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         modelPickerRoot.addEventListener("change", (event) => {
           const target = event && event.target;
           if (!target) return;
-          if (target.type === "radio" && target.name === EDIT_VIEW_MODEL_RADIO_NAME) {
-            this._handleAltModelRadioChange(target.value);
-            return;
-          }
           if (target.id === EDIT_VIEW_MODEL_OVERRIDE_ID) {
             this._handleAltModelOverrideChange(target.value);
           }
@@ -4873,13 +4948,13 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * on any failure so a missing dependency never breaks the manager open.
      * @private
      */
-    _constructEditAltEmbed() {
+    _constructEditAltEmbed(sinkId = EDIT_VIEW_AI_EMBED_SINK_ID) {
       this._editAltEmbed = null;
 
-      const sink = document.getElementById(EDIT_VIEW_AI_EMBED_SINK_ID);
+      const sink = document.getElementById(sinkId);
       if (!sink) {
         logWarn(
-          `_constructEditAltEmbed: sink #${EDIT_VIEW_AI_EMBED_SINK_ID} not in DOM; skipping`,
+          `_constructEditAltEmbed: sink #${sinkId} not in DOM; skipping`,
         );
         return;
       }
@@ -4893,7 +4968,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       try {
         this._editAltEmbed = new window.OpenRouterEmbed({
-          containerId: EDIT_VIEW_AI_EMBED_SINK_ID,
+          containerId: sinkId,
           showNotifications: false,
           showStreamingProgress: false,
         });
@@ -5176,88 +5251,31 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * @param {Array<Object>} candidates
      * @private
      */
-    _populateAltOverrideSelect(select, candidates) {
+    _populateAltOverrideSelect(select, candidates, recommended) {
       if (!select) return;
       select.textContent = "";
 
-      const placeholder = document.createElement("option");
-      placeholder.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
-      placeholder.textContent = "Use the recommended model above";
-      select.appendChild(placeholder);
+      // T-77: the measured recommendation leads and is selected; with none,
+      // a "Choose a model" first option stands in its place.
+      const first = document.createElement("option");
+      if (recommended) {
+        first.value = recommended.id;
+        first.textContent = `${recommended.name || recommended.id} (recommended)`;
+      } else {
+        first.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+        first.textContent = "Choose a model";
+      }
+      select.appendChild(first);
 
       for (const model of candidates) {
+        if (recommended && model.id === recommended.id) continue;
         const option = document.createElement("option");
         option.value = model.id;
         const providerPrefix = String(model.id).split("/")[0] || "";
         option.textContent = `${model.name || model.id} (${providerPrefix})`;
         select.appendChild(option);
       }
-      select.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
-    }
-
-    /**
-     * One recommended radio, as DOM rather than as an HTML string. Mirrors
-     * mathpix-context-ai.js's `_buildRecommendedRadio`, built with
-     * createElement and textContent for the same reason: this class has no
-     * escaping helper, and a model name reaching innerHTML unescaped is a
-     * defect waiting for a catalogue entry to contain a bracket.
-     * @param {Object} model a catalogue entry
-     * @param {boolean} checked
-     * @returns {HTMLLabelElement}
-     * @private
-     */
-    _buildAltRecommendedRadio(model, checked) {
-      const label = document.createElement("label");
-      label.className = "model-option";
-
-      const input = document.createElement("input");
-      input.type = "radio";
-      input.name = EDIT_VIEW_MODEL_RADIO_NAME;
-      input.value = model.id;
-      if (checked) {
-        input.defaultChecked = true;
-        input.checked = true;
-      }
-
-      const content = document.createElement("span");
-      content.className = "model-option-content";
-
-      const name = document.createElement("span");
-      name.className = "model-option-name";
-      name.textContent = `${model.name || model.id} (Recommended)`;
-
-      const description = document.createElement("span");
-      description.className = "model-option-description";
-      description.textContent = model.id;
-
-      content.appendChild(name);
-      content.appendChild(description);
-      label.appendChild(input);
-      label.appendChild(content);
-      return label;
-    }
-
-    /**
-     * "2026-09-03" to "3 September 2026". Mirrors mathpix-context-ai.js's
-     * `_formatMeasuredDate` — a small pure function duplicated deliberately
-     * rather than shared, since there is no data here to drift, only
-     * formatting logic. Returns the input unchanged when it is not the
-     * expected shape.
-     * @param {string} iso
-     * @returns {string}
-     * @private
-     */
-    _formatAltMeasuredDate(iso) {
-      if (typeof iso !== "string") return "";
-      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
-      if (!match) return iso;
-      const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December",
-      ];
-      const month = months[Number(match[2]) - 1];
-      if (!month) return iso;
-      return `${Number(match[3])} ${month} ${match[1]}`;
+      select.value = first.value;
     }
 
     /**
@@ -5280,8 +5298,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      */
     _buildAltModelPicker(options) {
       const root = document.getElementById(EDIT_VIEW_MODEL_PICKER_ID);
-      const optionsEl = document.getElementById(EDIT_VIEW_MODEL_OPTIONS_ID);
-      if (!root || !optionsEl) {
+      if (!root || !document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID)) {
         logDebug("_buildAltModelPicker: no picker markup on this page.");
         return false;
       }
@@ -5309,19 +5326,15 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         adapter._setUserModelChoice(null);
       }
 
-      const fieldsetEl = document.getElementById(EDIT_VIEW_MODEL_RECOMMENDED_ID);
-      const measuredEl = document.getElementById(EDIT_VIEW_MODEL_MEASURED_ID);
       const noneEl = document.getElementById(EDIT_VIEW_MODEL_NONE_ID);
       const unavailableEl = document.getElementById(EDIT_VIEW_MODEL_UNAVAILABLE_ID);
-      const advancedEl = document.getElementById(EDIT_VIEW_MODEL_ADVANCED_ID);
+      const fieldEl = document.getElementById(EDIT_VIEW_MODEL_ADVANCED_ID);
       const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
 
-      optionsEl.textContent = "";
-      if (measuredEl) measuredEl.textContent = "";
-      if (fieldsetEl) fieldsetEl.hidden = true;
+      if (overrideEl) overrideEl.textContent = "";
       if (noneEl) noneEl.hidden = true;
       if (unavailableEl) unavailableEl.hidden = true;
-      if (advancedEl) advancedEl.hidden = false;
+      if (fieldEl) fieldEl.hidden = false;
       root.hidden = false;
 
       // --- STATE 3: the registry module is absent ---------------------------
@@ -5341,7 +5354,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
               : "No AI model is set up for the AI provider you have selected, so no description can be written.";
           unavailableEl.hidden = false;
         }
-        if (advancedEl) advancedEl.hidden = true;
+        if (fieldEl) fieldEl.hidden = true;
         logWarn(
           "_buildAltModelPicker: the shared model registry module is absent from the page, so the picker offers no default and no override.",
         );
@@ -5355,19 +5368,6 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
           : "openrouter";
 
       const candidates = this._visionCapableModelsForProvider(providerId);
-      this._populateAltOverrideSelect(overrideEl, candidates);
-
-      // A kept pick is shown again in the rebuilt control, or dropped when the
-      // control no longer offers it (the resolver would discard it anyway).
-      let pickRestored = false;
-      if (keepChoice) {
-        if (overrideEl && candidates.some((model) => model.id === heldChoice)) {
-          overrideEl.value = heldChoice;
-          pickRestored = true;
-        } else {
-          adapter._setUserModelChoice(null);
-        }
-      }
 
       const registry = window.MathPixModelRegistry;
       const entry =
@@ -5382,7 +5382,22 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
 
       // --- STATE 2: no measured recommendation this provider can use --------
       if (!recommended) {
+        this._populateAltOverrideSelect(overrideEl, candidates, null);
+        // A kept pick is shown again, or dropped when the list no longer offers it.
+        if (keepChoice) {
+          if (overrideEl && candidates.some((model) => model.id === heldChoice)) {
+            overrideEl.value = heldChoice;
+          } else {
+            adapter._setUserModelChoice(null);
+          }
+        }
         if (noneEl) noneEl.hidden = false;
+        if (overrideEl) {
+          overrideEl.setAttribute(
+            "aria-describedby",
+            `${EDIT_VIEW_MODEL_OVERRIDE_HINT_ID} ${EDIT_VIEW_MODEL_NONE_ID}`,
+          );
+        }
         logWarn(
           `_buildAltModelPicker: no measured recommendation is available for provider '${providerId}' that can also process an image; offering the override list with nothing preselected rather than fabricating a default.`,
           { registryId: recommendedId, candidateCount: candidates.length },
@@ -5391,12 +5406,17 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       }
 
       // --- STATE 1: the measured recommendation ------------------------------
-      if (fieldsetEl) fieldsetEl.hidden = false;
-      optionsEl.appendChild(
-        this._buildAltRecommendedRadio(recommended, !pickRestored),
-      );
-      if (measuredEl) {
-        measuredEl.textContent = `Chosen by measurement round ${entry.round}, measured ${this._formatAltMeasuredDate(entry.measured)}.`;
+      this._populateAltOverrideSelect(overrideEl, candidates, recommended);
+      if (overrideEl) {
+        overrideEl.setAttribute("aria-describedby", EDIT_VIEW_MODEL_OVERRIDE_HINT_ID);
+        // A kept pick is shown again, or dropped when the list no longer offers it.
+        if (keepChoice) {
+          if (candidates.some((model) => model.id === heldChoice)) {
+            overrideEl.value = heldChoice;
+          } else {
+            adapter._setUserModelChoice(null);
+          }
+        }
       }
       logDebug("_buildAltModelPicker: built", {
         providerId,
@@ -5407,74 +5427,43 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     }
 
     /**
-     * A recommended radio was chosen. Mirrors mathpix-context-ai.js's
-     * `_handleModelRadioChange`. Does not announce — see the section banner.
-     * @param {string} modelId the radio's value
-     * @private
-     */
-    _handleAltModelRadioChange(modelId) {
-      const adapter = window.MathPixAltTextCloudAdapter;
-      if (!adapter || typeof adapter._setUserModelChoice !== "function") return;
-
-      const providerId =
-        window.ProviderSwitcher &&
-        typeof window.ProviderSwitcher.getActive === "function"
-          ? window.ProviderSwitcher.getActive()
-          : "openrouter";
-      const registry = window.MathPixModelRegistry;
-      const entry =
-        registry && typeof registry.recommendedModel === "function"
-          ? registry.recommendedModel("alt-text", providerId)
-          : null;
-      const recommendedId =
-        entry && typeof entry.modelId === "string" ? entry.modelId : null;
-
-      if (modelId === recommendedId) {
-        // Choosing the recommendation CLEARS the pick, so the run resolves
-        // down the measured-preference rung exactly as it did before MP-2.
-        adapter._setUserModelChoice(null);
-      } else if (adapter._setUserModelChoice(modelId)) {
-        this._altPickProvider = this._activeAltProviderId();
-      }
-
-      const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
-      if (overrideEl) overrideEl.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
-    }
-
-    /**
-     * The advanced override select changed. Mirrors mathpix-context-ai.js's
-     * `_handleModelOverrideChange`. Does not announce — see the section
-     * banner.
-     * @param {string} modelId a model id, or "" for the placeholder
+     * The model select changed. T-77: one native select carries the choice;
+     * choosing the measured recommendation (or the "Choose a model" first
+     * option) CLEARS the pick, so the run resolves down the
+     * measured-preference rung. Does not announce: the select says its own
+     * value.
+     * @param {string} modelId a model id, or "" for the "Choose a model" option
      * @private
      */
     _handleAltModelOverrideChange(modelId) {
       const adapter = window.MathPixAltTextCloudAdapter;
       if (!adapter || typeof adapter._setUserModelChoice !== "function") return;
 
-      const optionsEl = document.getElementById(EDIT_VIEW_MODEL_OPTIONS_ID);
+      const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
+      const registry = window.MathPixModelRegistry;
+      const entry =
+        registry && typeof registry.recommendedModel === "function"
+          ? registry.recommendedModel("alt-text", this._activeAltProviderId())
+          : null;
+      const recommendedId =
+        entry && typeof entry.modelId === "string" ? entry.modelId : null;
 
-      if (!modelId) {
+      if (!modelId || modelId === recommendedId) {
         adapter._setUserModelChoice(null);
-        const first = optionsEl && optionsEl.querySelector('input[type="radio"]');
-        if (first) first.checked = true;
         return;
       }
 
       if (!adapter._setUserModelChoice(modelId)) {
         // Refused. Put the control back where it was rather than leaving it
         // showing a model that will not be sent.
-        const overrideEl = document.getElementById(EDIT_VIEW_MODEL_OVERRIDE_ID);
-        if (overrideEl) overrideEl.value = EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+        if (overrideEl) {
+          overrideEl.value =
+            adapter._getUserModelChoice() || recommendedId || EDIT_VIEW_MODEL_OVERRIDE_PLACEHOLDER;
+        }
         return;
       }
 
       this._altPickProvider = this._activeAltProviderId();
-
-      if (optionsEl) {
-        const radios = optionsEl.querySelectorAll('input[type="radio"]');
-        for (const radio of radios) radio.checked = false;
-      }
     }
 
     /**

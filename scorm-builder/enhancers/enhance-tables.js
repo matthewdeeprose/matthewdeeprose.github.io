@@ -20,6 +20,7 @@
 // already processed, are returned untouched. The transform is idempotent.
 
 import { escapeXML } from "../util/escape-xml.js";
+import { convertDelimited, spanToText } from "./tex-label.js";
 
 // Default column count above which a table uses the horizontal-scroll fallback
 // instead of the stacked-card layout (cards get too tall with many columns).
@@ -58,16 +59,55 @@ function setAttrs(attrsStr, obj) {
   return s;
 }
 
+// MathPix/markdown-it wraps rendered maths in these spans; the text inside is still TeX source.
+const MATH_SPAN = /<span\b[^>]*\bclass="[^"]*\bmath-(?:inline|block)\b[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
+const MARK_OPEN = "\u0001";
+const MARK_CLOSE = "\u0002";
+
+// Plain text of a header or caption cell, with its maths shown as Unicode symbols. The card
+// layout prints this as the label and the label is part of each cell's accessible name, so raw
+// TeX ("$\epsilon$") must never reach it. Maths is converted only where the markup says it is
+// maths (a math span, or an explicit \( \) / \[ \] / $$ $$ pair), so "Cost ($)" is left alone.
+function labelFromHtml(html) {
+  const marked = String(html).replace(
+    MATH_SPAN,
+    (_, inner) => MARK_OPEN + stripTags(inner) + MARK_CLOSE
+  );
+  const text = stripTags(marked)
+    .replace(/\u0001([\s\S]*?)\u0002/g, (_, tex) => spanToText(tex))
+    .replace(/[\u0001\u0002]/g, "");
+  return convertDelimited(text);
+}
+
 // Header cell text for each column, in order, cleaned to plain text.
 function headerTexts(rowInner) {
   const texts = [];
   let m;
   CELL.lastIndex = 0;
-  while ((m = CELL.exec(rowInner)) !== null) texts.push(stripTags(m[3]));
+  while ((m = CELL.exec(rowInner)) !== null) texts.push(labelFromHtml(m[3]));
   return texts;
 }
 
-function transformTable(full, threshold) {
+// MathPix's \caption{} is not a <caption>: it arrives as
+//   <div class="table"><div class="caption_table">…</div><div class="table_tabular">…<table>
+// outside the <table>. Take it only when the table sits directly inside the SAME div.table: the
+// text from that div's opening to this table must hold its caption and no other table.
+const MATHPIX_CAPTION =
+  /^<div\b[^>]*\bclass="table"[^>]*>\s*<div\b[^>]*\bclass="caption_table"[^>]*>([\s\S]*?)<\/div>\s*<div\b[^>]*\bclass="table_tabular"/i;
+
+function mathpixCaption(html, offset) {
+  const before = html.slice(0, offset);
+  const marker = before.lastIndexOf('class="table"');
+  if (marker < 0) return "";
+  const start = before.lastIndexOf("<div", marker);
+  if (start < 0) return "";
+  const segment = before.slice(start);
+  if (/<\/?table\b/i.test(segment)) return "";
+  const m = segment.match(MATHPIX_CAPTION);
+  return m ? labelFromHtml(m[1]) : "";
+}
+
+function transformTable(full, threshold, mathpixCaptionText) {
   // Skip anything that isn't a single, non-nested table.
   if ((full.match(/<table\b/gi) || []).length !== 1) return full;
 
@@ -139,8 +179,11 @@ function transformTable(full, threshold) {
 
   // Focusable scroll region so the horizontal-scroll fallback is keyboard-reachable
   // and announced by screen readers.
-  const captionText = stripTags((full.match(CAPTION) || [""])[0]) || "Table";
-  const label = escapeXML(`${captionText}: table with ${rows.length} rows and ${cols} columns`);
+  // The region is named by the table's caption when it has one, else by its size. The caption
+  // text is the whole name: a screen reader already says "region", and appending the size
+  // after a caption made it say "table" twice.
+  const captionText = labelFromHtml((full.match(CAPTION) || [""])[0]) || mathpixCaptionText || "";
+  const label = escapeXML(captionText || `Table with ${rows.length} rows and ${cols} columns`);
   return `<div class="table-scroll" role="region" aria-label="${label}" tabindex="0">\n${table}\n</div>`;
 }
 
@@ -155,9 +198,10 @@ export function processTables(html, opts = {}) {
   const threshold = Number.isFinite(opts.columnThreshold)
     ? opts.columnThreshold
     : DEFAULT_COLUMN_THRESHOLD;
-  return String(html).replace(TABLE, (full) => {
+  const source = String(html);
+  return source.replace(TABLE, (full, offset) => {
     try {
-      return transformTable(full, threshold);
+      return transformTable(full, threshold, mathpixCaption(source, offset));
     } catch {
       return full;
     }

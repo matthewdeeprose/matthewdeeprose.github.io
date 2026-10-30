@@ -1693,6 +1693,8 @@
     if (window.ChatChips && typeof window.ChatChips.syncToConversationState === "function") {
       window.ChatChips.syncToConversationState();
     }
+    // Previous / Next question buttons (parcel P10): re-check whether they show. Guarded.
+    if (window.ChatTurnNav) window.ChatTurnNav.refresh();
     // Future parity controls hook in here.
   }
 

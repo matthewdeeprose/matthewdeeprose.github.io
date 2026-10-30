@@ -466,11 +466,6 @@
   font-size: 1.125rem;
 }
 
-#resume-ai-form .ai-summary #resume-ai-outcomes {
-  padding-left: 1.25rem;
-  font-size: 1.125rem;
-}
-
 @container (min-width: 48rem) {
   #resume-ai-form .ai-summary {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -478,7 +473,6 @@
 
   #resume-ai-form .ai-summary > .ai-summary-chips,
   #resume-ai-form .ai-summary > #resume-ai-status,
-  #resume-ai-form .ai-summary > #resume-ai-outcomes,
   #resume-ai-form .ai-summary > #resume-ai-correction-diff,
   #resume-ai-form .ai-summary > #resume-ai-save-log {
     grid-column: 1 / -1;
@@ -619,6 +613,18 @@
   margin-block-start: 0.25rem;
 }
 
+/* RP-1 (RP-D1): the step's run status. Static text; nothing here animates or transitions,
+   so reduced motion needs no branch. The ticker keeps a fixed width so the line does not shift. */
+#resume-ai-form .ai-step-status {
+  margin: 0;
+  font-size: 1rem;
+}
+
+#resume-ai-form .ai-step-timer {
+  margin-inline-start: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
 #resume-ai-form .ai-change {
   margin: 0;
   outline-width: 1px;
@@ -644,7 +650,8 @@
 }
 
 /* The model selects take the Image Describer's select look (.imgdesc-option-group select in
-   image-describer.css): padded, rounded, the page font and colour, transparent fill. Full width
+   image-describer.css): padded, rounded, the page font and colour, the theme's opaque fill (a
+   transparent one leaves the open list at 1.24:1 in dark theme). Full width
    of the disclosure, box-sizing border-box, so a long model name has the room the 95 per cent
    there would take away. */
 #resume-ai-form .ai-change > select {
@@ -655,7 +662,6 @@
   border-radius: 0.25rem;
   font-family: inherit;
   font-size: 1rem;
-  background: transparent;
   color: inherit;
   cursor: pointer;
   margin-left: 0;

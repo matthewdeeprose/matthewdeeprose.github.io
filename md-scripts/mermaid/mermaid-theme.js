@@ -10433,6 +10433,744 @@ window.MermaidThemes = (function () {
   }
 
   // -----------------------------------------------------------------------
+  // MINDMAP ENCODING (register item 136 session 1, 30 October 2026)
+  // -----------------------------------------------------------------------
+
+  const MINDMAP_ROLEDESCRIPTION = "mindmap";
+
+  /** SC 1.4.11 for every edge, body outline and underline. */
+  const MINDMAP_OBJECT_TARGET = 3;
+
+  /** The working margin a DERIVED object ink is taken to (standard § 2). */
+  const MINDMAP_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for every word the canvas draws. */
+  const MINDMAP_TEXT_TARGET = 4.5;
+
+  /** The margin a hue-kept TEXT ink is taken to. */
+  const MINDMAP_TEXT_MARGIN = 4.6;
+
+  /** An ink whose HSL saturation is below this has no hue to keep. */
+  const MINDMAP_ACHROMATIC_SATURATION = 0.1;
+
+  /** Lightness step of the hue-kept search, as a fraction of the range. */
+  const MINDMAP_HUE_STEP = 0.01;
+
+  /** Every 8-bit grey: the last-resort ink search (rule 59). */
+  const MINDMAP_GREY_RAMP = Object.freeze(
+    Array.from({ length: 256 }, (unused, value) => rgbToHex(value, value, value))
+  );
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const MINDMAP_ENCODING_ATTRIBUTE = "data-mindmap-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const MINDMAP_OWNED_LIST_ATTRIBUTE = "data-mindmap-encoding-owned";
+
+  /** The inline values an element held for a property this pass then wrote (rule 44). */
+  const MINDMAP_PRIOR_ATTRIBUTE = "data-mindmap-encoding-prior";
+
+  /** THE STAMP: an element's role on first sight (position in the SVG). In no owned list. */
+  const MINDMAP_ROLE_ATTRIBUTE = "data-mindmap-role";
+
+  /** The roles, chosen by position in the SVG and never by class alone (rule 19). */
+  const MINDMAP_ROLES = Object.freeze({
+    edge: "edge",
+    body: "body",
+    underline: "underline",
+    label: "label",
+    backing: "backing",
+    marker: "marker",
+  });
+
+  /** The area-shape tags a node body, a label backing or an edge can be. */
+  const MINDMAP_SHAPE_TAGS = Object.freeze(["rect", "circle", "ellipse", "path", "polygon"]);
+
+  /** The stroke width a body outline is written at: the larger of the renderer's own (0 here) and this. */
+  const MINDMAP_OUTLINE_MIN_WIDTH_PX = 2;
+
+  /** Fractions of an edge's or underline's length at which the ground beneath it is read (interior). */
+  const MINDMAP_LINE_FRACTIONS = Object.freeze([0.1, 0.3, 0.5, 0.7, 0.9]);
+
+  /** Points around a body at which the ground beside it is read. */
+  const MINDMAP_OUTLINE_POINTS = 16;
+
+  /** Client pixels beyond half the stroke at which the ground beside an outline is read. */
+  const MINDMAP_EDGE_OFFSET = 2;
+
+  /** Step along a path, in local units, used to find its direction at a point. */
+  const MINDMAP_TANGENT_STEP = 0.5;
+
+  /** Rule 56's casing: the halo's width, and the room a neighbouring word must be given. */
+  const MINDMAP_CASING_WIDTH_PX = 3;
+
+  /** The share of a node body's box a word's ground is read inside (about the centre). */
+  const MINDMAP_READING_SHRINK = 0.7;
+
+  /**
+   * Apply the accessibility encoding to a rendered mindmap: an ink on every edge,
+   * underline and word WHERE AND ONLY WHERE it fails against the ground it actually
+   * sits on, and a stroke on a node body whose own fill is too close to the ground
+   * outside it. AREA FILLS ARE NEVER WRITTEN (rule 18); neither `opacity`,
+   * `fill-opacity` nor `stroke-opacity` is touched; no renderer inline value is deleted.
+   *
+   * WHY IT EXISTS (item 136 census, 30 October 2026): the theme engine gives mindmap
+   * section colours from its cScale and nothing else, so on the pale cells a section
+   * fill and its connecting line sit at 1.0 to 2.0:1 against the page and on the dark
+   * cells the black section fill and its black edge sit at 1.45:1 on the dark page.
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION IN THE SVG (rule 19), each stamped
+   * `data-mindmap-role` on first sight: a node group is a g with a direct shape child
+   * and a direct g child holding a label; its direct shape child is the body, its
+   * direct line the underline, a rect in its label group the backing (never written);
+   * a text, or an HTML element owning text, in it is a label; a path in a g whose
+   * every child is a path, outside any node, is an edge; a shape in a marker is a marker.
+   *
+   * A BODY'S FILL IS NEVER WRITTEN (rule 18). Where its fill fails 3:1 against the
+   * ground outside its edge and it has no outline that clears, a STROKE is written on
+   * the renderer's own shape (rule 16, second case: no node is added): the fill's own
+   * hue moved in lightness until it clears 3:1 against BOTH the fill inside and the
+   * ground outside (rule 38), at 2 px.
+   *
+   * mindmap has no author paint route in 11.17.2 (`style` and `classDef` lines are
+   * parse errors; `:::class` is drawn as text and lands no class), so
+   * `keepsAuthorStroke` is not used (rule 42). An edge keeps the renderer's width,
+   * which narrows with depth: it is the picture's own non-colour cue.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): points on an edge or a body are
+   * getPointAtLength mapped through getScreenCTM, a ground is decided by isPointInFill
+   * and isPointInStroke in the shape's own space. getBBox is never used.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced
+   * before anything is derived. It never calls applyTheme; it is reached FROM the
+   * re-render via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyMindmapEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === MINDMAP_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${MINDMAP_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No mindmap SVG in this container - mindmap encoding skipped");
+      return null;
+    }
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${MINDMAP_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      const written = (owned.getAttribute(MINDMAP_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      for (const mindmapProperty of written) {
+        owned.style.removeProperty(mindmapProperty);
+      }
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(MINDMAP_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const priorProperty of Object.keys(prior)) {
+        owned.style.setProperty(priorProperty, prior[priorProperty].value, prior[priorProperty].priority);
+      }
+      owned.removeAttribute(MINDMAP_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(MINDMAP_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(MINDMAP_PRIOR_ATTRIBUTE);
+    });
+
+    // The page sets `transition: all`, so a pass that runs inside a render can find geometry and paint
+    // mid-transition (a hit test false at a point well inside a circle, measured 30 October 2026).
+    // Finish what is running, so every reading below is of the settled picture the sweep reads.
+    if (typeof svg.getAnimations === "function") {
+      svg.getAnimations({ subtree: true }).forEach((animation) => {
+        try {
+          animation.finish();
+        } catch (error) {
+          logDebug("A running transition could not be finished: " + error.message);
+        }
+      });
+    }
+
+    const all = [...svg.querySelectorAll("*")];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+
+    // The product of `opacity` from an element up to the svg (rule 43).
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    /** Painted area shapes in document order, measured BEFORE anything is written. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!MINDMAP_SHAPE_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      const box = boxOf(element);
+      if (!declared || alpha <= 0.05 || !box) return;
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      painted.push({
+        element,
+        index,
+        box,
+        paint: { ...declared, a: alpha },
+        inverse: matrix ? matrix.inverse() : null,
+        stroked: !!parsePaint(computed.stroke) && (parseFloat(computed.strokeWidth) || 0) > 0,
+      });
+    });
+
+    // Does a painted shape cover a client point? A point on the shape's own stroke
+    // counts as covered: that is what a hit test finds.
+    const coversShape = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x || x > box.x + box.width || y < box.y || y > box.y + box.height) return false;
+      if (typeof shape.element.isPointInFill === "function" && shape.inverse) {
+        try {
+          const local = new DOMPoint(x, y).matrixTransform(shape.inverse);
+          return (
+            shape.element.isPointInFill(local) ||
+            (shape.stroked && shape.element.isPointInStroke(local))
+          );
+        } catch (error) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // Does the subject itself cover a client point? (An outline is read where it does not.)
+    const coversElement = (element, box, x, y) => {
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      return !!box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!coversShape(shape, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    // Only the points a painted shape covers. A word sits inside its node's body, so a point that no
+    // painter covers is not the page showing through: measured 30 October 2026 in the guard's own
+    // light-then-dark sequence, where the root circle's hit test returned false at one point well
+    // inside it while the pass ran (the page sets `transition: all`; the cause was not isolated), and
+    // a white word was written on a ground the finished picture never shows. Falls back to every
+    // point when none is covered.
+    const coveredGroundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => {
+        const covering = painted.some((shape) => shape.index < before && coversShape(shape, point[0], point[1]));
+        if (covering) seen.add(paintToHex(groundAt(point[0], point[1], before)));
+      });
+      return seen.size ? [...seen] : groundsOver(points, before);
+    };
+
+    // Rule 36: every HTML background between a word and its foreignObject, outermost first.
+    const htmlBackgrounds = (element) => {
+      const stack = [];
+      // An SVG word has no foreignObject to stop at, so the walk would composite every ancestor of the page.
+      if (!element.closest("foreignObject")) return stack;
+      for (let node = element; node && node.tagName !== "foreignObject"; node = node.parentElement) {
+        const background = parsePaint(window.getComputedStyle(node).backgroundColor);
+        if (background && background.a > 0.05) stack.unshift(background);
+      }
+      return stack;
+    };
+
+    const textBoxes = all
+      .filter((element) => element.tagName === "text" && !offstage(element))
+      .map((element) => ({ element, box: boxOf(element) }))
+      .filter((entry) => entry.box);
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {},
+      reach: { found: 0, stamped: 0 },
+      edgeWidths: { thinnest: null, widest: null },
+      worst: null,
+    };
+
+    /** The worst ratio of a computed paint, alpha folded in, against each ground. */
+    const worstOf = (declared, alpha, grounds) =>
+      grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+
+    /**
+     * Choose an ink: the renderer's own hue where it has one, moved in lightness
+     * only as far as the margin needs (alpha folded in), else an ink of record,
+     * then every 8-bit grey (rule 59).
+     */
+    const chooseInk = (rendererHex, alpha, grounds, target, margin) => {
+      const reading = (hex) => worstOf(parsePaint(hex), alpha, grounds);
+      const bestOf = (candidates) =>
+        candidates.reduce(
+          (best, hex) => {
+            const worst = reading(hex);
+            return worst > best.worst ? { ink: hex, worst } : best;
+          },
+          { ink: candidates[0], worst: -1 }
+        );
+
+      const hsl = kanbanHexToHsl(rendererHex);
+      let hueBest = null;
+      if (hsl.s >= MINDMAP_ACHROMATIC_SATURATION) {
+        const steps = Math.round(1 / MINDMAP_HUE_STEP);
+        for (let step = 1; step <= steps; step += 1) {
+          const delta = step * MINDMAP_HUE_STEP;
+          for (const lightness of [hsl.l - delta, hsl.l + delta]) {
+            if (lightness < 0 || lightness > 1) continue;
+            const hex = kanbanHslToHex(hsl.h, hsl.s, lightness);
+            const worst = reading(hex);
+            if (worst >= margin) return { ink: hex, worst };
+            if (!hueBest || worst > hueBest.worst) hueBest = { ink: hex, worst };
+          }
+        }
+      }
+      const record = bestOf(REQUIREMENT_INKS);
+      const chosen = record.worst >= target ? record : bestOf(MINDMAP_GREY_RAMP);
+      return hueBest && hueBest.worst > chosen.worst ? hueBest : chosen;
+    };
+
+    /** Write derived values, own them, keep what they displaced, and record the reading. */
+    const write = (element, kind, properties, reading) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(MINDMAP_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(MINDMAP_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(MINDMAP_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const record = { kind, ...reading };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(record);
+      if (record.ratio !== undefined && record.ratio < record.target) applied.shortfalls.push(record);
+      if (record.ratio !== undefined && (applied.worst === null || record.ratio < applied.worst)) {
+        applied.worst = record.ratio;
+      }
+    };
+
+    // --- THE STAMP: a role on first sight, from position in the svg ----------
+    // A node group: a g with a direct shape child and a direct g child holding a label.
+    const nodeCache = new Map();
+    const isNodeGroup = (group) => {
+      if (!group || group.tagName !== "g") return false;
+      if (nodeCache.has(group)) return nodeCache.get(group);
+      const children = [...group.children];
+      const found =
+        children.some((child) => MINDMAP_SHAPE_TAGS.includes(child.tagName)) &&
+        children.some(
+          (child) => child.tagName === "g" && !!child.querySelector("foreignObject, text")
+        );
+      nodeCache.set(group, found);
+      return found;
+    };
+
+    // The node group an element sits in, if any.
+    const nodeOf = (element) => {
+      for (let node = element.parentElement; node && node !== svg; node = node.parentElement) {
+        if (isNodeGroup(node)) return node;
+      }
+      return null;
+    };
+
+    // Does an element own a non-blank text node of its own? (It is what paints the glyphs.)
+    const ownsText = (element) =>
+      [...element.childNodes].some((child) => child.nodeType === 3 && child.textContent.trim() !== "");
+
+    // The box of the shape a word sits in: the node's own body, which is the renderer's SVG geometry. A
+    // word's HTML box is measured at render time, before fonts have settled, and can spill past its node
+    // (measured 30 October 2026: a root label read a page-coloured point beside its circle), so the ground
+    // is read inside the body, shrunk about its centre so a circle's corners are not read.
+    const bodyBoxOf = (element) => {
+      const node = nodeOf(element);
+      const body = node ? [...node.children].find((child) => MINDMAP_SHAPE_TAGS.includes(child.tagName)) : null;
+      return body ? boxOf(body) : null;
+    };
+    const insideBody = (box, bodyBox) => {
+      if (!bodyBox) return box;
+      const left = Math.max(box.x, bodyBox.x);
+      const top = Math.max(box.y, bodyBox.y);
+      const right = Math.min(box.x + box.width, bodyBox.x + bodyBox.width);
+      const bottom = Math.min(box.y + box.height, bodyBox.y + bodyBox.height);
+      if (right <= left || bottom <= top) return box;
+      const width = (right - left) * MINDMAP_READING_SHRINK;
+      const height = (bottom - top) * MINDMAP_READING_SHRINK;
+      return { x: (left + right) / 2 - width / 2, y: (top + bottom) / 2 - height / 2, width, height };
+    };
+
+    const roleOf = (element) => {
+      const stamped = element.getAttribute(MINDMAP_ROLE_ATTRIBUTE);
+      if (stamped) return stamped;
+
+      const tag = element.tagName;
+      const parent = element.parentElement;
+      let role = null;
+      if (MINDMAP_SHAPE_TAGS.includes(tag) && element.closest("marker")) {
+        role = MINDMAP_ROLES.marker;
+      } else if (tag === "text") {
+        role = nodeOf(element) ? MINDMAP_ROLES.label : null;
+      } else if (tag === "line") {
+        role = isNodeGroup(parent) ? MINDMAP_ROLES.underline : null;
+      } else if (MINDMAP_SHAPE_TAGS.includes(tag)) {
+        if (isNodeGroup(parent)) role = MINDMAP_ROLES.body;
+        else if (parent && nodeOf(parent) && tag === "rect") role = MINDMAP_ROLES.backing;
+        else if (
+          tag === "path" &&
+          !nodeOf(element) &&
+          parent &&
+          parent.tagName === "g" &&
+          [...parent.children].every((child) => child.tagName === "path")
+        ) {
+          role = MINDMAP_ROLES.edge;
+        }
+      } else if (element.closest("foreignObject") && ownsText(element) && nodeOf(element)) {
+        role = MINDMAP_ROLES.label;
+      }
+
+      if (role) element.setAttribute(MINDMAP_ROLE_ATTRIBUTE, role);
+      return role;
+    };
+
+    /** Points around a shape, each on the side the subject does not cover. */
+    const outlinePoints = (element, widthPx, box) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      const distance = widthPx / 2 + MINDMAP_EDGE_OFFSET;
+      const toClient = (local) => new DOMPoint(local.x, local.y).matrixTransform(matrix);
+      const points = [];
+      for (let i = 0; i < MINDMAP_OUTLINE_POINTS; i += 1) {
+        const at = (length * (i + 0.5)) / MINDMAP_OUTLINE_POINTS;
+        const here = toClient(element.getPointAtLength(at));
+        const ahead = toClient(element.getPointAtLength(Math.min(length, at + MINDMAP_TANGENT_STEP)));
+        const behind = toClient(element.getPointAtLength(Math.max(0, at - MINDMAP_TANGENT_STEP)));
+        const dx = ahead.x - behind.x;
+        const dy = ahead.y - behind.y;
+        const size = Math.hypot(dx, dy);
+        if (!(size > 0)) continue;
+        [[-dy / size, dx / size], [dy / size, -dx / size]].forEach((normal) => {
+          const x = here.x + normal[0] * distance;
+          const y = here.y + normal[1] * distance;
+          if (!coversElement(element, box, x, y)) points.push([x, y]);
+        });
+      }
+      return points;
+    };
+
+    /** Points along a stroked path or line, in one client space. */
+    const lineSamples = (element) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      return MINDMAP_LINE_FRACTIONS.map((fraction) => {
+        const local = element.getPointAtLength(length * fraction);
+        const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+        return [client.x, client.y];
+      });
+    };
+
+    /** Would a halo on this word touch another word? */
+    const casingTouchesNeighbour = (element, box) => {
+      const margin = MINDMAP_CASING_WIDTH_PX / 2;
+      return textBoxes.some(
+        (other) =>
+          other.element !== element &&
+          box.x - margin < other.box.x + other.box.width &&
+          box.x + box.width + margin > other.box.x &&
+          box.y - margin < other.box.y + other.box.height &&
+          box.y + box.height + margin > other.box.y
+      );
+    };
+
+    all.forEach((element, index) => {
+      if (offstage(element)) return;
+      const role = roleOf(element);
+      if (!role) return;
+      applied.reach.found += 1;
+      applied.reach.stamped += element.hasAttribute(MINDMAP_ROLE_ATTRIBUTE) ? 1 : 0;
+      applied.subjects[role] = (applied.subjects[role] || 0) + 1;
+      if (role === MINDMAP_ROLES.backing || role === MINDMAP_ROLES.marker) return;
+
+      const computed = window.getComputedStyle(element);
+
+      // --- WORDS, and ONLY where they fail against the ground they sit on ------
+      if (role === MINDMAP_ROLES.label) {
+        const isSvgText = element.tagName === "text";
+        const box = boxOf(element);
+        const declared = parsePaint(isSvgText ? computed.fill : computed.color);
+        if (!box || !declared) return;
+        const alpha =
+          declared.a * (isSvgText ? opacityValue(computed.fillOpacity) : 1) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const backgrounds = htmlBackgrounds(element);
+        const grounds = [
+          ...new Set(
+            coveredGroundsOver(spreadPoints(insideBody(box, bodyBoxOf(element))), index).map((ground) =>
+              paintToHex(
+                backgrounds.reduce((below, above) => compositeOver(above, below), parsePaint(ground))
+              )
+            )
+          ),
+        ];
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= MINDMAP_TEXT_TARGET) return;
+        const inkProperty = isSvgText ? "fill" : "color";
+        const rendererHex = paintToHex({ ...declared, a: 1 });
+        const chosen = chooseInk(rendererHex, alpha, grounds, MINDMAP_TEXT_TARGET, MINDMAP_TEXT_MARGIN);
+        const reading = { grounds, target: MINDMAP_TEXT_TARGET, wasAt: Number(worstNow.toFixed(2)) };
+        if (chosen.worst >= MINDMAP_TEXT_TARGET) {
+          write(element, `${role}Ink`, { [inkProperty]: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+          });
+          return;
+        }
+        // Rule 56: no ink clears both grounds, so the word stops standing on both. Only an SVG
+        // word can take the halo (HTML text has no paint-order); only where it touches no neighbour.
+        if (isSvgText && !casingTouchesNeighbour(element, box)) {
+          const cased = chooseInk(rendererHex, alpha, [svgGround], MINDMAP_TEXT_TARGET, MINDMAP_TEXT_MARGIN);
+          if (cased.worst >= MINDMAP_TEXT_TARGET) {
+            write(
+              element,
+              `${role}Casing`,
+              {
+                fill: cased.ink,
+                stroke: svgGround,
+                "stroke-width": `${MINDMAP_CASING_WIDTH_PX}px`,
+                "paint-order": "stroke",
+                "stroke-linejoin": "round",
+              },
+              {
+                ...reading,
+                ink: cased.ink,
+                ratio: Number(cased.worst.toFixed(2)),
+                groundBehind: svgGround,
+                bestWithoutCasing: Number(chosen.worst.toFixed(2)),
+              }
+            );
+            return;
+          }
+        }
+        // Insoluble and uncased: write the best ink there is and record the shortfall.
+        if (chosen.worst > worstNow) {
+          write(element, `${role}Ink`, { [inkProperty]: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+          });
+        }
+        return;
+      }
+
+      // --- EDGES and UNDERLINES: a stroke sampled along its length -------------
+      if (role === MINDMAP_ROLES.edge || role === MINDMAP_ROLES.underline) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        const points = lineSamples(element);
+        if (!declared || width <= 0 || !points) return;
+        if (role === MINDMAP_ROLES.edge) {
+          const { edgeWidths } = applied;
+          edgeWidths.thinnest = edgeWidths.thinnest === null ? width : Math.min(edgeWidths.thinnest, width);
+          edgeWidths.widest = edgeWidths.widest === null ? width : Math.max(edgeWidths.widest, width);
+        }
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        // An underline lies ON its body's lower edge: half its stroke is over the fill and half over
+        // what is below it, and a hit test at its centre can find either (rule 38). Read both sides.
+        let readAt = points;
+        if (role === MINDMAP_ROLES.underline) {
+          const first = points[0];
+          const last = points[points.length - 1];
+          const run = Math.hypot(last[0] - first[0], last[1] - first[1]);
+          const matrix = element.getScreenCTM();
+          const reach = (width * Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c))) / 2 + 1;
+          if (run > 0) {
+            const normal = [-(last[1] - first[1]) / run, (last[0] - first[0]) / run];
+            readAt = [
+              ...points,
+              ...points.map((point) => [point[0] + normal[0] * reach, point[1] + normal[1] * reach]),
+              ...points.map((point) => [point[0] - normal[0] * reach, point[1] - normal[1] * reach]),
+            ];
+          }
+        }
+        const grounds = groundsOver(readAt, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= MINDMAP_OBJECT_TARGET) return;
+        const chosen = chooseInk(
+          paintToHex({ ...declared, a: 1 }),
+          alpha,
+          grounds,
+          MINDMAP_OBJECT_TARGET,
+          MINDMAP_OBJECT_MARGIN
+        );
+        write(element, `${role}Ink`, { stroke: chosen.ink }, {
+          ink: chosen.ink,
+          grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: MINDMAP_OBJECT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // --- BODIES: the shape's own fill is never written (rule 18) -------------
+      const box = boxOf(element);
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!box || !matrix) return;
+      const strokeDeclared = parsePaint(computed.stroke);
+      const strokeWidth = parseFloat(computed.strokeWidth) || 0;
+      const ownStroke = !!strokeDeclared && strokeWidth > 0;
+      const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+      const outlineWidth = ownStroke ? strokeWidth * scale : MINDMAP_OUTLINE_MIN_WIDTH_PX;
+      const points = outlinePoints(element, outlineWidth, box);
+      if (!points || !points.length) return;
+      const outside = groundsOver(points, index);
+
+      // A body that draws its own outline: re-ink it only where it fails, as an outline.
+      if (ownStroke) {
+        const alpha = strokeDeclared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const worstNow = worstOf(strokeDeclared, alpha, outside);
+        if (worstNow >= MINDMAP_OBJECT_TARGET) return;
+        const chosen = chooseInk(
+          paintToHex({ ...strokeDeclared, a: 1 }),
+          alpha,
+          outside,
+          MINDMAP_OBJECT_TARGET,
+          MINDMAP_OBJECT_MARGIN
+        );
+        write(element, `${role}Ink`, { stroke: chosen.ink }, {
+          ink: chosen.ink,
+          grounds: outside,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: MINDMAP_OBJECT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        });
+        return;
+      }
+
+      // No outline of its own: the fill is the boundary. Read it against the ground outside.
+      const fill = parsePaint(computed.fill);
+      if (!fill) return;
+      const fillAlpha = fill.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      if (fillAlpha <= 0.05) return;
+      const fillAgainstOutside = worstOf(fill, fillAlpha, outside);
+      if (fillAgainstOutside >= MINDMAP_OBJECT_TARGET) return;
+
+      // Rule 38: the stroke straddles the edge, so it must clear the fill inside AND the ground outside.
+      const centre = groundAt(box.x + box.width / 2, box.y + box.height / 2, index);
+      const inside = paintToHex(compositeOver({ ...fill, a: fillAlpha }, centre));
+      const straddled = [inside, ...outside];
+      const chosen = chooseInk(
+        paintToHex({ ...fill, a: 1 }),
+        chainOpacity(element),
+        straddled,
+        MINDMAP_OBJECT_TARGET,
+        MINDMAP_OBJECT_MARGIN
+      );
+      write(
+        element,
+        `${role}Outline`,
+        { stroke: chosen.ink, "stroke-width": `${MINDMAP_OUTLINE_MIN_WIDTH_PX}px` },
+        {
+          ink: chosen.ink,
+          grounds: straddled,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: MINDMAP_OBJECT_TARGET,
+          wasAt: Number(fillAgainstOutside.toFixed(2)),
+        }
+      );
+    });
+
+    logInfo(
+      `Mindmap encoding applied: ${applied.reached} of ${applied.reach.found} stamped elements re-inked, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  // -----------------------------------------------------------------------
   // PAGE INK ENCODING (Mermaid UI review parcel 10, 26 September 2026)
   // -----------------------------------------------------------------------
 
@@ -10776,6 +11514,12 @@ window.MermaidThemes = (function () {
     // applyWardleyEncoding never calls applyTheme, so it cannot recurse.
     const wardleyEncoding = applyWardleyEncoding(root);
 
+    // MINDMAP DISPATCH, added 30 October 2026 (register item 136 session 1), at the
+    // same seam and for the same wiring reason as the sixteen above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyMindmapEncoding never calls applyTheme, so it cannot recurse.
+    const mindmapEncoding = applyMindmapEncoding(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -10801,6 +11545,7 @@ window.MermaidThemes = (function () {
       if (treeViewEncoding) return { treeView: treeViewEncoding };
       if (ishikawaEncoding) return { ishikawa: ishikawaEncoding };
       if (wardleyEncoding) return { wardley: wardleyEncoding };
+      if (mindmapEncoding) return { mindmap: mindmapEncoding };
       logDebug(
         "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn, treeView or ishikawa SVG in this container - series encoding skipped"
       );
@@ -12869,6 +13614,7 @@ window.MermaidThemes = (function () {
     applyTreeViewEncoding: applyTreeViewEncoding,
     applyIshikawaEncoding: applyIshikawaEncoding,
     applyWardleyEncoding: applyWardleyEncoding,
+    applyMindmapEncoding: applyMindmapEncoding,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

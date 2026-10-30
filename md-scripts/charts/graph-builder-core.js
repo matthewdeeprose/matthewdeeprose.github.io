@@ -566,9 +566,6 @@ const GraphBuilder = (function () {
 
       // Result elements
       this.elements.result = {
-        useInDocument:
-          this.dependencies.utils.dom.getById("gb-use-in-document"),
-        saveTemplate: this.dependencies.utils.dom.getById("gb-save-template"),
         createAnother: this.dependencies.utils.dom.getById("gb-create-another"),
         backButton: this.dependencies.utils.dom.getById("gb-result-back"),
       };

@@ -2354,12 +2354,19 @@ select#paletteSelect {
 }
 
 select {
-  font-family: monospace, monospace;
+  font-family: inherit;
+  font-size: inherit;
   vertical-align: middle;
-  font-size: 1.2rem;
-  margin: 0.5rem 0.3rem 0.5rem 0rem;
-  padding: 0.5rem 1rem 0.5rem 1rem;
-  margin-left: 0.5rem;
+  margin: 0.5rem 0.3rem 0.5rem 0;
+  padding: 0.5rem;
+  /* Keep the text clear of the drop-down arrow. The arrow sits at the end edge, so a 0.5rem end
+     padding lets a long option run under it (measured: 3 to 4px under at 8px, touching at 12px,
+     a 4 to 5px gap at 16px). !important is deliberate: component rules set their own padding
+     shorthand and would otherwise put the end padding back. End side only, so each component's
+     top, bottom and start padding stand. */
+  padding-inline-end: 1rem !important;
+  border-radius: 0.25rem;
+  cursor: pointer;
 }
 
 /* Clear button */

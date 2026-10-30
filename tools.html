@@ -447,15 +447,6 @@
     </style>
   </head>
   <body>
-    <script>
-      const originalFocus = HTMLElement.prototype.focus;
-      HTMLElement.prototype.focus = function () {
-        if (this.id === "user-input") {
-          console.trace("user-input.focus() called from:");
-        }
-        return originalFocus.apply(this, arguments);
-      };
-    </script>
     <!-- Skip to section navigation -->
     <script>
       function skipToSection(elementId) {
@@ -1792,89 +1783,103 @@
                 >
               </summary>
               <div class="setup-credential-body">
-               <form role="presentation" onsubmit="return false;" autocomplete="off">
-                <input
-                  type="text"
-                  name="openrouter_credential_username_setup"
-                  aria-label="Username (not used)"
-                  autocomplete="username"
-                  hidden
-                />
-                <div class="setup-input-group">
-                  <label id="setup-or-api-key-label" for="setup-or-api-key">OpenRouter API Key</label>
-                  <p
-                    id="setup-or-api-key-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    It starts with sk-or-v1-.
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="password"
-                      id="setup-or-api-key"
-                      aria-labelledby="setup-or-api-key-label"
-                      name="openrouter_credential_api_key_setup"
-                      autocomplete="new-password"
-                      spellcheck="false"
-                      data-form-type="other"
-                      aria-describedby="setup-or-api-key-hint"
-                    />
+                <form
+                  role="presentation"
+                  onsubmit="return false;"
+                  autocomplete="off"
+                >
+                  <input
+                    type="text"
+                    name="openrouter_credential_username_setup"
+                    aria-label="Username (not used)"
+                    autocomplete="username"
+                    hidden
+                  />
+                  <div class="setup-input-group">
+                    <label id="setup-or-api-key-label" for="setup-or-api-key"
+                      >OpenRouter API Key</label
+                    >
+                    <p
+                      id="setup-or-api-key-hint"
+                      class="setup-help-text setup-field-hint"
+                    >
+                      It starts with sk-or-v1-.
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="password"
+                        id="setup-or-api-key"
+                        aria-labelledby="setup-or-api-key-label"
+                        name="openrouter_credential_api_key_setup"
+                        autocomplete="new-password"
+                        spellcheck="false"
+                        data-form-type="other"
+                        aria-describedby="setup-or-api-key-hint"
+                      />
+                      <button
+                        type="button"
+                        class="setup-toggle-visibility"
+                        onclick="setupToggleOpenRouter()"
+                        aria-label="Show API key"
+                        id="setup-or-toggle-btn"
+                      >
+                        <span aria-hidden="true" data-icon="eye"></span> Show
+                      </button>
+                    </div>
+                    <p class="setup-help-text">
+                      Your API key is stored locally in your browser and is
+                      never sent to any server other than OpenRouter.
+                    </p>
+                  </div>
+                  <div class="setup-button-group">
                     <button
                       type="button"
-                      class="setup-toggle-visibility"
-                      onclick="setupToggleOpenRouter()"
-                      aria-label="Show API key"
-                      id="setup-or-toggle-btn"
+                      class="primary-button"
+                      onclick="setupSaveOpenRouter()"
                     >
-                      <span aria-hidden="true" data-icon="eye"></span> Show
+                      <span aria-hidden="true" data-icon="disk"></span> Save Key
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupClearOpenRouter()"
+                    >
+                      <span aria-hidden="true" data-icon="trash"></span> Clear
+                      Key
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      id="setup-or-check-btn"
+                      onclick="setupCheckOpenRouter()"
+                    >
+                      <span aria-hidden="true" data-icon="refresh"></span> Check
+                      credit
                     </button>
                   </div>
-                  <p class="setup-help-text">
-                    Your API key is stored locally in your browser and is never
-                    sent to any server other than OpenRouter.
-                  </p>
-                </div>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="primary-button"
-                    onclick="setupSaveOpenRouter()"
-                  >
-                    <span aria-hidden="true" data-icon="disk"></span> Save Key
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupClearOpenRouter()"
-                  >
-                    <span aria-hidden="true" data-icon="trash"></span> Clear Key
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    id="setup-or-check-btn"
-                    onclick="setupCheckOpenRouter()"
-                  >
-                    <span aria-hidden="true" data-icon="refresh"></span> Check
-                    credit
-                  </button>
-                </div>
-                <!-- Key details: filled by setup-tool.js from OpenRouter's
+                  <!-- Key details: filled by setup-tool.js from OpenRouter's
                      /auth/key reply. Deliberately NOT a live region — the
                      visible list is the record, and the low-credit line in
                      main.js is the one voice (see the note above Status
                      Summary). Rows are built in JS because the fields present
                      vary by key; each pair is a dt/dd inside a div. -->
-                <div class="setup-key-details" id="setup-or-key-details" hidden>
-                  <h3 id="setup-or-key-details-heading">Key details</h3>
-                  <p
-                    class="setup-key-details-message"
-                    id="setup-or-key-message"
+                  <div
+                    class="setup-key-details"
+                    id="setup-or-key-details"
                     hidden
-                  ></p>
-                  <dl class="setup-key-details-list" id="setup-or-key-list"></dl>
-                </div>
-               </form>
+                  >
+                    <h3 id="setup-or-key-details-heading">Key details</h3>
+                    <p
+                      class="setup-key-details-message"
+                      id="setup-or-key-message"
+                      hidden
+                    ></p>
+                    <dl
+                      class="setup-key-details-list"
+                      id="setup-or-key-list"
+                    ></dl>
+                  </div>
+                </form>
               </div>
             </details>
 
@@ -1899,77 +1904,85 @@
                 >
               </summary>
               <div class="setup-credential-body">
-               <form role="presentation" onsubmit="return false;" autocomplete="off">
-                <div class="setup-input-group">
-                  <label id="setup-mp-app-id-label" for="setup-mp-app-id">App ID</label>
-                  <div class="setup-input-row">
-                    <input
-                      type="text"
-                      id="setup-mp-app-id"
-                      aria-labelledby="setup-mp-app-id-label"
-                      name="mathpix_credential_app_id_setup"
-                      autocomplete="new-password"
-                      spellcheck="false"
-                      data-form-type="other"
-                    />
+                <form
+                  role="presentation"
+                  onsubmit="return false;"
+                  autocomplete="off"
+                >
+                  <div class="setup-input-group">
+                    <label id="setup-mp-app-id-label" for="setup-mp-app-id"
+                      >App ID</label
+                    >
+                    <div class="setup-input-row">
+                      <input
+                        type="text"
+                        id="setup-mp-app-id"
+                        aria-labelledby="setup-mp-app-id-label"
+                        name="mathpix_credential_app_id_setup"
+                        autocomplete="new-password"
+                        spellcheck="false"
+                        data-form-type="other"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div class="setup-input-group">
-                  <label id="setup-mp-app-key-label" for="setup-mp-app-key">App Key</label>
-                  <div class="setup-input-row">
-                    <input
-                      type="password"
-                      id="setup-mp-app-key"
-                      aria-labelledby="setup-mp-app-key-label"
-                      name="mathpix_credential_app_key_setup"
-                      autocomplete="new-password"
-                      spellcheck="false"
-                      data-form-type="other"
-                    />
+                  <div class="setup-input-group">
+                    <label id="setup-mp-app-key-label" for="setup-mp-app-key"
+                      >App Key</label
+                    >
+                    <div class="setup-input-row">
+                      <input
+                        type="password"
+                        id="setup-mp-app-key"
+                        aria-labelledby="setup-mp-app-key-label"
+                        name="mathpix_credential_app_key_setup"
+                        autocomplete="new-password"
+                        spellcheck="false"
+                        data-form-type="other"
+                      />
+                      <button
+                        type="button"
+                        class="setup-toggle-visibility"
+                        onclick="setupToggleMathPix()"
+                        aria-label="Show App Key"
+                        id="setup-mp-toggle-btn"
+                      >
+                        <span aria-hidden="true" data-icon="eye"></span> Show
+                      </button>
+                    </div>
+                    <p class="setup-help-text">
+                      Your MathPix credentials are stored locally in your
+                      browser. Get your App ID and Key from the
+                      <a
+                        href="https://accounts.mathpix.com/ocr-api"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >MathPix dashboard<span class="sr-only">
+                          (opens in new tab)</span
+                        ></a
+                      >.
+                    </p>
+                  </div>
+                  <div class="setup-button-group">
                     <button
                       type="button"
-                      class="setup-toggle-visibility"
-                      onclick="setupToggleMathPix()"
-                      aria-label="Show App Key"
-                      id="setup-mp-toggle-btn"
+                      class="primary-button"
+                      onclick="setupSaveMathPix()"
                     >
-                      <span aria-hidden="true" data-icon="eye"></span> Show
+                      <span aria-hidden="true" data-icon="disk"></span> Save
+                      Credentials
+                      <span class="visually-hidden">&nbsp;— MathPix</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupClearMathPix()"
+                    >
+                      <span aria-hidden="true" data-icon="trash"></span> Clear
+                      Credentials
+                      <span class="visually-hidden">&nbsp;— MathPix</span>
                     </button>
                   </div>
-                  <p class="setup-help-text">
-                    Your MathPix credentials are stored locally in your browser.
-                    Get your App ID and Key from the
-                    <a
-                      href="https://accounts.mathpix.com/ocr-api"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      >MathPix dashboard<span class="sr-only">
-                        (opens in new tab)</span
-                      ></a
-                    >.
-                  </p>
-                </div>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="primary-button"
-                    onclick="setupSaveMathPix()"
-                  >
-                    <span aria-hidden="true" data-icon="disk"></span> Save
-                    Credentials
-                    <span class="visually-hidden">&nbsp;— MathPix</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupClearMathPix()"
-                  >
-                    <span aria-hidden="true" data-icon="trash"></span> Clear
-                    Credentials
-                    <span class="visually-hidden">&nbsp;— MathPix</span>
-                  </button>
-                </div>
-               </form>
+                </form>
               </div>
             </details>
 
@@ -1998,92 +2011,101 @@
                 >
               </summary>
               <div class="setup-credential-body">
-               <form role="presentation" onsubmit="return false;" autocomplete="off">
-                <div class="setup-input-group">
-                  <label id="setup-fdy-proxy-url-label" for="setup-fdy-proxy-url"
-                    >Cloudflare Worker Proxy URL</label
-                  >
-                  <p
-                    id="setup-fdy-proxy-url-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    For example: https://your-proxy.workers.dev
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="url"
-                      id="setup-fdy-proxy-url"
-                      aria-labelledby="setup-fdy-proxy-url-label"
-                      autocomplete="off"
-                      spellcheck="false"
-                      aria-describedby="setup-fdy-proxy-url-hint"
-                    />
+                <form
+                  role="presentation"
+                  onsubmit="return false;"
+                  autocomplete="off"
+                >
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-fdy-proxy-url-label"
+                      for="setup-fdy-proxy-url"
+                      >Cloudflare Worker Proxy URL</label
+                    >
+                    <p
+                      id="setup-fdy-proxy-url-hint"
+                      class="setup-help-text setup-field-hint"
+                    >
+                      For example: https://your-proxy.workers.dev
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="url"
+                        id="setup-fdy-proxy-url"
+                        aria-labelledby="setup-fdy-proxy-url-label"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-describedby="setup-fdy-proxy-url-hint"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div class="setup-input-group">
-                  <label id="setup-fdy-user-token-label" for="setup-fdy-user-token"
-                    >User token (optional)</label
-                  >
-                  <div class="setup-input-row">
-                    <input
-                      type="password"
-                      id="setup-fdy-user-token"
-                      aria-labelledby="setup-fdy-user-token-label"
-                      autocomplete="off"
-                      spellcheck="false"
-                    />
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-fdy-user-token-label"
+                      for="setup-fdy-user-token"
+                      >User token (optional)</label
+                    >
+                    <div class="setup-input-row">
+                      <input
+                        type="password"
+                        id="setup-fdy-user-token"
+                        aria-labelledby="setup-fdy-user-token-label"
+                        autocomplete="off"
+                        spellcheck="false"
+                      />
+                      <button
+                        type="button"
+                        class="setup-toggle-visibility"
+                        onclick="setupToggleFoundry()"
+                        aria-label="Show user token"
+                        id="setup-fdy-toggle-btn"
+                      >
+                        <span aria-hidden="true" data-icon="eye"></span> Show
+                      </button>
+                    </div>
+                    <p class="setup-help-text">
+                      Microsoft Foundry provides Azure-hosted AI models through
+                      a Cloudflare Worker proxy. The proxy URL is required.
+                    </p>
+                    <p class="setup-help-text">
+                      Leave the user token empty unless you have been given one.
+                      Most proxies identify you through the University sign-in
+                      card instead. The token field is for the older
+                      shared-token arrangement, and filling it in will not sign
+                      you in. Anything you enter is stored locally in your
+                      browser.
+                    </p>
+                  </div>
+                  <div class="setup-button-group">
                     <button
                       type="button"
-                      class="setup-toggle-visibility"
-                      onclick="setupToggleFoundry()"
-                      aria-label="Show user token"
-                      id="setup-fdy-toggle-btn"
+                      class="primary-button"
+                      onclick="setupSaveFoundry()"
+                      id="setup-fdy-save-btn"
                     >
-                      <span aria-hidden="true" data-icon="eye"></span> Show
+                      <span aria-hidden="true" data-icon="disk"></span> Save
+                      Configuration
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupClearFoundry()"
+                      id="setup-fdy-clear-btn"
+                    >
+                      <span aria-hidden="true" data-icon="trash"></span> Clear
+                      Configuration
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupTestFoundry()"
+                      id="setup-fdy-test-btn"
+                    >
+                      <span aria-hidden="true" data-icon="refresh"></span> Test
+                      Connection
                     </button>
                   </div>
-                  <p class="setup-help-text">
-                    Microsoft Foundry provides Azure-hosted AI models through a
-                    Cloudflare Worker proxy. The proxy URL is required.
-                  </p>
-                  <p class="setup-help-text">
-                    Leave the user token empty unless you have been given one.
-                    Most proxies identify you through the University sign-in
-                    card instead. The token field is for the older shared-token
-                    arrangement, and filling it in will not sign you in.
-                    Anything you enter is stored locally in your browser.
-                  </p>
-                </div>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="primary-button"
-                    onclick="setupSaveFoundry()"
-                    id="setup-fdy-save-btn"
-                  >
-                    <span aria-hidden="true" data-icon="disk"></span> Save
-                    Configuration
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupClearFoundry()"
-                    id="setup-fdy-clear-btn"
-                  >
-                    <span aria-hidden="true" data-icon="trash"></span> Clear
-                    Configuration
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupTestFoundry()"
-                    id="setup-fdy-test-btn"
-                  >
-                    <span aria-hidden="true" data-icon="refresh"></span> Test
-                    Connection
-                  </button>
-                </div>
-               </form>
+                </form>
               </div>
             </details>
 
@@ -2106,162 +2128,175 @@
                 >
               </summary>
               <div class="setup-credential-body">
-               <form role="presentation" onsubmit="return false;" autocomplete="off">
-                <div class="setup-input-group">
-                  <label id="setup-ally-region-label" for="setup-ally-region"
-                    >Region</label
-                  >
-                  <select
-                    id="setup-ally-region"
-                    class="setup-select"
-                    aria-labelledby="setup-ally-region-label"
-                  >
-                    <option value="EU" selected>EU (European Union)</option>
-                    <option value="US">US (United States)</option>
-                    <option value="CA">CA (Canada)</option>
-                    <option value="SG">SG (Singapore)</option>
-                    <option value="AU">AU (Australia)</option>
-                  </select>
-                  <p class="setup-help-text">
-                    Select the region that matches your Ally instance. EU is the
-                    default for most institutions.
-                  </p>
-                </div>
-                <div class="setup-input-group">
-                  <label id="setup-ally-client-id-label" for="setup-ally-client-id">Client ID</label>
-                  <p
-                    id="setup-ally-client-id-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    For example: 577
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="text"
-                      id="setup-ally-client-id"
-                      aria-labelledby="setup-ally-client-id-label"
-                      name="ally_credential_client_id_setup"
-                      autocomplete="new-password"
-                      spellcheck="false"
-                      data-form-type="other"
-                      aria-describedby="setup-ally-client-id-hint"
-                    />
+                <form
+                  role="presentation"
+                  onsubmit="return false;"
+                  autocomplete="off"
+                >
+                  <div class="setup-input-group">
+                    <label id="setup-ally-region-label" for="setup-ally-region"
+                      >Region</label
+                    >
+                    <select
+                      id="setup-ally-region"
+                      class="setup-select"
+                      aria-labelledby="setup-ally-region-label"
+                    >
+                      <option value="EU" selected>EU (European Union)</option>
+                      <option value="US">US (United States)</option>
+                      <option value="CA">CA (Canada)</option>
+                      <option value="SG">SG (Singapore)</option>
+                      <option value="AU">AU (Australia)</option>
+                    </select>
+                    <p class="setup-help-text">
+                      Select the region that matches your Ally instance. EU is
+                      the default for most institutions.
+                    </p>
                   </div>
-                </div>
-                <div class="setup-input-group">
-                  <label id="setup-ally-token-label" for="setup-ally-token">API Token</label>
-                  <div class="setup-input-row">
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-ally-client-id-label"
+                      for="setup-ally-client-id"
+                      >Client ID</label
+                    >
+                    <p
+                      id="setup-ally-client-id-hint"
+                      class="setup-help-text setup-field-hint"
+                    >
+                      For example: 577
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="text"
+                        id="setup-ally-client-id"
+                        aria-labelledby="setup-ally-client-id-label"
+                        name="ally_credential_client_id_setup"
+                        autocomplete="new-password"
+                        spellcheck="false"
+                        data-form-type="other"
+                        aria-describedby="setup-ally-client-id-hint"
+                      />
+                    </div>
+                  </div>
+                  <div class="setup-input-group">
+                    <label id="setup-ally-token-label" for="setup-ally-token"
+                      >API Token</label
+                    >
+                    <div class="setup-input-row">
+                      <input
+                        type="password"
+                        id="setup-ally-token"
+                        aria-labelledby="setup-ally-token-label"
+                        name="ally_credential_api_token_setup"
+                        autocomplete="new-password"
+                        spellcheck="false"
+                        data-form-type="other"
+                      />
+                      <button
+                        type="button"
+                        class="setup-toggle-visibility"
+                        onclick="setupToggleAlly()"
+                        aria-label="Show API token"
+                        id="setup-ally-toggle-btn"
+                      >
+                        <span aria-hidden="true" data-icon="eye"></span> Show
+                      </button>
+                    </div>
+                    <p class="setup-help-text">
+                      Your Ally credentials are stored locally in your browser.
+                      Find your Client ID and token in the Ally Institutional
+                      Report.
+                    </p>
+                  </div>
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-ally-worker-url-label"
+                      for="setup-ally-worker-url"
+                      >Proxy Worker URL (alternative to an API token)</label
+                    >
+                    <p
+                      id="setup-ally-worker-url-hint"
+                      class="setup-help-text setup-field-hint"
+                    >
+                      For example: https://your-proxy.workers.dev
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="url"
+                        id="setup-ally-worker-url"
+                        aria-labelledby="setup-ally-worker-url-label"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-describedby="setup-ally-worker-url-hint setup-ally-worker-url-help setup-ally-worker-url-error"
+                      />
+                    </div>
+                    <p
+                      class="credential-field-error"
+                      id="setup-ally-worker-url-error"
+                      hidden
+                    ></p>
+                    <p class="setup-help-text" id="setup-ally-worker-url-help">
+                      A proxy worker holds the Ally token for you, so you can
+                      use Ally Reporting without entering one here. You still
+                      need a Client ID and region. Enter either an API token or
+                      a worker URL — if you provide both, the token is used.
+                      This URL is not a secret, so unticking Remember
+                      credentials keeps it. Clearing your credentials removes
+                      it, and so does emptying this box and selecting Save
+                      Credentials.
+                    </p>
+                  </div>
+                  <div class="setup-checkbox-group">
                     <input
-                      type="password"
-                      id="setup-ally-token"
-                      aria-labelledby="setup-ally-token-label"
-                      name="ally_credential_api_token_setup"
-                      autocomplete="new-password"
-                      spellcheck="false"
-                      data-form-type="other"
+                      type="checkbox"
+                      id="setup-ally-remember"
+                      aria-labelledby="setup-ally-remember-label"
+                      checked
                     />
+                    <label
+                      id="setup-ally-remember-label"
+                      for="setup-ally-remember"
+                      >Remember credentials in this browser</label
+                    >
+                    <p class="setup-help-text">
+                      When unchecked, all Ally credentials will be removed from
+                      your browser storage.
+                    </p>
+                  </div>
+                  <div class="setup-button-group">
                     <button
                       type="button"
-                      class="setup-toggle-visibility"
-                      onclick="setupToggleAlly()"
-                      aria-label="Show API token"
-                      id="setup-ally-toggle-btn"
+                      class="primary-button"
+                      onclick="setupSaveAlly()"
                     >
-                      <span aria-hidden="true" data-icon="eye"></span> Show
+                      <span aria-hidden="true" data-icon="disk"></span> Save
+                      Credentials
+                      <span class="visually-hidden">&nbsp;— Ally</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupClearAlly()"
+                    >
+                      <span aria-hidden="true" data-icon="trash"></span> Clear
+                      Credentials
+                      <span class="visually-hidden">&nbsp;— Ally</span>
                     </button>
                   </div>
                   <p class="setup-help-text">
-                    Your Ally credentials are stored locally in your browser.
-                    Find your Client ID and token in the Ally Institutional
-                    Report.
+                    To test your Ally connection, use the
+                    <strong>Test Connection</strong> button in the
+                    <a
+                      href="#"
+                      onclick="
+                        showAllyReporting();
+                        return false;
+                      "
+                      >Ally Reporting tool</a
+                    >.
                   </p>
-                </div>
-                <div class="setup-input-group">
-                  <label id="setup-ally-worker-url-label" for="setup-ally-worker-url"
-                    >Proxy Worker URL (alternative to an API token)</label
-                  >
-                  <p
-                    id="setup-ally-worker-url-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    For example: https://your-proxy.workers.dev
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="url"
-                      id="setup-ally-worker-url"
-                      aria-labelledby="setup-ally-worker-url-label"
-                      autocomplete="off"
-                      spellcheck="false"
-                      aria-describedby="setup-ally-worker-url-hint setup-ally-worker-url-help setup-ally-worker-url-error"
-                    />
-                  </div>
-                  <p
-                    class="credential-field-error"
-                    id="setup-ally-worker-url-error"
-                    hidden
-                  ></p>
-                  <p class="setup-help-text" id="setup-ally-worker-url-help">
-                    A proxy worker holds the Ally token for you, so you can use
-                    Ally Reporting without entering one here. You still need a
-                    Client ID and region. Enter either an API token or a worker
-                    URL — if you provide both, the token is used. This URL is
-                    not a secret, so unticking Remember credentials keeps it.
-                    Clearing your credentials removes it, and so does emptying
-                    this box and selecting Save Credentials.
-                  </p>
-                </div>
-                <div class="setup-checkbox-group">
-                  <input
-                    type="checkbox"
-                    id="setup-ally-remember"
-                    aria-labelledby="setup-ally-remember-label"
-                    checked
-                  />
-                  <label
-                    id="setup-ally-remember-label"
-                    for="setup-ally-remember"
-                    >Remember credentials in this browser</label
-                  >
-                  <p class="setup-help-text">
-                    When unchecked, all Ally credentials will be removed from
-                    your browser storage.
-                  </p>
-                </div>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="primary-button"
-                    onclick="setupSaveAlly()"
-                  >
-                    <span aria-hidden="true" data-icon="disk"></span> Save
-                    Credentials
-                    <span class="visually-hidden">&nbsp;— Ally</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupClearAlly()"
-                  >
-                    <span aria-hidden="true" data-icon="trash"></span> Clear
-                    Credentials
-                    <span class="visually-hidden">&nbsp;— Ally</span>
-                  </button>
-                </div>
-                <p class="setup-help-text">
-                  To test your Ally connection, use the
-                  <strong>Test Connection</strong> button in the
-                  <a
-                    href="#"
-                    onclick="
-                      showAllyReporting();
-                      return false;
-                    "
-                    >Ally Reporting tool</a
-                  >.
-                </p>
 
-                <!--
+                  <!--
                   Share this configuration (multi-tenancy Stage 3).
 
                   One administrator configures Ally once and colleagues import
@@ -2269,34 +2304,36 @@
                   view over the credential fields above plus the institution
                   name; it carries NO course data and no reports.
                 -->
-                <div class="setup-input-group">
-                  <label id="setup-ally-tenant-name-label" for="setup-ally-tenant-name"
-                    >Institution name (optional)</label
-                  >
-                  <p
-                    id="setup-ally-tenant-name-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    For example: University of Southampton
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="text"
-                      id="setup-ally-tenant-name"
-                      aria-labelledby="setup-ally-tenant-name-label"
-                      autocomplete="off"
-                      spellcheck="false"
-                      aria-describedby="setup-ally-tenant-name-hint setup-ally-tenant-name-help"
-                    />
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-ally-tenant-name-label"
+                      for="setup-ally-tenant-name"
+                      >Institution name (optional)</label
+                    >
+                    <p
+                      id="setup-ally-tenant-name-hint"
+                      class="setup-help-text setup-field-hint"
+                    >
+                      For example: University of Southampton
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="text"
+                        id="setup-ally-tenant-name"
+                        aria-labelledby="setup-ally-tenant-name-label"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-describedby="setup-ally-tenant-name-hint setup-ally-tenant-name-help"
+                      />
+                    </div>
+                    <p class="setup-help-text" id="setup-ally-tenant-name-help">
+                      Labels this configuration so colleagues can tell which
+                      institution a shared file is for. Saved with your
+                      credentials.
+                    </p>
                   </div>
-                  <p class="setup-help-text" id="setup-ally-tenant-name-help">
-                    Labels this configuration so colleagues can tell which
-                    institution a shared file is for. Saved with your
-                    credentials.
-                  </p>
-                </div>
-                <div class="setup-checkbox-group">
-                  <!--
+                  <div class="setup-checkbox-group">
+                    <!--
                     aria-labelledby is REDUNDANT for a browser: label[for] alone
                     already names this control, measured in the accessibility
                     tree as checkbox "Include the API token in the exported
@@ -2311,63 +2348,63 @@
                     same pairing already on #setup-ally-region and
                     #setup-ally-remember, which predate this block.
                   -->
-                  <input
-                    type="checkbox"
-                    id="setup-ally-export-token"
-                    aria-labelledby="setup-ally-export-token-label"
-                  />
-                  <label
-                    id="setup-ally-export-token-label"
-                    for="setup-ally-export-token"
-                    >Include the API token in the exported file</label
-                  >
-                  <p class="setup-help-text">
-                    Off by default. The API token is a credential: anyone who
-                    receives a file containing it can query your Ally data as
-                    you. Leave this unticked and let each colleague enter their
-                    own token.
-                  </p>
-                </div>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupExportAlly()"
-                  >
-                    <span aria-hidden="true" data-icon="download"></span> Export
-                    configuration
-                    <span class="visually-hidden">&nbsp;— Ally</span>
-                  </button>
-                </div>
-                <div class="setup-input-group">
-                  <!-- aria-labelledby: see the note on the checkbox above. -->
-                  <label
-                    id="setup-ally-import-file-label"
-                    for="setup-ally-import-file"
-                    >Import a configuration file</label
-                  >
-                  <input
-                    type="file"
-                    id="setup-ally-import-file"
-                    accept="application/json,.json"
-                    onchange="setupImportAlly(event)"
-                    aria-labelledby="setup-ally-import-file-label"
-                    aria-describedby="setup-ally-import-help setup-ally-import-error"
-                  />
-                  <p
-                    class="credential-field-error"
-                    id="setup-ally-import-error"
-                    hidden
-                  ></p>
-                  <p class="setup-help-text" id="setup-ally-import-help">
-                    Choosing a file replaces the region, Client ID, API token
-                    and proxy worker URL above, so you are asked to confirm
-                    first. Course data and cached reports are never included in
-                    one of these files.
-                  </p>
-                </div>
+                    <input
+                      type="checkbox"
+                      id="setup-ally-export-token"
+                      aria-labelledby="setup-ally-export-token-label"
+                    />
+                    <label
+                      id="setup-ally-export-token-label"
+                      for="setup-ally-export-token"
+                      >Include the API token in the exported file</label
+                    >
+                    <p class="setup-help-text">
+                      Off by default. The API token is a credential: anyone who
+                      receives a file containing it can query your Ally data as
+                      you. Leave this unticked and let each colleague enter
+                      their own token.
+                    </p>
+                  </div>
+                  <div class="setup-button-group">
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupExportAlly()"
+                    >
+                      <span aria-hidden="true" data-icon="download"></span>
+                      Export configuration
+                      <span class="visually-hidden">&nbsp;— Ally</span>
+                    </button>
+                  </div>
+                  <div class="setup-input-group">
+                    <!-- aria-labelledby: see the note on the checkbox above. -->
+                    <label
+                      id="setup-ally-import-file-label"
+                      for="setup-ally-import-file"
+                      >Import a configuration file</label
+                    >
+                    <input
+                      type="file"
+                      id="setup-ally-import-file"
+                      accept="application/json,.json"
+                      onchange="setupImportAlly(event)"
+                      aria-labelledby="setup-ally-import-file-label"
+                      aria-describedby="setup-ally-import-help setup-ally-import-error"
+                    />
+                    <p
+                      class="credential-field-error"
+                      id="setup-ally-import-error"
+                      hidden
+                    ></p>
+                    <p class="setup-help-text" id="setup-ally-import-help">
+                      Choosing a file replaces the region, Client ID, API token
+                      and proxy worker URL above, so you are asked to confirm
+                      first. Course data and cached reports are never included
+                      in one of these files.
+                    </p>
+                  </div>
 
-                <!--
+                  <!--
                   Course data from your own Ally export (multi-tenancy Stage 4).
 
                   The three files are parsed in the browser and the compact
@@ -2378,57 +2415,57 @@
                   renders wrong names wherever an id collides.
                   aria-labelledby: see the note on the export-token checkbox.
                 -->
-                <div class="setup-input-group">
-                  <label
-                    id="setup-ally-data-files-label"
-                    for="setup-ally-data-files"
-                    >Upload course data from your Ally export</label
-                  >
-                  <input
-                    type="file"
-                    id="setup-ally-data-files"
-                    multiple
-                    accept=".csv,text/csv"
-                    onchange="setupUploadAllyData(event)"
-                    aria-labelledby="setup-ally-data-files-label"
-                    aria-describedby="setup-ally-data-help setup-ally-data-error"
-                  />
-                  <p
-                    class="credential-field-error"
-                    id="setup-ally-data-error"
-                    hidden
-                  ></p>
-                  <p class="setup-help-text" id="setup-ally-data-help">
-                    Choose courses.csv, terms.csv and departments_years.csv
-                    together from the same Ally export. They are read in this
-                    browser and stored here for the Client ID and region above,
-                    so save those first. Nothing is uploaded to a server. Add
-                    years.csv, months.csv and departments_terms.csv as well to
-                    see the Trends view on your own accessibility history; all
-                    three are needed, and the status line below says whether
-                    history is stored.
-                  </p>
-                </div>
-                <div class="setup-checkbox-group">
-                  <input
-                    type="checkbox"
-                    id="setup-ally-data-exclude-archived"
-                    aria-labelledby="setup-ally-data-exclude-archived-label"
-                    checked
-                  />
-                  <label
-                    id="setup-ally-data-exclude-archived-label"
-                    for="setup-ally-data-exclude-archived"
-                    >Leave out archived courses</label
-                  >
-                  <p class="setup-help-text">
-                    Courses whose name carries [archived] are skipped, which is
-                    roughly two thirds of a typical export. Search results say
-                    when this is in effect.
-                  </p>
-                </div>
+                  <div class="setup-input-group">
+                    <label
+                      id="setup-ally-data-files-label"
+                      for="setup-ally-data-files"
+                      >Upload course data from your Ally export</label
+                    >
+                    <input
+                      type="file"
+                      id="setup-ally-data-files"
+                      multiple
+                      accept=".csv,text/csv"
+                      onchange="setupUploadAllyData(event)"
+                      aria-labelledby="setup-ally-data-files-label"
+                      aria-describedby="setup-ally-data-help setup-ally-data-error"
+                    />
+                    <p
+                      class="credential-field-error"
+                      id="setup-ally-data-error"
+                      hidden
+                    ></p>
+                    <p class="setup-help-text" id="setup-ally-data-help">
+                      Choose courses.csv, terms.csv and departments_years.csv
+                      together from the same Ally export. They are read in this
+                      browser and stored here for the Client ID and region
+                      above, so save those first. Nothing is uploaded to a
+                      server. Add years.csv, months.csv and
+                      departments_terms.csv as well to see the Trends view on
+                      your own accessibility history; all three are needed, and
+                      the status line below says whether history is stored.
+                    </p>
+                  </div>
+                  <div class="setup-checkbox-group">
+                    <input
+                      type="checkbox"
+                      id="setup-ally-data-exclude-archived"
+                      aria-labelledby="setup-ally-data-exclude-archived-label"
+                      checked
+                    />
+                    <label
+                      id="setup-ally-data-exclude-archived-label"
+                      for="setup-ally-data-exclude-archived"
+                      >Leave out archived courses</label
+                    >
+                    <p class="setup-help-text">
+                      Courses whose name carries [archived] are skipped, which
+                      is roughly two thirds of a typical export. Search results
+                      say when this is in effect.
+                    </p>
+                  </div>
 
-                <!--
+                  <!--
                   Course data fetched from a URL (multi-tenancy Stage 6).
 
                   An institution hosts the converter's ally-course-payload.json
@@ -2446,138 +2483,138 @@
                   host's code inside this site beside every stored key.
                   aria-labelledby: see the note on the export-token checkbox.
                 -->
-                <div class="setup-input-group">
-                  <label
-                    id="setup-ally-data-url-label"
-                    for="setup-ally-data-url"
-                    >Fetch course data from a URL</label
-                  >
-                  <p
-                    id="setup-ally-data-url-hint"
-                    class="setup-help-text setup-field-hint"
-                  >
-                    For example:
-                    https://your-institution.github.io/ally/ally-course-payload.json
-                  </p>
-                  <div class="setup-input-row">
-                    <input
-                      type="url"
-                      id="setup-ally-data-url"
-                      autocomplete="off"
-                      spellcheck="false"
-                      aria-labelledby="setup-ally-data-url-label"
-                      aria-describedby="setup-ally-data-url-hint setup-ally-data-url-help setup-ally-data-url-error"
-                    />
-                  </div>
-                  <p
-                    class="credential-field-error"
-                    id="setup-ally-data-url-error"
-                    hidden
-                  ></p>
-                  <p class="setup-help-text" id="setup-ally-data-url-help">
-                    The https address of the ally-course-payload.json file the
-                    <a href="ally-scripts/core/convert-ally-csv.html"
-                      >converter</a
-                    >
-                    produces, hosted somewhere that allows this site to read it.
-                    A GitHub repository or GitHub Pages site does; Blackboard
-                    does not, so a file uploaded there cannot be fetched. The
-                    data is fetched once and stored in this browser for the
-                    Client ID and region above, so save those first. Select the
-                    button again to refresh it. Colleagues who import your
-                    exported configuration fetch it the first time they open
-                    Ally Reporting.
-                  </p>
-                </div>
-                <!-- aria-labelledby beside the legend for the same reason the
-                     inputs above carry it beside label[for]: IBM cannot
-                     resolve either inside a closed details. -->
-                <fieldset
-                  class="setup-proxy-picker"
-                  id="setup-ally-data-url-format"
-                  aria-labelledby="setup-ally-data-url-format-legend"
-                >
-                  <legend id="setup-ally-data-url-format-legend">
-                    Format of the hosted course data
-                  </legend>
-                  <div class="setup-proxy-option">
-                    <input
-                      type="radio"
-                      name="setup-ally-data-url-format"
-                      id="setup-ally-data-url-format-json"
-                      value="json"
-                      aria-labelledby="setup-ally-data-url-format-json-label"
-                      checked
-                    />
+                  <div class="setup-input-group">
                     <label
-                      id="setup-ally-data-url-format-json-label"
-                      for="setup-ally-data-url-format-json"
-                      >JSON file (default)</label
-                    >
-                    <p class="setup-help-text">
-                      One ally-course-payload.json file. Data only: nothing from
-                      the host runs on this page.
-                    </p>
-                  </div>
-                  <div class="setup-proxy-option">
-                    <input
-                      type="radio"
-                      name="setup-ally-data-url-format"
-                      id="setup-ally-data-url-format-script"
-                      value="script"
-                      aria-labelledby="setup-ally-data-url-format-script-label"
-                      aria-describedby="setup-ally-data-url-format-script-warning"
-                    />
-                    <label
-                      id="setup-ally-data-url-format-script-label"
-                      for="setup-ally-data-url-format-script"
-                      >Scripts from a folder</label
+                      id="setup-ally-data-url-label"
+                      for="setup-ally-data-url"
+                      >Fetch course data from a URL</label
                     >
                     <p
-                      class="setup-help-text"
-                      id="setup-ally-data-url-format-script-warning"
+                      id="setup-ally-data-url-hint"
+                      class="setup-help-text setup-field-hint"
                     >
-                      Loads ally-lookup-data.js and ally-courses-data.js from
-                      the folder at that address. It works from any host,
-                      including Blackboard, but it runs whoever controls that
-                      address's code inside this site, beside every key this
-                      site has stored for you: your Ally API token, and any
-                      OpenRouter, MathPix or Azure keys. Choose it only for an
-                      address your own institution controls. Nothing is stored;
-                      the scripts are loaded again each time Ally Reporting
-                      opens.
+                      For example:
+                      https://your-institution.github.io/ally/ally-course-payload.json
+                    </p>
+                    <div class="setup-input-row">
+                      <input
+                        type="url"
+                        id="setup-ally-data-url"
+                        autocomplete="off"
+                        spellcheck="false"
+                        aria-labelledby="setup-ally-data-url-label"
+                        aria-describedby="setup-ally-data-url-hint setup-ally-data-url-help setup-ally-data-url-error"
+                      />
+                    </div>
+                    <p
+                      class="credential-field-error"
+                      id="setup-ally-data-url-error"
+                      hidden
+                    ></p>
+                    <p class="setup-help-text" id="setup-ally-data-url-help">
+                      The https address of the ally-course-payload.json file the
+                      <a href="ally-scripts/core/convert-ally-csv.html"
+                        >converter</a
+                      >
+                      produces, hosted somewhere that allows this site to read
+                      it. A GitHub repository or GitHub Pages site does;
+                      Blackboard does not, so a file uploaded there cannot be
+                      fetched. The data is fetched once and stored in this
+                      browser for the Client ID and region above, so save those
+                      first. Select the button again to refresh it. Colleagues
+                      who import your exported configuration fetch it the first
+                      time they open Ally Reporting.
                     </p>
                   </div>
-                </fieldset>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    id="setup-ally-data-fetch-btn"
-                    onclick="setupFetchAllyData()"
+                  <!-- aria-labelledby beside the legend for the same reason the
+                     inputs above carry it beside label[for]: IBM cannot
+                     resolve either inside a closed details. -->
+                  <fieldset
+                    class="setup-proxy-picker"
+                    id="setup-ally-data-url-format"
+                    aria-labelledby="setup-ally-data-url-format-legend"
                   >
-                    <span aria-hidden="true" data-icon="download"></span> Fetch
-                    course data from URL
-                    <span class="visually-hidden">&nbsp;— Ally</span>
-                  </button>
-                </div>
-                <!-- Plain text, not a live region: setup-tool.js announces
+                    <legend id="setup-ally-data-url-format-legend">
+                      Format of the hosted course data
+                    </legend>
+                    <div class="setup-proxy-option">
+                      <input
+                        type="radio"
+                        name="setup-ally-data-url-format"
+                        id="setup-ally-data-url-format-json"
+                        value="json"
+                        aria-labelledby="setup-ally-data-url-format-json-label"
+                        checked
+                      />
+                      <label
+                        id="setup-ally-data-url-format-json-label"
+                        for="setup-ally-data-url-format-json"
+                        >JSON file (default)</label
+                      >
+                      <p class="setup-help-text">
+                        One ally-course-payload.json file. Data only: nothing
+                        from the host runs on this page.
+                      </p>
+                    </div>
+                    <div class="setup-proxy-option">
+                      <input
+                        type="radio"
+                        name="setup-ally-data-url-format"
+                        id="setup-ally-data-url-format-script"
+                        value="script"
+                        aria-labelledby="setup-ally-data-url-format-script-label"
+                        aria-describedby="setup-ally-data-url-format-script-warning"
+                      />
+                      <label
+                        id="setup-ally-data-url-format-script-label"
+                        for="setup-ally-data-url-format-script"
+                        >Scripts from a folder</label
+                      >
+                      <p
+                        class="setup-help-text"
+                        id="setup-ally-data-url-format-script-warning"
+                      >
+                        Loads ally-lookup-data.js and ally-courses-data.js from
+                        the folder at that address. It works from any host,
+                        including Blackboard, but it runs whoever controls that
+                        address's code inside this site, beside every key this
+                        site has stored for you: your Ally API token, and any
+                        OpenRouter, MathPix or Azure keys. Choose it only for an
+                        address your own institution controls. Nothing is
+                        stored; the scripts are loaded again each time Ally
+                        Reporting opens.
+                      </p>
+                    </div>
+                  </fieldset>
+                  <div class="setup-button-group">
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      id="setup-ally-data-fetch-btn"
+                      onclick="setupFetchAllyData()"
+                    >
+                      <span aria-hidden="true" data-icon="download"></span>
+                      Fetch course data from URL
+                      <span class="visually-hidden">&nbsp;— Ally</span>
+                    </button>
+                  </div>
+                  <!-- Plain text, not a live region: setup-tool.js announces
                      every change through the shared announcer, and it is
                      refreshed when this card opens rather than on page load,
                      so a plain tools.html load reads no stored payload. -->
-                <p class="setup-help-text" id="setup-ally-data-status"></p>
-                <div class="setup-button-group">
-                  <button
-                    type="button"
-                    class="secondary-button"
-                    onclick="setupRemoveAllyData()"
-                  >
-                    <span aria-hidden="true" data-icon="trash"></span> Remove
-                    uploaded course data
-                    <span class="visually-hidden">&nbsp;— Ally</span>
-                  </button>
-                </div>
-               </form>
+                  <p class="setup-help-text" id="setup-ally-data-status"></p>
+                  <div class="setup-button-group">
+                    <button
+                      type="button"
+                      class="secondary-button"
+                      onclick="setupRemoveAllyData()"
+                    >
+                      <span aria-hidden="true" data-icon="trash"></span> Remove
+                      uploaded course data
+                      <span class="visually-hidden">&nbsp;— Ally</span>
+                    </button>
+                  </div>
+                </form>
               </div>
             </details>
           </section>
@@ -4950,8 +4987,8 @@
                 formatting. Scripts, styles, forms, images, embedded content and
                 event handlers are removed. Links must be <code>http</code>,
                 <code>https</code>, <code>mailto</code> or relative. Top-level
-                headings (<code>h1</code>, <code>h2</code>) are shown as
-                level-4 headings, because the panel already uses level 3.
+                headings (<code>h1</code>, <code>h2</code>) are shown as level-4
+                headings, because the panel already uses level 3.
               </p>
               <p>
                 Set <code>detailedFormat</code> to <code>"text"</code> to write
@@ -5103,12 +5140,7 @@
 
           <section class="output-section">
             <h2>HTML Output:</h2>
-            <div
-              id="output"
-              class="output"
-              role="region"
-              aria-live="off"
-            ></div>
+            <div id="output" class="output" role="region" aria-live="off"></div>
           </section>
 
           <div
@@ -5994,11 +6026,7 @@ Science,91</pre
 
                   <div class="gb-config-group">
                     <label for="gb-chart-title">Chart Title:</label>
-                    <input
-                      type="text"
-                      id="gb-chart-title"
-                      name="chart-title"
-                    />
+                    <input type="text" id="gb-chart-title" name="chart-title" />
                   </div>
 
                   <div class="gb-config-group">
@@ -6124,22 +6152,6 @@ Science,91</pre
 
               <!-- Result actions -->
               <div class="gb-result-actions">
-                <button
-                  type="button"
-                  id="gb-use-in-document"
-                  class="gb-action-button"
-                >
-                  <span aria-hidden="true" data-icon="fileText"></span>Use in
-                  Document
-                </button>
-                <button
-                  type="button"
-                  id="gb-save-template"
-                  class="gb-action-button"
-                >
-                  <span aria-hidden="true" data-icon="disk"></span>Save as
-                  Template
-                </button>
                 <button
                   type="button"
                   id="gb-create-another"
@@ -7375,8 +7387,12 @@ Science,91</pre
                     <span aria-hidden="true" data-icon="close"></span> Cancel
                   </button>
 
-                  <p id="convert-mode-cancel-note" class="help-text mathpix-cancel-note">
-                    Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                  <p
+                    id="convert-mode-cancel-note"
+                    class="help-text mathpix-cancel-note"
+                  >
+                    Cancel stops this page waiting for your files. MathPix may
+                    still charge for the request it has already received.
                   </p>
 
                   <span
@@ -8035,7 +8051,10 @@ Science,91</pre
                             class="visually-hidden"
                             >Edit MMD content</label
                           >
-                          <p id="resume-mmd-editor-hint" class="help-text">
+                          <p
+                            id="resume-mmd-editor-hint"
+                            class="visually-hidden help-text"
+                          >
                             The MathPix Markdown for this result. You can edit
                             it here.
                           </p>
@@ -9108,9 +9127,13 @@ Science,91</pre
 
                         STATIC STRUCTURE HERE, POPULATED BY
                         mathpix-scripts/ai-enhancement/mathpix-context-ai.js.
-                        The radio list and the override option list are the only
-                        generated parts, because their contents depend on the
-                        active provider and on the live model catalogue.
+                        T-80: ONE native select carries the choice. Its option
+                        list is the only generated part, because the contents
+                        depend on the active provider and on the live model
+                        catalogue. The measured recommendation leads, written
+                        "<name> (recommended)", and is selected; the other
+                        PDF-capable models follow. There is no radio, no
+                        "Chosen by measurement round" note and no disclosure.
 
                         NO LIVE REGION AND NO live ROLE anywhere in this block,
                         deliberately. Parcel MP-1 adds NO spoken line: every
@@ -9120,74 +9143,56 @@ Science,91</pre
                         workflow is #resume-context-ai-announce below, and
                         nothing in the picker writes to it.
 
-                        THREE STATES, EXACTLY ONE VISIBLE AT A TIME:
-                          - a measured recommendation exists  -> the fieldset
-                          - none exists for this provider     -> -none
+                        THREE STATES:
+                          - a measured recommendation exists  -> the select,
+                            recommended option first and selected
+                          - none exists for this provider     -> the select
+                            opens on "Choose a model"; -none is a second
+                            description of it
                           - the shared registry is absent     -> -unavailable,
-                            and the advanced disclosure is hidden too, because
-                            the run refuses before any model is resolved and an
-                            override would be a dead control.
+                            and the select is hidden, because the run refuses
+                            before any model is resolved and a select would be
+                            a dead control.
                       -->
                       <div
                         id="resume-context-model-picker"
                         class="mathpix-context-model-picker"
                         hidden
                       >
-                        <fieldset
-                          id="resume-context-model-recommended"
-                          class="mathpix-context-model-recommended"
+                        <div
+                          id="resume-context-model-advanced"
+                          class="mathpix-context-field"
                           hidden
                         >
-                          <legend>AI model for context auto-fill</legend>
-                          <div
-                            id="resume-context-model-options"
-                            class="model-options"
-                          ></div>
+                          <label for="resume-context-model-override"
+                            >AI model for context auto-fill</label
+                          >
+                          <select
+                            id="resume-context-model-override"
+                            aria-describedby="resume-context-model-override-hint"
+                          ></select>
                           <p
-                            id="resume-context-model-measured"
+                            id="resume-context-model-override-hint"
                             class="field-hint"
-                          ></p>
-                        </fieldset>
-                        <p
-                          id="resume-context-model-none"
-                          class="field-hint"
-                          hidden
-                        >
-                          No measured recommendation is available for the AI
-                          provider you have selected. Choose a model from the
-                          advanced list below.
-                        </p>
+                          >
+                            The list shows only models the AI provider you have
+                            selected can use to read a PDF.
+                          </p>
+                          <p
+                            id="resume-context-model-none"
+                            class="field-hint"
+                            hidden
+                          >
+                            No measured recommendation is available for the AI
+                            provider you have selected. Choose a model from the
+                            list.
+                          </p>
+                        </div>
                         <p
                           id="resume-context-model-unavailable"
                           class="field-hint"
                           hidden
                         ></p>
-                        <details
-                          id="resume-context-model-advanced"
-                          class="mathpix-context-model-advanced"
-                        >
-                          <summary>Use a different model</summary>
-                          <div class="mathpix-context-field">
-                            <label for="resume-context-model-override"
-                              >Override model</label
-                            >
-                            <select
-                              id="resume-context-model-override"
-                              aria-describedby="resume-context-model-override-hint"
-                            >
-                              <option value="">
-                                Use the recommended model above
-                              </option>
-                            </select>
-                            <p
-                              id="resume-context-model-override-hint"
-                              class="field-hint"
-                            >
-                              The list shows only models the AI provider you
-                              have selected can use to read a PDF.
-                            </p>
-                          </div>
-                        </details>
                       </div>
                       <button
                         type="button"
@@ -9278,7 +9283,6 @@ Science,91</pre
                         Run the ticked steps
                       </button>
                       <p id="resume-ai-status" tabindex="-1" hidden></p>
-                      <ul id="resume-ai-outcomes" hidden></ul>
                       <details id="resume-ai-correction-diff" hidden>
                         <summary>What MMD correction changed</summary>
                         <div id="resume-ai-correction-diff-body"></div>
@@ -9313,6 +9317,19 @@ Science,91</pre
                           corrections.
                         </p>
                         <p id="resume-ai-model-correction" class="ai-model"></p>
+                        <!-- RP-1 (RP-D1): the step's run status, static text, no live role; the ticker is visual only. -->
+                        <p
+                          id="resume-ai-progress-correction"
+                          class="ai-step-status"
+                          hidden
+                        >
+                          <span id="resume-ai-progress-correction-text"></span>
+                          <span
+                            id="resume-ai-progress-correction-timer"
+                            class="ai-step-timer"
+                            aria-hidden="true"
+                          ></span>
+                        </p>
                         <details
                           id="resume-ai-advanced-correction"
                           class="mathpix-context-model-advanced ai-change"
@@ -9333,7 +9350,10 @@ Science,91</pre
                               data-ai-step="context"
                               aria-describedby="resume-ai-step-context-hint"
                             />
-                            <span aria-hidden="true" data-icon="document"></span>
+                            <span
+                              aria-hidden="true"
+                              data-icon="document"
+                            ></span>
                             Context auto-fill
                           </label>
                         </div>
@@ -9341,11 +9361,25 @@ Science,91</pre
                           Fills the context fields from the PDF.
                         </p>
                         <p id="resume-ai-model-context" class="ai-model"></p>
+                        <p
+                          id="resume-ai-progress-context"
+                          class="ai-step-status"
+                          hidden
+                        >
+                          <span id="resume-ai-progress-context-text"></span>
+                          <span
+                            id="resume-ai-progress-context-timer"
+                            class="ai-step-timer"
+                            aria-hidden="true"
+                          ></span>
+                        </p>
                         <details
                           id="resume-ai-advanced-context"
                           class="mathpix-context-model-advanced ai-change"
                         >
-                          <summary>Change the model for Context auto-fill</summary>
+                          <summary>
+                            Change the model for Context auto-fill
+                          </summary>
                           <label for="resume-ai-select-context"
                             >Model for Context auto-fill</label
                           >
@@ -9370,11 +9404,25 @@ Science,91</pre
                           each picture that has none.
                         </p>
                         <p id="resume-ai-model-pictures" class="ai-model"></p>
+                        <p
+                          id="resume-ai-progress-pictures"
+                          class="ai-step-status"
+                          hidden
+                        >
+                          <span id="resume-ai-progress-pictures-text"></span>
+                          <span
+                            id="resume-ai-progress-pictures-timer"
+                            class="ai-step-timer"
+                            aria-hidden="true"
+                          ></span>
+                        </p>
                         <details
                           id="resume-ai-advanced-pictures"
                           class="mathpix-context-model-advanced ai-change"
                         >
-                          <summary>Change the model for Picture descriptions</summary>
+                          <summary>
+                            Change the model for Picture descriptions
+                          </summary>
                           <label for="resume-ai-select-pictures"
                             >Model for Picture descriptions</label
                           >
@@ -9797,8 +9845,12 @@ Science,91</pre
                       <span aria-hidden="true" data-icon="close"></span> Cancel
                     </button>
 
-                    <p id="resume-convert-cancel-note" class="help-text mathpix-cancel-note">
-                      Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                    <p
+                      id="resume-convert-cancel-note"
+                      class="help-text mathpix-cancel-note"
+                    >
+                      Cancel stops this page waiting for your files. MathPix may
+                      still charge for the request it has already received.
                     </p>
 
                     <span
@@ -14285,8 +14337,12 @@ Science,91</pre
                       <span aria-hidden="true" data-icon="close"></span> Cancel
                     </button>
 
-                    <p id="mathpix-convert-cancel-note" class="help-text mathpix-cancel-note">
-                      Cancel stops this page waiting for your files. MathPix may still charge for the request it has already received.
+                    <p
+                      id="mathpix-convert-cancel-note"
+                      class="help-text mathpix-cancel-note"
+                    >
+                      Cancel stops this page waiting for your files. MathPix may
+                      still charge for the request it has already received.
                     </p>
 
                     <span
@@ -19352,86 +19408,91 @@ Science,91</pre
               Markdown or LaTeX file, or a Word, Excel or PowerPoint file.
             </p>
             <div class="chat-attach-body">
-            <div
-              id="chat-attachment-card-host"
-              class="chat-attachment-card-host"
-              hidden
-            ></div>
-            <div class="chat-attach-main">
-            <div
-              id="chat-attachment-preview"
-              class="chat-attachment-preview"
-              role="region"
-              aria-label="Selected attachment"
-            ></div>
-            <!-- Plain paragraph, NO live role: reading status, maths or scan
+              <div
+                id="chat-attachment-card-host"
+                class="chat-attachment-card-host"
+                hidden
+              ></div>
+              <div class="chat-attach-main">
+                <div
+                  id="chat-attachment-preview"
+                  class="chat-attachment-preview"
+                  role="region"
+                  aria-label="Selected attachment"
+                ></div>
+                <!-- Plain paragraph, NO live role: reading status, maths or scan
                  advice and the free-model notice. The single spoken line is one
                  announce() call in chat-attach.js; this is its visible copy. -->
-            <div class="chat-attach-advice-row">
-            <p
-              id="chat-attachment-advice"
-              class="chat-attachment-advice"
-              hidden
-            ></p>
-            <button
-              type="button"
-              id="chat-open-mathpix"
-              class="chat-open-mathpix"
-              data-label-file="Open this file in MathPix"
-              data-label-tool="Open MathPix"
-              data-confirm-replace="MathPix already has a file open. Open {name} there instead? What MathPix has now will be cleared."
-              data-confirm-title="Replace the file in MathPix?"
-              hidden
-            >
-              <span aria-hidden="true" data-icon="arrowRight"></span>
-              <span class="chat-open-mathpix-label">Open MathPix</span>
-            </button>
-            <p
-              id="chat-open-mathpix-note"
-              class="chat-open-mathpix-note"
-              hidden
-            >Optional, and MathPix charges for it. It reads the file and lets you correct the text, and AI models usually do better with the corrected text. It opens ready to upload, shows the cost, and sends nothing until you confirm there.</p>
-            </div>
-            <div
-              id="chat-attachment-more"
-              class="chat-attachment-more"
-              hidden
-            ></div>
-            <p
-              id="chat-attachment-notice"
-              class="chat-attachment-notice"
-              role="status"
-              aria-live="off"
-              hidden
-            ></p>
-            </div>
-            <!-- Wired by chat/chat-attach.js (parcel P3b). Shown only while a
+                <div class="chat-attach-advice-row">
+                  <p
+                    id="chat-attachment-advice"
+                    class="chat-attachment-advice"
+                    hidden
+                  ></p>
+                  <button
+                    type="button"
+                    id="chat-open-mathpix"
+                    class="chat-open-mathpix"
+                    data-label-file="Open this file in MathPix"
+                    data-label-tool="Open MathPix"
+                    data-confirm-replace="MathPix already has a file open. Open {name} there instead? What MathPix has now will be cleared."
+                    data-confirm-title="Replace the file in MathPix?"
+                    hidden
+                  >
+                    <span aria-hidden="true" data-icon="arrowRight"></span>
+                    <span class="chat-open-mathpix-label">Open MathPix</span>
+                  </button>
+                  <p
+                    id="chat-open-mathpix-note"
+                    class="chat-open-mathpix-note"
+                    hidden
+                  >
+                    Optional, and MathPix charges for it. It reads the file and
+                    lets you correct the text, and AI models usually do better
+                    with the corrected text. It opens ready to upload, shows the
+                    cost, and sends nothing until you confirm there.
+                  </p>
+                </div>
+                <div
+                  id="chat-attachment-more"
+                  class="chat-attachment-more"
+                  hidden
+                ></div>
+                <p
+                  id="chat-attachment-notice"
+                  class="chat-attachment-notice"
+                  role="status"
+                  aria-live="off"
+                  hidden
+                ></p>
+              </div>
+              <!-- Wired by chat/chat-attach.js (parcel P3b). Shown only while a
                  Word or PowerPoint file with pictures to send is held and the
                  current model can read images; unticked on every attach. The
                  count is the pictures that would be sent. Native checkbox, and
                  no live region here: showing or hiding it is silent, and the
                  one attach line names the pictures. -->
-            <div id="chat-attach-pictures-wrap" hidden>
-              <input type="checkbox" id="chat-attach-pictures" />
-              <label for="chat-attach-pictures"
-                >Include <span id="chat-attach-pictures-count">0</span>
-                <span id="chat-attach-pictures-kind">pictures</span></label
-              >
-              <p
-                id="chat-attach-pictures-note"
-                class="chat-attach-pictures-note"
-                hidden
-              >
-                These go with your message, and with each later message while
-                this file stays in the conversation.
-              </p>
-              <div
-                id="chat-attach-pictures-strip"
-                class="chat-attach-pictures-strip"
-                aria-hidden="true"
-                hidden
-              ></div>
-            </div>
+              <div id="chat-attach-pictures-wrap" hidden>
+                <input type="checkbox" id="chat-attach-pictures" />
+                <label for="chat-attach-pictures"
+                  >Include <span id="chat-attach-pictures-count">0</span>
+                  <span id="chat-attach-pictures-kind">pictures</span></label
+                >
+                <p
+                  id="chat-attach-pictures-note"
+                  class="chat-attach-pictures-note"
+                  hidden
+                >
+                  These go with your message, and with each later message while
+                  this file stays in the conversation.
+                </p>
+                <div
+                  id="chat-attach-pictures-strip"
+                  class="chat-attach-pictures-strip"
+                  aria-hidden="true"
+                  hidden
+                ></div>
+              </div>
             </div>
           </div>
 
@@ -21880,7 +21941,11 @@ Science,91</pre
       src="https://matthewdeeprose.github.io/markdownit/markdown-it-helper.js"
     ></script>
     <script src="https://matthewdeeprose.github.io/markdownit/markdown-it-tab-handler.js"></script>
-    <script src="https://matthewdeeprose.github.io/markdownit/chart.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.js"
+      integrity="sha384-hfkuqrKeWFmnTMWN31VWyoe8xgdTADD11kgxmdpx2uyE6j5Az5uZq6u6AKYYmAOw"
+      crossorigin="anonymous"
+    ></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script>
       // Bump Chart.js's rendering pixel ratio for sharper canvas text on
@@ -21894,6 +21959,14 @@ Science,91</pre
           2,
           window.devicePixelRatio || 1,
         );
+        // Chart.js 4 recolours any dataset that sets no colour of its own
+        // (built-in Colors plugin). Keep 3.9.1's look until the owner rules.
+        if (
+          window.Chart.defaults.plugins &&
+          window.Chart.defaults.plugins.colors
+        ) {
+          window.Chart.defaults.plugins.colors.enabled = false;
+        }
       }
     </script>
 
@@ -24746,6 +24819,8 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-parse-adapter.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-core.js"></script>
     <script src="md-scripts/mermaid/mermaid-export-utils.js"></script>
+    <script src="vendor/chart-describe/src/text.js"></script>
+    <script src="vendor/chart-describe/src/charts.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-pie.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-flowchart.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-gantt.js"></script>

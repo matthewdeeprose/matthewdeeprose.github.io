@@ -340,14 +340,14 @@ class PDFConfidenceVisualiser {
           config.PAGE_NAV
         }" role="group" aria-label="${PDF_VISUALISER_CONFIG.ARIA.PAGE_NAV_LABEL}">
           <button type="button" id="pdf-vis-prev" class="${config.NAV_BUTTON}" 
-                  aria-label="${PDF_VISUALISER_CONFIG.ARIA.PREV_PAGE}" disabled>
+                  aria-label="${PDF_VISUALISER_CONFIG.ARIA.PREV_PAGE}" aria-disabled="true">
             <span aria-hidden="true">◀</span> Previous
           </button>
           <span id="pdf-vis-page-indicator" class="${config.PAGE_INDICATOR}">
             Page <span id="pdf-vis-current-page">-</span> of <span id="pdf-vis-total-pages">-</span>
           </span>
           <button type="button" id="pdf-vis-next" class="${config.NAV_BUTTON}"
-                  aria-label="${PDF_VISUALISER_CONFIG.ARIA.NEXT_PAGE}" disabled>
+                  aria-label="${PDF_VISUALISER_CONFIG.ARIA.NEXT_PAGE}" aria-disabled="true">
             Next <span aria-hidden="true">▶</span>
           </button>
         </div>
@@ -858,6 +858,10 @@ class PDFConfidenceVisualiser {
       return;
     }
 
+    // Drop the previous draw's region buttons first, or each Show Overlays or
+    // Show Labels press adds another set (and off leaves Tab stops for hidden boxes)
+    this.clearToggletipRegions();
+
     const ctx = overlay.getContext("2d");
 
     PDFVisualiserOverlays.drawOverlays(ctx, this.currentPageData, viewport, {
@@ -937,12 +941,20 @@ class PDFConfidenceVisualiser {
       this.elements.totalPages.textContent = totalPages;
     }
 
-    // Update button states
+    // Update button states. aria-disabled, not disabled: the button just
+    // pressed stays focusable at the first and last page, so focus is not
+    // dropped to <body>. nextPage() and previousPage() guard the ends.
     if (this.elements.prevButton) {
-      this.elements.prevButton.disabled = currentPage <= 1;
+      this.elements.prevButton.setAttribute(
+        "aria-disabled",
+        String(currentPage <= 1)
+      );
     }
     if (this.elements.nextButton) {
-      this.elements.nextButton.disabled = currentPage >= totalPages;
+      this.elements.nextButton.setAttribute(
+        "aria-disabled",
+        String(currentPage >= totalPages)
+      );
     }
   }
 

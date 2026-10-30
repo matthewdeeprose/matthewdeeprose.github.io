@@ -568,7 +568,41 @@ window.MermaidAccessibilityUtils = (function () {
   /** Marks a wrapper whose region role, name and tab stop this module wrote. */
   const TABLE_SCROLL_REGION_ATTRIBUTE = "data-scroll-region";
 
+  /**
+   * Marks a table laid out as stacked groups. The layout is CSS only
+   * (`md-scripts/css/mermaid-description-styles.css`); this attribute is the
+   * switch. The export's clean clone removes it, so no export carries it.
+   */
+  const TABLE_STACKED_ATTRIBUTE = "data-stacked";
+
+  /**
+   * Set for one synchronous read of the width a table needs with every word
+   * whole (the stylesheet turns word-breaking off under it), then removed.
+   */
+  const TABLE_MEASURE_ATTRIBUTE = "data-measure-whole-words";
+
   let tableCaptionCounter = 0;
+
+  /**
+   * Can this table be laid out as stacked groups without losing anything?
+   * It needs one header row, a visible column heading for every body cell
+   * (the `data-label` this module writes), and no spanning cells. A table that
+   * fails stays a table and keeps the scroll region below as its fallback.
+   *
+   * @param {HTMLTableElement} table
+   * @returns {boolean}
+   */
+  function isStackableTable(table) {
+    if (table.querySelectorAll("thead tr").length !== 1) return false;
+    if (table.querySelector("[colspan], [rowspan]")) return false;
+    const bodyCells = Array.from(table.querySelectorAll("tbody td"));
+    return (
+      bodyCells.length > 0 &&
+      bodyCells.every(function (cell) {
+        return cell.hasAttribute("data-label");
+      })
+    );
+  }
 
   /**
    * Make a table's scroll wrapper reachable and named WHILE it scrolls (SC 2.1.1,
@@ -589,7 +623,21 @@ window.MermaidAccessibilityUtils = (function () {
     if (!caption) return;
 
     const sync = function () {
-      const scrolls = wrapper.scrollWidth > wrapper.clientWidth;
+      // Stack when the table cannot be read as a table in this panel. Measured
+      // 29 October 2026: a table that "fits" does so by breaking words letter by
+      // letter (the cells inherit overflow-wrap: break-word), at 414 px and up to
+      // 768 px for wardley. So the need is read with words whole: lift the stacked
+      // form, switch breaking off, read, put both back. The reads are synchronous,
+      // so no frame is painted between them. A table that is not stackable keeps
+      // the scroll region below, decided on the ordinary layout as before.
+      table.removeAttribute(TABLE_STACKED_ATTRIBUTE);
+      table.setAttribute(TABLE_MEASURE_ATTRIBUTE, "true");
+      const needsRoom = wrapper.scrollWidth > wrapper.clientWidth;
+      table.removeAttribute(TABLE_MEASURE_ATTRIBUTE);
+      const stacks = needsRoom && isStackableTable(table);
+      if (stacks) table.setAttribute(TABLE_STACKED_ATTRIBUTE, "true");
+
+      const scrolls = !stacks && wrapper.scrollWidth > wrapper.clientWidth;
       const marked = wrapper.hasAttribute(TABLE_SCROLL_REGION_ATTRIBUTE);
       if (scrolls && !marked) {
         if (!caption.id) {

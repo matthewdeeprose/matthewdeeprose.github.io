@@ -5912,9 +5912,9 @@ select:focus-visible {
 }
 
 select {
-  color: #fffff4;
+  color: #00131d;
   border: 0.2rem solid #00131d;
-  background-color: #00131d;
+  background-color: #fffff4;
 }
 
 select:focus,
@@ -6050,6 +6050,8 @@ button[disabled],
 #imgdesc-generate-local[aria-disabled="true"],
 #imgdesc-regenerate[aria-disabled="true"],
 #convert-mode-convert-btn[aria-disabled="true"],
+#pdf-vis-prev[aria-disabled="true"],
+#pdf-vis-next[aria-disabled="true"],
 #imgdesc-redescribe[aria-disabled="true"] {
   pointer-events: none !important;
   color: #00131d !important;
@@ -6779,6 +6781,17 @@ pre.language-json {
 .local-chat-bubble-user {
   background-color: #d8e8f0;
   color: #00131d;
+}
+
+/* The attached file in a sent Chat question (P15). Border and icon use the focus-glow colour. */
+.chat-bubble-attachment-reference {
+  background-color: #f5fafc;
+  border-color: #005c84;
+  color: #00131d;
+}
+
+.chat-bubble-attachment-reference > [data-icon] {
+  color: #005c84;
 }
 
 .local-chat-bubble-assistant {

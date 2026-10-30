@@ -290,6 +290,9 @@
    */
   async function restoreSession() {
     const els = S.els;
+    // Silent while the restore rebuilds the list; released here on every path that does not hand on to showRestoreBanner.
+    let handedToBanner = false;
+    silenceLogForRestore();
     try {
       const json = sessionStorage.getItem(S.SESSION_KEY);
       if (!json) return false;
@@ -312,11 +315,14 @@
       S.messages = data.messages;
       await rebuildMessageList();
 
+      handedToBanner = true;
       return true;
     } catch (e) {
       S.logWarn("Failed to restore session:", e.message);
       clearSession();
       return false;
+    } finally {
+      if (!handedToBanner) releaseLogAfterRestore();
     }
   }
 
@@ -402,21 +408,51 @@
     }
   }
 
+  // ── The log is silent while a restore rebuilds it ───────────────────────
+  // The restored messages and the banner go into #chat-messages (role="log", polite), which would read the whole rebuild aloud;
+  // the announcer's restore line below is the one voice. aria-live="off" silences the log without losing it.
+
+  const LOG_LIVE_RESTING = "polite"; // as in the static markup (tools.html)
+  let logSilencedForRestore = false;
+
+  function silenceLogForRestore() {
+    logSilencedForRestore = true;
+    S.setMessageListLive("off");
+  }
+
+  // Back to polite in a LATER task, as the error path in chat-core.js does: the tree diff for the inserts is computed at the end of
+  // the task, and a flip in the same task would let the log speak them. Idempotent, so every path may call it.
+  function releaseLogAfterRestore() {
+    if (!logSilencedForRestore) return;
+    logSilencedForRestore = false;
+    setTimeout(function () {
+      S.setMessageListLive(LOG_LIVE_RESTING);
+    }, 0);
+  }
+
   // ── Restore banner ──────────────────────────────────────────────────────
 
   /**
    * Show the "previous conversation restored" banner at the top of the message
    * list, offering Continue or Start fresh. Reuses the local-chat-restore-banner-*
    * classes (Decision 3) for styling parity; ids are Chat-scoped via S.elId().
+   * The banner is plain markup, not a live region: the announcer speaks the line.
    */
   function showRestoreBanner() {
+    try {
+      buildRestoreBanner();
+    } finally {
+      releaseLogAfterRestore();
+    }
+  }
+
+  function buildRestoreBanner() {
     const messages = S.messages;
     const els = S.els;
     if (!els.messageList) return;
 
     const banner = document.createElement("div");
     banner.className = "local-chat-restore-banner";
-    banner.setAttribute("role", "status");
     banner.id = S.elId("restore-banner");
 
     const msgCount = messages.length;

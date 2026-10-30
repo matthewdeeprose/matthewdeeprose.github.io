@@ -358,14 +358,17 @@
   function renderUserContent(bubble, content) {
     if (!isMultimodalContent(content)) {
       bubble.textContent = content; // text-only path — unchanged
-      return;
+    } else {
+      const textSpan = document.createElement("span");
+      textSpan.className = "chat-bubble-user-text";
+      textSpan.textContent = extractUserText(content); // textContent — never HTML
+      bubble.appendChild(textSpan);
+      const att = classifyAttachmentPart(content);
+      if (att) bubble.appendChild(buildBubbleAttachmentChip(att));
     }
-    const textSpan = document.createElement("span");
-    textSpan.className = "chat-bubble-user-text";
-    textSpan.textContent = extractUserText(content); // textContent — never HTML
-    bubble.appendChild(textSpan);
-    const att = classifyAttachmentPart(content);
-    if (att) bubble.appendChild(buildBubbleAttachmentChip(att));
+    // Question heading (parcel P10): added after the content is set, on both paths, so live,
+    // restored, cancelled and committed questions all get it. A no-op when chat-turn-nav.js is absent.
+    if (window.ChatTurnNav) window.ChatTurnNav.decorateQuestion(bubble);
   }
 
   // ── Bubble rendering ───────────────────────────────────────────────────────
@@ -1185,6 +1188,18 @@
     refreshAllChatSaveAudioButtons();
   }
 
+  // The message list is a polite live region, and an identical-value
+  // textContent or setAttribute is still a mutation inside it. These refresh
+  // functions run for every reply after every reply, so write only on a real
+  // change (AGENTS.md § Announcements: write to a region only if the text changed).
+  function setTextIfChanged(el, value) {
+    if (el && el.textContent !== value) el.textContent = value;
+  }
+
+  function setAttributeIfChanged(el, name, value) {
+    if (el && el.getAttribute(name) !== value) el.setAttribute(name, value);
+  }
+
   /**
    * Sync a single Save button's labels to the current format. Called by
    * refreshChatSaveAudioEnabled when the button is in its "ready" branch
@@ -1208,14 +1223,13 @@
     // states below carried their reason in the name only. Letting the content
     // name the button keeps the two in step by construction. The icon span is
     // aria-hidden, so it contributes nothing.
-    if (label) label.textContent = "Save as " + upper;
-    if (formatLabel) formatLabel.textContent = upper;
-    if (formatBtn) {
-      formatBtn.setAttribute(
-        "aria-label",
-        "Change audio format. Currently " + upper + ".",
-      );
-    }
+    setTextIfChanged(label, "Save as " + upper);
+    setTextIfChanged(formatLabel, upper);
+    setAttributeIfChanged(
+      formatBtn,
+      "aria-label",
+      "Change audio format. Currently " + upper + ".",
+    );
   }
 
   // ── Per-bubble enabled-state predicate ─────────────────────────────
@@ -1269,21 +1283,22 @@
 
     const canExport =
       hasText && !isGenerating && isNeural && modelReady && !someoneElseExporting;
-    btn.disabled = !canExport;
-    if (formatBtn) formatBtn.disabled = !canExport;
+    // Assigning disabled = true to an already-disabled button still records an
+    // attribute mutation, so compare first, as for the labels below.
+    const disable = !canExport;
+    if (btn.disabled !== disable) btn.disabled = disable;
+    if (formatBtn && formatBtn.disabled !== disable) formatBtn.disabled = disable;
 
     // Label nudges users to the action required (most-specific first). The
     // visible text carries the reason in parentheses and is the button's only
     // name source, so the reason reaches a screen reader through the name
     // itself — see the SC 2.5.3 note in refreshSaveButtonFormatLabels.
     if (!isNeural) {
-      if (label)
-        label.textContent = "Save as " + upper + " (requires natural voice)";
+      setTextIfChanged(label, "Save as " + upper + " (requires natural voice)");
     } else if (!modelReady) {
-      if (label) label.textContent = "Save as " + upper + " (model loading…)";
+      setTextIfChanged(label, "Save as " + upper + " (model loading…)");
     } else if (someoneElseExporting) {
-      if (label)
-        label.textContent = "Save as " + upper + " (another export running)";
+      setTextIfChanged(label, "Save as " + upper + " (another export running)");
     } else {
       refreshSaveButtonFormatLabels(btn);
     }
@@ -1561,6 +1576,12 @@
     split.className = "imgdesc-save-audio-split";
     split.setAttribute("role", "group");
     split.setAttribute("aria-label", "Save audio");
+    // The Save buttons' own state changes (the voice model finishing loading,
+    // a new reply's buttons enabling, a format change) are not news the person
+    // asked for, so the group sits silent inside the polite conversation log.
+    // The person's own actions already speak once through the shared announcer.
+    // AGENTS.md § Announcements: aria-live="off" silences without losing it.
+    split.setAttribute("aria-live", "off");
 
     const main = document.createElement("button");
     main.type = "button";
