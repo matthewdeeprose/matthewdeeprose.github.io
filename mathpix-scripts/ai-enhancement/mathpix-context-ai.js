@@ -1799,6 +1799,13 @@ const MathPixContextAI = (function () {
     const self = this;
 
     return new Promise((resolve, reject) => {
+      // RP-3d: cancelQuietRun settles the send with a distinct rejection, so an
+      // abort is never turned into the timeout sentence above.
+      self._cancelSend = () => {
+        if (settled) return;
+        settled = true;
+        reject(_cancelError());
+      };
       timeoutSignal.addEventListener("abort", () => {
         if (settled) return;
         settled = true;
@@ -1877,6 +1884,13 @@ const MathPixContextAI = (function () {
   function _refusalError(message) {
     const error = new Error(message);
     error.isRefusal = true;
+    return error;
+  }
+
+  /** RP-3d: the rejection a Cancel produces, told apart from a timeout and a failure. */
+  function _cancelError() {
+    const error = new Error("Context auto-fill cancelled.");
+    error.isCancel = true;
     return error;
   }
 
@@ -2473,14 +2487,48 @@ const MathPixContextAI = (function () {
     // S6-3b: `{ quiet: true }` is the programmatic entry the AI tab uses. A
     // click passes an Event here, whose `quiet` is undefined, so the wired
     // button keeps its voice. The result is for the caller; the click ignores it.
-    const outcome = { ran: false, filled: false, line: null };
+    const outcome = { ran: false, filled: false, cancelled: false, line: null };
     this._quietRun = !!(options && options.quiet === true);
+    this._cancelledRun = false;
     try {
       await this._analyseRun(outcome);
     } finally {
       this._quietRun = false;
+      this._cancelledRun = false;
+      this._cancelSend = null;
     }
     return outcome;
+  }
+
+  /**
+   * RP-3d: Cancel a quiet run (the AI tab). The send settles with a distinct
+   * rejection (never the timeout sentence), nothing is written to the context
+   * store, and the embed's own "Request cancelled" line is silenced on this
+   * instance for the length of the call. Returns false when no quiet run is busy.
+   * @returns {boolean}
+   */
+  function cancelQuietRun() {
+    if (!this._quietRun || !this._busy || this._cancelledRun) return false;
+    this._cancelledRun = true;
+    const embed = this.embed;
+    if (embed && typeof embed.cancelRequest === "function") {
+      const ownAnnounce = Object.prototype.hasOwnProperty.call(embed, "announceToScreenReader");
+      const savedAnnounce = embed.announceToScreenReader;
+      const savedNotify = embed.showNotifications;
+      embed.announceToScreenReader = () => {};
+      embed.showNotifications = false;
+      try {
+        embed.cancelRequest("Cancelled from the AI tab");
+      } catch (cancelError) {
+        logWarn("Failed to cancel embed:", cancelError);
+      } finally {
+        if (ownAnnounce) embed.announceToScreenReader = savedAnnounce;
+        else delete embed.announceToScreenReader;
+        embed.showNotifications = savedNotify;
+      }
+    }
+    if (typeof this._cancelSend === "function") this._cancelSend();
+    return true;
   }
 
   async function _analyseRun(outcome) {
@@ -2606,6 +2654,7 @@ const MathPixContextAI = (function () {
       this._progressShow("Preparing the document…", "loader", { spin: true });
       await this.initEmbed(mmd, schema);
       await this.attachPDF(pdf);
+      if (this._cancelledRun) throw _cancelError();
 
       // Info-only cost preview, now that analyzeFile has produced its figure.
       this._renderCostPreview(mmd);
@@ -2626,6 +2675,7 @@ const MathPixContextAI = (function () {
       });
       this._announce("Generating context suggestions. This can take a moment…");
       const text = await this.sendWithTimeout(userPrompt, CONTEXT_TIMEOUT_MS);
+      if (this._cancelledRun) throw _cancelError();
 
       this._progressShow("Finalising…", "loader", { spin: true });
       const parsed = this.parseResponse(text, schema);
@@ -2660,6 +2710,13 @@ const MathPixContextAI = (function () {
       outcome.filled = true;
       outcome.line = "Context fields filled. Review and edit them.";
     } catch (error) {
+      if (error && error.isCancel) {
+        // RP-3d: a Cancel is not a failure. Nothing was written; no bridge, no sentence.
+        logInfo("Context auto-fill cancelled");
+        this._progressClear();
+        outcome.cancelled = true;
+        return;
+      }
       logError("Context auto-fill failed:", error);
       this._progressFail();
       // Every failure path bridges to the central handler (idempotent + silent)
@@ -2906,6 +2963,7 @@ const MathPixContextAI = (function () {
     PICKER_ELEMENT_IDS,
     refreshAvailability,
     handleAnalyseClick,
+    cancelQuietRun,
     _analyseRun,
     _quietRun: false,
     handleUndoClick,

@@ -123,9 +123,13 @@
 }
 
 /* Model filter bar (family + search + count + reset) */
-.imgdesc-model-family-select,
 .imgdesc-model-search-input {
   background-color: #fffff4;
+}
+
+/* HOV-7: a select rests on Grey D like a button; the search field beside it stays cream. */
+.imgdesc-model-family-select {
+  background-color: #eceef0;
 }
 
 .imgdesc-model-family-select:focus-visible,
@@ -1171,12 +1175,19 @@ section.ally-cache-entries {
   background: #e1e8ec;
   border: 1px solid currentcolor;
 }
+/* HOV-7: pressed takes the Top and Bottom black (#231f20, cream text, #002e3b hover). The cue that does
+   not rely on colour is the double border: it turns cream here, because a navy double border on this
+   black fill would read as one solid line. */
 .ally-token-toggle[aria-pressed="true"] {
-  color: #b3dbd2;
+  background-color: #231f20;
+  color: #fffff4;
+  border-color: #fffff4;
+  border-style: double;
 }
-.ally-token-toggle[aria-pressed="true"]:hover,
-.ally-token-toggle[aria-pressed="true"]:focus-visible {
-  color: currentcolor;
+.ally-token-toggle[aria-pressed="true"]:hover:not(:where(:focus-visible)) {
+  background-color: #002e3b;
+  color: #fffff4;
+  border: 0.2rem double #fffff4;
 }
 .ally-endpoint-fieldset {
   border: 1px solid currentcolor;
@@ -1233,10 +1244,16 @@ section.ally-cache-entries {
 }
 .ally-form-group input[type="text"],
 .ally-form-group input[type="password"],
-.ally-form-group input[type="url"],
-.ally-form-group select {
+.ally-form-group input[type="url"] {
   color: currentcolor;
   background: #fffff4;
+  border: 0.2rem solid #00131d !important;
+  outline: 0.2rem solid #e1e8ec !important;
+}
+/* HOV-7: the select keeps the border and outline above but rests on Grey D. */
+.ally-form-group select {
+  color: currentcolor;
+  background: #eceef0;
   border: 0.2rem solid #00131d !important;
   outline: 0.2rem solid #e1e8ec !important;
 }
@@ -1977,9 +1994,14 @@ div[data-latex-addition="true"] pre:focus-visible,
   color: #005c84;
 }
 
-/* Smaller glow for the status bar's buttons; sizes live in main.css. */
-#status-bar button:is(:hover, :focus-visible) {
+/* Smaller glow for the status bar's buttons; sizes live in main.css.
+   HOV-2b: keyboard focus only, and it keeps the button's resting fill (main.css sets
+   that fill only while neither hovered nor focused). Hover takes the pale tint. */
+#status-bar button:focus-visible {
   box-shadow: 0 0 0 0.2rem #005c84 !important;
+  background-color: transparent;
+  color: inherit;
+  border-color: transparent;
 }
 
 #mathjax-status[data-ready="false"] #mathjax-status-value,
@@ -3924,6 +3946,69 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border-top-color: #495961;
 }
 
+/* HOV-12: the action button (for example "Undo") and the close "x" in the modal status bar are
+   one matching pair of solid buttons: cream fill, navy text, the same height and corner radius,
+   no grey fill and no black border. On the yellow warning bar cream would nearly vanish, so the
+   pair is navy with cream text there. Keyboard focus is a ring in the bar's own text colour, two
+   pixels clear of the button, so the ring is judged against the bar. The !importants out-rank the
+   transparent outline and border that css/universal-modal.css and dark.css set with !important. */
+.universal-modal-status[class]
+  :is(.universal-modal-status-action, .universal-modal-status-dismiss) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 2.25rem;
+  min-width: 2.25rem;
+  padding: 0 0.75rem;
+  opacity: 1;
+  background-color: #fffff4 !important;
+  color: #00131d !important;
+  border: 0.2rem solid #fffff4 !important;
+  border-radius: 4px;
+  box-shadow: none !important;
+}
+
+.universal-modal-status[class] .universal-modal-status-dismiss {
+  padding: 0;
+}
+
+.universal-modal-status[class]
+  :is(.universal-modal-status-action, .universal-modal-status-dismiss):hover {
+  background-color: #e3e3cf !important;
+  border-color: #e3e3cf !important;
+}
+
+.universal-modal-status[class]
+  :is(
+    .universal-modal-status-action,
+    .universal-modal-status-dismiss
+  ):focus-visible {
+  outline: 0.2rem solid #fffff4 !important;
+  outline-offset: 2px !important;
+}
+
+.universal-modal-status.status-warning
+  :is(.universal-modal-status-action, .universal-modal-status-dismiss) {
+  background-color: #00131d !important;
+  color: #fffff4 !important;
+  border-color: #00131d !important;
+}
+
+.universal-modal-status.status-warning
+  :is(.universal-modal-status-action, .universal-modal-status-dismiss):hover {
+  background-color: #2a4150 !important;
+  border-color: #2a4150 !important;
+}
+
+.universal-modal-status.status-warning
+  :is(
+    .universal-modal-status-action,
+    .universal-modal-status-dismiss
+  ):focus-visible {
+  outline-color: #00131d !important;
+}
+
 /* advanced models */
 .active-filters {
   color: #005c84;
@@ -4456,11 +4541,15 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border-color: rgba(141, 57, 112, 0.65);
   color: #fffff4;
 }
-.gb-step.active .gb-step-number {
+/* HOV-9: the current step is blue with a navy edge and no glow or growth at rest; hover and
+   keyboard focus show the shared ring (block below). The .gb-steps prefix out-ranks
+   graph-builder.css, which still sets scale(1.1) on this circle. */
+.gb-steps .gb-step.active .gb-step-number {
   background-color: #005c84;
   color: #fffff4;
-  border-color: #005c84;
-  box-shadow: 0 0 0 4px rgba(0, 92, 132, 0.2);
+  border-color: #00131d;
+  box-shadow: none;
+  transform: none;
 }
 .gb-step.completed .gb-step-number {
   background-color: #005051;
@@ -4469,27 +4558,50 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   box-shadow: 0 0 0 2px rgba(0, 80, 81, 0.2);
 }
 .gb-step.active .gb-step-label {
-  color: #005c84;
+  color: #00131d;
 }
 .gb-step.completed .gb-step-label {
   color: #005051;
 }
+/* HOV-12: a completed step also shows a tick before its label (the number stays in the circle).
+   The "/ ''" alternative text makes the tick decorative so it stays out of the accessible name. */
+.gb-step.completed .gb-step-label::before {
+  content: "\2713\FE0E" / "";
+  margin-inline-end: 0.35em;
+}
 .gb-step.completed::after {
   background-color: #005051;
 }
-.gb-step-button:hover .gb-step-label {
-  color: #005c84;
-}
-.gb-step-button:focus .gb-step-number {
-  outline-color: #005c84;
-}
+/* HOV-9: waiting circles take the grey button fill, dark numbers and a slate edge (3.46:1
+   against the page). */
 .gb-step-non-interactive .gb-step-number {
-  background-color: #f8f9fa;
-  border-color: #e9ecef;
-  color: #495961;
+  background-color: #eceef0;
+  border-color: #758d9a;
+  color: #00131d;
 }
 .gb-step-non-interactive .gb-step-label {
   color: #495961;
+}
+/* HOV-9: hover and keyboard focus on the interactive step are one look, the shared ring round
+   the number (cream gap, blue ring): no fill change, no growth, no outline, and no second ring
+   or tint on the button box. The old hover label colour rule is gone with them. */
+.gb-steps .gb-step .gb-step-button:is(:hover, :focus-visible) .gb-step-number,
+.gb-steps
+  .gb-step.active
+  .gb-step-button:is(:hover, :focus-visible)
+  .gb-step-number {
+  box-shadow:
+    0 0 0 0.2rem #fffff4,
+    0 0 0 0.5rem #005c84;
+  transform: none;
+}
+.gb-steps .gb-step-button:focus .gb-step-number {
+  outline-style: none;
+}
+.gb-steps .gb-step-button:is(:hover, :focus-visible) {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
 }
 .gb-original-image {
   border-color: #495961;
@@ -4524,7 +4636,7 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   }
 }
 @media (prefers-contrast: high) {
-  .gb-step.active .gb-step-number {
+  .gb-steps .gb-step.active .gb-step-number {
     box-shadow: 0 0 0 6px rgba(0, 92, 132, 0.4);
   }
 }
@@ -4557,19 +4669,9 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   background-color: rgba(0, 92, 132, 0.1);
 }
 
-/* Interactive states - colours */
-.mdSortableTable-show-more-button:hover,
-.mdSortableTable-show-less-button:hover,
-.mdSortableTable-show-all-button:hover,
-.mdSortableTable-show-more-button:focus,
-.mdSortableTable-show-less-button:focus,
-.mdSortableTable-show-all-button:focus {
-  background-color: #005c84;
-  color: #fffff4;
-  box-shadow: 0 0 0 0.4rem #005c84;
-  outline: 0.2rem solid #fffff4 !important;
-  border: 0.2rem solid #fffff4;
-}
+/* Interactive states: HOV-2b removed the paired hover and focus fill swap. Hover takes
+   the pale tint (the HOV-1 list near the global button rules); keyboard focus keeps the
+   fill and shows the global ring. */
 
 /* Large tablets and small desktops - colours */
 @media (max-width: 900px) {
@@ -4648,17 +4750,17 @@ body.mathpix-manager-open .imgdesc-status-error:not(:empty) {
   border-right: 1px solid #fffff4;
 }
 
-/* Sort Button Styles */
-.mdSortableTable-sort-button:hover,
-.mdSortableTable-sort-button:focus-visible {
-  outline: 2px solid #fffff4 !important;
+/* Sort Button Styles. HOV-2b: hover is the pale tint with no outline; keyboard focus
+   keeps the transparent fill and cream text and shows only the cream outline. */
+.mdSortableTable-sort-button:hover:not(:where(:focus-visible)) {
   border: 0rem solid #00131d !important;
-  box-shadow: 0 0 0 0rem #005c84;
   color: #00131d;
 }
 
 .mdSortableTable-sort-button:focus-visible {
-  background-color: rgba(255, 255, 244, 0.25);
+  outline: 2px solid #fffff4 !important;
+  border: 0rem solid #00131d !important;
+  box-shadow: 0 0 0 0rem #005c84;
 }
 
 /* Table Body Styles */
@@ -5204,7 +5306,7 @@ input[type="file"] {
 
 .chart-description,
 .mermaid-description {
-  background-color: #9fb1bd;
+  background-color: #e1e8ec;
 }
 
 /* Mermaid description inset cards — moved here from
@@ -5375,20 +5477,25 @@ h3.mermaid-details-heading {
 }
 
 .chart-controls {
-  background-color: #9fb1bd;
-  border-top: 1px solid #9fb1bd;
+  background-color: #e1e8ec;
+  border-top: 1px solid #e1e8ec;
 }
 .chart-view-button {
   border: 0.2rem solid #fffff4;
+}
+
+.chart-view-button:focus-visible {
+  border: 0.2rem solid #005c84;
+  outline: 0.2rem solid transparent;
 }
 /* Chart controls ends */
 
 /* Mermaid */
 .mermaid-theme-label,
 .mermaid-orientation-label {
-  padding: 0.37rem;
-  background: #00131d;
-  color: #fffff4 !important;
+  padding: 0;
+  background: none;
+  color: #00131d;
 }
 
 /* Break-specific styles */
@@ -5434,15 +5541,47 @@ h3.mermaid-details-heading {
 }
 
 .mermaid-view-controls {
-  background: #9fb1bd;
+  background: #e1e8ec;
   border: 1px solid #00131d;
 }
 
 /* Colours */
 
 .mermaid-controls {
-  background-color: #9fb1bd;
+  background-color: #e1e8ec;
   border: 1px solid #00131d;
+  border-top-width: 2px;
+}
+
+/* The Mermaid bar buttons and theme select share one grey fill at rest.
+   The two-class selectors beat the global button and select rules. Hover and
+   keyboard focus keep their own rules below. */
+.mermaid-controls button.mermaid-control-button,
+.mermaid-view-controls button.mermaid-view-button,
+.mermaid-controls .mermaid-theme-select {
+  background: #495961;
+  color: #fffff9;
+  border-color: transparent;
+}
+
+/* SEL-7: keyboard focus keeps the fill and shows only the ring; hover is a
+   quiet tint with no glow. The :not() guard lets focus win when both apply. */
+.mermaid-controls button.mermaid-control-button:focus-visible,
+.mermaid-view-controls button.mermaid-view-button:focus-visible {
+  background-color: #495961;
+  color: #fffff9;
+  /* cream gap, then a slimmer ring; z-index lifts it over touching neighbours */
+  box-shadow: 0 0 0 0.15rem #fffff4, 0 0 0 0.35rem #005c84;
+  position: relative;
+  z-index: 1;
+}
+
+.mermaid-controls button.mermaid-control-button:hover:not(:focus-visible),
+.mermaid-view-controls button.mermaid-view-button:hover:not(:focus-visible) {
+  background-color: #e1e8ec;
+  color: #00131d;
+  border-color: #00131d;
+  box-shadow: none;
 }
 
 .mermaid-size-slider {
@@ -5911,14 +6050,38 @@ select:focus-visible {
   border: 2px solid #00131d;
 }
 
+/* HOV-7: a select rests on Grey D (#eceef0) and hovers on #d5e4dc (HOV-14a), the same pair as a button.
+   Focus is unchanged: it keeps the cream fill and the ring below. The hover glow is unchanged too. */
 select {
   color: #00131d;
   border: 0.2rem solid #00131d;
+  background-color: #eceef0;
+}
+
+select:hover:not(:focus),
+#chat-model-select:hover:not(:focus),
+#local-chat-model-select:hover:not(:focus) {
+  background-color: #d5e4dc;
+  color: #00131d;
+  box-shadow: 0 0 0 0.4rem #005c84;
+  outline: 0.2rem solid #fffff4 !important;
+  border: 0.2rem solid #00131d;
+}
+
+/* The Mermaid theme select keeps its grey fill on hover, beating select:hover:not(:focus). */
+.mermaid-controls .mermaid-theme-select:hover:not(:focus) {
+  background: #495961;
+  color: #fffff9;
+}
+
+/* The two id rules below rest on Grey D and would beat select:focus, so only their fill is restated
+   here to keep focus cream (naming them in the rule above would also override their own borders). */
+#chat-model-select:focus,
+#local-chat-model-select:focus {
   background-color: #fffff4;
 }
 
-select:focus,
-select:hover {
+select:focus {
   background-color: #fffff4;
   color: #00131d;
   box-shadow: 0 0 0 0.4rem #005c84;
@@ -5932,7 +6095,7 @@ select:hover {
  * UA's white while the inherited text colour stays, which is illegible in dark theme.
  * This is the same colour .page-wrap paints, so the closed field looks unchanged. */
 #chat-model-select {
-  background-color: #fffff4;
+  background-color: #eceef0;
 }
 
 /* Local Chat's model select has the same light-field treatment (local-chat.css sets
@@ -5940,7 +6103,7 @@ select:hover {
  * background, for the same drop-down reason. The id beats that class selector, so
  * local-chat.css itself needs no change. */
 #local-chat-model-select {
-  background-color: #fffff4;
+  background-color: #eceef0;
 }
 
 /* select */
@@ -6193,13 +6356,6 @@ a:hover {
   text-decoration: none;
 }
 
-#myBtn:hover,
-#myBtn:focus,
-#myBtn2:hover,
-#myBtn2:focus {
-  box-shadow: 0 0 0 0.3rem #005c84 !important;
-}
-
 /* skip link */
 .skip-link {
   color: #00131d;
@@ -6225,7 +6381,8 @@ summary:hover {
   /* border: 0.2rem solid #fffff4; */
 }
 
-details:hover {
+details:hover,
+details:focus-visible {
   outline: 0.2rem solid #005c84;
 }
 
@@ -6244,27 +6401,66 @@ summary:focus:not(:focus-visible) {
   border: 0rem solid #00131d;
 }
 
+/* HOV-4: a default button rests on Grey D with dark text (the owner's pick after
+   the HOV-3 trial); the border stays navy and focus keeps the cream gap + blue ring. */
 button {
-  color: #fffff4;
+  color: #00131d;
   border: 0.2rem solid #00131d;
   margin-right: 0.3rem;
-  background-color: #00131d;
+  background-color: #eceef0;
 }
 
 button.regButton:focus:not(:focus-visible) {
-  color: #fffff4;
-  background-color: #00131d;
+  color: #00131d;
+  background-color: #eceef0;
   border: 0.2rem solid #00131d;
   box-shadow: 0 0 0 0rem #005c84 !important;
 }
 
-button:hover,
-button:focus-visible {
-  background-color: #fffff4;
+/* HOV-1: hover is a quiet tint with no ring; keyboard focus keeps the fill and
+   shows a cream gap then the blue ring, so the ring stays distinct on a navy
+   button. :where() keeps the old (0,1,1) specificity so component hovers still win. */
+button:hover:not(:where(:focus-visible)) {
+  background-color: #d5e4dc;
   color: #00131d;
-  box-shadow: 0 0 0 0.4rem #005c84;
-  outline: 0.2rem solid #fffff4 !important;
   border: 0.2rem solid #00131d;
+  box-shadow: none;
+}
+
+/* HOV-4: the theme toggle sits on the navy bar with cream text (main.css), so it keeps the
+   navy hover tint; the grey default hover would put cream text on pale grey. */
+#modeToggle:hover:not(:where(:focus-visible)) {
+  background-color: #002e3b;
+}
+
+button:focus-visible {
+  box-shadow:
+    0 0 0 0.2rem #fffff4,
+    0 0 0 0.5rem #005c84;
+}
+
+/* HOV-15: a button in the toggletip popup draws a transparent outline so forced-colours mode (which drops
+   box-shadow) still shows a cue. !important beats main.css's `button:focus-visible { outline: none !important }`. */
+.universal-toggletip button:focus-visible {
+  outline: 0.2rem solid transparent !important;
+}
+
+/* HOV-1: buttons that are transparent at rest (HOV-0 class O) take a pale tint,
+   not navy. */
+:is(.imgdesc-mm-action-btn, #setup-mm-persist-btn, #imgdesc-mm-persist-btn,
+    #imgdesc-change-cloud-model, #imgdesc-change-local-model, .setup-toggle-visibility,
+    #ally-cache-status-btn, #gb-tab-paste, #gb-tab-upload, #gb-tab-image,
+    #gb-data-rows button, #gb-add-row, #signin-action,
+    .imgdesc-model-filter-reset, .mdSortableTable-sort-button,
+    .chat-chip, .local-chat-chip,
+    /* HOV-2b: coloured text, or a fill the navy tint cannot replace */
+    .mdSortableTable-show-more-button, .mdSortableTable-show-less-button,
+    .mdSortableTable-show-all-button, button.universal-toggletip-trigger,
+    .imgdesc-overlay-toggle[aria-pressed="true"],
+    .imgdesc-overlay-review-btn[aria-pressed="true"],
+    .gb-toast-close):hover:not(:where(:focus-visible)) {
+  background-color: #e1e8ec;
+  color: #00131d;
 }
 
 /* H-127b: the state text of a model card gets the glow a focused button gets, from this sheet, so it follows the site's Dark / Light switch. */
@@ -7213,4 +7409,26 @@ pre.language-json {
     background: #005c84 !important;
     color: #fffff4 !important;
   }
+}
+
+/* Markdown editor "Highlighting: on" dot. The button rests on Grey D (#eceef0) and hovers on #d5e4dc (HOV-14a), where the old
+ * #4bb694 read 2.14:1 and 1.87:1 (SC 1.4.11 asks 3:1). #398d72 is the nearest darker shade of the same green that
+ * reaches 3:1 on both (3.45:1 and 3.05:1 on the HOV-14a hover; 3.01:1 on the earlier #dcdfe3). The extra "button" type selector outranks markdown-live-editor.css, which
+ * loads after this sheet. Dark theme keeps its own dot; the disabled states are untouched. */
+button#toggle-highlighting-btn:not([disabled]):not(
+    [aria-disabled="true"]
+  )[aria-pressed="true"]
+  #highlight-toggle
+  circle {
+  stroke: #398d72;
+  fill: #398d72;
+}
+
+button#toggle-highlighting-btn:not([disabled]):not(
+    [aria-disabled="true"]
+  )[aria-pressed="true"]:hover
+  #highlight-toggle
+  circle {
+  stroke: #00131d;
+  fill: #398d72;
 }

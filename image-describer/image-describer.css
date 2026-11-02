@@ -751,6 +751,7 @@
 .imgdesc-options-group[open] summary {
   border-bottom: 1px solid currentColor;
   border-radius: 0.25rem 0.25rem 0 0;
+  padding-bottom: calc(0.75rem - 1px); /* HOV-14d: the divider's 1px comes out of the padding, so opening does not make the summary taller */
 }
 
 .imgdesc-option-content {
@@ -1707,6 +1708,7 @@
 .imgdesc-camera-section[open] summary {
   border-bottom: 1px solid currentColor;
   border-radius: 0.25rem 0.25rem 0 0;
+  padding-bottom: calc(0.75rem - 1px); /* HOV-14d: as for the options groups above */
 }
 
 /* Focus styles for summary */
@@ -3395,20 +3397,48 @@
   align-items: stretch;
 }
 
+/* HOV-8: the two parts read as one button. The main part keeps its full border on
+   the right (it is the divider, the same weight and colour as the outer border),
+   the global button margin is reset so there is no gap, and the caret overlaps
+   that border by one border width so the divider is not doubled. The focused
+   part is raised so its ring is not hidden under its neighbour. */
 .imgdesc-save-audio-split .imgdesc-save-audio-main {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  border-right: 1px solid rgba(128, 128, 128, 0.3);
+  margin-right: 0;
 }
 
 .imgdesc-save-audio-split .imgdesc-format-toggle {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+  margin-left: -0.2rem;
   padding: 0.5rem 0.35rem;
   min-width: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* A disabled button takes the theme sheets' `border: dotted 2px !important`, so the
+   overlap shrinks to match and the shared divider stays one border wide. */
+.imgdesc-save-audio-split .imgdesc-format-toggle:disabled {
+  margin-left: -2px;
+}
+
+.imgdesc-save-audio-split > button {
+  position: relative;
+}
+
+.imgdesc-save-audio-split > button:focus-visible {
+  z-index: 1;
+}
+
+.imgdesc-save-audio-split .imgdesc-format-toggle [data-icon] {
+  display: flex;
 }
 
 .imgdesc-save-audio-split .imgdesc-format-toggle svg {
+  display: block;
   width: 0.75em;
   height: 0.75em;
 }
@@ -3510,10 +3540,17 @@
   font-weight: 600;
 }
 
-.tts-field select,
 .tts-field input[type="range"] {
   width: 100%;
   max-width: 20rem;
+}
+
+/* The voice and code-mode selects are wider than the sliders: voice names such as
+   "Microsoft David - English (United States) (en-US)" are what people choose by, and
+   at 20rem they were cut off (464px needed, 320px given). */
+.tts-field select {
+  width: 100%;
+  max-width: 30rem;
 }
 
 .tts-privacy-notice {

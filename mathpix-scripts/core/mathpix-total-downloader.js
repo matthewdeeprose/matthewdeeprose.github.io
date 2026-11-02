@@ -2970,6 +2970,7 @@ Timestamp: ${timestamp}
   - ${editsResult.filename}:  AI-enhanced version (${charDiffStr} from original)
     Enhancement details:
       Model: ${modelName}
+      Prompt version: ${aiMeta.promptVersion || "unknown"}
       Lines added: +${aiMeta.linesAdded}
       Lines removed: -${aiMeta.linesRemoved}
       Total lines changed: ${aiMeta.linesChanged}
@@ -2994,6 +2995,7 @@ Timestamp: ${timestamp}
   - ${editsResult.filename}:  User edits (${charDiffStr} from original)
     Built upon AI enhancement:
       Model: ${modelName}
+      Prompt version: ${aiLineage.promptVersion || "unknown"}
       AI lines added: +${aiLineage.linesAdded}
       AI lines removed: -${aiLineage.linesRemoved}
       AI lines changed: ${aiLineage.linesChanged}
@@ -5174,6 +5176,7 @@ ${fileList}
       if (isDirectAIEnhancement) {
         result.aiEnhanced = {
           model: aiMetadata.model || "unknown",
+          promptVersion: aiMetadata.promptVersion || "unknown",
           linesAdded: aiMetadata.linesAdded || 0,
           linesRemoved: aiMetadata.linesRemoved || 0,
           linesChanged: aiMetadata.linesChanged || 0,
@@ -5191,6 +5194,7 @@ ${fileList}
         // Content has been modified since AI enhancement - track lineage
         result.aiLineage = {
           model: aiMetadata.model || "unknown",
+          promptVersion: aiMetadata.promptVersion || "unknown",
           linesAdded: aiMetadata.linesAdded || 0,
           linesRemoved: aiMetadata.linesRemoved || 0,
           linesChanged: aiMetadata.linesChanged || 0,

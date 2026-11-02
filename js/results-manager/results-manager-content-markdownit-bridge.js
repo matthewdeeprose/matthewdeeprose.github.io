@@ -507,7 +507,9 @@ export class MarkdownItBridge extends ContentProcessorBase {
         logDebug(`🔧 Setting container content (ID: ${processingId})`);
 
         // Set the content to trigger post-processing
-        container.innerHTML = htmlResult;
+        // AI-supplied markup is cleaned before the temporary container parses it
+        // (M-2i-b). A missing SafeHTML throws into the catch below, never passes through.
+        container.innerHTML = window.SafeHTML.sanitise(htmlResult);
 
         logDebug(`🔧 Starting post-processing (ID: ${processingId})`);
 

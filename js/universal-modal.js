@@ -2694,6 +2694,15 @@ const UniversalModal = (function () {
             resolve(false);
           });
 
+          // RP-6: an optional details element, placed straight after the marked message and before the buttons.
+          // The description still points at the message paragraph alone (applyMessageDescription ran at open), so
+          // the details are read on arrowing and nothing is read twice. Anything but an Element is ignored.
+          if (options.details instanceof Element) {
+            const messageParagraph = modalInstance.modal.querySelector(
+              `[${MESSAGE_MARKER_ATTRIBUTE}]`,
+            );
+            if (messageParagraph) messageParagraph.after(options.details);
+          }
           if (typeof options.onOpen === "function") {
             options.onOpen(modalInstance);
           }

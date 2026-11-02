@@ -1292,15 +1292,15 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
 
    COLOUR IS DELIBERATELY ABSENT, for the same reason as MP-1: the theme
    files load BEFORE this one, so any shorthand here that carries a colour
-   would reset what they set. The radio card treatment itself comes from
-   `.model-option` in mathpix-ai-enhancer.css, which is a global class and
-   loads earlier still — reused rather than re-declared, so this picker and
-   the Context tab's picker cannot drift apart visually.
+   would reset what they set.
 
-   `display` is set only via `:not([hidden])` throughout. The picker root,
-   the recommended fieldset and the two empty-state paragraphs are all
-   toggled with the `hidden` attribute, and an unconditional `display` would
-   override it.
+   The picker is a single select (no radio cards, no recommended fieldset, no
+   disclosure), so the card, fieldset and disclosure rules this block once
+   carried were removed at T-83 after measuring that they match nothing.
+
+   `display` is set only via `:not([hidden])` throughout. The picker root and
+   the two empty-state paragraphs are toggled with the `hidden` attribute, and
+   an unconditional `display` would override it.
    ============================================================================ */
 
 #edit-alt-model-picker:not([hidden]) {
@@ -1309,92 +1309,8 @@ body.mathpix-manager-open .mmd-image-manager-ai-spinner {
   gap: 0.75rem;
 }
 
-.mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
-  display: flex;
-  gap: 0.75rem;
-}
-
-/* T-22b G3 (SC 1.4.10): at phone widths the model cards and the measured note wrap instead of holding the form at 343px.
-   Narrow only: at 640px a plain wrap made the fieldset 10px taller. */
-@media (max-width: 400px) {
-  .mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
-    flex-wrap: wrap;
-  }
-}
-
-/* The wrapping radio label carries the accessible name, so its text must
-   stay readable rather than inherit the form's bold label weight wholesale:
-   the model name is emphasised and the id beneath it is not. */
-.mmd-image-manager-edit-form #edit-alt-model-picker .model-option {
-  font-weight: 400;
-}
-
-.mmd-image-manager-edit-form
-  #edit-alt-model-picker
-  .model-option
-  .model-option-name {
-  font-weight: 600;
-}
-
-/* T-22b G3 (SC 1.4.12): under wider text spacing "(Recommended)" and the model id were each wider than the form column at 320px.
-   Set on the spans themselves: main.css gives every element overflow-wrap: break-word, so inheritance cannot carry it, and only
-   `anywhere` lowers the min-content that holds the fieldset wide.
-   Narrow only: at 640px it let the flex row squeeze the cards and made the fieldset 38px taller. */
-@media (max-width: 400px) {
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-name,
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-description {
-    overflow-wrap: anywhere;
-  }
-}
-/* T-27 (L4 from T-26a): narrow Edit alt-text model cards at phone width. */
-@media (max-width: 400px) {
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option input[type="radio"] {
-    align-self: flex-start;
-  }
-
-  .mmd-image-manager-edit-form #edit-alt-model-recommended:not([hidden]) {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-name,
-  .mmd-image-manager-edit-form #edit-alt-model-picker .model-option-description {
-    overflow-wrap: normal;
-  }
-}
-
-
-/* The advanced disclosure. `summary` keeps its native marker and native
-   keyboard behaviour — it is a real disclosure, not a div with a role. */
-.mathpix-alt-model-advanced > summary {
-  cursor: pointer;
-  padding: 0.25rem 0;
-  font-weight: 600;
-}
-
-.mathpix-alt-model-advanced[open] > .field-group {
-  margin-top: 0.5rem;
-}
-
 /* The override select sizes to the block so a long model name does not
    force horizontal overflow at 320px. */
 #edit-alt-model-override {
   max-width: 100%;
-}
-
-/*small tweaks for image alt generator */
-.mathpix-alt-model-advanced {
-  padding: 10px;
-}
-
-.mathpix-alt-model-advanced summary {
-  text-decoration: none;
-  margin: 3px;
 }

@@ -443,6 +443,12 @@ class OpenRouterStream {
     // ModalityCore.reduceStreamDelta. Null until a chunk carries delta.audio,
     // so an ordinary text stream never allocates it and never touches this.
     let streamAudio = null;
+
+    // TC-2b: the per-stream tool-call accumulator, folded by
+    // ModalityCore.reduceStreamDelta (TC-1 merges fragments by `index`). Null
+    // until a chunk carries delta.tool_calls, so a stream with no tool call
+    // never allocates it and finalResponseData never gains the key.
+    let streamToolCalls = null;
     this.hasRecordedChunk = false;
 
     // AW-23: per-stream latch for the provider's stop signal. The wire carries
@@ -453,6 +459,12 @@ class OpenRouterStream {
     // reason can never be reported for the next.
     this.lastFinishReason = null;
     this.lastNativeFinishReason = null;
+
+    // M-5a: per-stream latch for the provider's own usage figures. OpenRouter
+    // sends them on a terminal chunk, often with an empty choices array, so
+    // like the finish reason they are kept as they go past. Reset here so one
+    // stream's usage can never be reported for the next.
+    this.lastUsage = null;
 
     try {
       openRouterUtils.debug("Stream processing started", {
@@ -564,6 +576,26 @@ class OpenRouterStream {
                 openRouterUtils.debug(
                   "Processing non-JSON final buffer with processBufferLine",
                 );
+                // TC-2b: processBufferLine has never handled tool calls and
+                // returns nothing, so a tool fragment left in the buffer is
+                // folded here, from a parse of the leftover line, before the
+                // untouched processBufferLine call below. The same read as
+                // the main loop: delta.tool_calls straight off the chunk.
+                if (buffer.startsWith("data: ")) {
+                  try {
+                    const tailChoice = JSON.parse(buffer.slice(6)).choices?.[0];
+                    const tailCalls = tailChoice?.delta?.tool_calls;
+                    if (Array.isArray(tailCalls) && tailCalls.length > 0) {
+                      streamToolCalls = reduceStreamDelta(
+                        { tool_calls: tailCalls },
+                        streamToolCalls,
+                      );
+                    }
+                  } catch (tailError) {
+                    // "[DONE]" or a truncated line: processBufferLine below
+                    // reports it as it always has.
+                  }
+                }
                 this.processBufferLine(buffer, options, fullResponse);
               }
             } catch (error) {
@@ -578,7 +610,9 @@ class OpenRouterStream {
           if (options.onComplete && typeof options.onComplete === "function") {
             // Create final response data object with usage information
             const finalResponseData = {
-              usage: {
+              // M-5a: the provider's own figures when the stream carried
+              // them; the character estimate only when it did not.
+              usage: this.lastUsage || {
                 prompt_tokens: this.totalPromptTokens || 0, // Use tracked tokens if available
                 completion_tokens: fullResponse.length / 4, // Rough estimation based on characters
                 total_tokens:
@@ -617,6 +651,14 @@ class OpenRouterStream {
                 totalCompletionTokens: fullResponse.length / 4,
               },
             };
+
+            // TC-2b: the merged tool calls in the whole-reply shape, so one
+            // place serves this route, the Foundry route and the non-streamed
+            // path. Set only when calls arrived: no calls, no key at all.
+            if (streamToolCalls && streamToolCalls.toolCalls) {
+              finalResponseData.choices[0].message.tool_calls =
+                streamToolCalls.toolCalls;
+            }
 
             // Update dev panel with usage information
             try {
@@ -725,6 +767,26 @@ class OpenRouterStream {
                 (processed.content.length > 15 ? "..." : ""),
             });
           }
+          // TC-2b: streamed tool-call fragments. Read straight off the parsed
+          // chunk rather than off processed.toolCalls, because processLine
+          // returns tool calls only for a chunk with no text (the extractor
+          // ranks content first), and a chunk carrying both must keep both.
+          // Only the tool_calls key is handed to the fold.
+          const toolDeltas =
+            processed &&
+            processed.parsedData &&
+            processed.parsedData.choices &&
+            processed.parsedData.choices[0] &&
+            processed.parsedData.choices[0].delta
+              ? processed.parsedData.choices[0].delta.tool_calls
+              : null;
+          if (Array.isArray(toolDeltas) && toolDeltas.length > 0) {
+            streamToolCalls = reduceStreamDelta(
+              { tool_calls: toolDeltas },
+              streamToolCalls,
+            );
+          }
+
           // MODALITY STEP 4 — THE AUDIO REPLY THIS LOOP USED TO DROP WHOLE.
           //
           // Measured on .claude/modality/fixtures/audio-out.raw.txt: ALL 17
@@ -898,6 +960,25 @@ class OpenRouterStream {
   }
 
   /**
+   * M-5a: keep the last usage object a parsed stream chunk carries. Called on
+   * the chunk itself, not on a choice, because the usage chunk usually has an
+   * empty choices array. Only a non-null object is kept, so a chunk with
+   * `usage: null` cannot erase figures already seen.
+   *
+   * @param {Object} parsedData - A parsed SSE chunk
+   * @private
+   */
+  latchUsage(parsedData) {
+    if (
+      parsedData &&
+      parsedData.usage &&
+      typeof parsedData.usage === "object"
+    ) {
+      this.lastUsage = parsedData.usage;
+    }
+  }
+
+  /**
    * Process a single line from the SSE stream
    * @param {string} line - Line to process
    * @param {Object} options - Callbacks and options
@@ -938,6 +1019,7 @@ class OpenRouterStream {
 
       try {
         const parsedData = JSON.parse(data);
+        this.latchUsage(parsedData);
         openRouterUtils.debug("Parsed data:", {
           hasChoices: !!parsedData.choices,
         });
@@ -1120,6 +1202,7 @@ class OpenRouterStream {
 
         try {
           const parsed = JSON.parse(data);
+          this.latchUsage(parsed);
           if (parsed.choices && parsed.choices[0]) {
             const choice = parsed.choices[0];
 

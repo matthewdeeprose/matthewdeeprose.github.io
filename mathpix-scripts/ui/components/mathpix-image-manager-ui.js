@@ -3776,6 +3776,19 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
      * @returns {Promise<{ran: boolean, generated: number, failed: number, line: string|null}>}
      * @private
      */
+    /**
+     * RP-3d: Cancel a quiet (AI tab) picture run. The runner reads its flag at
+     * the top of the next iteration, so the picture in flight finishes and is
+     * written and the rest are untouched. Returns false when no batch runs.
+     * @returns {boolean}
+     */
+    cancelQuietRun() {
+      if (!this._batchRunning || !this._batchRunner) return false;
+      if (this._batchRunner.isCancelled()) return false;
+      this._batchRunner.cancel();
+      return true;
+    }
+
     async _describeAllQuiet(options) {
       const none = (line) => ({ ran: false, generated: 0, failed: 0, line });
       const closedRoute =
@@ -3890,6 +3903,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         resolveOnce: () => {},
         quiet: true,
         skipGridRefresh: closedRoute,
+        onPicture: options && options.onPicture,
       });
     }
 
@@ -4093,6 +4107,7 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
       resolveOnce,
       quiet = false,
       skipGridRefresh = false,
+      onPicture,
     }) {
       const runnerModule = window.MathPixAltTextBatchRunner;
       const orchestrator = this._buildBatchOrchestrator(root);
@@ -4156,7 +4171,17 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
         result = await this._batchRunner.run({
           targets,
           skippedMissing,
-          onProgress: ({ phase, index, total }) => {
+          onProgress: (progress) => {
+            // RP-3c: the caller's own per-picture surface (the AI tab queue),
+            // handed the runner's payload as it is. It speaks nothing.
+            if (typeof onPicture === "function") {
+              try {
+                onPicture(progress);
+              } catch (pictureErr) {
+                logWarn("_runBatch: onPicture threw — the batch continues", pictureErr);
+              }
+            }
+            const { phase, index, total } = progress;
             if (phase !== runnerModule.PHASE.STARTING) return;
             if (countEl) countEl.textContent = `${index + 1} of ${total}`;
             if (stageEl) {
@@ -4212,6 +4237,9 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
           ran: true,
           generated: result ? result.generated : 0,
           failed: result ? result.failed : 0,
+          // RP-3d: the runner sets cancelled even when the Cancel came after the last picture; the tab reads remaining to tell
+          remaining: result ? result.remaining : 0,
+          cancelled: Boolean(result && result.cancelled),
           line: outcomeLine || null,
         };
       }
@@ -8276,6 +8304,12 @@ aria-label="Remove image ${this._escapeAttr(displayName)}">
     // dialog close, and a drive awaiting it would hang.
     mgr._handleDescribeAll();
     return undefined;
+  };
+
+  // RP-3d: the AI tab's Cancel for a quiet picture run, beside describeAllImages.
+  window.cancelDescribeAllImages = function () {
+    const mgr = getInstance();
+    return mgr ? mgr.cancelQuietRun() : false;
   };
 
   window.deleteImage = function (imageId) {

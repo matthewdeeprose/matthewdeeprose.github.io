@@ -895,7 +895,7 @@ class OpenRouterEmbed {
         Array.isArray(options.messages) && options.messages.length
           ? this._buildMessagesFromOptions(options.messages, userPrompt)
           : this.buildMessages(userPrompt);
-      const requestOptions = this.buildOptions(wireMessages, provider);
+      const requestOptions = this.buildOptions(wireMessages, provider, options);
 
       // Add abort signal if cancellation is enabled
       if (this._requestAbortController) {
@@ -939,8 +939,18 @@ class OpenRouterEmbed {
       // Process the response
       const response = this.processResponse(apiResponse, processingTime);
 
-      // Inject content into container
-      this.injectContent(response.html);
+      // Inject content into container.
+      // TC-3: a round that is only tool calls has no text to show. Injecting
+      // "" would blank whatever the container holds, announce "Content
+      // updated" and move focus onto it, so skip the injection. A reply with
+      // text renders as before, and so does one with neither text nor calls.
+      const isToolCallOnlyRound =
+        response.text === "" &&
+        Array.isArray(response.toolCalls) &&
+        response.toolCalls.length > 0;
+      if (!isToolCallOnlyRound) {
+        this.injectContent(response.html);
+      }
 
       // Store successful response
       this.lastResponse = response;
@@ -1023,11 +1033,14 @@ class OpenRouterEmbed {
    * @param {Provider} provider - The resolved provider for the current model.
    *                              Must be a Provider object with a buildRequest()
    *                              method (see providers/_interface.js typedef).
+   * @param {Object} [callOptions] - The caller's per-request options. Only
+   *                                 `tools`, `tool_choice` and
+   *                                 `parallel_tool_calls` are read (TC-3).
    * @returns {Object} Options object suitable for `this.client.sendRequest()`
    *                   and `this.client.sendStreamingRequest()`.
    * @throws {Error} If `provider` is missing or doesn't expose `buildRequest()`.
    */
-  buildOptions(messages, provider) {
+  buildOptions(messages, provider, callOptions) {
     logDebug("Building canonical options for provider...");
 
     if (!provider || typeof provider.buildRequest !== "function") {
@@ -1070,6 +1083,23 @@ class OpenRouterEmbed {
       this.currentFileAnalysis?.engine
     ) {
       canonicalOptions.fileEngine = this.currentFileAnalysis.engine;
+    }
+
+    // TC-3: tool fields from the caller's options, under the same rule the
+    // providers and the validator apply (TC-2): `tools` only as a non-empty
+    // array (passed by reference, not copied), `tool_choice` only when given,
+    // `parallel_tool_calls` only as a boolean. Absent means no key at all, so
+    // a request without tools is byte-identical to what it was before.
+    if (callOptions) {
+      if (Array.isArray(callOptions.tools) && callOptions.tools.length > 0) {
+        canonicalOptions.tools = callOptions.tools;
+      }
+      if (callOptions.tool_choice !== undefined) {
+        canonicalOptions.tool_choice = callOptions.tool_choice;
+      }
+      if (typeof callOptions.parallel_tool_calls === "boolean") {
+        canonicalOptions.parallel_tool_calls = callOptions.parallel_tool_calls;
+      }
     }
 
     // Delegate wire-format construction to the provider.
@@ -1514,6 +1544,16 @@ class OpenRouterEmbed {
       // Stage 6 Phase 5: Store userPrompt for cache key generation
       this._lastUserPrompt = processedUserPrompt;
 
+      // TC-3: whether this request carries tools. The cache key (built in the
+      // read below and in handleStreamComplete) holds neither `tools` nor
+      // `options.messages`, so a tool request could be answered by an old
+      // text reply, or its tool-call reply cached under a plain prompt. A tool
+      // request therefore neither reads nor writes the cache. Carried per request the way
+      // _lastUserPrompt is, so it shares that field's concurrency limit: two
+      // overlapping requests can see each other's value.
+      this._requestHasTools =
+        Array.isArray(options.tools) && options.tools.length > 0;
+
       // Temporarily update systemPrompt if preprocessing changed it
       const originalSystemPrompt = this.systemPrompt;
       if (processedSystemPrompt !== this.systemPrompt) {
@@ -1528,7 +1568,7 @@ class OpenRouterEmbed {
         Array.isArray(options.messages) && options.messages.length
           ? this._buildMessagesFromOptions(options.messages, processedUserPrompt)
           : this.buildMessages(processedUserPrompt);
-      const requestOptions = this.buildOptions(wireMessages, provider);
+      const requestOptions = this.buildOptions(wireMessages, provider, options);
 
       // Restore original systemPrompt
       this.systemPrompt = originalSystemPrompt;
@@ -1620,7 +1660,8 @@ class OpenRouterEmbed {
       if (
         this._cacheHandler &&
         this._cacheConfig.enabled &&
-        !this.currentFile
+        !this.currentFile &&
+        !this._requestHasTools
       ) {
         const cacheRequest = {
           userPrompt,
@@ -1951,9 +1992,17 @@ class OpenRouterEmbed {
       modalityCore && apiResponse?.choices?.[0]?.message
         ? modalityCore.normaliseMessage(apiResponse.choices[0].message)
         : null;
+    // TC-3: tool calls count as a payload. A forced tool call comes back with
+    // `content: null` and the calls in `message.tool_calls`; without this the
+    // guard below threw "No content received from API" on a good reply.
+    const hasToolCalls = !!(
+      structured &&
+      Array.isArray(structured.toolCalls) &&
+      structured.toolCalls.length > 0
+    );
     const hasNonTextPayload = !!(
       structured &&
-      (structured.images.length > 0 || structured.audio)
+      (structured.images.length > 0 || structured.audio || hasToolCalls)
     );
 
     // Extract text content from response - handle both possible structures
@@ -2069,6 +2118,25 @@ class OpenRouterEmbed {
       response.audio = structured.audio;
     }
 
+    // TC-3: tool calls, attached ONLY WHEN PRESENT and in one shape on every
+    // path (buildFinalResponse builds the identical array from the streamed
+    // message). Entries are copies, never the wire objects, and carry no
+    // `index`: a streamed entry keeps one and a whole reply's has none, so the
+    // shape is fixed here rather than left to the route. `type` falls back to
+    // "function" because a streamed entry can arrive with it null. Written out
+    // in both methods rather than shared, because prove-modality.mjs lifts each
+    // of them alone into a context that holds no other embed code.
+    if (hasToolCalls) {
+      response.toolCalls = structured.toolCalls.map((call) => ({
+        id: call && call.id,
+        type: (call && call.type) || "function",
+        function: {
+          name: call && call.function && call.function.name,
+          arguments: call && call.function && call.function.arguments,
+        },
+      }));
+    }
+
     logInfo("Response processed successfully", {
       textLength: rawText.length,
       htmlLength: html.length,
@@ -2106,7 +2174,10 @@ class OpenRouterEmbed {
       : null;
 
     // Inject content
-    this.container.innerHTML = html;
+    // AI-supplied HTML is cleaned first (M-2i); SafeHTML escapes if DOMPurify is absent.
+    this.container.innerHTML = window.SafeHTML
+      ? window.SafeHTML.sanitise(html)
+      : String(html).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
     // Re-insert progress indicator if it was preserved (Stage 4 Phase 1)
     if (progressElement && this.isStreaming) {
@@ -2306,9 +2377,21 @@ class OpenRouterEmbed {
       this._currentRequestTiming.processingStart = performance.now();
     }
 
-    // Final markdown processing
-    const html = this.processMarkdownWithFallback(fullText);
-    this.injectContent(html);
+    // Final markdown processing.
+    // TC-3: a round that is only tool calls has no text to show. Injecting ""
+    // would blank whatever the container holds, announce "Content updated" and
+    // focus the empty container (which a screen reader voices as "blank"), so
+    // the injection is skipped. A reply with text renders as before, and so
+    // does one with neither text nor calls.
+    const streamedToolCalls = responseData?.choices?.[0]?.message?.tool_calls;
+    const isToolCallOnlyRound =
+      !fullText &&
+      Array.isArray(streamedToolCalls) &&
+      streamedToolCalls.length > 0;
+    if (!isToolCallOnlyRound) {
+      const html = this.processMarkdownWithFallback(fullText);
+      this.injectContent(html);
+    }
 
     // Build response object
     let response = this.buildFinalResponse(fullText, responseData);
@@ -2374,7 +2457,12 @@ class OpenRouterEmbed {
     });
 
     // Stage 6 Phase 5: Cache the response (if caching enabled and no file attached)
-    if (this._cacheHandler && this._cacheConfig.enabled && !this.currentFile) {
+    if (
+      this._cacheHandler &&
+      this._cacheConfig.enabled &&
+      !this.currentFile &&
+      !this._requestHasTools
+    ) {
       const cacheRequest = {
         userPrompt: this._lastUserPrompt, // We need to store this
         systemPrompt: this.systemPrompt,
@@ -2748,6 +2836,36 @@ class OpenRouterEmbed {
     // consumer holding the response cannot be surprised by a later fold.
     if (this.streamAudioBuffer) {
       response.audio = Object.assign({}, this.streamAudioBuffer);
+    }
+
+    // TC-3: streamed tool calls, which the stream loops put at
+    // responseData.choices[0].message.tool_calls (TC-2b). Read through
+    // ModalityCore.normaliseMessage, resolved at call time, exactly as
+    // processResponse does, and attached ONLY WHEN PRESENT in the same shape:
+    // copies, `type` defaulting to "function", no `index` (a streamed entry
+    // keeps the index it was merged by). Written out here and in
+    // processResponse rather than shared, because prove-modality.mjs lifts each
+    // method alone into a context that holds no other embed code.
+    const modalityCore =
+      typeof window !== "undefined" ? window.ModalityCore : null;
+    const streamedMessage = responseData?.choices?.[0]?.message;
+    const structured =
+      modalityCore && streamedMessage
+        ? modalityCore.normaliseMessage(streamedMessage)
+        : null;
+    if (
+      structured &&
+      Array.isArray(structured.toolCalls) &&
+      structured.toolCalls.length > 0
+    ) {
+      response.toolCalls = structured.toolCalls.map((call) => ({
+        id: call && call.id,
+        type: (call && call.type) || "function",
+        function: {
+          name: call && call.function && call.function.name,
+          arguments: call && call.function && call.function.arguments,
+        },
+      }));
     }
 
     return response;

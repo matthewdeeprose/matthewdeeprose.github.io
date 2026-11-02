@@ -75,8 +75,9 @@
     MIN_REPLIES: 2, // buttons appear once there are this many replies
     HEADING_LEVEL: 2, // under the page's h1 "Chat"; a reply keeps its own heading levels
     HEADING_TEXT: "Question", // shown as "Question 3"
-    LABEL_PREVIOUS: "Previous question",
-    LABEL_NEXT: "Next question",
+    LABEL_PREVIOUS: "Previous", // the visible word, same size as Top and Bottom
+    LABEL_NEXT: "Next",
+    LABEL_HIDDEN_SUFFIX: " question", // read aloud after the visible word, so the name is "Previous question" (SC 2.5.3)
     TOP_THRESHOLD_PX: 8, // a question this close to the top of the screen counts as "here"
   });
 
@@ -222,6 +223,10 @@
     const text = document.createElement("span");
     text.className = "panelLabel chat-turn-nav-label";
     text.textContent = label;
+    const hiddenText = document.createElement("span");
+    hiddenText.className = "visually-hidden";
+    hiddenText.textContent = TURN_NAV_CONFIG.LABEL_HIDDEN_SUFFIX;
+    text.appendChild(hiddenText);
     btn.appendChild(text);
 
     btn.addEventListener("click", function () {
@@ -236,8 +241,9 @@
     const panel = document.getElementById(PANEL_ID);
     if (!panel) return false;
 
-    prevBtn = buildButton(PREV_ID, "arrowUp", TURN_NAV_CONFIG.LABEL_PREVIOUS, DIRECTION.PREVIOUS);
-    nextBtn = buildButton(NEXT_ID, "arrowDown", TURN_NAV_CONFIG.LABEL_NEXT, DIRECTION.NEXT);
+    // chevronUp / chevronDown, not arrowUp / arrowDown: the arrow pair is drawn off-centre in its box.
+    prevBtn = buildButton(PREV_ID, "chevronUp", TURN_NAV_CONFIG.LABEL_PREVIOUS, DIRECTION.PREVIOUS);
+    nextBtn = buildButton(NEXT_ID, "chevronDown", TURN_NAV_CONFIG.LABEL_NEXT, DIRECTION.NEXT);
     // Before Top, in reading order: Previous, Next, Top, Bottom.
     panel.insertBefore(nextBtn, panel.firstChild);
     panel.insertBefore(prevBtn, nextBtn);
@@ -266,6 +272,8 @@
     if (prevBtn.hidden === show) {
       prevBtn.hidden = !show;
       nextBtn.hidden = !show;
+      // The panel is a landmark only while a button in it shows (syncPanelLandmark is in tools.html).
+      if (typeof window.syncPanelLandmark === "function") window.syncPanelLandmark();
     }
     if (!show) return;
 

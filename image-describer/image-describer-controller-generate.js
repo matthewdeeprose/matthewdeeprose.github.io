@@ -3416,7 +3416,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           if (this.elements.output) {
             this.elements.output.style.whiteSpace = "";
 
-            this.elements.output.innerHTML = this._renderMarkdown(finalText);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(finalText),
+            );
           }
 
           // Store raw output for copy operations
@@ -3451,7 +3453,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
           // Render output as markdown
           if (this.elements.output) {
-            this.elements.output.innerHTML = this._renderMarkdown(result.text);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(result.text),
+            );
           }
 
           // Store raw output for copy operations
@@ -3697,7 +3701,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           if (this.elements.output) {
             this.elements.output.style.whiteSpace = "";
 
-            this.elements.output.innerHTML = this._renderMarkdown(finalText);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(finalText),
+            );
           }
 
           // Store raw output for copy operations
@@ -3732,7 +3738,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
           // Render output as markdown
           if (this.elements.output) {
-            this.elements.output.innerHTML = this._renderMarkdown(result.text);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(result.text),
+            );
           }
 
           // Store raw output for copy operations
@@ -3980,7 +3988,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
           if (this.elements.output) {
             this.elements.output.style.whiteSpace = "";
 
-            this.elements.output.innerHTML = this._renderMarkdown(finalText);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(finalText),
+            );
           }
 
           // Store raw output for copy operations
@@ -4015,7 +4025,9 @@ ${ESCAPE_GUARD_INSTRUCTION}`;
 
           // Render output as markdown
           if (this.elements.output) {
-            this.elements.output.innerHTML = this._renderMarkdown(result.text);
+            this.elements.output.innerHTML = window.SafeHTML.sanitise(
+              this._renderMarkdown(result.text),
+            );
           }
 
           // Store raw output for copy operations

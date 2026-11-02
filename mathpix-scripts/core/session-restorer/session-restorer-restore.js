@@ -671,6 +671,14 @@
         this.elements.workingArea.hidden = false;
       }
 
+      // T-82: the hidden upload section (or edit-selection dialog) held focus, so
+      // hand it to the working area's heading. A person who moved focus elsewhere
+      // during the async restore keeps it where they put it.
+      this.focusIfLost?.(document.getElementById("resume-working-heading"), [
+        this.elements.uploadSection,
+        this.elements.editSelection,
+      ]);
+
       // Show convert section and update button state
       if (this.elements.convertSection) {
         this.elements.convertSection.hidden = false;

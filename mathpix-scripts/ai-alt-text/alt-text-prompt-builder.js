@@ -170,25 +170,31 @@ List every word, number and label visible in the image as a numbered list, one i
   const SELECT_BACKED_KEYS = Object.freeze(["audienceLevel", "documentType"]);
 
   /**
-   * Excerpt window: lines either side of the image's own line. Plan decision
-   * A9, grounded in the B5 measurements — the largest window at which every one
-   * of the capacitors fixture's eleven excerpts stays under 1200 characters
-   * (worst case measured 1170), so the cap below is a backstop for a denser
-   * document rather than the routine limiter.
+   * Excerpt window: lines either side of the image's own line. Widened from 8
+   * to 16 at M-4s (30 October 2026). History: plan decision A9 chose 8, the
+   * largest window at which every one of the capacitors fixture's eleven
+   * excerpts stayed under 1200 characters (worst case 1170). M-4 (blind
+   * reading) and M-4j and M-4bj (`mai-4j-blind-reading`, `mai-4bj-blind-reading`)
+   * then found the coaxial picture reached its explaining sentence in 8 of 8
+   * runs at 16 lines against 1 of 4 at 8 (the pooling across the two rounds is
+   * the design seat's, INFERRED), with no regression found against 8. The
+   * Gaussian arrow is not fixed by either window, and the fixture has no
+   * pictures in its moderate document, so no description regression check
+   * exists there (M-4 P6).
    */
-  const MMD_EXCERPT_LINES_EACH_SIDE = 8;
+  const MMD_EXCERPT_LINES_EACH_SIDE = 16;
 
   /**
-   * Excerpt character cap. Plan decision A9: clears the fixture's worst case at
-   * the window above with headroom, while sitting below the 1629 measured at ±12
-   * lines, so it bounds a long-line document without truncating this one.
+   * Excerpt character cap. Raised from 1500 to 3000 at M-4s with the window
+   * above. Plan decision A9 set 1500 to clear the old worst case; at ±16 lines
+   * the capacitors fixture's largest excerpt is 2525 characters (MEASURED at M-4s, `img-5920f834`).
    *
-   * ⚠ ON THE CAPACITORS FIXTURE THIS CAP NEVER FIRES. It is a documented
+   * ⚠ ON THE CAPACITORS FIXTURE THIS CAP STILL NEVER FIRES. It is a documented
    * non-exercise, not a validated limit; the truncation ladder below is
    * therefore gated by constructed rows rather than by the fixture, and the
    * first real document that trips it is the first real test of it.
    */
-  const MMD_EXCERPT_CHAR_CAP = 1500;
+  const MMD_EXCERPT_CHAR_CAP = 3000;
 
   /** `extraInformation` is free text and can be arbitrarily long; cap it. */
   const EXTRA_INFORMATION_CHAR_CAP = 2000;

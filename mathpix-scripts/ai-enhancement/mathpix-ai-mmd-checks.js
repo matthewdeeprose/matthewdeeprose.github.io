@@ -5,8 +5,9 @@
  * @since MathPix AI lane, parcel M-2
  *
  * Pure string parsing: no DOM, no network, no API calls. It returns findings for
- * a person to review and never fixes anything. It is adopted nowhere: no
- * <script> tag loads it and no caller exists (parcel M-2 builds it only).
+ * a person to review and never fixes anything. It is loaded by a <script> tag in
+ * tools.html (since 84c2bbc) and called by the enhancer's computeMMDCheckFindings
+ * (parcel M-2b), which shows the findings in the "things to check" panel.
  *
  * Definitions (each is deliberately narrow):
  *

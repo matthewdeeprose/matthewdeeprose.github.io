@@ -364,6 +364,9 @@
       textSpan.textContent = extractUserText(content); // textContent — never HTML
       bubble.appendChild(textSpan);
       const att = classifyAttachmentPart(content);
+      // A real space between the question and the chip keeps the question's last word and the file name
+      // apart for a reader that joins inline text; the visible break is CSS (the chip is a block).
+      if (att) bubble.appendChild(document.createTextNode(" "));
       if (att) bubble.appendChild(buildBubbleAttachmentChip(att));
     }
     // Question heading (parcel P10): added after the content is set, on both paths, so live,
@@ -758,7 +761,13 @@
     }
     try {
       const html = await bridge.process(rawMarkdown);
-      bubble.innerHTML = html; // replace the embed's plain render ONLY on success
+      // replace the embed's plain render ONLY on success; cleaned first (M-2i)
+      if (!window.SafeHTML) {
+        logWarn("SafeHTML unavailable — leaving the streamed plain render in place");
+        exposeStandIn();
+        return;
+      }
+      bubble.innerHTML = window.SafeHTML.sanitise(html);
       if (typeof bridge.processPendingCharts === "function") {
         bridge.processPendingCharts(bubble);
       }

@@ -79,6 +79,14 @@ function labelFromHtml(html) {
   return convertDelimited(text);
 }
 
+// True where the markup says a header cell holds maths: a math span, or an explicit delimited pair.
+// The same two signals labelFromHtml converts on, so "Cost ($)" is not maths.
+function holdsMaths(html) {
+  if (/<span\b[^>]*\bclass="[^"]*\bmath-(?:inline|block)\b/i.test(html)) return true;
+  const text = stripTags(html);
+  return convertDelimited(text) !== text;
+}
+
 // Header cell text for each column, in order, cleaned to plain text.
 function headerTexts(rowInner) {
   const texts = [];
@@ -141,7 +149,14 @@ function transformTable(full, threshold, mathpixCaptionText) {
       const idx = colIndex++;
       if (isHeader) {
         // Promote header cells to <th scope="col"> for proper semantics.
-        const a = setAttrs(cellAttrs, { scope: "col", role: "columnheader" });
+        const headerAttrs = { scope: "col", role: "columnheader" };
+        // A browser names a header from its text, and the visible maths is hidden from it, so a maths header loses
+        // its maths ("(relative permittivity)"). Name it with the same symbols the card label shows. An author's own
+        // aria-label is kept.
+        if (headers[idx] && holdsMaths(cellContent) && !/\saria-label\s*=/i.test(cellAttrs)) {
+          headerAttrs["aria-label"] = escapeXML(headers[idx]);
+        }
+        const a = setAttrs(cellAttrs, headerAttrs);
         return `<th${a}>${cellContent}</th>`;
       }
       const isTh = tag.toLowerCase() === "th";

@@ -506,6 +506,27 @@ export class OpenRouterValidator {
         openRouterUtils.debug("Added the reasoning off switch to request body");
       }
 
+      // TOOL CALLING (TC-2, 2 November 2026) — the tool fields, admitted on
+      // their own predicates. Without these branches the closed allowlist
+      // below dropped them even when openrouter.js kept them (register item 5).
+      //
+      // EACH ONLY WHEN GIVEN, so a request with none of them keeps a
+      // byte-identical body (no new key, not even an undefined one). The
+      // arrays are passed by reference, unreshaped. The options are only read,
+      // so the double build gives the same fields twice. NO GATING on the
+      // model's registry entry here: the capability check belongs to the
+      // runner (TC-5), and this validator is shared with OpenRouter AI mode,
+      // which sends none of these.
+      if (Array.isArray(options.tools) && options.tools.length > 0) {
+        requestBody.tools = options.tools;
+      }
+      if (options.tool_choice !== undefined) {
+        requestBody.tool_choice = options.tool_choice;
+      }
+      if (typeof options.parallel_tool_calls === "boolean") {
+        requestBody.parallel_tool_calls = options.parallel_tool_calls;
+      }
+
       // MODALITY STEP 2 — the `modalities` branch. This builder is a CLOSED
       // ALLOWLIST: a key not named here never reaches the wire, so a new
       // request field needs an explicit branch. Shaped on the plugins

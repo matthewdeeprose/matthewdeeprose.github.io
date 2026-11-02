@@ -483,19 +483,21 @@ window.MermaidAccessibility = (function () {
     const errorContainer = document.createElement("div");
     errorContainer.className = "mermaid-error-fallback";
 
-    // Say it once: where a live region already holds the diagram (Chat's
-    // message list) the box is read by it, and its own alert would speak the
-    // same text again. A surface with no live ancestor keeps the box's own
-    // announcement: the OpenRouter results panel, and the editor's #output,
-    // which is not live since 27 October 2026 (4733a3f).
-    if (!mermaidDiv.closest(LIVE_ANCESTOR_SELECTOR)) {
-      errorContainer.setAttribute("role", "alert");
-      errorContainer.setAttribute("aria-live", "polite");
-    }
-
     const errorPara = document.createElement("p");
     errorPara.className = "mermaid-error-message";
     errorPara.textContent = errorAnalysis.userFriendlyMessage;
+
+    // Say it once, and say only the sentence: where a live region already
+    // holds the diagram (Chat's message list) the box is read by it, and its
+    // own alert would speak the same text again. A surface with no live
+    // ancestor keeps an announcement: the OpenRouter results panel, and the
+    // editor's #output, which is not live since 27 October 2026 (4733a3f). The
+    // alert sits on the sentence, not the box, so it does not read out the
+    // source text and the Copy button (parcel 19b).
+    if (!mermaidDiv.closest(LIVE_ANCESTOR_SELECTOR)) {
+      errorPara.setAttribute("role", "alert");
+      errorPara.setAttribute("aria-live", "polite");
+    }
 
     // No technical disclosure in the box: the technical message stays in the
     // console (parcel 18r, Matthew's ruling of 22 October 2026).
@@ -815,6 +817,11 @@ window.MermaidAccessibility = (function () {
     // `unsupported:wardley` twin above is kept and is unreachable while the
     // MERMAID_TYPE_TO_KEY row stands.
     wardley: "a Wardley map",
+    // Item 135, 1 November 2026. The same bare-key row, added WITH the cynefin
+    // generator so a generation failure still names the diagram (item 89). The
+    // `unsupported:cynefin` twin is kept and is unreachable while the
+    // MERMAID_TYPE_TO_KEY row stands.
+    cynefin: "a Cynefin diagram",
   });
 
   /** Last-resort phrase when the type is genuinely unknown to us. */
@@ -1155,7 +1162,12 @@ window.MermaidAccessibility = (function () {
           descriptions.detailedIsAuthorText === true,
           descriptions.shortIsAuthorText === true
         );
-      controlsContainer.appendChild(descriptionToggleButton);
+      // Join the other buttons, ahead of the reader-option checkbox row that
+      // closes the toolbar.
+      const readerOptionsRow = controlsContainer.querySelector(
+        ":scope > .mermaid-controls-row"
+      );
+      controlsContainer.insertBefore(descriptionToggleButton, readerOptionsRow);
     }
 
     // Apply short description to diagram for screen readers.

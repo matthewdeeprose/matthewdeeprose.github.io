@@ -519,10 +519,10 @@ List every word, number and label visible in the image as a numbered list, one i
    * The registry's `lineNumber` is the line at creation and goes stale once an
    * engine result is applied or a session is restored, so a window centred on it
    * misses the picture. `findImage` is the codebase's single locator (the
-   * caption writer, alt-text writer and image manager use it). It picks its
-   * regex from `originalSyntax`, the syntax AT CREATION, so after a figure-wrap
-   * the stored value misses a live `\includegraphics` line: try it as stored,
-   * then once more on a shallow copy with the other syntax.
+   * caption writer, alt-text writer and image manager use it). It starts from
+   * `originalSyntax`, the syntax AT CREATION, and since T-81 (`4f2d963`) it
+   * tries the other syntax itself, so a figure-wrapped `\includegraphics` line
+   * is found without a second call here.
    *
    * Never writes to the registry or the entry: a located shallow copy is
    * returned, or the entry itself when the picture is not found.
@@ -548,20 +548,7 @@ List every word, number and label visible in the image as a numbered list, one i
           : null;
       const blobMap = restorer ? restorer.imageBlobUrlMap : null;
 
-      let found = serialiser.findImage(mmd, entry, blobMap);
-      let route = "as stored";
-      if (!found || !found.found) {
-        const otherSyntax =
-          entry.originalSyntax === "includegraphics"
-            ? "markdown"
-            : "includegraphics";
-        found = serialiser.findImage(
-          mmd,
-          { ...entry, originalSyntax: otherSyntax },
-          blobMap,
-        );
-        route = "other syntax";
-      }
+      const found = serialiser.findImage(mmd, entry, blobMap);
 
       if (!found || !found.found) {
         logDebug("excerpt locate: not found, stored line used", {
@@ -569,7 +556,7 @@ List every word, number and label visible in the image as a numbered list, one i
         });
         return entry;
       }
-      logDebug(`excerpt locate: ${route}`, {
+      logDebug("excerpt locate: found", {
         id: entry.id,
         storedLine: entry.lineNumber,
         liveLine: found.lineIndex + 1,

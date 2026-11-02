@@ -9,7 +9,7 @@
 .mermaid-theme-select,
 .chart-palette-select {
   padding: 0.25rem;
-  border-radius: 3px;
+  border-radius: 0.25rem;
   font-size: 0.85rem;
   font-family: Verdana, sans-serif;
   min-width: 8rem;
@@ -97,8 +97,42 @@
   left: 0;
   right: 0;
   justify-content: flex-end;
-  align-items: flex-start;
+  align-items: center;
   border-radius: 0px 0px 4px 4px;
+}
+
+/* The select and buttons take their height from their padding, text and border,
+   the same as the Chart Builder controls (chart-controls.css), so the two bars
+   match. The select's global vertical margin is cancelled only where the row is
+   a single line; the stacked layout (1024px and narrower) keeps its own. */
+
+@media (min-width: 1025px) {
+  .mermaid-controls {
+    padding: 0.5rem 0.75rem;
+    gap: 0.5rem;
+    /* nowrap buttons cannot shrink, so a narrow bar wraps whole items instead
+       of running off its left edge (it is right-aligned) */
+    flex-wrap: wrap;
+  }
+
+  .mermaid-controls .mermaid-controls-row {
+    width: auto;
+  }
+
+  .mermaid-controls select {
+    margin: 0;
+  }
+
+  /* The buttons are children of the bar (not of the row) and carry main.css's
+     button margins; the bar's gap spaces them instead. */
+  .mermaid-controls button.mermaid-control-button {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  .mermaid-orientation-group {
+    margin-right: 0;
+  }
 }
 
 .mermaid-control-button {
@@ -106,6 +140,7 @@
   align-items: center;
   gap: 0.25rem;
   font-size: 0.85rem;
+  border-radius: 0.25rem;
 }
 
 .mermaid-control-button:focus {
@@ -113,8 +148,8 @@
 }
 
 .mermaid-control-button svg {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .sliders-container {
@@ -128,15 +163,21 @@
 .mermaid-controls-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: center;
   width: 100%;
 }
 
-/* Orientation control group */
-.mermaid-orientation-group {
+/* Orientation control group; the Theme pair (mermaid-theme.css) shares the
+   label-then-select spacing */
+.mermaid-orientation-group,
+.mermaid-theme-container {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.mermaid-orientation-group {
   margin-right: 1rem;
 }
 
@@ -146,7 +187,7 @@
 
 .mermaid-orientation-select {
   padding: 0.25rem;
-  border-radius: 3px;
+  border-radius: 0.25rem;
   font-size: 0.85rem;
   font-family: Verdana, sans-serif;
 }
@@ -287,10 +328,12 @@
   }
   .mermaid-theme-container {
     margin: 0;
+    /* SEL-5: label plus the select's 8rem minimum is wider than the bar at
+       320px, so the pair wraps rather than overflowing the bar */
+    flex-wrap: wrap;
   }
 }
 .mermaid-orientation-label {
-  margin-left: 10px;
   font-size: 0.85rem;
   border-radius: 3px;
 }
@@ -392,4 +435,118 @@
   border: 1px dotted currentcolor;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* One compact options row: Theme, then Patterns and Label backgrounds.
+   mermaid-theme.js puts the theme picker first in this row. Layout only; the
+   checkboxes opt out of main.css's 36px size with .default-checkbox. */
+.mermaid-controls .sliders-container {
+  flex: 1 1 100%;
+}
+
+.mermaid-controls > .mermaid-controls-row {
+  flex: 1 1 100%;
+}
+
+.mermaid-reader-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  width: 100%;
+}
+
+/* The theme picker sits on the buttons' line, at the left; the buttons stay
+   at the right. */
+.mermaid-controls > .mermaid-theme-container {
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto 0 0;
+  position: static;
+}
+
+/* TS1 (2 November 2026, replacing RO3's narrowing): the closed picker always
+   shows the full name of every theme it offers, so it is never clipped or
+   narrowed. Its width is the widest name's (select width auto). Room comes back
+   from the buttons instead, and where Theme and the four buttons still do not
+   share a line, the wrapping bar puts the last button on a second line, at the
+   right like the rest. */
+.mermaid-controls > .mermaid-theme-container .mermaid-theme-select {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  width: auto;
+}
+
+@media (min-width: 1025px) {
+  .mermaid-controls > .mermaid-theme-container {
+    flex: 0 0 auto;
+  }
+
+  /* Tighter button padding and gap; the focus treatment is untouched. The
+     padding rule beats the !important one above (767px and up) on specificity. */
+  .mermaid-controls {
+    column-gap: 0.25rem;
+  }
+
+  .mermaid-controls > button.mermaid-control-button {
+    padding: 0.25rem 0.25rem !important;
+  }
+}
+
+/* The picker's own row may wrap, so a name that cannot share the label's line
+   (320px) drops below the label at full width instead of being clipped. */
+@media (max-width: 1024px) {
+  .mermaid-controls > .mermaid-theme-container {
+    flex-wrap: wrap;
+  }
+
+  .mermaid-controls > .mermaid-theme-container .mermaid-theme-select {
+    flex: 1 1 11rem;
+  }
+}
+
+/* At 320px the bar is 188px wide and its 20px side padding left 148px, less
+   than the picker needs to show "High Contrast Light" (179px: name, padding,
+   border and arrow), so the side padding is 0 there; the buttons already run
+   the full width. */
+@media (max-width: 480px) {
+  .mermaid-controls {
+    padding-inline: 0;
+  }
+}
+
+.mermaid-reader-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 24px;
+}
+
+.mermaid-reader-option input[type="checkbox"] {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+}
+
+.mermaid-reader-option input[type="checkbox"]:focus-visible {
+  outline: 2px solid currentColor !important;
+  outline-offset: 2px;
+}
+
+/* RO2: the short reason beside a disabled Patterns box (described by it). */
+.mermaid-reader-option-reason {
+  font-size: 0.85rem;
+}
+
+.mermaid-reader-option-reason[hidden] {
+  display: none;
+}
+
+.mermaid-reader-option-label {
+  font-size: 0.85rem;
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
 }

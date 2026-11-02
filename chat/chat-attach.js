@@ -89,6 +89,7 @@ window.ChatAttach = (function () {
   let _reading = false; // true while a document read is in flight
   let _boxWired = false; // idempotency guard for the pictures box's change listener
   let _stripFor = null; // the attachment the strip's items were built for (a different one rebuilds them)
+  const _unticked = new Set(); // positions in the held document's images the person has unticked (empty = send all)
   let _bodyObserver = null; // one ResizeObserver on the box body, refits the card on a width change only
   let _fitBodyWidth = 0; // the body width the card was last fitted at
 
@@ -470,6 +471,10 @@ window.ChatAttach = (function () {
     return document.getElementById(elId("attach-pictures-count"));
   }
 
+  function picturesOfEl() {
+    return document.getElementById(elId("attach-pictures-of"));
+  }
+
   function picturesKindEl() {
     return document.getElementById(elId("attach-pictures-kind"));
   }
@@ -523,11 +528,16 @@ window.ChatAttach = (function () {
   // region and nothing is announced; the one attach line names the pictures.
   function renderPictures() {
     const offered = picturesOffered();
-    const kept = offered ? keptPictureCount() : 0;
+    const found = offered ? keptPictureCount() : 0;
+    const chosen = Math.max(0, found - _unticked.size);
     const words = PICTURES_LABEL[offered && picturesArePages() ? "pages" : "pictures"];
+    // "Include 4 of 6 pictures" only while some are unticked; otherwise the span is EMPTY and the label
+    // reads "Include 6 pictures" as before (emptied, not hidden, so its text is the label's text too).
+    const ofText = offered && chosen !== found ? " of " + found : "";
     for (const [el, text] of [
-      [picturesCountEl(), String(kept)],
-      [picturesKindEl(), kept === 1 ? words.one : words.many],
+      [picturesCountEl(), String(chosen)],
+      [picturesOfEl(), ofText],
+      [picturesKindEl(), found === 1 ? words.one : words.many],
     ]) {
       if (el && el.textContent !== text) el.textContent = text;
     }
@@ -537,8 +547,10 @@ window.ChatAttach = (function () {
   }
 
   // ── The strip of pictures that would be sent (parcel P7) ─────────────────────
-  // Decorative: the host is aria-hidden, each picture has an empty alt, nothing in it is
-  // focusable, and the box's label is its text equivalent. SILENT: no live region, no announce().
+  // (parcel P14) A group of real checkboxes, one per picture, all ticked when a file is attached. Each
+  // checkbox is named by its caption ("Image n" / "Page n", the number the model sees); the thumbnail's
+  // alt is empty. Unticking one leaves it out of the send. SILENT: no live region, no announce() — a
+  // checkbox speaks its own state on a toggle, and the box's label count is not live.
 
   // The held pictures the reader would send: those with a data URL, in order, each with the number
   // and kind the wire labels it with ("Page n:" / "Image n:", openrouter-embed-documents.js toParts).
@@ -549,6 +561,7 @@ window.ChatAttach = (function () {
     images.forEach(function (image, index) {
       if (!(image && image.dataUrl)) return;
       pictures.push({
+        index: index,
         dataUrl: image.dataUrl,
         number: Number.isFinite(image.number) ? image.number : index + 1,
         kind: image.kind === PICTURE_KIND_PAGE ? PICTURE_KIND_PAGE : "image",
@@ -588,24 +601,52 @@ window.ChatAttach = (function () {
     });
   }
 
+  // The strip is a fieldset whose first child is its (visually hidden) legend: only the items go.
+  function clearStripItems(strip) {
+    strip.querySelectorAll(".chat-attach-pictures-item").forEach(function (item) {
+      item.remove();
+    });
+  }
+
+  // A tick or untick on one picture: record it, and refresh the box's "n of N" count. Silent.
+  function onPictureToggle(event) {
+    const tick = event.target;
+    if (!(tick instanceof HTMLInputElement) || !tick.classList.contains("chat-attach-pictures-tick")) return;
+    const index = Number(tick.dataset.index);
+    if (!Number.isInteger(index)) return;
+    if (tick.checked) _unticked.delete(index);
+    else _unticked.add(index);
+    renderPictures();
+  }
+
   // Builds the items for the held attachment (captions at once, thumbnails one after another as
   // they are made). Held on the DOM only: nothing here is stored or sent.
   function buildStripItems(strip) {
-    strip.textContent = "";
+    clearStripItems(strip);
+    _unticked.clear(); // a new strip starts with every picture ticked
     const held = attachment;
     _stripFor = held;
     const pending = [];
     sendablePictures().forEach(function (picture) {
-      const item = document.createElement("div");
+      const item = document.createElement("label");
       item.className = "chat-attach-pictures-item";
       const thumb = document.createElement("img");
       thumb.className = "chat-attach-pictures-thumb";
-      thumb.alt = ""; // decorative: the box's label says what is being sent
+      thumb.alt = ""; // the checkbox's name (the caption) says which picture this is
       item.appendChild(thumb);
+      const row = document.createElement("span");
+      row.className = "chat-attach-pictures-row";
+      const tick = document.createElement("input");
+      tick.type = "checkbox";
+      tick.className = "chat-attach-pictures-tick";
+      tick.checked = true;
+      tick.dataset.index = String(picture.index);
+      row.appendChild(tick);
       const caption = document.createElement("span");
       caption.className = "chat-attach-pictures-caption";
       caption.textContent = STRIP_CAPTIONS[picture.kind] + " " + picture.number;
-      item.appendChild(caption);
+      row.appendChild(caption);
+      item.appendChild(row);
       strip.appendChild(item);
       pending.push({ thumb: thumb, dataUrl: picture.dataUrl });
     });
@@ -625,7 +666,8 @@ window.ChatAttach = (function () {
     const note = picturesNoteEl();
     if (!strip || !note) return;
     if (_stripFor && _stripFor !== attachment) {
-      strip.textContent = "";
+      clearStripItems(strip);
+      _unticked.clear();
       _stripFor = null;
     }
     const show = picturesIncluded();
@@ -638,6 +680,7 @@ window.ChatAttach = (function () {
   function resetPicturesChoice() {
     const box = picturesBoxEl();
     if (box) box.checked = false;
+    _unticked.clear();
   }
 
   // The attach-line sentence naming the pictures; "" unless the box is showing.
@@ -886,10 +929,30 @@ window.ChatAttach = (function () {
     return !modelAcceptsPDF(s ? s.currentModel : null);
   }
 
+  // (parcel P14) A COPY of the held document whose images are only the ticked ones, so the part a send
+  // takes carries just those. The held document is never changed, so a picture can be re-ticked until
+  // Send. Each kept picture keeps the number the model sees: where the reader left `number` unset it is
+  // stamped on the copy, because toParts would otherwise renumber by position in the shortened list.
+  function documentWithTickedPictures(doc) {
+    if (_unticked.size === 0 || !doc || !Array.isArray(doc.images)) return doc;
+    const images = [];
+    doc.images.forEach(function (image, index) {
+      if (_unticked.has(index)) return;
+      const numbered = image && !Number.isFinite(image.number) ? Object.assign({}, image, { number: index + 1 }) : image;
+      images.push(numbered);
+    });
+    return Object.assign({}, doc, { images: images });
+  }
+
   function getAttachmentPart() {
     if (!attachment) return null;
     if (isSentAsDocument()) {
-      return { type: "document", doc: attachment.doc, includeImages: picturesIncluded() };
+      const includeImages = picturesIncluded();
+      return {
+        type: "document",
+        doc: includeImages ? documentWithTickedPictures(attachment.doc) : attachment.doc,
+        includeImages: includeImages,
+      };
     }
     if (attachment.kind === "pdf") {
       // Same shape preparePDFContent builds — produced inline (no call into it).
@@ -1736,6 +1799,10 @@ window.ChatAttach = (function () {
       ) {
         return; // native/interactive target owns this click
       }
+      // (parcel P14) Once a file is held, its preview is for reading and choosing, not for browsing:
+      // a click anywhere in the body (thumbnail, name, "How we read this file", the picture strip) must
+      // not open the picker. The empty drop zone, which has no body, still does (P3d).
+      if (e.target.closest(".chat-attach-body")) return;
       const input = inputEl();
       if (input) input.click();
     };
@@ -1781,6 +1848,8 @@ window.ChatAttach = (function () {
     const box = picturesBoxEl();
     if (!box) return;
     box.addEventListener("change", renderStrip);
+    const strip = picturesStripEl();
+    if (strip) strip.addEventListener("change", onPictureToggle); // one listener for every picture's tick
     _boxWired = true;
   }
 

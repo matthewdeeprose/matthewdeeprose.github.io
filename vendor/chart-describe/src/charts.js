@@ -123,6 +123,11 @@
 
   const SERIES_KINDS = Object.freeze({ BAR: "bar", LINE: "line" });
   const AXIS_KINDS = Object.freeze({ BAND: "band", RANGE: "range" });
+  // Caller options for the short opening and Construction (rule XC25). ON
+  // unless a caller whose picture does not draw a series name says otherwise.
+  const DEFAULT_DESCRIBE_OPTIONS = Object.freeze({ drawsSeriesName: true });
+  // Closes XC24's span on the merged (y-descriptor-less) sentence, ruling D7c.
+  const MERGED_SPAN_CLOSE = ",";
   const ORIENTATIONS = Object.freeze({
     VERTICAL: "vertical",
     HORIZONTAL: "horizontal",
@@ -872,14 +877,17 @@
    *
    * @param {Object} series - One adapter series
    * @param {Array<Object>} allSeries - Every series on the chart
-   * @returns {string} Escaped, ready for a `<th scope="col">`
+   * @returns {Array<Object>} Runs for a column header cell: the author's name
+   *   as an author run (raw, escaped once by the renderer), else the
+   *   generator's own words as a text run
    */
   function seriesColumnHeader(series, allSeries) {
+    const { text, author } = modelCore();
     const identity = seriesIdentity(series, allSeries);
-    if (identity.name) return escapeText(identity.name);
+    if (identity.name) return [author(identity.name)];
 
     const base = `${capitalise(identity.kind)} series`;
-    return identity.isAmongSeveral ? `${base} ${identity.position}` : base;
+    return [text(identity.isAmongSeveral ? `${base} ${identity.position}` : base)];
   }
 
   /**
@@ -1066,6 +1074,140 @@
     );
   }
 
+  // ---------------------------------------------------------------------
+  // The same four answers as runs (CD-5b-4b)
+  // ---------------------------------------------------------------------
+  //
+  // The string helpers above stay until the construction sentence stops
+  // calling them (CD-5b-4c). These return runs instead of escaped strings, so
+  // an author's text enters the model as an author run and is escaped once, by
+  // the renderer, and the describer's own words are text runs. They decide
+  // exactly what their string twins decide.
+
+  /**
+   * `seriesLabel` as runs: the author's series name is an author run between
+   * describer text runs.
+   *
+   * @param {Object} series - One adapter series
+   * @param {Array<Object>} allSeries - Every series on the chart
+   * @returns {Array<Object>} Runs; the first is always a text run
+   */
+  function seriesLabelRuns(series, allSeries) {
+    const { text, author } = modelCore();
+    const identity = seriesIdentity(series, allSeries);
+
+    if (identity.name) {
+      return [text('the "'), author(identity.name), text('" series')];
+    }
+    if (!identity.isAmongSeveral) {
+      return [text(`the ${identity.kind} series`)];
+    }
+    return [text(`the ${ordinalWord(identity.position)} ${identity.kind} series`)];
+  }
+
+  /**
+   * `pointReferencePart` as runs: a band label is the author's text inside
+   * describer quotes, an ordinal or position word is describer text.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {number} index - 0-based point index
+   * @returns {Object} `{ kind, runs, disambiguator }` for a label, `{ kind,
+   *   runs }` for an ordinal or position word
+   */
+  function pointReferencePartRuns(chart, index) {
+    const { text, author } = modelCore();
+    const label = declaredCategories(chart)[index];
+    if (typeof label === "string") {
+      return {
+        kind: "label",
+        runs: [text('"'), author(label), text('"')],
+        // RULE XC21, as pointReferencePart states it.
+        disambiguator: isDuplicatedLabel(chart, index)
+          ? `the ${ordinalWord(index + 1)} ${POSITION_NOUN.position.singular.toLowerCase()}`
+          : null,
+      };
+    }
+    // RULE XC20, as pointReferencePart states it.
+    const kind = hasDeclaredCategories(chart) ? "position" : "ordinal";
+    return { kind: kind, runs: [text(ordinalWord(index + 1))] };
+  }
+
+  /**
+   * `referenceText` as runs.
+   *
+   * @param {Object} part - A pointReferencePartRuns result
+   * @param {string} style - A REFERENCE_STYLE member
+   * @returns {Array<Object>} Runs
+   */
+  function referenceRuns(part, style) {
+    const { text } = modelCore();
+    if (part.kind !== "label") {
+      return [
+        text("the "),
+        ...part.runs,
+        text(` ${POSITION_NOUN[part.kind].singular.toLowerCase()}`),
+      ];
+    }
+    if (!part.disambiguator) return part.runs;
+    return style === REFERENCE_STYLE.PARENTHETICAL
+      ? [...part.runs, text(`, ${part.disambiguator}`)]
+      : [...part.runs, text(` (${part.disambiguator})`)];
+  }
+
+  /**
+   * `pointReferences` as runs. Lists join through `joinRuns`, which reproduces
+   * `formatList`.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {Array<number>} indices - 0-based point indices, source order
+   * @param {string} style - A REFERENCE_STYLE member
+   * @returns {Array<Object>} Runs
+   */
+  function pointReferencesRuns(chart, indices, style) {
+    const { text } = modelCore();
+    if (indices.length === 1) {
+      return referenceRuns(pointReferencePartRuns(chart, indices[0]), style);
+    }
+    if (indices.length >= TIED_POSITION_COLLAPSE_AT) {
+      return [text(`${countWord(indices.length)} points`)];
+    }
+
+    const parts = indices.map((i) => pointReferencePartRuns(chart, i));
+    if (parts.every((part) => part.kind === "label")) {
+      return joinRuns(
+        parts.map((part) => referenceRuns(part, REFERENCE_STYLE.STANDALONE))
+      );
+    }
+    const kind = parts[0].kind;
+    if (parts.every((part) => part.kind === kind)) {
+      return [
+        text("the "),
+        ...joinRuns(parts.map((part) => part.runs)),
+        text(` ${POSITION_NOUN[kind].plural}`),
+      ];
+    }
+    return joinRuns(
+      parts.map((part) => referenceRuns(part, REFERENCE_STYLE.STANDALONE))
+    );
+  }
+
+  /**
+   * `capitalise` over a run list. Every label and reference this is called on
+   * opens with describer text ("the ..."), so only that run's first character
+   * changes; anything else is a defect and throws rather than guessing.
+   *
+   * @param {Array<Object>} runs - Runs whose first is a text run
+   * @returns {Array<Object>} The same runs with the first character raised
+   */
+  function capitaliseRuns(runs) {
+    const { text } = modelCore();
+    const [first, ...rest] = runs;
+    if (!first || first.type !== text("").type) {
+      throw new Error("capitaliseRuns: the first run is not describer text");
+    }
+    return [text(capitalise(first.value)), ...rest];
+  }
+
   /**
    * The noun a COUNT takes, singular at one (probe sweep XP6, contract clause
    * C8). Every count-plus-noun clause in this module reads this, so the
@@ -1238,11 +1380,17 @@
    *     by construction (there are no labels), so the label-free range form
    *     carries the takeaway.
    *
+   * Returned as runs (CD-5b-4b): an author's series name or category label is
+   * an author run, escaped once by whatever renders it, and everything else is
+   * describer text. `tier` stays because it changes words (rule XC23(b)'s
+   * rounding, XC23(c)'s fixed short sentence), not escaping.
+   *
    * @param {Object} chart - The adapter's chart
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} One sentence, ending in a full stop
+   * @param {string} tier - A TIERS member
+   * @returns {Array<Object>} Runs for one sentence, ending in a full stop
    */
-  function buildTakeaway(chart, asHtml, tier) {
+  function buildTakeawayRuns(chart, tier) {
+    const { text } = modelCore();
     const series = chart.series;
     const isRangeAxis = !chart.xAxis || chart.xAxis.kind === AXIS_KINDS.RANGE;
 
@@ -1278,13 +1426,17 @@
         // byte-identical, so the supersession it forces on
         // `xychart-mismatch/overflow-values` reaches two keys and no needle.
         if (tier === TIERS.SHORT) {
-          return "The chart's series have different numbers of values.";
+          return [text("The chart's series have different numbers of values.")];
         }
-        const clauses = series.map(
-          (one) =>
-            `${seriesLabel(one, series, asHtml)} has ${countWord(one.values.length)}`
-        );
-        return `The chart's series have different numbers of values: ${textCore().formatList(clauses)}.`;
+        const clauses = series.map((one) => [
+          ...seriesLabelRuns(one, series),
+          text(` has ${countWord(one.values.length)}`),
+        ]);
+        return [
+          text("The chart's series have different numbers of values: "),
+          ...joinRuns(clauses),
+          text("."),
+        ];
       }
 
       let highest = series[0];
@@ -1296,12 +1448,19 @@
           highest = one;
         }
       }
-      return `${capitalise(seriesLabel(highest, series, asHtml))} shows the highest overall values.`;
+      return [
+        ...capitaliseRuns(seriesLabelRuns(highest, series)),
+        text(" shows the highest overall values."),
+      ];
     }
 
     const only = series[0];
     const stats = computeStatistics(only.values);
-    const rangeSentence = `Values range from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)} with an average of ${formatDerivedValue(stats.mean)}.`;
+    const rangeSentence = [
+      text(
+        `Values range from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)} with an average of ${formatDerivedValue(stats.mean)}.`
+      ),
+    ];
 
     // RULE XC17, AND IT COMES FIRST. A series with no variance cannot be
     // described by a range, a trend or a ratio: the range collapses ("Values
@@ -1309,7 +1468,7 @@
     // reaching the reader as the word "unknown" in the aria-label, and both
     // ratios are exactly 1. Every one of those is a defect the sweep measured
     // (XP8, XP9), and all three have the same cure — state the fact once.
-    if (isDegenerateSeries(stats)) return degenerateTakeaway(chart, stats, asHtml, tier);
+    if (isDegenerateSeries(stats)) return degenerateTakeaway(chart, stats, tier);
 
     if (isRangeAxis) return rangeSentence;
     if (!Number.isFinite(stats.mean) || stats.mean === 0) return rangeSentence;
@@ -1320,21 +1479,40 @@
     if (only.kind === SERIES_KINDS.LINE) {
       const trend = analyseTrend(only.values);
       if (trend === TRENDS.UP || trend === TRENDS.DOWN) {
-        return `${capitalise(seriesLabel(only, series, asHtml))} shows a ${trend} trend, ranging from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)}.`;
+        return [
+          ...capitaliseRuns(seriesLabelRuns(only, series)),
+          text(
+            ` shows a ${trend} trend, ranging from ${formatAuthorValueForTier(tier, stats.min)} to ${formatAuthorValueForTier(tier, stats.max)}.`
+          ),
+        ];
       }
       if (maxRatio > HIGH_POINT_RATIO) {
-        return `${capitalise(seriesLabel(only, series, asHtml))} peaks significantly at ${formatAuthorValueForTier(tier, stats.max)} during ${pointReferences(chart, stats.maxIndices, asHtml, REFERENCE_STYLE.STANDALONE)}.`;
+        return [
+          ...capitaliseRuns(seriesLabelRuns(only, series)),
+          text(` peaks significantly at ${formatAuthorValueForTier(tier, stats.max)} during `),
+          ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.STANDALONE),
+          text("."),
+        ];
       }
       // `is ${trend}` CANNOT RECEIVE THE UNKNOWN SENTINEL. analyseTrend returns
       // UNKNOWN only below two values, and a series of nought or one value never
       // reaches this line — one value is degenerate and returned above, and an
       // empty one is caught by the zero-mean guard. The reachability of every
       // trend-speaking site is enumerated in docs/mermaid-xychart-fs2-2026-08-24.md.
-      return `${capitalise(seriesLabel(only, series, asHtml))} is ${trend}, with values between ${formatAuthorValueForTier(tier, stats.min)} and ${formatAuthorValueForTier(tier, stats.max)}.`;
+      return [
+        ...capitaliseRuns(seriesLabelRuns(only, series)),
+        text(
+          ` is ${trend}, with values between ${formatAuthorValueForTier(tier, stats.min)} and ${formatAuthorValueForTier(tier, stats.max)}.`
+        ),
+      ];
     }
 
     if (maxRatio > HIGH_POINT_RATIO) {
-      return `The highest value, ${formatAuthorValueForTier(tier, stats.max)} at ${pointReferences(chart, stats.maxIndices, asHtml, REFERENCE_STYLE.STANDALONE)}, is ${Math.round((maxRatio - 1) * 100)}% above the average.`;
+      return [
+        text(`The highest value, ${formatAuthorValueForTier(tier, stats.max)} at `),
+        ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.STANDALONE),
+        text(`, is ${Math.round((maxRatio - 1) * 100)}% above the average.`),
+      ];
     }
     // RULE XC19 — the sign guard, and it is deliberately NOT mirrored above.
     // "N% below the average" is a claim about a PROPORTION of the average, so a
@@ -1345,9 +1523,40 @@
     // times the average and means exactly what it says — so widening this guard
     // to both branches would suppress a sentence that is doing its job.
     if (minRatio < LOW_POINT_RATIO && stats.min >= 0) {
-      return `The lowest value, ${formatAuthorValueForTier(tier, stats.min)} at ${pointReferences(chart, stats.minIndices, asHtml, REFERENCE_STYLE.STANDALONE)}, is ${Math.round((1 - minRatio) * 100)}% below the average.`;
+      return [
+        text(`The lowest value, ${formatAuthorValueForTier(tier, stats.min)} at `),
+        ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.STANDALONE),
+        text(`, is ${Math.round((1 - minRatio) * 100)}% below the average.`),
+      ];
     }
     return rangeSentence;
+  }
+
+  /**
+   * The takeaway as the public name has always returned it: a half-step
+   * wrapper over `buildTakeawayRuns` (CD-5b-4b). The plain form is the runs
+   * flattened, never escaped (contract clause C1); the HTML form is the runs
+   * rendered as one detailed-tier paragraph with the paragraph tags removed.
+   * The two assemblers still call this with `asHtml` false.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {boolean} asHtml - True when the result enters an HTML sink
+   * @param {string} tier - A TIERS member
+   * @returns {string} One sentence, ending in a full stop
+   */
+  function buildTakeaway(chart, asHtml, tier) {
+    const { description, section, paragraph, flatten } = modelCore();
+    const runs = buildTakeawayRuns(chart, tier);
+    if (!asHtml) return flatten(runs);
+
+    const html = renderCore().renderHtml(
+      description([], [section([paragraph(runs)])]),
+      renderCore().PROFILES.lines
+    ).detailed;
+    if (!html.startsWith("<p>") || !html.endsWith("</p>")) {
+      throw new Error("buildTakeaway: the renderer did not write one paragraph");
+    }
+    return html.slice("<p>".length, -"</p>".length);
   }
 
   /**
@@ -1371,10 +1580,11 @@
    *
    * @param {Object} chart - The adapter's chart
    * @param {Object} stats - Statistics from computeStatistics
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} One sentence, ending in a full stop
+   * @param {string} tier - A TIERS member
+   * @returns {Array<Object>} Runs for one sentence, ending in a full stop
    */
-  function degenerateTakeaway(chart, stats, asHtml, tier) {
+  function degenerateTakeaway(chart, stats, tier) {
+    const { text } = modelCore();
     const value = formatAuthorValueForTier(tier, stats.max);
     if (stats.count === 1) {
       const isBandAxis = !!chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND;
@@ -1382,17 +1592,23 @@
       // choice: the position is an appositive on the value, and the first
       // capture of this sentence omitted it and was corrected against the rule.
       const where = isBandAxis
-        ? `, at ${pointReference(chart, stats.maxIndex, asHtml)}`
-        : "";
-      return `The chart has a single value, ${value}${where}.`;
+        ? [
+            text(", at "),
+            ...referenceRuns(
+              pointReferencePartRuns(chart, stats.maxIndex),
+              REFERENCE_STYLE.STANDALONE
+            ),
+          ]
+        : [];
+      return [text(`The chart has a single value, ${value}`), ...where, text(".")];
     }
     // XC17 ADDENDUM (a), 24 August 2026. English says "Both", not "All two".
     // Raised by FS2 § 7.3, which measured `All two values are 42.` on a
     // two-point flat series, declined to invent a carve-out beyond its own
     // dispatch, and referred it here. Three and up keep the "All N" form, which
     // the four FS2 degenerate fixtures guard.
-    if (stats.count === 2) return `Both values are ${value}.`;
-    return `All ${countWord(stats.count)} values are ${value}.`;
+    if (stats.count === 2) return [text(`Both values are ${value}.`)];
+    return [text(`All ${countWord(stats.count)} values are ${value}.`)];
   }
 
   /**
@@ -1419,17 +1635,18 @@
    * @param {Object} chart - The adapter's chart
    * @param {Object} series - The degenerate series
    * @param {Object} stats - Statistics from computeStatistics
-   * @returns {string} One `<li>` fragment
+   * @returns {Object} One list item (model item)
    */
   function degenerateSeriesInsight(chart, series, stats) {
-    const label = seriesLabel(series, chart.series, true);
+    const { text, item } = modelCore();
+    const label = seriesLabelRuns(series, chart.series);
     // VERBATIM, not tier-aware: this is a DETAILED-tier insight and never
     // reaches the short tier, so rule XC23(b)'s rounding must not touch it.
     const value = formatAuthorValue(stats.max);
     if (stats.count === 1) {
-      return `<li>${capitalise(label)} has a single value, ${value}.</li>`;
+      return item([...capitaliseRuns(label), text(` has a single value, ${value}.`)]);
     }
-    return `<li>Every value in ${label} is ${value}.</li>`;
+    return item([text("Every value in "), ...label, text(` is ${value}.`)]);
   }
 
 
@@ -1438,15 +1655,65 @@
   // ---------------------------------------------------------------------
 
   /**
+   * What the picture shows in the value axis's place (rule XC25), or null.
+   *
+   * Where the y-axis has no title AND the chart has exactly one series AND that
+   * series is named AND the picture draws the name, the name stands in for the
+   * y-descriptor in the short opening and in Construction. The y-axis sentence
+   * still describes the axis as untitled: nothing calls the axis by this name.
+   *
+   * The caller states whether the picture draws the name
+   * (`options.drawsSeriesName`, ON unless told otherwise) because the words
+   * must not put in a caption text the picture does not show. Mermaid 11.17.2
+   * draws it as a legend entry, measured 30 October 2026.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`, default ON
+   * @returns {string|null} The series name, or null where nothing stands in
+   */
+  function drawnSeriesName(chart, options) {
+    const settings = { ...DEFAULT_DESCRIBE_OPTIONS, ...(options || {}) };
+    if (!settings.drawsSeriesName) return null;
+    if (chart.yAxis && chart.yAxis.title) return null;
+    if (!chart.series || chart.series.length !== 1) return null;
+    return chart.series[0].name || null;
+  }
+
+  /**
+   * The span clause of a declared band axis (rule XC24): `, from "FIRST" to
+   * "LAST"` — the first and last DECLARED labels, verbatim and quoted, escaped
+   * once here at the HTML sink. One category reads `, "LABEL"` (the caller's
+   * count phrase has already said "one <noun>"). A label repeated on the axis
+   * takes XC21's standalone shape, because `pointReference` already does.
+   * Detailed tier only. A range axis, and a chart with no x-axis, declare no
+   * categories and so yield an empty clause.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @returns {string} The clause with its leading comma, or ""
+   */
+  function constructionSpan(chart) {
+    const declared = declaredCategories(chart).length;
+    if (declared === 0) return "";
+    const first = pointReference(chart, 0, true);
+    if (declared === 1) return `, ${first}`;
+    return `, from ${first} to ${pointReference(chart, declared - 1, true)}`;
+  }
+
+  /**
    * Build the short tier's opening sentence.
    * @param {Object} chart - The adapter's chart
    * @param {boolean} asHtml - True when the result enters an HTML sink
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
+   *   `drawnSeriesName` (rule XC25). A trailing options object, not a field on
+   *   the chart: the chart is the adapter's model of the diagram, and whether
+   *   the picture draws a name belongs to the caller that rendered it.
    * @returns {string} One sentence, ending in a full stop
    */
-  function buildShortOpening(chart, asHtml) {
+  function buildShortOpening(chart, asHtml, options) {
     const typeWord = chartTypeWord(chart.series);
     const noun = axisNoun(chart);
     const count = pointCount(chart);
+    const standIn = drawnSeriesName(chart, options);
 
     let sentence = `A ${typeWord} chart`;
     if (chart.title) {
@@ -1454,6 +1721,8 @@
     }
     if (chart.yAxis && chart.yAxis.title) {
       sentence += ` showing "${asHtml ? escapeText(chart.yAxis.title) : chart.yAxis.title}"`;
+    } else if (standIn !== null) {
+      sentence += ` showing "${asHtml ? escapeText(standIn) : standIn}"`;
     }
     if (typeWord === "combined") {
       sentence += ` with ${buildComposition(chart.series)}`;
@@ -1509,12 +1778,15 @@
   /**
    * The Chart Construction paragraphs.
    * @param {Object} chart - The adapter's chart
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
+   *   `drawnSeriesName` (rule XC25)
    * @returns {Array<string>} HTML fragments, one per line
    */
-  function buildConstruction(chart) {
+  function buildConstruction(chart, options) {
     const typeWord = chartTypeWord(chart.series);
     const noun = axisNoun(chart);
     const count = pointCount(chart);
+    const standIn = drawnSeriesName(chart, options);
 
     // RULE XC22. The `is drawn` fallback is RETIRED. A chart being *drawn* is
     // not news, and standing alone it was the weakest sentence the module could
@@ -1522,22 +1794,32 @@
     // XP23). Where there is no y-descriptor the opener has nothing to predicate
     // and merges with the series sentence instead, which turns two thin
     // sentences into one that says something.
-    const hasYDescriptor = !!(chart.yAxis && chart.yAxis.title);
+    //
+    // RULE XC25: a series name the picture draws stands in for the y-title, so
+    // it counts as a y-descriptor here and the sentence does not merge.
+    const hasYDescriptor =
+      !!(chart.yAxis && chart.yAxis.title) || standIn !== null;
 
     let opening = `This ${typeWord} chart`;
     if (chart.title) opening += ` titled "${escapeText(chart.title)}"`;
     if (hasYDescriptor) {
-      opening += ` shows "${escapeText(chart.yAxis.title)}"`;
+      opening += ` shows "${escapeText(standIn !== null ? standIn : chart.yAxis.title)}"`;
     }
 
     // THE ONLY BRANCH THAT SPEAKS A POSITION COUNT is the band one. That is the
     // predicate rule XC22's of-N-values clause turns on, below.
     const openerSpeaksCount =
       !!chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND;
+    let spanClause = "";
     if (openerSpeaksCount) {
       const shared = typeWord === "combined" ? "shared " : "";
       const preposition = typeWord === SERIES_KINDS.LINE ? "over" : "for";
       opening += ` ${preposition} ${countWord(count)} ${shared}${countedNoun(noun, count)}`;
+      // RULE XC24: the opening names the span of the declared axis. On the
+      // merged (y-descriptor-less) sentence it sits before "has" and is closed
+      // by a comma (ruling D7c), so the sentence still reads as one.
+      spanClause = constructionSpan(chart);
+      opening += spanClause;
     } else if (chart.xAxis && chart.xAxis.title) {
       opening += ` across "${escapeText(chart.xAxis.title)}"`;
     }
@@ -1574,7 +1856,9 @@
 
     const sentences = hasYDescriptor
       ? [`${opening}.`, `The chart has ${seriesClause}.`]
-      : [`${opening} has ${seriesClause}.`];
+      : [
+          `${opening}${spanClause ? MERGED_SPAN_CLOSE : ""} has ${seriesClause}.`,
+        ];
 
     // RULE XC20 — THE MISMATCH IS DECLARED. This is contract clause D6, which
     // is the one row in this cluster the quality contract already forbade
@@ -1679,10 +1963,11 @@
    * support.
    *
    * @param {Object} chart - The adapter's chart
-   * @returns {Array<string>} `<li>` fragments
+   * @returns {Object} One list block (model list), never empty
    */
-  function buildInsights(chart) {
-    const items = [`<li><strong>${buildTakeaway(chart, true, TIERS.DETAILED)}</strong></li>`];
+  function buildInsightsModel(chart) {
+    const { list, item, strong } = modelCore();
+    const items = [item([strong(buildTakeawayRuns(chart, TIERS.DETAILED))])];
     const isRangeAxis = !chart.xAxis || chart.xAxis.kind === AXIS_KINDS.RANGE;
 
     if (chart.series.length === 1) {
@@ -1692,7 +1977,7 @@
       } else {
         items.push(...buildBarInsights(chart, only, true));
       }
-      return items;
+      return list(items);
     }
 
     // ORDER ON A MULTI-SERIES CHART: every line series first, then every bar
@@ -1710,7 +1995,30 @@
       if (one.kind !== SERIES_KINDS.BAR) continue;
       items.push(...buildBarInsights(chart, one, false));
     }
-    return items;
+    return list(items);
+  }
+
+  /**
+   * The Key Insights as the public name has always returned them: a half-step
+   * wrapper over `buildInsightsModel` (CD-5b-4b). Both assemblers write the
+   * `<ul>` and `</ul>` lines themselves and spread this array, so the list is
+   * rendered under `PROFILES.lines`, split on the newline, and the renderer's
+   * own first and last lines are checked and dropped.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @returns {Array<string>} `<li>` fragments, one per line
+   */
+  function buildInsights(chart) {
+    const { description, section } = modelCore();
+    const html = renderCore().renderHtml(
+      description([], [section([buildInsightsModel(chart)])]),
+      renderCore().PROFILES.lines
+    ).detailed;
+    const lines = html.split("\n");
+    if (lines[0] !== "<ul>" || lines[lines.length - 1] !== "</ul>") {
+      throw new Error("buildInsights: the renderer did not write one list");
+    }
+    return lines.slice(1, -1);
   }
 
   /**
@@ -1718,9 +2026,10 @@
    * @param {Object} chart - The adapter's chart
    * @param {Object} series - The bar series
    * @param {boolean} isOnlySeries - True when this is the chart's only series
-   * @returns {Array<string>} `<li>` fragments
+   * @returns {Array<Object>} List items (model items)
    */
   function buildBarInsights(chart, series, isOnlySeries) {
+    const { text, item } = modelCore();
     const stats = computeStatistics(series.values);
     const items = [];
 
@@ -1737,32 +2046,50 @@
       // same fact and is the strongest thing the list can say about it.
       if (!isDegenerateSeries(stats)) {
         items.push(
-          `<li>Highest value: ${formatAuthorValue(stats.max)} (${pointReferences(chart, stats.maxIndices, true, REFERENCE_STYLE.PARENTHETICAL)}).</li>`
+          item([
+            text(`Highest value: ${formatAuthorValue(stats.max)} (`),
+            ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.PARENTHETICAL),
+            text(")."),
+          ])
         );
         items.push(
-          `<li>Lowest value: ${formatAuthorValue(stats.min)} (${pointReferences(chart, stats.minIndices, true, REFERENCE_STYLE.PARENTHETICAL)}).</li>`
+          item([
+            text(`Lowest value: ${formatAuthorValue(stats.min)} (`),
+            ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.PARENTHETICAL),
+            text(")."),
+          ])
         );
       }
-      items.push(`<li>Average value: ${formatDerivedValue(stats.mean)}.</li>`);
+      items.push(item([text(`Average value: ${formatDerivedValue(stats.mean)}.`)]));
 
       if (stats.count >= STATISTICS_MIN_POINTS) {
         items.push(
-          `<li>Standard deviation: ${formatDerivedValue(stats.standardDeviation)}.</li>`
+          item([text(`Standard deviation: ${formatDerivedValue(stats.standardDeviation)}.`)])
         );
-        items.push(
-          `<li>Median value: ${formatDerivedValue(stats.median)}.</li>`
-        );
-        items.push(`<li>${buildDistributionSentence(stats)}</li>`);
+        items.push(item([text(`Median value: ${formatDerivedValue(stats.median)}.`)]));
+        items.push(item([text(buildDistributionSentence(stats))]));
       }
       return items;
     }
 
-    const label = seriesLabel(series, chart.series, true);
+    const label = seriesLabelRuns(series, chart.series);
     items.push(
-      `<li>Highest value in ${label}: ${formatAuthorValue(stats.max)} (${pointReferences(chart, stats.maxIndices, true, REFERENCE_STYLE.PARENTHETICAL)}).</li>`
+      item([
+        text("Highest value in "),
+        ...label,
+        text(`: ${formatAuthorValue(stats.max)} (`),
+        ...pointReferencesRuns(chart, stats.maxIndices, REFERENCE_STYLE.PARENTHETICAL),
+        text(")."),
+      ])
     );
     items.push(
-      `<li>Lowest value in ${label}: ${formatAuthorValue(stats.min)} (${pointReferences(chart, stats.minIndices, true, REFERENCE_STYLE.PARENTHETICAL)}).</li>`
+      item([
+        text("Lowest value in "),
+        ...label,
+        text(`: ${formatAuthorValue(stats.min)} (`),
+        ...pointReferencesRuns(chart, stats.minIndices, REFERENCE_STYLE.PARENTHETICAL),
+        text(")."),
+      ])
     );
     return items;
   }
@@ -1803,11 +2130,12 @@
    * @param {Object} series - The line series
    * @param {boolean} isRangeAxis - True when the x-axis is a numeric range
    * @param {boolean} isOnlySeries - True when this is the chart's only series
-   * @returns {Array<string>} `<li>` fragments
+   * @returns {Array<Object>} List items (model items)
    */
   function buildLineInsights(chart, series, isRangeAxis, isOnlySeries) {
+    const { text, item } = modelCore();
     const stats = computeStatistics(series.values);
-    const label = seriesLabel(series, chart.series, true);
+    const label = seriesLabelRuns(series, chart.series);
     const items = [];
 
     // XC17 ADDENDUM (b). A degenerate series among others is one sentence, and
@@ -1821,7 +2149,7 @@
     if (!isRangeAxis) {
       const trend = analyseTrend(series.values);
       const clause = TREND_CLAUSE[trend];
-      if (clause) items.push(`<li>${capitalise(label)} ${clause}.</li>`);
+      if (clause) items.push(item([...capitaliseRuns(label), text(` ${clause}.`)]));
     }
 
     // RULE XC17, the line side of the extremes drop. The trend insight above
@@ -1840,35 +2168,37 @@
       // form keeps them in brackets (parenthetical). Computing one reference
       // for both branches would put a comma form inside brackets on a
       // duplicated label — rule XC21's exact failure.
-      const peakAt = pointReferences(
+      const peakAt = pointReferencesRuns(
         chart,
         stats.maxIndices,
-        true,
         peakTied ? REFERENCE_STYLE.STANDALONE : REFERENCE_STYLE.PARENTHETICAL
       );
-      const lowAt = pointReferences(
+      const lowAt = pointReferencesRuns(
         chart,
         stats.minIndices,
-        true,
         lowTied ? REFERENCE_STYLE.STANDALONE : REFERENCE_STYLE.PARENTHETICAL
       );
       items.push(
-        peakTied
-          ? `<li>${capitalise(label)} peaks at ${formatAuthorValue(stats.max)}, at ${peakAt}.</li>`
-          : `<li>${capitalise(label)} peaks at ${formatAuthorValue(stats.max)} (${peakAt}).</li>`
+        item([
+          ...capitaliseRuns(label),
+          text(` peaks at ${formatAuthorValue(stats.max)}${peakTied ? ", at " : " ("}`),
+          ...peakAt,
+          text(peakTied ? "." : ")."),
+        ])
       );
       items.push(
-        lowTied
-          ? `<li>${capitalise(label)} reaches its lowest point at ${formatAuthorValue(stats.min)}, at ${lowAt}.</li>`
-          : `<li>${capitalise(label)} reaches its lowest point at ${formatAuthorValue(stats.min)} (${lowAt}).</li>`
+        item([
+          ...capitaliseRuns(label),
+          text(` reaches its lowest point at ${formatAuthorValue(stats.min)}${lowTied ? ", at " : " ("}`),
+          ...lowAt,
+          text(lowTied ? "." : ")."),
+        ])
       );
     }
 
     if (isRangeAxis) {
       if (isUnimodal(series.values)) {
-        items.push(
-          "<li>Values rise to a single peak and fall away after it.</li>"
-        );
+        items.push(item([text("Values rise to a single peak and fall away after it.")]));
       }
       return items;
     }
@@ -1879,7 +2209,11 @@
     const shape = countPeaksAndTroughs(series.values);
     if (shape.peaks > 1 && shape.troughs > 1) {
       items.push(
-        `<li>The data shows a cyclic pattern with ${countWord(shape.peaks)} peaks and ${countWord(shape.troughs)} troughs.</li>`
+        item([
+          text(
+            `The data shows a cyclic pattern with ${countWord(shape.peaks)} peaks and ${countWord(shape.troughs)} troughs.`
+          ),
+        ])
       );
     }
 
@@ -1889,7 +2223,11 @@
       const percentChange = ((last - first) / Math.abs(first)) * 100;
       if (Math.abs(percentChange) > OVERALL_CHANGE_MIN_PERCENT) {
         items.push(
-          `<li>Overall ${percentChange > 0 ? "increase" : "decrease"} of ${Math.abs(percentChange).toFixed(1)}% from start to end.</li>`
+          item([
+            text(
+              `Overall ${percentChange > 0 ? "increase" : "decrease"} of ${Math.abs(percentChange).toFixed(1)}% from start to end.`
+            ),
+          ])
         );
       }
     }
@@ -1905,10 +2243,16 @@
    * label is a `<th scope="row">`, which the Chart.js table does not have — an
    * improvement, not an inheritance.
    *
+   * Built as ONE model table node, so every decision lives here and the
+   * renderer writes the markup. `buildTable` below is the half-step wrapper.
+   *
    * @param {Object} chart - The adapter's chart
-   * @returns {Array<string>} HTML fragments, one per line
+   * @returns {Object} A table block (model table). Its columns are the corner
+   *   cell then one per series, and every row has a row header, so each row
+   *   holds `columns.length - 1` cells.
    */
-  function buildTable(chart) {
+  function buildTableModel(chart) {
+    const { text, author, table } = modelCore();
     const noun = axisNoun(chart);
     const isBandAxis = !!chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND;
     const categories = isBandAxis ? chart.xAxis.categories || [] : [];
@@ -1925,33 +2269,24 @@
     // in the axis sentence and the short tier instead.
     const xHeader = isBandAxis
       ? chart.xAxis.title
-        ? escapeText(chart.xAxis.title)
-        : noun.singular
-      : RANGE_POINT_NOUN;
+        ? [author(chart.xAxis.title)]
+        : [text(noun.singular)]
+      : [text(RANGE_POINT_NOUN)];
 
     const valueHeaders =
       chart.series.length === 1
         ? [
             chart.series[0].name
-              ? escapeText(chart.series[0].name)
+              ? [author(chart.series[0].name)]
               : chart.yAxis && chart.yAxis.title
-                ? escapeText(chart.yAxis.title)
-                : FALLBACK_VALUE_HEADER,
+                ? [author(chart.yAxis.title)]
+                : [text(FALLBACK_VALUE_HEADER)],
           ]
         : chart.series.map((one) => seriesColumnHeader(one, chart.series));
 
-    const parts = ["<table>"];
-    parts.push(
-      chart.title
-        ? `<caption>Data table for: ${escapeText(chart.title)}</caption>`
-        : "<caption>Data table</caption>"
-    );
-    parts.push(
-      `<thead><tr><th scope="col">${xHeader}</th>${valueHeaders
-        .map((header) => `<th scope="col">${header}</th>`)
-        .join("")}</tr></thead>`
-    );
-    parts.push("<tbody>");
+    const caption = chart.title
+      ? [text("Data table for: "), author(chart.title)]
+      : [text("Data table")];
 
     // RULE XC20's row header for an overflow position: `Position 4`, never the
     // bare digit it used to be. A reader moving down the row-header column
@@ -1963,6 +2298,7 @@
       ? (i) => `${POSITION_NOUN.position.singular} ${i + 1}`
       : (i) => String(i + 1);
 
+    const tableRows = [];
     for (let i = 0; i < rows; i += 1) {
       // RULE XC21's table half, and it is a STRUCTURAL accessibility fault
       // rather than a prose one. A `scope="row"` header is the mechanism by
@@ -1975,24 +2311,40 @@
       const rowLabel = isBandAxis
         ? typeof categories[i] === "string"
           ? isDuplicatedLabel(chart, i)
-            ? `${escapeText(categories[i])} (${POSITION_NOUN.position.singular.toLowerCase()} ${i + 1})`
-            : escapeText(categories[i])
-          : overflowHeader(i)
-        : String(i + 1);
-      const cells = chart.series
-        .map((one) => {
-          const value = one.values[i];
-          // RULE XC20 / contract clause D6: a position a series has no value
-          // for says so. An empty cell cannot be told from a recorded zero.
-          return `<td>${value === undefined ? NO_VALUE_TEXT : formatAuthorValue(value)}</td>`;
-        })
-        .join("");
-      parts.push(`<tr><th scope="row">${rowLabel}</th>${cells}</tr>`);
+            ? [
+                author(categories[i]),
+                text(` (${POSITION_NOUN.position.singular.toLowerCase()} ${i + 1})`),
+              ]
+            : [author(categories[i])]
+          : [text(overflowHeader(i))]
+        : [text(String(i + 1))];
+      const cells = chart.series.map((one) => {
+        const value = one.values[i];
+        // RULE XC20 / contract clause D6: a position a series has no value
+        // for says so. An empty cell cannot be told from a recorded zero.
+        // A cell value is the describer's own formatting, never escaped
+        // (formatAuthorValue is String(value) and the old code left it raw).
+        return [text(value === undefined ? NO_VALUE_TEXT : formatAuthorValue(value))];
+      });
+      tableRows.push({ header: rowLabel, cells });
     }
 
-    parts.push("</tbody>");
-    parts.push("</table>");
-    return parts;
+    return table({ caption, columns: [xHeader, ...valueHeaders], rows: tableRows });
+  }
+
+  /**
+   * The data table as HTML lines: the half-step wrapper over `buildTableModel`
+   * that the two assemblers (the Mermaid module and `chartjs.js`) still call.
+   * They spread the array and join it on a newline, so it is the table node
+   * rendered under `PROFILES.lines` and split on that newline.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @returns {Array<string>} HTML fragments, one per line
+   */
+  function buildTable(chart) {
+    const { description, section } = modelCore();
+    const model = description([], [section([buildTableModel(chart)])]);
+    return renderCore().renderHtml(model, renderCore().PROFILES.lines).detailed.split("\n");
   }
 
   // ---------------------------------------------------------------------
@@ -2101,79 +2453,342 @@
       : `All ${countWord(count)} segments are equal`;
   }
 
+  // The pie describer's two models resolve at call time, the textCore() way:
+  // a module-scope capture would read undefined if a later load order ran
+  // this file before model.js or render.js.
+  function modelCore() {
+    return root.ChartDescribeModel;
+  }
+
+  function renderCore() {
+    return root.ChartDescribeRender;
+  }
+
+  // The kinds of section and list entry the pie model names. LEGACY_PIE_PROFILE
+  // below maps each to its class names.
+  const PIE_ROLES = Object.freeze({
+    CONSTRUCTION: "construction",
+    INSIGHTS: "insights",
+    DATA: "data",
+    PATTERNS: "patterns",
+    CATEGORIES: "categories",
+    PRIMARY: "primary",
+    TOTAL: "total",
+    LARGEST: "largest",
+    SMALLEST: "smallest",
+  });
+
+  const PIE_TERM_CLASS = Object.freeze({
+    label: "diagram-segment",
+    percentage: "diagram-percentage",
+    proportion: "diagram-proportion",
+    value: "diagram-value",
+    count: "diagram-count",
+    title: "diagram-title",
+  });
+
   /**
-   * One Key Insights line for the largest or the smallest group. A group of
+   * TEMPORARY. The pie describer's presentation, kept here so the pie wrappers
+   * (buildPieShort, buildPieDetailed) can render a model to the HTML they have
+   * always returned. A frozen copy of CD-5a's "sections" profile, less its two
+   * parse-back helpers (sectionRoleFromClass, parseTermClass), which nothing
+   * here uses. The class names belong to the Mermaid pie module: this copy is
+   * DELETED at CD-5b parcel 6, after parcel 5-pie moves the profile into
+   * mermaid-accessibility-pie.js.
+   */
+  const LEGACY_PIE_PROFILE = Object.freeze({
+    name: "sections",
+    layout: "sections",
+    shortEscape: "author",
+    sectionClass: (role) => `mermaid-section chart-${role}`,
+    headingClass: "mermaid-details-heading",
+    // The whitespace the old template literals left after <section ...> and
+    // after the heading, keyed by section role.
+    sectionLayout: Object.freeze({
+      default: Object.freeze({ indent: 10, afterHeading: true }),
+      [PIE_ROLES.INSIGHTS]: Object.freeze({ indent: 10, afterHeading: false }),
+      [PIE_ROLES.PATTERNS]: Object.freeze({ indent: 6, afterHeading: true }),
+    }),
+    listClass: Object.freeze({
+      [PIE_ROLES.CATEGORIES]: "diagram-segment-list",
+      [PIE_ROLES.INSIGHTS]: "diagram-insights-list",
+      [PIE_ROLES.DATA]: "diagram-data-list",
+    }),
+    itemClass: Object.freeze({
+      [PIE_ROLES.PRIMARY]: "diagram-insight diagram-insight-primary",
+      [PIE_ROLES.TOTAL]: "diagram-insight diagram-insight-total",
+      [PIE_ROLES.LARGEST]: "diagram-insight diagram-insight-largest",
+      [PIE_ROLES.SMALLEST]: "diagram-insight diagram-insight-smallest",
+      [PIE_ROLES.DATA]: "diagram-data-item",
+    }),
+    termClass: (role, variant) =>
+      role === "pattern"
+        ? `diagram-pattern diagram-pattern-${variant}`
+        : PIE_TERM_CLASS[role],
+  });
+
+  /** A segment's name as the chart author wrote it, a label term over one author run. */
+  function segmentLabel(segment) {
+    const { term, author } = modelCore();
+    return term("label", [author(String(segment.name))]);
+  }
+
+  /**
+   * The run-level counterpart of textCore().formatList: each entry is a list
+   * of runs, and the separators are describer text between them. Zero entries
+   * give no runs, one gives itself, two are joined by " and ", three or more
+   * by commas with an Oxford comma. Joining runs rather than HTML strings
+   * leaves the author text to the renderer's single escape.
+   * @param {Array<Array>} entries
+   * @returns {Array} The joined runs
+   */
+  function joinRuns(entries) {
+    const { text } = modelCore();
+    if (entries.length === 0) return [];
+    if (entries.length === 1) return entries[0];
+    if (entries.length === 2) return [...entries[0], text(" and "), ...entries[1]];
+
+    const runs = [];
+    entries.slice(0, -1).forEach((entry, index) => {
+      if (index > 0) runs.push(text(", "));
+      runs.push(...entry);
+    });
+    runs.push(text(", and "), ...entries[entries.length - 1]);
+    return runs;
+  }
+
+  /**
+   * One Key Insights entry for the largest or the smallest group. A group of
    * one reads "Largest segment: X (v, p)"; a tie reads "Largest segments: X and
    * Y (v each, p each)".
+   * @returns {Object} A list entry (model item)
    */
   function extremeItem(kind, label, group, total) {
-    const names = group.map(
-      (segment) =>
-        `<span class="diagram-segment">${textCore().escapeHtml(segment.name)}</span>`
-    );
-    const value = `<span class="diagram-value">${formatValue(group[0].value)}</span>`;
-    const percentage = `<span class="diagram-percentage">${formatPercentage(
-      group[0].value,
-      total
-    )}</span>`;
+    const { text, term, item } = modelCore();
     const tied = group.length > 1;
+    const each = tied ? [text(" each")] : [];
 
-    return `<li class="diagram-insight diagram-insight-${kind}">${label} segment${
-      tied ? "s" : ""
-    }: ${textCore().formatList(names)} (${value}${tied ? " each" : ""}, ${percentage}${
-      tied ? " each" : ""
-    })</li>`;
+    return item(
+      [
+        text(`${label} segment${tied ? "s" : ""}: `),
+        ...joinRuns(group.map((segment) => [segmentLabel(segment)])),
+        text(" ("),
+        term("value", [text(formatValue(group[0].value))]),
+        ...each,
+        text(", "),
+        term("percentage", [text(formatPercentage(group[0].value, total))]),
+        ...each,
+        text(")"),
+      ],
+      { role: kind }
+    );
   }
 
   const ZERO_SENTENCE =
     "Every value is zero, so no segment is larger than another.";
 
   /**
-   * The sentence that names the largest segment(s), in the two tiers. This is
-   * the one place the short description and the Key Insights read from, so
-   * they cannot drift apart.
-   * @returns {{html: string, text: string}}
+   * The sentence that names the largest segment(s), as runs. This is the one
+   * place the short description and the Key Insights read from, so they
+   * cannot drift apart.
+   * @returns {Array} The runs of the sentence
    */
   function largestSentence(segments, total) {
-    if (total === 0) return { html: ZERO_SENTENCE, text: ZERO_SENTENCE };
+    const { text, term } = modelCore();
+    if (total === 0) return [text(ZERO_SENTENCE)];
 
     const ties = readTies(segments);
     const largest = segments[0];
-    const percentage = formatPercentage(largest.value, total);
-    const pct = `<span class="diagram-percentage">${percentage}</span>`;
+    const percentage = term("percentage", [
+      text(formatPercentage(largest.value, total)),
+    ]);
 
     if (ties.allEqual) {
-      const lead = allEqualLead(segments.length);
-      return {
-        html: `${lead}, at ${pct} each.`,
-        text: `${lead}, at ${percentage} each.`,
-      };
+      return [
+        text(`${allEqualLead(segments.length)}, at `),
+        percentage,
+        text(" each."),
+      ];
     }
 
     if (ties.largest.length > 1) {
-      const names = ties.largest.map((segment) => segment.name);
-      const htmlNames = names.map(
-        (name) => `<span class="diagram-segment">${textCore().escapeHtml(name)}</span>`
-      );
-      return {
-        html: `${textCore().formatList(htmlNames)} are the joint largest segments, at ${pct} each.`,
-        text: `${textCore().formatList(names)} are the joint largest segments, at ${percentage} each.`,
-      };
+      return [
+        ...joinRuns(ties.largest.map((segment) => [segmentLabel(segment)])),
+        text(" are the joint largest segments, at "),
+        percentage,
+        text(" each."),
+      ];
     }
 
     const proportion = proportionPhrase(largest.value, total);
-    return {
-      html: `<span class="diagram-segment">${textCore().escapeHtml(
-        largest.name
-      )}</span> is the largest segment at ${pct}${
-        proportion
-          ? `, representing <span class="diagram-proportion">${proportion}</span> of the total`
-          : ""
-      }.`,
-      text: `${largest.name} is the largest segment at ${percentage}${
-        proportion ? `, representing ${proportion} of the total` : ""
-      }.`,
-    };
+    return [
+      segmentLabel(largest),
+      text(" is the largest segment at "),
+      percentage,
+      ...(proportion
+        ? [
+            text(", representing "),
+            term("proportion", [text(proportion)]),
+            text(" of the total"),
+          ]
+        : []),
+      text("."),
+    ];
+  }
+
+  /**
+   * The pie chart's description as a model: the short sentence as runs and
+   * four sections (construction, insights, data, patterns). Author text
+   * (the title and the segment names) enters only as author runs, raw; the
+   * renderer escapes it once. Sorts `segments` in place, highest value first.
+   * @param {string} title - The chart title, or an empty string
+   * @param {Array<{name: string, value: number}>} segments - The segments
+   * @returns {Object} A DescriptionModel (see model.js)
+   */
+  function buildPieModel(title, segments) {
+    const { text, author, term, strong, paragraph, list, item, section } =
+      modelCore();
+
+    // Sort segments by value (descending)
+    segments.sort((a, b) => b.value - a.value);
+
+    logDebug("Processed " + segments.length + " segments");
+
+    const total = segments.reduce((sum, segment) => sum + segment.value, 0);
+
+    logDebug("Total value across all segments: " + total);
+
+    const titleRuns = title
+      ? [text(' titled "'), term("title", [author(String(title))]), text('"')]
+      : [];
+
+    // 1. The short description. An untitled chart has no "titled" clause.
+    const count = segments.length
+      ? `${countWord(segments.length)} ${categoryNoun(segments.length)}`
+      : "multiple categories";
+    const short = [
+      text("A pie chart"),
+      ...titleRuns,
+      text(` showing the distribution of ${count}.`),
+    ];
+    if (segments.length > 0) {
+      short.push(text(" "), ...largestSentence(segments, total));
+    }
+
+    // 2. Chart Construction
+    const constructionBlocks = [
+      paragraph([
+        text("This pie chart"),
+        ...titleRuns,
+        text(" shows the distribution of categories."),
+      ]),
+    ];
+    if (segments.length > 0) {
+      constructionBlocks.push(
+        paragraph([
+          text("The chart shows "),
+          term("count", [text(countWord(segments.length))]),
+          text(` ${categoryNoun(segments.length)}:`),
+        ]),
+        // The author's name, as written. This list used to lower-case it while
+        // Key Insights and Complete Data Points did not, so one description
+        // spelled the same category two ways.
+        list(
+          segments.map((segment) => item([segmentLabel(segment)])),
+          { role: PIE_ROLES.CATEGORIES }
+        )
+      );
+    } else {
+      constructionBlocks.push(
+        paragraph([
+          text(
+            "The chart is divided into segments in a circular layout, with each segment's size representing its proportion of the whole."
+          ),
+        ])
+      );
+    }
+
+    // 3. Key Insights
+    const insightItems = [];
+    if (segments.length > 0) {
+      insightItems.push(
+        item([strong(largestSentence(segments, total))], {
+          role: PIE_ROLES.PRIMARY,
+        })
+      );
+    }
+
+    // The total, with float noise removed
+    insightItems.push(
+      item(
+        [
+          text("Total: "),
+          term("value", [text(formatValue(cleanTotal(total)))]),
+        ],
+        { role: PIE_ROLES.TOTAL }
+      )
+    );
+
+    // Largest and smallest segments. When every value is zero there are no
+    // percentages to narrate; when every slice is equal the primary insight
+    // has said so, and a largest and a smallest line would contradict it.
+    if (segments.length > 0 && total > 0) {
+      const ties = readTies(segments);
+      if (!ties.allEqual) {
+        insightItems.push(
+          extremeItem(PIE_ROLES.LARGEST, "Largest", ties.largest, total),
+          extremeItem(PIE_ROLES.SMALLEST, "Smallest", ties.smallest, total)
+        );
+      }
+    }
+
+    // 4. Complete Data Points: every segment with its value, and its
+    // percentage unless every value is zero (there is no share to state).
+    const dataItems = segments.map((segment) =>
+      item(
+        [
+          segmentLabel(segment),
+          text(": "),
+          term("value", [text(formatValue(segment.value))]),
+          ...(total > 0
+            ? [
+                text(" ("),
+                term("percentage", [
+                  text(formatPercentage(segment.value, total)),
+                ]),
+                text(")"),
+              ]
+            : []),
+        ],
+        { role: PIE_ROLES.DATA }
+      )
+    );
+
+    const sections = [
+      section(constructionBlocks, {
+        role: PIE_ROLES.CONSTRUCTION,
+        heading: [text("Chart Construction")],
+      }),
+      section([list(insightItems, { role: PIE_ROLES.INSIGHTS })], {
+        role: PIE_ROLES.INSIGHTS,
+        heading: [text("Key Insights")],
+      }),
+      section([list(dataItems, { role: PIE_ROLES.DATA })], {
+        role: PIE_ROLES.DATA,
+        heading: [text("Complete Data Points")],
+      }),
+    ];
+
+    // The pattern section needs enough segments to identify patterns, and a
+    // total to state them against
+    if (segments.length >= 3 && total > 0) {
+      logDebug(
+        "Generating pattern analysis for " + segments.length + " segments"
+      );
+      sections.push(generatePatternSection(segments, total));
+    }
+
+    return modelCore().description(short, sections);
   }
 
   /**
@@ -2184,48 +2799,17 @@
    * @returns {{html: string, text: string}} The HTML and plain-text descriptions
    */
   function buildPieShort(title, segments) {
-    // Sort segments by value (descending)
-    segments.sort((a, b) => b.value - a.value);
-
-    logDebug("Processed " + segments.length + " segments");
-
-    // Diagram-source text is escaped once, here, where it enters an HTML
-    // string. The PLAIN tier below deliberately keeps the raw values: it feeds
-    // the SVG aria-label and the textContent fallback, neither of which parses
-    // HTML, so entities there would be read out literally.
-    const safeTitle = textCore().escapeHtml(title);
-
-    // An untitled chart has no "titled" clause in any tier.
-    const count = segments.length
-      ? `${countWord(segments.length)} ${categoryNoun(segments.length)}`
-      : "multiple categories";
-
-    // Basic description - HTML version
-    let htmlDescription = `A pie chart${
-      title
-        ? ` titled "<span class="diagram-title">${safeTitle}</span>"`
-        : ""
-    } showing the distribution of ${count}.`;
-
-    // Plain text version for screen readers and textContent scenarios
-    let plainTextDescription = `A pie chart${
-      title ? ` titled "${title}"` : ""
-    } showing the distribution of ${count}.`;
-
-    // Add enhanced information about the largest segment(s) if available
-    if (segments.length > 0) {
-      const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-      const sentence = largestSentence(segments, total);
-
-      htmlDescription += " " + sentence.html;
-      plainTextDescription += " " + sentence.text;
-    }
+    const model = buildPieModel(title, segments);
 
     logDebug("Short description generated successfully");
 
+    // The PLAIN tier is the flattened runs: raw author text, never escaped. It
+    // feeds the SVG aria-label and the textContent fallback, neither of which
+    // parses HTML, so entities there would be read out literally. The HTML
+    // tier is escaped once, by the renderer.
     return {
-      html: htmlDescription,
-      text: plainTextDescription,
+      html: renderCore().renderHtml(model, LEGACY_PIE_PROFILE).shortHTML,
+      text: modelCore().flatten(model.short),
     };
   }
 
@@ -2237,124 +2821,25 @@
    * @returns {string} HTML description with structured, accessible information
    */
   function buildPieDetailed(title, segments) {
-    // Sort segments from highest to lowest value
-    segments.sort((a, b) => b.value - a.value);
+    const model = buildPieModel(title, segments);
 
-    // Calculate total for percentage calculation
-    const total = segments.reduce((sum, segment) => sum + segment.value, 0);
-
-    logDebug("Total value across all segments: " + total);
-
-    // Create structured description
-    let description = "";
-
-    // 1. Chart Construction Section
-    description += `<section class="mermaid-section chart-construction">
-          <h4 class="mermaid-details-heading">Chart Construction</h4>
-          <p>This pie chart${
-            title
-              ? ` titled "<span class="diagram-title">${textCore().escapeHtml(
-                  title
-                )}</span>"`
-              : ""
-          } shows the distribution of categories.</p>`;
-
-    if (segments.length > 0) {
-      description += `<p>The chart shows <span class="diagram-count">${countWord(
-        segments.length
-      )}</span> ${categoryNoun(segments.length)}:</p><ul class="diagram-segment-list">`;
-      segments.forEach((segment) => {
-        // The author's name, as written. This list used to lower-case it while
-        // Key Insights and Complete Data Points did not, so one description
-        // spelled the same category two ways.
-        description += `<li><span class="diagram-segment">${textCore().escapeHtml(
-          segment.name
-        )}</span></li>`;
-      });
-      description += `</ul>`;
-    } else {
+    if (segments.length === 0) {
       logWarn("No segments available for detailed description");
-      description += `<p>The chart is divided into segments in a circular layout, with each segment's size representing its proportion of the whole.</p>`;
-    }
-
-    description += `</section>`;
-
-    // 2. Key Insights Section
-    description += `<section class="mermaid-section chart-insights">
-          <h4 class="mermaid-details-heading">Key Insights</h4><ul class="diagram-insights-list">`;
-
-    // Add largest segment insight
-    if (segments.length > 0) {
-      description += `<li class="diagram-insight diagram-insight-primary"><strong>${
-        largestSentence(segments, total).html
-      }</strong></li>`;
-    }
-
-    // Add total (float noise removed)
-    description += `<li class="diagram-insight diagram-insight-total">Total: <span class="diagram-value">${formatValue(cleanTotal(total))}</span></li>`;
-
-    // Add largest and smallest segments. When every value is zero there are no
-    // percentages to narrate; when every slice is equal the primary insight
-    // has said so, and a largest and a smallest line would contradict it.
-    if (segments.length > 0 && total > 0) {
-      const ties = readTies(segments);
-      if (!ties.allEqual) {
-        description += extremeItem(
-          "largest",
-          "Largest",
-          ties.largest,
-          total
-        );
-        description += extremeItem(
-          "smallest",
-          "Smallest",
-          ties.smallest,
-          total
-        );
-      }
-    }
-
-    description += `</ul></section>`;
-
-    // 3. Complete Data Points Section
-    description += `<section class="mermaid-section chart-data">
-          <h4 class="mermaid-details-heading">Complete Data Points</h4>
-          <ul class="diagram-data-list">`;
-
-    // Add all segments with values and percentages
-    segments.forEach((segment) => {
-      // No percentage when every value is zero: there is no share to state.
-      const percentage =
-        total > 0
-          ? ` (<span class="diagram-percentage">${formatPercentage(segment.value, total)}</span>)`
-          : "";
-      description += `<li class="diagram-data-item"><span class="diagram-segment">${textCore().escapeHtml(
-        segment.name
-      )}</span>: <span class="diagram-value">${formatValue(segment.value)}</span>${percentage}</li>`;
-    });
-
-    description += `</ul></section>`;
-
-    // Add data pattern section if we have enough segments to identify
-    // patterns, and a total to state them against
-    if (segments.length >= 3 && total > 0) {
-      logDebug(
-        "Generating pattern analysis for " + segments.length + " segments"
-      );
-      description += generatePatternSection(segments, total);
     }
 
     logInfo("Detailed pie chart description generated successfully");
-    return description;
+    return renderCore().renderHtml(model, LEGACY_PIE_PROFILE).detailed;
   }
 
   /**
-   * Generate a section describing patterns in the pie chart data
+   * The section that describes patterns in the pie chart data
    * @param {Array} segments - Array of segment objects
    * @param {number} total - Total value of all segments
-   * @returns {string} HTML for pattern section
+   * @returns {Object} The patterns section (model section)
    */
   function generatePatternSection(segments, total) {
+    const { text, term, paragraph, section } = modelCore();
+
     logDebug("Analysing distribution patterns");
 
     // Calculate distribution characteristics
@@ -2362,14 +2847,14 @@
 
     logDebug("Distribution analysis - Average: " + avgPercentage + "%");
 
-    // Create pattern section. The skewed/balanced judgement (and its 1.5 times
-    // threshold) is gone: the percentages above carry the facts, and the
-    // average is the one figure they do not state.
-    let patternSection = `<section class="mermaid-section chart-patterns">
-      <h4 class="mermaid-details-heading">Distribution Pattern</h4>
-      <p>`;
-
-    patternSection += `The average segment size is <span class="diagram-percentage">${avgPercentage}%</span>.`;
+    // The skewed/balanced judgement (and its 1.5 times threshold) is gone: the
+    // percentages above carry the facts, and the average is the one figure
+    // they do not state.
+    const runs = [
+      text("The average segment size is "),
+      term("percentage", [text(`${avgPercentage}%`)]),
+      text("."),
+    ];
 
     // Add group information if there are more than 4 segments
     if (segments.length > 4) {
@@ -2390,22 +2875,847 @@
           "% of total"
       );
 
-      patternSection += ` The bottom <span class="diagram-count">${countWord(
-        bottomHalf.length
-      )}</span> segments
-        collectively represent <span class="diagram-percentage">${bottomHalfPercentage}</span> of the total.`;
+      // The line break and eight spaces inside this sentence are the old
+      // template literal's own whitespace, kept byte for byte (CD-5a owner
+      // question Q2 is still open). HTML collapses it when read.
+      runs.push(
+        text(" The bottom "),
+        term("count", [text(countWord(bottomHalf.length))]),
+        text(" segments\n        collectively represent "),
+        term("percentage", [text(bottomHalfPercentage)]),
+        text(" of the total.")
+      );
     }
 
-    patternSection += `</p></section>`;
+    return section([paragraph(runs)], {
+      role: PIE_ROLES.PATTERNS,
+      heading: [text("Distribution Pattern")],
+    });
+  }
 
-    return patternSection;
+  // ---------------------------------------------------------------------
+  // Radar builders (CD-2c)
+  // ---------------------------------------------------------------------
+  //
+  // Lifted byte for byte from md-scripts/mermaid/mermaid-accessibility-radar.js,
+  // which keeps `measure` (the step that turns the parse adapter's delivery into
+  // facts) and its helpers. Two changes only: the shared prose layer is now
+  // textCore(), and the guarded count word is `radarCountWord`, because the one
+  // above (xychart and pie) does not guard a non-integer. Merging them waits on
+  // register item 137.
+  //
+  // CD-5b-3: every builder below returns runs, items or blocks of the
+  // DescriptionModel (model.js), never HTML. Author text enters only as
+  // `author` runs, raw, and the renderer escapes it once. buildRadarShort and
+  // buildRadarDetailed render buildRadarModel through PROFILES.lines.
+
+  // How close twice a mean must sit to an odd whole number to count as a half
+  // (RR25): far below any difference two authored decimals can make, far above
+  // the error one binary sum leaves.
+  const HALF_TOLERANCE = 1e-9;
+
+  // Where the renderer draws a value it clamps (RD4): above the maximum at the
+  // maximum's radius (RR23), below the minimum at radius zero (RR20).
+  const SCALE_MAXIMUM_PLACE = "the scale's maximum";
+  const CENTRE_PLACE = "the centre";
+
+  // The most pairs the Comparison lists before its closing item (RR30).
+  const MAX_LISTED_PAIRS = 6;
+
+  // The generator-owned names for an empty or whitespace-only label (RR24).
+  const UNLABELLED_AXIS = "unlabelled axis";
+  const UNLABELLED_SERIES = "unlabelled series";
+
+  /**
+   * A count in RD12's number form: words to nine, digits from 10.
+   *
+   * THE SHARED `narrationNumber` IS GUARDED HERE, not reimplemented: it indexes
+   * its word array for any value from 0 to 9 inclusive, so a non-integer
+   * would come back `undefined`. Every count this file narrates is now a
+   * whole number (RR22 narrates the ring count the renderer draws, not a
+   * fractional ticks), and the guard stays so that anything that is not a
+   * whole number from 0 to 9 takes `String()` and never reaches the array.
+   *
+   * @param {number} value - The count
+   * @returns {string} The narration form
+   */
+  function radarCountWord(value) {
+    if (Number.isInteger(value) && value >= 0 && value <= 9) {
+      return textCore().narrationNumber(value);
+    }
+    return String(value);
+  }
+
+  /**
+   * A count as a noun phrase, with NOUN AGREEMENT - RD1, RD5, RD8 and RD12.
+   *
+   * THE ONE BUILDER FOR EVERY COUNTED NOUN, so "axis"/"axes", "value"/"values"
+   * and "ring"/"rings" agree the same way everywhere (RR2 on OR-3: "one
+   * values" fails clause C8). Zero reads "no", which is RD1's own spelling.
+   * "series" is its own plural and is passed as both forms.
+   *
+   * @param {number} count - The count
+   * @param {string} singular - e.g. "axis"
+   * @param {string} plural - e.g. "axes"
+   * @returns {string} e.g. "no axes", "one axis", "three axes", "10 axes"
+   */
+  function countPhrase(count, singular, plural) {
+    if (count === 0) return `no ${plural}`;
+    return `${radarCountWord(count)} ${count === 1 ? singular : plural}`;
+  }
+
+  /** A count of axes - RD1 and RD8. */
+  function axesPhrase(count) {
+    return countPhrase(count, "axis", "axes");
+  }
+
+  /** A count of series - RD1. "series" is its own plural. */
+  function seriesPhrase(count) {
+    return countPhrase(count, "series", "series");
+  }
+
+  /** A count of values - RD8. */
+  function valuesPhrase(count) {
+    return countPhrase(count, "value", "values");
+  }
+
+  /**
+   * Join lists of runs - NO SERIAL COMMA.
+   *
+   * The targets join "Pace", "Workload" and "Support" with no comma before
+   * the "and" (E2), so the shared `formatList` (and `joinRuns`, its run-level
+   * form in the pie section), which write an Oxford comma from three items
+   * up, are deliberately not used. One join serves the axes sentence, the
+   * highest/lowest ties and every pair-sentence list. It joins runs rather
+   * than strings, so author text reaches the renderer's single escape raw.
+   *
+   * @param {Array<Array>} entries - One list of runs per item
+   * @returns {Array} The joined runs
+   */
+  function joinRunsNoSerial(entries) {
+    const { text } = modelCore();
+    if (entries.length === 0) return [];
+    if (entries.length === 1) return entries[0];
+
+    const runs = [];
+    entries.slice(0, -1).forEach((entry, index) => {
+      if (index > 0) runs.push(text(", "));
+      runs.push(...entry);
+    });
+    runs.push(text(" and "), ...entries[entries.length - 1]);
+    return runs;
+  }
+
+  /**
+   * A number as the words give it - RD12: the db's number, verbatim.
+   *
+   * `String()` of the delivered number and nothing else: 2.5 stays 2.5, and
+   * nothing is rounded or re-formatted. The only rounded figure in this file
+   * is the average, and it is rounded by `roundedMean` before it gets here.
+   *
+   * @param {number} value - A delivered number
+   * @returns {string} Its digits
+   */
+  function numberText(value) {
+    return String(value);
+  }
+
+  /**
+   * Quote one author label - RD3, RD7, RD8 and RD14.
+   *
+   * The quotation marks are generator furniture (describer text); only the
+   * label is an author run. Author names are never inflected.
+   *
+   * @param {string} label - An axis or series label
+   * @returns {Array} e.g. "Attack" with its quotation marks, as runs
+   */
+  function quotedLabel(label) {
+    const { text, author } = modelCore();
+    return [text('"'), author(String(label)), text('"')];
+  }
+
+  /**
+   * Is a label empty or whitespace only? - RD8, ruling RR24.
+   *
+   * Mermaid keeps `""` rather than falling back to the id (`label ?? name`),
+   * so such a label reaches the canvas as an empty string and is drawn as
+   * nothing (sweep F7). There is then no author text to quote.
+   *
+   * @param {string} label - An axis or series label
+   * @returns {boolean} True when the label carries no visible text
+   */
+  function isUnlabelled(label) {
+    return label.trim() === "";
+  }
+
+  /**
+   * An author label as the PROSE names it - quoted and escaped, or, for an
+   * empty or whitespace-only label, the generator-owned phrase "unlabelled
+   * axis N" / "unlabelled series N", N the declaration position in digits,
+   * with NO quotes because there is no author text to mark (RR24).
+   *
+   * @param {string} label - The label
+   * @param {string} noun - UNLABELLED_AXIS or UNLABELLED_SERIES
+   * @param {number} position - The declaration position, from one
+   * @returns {Array} The name, as runs
+   */
+  function proseName(label, noun, position) {
+    const { text } = modelCore();
+    return isUnlabelled(label) ? [text(`${noun} ${position}`)] : quotedLabel(label);
+  }
+
+  /**
+   * An author label as a TABLE HEADER names it - unquoted and escaped, or the
+   * same generator phrase, so no header cell is ever empty (RR24).
+   *
+   * @param {string} label - The label
+   * @param {string} noun - UNLABELLED_AXIS or UNLABELLED_SERIES
+   * @param {number} position - The declaration position, from one
+   * @returns {Array} The cell content, as runs
+   */
+  function cellName(label, noun, position) {
+    const { text, author } = modelCore();
+    // A header cell is an opening position (RR34), so the phrase takes its capital.
+    return isUnlabelled(label)
+      ? [text(capitalisePhrase(`${noun} ${position}`))]
+      : [author(String(label))];
+  }
+
+  /** An axis in prose, by its declaration index (from zero). */
+  function axisName(axis, index) {
+    return proseName(axis.label, UNLABELLED_AXIS, index + 1);
+  }
+
+  /** A series in prose; its position is its place among EVERY series. */
+  function seriesName(facts, curve) {
+    return proseName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1);
+  }
+
+  /**
+   * The generator's own phrase where it OPENS - ruling RR34, its reach ruled
+   * by the seat on 29 September 2026. THE ONLY PLACE THE PHRASE IS
+   * CAPITALISED. It opens a list item (a series item on either arm, a nested
+   * axis item), a sentence (the pair sentence's subject, "Unlabelled series 1
+   * is higher than ...") and every table header cell; it stays lower case
+   * only mid-sentence ("on unlabelled axis 2", "than unlabelled series 2").
+   * An author label is returned exactly as given: author text is never
+   * re-cased.
+   *
+   * @param {string} label - The author label the name was built from
+   * @param {Array} name - The name as runs, from `proseName`
+   * @returns {Array} The name as runs, ready to open a position
+   */
+  function capitaliseOpening(label, name) {
+    const { text } = modelCore();
+    if (!isUnlabelled(label)) return name;
+    // An unlabelled name is one describer text run, the generator's own phrase.
+    return [text(capitalisePhrase(name[0].value))];
+  }
+
+  /** A generator phrase with its first letter capitalised. */
+  function capitalisePhrase(phrase) {
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  }
+
+  /** A series name where it opens a sentence or a list item (RR34). */
+  function openingSeriesName(facts, curve) {
+    return capitaliseOpening(curve.label, seriesName(facts, curve));
+  }
+
+  /** An axis name where it opens a nested list item (RR34). */
+  function openingAxisName(axis, index) {
+    return capitaliseOpening(axis.label, axisName(axis, index));
+  }
+
+  // ---------------------------------------------------------------------
+  // The short tier - rule RD1
+  // ---------------------------------------------------------------------
+
+  /**
+   * The short description - rule RD1. THE ONLY BUILDER OF THE SHORT SENTENCE.
+   *
+   * Runs, with the title an author run. The plain tier is `flatten` of these
+   * runs, raw, because that tier reaches a `textContent` sink and the SVG's
+   * `aria-label`, where an entity would be announced literally; the HTML tier
+   * is the same runs under PROFILES.lines, which escapes the whole sentence
+   * (furniture quotes included). One composition serves both tiers, so they
+   * cannot disagree.
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {Array} The short sentence, as runs
+   */
+  function buildShortRuns(facts) {
+    const { text, author } = modelCore();
+    const titled =
+      facts.title === null
+        ? []
+        : [text(' titled "'), author(String(facts.title)), text('"')];
+    return [
+      text("A radar chart"),
+      ...titled,
+      text(` with ${axesPhrase(facts.N)} and ${seriesPhrase(facts.K)}.`),
+    ];
+  }
+
+  // ---------------------------------------------------------------------
+  // The Overview - rules RD2 to RD5
+  // ---------------------------------------------------------------------
+
+  /**
+   * Overview paragraph one - RD2: the title, the series and the axes.
+   * @param {Object} facts - From `measure`
+   * @returns {Array} The sentence, as runs
+   */
+  function buildOpeningSentence(facts) {
+    const { text } = modelCore();
+    const titled = facts.title === null ? [] : [text(" titled "), ...quotedLabel(facts.title)];
+    return [
+      text("This radar chart"),
+      ...titled,
+      text(` plots ${seriesPhrase(facts.K)} across ${axesPhrase(facts.N)}.`),
+    ];
+  }
+
+  /**
+   * Overview paragraph two - RD3: every axis, in declaration order.
+   *
+   * "clockwise from the top" is a fact of the picture, measured (RR1): the
+   * first declared axis is at the top and the order runs clockwise at 360/N
+   * degrees. EDGE 2's no-axis chart reads "There are no axes."
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {Array} The sentence, as runs
+   */
+  function buildAxesSentence(facts) {
+    const { text } = modelCore();
+    const labels = facts.axes.map((axis, index) => axisName(axis, index));
+    if (facts.N === 0) return [text("There are no axes.")];
+    if (facts.N === 1) {
+      return [text("The one axis is at the top and is "), ...labels[0], text(".")];
+    }
+    return [
+      text("The axes, clockwise from the top, are "),
+      ...joinRunsNoSerial(labels),
+      text("."),
+    ];
+  }
+
+  /**
+   * The values the picture clamps to one end of the scale - RD4, MQ4, RR20.
+   *
+   * Only DRAWN series count, because only a drawn series has a vertex to be
+   * "drawn at the scale's maximum" or "drawn at the centre"; a series the
+   * picture omits (RD8) clips nothing.
+   *
+   * @param {Object} facts - From `measure`
+   * @param {Function} isOutside - True for a value the renderer clamps
+   * @returns {number} How many drawn values it clamps
+   */
+  function countClamped(facts, isOutside) {
+    let clamped = 0;
+    facts.tabled.forEach((curve) => {
+      curve.values.forEach((value) => {
+        if (isOutside(value)) clamped += 1;
+      });
+    });
+    return clamped;
+  }
+
+  /**
+   * One clamped-value sentence - RD4: "One value is above 50 and is drawn at
+   * the scale's maximum." / "Three values are below 50 and are drawn at the
+   * centre." The count is in words to nine, capitalised.
+   *
+   * @param {number} count - How many values are clamped, at least one
+   * @param {string} side - "above" or "below"
+   * @param {number} bound - The scale end they pass
+   * @param {string} place - Where the picture draws them
+   * @returns {string} The sentence
+   */
+  function clampedSentence(count, side, bound, place) {
+    const subject =
+      count === 1 ? "One value is" : `${textCore().capitalize(valuesPhrase(count))} are`;
+    const verb = count === 1 ? "is" : "are";
+    return `${subject} ${side} ${numberText(bound)} and ${verb} drawn at ${place}.`;
+  }
+
+  /**
+   * Overview paragraph three - RD4, the scale. THE ONLY BUILDER OF IT.
+   *
+   * Five branches, in this order:
+   *   - `scaleMax` null (no series delivered, EDGE 1): the sentence is
+   *     OMITTED (RR5), and this returns null.
+   *   - no range (`scaleMax === min`, RR15): nothing is plotted, and the
+   *     sentence says so (RR3). The data form keeps "set by the highest
+   *     value"; an author max equal to min drops that clause, because the
+   *     author set it, and adds no clipped count, because nothing is drawn at
+   *     any ring.
+   *   - an INVERTED scale, min above max on either branch (EDGE 5, RR19):
+   *     the range, then "so every value is drawn at the scale's maximum",
+   *     and no clamped-value sentence.
+   *   - otherwise the range - "set by the highest value" on the data branch
+   *     (MQ1), with ", which is in a series that is not plotted" when no
+   *     plotted value reaches it (RR29) - then one sentence for the values
+   *     above the maximum (MQ4,
+   *     RR23) and one for the values below the minimum (RR20), each only
+   *     when it counts at least one drawn value, above before below.
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {string|null} The paragraph's text, or null when omitted
+   */
+  function buildScaleSentence(facts) {
+    const options = facts.options;
+    if (options.scaleMax === null) return null;
+
+    const range = `The scale runs from ${numberText(options.min)} to ${numberText(
+      options.scaleMax
+    )}`;
+    const fromData = options.scaleMaxSource === "data";
+
+    if (facts.noRange) {
+      return fromData
+        ? `${range}, set by the highest value, so no series is plotted.`
+        : `${range}, so no series is plotted.`;
+    }
+
+    // RR19: every value is drawn at the maximum, and no clamped count follows.
+    if (facts.inverted) {
+      return fromData
+        ? `${range}, set by the highest value, so every value is drawn at ${SCALE_MAXIMUM_PLACE}.`
+        : `${range}, so every value is drawn at ${SCALE_MAXIMUM_PLACE}.`;
+    }
+
+    // The data branch names where its maximum came from only when that is
+    // not the picture (RR29): the renderer derives it over EVERY series, so an
+    // unplotted one can set the scale the plotted ones are drawn against.
+    let opening = `${range}.`;
+    if (fromData) {
+      opening = facts.maxUnplotted
+        ? `${range}, set by the highest value, which is in a series that is not plotted.`
+        : `${range}, set by the highest value.`;
+    }
+    const sentences = [opening];
+
+    // Clamped values are narrated only on a real range, above before below.
+    // "at the scale's maximum", never "at the outer ring" (RR23): at ticks 0
+    // there is no ring, and at a fractional ticks the outermost ring lies
+    // beyond the maximum. Above-maximum is zero on the data branch by
+    // construction, the maximum being the highest value; below-minimum can
+    // occur on either branch, because the renderer clamps to `min` whichever
+    // set the maximum (RR20).
+    const above = countClamped(facts, (value) => value > options.scaleMax);
+    if (above > 0) {
+      sentences.push(clampedSentence(above, "above", options.scaleMax, SCALE_MAXIMUM_PLACE));
+    }
+    const below = countClamped(facts, (value) => value < options.min);
+    if (below > 0) {
+      sentences.push(clampedSentence(below, "below", options.min, CENTRE_PLACE));
+    }
+    return sentences.join(" ");
+  }
+
+  /**
+   * Overview paragraph four - RD5, the grid and the legend.
+   *
+   * THE RING COUNT IS WHAT THE RENDERER DRAWS (RR22): its graticule loop runs
+   * `for (a = 0; a < ticks; a++)`, so a fractional ticks draws the CEILING -
+   * measured 2 rings at 1.5, 1 at 0.5 and 3 at 2.5, in both grid modes - and
+   * ticks 0 draws none, which reads "no rings" with no shape word.
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {string} The sentence
+   */
+  function buildGridSentence(facts) {
+    const options = facts.options;
+    const shape = options.graticule === "polygon" ? "polygonal" : "circular";
+    const ringCount = Math.ceil(options.ticks);
+    const rings =
+      ringCount === 0 ? "no rings" : countPhrase(ringCount, `${shape} ring`, `${shape} rings`);
+    const legend = facts.legend ? "a legend names the series" : "there is no legend";
+    return `The grid has ${rings}, and ${legend}.`;
+  }
+
+  // ---------------------------------------------------------------------
+  // The Series list - rules RD7, RD8 and RD10
+  // ---------------------------------------------------------------------
+
+  /**
+   * The mean of a series, rounded - RD7, RR14. THE ONLY AVERAGE IN THIS FILE.
+   *
+   * HALVES ROUND AWAY FROM ZERO, which `Math.round` alone does not do: it
+   * rounds a half towards positive infinity, so -2.5 gives -2. Rounding the
+   * magnitude and restoring the sign gives -3, and 2.5 still gives 3. A
+   * result of -0 is returned as 0, so `String()` of it reads "0".
+   *
+   * A HALF IS FOUND ON TWICE THE MEAN, WITHIN A TOLERANCE, never by equality
+   * (RR25 on the sweep's F1). Binary floating point sums 0.1, 4.1 and 3.3 to
+   * 7.499999999999999, so the mean 2.5 arrives as 2.4999999999999996 and a
+   * plain round gives 2. Twice the mean lands within HALF_TOLERANCE of an odd
+   * whole number exactly when the decimal mean is a half; the exact halves
+   * (2 and 3, 1.5 and 3.5) take the same branch and still give 3.
+   *
+   * @param {number[]} values - A series' values
+   * @returns {number} The rounded mean
+   */
+  function roundedMean(values) {
+    const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const magnitude = Math.abs(mean);
+    const twice = magnitude * 2;
+    const nearestTwice = Math.round(twice);
+    const isHalf =
+      Math.abs(twice - nearestTwice) < HALF_TOLERANCE && nearestTwice % 2 === 1;
+    const roundedMagnitude = isHalf ? (nearestTwice + 1) / 2 : Math.round(magnitude);
+    const rounded = Math.sign(mean) * roundedMagnitude;
+    return rounded === 0 ? 0 : rounded;
+  }
+
+  /**
+   * The highest/lowest sentence of a series - RD7. THE ONLY PLACE EXTREMES
+   * ARE FOUND.
+   *
+   * A tie lists every tied axis, in axis order, joined as the axes sentence
+   * joins; an axis label shared by two axes is named once per axis carrying
+   * it (RR13, EDGE 4). Every value equal reads "The same value on every
+   * axis." The one-axis form has no sentence at all and never reaches here.
+   *
+   * @param {Object[]} axes - The delivered axes
+   * @param {number[]} values - The series' values, in axis order
+   * @returns {Array} The sentence, as runs
+   */
+  function extremesSentence(axes, values) {
+    const { text } = modelCore();
+    const highest = Math.max(...values);
+    const lowest = Math.min(...values);
+    if (highest === lowest) return [text("The same value on every axis.")];
+
+    const on = (target) =>
+      joinRunsNoSerial(
+        axes
+          .map((axis, index) => (values[index] === target ? axisName(axis, index) : null))
+          .filter((name) => name !== null)
+      );
+    return [text("Highest on "), ...on(highest), text(", lowest on "), ...on(lowest), text(".")];
+  }
+
+  /**
+   * The nested per-axis list of a drawn series - RD7 form B.
+   * @param {Object[]} axes - The delivered axes
+   * @param {number[]} values - The series' values, in axis order
+   * @returns {Object} A list block (model list)
+   */
+  function axisValueList(axes, values) {
+    const { text, list, item } = modelCore();
+    return list(
+      axes.map((axis, index) =>
+        item([...openingAxisName(axis, index), text(`: ${numberText(values[index])}`)])
+      )
+    );
+  }
+
+  /**
+   * One series as list-item lines - RD7, RD8 and RD10. THE ONLY BUILDER OF A
+   * SERIES ITEM.
+   *
+   * DRAWN (RD7, form B): the summary line - the label, RD10's disclosure when
+   * there is no legend, ", averaging M" when the chart has a range, then the
+   * highest/lowest sentence - then one nested item per axis. RD7's one-axis
+   * form is WITHDRAWN (RR21): a series on one axis is not drawn (RS7b), so it
+   * takes the arm below.
+   *
+   * NOT DRAWN (RD8): the reason, the legend clause or its no-legend
+   * replacement, and the values bare in the order written. The reason is the
+   * value count against the axis count on a count mismatch, and "only one
+   * axis" when the counts agree on a single-axis chart (RR21). RD8's no-legend
+   * replacement already says the series is named in the code and not in the
+   * picture, so RD10's bracketed disclosure is not repeated on this arm.
+   *
+   * @param {Object} facts - From `measure`
+   * @param {Object} curve - A delivered series
+   * @returns {Object} A list entry (model item), its nested list as a child
+   */
+  function buildSeriesItem(facts, curve) {
+    const { text, list, item } = modelCore();
+
+    // The label opens the item on both arms (RR34).
+    const label = openingSeriesName(facts, curve);
+
+    if (!curve.drawn) {
+      const legendClause = facts.legend
+        ? "though the legend names it"
+        : "and it is named in the code, not in the picture";
+      const leadIn =
+        curve.values.length === 1
+          ? "Its one value, in the order written:"
+          : "Its values, in the order written:";
+      // A single-axis chart whose counts agree is undrawn for its one axis,
+      // not for a mismatch; every other undrawn series is a count mismatch.
+      const reason =
+        curve.values.length === facts.N
+          ? "only one axis"
+          : `${valuesPhrase(curve.values.length)} for ${axesPhrase(facts.N)}`;
+      return item(
+        [
+          ...label,
+          text(`: ${reason}, so it is not plotted, ${legendClause}. ${leadIn}`),
+        ],
+        {
+          children: [
+            list(curve.values.map((value) => item([text(numberText(value))]))),
+          ],
+        }
+      );
+    }
+
+    const disclosure = facts.legend ? "" : " (named in the code, not in the picture)";
+    const averaging = facts.noRange ? "" : `, averaging ${numberText(roundedMean(curve.values))}`;
+    return item(
+      [
+        ...label,
+        text(`${disclosure}${averaging}. `),
+        ...extremesSentence(facts.axes, curve.values),
+      ],
+      { children: [axisValueList(facts.axes, curve.values)] }
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // The Comparison - rule RD14
+  // ---------------------------------------------------------------------
+
+  /**
+   * One pair of plotted series - RD14. THE ONLY PLACE TWO SERIES ARE COMPARED.
+   *
+   * The earlier series is always the subject. Every axis is named once, in
+   * axis order, in exactly one of three lists; a label shared by two axes is
+   * named once per axis carrying it (RR13). The forms, with RR12's two:
+   *   - every axis in one list: "on every axis", or "are equal on every axis";
+   *   - otherwise the higher list, then ", and lower on", then ", and equal
+   *     on", each present only when it is non-empty, the sentence opening on
+   *     "is higher than" or, with no higher list, "is lower than".
+   *
+   * @param {Object} facts - From `measure`
+   * @param {Object} first - The earlier series
+   * @param {Object} second - The later series
+   * @returns {Array} The sentence, as runs
+   */
+  function buildPairSentence(facts, first, second) {
+    const { text } = modelCore();
+    const higher = [];
+    const lower = [];
+    const equal = [];
+    facts.axes.forEach((axis, index) => {
+      const a = first.values[index];
+      const b = second.values[index];
+      const name = axisName(axis, index);
+      if (a > b) higher.push(name);
+      else if (a < b) lower.push(name);
+      else equal.push(name);
+    });
+
+    // The subject opens every form of the sentence below (RR34).
+    const subject = openingSeriesName(facts, first);
+    const other = seriesName(facts, second);
+    const total = facts.axes.length;
+
+    if (higher.length === total) {
+      return [...subject, text(" is higher than "), ...other, text(" on every axis.")];
+    }
+    if (lower.length === total) {
+      return [...subject, text(" is lower than "), ...other, text(" on every axis.")];
+    }
+    if (equal.length === total) {
+      return [...subject, text(" and "), ...other, text(" are equal on every axis.")];
+    }
+
+    // Each part is a list of runs; the parts are joined by a comma.
+    const parts = [];
+    if (higher.length > 0) {
+      parts.push([
+        ...subject,
+        text(" is higher than "),
+        ...other,
+        text(" on "),
+        ...joinRunsNoSerial(higher),
+      ]);
+      if (lower.length > 0) parts.push([text("and lower on "), ...joinRunsNoSerial(lower)]);
+    } else {
+      parts.push([
+        ...subject,
+        text(" is lower than "),
+        ...other,
+        text(" on "),
+        ...joinRunsNoSerial(lower),
+      ]);
+    }
+    if (equal.length > 0) parts.push([text("and equal on "), ...joinRunsNoSerial(equal)]);
+
+    const runs = [];
+    parts.forEach((part, index) => {
+      if (index > 0) runs.push(text(", "));
+      runs.push(...part);
+    });
+    runs.push(text("."));
+    return runs;
+  }
+
+  /**
+   * The Comparison section's list items - RD14, pairs in declaration order.
+   *
+   * CAPPED AT SIX PAIRS (RR30 on OR-8): the list grows as K(K-1)/2 and each
+   * sentence names every axis, so ten series gave 45 pairs and 7,086
+   * characters (sweep p08b). Six is the four-series count, the largest any
+   * exemplar reaches; above it the first six are kept in pair order and one
+   * closing item says how many were left out. The next pair count above six
+   * is ten, so the remainder is always at least four and always plural.
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {Object[]} One list entry (model item) per listed pair, then any closing item
+   */
+  function comparisonItems(facts) {
+    const { text, item } = modelCore();
+    const items = [];
+    const series = facts.compared;
+    for (let i = 0; i < series.length; i += 1) {
+      for (let j = i + 1; j < series.length; j += 1) {
+        items.push(item(buildPairSentence(facts, series[i], series[j])));
+      }
+    }
+    if (items.length <= MAX_LISTED_PAIRS) return items;
+
+    const remaining = items.length - MAX_LISTED_PAIRS;
+    return [
+      ...items.slice(0, MAX_LISTED_PAIRS),
+      item([
+        text(
+          `The remaining ${radarCountWord(remaining)} pairs are not listed; the data table has every value.`
+        ),
+      ]),
+    ];
+  }
+
+  // ---------------------------------------------------------------------
+  // The Data Table - rule RD9
+  // ---------------------------------------------------------------------
+
+  /**
+   * The data table - RD9. THE ONLY BUILDER OF IT.
+   *
+   * One column per DRAWN series (a series the picture omits has no column),
+   * one row per axis. Labels are unquoted author runs.
+   *
+   * @param {Object} facts - From `measure`
+   * @returns {Object} A table block (model table). Its columns are the corner
+   *   cell then one per drawn series, and every row has a row header, so each
+   *   row holds `columns.length - 1` cells.
+   */
+  function buildDataTable(facts) {
+    const { text, author, table } = modelCore();
+    const caption =
+      facts.title === null
+        ? [text("Data table for this radar chart")]
+        : [text("Data table for: "), author(String(facts.title))];
+
+    return table({
+      caption,
+      columns: [
+        [text("Axis")],
+        ...facts.tabled.map((curve) =>
+          cellName(curve.label, UNLABELLED_SERIES, facts.curves.indexOf(curve) + 1)
+        ),
+      ],
+      rows: facts.axes.map((axis, index) => ({
+        header: cellName(axis.label, UNLABELLED_AXIS, index + 1),
+        cells: facts.tabled.map((curve) => [text(numberText(curve.values[index]))]),
+      })),
+    });
+  }
+
+  /**
+   * The radar chart's description as a model: the short sentence as runs and
+   * the Overview, Series, Comparison (two or more compared series) and Data
+   * Table (at least one tabled series) sections. Author text (the title, the
+   * axis and series labels) enters only as author runs, raw; the renderer
+   * escapes it once.
+   *
+   * @param {Object} facts - The radar module's measured facts
+   * @returns {Object} A DescriptionModel (see model.js)
+   */
+  function buildRadarModel(facts) {
+    const { text, paragraph, list, section, description } = modelCore();
+
+    const overview = [
+      paragraph(buildOpeningSentence(facts)),
+      paragraph(buildAxesSentence(facts)),
+    ];
+    const scale = buildScaleSentence(facts);
+    if (scale !== null) overview.push(paragraph([text(scale)]));
+    overview.push(paragraph([text(buildGridSentence(facts))]));
+
+    const sections = [
+      section(overview, { heading: [text("Overview")] }),
+      section(
+        [
+          facts.K === 0
+            ? paragraph([text("No series is plotted.")])
+            : list(
+                facts.curves.map((curve) => buildSeriesItem(facts, curve)),
+                { ordered: true }
+              ),
+        ],
+        { heading: [text("Series")] }
+      ),
+    ];
+
+    if (facts.compared.length >= 2) {
+      sections.push(
+        section([list(comparisonItems(facts))], { heading: [text("Comparison")] })
+      );
+    }
+
+    if (facts.tabled.length > 0) {
+      sections.push(section([buildDataTable(facts)], { heading: [text("Data Table")] }));
+    }
+
+    return description(buildShortRuns(facts), sections);
+  }
+
+  /**
+   * The radar short tier, both forms: the plain sentence and its HTML escape.
+   * @param {Object} facts - The radar module's measured facts
+   * @returns {{html: string, text: string}} The short description
+   */
+  function buildRadarShort(facts) {
+    const model = buildRadarModel(facts);
+
+    // The PLAIN tier is the flattened runs: raw author text, never escaped
+    // (it feeds the SVG aria-label and the textContent fallback). The HTML tier
+    // is escaped once, by the renderer, over the whole sentence.
+    return {
+      html: renderCore().renderHtml(model, renderCore().PROFILES.lines).shortHTML,
+      text: modelCore().flatten(model.short),
+    };
+  }
+
+  /**
+   * The radar detailed tier: the Overview, Series, Comparison and Data Table
+   * sections, newline-joined by the `lines` profile.
+   * @param {Object} facts - The radar module's measured facts
+   * @returns {string} The detailed HTML fragment
+   */
+  function buildRadarDetailed(facts) {
+    const model = buildRadarModel(facts);
+    return renderCore().renderHtml(model, renderCore().PROFILES.lines).detailed;
   }
 
   logInfo("Chart builders initialised successfully");
 
-  // What the describers call. The xychart describer reaches the first six; the
-  // pie describer the last two. The other builders are reached only through
-  // these, and stay private until a second describer needs them.
+  // What the describers call. The xychart describer reaches buildShortOpening to
+  // buildTable; the pie describer buildPieShort and buildPieDetailed (thin
+  // wrappers over buildPieModel, which returns a DescriptionModel); the radar
+  // describer buildRadarShort and buildRadarDetailed (thin wrappers over
+  // buildRadarModel, which returns a DescriptionModel). The other builders are
+  // reached only through these, and stay private until another describer needs
+  // them.
   const api = {
     TIERS,
     escapeText,
@@ -2414,8 +3724,12 @@
     buildConstruction,
     buildInsights,
     buildTable,
+    buildPieModel,
     buildPieShort,
     buildPieDetailed,
+    buildRadarModel,
+    buildRadarShort,
+    buildRadarDetailed,
   };
 
   root.ChartDescribeCharts = api;

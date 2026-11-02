@@ -132,6 +132,7 @@
     <link rel="stylesheet" href="scripts/lite-yt-embed.css" />
     <link rel="stylesheet" href="local-chat/local-chat.css" />
     <link rel="stylesheet" href="chat/chat.css" />
+    <link rel="stylesheet" href="chat/chat-turn-nav.css" />
     <link rel="stylesheet" href="openrouter-embed/transcribe.css" />
     <!-- Captions Fixer. Layout only — the sheet declares no colour at all, and
          its header says why. Loaded AFTER ally-main.css above deliberately is
@@ -9278,10 +9279,22 @@ Science,91</pre
                       <p id="resume-ai-estimate">
                         Estimated cost: not calculated yet.
                       </p>
-                      <button type="button" id="resume-ai-run" disabled>
-                        <span aria-hidden="true" data-icon="aiSparkle"></span>
-                        Run the ticked steps
-                      </button>
+                      <!-- RP-3d: Run and Cancel share one cell of the summary grid. Cancel is hidden until a run starts. -->
+                      <div class="ai-run-actions">
+                        <button type="button" id="resume-ai-run" disabled>
+                          <span aria-hidden="true" data-icon="aiSparkle"></span>
+                          Run the ticked steps
+                        </button>
+                        <!-- RP-5 (RP-D9): dev-only. Hidden and inert unless the page is in dev mode (?dev=1); mathpix-ai-tab.js owns the gate. -->
+                        <button type="button" id="resume-ai-rehearse" hidden>
+                          <span aria-hidden="true" data-icon="aiSparkle"></span>
+                          Rehearse the ticked steps (no AI calls)
+                        </button>
+                        <button type="button" id="resume-ai-cancel" hidden>
+                          <span aria-hidden="true" data-icon="close"></span>
+                          Cancel
+                        </button>
+                      </div>
                       <p id="resume-ai-status" tabindex="-1" hidden></p>
                       <details id="resume-ai-correction-diff" hidden>
                         <summary>What MMD correction changed</summary>
@@ -9293,6 +9306,112 @@ Science,91</pre
                         <span aria-hidden="true" data-icon="download"></span>
                         Save AI run log
                       </button>
+                    </div>
+
+                    <!-- RP-3b (RP-D5): the run as a queue, like Convert's. Static text, NO live role anywhere in it; the spoken
+                         lines stay in #resume-ai-announce. The running clocks (row and total) are aria-hidden and become status
+                         text at the end. mathpix-ai-tab.js shows the rows of the ticked steps and writes their words. -->
+                    <div
+                      id="resume-ai-queue"
+                      class="ai-queue"
+                      role="region"
+                      aria-label="Run progress"
+                      hidden
+                    >
+                      <div class="ai-queue-head">
+                        <h5 class="ai-queue-heading">Run progress</h5>
+                        <!-- RP-5 (RP-D9): plain text, shown for the length of a rehearsal and cleared by the next real run. -->
+                        <span
+                          id="resume-ai-queue-badge"
+                          class="ai-queue-badge"
+                          hidden
+                          >Rehearsal</span
+                        >
+                        <p id="resume-ai-queue-total" class="ai-queue-total">
+                          <span class="ai-queue-total-label">Total</span>
+                          <span
+                            id="resume-ai-queue-total-clock"
+                            aria-hidden="true"
+                          ></span>
+                        </p>
+                      </div>
+                      <!-- RP-3c: the Done line, plain text, filled at the end of a run and emptied at the next. -->
+                      <p id="resume-ai-queue-done" class="ai-queue-done"></p>
+                      <ol class="ai-queue-list">
+                        <li
+                          class="resume-progress-item"
+                          data-step="correction"
+                          data-status="waiting"
+                          hidden
+                        >
+                          <div class="mathpix-progress-item">
+                            <span
+                              class="mathpix-progress-icon"
+                              aria-hidden="true"
+                              data-icon="hourglass"
+                            ></span>
+                            <span class="mathpix-progress-label"
+                              >MMD correction</span
+                            >
+                            <span class="sr-only ai-queue-sep">, </span>
+                            <span class="mathpix-progress-status"></span>
+                            <span
+                              class="ai-queue-clock"
+                              aria-hidden="true"
+                            ></span>
+                          </div>
+                        </li>
+                        <li
+                          class="resume-progress-item"
+                          data-step="context"
+                          data-status="waiting"
+                          hidden
+                        >
+                          <div class="mathpix-progress-item">
+                            <span
+                              class="mathpix-progress-icon"
+                              aria-hidden="true"
+                              data-icon="hourglass"
+                            ></span>
+                            <span class="mathpix-progress-label"
+                              >Context auto-fill</span
+                            >
+                            <span class="sr-only ai-queue-sep">, </span>
+                            <span class="mathpix-progress-status"></span>
+                            <span
+                              class="ai-queue-clock"
+                              aria-hidden="true"
+                            ></span>
+                          </div>
+                        </li>
+                        <li
+                          class="resume-progress-item"
+                          data-step="pictures"
+                          data-status="waiting"
+                          hidden
+                        >
+                          <div class="mathpix-progress-item">
+                            <span
+                              class="mathpix-progress-icon"
+                              aria-hidden="true"
+                              data-icon="hourglass"
+                            ></span>
+                            <span class="mathpix-progress-label"
+                              >Picture descriptions</span
+                            >
+                            <span class="sr-only ai-queue-sep">, </span>
+                            <span class="mathpix-progress-status"></span>
+                            <span class="sr-only ai-queue-sep">, </span>
+                            <span class="ai-queue-detail"></span>
+                            <span
+                              class="ai-queue-clock"
+                              aria-hidden="true"
+                            ></span>
+                          </div>
+                          <!-- RP-3c fills this with one row per picture. -->
+                          <ol class="ai-queue-sublist"></ol>
+                        </li>
+                      </ol>
                     </div>
 
                     <ol class="ai-steps">
@@ -9317,19 +9436,6 @@ Science,91</pre
                           corrections.
                         </p>
                         <p id="resume-ai-model-correction" class="ai-model"></p>
-                        <!-- RP-1 (RP-D1): the step's run status, static text, no live role; the ticker is visual only. -->
-                        <p
-                          id="resume-ai-progress-correction"
-                          class="ai-step-status"
-                          hidden
-                        >
-                          <span id="resume-ai-progress-correction-text"></span>
-                          <span
-                            id="resume-ai-progress-correction-timer"
-                            class="ai-step-timer"
-                            aria-hidden="true"
-                          ></span>
-                        </p>
                         <details
                           id="resume-ai-advanced-correction"
                           class="mathpix-context-model-advanced ai-change"
@@ -9361,18 +9467,6 @@ Science,91</pre
                           Fills the context fields from the PDF.
                         </p>
                         <p id="resume-ai-model-context" class="ai-model"></p>
-                        <p
-                          id="resume-ai-progress-context"
-                          class="ai-step-status"
-                          hidden
-                        >
-                          <span id="resume-ai-progress-context-text"></span>
-                          <span
-                            id="resume-ai-progress-context-timer"
-                            class="ai-step-timer"
-                            aria-hidden="true"
-                          ></span>
-                        </p>
                         <details
                           id="resume-ai-advanced-context"
                           class="mathpix-context-model-advanced ai-change"
@@ -9404,18 +9498,6 @@ Science,91</pre
                           each picture that has none.
                         </p>
                         <p id="resume-ai-model-pictures" class="ai-model"></p>
-                        <p
-                          id="resume-ai-progress-pictures"
-                          class="ai-step-status"
-                          hidden
-                        >
-                          <span id="resume-ai-progress-pictures-text"></span>
-                          <span
-                            id="resume-ai-progress-pictures-timer"
-                            class="ai-step-timer"
-                            aria-hidden="true"
-                          ></span>
-                        </p>
                         <details
                           id="resume-ai-advanced-pictures"
                           class="mathpix-context-model-advanced ai-change"
@@ -19475,7 +19557,8 @@ Science,91</pre
               <div id="chat-attach-pictures-wrap" hidden>
                 <input type="checkbox" id="chat-attach-pictures" />
                 <label for="chat-attach-pictures"
-                  >Include <span id="chat-attach-pictures-count">0</span>
+                  >Include <span id="chat-attach-pictures-count">0</span
+                  ><span id="chat-attach-pictures-of"></span>
                   <span id="chat-attach-pictures-kind">pictures</span></label
                 >
                 <p
@@ -19486,12 +19569,16 @@ Science,91</pre
                   These go with your message, and with each later message while
                   this file stays in the conversation.
                 </p>
-                <div
+                <!-- Parcel P14: one real checkbox per picture, all ticked on attach, built by
+                   chat/chat-attach.js. The legend is visually hidden because the "Include" line
+                   above is its visible heading. Silent: no live region. -->
+                <fieldset
                   id="chat-attach-pictures-strip"
                   class="chat-attach-pictures-strip"
-                  aria-hidden="true"
                   hidden
-                ></div>
+                >
+                  <legend class="visually-hidden">Pictures to send</legend>
+                </fieldset>
               </div>
             </div>
           </div>
@@ -21760,7 +21847,8 @@ Science,91</pre
           </a>
         </article>
 
-        <div id="panel">
+        <!-- A landmark only while one of its buttons shows: syncPanelLandmark() (below) and ChatTurnNav.refresh() keep the hidden attribute in step. -->
+        <nav id="panel" aria-label="Scroll controls" hidden>
           <button class="panelButton" onclick="topFunction()" id="myBtn">
             <svg
               id="svgUP"
@@ -21813,7 +21901,7 @@ Science,91</pre
             <br />
             <span id="myBtnBottom" class="panelLabel">Bottom</span>
           </button>
-        </div>
+        </nav>
       </main>
       <!-- Phase 6E: Chemistry live region at body level for reliable SR announcement (E8) -->
       <div
@@ -22224,6 +22312,9 @@ Science,91</pre
     <script src="https://cdn.jsdelivr.net/npm/diff@8.0.3/dist/diff.min.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-diff-engine.js"></script>
     <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-analyser.js"></script>
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-mmd-checks.js"></script>
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-table-convert.js"></script>
+    <script src="mathpix-scripts/ai-enhancement/mathpix-ai-table-action.js"></script>
     <script src="mathpix-scripts/core/mathpix-image-registry.js"></script>
     <script src="mathpix-scripts/core/mathpix-context-manager.js?v=9.1"></script>
     <script src="mathpix-scripts/core/mathpix-alt-text-provenance.js"></script>
@@ -22811,6 +22902,10 @@ Science,91</pre
     <!-- Set Up Tool -->
     <script src="setup-tool/setup-tool.js"></script>
 
+    <!-- HTML sanitiser for AI-supplied HTML (M-2i): DOMPurify, then the wrapper. -->
+    <script src="vendor/dompurify/purify.min.js"></script>
+    <script src="js/safe-html.js"></script>
+
     <script src="openrouter-embed/openrouter-embed-postprocessor.js"></script>
 
     <script src="openrouter-embed/openrouter-embed-throttle.js"></script>
@@ -22888,6 +22983,7 @@ Science,91</pre
     <script src="chat/chat.js"></script>
     <script src="chat/chat-core.js"></script>
     <script src="chat/chat-messages.js"></script>
+    <script src="chat/chat-turn-nav.js"></script>
     <script src="chat/chat-persistence.js"></script>
     <script src="chat/chat-model-info.js"></script>
     <script src="js/dev-panel.js"></script>
@@ -23236,7 +23332,20 @@ Science,91</pre
           mybutton.style.display = "none";
           mybutton2.style.display = "none";
         }
+        syncPanelLandmark();
       }
+
+      // The scroll panel is a landmark only while a button in it shows, so the landmark list never
+      // holds an empty entry. Called from scrollFunction and from ChatTurnNav.refresh (chat/chat-turn-nav.js).
+      function syncPanelLandmark() {
+        const panel = document.getElementById("panel");
+        if (!panel) return;
+        const anyShown = Array.from(panel.querySelectorAll("button")).some(
+          (btn) => getComputedStyle(btn).display !== "none",
+        );
+        if (panel.hidden === anyShown) panel.hidden = !anyShown;
+      }
+      window.syncPanelLandmark = syncPanelLandmark;
 
       function topFunction() {
         document.body.scrollTop = 0;
@@ -24820,6 +24929,8 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-core.js"></script>
     <script src="md-scripts/mermaid/mermaid-export-utils.js"></script>
     <script src="vendor/chart-describe/src/text.js"></script>
+    <script src="vendor/chart-describe/src/model.js"></script>
+    <script src="vendor/chart-describe/src/render.js"></script>
     <script src="vendor/chart-describe/src/charts.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-pie.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-flowchart.js"></script>
@@ -24841,6 +24952,7 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-accessibility-treeview.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-ishikawa.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-wardley.js"></script>
+    <script src="md-scripts/mermaid/mermaid-accessibility-cynefin.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-architecture.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-quadrant.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-er.js"></script>

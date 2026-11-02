@@ -39,6 +39,28 @@
   };
 
   /**
+   * Move focus to target only when it is about to be, or already is, lost: on
+   * <body>, or inside one of the regions being hidden. Focus anywhere else stays.
+   * @param {HTMLElement|null} target - element to focus
+   * @param {Array<HTMLElement|null>} hidingRegions - regions that hold or held focus
+   * @returns {boolean} true when focus was moved
+   * @private
+   */
+  proto.focusIfLost = function (target, hidingRegions) {
+    if (!target) return false;
+
+    const active = document.activeElement;
+    const isLost =
+      !active ||
+      active === document.body ||
+      hidingRegions.some((region) => region && region.contains(active));
+    if (!isLost) return false;
+
+    target.focus();
+    return true;
+  };
+
+  /**
    * Reset UI to initial upload state
    * @private
    */
@@ -49,6 +71,12 @@
     if (this.elements.uploadSection) {
       this.elements.uploadSection.hidden = false;
     }
+
+    // T-82: focus the drop zone BEFORE hiding the working area, because hiding a
+    // container that holds focus drops it to <body>.
+    this.focusIfLost(this.elements.dropZone, [
+      this.elements.workingArea,
+    ]);
 
     // Hide working area
     if (this.elements.workingArea) {

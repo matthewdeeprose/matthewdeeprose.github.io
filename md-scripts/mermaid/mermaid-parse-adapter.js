@@ -23000,6 +23000,1130 @@ window.MermaidParseAdapter = (function () {
     return wardleyHealthy;
   }
 
+  // ===========================================================================
+  // CYNEFIN SURFACE (register item 135, session 2, 30 October 2026)
+  // ===========================================================================
+  //
+  // parseCynefin(code) delivers the cynefin-beta diagram as plain data. The
+  // census (docs/mermaid-item-135-census-1-2026-10-29.md) found the db delivers
+  // every fact of the source with NO geometry, so the surface is DB-ONLY for
+  // the payload (items, domains, transitions, body title). The one non-db read
+  // is the frontmatter title, which the canvas draws and the db does not hold:
+  // it is read from the source (readFrontmatterTitle) and handed to Mermaid
+  // through getDiagramFromText(code, { title }) inside the SAME queue slot as
+  // the db read (the wardley route, CY2). accTitle and accDescr take NO field
+  // and no transform (CY2): the core's regex is their path.
+  //
+  // THE DB IS A MODULE-LEVEL SINGLETON (census: Promise.all of two parses
+  // MERGES the domains and OVERWRITES the transitions), so the standard pair
+  // protects a delivery (CY1): a slot in adapterParseQueue keeps overlapping
+  // parses apart, and an eager snapshot, taken in the same tick as the parse
+  // resolves, keeps a held delivery from changing afterwards. The db's domains
+  // are a Map: they are copied into plain objects. A parse started during a
+  // RENDER puts another map's item on the canvas (census); that is Mermaid's
+  // own racer, register item 22, and is recorded, not defended, here.
+  //
+  // THE DOMAINS ARE ALWAYS FIVE, in the canvas's fixed order (CY3, CY6, CY7).
+  // The db holds only the domains the author wrote, in first-block order; the
+  // picture draws all five regions with a constant label each, so a domain the
+  // author did not write and one written empty both read items: [].
+  //
+  // WHERE THE PICTURE DRAWS AN ITEM (CY5, MQ2) is computed in ONE function,
+  // cynefinPlacement, by the renderer's own rule read from the pinned 11.17.2
+  // bundle (draw: the item stack starts a fixed offset below the region's
+  // middle, one pitch per item, and the picture draws no clipping of its own).
+  // From the fifth item a top domain's items fall in the region below, a bottom
+  // domain's fifth item falls outside every region and later ones outside the
+  // picture, and the confusion domain draws three items and then "+N more".
+  // The rule needs the drawn width-free quantities only (the item is centred on
+  // its region, so its label's width cannot change the region it is in), and
+  // three config keys: height and padding (the regions and the picture's edge)
+  // and showDomainDescriptions (the stack's first offset).
+  //
+  // CONFIG (CY11, CY11a): exactly the three keys the placement rule needs,
+  // each at the value Mermaid applies: height, padding and
+  // showDomainDescriptions. Width is NOT read: an item is centred on its
+  // region, so the width cannot change which region it is in. Defaults are
+  // Mermaid's SITE config (getSiteConfig), never the live one; the source's own
+  // keys (frontmatter and %%{init}%%, merged by Mermaid with the directive
+  // winning) overlay them through mermaid.parse(source).config.cynefin. A
+  // null, absent, array or object value gives the default. A height or padding
+  // that is not a finite number is a STOP (the canvas draws a viewBox of NaN or
+  // a concatenated string). Only showDomainDescriptions and the placement are
+  // delivered; no size is.
+  //
+  // Every label prints literally (group R): the decode is decodePlaceholders
+  // and nothing else (CY4, CY8). A record the reader cannot map is a STOP.
+  const CYNEFIN_DIAGRAM_TYPE = "cynefin";
+  const CYNEFIN_DB_ACCESSORS = Object.freeze(["getDomains", "getTransitions", "getDiagramTitle"]);
+  // The five domains in the order the canvas draws them (not the db's order),
+  // each with the label and quadrant the canvas gives it (renderer constants).
+  const CYNEFIN_DOMAINS = Object.freeze([
+    Object.freeze({ key: "complex", label: "Complex", position: "top left" }),
+    Object.freeze({ key: "complicated", label: "Complicated", position: "top right" }),
+    Object.freeze({ key: "chaotic", label: "Chaotic", position: "bottom left" }),
+    Object.freeze({ key: "clear", label: "Clear", position: "bottom right" }),
+    Object.freeze({ key: "confusion", label: "Confusion", position: "centre" }),
+  ]);
+  const CYNEFIN_DOMAIN_KEYS = Object.freeze(CYNEFIN_DOMAINS.map((domain) => domain.key));
+  const CYNEFIN_DOMAIN_RECORD_KEYS = Object.freeze(["name", "items"]);
+  const CYNEFIN_ITEM_RECORD_KEYS = Object.freeze(["label"]);
+  const CYNEFIN_TRANSITION_RECORD_KEYS = Object.freeze(["from", "to", "label"]);
+  const CYNEFIN_SIZE_KEYS = Object.freeze(["height", "padding"]);
+  const CYNEFIN_CONFIG_KEYS = Object.freeze([...CYNEFIN_SIZE_KEYS, "showDomainDescriptions"]);
+  const CYNEFIN_PLACEMENT = Object.freeze({
+    OWN: "own",
+    OUTSIDE_REGIONS: "outside-regions",
+    OUTSIDE_PICTURE: "outside-picture",
+    HIDDEN: "hidden",
+    REGION_PREFIX: "region:",
+  });
+
+  // The renderer's constants (bundle `kX`, `D` and the item loop in `A8t`,
+  // and `k8t`'s 2 x 2 grid), not db facts.
+  const CYNEFIN_CONFUSION_SHOWN = 3;
+  const CYNEFIN_ITEM_HEIGHT = 26;
+  const CYNEFIN_ITEM_GAP = 4;
+  const CYNEFIN_ITEM_PITCH = CYNEFIN_ITEM_HEIGHT + CYNEFIN_ITEM_GAP;
+  const CYNEFIN_FIRST_ITEM_OFFSET = Object.freeze({ DESCRIBED: 25, BARE: 15 });
+  const CYNEFIN_HALF = 2;
+  const CYNEFIN_GRID = Object.freeze([
+    Object.freeze(["complex", "complicated"]),
+    Object.freeze(["chaotic", "clear"]),
+  ]);
+
+  let cynefinMemoCode = null;
+  let cynefinMemoPromise = null;
+  let cynefinHealthy = null;
+  let cynefinSelfCheckStarted = false;
+  let cynefinSelfCheckPromise = null;
+
+  function cynefinStop(message) {
+    return new Error("Cynefin surface: " + message);
+  }
+
+  /**
+   * Copy one db record into a plain object, refusing any key the census did
+   * not find. A key present with the value undefined is allowed (the db leaves
+   * an empty arrow label undefined).
+   * @param {*} record - The db's record
+   * @param {ReadonlyArray<string>} keys - The keys the census found
+   * @param {string} where - Names the record in a STOP
+   * @returns {Object} The record's own values, unconverted
+   */
+  function copyCynefinRecord(record, keys, where) {
+    if (!record || typeof record !== "object" || Array.isArray(record)) {
+      throw cynefinStop(`${where} is not an object`);
+    }
+    Object.keys(record).forEach((key) => {
+      if (!keys.includes(key)) {
+        throw cynefinStop(`${where} carries a field the census did not find: ${key}`);
+      }
+    });
+    const copy = {};
+    keys.forEach((key) => {
+      copy[key] = record[key];
+    });
+    return copy;
+  }
+
+  function cynefinString(value, where) {
+    if (typeof value !== "string") {
+      throw cynefinStop(`${where} is not a string`);
+    }
+    return value;
+  }
+
+  function cynefinOptionalString(value, where) {
+    return value === undefined ? null : cynefinString(value, where);
+  }
+
+  function cynefinList(value, where) {
+    if (!Array.isArray(value)) {
+      throw cynefinStop(`${where} is not an array`);
+    }
+    return value;
+  }
+
+  function cynefinDomainKey(value, where) {
+    if (!CYNEFIN_DOMAIN_KEYS.includes(value)) {
+      throw cynefinStop(`${where} is not a domain the census found: ${JSON.stringify(value)}`);
+    }
+    return value;
+  }
+
+  /**
+   * Copy the cynefin db into plain data, ONCE and synchronously, in the same
+   * tick as the parse resolved (CY1). The title is read here too, straight
+   * after the parse: the shared store is wiped by every parse. The db's domains
+   * are a Map, so they are copied into an object with every domain key present
+   * (an unwritten domain is an empty list). Every shape the reader cannot map
+   * is a STOP here, before any delivery is built.
+   *
+   * @param {Object} db - The diagram's db
+   * @returns {{title: string, items: Object, transitions: Array}} Plain
+   *   copies, raw (not decoded)
+   */
+  function snapshotCynefinDb(db) {
+    for (const accessor of CYNEFIN_DB_ACCESSORS) {
+      if (!db || typeof db[accessor] !== "function") {
+        throw cynefinStop(
+          `db.${accessor} is not a function; the pinned Mermaid build's cynefin ` +
+            "db no longer matches the 29 October 2026 census"
+        );
+      }
+    }
+
+    const domains = db.getDomains();
+    if (Object.prototype.toString.call(domains) !== "[object Map]") {
+      throw cynefinStop("getDomains did not deliver a Map");
+    }
+    const items = {};
+    CYNEFIN_DOMAIN_KEYS.forEach((key) => {
+      items[key] = [];
+    });
+    domains.forEach((value, key) => {
+      if (!CYNEFIN_DOMAIN_KEYS.includes(key)) {
+        throw cynefinStop(`the db delivered a domain the census did not find: ${key}`);
+      }
+      const where = `domain ${key}`;
+      const record = copyCynefinRecord(value, CYNEFIN_DOMAIN_RECORD_KEYS, where);
+      if (record.name !== key) {
+        throw cynefinStop(`${where} name does not match its key`);
+      }
+      cynefinList(record.items, `${where} items`).forEach((raw, index) => {
+        const here = `${where} item ${index}`;
+        const item = copyCynefinRecord(raw, CYNEFIN_ITEM_RECORD_KEYS, here);
+        items[key].push(cynefinString(item.label, `${here} label`));
+      });
+    });
+
+    const transitions = cynefinList(db.getTransitions(), "transitions").map((raw, index) => {
+      const where = `transition ${index}`;
+      const record = copyCynefinRecord(raw, CYNEFIN_TRANSITION_RECORD_KEYS, where);
+      return {
+        from: cynefinDomainKey(record.from, `${where} from`),
+        to: cynefinDomainKey(record.to, `${where} to`),
+        label: cynefinOptionalString(record.label, `${where} label`),
+      };
+    });
+
+    return {
+      title: cynefinString(db.getDiagramTitle(), "the title"),
+      items: items,
+      transitions: transitions,
+    };
+  }
+
+  /**
+   * Mermaid's SITE cynefin config: initialize's values over the built-in
+   * defaults. getSiteConfig() reads it without mutating anything.
+   * @returns {Object} The site's cynefin block
+   */
+  function readCynefinSiteDefaults() {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    let site = null;
+    if (api && typeof api.getSiteConfig === "function") {
+      site = api.getSiteConfig();
+    }
+    if ((!site || !site.cynefin) && api && api.defaultConfig) {
+      site = api.defaultConfig;
+    }
+    if (!site || !site.cynefin || typeof site.cynefin !== "object") {
+      throw cynefinStop("Mermaid's site config carries no cynefin block");
+    }
+    return site.cynefin;
+  }
+
+  /**
+   * THIS source's own cynefin config, through mermaid.parse (frontmatter and
+   * %%{init}%% merged by Mermaid's rule, the directive winning). It runs inside
+   * the caller's queue slot and BEFORE getDiagramFromText. NEVER REJECTS: a
+   * source this route refuses reads as no config of its own, and the parse that
+   * follows reports the real error. Values are copied as they arrive.
+   *
+   * @param {string} code - The Mermaid cynefin source
+   * @returns {Promise<Object>} The source's own keys, a plain copy
+   */
+  function readCynefinOwnConfig(code) {
+    if (!window.mermaid || typeof window.mermaid.parse !== "function") {
+      return Promise.resolve({});
+    }
+    return Promise.resolve()
+      .then(() => window.mermaid.parse(code))
+      .then((parsed) => {
+        const config = parsed && typeof parsed === "object" ? parsed.config : null;
+        const own = config && typeof config === "object" ? config.cynefin : null;
+        const copy = {};
+        if (own && typeof own === "object") {
+          CYNEFIN_CONFIG_KEYS.forEach((key) => {
+            copy[key] = own[key];
+          });
+        }
+        return copy;
+      })
+      .catch((error) => {
+        logDebug(`Cynefin config read failed, reading as site defaults: ${error && error.message}`);
+        return {};
+      });
+  }
+
+  /**
+   * The config Mermaid applies: the source's own value where it has one that
+   * is neither null, absent, an array nor an object, the site default
+   * otherwise. The two sizes must be finite numbers (a string is concatenated
+   * into the viewBox and a word makes it NaN: measured 30 October 2026);
+   * showDomainDescriptions is read as the canvas reads it, by truthiness
+   * (measured: the string "false" still draws the subtitles, 0 removes them).
+   *
+   * @param {Object} site - The site's cynefin block
+   * @param {Object} own - The source's own cynefin keys
+   * @returns {{height: number, padding: number,
+   *   showDomainDescriptions: boolean}} The three keys
+   */
+  function mergeCynefinConfig(site, own) {
+    const merged = {};
+    CYNEFIN_CONFIG_KEYS.forEach((key) => {
+      const value = own[key];
+      const applied = value !== undefined && value !== null && typeof value !== "object" ? value : site[key];
+      if (applied === undefined) {
+        throw cynefinStop(`neither the source nor the site config holds cynefin.${key}`);
+      }
+      merged[key] = applied;
+    });
+    CYNEFIN_SIZE_KEYS.forEach((key) => {
+      if (typeof merged[key] !== "number" || !Number.isFinite(merged[key])) {
+        throw cynefinStop(`cynefin.${key} is not a finite number: ${JSON.stringify(merged[key])}`);
+      }
+    });
+    merged.showDomainDescriptions = Boolean(merged.showDomainDescriptions);
+    return merged;
+  }
+
+  /**
+   * THE ONE CHOKE POINT for where the picture draws an item (CY5, MQ2, P1),
+   * the renderer's own rule read from the 11.17.2 bundle. A quadrant's items
+   * are stacked from a fixed offset below the region's middle, one pitch per
+   * item, centred on the region, so the vertical centre of the item decides
+   * the region it is in. The confusion domain draws its first three items and
+   * then one "+N more" marker; the rest are not drawn.
+   *
+   * @param {string} domainKey - One of CYNEFIN_DOMAIN_KEYS
+   * @param {number} index - The item's declaration index within its domain
+   * @param {{height: number, padding: number, showDomainDescriptions: boolean}} config
+   * @returns {string} A CYNEFIN_PLACEMENT value, or "region:<key>" for an item
+   *   drawn inside another domain's region
+   */
+  function cynefinPlacement(domainKey, index, config) {
+    if (domainKey === "confusion") {
+      return index < CYNEFIN_CONFUSION_SHOWN ? CYNEFIN_PLACEMENT.OWN : CYNEFIN_PLACEMENT.HIDDEN;
+    }
+
+    const row = CYNEFIN_GRID.findIndex((cells) => cells.includes(domainKey));
+    const column = CYNEFIN_GRID[row].indexOf(domainKey);
+    const regionHeight = config.height / CYNEFIN_HALF;
+    const regionMiddle = regionHeight * row + regionHeight / CYNEFIN_HALF;
+    const firstOffset = config.showDomainDescriptions
+      ? CYNEFIN_FIRST_ITEM_OFFSET.DESCRIBED
+      : CYNEFIN_FIRST_ITEM_OFFSET.BARE;
+    const centre = regionMiddle + firstOffset + index * CYNEFIN_ITEM_PITCH + CYNEFIN_ITEM_HEIGHT / CYNEFIN_HALF;
+
+    if (centre < -config.padding || centre > config.height + config.padding) {
+      return CYNEFIN_PLACEMENT.OUTSIDE_PICTURE;
+    }
+    let drawnRow = -1;
+    if (centre >= 0 && centre < regionHeight) {
+      drawnRow = 0;
+    } else if (centre >= regionHeight && centre < config.height) {
+      drawnRow = 1;
+    }
+    if (drawnRow < 0) {
+      return CYNEFIN_PLACEMENT.OUTSIDE_REGIONS;
+    }
+    return drawnRow === row
+      ? CYNEFIN_PLACEMENT.OWN
+      : CYNEFIN_PLACEMENT.REGION_PREFIX + CYNEFIN_GRID[drawnRow][column];
+  }
+
+  /**
+   * The LAST body `title` line of a cynefin source, as the TITLE token reads
+   * it: the text after `title` up to a `%%` comment, trimmed (measured 30
+   * October 2026: `title Tea %% a comment` draws `Tea`, a later title line
+   * wins, an indented one counts). Lines of a frontmatter block and of an
+   * `accDescr { ... }` block are skipped. Null when there is none.
+   *
+   * @param {string} code - The Mermaid source, frontmatter included
+   * @returns {string|null} The body title as typed, or null
+   */
+  function readCynefinBodyTitle(code) {
+    if (typeof code !== "string") {
+      return null;
+    }
+    const fence = REQUIREMENT_FRONTMATTER_PATTERN.exec(code);
+    const text = fence ? code.slice(fence[0].length) : code;
+    let found = null;
+    let inBlock = false;
+    text.split(/\r?\n/).forEach((line) => {
+      if (inBlock) {
+        inBlock = !line.includes("}");
+        return;
+      }
+      if (/^[\t ]*accDescr\s*\{/.test(line)) {
+        inBlock = !line.includes("}");
+        return;
+      }
+      const match = /^[\t ]*title(?:[\t ]([^\r\n]*))?$/.exec(line);
+      if (match) {
+        found = (match[1] || "").split("%%")[0].trim();
+      }
+    });
+    return found;
+  }
+
+  /**
+   * The title to narrate (CY2): every title goes through the resolver the
+   * packet, treemap and venn surfaces share, so a frontmatter `#quot;` reads a
+   * quotation mark (VR8), a typed tag is removed as the canvas removes it
+   * (VR9, VR16) and a line break reads as one space (VR22). The body title
+   * wins over a frontmatter one, as on the canvas.
+   *
+   * @param {string} rawTitle - db.getDiagramTitle() as snapshotted
+   * @param {string} [code] - The Mermaid source
+   * @returns {string|null} The title, or null when there is none
+   */
+  function resolveCynefinTitle(rawTitle, code) {
+    if (typeof rawTitle !== "string" || rawTitle === "") {
+      return null;
+    }
+    if (typeof code !== "string") {
+      return decodePlaceholders(rawTitle);
+    }
+    return resolvePacketTitle(rawTitle, readCynefinBodyTitle(code), readFrontmatterTitle(code));
+  }
+
+  /**
+   * Map one snapshot to the normalised delivery. Items and arrow labels are
+   * decodePlaceholders of the db string and nothing else (CY4, CY8); an empty
+   * item label stays "" and an empty arrow label is null.
+   *
+   * @param {Object} snapshot - snapshotCynefinDb's result
+   * @param {Object} config - mergeCynefinConfig's result
+   * @param {string} [code] - The Mermaid source
+   * @returns {Object} The delivery
+   */
+  function normaliseCynefin(snapshot, config, code) {
+    return {
+      diagramType: CYNEFIN_DIAGRAM_TYPE,
+      title: resolveCynefinTitle(snapshot.title, code),
+      domains: CYNEFIN_DOMAINS.map((domain) => ({
+        key: domain.key,
+        label: domain.label,
+        position: domain.position,
+        items: snapshot.items[domain.key].map((label, index) => ({
+          label: decodePlaceholders(label),
+          placement: cynefinPlacement(domain.key, index, config),
+        })),
+      })),
+      transitions: snapshot.transitions.map((transition) => ({
+        from: transition.from,
+        to: transition.to,
+        label:
+          transition.label === null || transition.label === "" ? null : decodePlaceholders(transition.label),
+      })),
+      showDomainDescriptions: config.showDomainDescriptions,
+    };
+  }
+
+  /**
+   * One cynefin parse, FROM THE CONFIG READ TO THE DELIVERY, with no yield
+   * point between the parse resolving and the snapshot. It must run inside an
+   * adapter queue slot; parseCynefin and the self-check both call it there.
+   *
+   * @param {string} code - The Mermaid cynefin source
+   * @returns {Promise<{diagram: Object, delivery: Object}>}
+   */
+  function readCynefinInSlot(code) {
+    const api = window.mermaid.mermaidAPI;
+    const title = readFrontmatterTitle(code);
+    return readCynefinOwnConfig(code).then((ownConfig) => {
+      const parsed =
+        title === null ? api.getDiagramFromText(code) : api.getDiagramFromText(code, { title: title });
+      return parsed.then((diagram) => {
+        const snapshot = snapshotCynefinDb(diagram.db);
+        const config = mergeCynefinConfig(readCynefinSiteDefaults(), ownConfig);
+        return { diagram: diagram, delivery: normaliseCynefin(snapshot, config, code) };
+      });
+    });
+  }
+
+  /**
+   * Parse a cynefin diagram and deliver the normalised shape.
+   *
+   * Same contract as the other surfaces: the PROMISE is memoised on the code
+   * string, the memo sits in front of the adapter-wide queue, and the db is
+   * read inside this call's own queue slot. THE QUEUE IS LOAD-BEARING: the
+   * cynefin db is a module singleton, concurrent parses merge its domains and
+   * overwrite its transitions (census, Singleton, held references, concurrency).
+   *
+   * @param {string} code - The Mermaid cynefin source
+   * @returns {Promise<Object>} Resolves to the normalised delivery
+   */
+  function parseCynefin(code) {
+    if (!cynefinSelfCheckStarted) {
+      runCynefinSelfCheck();
+    }
+
+    if (code === cynefinMemoCode && cynefinMemoPromise) {
+      logDebug("Returning memoised cynefin parse for identical code string");
+      return cynefinMemoPromise;
+    }
+
+    if (
+      !window.mermaid ||
+      !window.mermaid.mermaidAPI ||
+      typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+    ) {
+      return Promise.reject(
+        new Error(
+          "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+        )
+      );
+    }
+
+    const run = () => {
+      const startedAt = performance.now();
+      logDebug(`Cynefin parse entering its queue slot, ${code.length} characters`);
+      return readCynefinInSlot(code)
+        .then(({ delivery }) => {
+          logDebug(
+            `Cynefin parse delivered after ${Math.round(performance.now() - startedAt)}ms: ` +
+              `${delivery.domains.reduce((total, domain) => total + domain.items.length, 0)} item(s), ` +
+              `${delivery.transitions.length} transition(s)`
+          );
+          return delivery;
+        })
+        .catch((error) => {
+          logDebug(
+            `Cynefin parse threw after ${Math.round(performance.now() - startedAt)}ms: ${error && error.message}`
+          );
+          throw error;
+        });
+    };
+
+    const result = adapterParseQueue.then(run, run);
+    adapterParseQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
+
+    cynefinMemoCode = code;
+    cynefinMemoPromise = result;
+    return result;
+  }
+
+  // SELF-CHECK FIXTURES. ASCII only, every string prefixed sc / SelfCheck.
+  // Sources parsed one after another in ONE queue slot, each delivery digested
+  // in the same tick it is produced, before the next parse clears the store.
+
+  function cynefinSelfCheckBlock(domain, prefix, count) {
+    const lines = [domain];
+    for (let number = 1; number <= count; number += 1) {
+      lines.push(`    "${prefix}${number}"`);
+    }
+    return lines;
+  }
+
+  // MAIN: blocks declared out of the canvas order (clear first), an empty
+  // item and a duplicated item kept, a domain written with no items
+  // (confusion) and one not written at all (complicated), and every arrow
+  // form: labelled, unlabelled, to a domain that has no block, a duplicate and
+  // an empty label.
+  const CYNEFIN_SELF_CHECK_MAIN = [
+    "cynefin-beta",
+    "title SelfCheck main title",
+    "clear",
+    '    "scL1"',
+    '    "scL2"',
+    "complex",
+    '    "scC1"',
+    '    "scC2"',
+    '    ""',
+    '    "scC2"',
+    "confusion",
+    "chaotic",
+    '    "scH1"',
+    'complex --> clear : "scLink"',
+    "clear --> complex",
+    'complicated --> clear : "scGhost"',
+    'complex --> clear : "scLink"',
+    'confusion --> chaotic : ""',
+    "",
+  ].join("\n");
+
+  // PLACE: a top domain with six items, another with five, a bottom domain
+  // with seven and the confusion domain with five, on the default canvas.
+  const CYNEFIN_SELF_CHECK_PLACE = [
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scT", 6),
+    ...cynefinSelfCheckBlock("complicated", "scU", 5),
+    ...cynefinSelfCheckBlock("chaotic", "scB", 7),
+    ...cynefinSelfCheckBlock("confusion", "scM", 5),
+    "",
+  ].join("\n");
+
+  // The config routes. NODESC: showDomainDescriptions false through the
+  // frontmatter (the stack starts ten pixels higher). TALL: a shorter canvas
+  // with a smaller padding. DIRECTIVE: the same key through %%{init}%%.
+  const CYNEFIN_SELF_CHECK_NODESC = [
+    "---",
+    "config:",
+    "  cynefin:",
+    "    showDomainDescriptions: false",
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scN", 5),
+    ...cynefinSelfCheckBlock("chaotic", "scO", 6),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_TALL = [
+    "---",
+    "config:",
+    "  cynefin:",
+    "    height: 400",
+    "    padding: 20",
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scH", 4),
+    ...cynefinSelfCheckBlock("chaotic", "scK", 4),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_DIRECTIVE = [
+    '%%{init: {"cynefin": {"showDomainDescriptions": false}}}%%',
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scD", 5),
+    "",
+  ].join("\n");
+
+  // TYPED: #quot; in an item and an arrow label. ESCAPED: a typed entity, tag
+  // and break, which the canvas prints as typed.
+  const CYNEFIN_SELF_CHECK_TYPED = [
+    "cynefin-beta",
+    "complex",
+    '    "SelfCheck #quot;c#quot; end"',
+    "clear",
+    '    "scL"',
+    'complex --> clear : "SelfCheck #quot;l#quot; end"',
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_ESCAPED = [
+    "cynefin-beta",
+    "complex",
+    '    "SelfCheck x&lt;br&gt;y &amp; <b>z</b>"',
+    "clear",
+    '    "scL"',
+    'complex --> clear : "SelfCheck a<br>b &amp; c"',
+    "",
+  ].join("\n");
+
+  // The title route: a frontmatter title alone, under a body title.
+  const CYNEFIN_SELF_CHECK_FM = [
+    "---",
+    "title: SelfCheck frontmatter title",
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scF", 1),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_FM_BODY = [
+    "---",
+    "title: SelfCheck frontmatter loses",
+    "---",
+    "cynefin-beta",
+    "title SelfCheck body wins %% a comment",
+    ...cynefinSelfCheckBlock("complex", "scF", 1),
+    "",
+  ].join("\n");
+  // The title resolutions: a frontmatter #quot; (VR8), a body title holding a
+  // typed tag and bare ampersands (VR9), a frontmatter one likewise (VR16), a
+  // block-scalar frontmatter title over two lines (VR22).
+  const CYNEFIN_SELF_CHECK_FM_QUOT = [
+    "---",
+    'title: "SelfCheck #quot;fm#quot; title"',
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scQ", 1),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_BODY_TAG = [
+    "cynefin-beta",
+    "title SelfCheck R&D <team> one",
+    ...cynefinSelfCheckBlock("complex", "scQ", 1),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_FM_TAG = [
+    "---",
+    "title: SelfCheck R&D <team> two",
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scQ", 1),
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_FM_BLOCK = [
+    "---",
+    "title: |",
+    "  SelfCheck line one",
+    "  SelfCheck line two",
+    "---",
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scQ", 1),
+    "",
+  ].join("\n");
+
+  // ACC: an accTitle and an accDescr block (with a title line inside it, which
+  // is not the body title). Neither is delivered.
+  const CYNEFIN_SELF_CHECK_ACC = [
+    "cynefin-beta",
+    "accTitle: SelfCheck a & b < c",
+    "accDescr {",
+    "  SelfCheck line & one",
+    "  title SelfCheck not a title",
+    "}",
+    ...cynefinSelfCheckBlock("complex", "scAcc", 1),
+    "",
+  ].join("\n");
+
+  // ACCUMULATION: two maps with disjoint names, parsed in sequence.
+  const CYNEFIN_SELF_CHECK_ACCUM_A = [
+    "cynefin-beta",
+    "complex",
+    '    "scAccumA1"',
+    '    "scAccumA2"',
+    "clear",
+    '    "scAccumA3"',
+    'complex --> clear : "scAccumLink"',
+    "",
+  ].join("\n");
+  const CYNEFIN_SELF_CHECK_ACCUM_B = [
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("chaotic", "scAccumB", 1),
+    "",
+  ].join("\n");
+
+  // SNAPSHOT: changed through the db after its delivery.
+  const CYNEFIN_SELF_CHECK_SNAPSHOT = [
+    "cynefin-beta",
+    ...cynefinSelfCheckBlock("complex", "scSnap", 1),
+    "",
+  ].join("\n");
+
+  const CYNEFIN_SELF_CHECK_HEADER_ONLY = "cynefin-beta\n";
+  // The keyword is case-sensitive: not detected as cynefin at all, so the
+  // parse is refused.
+  const CYNEFIN_SELF_CHECK_REJECTED = 'CYNEFIN-BETA\ncomplex\n    "scR"\n';
+
+  /**
+   * Parse the self-check sources in one queue slot and assert the accessors,
+   * the delivered shape, the five domains, the items, the transitions, the
+   * decode, the title route and resolutions, the missing accTitle pair, the
+   * placement choke point, the config routes, accumulation, the snapshot and
+   * the STOPs. Resolves true on a clean run; on any failure logs ONE ERROR
+   * naming every failed assertion, marks the surface unhealthy, and resolves
+   * false. Never throws.
+   *
+   * @returns {Promise<boolean>} The cynefin health verdict
+   */
+  function runCynefinSelfCheck() {
+    if (cynefinSelfCheckPromise) {
+      return cynefinSelfCheckPromise;
+    }
+    cynefinSelfCheckStarted = true;
+
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const settle = (code) =>
+      readCynefinInSlot(code).then(
+        (result) => ({
+          // The EAGER digest, taken in the same tick as the delivery: every
+          // row reads this, so a later parse cannot reach it.
+          result: result,
+          digest: JSON.stringify(result.delivery),
+        }),
+        (error) => ({ error: error })
+      );
+
+    const run = () => {
+      if (
+        !window.mermaid ||
+        !window.mermaid.mermaidAPI ||
+        typeof window.mermaid.mermaidAPI.getDiagramFromText !== "function"
+      ) {
+        return Promise.reject(
+          new Error(
+            "mermaid.mermaidAPI.getDiagramFromText is not available - is Mermaid loaded?"
+          )
+        );
+      }
+      const outcomes = {};
+      let snapshotLive = null;
+      let chain = Promise.resolve();
+      // Header-only first, so no earlier parse could reach its empty lists;
+      // every count ACROSS parses is asserted by the accumulation row alone.
+      [
+        ["headerOnly", CYNEFIN_SELF_CHECK_HEADER_ONLY],
+        ["main", CYNEFIN_SELF_CHECK_MAIN],
+        ["place", CYNEFIN_SELF_CHECK_PLACE],
+        ["noDesc", CYNEFIN_SELF_CHECK_NODESC],
+        ["tall", CYNEFIN_SELF_CHECK_TALL],
+        ["directive", CYNEFIN_SELF_CHECK_DIRECTIVE],
+        ["typed", CYNEFIN_SELF_CHECK_TYPED],
+        ["escaped", CYNEFIN_SELF_CHECK_ESCAPED],
+        ["fm", CYNEFIN_SELF_CHECK_FM],
+        ["fmBody", CYNEFIN_SELF_CHECK_FM_BODY],
+        ["fmQuot", CYNEFIN_SELF_CHECK_FM_QUOT],
+        ["bodyTag", CYNEFIN_SELF_CHECK_BODY_TAG],
+        ["fmTag", CYNEFIN_SELF_CHECK_FM_TAG],
+        ["fmBlock", CYNEFIN_SELF_CHECK_FM_BLOCK],
+        ["acc", CYNEFIN_SELF_CHECK_ACC],
+        ["accumA", CYNEFIN_SELF_CHECK_ACCUM_A],
+        ["accumB", CYNEFIN_SELF_CHECK_ACCUM_B],
+        ["snapshot", CYNEFIN_SELF_CHECK_SNAPSHOT],
+        ["rejected", CYNEFIN_SELF_CHECK_REJECTED],
+      ].forEach(([key, code]) => {
+        chain = chain
+          .then(() => settle(code))
+          .then((outcome) => {
+            outcomes[key] = outcome;
+            if (key !== "snapshot" || !outcome.result) {
+              return;
+            }
+            // The snapshot row's change, made through the live db at once: a
+            // domain added and a held item's label changed.
+            const liveDomains = outcome.result.diagram.db.getDomains();
+            const live = liveDomains.get("complex");
+            if (live) {
+              live.items[0].label = "scChanged";
+            }
+            liveDomains.set("clear", { name: "clear", items: [{ label: "scIntruder" }] });
+            snapshotLive = [...liveDomains.entries()]
+              .map(([name, value]) => name + ":" + value.items.map((item) => item.label).join("/"))
+              .join(",");
+          });
+      });
+
+      return chain.then(() => {
+        const d = (key) => (outcomes[key].digest ? JSON.parse(outcomes[key].digest) : null);
+        const main = d("main");
+        const place = d("place");
+        const noDesc = d("noDesc");
+        const tall = d("tall");
+        const directive = d("directive");
+        const typed = d("typed");
+        const escaped = d("escaped");
+        const fm = d("fm");
+        const fmBody = d("fmBody");
+        const fmQuot = d("fmQuot");
+        const bodyTag = d("bodyTag");
+        const fmTag = d("fmTag");
+        const fmBlock = d("fmBlock");
+        const acc = d("acc");
+        const accumA = d("accumA");
+        const accumB = d("accumB");
+        const headerOnly = d("headerOnly");
+        const domainOf = (delivery, key) =>
+          delivery ? delivery.domains.find((domain) => domain.key === key) || null : null;
+        const labels = (delivery, key) => {
+          const domain = domainOf(delivery, key);
+          return domain ? domain.items.map((item) => item.label) : null;
+        };
+        const places = (delivery, key) => {
+          const domain = domainOf(delivery, key);
+          return domain ? domain.items.map((item) => item.placement) : null;
+        };
+        const repeat = (value, count) => Array.from({ length: count }, () => value);
+        const defaults = { height: 600, padding: 40, showDomainDescriptions: true };
+
+        const stubDb = (domains, transitions, title) => ({
+          getDomains: () => domains,
+          getTransitions: () => transitions || [],
+          getDiagramTitle: () => (title === undefined ? "" : title),
+        });
+        const stubDomain = (name, items) => ({ name: name, items: items || [{ label: "scStub" }] });
+        const stubMap = (entries) => new Map(entries || [["complex", stubDomain("complex")]]);
+        const stubRefuses = (db, pattern) => {
+          try {
+            snapshotCynefinDb(db);
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+        const mergeRefuses = (own, pattern) => {
+          try {
+            mergeCynefinConfig({ width: 800, height: 600, padding: 40, showDomainDescriptions: true }, own);
+            return false;
+          } catch (error) {
+            return pattern.test(String(error.message));
+          }
+        };
+
+        return [
+          [
+            "YS01 the accessors the surface reads exist on the db (getDomains, getTransitions, getDiagramTitle) and the API (getDiagramFromText), and the { title } route reaches the delivery",
+            !!outcomes.main.result &&
+              CYNEFIN_DB_ACCESSORS.every(
+                (accessor) => typeof outcomes.main.result.diagram.db[accessor] === "function"
+              ) &&
+              !!fm &&
+              fm.title === "SelfCheck frontmatter title",
+          ],
+          [
+            "YS02 the delivery has exactly the five keys in order, and each domain, item and transition exactly its own keys",
+            !!main &&
+              Object.keys(main).join(",") === "diagramType,title,domains,transitions,showDomainDescriptions" &&
+              main.diagramType === "cynefin" &&
+              Object.keys(main.domains[0]).join(",") === "key,label,position,items" &&
+              Object.keys(main.domains[0].items[0]).join(",") === "label,placement" &&
+              Object.keys(main.transitions[0]).join(",") === "from,to,label",
+          ],
+          [
+            "YS03 the domains are ALWAYS five, in the canvas order, each with its drawn label and quadrant; a domain not written and one written empty both read no items, and a header-only map reads five empty domains",
+            !!main &&
+              same(main.domains.map((domain) => [domain.key, domain.label, domain.position]), [
+                ["complex", "Complex", "top left"],
+                ["complicated", "Complicated", "top right"],
+                ["chaotic", "Chaotic", "bottom left"],
+                ["clear", "Clear", "bottom right"],
+                ["confusion", "Confusion", "centre"],
+              ]) &&
+              same(labels(main, "complicated"), []) &&
+              same(labels(main, "confusion"), []) &&
+              !!headerOnly &&
+              headerOnly.domains.length === 5 &&
+              headerOnly.domains.every((domain) => domain.items.length === 0) &&
+              headerOnly.title === null &&
+              headerOnly.transitions.length === 0,
+          ],
+          [
+            "YS04 items: declaration order within a domain whatever order the blocks were written in, an empty label kept as an empty string, a duplicate kept",
+            !!main &&
+              same(labels(main, "complex"), ["scC1", "scC2", "", "scC2"]) &&
+              same(labels(main, "clear"), ["scL1", "scL2"]) &&
+              same(labels(main, "chaotic"), ["scH1"]),
+          ],
+          [
+            "YS05 transitions: declaration order, the domain keys, a label or null (an empty label is null), a duplicate kept, an arrow to a domain with no block kept",
+            !!main &&
+              same(main.transitions, [
+                { from: "complex", to: "clear", label: "scLink" },
+                { from: "clear", to: "complex", label: null },
+                { from: "complicated", to: "clear", label: "scGhost" },
+                { from: "complex", to: "clear", label: "scLink" },
+                { from: "confusion", to: "chaotic", label: null },
+              ]),
+          ],
+          [
+            "YS06 decode: #quot; reads a quotation mark in an item and an arrow label; a typed entity, tag and break print as typed, and decodeAuthorText is not the decoder",
+            !!typed &&
+              labels(typed, "complex")[0] === 'SelfCheck "c" end' &&
+              typed.transitions[0].label === 'SelfCheck "l" end' &&
+              !!escaped &&
+              labels(escaped, "complex")[0] === "SelfCheck x&lt;br&gt;y &amp; <b>z</b>" &&
+              escaped.transitions[0].label === "SelfCheck a<br>b &amp; c" &&
+              decodeAuthorText("SelfCheck x&lt;br&gt;y &amp; <b>z</b>") !== labels(escaped, "complex")[0],
+          ],
+          [
+            "YS07 the title route: a frontmatter title through { title }, a body title beating it (its %% comment cut), none is null, and a title line inside an accDescr block is not a title",
+            !!fm &&
+              fm.title === "SelfCheck frontmatter title" &&
+              !!fmBody &&
+              fmBody.title === "SelfCheck body wins" &&
+              !!main &&
+              main.title === "SelfCheck main title" &&
+              !!typed &&
+              typed.title === null &&
+              !!acc &&
+              acc.title === null &&
+              readCynefinBodyTitle(CYNEFIN_SELF_CHECK_ACC) === null,
+          ],
+          [
+            "YS08 the title resolutions: a frontmatter #quot; reads a quotation mark (VR8), a typed tag beside a bare & in a body or frontmatter title reads as the canvas without the tag (VR9, VR16), a block-scalar line break reads as one space (VR22)",
+            !!fmQuot &&
+              fmQuot.title === 'SelfCheck "fm" title' &&
+              !!bodyTag &&
+              bodyTag.title === "SelfCheck R&D  one" &&
+              !!fmTag &&
+              fmTag.title === "SelfCheck R&D  two" &&
+              !!fmBlock &&
+              fmBlock.title === "SelfCheck line one SelfCheck line two",
+          ],
+          [
+            "YS09 accTitle and accDescr take NO field: a source that declares both delivers the same five keys, no accTitle or accDescr key, and no title",
+            !!acc &&
+              Object.keys(acc).join(",") === "diagramType,title,domains,transitions,showDomainDescriptions" &&
+              !("accTitle" in acc) &&
+              !("accDescr" in acc) &&
+              acc.title === null,
+          ],
+          [
+            "YS10 placement, top domains: items one to four are drawn in their own region and from the fifth in the region below (complex under chaotic, complicated under clear)",
+            same(places(place, "complex"), [...repeat("own", 4), "region:chaotic", "region:chaotic"]) &&
+              same(places(place, "complicated"), [...repeat("own", 4), "region:clear"]),
+          ],
+          [
+            "YS11 placement, a bottom domain: items one to four are drawn in their own region, the fifth and sixth in no region, and the seventh outside the picture",
+            same(places(place, "chaotic"), [
+              ...repeat("own", 4),
+              "outside-regions",
+              "outside-regions",
+              "outside-picture",
+            ]),
+          ],
+          [
+            "YS12 placement, confusion: three items drawn, the rest hidden behind the overflow marker, and every item still delivered",
+            same(places(place, "confusion"), ["own", "own", "own", "hidden", "hidden"]) &&
+              same(labels(place, "confusion"), ["scM1", "scM2", "scM3", "scM4", "scM5"]),
+          ],
+          [
+            "YS13 config: showDomainDescriptions is true by default and false through the frontmatter and through the directive; the stack starts higher without the subtitles, and a shorter canvas with a smaller padding moves the same rule",
+            !!place &&
+              place.showDomainDescriptions === true &&
+              !!noDesc &&
+              noDesc.showDomainDescriptions === false &&
+              same(places(noDesc, "complex"), repeat("own", 5)) &&
+              same(places(noDesc, "chaotic"), [...repeat("own", 5), "outside-regions"]) &&
+              !!directive &&
+              directive.showDomainDescriptions === false &&
+              same(places(directive, "complex"), repeat("own", 5)) &&
+              !!tall &&
+              tall.showDomainDescriptions === true &&
+              same(places(tall, "complex"), [...repeat("own", 3), "region:chaotic"]) &&
+              same(places(tall, "chaotic"), [...repeat("own", 3), "outside-picture"]) &&
+              cynefinPlacement("complex", 4, defaults) === "region:chaotic" &&
+              cynefinPlacement("clear", 4, defaults) === "outside-regions" &&
+              cynefinPlacement("clear", 6, defaults) === "outside-picture" &&
+              cynefinPlacement("complicated", 4, { ...defaults, showDomainDescriptions: false }) === "own",
+          ],
+          [
+            "YS14 accumulation: two maps parsed in sequence through the surface each deliver only their own items and arrows",
+            !!accumA &&
+              same(labels(accumA, "complex"), ["scAccumA1", "scAccumA2"]) &&
+              same(labels(accumA, "clear"), ["scAccumA3"]) &&
+              same(labels(accumA, "chaotic"), []) &&
+              accumA.transitions.length === 1 &&
+              !!accumB &&
+              same(labels(accumB, "chaotic"), ["scAccumB1"]) &&
+              same(labels(accumB, "complex"), []) &&
+              same(labels(accumB, "clear"), []) &&
+              accumB.transitions.length === 0,
+          ],
+          [
+            "YS15 the snapshot: a domain added through the db and a held item's label changed after the delivery do not reach it (and the db did change)",
+            !!outcomes.snapshot.result &&
+              snapshotLive === "complex:scChanged,clear:scIntruder" &&
+              JSON.stringify(outcomes.snapshot.result.delivery) === outcomes.snapshot.digest &&
+              labels(outcomes.snapshot.result.delivery, "complex")[0] === "scSnap1" &&
+              labels(outcomes.snapshot.result.delivery, "clear").length === 0,
+          ],
+          [
+            "YS16 STOPs: a db that is not a Map, an unknown domain, a name that does not match its key, an unknown record field, a non-string label, an arrow to an unknown domain and a size that is not a finite number each refuse; the stub itself is accepted; a rejected source rejects",
+            stubRefuses(stubDb({}), /getDomains did not deliver a Map/) &&
+              stubRefuses(
+                stubDb(stubMap([["disorder", stubDomain("disorder")]])),
+                /domain the census did not find: disorder/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap([["complex", stubDomain("clear")]])),
+                /domain complex name does not match its key/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap([["complex", { name: "complex", items: [], order: 1 }]])),
+                /field the census did not find: order/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap([["complex", stubDomain("complex", [{ label: "a", colour: "red" }])]])),
+                /field the census did not find: colour/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap([["complex", stubDomain("complex", [{ label: 5 }])]])),
+                /item 0 label is not a string/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap(), [{ from: "complex", to: "nowhere", label: undefined }]),
+                /transition 0 to is not a domain/
+              ) &&
+              stubRefuses(
+                stubDb(stubMap(), [{ from: "complex", to: "clear", label: 5 }]),
+                /transition 0 label is not a string/
+              ) &&
+              mergeRefuses({ padding: "10px" }, /cynefin.padding is not a finite number/) &&
+              mergeRefuses({ height: "wide" }, /cynefin.height is not a finite number/) &&
+              (() => {
+                try {
+                  snapshotCynefinDb(stubDb(stubMap()));
+                  const merged = mergeCynefinConfig(
+                    { width: 800, height: 600, padding: 40, showDomainDescriptions: true },
+                    { height: null, padding: { x: 1 }, showDomainDescriptions: "false" }
+                  );
+                  return merged.height === 600 && merged.padding === 40 && merged.showDomainDescriptions === true;
+                } catch (error) {
+                  return false;
+                }
+              })() &&
+              !!outcomes.rejected.error &&
+              !outcomes.rejected.digest,
+          ],
+        ];
+      });
+    };
+
+    const queued = adapterParseQueue.then(run, run);
+    adapterParseQueue = queued.then(
+      () => undefined,
+      () => undefined
+    );
+
+    cynefinSelfCheckPromise = queued
+      .then((assertions) => {
+        const failed = assertions.filter(([, pass]) => !pass);
+        if (failed.length > 0) {
+          logError(
+            `Cynefin self-check FAILED at assertion(s): ${failed.map(([label]) => label).join(" || ")}. ` +
+              "Either the pinned Mermaid build's cynefin internals no longer " +
+              "match the 29 October 2026 census, or the surface has drifted; " +
+              "do not trust cynefin adapter output."
+          );
+          cynefinHealthy = false;
+          return false;
+        }
+
+        logInfo(
+          "Cynefin self-check passed: accessor, shape, domain, item, transition, decode, " +
+            "title, accTitle, placement, config, accumulation, snapshot " +
+            "and stop assertions all hold"
+        );
+        cynefinHealthy = true;
+        return true;
+      })
+      .catch((error) => {
+        logError(
+          "Cynefin self-check FAILED at assertion: the fixtures parse and " +
+            `read. The fixture run rejected: ${error && error.message}`
+        );
+        cynefinHealthy = false;
+        return false;
+      });
+
+    return cynefinSelfCheckPromise;
+  }
+
+  /**
+   * Report the cynefin surface's health, independently of the others.
+   * @returns {boolean|null} True or false once the cynefin self-check has
+   *   run; null when it has not yet run (or not yet settled)
+   */
+  function isCynefinHealthy() {
+    return cynefinHealthy;
+  }
+
   return {
     parse: parse,
     runSelfCheck: runSelfCheck,
@@ -23061,6 +24185,9 @@ window.MermaidParseAdapter = (function () {
     parseWardley: parseWardley,
     runWardleySelfCheck: runWardleySelfCheck,
     isWardleyHealthy: isWardleyHealthy,
+    parseCynefin: parseCynefin,
+    runCynefinSelfCheck: runCynefinSelfCheck,
+    isCynefinHealthy: isCynefinHealthy,
     // Register item 78: a decoder for the core's author-override route, which
     // reads the raw diagram source. (It read "the ONE decoder exported from
     // this module" until 6 October 2026, when the fourth entry point below

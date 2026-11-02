@@ -1246,10 +1246,76 @@
       next.refusal = delta.refusal;
     }
     if (Array.isArray(delta.tool_calls)) {
-      next.toolCalls = (next.toolCalls || []).concat(delta.tool_calls);
+      next.toolCalls = mergeToolCallFragments(next.toolCalls, delta.tool_calls);
     }
 
     return next;
+  }
+
+  // ── mergeToolCallFragments ───────────────────────────────────────────────
+  /**
+   * Fold streamed `delta.tool_calls` fragments into the calls gathered so far.
+   * One call arrives as many fragments (8 for one call in the recorded capture),
+   * so appending them, as this used to, gave 8 entries for 1 call. What the
+   * wire does, measured on real OpenRouter streams: every fragment carries
+   * `index`; `id`, `type` and `function.name` come on a call's first fragment
+   * only; `function.arguments` arrives as string pieces to be joined.
+   *
+   * Fragments are keyed by `index`, so arrival order does not matter (the one
+   * capture of two parallel calls arrived 0,0,0,1,1,1, but that is n=1). A
+   * fragment with no numeric `index` cannot be matched to anything, so it is
+   * appended as a new entry and sorts after the numbered ones; no capture has one.
+   *
+   * PURE like reduceStreamDelta: the entries are copied before they are
+   * changed, because cloneResult copies the array shallowly and merging into
+   * the shared entries would rewrite the previous accumulator.
+   *
+   * @param {Array|null} calls - the calls so far
+   * @param {Array} fragments - this delta's tool_calls
+   * @returns {Array} the new list of calls, ascending by index
+   */
+  function mergeToolCallFragments(calls, fragments) {
+    const merged = (calls || []).map(copyToolCall);
+
+    fragments.forEach((fragment) => {
+      if (!fragment || typeof fragment !== "object") return;
+      const fn = fragment.function && typeof fragment.function === "object" ? fragment.function : {};
+      const hasIndex = typeof fragment.index === "number";
+      const existing = hasIndex ? merged.find((c) => c.index === fragment.index) : undefined;
+
+      if (!existing) {
+        merged.push({
+          index: hasIndex ? fragment.index : null,
+          id: fragment.id || null,
+          type: fragment.type || null,
+          function: {
+            name: fn.name || null,
+            arguments: typeof fn.arguments === "string" ? fn.arguments : "",
+          },
+        });
+        return;
+      }
+
+      // The first non-empty value wins and is never overwritten afterwards.
+      if (!existing.id && fragment.id) existing.id = fragment.id;
+      if (!existing.type && fragment.type) existing.type = fragment.type;
+      if (!existing.function.name && fn.name) existing.function.name = fn.name;
+      if (typeof fn.arguments === "string") existing.function.arguments += fn.arguments;
+    });
+
+    merged.sort(compareToolCallIndex);
+    return merged;
+  }
+
+  function copyToolCall(c) {
+    return Object.assign({}, c, { function: Object.assign({}, c.function) });
+  }
+
+  // Ascending by index; entries without a numeric index go last (the sort is stable).
+  function compareToolCallIndex(a, b) {
+    const ai = typeof a.index === "number" ? a.index : Infinity;
+    const bi = typeof b.index === "number" ? b.index : Infinity;
+    return ai === bi ? 0 : ai < bi ? -1 : 1;
   }
 
   function cloneResult(r) {

@@ -167,6 +167,23 @@
         });
       }
 
+      // Tool calling (TC-2, 2 November 2026): pass the three request fields
+      // through unchanged, each ONLY WHEN GIVEN, so a request with none of them
+      // keeps a byte-identical body (no new key, not even an undefined one).
+      // The canonical shape is OpenAI chat-completions, which this route takes
+      // as it is. Reads options only, so a second build from the first body
+      // gives the same fields. Whether the model can use tools is the runner's
+      // check, not this builder's.
+      if (Array.isArray(options.tools) && options.tools.length > 0) {
+        body.tools = options.tools;
+      }
+      if (options.tool_choice !== undefined) {
+        body.tool_choice = options.tool_choice;
+      }
+      if (typeof options.parallel_tool_calls === "boolean") {
+        body.parallel_tool_calls = options.parallel_tool_calls;
+      }
+
       return body;
     },
 

@@ -1,8 +1,8 @@
 {
   "source": "scorm-builder",
-  "commit": "423c0f29ac720ff3e86b1af72c31f4dbf583cd41",
+  "commit": "be9f3bfd980fca9706e7ce6b76d3f2e3a6963d3c",
   "dirty": false,
-  "generatedAt": "2026-10-29T19:33:38.475Z",
+  "generatedAt": "2026-11-02T11:17:18.334Z",
   "fileCount": 55,
   "files": {
     "assets/css.js": "bc911416fa0a8fbb62f60c591271b9bd1e62bd37ad211f3bd39f12306065806d",
@@ -27,7 +27,7 @@
     "docs/optional-features-guide.md": "c7cf159760da32e0ca8dc467ab9270c265bf4233b9c262ae01c5bb0684917b15",
     "docs/user-guide.md": "dc8c80cad105075885d2a97ca373203c41f119affbb6ec72f98e32752ebb367c",
     "enhancers/audit.js": "a66cb8ac298460e63d4fc4f1433024d8dc893dc6ae52bbc491e46f82281ed4ef",
-    "enhancers/enhance-tables.js": "ae3e8f35758bcc2911aecf1d87451499f096630697d7c92d3271139da9024f82",
+    "enhancers/enhance-tables.js": "efff5af887183580d8163eeb9aee939f56d64fd1515635fa9ab3a0e99d6d848a",
     "enhancers/headings.js": "dba3e3f014bcc0382638b9cf9e100868733791ae92da5885d9157a8ec3a6e26f",
     "enhancers/image-embedder.js": "c2364f2c006c6b7ef6fbd5e5bf6c8a99f00ea24490d0d3dcd181d5f034ced99a",
     "enhancers/long-descriptions.js": "1654e05ec04d90a4001069a8982f0eb60954c3c6c745d1a3e73bd3f347157035",

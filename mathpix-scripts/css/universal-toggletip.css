@@ -50,8 +50,10 @@
   text-underline-offset: 2px;
 }
 
-.universal-toggletip-trigger:hover,
-.universal-toggletip-trigger:focus {
+/* HOV-2b: not on a native <button> trigger, which takes the site's quiet hover tint and
+   keyboard focus ring from light.css and dark.css. :where() keeps the specificity. */
+.universal-toggletip-trigger:not(:where(button)):hover,
+.universal-toggletip-trigger:not(:where(button)):focus {
   text-decoration-style: solid;
   /* ensure high-contrast mode still has an indicator */
   outline: 2px transparent solid;
@@ -229,6 +231,15 @@ button.universal-toggletip-trigger:focus,
   color: var(--toggletip-text);
 }
 
+/* HOV-15: a keyboard-focused link in the popup shows the same ring as a button in it (cream gap, then blue, 7.28:1
+   on the cream). Until now its only cue was main.css's transparent `*:focus` outline, which shows in forced colours
+   only. The popup is cream in both themes, so one rule serves both. */
+.universal-toggletip a:focus-visible {
+  box-shadow:
+    0 0 0 0.2rem var(--toggletip-background),
+    0 0 0 0.5rem var(--toggletip-info-accent);
+}
+
 /* ====== CLOSE BUTTON ====== */
 .universal-toggletip-close {
   position: absolute;
@@ -253,7 +264,9 @@ button.universal-toggletip-trigger:focus,
     color 150ms ease;
 }
 
-.universal-toggletip-close:hover {
+/* HOV-2c: hover is a quiet tint; keyboard focus keeps the button's own fill and shows only the app-wide
+   ring (light.css / dark.css), and focus plus hover shows the focus look. :where() keeps the hover at (0,2,0). */
+.universal-toggletip-close:hover:not(:where(:focus-visible)) {
   background-color: rgba(0, 19, 29, 0.08);
   color: var(--toggletip-text);
 }
@@ -261,7 +274,6 @@ button.universal-toggletip-trigger:focus,
 .universal-toggletip-close:focus {
   outline: 2px solid var(--toggletip-info-accent);
   outline-offset: 1px;
-  background-color: rgba(0, 19, 29, 0.08);
 }
 
 .universal-toggletip-close:focus:not(:focus-visible) {

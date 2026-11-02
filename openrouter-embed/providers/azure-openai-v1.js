@@ -964,6 +964,25 @@
         logDebug(`Reasoning effort sent: ${reasoningEffort}`);
       }
 
+      // Tool calling (TC-2, 2 November 2026): pass the three request fields
+      // through unchanged, each ONLY WHEN GIVEN. That matters most here:
+      // strict-MaaS deployments reject unknown fields with HTTP 422
+      // extra_forbidden (see the token-field note above), so a field must
+      // never appear unless the caller asked for it. A request with none of
+      // them keeps a byte-identical body. Reads options only, so the second
+      // build in a streaming request (first body plus stream:true) gives the
+      // same fields. Whether the deployment can use tools is the runner's
+      // check, not this builder's.
+      if (Array.isArray(options.tools) && options.tools.length > 0) {
+        body.tools = options.tools;
+      }
+      if (options.tool_choice !== undefined) {
+        body.tool_choice = options.tool_choice;
+      }
+      if (typeof options.parallel_tool_calls === "boolean") {
+        body.parallel_tool_calls = options.parallel_tool_calls;
+      }
+
       if (options.stream === true) {
         body.stream = true;
         // Critical: ensures Azure returns usage stats in the final chunk.
@@ -1156,6 +1175,13 @@
         let latchedFinishReason = null;
         let latchedNativeFinishReason = null;
 
+        // TC-2b: per-stream tool-call accumulator, folded by
+        // ModalityCore.reduceStreamDelta (TC-1 merges fragments by `index`).
+        // Null until a chunk carries delta.tool_calls, so a stream with no
+        // tool call never touches it and responseData gains no key.
+        let streamToolCalls = null;
+        let warnedNoModalityCore = false;
+
         const processParsed = (parsed) => {
           finalChunkData = parsed;
           const choice = parsed && parsed.choices && parsed.choices[0];
@@ -1209,6 +1235,30 @@
               }
             }
             chunkIndex++;
+          }
+
+          // TC-2b: streamed tool-call fragments, independent of the text
+          // above so a chunk carrying both keeps both. ModalityCore is
+          // resolved here, at call time: this file loads BEFORE
+          // js/modality/modality-core.js in tools.html, so a reference taken
+          // at load would capture undefined. No inline fallback, which would
+          // be a second copy of the merge; if the core is absent the text
+          // path carries on and responseData gains no key.
+          const toolDeltas = delta && delta.tool_calls;
+          if (Array.isArray(toolDeltas) && toolDeltas.length > 0) {
+            const core = typeof window !== "undefined" ? window.ModalityCore : null;
+            if (core && typeof core.reduceStreamDelta === "function") {
+              streamToolCalls = core.reduceStreamDelta(
+                { tool_calls: toolDeltas },
+                streamToolCalls,
+              );
+            } else if (!warnedNoModalityCore) {
+              warnedNoModalityCore = true;
+              logWarn(
+                "window.ModalityCore is unavailable; streamed tool calls are dropped. " +
+                  "js/modality/modality-core.js must load before a stream runs.",
+              );
+            }
           }
         };
 
@@ -1273,6 +1323,24 @@
               : null,
           processingTime: elapsedMs,
         };
+
+        // TC-2b: the merged calls in the whole-reply shape. choices is
+        // replaced by a NEW array (the parsed chunk is never mutated), whose
+        // first entry keeps whatever the last chunk's first choice held.
+        if (streamToolCalls && streamToolCalls.toolCalls) {
+          const lastChoices = responseData.choices || [];
+          responseData.choices = [
+            {
+              ...(lastChoices[0] || {}),
+              message: {
+                role: "assistant",
+                content: fullText,
+                tool_calls: streamToolCalls.toolCalls,
+              },
+            },
+            ...lastChoices.slice(1),
+          ];
+        }
 
         logInfo("Foundry streaming complete", {
           chunks: chunkIndex,

@@ -141,6 +141,8 @@
 
 .local-chat-parameters[open] {
   padding-bottom: 0.75rem;
+  /* HOV-14d: the shared details[open] rule would take the side padding to 0.5em and widen the summary; hold it. */
+  padding-inline: 0.75rem;
 }
 
 .local-chat-parameters summary {

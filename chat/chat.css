@@ -233,8 +233,12 @@
   align-items: center;
   gap: 0.5rem;
   min-height: 44px;
-  /* Wrap, so a select that keeps the width of its longest option moves its label onto the line
-     above in a narrow panel instead of being squeezed. */
+}
+
+/* A row holding a select wraps, so a select that keeps the width of its longest option moves its
+   label onto the line above in a narrow panel instead of being squeezed. Only these rows: wrapping
+   the checkbox rows too pushed their labels under the checkbox (measured, 4 of 8 rows at 1280px). */
+.chat-filter-row:has(> select) {
   flex-wrap: wrap;
 }
 
@@ -254,8 +258,10 @@
  * mirrors the house numeric-control look (2px currentColor border, 4px radius) so
  * it reads as one panel with the max-tokens field above. It inherits the tool's
  * house input focus treatment (AA in both themes, from light.css / dark.css), so
- * no bespoke focus ring is added here. Sized to the 44px preferred target and
- * allowed to shrink so the panel reflows cleanly at 400% zoom. No transition is
+ * no bespoke focus ring is added here. Sized to the 44px preferred target. It is NOT
+ * allowed to shrink below its longest option (no min-width: 0), because a squeezed select
+ * clips its text against the arrow; the row wraps instead, and max-width: 100% still holds
+ * the select inside the panel so it reflows cleanly at 400% zoom. No transition is
  * introduced, so a reduced-motion preference is honoured by default. */
 .chat-filter-row select {
   min-height: 44px;
@@ -264,7 +270,6 @@
   border-radius: 4px;
   box-sizing: border-box;
   flex: 0 1 auto;
-  min-width: 0;
   max-width: 100%;
 }
 
@@ -364,11 +369,13 @@
  * The four filter groups (Pricing options, Cost range, Model capabilities, Model
  * provider) are laid out as cards in a responsive grid. auto-fit + minmax lets
  * them sit side by side on a wide panel and stack to a single column on a narrow
- * one with NO media query. min-width: 0 lets the track (and its cards) shrink
- * below content width so the panel reflows cleanly at 400% zoom / 320px. */
+ * one with NO media query. min(14rem, 100%) caps the track minimum at the panel's own
+ * width: a bare 14rem (224px) minimum could not shrink inside a 214px panel at 320px, so
+ * the cards overran it by 14px (measured: a 0 minimum cured it). min-width: 0 lets the
+ * cards shrink below content width inside the track. */
 .chat-filter-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
   gap: 0.75rem;
   min-width: 0;
 }
@@ -897,6 +904,26 @@
   cursor: pointer;
 }
 
+/* HOV-14d: "Show the whole request" becomes "Show less" on click, which narrowed the button. The longer label's room is
+   reserved by an invisible, zero-height twin (empty alternative text, so the accessible name is untouched). The words
+   match EXPAND_LABEL.more in js/dev-panel.js. */
+#chat-app #chat-dev-expand-request::after {
+  content: "Show the whole request" / "";
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+/* Below about 372px of viewport the long label wraps to two lines, whose content is 46px against the 44px floor above
+   (box heights 63.19px and 61.19px, measured), and "Show less" does not wrap. Hold the two-line content height from
+   376px down (content-box, as the 44px above), so the wrapped state and the short one are the same height. */
+@media (max-width: 23.5rem) {
+  #chat-app #chat-dev-expand-request {
+    min-height: 46px;
+  }
+}
+
 /* The app-wide code-copy enhancer (md-scripts/markdown-utils/markdown-code-copy.js)
  * auto-injects a generic "Copy code to clipboard" button onto every language-json
  * <pre><code>. Here it is redundant with our own chat-dev-copy buttons — which copy
@@ -1267,6 +1294,26 @@
   object-fit: contain;
 }
 
+/* Parcel P16d: at 480px and narrower the attach box stacks, and a tall picture (a PDF's first page,
+ * a portrait photo) made the box over 1,000px tall. Here the picture is at most 10rem (160px) tall,
+ * keeps its own shape, and the card's frame hugs it, so no blank bands sit beside it inside the
+ * border. The card stays at the left. A picture already shorter than that is shown at its own
+ * size instead of stretched to the card width. The text preview and the document icon are not
+ * touched: the :has() scope picks only a card holding a picture. */
+@media (max-width: 30rem) {
+  .chat-attach-body .chat-attachment-card:has(> .chat-attachment-thumb) {
+    width: fit-content;
+    max-width: 100%;
+  }
+
+  .chat-attach-body .chat-attachment-card > .chat-attachment-thumb {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: 10rem;
+  }
+}
+
 /* A Word, PowerPoint, Excel or text file: a small "page" holding the first lines of its
  * text, the card's full width at A4 shape, clipped and fading out at the bottom (the fade
  * colour is in the theme sheets). */
@@ -1400,10 +1447,22 @@
  * the theme sheets its outline, so only the margin is reset here. */
 .chat-attachment-more {
   margin-top: 0.5rem;
+  /* Room below the summary so its focus ring clears the border under it. */
+  margin-bottom: 0.375rem;
 }
 
 .chat-attachment-more > details {
   margin: 0;
+}
+
+/* Keyboard focus ring on the heading sits INSIDE the heading (parcel P16g-2). The theme sheets draw
+ * it 0.5rem outside (light: summary:focus-visible, dark: summary:focus), which crosses the box's
+ * frame. Same dotted style, colour and width; only the offset moves it in, by its own width.
+ * !important is needed to beat the theme sheets' !important; the higher specificity and later
+ * sheet decide the rest. Scoped to :focus-visible, so the dark theme's mouse-focus clearing rule
+ * (summary:focus:not(:focus-visible)) still shows no ring on a click. */
+.chat-attachment-more-details > summary:focus-visible {
+  outline-offset: -0.3rem !important;
 }
 
 .chat-attachment-read {
@@ -1417,13 +1476,42 @@
   display: contents;
 }
 
+/* The label is plain and the value is bold. main.css gives every bare dt a 1rem bottom margin
+ * at 650px and narrower, which would push each label away from its own value, so the margin is
+ * reset here at every width. */
 .chat-attachment-read dt {
-  font-weight: 600;
+  margin: 0;
+  font-weight: inherit;
 }
 
 .chat-attachment-read dd {
   margin: 0;
+  font-weight: 600;
+  /* Last resort only: with the stacking rule below, a value breaks inside a word only when one
+   * unbroken string (a long file name or number) is wider than the whole list. */
   overflow-wrap: anywhere;
+}
+
+/* Two columns only when the values have room (parcel P16f). The list's width depends on how the
+ * attach box lays out, not on the viewport, so it answers to its own width: the <details> is the
+ * query container because its content box IS the list's width (the <dl> has no margin or padding).
+ * Measured (P16f H-0): with two columns the longest value word first fits unbroken at a list width
+ * of 255px (16rem rounded up); at 230px "characters" and "detected" split. 16rem + 2rem for longer
+ * values = 18rem. At or below it the list stacks exactly as it does on a phone: label on its value,
+ * 0.75rem between pairs. The phone rules in the media block below stay as they were. */
+.chat-attachment-more-details {
+  container-type: inline-size;
+}
+
+@container (max-width: 18rem) {
+  .chat-attachment-read {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  .chat-attachment-read dd {
+    margin-bottom: 0.75rem;
+  }
 }
 
 @media (max-width: 599px) {
@@ -1503,14 +1591,15 @@
     box-sizing: border-box;
   }
 
-  /* One column: a heading sits close over its value, with the space between pairs. */
+  /* One column: a heading sits directly on its value, with a clearly larger space between
+   * pairs (0.75rem, up from 0.5rem, so a pair reads as one unit). */
   .chat-attachment-read {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 0;
   }
 
   .chat-attachment-read dd {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 }
 
@@ -1546,17 +1635,36 @@
 .chat-attach-pictures-strip:not([hidden]) {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(3.25rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(4rem, 1fr));
   gap: 0.5rem 0.4rem;
-  margin-top: 0.25rem;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  border: 0;
+  min-width: 0; /* a fieldset's default min-content width would push the box wider than the column */
 }
 
-.chat-attach-pictures-item {
+/* Parcel P14: each picture is a label (thumbnail over a tick and its "Image n" / "Page n" caption), so a
+ * click anywhere on it toggles the tick. The id selector beats the box's own label rule above, which
+ * would otherwise set the item to a 44px-minimum block with vertical padding. */
+#chat-attach-pictures-wrap label.chat-attach-pictures-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  gap: 0.25rem;
   min-width: 0;
+  min-height: 0;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.chat-attach-pictures-row {
+  display: flex;
+  flex-wrap: wrap; /* in a narrow column the caption drops under the tick rather than breaking mid-word */
+  align-items: center;
+  justify-content: center;
+  /* the tick's focus ring is 4px wide at 4px offset (8px out), so the caption sits 12px from the tick to
+   * stay at least 4px clear of the ring, whether it wraps under the tick or sits beside it */
+  gap: 0.75rem;
 }
 
 .chat-attach-pictures-thumb {
@@ -1568,6 +1676,13 @@
   border-width: 1px;
   border-style: solid;
   border-radius: 2px;
+}
+
+/* Parcel P16b: an unticked picture fades to 40 % so it reads as left out of the send. Only the thumbnail
+ * fades: the tick and the caption stay at full strength, so the control keeps its contrast and its
+ * look. No transition, as nothing moves. */
+#chat-attach-pictures-wrap label.chat-attach-pictures-item:has(.chat-attach-pictures-tick:not(:checked)) .chat-attach-pictures-thumb {
+  opacity: 0.4;
 }
 
 .chat-attach-pictures-caption {
@@ -1594,6 +1709,17 @@
   display: block;
   margin-block: 0.5rem;
   white-space: normal;
+}
+
+/* A sent picture fits its bubble: never wider than the bubble's content box, never taller than 240px,
+ * and its shape kept (width and height stay auto, so the browser scales the two together). The corner
+ * radius is the file chip's, so the two kinds of attachment look related. */
+.chat-bubble-attachment-thumb {
+  max-width: 100%;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: 0.5rem;
 }
 
 /* A file (or a restored reference) is a pill sized to its content. A live picture keeps no pill. */
@@ -1624,6 +1750,30 @@
 
 .chat-bubble-attachment-reference > [data-icon] {
   flex: none;
+}
+
+/* At 480px and narrower the chip is two columns, icon then name, and the "N page pictures sent" note
+ * sits in the name's column under the name, level with it on every line, with no dot (a dot would
+ * start a line). The note's text begins with one real space that keeps it apart from the name for a
+ * reader that joins inline elements, so what is read out must not change: pre-wrap stops that space
+ * collapsing at the start of the line, and the negative indent (one space in Verdana, 0.3516em)
+ * pulls the first line back so the visible text is level with the name. Wider than this nothing here
+ * applies. */
+@media (max-width: 30rem) {
+  .chat-bubble-attachment-reference {
+    display: grid;
+    grid-template-columns: auto 1fr;
+  }
+
+  .chat-bubble-attachment-reference > .chat-bubble-attachment-sent {
+    grid-column: 2;
+    white-space: pre-wrap;
+    text-indent: -0.3516em;
+  }
+
+  .chat-bubble-attachment-reference > .chat-bubble-attachment-sent::before {
+    content: none;
+  }
 }
 
 #chat-attach-pictures-wrap input[type="checkbox"] {

@@ -2,7 +2,7 @@
 .mermaid-theme-container {
   display: flex;
   align-items: center;
-  margin: 0 1rem 0 0.5rem;
+  margin: 0;
 }
 
 .mermaid-theme-label {

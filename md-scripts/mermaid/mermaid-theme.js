@@ -111,7 +111,9 @@ window.MermaidThemes = (function () {
     // user is handed.
     defaultThemes: {
       light: "accessibleLight", // Default theme for light mode
-      dark: "accessibleDark", // Default theme for dark mode
+      // Varied Dark since 1 November 2026 (Matthew's ruling); the light default
+      // is unchanged, so only a dark-mode reader with no stored choice sees it.
+      dark: "variedDark", // Default theme for dark mode
     },
 
     // Control which themes appear in the selector
@@ -129,6 +131,7 @@ window.MermaidThemes = (function () {
       accessibleDark: true,
       highContrastLight: true,
       highContrastDark: true,
+      variedDark: true, // Varied Dark: the dark-mode sibling of wcagLight (item 144)
       blueAccent: true, // Add your new theme here
     },
     modeVisibleThemes: {
@@ -140,7 +143,7 @@ window.MermaidThemes = (function () {
         "highContrastLight",
         "wcagLight",
       ],
-      dark: ["dark", "accessibleDark", "highContrastDark"],
+      dark: ["dark", "accessibleDark", "highContrastDark", "variedDark"],
     },
   };
 
@@ -5510,12 +5513,14 @@ window.MermaidThemes = (function () {
     const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
 
     // "Off stage" is not "inside <defs>": a marker's content is painted at every
-    // arrow end that references it.
+    // arrow end that references it. The category pass's label rectangles are
+    // not the diagram's shapes, so this pass leaves them alone.
     const offstage = (element) =>
       !!(
         (element.closest("defs") && !element.closest("marker")) ||
         element.closest("symbol") ||
-        element.closest("clipPath")
+        element.closest("clipPath") ||
+        element.closest("[data-category-label-bg]")
       );
 
     const boxOf = (element, options) => {
@@ -6290,12 +6295,14 @@ window.MermaidThemes = (function () {
     const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
 
     // "Off stage" is not "inside <defs>": a marker's content is painted at every
-    // arrow end that references it.
+    // arrow end that references it. The category pass's label rectangles are
+    // not the diagram's shapes, so this pass leaves them alone.
     const offstage = (element) =>
       !!(
         (element.closest("defs") && !element.closest("marker")) ||
         element.closest("symbol") ||
-        element.closest("clipPath")
+        element.closest("clipPath") ||
+        element.closest("[data-category-label-bg]")
       );
 
     const boxOf = (element, options) => {
@@ -7072,12 +7079,14 @@ window.MermaidThemes = (function () {
     const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
 
     // "Off stage" is not "inside <defs>": a marker's content is painted at every
-    // relationship end that references it.
+    // relationship end that references it. The category pass's label
+    // rectangles are not the diagram's shapes, so this pass leaves them alone.
     const offstage = (element) =>
       !!(
         (element.closest("defs") && !element.closest("marker")) ||
         element.closest("symbol") ||
-        element.closest("clipPath")
+        element.closest("clipPath") ||
+        element.closest("[data-category-label-bg]")
       );
 
     const boxOf = (element, options) => {
@@ -10799,6 +10808,9 @@ window.MermaidThemes = (function () {
       return hueBest && hueBest.worst > chosen.worst ? hueBest : chosen;
     };
 
+    /** The one property an edge, an underline or a re-inked outline is written with. */
+    const strokeOnly = (ink) => ({ stroke: ink });
+
     /** Write derived values, own them, keep what they displaced, and record the reading. */
     const write = (element, kind, properties, reading) => {
       const written = [];
@@ -11083,7 +11095,7 @@ window.MermaidThemes = (function () {
           MINDMAP_OBJECT_TARGET,
           MINDMAP_OBJECT_MARGIN
         );
-        write(element, `${role}Ink`, { stroke: chosen.ink }, {
+        write(element, `${role}Ink`, strokeOnly(chosen.ink), {
           ink: chosen.ink,
           grounds,
           ratio: Number(chosen.worst.toFixed(2)),
@@ -11119,7 +11131,7 @@ window.MermaidThemes = (function () {
           MINDMAP_OBJECT_TARGET,
           MINDMAP_OBJECT_MARGIN
         );
-        write(element, `${role}Ink`, { stroke: chosen.ink }, {
+        write(element, `${role}Ink`, strokeOnly(chosen.ink), {
           ink: chosen.ink,
           grounds: outside,
           ratio: Number(chosen.worst.toFixed(2)),
@@ -11395,6 +11407,12 @@ window.MermaidThemes = (function () {
   function applySeriesEncoding(root) {
     if (!root) return null;
 
+    // CATEGORY OPTIONS SWEEP, added 31 October 2026 (register item 144),
+    // BEFORE every other pass: a pattern fill is a `url()`, which parses as no
+    // paint, so a run that left the last one in place would hide the shape from
+    // the passes below. The pass itself is the LAST call in this function.
+    sweepCategoryOptions(root);
+
     // PAGE INK DISPATCH, added 26 September 2026 (Mermaid UI review parcel
     // 10), FIRST and for every diagram type, at this seam for the gantt
     // dispatch's wiring reason below. First, because the xychart work at the
@@ -11520,6 +11538,12 @@ window.MermaidThemes = (function () {
     // applyMindmapEncoding never calls applyTheme, so it cannot recurse.
     const mindmapEncoding = applyMindmapEncoding(root);
 
+    // CATEGORY OPTIONS, added 31 October 2026 (register item 144), LAST of the
+    // per-type passes: it reads the fills and label inks they leave and writes
+    // a pattern over the fill and a background behind the label. It never calls
+    // applyTheme, so it cannot recurse. Its result rides on the summary below.
+    const categoryOptions = applyCategoryOptions(root);
+
     const svg =
       root.tagName === "svg" &&
       root.getAttribute("aria-roledescription") === XYCHART_ROLEDESCRIPTION
@@ -11545,7 +11569,8 @@ window.MermaidThemes = (function () {
       if (treeViewEncoding) return { treeView: treeViewEncoding };
       if (ishikawaEncoding) return { ishikawa: ishikawaEncoding };
       if (wardleyEncoding) return { wardley: wardleyEncoding };
-      if (mindmapEncoding) return { mindmap: mindmapEncoding };
+      if (mindmapEncoding) return { mindmap: mindmapEncoding, categoryOptions };
+      if (categoryOptions) return { categoryOptions };
       logDebug(
         "No xychart, gantt, sequence, block, c4, kanban, radar, requirement, packet, flowchart, class, er, treemap, venn, treeView or ishikawa SVG in this container - series encoding skipped"
       );
@@ -11949,6 +11974,40 @@ window.MermaidThemes = (function () {
   }
 
   /**
+   * APCA-W3 (0.0.98G-4g) lightness contrast Lc of a text colour on a background,
+   * signed (positive for dark on light, negative for light on dark). The category
+   * pass (item 144, LQ3) judges against |Lc|. Same constants and arithmetic as the
+   * harness's scratch/palette-g-1/apca.mjs, which was calibrated against the
+   * published vectors; the figures instrument reads the page's computed values
+   * with that independent copy, so the two agree or the harness shows it.
+   *
+   * @param {string} textHex - Text (or mark) colour in hex
+   * @param {string} backgroundHex - Background colour in hex
+   * @returns {number} Lc, about -108 to +106
+   */
+  function calculateApcaLc(textHex, backgroundHex) {
+    const luminanceOf = (hex) => {
+      const [r, g, b] = hexToRgb(hex);
+      return (
+        0.2126729 * Math.pow(r / 255, 2.4) +
+        0.7151522 * Math.pow(g / 255, 2.4) +
+        0.072175 * Math.pow(b / 255, 2.4)
+      );
+    };
+    const soften = (y) => (y < 0.022 ? y + Math.pow(0.022 - y, 1.414) : y);
+    const text = soften(luminanceOf(textHex));
+    const background = soften(luminanceOf(backgroundHex));
+
+    if (Math.abs(background - text) < 0.0005) return 0;
+    if (background > text) {
+      const scaled = (Math.pow(background, 0.56) - Math.pow(text, 0.57)) * 1.14;
+      return (scaled < 0.1 ? 0 : scaled - 0.027) * 100;
+    }
+    const scaled = (Math.pow(background, 0.65) - Math.pow(text, 0.62)) * 1.14;
+    return (scaled > -0.1 ? 0 : scaled + 0.027) * 100;
+  }
+
+  /**
    * Adjust colour lightness until it meets the required contrast ratio
    * @param {string} baseColor - Base colour in hex
    * @param {string} targetColor - Target colour to contrast with in hex
@@ -12038,6 +12097,802 @@ window.MermaidThemes = (function () {
   }
 
   // ---------------------------------------------------------------------------
+  // Reader options: pattern fills and label backgrounds — register item 144,
+  // 31 October 2026 (rules 63 and 64)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Storage keys for the two reader options. DELIBERATELY NOT "theme", for the
+   * reason THEME_PREFERENCE_KEY gives. Label backgrounds are ON unless the
+   * stored value is exactly "off" (ruling LP2, MD2). Patterns are OFF unless
+   * the stored value is exactly "on": an absent or unreadable key means OFF
+   * (ruling MD1, 31 October 2026, superseding LP2 for patterns).
+   */
+  const READER_OPTION_KEYS = Object.freeze({
+    patterns: "mermaid-diagram-patterns",
+    labelBackgrounds: "mermaid-diagram-label-backgrounds",
+  });
+  // Default state of each option when nothing is stored (MD1, MD2).
+  const READER_OPTION_DEFAULT_ON = Object.freeze({
+    patterns: false,
+    labelBackgrounds: true,
+  });
+  const READER_OPTION_OFF = "off";
+  const READER_OPTION_ON = "on";
+  // Where a diagram keeps its own choice, on its .mermaid-container. The storage
+  // keys above hold only the page default a NEW diagram starts from.
+  const READER_OPTION_ATTRIBUTES = Object.freeze({
+    patterns: "data-reader-patterns",
+    labelBackgrounds: "data-reader-label-backgrounds",
+  });
+
+  /**
+   * Read a reader option.
+   * @param {"patterns"|"labelBackgrounds"} name
+   * @returns {boolean} labelBackgrounds: true unless the stored value is "off".
+   *   patterns: true only if the stored value is "on". On any read failure the
+   *   default applies (labelBackgrounds true, patterns false); null for an
+   *   unknown name
+   */
+  function getReaderOption(name, scope) {
+    const key = READER_OPTION_KEYS[name];
+    if (!key) {
+      logWarn("Unknown reader option:", name);
+      return null;
+    }
+    // A diagram's own choice (set by its own checkbox) beats the page default.
+    const owner = scope && scope.closest ? scope.closest(".mermaid-container") : null;
+    if (owner) {
+      const own = owner.getAttribute(READER_OPTION_ATTRIBUTES[name]);
+      if (own === READER_OPTION_ON) return true;
+      if (own === READER_OPTION_OFF) return false;
+    }
+    const defaultOn = READER_OPTION_DEFAULT_ON[name];
+    try {
+      const stored = localStorage.getItem(key);
+      return defaultOn
+        ? stored !== READER_OPTION_OFF
+        : stored === READER_OPTION_ON;
+    } catch (e) {
+      logWarn("Error reading reader option " + name + ":", e);
+      return defaultOn;
+    }
+  }
+
+  /**
+   * Set a reader option and re-apply every diagram on the page through the
+   * existing applyTheme path. Setting the key alone changes nothing on screen,
+   * as with the theme key: the change goes through this one function.
+   *
+   * @param {"patterns"|"labelBackgrounds"} name
+   * @param {boolean} on
+   * @returns {boolean} true if the value was stored (and diagrams re-applied)
+   */
+  function setReaderOption(name, on, container) {
+    const key = READER_OPTION_KEYS[name];
+    if (!key) {
+      logWarn("Unknown reader option:", name);
+      return false;
+    }
+    const attribute = READER_OPTION_ATTRIBUTES[name];
+    const all = document.querySelectorAll(".mermaid-container");
+    if (container) {
+      // Freeze every OTHER diagram at what it shows now, so changing this
+      // diagram's option (and the stored default below) cannot reach them.
+      all.forEach((other) => {
+        if (other !== container && !other.hasAttribute(attribute)) {
+          other.setAttribute(attribute, getReaderOption(name, other) ? READER_OPTION_ON : READER_OPTION_OFF);
+        }
+      });
+    }
+    try {
+      localStorage.setItem(key, on ? READER_OPTION_ON : READER_OPTION_OFF);
+    } catch (e) {
+      logWarn("Error saving reader option " + name + ":", e);
+      return false;
+    }
+    const themeId = resolveThemeForCurrentMode().themeId;
+    // With a container: that diagram alone. Without: the page default, and
+    // every diagram follows it again.
+    let containers = all;
+    if (container) {
+      container.setAttribute(attribute, on ? READER_OPTION_ON : READER_OPTION_OFF);
+      containers = [container];
+    } else {
+      all.forEach((each) => each.removeAttribute(attribute));
+    }
+    logInfo(
+      "Reader option " + name + " set to " + (on ? "on" : "off") +
+        "; re-applying " + containers.length + " diagram(s)" +
+        (container ? " (this diagram only)" : " (page default)")
+    );
+    containers.forEach((container) => {
+      const select = container.querySelector(".mermaid-theme-select");
+      applyTheme(container, select && select.value ? select.value : themeId);
+    });
+    return true;
+  }
+
+  /**
+   * Print, per diagram on the page, what the two reader options did. A console
+   * proof: it reads the live SVGs, so it says whether a diagram type takes
+   * patterns at all (mindmap, pie, timeline and journey do; a flowchart does
+   * not) and how many pattern tiles and label rectangles exist right now.
+   * Call from the console: MermaidThemes.reportReaderOptions()
+   *
+   * @returns {Array<Object>} The rows that were printed
+   */
+  function reportReaderOptions() {
+    const rows = [];
+    document.querySelectorAll(".mermaid-container").forEach((container, index) => {
+      const svg = [...container.querySelectorAll("svg")].find((candidate) =>
+        candidate.getAttribute("aria-roledescription")
+      );
+      const found = svg ? categorySvgOf(svg) : null;
+      const select = container.querySelector(".mermaid-theme-select");
+      rows.push({
+        diagram: index,
+        drawnAs: svg ? svg.getAttribute("aria-roledescription") : "(no diagram svg)",
+        takesPatterns: !!found,
+        patternsAvailable: container.getAttribute(PATTERNS_AVAILABLE_ATTRIBUTE),
+        theme: select ? select.value : "(none)",
+        patternsOption: getReaderOption("patterns", container),
+        labelBackgroundsOption: getReaderOption("labelBackgrounds", container),
+        storedPatterns: localStorage.getItem(READER_OPTION_KEYS.patterns),
+        storedLabelBackgrounds: localStorage.getItem(READER_OPTION_KEYS.labelBackgrounds),
+        patternTiles: svg ? svg.querySelectorAll("pattern").length : 0,
+        labelRectangles: svg ? svg.querySelectorAll("[" + CATEGORY_LABEL_RECT_ATTRIBUTE + "]").length : 0,
+        checkboxes: [...container.querySelectorAll("input[data-reader-option]")]
+          .map((box) => box.dataset.readerOption + ":" + box.checked)
+          .join(" "),
+      });
+    });
+    console.table(rows);
+    return rows;
+  }
+
+  const CATEGORY_OWNER_ATTRIBUTE = "data-category-options";
+  const CATEGORY_OWNED_LIST_ATTRIBUTE = "data-category-options-owned";
+  const CATEGORY_PRIOR_ATTRIBUTE = "data-category-options-prior";
+  const CATEGORY_DEFS_ATTRIBUTE = "data-category-patterns";
+  const CATEGORY_LABEL_RECT_ATTRIBUTE = "data-category-label-bg";
+  /** Label background padding in px, across and down, for SVG and HTML labels alike. */
+  const CATEGORY_PAD_X = 4;
+  const CATEGORY_PAD_Y = 2;
+  const CATEGORY_RADIUS = 2;
+  const CATEGORY_OUTLINE_WIDTH = 1;
+  const CATEGORY_TEXT_TARGET = 4.5;
+  const CATEGORY_OUTLINE_TARGET = 3;
+  /**
+   * APCA halves of the same targets (item 144, LQ3, 31 October 2026): every target is a
+   * WCAG ratio AND an |Lc|. Text (a label on its background) 4.5 and 75; non-text (a
+   * motif on its ground, a label outline on its background) 3 and 45.
+   */
+  const CATEGORY_TEXT_LC_TARGET = 75;
+  const CATEGORY_OBJECT_LC_TARGET = 45;
+  /** Lightness step of the background search, in HSL lightness (1/255 is the finest a hex colour can show). */
+  const CATEGORY_BACKGROUND_STEP = 1 / 255;
+  /** Label inks tried, softest first, when the label's own ink does not clear its background. */
+  const CATEGORY_LABEL_INKS = Object.freeze(["#231F20", "#EDEDED", "#FFFFFF", "#00131D"]);
+
+  /**
+   * The renderer's own category number out of a class list: `section-3` and
+   * `section--1` on a mindmap or timeline node group, `section-type-2` and
+   * `task-type-2` on a journey rect. null when the class is absent.
+   */
+  const CATEGORY_MARKER_SECTION = /(?:^|\s)section-(-?\d+)(?:\s|$)/;
+  const CATEGORY_MARKER_TYPE = /(?:^|\s)(?:section|task)-type-(-?\d+)(?:\s|$)/;
+  function categoryMarker(element, pattern) {
+    const match = element ? pattern.exec(element.getAttribute("class") || "") : null;
+    return match ? Number(match[1]) : null;
+  }
+
+  /**
+   * The geometry elements a mindmap node's shape can be (item 144, LR2). The shape is
+   * the first such child of the node group, by POSITION and never by class: the
+   * renderer draws a default node as `path.node-bkg`, a circle as `circle`, a square
+   * or rounded node as `rect`, a hexagon as `polygon`, and a bang or cloud as a `path`
+   * with another class. The node's decorative `line`, its label `g` and our own label
+   * wrappers are not geometry.
+   */
+  const CATEGORY_SHAPE_TAGS = Object.freeze(["path", "circle", "rect", "polygon", "ellipse", "polyline"]);
+
+  /**
+   * Which of the four categorical types an SVG is, by structure, with the
+   * shapes whose fill carries the category (item 144, LR5, 31 October 2026).
+   * Each shape names its category by the RENDERER'S OWN MARKER (`marker`, a
+   * number or null), never by its fill colour: a theme that paints every
+   * category one colour (accessibleDark and highContrastDark mindmap and
+   * timeline) leaves a pattern the only category channel, and indexing by fill
+   * collapsed all of it to index 0, plain. `assign` shapes carry a pattern from
+   * their category; `plain` shapes are never patterned but still carry labels
+   * (a mindmap root). The first category stays plain.
+   *   mindmap   the section-N class on g.mindmap-node
+   *   timeline  the section-N class on the enclosing g.timeline-node
+   *   journey   the section-type-N / task-type-N class on the rect
+   *   pie       slice order (path.pieCircle, then the legend swatches, which
+   *             the renderer lists in the same order)
+   */
+  const CATEGORY_TYPES = Object.freeze({
+    mindmap: {
+      detect: (svg) => !!svg.querySelector("g.mindmap-node"),
+      shapes: (svg) =>
+        [...svg.querySelectorAll("g.mindmap-node")]
+          .map((group) => ({
+            element: [...group.children].find((child) => CATEGORY_SHAPE_TAGS.includes(child.tagName)),
+            role: group.classList.contains("section-root") ? "plain" : "assign",
+            marker: categoryMarker(group, CATEGORY_MARKER_SECTION),
+          }))
+          .filter((shape) => shape.element),
+    },
+    pie: {
+      detect: (svg) => !!svg.querySelector("path.pieCircle"),
+      shapes: (svg) => [
+        ...[...svg.querySelectorAll("path.pieCircle")].map((element, position) => ({
+          element,
+          role: "assign",
+          marker: position,
+        })),
+        ...[...svg.querySelectorAll("g.legend rect")].map((element, position) => ({
+          element,
+          role: "assign",
+          marker: position,
+        })),
+      ],
+    },
+    // Timeline's node shapes carry no section class of their own (`node-bkg
+    // node-undefined`); the group around them does, and its first section is
+    // numbered -1.
+    timeline: {
+      detect: (svg) => svg.getAttribute("aria-roledescription") === "timeline",
+      shapes: (svg) =>
+        [...svg.querySelectorAll("path.node-bkg")].map((element) => ({
+          element,
+          role: "assign",
+          marker: categoryMarker(element.closest("g.timeline-node"), CATEGORY_MARKER_SECTION),
+        })),
+    },
+    // Journey's section and task rects of one type number share a fill and now a
+    // pattern; the actor circles are a second category channel, named in the
+    // legend, and are not patterned.
+    journey: {
+      detect: (svg) => svg.getAttribute("aria-roledescription") === "journey",
+      shapes: (svg) =>
+        [...svg.querySelectorAll("rect.journey-section, rect.task")].map((element) => ({
+          element,
+          role: "assign",
+          marker: categoryMarker(element, CATEGORY_MARKER_TYPE),
+        })),
+    },
+    // Every other diagram that draws its shapes as `g.node` (flowchart, state,
+    // class, ER, requirement and the rest). They carry no section number, so the
+    // category is the node's own fill: shapes that share a fill share a pattern,
+    // in order of first appearance, and the first fill stays plain. A diagram
+    // whose nodes all share one fill has a single category and nothing to
+    // pattern. Last in the list, so a typed diagram above always wins.
+    generic: {
+      detect: (svg) => !!svg.querySelector("g.node"),
+      shapes: (svg) => {
+        const fills = [];
+        return [...svg.querySelectorAll("g.node")]
+          .map((group) => [...group.children].find((child) => CATEGORY_SHAPE_TAGS.includes(child.tagName)))
+          .filter(Boolean)
+          .map((element) => {
+            const fill = window.getComputedStyle(element).fill;
+            if (!fills.includes(fill)) fills.push(fill);
+            return { element, role: "assign", marker: fills.indexOf(fill) };
+          });
+      },
+    },
+  });
+
+  const PATTERNS_AVAILABLE_ATTRIBUTE = "data-patterns-available";
+  const PATTERNS_REASON_ATTRIBUTE = "data-patterns-reason";
+  const READER_OPTIONS_APPLIED_EVENT = "mermaid-reader-options-applied";
+
+  /** Why Patterns cannot change a diagram (RO2); the toolbar words each one. */
+  const PATTERNS_REASONS = Object.freeze({
+    none: "none",
+    single: "single",
+    author: "author",
+  });
+
+  /**
+   * Record on the diagram's container whether Patterns can change anything,
+   * and (when it cannot) why, and tell its toolbar. The checkbox follows both
+   * (mermaid-controls.js).
+   */
+  function publishPatternsAvailability(root, available, reason) {
+    const owner = root && root.closest ? root.closest(".mermaid-container") : null;
+    if (!owner) return;
+    const value = available ? "true" : "false";
+    const why = available ? "" : reason || "";
+    if (
+      owner.getAttribute(PATTERNS_AVAILABLE_ATTRIBUTE) === value &&
+      (owner.getAttribute(PATTERNS_REASON_ATTRIBUTE) || "") === why
+    ) {
+      return;
+    }
+    owner.setAttribute(PATTERNS_AVAILABLE_ATTRIBUTE, value);
+    if (why) owner.setAttribute(PATTERNS_REASON_ATTRIBUTE, why);
+    else owner.removeAttribute(PATTERNS_REASON_ATTRIBUTE);
+    owner.dispatchEvent(
+      new CustomEvent(READER_OPTIONS_APPLIED_EVENT, {
+        detail: { patternsAvailable: available, patternsReason: why },
+      })
+    );
+  }
+
+  /** The type of a categorical SVG and the svg itself, or null. */
+  function categorySvgOf(root) {
+    const candidates =
+      root.tagName === "svg" ? [root] : [...root.querySelectorAll("svg")];
+    for (const svg of candidates) {
+      for (const type of Object.keys(CATEGORY_TYPES)) {
+        if (CATEGORY_TYPES[type].detect(svg)) return { svg, type };
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Give back everything a previous run of the category pass wrote: its pattern
+   * defs, its label rectangles, and every owned inline property (restored to
+   * the value it displaced). Called FIRST in applySeriesEncoding, before any
+   * other pass reads a fill, because a `url()` fill parses as no paint and
+   * would hide the shape from the passes that follow (ruling LP7).
+   */
+  function sweepCategoryOptions(root) {
+    if (!root) return;
+    const svgs = root.tagName === "svg" ? [root] : [...root.querySelectorAll("svg")];
+    svgs.forEach((svg) => {
+      svg
+        .querySelectorAll(`[${CATEGORY_DEFS_ATTRIBUTE}], [${CATEGORY_LABEL_RECT_ATTRIBUTE}]`)
+        .forEach((owned) => owned.remove());
+      svg.querySelectorAll(`[${CATEGORY_OWNER_ATTRIBUTE}]`).forEach((owned) => {
+        (owned.getAttribute(CATEGORY_OWNED_LIST_ATTRIBUTE) || "")
+          .split(",")
+          .filter(Boolean)
+          .forEach((property) => owned.style.removeProperty(property));
+        let prior = {};
+        try {
+          prior = JSON.parse(owned.getAttribute(CATEGORY_PRIOR_ATTRIBUTE) || "{}");
+        } catch (error) {
+          prior = {};
+        }
+        Object.keys(prior).forEach((property) =>
+          owned.style.setProperty(property, prior[property].value, prior[property].priority)
+        );
+        owned.removeAttribute(CATEGORY_OWNER_ATTRIBUTE);
+        owned.removeAttribute(CATEGORY_OWNED_LIST_ATTRIBUTE);
+        owned.removeAttribute(CATEGORY_PRIOR_ATTRIBUTE);
+        // An emptied style attribute would keep its place among the attributes and
+        // reorder the next run's, so two applications would not serialise alike.
+        if (!(owned.getAttribute("style") || "").trim()) owned.removeAttribute("style");
+      });
+    });
+  }
+
+  /**
+   * True when the author set their own themeVariables in the source (ruling
+   * LP5): the theme's own directive carries exactly one `themeVariables` when it
+   * is a custom theme and none when it is built in, so any more is the author's.
+   * A diagram with no recorded source cannot be told, and is treated as not
+   * author-themed.
+   */
+  function hasAuthorThemeVariables(svg) {
+    const container = svg.closest(".mermaid-container");
+    const raw = container && container.getAttribute("data-diagram-code");
+    if (!raw) return false;
+    let code = "";
+    try {
+      code = decodeURIComponent(raw);
+    } catch (error) {
+      return false;
+    }
+    const mentions = (code.match(/themeVariables/g) || []).length;
+    const themeOwn = /'theme':\s*'base',\s*'themeVariables'/.test(code) ? 1 : 0;
+    return mentions > themeOwn;
+  }
+
+  /** True when `ink` on `ground` clears a WCAG ratio and an APCA |Lc| together (LQ3). */
+  function clearsBoth(ink, ground, ratioTarget, lcTarget) {
+    return (
+      calculateContrastRatio(ink, ground) >= ratioTarget &&
+      Math.abs(calculateApcaLc(ink, ground)) >= lcTarget
+    );
+  }
+
+  /**
+   * The motif ink for one pattern entry, against the entry's fill (rule 9, LQ3):
+   * WCAG 3 AND |Lc| 45. Where today's choice (pickPatternInk, the better WCAG ratio
+   * of the two inks) clears both it is kept, so a passing entry does not move. Where
+   * it does not and the other ink does, the other ink. Where neither does, rule 22's
+   * luminance sweep: contrast depends on luminance alone, so a grey ramp covers every
+   * luminance an ink could have; the grey with the largest margin over both targets.
+   * Where no ink at all clears both the entry is INSOLUBLE and keeps today's ink, so
+   * the caller can say so rather than dress it as a pass.
+   *
+   * @param {string} fill - The entry's fill as shown, #rrggbb
+   * @returns {{ink: string, insoluble: boolean}}
+   */
+  function pickCategoryMotifInk(fill) {
+    const today = pickPatternInk(fill);
+    const clears = (ink) => clearsBoth(ink, fill, CATEGORY_OUTLINE_TARGET, CATEGORY_OBJECT_LC_TARGET);
+    if (clears(today)) return { ink: today, insoluble: false };
+
+    const other = PATTERN_INKS.find((ink) => ink !== today && clears(ink));
+    if (other) return { ink: other, insoluble: false };
+
+    let best = null;
+    for (let level = 0; level <= 255; level += 1) {
+      const grey = rgbToHex(level, level, level);
+      if (!clears(grey)) continue;
+      const margin = Math.min(
+        calculateContrastRatio(grey, fill) / CATEGORY_OUTLINE_TARGET,
+        Math.abs(calculateApcaLc(grey, fill)) / CATEGORY_OBJECT_LC_TARGET
+      );
+      if (!best || margin > best.margin) best = { grey, margin };
+    }
+    return best ? { ink: best.grey, insoluble: false } : { ink: today, insoluble: true };
+  }
+
+  /**
+   * The background a label sits on (rules 14 and 63, LQ3): the page ground where the
+   * label's ink clears 4.5:1 AND |Lc| 75 against it, otherwise the nearest colour of
+   * the ground's own hue and saturation that does, found by moving HSL lightness away
+   * from the ink one step at a time and stopping at the first that clears both. If
+   * lightness runs out first the label is INSOLUBLE and keeps the ground.
+   *
+   * @param {string} inkHex - The label's ink, #rrggbb
+   * @param {string} groundHex - The page ground, #rrggbb
+   * @returns {{background: string, moved: boolean, insoluble: boolean}}
+   */
+  function pickCategoryLabelBackground(inkHex, groundHex) {
+    const clears = (background) =>
+      clearsBoth(inkHex, background, CATEGORY_TEXT_TARGET, CATEGORY_TEXT_LC_TARGET);
+    if (clears(groundHex)) return { background: groundHex, moved: false, insoluble: false };
+
+    const hsl = kanbanHexToHsl(groundHex);
+    const inkIsLighter =
+      calculateLuminance(hexToRgb(inkHex)) > calculateLuminance(hexToRgb(groundHex));
+    const direction = inkIsLighter ? -1 : 1;
+    for (let step = 1; ; step += 1) {
+      const lightness = hsl.l + direction * step * CATEGORY_BACKGROUND_STEP;
+      if (lightness < 0 || lightness > 1) break;
+      const candidate = kanbanHslToHex(hsl.h, hsl.s, lightness);
+      if (clears(candidate)) return { background: candidate, moved: true, insoluble: false };
+    }
+    return { background: groundHex, moved: false, insoluble: true };
+  }
+
+  /**
+   * Pattern fills and label backgrounds for mindmap, pie, timeline and journey
+   * (rules 63 and 64). Reached through applySeriesEncoding; never calls
+   * applyTheme.
+   *
+   * PATTERNS are a texture OVER the renderer's own fill colour (ruling LP4): the
+   * pattern's ground rect takes the shape's computed fill, so no colour is
+   * rewritten, and the shape's `fill` is set to a `url()` at important priority
+   * because theme CSS beats a fill attribute (LP6). The category index is the
+   * renderer's own marker (LR5, see CATEGORY_TYPES), the first being plain, so a
+   * mindmap branch's nodes and a pie slice's legend swatch carry the same
+   * pattern (LP3). Motif ink is chosen per entry by rule 9.
+   *
+   * LABEL BACKGROUNDS are the page ground with a 1 px outline in the shape's own
+   * outline colour where that clears 3:1 against it, otherwise the label ink
+   * (LP8). An SVG label gains a rectangle inserted before it, in the parent's own
+   * space (geometry from client rects through the parent's screen matrix, never
+   * getBBox, rule 27); an HTML label gains a CSS background, a box-shadow ring
+   * and an outline, none of which moves it. The label's ink is rewritten only
+   * where it does not clear 4.5:1 against the page ground. A label on a
+   * PATTERNED shape keeps its background whatever the label-background option
+   * says, because without it the label fails rule 14 (LP9).
+   *
+   * @param {HTMLElement|SVGElement} root
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyCategoryOptions(root) {
+    if (!root) return null;
+    const found = categorySvgOf(root);
+    if (!found) {
+      publishPatternsAvailability(root, false, PATTERNS_REASONS.none);
+      return null;
+    }
+    const { svg, type } = found;
+
+    // A direct call must be idempotent too.
+    sweepCategoryOptions(svg);
+
+    if (typeof svg.getAnimations === "function") {
+      svg.getAnimations({ subtree: true }).forEach((animation) => {
+        try {
+          animation.finish();
+        } catch (error) {
+          logDebug("A running transition could not be finished: " + error.message);
+        }
+      });
+    }
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const patternsOn = getReaderOption("patterns", svg);
+    const labelsOn = getReaderOption("labelBackgrounds", svg);
+    const authorThemed = hasAuthorThemeVariables(svg);
+    const groundHex = resolveHostGround(svg);
+    const chartId = (svg.getAttribute("id") || "category").replace(/[^A-Za-z0-9_-]/g, "-");
+
+    const applied = {
+      type,
+      patternsOn,
+      labelsOn,
+      authorThemed,
+      ground: groundHex,
+      patterned: 0,
+      plain: 0,
+      byPattern: {},
+      labelled: 0,
+      labelsOnPatterned: 0,
+      unlabelled: 0,
+      worstMotif: null,
+      worstLabel: null,
+      worstOutline: null,
+      // The APCA halves of the same three figures (LQ3), |Lc|.
+      worstMotifLc: null,
+      worstLabelLc: null,
+      worstOutlineLc: null,
+      // Labels whose background is not the page ground, and what no colour could fix.
+      backgroundsMoved: 0,
+      insolubleMotifs: [],
+      insolubleLabels: 0,
+      patternIds: [],
+    };
+
+    /** Write owned inline properties at important priority, keeping what they displaced. */
+    const own = (element, properties) => {
+      const written = (element.getAttribute(CATEGORY_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      let prior = {};
+      try {
+        prior = JSON.parse(element.getAttribute(CATEGORY_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before && !written.includes(property)) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        if (!written.includes(property)) written.push(property);
+      });
+      element.setAttribute(CATEGORY_OWNER_ATTRIBUTE, type);
+      element.setAttribute(CATEGORY_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(CATEGORY_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+    };
+
+    // --- 1. the shapes, their colour index and their pattern ---------------
+    const shapes = CATEGORY_TYPES[type].shapes(svg).map((shape) => {
+      const computed = window.getComputedStyle(shape.element);
+      return { ...shape, computed, fill: parsePaint(computed.fill), fillKey: computed.fill };
+    });
+    // LR5: the category is the renderer's own marker, made zero-based by the lowest one
+    // seen (a timeline numbers its first section -1), so the first category is index 0,
+    // plain. Fill colour is never the index.
+    const markers = shapes
+      .filter((shape) => shape.role === "assign" && shape.fill && shape.marker !== null)
+      .map((shape) => shape.marker);
+    const lowestMarker = markers.length ? Math.min(...markers) : 0;
+    const indexOf = (shape) => {
+      if (shape.role === "plain") return 0;
+      if (shape.role !== "assign" || shape.marker === null) return undefined;
+      return shape.marker - lowestMarker;
+    };
+    // The Patterns checkbox is useful only if some shape would take a pattern:
+    // a second category exists and the author has not themed the diagram.
+    publishPatternsAvailability(
+      root,
+      !authorThemed && shapes.some((shape) => shape.fill && (indexOf(shape) || 0) > 0),
+      authorThemed ? PATTERNS_REASONS.author : PATTERNS_REASONS.single
+    );
+
+    const defs = document.createElementNS(svgNS, "defs");
+    defs.setAttribute(CATEGORY_DEFS_ATTRIBUTE, "true");
+    const tiles = [];
+    const madeIds = new Map();
+
+    shapes.forEach((shape) => {
+      shape.patterned = false;
+      if (!shape.fill) return;
+      const index = indexOf(shape);
+      if (!patternsOn || authorThemed || index === 0 || index === undefined) {
+        applied.plain += 1;
+        return;
+      }
+
+      // The colour as it shows: the fill's own alpha folded over the page ground.
+      const shown = paintToHex(
+        compositeOver(
+          { ...shape.fill, a: shape.fill.a * opacityValue(shape.computed.fillOpacity) },
+          parsePaint(groundHex)
+        )
+      );
+      const groundFill = paintToHex(shape.fill);
+      const name = SERIES_PATTERNS[(index - 1) % SERIES_PATTERNS.length];
+      const picked = pickCategoryMotifInk(shown);
+      const ink = picked.ink;
+      if (picked.insoluble) applied.insolubleMotifs.push(shown);
+      const key = `${index}-${groundFill}`;
+      let id = madeIds.get(key);
+      if (!id) {
+        id = `${chartId}-lp-${index}-${groundFill.slice(1)}`;
+        madeIds.set(key, id);
+        tiles.push(
+          `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${PATTERN_TILE}" height="${PATTERN_TILE}">` +
+            `<rect width="${PATTERN_TILE}" height="${PATTERN_TILE}" fill="${groundFill}"/>` +
+            patternMotif(name, ink) +
+            `</pattern>`
+        );
+        applied.patternIds.push(id);
+      }
+      own(shape.element, { fill: `url(#${id})` });
+      shape.patterned = true;
+      applied.patterned += 1;
+      applied.byPattern[name] = (applied.byPattern[name] || 0) + 1;
+      const motif = calculateContrastRatio(ink, shown);
+      if (applied.worstMotif === null || motif < applied.worstMotif) applied.worstMotif = motif;
+      const motifLc = Math.abs(calculateApcaLc(ink, shown));
+      if (applied.worstMotifLc === null || motifLc < applied.worstMotifLc) applied.worstMotifLc = motifLc;
+    });
+    if (tiles.length) {
+      defs.innerHTML = tiles.join("");
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    // --- 2. the labels on those shapes -------------------------------------
+    const pointInShape = (shape, x, y) => {
+      const element = shape.element;
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      const box = element.getBoundingClientRect();
+      return x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const labels = [];
+    svg.querySelectorAll("text").forEach((text) => {
+      if (text.closest("foreignObject") || text.closest("defs") || text.closest("marker")) return;
+      if (!(text.textContent || "").trim()) return;
+      labels.push({ element: text, html: false });
+    });
+    svg.querySelectorAll("foreignObject").forEach((foreign) => {
+      [...foreign.querySelectorAll("*")]
+        .filter((node) =>
+          [...node.childNodes].some((child) => child.nodeType === 3 && child.textContent.trim())
+        )
+        .forEach((element) => labels.push({ element, html: true, foreign }));
+    });
+
+    const ground = parsePaint(groundHex);
+    const inkOf = (label) => {
+      const computed = window.getComputedStyle(label.element);
+      return parsePaint(label.html ? computed.color : computed.fill);
+    };
+
+    const backgroundByInk = new Map();
+    labels.forEach((label) => {
+      const box = label.element.getBoundingClientRect();
+      if (!box || box.width <= 0 || box.height <= 0) return;
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      let host = null;
+      for (const shape of shapes) {
+        if (shape.fill && pointInShape(shape, cx, cy)) host = shape;
+      }
+      if (!host) return;
+
+      // LP9: a label on a patterned shape keeps its background whatever the option says.
+      if (!labelsOn && !host.patterned) {
+        applied.unlabelled += 1;
+        return;
+      }
+
+      // Ink: keep the label's own where it clears 4.5:1 on the page ground.
+      const currentInk = inkOf(label);
+      const currentHex = currentInk ? paintToHex(compositeOver(currentInk, ground)) : null;
+      let inkHex = currentHex;
+      if (!currentHex || calculateContrastRatio(currentHex, groundHex) < CATEGORY_TEXT_TARGET) {
+        inkHex = pickInkAgainst(CATEGORY_LABEL_INKS, [groundHex]).ink;
+      }
+      // Background (LQ3): the page ground, or the nearest colour of its hue that the ink clears at
+      // 4.5:1 AND |Lc| 75. Cached per ink, because a chart repeats a handful of inks.
+      const cacheKey = inkHex;
+      if (!backgroundByInk.has(cacheKey)) backgroundByInk.set(cacheKey, pickCategoryLabelBackground(inkHex, groundHex));
+      const chosen = backgroundByInk.get(cacheKey);
+      const backgroundHex = chosen.background;
+      if (chosen.moved) applied.backgroundsMoved += 1;
+      if (chosen.insoluble) applied.insolubleLabels += 1;
+
+      // Outline: the shape's own stroke where it clears 3:1 AND |Lc| 45 on the background, else the ink.
+      const stroke = parsePaint(host.computed.stroke);
+      const strokeHex =
+        stroke && stroke.a * opacityValue(host.computed.strokeOpacity) >= 0.9 ? paintToHex(stroke) : null;
+      const outlineHex =
+        strokeHex && clearsBoth(strokeHex, backgroundHex, CATEGORY_OUTLINE_TARGET, CATEGORY_OBJECT_LC_TARGET)
+          ? strokeHex
+          : inkHex;
+
+      const labelRatio = calculateContrastRatio(inkHex, backgroundHex);
+      const outlineRatio = calculateContrastRatio(outlineHex, backgroundHex);
+      const labelLc = Math.abs(calculateApcaLc(inkHex, backgroundHex));
+      const outlineLc = Math.abs(calculateApcaLc(outlineHex, backgroundHex));
+      if (applied.worstLabel === null || labelRatio < applied.worstLabel) applied.worstLabel = labelRatio;
+      if (applied.worstOutline === null || outlineRatio < applied.worstOutline) applied.worstOutline = outlineRatio;
+      if (applied.worstLabelLc === null || labelLc < applied.worstLabelLc) applied.worstLabelLc = labelLc;
+      if (applied.worstOutlineLc === null || outlineLc < applied.worstOutlineLc) applied.worstOutlineLc = outlineLc;
+
+      // ONE mechanism for both kinds of label: a rectangle inserted before the label (before the
+      // foreignObject for an HTML one), so nothing inside a label's own markup changes. An HTML
+      // label element is often a BLOCK as wide as its shape (journey: the whole box), so its words
+      // are measured with a Range, which hugs the text, and not with the element's own box.
+      let wordsBox = box;
+      if (label.html) {
+        const range = document.createRange();
+        range.selectNodeContents(label.element);
+        wordsBox = range.getBoundingClientRect();
+        if (!wordsBox || wordsBox.width <= 0 || wordsBox.height <= 0) return;
+      }
+      let anchor = label.html ? label.foreign : label.element;
+      // journey puts each foreignObject in an SVG <switch>, which renders only its FIRST valid
+      // child: a group inserted inside it would displace the label. Go in front of the switch.
+      while (anchor.parentNode && anchor.parentNode.tagName === "switch") anchor = anchor.parentNode;
+      const parent = anchor.parentNode;
+      const matrix = parent.getScreenCTM && parent.getScreenCTM();
+      if (!matrix) return;
+      const inverse = matrix.inverse();
+      const topLeft = new DOMPoint(wordsBox.x - CATEGORY_PAD_X, wordsBox.y - CATEGORY_PAD_Y).matrixTransform(inverse);
+      const bottomRight = new DOMPoint(
+        wordsBox.x + wordsBox.width + CATEGORY_PAD_X,
+        wordsBox.y + wordsBox.height + CATEGORY_PAD_Y
+      ).matrixTransform(inverse);
+      // The rectangle sits in its own group: a bare `rect` beside a label is what passes and
+      // guards read as a node's backing or body, and this one is neither.
+      const wrapper = document.createElementNS(svgNS, "g");
+      wrapper.setAttribute(CATEGORY_LABEL_RECT_ATTRIBUTE, "true");
+      wrapper.setAttribute("aria-hidden", "true");
+      const rect = document.createElementNS(svgNS, "rect");
+      wrapper.appendChild(rect);
+      rect.setAttribute("x", String(Math.min(topLeft.x, bottomRight.x)));
+      rect.setAttribute("y", String(Math.min(topLeft.y, bottomRight.y)));
+      rect.setAttribute("width", String(Math.abs(bottomRight.x - topLeft.x)));
+      rect.setAttribute("height", String(Math.abs(bottomRight.y - topLeft.y)));
+      rect.setAttribute("rx", String(CATEGORY_RADIUS));
+      rect.style.setProperty("fill", backgroundHex, "important");
+      rect.style.setProperty("stroke", outlineHex, "important");
+      rect.style.setProperty("stroke-width", `${CATEGORY_OUTLINE_WIDTH}px`, "important");
+      rect.style.setProperty("fill-opacity", "1", "important");
+      rect.style.setProperty("stroke-opacity", "1", "important");
+      rect.style.setProperty("opacity", "1", "important");
+      // No `pointer-events: none`: the contrast sweep's hit-test canary requires every painted ground
+      // shape to be findable by elementFromPoint (880 misses measured with it), and the label's own
+      // words sit in front of this rectangle, so nothing interactive is covered.
+      parent.insertBefore(wrapper, anchor);
+      if (inkHex !== currentHex) own(label.element, label.html ? { color: inkHex } : { fill: inkHex });
+      applied.labelled += 1;
+      if (host.patterned) applied.labelsOnPatterned += 1;
+    });
+
+    return applied;
+  }
+
+  // ---------------------------------------------------------------------------
   // Diagram theme persistence — register item 55
   // ---------------------------------------------------------------------------
 
@@ -12060,17 +12915,20 @@ window.MermaidThemes = (function () {
    *
    * Only TRUE pairs belong here — two themes of the same family, one in each
    * mode's `modeVisibleThemes` list. DERIVED from that config on 27 August
-   * 2026 rather than guessed, and the derivation is worth keeping: `wcagLight`,
-   * `default`, `neutral` and `forest` are light-only and the `dark` built-in is
-   * dark-only, so none of them has anything to map to. Adding a `wcagDark`
-   * later means adding a pair here in the same change, or the new theme
-   * silently behaves as unpaired.
+   * 2026 rather than guessed, and the derivation is worth keeping: `default`,
+   * `neutral` and `forest` are light-only and the `dark` built-in is
+   * dark-only, so none of them has anything to map to. `wcagLight` gained its
+   * dark sibling `variedDark` at item 144 (31 October 2026). Adding another
+   * dark sibling later means adding a pair here in the same change, or the
+   * new theme silently behaves as unpaired.
    */
   const THEME_PAIRS = Object.freeze({
     accessibleLight: "accessibleDark",
     accessibleDark: "accessibleLight",
     highContrastLight: "highContrastDark",
     highContrastDark: "highContrastLight",
+    wcagLight: "variedDark",
+    variedDark: "wcagLight",
   });
 
   /**
@@ -12292,157 +13150,388 @@ window.MermaidThemes = (function () {
       id: "wcagLight",
       name: "Varied Light",
       variables: {
-        // Base settings
         darkMode: false,
         background: "#FFFFFF",
         fontFamily: "trebuchet ms, verdana, arial, sans-serif",
         fontSize: "16px",
-        textColor: "#000000",
-
-        // Basic colours with more blue accent
-        primaryColor: "#E8F5FF", // Light blue background (was #FFFFFF)
-        primaryTextColor: "#000000",
-        primaryBorderColor: "#104E8B", // Medium blue border (was #000000)
-        secondaryColor: "#F0F7FB", // Slightly darker blue (was #E8F4F8)
-        secondaryTextColor: "#000000",
-        secondaryBorderColor: "#104E8B", // Medium blue (was #000000)
-        tertiaryColor: "#F4FAFF", // Very light blue (was #F8F8F8)
-        tertiaryTextColor: "#000000",
-        tertiaryBorderColor: "#104E8B", // Medium blue (was #000000)
-
-        // Lines and connectors
-        lineColor: "#104E8B", // Medium blue line color (was #000000)
-        defaultLinkColor: "#104E8B", // Medium blue link color (was #000000)
-
-        // Notes, warnings, errors
-        noteBkgColor: "#FFF8DC", // Keep this
-        noteTextColor: "#000000",
-        noteBorderColor: "#104E8B", // Medium blue (was #000000)
-
-        // Entity colors - these are more likely to be applied in the diagram
-        mainBkg: "#E8F5FF", // Light blue background
-        nodeBorder: "#104E8B", // Medium blue
-        nodeTextColor: "#000000",
-        clusterBkg: "#F0F7FB",
-        clusterBorder: "#104E8B",
-
-        // Section colors - more likely to be used in mindmaps
-        sectionBkgColor: "#E8F5FF",
-        sectionBkgColor2: "#BBDEFB",
-        sectionBkgColor3: "#90CAF9",
-        sectionBkgColor4: "#64B5F6",
-        sectionBkgColor5: "#42A5F5",
-        sectionBkgColor6: "#2196F3",
-        sectionBkgColor7: "#1E88E5",
-
-        // Nodes and clusters
-        nodeBorder: "#104E8B", // Change to blue instead of black
-        nodeTextColor: "#000000",
-        clusterBkg: "#F8F8F8",
-        clusterBorder: "#104E8B", // Change to blue instead of black
-
-        // Diagram element colours (WCAG AA compliant)
-        // These are specifically designed for different diagram elements
-
-        // Mindmap (high contrast colours)
-        mindmapColor1: "#C8E6C9", // Light green
-        mindmapColor2: "#BBDEFB", // Light blue
-        mindmapColor3: "#E1BEE7", // Light purple
-        mindmapColor4: "#FFE0B2", // Light orange
-        mindmapColor5: "#F8BBD0", // Light pink
-        mindmapColor6: "#B3E5FC", // Different light blue
-        mindmapColor7: "#DCEDC8", // Different light green
-        mindmapColor8: "#D7CCC8", // Light brown
-
-        // Timeline colours
-        timelineColor1: "#004D40", // Dark teal with white text
-        timelineColor2: "#0D47A1", // Dark blue with white text
-        timelineColor3: "#311B92", // Dark purple with white text
-        timelineColor4: "#880E4F", // Dark pink with white text
-        timelineColor5: "#3E2723", // Dark brown with white text
-        timelineTextColor: "#FFFFFF", // White text for timeline items
-
-        // Gantt chart (distinguishable but muted colours)
-        taskBkgColor: "#BBDEFB", // Light blue
-        taskBorderColor: "#1565C0", // Darker blue
-        activeTaskBkgColor: "#C8E6C9", // Light green
-        activeTaskBorderColor: "#2E7D32", // Darker green
-        doneTaskBkgColor: "#E0E0E0", // Light grey
-        doneTaskBorderColor: "#616161", // Darker grey
-        critTaskBkgColor: "#FFCDD2", // Light red
-        critTaskBorderColor: "#C62828", // Darker red
-
-        // Git graph colours (8 distinct branch colours)
-        gitBranchColor0: "#3E2723", // Dark brown
-        gitBranchColor1: "#1565C0", // Dark blue
-        gitBranchColor2: "#2E7D32", // Dark green
-        gitBranchColor3: "#C62828", // Dark red
-        gitBranchColor4: "#6A1B9A", // Dark purple
-        gitBranchColor5: "#00695C", // Dark teal
-        gitBranchColor6: "#FF6F00", // Dark orange
-        gitBranchColor7: "#5D4037", // Different dark brown
-
-        // Pie chart colours (all with sufficient contrast against white text)
-        pie1: "#1565C0", // Dark blue
-        pie2: "#2E7D32", // Dark green
-        pie3: "#C62828", // Dark red
-        pie4: "#6A1B9A", // Dark purple
-        pie5: "#00695C", // Dark teal
-        pie6: "#FF6F00", // Dark orange
-        pie7: "#5D4037", // Dark brown
-        pie8: "#0D47A1", // Different dark blue
-        pie9: "#1B5E20", // Different dark green
-        pie10: "#B71C1C", // Different dark red
-        pie11: "#4A148C", // Different dark purple
-        pie12: "#004D40", // Different dark teal
-        pieTitleTextSize: "25px",
-        pieTitleTextColor: "#000000",
-        pieSectionTextSize: "17px",
-        pieSectionTextColor: "#FFFFFF", // White text on dark backgrounds
-
-        // Entity Relationship diagram colours
-        classText: "#000000",
-        classBorder: "#000000",
-        labelBoxBkgColor: "#E8F4F8", // Light blue
-        labelBoxBorderColor: "#000000",
-        labelTextColor: "#000000",
-
-        // Sequence diagram actors
-        actorBkg: "#E8F4F8", // Light blue
-        actorBorder: "#000000",
-        actorTextColor: "#000000",
-        actorLineColor: "#000000",
-
-        // Other common elements
-        loopTextColor: "#000000",
-        activationBorderColor: "#000000",
-        activationBkgColor: "#F8F8F8",
-        sequenceNumberColor: "#000000",
-
-        // User journey diagram
-        fillType0: "#C8E6C9", // Light green
-        fillType1: "#BBDEFB", // Light blue
-        fillType2: "#E1BEE7", // Light purple
-        fillType3: "#FFE0B2", // Light orange
-        fillType4: "#F8BBD0", // Light pink
-        fillType5: "#B3E5FC", // Different light blue
-        fillType6: "#DCEDC8", // Different light green
-        fillType7: "#D7CCC8", // Light brown
-
-        // State diagram
-        labelColor: "#000000",
-        altBackground: "#F5F5F5", // Very light grey
-
-        // Other elements
+        textColor: "#231F20",
+        primaryColor: "#C1EDFF",
+        primaryTextColor: "#231F20",
+        primaryBorderColor: "#008AAF",
+        secondaryColor: "#9DFFB2",
+        tertiaryColor: "#F7E0CD",
+        lineColor: "#1B3A57",
+        arrowheadColor: "#1B3A57",
+        signalColor: "#1B3A57",
+        signalTextColor: "#231F20",
+        transitionColor: "#1B3A57",
+        relationColor: "#1B3A57",
+        noteBkgColor: "#D4E44E",
+        noteTextColor: "#231F20",
+        noteBorderColor: "#747D00",
+        mainBkg: "#C1EDFF",
+        nodeBorder: "#008AAF",
+        border2: "#008AAF",
+        clusterBkg: "#D6D1FF",
+        clusterBorder: "#7769B9",
+        sectionBkgColor: "#C1EDFF",
+        sectionBkgColor2: "#9DFFB2",
+        altSectionBkgColor: "#FFFFFF",
         edgeLabelBackground: "#FFFFFF",
-        titleColor: "#000000",
-
-        // xychart-beta: ground is this theme's own `background`, #FFFFFF
-        xyChart: buildXyChartTheme(
-          "#FFFFFF",
-          "#000000",
-          XYCHART_PALETTES.light
-        ),
+        titleColor: "#231F20",
+        labelColor: "#231F20",
+        cScale0: "#9DFFB2",
+        cScaleLabel0: "#231F20",
+        cScalePeer0: "#2D934D",
+        cScale1: "#F4C9E4",
+        cScaleLabel1: "#231F20",
+        cScalePeer1: "#A65A8E",
+        cScale2: "#00ECBA",
+        cScaleLabel2: "#231F20",
+        cScalePeer2: "#008064",
+        cScale3: "#D4E44E",
+        cScaleLabel3: "#231F20",
+        cScalePeer3: "#747D00",
+        cScale4: "#C1EDFF",
+        cScaleLabel4: "#231F20",
+        cScalePeer4: "#008AAF",
+        cScale5: "#FFCAB7",
+        cScaleLabel5: "#231F20",
+        cScalePeer5: "#B25C3E",
+        cScale6: "#D6D1FF",
+        cScaleLabel6: "#231F20",
+        cScalePeer6: "#7769B9",
+        cScale7: "#F7E0CD",
+        cScaleLabel7: "#231F20",
+        cScalePeer7: "#B36D2A",
+        cScale8: "#9DFFB2",
+        cScaleLabel8: "#231F20",
+        cScalePeer8: "#2D934D",
+        cScale9: "#F4C9E4",
+        cScaleLabel9: "#231F20",
+        cScalePeer9: "#A65A8E",
+        cScale10: "#00ECBA",
+        cScaleLabel10: "#231F20",
+        cScalePeer10: "#008064",
+        cScale11: "#D4E44E",
+        cScaleLabel11: "#231F20",
+        cScalePeer11: "#747D00",
+        pie1: "#9B2673",
+        pie2: "#2E5925",
+        pie3: "#531182",
+        pie4: "#004747",
+        pie5: "#676000",
+        pie6: "#68212C",
+        pie7: "#2D54BC",
+        pie8: "#543600",
+        pie9: "#9B2673",
+        pie10: "#2E5925",
+        pie11: "#531182",
+        pie12: "#004747",
+        fillType0: "#9DFFB2",
+        fillType1: "#F4C9E4",
+        fillType2: "#00ECBA",
+        fillType3: "#D4E44E",
+        fillType4: "#C1EDFF",
+        fillType5: "#FFCAB7",
+        fillType6: "#D6D1FF",
+        fillType7: "#F7E0CD",
+        scaleLabelColor: "#231F20",
+        pieOpacity: "1",
+        pieTitleTextSize: "25px",
+        pieTitleTextColor: "#231F20",
+        pieSectionTextSize: "17px",
+        pieSectionTextColor: "#EDEDED",
+        pieLegendTextColor: "#231F20",
+        pieStrokeColor: "#FFFFFF",
+        pieOuterStrokeColor: "#1B3A57",
+        taskBkgColor: "#C1EDFF",
+        taskBorderColor: "#008AAF",
+        activeTaskBkgColor: "#9DFFB2",
+        activeTaskBorderColor: "#2D934D",
+        doneTaskBkgColor: "#E6E9ED",
+        doneTaskBorderColor: "#59616B",
+        critBkgColor: "#FFCAB7",
+        critBorderColor: "#B25C3E",
+        taskTextColor: "#231F20",
+        taskTextOutsideColor: "#231F20",
+        taskTextDarkColor: "#231F20",
+        taskTextClickableColor: "#00306B",
+        gridColor: "#59616B",
+        todayLineColor: "#B25C3E",
+        vertLineColor: "#B36D2A",
+        excludeBkgColor: "#EDEFF2",
+        commitLabelColor: "#231F20",
+        commitLabelBackground: "#FFFFFF",
+        tagLabelColor: "#231F20",
+        tagLabelBackground: "#D4E44E",
+        git0: "#9B2673",
+        gitBranchLabel0: "#EDEDED",
+        gitInv0: "#EDEDED",
+        git1: "#2E5925",
+        gitBranchLabel1: "#EDEDED",
+        gitInv1: "#EDEDED",
+        git2: "#531182",
+        gitBranchLabel2: "#EDEDED",
+        gitInv2: "#EDEDED",
+        git3: "#004747",
+        gitBranchLabel3: "#EDEDED",
+        gitInv3: "#EDEDED",
+        git4: "#676000",
+        gitBranchLabel4: "#EDEDED",
+        gitInv4: "#EDEDED",
+        git5: "#68212C",
+        gitBranchLabel5: "#EDEDED",
+        gitInv5: "#EDEDED",
+        git6: "#2D54BC",
+        gitBranchLabel6: "#EDEDED",
+        gitInv6: "#EDEDED",
+        git7: "#543600",
+        gitBranchLabel7: "#EDEDED",
+        gitInv7: "#EDEDED",
+        actorBkg: "#C1EDFF",
+        actorBorder: "#008AAF",
+        actorTextColor: "#231F20",
+        actorLineColor: "#1B3A57",
+        labelBoxBkgColor: "#9DFFB2",
+        labelBoxBorderColor: "#2D934D",
+        labelTextColor: "#231F20",
+        loopTextColor: "#231F20",
+        activationBorderColor: "#B36D2A",
+        activationBkgColor: "#F7E0CD",
+        sequenceNumberColor: "#EDEDED",
+        classText: "#231F20",
+        relationLabelColor: "#231F20",
+        relationLabelBackground: "#FFFFFF",
+        rowOdd: "#FFFFFF",
+        rowEven: "#C1EDFF",
+        stateBkg: "#C1EDFF",
+        stateLabelColor: "#231F20",
+        transitionLabelColor: "#231F20",
+        compositeBackground: "#FFFFFF",
+        compositeTitleBackground: "#D6D1FF",
+        specialStateColor: "#1B3A57",
+        labelBackgroundColor: "#FFFFFF",
+        altBackground: "#F1F3F5",
+        requirementBackground: "#C1EDFF",
+        requirementBorderColor: "#008AAF",
+        requirementTextColor: "#231F20",
+        archEdgeColor: "#1B3A57",
+        archEdgeArrowColor: "#1B3A57",
+        archGroupBorderColor: "#7769B9",
+        personBkg: "#D6D1FF",
+        personBorder: "#7769B9",
+        quadrant1Fill: "#9DFFB2",
+        quadrant2Fill: "#F4C9E4",
+        quadrant3Fill: "#00ECBA",
+        quadrant4Fill: "#D4E44E",
+        quadrant1TextFill: "#231F20",
+        quadrant2TextFill: "#231F20",
+        quadrant3TextFill: "#231F20",
+        quadrant4TextFill: "#231F20",
+        quadrantPointFill: "#1B3A57",
+        quadrantPointTextFill: "#231F20",
+        quadrantXAxisTextFill: "#231F20",
+        quadrantYAxisTextFill: "#231F20",
+        quadrantTitleFill: "#231F20",
+        quadrantExternalBorderStrokeFill: "#1B3A57",
+        quadrantInternalBorderStrokeFill: "#1B3A57",
+        wardleyEvolutionColor: "#1B3A57",
+        xyChart: buildXyChartTheme("#FFFFFF", "#231F20", "#008E7D,#917900,#4B53C2,#CF7758,#9B79EE,#9E3081,#586C30"),
+      },
+    },
+    {
+      id: "variedDark",
+      name: "Varied Dark",
+      variables: {
+        darkMode: true,
+        background: "#333",
+        fontFamily: "trebuchet ms, verdana, arial, sans-serif",
+        fontSize: "16px",
+        textColor: "#EDEDED",
+        primaryColor: "#005C94",
+        primaryTextColor: "#EDEDED",
+        primaryBorderColor: "#74BFFC",
+        secondaryColor: "#00502B",
+        tertiaryColor: "#492200",
+        lineColor: "#D3D3D3",
+        arrowheadColor: "#D3D3D3",
+        signalColor: "#D3D3D3",
+        signalTextColor: "#EDEDED",
+        transitionColor: "#D3D3D3",
+        relationColor: "#D3D3D3",
+        noteBkgColor: "#655900",
+        noteTextColor: "#EDEDED",
+        noteBorderColor: "#C6B96B",
+        mainBkg: "#005C94",
+        nodeBorder: "#74BFFC",
+        border2: "#74BFFC",
+        clusterBkg: "#005C94",
+        clusterBorder: "#74BFFC",
+        sectionBkgColor: "#005C94",
+        sectionBkgColor2: "#00502B",
+        altSectionBkgColor: "#2E282A",
+        edgeLabelBackground: "#2E282A",
+        titleColor: "#EDEDED",
+        labelColor: "#EDEDED",
+        cScale0: "#00502B",
+        cScaleLabel0: "#EDEDED",
+        cScalePeer0: "#72BB8C",
+        cScale1: "#82396D",
+        cScaleLabel1: "#EDEDED",
+        cScalePeer1: "#EC9BD1",
+        cScale2: "#390075",
+        cScaleLabel2: "#EDEDED",
+        cScalePeer2: "#AB8BFD",
+        cScale3: "#80001D",
+        cScaleLabel3: "#EDEDED",
+        cScalePeer3: "#FF8486",
+        cScale4: "#005C94",
+        cScaleLabel4: "#EDEDED",
+        cScalePeer4: "#74BFFC",
+        cScale5: "#492200",
+        cScaleLabel5: "#EDEDED",
+        cScalePeer5: "#D08F61",
+        cScale6: "#003538",
+        cScaleLabel6: "#EDEDED",
+        cScalePeer6: "#3CAEB3",
+        cScale7: "#655900",
+        cScaleLabel7: "#EDEDED",
+        cScalePeer7: "#C6B96B",
+        cScale8: "#00502B",
+        cScaleLabel8: "#EDEDED",
+        cScalePeer8: "#72BB8C",
+        cScale9: "#82396D",
+        cScaleLabel9: "#EDEDED",
+        cScalePeer9: "#EC9BD1",
+        cScale10: "#390075",
+        cScaleLabel10: "#EDEDED",
+        cScalePeer10: "#AB8BFD",
+        cScale11: "#80001D",
+        cScaleLabel11: "#EDEDED",
+        cScalePeer11: "#FF8486",
+        pie1: "#F6D2E8",
+        pie2: "#71FFAB",
+        pie3: "#CBCBFF",
+        pie4: "#FFD3C3",
+        pie5: "#BAE5FF",
+        pie6: "#FFC673",
+        pie7: "#00F0DE",
+        pie8: "#DBEB56",
+        pie9: "#F6D2E8",
+        pie10: "#71FFAB",
+        pie11: "#CBCBFF",
+        pie12: "#FFD3C3",
+        fillType0: "#00502B",
+        fillType1: "#82396D",
+        fillType2: "#390075",
+        fillType3: "#80001D",
+        fillType4: "#005C94",
+        fillType5: "#492200",
+        fillType6: "#003538",
+        fillType7: "#655900",
+        scaleLabelColor: "#EDEDED",
+        pieOpacity: "1",
+        pieTitleTextSize: "25px",
+        pieTitleTextColor: "#EDEDED",
+        pieSectionTextSize: "17px",
+        pieSectionTextColor: "#231F20",
+        pieLegendTextColor: "#EDEDED",
+        pieStrokeColor: "#2E282A",
+        pieOuterStrokeColor: "#D3D3D3",
+        taskBkgColor: "#005C94",
+        taskBorderColor: "#74BFFC",
+        activeTaskBkgColor: "#00502B",
+        activeTaskBorderColor: "#72BB8C",
+        doneTaskBkgColor: "#3A3D42",
+        doneTaskBorderColor: "#B4BAC2",
+        critBkgColor: "#80001D",
+        critBorderColor: "#FF8486",
+        taskTextColor: "#EDEDED",
+        taskTextOutsideColor: "#EDEDED",
+        taskTextDarkColor: "#EDEDED",
+        taskTextClickableColor: "#EDEDED",
+        gridColor: "#AAB0B8",
+        todayLineColor: "#FF8486",
+        vertLineColor: "#D08F61",
+        excludeBkgColor: "#36393D",
+        commitLabelColor: "#EDEDED",
+        commitLabelBackground: "#2E282A",
+        tagLabelColor: "#EDEDED",
+        tagLabelBackground: "#655900",
+        git0: "#F6D2E8",
+        gitBranchLabel0: "#231F20",
+        gitInv0: "#231F20",
+        git1: "#71FFAB",
+        gitBranchLabel1: "#231F20",
+        gitInv1: "#231F20",
+        git2: "#CBCBFF",
+        gitBranchLabel2: "#231F20",
+        gitInv2: "#231F20",
+        git3: "#FFD3C3",
+        gitBranchLabel3: "#231F20",
+        gitInv3: "#231F20",
+        git4: "#BAE5FF",
+        gitBranchLabel4: "#231F20",
+        gitInv4: "#231F20",
+        git5: "#FFC673",
+        gitBranchLabel5: "#231F20",
+        gitInv5: "#231F20",
+        git6: "#00F0DE",
+        gitBranchLabel6: "#231F20",
+        gitInv6: "#231F20",
+        git7: "#DBEB56",
+        gitBranchLabel7: "#231F20",
+        gitInv7: "#231F20",
+        actorBkg: "#005C94",
+        actorBorder: "#74BFFC",
+        actorTextColor: "#EDEDED",
+        actorLineColor: "#D3D3D3",
+        labelBoxBkgColor: "#00502B",
+        labelBoxBorderColor: "#72BB8C",
+        labelTextColor: "#EDEDED",
+        loopTextColor: "#EDEDED",
+        activationBorderColor: "#D08F61",
+        activationBkgColor: "#492200",
+        sequenceNumberColor: "#231F20",
+        classText: "#EDEDED",
+        relationLabelColor: "#EDEDED",
+        relationLabelBackground: "#2E282A",
+        rowOdd: "#2E282A",
+        rowEven: "#005C94",
+        stateBkg: "#005C94",
+        stateLabelColor: "#EDEDED",
+        transitionLabelColor: "#EDEDED",
+        compositeBackground: "#2E282A",
+        compositeTitleBackground: "#005C94",
+        specialStateColor: "#D3D3D3",
+        labelBackgroundColor: "#2E282A",
+        altBackground: "#36393D",
+        requirementBackground: "#005C94",
+        requirementBorderColor: "#74BFFC",
+        requirementTextColor: "#EDEDED",
+        archEdgeColor: "#D3D3D3",
+        archEdgeArrowColor: "#D3D3D3",
+        archGroupBorderColor: "#74BFFC",
+        personBkg: "#005C94",
+        personBorder: "#74BFFC",
+        quadrant1Fill: "#00502B",
+        quadrant2Fill: "#82396D",
+        quadrant3Fill: "#390075",
+        quadrant4Fill: "#80001D",
+        quadrant1TextFill: "#EDEDED",
+        quadrant2TextFill: "#EDEDED",
+        quadrant3TextFill: "#EDEDED",
+        quadrant4TextFill: "#EDEDED",
+        quadrantPointFill: "#D3D3D3",
+        quadrantPointTextFill: "#EDEDED",
+        quadrantXAxisTextFill: "#EDEDED",
+        quadrantYAxisTextFill: "#EDEDED",
+        quadrantTitleFill: "#EDEDED",
+        quadrantExternalBorderStrokeFill: "#D3D3D3",
+        quadrantInternalBorderStrokeFill: "#D3D3D3",
+        wardleyEvolutionColor: "#D3D3D3",
+        xyChart: buildXyChartTheme("#2E282A", "#EDEDED", "#BFC002,#00D2CA,#E2AC5E,#A8B4EA,#FD736D,#BE85F9,#E184A1"),
       },
     },
     {
@@ -13085,13 +14174,19 @@ window.MermaidThemes = (function () {
     themeContainer.appendChild(themeLabel);
     themeContainer.appendChild(themeSelect);
 
-    // Create a new row container for the theme selector
-    const themeRow = document.createElement("div");
-    themeRow.className = "mermaid-controls-row";
-    themeRow.appendChild(themeContainer);
-
-    // Append as the last row in the sliders container
-    slidersContainer.appendChild(themeRow);
+    // The picker goes on the buttons' line, first, with the reader-option
+    // checkboxes mermaid-controls.js built in the row above it. Without a
+    // button to go before (or without that row), it takes a row of its own.
+    const optionsRow = controlsContainer.querySelector(".mermaid-reader-options");
+    const firstButton = controlsContainer.querySelector(":scope > button");
+    if (optionsRow && firstButton) {
+      controlsContainer.insertBefore(themeContainer, firstButton);
+    } else {
+      const themeRow = document.createElement("div");
+      themeRow.className = "mermaid-controls-row";
+      themeRow.appendChild(themeContainer);
+      slidersContainer.appendChild(themeRow);
+    }
 
     // Apply the resolved theme
     logDebug("Applying theme:", themeToApply);
@@ -13615,6 +14710,13 @@ window.MermaidThemes = (function () {
     applyIshikawaEncoding: applyIshikawaEncoding,
     applyWardleyEncoding: applyWardleyEncoding,
     applyMindmapEncoding: applyMindmapEncoding,
+    applyCategoryOptions: applyCategoryOptions,
+    // The two reader options (item 144): patterns and label backgrounds. The
+    // Mermaid UI lane's checkboxes read with the getter on load and write with
+    // the setter, which stores the value and re-applies every diagram.
+    getReaderOption: getReaderOption,
+    setReaderOption: setReaderOption,
+    reportReaderOptions: reportReaderOptions,
     getAllThemes: getAllThemes,
     createCustomTheme: createCustomTheme,
     validateThemeContrast: validateThemeContrast,

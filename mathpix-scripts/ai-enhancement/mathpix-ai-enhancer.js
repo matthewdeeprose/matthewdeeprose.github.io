@@ -608,6 +608,10 @@
    */
   const PROVIDER_CUT_FINISH_REASONS = Object.freeze(["length"]);
 
+  /** M-2c: the `check` value of a finding that is a LaTeX table (not an M-2 check). */
+  const MMD_TABLE_CHECK = "table";
+  const MMD_CONVERTED_NOTE_ID = "ai-mmd-converted-note";
+
   /**
    * Decide whether the PROVIDER said it cut the reply off.
    *
@@ -915,6 +919,124 @@
     };
   }
 
+  /**
+   * Split a document into appendix bodies, keyed `kind:id`.
+   *
+   * M-5q. A body runs from the line after its marker to the next appendix
+   * marker of EITHER kind, or the end of the document. That MIRRORS the
+   * serialiser's `_parseAppendixEntries` (mathpix-alt-text-mmd-serialiser.js,
+   * alt-text lane, read only), which ends an `img-desc` body at the first
+   * `img-text` marker or the next `img-desc` marker; it is mirrored and not
+   * imported because that function is private. The seam suite carries a row
+   * that fails if the two disagree. The first occurrence of a key wins, as in
+   * the serialiser. Lines are split on "\n" only, so a CR stays with its line.
+   *
+   * @param {string} mmd
+   * @returns {{ lines: string[], bodies: Map<string, {start: number, end: number}> }}
+   */
+  function splitAppendixBodies(mmd) {
+    const lines = String(mmd === undefined || mmd === null ? "" : mmd).split(
+      "\n",
+    );
+    const markers = [];
+    const markerPattern = new RegExp(APPENDIX_MARKER_PATTERN.source);
+    lines.forEach((line, index) => {
+      const m = line.match(markerPattern);
+      if (m) markers.push({ index, key: `${m[1]}:${m[2]}` });
+    });
+
+    const bodies = new Map();
+    markers.forEach((marker, i) => {
+      if (bodies.has(marker.key)) return;
+      const end = i + 1 < markers.length ? markers[i + 1].index : lines.length;
+      bodies.set(marker.key, { start: marker.index + 1, end });
+    });
+    return { lines, bodies };
+  }
+
+  /** A body with its leading and trailing blank lines dropped, as the serialiser reads it. */
+  function trimmedBody(lines, range) {
+    const body = lines.slice(range.start, range.end);
+    while (body.length > 0 && body[0].trim() === "") body.shift();
+    while (body.length > 0 && body[body.length - 1].trim() === "") body.pop();
+    return body.join("\n");
+  }
+
+  /** Shown and spoken once, inside the completion line, when bodies were put back. */
+  function composeDescriptionsRestoredLine(restoredCount) {
+    return `Picture descriptions were kept as they were (${restoredCount}).`;
+  }
+
+  /**
+   * Put back the original body of every appendix entry whose body a correction
+   * changed.
+   *
+   * M-5q. A correction's job is the OCR text; picture descriptions are written
+   * and reviewed in the alt-text tools, so a correction must never change one.
+   * CR-2 refuses a reply that DROPS a marker and cannot see a kept marker whose
+   * body was edited or emptied (M-5 measured one word moved in a description
+   * in four replies). This REPAIRS and does not refuse: the reply's other
+   * changes are kept. Covers `img-desc` and `img-text` bodies. Bodies are
+   * compared with leading and trailing blank lines dropped. A body that is the
+   * same is left alone, and a marker the reply adds is left alone (it has no
+   * original). Run it after CR-2 passes, so every original marker is present.
+   *
+   * MODULE SCOPE and pure, like `findLostDescriptions`.
+   *
+   * @param {string} originalMMD
+   * @param {string} replyMMD
+   * @returns {{ mmd: string, restoredKeys: string[], restoredCount: number,
+   *   line: string }}
+   */
+  function restoreDescriptionBodies(originalMMD, replyMMD) {
+    const original = splitAppendixBodies(originalMMD);
+    const reply = splitAppendixBodies(replyMMD);
+
+    const restorations = [];
+    for (const [key, range] of reply.bodies) {
+      const originalRange = original.bodies.get(key);
+      if (!originalRange) continue;
+      if (
+        trimmedBody(original.lines, originalRange) ===
+        trimmedBody(reply.lines, range)
+      ) {
+        continue;
+      }
+      restorations.push({
+        key,
+        range,
+        replacement: original.lines.slice(
+          originalRange.start,
+          originalRange.end,
+        ),
+      });
+    }
+
+    if (restorations.length === 0) {
+      return {
+        mmd: String(replyMMD === undefined || replyMMD === null ? "" : replyMMD),
+        restoredKeys: [],
+        restoredCount: 0,
+        line: composeDescriptionsRestoredLine(0),
+      };
+    }
+
+    // Splice from the last body to the first so earlier line numbers hold.
+    const lines = reply.lines.slice();
+    [...restorations]
+      .sort((a, b) => b.range.start - a.range.start)
+      .forEach((r) => {
+        lines.splice(r.range.start, r.range.end - r.range.start, ...r.replacement);
+      });
+
+    return {
+      mmd: lines.join("\n"),
+      restoredKeys: restorations.map((r) => r.key),
+      restoredCount: restorations.length,
+      line: composeDescriptionsRestoredLine(restorations.length),
+    };
+  }
+
   class MathPixAIEnhancer {
     /**
      * Create a new MathPixAIEnhancer instance
@@ -1197,6 +1319,20 @@
        * @type {Array<{lineNumber: number, comment: string, contextLine: string}>}
        */
       this.uncertaintyMetadata = [];
+
+      /**
+       * Read-only M-2 findings for the enhanced MMD, set after validation.
+       * @type {Array<{check: string, rule: string, line: number, text: string, message: string}>}
+       */
+      this.mmdCheckFindings = [];
+
+      /**
+       * Set after a table is converted from the checks panel (M-2c); shown
+       * in the panel as the converted item's replacement, then cleared by
+       * the next run.
+       * @type {string|null}
+       */
+      this.mmdConvertedNote = null;
     }
 
     // ==========================================================================
@@ -1896,6 +2032,8 @@
       this.pdfDocument = null;
       this.currentPdfScale = 1;
       this.uncertaintyMetadata = [];
+      this.mmdCheckFindings = [];
+      this.mmdConvertedNote = null;
 
       // Build modal content (without buttons - they go in footer)
       const content = this.buildConfigurationContent();
@@ -4320,6 +4458,284 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     }
 
     /**
+     * Run the M-2 checks on the enhanced MMD. The module is resolved at call
+     * time; if it is absent or throws, there are no findings and no throw.
+     *
+     * @param {string} mmd - Enhanced MMD
+     * @returns {Array} Findings, or an empty array
+     */
+    computeMMDCheckFindings(mmd) {
+      try {
+        const checks = window.MathPixMMDChecks;
+        if (!checks || typeof checks.checkMMD !== "function") {
+          logWarn("MathPixMMDChecks is not loaded; no checks run");
+          return [];
+        }
+        const findings = checks.checkMMD(mmd);
+        logDebug(`MMD checks: ${findings.length} finding(s)`);
+        return this.sortFindingsByLine(
+          (Array.isArray(findings) ? findings : []).concat(
+            this.computeTableFindings(mmd),
+          ),
+        );
+      } catch (error) {
+        logWarn("MMD checks failed; showing none:", error);
+        return [];
+      }
+    }
+
+    /**
+     * Whole panel in line order (M-2c). Array.sort is stable, so findings on
+     * the same line keep the order they were produced in.
+     *
+     * @param {Array} findings
+     * @returns {Array} A new array, sorted by line
+     */
+    sortFindingsByLine(findings) {
+      return findings
+        .slice()
+        .sort((a, b) => Number(a.line) - Number(b.line));
+    }
+
+    /**
+     * LaTeX tables in the enhanced MMD as findings (M-2c). Both globals are
+     * resolved at call time; if either is absent there are no table findings.
+     *
+     * @param {string} mmd - Enhanced MMD
+     * @returns {Array} Findings with check "table" and the tabular attached
+     */
+    computeTableFindings(mmd) {
+      try {
+        const converter = window.MathPixTableConvert;
+        if (
+          !window.MathPixAITableAction ||
+          !converter ||
+          typeof converter.findTabulars !== "function"
+        ) {
+          return [];
+        }
+        return converter.findTabulars(mmd).map((tabular, index) => ({
+          check: MMD_TABLE_CHECK,
+          rule: tabular.convertible ? "convertible" : "refused",
+          line: tabular.line,
+          text: "",
+          message: "",
+          tabular: { ...tabular, index },
+        }));
+      } catch (error) {
+        logWarn("Table findings failed; showing none:", error);
+        return [];
+      }
+    }
+
+    /**
+     * Count text for the M-2b findings, e.g. "3 things to check".
+     *
+     * @param {number} count - Number of findings
+     * @returns {string} "1 thing to check" / "N things to check"
+     */
+    formatMMDCheckCount(count) {
+      return count === 1 ? "1 thing to check" : `${count} things to check`;
+    }
+
+    /**
+     * Build the spoken completion line. With no findings it is exactly the
+     * original line; with findings the count rides in the same utterance.
+     *
+     * @returns {string} Completion message
+     */
+    buildCompletionMessage() {
+      const count = (this.mmdCheckFindings || []).length;
+      const countPart = count > 0 ? ` ${this.formatMMDCheckCount(count)}.` : "";
+      // M-5q: one clause in the same utterance when descriptions were put back.
+      const restoredCount = this.descriptionKeysRestored
+        ? this.descriptionKeysRestored.size
+        : 0;
+      const restoredPart =
+        restoredCount > 0
+          ? ` ${composeDescriptionsRestoredLine(restoredCount)}`
+          : "";
+      return `Enhancement complete.${restoredPart}${countPart} Review the results and choose Apply Changes or Discard.`;
+    }
+
+    /**
+     * Build the read-only "things to check" panel for the results view (M-2b).
+     * Starts folded; no findings means no panel.
+     *
+     * @returns {string} HTML string, or "" when there are no findings
+     */
+    buildMMDChecksHTML({ open = false } = {}) {
+      const findings = this.mmdCheckFindings || [];
+      const action = window.MathPixAITableAction;
+      const note = this.mmdConvertedNote;
+
+      if (findings.length === 0 && !note) {
+        return "";
+      }
+
+      // M-2c: the converted table's replacement. Not a live region: focus
+      // is moved to it, and the toast is the one announcement.
+      const noteHTML = note
+        ? `<p class="ai-mmd-converted-note" id="${MMD_CONVERTED_NOTE_ID}" tabindex="-1">${this.escapeHtml(note)}</p>`
+        : "";
+      const countLabel =
+        findings.length === 0
+          ? "Nothing else to check"
+          : this.formatMMDCheckCount(findings.length);
+
+      const itemsHTML = findings
+        .map((f, index) => {
+          if (f.check === MMD_TABLE_CHECK && action) {
+            return `
+          <li class="ai-uncertainty-item" data-table-item data-table-index="${Number(f.tabular.index)}">
+            <span class="ai-uncertainty-index" aria-hidden="true">${index + 1}</span>
+            ${action.buildTableItemHTML(f.tabular, (t) => this.escapeHtml(t))}
+          </li>`;
+          }
+          const safeMessage = this.escapeHtml(f.message);
+          const safeText = this.escapeHtml(f.text);
+          return `
+          <li class="ai-uncertainty-item">
+            <span class="ai-uncertainty-index" aria-hidden="true">${index + 1}</span>
+            <div class="ai-uncertainty-detail">
+              <span class="ai-uncertainty-comment">Line ${Number(f.line)}: ${safeMessage}</span>
+              <code class="ai-uncertainty-context">${safeText}</code>
+            </div>
+          </li>`;
+        })
+        .join("");
+
+      return `
+        <details class="ai-uncertainty-panel ai-mmd-checks-panel"${open ? " open" : ""}>
+          <summary>
+            <span class="ai-uncertainty-badge" aria-hidden="true">${findings.length}</span>
+            <span class="ai-uncertainty-label">${countLabel}</span>
+          </summary>
+          ${noteHTML}
+          ${
+            itemsHTML
+              ? `<ol class="ai-uncertainty-list" aria-label="Things to check in the enhanced text">
+            ${itemsHTML}
+          </ol>`
+              : ""
+          }
+        </details>
+      `;
+    }
+
+    /**
+     * Attach the panel's two delegated listeners (M-2c): Convert table, and
+     * the heading-mode radios. Call after every (re)build of the panel.
+     */
+    wireMMDChecksPanel() {
+      const panel = document.querySelector(".ai-mmd-checks-panel");
+      const action = window.MathPixAITableAction;
+      if (!panel || !action) return;
+
+      panel.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-table-convert]");
+        if (!button) return;
+        this.convertTableFromPanel(button.closest("[data-table-item]"));
+      });
+
+      panel.addEventListener("change", (event) => {
+        if (!event.target.matches("[data-table-mode]")) return;
+        action.syncHeadingMode(event.target.closest("[data-table-item]"));
+      });
+    }
+
+    /**
+     * Replace the panel with one built from the current findings, folded open,
+     * and wire it. Used after a conversion, when line numbers have moved.
+     */
+    rebuildMMDChecksPanel() {
+      const old = document.querySelector(".ai-mmd-checks-panel");
+      const html = this.buildMMDChecksHTML({ open: true });
+      if (old) old.outerHTML = html;
+      this.wireMMDChecksPanel();
+    }
+
+    /**
+     * Convert one LaTeX table from the checks panel (M-2c). The change goes
+     * into this.enhancedMMD only, so Discard undoes it. On a bad heading the
+     * error stays inline and nothing changes and nothing is announced.
+     *
+     * @param {Element|null} itemEl - the table item holding the button
+     * @returns {Promise<void>}
+     */
+    async convertTableFromPanel(itemEl) {
+      const action = window.MathPixAITableAction;
+      if (!action || !itemEl || this._convertingTable) return;
+
+      const index = Number(itemEl.dataset.tableIndex);
+      const finding = (this.mmdCheckFindings || []).find(
+        (f) => f.check === MMD_TABLE_CHECK && f.tabular.index === index,
+      );
+      if (!finding) return;
+
+      action.clearError(itemEl);
+      const result = action.applyConversion(
+        this.enhancedMMD,
+        finding.tabular,
+        action.readChoice(itemEl),
+      );
+
+      if (!result.ok) {
+        logDebug("Table not converted:", result.reason);
+        action.showError(itemEl, result.reason);
+        const target =
+          action.inputToFocus(itemEl, result.field) ||
+          itemEl.querySelector("[data-table-convert]");
+        if (target) target.focus();
+        return;
+      }
+
+      this._convertingTable = true;
+      try {
+        this.enhancedMMD = result.mmd;
+        this.calculateDiff();
+
+        // Line numbers have moved, so every finding is recomputed.
+        this.mmdCheckFindings = this.computeMMDCheckFindings(this.enhancedMMD);
+        this.mmdConvertedNote = action.TEXT.CONVERTED;
+        this.rebuildMMDChecksPanel();
+
+        // The button that had focus is gone: land on its replacement first.
+        const note = document.getElementById(MMD_CONVERTED_NOTE_ID);
+        if (note) note.focus();
+
+        this.renderEnhancedColumns();
+        await this.renderPreview();
+
+        // The one announcement: the toast speaks through the shared announcer,
+        // and reroutes into the modal's own status area while it is open.
+        if (typeof window.notifySuccess === "function") {
+          window.notifySuccess("Table converted to a markdown table.");
+        }
+      } finally {
+        this._convertingTable = false;
+      }
+    }
+
+    /** Re-render the two MMD columns from the current enhanced text. */
+    renderEnhancedColumns() {
+      const originalContainer = document.getElementById("ai-original-content");
+      const enhancedContainer = document.getElementById("ai-enhanced-content");
+
+      if (this.showDiff) {
+        if (originalContainer)
+          this.renderDiffHighlighted(originalContainer, "original");
+        if (enhancedContainer)
+          this.renderDiffHighlighted(enhancedContainer, "enhanced");
+        return;
+      }
+      if (originalContainer)
+        this.renderPlainContent(originalContainer, this.originalMMD);
+      if (enhancedContainer)
+        this.renderPlainContent(enhancedContainer, this.enhancedMMD);
+    }
+
+    /**
      * Get human-readable display name for the selected engine (Phase 7.4)
      *
      * @returns {string} Display name
@@ -5081,6 +5497,8 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
       this.isProcessing = true;
       this.abortController = new AbortController();
+      // RP-3d: a Cancel pressed before the controller existed still stops the run
+      if (this._cancelRequested) this.abortController.abort();
       this.updateButtonState();
 
       // Phase 7.3: Reset timing log for research data collection
@@ -5405,7 +5823,23 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           return;
         }
 
-        this.enhancedMMD = replyMMD;
+        // M-5q: a correction never changes a picture description. Put back
+        // the original body of any the reply changed and keep the rest. The
+        // person is told once, inside the completion line (no new voice).
+        this.descriptionKeysRestored = new Set();
+        const restored = MathPixAIEnhancer.restoreDescriptionBodies(
+          this.originalMMD,
+          replyMMD,
+        );
+        restored.restoredKeys.forEach((key) =>
+          this.descriptionKeysRestored.add(key),
+        );
+        if (restored.restoredCount > 0) {
+          logWarn("Restored picture descriptions the correction changed", {
+            restoredKeys: restored.restoredKeys,
+          });
+        }
+        this.enhancedMMD = restored.mmd;
 
         // Phase 7.5H1/2: Multi-pass verification
         if (this.multiPassEnabled && window.MathPixMultiPass) {
@@ -5464,8 +5898,16 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
                 );
                 return;
               }
+              // M-5q: the same repair on Pass 2, against the original.
+              const pass2Restored = MathPixAIEnhancer.restoreDescriptionBodies(
+                this.originalMMD,
+                verifiedMMD,
+              );
+              pass2Restored.restoredKeys.forEach((key) =>
+                this.descriptionKeysRestored.add(key),
+              );
               logInfo("Pass 2 verification applied — replacing Pass 1 output");
-              this.enhancedMMD = verifiedMMD;
+              this.enhancedMMD = pass2Restored.mmd;
             } else {
               logInfo("Pass 2 returned null — keeping Pass 1 output");
             }
@@ -5506,6 +5948,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           this.originalMMD,
           this.enhancedMMD,
         );
+
+        // M-2b: read-only checks on the enhanced text alone (not the
+        // original-versus-enhanced validation above)
+        this.mmdCheckFindings = this.computeMMDCheckFindings(this.enhancedMMD);
+        this.mmdConvertedNote = null;
 
         // Phase 7.2: Capture end time and calculate processing duration
         if (this.stats) {
@@ -5991,6 +6438,9 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
         <!-- Phase 7.5L: Uncertainty Annotations -->
         ${this.buildUncertaintyHTML()}
+
+        <!-- M-2b: read-only checks on the enhanced text -->
+        ${this.buildMMDChecksHTML()}
       </div>
     `;
 
@@ -6023,20 +6473,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       }
 
       // Render diff-highlighted content in MMD columns (Phase 7.2E)
-      const originalContainer = document.getElementById("ai-original-content");
-      const enhancedContainer = document.getElementById("ai-enhanced-content");
+      this.renderEnhancedColumns();
 
-      if (this.showDiff) {
-        if (originalContainer)
-          this.renderDiffHighlighted(originalContainer, "original");
-        if (enhancedContainer)
-          this.renderDiffHighlighted(enhancedContainer, "enhanced");
-      } else {
-        if (originalContainer)
-          this.renderPlainContent(originalContainer, this.originalMMD);
-        if (enhancedContainer)
-          this.renderPlainContent(enhancedContainer, this.enhancedMMD);
-      }
+      // M-2c: the checks panel's Convert table button and heading radios
+      this.wireMMDChecksPanel();
 
       // Render preview after content is in DOM
       await this.renderPreview();
@@ -6055,7 +6495,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // land per ordering A.
       this._announceAfterRebuild(
         "notifySuccess",
-        "Enhancement complete. Review the results and choose Apply Changes or Discard.",
+        this.buildCompletionMessage(),
       );
 
       logDebug("Modal updated to results state with 4-column view");
@@ -6918,6 +7358,8 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           totalLines: this.diffStats?.totalLines || 0,
           cost: this.stats?.actualCost || 0,
           uncertaintyAnnotations: this.uncertaintyMetadata || [],
+          // M-1r2: which correction prompt wrote this edit (identifier only, never the path)
+          promptVersion: this.getPromptVersion().identifier,
         };
 
         // Delegate write-back to provider
@@ -6987,6 +7429,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const finish = () => ({
         ran: outcome.ran,
         applied: outcome.applied,
+        cancelled: outcome.cancelled === true,
         refused: outcome.refused,
         line: outcome.line,
         before: outcome.before,
@@ -7009,13 +7452,21 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       this.pdfDocument = null;
       this.currentPdfScale = 1;
       this.uncertaintyMetadata = [];
+      this.mmdCheckFindings = [];
+      this.mmdConvertedNote = null;
       this.loadEnhancerPreferences();
 
       this._quietRun = outcome;
+      this._cancelRequested = false;
       try {
         await this.startEnhancement();
         outcome.ran = !outcome.preflight;
-        if (!outcome.refused && options && options.apply === true) {
+        // RP-3d: a reply that arrived before the Cancel has set enhancedMMD; nothing is applied
+        if (this._cancelRequested) {
+          outcome.cancelled = true;
+          outcome.ran = false;
+          outcome.refused = false;
+        } else if (!outcome.refused && options && options.apply === true) {
           if (this.enhancedMMD) {
             await this.applyEnhancement();
           } else {
@@ -7024,12 +7475,46 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         }
       } finally {
         this._quietRun = null;
+        this._cancelRequested = false;
       }
       if (outcome.applied) {
         outcome.before = this.originalMMD;
         outcome.after = this.enhancedMMD;
       }
       return finish();
+    }
+
+    /**
+     * RP-3d: Cancel a modal-free run (the AI tab). Aborts the request and sets
+     * the flag runCorrection reads before applying, so the document is never
+     * changed. No modal call. The embed's own "Request cancelled" line is
+     * silenced on this instance for the length of the call, so the tab's one
+     * spoken Cancel line is the only voice. Returns false when no run is active.
+     * @returns {boolean}
+     */
+    cancelQuietRun() {
+      if (!this._quietRun || this._cancelRequested) return false;
+      this._cancelRequested = true;
+      this.stopElapsedTimer();
+      if (this.abortController && !this.abortController.signal.aborted) {
+        this.abortController.abort();
+      }
+      const embed = this.embed;
+      if (embed && typeof embed.cancelRequest === "function") {
+        const ownAnnounce = Object.prototype.hasOwnProperty.call(embed, "announceToScreenReader");
+        const savedAnnounce = embed.announceToScreenReader;
+        const savedNotify = embed.showNotifications;
+        embed.announceToScreenReader = () => {};
+        embed.showNotifications = false;
+        try {
+          embed.cancelRequest("Cancelled from the AI tab");
+        } finally {
+          if (ownAnnounce) embed.announceToScreenReader = savedAnnounce;
+          else delete embed.announceToScreenReader;
+          embed.showNotifications = savedNotify;
+        }
+      }
+      return true;
     }
 
     /**
@@ -7524,6 +8009,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   MathPixAIEnhancer.extractPictureRefs = extractPictureRefs;
   MathPixAIEnhancer.composePicturesLostLine = composePicturesLostLine;
   MathPixAIEnhancer.findLostDescriptions = findLostDescriptions;
+  MathPixAIEnhancer.restoreDescriptionBodies = restoreDescriptionBodies;
   MathPixAIEnhancer.composeDescriptionsLostLine = composeDescriptionsLostLine;
 
   /** The stop reasons that mean truncation, so a guard row can pin them. */

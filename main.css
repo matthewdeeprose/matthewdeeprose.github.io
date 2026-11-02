@@ -224,11 +224,6 @@ input#openrouter-api-key:focus-visible {
 .enhanced-model-select {
   min-width: 350px;
   max-width: 100%;
-  font-family:
-    monospace,
-    system-ui,
-    -apple-system,
-    sans-serif;
   font-size: 0.9rem;
   line-height: 1.4;
 }
@@ -1873,13 +1868,12 @@ button.preset-button {
   }
 }
 select#model-select {
-  font-family: monospace, monospace;
   vertical-align: middle;
   font-size: 1rem;
   margin: 5px 0;
   padding: 8px;
   width: 100%;
-  max-width: 400px;
+  max-width: 40rem;
   box-sizing: border-box;
   border-radius: 4px;
 }
@@ -1964,7 +1958,7 @@ select#model-select {
 /* Adjust size for medium screens */
 @media screen and (min-width: 376px) and (max-width: 768px) {
   select#model-select {
-    max-width: 300px;
+    max-width: 100%;
   }
 }
 
@@ -2892,12 +2886,18 @@ cite {
   background-color: #231f20 !important;
 }
 
-#myBtn:hover,
-#myBtn:focus,
-#myBtn2:hover,
-#myBtn2:focus {
-  color: #00131d !important;
-  background-color: #fffff4 !important;
+/* HOV-2a: hover is a quiet tint and keyboard focus keeps the fill. The fill above is
+   !important, so the tint is too. light.css and dark.css also give these buttons a hover and
+   focus glow; this sheet loads after light.css, so !important at the same specificity removes
+   the glow from every state except keyboard focus. :where() keeps the hover at (1,1,0). */
+#myBtn:hover:not(:where(:focus-visible)),
+#myBtn2:hover:not(:where(:focus-visible)) {
+  background-color: #002e3b !important;
+}
+
+#myBtn:not(:focus-visible),
+#myBtn2:not(:focus-visible) {
+  box-shadow: none !important;
 }
 /* Fix text */
 :root {
@@ -2916,23 +2916,34 @@ h1#top {
   color: #fffff4;
   border: 0px solid #e1e8ec !important;
   margin: 0rem;
-  background-color: rgba(0, 19, 29, 0);
   padding: 0.3rem;
   border-radius: 0rem;
 }
 
+/* HOV-2a: no fill on hover, so the global quiet hover tint in light.css and dark.css shows.
+   Keyboard focus keeps the transparent fill, hovered or not. */
+#modeToggle:not(:hover),
+#modeToggle:focus-visible,
+#modeToggle:active {
+  background-color: rgba(0, 19, 29, 0);
+}
+
+/* HOV-2b: no fill here, so a hovered toggle that was clicked with the mouse still takes the
+   global hover tint; #modeToggle:not(:hover) above keeps it transparent otherwise. */
 #modeToggle:focus:not(:focus-visible) {
   color: #e1e8ec;
-  background: rgba(0, 19, 29, 0);
   border: 0rem solid #e1e8ec !important;
   box-shadow: 0 0 0 0rem #c1d100 !important;
   outline: 0rem #e1e8ec dotted !important;
 }
 
-#modeToggle:hover,
-#modeToggle:focus {
-  outline: 0.3rem #e1e8ec dotted !important;
-  box-shadow: 0 0 0 0rem #c1d100 !important;
+/* HOV-2a: hover and keyboard focus now come from the global button rules in light.css and
+   dark.css (quiet tint; ring only). A box-shadow ring is dropped under forced colours and this
+   button has no border, so keep the outline there only. */
+@media (forced-colors: active) {
+  #modeToggle:focus-visible {
+    outline: 0.3rem #e1e8ec dotted !important;
+  }
 }
 
 /* Tick list */
@@ -3467,13 +3478,142 @@ a:hover {
 }
 
 #myBtn:hover,
-#myBtn:focus,
+#myBtn:focus-visible,
 #myBtn2:hover,
-#myBtn2:focus {
+#myBtn2:focus-visible {
   transition: 0.3s linear !important;
   cursor: pointer;
+}
+
+#myBtn:focus-visible,
+#myBtn2:focus-visible {
   outline: none !important;
 }
+
+/* HOV-10-2: Previous, Next, Top and Bottom fade in and out together (about 0.25s) when motion is allowed.
+   tools.html shows Top and Bottom with style.display and chat-turn-nav.js shows Previous and Next with the
+   hidden attribute, so the fade is opacity plus a discrete display transition; the "off" opacity is set by
+   the same two signals. Under prefers-reduced-motion: reduce none of this applies and they appear and vanish
+   at once, as before. The hover and focus rule above sets its own transition, which wins while pointed at. */
+@media (prefers-reduced-motion: no-preference) {
+  #myBtn,
+  #myBtn2,
+  .chat-turn-nav-btn {
+    opacity: 1;
+    transition:
+      opacity 0.25s ease,
+      display 0.25s allow-discrete;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+
+  #myBtn:not([style*="display: block"]),
+  #myBtn2:not([style*="display: block"]),
+  .chat-turn-nav-btn[hidden] {
+    opacity: 0;
+  }
+
+  #panel {
+    transition: display 0.25s allow-discrete;
+  }
+}
+
+/* HOV-10-2: syncPanelLandmark (tools.html) reads each button's COMPUTED display. While a button fades out
+   that still reads "block", so the script leaves #panel un-hidden and the "Scroll controls" landmark
+   stays in the accessibility tree, empty, until the next scroll. The panel therefore hides itself from the
+   same two signals the buttons use (Top and Bottom's inline display, the turn buttons' hidden attribute),
+   which change at the START of a fade-out. With motion allowed its display change waits out the 0.25s fade
+   (rule above); with reduce it is immediate, as the script already makes it. */
+#panel:not(
+  :has(
+    #myBtn[style*="display: block"],
+    #myBtn2[style*="display: block"],
+    .chat-turn-nav-btn:not([hidden])
+  )
+) {
+  display: none;
+}
+
+/* HOV-10-2: a tick before the icon on the pressed Ally token toggle, so "pressed" does not rest on colour
+   alone. Drawn with borders in currentColor, so each theme's pressed colour carries it. Decorative: empty
+   content adds nothing to the accessible name. */
+.ally-token-toggle::before {
+  content: "";
+  flex: none;
+  width: 0.35em;
+  height: 0.7em;
+  margin-right: 0.5em;
+  border: solid currentColor;
+  border-width: 0 0.15em 0.15em 0;
+  transform: translateY(-0.1em) rotate(45deg);
+  visibility: hidden;
+}
+
+/* HOV-14a: the tick's room is reserved at rest (hidden, not removed), so pressing the toggle does not
+   widen it or move its label. */
+.ally-token-toggle[aria-pressed="true"]::before {
+  visibility: visible;
+}
+
+/* HOV-14a: the completed-step tick (light.css and dark.css draw it) hangs just outside the left of the label's box
+   instead of sitting in the line, so completing a step does not widen the label or move its text. The theme sheets
+   keep the glyph and the gap (margin-inline-end); this rule only takes it out of the flow. */
+.gb-step.completed .gb-step-label {
+  position: relative;
+}
+
+.gb-step.completed .gb-step-label::before {
+  position: absolute;
+  inset-inline-end: 100%;
+  top: 0;
+  white-space: nowrap;
+}
+
+/* HOV-14c-begin */
+/* HOV-14c: no layout jump on a state change. Each rule reserves the longer state's room at rest with an invisible,
+   zero-height twin (empty alternative text, so it adds nothing to the accessible name). */
+
+/* The Highlighting button: "off" is wider than "on", so the state word always has room for "off". */
+#toggle-highlighting-btn #highlighting-state {
+  text-align: start;
+}
+
+#toggle-highlighting-btn #highlighting-state::after {
+  content: "off" / "";
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
+
+/* Graph Builder steps: the bold (active and completed) label is wider than the plain one, so every label always has
+   room for its bold form. The words match step.label in graph-builder-ui.js (updateStepInteractivity) and tools.html. */
+.gb-step-label::after {
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 700;
+}
+
+#gb-step-1 .gb-step-label::after {
+  content: "Add Data" / "";
+}
+
+#gb-step-2 .gb-step-label::after {
+  content: "Choose Chart" / "";
+}
+
+#gb-step-3 .gb-step-label::after {
+  content: "Configure" / "";
+}
+
+#gb-step-4 .gb-step-label::after {
+  content: "Complete" / "";
+}
+/* HOV-14c-end */
 
 @media screen and (max-width: 800px) {
   /* Owner's pick A, 29 Oct 2026: Top and Bottom stack in their own column at the
@@ -4379,4 +4519,8 @@ fieldset.boiler {
 .tts-voice-settings-body {
   padding: 10px;
   border-radius: 4px;
+}
+.universal-confirm-no,
+.modal-confirm-no {
+  background: transparent;
 }

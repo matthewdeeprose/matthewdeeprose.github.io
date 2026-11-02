@@ -16,6 +16,8 @@
  * with exactly two changes:
  *   1. outer whitespace is trimmed;
  *   2. each bare "|" becomes "\|", so it cannot split the pipe-table row.
+ * A heading the person TYPES is plain text: a "<" that would open an HTML tag
+ * becomes "\<" (outside maths), so the preview shows what was typed.
  * Everything else stays as written: inline maths, \text{}, "\&" and other
  * escapes. \hline and \cline at the start of a row are dropped, and the
  * column spec's "|" borders are dropped (a pipe table cannot draw them).
@@ -182,6 +184,24 @@
   /** The one place a cell is changed: each bare "|" becomes "\|". */
   function escapeCell(cell) {
     return cell.replace(/\|/g, "\\|");
+  }
+
+  /** Maths spans, kept as one piece by split(): $$..$$, $..$, \(..\), \[..\]. */
+  const MATHS_SPAN = /(\$\$[\s\S]*?\$\$|\$[^$]*\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\])/;
+
+  /** A "<" that would open an HTML tag, comment or declaration. */
+  const TAG_OPEN = /<(?=[A-Za-z/!?])/g;
+
+  /**
+   * A typed heading is plain text, so a "<" that would open an HTML tag
+   * becomes "\<" and shows as typed. Maths spans are left alone, and so is a
+   * "<" that is not followed by a tag-opening character ("x < y", "<5 mm").
+   */
+  function escapeTypedHeading(text) {
+    return text
+      .split(MATHS_SPAN)
+      .map((part, i) => (i % 2 === 1 ? part : part.replace(TAG_OPEN, "\\<")))
+      .join("");
   }
 
   function refuse(reason) {
@@ -594,7 +614,7 @@
           if (typeof cell !== "string") return refuse(REASONS.HEADER_NOT_TEXT(n + 1));
           if (/[\r\n]/.test(cell.trim())) return refuse(REASONS.HEADER_LINE_BREAK(n + 1));
         }
-        header = opts.headerCells.map((cell) => cell.trim());
+        header = opts.headerCells.map((cell) => escapeTypedHeading(cell.trim()));
         body = table.rows;
       } else {
         return refuse(REASONS.NO_HEADER);

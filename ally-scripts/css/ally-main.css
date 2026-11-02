@@ -70,6 +70,12 @@
 
 .ally-token-input-wrapper input {
   flex: 1;
+  /* HOV-14d: a password field's content box measures 39.36px and a text field's 40px, so showing the token made the
+     field, and the toggle that stretches to it, 0.64px taller. Hold the content at the taller of the two. */
+  min-height: 2.5rem;
+  /* In dark.css only type="text" gets the 0.2rem border (input[type="text"], !important), so the password state sat 1px
+     thinner each side and the field grew 2px when shown. Give both types the width the text state has. */
+  border-width: 0.2rem;
 }
 
 .ally-token-toggle {
@@ -4843,5 +4849,8 @@ span.ally-sp-disclosure-text {
 
 .ally-trends-provenance {
   font-size: 0.8125rem;
-  font-style: italic;
+}
+.ally-token-toggle {
+  padding: 0.5rem 1rem;
+  line-height: 1.5;
 }

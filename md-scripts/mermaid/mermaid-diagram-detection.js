@@ -255,6 +255,12 @@ window.MermaidDiagramDetection = (function () {
     // and bare `wardley` spellings that misroute or are refused are recorded
     // in the gold (WD16), not here.
     wardley: "wardley",
+    // Item 135, 1 November 2026: detectType returns "cynefin" for a
+    // `cynefin-beta` source (census). Same reason as the wardley row above -
+    // without it the cynefin generator registers and is never called, and a
+    // Cynefin source resolves to `unsupported:cynefin`. The upper-case header
+    // that is refused (EDGE 8 of the gold) is recorded there, not here.
+    cynefin: "cynefin",
   });
 
   /** Prefix marking a diagram type we can detect but cannot describe. */

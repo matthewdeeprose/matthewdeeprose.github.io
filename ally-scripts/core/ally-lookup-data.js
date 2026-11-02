@@ -2,7 +2,7 @@
  * @fileoverview Ally Accessibility Reporting Tool - Lookup Data Payload
  * @module AllyLookup
  * @requires ally-scripts/core/ally-data-runtime.js - MUST load before this file
- * @generated 2026-10-01T07:37:56.655Z
+ * @generated 2026-11-02T07:56:43.128Z
  * @version 2.0.0
  *
  * @description

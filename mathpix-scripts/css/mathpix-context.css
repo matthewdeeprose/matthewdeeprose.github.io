@@ -309,14 +309,15 @@
 
    COLOUR IS DELIBERATELY ABSENT, for the reason the block above states: the
    theme files load BEFORE this one, so any shorthand here that carries a
-   colour would reset what they set. The radio card treatment itself comes from
-   `.model-option` in mathpix-ai-enhancer.css, which is a global class and
-   loads earlier still — reused rather than re-declared, so the Context picker
-   and the enhancer's picker cannot drift apart visually.
+   colour would reset what they set.
 
-   `display` is set only via `:not([hidden])` throughout. The picker root, the
-   recommended fieldset and the two empty-state paragraphs are all toggled with
-   the `hidden` attribute, and an unconditional `display` would override it.
+   The picker is a single select (no radio cards, no recommended fieldset), so
+   the card and fieldset rules this block once carried were removed at T-83
+   after measuring that they match nothing.
+
+   `display` is set only via `:not([hidden])` throughout. The picker root and
+   the two empty-state paragraphs are toggled with the `hidden` attribute, and
+   an unconditional `display` would override it.
    ============================================================================ */
 
 #resume-context-model-picker:not([hidden]) {
@@ -325,47 +326,13 @@
   gap: 0.75rem;
 }
 
-/* The recommended group reuses the form's fieldset card, so only the inner
-   rhythm needs setting here. */
-.mathpix-context-form #resume-context-model-recommended:not([hidden]) {
-  display: flex;
-  gap: 0.75rem;
-}
-
-/* The wrapping radio label carries the accessible name, so its text must stay
-   readable rather than inherit the form's bold label weight wholesale: the
-   model name is emphasised and the id beneath it is not. */
-.mathpix-context-form .model-option {
-  font-weight: 400;
-}
-
-.mathpix-context-form .model-option .model-option-name {
-  font-weight: 600;
-}
-/* T-27 (L4 from T-26a): narrow Resume Context model cards at phone width. */
+/* T-27 (L4 from T-26a): narrow Resume Context panel padding at phone width. */
 @media (max-width: 400px) {
-  .mathpix-context-form #resume-context-model-picker .model-option {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-    padding: 0.5rem;
-  }
-
-  .mathpix-context-form #resume-context-model-picker .model-option input[type="radio"] {
-    align-self: flex-start;
-  }
-
-  .mathpix-context-form #resume-context-model-recommended:not([hidden]) {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
-  }
-
   #resume-panel-context {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
   }
 }
-
 
 /* The advanced disclosure. `summary` keeps its native marker and native
    keyboard behaviour — it is a real disclosure, not a div with a role. */
@@ -373,10 +340,6 @@
   cursor: pointer;
   padding: 0.25rem 0;
   font-weight: 600;
-}
-
-.mathpix-context-model-advanced[open] > .mathpix-context-field {
-  margin-top: 0.5rem;
 }
 
 /* The override select sizes to the block so a long model name does not force
@@ -459,6 +422,55 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+/* RP-3d: Run and Cancel share the summary cell. Cancel is hidden until a run starts. */
+#resume-ai-form .ai-summary .ai-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+#resume-ai-form .ai-summary .ai-run-actions #resume-ai-run {
+  flex: 1 1 12rem;
+  width: auto;
+}
+
+#resume-ai-form .ai-summary .ai-run-actions #resume-ai-cancel {
+  flex: 0 1 auto;
+  font-size: 1.125rem;
+  font-weight: 700;
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+#resume-ai-form .ai-summary .ai-run-actions #resume-ai-cancel[hidden] {
+  display: none;
+}
+
+/* RP-5 (RP-D9): the dev-only Rehearse button sits after Run and looks like Cancel's size. Hidden outside dev mode. */
+#resume-ai-form .ai-summary .ai-run-actions #resume-ai-rehearse {
+  flex: 0 1 auto;
+  font-size: 1.125rem;
+  font-weight: 700;
+  min-height: 3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+#resume-ai-form .ai-summary .ai-run-actions #resume-ai-rehearse[hidden] {
+  display: none;
+}
+
+/* With Rehearse showing the buttons need the whole width of the bar, so the estimate takes a row of its own
+   (beside three buttons it is squeezed to one word a line). */
+#resume-ai-form .ai-summary:has(#resume-ai-rehearse:not([hidden])) > #resume-ai-estimate {
+  grid-column: 1 / -1;
 }
 
 #resume-ai-form .ai-summary #resume-ai-status {
@@ -613,16 +625,104 @@
   margin-block-start: 0.25rem;
 }
 
-/* RP-1 (RP-D1): the step's run status. Static text; nothing here animates or transitions,
-   so reduced motion needs no branch. The ticker keeps a fixed width so the line does not shift. */
-#resume-ai-form .ai-step-status {
+/* RP-3b (RP-D5): the run as a queue. The rows reuse Convert's already-styled .mathpix-progress-*
+   classes (unscoped, so they render here as they do in upload mode); only the region, the total,
+   the list and the clock are new. Static text with no live role. The processing spin on the icon
+   comes from mathpix-convert.css and is not used here (the rows say "started", not "processing"). */
+#resume-ai-form .ai-queue {
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+
+#resume-ai-form .ai-queue[hidden] {
+  display: none;
+}
+
+#resume-ai-form .ai-queue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  margin-block-end: 0.75rem;
+}
+
+#resume-ai-form .ai-queue-heading,
+#resume-ai-form .ai-queue-total {
   margin: 0;
   font-size: 1rem;
 }
 
-#resume-ai-form .ai-step-timer {
-  margin-inline-start: 0.5rem;
+#resume-ai-form .ai-queue-total {
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* RP-5 (RP-D9): the visible text badge for a rehearsal. Border and text share one colour, so contrast follows the theme. */
+#resume-ai-form .ai-queue-badge {
+  padding: 0.125rem 0.5rem;
+  border: 2px solid currentColor;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+#resume-ai-form .ai-queue-badge[hidden] {
+  display: none;
+}
+
+#resume-ai-form .ai-queue-done {
+  margin: 0 0 0.75rem;
+  font-weight: 700;
+}
+
+#resume-ai-form .ai-queue-done:empty {
+  display: none;
+}
+
+#resume-ai-form .ai-queue-list,
+#resume-ai-form .ai-queue-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+#resume-ai-form .ai-queue-list [hidden] {
+  display: none;
+}
+
+#resume-ai-form .ai-queue-sublist {
+  margin-block-start: 0.5rem;
+  margin-inline-start: 2rem;
+}
+
+#resume-ai-form .ai-queue-sublist:empty {
+  display: none;
+}
+
+/* The label inherits a centred alignment from the form; a queue reads from the start edge. */
+#resume-ai-form .ai-queue .mathpix-progress-label {
+  text-align: start;
+}
+
+#resume-ai-form .ai-queue-clock {
+  min-width: 3.5ch;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+#resume-ai-form .ai-queue-detail {
+  font-size: 0.85rem;
+}
+
+/* RP-D8: the hidden comma and space between a row's label, status and count. .sr-only is nowrap, which
+   collapses a trailing space, so the tree ran the words together; pre keeps it (as .ai-sep does above). */
+#resume-ai-form .ai-queue-sep {
+  white-space: pre;
 }
 
 #resume-ai-form .ai-change {

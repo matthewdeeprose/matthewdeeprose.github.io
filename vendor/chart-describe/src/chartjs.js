@@ -129,6 +129,19 @@
   const ORIENTATION_HORIZONTAL = "horizontal";
   const ORIENTATION_VERTICAL = "vertical";
 
+  /**
+   * Graph Builder's own axis-title defaults (graph-builder-charts.js) and the
+   * column-type markers it writes on each dataset in advanced mode
+   * (graph-builder-data-enhanced.js). A placeholder is not an author title.
+   */
+  const GB_DECLARED = Object.freeze({
+    PLACEHOLDER_VALUE_TITLE: "Y Axis",
+    PLACEHOLDER_DOMAIN_TITLE: "X Axis",
+    TYPE_CURRENCY: "currency",
+    TYPE_PERCENTAGE: "percentage",
+    PERCENT_SUFFIX: "%",
+  });
+
   // ---------------------------------------------------------------------
   // The shared builders, resolved AT CALL TIME and never cached
   // ---------------------------------------------------------------------
@@ -158,13 +171,48 @@
     gridShape: null,
   });
 
-  const axisTitle = (scale) =>
+  // An exact match on the host's placeholder is treated as no title (case-sensitive).
+  const axisTitle = (scale, placeholder) =>
     scale &&
     scale.title &&
     scale.title.display !== false &&
-    scale.title.text !== undefined
+    scale.title.text !== undefined &&
+    scale.title.text !== placeholder
       ? scale.title.text
       : null;
+
+  /**
+   * valueAxis.format from what the person DECLARED, never from a title, label
+   * or callback (M1). Every visible series must be currency with one shared
+   * symbol, or every one a percentage; anything else (basic mode, numbers,
+   * mixed types, mixed symbols) is null.
+   */
+  function declaredFormat(datasets) {
+    const visible = datasets.filter((ds) => ds.hidden !== true);
+    if (visible.length === 0) return null;
+
+    if (visible.every((ds) => ds._columnType === GB_DECLARED.TYPE_PERCENTAGE)) {
+      return {
+        prefix: null,
+        suffix: GB_DECLARED.PERCENT_SUFFIX,
+        locale: null,
+        intlOptions: null,
+      };
+    }
+
+    const symbol = visible[0]._columnSymbol;
+    const sameCurrency =
+      typeof symbol === "string" &&
+      symbol !== "" &&
+      visible.every(
+        (ds) =>
+          ds._columnType === GB_DECLARED.TYPE_CURRENCY &&
+          ds._columnSymbol === symbol,
+      );
+    return sameCurrency
+      ? { prefix: symbol, suffix: null, locale: null, intlOptions: null }
+      : null;
+  }
 
   const authorBound = (scale, key) =>
     scale && typeof scale[key] === "number" ? scale[key] : null;
@@ -220,7 +268,7 @@
               : labels !== undefined
                 ? AXIS_KIND_BAND
                 : AXIS_KIND_RANGE,
-            title: axisTitle(domainScale),
+            title: axisTitle(domainScale, GB_DECLARED.PLACEHOLDER_DOMAIN_TITLE),
             labels: labels !== undefined ? labels.slice() : null,
             keys: null,
             min: null,
@@ -228,12 +276,14 @@
           }
         : null;
 
-    const valueTitle = axisTitle(valueScale);
+    const valueTitle = axisTitle(valueScale, GB_DECLARED.PLACEHOLDER_VALUE_TITLE);
     const min = authorBound(valueScale, "min");
     const max = authorBound(valueScale, "max");
+    // The proportion family has no value axis, so a pie never carries a format.
+    const format = family !== "proportion" ? declaredFormat(datasets) : null;
     const hasValueAxis =
       family !== "proportion" &&
-      (valueTitle !== null || min !== null || max !== null);
+      (valueTitle !== null || min !== null || max !== null || format !== null);
     const titleCfg = options.plugins && options.plugins.title;
     const titleText =
       titleCfg && titleCfg.display !== false ? titleCfg.text : undefined;
@@ -260,7 +310,7 @@
             max,
             scaleMax: null,
             scaleMaxSource: null,
-            format: null, // M1: units are never guessed
+            format, // M1: declared by the person only, never guessed
           }
         : null,
       series,
@@ -404,18 +454,31 @@
   // ---------------------------------------------------------------------
 
   /**
+   * Does Chart.js draw the series name? It does, in its legend, unless the
+   * author sets `options.plugins.legend.display` to false (rule XC25).
+   * @param {Object} config - A Chart.js config
+   * @returns {boolean} True when the legend is drawn
+   */
+  function legendIsDrawn(config) {
+    const plugins = (config.options && config.options.plugins) || {};
+    return !(plugins.legend && plugins.legend.display === false);
+  }
+
+  /**
    * The xychart describer's three tiers for a normalised xychart shape. Same
    * calls, same order as mermaid-accessibility-xychart.js (short :194-205,
    * detailed :233-251).
    * @param {Object} chart - the xychart shape
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`, passed to the
+   *   shared builders (rule XC25); ON when omitted, as the Mermaid caller has it
    * @returns {{short: string, shortHTML: string, detailed: string}}
    */
-  function composeXychart(chart) {
+  function composeXychart(chart, options) {
     const core = chartsCore();
-    const short = `${core.buildShortOpening(chart, false)} ${core.buildTakeaway(chart, false, core.TIERS.SHORT)}`;
+    const short = `${core.buildShortOpening(chart, false, options)} ${core.buildTakeaway(chart, false, core.TIERS.SHORT)}`;
     const parts = [];
     parts.push("<h4>Chart Construction</h4>");
-    parts.push(...core.buildConstruction(chart));
+    parts.push(...core.buildConstruction(chart, options));
     parts.push("<h4>Key Insights</h4>");
     parts.push("<ul>");
     parts.push(...core.buildInsights(chart));
@@ -466,7 +529,9 @@
       const tiers =
         model.family === "proportion"
           ? composePie(model.title ?? "", toPieSegmentsShape(model))
-          : composeXychart(toXychartShape(model));
+          : composeXychart(toXychartShape(model), {
+              drawsSeriesName: legendIsDrawn(config),
+            });
       return { supported: true, ...tiers };
     } catch (err) {
       logWarn("describe failed", err);

@@ -497,6 +497,19 @@ window.MermaidControls = (function () {
     // the same .sliders-container.
     controlOrder: {
       orientation: { order: 1, row: 1, visible: true },
+      readerOptions: { order: 1, row: 2, visible: true },
+    },
+    // The two reader options. `name` is the MermaidThemes option name; the
+    // engine owns the storage keys and the re-apply.
+    readerOptions: [
+      { name: "labelBackgrounds", label: "Labels" },
+      { name: "patterns", label: "Patterns" },
+    ],
+    // Why Patterns is disabled, by the reason the engine publishes (RO2).
+    patternsReasons: {
+      none: "(no colour categories)",
+      single: "(one colour only)",
+      author: "(author colours)",
     },
   };
 
@@ -1055,6 +1068,91 @@ window.MermaidControls = (function () {
   }
 
   /**
+   * Build the reader-option checkboxes ("Patterns", "Label backgrounds"). The
+   * state is read from the engine for this diagram on every build and written
+   * only through setReaderOption with this diagram's container, which stores
+   * the choice for this diagram and re-applies it alone.
+   * @param {number} index - Index for unique IDs
+   * @param {HTMLElement} container - The diagram's .mermaid-container
+   * @returns {HTMLElement} The group element (empty if the engine is absent)
+   */
+  function buildReaderOptions(index, container) {
+    const group = document.createElement("div");
+    group.className = "mermaid-reader-options";
+
+    const themes = window.MermaidThemes;
+    if (!themes || typeof themes.getReaderOption !== "function") {
+      Logger.warn("buildReaderOptions: MermaidThemes reader options missing");
+      group.style.display = "none";
+      return group;
+    }
+
+    config.readerOptions.forEach((option) => {
+      const id = `mermaid-reader-${option.name}-${index}`;
+      const item = document.createElement("div");
+      item.className = "mermaid-reader-option";
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      // main.css sizes every checkbox 36px unless it carries this class.
+      checkbox.className = "default-checkbox";
+      checkbox.id = id;
+      checkbox.setAttribute("data-reader-option", option.name);
+      checkbox.checked = themes.getReaderOption(option.name, container) === true;
+
+      const label = document.createElement("label");
+      label.className = "mermaid-reader-option-label";
+      label.setAttribute("for", id);
+      label.textContent = option.label;
+
+      item.appendChild(checkbox);
+      item.appendChild(label);
+
+      // Patterns is unavailable where no shape would take one (the engine
+      // publishes this, and why, on the container after every apply). While
+      // it is disabled a short reason shows beside it and the checkbox is
+      // described by it; when enabled the reason and the description go.
+      if (option.name === "patterns") {
+        const reason = document.createElement("span");
+        reason.className = "mermaid-reader-option-reason";
+        reason.id = `mermaid-reader-patterns-reason-${index}`;
+        reason.hidden = true;
+        item.appendChild(reason);
+
+        const followAvailability = () => {
+          const unavailable = container.getAttribute("data-patterns-available") === "false";
+          checkbox.disabled = unavailable;
+          if (!unavailable) {
+            reason.hidden = true;
+            reason.textContent = "";
+            checkbox.removeAttribute("aria-describedby");
+            return;
+          }
+          const why = container.getAttribute("data-patterns-reason");
+          reason.textContent = config.patternsReasons[why] || config.patternsReasons.none;
+          reason.hidden = false;
+          checkbox.setAttribute("aria-describedby", reason.id);
+        };
+        followAvailability();
+        container.addEventListener("mermaid-reader-options-applied", followAvailability);
+      }
+
+      // Acts on this diagram only: the engine freezes every other diagram at
+      // what it shows, so no other checkbox needs re-reading.
+      checkbox.addEventListener("change", function () {
+        Logger.info(
+          `Reader option ${option.name} ${checkbox.checked ? "on" : "off"} for ${getDiagramIdentifier(container, index)}`
+        );
+        themes.setReaderOption(option.name, checkbox.checked, container);
+      });
+
+      group.appendChild(item);
+    });
+
+    return group;
+  }
+
+  /**
    * Create control buttons for a Mermaid diagram
    * @param {HTMLElement} container - The Mermaid container element
    * @param {string} code - The original Mermaid code
@@ -1123,6 +1221,9 @@ window.MermaidControls = (function () {
     orientationGroup.appendChild(orientationLabel);
     orientationGroup.appendChild(orientationSelect);
 
+    // ----- Reader options: pattern fill, label backgrounds -----
+    const readerOptionsGroup = buildReaderOptions(index, container);
+
     // Create standard buttons (Copy/SVG/PNG)
     const copyButton = document.createElement("button");
     copyButton.className = config.buttonClasses;
@@ -1153,6 +1254,10 @@ window.MermaidControls = (function () {
       orientation: {
         element: orientationGroup,
         config: config.controlOrder.orientation,
+      },
+      readerOptions: {
+        element: readerOptionsGroup,
+        config: config.controlOrder.readerOptions,
       },
     };
 
@@ -1294,6 +1399,12 @@ window.MermaidControls = (function () {
     controlsContainer.appendChild(copyButton);
     controlsContainer.appendChild(svgButton);
     controlsContainer.appendChild(pngButton);
+
+    // The reader-option checkboxes take their own row underneath the buttons.
+    const readerOptionsRow = readerOptionsGroup.parentElement;
+    if (readerOptionsRow) {
+      controlsContainer.appendChild(readerOptionsRow);
+    }
 
     // Add controls to the container
     container.appendChild(controlsContainer);

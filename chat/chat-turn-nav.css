@@ -24,27 +24,39 @@
   display: none;
 }
 
+/* The panel is a landmark ("Scroll controls") that tools.html hides while none of its buttons shows.
+   main.css gives #panel display:flex at 800px and below, which beats the hidden attribute on its own.
+   Today css/ally-main.css has a global [hidden] { display: none !important } that wins anyway (measured,
+   P10c plant C3), so this rule is a defence: the panel should not depend on another feature's stylesheet. */
+#panel[hidden] {
+  display: none;
+}
+
 .chat-turn-nav-label {
   line-height: 1.2;
 }
 
-/* aria-disabled keeps the button focusable; show it is inactive without removing it */
+/* aria-disabled keeps the button focusable; show it is inactive without removing it. Only the label and
+   icon fade: opacity on the button itself made its whole box see-through to the page behind. */
 .chat-turn-nav-btn[aria-disabled="true"] {
-  opacity: 0.55;
   cursor: default;
 }
 
+.chat-turn-nav-btn[aria-disabled="true"] > * {
+  opacity: 0.55;
+}
+
 /* Wide layout: two full-width rows above the Top / Bottom pair, so the panel keeps its width
-   (and covers no more of the page). width: 0 with a min-width keeps the labels from making
-   the panel wider than Top + Bottom. */
+   (and covers no more of the page). The width is Top + Bottom (2 x 4.5rem + the 0.7rem between
+   and either side) less the left margin, fixed rather than "fill the panel": Top and Bottom are
+   hidden until 660px of scroll, and then the panel would collapse to nothing around these. */
 @media screen and (min-width: 801px) {
   .chat-turn-nav-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    width: 0;
-    min-width: calc(100% - 0.7rem);
+    width: 9.7rem;
     min-height: 3.125rem; /* "Previous question" wraps to two lines; keep both rows the same height */
     margin: 0 0 0.4rem 0.7rem;
     padding: 0.3rem 0.5rem;
@@ -62,12 +74,31 @@
     height: 1.5rem;
     flex: none;
   }
+
+  /* A question ends 16px before the panel's left edge, whether or not the panel is showing, so the
+     layout does not jump as it comes and goes. The reach from the page column's right edge is the panel's
+     30px fixed offset and its 10.4rem (9.7rem button + 0.7rem margin), less the column's own 13px of
+     padding and the side margin below. Replies are untouched. */
+  #chat-messages .local-chat-bubble-user {
+    margin-right: calc(10.4rem + 34px);
+  }
+}
+
+/* From 60rem the page column gains a side margin of 5% of the page width (measured: 28px from the
+   viewport edge to the list below 960px, 26.75px + 5vw from 960px up), so the same clearance needs less. */
+@media screen and (min-width: 60rem) {
+  #chat-messages .local-chat-bubble-user {
+    margin-right: max(0px, calc(10.4rem + 36px - 5vw));
+  }
 }
 
 /* The same shape the panel gives #myBtn and #myBtn2 at 800px and below (main.css), which those
    id selectors do not reach for these buttons. The label is hidden visually by .panelLabel. */
 @media screen and (max-width: 800px) {
   .chat-turn-nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 0;
     margin: 0.25rem 0;
     border-radius: 4px;
@@ -79,5 +110,112 @@
   /* the 2px side margins #svgUP gives the Top icon, so the column is as wide as Top and Bottom */
   #panel .chat-turn-nav-btn svg {
     margin: 0 2px;
+  }
+}
+
+/* HOV-7 (light theme only): Previous and Next question take the look #myBtn and #myBtn2 have in main.css:
+   black rest (#231f20) with cream text, a #002e3b hover, no glow except on keyboard focus, and a cream
+   border inside a navy outline. Dark theme and the layout above are untouched. */
+@media (prefers-color-scheme: light) {
+  #panel .chat-turn-nav-btn {
+    color: #fffff4;
+    background-color: #231f20;
+    border-color: #fffff4;
+    border-style: solid;
+    outline: 0.3rem solid #00131d;
+  }
+
+  #panel .chat-turn-nav-btn:hover:not(:where(:focus-visible)) {
+    color: #fffff4;
+    background-color: #002e3b;
+    border-color: #fffff4;
+    border-style: solid;
+  }
+
+  #panel .chat-turn-nav-btn:not(:focus-visible) {
+    box-shadow: none;
+  }
+
+  #panel .chat-turn-nav-btn:focus-visible {
+    outline: none;
+  }
+}
+
+/* Wide layout, light theme: the same size and shape as Top and Bottom (5rem wide, icon above the
+   label), so the four buttons make a two-by-two block: Previous and Next above Top and Bottom.
+   HOV-10-2: 5rem, not main.css's 4.5rem, because "Previous" at 16px Verdana is 68.05px and the
+   inside of a 4.5rem button is 64px. Top and Bottom widen to match only while a turn button shows
+   (rule below), so a page without the turn buttons keeps main.css's 4.5rem. */
+@media screen and (min-width: 801px) and (prefers-color-scheme: light) {
+  #panel .chat-turn-nav-btn,
+  #panel:has(.chat-turn-nav-btn:not([hidden])) #myBtn,
+  #panel:has(.chat-turn-nav-btn:not([hidden])) #myBtn2 {
+    width: 5rem;
+  }
+
+  #panel .chat-turn-nav-btn {
+    display: block;
+    min-height: 0;
+    margin: 0 0 0.7rem 0.7rem;
+    padding: 0.3rem 0;
+    border-width: 0.3rem;
+    font-size: 100%;
+    text-align: center;
+  }
+
+  #panel .chat-turn-nav-btn:hover:not(:where(:focus-visible)) {
+    border-width: 0.3rem;
+  }
+
+  /* Two buttons across: Previous and Next on the first row, Top and Bottom on the second. Without a width
+     the fixed panel shrinks to fit and the four floats make one row. 2 x (5rem + 0.7rem margin). */
+  #panel:has(.chat-turn-nav-btn:not([hidden])) {
+    width: 11.4rem;
+  }
+
+  /* A question still ends 16px before the panel's left edge: the panel is 1rem wider than the
+     10.4rem the wide rule above assumes, so the margin grows by the same 1rem. */
+  #chat-messages .local-chat-bubble-user {
+    margin-right: calc(11.4rem + 34px);
+  }
+
+  #panel #chat-turn-prev {
+    float: left;
+  }
+
+  #panel #chat-turn-next {
+    float: right;
+  }
+
+  /* the icon is the size #panel svg gives Top and Bottom (24px to 50px by page width) */
+  #panel .chat-turn-nav-btn svg {
+    display: block;
+    width: clamp(1.5rem, 8vw, 3.125rem);
+    height: clamp(1.5rem, 8vw, 3.125rem);
+    margin: 0 auto;
+  }
+
+  /* 16px, the size of Top and Bottom's label. "Previous" must not wrap or clip. */
+  #panel .chat-turn-nav-btn .chat-turn-nav-label {
+    display: block;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+@media screen and (min-width: 60rem) and (prefers-color-scheme: light) {
+  #chat-messages .local-chat-bubble-user {
+    margin-right: max(0px, calc(11.4rem + 36px - 5vw));
+  }
+}
+
+/* 800px and below, light theme: icon-only like Top and Bottom, with their border and outline widths. */
+@media screen and (max-width: 800px) and (prefers-color-scheme: light) {
+  #panel .chat-turn-nav-btn,
+  #panel .chat-turn-nav-btn:hover:not(:where(:focus-visible)) {
+    border-width: 0.1rem;
+    outline-width: 0.1rem;
   }
 }

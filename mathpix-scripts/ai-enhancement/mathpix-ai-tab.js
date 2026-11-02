@@ -35,12 +35,14 @@
  *       with the manager CLOSED (describeAllImages openManager false), so the
  *       only dialog in a run is the confirm. One polite line per step end, "MMD
  *       correction finished in twelve seconds." plus the step's own sentence,
- *       at least LINE_GAP_MS apart, the last carrying Done. Each card carries a
- *       static status line (Waiting, Started with an aria-hidden MM:SS ticker,
- *       Finished in, Not applied, Failed, Skipped). While a run is in progress
- *       the MMD editor is read-only and Save File and Convert are disabled.
+ *       at least LINE_GAP_MS apart, the last carrying Done. RP-3b (RP-D5): the run is
+ *       a queue under the summary bar, one row per ticked step with static
+ *       status text (Waiting, Started with an aria-hidden MM:SS clock,
+ *       Completed in MM:SS, a refused step's own line, Failed, Skipped) and an
+ *       aria-hidden running total. While a run is in progress the MMD editor
+ *       is read-only and Save File and Convert are disabled.
  *       RP-2 (RP-D4): the outcomes list under the Run row is retired; the
- *       cards carry every outcome, a refused card showing its own line alone.
+ *       queue carries every outcome, a refused row showing its own line alone.
  *
  *   (f) AT-4, 15 October 2026 (ruling AI-D5): in dev mode (?dev=1) only, a run
  *       records each step's sends and replies in memory, and "Save AI run log"
@@ -199,21 +201,72 @@
   /** AT-1: the focused, non-live status paragraph the person lands on after Run. */
   const RUNNING_TEXT = "Running the ticked steps.";
   const FINISHED_TEXT = "Finished.";
+  /** RP-3d (RP-D6): the status paragraph on the press of Cancel, and when the run has stopped. */
+  const CANCELLING_TEXT = "Cancelling.";
+  const CANCELLED_TEXT = "Cancelled.";
+  /**
+   * RP-5 (RP-D9): a rehearsal runs the real queue, clocks, lock and Cancel with stand-ins for the
+   * three steps. Dev mode only. The words it uses, and how long a stand-in takes.
+   */
+  const REHEARSAL_TITLE = "Rehearse the ticked steps";
+  const REHEARSAL_CONFIRM_TEXT = "Rehearsal: no AI calls, nothing is written, no cost.";
+  const REHEARSAL_ESTIMATE_TEXT = "No cost: rehearsal";
+  const REHEARSAL_LINE_CLAUSE = "Rehearsal, nothing was written.";
+  const REHEARSAL_STEP_MS = 4000;
+  const REHEARSAL_PICTURE_MS = 1500;
+  /** A stand-in waits in slices this long, so a Cancel takes hold within one slice. */
+  const REHEARSAL_SLICE_MS = 100;
+  const REHEARSAL_STEP_LINES = Object.freeze({
+    correction: "no corrections were applied.",
+    context: "no context was filled.",
+    pictures: "no descriptions were written.",
+  });
   const NO_LINE_TEXT = "no message was returned.";
   const THREW_TEXT = "stopped unexpectedly.";
 
   /**
-   * RP-1 (RP-D1): the status line on each step card. Static text with no live
-   * role; the spoken line comes from #resume-ai-announce. A failed step's own
-   * line follows its word, as "Failed: <line>"; a refused step's card shows
-   * its line alone (RP-D4), since that line already says it was not applied.
+   * RP-3b (RP-D5): the words on each row of the run queue. Static text with no
+   * live role; the spoken line comes from #resume-ai-announce. A completed step
+   * reads "Completed in 1 minute 32 seconds" (RP-D7a); a failed step's own line follows its word, as
+   * "Failed: <line>"; a refused step's row shows its line alone (RP-D4), since
+   * that line already says it was not applied.
    */
   const STATUS_WORDS = Object.freeze({
     WAITING: "Waiting",
     STARTED: "Started",
-    FINISHED: "Finished in",
+    COMPLETED: "Completed in",
     FAILED: "Failed",
     SKIPPED: "Skipped",
+    // RP-3d: a stopped run. The pictures row reads CANCELLING while one picture is still in flight.
+    CANCELLED: "Cancelled",
+    NOT_RUN: "Not run",
+    CANCELLING: "Cancelling after this picture",
+  });
+
+  /** The icon each row status shows (library names; Convert's rows use the same four). */
+  const QUEUE_ICONS = Object.freeze({
+    waiting: "hourglass",
+    started: "refresh",
+    completed: "checkCircle",
+    failed: "error",
+    refused: "warning",
+    skipped: "warning",
+    cancelled: "close",
+    notrun: "hourglass",
+  });
+
+  const QUEUE_IDS = Object.freeze({
+    region: "resume-ai-queue",
+    total: "resume-ai-queue-total",
+    totalClock: "resume-ai-queue-total-clock",
+    done: "resume-ai-queue-done",
+  });
+  const QUEUE_SELECTORS = Object.freeze({
+    status: ".mathpix-progress-status",
+    icon: ".mathpix-progress-icon",
+    clock: ".ai-queue-clock",
+    detail: ".ai-queue-detail",
+    sublist: ".ai-queue-sublist",
   });
 
   /**
@@ -231,6 +284,8 @@
     "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
   ]);
   const UNDER_A_SECOND_TEXT = "under a second";
+  /** RP-3c: registry entry fields that may hold a picture's file name, first one set wins. */
+  const PICTURE_NAME_FIELDS = Object.freeze(["fileName", "filename", "originalFilename"]);
 
   /** Longest wait for every dialog to close before a line is written anyway. */
   const MODAL_CLEAR_MAX_MS = 5000;
@@ -246,6 +301,9 @@
     panel: "resume-panel-ai",
     tab: "resume-tab-ai",
     run: "resume-ai-run",
+    cancel: "resume-ai-cancel",
+    rehearse: "resume-ai-rehearse",
+    badge: "resume-ai-queue-badge",
     announce: "resume-ai-announce",
     status: "resume-ai-status",
     estimate: "resume-ai-estimate",
@@ -288,11 +346,6 @@
   /** AV-1: the disclosure and the native select that change one step's model. */
   const advancedId = (step) => `resume-ai-advanced-${step.key}`;
   const selectId = (step) => `resume-ai-select-${step.key}`;
-  /** RP-1 (RP-D1): a card's status line, its text and its aria-hidden ticker. */
-  const progressId = (step) => `resume-ai-progress-${step.key}`;
-  const progressTextId = (step) => `resume-ai-progress-${step.key}-text`;
-  const progressTimerId = (step) => `resume-ai-progress-${step.key}-timer`;
-
   /** AV-D4: the two option groups of a model select. The default sits alone in the first. */
   const SELECT_GROUP_LABELS = Object.freeze({
     RECOMMENDED: "Recommended",
@@ -312,9 +365,24 @@
     choiceCache: new Map(),
     log: null,
     logSecrets: null,
-    // RP-1: the ticker's interval id, and when the last line of this run was written.
+    // RP-3b: the queue's one interval id, when the run and the running step began, and which step runs.
     ticker: null,
+    runStartedAt: 0,
+    stepStartedAt: 0,
+    runningStep: null,
+    // RP-3c: the pictures row's sub-rows by picture id, the picture now running and its start, and the counts.
+    pictureItems: [],
+    runningPicture: null,
+    pictureStartedAt: 0,
+    pictureTotal: 0,
+    picturesDone: 0,
+    // RP-1: when the last line of this run was written.
     lastLineAt: null,
+    // RP-3d: the steps are being run (Cancel can act) and Cancel has been pressed for this run.
+    runActive: false,
+    cancelRequested: false,
+    // RP-5: this run is a rehearsal (stand-ins, nothing written); the stand-ins read the Cancel flag.
+    rehearsal: false,
   };
 
   const byId = (id) => document.getElementById(id);
@@ -739,6 +807,73 @@
     return `${ESTIMATE_PREFIX} about ${usd(total, TOTAL_COST_DECIMALS)}${scope} (${parts.join(", ")}).`;
   }
 
+  /**
+   * RP-6b (RP-D10): the run confirm as a lead and a list, from one composer for the real run and the
+   * rehearsal. The lead is the dialog's spoken description; the items go in an ordered list after it.
+   * Each step's figure is rounded to whole cents first and the lead states the SUM of those rounded
+   * figures, so the box agrees with itself (the tab's estimate line keeps its own, unrounded total).
+   * A step with no measured figure reads "cost not measured" and the lead drops the total.
+   */
+  const CENTS_PER_USD = 100;
+  const COST_NOT_FULLY_MEASURED_TEXT = "Cost not fully measured.";
+
+  function confirmParts(steps, rehearsal) {
+    const pictureCount = uncoveredPictures().length;
+    const pictureWords = countWords(pictureCount, "picture", "pictures", { words: true });
+
+    if (rehearsal) {
+      return {
+        lead: REHEARSAL_CONFIRM_TEXT,
+        items: steps.map((step) =>
+          step.key === "pictures" ? `${step.label}, ${pictureWords}` : step.label,
+        ),
+      };
+    }
+
+    const providerId = activeProviderId();
+    let totalCents = 0;
+    let unmeasured = 0;
+    const items = steps.map((step) => {
+      const modelId = resolvedModelId(step);
+      const name = modelId
+        ? (displayNameFor(modelId, providerId) || modelId).replace(PROVIDER_NAME_SUFFIX, "")
+        : null;
+      const figure = modelId ? MEASURED_COST_USD[step.key][modelId] : undefined;
+      const isPictures = step.key === "pictures";
+      const parts = [step.label];
+      if (name) parts.push(name);
+      if (isPictures) parts.push(pictureWords);
+      if (typeof figure !== "number") {
+        unmeasured += 1;
+        parts.push(COST_WORDS.NOT_MEASURED);
+        return parts.join(", ");
+      }
+      const cents = Math.round(figure * (isPictures ? pictureCount : 1) * CENTS_PER_USD);
+      totalCents += cents;
+      parts.push(`about ${usd(cents / CENTS_PER_USD, TOTAL_COST_DECIMALS)}`);
+      return parts.join(", ");
+    });
+
+    const stepsWords = countWords(steps.length, "step", "steps", { words: true });
+    const lead =
+      unmeasured === 0
+        ? `Run ${stepsWords} for about ${usd(totalCents / CENTS_PER_USD, TOTAL_COST_DECIMALS)}?`
+        : `Run ${stepsWords}? ${COST_NOT_FULLY_MEASURED_TEXT}`;
+    return { lead, items };
+  }
+
+  /** The ordered list of items, in run order, handed to the confirm as its details option. */
+  function buildConfirmDetails(items) {
+    const list = document.createElement("ol");
+    list.className = "mathpix-ai-confirm-steps";
+    items.forEach((text) => {
+      const item = document.createElement("li");
+      item.textContent = text;
+      list.appendChild(item);
+    });
+    return list;
+  }
+
   function updateEstimate() {
     if (state.running) return;
     setText(byId(ELEMENT_IDS.estimate), estimateLine());
@@ -783,6 +918,19 @@
     if (!button) return;
     button.disabled =
       state.running || tickedSteps().length === 0 || !restoreSettled();
+    updateRehearseButton(button.disabled);
+  }
+
+  /**
+   * RP-5 (RP-D9): the Rehearse button shows only in dev mode and is disabled (inert) on every
+   * other page; in dev mode it is enabled on the same terms as Run.
+   */
+  function updateRehearseButton(runDisabled) {
+    const button = byId(ELEMENT_IDS.rehearse);
+    if (!button) return;
+    const dev = devLogGate.enabled();
+    button.hidden = !dev;
+    button.disabled = !dev || runDisabled;
   }
 
   /** Re-evaluate the button when the restore releases the busy hold. */
@@ -943,18 +1091,57 @@
     return `${minutePart} ${countWords(seconds, "second", "seconds", { words: false })}`;
   }
 
-  /** The visual ticker: MM:SS of whole seconds elapsed. */
+  /** RP-D7a: a completed row's status, "Completed in four seconds", from the one duration composer. */
+  function completedText(ms) {
+    return `${STATUS_WORDS.COMPLETED} ${durationWords(ms)}`;
+  }
+
+  /** The visual ticker: MM:SS of whole seconds elapsed. It stays on the running clocks only (aria-hidden). */
   function tickerText(ms) {
     const totalSeconds = Math.floor(Math.max(0, Number(ms) || 0) / MS_PER_SECOND);
     const pad = (value) => String(value).padStart(2, "0");
     return `${pad(Math.floor(totalSeconds / SECONDS_PER_MINUTE))}:${pad(totalSeconds % SECONDS_PER_MINUTE)}`;
   }
 
-  /** Write one card's status line; an empty text hides it. */
-  function setCardStatus(step, text) {
-    const line = byId(progressId(step));
-    setText(byId(progressTextId(step)), text);
-    if (line) line.hidden = !text;
+  const queueRegion = () => byId(QUEUE_IDS.region);
+  const queueRow = (step) =>
+    queueRegion()?.querySelector(`li[data-step="${step.key}"]`) || null;
+  const queuePart = (row, selector) => (row ? row.querySelector(selector) : null);
+
+  /** One row's status word, its data-status and its icon; an icon swap is repopulated (state-swap rule). */
+  function setQueueRow(step, status, text) {
+    const row = queueRow(step);
+    if (!row) return;
+    row.dataset.status = status;
+    setText(queuePart(row, QUEUE_SELECTORS.status), text);
+    const icon = queuePart(row, QUEUE_SELECTORS.icon);
+    if (!icon || icon.getAttribute("data-icon") === QUEUE_ICONS[status]) return;
+    icon.setAttribute("data-icon", QUEUE_ICONS[status]);
+    window.IconLibrary?.populateIcons?.(icon);
+  }
+
+  /** The row's aria-hidden running clock; an empty text clears it. */
+  function setRowClock(step, text) {
+    setText(queuePart(queueRow(step), QUEUE_SELECTORS.clock), text);
+  }
+
+  /** The total's clock is aria-hidden while it runs (running = true) and plain status text once it stops. */
+  function setTotalClock(text, { running }) {
+    const clock = byId(QUEUE_IDS.totalClock);
+    if (!clock) return;
+    setText(clock, text);
+    if (running) clock.setAttribute("aria-hidden", "true");
+    else clock.removeAttribute("aria-hidden");
+  }
+
+  /** The one interval: the running step's clock and the total, both from Date.now(). */
+  function tickQueue() {
+    const now = Date.now();
+    if (state.runningStep) setRowClock(state.runningStep, tickerText(now - state.stepStartedAt));
+    if (state.runningPicture) {
+      setText(state.runningPicture.querySelector(QUEUE_SELECTORS.clock), tickerText(now - state.pictureStartedAt));
+    }
+    setTotalClock(tickerText(now - state.runStartedAt), { running: true });
   }
 
   function stopTicker() {
@@ -962,36 +1149,212 @@
       clearInterval(state.ticker);
       state.ticker = null;
     }
-    STEPS.forEach((step) => setText(byId(progressTimerId(step)), ""));
+    state.runningStep = null;
+    state.runningPicture = null;
   }
 
-  /** "Started" on the card, and its MM:SS ticker counting from startedAt. */
-  function startStepStatus(step, startedAt) {
-    stopTicker();
-    setCardStatus(step, STATUS_WORDS.STARTED);
-    const timer = byId(progressTimerId(step));
-    const tick = () => setText(timer, tickerText(Date.now() - startedAt));
-    tick();
-    state.ticker = setInterval(tick, TICK_MS);
+  /** "three images to do" for the pictures row (the count the estimate and the hint use). */
+  function imagesToDoText() {
+    return `${countWords(uncoveredPictures().length, "image", "images", { words: true })} to do`;
   }
 
-  /** At a run's start: every ticked card reads Waiting, every other card's line is hidden. */
-  function resetCardStatuses(steps) {
-    stopTicker();
-    STEPS.forEach((step) => {
-      setCardStatus(step, steps.includes(step) ? STATUS_WORDS.WAITING : "");
-    });
+  /** RP-3c: "three images to do, one done" while running, "three images done" at the end (words below ten). */
+  function picturesCountText(total, done, { finished }) {
+    const doneText = countWords(done, "image", "images", { words: true });
+    if (finished) return `${doneText} done`;
+    return `${countWords(total, "image", "images", { words: true })} to do, ${NUMBER_WORDS[done] || String(done)} done`;
+  }
+
+  /** RP-3c: "Picture 3 of 11: leyden-jar.png", or "Picture 3 of 11" when the entry carries no file name. */
+  function pictureLabel(entry, index, total) {
+    const name = PICTURE_NAME_FIELDS.map((field) => entry && entry[field]).find(
+      (value) => typeof value === "string" && value.trim() !== "",
+    );
+    const base = `Picture ${index + 1} of ${total}`;
+    return name ? `${base}: ${name.trim()}` : base;
   }
 
   /**
-   * The card's line when its step ends: Finished in, Failed or Skipped, or a
-   * refused step's own line alone (RP-D4: it already says it was not applied).
+   * RP-3c: a picture sub-row's status and word from the runner's report. Starting
+   * reads Started; settled reads Completed in plus the words form (from the picture's own
+   * elapsed time) or Failed. The runner gives the outcome word and no reason.
    */
-  function endStatusText(outcome, elapsedMs) {
-    if (outcome.skipped) return `${STATUS_WORDS.SKIPPED}: ${outcome.line}`;
-    if (outcome.threw) return `${STATUS_WORDS.FAILED}: ${outcome.line}`;
-    if (!outcome.ok) return upperFirst(outcome.line);
-    return `${STATUS_WORDS.FINISHED} ${durationWords(elapsedMs)}`;
+  function pictureRowStatus(progress, elapsedMs) {
+    const runner = window.MathPixAltTextBatchRunner;
+    if (progress.phase === runner.PHASE.STARTING) {
+      return { status: "started", text: STATUS_WORDS.STARTED };
+    }
+    if (progress.outcome === runner.OUTCOME.GENERATED) {
+      return { status: "completed", text: completedText(elapsedMs) };
+    }
+    return { status: "failed", text: STATUS_WORDS.FAILED };
+  }
+
+  /** RP-3c: one Waiting sub-row for a picture. */
+  function makePictureItem(label) {
+    const item = document.createElement("li");
+    item.className = "resume-progress-item";
+    item.dataset.status = "waiting";
+    item.innerHTML =
+      '<div class="mathpix-progress-item">' +
+      '<span class="mathpix-progress-icon" aria-hidden="true" data-icon="hourglass"></span>' +
+      '<span class="mathpix-progress-label"></span>' +
+      '<span class="sr-only ai-queue-sep">, </span>' +
+      '<span class="mathpix-progress-status"></span>' +
+      '<span class="ai-queue-clock" aria-hidden="true"></span>' +
+      "</div>";
+    setText(item.querySelector(".mathpix-progress-label"), label);
+    setText(item.querySelector(QUEUE_SELECTORS.status), STATUS_WORDS.WAITING);
+    return item;
+  }
+
+  /** RP-3c: put the sub-rows in the pictures row's nested list and show the count. */
+  function placePictureRows(items) {
+    const row = queueRow(STEPS[2]);
+    const sublist = queuePart(row, QUEUE_SELECTORS.sublist);
+    if (!sublist) return;
+    state.pictureItems = items;
+    state.pictureTotal = items.length;
+    state.runningPicture = null;
+    state.picturesDone = 0;
+    sublist.replaceChildren(...items);
+    window.IconLibrary?.populateIcons?.(sublist);
+    setText(queuePart(row, QUEUE_SELECTORS.detail), picturesCountText(items.length, 0, { finished: false }));
+  }
+
+  /** RP-3c: one sub-row per target picture, all Waiting, built when the pictures step starts. */
+  function buildPictureRows() {
+    const targets = uncoveredPictures();
+    placePictureRows(targets.map((entry, index) => makePictureItem(pictureLabel(entry, index, targets.length))));
+  }
+
+  /** RP-3c: a picture sub-row's status word, data-status and icon (the state-swap rule: repopulate). */
+  function setPictureRow(item, status, text) {
+    item.dataset.status = status;
+    setText(item.querySelector(QUEUE_SELECTORS.status), text);
+    const icon = item.querySelector(QUEUE_SELECTORS.icon);
+    if (!icon || icon.getAttribute("data-icon") === QUEUE_ICONS[status]) return;
+    icon.setAttribute("data-icon", QUEUE_ICONS[status]);
+    window.IconLibrary?.populateIcons?.(icon);
+  }
+
+  /**
+   * RP-3c: the runner's per-picture report, via describeAllImages onPicture.
+   * A sub-row is found by the report's position, not its id, because the
+   * registry can be rebuilt between the step starting and the batch (a new id
+   * for the same picture). If the runner's total is not the count built, the
+   * rows are rebuilt to the runner's total. Static text only; nothing spoken.
+   */
+  function onPicture(progress) {
+    if (!progress || !Number.isInteger(progress.index)) return;
+    if (progress.total !== state.pictureItems.length) {
+      placePictureRows(
+        Array.from({ length: progress.total }, (_, index) => makePictureItem(pictureLabel(null, index, progress.total))),
+      );
+    }
+    const item = state.pictureItems[progress.index];
+    if (!item) return;
+    const starting = progress.phase === window.MathPixAltTextBatchRunner.PHASE.STARTING;
+    if (starting) {
+      state.runningPicture = item;
+      state.pictureStartedAt = Date.now();
+      // RP-3d: a Cancel pressed before the batch existed takes hold at the first picture
+      if (state.cancelRequested) window.cancelDescribeAllImages?.();
+    }
+    const { status, text } = pictureRowStatus(progress, Date.now() - state.pictureStartedAt);
+    setPictureRow(item, status, text);
+    setText(item.querySelector(QUEUE_SELECTORS.clock), starting ? tickerText(0) : "");
+    if (starting) return;
+    state.runningPicture = null;
+    if (status === "completed") state.picturesDone += 1;
+    setText(
+      queuePart(queueRow(STEPS[2]), QUEUE_SELECTORS.detail),
+      picturesCountText(state.pictureTotal, state.picturesDone, { finished: false }),
+    );
+  }
+
+  /**
+   * At a run's start: the queue is shown, every ticked step has a row reading
+   * Waiting, every other row is hidden, the total reads 00:00 and the one
+   * interval starts. The previous run's rows are overwritten here and only here.
+   */
+  function resetQueue(steps) {
+    stopTicker();
+    const region = queueRegion();
+    if (region) region.hidden = false;
+    STEPS.forEach((step) => {
+      const row = queueRow(step);
+      if (!row) return;
+      const ticked = steps.includes(step);
+      row.hidden = !ticked;
+      setQueueRow(step, "waiting", ticked ? STATUS_WORDS.WAITING : "");
+      setRowClock(step, "");
+      queuePart(row, QUEUE_SELECTORS.sublist)?.replaceChildren();
+      if (step.key === "pictures") {
+        state.pictureItems = [];
+        state.runningPicture = null;
+        state.picturesDone = 0;
+      }
+      setText(
+        queuePart(row, QUEUE_SELECTORS.detail),
+        step.key === "pictures" && ticked ? imagesToDoText() : "",
+      );
+    });
+    setText(byId(QUEUE_IDS.done), "");
+    state.runStartedAt = Date.now();
+    setTotalClock(tickerText(0), { running: true });
+    state.ticker = setInterval(tickQueue, TICK_MS);
+  }
+
+  /** "Started" on the row, and its MM:SS clock counting from startedAt. */
+  function startStepStatus(step, startedAt) {
+    state.stepStartedAt = startedAt;
+    state.runningStep = step;
+    setQueueRow(step, "started", STATUS_WORDS.STARTED);
+    setRowClock(step, tickerText(0));
+  }
+
+  /**
+   * The row's status when its step ends, as { status, text }: Completed in
+   * (the words form), Failed or Skipped, or a refused step's own line alone (RP-D4: it
+   * already says it was not applied).
+   */
+  function endRowStatus(outcome, elapsedMs) {
+    if (outcome.cancelled) return { status: "cancelled", text: STATUS_WORDS.CANCELLED };
+    if (outcome.skipped) return { status: "skipped", text: `${STATUS_WORDS.SKIPPED}: ${outcome.line}` };
+    if (outcome.threw) return { status: "failed", text: `${STATUS_WORDS.FAILED}: ${outcome.line}` };
+    if (!outcome.ok) return { status: "refused", text: upperFirst(outcome.line) };
+    return { status: "completed", text: completedText(elapsedMs) };
+  }
+
+  /** The step ended: its row takes its end status and its running clock goes. */
+  function endStepStatus(step, outcome, elapsedMs) {
+    state.runningStep = null;
+    const { status, text } = endRowStatus(outcome, elapsedMs);
+    setQueueRow(step, status, text);
+    setRowClock(step, "");
+    if (step.key === "pictures" && state.pictureItems.length > 0) {
+      // RP-3d: a cancelled run keeps the "N images to do, K done" form, and the pictures never reached read Not run
+      setText(queuePart(queueRow(step), QUEUE_SELECTORS.detail), picturesCountText(state.pictureTotal, state.picturesDone, { finished: !outcome.cancelled }));
+      if (outcome.cancelled) {
+        state.pictureItems
+          .filter((item) => item.dataset.status === "waiting")
+          .forEach((item) => setPictureRow(item, "notrun", STATUS_WORDS.NOT_RUN));
+      }
+    }
+  }
+
+  /** RP-3d: a step the run never reached reads Not run, with no clock. */
+  function markStepNotRun(step) {
+    setQueueRow(step, "notrun", STATUS_WORDS.NOT_RUN);
+    setRowClock(step, "");
+  }
+
+  /** The last step ended: the total stops and becomes status text. */
+  function endQueue() {
+    stopTicker();
+    // RP-D7a: once it stops, the total reads in words ("Total 28 seconds"); MM:SS is for the running clock only
+    setTotalClock(durationWords(Date.now() - state.runStartedAt), { running: false });
   }
 
   const upperFirst = (text) => text.charAt(0).toUpperCase() + text.slice(1);
@@ -1394,11 +1757,22 @@
     line: typeof line === "string" && line ? line : NO_LINE_TEXT,
   });
 
+  /** RP-3d: a step the person stopped. Not ok, not a failure; `line` is the step's own words, if it has any. */
+  const cancelledOutcome = (line) => ({ ...outcomeOf(false, line), cancelled: true });
+
+  /** RP-3d: how each step is stopped. Each returns whether a run was there to stop. */
+  const CANCELLERS = Object.freeze({
+    correction: () => window.getMathPixAIEnhancer?.()?.cancelQuietRun?.() === true,
+    context: () => window.MathPixContextAI?.cancelQuietRun?.() === true,
+    pictures: () => window.cancelDescribeAllImages?.() === true,
+  });
+
   const RUNNERS = Object.freeze({
     correction: async () => {
       const enhancer = window.getMathPixAIEnhancer?.();
       if (!enhancer) return outcomeOf(false, null);
       const result = await enhancer.runCorrection({ apply: true });
+      if (result && result.cancelled) return cancelledOutcome();
       if (result && result.applied) showCorrectionDiff(enhancer);
       return outcomeOf(Boolean(result && result.applied), result && result.line);
     },
@@ -1406,22 +1780,71 @@
       const result = await window.MathPixContextAI?.handleAnalyseClick({
         quiet: true,
       });
+      if (result && result.cancelled) return cancelledOutcome();
       return outcomeOf(Boolean(result && result.filled), result && result.line);
     },
     pictures: async () => {
       // RP-1: the manager stays closed, so no dialog opens mid-run and the
       // tab's own region stays exposed for every step's line.
-      const options = { quiet: true, openManager: false };
+      const options = { quiet: true, openManager: false, onPicture };
+      buildPictureRows();
       const chosenId = chosenIdFor(STEPS[2], null);
       if (chosenId) options.model = chosenId;
       if (redescribeOn()) options.includeDescribed = true;
       const result = await window.describeAllImages(options);
+      // a Cancel that came after the last picture left nothing untouched: the step ran in full
+      if (result && result.cancelled && result.remaining > 0) return cancelledOutcome(result.line);
       return outcomeOf(
         Boolean(result && result.ran && result.generated > 0),
         result && result.line,
       );
     },
   });
+
+  /**
+   * RP-5 (RP-D9): the stand-ins a rehearsal runs in place of RUNNERS. They take REHEARSAL_STEP_MS a
+   * step and REHEARSAL_PICTURE_MS a picture, return the real outcome shapes, and touch nothing: no
+   * provider, embed, network, MMD, context store or registry. Cancel is the real flag
+   * (state.cancelRequested): a correction or context stand-in stops within a slice, and the pictures
+   * stand-in finishes the picture in hand, as the real batch does.
+   */
+  async function rehearsalWait(ms) {
+    const end = Date.now() + ms;
+    while (Date.now() < end && !state.cancelRequested) {
+      await sleep(Math.min(REHEARSAL_SLICE_MS, Math.max(0, end - Date.now())));
+    }
+  }
+
+  const rehearsalStep = (key) => async () => {
+    await rehearsalWait(REHEARSAL_STEP_MS);
+    if (state.cancelRequested) return cancelledOutcome();
+    return outcomeOf(true, REHEARSAL_STEP_LINES[key]);
+  };
+
+  const REHEARSAL_RUNNERS = Object.freeze({
+    correction: rehearsalStep("correction"),
+    context: rehearsalStep("context"),
+    pictures: async () => {
+      const runner = window.MathPixAltTextBatchRunner;
+      // the same rows and the same targets (the estimate's partition) as the real step
+      buildPictureRows();
+      const targets = uncoveredPictures();
+      for (let index = 0; index < targets.length; index += 1) {
+        if (state.cancelRequested) {
+          const done = countWords(index, "picture", "pictures", { words: true });
+          return cancelledOutcome(`stopped after ${done}, ${REHEARSAL_STEP_LINES.pictures}`);
+        }
+        const report = { index, total: targets.length, id: targets[index] && targets[index].id };
+        onPicture({ ...report, phase: runner.PHASE.STARTING });
+        await sleep(REHEARSAL_PICTURE_MS);
+        onPicture({ ...report, phase: runner.PHASE.SETTLED, outcome: runner.OUTCOME.GENERATED });
+      }
+      return outcomeOf(targets.length > 0, REHEARSAL_STEP_LINES.pictures);
+    },
+  });
+
+  /** RP-5: a spoken line of a rehearsal ends with its clause; a real run's line is untouched. */
+  const rehearsalLine = (text) => (state.rehearsal ? `${text} ${REHEARSAL_LINE_CLAUSE}` : text);
 
   /** Run one step, or skip it if its precondition no longer holds. */
   async function runStep(step, recorder = null) {
@@ -1436,7 +1859,7 @@
       return finished({ ...outcomeOf(false, `skipped, ${detail}`, true), detail });
     }
     try {
-      const outcome = await RUNNERS[step.key]();
+      const outcome = await (state.rehearsal ? REHEARSAL_RUNNERS : RUNNERS)[step.key]();
       return finished({ ...outcome, detail: outcome.line });
     } catch (error) {
       logError(`runStep(${step.key}) threw`, error);
@@ -1464,6 +1887,56 @@
     return `Done: ${ran} of ${results.length}; ${named.join("; ")}.`;
   }
 
+  /**
+   * RP-3d (RP-D6): the one spoken line, and the queue's Done paragraph, for a run
+   * the person stopped: "Cancelled. 1 of 3 steps ran." then the line of each step
+   * that ran (a cancelled pictures step keeps its own count of what it wrote).
+   */
+  function cancelLine(results, total) {
+    const ran = results.filter((entry) => entry.outcome.ok).length;
+    const kept = results
+      .filter((entry) => entry.outcome.ok || (entry.outcome.cancelled && entry.step.key === "pictures" && state.picturesDone > 0))
+      .map((entry) =>
+        entry.outcome.cancelled
+          ? `${entry.step.label}: ${upperFirst(entry.outcome.line)}`
+          : stepEndLine(entry.step, entry.outcome, entry.elapsedMs),
+      );
+    return [`Cancelled. ${ran} of ${total} steps ran.`, ...kept].join(" ");
+  }
+
+  /** RP-3d: hide Cancel; if it holds focus, hand focus to the status paragraph (or Run) first, never to the body. */
+  function hideCancelButton() {
+    const cancel = byId(ELEMENT_IDS.cancel);
+    if (!cancel) return;
+    if (document.activeElement === cancel) {
+      const status = byId(ELEMENT_IDS.status);
+      const target = status && !status.hidden ? status : byId(ELEMENT_IDS.run);
+      if (target) target.focus();
+    }
+    cancel.hidden = true;
+  }
+
+  /**
+   * RP-3d: the Cancel button's handler. Does nothing unless the steps are being
+   * run and Cancel has not already been pressed. Focus moves to the status
+   * paragraph, reading "Cancelling.", before the button hides. Then the running
+   * step is stopped; the loop in run() does the rest.
+   */
+  function cancelRun() {
+    if (!state.runActive || state.cancelRequested) return false;
+    state.cancelRequested = true;
+    showStatus(CANCELLING_TEXT);
+    byId(ELEMENT_IDS.status)?.focus();
+    hideCancelButton();
+    const step = state.runningStep;
+    if (step) {
+      // RP-5: a rehearsal has no real run to stop; its stand-ins read state.cancelRequested
+      if (!state.rehearsal) CANCELLERS[step.key]();
+      if (step.key === "pictures") setQueueRow(step, "started", STATUS_WORDS.CANCELLING);
+    }
+    return true;
+  }
+
   function setRunning(running) {
     state.running = running;
     STEPS.forEach((step) => {
@@ -1477,28 +1950,36 @@
   /**
    * The Run button's handler. One confirm; then the ticked steps in order, each
    * awaited. RP-D2: one line per step end, at least LINE_GAP_MS apart, the last
-   * step's line and the final line in one write. RP-D1: each ticked card reads
-   * Waiting, Started (with its ticker), then its end status. RP-D3: the
+   * step's line and the final line in one write. RP-3b: each ticked step has a
+   * queue row reading Waiting, Started (with its clock), then its end status;
+   * the queue stays after the run and resets at the next. RP-D3: the
    * document is locked from the confirm to the end. Resolves with the
    * outcomes, or null when nothing ran.
    */
-  async function run() {
+  async function run(options = {}) {
     if (state.running) return null;
+    // RP-5 (RP-D9): a rehearsal is dev mode only and fails closed; it never falls back to a real run
+    const rehearsal = options.rehearsal === true;
+    if (rehearsal && !devLogGate.enabled()) return null;
     const steps = tickedSteps();
     if (steps.length === 0 || !restoreSettled()) return null;
 
     state.running = true;
+    state.rehearsal = rehearsal;
     let recorder = null;
     let releaseLock = null;
     try {
-      const names = steps.map((step) => step.label).join(", ");
+      if (rehearsal) setText(byId(ELEMENT_IDS.estimate), REHEARSAL_ESTIMATE_TEXT);
+      // RP-6b (RP-D10): the lead is the spoken description; the ordered list follows it
+      const confirmView = confirmParts(steps, rehearsal);
       const confirmed = await window.safeConfirm(
-        `${estimateLine(steps)} Steps, in order: ${names}. Run them now?`,
-        RUN_TITLE,
+        confirmView.lead,
+        rehearsal ? REHEARSAL_TITLE : RUN_TITLE,
         {
           confirmText: CONFIRM_RUN_TEXT,
           cancelText: CONFIRM_CANCEL_TEXT,
           returnFocusTo: byId(ELEMENT_IDS.run),
+          details: buildConfirmDetails(confirmView.items),
         },
       );
       if (!confirmed) {
@@ -1506,38 +1987,75 @@
         return null;
       }
 
-      setRunning(true);
-      releaseLock = lockDocument();
+      // RP-4: nothing is disabled until the confirm has left the tree and focus is on the status paragraph. The
+      // dialog returns focus to Run; a Run already disabled sends it to main, and the screen reader reads the page.
+      // state.running (set above) already stops a second press.
       // AT-4: dev mode only. A new run replaces the last log; the button waits for this one to finish.
-      state.log = null;
-      state.logSecrets = null;
-      recorder = devLogGate.enabled() ? createRunRecorder(steps) : null;
+      // RP-5: a rehearsal writes nothing, so it keeps the last real run's log and correction diff and records nothing
+      if (!rehearsal) {
+        state.log = null;
+        state.logSecrets = null;
+      }
+      recorder = !rehearsal && devLogGate.enabled() ? createRunRecorder(steps) : null;
       updateSaveLogButton();
-      clearCorrectionDiff();
-      resetCardStatuses(steps);
+      if (!rehearsal) clearCorrectionDiff();
+      resetQueue(steps);
+      // RP-5: the badge is on for a rehearsal and cleared by the next real run
+      const badge = byId(ELEMENT_IDS.badge);
+      if (badge) badge.hidden = !rehearsal;
       state.lastLineAt = null;
       showStatus(RUNNING_TEXT);
       await focusStatusAfterClose();
+      setRunning(true);
+      releaseLock = lockDocument();
       const results = [];
+      // RP-3d: Cancel appears now, after focus has gone to the status paragraph, so it is next in Tab order
+      state.cancelRequested = false;
+      state.runActive = true;
+      const cancelButton = byId(ELEMENT_IDS.cancel);
+      if (cancelButton) cancelButton.hidden = false;
       for (let i = 0; i < steps.length; i += 1) {
         const step = steps[i];
         const startedAt = Date.now();
         startStepStatus(step, startedAt);
         const outcome = await runStep(step, recorder);
         const elapsedMs = Date.now() - startedAt;
-        stopTicker();
-        setCardStatus(step, endStatusText(outcome, elapsedMs));
+        endStepStatus(step, outcome, elapsedMs);
         results.push({ step, outcome, elapsedMs });
+        // RP-3d: stopped when the step itself was cancelled, or Cancel came while a step that was not the last ran
+        const last = i === steps.length - 1;
+        if (state.cancelRequested && (outcome.cancelled || !last)) {
+          state.runActive = false;
+          steps.slice(i + 1).forEach(markStepNotRun);
+          endQueue();
+          const stopped = cancelLine(results, steps.length);
+          await speak(rehearsalLine(stopped));
+          setText(byId(QUEUE_IDS.done), stopped);
+          showStatus(CANCELLED_TEXT);
+          return results;
+        }
+        if (last) {
+          // the last step is over: Cancel can no longer stop anything, so it leaves (focus handed on first)
+          state.runActive = false;
+          hideCancelButton();
+          endQueue();
+        }
         const spoken = stepEndLine(step, outcome, elapsedMs);
-        await speak(i === steps.length - 1 ? `${spoken} ${finalLine(results)}` : spoken);
+        await speak(rehearsalLine(last ? `${spoken} ${finalLine(results)}` : spoken));
       }
+      // RP-3c: the status paragraph keeps "Finished." (AT-6 focus text, pinned by at6-1); the Done line is on the queue.
+      setText(byId(QUEUE_IDS.done), finalLine(results));
       showStatus(FINISHED_TEXT);
       return results;
     } finally {
+      state.runActive = false;
+      state.cancelRequested = false;
+      hideCancelButton();
       stopTicker();
       if (releaseLock) releaseLock();
       finishRunLog(recorder);
       state.running = false;
+      state.rehearsal = false;
       setRunning(false);
       refresh();
     }
@@ -1845,6 +2363,20 @@
         run().catch((error) => logError("run threw", error));
       });
     }
+    const rehearseButton = byId(ELEMENT_IDS.rehearse);
+    if (rehearseButton && rehearseButton.dataset.aiBound !== "true") {
+      rehearseButton.dataset.aiBound = "true";
+      rehearseButton.addEventListener("click", () => {
+        run({ rehearsal: true }).catch((error) => logError("rehearsal threw", error));
+      });
+    }
+    const cancelButton = byId(ELEMENT_IDS.cancel);
+    if (cancelButton && cancelButton.dataset.aiBound !== "true") {
+      cancelButton.dataset.aiBound = "true";
+      cancelButton.addEventListener("click", () => {
+        cancelRun();
+      });
+    }
     const saveButton = byId(ELEMENT_IDS.saveLog);
     if (saveButton && saveButton.dataset.aiBound !== "true") {
       saveButton.dataset.aiBound = "true";
@@ -1881,16 +2413,31 @@
     servableModelsFor,
     handleModelSelect,
     run,
+    // RP-3d: Cancel, its composer, and the words a stopped run uses.
+    cancelRun,
+    cancelLine,
+    // RP-5: the rehearsal's stand-ins, words and clause, for rows and rigs.
+    REHEARSAL_RUNNERS,
+    REHEARSAL_CONFIRM_TEXT,
+    REHEARSAL_ESTIMATE_TEXT,
+    REHEARSAL_LINE_CLAUSE,
+    REHEARSAL_STEP_MS,
+    REHEARSAL_PICTURE_MS,
+    isRehearsal: () => state.rehearsal,
     // RP-1: the composer, the ticker text and the run's status words, for rows and rigs.
     durationWords,
     tickerText,
     STATUS_WORDS,
     LINE_GAP_MS,
     tickerRunning: () => state.ticker !== null,
-    progressId,
-    progressTextId,
-    progressTimerId,
+    endRowStatus,
+    pictureRowStatus,
+    pictureLabel,
+    buildPictureRows,
+    picturesCountText,
+    QUEUE_IDS,
     estimateLine,
+    confirmParts,
     tickedSteps,
     restoreSettled,
     MEASURED_COST_USD,

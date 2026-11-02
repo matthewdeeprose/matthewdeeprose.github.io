@@ -458,6 +458,13 @@ input#custom-height {
   border-radius: 4px;
 }
 
+/* HOV-14d: opening the card must not resize its summary. The shared details[open] rule in main.css
+   takes the padding down to 0.5em, which widens the summary (its negative margin is fixed) and moves it;
+   the card's own padding holds in both states. */
+.mathpix-config[open] {
+  padding: 1rem;
+}
+
 .config-inputs {
   display: grid;
   gap: 0.5rem;
