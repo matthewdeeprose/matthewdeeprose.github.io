@@ -282,6 +282,28 @@ window.MermaidAccessibilityUtils = (function () {
     return text;
   }
 
+  // A value of white space and Unicode format characters draws nothing (the class every type module uses
+  // as NOTHING_DRAWN). Defined here because this file loads before the shared prose layer.
+  const NOTHING_DRAWN = /^[\s\p{Cf}]*$/u;
+
+  /**
+   * @param {string} text - An author directive value
+   * @returns {boolean} True when the value is empty or draws nothing
+   */
+  function drawsNothing(text) {
+    return NOTHING_DRAWN.test(text);
+  }
+
+  /**
+   * @param {string} code - The diagram source
+   * @param {RegExp} pattern - A global pattern
+   * @returns {Array|null} The LAST match of the pattern, or null
+   */
+  function lastMatch(code, pattern) {
+    const all = Array.from(code.matchAll(pattern));
+    return all.length > 0 ? all[all.length - 1] : null;
+  }
+
   /**
    * Parse accessibility directives from mermaid code
    * @param {string} code - The mermaid diagram code
@@ -298,24 +320,27 @@ window.MermaidAccessibilityUtils = (function () {
     // Look for accTitle and accDescr directives. The gap after the colon is
     // spaces and tabs only: `\s*` there ran across the newline, so an empty
     // `accTitle:` line took the NEXT source line as its value (item 130 sweep
-    // 6, F1). A value that trims to nothing is no override.
-    const titleMatch = code.match(/accTitle\s*:[ \t]*(.*?)(?:\n|$)/);
-    const descrMatch = code.match(/accDescr\s*:[ \t]*(.*?)(?:\n|$)/);
+    // 6, F1). A value that draws nothing is no override (item 131, widened to
+    // format characters at item 135 F4). With two lines of one kind Mermaid
+    // draws the LAST, so the words follow the picture (item 135 F3, measured
+    // on every type that draws the directive).
+    const titleMatch = lastMatch(code, /accTitle\s*:[ \t]*(.*?)(?:\n|$)/g);
+    const descrMatch = lastMatch(code, /accDescr\s*:[ \t]*(.*?)(?:\n|$)/g);
     const titleText = titleMatch ? titleMatch[1].trim() : "";
     const descrText = descrMatch ? descrMatch[1].trim() : "";
 
-    if (titleText) {
+    if (!drawsNothing(titleText)) {
       result.title = decodeAuthorEscapes(titleText);
     }
 
-    if (descrText) {
+    if (!drawsNothing(descrText)) {
       result.description = decodeAuthorEscapes(descrText);
     }
 
     // Also check for multi-line descriptions
     if (!result.description) {
       const multiLineMatch = code.match(/accDescr\s*\{([^}]*)\}/s);
-      if (multiLineMatch && multiLineMatch[1]) {
+      if (multiLineMatch && !drawsNothing(multiLineMatch[1])) {
         result.description = decodeAuthorEscapes(multiLineMatch[1].trim());
       }
     }

@@ -1366,6 +1366,8 @@
    */
   function stepEndLine(step, outcome, elapsedMs) {
     if (outcome.skipped) return `${step.label}: ${outcome.line}`;
+    // M-5y: a step whose request got no reply has no duration worth saying (a cut says "four minutes" for a failure)
+    if (outcome.noReply) return `${step.label} did not finish. ${upperFirst(outcome.line)}`;
     return `${step.label} finished in ${durationWords(elapsedMs)}. ${upperFirst(outcome.line)}`;
   }
 
@@ -1767,6 +1769,13 @@
     pictures: () => window.cancelDescribeAllImages?.() === true,
   });
 
+  /** M-5y: whether a correction's line is one of the enhancer's two sentences for a request that got no reply. */
+  function isNoReplyLine(line) {
+    const enhancer = window.MathPixAIEnhancer;
+    if (!enhancer || typeof line !== "string") return false;
+    return line === enhancer.PROXY_CUT_LINE || line === enhancer.SERVICE_UNREACHABLE_LINE;
+  }
+
   const RUNNERS = Object.freeze({
     correction: async () => {
       const enhancer = window.getMathPixAIEnhancer?.();
@@ -1774,7 +1783,11 @@
       const result = await enhancer.runCorrection({ apply: true });
       if (result && result.cancelled) return cancelledOutcome();
       if (result && result.applied) showCorrectionDiff(enhancer);
-      return outcomeOf(Boolean(result && result.applied), result && result.line);
+      const outcome = outcomeOf(Boolean(result && result.applied), result && result.line);
+      // M-5y: the outcome carries no marker for "the request got no reply", so it is read off the line: the enhancer
+      // publishes the two sentences it gives a bare fetch failure, and a refusal that did get a reply never equals them
+      const noReply = !outcome.ok && isNoReplyLine(result && result.line);
+      return noReply ? { ...outcome, noReply: true } : outcome;
     },
     context: async () => {
       const result = await window.MathPixContextAI?.handleAnalyseClick({
@@ -1873,12 +1886,17 @@
    * follows the count with that line alone: "Done: 2 of 3 steps ran. <line>".
    * A skipped or thrown step keeps "Done: 2 of 3; <step> was not applied: <line>".
    */
-  function finalLine(results) {
+  function finalLine(results, { spoken = false } = {}) {
     const ran = results.filter((entry) => entry.outcome.ok).length;
     const missed = results.filter((entry) => !entry.outcome.ok);
     if (missed.length === 0) return `Done: ${ran} of ${results.length} steps ran.`;
     if (missed.every((entry) => !entry.outcome.skipped && !entry.outcome.threw)) {
-      return `Done: ${ran} of ${results.length} steps ran. ${missed.map((entry) => entry.outcome.detail).join(" ")}`;
+      // M-5y: the spoken line already carried a no-reply step's sentence at that step's end, so it is not said again
+      const details = missed
+        .filter((entry) => !(spoken && entry.outcome.noReply))
+        .map((entry) => entry.outcome.detail);
+      const count = `Done: ${ran} of ${results.length} steps ran.`;
+      return details.length > 0 ? `${count} ${details.join(" ")}` : count;
     }
     const named = missed.map(
       (entry) =>
@@ -2041,7 +2059,7 @@
           endQueue();
         }
         const spoken = stepEndLine(step, outcome, elapsedMs);
-        await speak(rehearsalLine(last ? `${spoken} ${finalLine(results)}` : spoken));
+        await speak(rehearsalLine(last ? `${spoken} ${finalLine(results, { spoken: true })}` : spoken));
       }
       // RP-3c: the status paragraph keeps "Finished." (AT-6 focus text, pinned by at6-1); the Done line is on the queue.
       setText(byId(QUEUE_IDS.done), finalLine(results));

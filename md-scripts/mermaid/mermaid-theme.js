@@ -10442,6 +10442,917 @@ window.MermaidThemes = (function () {
   }
 
   // -----------------------------------------------------------------------
+  // CYNEFIN ENCODING (register item 135 theming 1, 2 November 2026)
+  // -----------------------------------------------------------------------
+
+  const CYNEFIN_ROLEDESCRIPTION = "cynefin";
+
+  /** SC 1.4.11 for every boundary, the cliff, the ellipse, a box outline, an arrow and its head. */
+  const CYNEFIN_OBJECT_TARGET = 3;
+
+  /** The working margin a DERIVED object ink is taken to (standard § 2). */
+  const CYNEFIN_OBJECT_MARGIN = 3.2;
+
+  /** SC 1.4.3 for every word the canvas draws. */
+  const CYNEFIN_TEXT_TARGET = 4.5;
+
+  /** The margin a hue-kept TEXT ink is taken to. */
+  const CYNEFIN_TEXT_MARGIN = 4.6;
+
+  /** An ink whose HSL saturation is below this has no hue to keep. */
+  const CYNEFIN_ACHROMATIC_SATURATION = 0.1;
+
+  /** Lightness step of the hue-kept search, as a fraction of the range. */
+  const CYNEFIN_HUE_STEP = 0.01;
+
+  /** Every 8-bit grey: the last-resort ink search (rule 59). */
+  const CYNEFIN_GREY_RAMP = Object.freeze(
+    Array.from({ length: 256 }, (unused, value) => rgbToHex(value, value, value))
+  );
+
+  /** Marks an element this pass has painted, for idempotency. */
+  const CYNEFIN_ENCODING_ATTRIBUTE = "data-cynefin-encoding";
+
+  /** The properties written to a given element, recorded on it (rule 20). */
+  const CYNEFIN_OWNED_LIST_ATTRIBUTE = "data-cynefin-encoding-owned";
+
+  /** The inline values an element held for a property this pass then wrote. */
+  const CYNEFIN_PRIOR_ATTRIBUTE = "data-cynefin-encoding-prior";
+
+  /** THE STAMP: an element's role on first sight (position and geometry). In no owned list. */
+  const CYNEFIN_ROLE_ATTRIBUTE = "data-cynefin-role";
+
+  /** The roles, chosen by position and geometry and never by class alone (rule 19). */
+  const CYNEFIN_ROLES = Object.freeze({
+    word: "word",
+    region: "region",
+    box: "box",
+    boundary: "boundary",
+    cliff: "cliff",
+    ellipse: "ellipse",
+    arrow: "arrow",
+    arrowhead: "arrowhead",
+  });
+
+  /** Fractions of a line's length at which the ground beneath it is read (interior). */
+  const CYNEFIN_LINE_FRACTIONS = Object.freeze([0.1, 0.3, 0.5, 0.7, 0.9]);
+
+  /** Points around an outline at which the ground beside it is read. */
+  const CYNEFIN_OUTLINE_POINTS = 16;
+
+  /** Client pixels beyond half the stroke at which the ground beside an outline is read. */
+  const CYNEFIN_EDGE_OFFSET = 2;
+
+  /** Step along a path, in local units, used to find its direction at a point. */
+  const CYNEFIN_TANGENT_STEP = 0.5;
+
+  /** Rule 56's casing: the halo's width, and the room a neighbouring word must be given. */
+  const CYNEFIN_CASING_WIDTH_PX = 3;
+
+  /** CT5: the cliff's stroke is at least this many times the widest boundary's. */
+  const CYNEFIN_CLIFF_WIDTH_RATIO = 1.5;
+
+  /** CT5: the width the cliff is written at when it falls short, as a multiple of the widest boundary's. */
+  const CYNEFIN_CLIFF_WIDTH_WRITTEN = 2;
+
+  /** How far above the regions' mid line, as a share of one region's height, the cliff's top edge may sit (the boundary wobble). */
+  const CYNEFIN_CLIFF_TOP_SLACK = 0.15;
+
+  /** The outline of a halo arrowhead, in marker units (the marker scales by 0.6, so 1.2 px drawn). */
+  const CYNEFIN_HEAD_HALO_WIDTH = 2;
+
+  /** The smallest number of equal rects in a group for it to be the four domain regions. */
+  const CYNEFIN_REGION_MINIMUM = 4;
+
+  /** MR-O / CO1: marks the stroke-only outline this pass adds along a region's page-facing sides, and the class it carries. */
+  const CYNEFIN_OUTLINE_ATTRIBUTE = "data-cynefin-outline";
+  const CYNEFIN_OUTLINE_CLASS = "cynefinRegionOutline";
+  const CYNEFIN_OUTLINE_ROLE = "outline";
+
+  /** CO1: the outline's drawn width, in user units (1 px at the map's own scale). */
+  const CYNEFIN_OUTLINE_WIDTH_PX = 1;
+
+  /** How far apart two edge coordinates may be and still be the same edge. */
+  const CYNEFIN_EDGE_TOLERANCE = 0.01;
+
+  const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
+  /**
+   * Apply the accessibility encoding to a rendered cynefin canvas: an ink on every
+   * word, boundary, the cliff, the confusion ellipse, item box outline, arrow and
+   * arrowhead WHERE AND ONLY WHERE it fails against the ground it sits on, and a
+   * NON-COLOUR channel on the cliff (CT5). AREA FILLS ARE NEVER WRITTEN (rule 18)
+   * and neither `opacity` nor `fill-opacity` is touched (the domain regions' 0.4
+   * and the boxes' 0.95 are the renderer's); no renderer inline value is deleted.
+   *
+   * WHY IT EXISTS (item 135 census step 4, 29 October 2026): the renderer hard-codes
+   * the five domain tints and the cliff, the theme moves the text and the lines, and
+   * in the dark cells a light ink lands on a pale or mid-grey tint (257 of 1,023
+   * readings failing, worst in `accessibleDark`).
+   *
+   * THE SUBJECTS ARE SELECTED BY POSITION AND GEOMETRY (rule 19), each stamped
+   * `data-cynefin-role` on first sight: a text is a word; a rect in a group of four
+   * or more equal rects with no text is a region (stamped, never written); a rect
+   * whose parent group also holds a text is a box; a path in a marker an arrowhead;
+   * a path that references a marker an arrow; a painted path directly under the map
+   * group the ellipse; any other path a boundary, except the one that is taller than
+   * wide and centred below the regions' mid line, which is the cliff.
+   *
+   * CT5, THE CLIFF keeps its red family (re-inked in its own hue to 3:1 against both
+   * grounds it divides) and is told from the boundaries without colour: a stroke at
+   * least 1.5 times the widest boundary's, solid where the boundaries are dashed, or
+   * dashed where they are solid. The renderer draws 4 px solid against 2 px dashed;
+   * the pass guarantees it, writing only where a theme or a config would not.
+   *
+   * WORDS over grounds no ink clears take rule 56's casing (the page ground as the
+   * word's own stroke, painted behind its fill), only where the halo touches no
+   * neighbouring word.
+   *
+   * cynefin's grammar has no style, class or colour statement and the renderer
+   * writes no inline style, so it cannot carry an inline author stroke: a computed
+   * ink that clears is kept (rule 42), one that fails is moved along its own hue.
+   *
+   * GEOMETRY IS IN ONE CLIENT SPACE (rule 27): points on a line or an outline are
+   * getPointAtLength mapped through getScreenCTM, a ground is decided by
+   * isPointInFill in the shape's own space, and a canary asserts every mapped line
+   * sample lies within its element's client box. getBBox is never used.
+   *
+   * IDEMPOTENT BY CONSTRUCTION: the sweep gives back what this pass displaced before
+   * anything is derived. It never calls applyTheme; it is reached FROM the re-render
+   * via applySeriesEncoding.
+   *
+   * @param {HTMLElement|SVGElement} root - A container, a .mermaid div, or the SVG
+   * @returns {Object|null} What was applied and every ratio measured, or null
+   */
+  function applyCynefinEncoding(root) {
+    if (!root) return null;
+
+    const svg =
+      root.tagName === "svg" &&
+      root.getAttribute("aria-roledescription") === CYNEFIN_ROLEDESCRIPTION
+        ? root
+        : root.querySelector(`svg[aria-roledescription="${CYNEFIN_ROLEDESCRIPTION}"]`);
+
+    if (!svg) {
+      logDebug("No cynefin SVG in this container - cynefin encoding skipped");
+      return null;
+    }
+
+    // --- the region outlines are this pass's own elements: remove them, and they are drawn afresh below ----
+    svg.querySelectorAll(`[${CYNEFIN_OUTLINE_ATTRIBUTE}]`).forEach((outline) => outline.remove());
+
+    // --- sweep what a previous run owned, and give back what it displaced ----
+    svg.querySelectorAll(`[${CYNEFIN_ENCODING_ATTRIBUTE}]`).forEach((owned) => {
+      const written = (owned.getAttribute(CYNEFIN_OWNED_LIST_ATTRIBUTE) || "").split(",").filter(Boolean);
+      for (const cynefinProperty of written) {
+        owned.style.removeProperty(cynefinProperty);
+      }
+      let prior = {};
+      try {
+        prior = JSON.parse(owned.getAttribute(CYNEFIN_PRIOR_ATTRIBUTE) || "{}");
+      } catch (error) {
+        prior = {};
+      }
+      for (const property of Object.keys(prior)) {
+        owned.style.setProperty(property, prior[property].value, prior[property].priority);
+      }
+      owned.removeAttribute(CYNEFIN_ENCODING_ATTRIBUTE);
+      owned.removeAttribute(CYNEFIN_OWNED_LIST_ATTRIBUTE);
+      owned.removeAttribute(CYNEFIN_PRIOR_ATTRIBUTE);
+    });
+
+    const all = [...svg.querySelectorAll("*")];
+    const GROUND_TAGS = ["rect", "path", "circle", "ellipse", "polygon"];
+
+    const offstage = (element) =>
+      !!(
+        (element.closest("defs") && !element.closest("marker")) ||
+        element.closest("symbol") ||
+        element.closest("clipPath")
+      );
+
+    const boxOf = (element) => {
+      const rect = element.getBoundingClientRect();
+      return rect && rect.width > 0 && rect.height > 0
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height }
+        : null;
+    };
+
+    const svgGround = resolveHostGround(svg);
+    const svgGroundPaint = parsePaint(svgGround);
+    const svgGroundHex = paintToHex(svgGroundPaint);
+
+    // The product of `opacity` from an element up to the svg.
+    const chainCache = new Map();
+    const chainOpacity = (element) => {
+      if (chainCache.has(element)) return chainCache.get(element);
+      let alpha = 1;
+      for (let node = element; node && node !== svg; node = node.parentElement) {
+        alpha *= opacityValue(window.getComputedStyle(node).opacity);
+      }
+      chainCache.set(element, alpha);
+      return alpha;
+    };
+
+    /** Painted area shapes in document order, measured BEFORE anything is written. */
+    const painted = [];
+    all.forEach((element, index) => {
+      if (!GROUND_TAGS.includes(element.tagName)) return;
+      if (offstage(element) || element.closest("marker")) return;
+      const computed = window.getComputedStyle(element);
+      const declared = parsePaint(computed.fill);
+      const alpha =
+        (declared ? declared.a : 0) * opacityValue(computed.fillOpacity) * chainOpacity(element);
+      const box = boxOf(element);
+      if (!declared || alpha <= 0.05 || !box) return;
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      painted.push({
+        element,
+        index,
+        box,
+        paint: { ...declared, a: alpha },
+        inverse: matrix ? matrix.inverse() : null,
+        stroked: !!parsePaint(computed.stroke) && (parseFloat(computed.strokeWidth) || 0) > 0,
+      });
+    });
+
+    // Does a painted shape cover a client point? A point on the shape's own stroke
+    // counts as covered: that is what a hit test finds.
+    const coversShape = (shape, x, y) => {
+      const box = shape.box;
+      if (x < box.x || x > box.x + box.width || y < box.y || y > box.y + box.height) return false;
+      if (typeof shape.element.isPointInFill === "function" && shape.inverse) {
+        try {
+          const local = new DOMPoint(x, y).matrixTransform(shape.inverse);
+          return (
+            shape.element.isPointInFill(local) ||
+            (shape.stroked && shape.element.isPointInStroke(local))
+          );
+        } catch (error) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    // Does the subject itself cover a client point? (An outline is read where it does not.)
+    const coversElement = (element, box, x, y) => {
+      if (typeof element.isPointInFill === "function" && element.getScreenCTM) {
+        const matrix = element.getScreenCTM();
+        if (matrix) {
+          try {
+            return element.isPointInFill(new DOMPoint(x, y).matrixTransform(matrix.inverse()));
+          } catch (error) {
+            return false;
+          }
+        }
+      }
+      return !!box && x >= box.x && x <= box.x + box.width && y >= box.y && y <= box.y + box.height;
+    };
+
+    const groundAt = (x, y, before) => {
+      let colour = svgGroundPaint;
+      for (const shape of painted) {
+        if (shape.index >= before) break;
+        if (!coversShape(shape, x, y)) continue;
+        colour = compositeOver(shape.paint, colour);
+      }
+      return colour;
+    };
+    const groundsOver = (points, before) => {
+      const seen = new Set();
+      points.forEach((point) => seen.add(paintToHex(groundAt(point[0], point[1], before))));
+      return [...seen];
+    };
+    const spreadPoints = (box) => [
+      [box.x + box.width / 2, box.y + box.height / 2],
+      [box.x + box.width * 0.15, box.y + box.height * 0.5],
+      [box.x + box.width * 0.85, box.y + box.height * 0.5],
+      [box.x + box.width * 0.5, box.y + box.height * 0.15],
+      [box.x + box.width * 0.5, box.y + box.height * 0.85],
+    ];
+
+    const textBoxes = all
+      .filter((element) => element.tagName === "text" && !offstage(element))
+      .map((element) => ({ element, box: boxOf(element) }))
+      .filter((entry) => entry.box);
+
+    const applied = {
+      svgGround,
+      walked: all.length,
+      reached: 0,
+      counts: {},
+      shortfalls: [],
+      elements: [],
+      subjects: {},
+      reach: { found: 0, stamped: 0 },
+      canary: { checked: 0, inside: 0 },
+      cliff: null,
+      worst: null,
+    };
+
+    /** The worst ratio of a computed paint, alpha folded in, against each ground. */
+    const worstOf = (declared, alpha, grounds) =>
+      grounds.reduce(
+        (lowest, ground) =>
+          Math.min(
+            lowest,
+            calculateContrastRatio(
+              paintToHex(compositeOver({ ...declared, a: alpha }, parsePaint(ground))),
+              ground
+            )
+          ),
+        Infinity
+      );
+
+    /**
+     * Choose an ink: the renderer's own hue where it has one, moved in lightness only
+     * as far as the margin needs; where no step reaches the margin but one reaches
+     * the TARGET, the best of those (the hue is kept while it can clear); else an
+     * ink of record, then every grey. Alpha is folded in.
+     */
+    const chooseInk = (rendererHex, alpha, grounds, target, margin) => {
+      const reading = (hex) => worstOf(parsePaint(hex), alpha, grounds);
+      const bestOf = (candidates) =>
+        candidates.reduce(
+          (best, hex) => {
+            const worst = reading(hex);
+            return worst > best.worst ? { ink: hex, worst } : best;
+          },
+          { ink: candidates[0], worst: -1 }
+        );
+
+      const hsl = kanbanHexToHsl(rendererHex);
+      let hueBest = null;
+      if (hsl.s >= CYNEFIN_ACHROMATIC_SATURATION) {
+        const steps = Math.round(1 / CYNEFIN_HUE_STEP);
+        for (let step = 1; step <= steps; step += 1) {
+          const delta = step * CYNEFIN_HUE_STEP;
+          for (const lightness of [hsl.l - delta, hsl.l + delta]) {
+            if (lightness < 0 || lightness > 1) continue;
+            const hex = kanbanHslToHex(hsl.h, hsl.s, lightness);
+            const worst = reading(hex);
+            if (worst >= margin) return { ink: hex, worst };
+            if (!hueBest || worst > hueBest.worst) hueBest = { ink: hex, worst };
+          }
+        }
+      }
+      if (hueBest && hueBest.worst >= target) return hueBest;
+      const record = bestOf(REQUIREMENT_INKS);
+      const chosen = record.worst >= target ? record : bestOf(CYNEFIN_GREY_RAMP);
+      return hueBest && hueBest.worst > chosen.worst ? hueBest : chosen;
+    };
+
+    /**
+     * A head with an outline: split the grounds by luminance at each gap, ink the DARKER side's
+     * outline (it must clear the page ground, the instrument's reading of a marker) and the LIGHTER
+     * side's fill, and keep the split whose worst reading is highest. Returns null if none clears.
+     */
+    const haloHead = (rendererHex, alpha, grounds) => {
+      const byLightness = [...grounds].sort(
+        (a, b) => calculateLuminance(hexToRgb(a)) - calculateLuminance(hexToRgb(b))
+      );
+      let best = null;
+      for (let cut = 1; cut < byLightness.length; cut += 1) {
+        const darker = byLightness.slice(0, cut);
+        const lighter = byLightness.slice(cut);
+        if (!darker.includes(svgGroundHex)) continue;
+        const stroke = chooseInk(rendererHex, 1, darker, CYNEFIN_OBJECT_TARGET, CYNEFIN_OBJECT_MARGIN);
+        const fill = chooseInk(rendererHex, alpha, lighter, CYNEFIN_OBJECT_TARGET, CYNEFIN_OBJECT_MARGIN);
+        const worst = Math.min(stroke.worst, fill.worst);
+        if (worst >= CYNEFIN_OBJECT_TARGET && (!best || worst > best.worst)) {
+          best = { fill: fill.ink, stroke: stroke.ink, worst };
+        }
+      }
+      return best;
+    };
+
+    /** Write derived values, own them, keep what they displaced, and record the reading. */
+    const write = (element, kind, properties, reading) => {
+      const written = [];
+      const prior = {};
+      Object.keys(properties).forEach((property) => {
+        const before = element.style.getPropertyValue(property);
+        if (before) {
+          prior[property] = { value: before, priority: element.style.getPropertyPriority(property) };
+        }
+        element.style.setProperty(property, properties[property], "important");
+        written.push(property);
+      });
+      element.setAttribute(CYNEFIN_ENCODING_ATTRIBUTE, kind);
+      element.setAttribute(CYNEFIN_OWNED_LIST_ATTRIBUTE, written.join(","));
+      if (Object.keys(prior).length) {
+        element.setAttribute(CYNEFIN_PRIOR_ATTRIBUTE, JSON.stringify(prior));
+      }
+      const record = { kind, ...reading };
+      applied.counts[kind] = (applied.counts[kind] || 0) + 1;
+      applied.reached += 1;
+      applied.elements.push(record);
+      if (record.ratio !== undefined && record.ratio < record.target) applied.shortfalls.push(record);
+      if (record.ratio !== undefined && (applied.worst === null || record.ratio < applied.worst)) {
+        applied.worst = record.ratio;
+      }
+    };
+
+    // --- THE STAMP: a role on first sight, from position and geometry --------
+    // The four domain regions: the rects of a group made only of equal rects.
+    const regionGroup =
+      all.find((group) => {
+        if (group.tagName !== "g" || offstage(group)) return false;
+        const kids = [...group.children];
+        if (kids.length < CYNEFIN_REGION_MINIMUM || !kids.every((kid) => kid.tagName === "rect")) {
+          return false;
+        }
+        const sizes = new Set(kids.map((kid) => `${kid.getAttribute("width")}x${kid.getAttribute("height")}`));
+        return sizes.size === 1;
+      }) || null;
+    const mapGroup = regionGroup ? regionGroup.parentElement : null;
+    const regionBoxes = regionGroup ? [...regionGroup.children].map((kid) => boxOf(kid)).filter(Boolean) : [];
+    const regionHeight = regionBoxes.length ? regionBoxes[0].height : 0;
+    // The line between the top regions and the bottom ones, in client space.
+    const midY = regionBoxes.length
+      ? (Math.min(...regionBoxes.map((box) => box.y)) +
+          Math.max(...regionBoxes.map((box) => box.y + box.height))) /
+        2
+      : null;
+
+    const referencesMarker = (element) =>
+      ["marker-start", "marker-mid", "marker-end"].some((name) => {
+        const value = element.getAttribute(name) || element.style.getPropertyValue(name);
+        return !!value && value !== "none";
+      });
+
+    const roleOf = (element) => {
+      const stamped = element.getAttribute(CYNEFIN_ROLE_ATTRIBUTE);
+      if (stamped) return stamped;
+
+      const tag = element.tagName;
+      const parent = element.parentElement;
+      let role = null;
+      if (tag === "text") role = CYNEFIN_ROLES.word;
+      else if (tag === "rect") {
+        if (parent === regionGroup) role = CYNEFIN_ROLES.region;
+        else if (parent && [...parent.children].some((kid) => kid.tagName === "text")) {
+          role = CYNEFIN_ROLES.box;
+        }
+      } else if (tag === "path") {
+        if (element.closest("marker")) role = CYNEFIN_ROLES.arrowhead;
+        else if (referencesMarker(element)) role = CYNEFIN_ROLES.arrow;
+        else if (parent === mapGroup && parsePaint(window.getComputedStyle(element).fill)) {
+          role = CYNEFIN_ROLES.ellipse;
+        } else {
+          // A straight line (boundaryAmplitude 0) has a zero-width box that boxOf refuses.
+          const box = element.getBoundingClientRect();
+          // The vertical boundary runs the WHOLE height of the map (measured 2 November 2026: 545 px against the cliff's
+          // 273), so its centre sits on the mid line to within a sub-pixel and "centred below it" was a coin toss. The
+          // cliff is the tall path whose TOP edge is at or below the mid line, give or take the wobble.
+          const isCliff =
+            !!box &&
+            midY !== null &&
+            box.height > box.width &&
+            box.y >= midY - regionHeight * CYNEFIN_CLIFF_TOP_SLACK;
+          role = isCliff ? CYNEFIN_ROLES.cliff : CYNEFIN_ROLES.boundary;
+        }
+      }
+
+      if (role) element.setAttribute(CYNEFIN_ROLE_ATTRIBUTE, role);
+      return role;
+    };
+
+    /** Would a halo on this word touch another word? */
+    const casingTouchesNeighbour = (element, box) => {
+      const margin = CYNEFIN_CASING_WIDTH_PX / 2;
+      return textBoxes.some(
+        (other) =>
+          other.element !== element &&
+          box.x - margin < other.box.x + other.box.width &&
+          box.x + box.width + margin > other.box.x &&
+          box.y - margin < other.box.y + other.box.height &&
+          box.y + box.height + margin > other.box.y
+      );
+    };
+
+    /** Points around an outline, each on the side the subject does not cover. */
+    const outlinePoints = (element, widthPx, box) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      const distance = widthPx / 2 + CYNEFIN_EDGE_OFFSET;
+      const toClient = (local) => new DOMPoint(local.x, local.y).matrixTransform(matrix);
+      const points = [];
+      for (let i = 0; i < CYNEFIN_OUTLINE_POINTS; i += 1) {
+        const at = (length * (i + 0.5)) / CYNEFIN_OUTLINE_POINTS;
+        const here = toClient(element.getPointAtLength(at));
+        const ahead = toClient(element.getPointAtLength(Math.min(length, at + CYNEFIN_TANGENT_STEP)));
+        const behind = toClient(element.getPointAtLength(Math.max(0, at - CYNEFIN_TANGENT_STEP)));
+        const dx = ahead.x - behind.x;
+        const dy = ahead.y - behind.y;
+        const size = Math.hypot(dx, dy);
+        if (!(size > 0)) continue;
+        [[-dy / size, dx / size], [dy / size, -dx / size]].forEach((normal) => {
+          const x = here.x + normal[0] * distance;
+          const y = here.y + normal[1] * distance;
+          if (!coversElement(element, box, x, y)) points.push([x, y]);
+        });
+      }
+      return points;
+    };
+
+    /** Interior points along a path, in one client space, with the containment canary. */
+    const linePoints = (element, widthPx) => {
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!matrix || typeof element.getTotalLength !== "function") return null;
+      const length = element.getTotalLength();
+      if (!(length > 0)) return null;
+      const rect = element.getBoundingClientRect();
+      const slack = widthPx + 1;
+      return CYNEFIN_LINE_FRACTIONS.map((fraction) => {
+        const local = element.getPointAtLength(length * fraction);
+        const client = new DOMPoint(local.x, local.y).matrixTransform(matrix);
+        if (rect) {
+          applied.canary.checked += 1;
+          if (
+            client.x >= rect.x - slack &&
+            client.x <= rect.x + rect.width + slack &&
+            client.y >= rect.y - slack &&
+            client.y <= rect.y + rect.height + slack
+          ) {
+            applied.canary.inside += 1;
+          }
+        }
+        return [client.x, client.y];
+      });
+    };
+
+    const arrowInks = [];
+    const arrowEndGrounds = [];
+    const markerShapes = [];
+    const boundaryDraws = [];
+    let cliffElement = null;
+    let cliffInk = null;
+
+    all.forEach((element, index) => {
+      if (offstage(element)) return;
+      const role = roleOf(element);
+      if (!role) return;
+      applied.reach.found += 1;
+      applied.reach.stamped += element.hasAttribute(CYNEFIN_ROLE_ATTRIBUTE) ? 1 : 0;
+      applied.subjects[role] = (applied.subjects[role] || 0) + 1;
+
+      // A region is an area fill with no outline: stamped and counted, never written (rule 18).
+      if (role === CYNEFIN_ROLES.region) return;
+
+      const computed = window.getComputedStyle(element);
+
+      // --- WORDS, and ONLY where they fail against the ground they sit on ------
+      if (role === CYNEFIN_ROLES.word) {
+        const box = boxOf(element);
+        const declared = parsePaint(computed.fill);
+        if (!box || !declared) return;
+        const alpha = declared.a * opacityValue(computed.fillOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(spreadPoints(box), index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (worstNow >= CYNEFIN_TEXT_TARGET) return;
+        const rendererHex = paintToHex({ ...declared, a: 1 });
+        const chosen = chooseInk(rendererHex, alpha, grounds, CYNEFIN_TEXT_TARGET, CYNEFIN_TEXT_MARGIN);
+        const reading = { grounds, target: CYNEFIN_TEXT_TARGET, wasAt: Number(worstNow.toFixed(2)) };
+        if (chosen.worst >= CYNEFIN_TEXT_TARGET) {
+          write(element, `${role}Ink`, { fill: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+          });
+          return;
+        }
+        // Rule 56: no ink clears every ground, so the word stops standing on all of them.
+        const overPainted = grounds.some((ground) => ground !== svgGroundHex);
+        if (overPainted && !casingTouchesNeighbour(element, box)) {
+          const cased = chooseInk(rendererHex, alpha, [svgGroundHex], CYNEFIN_TEXT_TARGET, CYNEFIN_TEXT_MARGIN);
+          if (cased.worst >= CYNEFIN_TEXT_TARGET) {
+            write(
+              element,
+              `${role}Casing`,
+              {
+                fill: cased.ink,
+                stroke: svgGroundHex,
+                "stroke-width": `${CYNEFIN_CASING_WIDTH_PX}px`,
+                "paint-order": "stroke",
+                "stroke-linejoin": "round",
+              },
+              {
+                ...reading,
+                ink: cased.ink,
+                ratio: Number(cased.worst.toFixed(2)),
+                groundBehind: svgGroundHex,
+                bestWithoutCasing: Number(chosen.worst.toFixed(2)),
+              }
+            );
+            return;
+          }
+        }
+        // Insoluble and uncased: write the best ink there is and record the shortfall.
+        if (chosen.worst > worstNow) {
+          write(element, `${role}Ink`, { fill: chosen.ink }, {
+            ...reading,
+            ink: chosen.ink,
+            ratio: Number(chosen.worst.toFixed(2)),
+            casingRefused: overPainted ? "touches a neighbouring word" : "not over a painted region",
+          });
+        }
+        return;
+      }
+
+      // --- ARROWHEAD: one shared marker shape, handled after every arrow --------
+      if (role === CYNEFIN_ROLES.arrowhead) {
+        markerShapes.push(element);
+        return;
+      }
+
+      // --- LINES: boundaries, the cliff and arrows, sampled along the path -----
+      if (
+        role === CYNEFIN_ROLES.boundary ||
+        role === CYNEFIN_ROLES.cliff ||
+        role === CYNEFIN_ROLES.arrow
+      ) {
+        const declared = parsePaint(computed.stroke);
+        const width = parseFloat(computed.strokeWidth) || 0;
+        if (role === CYNEFIN_ROLES.cliff) cliffElement = element;
+        if (role === CYNEFIN_ROLES.boundary) {
+          boundaryDraws.push({
+            width,
+            dashed: !!computed.strokeDasharray && computed.strokeDasharray !== "none",
+          });
+        }
+        const points = declared && width > 0 ? linePoints(element, width) : null;
+        if (!points) return;
+        const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+        if (alpha <= 0.05) return;
+        const grounds = groundsOver(points, index);
+        const worstNow = worstOf(declared, alpha, grounds);
+        if (role === CYNEFIN_ROLES.arrow) {
+          // Where the arrow ends, for the head that sits there.
+          const matrix = element.getScreenCTM();
+          const end = element.getPointAtLength(element.getTotalLength());
+          const client = new DOMPoint(end.x, end.y).matrixTransform(matrix);
+          arrowEndGrounds.push(...groundsOver([[client.x, client.y]], index));
+        }
+        if (worstNow >= CYNEFIN_OBJECT_TARGET) {
+          if (role === CYNEFIN_ROLES.arrow) arrowInks.push(paintToHex({ ...declared, a: 1 }));
+          return;
+        }
+        const chosen = chooseInk(
+          paintToHex({ ...declared, a: 1 }),
+          alpha,
+          grounds,
+          CYNEFIN_OBJECT_TARGET,
+          CYNEFIN_OBJECT_MARGIN
+        );
+        if (role === CYNEFIN_ROLES.arrow) arrowInks.push(chosen.ink);
+        const lineReading = {
+          ink: chosen.ink,
+          grounds,
+          ratio: Number(chosen.worst.toFixed(2)),
+          target: CYNEFIN_OBJECT_TARGET,
+          wasAt: Number(worstNow.toFixed(2)),
+        };
+        // The cliff's ink and its channel are one write (one owned list), made below.
+        if (role === CYNEFIN_ROLES.cliff) {
+          cliffInk = { ink: chosen.ink, reading: lineReading };
+          return;
+        }
+        write(element, `${role}Ink`, { stroke: chosen.ink }, lineReading);
+        return;
+      }
+
+      // --- OUTLINES: item and overflow boxes, the confusion ellipse -----------
+      // Only the STROKE is written. The fill is the renderer's and is never written
+      // (rule 18); once the outline clears 3:1 it is not a reading (rule 40).
+      const declared = parsePaint(computed.stroke);
+      const width = parseFloat(computed.strokeWidth) || 0;
+      const box = boxOf(element);
+      const matrix = element.getScreenCTM && element.getScreenCTM();
+      if (!declared || width <= 0 || !box || !matrix) return;
+      const alpha = declared.a * opacityValue(computed.strokeOpacity) * chainOpacity(element);
+      if (alpha <= 0.05) return;
+      const scale = Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)) || 1;
+      const points = outlinePoints(element, width * scale, box);
+      if (!points || !points.length) return;
+      const grounds = groundsOver(points, index);
+      const worstNow = worstOf(declared, alpha, grounds);
+      if (worstNow >= CYNEFIN_OBJECT_TARGET) return;
+      const chosen = chooseInk(
+        paintToHex({ ...declared, a: 1 }),
+        alpha,
+        grounds,
+        CYNEFIN_OBJECT_TARGET,
+        CYNEFIN_OBJECT_MARGIN
+      );
+      // The reading is built first, not inline in the call: the call's opening text is a find string of wardley's divider inversion (rule 48).
+      const outlineReading = {
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target: CYNEFIN_OBJECT_TARGET,
+        wasAt: Number(worstNow.toFixed(2)),
+      };
+      write(element, `${role}Ink`, { stroke: chosen.ink }, outlineReading);
+    });
+
+    // --- THE SHARED ARROWHEAD: the renderer's ink where it clears, else an arrow's, else a new one
+    markerShapes.forEach((markerShape) => {
+      if (!markerReferencedByArrow(svg, markerShape)) return;
+      const computed = window.getComputedStyle(markerShape);
+      const declared = parsePaint(computed.fill);
+      const alpha = declared ? declared.a * opacityValue(computed.fillOpacity) : 0;
+      if (!declared || alpha <= 0.05) return;
+      const grounds = [...new Set([svgGroundHex, ...arrowEndGrounds])];
+      const worstNow = worstOf(declared, alpha, grounds);
+      if (worstNow >= CYNEFIN_OBJECT_TARGET) return;
+      const rendererHex = paintToHex({ ...declared, a: 1 });
+      const sibling = [...new Set(arrowInks)].find(
+        (ink) => worstOf(parsePaint(ink), alpha, grounds) >= CYNEFIN_OBJECT_TARGET
+      );
+      const chosen = sibling
+        ? { ink: sibling, worst: worstOf(parsePaint(sibling), alpha, grounds) }
+        : chooseInk(rendererHex, alpha, grounds, CYNEFIN_OBJECT_TARGET, CYNEFIN_OBJECT_MARGIN);
+      if (chosen.worst < CYNEFIN_OBJECT_TARGET) {
+        // No single ink clears every ground a head can land on (the page, a mid tint, a pale box): give the
+        // head an OUTLINE of the other ink, so that on every ground the fill or the outline clears (rule 11).
+        const halo = haloHead(rendererHex, alpha, grounds);
+        if (halo) {
+          write(
+            markerShape,
+            "arrowheadHalo",
+            { fill: halo.fill, stroke: halo.stroke, "stroke-width": `${CYNEFIN_HEAD_HALO_WIDTH}px` },
+            {
+              ink: halo.fill,
+              haloInk: halo.stroke,
+              grounds,
+              ratio: Number(halo.worst.toFixed(2)),
+              target: CYNEFIN_OBJECT_TARGET,
+              wasAt: Number(worstNow.toFixed(2)),
+              bestSingleInk: Number(chosen.worst.toFixed(2)),
+            }
+          );
+          return;
+        }
+      }
+      write(markerShape, "arrowheadInk", { fill: chosen.ink }, {
+        ink: chosen.ink,
+        grounds,
+        ratio: Number(chosen.worst.toFixed(2)),
+        target: CYNEFIN_OBJECT_TARGET,
+        wasAt: Number(worstNow.toFixed(2)),
+        sibling: !!sibling,
+      });
+    });
+
+    // --- CT5, THE CLIFF'S NON-COLOUR CHANNEL: heavier than the boundaries, and told by its form ----
+    if (cliffElement && boundaryDraws.length) {
+      const computed = window.getComputedStyle(cliffElement);
+      const cliffWidth = parseFloat(computed.strokeWidth) || 0;
+      const widest = Math.max(...boundaryDraws.map((draw) => draw.width));
+      const boundariesDashed = boundaryDraws.some((draw) => draw.dashed);
+      const cliffDashed = !!computed.strokeDasharray && computed.strokeDasharray !== "none";
+      const properties = {};
+      if (cliffWidth < widest * CYNEFIN_CLIFF_WIDTH_RATIO) {
+        properties["stroke-width"] = `${widest * CYNEFIN_CLIFF_WIDTH_WRITTEN}px`;
+      }
+      if (boundariesDashed && cliffDashed) {
+        properties["stroke-dasharray"] = "none";
+      } else if (!boundariesDashed && !cliffDashed) {
+        properties["stroke-dasharray"] = SERIES_DASHES[0];
+        properties["stroke-linecap"] = "butt";
+      }
+      applied.cliff = {
+        widthWas: cliffWidth,
+        widestBoundary: widest,
+        boundariesDashed,
+        cliffDashed,
+        written: Object.keys(properties),
+      };
+      if (cliffInk) properties.stroke = cliffInk.ink;
+      if (Object.keys(properties).length) {
+        write(
+          cliffElement,
+          cliffInk ? "cliffInk" : "cliffChannel",
+          properties,
+          cliffInk ? { ...cliffInk.reading, channel: applied.cliff } : { target: CYNEFIN_OBJECT_TARGET, channel: applied.cliff }
+        );
+      }
+    } else if (cliffInk) {
+      write(cliffElement, "cliffInk", { stroke: cliffInk.ink }, cliffInk.reading);
+    }
+
+    // --- MR-O / CO1, THE REGION OUTLINES: a thin edge along each region's PAGE-FACING sides only ----
+    // The wavy inner boundaries and the cliff stay the only dividers inside the map. Each outline is a separate stroke-only path
+    // (the region's fill and its 0.4 opacity are never touched, rule 18), inked in the region's own hue to 3:1 against the page
+    // and against the region's own tint (the stroke straddles the edge), and drawn afresh on every run.
+    if (regionGroup && regionGroup.parentNode) {
+      const geometry = [...regionGroup.children].map((rect) => {
+        const x = parseFloat(rect.getAttribute("x")) || 0;
+        const y = parseFloat(rect.getAttribute("y")) || 0;
+        return {
+          rect,
+          x,
+          y,
+          right: x + (parseFloat(rect.getAttribute("width")) || 0),
+          bottom: y + (parseFloat(rect.getAttribute("height")) || 0),
+        };
+      });
+      const mapLeft = Math.min(...geometry.map((region) => region.x));
+      const mapTop = Math.min(...geometry.map((region) => region.y));
+      const mapRight = Math.max(...geometry.map((region) => region.right));
+      const mapBottom = Math.max(...geometry.map((region) => region.bottom));
+      const sameEdge = (a, b) => Math.abs(a - b) <= CYNEFIN_EDGE_TOLERANCE;
+      const regionTransform = regionGroup.getAttribute("transform");
+      let after = regionGroup;
+
+      geometry.forEach((region) => {
+        // Clockwise from the top: each side runs from one corner to the next.
+        const sides = [
+          { from: [region.x, region.y], to: [region.right, region.y], faces: sameEdge(region.y, mapTop) },
+          { from: [region.right, region.y], to: [region.right, region.bottom], faces: sameEdge(region.right, mapRight) },
+          { from: [region.right, region.bottom], to: [region.x, region.bottom], faces: sameEdge(region.bottom, mapBottom) },
+          { from: [region.x, region.bottom], to: [region.x, region.y], faces: sameEdge(region.x, mapLeft) },
+        ];
+        // Start at a side whose predecessor does not face the page, so a run of two sides is one subpath.
+        const first = sides.findIndex((side, index) => side.faces && !sides[(index + 3) % 4].faces);
+        if (first < 0) return;
+        const ordered = [...sides.slice(first), ...sides.slice(0, first)].filter((side) => side.faces);
+        let data = "";
+        let previousEnd = "";
+        ordered.forEach((side) => {
+          const start = `${side.from[0]} ${side.from[1]}`;
+          data += start === previousEnd ? ` L ${side.to[0]} ${side.to[1]}` : ` M ${start} L ${side.to[0]} ${side.to[1]}`;
+          previousEnd = `${side.to[0]} ${side.to[1]}`;
+        });
+
+        const tint = painted.find((shape) => shape.element === region.rect);
+        if (!tint) return;
+        const tintOverPage = paintToHex(compositeOver(tint.paint, svgGroundPaint));
+        const grounds = [...new Set([svgGroundHex, tintOverPage])];
+        const chosen = chooseInk(
+          paintToHex({ ...tint.paint, a: 1 }),
+          1,
+          grounds,
+          CYNEFIN_OBJECT_TARGET,
+          CYNEFIN_OBJECT_MARGIN
+        );
+
+        const outline = document.createElementNS(SVG_NAMESPACE, "path");
+        outline.setAttribute("d", data.trim());
+        outline.setAttribute("fill", "none");
+        outline.setAttribute("stroke-linecap", "butt");
+        outline.setAttribute("stroke-linejoin", "miter");
+        outline.setAttribute("class", CYNEFIN_OUTLINE_CLASS);
+        outline.setAttribute(CYNEFIN_OUTLINE_ATTRIBUTE, "true");
+        outline.setAttribute(CYNEFIN_ROLE_ATTRIBUTE, CYNEFIN_OUTLINE_ROLE);
+        if (regionTransform) outline.setAttribute("transform", regionTransform);
+        after.parentNode.insertBefore(outline, after.nextSibling);
+        after = outline;
+
+        applied.reach.found += 1;
+        applied.reach.stamped += 1;
+        applied.subjects[CYNEFIN_OUTLINE_ROLE] = (applied.subjects[CYNEFIN_OUTLINE_ROLE] || 0) + 1;
+        write(
+          outline,
+          "regionOutline",
+          { stroke: chosen.ink, "stroke-width": `${CYNEFIN_OUTLINE_WIDTH_PX}px` },
+          {
+            ink: chosen.ink,
+            grounds,
+            ratio: Number(chosen.worst.toFixed(2)),
+            target: CYNEFIN_OBJECT_TARGET,
+            drawn: true,
+          }
+        );
+      });
+    }
+
+    logInfo(
+      `Cynefin encoding applied:${applied.reached} of ${applied.reach.found} stamped elements re-inked, ` +
+        `worst ${applied.worst}:1 on ground ${svgGround}` +
+        (applied.shortfalls.length ? `, ${applied.shortfalls.length} below target and recorded` : "")
+    );
+    return applied;
+  }
+
+  /** Does an arrow of this svg reference the marker that holds the shape? */
+  function markerReferencedByArrow(svg, shape) {
+    const marker = shape.closest("marker");
+    if (!marker || !marker.id) return false;
+    return [...svg.querySelectorAll("path")].some((path) =>
+      ["marker-start", "marker-mid", "marker-end"].some((name) => {
+        const reference = path.getAttribute(name) || path.style.getPropertyValue(name);
+        return !!reference && reference.includes(`#${marker.id}`);
+      })
+    );
+  }
+
+  // -----------------------------------------------------------------------
   // MINDMAP ENCODING (register item 136 session 1, 30 October 2026)
   // -----------------------------------------------------------------------
 
@@ -11532,6 +12443,12 @@ window.MermaidThemes = (function () {
     // applyWardleyEncoding never calls applyTheme, so it cannot recurse.
     const wardleyEncoding = applyWardleyEncoding(root);
 
+    // CYNEFIN DISPATCH, added 2 November 2026 (register item 135 theming 1), at the
+    // same seam and for the same wiring reason as the sixteen above:
+    // reapplyAfterRender's encoding limb calls THIS function and nothing else.
+    // applyCynefinEncoding never calls applyTheme, so it cannot recurse.
+    const cynefinEncoding = applyCynefinEncoding(root);
+
     // MINDMAP DISPATCH, added 30 October 2026 (register item 136 session 1), at the
     // same seam and for the same wiring reason as the sixteen above:
     // reapplyAfterRender's encoding limb calls THIS function and nothing else.
@@ -11569,6 +12486,7 @@ window.MermaidThemes = (function () {
       if (treeViewEncoding) return { treeView: treeViewEncoding };
       if (ishikawaEncoding) return { ishikawa: ishikawaEncoding };
       if (wardleyEncoding) return { wardley: wardleyEncoding };
+      if (cynefinEncoding) return { cynefin: cynefinEncoding };
       if (mindmapEncoding) return { mindmap: mindmapEncoding, categoryOptions };
       if (categoryOptions) return { categoryOptions };
       logDebug(
@@ -14709,6 +15627,7 @@ window.MermaidThemes = (function () {
     applyTreeViewEncoding: applyTreeViewEncoding,
     applyIshikawaEncoding: applyIshikawaEncoding,
     applyWardleyEncoding: applyWardleyEncoding,
+    applyCynefinEncoding: applyCynefinEncoding,
     applyMindmapEncoding: applyMindmapEncoding,
     applyCategoryOptions: applyCategoryOptions,
     // The two reader options (item 144): patterns and label backgrounds. The

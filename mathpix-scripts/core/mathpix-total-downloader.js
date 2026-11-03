@@ -2971,6 +2971,7 @@ Timestamp: ${timestamp}
     Enhancement details:
       Model: ${modelName}
       Prompt version: ${aiMeta.promptVersion || "unknown"}
+      Picture descriptions put back: ${aiMeta.descriptionsRestored ?? "not recorded"}
       Lines added: +${aiMeta.linesAdded}
       Lines removed: -${aiMeta.linesRemoved}
       Total lines changed: ${aiMeta.linesChanged}
@@ -2996,6 +2997,7 @@ Timestamp: ${timestamp}
     Built upon AI enhancement:
       Model: ${modelName}
       Prompt version: ${aiLineage.promptVersion || "unknown"}
+      Picture descriptions put back: ${aiLineage.descriptionsRestored ?? "not recorded"}
       AI lines added: +${aiLineage.linesAdded}
       AI lines removed: -${aiLineage.linesRemoved}
       AI lines changed: ${aiLineage.linesChanged}
@@ -5177,6 +5179,10 @@ ${fileList}
         result.aiEnhanced = {
           model: aiMetadata.model || "unknown",
           promptVersion: aiMetadata.promptVersion || "unknown",
+          // M-5x: null for data saved before the field existed; 0 stays 0
+          descriptionsRestored: Number.isInteger(aiMetadata.descriptionsRestored)
+            ? aiMetadata.descriptionsRestored
+            : null,
           linesAdded: aiMetadata.linesAdded || 0,
           linesRemoved: aiMetadata.linesRemoved || 0,
           linesChanged: aiMetadata.linesChanged || 0,
@@ -5195,6 +5201,10 @@ ${fileList}
         result.aiLineage = {
           model: aiMetadata.model || "unknown",
           promptVersion: aiMetadata.promptVersion || "unknown",
+          // M-5x: null for data saved before the field existed; 0 stays 0
+          descriptionsRestored: Number.isInteger(aiMetadata.descriptionsRestored)
+            ? aiMetadata.descriptionsRestored
+            : null,
           linesAdded: aiMetadata.linesAdded || 0,
           linesRemoved: aiMetadata.linesRemoved || 0,
           linesChanged: aiMetadata.linesChanged || 0,

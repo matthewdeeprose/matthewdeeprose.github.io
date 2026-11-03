@@ -1218,6 +1218,15 @@
   // STAGE 2.A — APPENDIX PARSING (internal)
   // ============================================================================
 
+  /** Copy of `lines` without leading or trailing blank lines (TI-1). */
+  function _trimBlankLines(lines) {
+    let start = 0;
+    let end = lines.length;
+    while (start < end && lines[start].trim() === "") start++;
+    while (end > start && lines[end - 1].trim() === "") end--;
+    return lines.slice(start, end);
+  }
+
   /**
    * Find every appendix entry currently present in the MMD via its marker
    * comment. Each entry's text is the prose between its heading line and the
@@ -1282,27 +1291,31 @@
 
       // TC-1. The body ends at the first text-in-image marker before the next
       // entry; everything from that marker to the next entry is the
-      // subsection, which this reader ignores.
+      // subsection. TI-1 reads it into `textInImage` (null when the entry has
+      // no marker); the body above is unchanged for every other reader.
       let textEnd = nextMarkerLine;
+      let subsectionLines = null;
       for (let i = textStart; i < nextMarkerLine; i++) {
         if (TEXT_IN_IMAGE_MARKER_RE.test(lines[i])) {
           textEnd = i;
+          subsectionLines = _trimBlankLines(lines.slice(i + 1, nextMarkerLine));
+          // The subsection's own heading line is not text.
+          if (
+            subsectionLines.length > 0 &&
+            APPENDIX_HEADING_RE.test(subsectionLines[0].trim())
+          ) {
+            subsectionLines = _trimBlankLines(subsectionLines.slice(1));
+          }
           break;
         }
       }
 
-      const textLines = lines.slice(textStart, textEnd);
-      while (textLines.length > 0 && textLines[0].trim() === "")
-        textLines.shift();
-      while (
-        textLines.length > 0 &&
-        textLines[textLines.length - 1].trim() === ""
-      )
-        textLines.pop();
+      const textLines = _trimBlankLines(lines.slice(textStart, textEnd));
 
       entries.push({
         id,
         text: textLines.join("\n"),
+        textInImage: subsectionLines === null ? null : subsectionLines.join("\n"),
         markerLine,
         headingLine: headingLine === -1 ? null : headingLine,
         entryLevel,
@@ -1667,6 +1680,49 @@
   }
 
   // ============================================================================
+  // TI-1 — READ THE TEXT IN THE IMAGE BACK (ledger entry 49, decision TI-D1)
+  // ============================================================================
+  //
+  // An edit to the "Text in the image" subsection in the MMD editor is read back
+  // into the entry's `textInImage` on the next sync, the same way the long
+  // description is. An entry whose marker is present but whose subsection is
+  // empty (or has lost its text) sets `textInImage` to "", so the next write
+  // drops the marker and heading. An entry with NO marker is left untouched: a
+  // document written before TC-1 has none, and a missing marker line cannot be
+  // told apart from that. The no-text sentinel is never read back as text.
+  // The subsection is verbatim text, so no UT-3 codec applies to it.
+
+  /**
+   * @private
+   * @param {{id: string, textInImage: string|null}} entry - From `_parseAppendixEntries`.
+   * @param {Object} regEntry - The registry entry.
+   * @param {Object} registry - MathPixImageRegistry instance.
+   * @returns {boolean} True when the registry was written.
+   */
+  function _readBackTextInImage(entry, regEntry, registry) {
+    if (entry.textInImage === null) return false;
+    if (typeof registry.updateTextInImage !== "function") return false;
+
+    const sentinel = window.MathPixAltTextWriteStage?.NO_TEXT_SENTINEL;
+    let incoming = entry.textInImage;
+    if (typeof sentinel === "string" && incoming.trim() === sentinel) {
+      incoming = "";
+    }
+
+    // What the writer would emit for the registry value, compared like with like.
+    const written = _writableTextInImage(regEntry);
+    const current =
+      written === null ? "" : _trimBlankLines(written.split("\n")).join("\n");
+    if (incoming === current) return false;
+
+    return registry.updateTextInImage(
+      entry.id,
+      incoming,
+      window.MathPixAltTextProvenance.nextSource(regEntry.textInImageSource),
+    );
+  }
+
+  // ============================================================================
   // STAGE 2.A — PUBLIC: parseAppendix
   // ============================================================================
 
@@ -1730,6 +1786,13 @@
         actions[APPENDIX_ACTIONS.ENTRY_NOT_MAPPED] =
           (actions[APPENDIX_ACTIONS.ENTRY_NOT_MAPPED] || 0) + 1;
         continue;
+      }
+      // TI-1: the text-in-image subsection is read back on its own, whether or
+      // not the long description above it changed.
+      if (_readBackTextInImage(e, regEntry, registry)) {
+        updated++;
+        actions[APPENDIX_ACTIONS.UPDATED] =
+          (actions[APPENDIX_ACTIONS.UPDATED] || 0) + 1;
       }
       // PR-1: compare with the registry value as the writer emits it.
       if (_appendixBodyUnchanged(e, regEntry.longDescription)) {

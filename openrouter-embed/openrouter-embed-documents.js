@@ -143,6 +143,9 @@
   });
   const PROFILE_NAMES = Object.freeze({ PICTURES: "pictures", PAGE: "page", PREVIEW: "preview" });
   const PICTURE_KIND_PAGE = "page";
+  // The offer's thumbnail (parcel P17b): a PNG no taller than this, never sent to a model.
+  const THUMBNAIL_HEIGHT_PX = 160;
+  const THUMBNAIL_TYPE = "image/png";
   // compressImage reads file.name; the real name of an embedded picture means nothing.
   const PICTURE_FILE_NAME = "picture";
   const HASH_ALGORITHM = "SHA-256";
@@ -403,6 +406,104 @@
     } catch (error) {
       return null;
     }
+  }
+
+  /**
+   * Shrinks one picture to a small PNG for a thumbnail strip: decoded at THUMBNAIL_HEIGHT_PX tall
+   * (P17a-3: shrinking first keeps the renderer's memory flat, where showing the full-size blob
+   * does not), drawn to a canvas, encoded, and the bitmap closed. Null on any failure.
+   */
+  async function shrinkPicture(blob) {
+    if (!(blob instanceof Blob) || typeof createImageBitmap !== "function") return null;
+    let bitmap = null;
+    try {
+      bitmap = await createImageBitmap(blob, { resizeHeight: THUMBNAIL_HEIGHT_PX });
+      const width = bitmap.width;
+      const height = bitmap.height;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(bitmap, 0, 0);
+      const png = await new Promise((resolve) => canvas.toBlob(resolve, THUMBNAIL_TYPE));
+      canvas.width = 0;
+      canvas.height = 0;
+      return png ? { blob: png, width, height } : null;
+    } catch (error) {
+      return null;
+    } finally {
+      if (bitmap) bitmap.close();
+    }
+  }
+
+  /**
+   * The offer a document carries when read with { offerAll: true } (parcel P17b).
+   * @typedef {Object} PictureOffer
+   * @property {number[]} numbers The picture (or page) numbers that can be chosen, in document order.
+   * @property {number} count numbers.length.
+   * @property {(number: number) => Promise<{blob: Blob, width: number, height: number}|null>} thumbnail
+   *   A PNG at most 160 px tall for one numbered picture or page. Nothing is cached.
+   * @property {(number: number) => Promise<{number: number, dataUrl: string, width: number,
+   *   height: number, kind?: string}|null>} encode One picture exactly as a doc.images entry
+   *   (same converter, same profile; kind "page" for a PDF page).
+   * @property {() => Promise<void>} release Drops every held blob and destroys a PDF. After it,
+   *   thumbnail and encode resolve null.
+   * Every method resolves null instead of throwing, for a number not on the list too.
+   */
+
+  /**
+   * Wraps the three behaviours with the offer's guards: only a listed number is served, a released
+   * offer serves nothing, and nothing throws.
+   */
+  function createOffer({ numbers, makeThumbnail, makeEncode, onRelease }) {
+    const listed = Array.isArray(numbers) ? numbers.slice() : [];
+    const allowed = new Set(listed);
+    let released = false;
+
+    const guarded = (make) => async (number) => {
+      if (released || !allowed.has(number)) return null;
+      try {
+        const result = await make(number);
+        return released ? null : result || null;
+      } catch (error) {
+        return null;
+      }
+    };
+
+    return Object.freeze({
+      numbers: Object.freeze(listed),
+      count: listed.length,
+      thumbnail: guarded(makeThumbnail),
+      encode: guarded(makeEncode),
+      async release() {
+        if (released) return;
+        released = true;
+        try {
+          await onRelease();
+        } catch (error) {
+          /* releasing memory is best-effort */
+        }
+      },
+    });
+  }
+
+  /** The offer for a Word or PowerPoint file, from the picture step run with offerAll. */
+  function createPictureOffer(step) {
+    const decisions = step && Array.isArray(step.decisions) ? step.decisions : [];
+    const held = step && step.held instanceof Map ? step.held : new Map();
+    const numbers = decisions
+      .filter((d) => d.outcome === PICTURE_OUTCOMES.KEPT || d.outcome === PICTURE_OUTCOMES.OVER_CAP)
+      .map((d) => d.number);
+
+    return createOffer({
+      numbers,
+      makeThumbnail: (number) => shrinkPicture(held.get(number)),
+      makeEncode: async (number) => {
+        const encoded = await convertPicture(held.get(number), PROFILE_NAMES.PICTURES);
+        if (!encoded) return null;
+        return { number, dataUrl: encoded.dataUrl, width: encoded.width, height: encoded.height };
+      },
+      onRelease: () => held.clear(),
+    });
   }
 
   function summariseDecisions(decisions) {

@@ -19486,7 +19486,7 @@ Science,91</pre
               />
             </label>
             <p id="chat-attach-hint" class="chat-attach-hint">
-              Images (JPEG, PNG or WebP) up to 10MB, PDF up to 25MB, a text,
+              Images (JPEG, PNG or WebP) up to 10MB, PDF up to 150MB, a text,
               Markdown or LaTeX file, or a Word, Excel or PowerPoint file.
             </p>
             <div class="chat-attach-body">
@@ -22523,6 +22523,58 @@ Science,91</pre
     <script
       type="application/dev-test"
       data-src="js/testing/embed-stream-retry-tests.js"
+    ></script>
+    <!-- Tool registry (tool calling, layer 1): dev-only until a real adopter ships -->
+    <script
+      type="application/dev-test"
+      data-src="openrouter-embed/openrouter-embed-tools-registry.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="openrouter-embed/testing/embed-tools-tests.js"
+    ></script>
+    <!-- Tool runner and facade (tool calling, layer 2), its fake embed and tests: dev-only until a real adopter ships -->
+    <script
+      type="application/dev-test"
+      data-src="openrouter-embed/openrouter-embed-tools-runner.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="openrouter-embed/testing/embed-tools-fake-embed.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="openrouter-embed/testing/embed-tools-runner-tests.js"
+    ></script>
+    <!-- Word forms reader, audit and tests (WF-1a): dev-only until a real adopter ships -->
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-read.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-audit.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/testing/word-forms-tests.js"
+    ></script>
+    <!-- Word forms specification, builder, verifier and tests (WF-1b): dev-only until a real adopter ships -->
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-spec.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-build.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-verify.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/testing/word-forms-build-tests.js"
     ></script>
     <script
       type="module"
@@ -25711,11 +25763,25 @@ Science,91</pre
        * Announce tool switch to screen readers
        */
       function announceToolSwitch(text) {
+        writeRadioAnnouncement(text, 1000);
+      }
+
+      /**
+       * Replace the text of #radioSRannounce and blank it after a delay. Each
+       * write takes a sequence number (dataset.clearSeq, shared with
+       * session-restorer-editor.js); a timer blanks the region only if no
+       * later write has taken a newer number, so an earlier line's timer
+       * cannot cut a later line short (AN-1).
+       */
+      function writeRadioAnnouncement(text, clearMs) {
         const announcer = document.getElementById("radioSRannounce");
-        if (announcer) {
-          announcer.textContent = text;
-          setTimeout(() => (announcer.textContent = ""), 1000);
-        }
+        if (!announcer) return;
+        const seq = String(Number(announcer.dataset.clearSeq || 0) + 1);
+        announcer.dataset.clearSeq = seq;
+        announcer.textContent = text;
+        setTimeout(() => {
+          if (announcer.dataset.clearSeq === seq) announcer.textContent = "";
+        }, clearMs);
       }
 
       /**
@@ -26958,12 +27024,10 @@ Science,91</pre
               checkApiKeyStatus();
 
               // Announce to screen readers
-              const announcer = document.getElementById("radioSRannounce");
-              if (announcer) {
-                announcer.textContent =
-                  "API key saved successfully, application ready";
-                setTimeout(() => (announcer.textContent = ""), 3000);
-              }
+              writeRadioAnnouncement(
+                "API key saved successfully, application ready",
+                3000,
+              );
             } catch (error) {
               showStatus("Failed to save API key: " + error.message, "error");
               console.error("[Config] Save error:", error);
@@ -27000,12 +27064,10 @@ Science,91</pre
                 checkApiKeyStatus();
 
                 // Announce to screen readers
-                const announcer = document.getElementById("radioSRannounce");
-                if (announcer) {
-                  announcer.textContent =
-                    "API key cleared, configuration required";
-                  setTimeout(() => (announcer.textContent = ""), 3000);
-                }
+                writeRadioAnnouncement(
+                  "API key cleared, configuration required",
+                  3000,
+                );
               } catch (error) {
                 showStatus(
                   "Failed to clear API key: " + error.message,

@@ -281,8 +281,8 @@
   // and usable. Foundry opens on gpt-5.2; OpenRouter on Claude Haiku 4.5.
   // CHANGE-HERE: opening cloud model per provider.
   const DEFAULT_CLOUD_MODEL = {
-    openrouter: "anthropic/claude-haiku-4.5",
-    "azure-openai": "azure-openai/gpt-5.2",
+    openrouter: "anthropic/claude-haiku-5.5",
+    "azure-openai": "azure-openai/gpt-6.1-terra",
   };
 
   // Leading text of the status-line notice shown when nothing is usable (no

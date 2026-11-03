@@ -13385,6 +13385,9 @@ window.MermaidParseAdapter = (function () {
   const REQUIREMENT_FRONTMATTER_PATTERN =
     /^\s*---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/;
   const REQUIREMENT_FRONTMATTER_TITLE_PATTERN = /^title[ \t]*:[ \t]*(.*)$/m;
+  // A plain scalar YAML reads as null (the core schema: ~, null, Null, NULL; an empty value is handled apart).
+  // The canvas of all seven consumers draws no title for one (measured 2 November 2026, item 135 F2).
+  const FRONTMATTER_YAML_NULL_PATTERN = /^(?:~|null|Null|NULL)$/;
   // A comment starts at a `#` at the start of the text or after whitespace.
   const REQUIREMENT_YAML_COMMENT_PATTERN = /(?:^|[ \t]+)#.*$/;
   // After a closing quote only whitespace and a comment may follow.
@@ -13455,6 +13458,11 @@ window.MermaidParseAdapter = (function () {
     const after = frontmatter[1].slice(titleLine.index + titleLine[0].length);
     const following = after === "" ? [] : after.replace(/^\r?\n/, "").split(/\r?\n/);
     const title = readRequirementYamlScalar(value, following).trim();
+    // A bare null scalar is no title; a quoted "null", or one a following line continues, is text.
+    const bare = value.replace(REQUIREMENT_YAML_COMMENT_PATTERN, "").trim();
+    if (FRONTMATTER_YAML_NULL_PATTERN.test(bare) && title === bare) {
+      return null;
+    }
     return title === "" ? null : title;
   }
 
@@ -14480,6 +14488,11 @@ window.MermaidParseAdapter = (function () {
                 readFrontmatterTitle("---\ntitle: 'Single one'\n---\nx") === "Single one" &&
                 readFrontmatterTitle("---\nconfig:\n  title: nested\n---\nx") === null &&
                 readFrontmatterTitle("---\ntitle:\n---\nx") === null &&
+                readFrontmatterTitle("---\ntitle: null\n---\nx") === null &&
+                readFrontmatterTitle("---\ntitle: ~ # none\n---\nx") === null &&
+                readFrontmatterTitle("---\ntitle: NULL\n---\nx") === null &&
+                readFrontmatterTitle('---\ntitle: "null"\n---\nx') === "null" &&
+                readFrontmatterTitle("---\ntitle: null\n  more\n---\nx") === "null more" &&
                 readFrontmatterTitle("requirementDiagram\ntitle: no") === null,
             ],
             [
@@ -23236,6 +23249,22 @@ window.MermaidParseAdapter = (function () {
   }
 
   /**
+   * Mermaid's BUILT-IN cynefin defaults, which no mermaid.initialize call can
+   * change. The self-check reads these (F5, item 135): its rows assert the
+   * default canvas, so a site-level `initialize({ cynefin: ... })` must not be
+   * able to fail them. mermaidAPI.reset() does not help: it restores the SITE
+   * config, which is the thing that differs (measured 2 November 2026).
+   * @returns {Object} The built-in cynefin block
+   */
+  function readCynefinBuiltInDefaults() {
+    const api = window.mermaid && window.mermaid.mermaidAPI;
+    if (!api || !api.defaultConfig || !api.defaultConfig.cynefin || typeof api.defaultConfig.cynefin !== "object") {
+      throw cynefinStop("Mermaid's built-in config carries no cynefin block");
+    }
+    return api.defaultConfig.cynefin;
+  }
+
+  /**
    * THIS source's own cynefin config, through mermaid.parse (frontmatter and
    * %%{init}%% merged by Mermaid's rule, the directive winning). It runs inside
    * the caller's queue slot and BEFORE getDiagramFromText. NEVER REJECTS: a
@@ -23442,7 +23471,7 @@ window.MermaidParseAdapter = (function () {
    * @param {string} code - The Mermaid cynefin source
    * @returns {Promise<{diagram: Object, delivery: Object}>}
    */
-  function readCynefinInSlot(code) {
+  function readCynefinInSlot(code, options = {}) {
     const api = window.mermaid.mermaidAPI;
     const title = readFrontmatterTitle(code);
     return readCynefinOwnConfig(code).then((ownConfig) => {
@@ -23450,7 +23479,8 @@ window.MermaidParseAdapter = (function () {
         title === null ? api.getDiagramFromText(code) : api.getDiagramFromText(code, { title: title });
       return parsed.then((diagram) => {
         const snapshot = snapshotCynefinDb(diagram.db);
-        const config = mergeCynefinConfig(readCynefinSiteDefaults(), ownConfig);
+        const defaults = options.builtInDefaults ? readCynefinBuiltInDefaults() : readCynefinSiteDefaults();
+        const config = mergeCynefinConfig(defaults, ownConfig);
         return { diagram: diagram, delivery: normaliseCynefin(snapshot, config, code) };
       });
     });
@@ -23740,7 +23770,8 @@ window.MermaidParseAdapter = (function () {
 
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     const settle = (code) =>
-      readCynefinInSlot(code).then(
+      // The rows assert the default canvas, so they read Mermaid's built-in defaults and never the site's (F5).
+      readCynefinInSlot(code, { builtInDefaults: true }).then(
         (result) => ({
           // The EAGER digest, taken in the same tick as the delivery: every
           // row reads this, so a later parse cannot reach it.

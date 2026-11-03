@@ -138,6 +138,7 @@
   const TWICE = 2;
 
   // A label of white space and Unicode format characters draws nothing (as on wardley and ishikawa). A TEST only.
+  // U+2800 (braille blank, category So) is deliberately NOT in the class: it stays quoted. Re-open if a reader reports it.
   const NOTHING_DRAWN = /^[\s\p{Cf}]*$/u;
 
   // ---------------------------------------------------------------------
@@ -462,7 +463,7 @@
       }
       lines.push(`<p>${labelled}${capitalise(countPhrase(domain.items.length, "item", "items"))}:</p>`, "<ul>");
       domain.items.forEach((item) => {
-        const text = item.label === "" ? UNLABELLED_ITEM : quoted(item.label);
+        const text = isBlank(item.label) ? UNLABELLED_ITEM : quoted(item.label);
         const note = placementNote(item.placement, delivery);
         lines.push(`<li>${text}${note ? ` (${note})` : ""}</li>`);
       });
@@ -494,7 +495,8 @@
       const pair = `${transition.from}>${transition.to}`;
       const times = (seen.get(pair) || 0) + 1;
       seen.set(pair, times);
-      const labelled = transition.label === null ? "" : `, labelled ${quoted(transition.label)}`;
+      // An arrow label that draws nothing reads as if no label was written (F1).
+      const labelled = isBlank(transition.label) ? "" : `, labelled ${quoted(transition.label)}`;
       const repeat = times > 1 ? ` (${ordinal(times)})` : "";
       lines.push(`<li>From ${domainLabel(delivery, transition.from)} to ${domainLabel(delivery, transition.to)}${labelled}${repeat}.</li>`);
     });

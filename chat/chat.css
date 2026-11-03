@@ -1399,7 +1399,8 @@
 .chat-attachment-facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 2rem;
+  /* The column gap leaves room for the bold values to stay on one row in the narrow two-column band (parcel P16i). */
+  gap: 0.25rem 1.5rem;
   margin: 0.25rem 0 0;
 }
 
@@ -1407,13 +1408,15 @@
   min-width: 0;
 }
 
+/* The label is plain and the value is bold, as in "How we read this file" (parcel P16h). */
 .chat-attachment-facts dt {
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: inherit;
 }
 
 .chat-attachment-facts dd {
   margin: 0;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -1525,6 +1528,11 @@
   .chat-attachment-facts > div,
   .chat-attachment-facts dd {
     display: inline;
+  }
+
+  /* The joined line stays plain: with no label left beside it, bold would mark nothing. */
+  .chat-attachment-facts dd {
+    font-weight: inherit;
   }
 
   .chat-attachment-facts dt {

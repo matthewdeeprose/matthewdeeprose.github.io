@@ -60,6 +60,30 @@
       console.log(`[AIEnhancer] ${message}`, ...args);
   }
 
+  /**
+   * CK-28b: the open dialog that belongs to ONE enhancer modal.
+   *
+   * Try Again closes the old dialog and opens a new one. Modal.close() keeps
+   * the old dialog in the tree for about 200 ms (motion allowed), longer than
+   * the 50 ms openModal waits, so "the first dialog[open].universal-modal in
+   * the document" was the OLD one: the footer went onto a dialog about to be
+   * removed and the new dialog never got one (measured 3 November 2026, no
+   * warning in the console). The Modal instance holds its dialog on `.modal`.
+   * The document query stays as the fallback for a modal with no element.
+   * A plain function and not a method, so a receiver that borrows
+   * updateFooterButtons (the seam suite's probes do) still reaches it.
+   *
+   * @param {{modal?: HTMLDialogElement}|null} currentModal
+   * @returns {HTMLDialogElement|null}
+   */
+  function ownOpenDialog(currentModal) {
+    const own = currentModal && currentModal.modal;
+    if (own && own.isConnected && own.matches("dialog[open].universal-modal")) {
+      return own;
+    }
+    return document.querySelector("dialog[open].universal-modal");
+  }
+
   // ============================================================================
   // CONFIGURATION CONSTANTS
   // ============================================================================
@@ -276,6 +300,14 @@
    * enhancer.openModal();
    */
 
+  // M-5z: the two tails composeFailureLine can end on, and the test that picks one.
+  // A whole-phrase, case-insensitive match on the message, so a provider's own
+  // "try again" is covered as well as the two M-5y sentences, and "retry against"
+  // is not.
+  const FAILURE_TAIL_DEFAULT = "You can try again or close the dialog.";
+  const FAILURE_TAIL_ALREADY_TRY_AGAIN = "You can also close the dialog.";
+  const FAILURE_LINE_SAYS_TRY_AGAIN = /\btry again\b/i;
+
   /**
    * The ONE composition of the spoken failure line.
    *
@@ -303,7 +335,13 @@
    * @returns {string} the line a person hears
    */
   function composeFailureLine(message) {
-    return `Enhancement failed: ${String(message).trim().replace(/[.!?]+$/, "")}. You can try again or close the dialog.`;
+    const body = String(message).trim().replace(/[.!?]+$/, "");
+    // M-5z: a message that already says "try again" must not be followed by a
+    // second "try again" (heard at owed-listen row 74, 3 November 2026).
+    const tail = FAILURE_LINE_SAYS_TRY_AGAIN.test(body)
+      ? FAILURE_TAIL_ALREADY_TRY_AGAIN
+      : FAILURE_TAIL_DEFAULT;
+    return `Enhancement failed: ${body}. ${tail}`;
   }
 
   /**
@@ -408,6 +446,56 @@
 
   /** A status or code that means "rate limited", whichever name a provider uses. */
   const RATE_LIMIT_PATTERN = /429|rate_limit/i;
+
+  /**
+   * M-5y: the AI service's proxy cuts a request that gets no reply after 240
+   * seconds (M-5w), and the browser then hands the page a bare fetch failure.
+   * A failure at or after this many milliseconds is taken to be that cut: the
+   * proxy limit less a margin for the clock starting a little after the send.
+   */
+  const PROXY_CUT_MIN_ELAPSED_MS = 230000;
+
+  /** M-5y: shown and spoken when a fetch failure arrives at about the proxy's time limit. */
+  const PROXY_CUT_LINE =
+    "The AI service stopped after four minutes, which is its time limit. " +
+    "Your document has not been changed. " +
+    "Try again, or correct fewer pages at a time.";
+
+  /** M-5y: shown and spoken when a fetch failure arrives sooner than that. */
+  const SERVICE_UNREACHABLE_LINE =
+    "The AI service could not be reached. Your document has not been changed. " +
+    "Check your connection and try again.";
+
+  /**
+   * M-5y: the two browser wordings of "no response reached the page".
+   * Chromium: `TypeError: Failed to fetch` (measured in M-5w). Firefox:
+   * `TypeError: NetworkError when attempting to fetch resource.` — READ from
+   * MDN, not measured here. Matched exactly so that every other message,
+   * `network error` (a cut mid-stream) included, keeps today's wording.
+   */
+  const FETCH_FAILURE_MESSAGES = Object.freeze([
+    "Failed to fetch",
+    "NetworkError when attempting to fetch resource.",
+  ]);
+
+  /**
+   * M-5y: turn a bare fetch failure into a plain line, or return null for any
+   * other error so the caller leaves it exactly as it was.
+   *
+   * MODULE SCOPE and pure, like its siblings. The retry layer never retries
+   * these messages (M-5w), and this runs after it, so it changes no retry.
+   *
+   * @param {*} error what the send path rejected with
+   * @param {number} elapsedMs milliseconds from the send starting to the failure
+   * @returns {(string|null)} the plain line, or null when the error is not a fetch failure
+   */
+  function describeFetchFailure(error, elapsedMs) {
+    if (!error || error.name !== "TypeError") return null;
+    if (!FETCH_FAILURE_MESSAGES.includes(error.message)) return null;
+    return elapsedMs >= PROXY_CUT_MIN_ELAPSED_MS
+      ? PROXY_CUT_LINE
+      : SERVICE_UNREACHABLE_LINE;
+  }
 
   /**
    * Turn a provider error message into a plain line for a person, and keep the
@@ -2089,10 +2177,8 @@
     updateFooterButtons(state) {
       if (!this.currentModal) return;
 
-      // Find the open modal dialog - more reliable than custom class
-      const modalElement = document.querySelector(
-        "dialog[open].universal-modal",
-      );
+      // CK-28b: this instance's own dialog, not the first one in the document
+      const modalElement = ownOpenDialog(this.currentModal);
       if (!modalElement) {
         logWarn("Could not find open modal element");
         return;
@@ -2202,9 +2288,7 @@
      * @returns {HTMLButtonElement|null}
      */
     _footerButtonByLabel(text) {
-      const modalElement = document.querySelector(
-        "dialog[open].universal-modal",
-      );
+      const modalElement = ownOpenDialog(this.currentModal);
       const footer = modalElement?.querySelector(".universal-modal-footer");
       if (!footer) {
         logWarn("No modal footer to resolve a focus target from");
@@ -4368,7 +4452,9 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      * Extract %% AI: uncertainty comments from enhanced MMD into structured
      * metadata, then remove the comment lines from the MMD output. (Phase 7.5L, L.6)
      *
-     * Matches lines starting with %% AI: (with optional whitespace).
+     * Matches lines starting with %% AI: (with optional whitespace), and a
+     * note at the end of a line (M-5t): the note and the space before it are
+     * removed, the rest of the line is kept, and the kept text is the context.
      * Each annotation is stored with its line number and the preceding context line.
      *
      * Called after blank line normalisation but before validation, so the
@@ -4384,6 +4470,11 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       const metadata = [];
       const cleanedLines = [];
 
+      // A note at the END of a line (M-5t): the first unescaped %% AI: on the
+      // line starts it. A backslash before the %% marks a LaTeX-escaped %.
+      const lineEndNote = /(?<!\\)%%\s*AI:\s*\S/;
+      const noteSplit = /(?<!\\)%%\s*AI:/;
+
       for (let i = 0; i < lines.length; i++) {
         const match = lines[i].match(/^%%\s*AI:\s*(.+)$/);
         if (match) {
@@ -4393,8 +4484,38 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
             contextLine: i > 0 ? lines[i - 1] : "(start of document)",
           });
           // Do not include this line in the cleaned output
-        } else {
+          continue;
+        }
+
+        const endAt = lines[i].search(lineEndNote);
+        if (endAt < 0) {
           cleanedLines.push(lines[i]);
+          continue;
+        }
+
+        // Lift every note on the line, keep the text before the first one.
+        const kept = lines[i].slice(0, endAt).trimEnd();
+        const notes = lines[i]
+          .slice(endAt)
+          .split(noteSplit)
+          .slice(1)
+          .map((note) => note.trim())
+          .filter((note) => note.length > 0);
+        // A note after only whitespace is an own-line note that was indented.
+        const ownLine = kept.length === 0;
+        for (const note of notes) {
+          metadata.push({
+            lineNumber: i + 1,
+            comment: note,
+            contextLine: ownLine
+              ? i > 0
+                ? lines[i - 1]
+                : "(start of document)"
+              : kept,
+          });
+        }
+        if (!ownLine) {
+          cleanedLines.push(kept);
         }
       }
 
@@ -5345,6 +5466,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       // AbortSignal.timeout() fires at the browser level, unaffected
       // by tab throttling — it fires on time even in background tabs.
       const timeoutSignal = AbortSignal.timeout(timeoutMs);
+      const sendStartedAt = Date.now();
       let settled = false;
 
       return new Promise((resolve, reject) => {
@@ -5423,7 +5545,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
               embedLastError: this.embed?.lastError?.message,
               base64Length: this.embed?.currentFileBase64?.length,
             });
-            reject(error);
+            // M-5y: a bare fetch failure becomes one plain line for both the
+            // tab and the modal (showError reads error.message for each).
+            // Through the STATIC so an inversion moves product and rows together.
+            const plainLine = MathPixAIEnhancer.describeFetchFailure(
+              error,
+              Date.now() - sendStartedAt,
+            );
+            reject(plainLine ? new Error(plainLine) : error);
           });
       });
     }
@@ -7360,6 +7489,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           uncertaintyAnnotations: this.uncertaintyMetadata || [],
           // M-1r2: which correction prompt wrote this edit (identifier only, never the path)
           promptVersion: this.getPromptVersion().identifier,
+          // M-5x: how many picture descriptions the correction put back (0 when none)
+          descriptionsRestored: this.descriptionKeysRestored
+            ? this.descriptionKeysRestored.size
+            : 0,
         };
 
         // Delegate write-back to provider
@@ -7991,6 +8124,14 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   // inverts the product and the seam rows together.
   MathPixAIEnhancer.describeProviderFailure = describeProviderFailure;
 
+  // M-5y: the bare-fetch-failure describer and its two lines, published on the
+  // same terms so the rows assert the sentences by identity and one patch of
+  // the static inverts the send path and the rows together.
+  MathPixAIEnhancer.describeFetchFailure = describeFetchFailure;
+  MathPixAIEnhancer.PROXY_CUT_LINE = PROXY_CUT_LINE;
+  MathPixAIEnhancer.SERVICE_UNREACHABLE_LINE = SERVICE_UNREACHABLE_LINE;
+  MathPixAIEnhancer.PROXY_CUT_MIN_ELAPSED_MS = PROXY_CUT_MIN_ELAPSED_MS;
+
   // AW-16: the incomplete-reply predicate, published on the same terms and for
   // the same two reasons. startEnhancement calls the STATIC, so one patch of it
   // inverts the product and the seam rows together — an unpatchable seam is an
@@ -8089,7 +8230,17 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     }
     enhancerInstance?.openModal();
   };
-  window.startAIEnhancement = () => enhancerInstance?.startEnhancement();
+  window.startAIEnhancement = () => {
+    // CK-D1: the dialog's Start re-reads the document before it sends, the
+    // same reset runCorrection performs. The prompt preview is not rebuilt.
+    // Not while a run is in flight: startEnhancement refuses that, and the
+    // reset must not change the text an in-flight run is comparing against.
+    if (enhancerInstance && !enhancerInstance.isProcessing) {
+      enhancerInstance.originalMMD = enhancerInstance.getCurrentMMD();
+      enhancerInstance.enhancedMMD = "";
+    }
+    return enhancerInstance?.startEnhancement();
+  };
   window.cancelAIEnhancement = () => enhancerInstance?.cancelEnhancement();
   window.applyAIEnhancement = () => enhancerInstance?.applyEnhancement();
   window.toggleAIColumn = (columnId) =>

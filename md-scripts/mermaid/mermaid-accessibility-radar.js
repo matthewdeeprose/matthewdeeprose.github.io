@@ -106,6 +106,20 @@
     return window.ChartDescribeCharts;
   }
 
+  /**
+   * The description model and its renderer (vendor/chart-describe/src/model.js
+   * and render.js), resolved at call time like chartsCore, for the same reason.
+   * @returns {Object} ChartDescribeModel
+   */
+  function modelCore() {
+    return window.ChartDescribeModel;
+  }
+
+  /** @returns {Object} ChartDescribeRender */
+  function renderCore() {
+    return window.ChartDescribeRender;
+  }
+
   // ---------------------------------------------------------------------
   // Validation
   // ---------------------------------------------------------------------
@@ -359,7 +373,13 @@
     logInfo("[Mermaid Accessibility] Generating radar short description");
 
     const facts = measure(await readRadar(code));
-    const descriptions = chartsCore().buildRadarShort(facts);
+    // The plain tier is the flattened runs, never escaped; the HTML tier is
+    // the whole sentence escaped once, by the renderer.
+    const model = chartsCore().buildRadarModel(facts);
+    const descriptions = {
+      html: renderCore().renderHtml(model, renderCore().PROFILES.lines).shortHTML,
+      text: modelCore().flatten(model.short),
+    };
     logDebug(`[Mermaid Accessibility] Radar short: ${descriptions.text}`);
 
     return descriptions;
@@ -399,7 +419,8 @@
 
     const facts = measure(await readRadar(code));
 
-    return chartsCore().buildRadarDetailed(facts);
+    const model = chartsCore().buildRadarModel(facts);
+    return renderCore().renderHtml(model, renderCore().PROFILES.lines).detailed;
   }
 
   // Register with the core module. `generateShort` returns plain text because

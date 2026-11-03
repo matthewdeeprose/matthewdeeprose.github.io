@@ -137,13 +137,26 @@ const XychartModule = (function () {
   // core's generation-failed fallback takes over: never silently wrong text.
 
   /**
-   * The shared description builders (buildShortOpening, buildTakeaway,
-   * buildConstruction, buildInsights, buildTable, escapeText, TIERS), resolved
-   * at call time.
+   * The shared description builders (buildXychartModel), resolved at call
+   * time.
    * @returns {Object} ChartDescribeCharts
    */
   function chartsCore() {
     return window.ChartDescribeCharts;
+  }
+
+  /**
+   * The description model and its renderer (vendor/chart-describe/src/model.js
+   * and render.js), resolved at call time like chartsCore, for the same reason.
+   * @returns {Object} ChartDescribeModel
+   */
+  function modelCore() {
+    return window.ChartDescribeModel;
+  }
+
+  /** @returns {Object} ChartDescribeRender */
+  function renderCore() {
+    return window.ChartDescribeRender;
   }
 
   // ---------------------------------------------------------------------
@@ -195,12 +208,12 @@ const XychartModule = (function () {
     logInfo("generateShortDescription", "Generating short description");
 
     const chart = await readChart(code);
-    const core = chartsCore();
-    const text = `${core.buildShortOpening(chart, false)} ${core.buildTakeaway(chart, false, core.TIERS.SHORT)}`;
+    const model = chartsCore().buildXychartModel(chart);
+    const text = modelCore().flatten(model.short);
     logDebug("Final Short Description", text);
 
     return {
-      html: core.escapeText(text),
+      html: renderCore().renderHtml(model, renderCore().PROFILES.lines).shortHTML,
       text: text,
     };
   }
@@ -234,21 +247,11 @@ const XychartModule = (function () {
     logInfo("generateDetailedDescription", "Generating XY chart description");
 
     const chart = await readChart(code);
-    const core = chartsCore();
-
-    const parts = [];
-    parts.push("<h4>Chart Construction</h4>");
-    parts.push(...core.buildConstruction(chart));
-    parts.push("<h4>Key Insights</h4>");
-    parts.push("<ul>");
-    parts.push(...core.buildInsights(chart));
-    parts.push("</ul>");
-    parts.push("<h4>Data Table</h4>");
-    parts.push(...core.buildTable(chart));
-
-    // Newline-joined so text-content extraction stays readable: without them,
-    // list and row boundaries concatenate with no space.
-    return parts.join("\n");
+    // The lines profile writes each heading, paragraph, list item and table
+    // row on its own line, so text-content extraction stays readable: without
+    // the newlines, list and row boundaries concatenate with no space.
+    const model = chartsCore().buildXychartModel(chart);
+    return renderCore().renderHtml(model, renderCore().PROFILES.lines).detailed;
   }
 
   // Register with the core module. `generateShort` returns plain text because

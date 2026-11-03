@@ -26,6 +26,9 @@ import { convertDelimited, spanToText } from "./tex-label.js";
 // instead of the stacked-card layout (cards get too tall with many columns).
 export const DEFAULT_COLUMN_THRESHOLD = 6;
 
+// Marks the aria-hidden wrapper around a maths column header's drawn maths (RA-81). mathjax-controls.js matches it by name.
+const HEADER_MATHS_ATTR = "data-sr-header-maths";
+
 const TABLE = /<table\b[^>]*>[\s\S]*?<\/table>/gi;
 const TABLE_PARTS = /^<table\b([^>]*)>([\s\S]*)<\/table>$/i;
 const TR = /<tr\b([^>]*)>([\s\S]*?)<\/tr>/gi;
@@ -151,12 +154,14 @@ function transformTable(full, threshold, mathpixCaptionText) {
         // Promote header cells to <th scope="col"> for proper semantics.
         const headerAttrs = { scope: "col", role: "columnheader" };
         // A browser names a header from its text, and the visible maths is hidden from it, so a maths header loses
-        // its maths ("(relative permittivity)"). Name it with the same symbols the card label shows. An author's own
-        // aria-label is kept.
-        if (headers[idx] && holdsMaths(cellContent) && !/\saria-label\s*=/i.test(cellAttrs)) {
-          headerAttrs["aria-label"] = escapeXML(headers[idx]);
-        }
+        // its maths ("(relative permittivity)"). Give the cell the same symbols the card label shows as hidden text
+        // (.sr-only), and hide the drawn maths from the reader so it is not read twice. The wrapper is marked
+        // data-sr-header-maths so mathjax-controls.js can keep the hidden equation out of the tab order. An author's
+        // own aria-label is kept and the cell is left as it was.
         const a = setAttrs(cellAttrs, headerAttrs);
+        if (headers[idx] && holdsMaths(cellContent) && !/\saria-label\s*=/i.test(cellAttrs)) {
+          return `<th${a}><span class="sr-only">${escapeXML(headers[idx])}</span><span aria-hidden="true" ${HEADER_MATHS_ATTR}>${cellContent}</span></th>`;
+        }
         return `<th${a}>${cellContent}</th>`;
       }
       const isTh = tag.toLowerCase() === "th";

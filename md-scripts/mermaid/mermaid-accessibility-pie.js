@@ -68,6 +68,80 @@ const MermaidAccessibilityPieChart = (function () {
     return window.ChartDescribeCharts;
   }
 
+  /**
+   * The description model and its renderer (vendor/chart-describe/src/model.js
+   * and render.js), resolved at call time like chartsCore, for the same reason.
+   * @returns {Object} ChartDescribeModel
+   */
+  function modelCore() {
+    return window.ChartDescribeModel;
+  }
+
+  /** @returns {Object} ChartDescribeRender */
+  function renderCore() {
+    return window.ChartDescribeRender;
+  }
+
+  // The kinds of section and list entry the pie model names (buildPieModel in
+  // charts.js writes these role strings). PIE_PROFILE maps each to the class
+  // names this module owns, which mermaid-description-styles.css reads.
+  const PIE_ROLES = Object.freeze({
+    CONSTRUCTION: "construction",
+    INSIGHTS: "insights",
+    DATA: "data",
+    PATTERNS: "patterns",
+    CATEGORIES: "categories",
+    PRIMARY: "primary",
+    TOTAL: "total",
+    LARGEST: "largest",
+    SMALLEST: "smallest",
+  });
+
+  const PIE_TERM_CLASS = Object.freeze({
+    label: "diagram-segment",
+    percentage: "diagram-percentage",
+    proportion: "diagram-proportion",
+    value: "diagram-value",
+    count: "diagram-count",
+    title: "diagram-title",
+  });
+
+  /**
+   * How the pie description is presented: section and list classes, and the
+   * whitespace the old template literals left after <section ...> and after
+   * the heading. Moved here from charts.js at CD-5b 5-pie (the Mermaid seat's
+   * agreement of 31 October 2026, point 2). Every value, whitespace included,
+   * equals the core's LEGACY_PIE_PROFILE, which parcel 6 deletes.
+   */
+  const PIE_PROFILE = Object.freeze({
+    name: "sections",
+    layout: "sections",
+    shortEscape: "author",
+    sectionClass: (role) => `mermaid-section chart-${role}`,
+    headingClass: "mermaid-details-heading",
+    sectionLayout: Object.freeze({
+      default: Object.freeze({ indent: 10, afterHeading: true }),
+      [PIE_ROLES.INSIGHTS]: Object.freeze({ indent: 10, afterHeading: false }),
+      [PIE_ROLES.PATTERNS]: Object.freeze({ indent: 6, afterHeading: true }),
+    }),
+    listClass: Object.freeze({
+      [PIE_ROLES.CATEGORIES]: "diagram-segment-list",
+      [PIE_ROLES.INSIGHTS]: "diagram-insights-list",
+      [PIE_ROLES.DATA]: "diagram-data-list",
+    }),
+    itemClass: Object.freeze({
+      [PIE_ROLES.PRIMARY]: "diagram-insight diagram-insight-primary",
+      [PIE_ROLES.TOTAL]: "diagram-insight diagram-insight-total",
+      [PIE_ROLES.LARGEST]: "diagram-insight diagram-insight-largest",
+      [PIE_ROLES.SMALLEST]: "diagram-insight diagram-insight-smallest",
+      [PIE_ROLES.DATA]: "diagram-data-item",
+    }),
+    termClass: (role, variant) =>
+      role === "pattern"
+        ? `diagram-pattern diagram-pattern-${variant}`
+        : PIE_TERM_CLASS[role],
+  });
+
   const NO_TITLE = "";
 
   /** The author's title, or NO_TITLE. Code first, then the drawn title. */
@@ -94,7 +168,14 @@ const MermaidAccessibilityPieChart = (function () {
     // Parse segments to enable insights
     const segments = parseSegments(code, svgElement);
 
-    return chartsCore().buildPieShort(title, segments);
+    // The plain tier is the flattened runs, never escaped: it feeds the SVG
+    // aria-label and the textContent fallback. The HTML tier is escaped once,
+    // by the renderer.
+    const model = chartsCore().buildPieModel(title, segments);
+    return {
+      html: renderCore().renderHtml(model, PIE_PROFILE).shortHTML,
+      text: modelCore().flatten(model.short),
+    };
   }
 
   /**
@@ -177,7 +258,8 @@ const MermaidAccessibilityPieChart = (function () {
     // Get segments from parsing function
     let segments = parseSegments(code, svgElement);
 
-    return chartsCore().buildPieDetailed(title, segments);
+    const model = chartsCore().buildPieModel(title, segments);
+    return renderCore().renderHtml(model, PIE_PROFILE).detailed;
   }
 
   /**

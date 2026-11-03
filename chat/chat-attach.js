@@ -71,7 +71,8 @@ window.ChatAttach = (function () {
   // ── State ──────────────────────────────────────────────────────────────────
   // The one selected attachment, or null. Shape:
   //   { file:File, base64:string, filename:string, mimeType:string, size:number,
-  //     kind:"image"|"pdf" }
+  //     kind:"image"|"pdf", wholeTooBig?:boolean }
+  // wholeTooBig is true for a PDF over 25 MB (parcel P18): base64 is null and only its words and pictures are sent.
   let attachment = null;
   let _fileUtils = null; // lazily-constructed EmbedFileUtils instance
   let _wired = false; // idempotency guard for the input change listener
@@ -112,6 +113,24 @@ window.ChatAttach = (function () {
     scan: "This looks like a scan. MathPix can read handwriting and maths.",
     free: "Free models may keep what you send.",
   });
+  // Parcel P18: a PDF over 25 MB is not sent whole. It attaches as its words and the page pictures
+  // the person ticks, up to 150 MB. The 25 MB is this project's own setting (js/config.js), not a
+  // provider limit. {n} in the refusal is the file's size in MB to two places, as the embed's own
+  // size gate words it.
+  const BYTES_PER_MB = 1024 * 1024;
+  const WHOLE_PDF_MAX_BYTES = 25 * BYTES_PER_MB;
+  const LARGE_PDF_MAX_MB = 150;
+  const LARGE_PDF_MAX_BYTES = LARGE_PDF_MAX_MB * BYTES_PER_MB;
+  const LARGE_PDF_SENTENCE =
+    "This PDF is over 25MB, so its words and the page pictures you tick are sent, not the whole file.";
+  // Parcel P18b: the same fact for a large PDF with no page pictures kept (a prose PDF): there is no
+  // "Include page pictures" box to tick, so the line must not mention one.
+  const LARGE_PDF_WORDS_ONLY_SENTENCE =
+    "This PDF is over 25MB, so only its words are sent, not the whole file.";
+  const LARGE_PDF_READING_NOTE = "A large PDF can take a minute or two.";
+  const LARGE_PDF_TOO_BIG_MESSAGE = "File too large: {n}MB. Maximum size: " + LARGE_PDF_MAX_MB + "MB.";
+  const LARGE_PDF_UNREADABLE_MESSAGE =
+    "Could not read {name}. A PDF this large is sent as its words and pictures, and they could not be read.";
   // The sentence in the attach line that names the pictures (spoken only while the
   // "Include pictures" box is showing). {n} is the number that would be sent and {total}
   // the pages in the PDF. The page variants (parcel P4) are for a PDF sent as page pictures.
@@ -376,6 +395,14 @@ window.ChatAttach = (function () {
     return "";
   }
 
+  // Parcel P18: said first, and only for a PDF held as its words and pictures because it is too big to send whole.
+  // Parcel P18b: chosen by the FILE (does the reader hold page pictures for it), never by the model,
+  // so a model change leaves the text as it is and nothing new is announced.
+  function largePdfSentence(held) {
+    if (!held || !held.wholeTooBig) return "";
+    return keptPictureCount() > 0 ? LARGE_PDF_SENTENCE : LARGE_PDF_WORDS_ONLY_SENTENCE;
+  }
+
   // Sentence 3: only for a held document (an image has no extracted text).
   function freeSentence(held) {
     return held && held.doc && currentModelIsFree() ? ADVICE.free : "";
@@ -387,7 +414,7 @@ window.ChatAttach = (function () {
     const el = adviceEl();
     const s2 = adviceSentence(attachment);
     const s3 = freeSentence(attachment);
-    const text = [s2, s3].filter(Boolean).join(" ");
+    const text = [largePdfSentence(attachment), s2, s3].filter(Boolean).join(" ");
     if (el) {
       if (el.textContent !== text) el.textContent = text;
       el.hidden = !text;
@@ -433,12 +460,18 @@ window.ChatAttach = (function () {
     if (note) note.hidden = !forFile;
   }
 
-  // Visible "Reading <name>…" status while a file is read. Nothing is announced.
-  function renderReading(name) {
+  // The words of the reading status. A PDF over 25 MB can take a minute or two, so it says so (parcel P18).
+  function readingText(name, large) {
+    return "Reading " + name + "…" + (large ? " " + LARGE_PDF_READING_NOTE : "");
+  }
+
+  // Visible "Reading <name>…" status while a file is read. Nothing is announced here; a large PDF's
+  // reading line is announced once by the caller, because the wait is long enough to need it.
+  function renderReading(name, large) {
     const el = adviceEl();
     const btn = openMathPixEl();
     if (el) {
-      el.textContent = "Reading " + name + "…";
+      el.textContent = readingText(name, large);
       el.hidden = false;
     }
     if (btn) btn.hidden = true;
@@ -925,6 +958,7 @@ window.ChatAttach = (function () {
     if (!attachment) return false;
     if (attachment.kind === "document") return true;
     if (attachment.kind !== "pdf" || !attachment.doc) return false;
+    if (attachment.wholeTooBig) return true; // over 25 MB: the words and pictures, whatever the model reads
     const s = state();
     return !modelAcceptsPDF(s ? s.currentModel : null);
   }
@@ -1109,6 +1143,7 @@ window.ChatAttach = (function () {
       kindLabel(attachment) + " attached: " + attachment.filename + ".",
       adviceSentence(attachment),
       picturesSentence(),
+      largePdfSentence(attachment),
       freeSentence(attachment),
       blockedSentence,
     ];
@@ -1154,9 +1189,22 @@ window.ChatAttach = (function () {
       return;
     }
 
-    // Size gate (throws over the image limit — keeps the 10MB hint honest).
+    // Parcel P18: a PDF over 25 MB is not sent whole. Up to 150 MB it attaches as its words and the
+    // page pictures chosen; over that it is refused here, in the embed gate's own words.
+    const largePdf = kind === "pdf" && file.size > WHOLE_PDF_MAX_BYTES;
+    if (largePdf && file.size > LARGE_PDF_MAX_BYTES) {
+      logWarn("Rejected attachment (size)", file.size);
+      notify(
+        "notifyError",
+        LARGE_PDF_TOO_BIG_MESSAGE.replace("{n}", (file.size / BYTES_PER_MB).toFixed(2))
+      );
+      resetInput();
+      return;
+    }
+
+    // Size gate (throws over the image limit — keeps the 10MB hint honest). A large PDF skips it.
     try {
-      utils.validateFileSize(file);
+      if (!largePdf) utils.validateFileSize(file);
     } catch (e) {
       logWarn("Rejected attachment (size)", e && e.message);
       notify("notifyError", (e && e.message) || "That image is too large.");
@@ -1179,13 +1227,16 @@ window.ChatAttach = (function () {
     if (kind === "pdf") {
       _reading = true;
       setBusy(true);
-      renderReading(displayName);
+      renderReading(displayName, largePdf);
+      // The wait for a large PDF is up to a minute or two, so the reading line is spoken once, here.
+      if (largePdf) announce(readingText(displayName, true));
     }
 
-    // Bytes. Compression is left to the embed default at send time.
-    let base64;
+    // Bytes. Compression is left to the embed default at send time. A large PDF is never held whole:
+    // no copy is made, so base64 stays null.
+    let base64 = null;
     try {
-      base64 = await utils.fileToBase64(file);
+      base64 = largePdf ? null : await utils.fileToBase64(file);
     } catch (e) {
       if (!isCurrent(token)) return;
       logError("fileToBase64 failed", e && e.message);
@@ -1215,6 +1266,16 @@ window.ChatAttach = (function () {
     }
     if (!isCurrent(token)) return; // a later file won
 
+    // A large PDF has no raw fallback, so if its words could not be read it is refused outright.
+    if (largePdf && !doc) {
+      _reading = false;
+      setBusy(false);
+      renderAdvice();
+      notify("notifyError", LARGE_PDF_UNREADABLE_MESSAGE.replace("{name}", displayName));
+      resetInput();
+      return;
+    }
+
     _reading = false;
     setBusy(false);
     attachment = {
@@ -1225,6 +1286,7 @@ window.ChatAttach = (function () {
       mimeType: file.type,
       size: file.size,
       kind: kind,
+      wholeTooBig: largePdf,
     };
     reapplyAnswerRoom();
     renderPreview();

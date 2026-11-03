@@ -413,9 +413,13 @@
   proto.announceToScreenReader = function (message) {
     const announcer = document.getElementById("radioSRannounce");
     if (announcer) {
+      // Sequence number shared with tools.html writeRadioAnnouncement (AN-1): the timer
+      // blanks the region only if no later write, from either file, has moved the number.
+      const seq = String(Number(announcer.dataset.clearSeq || 0) + 1);
+      announcer.dataset.clearSeq = seq;
       announcer.textContent = message;
       setTimeout(() => {
-        announcer.textContent = "";
+        if (announcer.dataset.clearSeq === seq) announcer.textContent = "";
       }, 3000);
     }
   };

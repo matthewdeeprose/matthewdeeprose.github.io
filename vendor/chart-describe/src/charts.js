@@ -206,7 +206,7 @@
   const FALLBACK_VALUE_HEADER = "Value";
 
   // The two nouns a LABEL-LESS x position can take, keyed by the kind
-  // `pointReferencePart` returns. They are deliberately different words:
+  // `pointReferencePartRuns` returns. They are deliberately different words:
   // "point" is rule XC6's, for a numeric-range axis that declares no positions
   // at all, and "position" is rule XC20's, for an index past the end of a band
   // axis's declared labels. Collapsing them would put one idiom on two
@@ -730,40 +730,6 @@
   }
 
   /**
-   * How a series is referred to in running prose, lower case, ready to be
-   * capitalised at a sentence start.
-   *
-   * An author's series name is spoken verbatim and quoted (rules XC4, XC8).
-   * Unnamed series take the generator's own noun, and are disambiguated by
-   * ordinal ONLY where more than one series of that kind exists — otherwise
-   * two unnamed line series would both be "the line series" and a reader could
-   * not tell which sentence was about which.
-   *
-   * The BEHAVIOUR here is unchanged by the identity ruling of 24 August 2026;
-   * what changed is that the position and the sibling count now come from
-   * `seriesIdentity`, so the table headers cannot disagree with this sentence
-   * about which series is the second one. The kind is left to the composition
-   * clause, which introduces every series before any insight names one.
-   *
-   * @param {Object} series - One adapter series
-   * @param {Array<Object>} allSeries - Every series on the chart
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} e.g. `the line series`, `the "Forecast" series`
-   */
-  function seriesLabel(series, allSeries, asHtml) {
-    const identity = seriesIdentity(series, allSeries);
-
-    if (identity.name) {
-      const name = asHtml ? escapeText(identity.name) : identity.name;
-      return `the "${name}" series`;
-    }
-    if (!identity.isAmongSeveral) {
-      return `the ${identity.kind} series`;
-    }
-    return `the ${ordinalWord(identity.position)} ${identity.kind} series`;
-  }
-
-  /**
    * A series' IDENTITY — the single shared answer to "which series is this?",
    * read by the composition clause, the insight labels and the table column
    * headers alike (identity ruling, 24 August 2026).
@@ -837,37 +803,6 @@
   }
 
   /**
-   * How a series is INTRODUCED, in the detailed tier's series sentence.
-   *
-   * RULE XC15: a name never replaces the kind, it joins it. Before this the
-   * clause read `a series named "X"`, so on a fully-named combined chart
-   * nothing in the whole detailed description said which series was drawn as
-   * bars — the composition clause said "a series named", every insight said
-   * `the "X" series`, and the table columns were headed with the names. A
-   * sighted reader had the shapes; this reader had neither the shapes nor the
-   * words for them (probe sweep XP1, work register item 49).
-   *
-   * @param {Object} series - One adapter series
-   * @param {Array<Object>} allSeries - Every series on the chart
-   * @returns {string} e.g. `a bar series named "Actual intake"`,
-   *   `a second bar series`
-   */
-  function seriesCompositionPhrase(series, allSeries) {
-    const identity = seriesIdentity(series, allSeries);
-
-    let phrase;
-    if (identity.needsIntroductoryOrdinal) {
-      const ordinal = ordinalWord(identity.position);
-      phrase = `${ordinalArticle(ordinal)} ${ordinal} ${identity.kind} series`;
-    } else {
-      phrase = `a ${identity.kind} series`;
-    }
-
-    if (identity.name) phrase += ` named "${escapeText(identity.name)}"`;
-    return phrase;
-  }
-
-  /**
    * A series' TABLE COLUMN HEADER (rule XC11, identity ruling).
    *
    * A named series uses its name verbatim; an unnamed one among several of its
@@ -888,65 +823,6 @@
 
     const base = `${capitalise(identity.kind)} series`;
     return [text(identity.isAmongSeveral ? `${base} ${identity.position}` : base)];
-  }
-
-  /**
-   * How one x position is referred to: the author's own label, quoted, on a
-   * band axis; a generator-owned ordinal on a numeric-range axis (rule XC6,
-   * which forbids inventing an x position).
-   *
-   * @param {Object} chart - The adapter's chart
-   * @param {number} index - 0-based point index
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} e.g. `"Friday"`, `the sixth point`
-   */
-  function pointReference(chart, index, asHtml) {
-    return referenceText(
-      pointReferencePart(chart, index, asHtml),
-      REFERENCE_STYLE.STANDALONE
-    );
-  }
-
-  /**
-   * The same reference, shaped for a context that is ALREADY inside brackets —
-   * `Highest value: 170 ("Autumn", the third position).`
-   *
-   * Rule XC21 needs two shapes, not one, because the module addresses a
-   * position in two grammatical contexts. Nesting a bracket inside a bracket
-   * is unreadable aloud, so the parenthetical context takes a comma and the
-   * standalone context takes the brackets.
-   *
-   * @param {Object} chart - The adapter's chart
-   * @param {number} index - 0-based point index
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} e.g. `"Autumn", the third position`
-   */
-  function pointReferenceInParens(chart, index, asHtml) {
-    return referenceText(
-      pointReferencePart(chart, index, asHtml),
-      REFERENCE_STYLE.PARENTHETICAL
-    );
-  }
-
-  /**
-   * Render one reference part in a given grammatical context.
-   *
-   * A part with NO disambiguator renders identically in both styles, which is
-   * why every chart of unique labels is byte-unchanged and the 117 pre-existing
-   * fixtures are the guard on that.
-   *
-   * @param {Object} part - A pointReferencePart result
-   * @param {string} style - A REFERENCE_STYLE member
-   * @returns {string} The reference
-   */
-  function referenceText(part, style) {
-    if (part.kind !== "label") {
-      return `the ${part.text} ${POSITION_NOUN[part.kind].singular.toLowerCase()}`;
-    }
-    if (!part.disambiguator) return part.text;
-    return style === REFERENCE_STYLE.PARENTHETICAL
-      ? `${part.text}, ${part.disambiguator}`
-      : `${part.text} (${part.disambiguator})`;
   }
 
   /**
@@ -972,9 +848,54 @@
     return false;
   }
 
+  // ---------------------------------------------------------------------
+  // How an x position and a series are referred to, as runs (CD-5b-4b, 4c)
+  // ---------------------------------------------------------------------
+  //
+  // These return runs, so an author's text enters the model as an author run
+  // and is escaped once, by the renderer, and the describer's own words are
+  // text runs. They replace the string helpers (seriesLabel, pointReference,
+  // pointReferenceInParens, referenceText, pointReferencePart, pointReferences)
+  // that CD-5b-4c deleted once no caller was left.
+
   /**
-   * How one x position is named, BEFORE it is wrapped into a sentence — the one
-   * shared answer read by `pointReference` and by `pointReferences` alike.
+   * How a series is referred to in running prose, lower case, ready to be
+   * capitalised at a sentence start: the author's series name is an author run
+   * between describer text runs.
+   *
+   * An author's series name is spoken verbatim and quoted (rules XC4, XC8).
+   * Unnamed series take the generator's own noun, and are disambiguated by
+   * ordinal ONLY where more than one series of that kind exists — otherwise
+   * two unnamed line series would both be "the line series" and a reader could
+   * not tell which sentence was about which.
+   *
+   * The position and the sibling count come from `seriesIdentity` (identity
+   * ruling, 24 August 2026), so the table headers cannot disagree with this
+   * sentence about which series is the second one. The kind is left to the
+   * composition clause, which introduces every series before any insight names
+   * one.
+   *
+   * @param {Object} series - One adapter series
+   * @param {Array<Object>} allSeries - Every series on the chart
+   * @returns {Array<Object>} Runs; the first is always a text run
+   */
+  function seriesLabelRuns(series, allSeries) {
+    const { text, author } = modelCore();
+    const identity = seriesIdentity(series, allSeries);
+
+    if (identity.name) {
+      return [text('the "'), author(identity.name), text('" series')];
+    }
+    if (!identity.isAmongSeveral) {
+      return [text(`the ${identity.kind} series`)];
+    }
+    return [text(`the ${ordinalWord(identity.position)} ${identity.kind} series`)];
+  }
+
+  /**
+   * How one x position is named, BEFORE it is wrapped into a sentence: a band
+   * label is the author's text inside describer quotes, an ordinal or position
+   * word is describer text (rule XC6, which forbids inventing an x position).
    *
    * It exists so a tied extreme cannot be addressed by a second, independent
    * idea of what an x position is called. The XC18 list form has to join bare
@@ -985,15 +906,16 @@
    *
    * @param {Object} chart - The adapter's chart
    * @param {number} index - 0-based point index
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {Object} `{ kind: "label"|"ordinal", text }`
+   * @returns {Object} `{ kind, runs, disambiguator }` for a label, `{ kind,
+   *   runs }` for an ordinal or position word
    */
-  function pointReferencePart(chart, index, asHtml) {
+  function pointReferencePartRuns(chart, index) {
+    const { text, author } = modelCore();
     const label = declaredCategories(chart)[index];
     if (typeof label === "string") {
       return {
         kind: "label",
-        text: `"${asHtml ? escapeText(label) : label}"`,
+        runs: [text('"'), author(label), text('"')],
         // RULE XC21. A label the author used more than once does not identify a
         // position, so the position joins it as furniture. This is NOT a defect
         // in the label — XC4 requires the author's text verbatim — it is a gap
@@ -1016,124 +938,19 @@
     // series peaks at 100 ("Mon").` with nothing to tell a reader they were the
     // same kind of address (probe sweep XP16).
     const kind = hasDeclaredCategories(chart) ? "position" : "ordinal";
-    return { kind: kind, text: ordinalWord(index + 1) };
-  }
-
-  /**
-   * How a SET of x positions is referred to (rule XC18) — every position
-   * holding a tied extreme, in source order.
-   *
-   * A SET OF ONE IS BYTE-IDENTICAL TO `pointReference`, deliberately: the 105
-   * fixtures in the corpus are the guard on that, and every one of them has
-   * unique extremes.
-   *
-   * Labels join as they are quoted (`"Feb" and "May"`); ordinals hoist their
-   * article and noun so the list is not "the second point and the fourth point"
-   * (`the second and fourth points`). From TIED_POSITION_COLLAPSE_AT positions
-   * the list collapses to a count, because a spoken list of four positions is
-   * one nobody can hold. A band axis whose overflow indices carry no label can
-   * yield a MIXED set; that falls back to joining whole references, and is
-   * unreachable in this corpus — it belongs to the label/series-length mismatch
-   * cluster (probe sweep XP15-XP17), which is not this session's ground.
-   *
-   * @param {Object} chart - The adapter's chart
-   * @param {Array<number>} indices - 0-based point indices, source order
-   * @param {boolean} asHtml - True when the result enters an HTML sink
-   * @returns {string} e.g. `"Feb" and "May"`, `the second and fourth points`
-   */
-  function pointReferences(chart, indices, asHtml, style) {
-    if (indices.length === 1) {
-      return referenceText(
-        pointReferencePart(chart, indices[0], asHtml),
-        style
-      );
-    }
-    if (indices.length >= TIED_POSITION_COLLAPSE_AT) {
-      return `${countWord(indices.length)} points`;
-    }
-
-    const parts = indices.map((i) => pointReferencePart(chart, i, asHtml));
-    if (parts.every((part) => part.kind === "label")) {
-      // A TIED extreme spanning two instances of ONE duplicated label is the
-      // case this most matters for: without XC21 it read `"Autumn" and
-      // "Autumn"`. Each member takes the STANDALONE shape whatever the
-      // surrounding context, because a list already carries commas and a second
-      // comma per item would be unparseable aloud.
-      return textCore().formatList(
-        parts.map((part) => referenceText(part, REFERENCE_STYLE.STANDALONE))
-      );
-    }
-    // A label-less set hoists its article and noun, and takes rule XC20's noun
-    // where the chart declares labels and rule XC6's where it does not.
-    const kind = parts[0].kind;
-    if (parts.every((part) => part.kind === kind)) {
-      return `the ${textCore().formatList(parts.map((part) => part.text))} ${POSITION_NOUN[kind].plural}`;
-    }
-    return textCore().formatList(
-      indices.map((i) => pointReference(chart, i, asHtml))
-    );
-  }
-
-  // ---------------------------------------------------------------------
-  // The same four answers as runs (CD-5b-4b)
-  // ---------------------------------------------------------------------
-  //
-  // The string helpers above stay until the construction sentence stops
-  // calling them (CD-5b-4c). These return runs instead of escaped strings, so
-  // an author's text enters the model as an author run and is escaped once, by
-  // the renderer, and the describer's own words are text runs. They decide
-  // exactly what their string twins decide.
-
-  /**
-   * `seriesLabel` as runs: the author's series name is an author run between
-   * describer text runs.
-   *
-   * @param {Object} series - One adapter series
-   * @param {Array<Object>} allSeries - Every series on the chart
-   * @returns {Array<Object>} Runs; the first is always a text run
-   */
-  function seriesLabelRuns(series, allSeries) {
-    const { text, author } = modelCore();
-    const identity = seriesIdentity(series, allSeries);
-
-    if (identity.name) {
-      return [text('the "'), author(identity.name), text('" series')];
-    }
-    if (!identity.isAmongSeveral) {
-      return [text(`the ${identity.kind} series`)];
-    }
-    return [text(`the ${ordinalWord(identity.position)} ${identity.kind} series`)];
-  }
-
-  /**
-   * `pointReferencePart` as runs: a band label is the author's text inside
-   * describer quotes, an ordinal or position word is describer text.
-   *
-   * @param {Object} chart - The adapter's chart
-   * @param {number} index - 0-based point index
-   * @returns {Object} `{ kind, runs, disambiguator }` for a label, `{ kind,
-   *   runs }` for an ordinal or position word
-   */
-  function pointReferencePartRuns(chart, index) {
-    const { text, author } = modelCore();
-    const label = declaredCategories(chart)[index];
-    if (typeof label === "string") {
-      return {
-        kind: "label",
-        runs: [text('"'), author(label), text('"')],
-        // RULE XC21, as pointReferencePart states it.
-        disambiguator: isDuplicatedLabel(chart, index)
-          ? `the ${ordinalWord(index + 1)} ${POSITION_NOUN.position.singular.toLowerCase()}`
-          : null,
-      };
-    }
-    // RULE XC20, as pointReferencePart states it.
-    const kind = hasDeclaredCategories(chart) ? "position" : "ordinal";
     return { kind: kind, runs: [text(ordinalWord(index + 1))] };
   }
 
   /**
-   * `referenceText` as runs.
+   * Render one reference part in a given grammatical context (rule XC21 needs
+   * two shapes, not one, because the module addresses a position in two
+   * grammatical contexts: nesting a bracket inside a bracket is unreadable
+   * aloud, so the parenthetical context takes a comma — `("Autumn", the third
+   * position)` — and the standalone context takes the brackets).
+   *
+   * A part with NO disambiguator renders identically in both styles, which is
+   * why every chart of unique labels is byte-unchanged and the 117 pre-existing
+   * fixtures are the guard on that.
    *
    * @param {Object} part - A pointReferencePartRuns result
    * @param {string} style - A REFERENCE_STYLE member
@@ -1155,8 +972,27 @@
   }
 
   /**
-   * `pointReferences` as runs. Lists join through `joinRuns`, which reproduces
-   * `formatList`.
+   * How a SET of x positions is referred to (rule XC18) — every position
+   * holding a tied extreme, in source order. Lists join through `joinRuns`,
+   * which reproduces `formatList`.
+   *
+   * A SET OF ONE IS BYTE-IDENTICAL TO A SINGLE REFERENCE, deliberately: the 105
+   * fixtures in the corpus are the guard on that, and every one of them has
+   * unique extremes.
+   *
+   * Labels join as they are quoted (`"Feb" and "May"`); ordinals hoist their
+   * article and noun so the list is not "the second point and the fourth point"
+   * (`the second and fourth points`). From TIED_POSITION_COLLAPSE_AT positions
+   * the list collapses to a count, because a spoken list of four positions is
+   * one nobody can hold. A band axis whose overflow indices carry no label can
+   * yield a MIXED set; that falls back to joining whole references, and is
+   * unreachable in this corpus — it belongs to the label/series-length mismatch
+   * cluster (probe sweep XP15-XP17), which is not this session's ground.
+   * A TIED extreme spanning two instances of ONE duplicated label is the case
+   * XC21 matters for most: without it the list read `"Autumn" and "Autumn"`.
+   * Each member takes the STANDALONE shape whatever the surrounding context,
+   * because a list already carries commas and a second comma per item would be
+   * unparseable aloud.
    *
    * @param {Object} chart - The adapter's chart
    * @param {Array<number>} indices - 0-based point indices, source order
@@ -1206,6 +1042,39 @@
       throw new Error("capitaliseRuns: the first run is not describer text");
     }
     return [text(capitalise(first.value)), ...rest];
+  }
+
+  /**
+   * How a series is INTRODUCED, in the detailed tier's series sentence: the
+   * describer's introduction of one series, with the author's series name as an
+   * author run inside describer quotes.
+   *
+   * RULE XC15: a name never replaces the kind, it joins it. Before this the
+   * clause read `a series named "X"`, so on a fully-named combined chart
+   * nothing in the whole detailed description said which series was drawn as
+   * bars — the composition clause said "a series named", every insight said
+   * `the "X" series`, and the table columns were headed with the names. A
+   * sighted reader had the shapes; this reader had neither the shapes nor the
+   * words for them (probe sweep XP1, work register item 49).
+   *
+   * @param {Object} series - One adapter series
+   * @param {Array<Object>} allSeries - Every series on the chart
+   * @returns {Array<Object>} Runs; the first is always a text run
+   */
+  function seriesCompositionPhraseRuns(series, allSeries) {
+    const { text, author } = modelCore();
+    const identity = seriesIdentity(series, allSeries);
+
+    let phrase;
+    if (identity.needsIntroductoryOrdinal) {
+      const ordinal = ordinalWord(identity.position);
+      phrase = `${ordinalArticle(ordinal)} ${ordinal} ${identity.kind} series`;
+    } else {
+      phrase = `a ${identity.kind} series`;
+    }
+
+    if (!identity.name) return [text(phrase)];
+    return [text(`${phrase} named "`), author(identity.name), text('"')];
   }
 
   /**
@@ -1681,51 +1550,62 @@
 
   /**
    * The span clause of a declared band axis (rule XC24): `, from "FIRST" to
-   * "LAST"` — the first and last DECLARED labels, verbatim and quoted, escaped
-   * once here at the HTML sink. One category reads `, "LABEL"` (the caller's
-   * count phrase has already said "one <noun>"). A label repeated on the axis
-   * takes XC21's standalone shape, because `pointReference` already does.
+   * "LAST"` — the first and last DECLARED labels, verbatim and quoted, as
+   * author runs inside describer quotes, so the renderer escapes them once. One
+   * category reads `, "LABEL"` (the caller's count phrase has already said "one
+   * <noun>"). A label repeated on the axis takes XC21's standalone shape.
    * Detailed tier only. A range axis, and a chart with no x-axis, declare no
-   * categories and so yield an empty clause.
+   * categories and so yield no runs.
    *
    * @param {Object} chart - The adapter's chart
-   * @returns {string} The clause with its leading comma, or ""
+   * @returns {Array<Object>} Runs with the leading comma, or none
    */
-  function constructionSpan(chart) {
+  function constructionSpanRuns(chart) {
+    const { text } = modelCore();
     const declared = declaredCategories(chart).length;
-    if (declared === 0) return "";
-    const first = pointReference(chart, 0, true);
-    if (declared === 1) return `, ${first}`;
-    return `, from ${first} to ${pointReference(chart, declared - 1, true)}`;
+    if (declared === 0) return [];
+    const first = referenceRuns(
+      pointReferencePartRuns(chart, 0),
+      REFERENCE_STYLE.STANDALONE
+    );
+    if (declared === 1) return [text(", "), ...first];
+    const last = referenceRuns(
+      pointReferencePartRuns(chart, declared - 1),
+      REFERENCE_STYLE.STANDALONE
+    );
+    return [text(", from "), ...first, text(" to "), ...last];
   }
 
   /**
-   * Build the short tier's opening sentence.
+   * The short tier's opening sentence as runs (CD-5b-4c). The title, the y-axis
+   * title, the XC25 stand-in series name and the x-axis title are author runs
+   * inside describer quotes; everything else is describer text.
+   *
    * @param {Object} chart - The adapter's chart
-   * @param {boolean} asHtml - True when the result enters an HTML sink
    * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
    *   `drawnSeriesName` (rule XC25). A trailing options object, not a field on
    *   the chart: the chart is the adapter's model of the diagram, and whether
    *   the picture draws a name belongs to the caller that rendered it.
-   * @returns {string} One sentence, ending in a full stop
+   * @returns {Array<Object>} Runs for one sentence, ending in a full stop
    */
-  function buildShortOpening(chart, asHtml, options) {
+  function buildShortOpeningRuns(chart, options) {
+    const { text, author } = modelCore();
     const typeWord = chartTypeWord(chart.series);
     const noun = axisNoun(chart);
     const count = pointCount(chart);
     const standIn = drawnSeriesName(chart, options);
 
-    let sentence = `A ${typeWord} chart`;
+    const runs = [text(`A ${typeWord} chart`)];
     if (chart.title) {
-      sentence += ` titled "${asHtml ? escapeText(chart.title) : chart.title}"`;
+      runs.push(text(' titled "'), author(chart.title), text('"'));
     }
     if (chart.yAxis && chart.yAxis.title) {
-      sentence += ` showing "${asHtml ? escapeText(chart.yAxis.title) : chart.yAxis.title}"`;
+      runs.push(text(' showing "'), author(chart.yAxis.title), text('"'));
     } else if (standIn !== null) {
-      sentence += ` showing "${asHtml ? escapeText(standIn) : standIn}"`;
+      runs.push(text(' showing "'), author(standIn), text('"'));
     }
     if (typeWord === "combined") {
-      sentence += ` with ${buildComposition(chart.series)}`;
+      runs.push(text(` with ${buildComposition(chart.series)}`));
     }
 
     if (chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND) {
@@ -1734,17 +1614,46 @@
       // A combined chart's series clause already reads as a list, so its
       // positions are joined with "over" whatever the preposition would be.
       const joiner = typeWord === "combined" ? "over" : preposition;
-      sentence += ` ${joiner} ${countWord(count)} ${shared}${countedNoun(noun, count)}`;
+      runs.push(text(` ${joiner} ${countWord(count)} ${shared}${countedNoun(noun, count)}`));
     } else if (chart.xAxis && chart.xAxis.title) {
-      sentence += ` across "${asHtml ? escapeText(chart.xAxis.title) : chart.xAxis.title}"`;
+      runs.push(text(' across "'), author(chart.xAxis.title), text('"'));
       if (hasBounds(chart.xAxis)) {
-        sentence += ` from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`;
+        runs.push(text(` from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`));
       }
     } else if (hasBounds(chart.xAxis)) {
-      sentence += ` across an x-axis running from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`;
+      runs.push(text(` across an x-axis running from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`));
     }
 
-    return `${sentence}.`;
+    runs.push(text("."));
+    return runs;
+  }
+
+  /**
+   * The short tier's opening sentence as the public name has always returned
+   * it: a half-step wrapper over `buildShortOpeningRuns` (CD-5b-4c). The plain
+   * form is the runs flattened, never escaped (contract clause C1); the HTML
+   * form is the runs rendered as one detailed-tier paragraph with the
+   * paragraph tags removed. Both assemblers call it with `asHtml` false.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {boolean} asHtml - True when the result enters an HTML sink
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
+   *   `buildShortOpeningRuns`
+   * @returns {string} One sentence, ending in a full stop
+   */
+  function buildShortOpening(chart, asHtml, options) {
+    const { description, section, paragraph, flatten } = modelCore();
+    const runs = buildShortOpeningRuns(chart, options);
+    if (!asHtml) return flatten(runs);
+
+    const html = renderCore().renderHtml(
+      description([], [section([paragraph(runs)])]),
+      renderCore().PROFILES.lines
+    ).detailed;
+    if (!html.startsWith("<p>") || !html.endsWith("</p>")) {
+      throw new Error("buildShortOpening: the renderer did not write one paragraph");
+    }
+    return html.slice("<p>".length, -"</p>".length);
   }
 
   /**
@@ -1754,7 +1663,7 @@
    *
    * THIS IS THE SHORT TIER'S CLAUSE AND IT DELIBERATELY CARRIES NO SERIES
    * NAMES. It counts by kind, where the detailed tier's series sentence
-   * introduces each series individually through `seriesCompositionPhrase`.
+   * introduces each series individually through `seriesCompositionPhraseRuns`.
    * Ruled no-change on 24 August 2026 (probe sweep XP2): the short tier is a
    * caption, and naming five series in one would stop it being one. Do not
    * "align" the two.
@@ -1776,13 +1685,18 @@
   // ---------------------------------------------------------------------
 
   /**
-   * The Chart Construction paragraphs.
+   * The Chart Construction paragraphs as model blocks (CD-5b-4c): one
+   * paragraph of sentences joined by a describer space, then the axis
+   * paragraph when there is one. Author text (the title, the y-descriptor, the
+   * x-axis title, the category labels, the series names) enters only as author
+   * runs, raw; the renderer escapes it once.
    * @param {Object} chart - The adapter's chart
    * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
    *   `drawnSeriesName` (rule XC25)
-   * @returns {Array<string>} HTML fragments, one per line
+   * @returns {Array<Object>} One or two model paragraphs
    */
-  function buildConstruction(chart, options) {
+  function buildConstructionBlocks(chart, options) {
+    const { text, author, paragraph } = modelCore();
     const typeWord = chartTypeWord(chart.series);
     const noun = axisNoun(chart);
     const count = pointCount(chart);
@@ -1800,28 +1714,34 @@
     const hasYDescriptor =
       !!(chart.yAxis && chart.yAxis.title) || standIn !== null;
 
-    let opening = `This ${typeWord} chart`;
-    if (chart.title) opening += ` titled "${escapeText(chart.title)}"`;
+    const opening = [text(`This ${typeWord} chart`)];
+    if (chart.title) {
+      opening.push(text(' titled "'), author(chart.title), text('"'));
+    }
     if (hasYDescriptor) {
-      opening += ` shows "${escapeText(standIn !== null ? standIn : chart.yAxis.title)}"`;
+      opening.push(
+        text(' shows "'),
+        author(standIn !== null ? standIn : chart.yAxis.title),
+        text('"')
+      );
     }
 
     // THE ONLY BRANCH THAT SPEAKS A POSITION COUNT is the band one. That is the
     // predicate rule XC22's of-N-values clause turns on, below.
     const openerSpeaksCount =
       !!chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND;
-    let spanClause = "";
+    let spanClause = [];
     if (openerSpeaksCount) {
       const shared = typeWord === "combined" ? "shared " : "";
       const preposition = typeWord === SERIES_KINDS.LINE ? "over" : "for";
-      opening += ` ${preposition} ${countWord(count)} ${shared}${countedNoun(noun, count)}`;
+      opening.push(text(` ${preposition} ${countWord(count)} ${shared}${countedNoun(noun, count)}`));
       // RULE XC24: the opening names the span of the declared axis. On the
       // merged (y-descriptor-less) sentence it sits before "has" and is closed
       // by a comma (ruling D7c), so the sentence still reads as one.
-      spanClause = constructionSpan(chart);
-      opening += spanClause;
+      spanClause = constructionSpanRuns(chart);
+      opening.push(...spanClause);
     } else if (chart.xAxis && chart.xAxis.title) {
-      opening += ` across "${escapeText(chart.xAxis.title)}"`;
+      opening.push(text(' across "'), author(chart.xAxis.title), text('"'));
     }
 
     // RULE XC22's of-N-values clause, and the predicate is stated exactly
@@ -1839,25 +1759,36 @@
     // construction, and neither ever speaks over the other.
     const wantsValueCounts = !hasYDescriptor && !openerSpeaksCount;
     const valuesOf = (series) =>
-      ` of ${countWord(series.values.length)} ${countedNoun(VALUE_NOUN, series.values.length)}`;
+      text(` of ${countWord(series.values.length)} ${countedNoun(VALUE_NOUN, series.values.length)}`);
 
-    let seriesClause = `${countWord(chart.series.length)} data series`;
+    const seriesClause = [text(`${countWord(chart.series.length)} data series`)];
     if (chart.series.length > 1) {
-      seriesClause += `: ${textCore().formatList(
-        chart.series.map(
-          (one) =>
-            seriesCompositionPhrase(one, chart.series) +
-            (wantsValueCounts ? valuesOf(one) : "")
+      seriesClause.push(
+        text(": "),
+        ...joinRuns(
+          chart.series.map((one) => [
+            ...seriesCompositionPhraseRuns(one, chart.series),
+            ...(wantsValueCounts ? [valuesOf(one)] : []),
+          ])
         )
-      )}`;
+      );
     } else if (wantsValueCounts) {
-      seriesClause += valuesOf(chart.series[0]);
+      seriesClause.push(valuesOf(chart.series[0]));
     }
 
     const sentences = hasYDescriptor
-      ? [`${opening}.`, `The chart has ${seriesClause}.`]
+      ? [
+          [...opening, text(".")],
+          [text("The chart has "), ...seriesClause, text(".")],
+        ]
       : [
-          `${opening}${spanClause ? MERGED_SPAN_CLOSE : ""} has ${seriesClause}.`,
+          [
+            ...opening,
+            ...(spanClause.length > 0 ? [text(MERGED_SPAN_CLOSE)] : []),
+            text(" has "),
+            ...seriesClause,
+            text("."),
+          ],
         ];
 
     // RULE XC20 — THE MISMATCH IS DECLARED. This is contract clause D6, which
@@ -1878,11 +1809,13 @@
       // read differently and the design's own two exemplars differ in exactly
       // this word. See the FS3 report's contradictions section.
       const joiner = m.overflow ? "against" : "for";
-      return (
-        `${capitalise(seriesLabel(m.series, chart.series, true))} has ` +
-        `${countWord(m.values)} ${countedNoun(VALUE_NOUN, m.values)} ${joiner} ` +
-        `${countWord(m.declared)} declared ${countedNoun(noun, m.declared)}.`
-      );
+      return [
+        ...capitaliseRuns(seriesLabelRuns(m.series, chart.series)),
+        text(
+          ` has ${countWord(m.values)} ${countedNoun(VALUE_NOUN, m.values)} ${joiner} ` +
+            `${countWord(m.declared)} declared ${countedNoun(noun, m.declared)}.`
+        ),
+      ];
     });
 
     // Orientation is not decoration: `xychart-beta horizontal` renames every
@@ -1892,61 +1825,118 @@
     // covers orientation and no gold exemplar is horizontal, so this sentence
     // fires on none of the six targets and is un-ruled generator prose.
     if (chart.orientation === ORIENTATIONS.HORIZONTAL) {
-      sentences.push(
-        "The chart is drawn horizontally, so the x-axis runs along the side of the chart and the y-axis runs across it."
-      );
+      sentences.push([
+        text(
+          "The chart is drawn horizontally, so the x-axis runs along the side of the chart and the y-axis runs across it."
+        ),
+      ]);
     }
 
     sentences.push(...mismatchSentences);
 
-    const paragraphs = [`<p>${sentences.join(" ")}</p>`];
+    // The sentences are joined by one describer space, as the string form did.
+    const paragraphs = [paragraph(joinSentenceRuns(sentences))];
 
-    const axisParagraph = buildAxisSentence(chart);
-    if (axisParagraph) paragraphs.push(`<p>${axisParagraph}</p>`);
+    const axisRuns = buildAxisSentenceRuns(chart);
+    if (axisRuns !== null) paragraphs.push(paragraph(axisRuns));
 
     return paragraphs;
   }
 
   /**
-   * The axis sentence (rule XC2). Declared bounds are spoken; rendered ticks
-   * never are.
-   * @param {Object} chart - The adapter's chart
-   * @returns {string|null} The sentence, or null when there is nothing to say
+   * Sentences (each a list of runs) joined by a single describer space.
+   * @param {Array<Array<Object>>} sentences
+   * @returns {Array<Object>} The joined runs
    */
-  function buildAxisSentence(chart) {
+  function joinSentenceRuns(sentences) {
+    const { text } = modelCore();
+    const runs = [];
+    sentences.forEach((sentence, index) => {
+      if (index > 0) runs.push(text(" "));
+      runs.push(...sentence);
+    });
+    return runs;
+  }
+
+  /**
+   * The Chart Construction paragraphs as the public name has always returned
+   * them: a half-step wrapper over `buildConstructionBlocks` (CD-5b-4c). Both
+   * assemblers spread this array, so the blocks are rendered under
+   * `PROFILES.lines`, split on the newline, and every line is checked to be one
+   * whole paragraph.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
+   *   `drawnSeriesName` (rule XC25)
+   * @returns {Array<string>} HTML fragments, one per line
+   */
+  function buildConstruction(chart, options) {
+    const { description, section } = modelCore();
+    const html = renderCore().renderHtml(
+      description([], [section(buildConstructionBlocks(chart, options))]),
+      renderCore().PROFILES.lines
+    ).detailed;
+    const lines = html.split("\n");
+    if (!lines.every((line) => line.startsWith("<p>") && line.endsWith("</p>"))) {
+      throw new Error("buildConstruction: the renderer did not write whole paragraphs");
+    }
+    return lines;
+  }
+
+  /**
+   * The axis sentence as runs (rule XC2, CD-5b-4c). Declared bounds are
+   * spoken; rendered ticks never are. The axis titles are author runs inside
+   * describer quotes.
+   * @param {Object} chart - The adapter's chart
+   * @returns {Array<Object>|null} Runs for the sentence, or null when there is
+   *   nothing to say
+   */
+  function buildAxisSentenceRuns(chart) {
+    const { text, author } = modelCore();
     const noun = axisNoun(chart);
     const count = pointCount(chart);
 
     let xClause = null;
     if (chart.xAxis && chart.xAxis.kind === AXIS_KINDS.BAND) {
       xClause = chart.xAxis.title
-        ? `The x-axis, "${escapeText(chart.xAxis.title)}", lists ${countWord(count)} ${countedNoun(noun, count)}`
+        ? [
+            text('The x-axis, "'),
+            author(chart.xAxis.title),
+            text(`", lists ${countWord(count)} ${countedNoun(noun, count)}`),
+          ]
         // NOT a count-plus-noun site, and deliberately left plural: it names
         // what KIND of thing the axis carries, and takes no count at all. The
         // XP6 census examined it and changed nothing here.
-        : `${capitalise(noun.plural)} are plotted on the x-axis`;
+        : [text(`${capitalise(noun.plural)} are plotted on the x-axis`)];
     } else if (chart.xAxis && hasBounds(chart.xAxis)) {
+      const bounds = `runs from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`;
       xClause = chart.xAxis.title
-        ? `The x-axis, "${escapeText(chart.xAxis.title)}", runs from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`
-        : `The x-axis runs from ${formatAuthorValue(chart.xAxis.min)} to ${formatAuthorValue(chart.xAxis.max)}`;
+        ? [text('The x-axis, "'), author(chart.xAxis.title), text(`", ${bounds}`)]
+        : [text(`The x-axis ${bounds}`)];
     } else if (chart.xAxis && chart.xAxis.title) {
-      xClause = `The x-axis is titled "${escapeText(chart.xAxis.title)}"`;
+      xClause = [text('The x-axis is titled "'), author(chart.xAxis.title), text('"')];
     }
 
     let yClause = null;
     if (chart.yAxis) {
       if (chart.yAxis.title && hasBounds(chart.yAxis)) {
-        yClause = `the y-axis, "${escapeText(chart.yAxis.title)}", runs from ${formatAuthorValue(chart.yAxis.min)} to ${formatAuthorValue(chart.yAxis.max)}`;
+        yClause = [
+          text('the y-axis, "'),
+          author(chart.yAxis.title),
+          text(`", runs from ${formatAuthorValue(chart.yAxis.min)} to ${formatAuthorValue(chart.yAxis.max)}`),
+        ];
       } else if (hasBounds(chart.yAxis)) {
-        yClause = `the y-axis runs from ${formatAuthorValue(chart.yAxis.min)} to ${formatAuthorValue(chart.yAxis.max)}`;
+        yClause = [
+          text(`the y-axis runs from ${formatAuthorValue(chart.yAxis.min)} to ${formatAuthorValue(chart.yAxis.max)}`),
+        ];
       } else if (chart.yAxis.title) {
-        yClause = `the y-axis is titled "${escapeText(chart.yAxis.title)}"`;
+        yClause = [text('the y-axis is titled "'), author(chart.yAxis.title), text('"')];
       }
     }
 
-    if (xClause && yClause) return `${xClause}, and ${yClause}.`;
-    if (xClause) return `${xClause}.`;
-    if (yClause) return `${capitalise(yClause)}.`;
+    if (xClause && yClause) return [...xClause, text(", and "), ...yClause, text(".")];
+    if (xClause) return [...xClause, text(".")];
+    if (yClause) return [...capitaliseRuns(yClause), text(".")];
     return null;
   }
 
@@ -3707,15 +3697,51 @@
     return renderCore().renderHtml(model, renderCore().PROFILES.lines).detailed;
   }
 
+  /**
+   * The xychart's description as a model (CD-5b-4c): the short sentence as
+   * runs (the opening, a describer space, the SHORT takeaway) and the three
+   * headed sections in the fixed order of rule XC3 — Chart Construction, Key
+   * Insights and Data Table. Author text enters only as author runs, raw; the
+   * renderer escapes it once. Rendered under `PROFILES.lines` it reproduces
+   * the two assembly copies (the Mermaid xychart module and `chartjs.js`)
+   * byte for byte; nothing calls it until 5-xychart and 6.
+   *
+   * @param {Object} chart - The adapter's chart
+   * @param {Object} [options] - `{ drawsSeriesName: boolean }`; see
+   *   `drawnSeriesName` (rule XC25)
+   * @returns {Object} A DescriptionModel (see model.js)
+   */
+  function buildXychartModel(chart, options) {
+    const { text, section, description } = modelCore();
+
+    const shortRuns = [
+      ...buildShortOpeningRuns(chart, options),
+      text(" "),
+      ...buildTakeawayRuns(chart, TIERS.SHORT),
+    ];
+
+    const sections = [
+      section(buildConstructionBlocks(chart, options), {
+        heading: [text("Chart Construction")],
+      }),
+      section([buildInsightsModel(chart)], { heading: [text("Key Insights")] }),
+      section([buildTableModel(chart)], { heading: [text("Data Table")] }),
+    ];
+
+    return description(shortRuns, sections);
+  }
+
   logInfo("Chart builders initialised successfully");
 
   // What the describers call. The xychart describer reaches buildShortOpening to
-  // buildTable; the pie describer buildPieShort and buildPieDetailed (thin
-  // wrappers over buildPieModel, which returns a DescriptionModel); the radar
-  // describer buildRadarShort and buildRadarDetailed (thin wrappers over
-  // buildRadarModel, which returns a DescriptionModel). The other builders are
-  // reached only through these, and stay private until another describer needs
-  // them.
+  // buildTable, and from CD-5b-4c buildXychartModel, which owns the three
+  // headed sections and which 5-xychart will call (the five old names are
+  // half-step wrappers until then); the pie describer buildPieShort and
+  // buildPieDetailed (thin wrappers over buildPieModel, which returns a
+  // DescriptionModel); the radar describer buildRadarShort and
+  // buildRadarDetailed (thin wrappers over buildRadarModel, which returns a
+  // DescriptionModel). The other builders are reached only through these, and
+  // stay private until another describer needs them.
   const api = {
     TIERS,
     escapeText,
@@ -3724,6 +3750,7 @@
     buildConstruction,
     buildInsights,
     buildTable,
+    buildXychartModel,
     buildPieModel,
     buildPieShort,
     buildPieDetailed,
