@@ -6,7 +6,7 @@
  * Example: <main data-markdown-src="content/about.md">Loading...</main>
  * 
  * @author Matthew Deeprose
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 const MarkdownPageLoader = (function () {
@@ -503,6 +503,48 @@ const MarkdownPageLoader = (function () {
   }
 
   /**
+   * Scroll to the element named in the URL fragment, if there is one.
+   * The browser tries this itself on page load, but the markdown has not
+   * rendered by then, so the target does not exist and the jump fails.
+   * Focus moves to the target as well, so keyboard and screen reader users
+   * land in the same place as the visual scroll.
+   */
+  function scrollToHash() {
+    const hash = window.location.hash;
+    if (!hash || hash.length < 2) {
+      logDebug('No URL fragment, nothing to scroll to');
+      return;
+    }
+
+    let id;
+    try {
+      id = decodeURIComponent(hash.slice(1));
+    } catch (error) {
+      logWarn('Could not decode the URL fragment:', hash, error);
+      return;
+    }
+
+    const target = document.getElementById(id);
+    if (!target) {
+      logWarn('URL fragment target not found:', id);
+      return;
+    }
+
+    // Headings from markdown-it-anchor already have tabindex="-1"; add it
+    // to any other target so it can take focus without joining the tab order
+    if (!target.hasAttribute('tabindex')) {
+      target.setAttribute('tabindex', '-1');
+    }
+
+    // Wait one frame so the rendered content has laid out
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ block: 'start' });
+      target.focus({ preventScroll: true });
+      logInfo('Scrolled to URL fragment target:', id);
+    });
+  }
+
+  /**
    * Render markdown content to target element
    * @param {string} markdownText - Raw markdown text
    * @param {HTMLElement} target - Target element
@@ -530,7 +572,7 @@ const MarkdownPageLoader = (function () {
    * Called automatically on DOMContentLoaded
    */
   async function init() {
-    console.log('[MarkdownPageLoader] init() called, readyState:', document.readyState);
+    logDebug('init() called, readyState:', document.readyState);
     
     if (state.isInitialised) {
       logWarn('Already initialised, skipping');
@@ -541,10 +583,10 @@ const MarkdownPageLoader = (function () {
 
     // Find target element
     state.targetElement = document.querySelector(config.targetSelector);
-    console.log('[MarkdownPageLoader] Target element:', state.targetElement);
+    logDebug('Target element:', state.targetElement);
 
     if (!state.targetElement) {
-      console.warn('[MarkdownPageLoader] No target element found with selector:', config.targetSelector);
+      logWarn('No target element found with selector:', config.targetSelector);
       return;
     }
 
@@ -569,6 +611,9 @@ const MarkdownPageLoader = (function () {
       await renderToElement(markdownText, state.targetElement);
 
       state.isInitialised = true;
+
+      // Jump to the URL fragment now that the headings exist
+      scrollToHash();
 
     } catch (error) {
       logError('Failed to load markdown', error);
@@ -602,7 +647,7 @@ const MarkdownPageLoader = (function () {
       init();
     } else {
       // Element not found yet, wait for full DOM
-      console.warn('[MarkdownPageLoader] Target element not found, waiting for DOM...');
+      logWarn('Target element not found, waiting for DOM...');
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
       } else {
@@ -628,6 +673,7 @@ const MarkdownPageLoader = (function () {
     init: init,
     reload: reload,
     renderToElement: renderToElement,
+    scrollToHash: scrollToHash,
     
     // Expose for testing
     getState: function () {
@@ -635,7 +681,7 @@ const MarkdownPageLoader = (function () {
     },
     
     // Version info
-    version: '1.0.0'
+    version: '1.1.0'
   };
 })();
 
