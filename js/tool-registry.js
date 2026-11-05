@@ -64,6 +64,10 @@ window.ToolRegistry = (function () {
   //                     function (e.g. showOpenRouter()) — it is just not
   //                     offered to visitors. Set back to false to restore it.
   //
+  //   alias   Optional short form for a link such as tools.html?tool=tikz.
+  //           The tool's own name always works too, ignoring case, spaces and
+  //           hyphens ("image-describer"). See resolveTool() below.
+  //
   //   value   MUST match the radio's `value` attribute in tools.html exactly.
   //           Do not invent or change these: other parts of the app read them.
   //           A typo here is reported as a console warning on page load.
@@ -76,7 +80,7 @@ window.ToolRegistry = (function () {
     // Always first — pinned, not merely listed first. See PINNED_FIRST.
     { value: "Set Up", status: null, hidden: false },
 
-    { value: "Ally Reporting", status: "beta", hidden: false },
+    { value: "Ally Reporting", status: "beta", hidden: false, alias: "ally" },
     { value: "Image Describer", status: "beta", hidden: false },
     { value: "MathPix", status: "beta", hidden: false },
 
@@ -84,15 +88,15 @@ window.ToolRegistry = (function () {
     // (P4u), and moved to sit directly after MathPix at P5a (12 October 2026,
     // at the owner's request). It is fifth of the ten visible tools (Local
     // Chat is hidden), so a screen reader says "N of 10" for every tool.
-    { value: "TikZ Studio", status: "alpha", hidden: false },
+    { value: "TikZ Studio", status: "alpha", hidden: false, alias: "tikz" },
 
     // Hidden 20 October 2026 because Chat replaced it. Kept in the page and
     // loaded because Chat depends on local-chat-state.js (createChatState)
     // and local-chat.css.
     { value: "Local Chat", status: null, hidden: true },
-    { value: "Markdown Editor", status: null, hidden: false },
+    { value: "Markdown Editor", status: null, hidden: false, alias: "markdown" },
     { value: "Chat", status: "beta", hidden: false },
-    { value: "Graph Builder", status: "alpha", hidden: false },
+    { value: "Graph Builder", status: "alpha", hidden: false, alias: "graph" },
 
     // Transcribe was placed after Graph Builder deliberately, which is where
     // the fallback had already left it: until this entry existed the registry
@@ -106,7 +110,11 @@ window.ToolRegistry = (function () {
     // Placed immediately after Transcribe deliberately: the two are a pair,
     // Transcribe produces the subtitle file this tool corrects, and Release 2
     // adds a hand-off from one to the other.
-    { value: "Captions Fixer", status: "alpha", hidden: false },
+    { value: "Captions Fixer", status: "alpha", hidden: false, alias: "captions" },
+
+    // Word forms: placed after Captions Fixer. The value is load-bearing once
+    // shipped (the radio, TOOL_CONFIG and the remembered tool all key on it).
+    { value: "Word Forms", status: "alpha", hidden: false },
 
     { value: "OpenRouter", status: null, hidden: true },
   ];
@@ -495,6 +503,37 @@ window.ToolRegistry = (function () {
   }
 
   /**
+   * Lowercase and keep only a-z and 0-9, so "Image-Describer", "image describer"
+   * and "imagedescriber" compare equal.
+   *
+   * @param {string} text
+   * @returns {string}
+   */
+  function normalise(text) {
+    return String(text).toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  /**
+   * Turn text from a link (tools.html?tool=mathpix) into a radio value.
+   * Hidden tools are deliberately not reachable this way, matching the picker.
+   *
+   * @param {string|null} text
+   * @returns {string|null} the radio value, or null if nothing visible matches
+   */
+  function resolveTool(text) {
+    const wanted = normalise(text == null ? "" : text);
+    if (!wanted) return null;
+
+    const match = TOOLS.find(
+      (tool) =>
+        !tool.hidden &&
+        (normalise(tool.value) === wanted ||
+          (tool.alias && normalise(tool.alias) === wanted)),
+    );
+    return match ? match.value : null;
+  }
+
+  /**
    * @returns {Array<Object>} a copy of the registry, for inspection
    */
   function list() {
@@ -519,5 +558,11 @@ window.ToolRegistry = (function () {
     applyToQuickStart();
   }
 
-  return { apply, applyQuickStart: applyToQuickStart, getStatus, list };
+  return {
+    apply,
+    applyQuickStart: applyToQuickStart,
+    getStatus,
+    list,
+    resolveTool,
+  };
 })();

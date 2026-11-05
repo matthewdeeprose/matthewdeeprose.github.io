@@ -89,6 +89,31 @@
   display: none;
 }
 
+/* The lazy light/dark flip (mermaid-theme.js, 4 November 2026). A diagram
+   whose paint is behind the page's mode is hidden from SIGHT, never from the
+   accessibility tree: opacity keeps the old SVG exposed, where visibility,
+   display or aria-hidden would drop it. The veil is plain static text over
+   the diagram, aria-hidden, in no live region, so nothing is announced.
+   It sets no colour of its own: it takes the page's text on the page's
+   ground, which is the pair the site already holds at 4.5:1 in both themes.
+   No transition or animation, so reduced motion has nothing to respect and
+   nothing flashes. It is not focusable, so it has no focus rule. */
+.mermaid-container[data-theme-stale] > .mermaid {
+  opacity: 0;
+}
+
+.mermaid-container > .mermaid-theme-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  font-size: 1rem;
+  pointer-events: none;
+}
+
 .mermaid-controls {
   display: flex;
   /*flex-wrap: wrap;*/
@@ -478,9 +503,31 @@
   width: auto;
 }
 
+/* The orientation group has moved into the options row under the picker, so
+   the sliders container that used to hold it is empty. An empty one would still
+   take a full-width line (and the bar's row gap) ahead of the picker, so it is
+   not shown. mermaid-theme.js still fills it where it has no options row. */
+.mermaid-controls > .sliders-container:empty {
+  display: none;
+}
+
 @media (min-width: 1025px) {
   .mermaid-controls > .mermaid-theme-container {
     flex: 0 0 auto;
+  }
+
+  /* One label width for the picker and the orientation select, so the two
+     selects start at the same left edge ("Orientation:" is the longer label,
+     about 82px measured at 0.85rem Verdana). */
+  .mermaid-controls .mermaid-theme-label,
+  .mermaid-controls .mermaid-orientation-label {
+    min-inline-size: 5.25rem;
+  }
+
+  /* Beside the orientation select the two checkboxes share its line; at 100%
+     wide they would drop onto a line of their own and keep the extra height. */
+  .mermaid-controls-row > .mermaid-reader-options {
+    width: auto;
   }
 
   /* Tighter button padding and gap; the focus treatment is untouched. The

@@ -283,6 +283,21 @@ const TTSController = (function () {
   }
 
   /**
+   * Keep only voices whose language starts "en". When the browser has no
+   * English voice at all the list is returned unchanged, so the person still
+   * has something to choose (RA-89, register 56).
+   *
+   * @param {SpeechSynthesisVoice[]} voices
+   * @returns {SpeechSynthesisVoice[]}
+   */
+  function filterToEnglish(voices) {
+    var english = voices.filter(function (v) {
+      return typeof v.lang === 'string' && v.lang.toLowerCase().indexOf('en') === 0;
+    });
+    return english.length > 0 ? english : voices;
+  }
+
+  /**
    * Find a voice by its voiceURI string.
    * @param {string} voiceURI
    * @returns {SpeechSynthesisVoice|null}
@@ -303,19 +318,23 @@ const TTSController = (function () {
    * available local English voice.
    */
   function restoreSavedVoice() {
+    // The Voice dropdown lists English voices only (RA-89), so the voice used
+    // must be one the dropdown can show: a saved voice in another language is
+    // treated as not found while any English voice exists.
+    var listed = filterToEnglish(_cachedVoices);
     var savedURI = loadSetting(STORAGE_KEYS.VOICE, null);
     if (savedURI) {
       var voice = findVoiceByURI(savedURI);
-      if (voice) {
+      if (voice && listed.indexOf(voice) !== -1) {
         _selectedVoice = voice;
         logDebug('Restored saved voice: ' + voice.name);
         return;
       }
-      logDebug('Saved voice not found: ' + savedURI);
+      logDebug('Saved voice not found or not listed: ' + savedURI);
     }
 
     // Fallback: first local English voice, or first local voice, or first voice
-    var sorted = sortVoices(_cachedVoices);
+    var sorted = sortVoices(listed);
     if (sorted.length > 0) {
       _selectedVoice = sorted[0];
       logDebug('Using default voice: ' + _selectedVoice.name);
@@ -1712,6 +1731,7 @@ const TTSController = (function () {
     getSelectedVoice: getSelectedVoice,
     setVoice: setVoice,
     isLocalVoice: isLocalVoice,
+    filterToEnglish: filterToEnglish,
     getVoiceSummary: getVoiceSummary,
 
     // Voice management (Neural)

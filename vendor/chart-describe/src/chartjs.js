@@ -1,19 +1,27 @@
 /**
- * Chart.js adapter for the shared chart describer
- * Turns a Chart.js chart config into the same three forms the Mermaid
- * describers produce (short, shortHTML, detailed), by way of ChartModel v0
- * (.claude/measurements/cd-1-chartmodel-v0/chartmodel-v0.md) and the shared
- * builders in vendor/chart-describe/src/charts.js.
+ * Chart.js adapter for the shared chart describer.
  *
- * ADOPTED NOWHERE (CD-3a). No page loads this file. Where the shared core has no
- * ruled wording for a chart's shape, describe() says so with
- * { supported: false, reason } and the existing Chart.js engine stays in charge.
+ * This file turns a Chart.js chart config into three forms of description:
+ * short, shortHTML and detailed. The adapter works in two steps. First it
+ * reads the config into a ChartModel (version 0), a neutral description of the
+ * chart that holds nothing specific to Chart.js. Then it hands the chart's
+ * facts to the shared builders in charts.js.
  *
- * Supported in v0.1: bar and line (including mixed bar and line, and horizontal
- * bars) with data.labels, and pie. Everything else returns a REASONS value.
+ * Where the shared builders have no wording for a chart's shape, describe()
+ * says so with { supported: false, reason }. The caller can then describe the
+ * chart another way.
  *
- * Resolves window.ChartDescribeCharts at CALL TIME, never at load. In Node it
- * falls back to require("./charts.js") when the global is absent.
+ * Version 0.1 supports bar and line charts (including mixed bar and line, and
+ * horizontal bars) that use data.labels, and pie charts. Every other chart
+ * returns one of the REASONS values.
+ *
+ * This file exports REASONS, toModel, classify, describe, composeXychart,
+ * composePie and more. It exports itself as window.ChartDescribeChartJs.
+ *
+ * It reads window.ChartDescribeCharts, ChartDescribeModel and
+ * ChartDescribeRender when a function runs, never when the file loads. In Node
+ * each one falls back to require("./charts.js"), "./model.js" or "./render.js"
+ * when the global is missing.
  */
 (function (root) {
   // Logging configuration (inside module scope)
@@ -130,9 +138,9 @@
   const ORIENTATION_VERTICAL = "vertical";
 
   /**
-   * Graph Builder's own axis-title defaults (graph-builder-charts.js) and the
-   * column-type markers it writes on each dataset in advanced mode
-   * (graph-builder-data-enhanced.js). A placeholder is not an author title.
+   * The default axis titles that the host chart builder (a tool called Graph
+   * Builder) writes, and the column-type markers that it sets on each dataset
+   * in advanced mode. A placeholder is not an author title.
    */
   const GB_DECLARED = Object.freeze({
     PLACEHOLDER_VALUE_TITLE: "Y Axis",
@@ -158,11 +166,31 @@
     throw new Error("ChartDescribeCharts is not loaded");
   }
 
+  /**
+   * ChartDescribeModel (model.js): the global, otherwise (Node only) require.
+   * @returns {Object} ChartDescribeModel
+   */
+  function modelCore() {
+    if (root.ChartDescribeModel) return root.ChartDescribeModel;
+    if (typeof require === "function") return require("./model.js");
+    throw new Error("ChartDescribeModel is not loaded");
+  }
+
+  /**
+   * ChartDescribeRender (render.js): the global, otherwise (Node only) require.
+   * @returns {Object} ChartDescribeRender
+   */
+  function renderCore() {
+    if (root.ChartDescribeRender) return root.ChartDescribeRender;
+    if (typeof require === "function") return require("./render.js");
+    throw new Error("ChartDescribeRender is not loaded");
+  }
+
   // ---------------------------------------------------------------------
   // Config -> ChartModel v0
   // ---------------------------------------------------------------------
 
-  /** An empty author string is absence (rule R1 of ChartModel v0). */
+  /** In a ChartModel, an empty string from the author means "nothing given". */
   const orNull = (s) => (s === "" || s === undefined || s === null ? null : s);
 
   const emptyPresentation = () => ({
@@ -183,7 +211,7 @@
 
   /**
    * valueAxis.format from what the person DECLARED, never from a title, label
-   * or callback (M1). Every visible series must be currency with one shared
+   * or callback. Every visible series must be currency with one shared
    * symbol, or every one a percentage; anything else (basic mode, numbers,
    * mixed types, mixed symbols) is null.
    */
@@ -218,10 +246,10 @@
     scale && typeof scale[key] === "number" ? scale[key] : null;
 
   /**
-   * Port of CD-1's fromChartjs, amended in two ways (recorded in the CD-3a
-   * report): valueAxis.min / .max carry ONLY numeric author bounds
-   * (scales.<value>.min / .max, never suggestedMin or beginAtZero), and a
-   * value axis exists when it has a title or an author bound.
+   * Read a Chart.js config into a ChartModel. Two rules matter here.
+   * valueAxis.min and valueAxis.max hold ONLY numeric bounds that the author
+   * set (scales.<value>.min and .max, never suggestedMin or beginAtZero). And
+   * a value axis exists when it has a title or an author bound.
    * @param {Object} config - A Chart.js config
    * @returns {Object} A ChartModel v0
    */
@@ -310,7 +338,7 @@
             max,
             scaleMax: null,
             scaleMaxSource: null,
-            format, // M1: declared by the person only, never guessed
+            format, // Declared by the person only, never guessed
           }
         : null,
       series,
@@ -322,7 +350,7 @@
   // Model -> the shapes the shared builders read
   // ---------------------------------------------------------------------
 
-  /** Model -> the Mermaid parse adapter's xychart shape (CD-1 toXychart). */
+  /** ChartModel -> the normalised xychart shape that the xychart builder reads. */
   function toXychartShape(model) {
     const d = model.domainAxis;
     return {
@@ -348,7 +376,7 @@
     };
   }
 
-  /** Model -> the pie describer's segments (CD-1 toPieSegments). */
+  /** ChartModel -> the list of { name, value } segments that the pie builder reads. */
   const toPieSegmentsShape = (model) =>
     model.domainAxis.labels.map((label, i) => ({
       name: label,
@@ -450,12 +478,14 @@
   }
 
   // ---------------------------------------------------------------------
-  // Composition: the exact call order of the Mermaid describers
+  // Composition: build the model, then render it
   // ---------------------------------------------------------------------
 
   /**
    * Does Chart.js draw the series name? It does, in its legend, unless the
-   * author sets `options.plugins.legend.display` to false (rule XC25).
+   * author sets `options.plugins.legend.display` to false. The xychart
+   * builder needs to know, because it names the series only when the picture
+   * does.
    * @param {Object} config - A Chart.js config
    * @returns {boolean} True when the legend is drawn
    */
@@ -465,47 +495,89 @@
   }
 
   /**
-   * The xychart describer's three tiers for a normalised xychart shape. Same
-   * calls, same order as mermaid-accessibility-xychart.js (short :194-205,
-   * detailed :233-251).
+   * The xychart describer's three tiers for a normalised xychart shape:
+   * buildXychartModel rendered under PROFILES.lines.
    * @param {Object} chart - the xychart shape
    * @param {Object} [options] - `{ drawsSeriesName: boolean }`, passed to the
-   *   shared builders (rule XC25); ON when omitted, as the Mermaid caller has it
+   *   shared builders. It is on when omitted
    * @returns {{short: string, shortHTML: string, detailed: string}}
    */
   function composeXychart(chart, options) {
-    const core = chartsCore();
-    const short = `${core.buildShortOpening(chart, false, options)} ${core.buildTakeaway(chart, false, core.TIERS.SHORT)}`;
-    const parts = [];
-    parts.push("<h4>Chart Construction</h4>");
-    parts.push(...core.buildConstruction(chart, options));
-    parts.push("<h4>Key Insights</h4>");
-    parts.push("<ul>");
-    parts.push(...core.buildInsights(chart));
-    parts.push("</ul>");
-    parts.push("<h4>Data Table</h4>");
-    parts.push(...core.buildTable(chart));
+    const model = chartsCore().buildXychartModel(chart, options);
+    const rendered = renderCore().renderHtml(model, renderCore().PROFILES.lines);
+    // The plain short is the runs joined into text. It is never escaped,
+    // because it is not HTML.
     return {
-      short,
-      shortHTML: core.escapeText(short),
-      detailed: parts.join("\n"),
+      short: modelCore().flatten(model.short),
+      shortHTML: rendered.shortHTML,
+      detailed: rendered.detailed,
     };
   }
 
+  // The pie presentation: the section roles, the term classes and the profile
+  // that gives the pie HTML its class names. The class names are part of the
+  // output, so change them only on purpose.
+  const PIE_ROLES = Object.freeze({
+    CONSTRUCTION: "construction",
+    INSIGHTS: "insights",
+    DATA: "data",
+    PATTERNS: "patterns",
+    CATEGORIES: "categories",
+    PRIMARY: "primary",
+    TOTAL: "total",
+    LARGEST: "largest",
+    SMALLEST: "smallest",
+  });
+
+  const PIE_TERM_CLASS = Object.freeze({
+    label: "diagram-segment",
+    percentage: "diagram-percentage",
+    proportion: "diagram-proportion",
+    value: "diagram-value",
+    count: "diagram-count",
+    title: "diagram-title",
+  });
+
+  const PIE_PROFILE = Object.freeze({
+    name: "sections",
+    layout: "sections",
+    sectionClass: (role) => `mermaid-section chart-${role}`,
+    headingClass: "mermaid-details-heading",
+    sectionLayout: Object.freeze({
+      default: Object.freeze({ indent: 10, afterHeading: true }),
+      [PIE_ROLES.INSIGHTS]: Object.freeze({ indent: 10, afterHeading: false }),
+      [PIE_ROLES.PATTERNS]: Object.freeze({ indent: 6, afterHeading: true }),
+    }),
+    listClass: Object.freeze({
+      [PIE_ROLES.CATEGORIES]: "diagram-segment-list",
+      [PIE_ROLES.INSIGHTS]: "diagram-insights-list",
+      [PIE_ROLES.DATA]: "diagram-data-list",
+    }),
+    itemClass: Object.freeze({
+      [PIE_ROLES.PRIMARY]: "diagram-insight diagram-insight-primary",
+      [PIE_ROLES.TOTAL]: "diagram-insight diagram-insight-total",
+      [PIE_ROLES.LARGEST]: "diagram-insight diagram-insight-largest",
+      [PIE_ROLES.SMALLEST]: "diagram-insight diagram-insight-smallest",
+      [PIE_ROLES.DATA]: "diagram-data-item",
+    }),
+    termClass: (role) => PIE_TERM_CLASS[role],
+  });
+
   /**
-   * The pie describer's three tiers (mermaid-accessibility-pie.js :86-97,
-   * :169-180).
+   * The pie describer's three tiers: buildPieModel rendered under PIE_PROFILE.
    * @param {string} title - "" when there is none
    * @param {Array<{name: string, value: number}>} segments
    * @returns {{short: string, shortHTML: string, detailed: string}}
    */
   function composePie(title, segments) {
-    const core = chartsCore();
-    const short = core.buildPieShort(title, segments);
+    const model = chartsCore().buildPieModel(title, segments);
+    const rendered = renderCore().renderHtml(model, PIE_PROFILE);
+    // The plain short is the runs joined into text. It is never escaped,
+    // because it is not HTML.
     return {
-      short: short.text,
-      shortHTML: short.html,
-      detailed: core.buildPieDetailed(title, segments),
+      short: modelCore().flatten(model.short),
+      shortHTML: rendered.shortHTML,
+      detailed: rendered.detailed,
     };
   }
 

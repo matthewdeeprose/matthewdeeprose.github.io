@@ -3,13 +3,18 @@
  * The vocabulary one chart description is built from: runs of text, blocks
  * (paragraph, list, table), sections and the description that holds them.
  * A model says WHAT is described and which words are the chart author's. It
- * holds no HTML, no class names and no chart family (render.js writes it down).
+ * holds no HTML, no class names and no chart family. render.js turns a model
+ * into HTML.
  *
- * Every key is always present; absence is null. Author strings are raw: the
- * model never holds an entity, because render.js escapes author runs once, at
- * the HTML sink.
+ * Every key is always present. A missing value is null. Author strings are
+ * raw: the model never holds an HTML entity, because render.js escapes author
+ * runs once, at the point where it writes HTML.
  *
- * Nothing calls this file yet. It ships ahead of the describers that will.
+ * This file exports the node builders (text, author, strong, term, paragraph,
+ * list, item, table, section, description), flatten, and semanticErrors, which
+ * checks a model. It needs no other file, so it loads early, after text.js.
+ * It exports itself as window.ChartDescribeModel. In Node it also sets
+ * module.exports.
  */
 (function (root) {
   // Logging configuration (inside module scope)
@@ -70,7 +75,7 @@
     TABLE: "table",
   });
 
-  // What a term is. Only `pattern` carries a variant.
+  // What a term is.
   const TERM_ROLES = Object.freeze([
     "label",
     "percentage",
@@ -78,10 +83,7 @@
     "value",
     "count",
     "title",
-    "pattern",
   ]);
-
-  const PATTERN_ROLE = "pattern";
 
   // A raw value must never hold the entities escapeHtml writes.
   const ESCAPE_ARTEFACT = /&(?:amp|lt|gt|quot|#39);/;
@@ -116,14 +118,13 @@
   }
 
   /**
-   * A meaningful span. `variant` is for the `pattern` role only.
+   * A meaningful span.
    * @param {string} role - One of TERM_ROLES
    * @param {Array} runs
-   * @param {string|null} [variant=null]
-   * @returns {{type: string, role: string, variant: (string|null), runs: Array}}
+   * @returns {{type: string, role: string, runs: Array}}
    */
-  function term(role, runs, variant = null) {
-    return { type: NODE_TYPES.TERM, role, variant, runs };
+  function term(role, runs) {
+    return { type: NODE_TYPES.TERM, role, runs };
   }
 
   /**
@@ -275,14 +276,9 @@
         if (checkKeys(run, ["type", "runs"], path, errs)) checkRunList(run.runs, `${path}.runs`, errs);
         return;
       case NODE_TYPES.TERM:
-        if (!checkKeys(run, ["type", "role", "variant", "runs"], path, errs)) return;
+        if (!checkKeys(run, ["type", "role", "runs"], path, errs)) return;
         if (!TERM_ROLES.includes(run.role)) {
           errs.push(`${path}.role: ${JSON.stringify(run.role)} not in the term roles`);
-        }
-        if (run.variant !== null && typeof run.variant !== "string") {
-          errs.push(`${path}.variant: expected a string or null`);
-        } else if ((run.role === PATTERN_ROLE) !== (run.variant !== null)) {
-          errs.push(`${path}: variant must be set exactly when role is "pattern"`);
         }
         checkRunList(run.runs, `${path}.runs`, errs);
         return;
@@ -388,10 +384,10 @@
   }
 
   /**
-   * Everything wrong with a model: its shape (keys, types, the closed sets of
-   * node types and term roles) and the rules a shape cannot say (table width,
-   * row headers all or none, a term variant only on a pattern, no escape
-   * artefact in a raw value). Never throws on a malformed model.
+   * Find everything wrong with a model. It checks the shape (keys, types, and
+   * the closed sets of node types and term roles). It also checks the rules a
+   * shape cannot say: table width, row headers on all rows or on none, and no
+   * escape artefact in a raw value. It never throws on a malformed model.
    * @param {*} model
    * @returns {string[]} Errors; empty when the model is valid
    */

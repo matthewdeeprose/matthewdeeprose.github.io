@@ -491,13 +491,15 @@ window.MermaidControls = (function () {
     defaultOrientation: "TB", // Default orientation
     autoFitOnLoadDefault: false, // Default for the stored auto-fit-on-load preference
     // Control order: "row" is the toolbar row, "order" the position within
-    // it, and "visible: false" leaves a control out. The orientation group is
-    // the only control built here now (parcel 2, F5); the row machinery stays
-    // because mermaid-theme.js appends its theme picker as a second row of
-    // the same .sliders-container.
+    // it, and "visible: false" leaves a control out. The orientation group
+    // shares row 2 with the reader-option checkboxes, ahead of them, so it
+    // sits under the theme picker and adds no line of its own. That row is
+    // appended to the bar below the buttons, which leaves .sliders-container
+    // empty (hidden in mermaid-controls.css); mermaid-theme.js still appends
+    // its picker there when there is no options row.
     controlOrder: {
-      orientation: { order: 1, row: 1, visible: true },
-      readerOptions: { order: 1, row: 2, visible: true },
+      orientation: { order: 1, row: 2, visible: true },
+      readerOptions: { order: 2, row: 2, visible: true },
     },
     // The two reader options. `name` is the MermaidThemes option name; the
     // engine owns the storage keys and the re-apply.

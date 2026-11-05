@@ -661,8 +661,19 @@ class ResultsManagerCore {
         if (this._scormExportControl || !this.resultsContent) return;
         this._scormExportControl = mountExportControl({
           container: this.resultsContent.parentNode || this.resultsContent,
-          getContent: () =>
-            this.resultsContent ? this.resultsContent.innerHTML : "",
+          // Serialises the live results, Mermaid SVGs included, so it waits
+          // for any diagram still repainting after a light/dark flip.
+          getContent: async () => {
+            const themes = window.MermaidThemes;
+            if (
+              this.resultsContent &&
+              themes &&
+              typeof themes.ensureThemeCurrent === "function"
+            ) {
+              await themes.ensureThemeCurrent(this.resultsContent);
+            }
+            return this.resultsContent ? this.resultsContent.innerHTML : "";
+          },
           format: "html",
           getTitle: () => {
             const heading = this.resultsHeading;

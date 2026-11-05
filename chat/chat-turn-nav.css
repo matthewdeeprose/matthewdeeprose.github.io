@@ -2,8 +2,10 @@
    Colours come from currentColor and the shared button rules; there is no theme-sheet entry. */
 
 /* ── The heading at the top of each question bubble ── */
+/* P16j: the gap below reads 8px from the question's text box, which sits about 2px down inside its 24px
+   line (see .chat-bubble-attachment in chat.css), so the margin is 6px. */
 .local-chat-bubble-user .chat-turn-heading {
-  margin: 0 0 0.25rem;
+  margin: 0 0 0.375rem;
   padding: 0;
   border: 0;
   font-size: 1rem;
@@ -141,12 +143,14 @@
   }
 }
 
-/* Wide layout, light theme: the same size and shape as Top and Bottom (5rem wide, icon above the
+/* Wide layout, both themes: the same size and shape as Top and Bottom (5rem wide, icon above the
    label), so the four buttons make a two-by-two block: Previous and Next above Top and Bottom.
    HOV-10-2: 5rem, not main.css's 4.5rem, because "Previous" at 16px Verdana is 68.05px and the
    inside of a 4.5rem button is 64px. Top and Bottom widen to match only while a turn button shows
-   (rule below), so a page without the turn buttons keeps main.css's 4.5rem. */
-@media screen and (min-width: 801px) and (prefers-color-scheme: light) {
+   (rule below), so a page without the turn buttons keeps main.css's 4.5rem.
+   P16j: dark takes the same layout (it was light only; dark had the 9.7rem two-line text bars). The
+   colours stay per theme: the light ones above, the dark ones in the block at the end of this file. */
+@media screen and (min-width: 801px) {
   #panel .chat-turn-nav-btn,
   #panel:has(.chat-turn-nav-btn:not([hidden])) #myBtn,
   #panel:has(.chat-turn-nav-btn:not([hidden])) #myBtn2 {
@@ -205,7 +209,7 @@
   }
 }
 
-@media screen and (min-width: 60rem) and (prefers-color-scheme: light) {
+@media screen and (min-width: 60rem) {
   #chat-messages .local-chat-bubble-user {
     margin-right: max(0px, calc(11.4rem + 36px - 5vw));
   }
@@ -217,5 +221,32 @@
   #panel .chat-turn-nav-btn:hover:not(:where(:focus-visible)) {
     border-width: 0.1rem;
     outline-width: 0.1rem;
+  }
+}
+
+/* P16j (dark theme, 801px and wider): Previous and Next take Top and Bottom's colours, which main.css gives
+   #myBtn and #myBtn2 by id with !important: cream text and border, a navy outline at rest, no outline on
+   keyboard focus. The fill (#231f20), the navy hover, the hover border colour and the lime focus glow already
+   come from dark.css's button rules, the same ones Top and Bottom get, so they are not repeated. 800px and
+   below is left as it was: dark is already icon-only there.
+   The hover border WIDTH is pinned: dark.css's button:hover sets "border: 0.2rem solid #e1e8ec !important", which
+   shrinks a button from 4px to 3px on hover. Top and Bottom do that, but Next in this two-by-two block then
+   stopped taking the hover at all (MEASURED 3 Nov 2026: :hover flapped on and off under a still pointer and the
+   navy fill never showed; with the width pinned it held for 2s). The cause of the flapping is not isolated;
+   light pins the same width in the layout block above, where nothing overrides it. */
+@media screen and (min-width: 801px) and (prefers-color-scheme: dark) {
+  #panel .chat-turn-nav-btn {
+    color: #fffff4;
+    border-color: #fffff4;
+    outline: 0.3rem solid #00131d;
+  }
+
+  #panel .chat-turn-nav-btn:hover:not(:where(:focus-visible)) {
+    color: #fffff4;
+    border-width: 0.3rem !important;
+  }
+
+  #panel .chat-turn-nav-btn:focus-visible {
+    outline: none !important;
   }
 }

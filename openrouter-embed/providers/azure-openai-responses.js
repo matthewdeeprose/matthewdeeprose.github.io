@@ -161,6 +161,16 @@
   // generous floor is safe; tune later if a heavier describe needs more.
   const REASONING_OUTPUT_FLOOR = 16000;
 
+  // TC-8b: how many call ids the round-2 cache holds before the oldest are
+  // evicted. A tool session needs only the reply it is answering, so this is a
+  // generous bound on a page-lifetime Map, not a tuned figure.
+  const TOOL_REPLY_CACHE_MAX_CALLS = 64;
+
+  // TC-8b: the Responses output item that carries one tool call, and the input
+  // item that answers it (both MEASURED, TC-8a, 4 November 2026).
+  const ITEM_FUNCTION_CALL = "function_call";
+  const ITEM_FUNCTION_CALL_OUTPUT = "function_call_output";
+
   // ============================================================================
   // INTERNAL HELPERS
   // ============================================================================
@@ -249,6 +259,51 @@
   function notifyTokenRejected(status, headers) {
     if (status !== 401 || !headers || !headers["x-user-token"]) return;
     window.dispatchEvent(new CustomEvent("entra:token-rejected"));
+  }
+
+  /** M-9a: the status an in-stream error carries when it names none. */
+  const IN_STREAM_ERROR_DEFAULT_STATUS = 502;
+
+  /**
+   * M-9a: turn a parsed stream payload whose top level carries an `error`
+   * object into the SAME error the `!response.ok` branch of streamRequest
+   * throws, or return null for any other payload. Same helper as
+   * azure-openai-v1.js, with this file's own message prefix.
+   *
+   * Why: the Foundry proxy now answers `200` early to keep a long request
+   * alive, so an upstream failure that arrives after that can only travel
+   * inside the stream, as `data: {"error":{"status":<n>,"message":…}}`.
+   * Without this the stream ends as an empty success.
+   *
+   * @param {Object} parsed - one parsed SSE `data:` payload
+   * @param {Object} headers - the request headers that were sent
+   * @returns {(Error|null)}
+   * @private
+   */
+  function inStreamError(parsed, headers) {
+    const error = parsed && parsed.error;
+    if (!error || typeof error !== "object" || Array.isArray(error)) return null;
+
+    const status =
+      typeof error.status === "number" ? error.status : IN_STREAM_ERROR_DEFAULT_STATUS;
+    // M-9a2: the body is Azure's own reply text where the proxy forwarded one
+    // (a JSON-object `message`), else the error wrapped as Azure would send it.
+    const errorBody = (() => {
+      try {
+        const inner = JSON.parse(error.message);
+        if (inner && typeof inner === "object" && !Array.isArray(inner)) return error.message;
+      } catch (_) {
+        /* not JSON: a native in-stream error */
+      }
+      return JSON.stringify({ error });
+    })();
+    const err = new Error(
+      `Foundry Responses request failed: HTTP ${status} — ${errorBody}`,
+    );
+    err.status = status;
+    err.body = errorBody;
+    notifyTokenRejected(status, headers);
+    return err;
   }
 
   /**
@@ -583,6 +638,216 @@
     return out;
   }
 
+  // ============================================================================
+  // TOOL CALLS (TC-8b)
+  // ============================================================================
+  //
+  // The runner and the core speak the chat shape; the Responses wire does not.
+  // These helpers translate at the adapter's edge in both directions, so neither
+  // the runner nor the core changes. A request with no tools and a reply with no
+  // function_call item never reach them.
+
+  /**
+   * One tool in the Responses shape. A chat-shape tool
+   * `{type:"function", function:{name, description, parameters}}` is
+   * flattened to `{type:"function", name, description, parameters}` (the shape
+   * TC-8a measured). Anything else, including an already-flat tool, is
+   * returned unchanged, which is what makes the translation idempotent: the
+   * second build of a streaming request receives the first build's flat tools.
+   *
+   * @param {Object} tool
+   * @returns {Object}
+   * @private
+   */
+  function toResponsesTool(tool) {
+    if (
+      !tool ||
+      typeof tool !== "object" ||
+      tool.type !== "function" ||
+      !tool.function ||
+      typeof tool.function !== "object"
+    ) {
+      return tool;
+    }
+    const flat = { type: "function", name: tool.function.name };
+    if (tool.function.description !== undefined) {
+      flat.description = tool.function.description;
+    }
+    if (tool.function.parameters !== undefined) {
+      flat.parameters = tool.function.parameters;
+    }
+    // Unmeasured on this route: carried only when the caller set it.
+    if (tool.function.strict !== undefined) flat.strict = tool.function.strict;
+    return flat;
+  }
+
+  /**
+   * `tool_choice` in the Responses shape. A chat-shape named choice
+   * `{type:"function", function:{name}}` becomes `{type:"function", name}`;
+   * a string ("auto", "required", "none") and an already-flat choice pass
+   * through unchanged (idempotent, as toResponsesTool).
+   *
+   * @param {*} choice
+   * @returns {*}
+   * @private
+   */
+  function toResponsesToolChoice(choice) {
+    if (
+      choice &&
+      typeof choice === "object" &&
+      choice.type === "function" &&
+      choice.function &&
+      typeof choice.function === "object"
+    ) {
+      return { type: "function", name: choice.function.name };
+    }
+    return choice;
+  }
+
+  /**
+   * The function_call items of a Responses output[] array, as chat-shape
+   * calls `{id, type:"function", function:{name, arguments}}`. `id` is the
+   * wire's `call_id` (what a function_call_output must answer), never the
+   * item's own `fc_…` id. `arguments` is the wire's JSON string, unchanged.
+   *
+   * @param {Array} outputArr
+   * @returns {Array<Object>}
+   * @private
+   */
+  function extractToolCalls(outputArr) {
+    if (!Array.isArray(outputArr)) return [];
+    const calls = [];
+    for (const item of outputArr) {
+      if (!item || item.type !== ITEM_FUNCTION_CALL) continue;
+      calls.push({
+        id: item.call_id,
+        type: "function",
+        function: { name: item.name, arguments: item.arguments },
+      });
+    }
+    return calls;
+  }
+
+  // Round 2 needs round 1's output items exactly as returned, the reasoning
+  // item and its encrypted_content included (the only round 2 measured,
+  // TC-8a). The core keeps only id, type, name and arguments of each call, so
+  // the items cannot ride on the call objects: they are kept here instead,
+  // keyed by call_id. Module-private, bounded, page-lifetime only, and never
+  // logged (encrypted_content must not reach the console at any level).
+  const toolReplyCache = new Map();
+
+  /**
+   * Remember a reply's whole output[] under each of its call ids.
+   *
+   * @param {Array} outputArr - the reply's output[], as returned
+   * @private
+   */
+  function rememberToolReply(outputArr) {
+    const callIds = extractToolCalls(outputArr)
+      .map((call) => call.id)
+      .filter((id) => typeof id === "string" && id !== "");
+    if (callIds.length === 0) return;
+
+    const entry = {
+      callIds,
+      items: JSON.parse(JSON.stringify(outputArr)),
+    };
+    for (const id of callIds) {
+      toolReplyCache.delete(id);
+      toolReplyCache.set(id, entry);
+    }
+    while (toolReplyCache.size > TOOL_REPLY_CACHE_MAX_CALLS) {
+      toolReplyCache.delete(toolReplyCache.keys().next().value);
+    }
+    logDebug("Tool reply remembered for round 2", {
+      calls: callIds.length,
+      items: entry.items.length,
+    });
+  }
+
+  /**
+   * The cached output items for an assistant message's tool calls, or null.
+   * A hit needs every call id to resolve to ONE cached reply whose call ids
+   * are exactly the message's; anything else is a miss. Returns a copy, so a
+   * caller cannot change what the next build reads.
+   *
+   * @param {Array<Object>} toolCalls - chat-shape calls
+   * @returns {(Array<Object>|null)}
+   * @private
+   */
+  function cachedItemsFor(toolCalls) {
+    const ids = toolCalls.map((call) => call && call.id);
+    const entry = toolReplyCache.get(ids[0]);
+    if (!entry) return null;
+    if (!ids.every((id) => toolReplyCache.get(id) === entry)) return null;
+    if (entry.callIds.length !== ids.length) return null;
+    if (!entry.callIds.every((id) => ids.includes(id))) return null;
+    return JSON.parse(JSON.stringify(entry.items));
+  }
+
+  /**
+   * The input items for an assistant message that carries tool_calls.
+   *
+   * Cache hit (the MEASURED path): round 1's output items, verbatim.
+   * Cache miss (UNMEASURED on the wire: no request of this shape has been
+   * sent to Azure): the message's text, if any, as an assistant item in the
+   * same shape as ordinary assistant history, then one
+   * `{type:"function_call", call_id, name, arguments}` per call. No reasoning
+   * item can be rebuilt, because its encrypted_content is gone.
+   *
+   * @param {Object} message - `{role:"assistant", content, tool_calls}`
+   * @returns {Array<Object>}
+   * @private
+   */
+  function assistantToolCallItems(message) {
+    const cached = cachedItemsFor(message.tool_calls);
+    if (cached) return cached;
+
+    logDebug("Round 2 built without cached reply items (unmeasured path)");
+    const items = [];
+    if (extractText(message.content) !== "") {
+      items.push({
+        role: "assistant",
+        content: buildInputContent(message.content),
+      });
+    }
+    for (const call of message.tool_calls) {
+      const fn = (call && call.function) || {};
+      items.push({
+        type: ITEM_FUNCTION_CALL,
+        call_id: call && call.id,
+        name: fn.name,
+        arguments:
+          typeof fn.arguments === "string"
+            ? fn.arguments
+            : JSON.stringify(fn.arguments === undefined ? {} : fn.arguments),
+      });
+    }
+    return items;
+  }
+
+  /**
+   * A `tool` message as a Responses function_call_output item. The output is
+   * the message's content as a string: a string passes through, an array of
+   * parts is flattened to its text, anything else is JSON-encoded.
+   *
+   * @param {Object} message - `{role:"tool", tool_call_id, content}`
+   * @returns {Object}
+   * @private
+   */
+  function toolOutputItem(message) {
+    const content = message.content;
+    let output;
+    if (typeof content === "string") output = content;
+    else if (Array.isArray(content)) output = extractText(content);
+    else output = JSON.stringify(content === undefined ? null : content);
+    return {
+      type: ITEM_FUNCTION_CALL_OUTPUT,
+      call_id: message.tool_call_id,
+      output,
+    };
+  }
+
   /**
    * Read the four token counts off a Responses `usage` object, normalising
    * absent/non-numeric fields to safe values. Returns the raw numbers; callers
@@ -698,14 +963,20 @@
      *     deployments against an image-only scan). The floor is true; gate
      *     per model via the model-level "pdf" capability token, not this floor.
      *   - reasoning: true — the Codex/pro family is reasoning-first.
-     *   - toolCalls: false — out of scope for this workstream.
+     *   - toolCalls: true (TC-8b, 5 November 2026) — the surface carries tool
+     *     calls: TC-8a (4 November 2026) measured all ten deployments that need
+     *     this route calling a named tool, answering after a
+     *     function_call_output, and streaming a forced call; TC-8b taught
+     *     buildRequest / parseResponse / streamRequest the shapes. THIS ADOPTS
+     *     NO MODEL: the tool runner also requires the model's own
+     *     metadata.toolCalls === true, and no azure-responses/ entry carries it.
      */
     capabilities: {
       streaming: true,
       images: true,
       pdf: true,
       reasoning: true,
-      toolCalls: false,
+      toolCalls: true,
     },
 
     /**
@@ -733,6 +1004,11 @@
      *     stripped deployment is in SAMPLING_PARAMS_ALLOWED.
      *   - NO `stream_options` — usage arrives natively on the Responses
      *     surface (unlike v1, which must request include_usage).
+     *   - Tool calling (TC-8b): chat-shape `tools` / `tool_choice` flattened
+     *     to the Responses shapes (idempotent); a `tool` message becomes a
+     *     `function_call_output` item; an assistant message with `tool_calls`
+     *     becomes round 1's cached output items (or rebuilt function_call
+     *     items on a cache miss). A top-level `reasoning_effort` is not read.
      */
     buildRequest(messages, options) {
       logDebug("Building Foundry Responses request body");
@@ -754,6 +1030,17 @@
           // System → instructions (always text; flattened to a string).
           const text = extractText(m.content);
           if (text) systemParts.push(text);
+        } else if (m.role === "tool") {
+          // TC-8b: a tool result answers its call as a function_call_output.
+          inputItems.push(toolOutputItem(m));
+        } else if (
+          m.role === "assistant" &&
+          Array.isArray(m.tool_calls) &&
+          m.tool_calls.length > 0
+        ) {
+          // TC-8b: an assistant turn that called tools becomes round 1's
+          // output items (cached), or rebuilt function_call items (a miss).
+          inputItems.push(...assistantToolCallItems(m));
         } else {
           // Assistant history is preserved as a role-tagged item. Text-only
           // content keeps the Task 2 shape byte-for-byte; an image-bearing
@@ -885,6 +1172,22 @@
         // the response.completed event (contrast v1's include_usage).
       }
 
+      // Tool calling (TC-8b). Each field ONLY WHEN GIVEN, so a request without
+      // tools keeps a byte-identical body. Chat-shape tools and tool_choice
+      // are flattened to the Responses shapes TC-8a measured; a flat one (the
+      // second build of a streaming request reads the first build's body)
+      // passes through unchanged. parallel_tool_calls passes through as a
+      // boolean only, as the other two adapters do; unmeasured on this route.
+      if (Array.isArray(options.tools) && options.tools.length > 0) {
+        body.tools = options.tools.map(toResponsesTool);
+      }
+      if (options.tool_choice !== undefined) {
+        body.tool_choice = toResponsesToolChoice(options.tool_choice);
+      }
+      if (typeof options.parallel_tool_calls === "boolean") {
+        body.parallel_tool_calls = options.parallel_tool_calls;
+      }
+
       logDebug("Foundry Responses request body built", {
         keys: Object.keys(body),
       });
@@ -968,6 +1271,9 @@
      */
     parseResponse(json) {
       const text = extractOutputText(json && json.output);
+      // TC-8b: the reply's tool calls, in the chat shape the core reads.
+      const toolCalls = extractToolCalls(json && json.output);
+      const hasToolCalls = toolCalls.length > 0;
 
       // Fail loudly on a completed-but-EMPTY or incomplete response. A reasoning
       // model can exhaust its output budget on hidden reasoning before emitting
@@ -975,9 +1281,12 @@
       // status:"incomplete" with incomplete_details.reason "max_output_tokens").
       // Surfacing this as an error — rather than silently returning "" — is what
       // lets the controller report failure instead of "generated successfully".
+      // TC-8b: a reply that is not incomplete and carries a function_call item
+      // is a good reply with no text (a forced tool call always is one).
       const status =
         json && typeof json.status === "string" ? json.status : null;
-      if (!text || text.trim() === "" || status === "incomplete") {
+      const isEmpty = !text || text.trim() === "";
+      if (status === "incomplete" || (isEmpty && !hasToolCalls)) {
         const modelName = (json && json.model) || "unknown";
         const reason =
           json &&
@@ -1020,6 +1329,19 @@
         ],
         usage,
       };
+
+      // TC-8b: the calls where the core reads them, as v1's wire carries them.
+      // content is null when there is no text, as on the chat wire v1 passes
+      // through. The whole output[] is kept for round 2.
+      if (hasToolCalls) {
+        result.choices[0].message = {
+          role: "assistant",
+          content: text || null,
+          tool_calls: toolCalls,
+        };
+        result.choices[0].finish_reason = "tool_calls";
+        rememberToolReply(json.output);
+      }
 
       // Reasoning summary (Reasoning Disclosure). Attach only when the model
       // actually returned summary text; absent otherwise so the caller renders
@@ -1122,6 +1444,11 @@
 
         const processParsed = (parsed) => {
           if (!parsed || typeof parsed !== "object") return;
+
+          // M-9a: an error sent inside the stream fails it, as !response.ok does.
+          const lateError = inStreamError(parsed, headers);
+          if (lateError) throw lateError;
+
           const type = parsed.type;
 
           if (type === EVENT_OUTPUT_TEXT_DELTA) {
@@ -1225,7 +1552,17 @@
           typeof finalResponsePayload.status === "string"
             ? finalResponsePayload.status
             : null;
-        if (finalStatus === "incomplete" || fullText.trim() === "") {
+        // TC-8b: the calls come from response.completed's output[] (MEASURED,
+        // TC-8a: it carries the finished function_call items). The argument
+        // deltas before it only drive the heartbeat, never onChunk or fullText.
+        const streamToolCalls = extractToolCalls(
+          finalResponsePayload && finalResponsePayload.output,
+        );
+        const hasStreamToolCalls = streamToolCalls.length > 0;
+        if (
+          finalStatus === "incomplete" ||
+          (fullText.trim() === "" && !hasStreamToolCalls)
+        ) {
           const modelName =
             (finalResponsePayload && finalResponsePayload.model) ||
             opts.model ||
@@ -1265,6 +1602,23 @@
           usage,
           processingTime: elapsedMs,
         };
+
+        // TC-8b: the calls in the whole-reply shape, where v1's stream puts
+        // them (choices[0].message.tool_calls); content is fullText, as v1's.
+        if (hasStreamToolCalls) {
+          responseData.choices = [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: fullText,
+                tool_calls: streamToolCalls,
+              },
+              finish_reason: "tool_calls",
+            },
+          ];
+          rememberToolReply(finalResponsePayload.output);
+        }
 
         logInfo("Foundry Responses streaming complete", {
           chunks: chunkIndex,

@@ -867,6 +867,10 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
    * @returns {Promise<string>} The cleaned copy's inner HTML
    */
   async function prepareThemedStaticExport(root) {
+    // Read the live SVGs only once the lazy light/dark flip has repainted
+    // them: the primary copy is tagged with the page's mode, so it must be
+    // drawn in it.
+    await awaitThemeCurrent(root);
     const html = prepareStaticExport(root);
     const themes = window.MermaidThemes;
     if (
@@ -922,6 +926,27 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
       `[Mermaid Export] Themed export: ${added} of ${liveSvgs.length} diagrams carry a ${secondMode} copy`
     );
     return template.innerHTML;
+  }
+
+  /**
+   * Wait until the given diagrams are painted for the page's current mode.
+   * After a site light/dark flip the diagrams repaint lazily, so a reader of a
+   * live SVG must pass this gate first (MermaidThemes.ensureThemeCurrent). An
+   * absent gate or a failure never blocks an export: it is logged and the
+   * export carries on with whatever is on the page.
+   *
+   * @param {HTMLElement} [target] - A .mermaid-container, an element holding
+   *   some, or nothing for every diagram
+   * @returns {Promise<void>}
+   */
+  async function awaitThemeCurrent(target) {
+    const themes = window.MermaidThemes;
+    if (!themes || typeof themes.ensureThemeCurrent !== "function") return;
+    try {
+      await themes.ensureThemeCurrent(target);
+    } catch (error) {
+      logWarn("[Mermaid Export] Theme gate failed; exporting as painted:", error);
+    }
   }
 
   /**
@@ -1211,9 +1236,11 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
    * @param {HTMLElement} container - The Mermaid container element
    * @param {string|number} id - Unique identifier for the filename
    */
-  function exportAsSvg(container, id) {
+  async function exportAsSvg(container, id) {
     try {
       logInfo(`[Mermaid Export] Starting SVG export for diagram ${id}`);
+
+      await awaitThemeCurrent(container);
 
       // Find the SVG element, specifically looking inside the .mermaid div
       const mermaidDiv = container.querySelector(".mermaid");
@@ -1285,9 +1312,11 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
    * @param {HTMLElement} container - The Mermaid container element
    * @param {string|number} id - Unique identifier for the filename
    */
-  function exportAsPng(container, id) {
+  async function exportAsPng(container, id) {
     try {
       logInfo(`[Mermaid Export] Starting PNG export for diagram ${id}`);
+
+      await awaitThemeCurrent(container);
 
       // Find the SVG element, specifically looking inside the .mermaid div
       const mermaidDiv = container.querySelector(".mermaid");

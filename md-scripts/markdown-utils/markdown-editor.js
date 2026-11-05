@@ -914,6 +914,12 @@ const MarkdownEditor = (function () {
     return md;
   }
 
+  // Fences that are drawn from their source text. The HTML-level maths restore
+  // never reaches inside them, so they need the typed maths put back before
+  // drawing, or a maths label shows %%MATHBLOCK_N%% or breaks the chart's JSON
+  // (RA-87, register 60).
+  const MATHS_RESTORE_FENCES = Object.freeze(["chart", "mermaid"]);
+
   // Create fence renderer for charts and mermaid
   function createFenceRenderer(md) {
     const originalFence =
@@ -928,8 +934,16 @@ const MarkdownEditor = (function () {
 
     return function (tokens, idx, options, env, slf) {
       const token = tokens[idx];
-      const code = token.content.trim();
       const info = token.info.trim();
+      let code = token.content.trim();
+
+      // Put each stashed maths original back into the source before drawing.
+      // env.mathMap is passed by the Markdown Editor render; other callers pass none.
+      if (MATHS_RESTORE_FENCES.includes(info) && env && env.mathMap) {
+        for (const [placeholder, original] of env.mathMap) {
+          code = code.split(placeholder).join(original);
+        }
+      }
 
       if (info === "chart") {
         return renderChart(code);
@@ -1306,6 +1320,9 @@ const MarkdownEditor = (function () {
       );
     }
   }
+  // \(...\) inline and \[...\] display maths; may span lines.
+  const BRACKET_MATH_PATTERN = /\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g;
+
   /**
    * Protect math blocks from markdown-it processing
    * Prevents plugins like markdown-it-sup from corrupting LaTeX syntax
@@ -1342,6 +1359,15 @@ const MarkdownEditor = (function () {
       }
     );
 
+    // Protect \(...\) and \[...\] too: markdown-it's backslash-escape rule would
+    // otherwise delete the backslashes and MathJax would never see the delimiters.
+    protectedText = protectedText.replace(BRACKET_MATH_PATTERN, (match) => {
+      const placeholder = `%%MATHBLOCK_${counter}%%`;
+      mathMap.set(placeholder, match);
+      counter++;
+      return placeholder;
+    });
+
     Logger.debug(`[Math Protection] Protected ${counter} math blocks`);
     return { text: protectedText, mathMap };
   }
@@ -1357,7 +1383,14 @@ const MarkdownEditor = (function () {
 
     for (const [placeholder, original] of mathMap) {
       // The placeholder might be wrapped in <p> tags, handle that
-      restoredHtml = restoredHtml.split(placeholder).join(original);
+      // Escape on the way back in, as MathProtect.restore does: otherwise
+      // `\(a<b\)` or `$a<b$` reaches the page as the start of a tag and swallows
+      // the text after it. MathJax reads decoded text, so it still sees `<`.
+      const escaped = original
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      restoredHtml = restoredHtml.split(placeholder).join(escaped);
     }
 
     Logger.debug(`[Math Protection] Restored ${mathMap.size} math blocks`);
@@ -1383,7 +1416,8 @@ const MarkdownEditor = (function () {
 
       // Protect math blocks from markdown-it plugins (especially sup)
       const { text: protectedText, mathMap } = protectMathBlocks(markdownText);
-      let htmlResult = md.render(protectedText);
+      // mathMap goes in as env so the fence renderer can restore maths in charts and diagrams
+      let htmlResult = md.render(protectedText, { mathMap });
 
       // Restore math blocks after markdown processing
       htmlResult = restoreMathBlocks(htmlResult, mathMap);

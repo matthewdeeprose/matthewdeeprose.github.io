@@ -1035,7 +1035,10 @@ class OpenRouterEmbed {
    *                              method (see providers/_interface.js typedef).
    * @param {Object} [callOptions] - The caller's per-request options. Only
    *                                 `tools`, `tool_choice` and
-   *                                 `parallel_tool_calls` are read (TC-3).
+   *                                 `parallel_tool_calls` are read (TC-3),
+   *                                 and `reasoning_effort` (TC-7d: a
+   *                                 non-empty string replaces the instance's
+   *                                 reasoning configuration for this call).
    * @returns {Object} Options object suitable for `this.client.sendRequest()`
    *                   and `this.client.sendStreamingRequest()`.
    * @throws {Error} If `provider` is missing or doesn't expose `buildRequest()`.
@@ -1060,10 +1063,25 @@ class OpenRouterEmbed {
       presence_penalty: this.presence_penalty,
     };
 
+    // TC-7d: a per-request `reasoning_effort` (a non-empty string only). It
+    // wins for that call, so it is set INSTEAD of `reasoning`, never beside it
+    // (the Azure adapter reads `reasoning.effort` first). Some deployments
+    // accept tools only with "none", which the instance route
+    // (configureReasoning) refuses by design. Absent means no key at all, so a
+    // request without the field is byte-identical to what it was before.
+    const callEffort =
+      callOptions &&
+      typeof callOptions.reasoning_effort === "string" &&
+      callOptions.reasoning_effort !== ""
+        ? callOptions.reasoning_effort
+        : null;
+
     // Reasoning configuration — pass through unchanged when enabled.
     // The provider applies the same three-mode rules (adaptive / effort /
     // budget) that the inline implementation used to apply.
-    if (this._reasoningConfig && this._reasoningConfig.enabled) {
+    if (callEffort !== null) {
+      canonicalOptions.reasoning_effort = callEffort;
+    } else if (this._reasoningConfig && this._reasoningConfig.enabled) {
       canonicalOptions.reasoning = this._reasoningConfig;
     } else if (this.sendReasoningOff === true) {
       // PB-5b: the explicit off switch, only on the opt-in. Keying on

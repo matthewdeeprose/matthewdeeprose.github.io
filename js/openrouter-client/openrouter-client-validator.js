@@ -50,6 +50,9 @@ function logDebug(message, ...args) {
   if (shouldLog(LOG_LEVELS.DEBUG)) console.log(message, ...args);
 }
 
+// M-10i: the efforts a reasoning-on request may carry to OpenRouter.
+const REASONING_EFFORTS = Object.freeze(["minimal", "low", "medium", "high"]);
+
 /**
  * Class for validating OpenRouter API parameters
  */
@@ -491,19 +494,46 @@ export class OpenRouterValidator {
       // key, boolean false. Disabling asks nothing of the model, so it needs no
       // declaration in parameterSupport.supported and none is consulted.
       //
-      // ANY OTHER reasoning value is still removed, as before: enabled true, an
-      // effort or a budget stays undelivered. Turning reasoning ON is item 5
-      // scope and is not decided here.
+      // ANY OTHER reasoning value is removed, except the reasoning-ON branch
+      // below (M-10i).
       const reasoning = options.reasoning;
+      const reasoningIsPlainObject =
+        reasoning && typeof reasoning === "object" && !Array.isArray(reasoning);
       if (
-        reasoning &&
-        typeof reasoning === "object" &&
-        !Array.isArray(reasoning) &&
+        reasoningIsPlainObject &&
         Object.keys(reasoning).length === 1 &&
         reasoning.enabled === false
       ) {
         requestBody.reasoning = { enabled: false };
         openRouterUtils.debug("Added the reasoning off switch to request body");
+      }
+
+      // M-10i — A REASONING-ON REQUEST REACHES OPENROUTER, for a model that
+      // declares "reasoning" in parameterSupport.supported. M-10h measured the
+      // MathPix thinking box building { enabled: true, effort } and this
+      // allowlist dropping it, so the box did nothing on the wire.
+      //
+      // A NEW OBJECT, never the caller's: enabled true, plus an effort only
+      // from the closed list, plus a budget only as a positive whole number.
+      // Nothing else on the caller's object is copied. A model that does not
+      // declare reasoning is dropped exactly as before, with one warn line.
+      if (reasoningIsPlainObject && reasoning.enabled === true) {
+        if (supportedParams.includes("reasoning")) {
+          const reasoningOn = { enabled: true };
+          if (REASONING_EFFORTS.includes(reasoning.effort)) {
+            reasoningOn.effort = reasoning.effort;
+          }
+          if (Number.isInteger(reasoning.max_tokens) && reasoning.max_tokens > 0) {
+            reasoningOn.max_tokens = reasoning.max_tokens;
+          }
+          requestBody.reasoning = reasoningOn;
+          openRouterUtils.debug("Added the reasoning-on request to request body");
+        } else {
+          openRouterUtils.warn(
+            "Reasoning requested for a model that does not declare it; not sent",
+            { model: options.model }
+          );
+        }
       }
 
       // TOOL CALLING (TC-2, 2 November 2026) — the tool fields, admitted on

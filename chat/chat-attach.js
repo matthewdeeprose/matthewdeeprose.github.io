@@ -90,7 +90,15 @@ window.ChatAttach = (function () {
   let _reading = false; // true while a document read is in flight
   let _boxWired = false; // idempotency guard for the pictures box's change listener
   let _stripFor = null; // the attachment the strip's items were built for (a different one rebuilds them)
-  const _unticked = new Set(); // positions in the held document's images the person has unticked (empty = send all)
+  // Parcel P17c-2: the picture NUMBERS ticked across everything on offer (not positions in doc.images).
+  // Seeded with the held pictures (the reader keeps the first 20) when a file is attached.
+  const _chosen = new Set();
+  let _page = 0; // the strip's current page, 0-based (pages of PICTURES_PAGE_SIZE)
+  const _encoded = new Map(); // number -> a doc.images-shaped entry encoded on tick (beyond the held ones)
+  const _encoding = new Map(); // number -> the promise of an encode in flight
+  let _thumbUrls = []; // object URLs for the shown page's thumbnails; every one is revoked on a page change
+  let _thumbRun = 0; // bumped per page render: a slower thumbnail from an earlier page is dropped
+  let _sendWrapped = false; // window.chatSend is wrapped once, to wait for an encode in flight
   let _bodyObserver = null; // one ResizeObserver on the box body, refits the card on a width change only
   let _fitBodyWidth = 0; // the body width the card was last fitted at
 
@@ -141,8 +149,16 @@ window.ChatAttach = (function () {
     pageMany: "It has {n} pages that can be sent as pictures. To send them, tick Include page pictures.",
     pageCapped:
       "It has {total} pages. The first {n} can be sent as pictures. To send them, tick Include page pictures.",
+    // Parcel P17c-2: more on offer than one send can carry (the owner may reword these at the listen).
+    over: "It has {n} pictures, and up to 20 can be sent. To send them, tick Include pictures.",
+    pageOver:
+      "It has {n} pages that can be sent as pictures, and up to 20 can be sent. To send them, tick Include page pictures.",
   });
-  // The visible label of the "Include pictures" box: "Include <count> <kind>", where the count is
+  // Parcel P17c-2 (P17 rulings 1 and 2): at most 20 pictures in one send, shown in pages of 10.
+  const MAX_PICTURES_SENT = 20;
+  const PICTURES_PAGE_SIZE = 10;
+  const SHOWING_TEXT = "Showing {a} to {b} of {n}";
+  const ENCODE_FAILED_MESSAGE = "Could not read {caption} from {name}, so it will not be sent.";  // The visible label of the "Include pictures" box: "Include <count> <kind>", where the count is
   // what can be sent (parcel P7). The word "found" now lives only in the "How we read this file" rows.
   const PICTURES_LABEL = Object.freeze({
     pictures: Object.freeze({ one: "picture", many: "pictures" }),
@@ -396,11 +412,12 @@ window.ChatAttach = (function () {
   }
 
   // Parcel P18: said first, and only for a PDF held as its words and pictures because it is too big to send whole.
-  // Parcel P18b: chosen by the FILE (does the reader hold page pictures for it), never by the model,
-  // so a model change leaves the text as it is and nothing new is announced.
+  // Parcel P17c-1 (wording 1): chosen by whether the pictures box is offered (the file holds page pictures
+  // AND the model reads images), so a scan PDF on a model that cannot read pictures says only its words are sent.
+  // A model change re-runs this silently through refreshAdvice(); nothing new is announced.
   function largePdfSentence(held) {
     if (!held || !held.wholeTooBig) return "";
-    return keptPictureCount() > 0 ? LARGE_PDF_SENTENCE : LARGE_PDF_WORDS_ONLY_SENTENCE;
+    return picturesOffered() ? LARGE_PDF_SENTENCE : LARGE_PDF_WORDS_ONLY_SENTENCE;
   }
 
   // Sentence 3: only for a held document (an image has no extracted text).
@@ -525,27 +542,64 @@ window.ChatAttach = (function () {
     return !!(attachment && attachment.doc && attachment.doc.docType === "pdf");
   }
 
-  // Pages in the PDF beyond the ones that can be sent (the reader renders at most CAPS.MAX_IMAGES).
+  // The reader's offer on the held document (parcel P17c-2), or null: every picture or page the person
+  // may choose, not only the first 20 the reader keeps.
+  function offerOf() {
+    const doc = attachment && attachment.doc;
+    const offer = doc && doc.offer;
+    return offer && Array.isArray(offer.numbers) ? offer : null;
+  }
+
+  // Pages in the PDF beyond the ones that can be chosen. With an offer that is the pages on offer;
+  // without one (a reader that gave none) it is the reader's own found count.
   function pagesOverCap() {
     const meta = attachment && attachment.doc && attachment.doc.meta;
     const summary = meta && meta.pictureSummary;
-    return !!summary && Number(meta.pagesTotal) > Number(summary.found);
+    if (!summary) return false;
+    const offer = offerOf();
+    return Number(meta.pagesTotal) > (offer ? offer.numbers.length : Number(summary.found));
   }
 
-  // The pictures that WOULD be sent from the held document: the reader's own count
-  // of kept pictures (a scan or maths PDF counts its page pictures). An image, a prose
-  // PDF and a text file carry no summary and read 0.
+  // The pictures the person may choose from: the reader's offer when it gave one (parcel P17c-2),
+  // otherwise the reader's own count of kept pictures (a scan or maths PDF counts its page pictures).
+  // An image, a prose PDF and a text file carry no summary and read 0.
   function keptPictureCount() {
+    const offer = offerOf();
+    if (offer) return offer.numbers.length;
     const summary =
       attachment && attachment.doc && attachment.doc.meta && attachment.doc.meta.pictureSummary;
     const kept = summary ? Number(summary.kept) : 0;
     return Number.isFinite(kept) && kept > 0 ? kept : 0;
   }
 
+  // Pictures the reader actually kept (its own count). An offer lists what COULD be encoded; when the
+  // reader kept none (for example EmbedFileUtils is unavailable, so nothing can be encoded) there is
+  // nothing to send and the box stays hidden, as before the offer existed.
+  function heldPictureCount() {
+    const summary =
+      attachment && attachment.doc && attachment.doc.meta && attachment.doc.meta.pictureSummary;
+    const kept = summary ? Number(summary.kept) : 0;
+    return Number.isFinite(kept) && kept > 0 ? kept : 0;
+  }
+
+  // The numbers on offer, in document order: the offer's, or the held pictures' own.
+  function offeredNumbers() {
+    const offer = offerOf();
+    if (offer) return offer.numbers.slice();
+    return sendablePictures().map(function (picture) {
+      return picture.number;
+    });
+  }
+
+  // The number a doc.images entry carries on the wire: its own, or its position + 1 where the reader left it unset.
+  function heldNumber(image, index) {
+    return Number.isFinite(image.number) ? image.number : index + 1;
+  }
+
   // Offered only for a held document with pictures to send, on a model that can
   // read images. Decided at CALL time, like isSentAsDocument().
   function picturesOffered() {
-    if (!isSentAsDocument() || keptPictureCount() === 0) return false;
+    if (!isSentAsDocument() || keptPictureCount() === 0 || heldPictureCount() === 0) return false;
     const s = state();
     return modelAcceptsImages(s ? s.currentModel : null);
   }
@@ -562,7 +616,7 @@ window.ChatAttach = (function () {
   function renderPictures() {
     const offered = picturesOffered();
     const found = offered ? keptPictureCount() : 0;
-    const chosen = Math.max(0, found - _unticked.size);
+    const chosen = offered ? _chosen.size : 0;
     const words = PICTURES_LABEL[offered && picturesArePages() ? "pages" : "pictures"];
     // "Include 4 of 6 pictures" only while some are unticked; otherwise the span is EMPTY and the label
     // reads "Include 6 pictures" as before (emptied, not hidden, so its text is the label's text too).
@@ -636,31 +690,179 @@ window.ChatAttach = (function () {
 
   // The strip is a fieldset whose first child is its (visually hidden) legend: only the items go.
   function clearStripItems(strip) {
+    _thumbRun += 1; // a thumbnail still being made for these items is dropped when it arrives
+    _thumbUrls.forEach(function (url) {
+      URL.revokeObjectURL(url);
+    });
+    _thumbUrls = [];
     strip.querySelectorAll(".chat-attach-pictures-item").forEach(function (item) {
       item.remove();
     });
   }
 
-  // A tick or untick on one picture: record it, and refresh the box's "n of N" count. Silent.
+  function pictureCaption(number) {
+    return STRIP_CAPTIONS[picturesArePages() ? PICTURE_KIND_PAGE : "image"] + " " + number;
+  }
+
+  function pageCount(total) {
+    return Math.max(1, Math.ceil(total / PICTURES_PAGE_SIZE));
+  }
+
+  function showingEl() {
+    return document.getElementById(elId("attach-pictures-showing"));
+  }
+
+  function navEl() {
+    return document.getElementById(elId("attach-pictures-nav"));
+  }
+
+  function limitEl() {
+    return document.getElementById(elId("attach-pictures-limit"));
+  }
+
+  function prevEl() {
+    return document.getElementById(elId("attach-pictures-prev"));
+  }
+
+  function nextEl() {
+    return document.getElementById(elId("attach-pictures-next"));
+  }
+
+  // The limit note shows while the person is at the limit AND has just been refused a 21st; it clears
+  // as soon as the ticked count drops below the limit. Static text, never a live region.
+  function hideLimitNoteBelowLimit() {
+    const note = limitEl();
+    if (note && _chosen.size < MAX_PICTURES_SENT) note.hidden = true;
+  }
+
+  // The reader's encode of one picture beyond the held ones, started at the moment it is ticked. The
+  // promise is kept so a send can wait for it; a null result leaves the picture out and says so once.
+  function startEncode(number) {
+    const offer = offerOf();
+    const held = attachment;
+    if (!offer || _encoded.has(number) || _encoding.has(number)) return;
+    wrapSendOnce();
+    const work = Promise.resolve()
+      .then(function () {
+        return offer.encode(number);
+      })
+      .catch(function () {
+        return null;
+      })
+      .then(function (entry) {
+        _encoding.delete(number);
+        if (attachment !== held) return; // removed or replaced while it ran
+        if (entry && entry.dataUrl) {
+          _encoded.set(number, entry);
+          return;
+        }
+        _chosen.delete(number);
+        notify(
+          "notifyWarning",
+          ENCODE_FAILED_MESSAGE.replace("{caption}", pictureCaption(number)).replace("{name}", held.filename),
+          { duration: 0 }
+        );
+        hideLimitNoteBelowLimit();
+        renderPictures();
+        renderStripPage();
+      });
+    _encoding.set(number, work);
+  }
+
+  // window.chatSend is called by name at send time (chat-core.js), and the part is built synchronously.
+  // While an encode is in flight the send is held back and run when it settles, so a ticked picture is
+  // never left out by a race. Wrapped once; with nothing in flight it is the original call, unchanged.
+  function wrapSendOnce() {
+    if (_sendWrapped || typeof window.chatSend !== "function") return;
+    _sendWrapped = true;
+    const original = window.chatSend;
+    window.chatSend = function () {
+      if (_encoding.size === 0) return original.apply(this, arguments);
+      const self = this;
+      const args = arguments;
+      return Promise.all(Array.from(_encoding.values())).then(function () {
+        return original.apply(self, args);
+      });
+    };
+  }
+
+  // A tick or untick on one picture: record it, and refresh the box's "n of N" count. Ticking a
+  // picture beyond the limit leaves it unticked, shows the limit note and speaks it once.
   function onPictureToggle(event) {
     const tick = event.target;
     if (!(tick instanceof HTMLInputElement) || !tick.classList.contains("chat-attach-pictures-tick")) return;
-    const index = Number(tick.dataset.index);
-    if (!Number.isInteger(index)) return;
-    if (tick.checked) _unticked.delete(index);
-    else _unticked.add(index);
+    const number = Number(tick.dataset.number);
+    if (!Number.isInteger(number)) return;
+    if (tick.checked) {
+      if (_chosen.size >= MAX_PICTURES_SENT) {
+        tick.checked = false;
+        const note = limitEl();
+        if (note) note.hidden = false;
+        announce(note ? note.textContent.trim() : "");
+        return;
+      }
+      _chosen.add(number);
+      const isHeld =
+        attachment &&
+        attachment.doc &&
+        Array.isArray(attachment.doc.images) &&
+        attachment.doc.images.some(function (image, index) {
+          return image && heldNumber(image, index) === number;
+        });
+      if (!isHeld) startEncode(number);
+    } else {
+      _chosen.delete(number);
+    }
+    hideLimitNoteBelowLimit();
     renderPictures();
   }
 
-  // Builds the items for the held attachment (captions at once, thumbnails one after another as
-  // they are made). Held on the DOM only: nothing here is stored or sent.
-  function buildStripItems(strip) {
+  // The thumbnail of one numbered picture: the offer's (a PNG blob, shown through an object URL that is
+  // revoked on the next page change), or a small copy of a held data URL where there is no offer.
+  async function thumbnailSource(number, picturesByNumber) {
+    const offer = offerOf();
+    if (offer) {
+      const made = await offer.thumbnail(number);
+      if (!made || !made.blob) return null;
+      const url = URL.createObjectURL(made.blob);
+      return { src: url, url: url };
+    }
+    const picture = picturesByNumber.get(number);
+    const small = picture ? await makeThumbnail(picture.dataUrl) : null;
+    return small ? { src: small, url: null } : null;
+  }
+
+  // Draws the current page of the strip: the pictures' items, the "Showing" line and the two buttons.
+  // Ticks come from _chosen, so they are kept across pages. Silent: nothing is announced here.
+  function renderStripPage() {
+    const strip = picturesStripEl();
+    const nav = navEl();
+    const showing = showingEl();
+    if (!strip || !nav || !showing) return;
     clearStripItems(strip);
-    _unticked.clear(); // a new strip starts with every picture ticked
-    const held = attachment;
-    _stripFor = held;
-    const pending = [];
+    const numbers = offeredNumbers();
+    const total = numbers.length;
+    const pages = pageCount(total);
+    _page = Math.min(Math.max(0, _page), pages - 1);
+    const start = _page * PICTURES_PAGE_SIZE;
+    const shown = numbers.slice(start, start + PICTURES_PAGE_SIZE);
+    const paged = total > PICTURES_PAGE_SIZE;
+    showing.hidden = !paged;
+    nav.hidden = !paged;
+    if (paged) {
+      showing.textContent = SHOWING_TEXT.replace("{a}", String(start + 1))
+        .replace("{b}", String(start + shown.length))
+        .replace("{n}", String(total));
+      prevEl().setAttribute("aria-disabled", _page === 0 ? "true" : "false");
+      nextEl().setAttribute("aria-disabled", _page === pages - 1 ? "true" : "false");
+    }
+    const picturesByNumber = new Map();
     sendablePictures().forEach(function (picture) {
+      picturesByNumber.set(picture.number, picture);
+    });
+    const run = _thumbRun;
+    const pending = [];
+    shown.forEach(function (number) {
       const item = document.createElement("label");
       item.className = "chat-attach-pictures-item";
       const thumb = document.createElement("img");
@@ -672,24 +874,47 @@ window.ChatAttach = (function () {
       const tick = document.createElement("input");
       tick.type = "checkbox";
       tick.className = "chat-attach-pictures-tick";
-      tick.checked = true;
-      tick.dataset.index = String(picture.index);
+      tick.checked = _chosen.has(number);
+      tick.dataset.number = String(number);
       row.appendChild(tick);
       const caption = document.createElement("span");
       caption.className = "chat-attach-pictures-caption";
-      caption.textContent = STRIP_CAPTIONS[picture.kind] + " " + picture.number;
+      caption.textContent = pictureCaption(number);
       row.appendChild(caption);
       item.appendChild(row);
-      strip.appendChild(item);
-      pending.push({ thumb: thumb, dataUrl: picture.dataUrl });
+      strip.insertBefore(item, nav);
+      pending.push({ thumb: thumb, number: number });
     });
     (async function () {
       for (const entry of pending) {
-        const small = await makeThumbnail(entry.dataUrl);
-        if (_stripFor !== held) return; // removed or replaced meanwhile
-        if (small) entry.thumb.src = small;
+        const made = await thumbnailSource(entry.number, picturesByNumber);
+        if (!made) continue;
+        if (_thumbRun !== run) {
+          if (made.url) URL.revokeObjectURL(made.url); // the page changed while it was made
+          return;
+        }
+        if (made.url) _thumbUrls.push(made.url);
+        entry.thumb.src = made.src;
       }
     })();
+  }
+
+  // Builds the strip for the held attachment. Held on the DOM only: nothing here is stored or sent.
+  function buildStripItems() {
+    _stripFor = attachment;
+    _page = 0;
+    renderStripPage();
+  }
+
+  // A press on Previous 10 / Next 10: render that page, then move focus to the "Showing" line. A press
+  // at either end (aria-disabled) does nothing and leaves focus where it is.
+  function onPageButton(direction) {
+    const button = direction < 0 ? prevEl() : nextEl();
+    if (!button || button.getAttribute("aria-disabled") === "true") return;
+    _page += direction;
+    renderStripPage();
+    const showing = showingEl();
+    if (showing) showing.focus();
   }
 
   // The strip and its note show only while the box is showing AND ticked. Items persist (hidden)
@@ -700,26 +925,55 @@ window.ChatAttach = (function () {
     if (!strip || !note) return;
     if (_stripFor && _stripFor !== attachment) {
       clearStripItems(strip);
-      _unticked.clear();
       _stripFor = null;
     }
     const show = picturesIncluded();
     note.hidden = !show;
-    if (show && _stripFor !== attachment) buildStripItems(strip);
+    if (show && _stripFor !== attachment) buildStripItems();
     strip.hidden = !show;
   }
 
-  // Pictures cost tokens, so every new attach and every removal starts unticked.
+  // Calls release() on a document's offer (parcel P17c-2): the holder's job (P17b). Safe to call twice.
+  function releaseOffer(doc) {
+    const offer = doc && doc.offer;
+    if (!offer || typeof offer.release !== "function") return;
+    try {
+      Promise.resolve(offer.release()).catch(function () {});
+    } catch (e) {
+      logWarn("offer.release() threw");
+    }
+  }
+
+  // Pictures cost tokens, so every new attach and every removal starts unticked. The ticked set is
+  // seeded with the held pictures (the first 20 the reader kept), and the page, the encodes and the
+  // limit note start afresh.
   function resetPicturesChoice() {
     const box = picturesBoxEl();
     if (box) box.checked = false;
-    _unticked.clear();
+    _chosen.clear();
+    _encoded.clear();
+    _encoding.clear();
+    _page = 0;
+    const images = attachment && attachment.doc && attachment.doc.images;
+    if (Array.isArray(images)) {
+      images.forEach(function (image, index) {
+        if (image && image.dataUrl) _chosen.add(heldNumber(image, index));
+      });
+    }
+    const note = limitEl();
+    if (note) note.hidden = true;
   }
 
   // The attach-line sentence naming the pictures; "" unless the box is showing.
   function picturesSentence() {
     if (!picturesOffered()) return "";
     const kept = keptPictureCount();
+    if (kept > MAX_PICTURES_SENT) {
+      return (picturesArePages() ? PICTURES_SENTENCE.pageOver : PICTURES_SENTENCE.over).replace(
+        "{n}",
+        String(kept)
+      );
+    }
     if (picturesArePages()) {
       if (pagesOverCap()) {
         return PICTURES_SENTENCE.pageCapped
@@ -967,15 +1221,39 @@ window.ChatAttach = (function () {
   // takes carries just those. The held document is never changed, so a picture can be re-ticked until
   // Send. Each kept picture keeps the number the model sees: where the reader left `number` unset it is
   // stamped on the copy, because toParts would otherwise renumber by position in the shortened list.
+  // (parcel P17c-2) The ticked set is picture NUMBERS across the offer: a held picture that is ticked,
+  // plus any beyond the held ones that was encoded on tick, in number order. A copy that carries an
+  // offer never carries it on: the sent part holds data, not a handle that release() has closed.
+  function withoutOffer(doc) {
+    if (!doc || !doc.offer) return doc;
+    const copy = Object.assign({}, doc);
+    delete copy.offer;
+    return copy;
+  }
+
   function documentWithTickedPictures(doc) {
-    if (_unticked.size === 0 || !doc || !Array.isArray(doc.images)) return doc;
-    const images = [];
+    if (!doc || !Array.isArray(doc.images)) return doc;
+    const held = new Map();
     doc.images.forEach(function (image, index) {
-      if (_unticked.has(index)) return;
-      const numbered = image && !Number.isFinite(image.number) ? Object.assign({}, image, { number: index + 1 }) : image;
-      images.push(numbered);
+      if (!image) return;
+      const number = heldNumber(image, index);
+      held.set(number, Number.isFinite(image.number) ? image : Object.assign({}, image, { number: number }));
     });
-    return Object.assign({}, doc, { images: images });
+    if (!doc.offer && Array.from(held.keys()).every(function (number) {
+      return _chosen.has(number);
+    })) {
+      return doc; // no offer and nothing unticked: the held document as it is
+    }
+    const images = [];
+    Array.from(_chosen)
+      .sort(function (a, b) {
+        return a - b;
+      })
+      .forEach(function (number) {
+        const entry = held.get(number) || _encoded.get(number);
+        if (entry) images.push(entry);
+      });
+    return withoutOffer(Object.assign({}, doc, { images: images }));
   }
 
   function getAttachmentPart() {
@@ -984,7 +1262,7 @@ window.ChatAttach = (function () {
       const includeImages = picturesIncluded();
       return {
         type: "document",
-        doc: includeImages ? documentWithTickedPictures(attachment.doc) : attachment.doc,
+        doc: includeImages ? documentWithTickedPictures(attachment.doc) : withoutOffer(attachment.doc),
         includeImages: includeImages,
       };
     }
@@ -1033,6 +1311,7 @@ window.ChatAttach = (function () {
   function clearAttachment() {
     const had = attachment !== null;
     const clearedKind = attachment ? attachment.kind : null;
+    if (attachment) releaseOffer(attachment.doc);
     attachment = null;
     reapplyAnswerRoom();
     renderPreview();
@@ -1100,7 +1379,7 @@ window.ChatAttach = (function () {
 
     let doc;
     try {
-      doc = await reader().read(file);
+      doc = await reader().read(file, { offerAll: true });
     } catch (e) {
       if (!isCurrent(token)) return;
       logWarn("Document read failed", e && e.code);
@@ -1111,8 +1390,12 @@ window.ChatAttach = (function () {
       notify("notifyError", readFailureMessage(e, displayName, route));
       return;
     }
-    if (!isCurrent(token)) return; // a later file won
+    if (!isCurrent(token)) {
+      releaseOffer(doc); // a later file won: this read's offer has no holder
+      return;
+    }
 
+    if (attachment) releaseOffer(attachment.doc); // a replacement attach drops the one held
     attachment = {
       file: file,
       base64: null,
@@ -1258,13 +1541,16 @@ window.ChatAttach = (function () {
     let readFailed = false;
     if (kind === "pdf" && reader()) {
       try {
-        doc = await reader().read(file);
+        doc = await reader().read(file, { offerAll: true });
       } catch (e) {
         readFailed = true;
         logWarn("PDF text read failed", e && e.code);
       }
     }
-    if (!isCurrent(token)) return; // a later file won
+    if (!isCurrent(token)) {
+      releaseOffer(doc); // a later file won: this read's offer has no holder
+      return;
+    }
 
     // A large PDF has no raw fallback, so if its words could not be read it is refused outright.
     if (largePdf && !doc) {
@@ -1278,6 +1564,7 @@ window.ChatAttach = (function () {
 
     _reading = false;
     setBusy(false);
+    if (attachment) releaseOffer(attachment.doc); // a replacement attach drops the one held
     attachment = {
       file: file,
       base64: base64,
@@ -1912,6 +2199,10 @@ window.ChatAttach = (function () {
     box.addEventListener("change", renderStrip);
     const strip = picturesStripEl();
     if (strip) strip.addEventListener("change", onPictureToggle); // one listener for every picture's tick
+    const prev = prevEl();
+    const next = nextEl();
+    if (prev) prev.addEventListener("click", function () { onPageButton(-1); });
+    if (next) next.addEventListener("click", function () { onPageButton(1); });
     _boxWired = true;
   }
 

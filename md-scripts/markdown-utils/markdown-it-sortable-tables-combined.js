@@ -117,6 +117,21 @@
       "show-less-button": "show-less-button",
     },
 
+    // Typeset maths in a column header (RA-86, register 59).
+    // The sort button's name must stay the plain header text, so a header that
+    // holds typeset maths gets a hidden plain copy (read by screen readers and
+    // by the sort announcement) beside an aria-hidden typeset copy (seen).
+    HEADER_MATHS: {
+      // The GLOBAL sr-only class on purpose. getClassName("SR_ONLY") gives the
+      // prefixed "mdSortableTable-sr-only", which the sort handler looks up to
+      // write its status text, so a copy carrying it would be overwritten.
+      HIDDEN_CLASS: "sr-only",
+      TEXT_ATTRIBUTE: "data-sr-header-text",
+      MATHS_ATTRIBUTE: "data-sr-header-maths",
+      MATHS_SELECTOR: "mjx-container",
+      MATHS_TEST: /<mjx-container/i,
+    },
+
     // ARIA and accessibility settings
     ARIA: {
       LIVE_REGION_ID: "sortable-table-announcements",
@@ -258,7 +273,10 @@
       rows.push(rowData);
     });
 
-    return { headers, rows };
+    // Header HTML too, so a header holding typeset maths can be shown typeset
+    const headerHtml = Array.from(headerCells).map((th) => th.innerHTML.trim());
+
+    return { headers, rows, headerHtml };
   }
 
   // =========================================================================
@@ -287,6 +305,7 @@
       const extracted = extractTableData(this.originalTable);
       this.headers = extracted.headers;
       this.data = extracted.rows;
+      this.headerHtml = extracted.headerHtml;
 
       // Initialise the enhanced table
       this.init();
@@ -454,7 +473,30 @@
         button.setAttribute("type", "button");
 
         const span = document.createElement("span");
-        span.textContent = header;
+        const mathsHtml = this.headerHtml && this.headerHtml[index];
+
+        if (mathsHtml && CONFIG.HEADER_MATHS.MATHS_TEST.test(mathsHtml)) {
+          // Hidden plain copy: the button's accessible name and the sort announcement
+          const plainCopy = document.createElement("span");
+          plainCopy.className = CONFIG.HEADER_MATHS.HIDDEN_CLASS;
+          plainCopy.setAttribute(CONFIG.HEADER_MATHS.TEXT_ATTRIBUTE, "");
+          plainCopy.textContent = header;
+
+          // Typeset copy: seen, never read, never a Tab stop
+          const typeset = document.createElement("span");
+          typeset.setAttribute("aria-hidden", "true");
+          typeset.setAttribute(CONFIG.HEADER_MATHS.MATHS_ATTRIBUTE, "");
+          typeset.innerHTML = mathsHtml;
+          typeset.querySelectorAll("[id]").forEach((el) => el.removeAttribute("id"));
+          typeset
+            .querySelectorAll(CONFIG.HEADER_MATHS.MATHS_SELECTOR)
+            .forEach((el) => el.setAttribute("tabindex", "-1"));
+
+          span.appendChild(plainCopy);
+          span.appendChild(typeset);
+        } else {
+          span.textContent = header;
+        }
 
         const icon = document.createElement("span");
         icon.className = getClassName("SORT_ICON");
@@ -785,7 +827,12 @@
       icon.textContent = CONFIG.SORT.ICONS[newDirection];
 
       const srText = button.querySelector(`.${getClassName("SR_ONLY")}`);
-      const columnName = button.querySelector("span:first-child").textContent;
+      // A maths header keeps its plain text in a hidden copy; read that, not the typeset span
+      const nameSpan = button.querySelector("span:first-child");
+      const plainCopy = nameSpan.querySelector(
+        `[${CONFIG.HEADER_MATHS.TEXT_ATTRIBUTE}]`
+      );
+      const columnName = (plainCopy || nameSpan).textContent;
 
       if (newDirection === "none") {
         srText.textContent = ", sortable column, currently not sorted";

@@ -532,6 +532,8 @@
   async function runPictureStep(items, options) {
     const list = Array.isArray(items) ? items : [];
     const isPages = !!options && options.profile === PROFILE_NAMES.PAGE;
+    // offerAll (P17b): an over-cap picture can still be chosen, so it is treated as offered.
+    const offerAll = !!options && options.offerAll === true;
     const profileName = isPages ? PROFILE_NAMES.PAGE : PROFILE_NAMES.PICTURES;
     const decisions = [];
     const images = [];
@@ -580,6 +582,8 @@
 
       if (keptCount >= CAPS.MAX_IMAGES) {
         decision.outcome = PICTURE_OUTCOMES.OVER_CAP;
+        // Offered, so a later copy of it is a repeat of it (without offerAll it is judged on its own).
+        if (offerAll && hash !== null) firstByHash.set(hash, number);
         continue;
       }
       const encoded = await convertPicture(item.blob, profileName);
@@ -600,12 +604,23 @@
     for (const decision of decisions) {
       if (decision.outcome !== PICTURE_OUTCOMES.REPEAT) continue;
       const original = decisions[decision.repeatOf - 1];
-      if (original.outcome === PICTURE_OUTCOMES.KEPT) original.alsoAs.push(decision.number);
+      const offered = original.outcome === PICTURE_OUTCOMES.KEPT || (offerAll && original.outcome === PICTURE_OUTCOMES.OVER_CAP);
+      if (offered) original.alsoAs.push(decision.number);
     }
 
     const summary = summariseDecisions(decisions);
     logCounts("Pictures handled", summary);
-    return { images, decisions, summary };
+    const result = { images, decisions, summary };
+    // Source blobs of the offered pictures, for thumbnail and encode. A PDF's pages are drawn on
+    // demand instead, so nothing is held for them.
+    if (offerAll && !isPages) {
+      result.held = new Map();
+      for (const decision of decisions) {
+        const offered = decision.outcome === PICTURE_OUTCOMES.KEPT || decision.outcome === PICTURE_OUTCOMES.OVER_CAP;
+        if (offered) result.held.set(decision.number, list[decision.number - 1].blob);
+      }
+    }
+    return result;
   }
 
   /** Alt text made safe for a marker: no ], no line breaks. (</document> is neutralised by toParts.) */
@@ -614,7 +629,7 @@
   }
 
   /** The marker text for one picture (see the contract at the top of this file). */
-  function buildPictureMarker(decision, alt) {
+  function buildPictureMarker(decision, alt, offerAll) {
     const label = `Image ${decision.number}`;
     const text = cleanAltText(alt);
     const named = text === "" ? label : `${label}: ${text}`;
@@ -622,11 +637,50 @@
     if (decision.outcome === PICTURE_OUTCOMES.REPEAT) {
       return `[${label}: same picture as Image ${decision.repeatOf}]`;
     }
-    if (decision.outcome === PICTURE_OUTCOMES.KEPT) {
+    // With offerAll an over-cap picture reads as a kept one, since it may be chosen.
+    if (decision.outcome === PICTURE_OUTCOMES.KEPT || (offerAll === true && decision.outcome === PICTURE_OUTCOMES.OVER_CAP)) {
       const also = decision.alsoAs.length ? `; also appears as Image ${decision.alsoAs.join(", ")}` : "";
       return `[${named}${also}]`;
     }
     return `[${named}; not included, ${SKIP_REASONS[decision.outcome]}]`;
+  }
+
+  /**
+   * The `Image n` numbers a message sends: the picture parts toParts is about to label "Image n".
+   * Page pictures (a PDF's pages) are not Image markers and do not count. Null when no such part
+   * goes, so a message that sends no picture keeps the text byte-for-byte as it was (P17d).
+   */
+  function sentPictureNumbers(doc) {
+    if (!Array.isArray(doc.images)) return null;
+    const sent = new Set();
+    doc.images.forEach((image, index) => {
+      if (!(image && image.dataUrl) || image.kind === PICTURE_KIND_PAGE) return;
+      sent.add(Number.isFinite(image.number) ? image.number : index + 1);
+    });
+    return sent.size > 0 ? sent : null;
+  }
+
+  /**
+   * Adds "; not sent" to the marker of every OFFERED picture the message does not send (P17d). It
+   * reads the markers themselves, so it works on a stored and restored document. A marker is
+   * `[Image n` up to the first `]`: alt text is cleaned of `]` and line breaks, so what sits between
+   * is the alt text and the "also appears as" list, which are kept as they are. A repeat marker
+   * (`: same picture as Image m`) and a skipped one (`; not included, <reason>`) are left alone.
+   * Alt text that happens to read exactly like either of those cannot be told apart from the text
+   * alone; it is left unmarked, which is what the model got before this parcel.
+   */
+  const SKIPPED_MARKER_ENDINGS = Object.freeze(Object.values(SKIP_REASONS).map((reason) => `; not included, ${reason}`));
+  const PICTURE_MARKER_PATTERN = /\[Image (\d+)([^\]]*)\]/g;
+  const REPEAT_MARKER_REST = /^: same picture as Image \d+$/;
+  const NOT_SENT_SUFFIX = "; not sent";
+
+  function markUnsentPictures(text, sentNumbers) {
+    return String(text).replace(PICTURE_MARKER_PATTERN, (marker, digits, rest) => {
+      if (sentNumbers.has(Number(digits))) return marker;
+      if (REPEAT_MARKER_REST.test(rest)) return marker;
+      if (SKIPPED_MARKER_ENDINGS.some((ending) => rest.endsWith(ending))) return marker;
+      return `[Image ${digits}${rest}${NOT_SENT_SUFFIX}]`;
+    });
   }
 
   // ============================================================================
@@ -666,9 +720,12 @@
   /**
    * Reads a file into text.
    * @param {File} file
-   * @param {Object} [options] Reserved for later parcels.
+   * @param {{offerAll?: boolean}} [options] offerAll (parcel P17b, opt-in): the result also carries
+   *   `offer` (a PictureOffer), every picture can be chosen and not only the first 20, and an
+   *   over-cap picture's marker reads as a kept one. A PDF is then kept open until
+   *   offer.release(). Without it every byte of the result is as before.
    * @returns {Promise<{kind: "document", docType: string, name: string,
-   *   text: string, images: Array, meta: Object}>}
+   *   text: string, images: Array, meta: Object, offer?: PictureOffer}>}
    * @throws {Error} with { code, docType }: "unsupported-format" (also for a
    *   format whose module file does not exist yet), "unreadable" or "too-large".
    */
@@ -688,6 +745,20 @@
       pictureMarker: buildPictureMarker,
       log: (message, counts) => logCounts(message, counts),
     };
+
+    // offerAll (P17b): the picture step and the markers learn the option, and the format module
+    // is told (a PDF module keeps its document open and builds its own offer from createOffer).
+    const offerAll = !!options && options.offerAll === true;
+    let offeredStep = null;
+    if (offerAll) {
+      ctx.offerAll = true;
+      ctx.createOffer = createOffer;
+      ctx.pictureStep = async (items, stepOptions) => {
+        offeredStep = await runPictureStep(items, Object.assign({}, stepOptions, { offerAll: true }));
+        return offeredStep;
+      };
+      ctx.pictureMarker = (decision, alt) => buildPictureMarker(decision, alt, true);
+    }
 
     let raw;
     try {
@@ -750,7 +821,7 @@
       truncated: meta.truncated !== null,
     });
 
-    return {
+    const doc = {
       kind: "document",
       docType,
       name: String(file.name || ""),
@@ -758,6 +829,12 @@
       images: Array.isArray(raw && raw.images) ? raw.images : [],
       meta,
     };
+    if (offerAll) {
+      // A PDF module builds its own (it holds the open document); Word and PowerPoint use the
+      // step's held blobs; every other format has nothing to offer.
+      doc.offer = (raw && raw.offer) || createPictureOffer(offeredStep);
+    }
+    return doc;
   }
 
   /**
@@ -771,7 +848,9 @@
     const { includeImages, vision } = options || {};
     const name = escapeAttribute(doc.name);
     const type = escapeAttribute(doc.docType);
-    const body = neutraliseWrapper(doc.text);
+    // P17d: when this message sends pictures, the offered ones it leaves out are marked "not sent".
+    const sentNumbers = vision && includeImages ? sentPictureNumbers(doc) : null;
+    const body = neutraliseWrapper(sentNumbers ? markUnsentPictures(doc.text, sentNumbers) : doc.text);
     const parts = [
       {
         type: "text",

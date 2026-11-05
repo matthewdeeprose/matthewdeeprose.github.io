@@ -247,9 +247,11 @@
 
     /**
      * API request timeout in milliseconds
-     * Large PDFs (10MB+) can take 2–3 minutes via native engine
+     * Large PDFs (10MB+) can take 2–3 minutes via native engine. M-10g: with
+     * extended thinking on, capacitors runs took 209 to 264 s, so the limit
+     * is 10 minutes.
      */
-    API_TIMEOUT_MS: 300000, // 5 minutes
+    API_TIMEOUT_MS: 600000, // 10 minutes
 
     /**
      * Parcel 38: the embed retry layer's attempt ceiling, named once so the
@@ -465,6 +467,16 @@
   const SERVICE_UNREACHABLE_LINE =
     "The AI service could not be reached. Your document has not been changed. " +
     "Check your connection and try again.";
+
+  /**
+   * M-10g: models whose correction defaults to extended thinking ON until the
+   * person chooses. Measured on Foundry gpt-6.1-sol (M-10d, M-10e): reasoning
+   * kept the author's `0 \leq r<4` in 3 of 3 replies (1 of 5 off) at about
+   * 20 to 40% more cost. A later parcel adds a model here after testing it.
+   */
+  const REASONING_DEFAULT_ON_MODELS = Object.freeze([
+    "azure-openai/gpt-6.1-sol",
+  ]);
 
   /**
    * M-5y: the two browser wordings of "no response reached the page".
@@ -1239,6 +1251,13 @@
       this.reasoningEnabled = false;
 
       /**
+       * M-10g: true once the person has changed the checkbox themselves. Until
+       * then the default follows the selected model (REASONING_DEFAULT_ON_MODELS).
+       * @type {boolean}
+       */
+      this.reasoningChosen = false;
+
+      /**
        * Whether multi-pass verification is enabled (Phase 7.5H1/2)
        * When true, Pass 1 output is reviewed by a second API call
        * @type {boolean}
@@ -1812,7 +1831,11 @@
     loadEnhancerPreferences() {
       try {
         const stored = localStorage.getItem(this.enhancerPrefsKey);
-        if (!stored) return;
+        if (!stored) {
+          // M-10g: nothing saved, so the per-model default decides.
+          this._applyReasoningDefault();
+          return;
+        }
 
         const prefs = JSON.parse(stored);
         logDebug("Loading enhancer preferences:", prefs);
@@ -1868,9 +1891,20 @@
         }
 
         // Restore reasoning preference
-        if (typeof prefs.reasoning === "boolean") {
+        // M-10g: a saved value is the person's own when the marker is present,
+        // and also when it is an unmarked `true`: a save made before any choice
+        // never writes `true` (see saveEnhancerPreferences), so an unmarked
+        // `true` can only be a tick from before the marker existed. An
+        // unmarked `false` is never a choice, so the per-model default applies.
+        this.reasoningChosen =
+          prefs.reasoningChosen === true || prefs.reasoning === true;
+        if (this.reasoningChosen && typeof prefs.reasoning === "boolean") {
           this.reasoningEnabled = prefs.reasoning;
+          const box = document.getElementById("ai-reasoning-checkbox");
+          if (box) box.checked = this.reasoningEnabled;
           logDebug("Restored reasoning preference:", prefs.reasoning);
+        } else {
+          this._applyReasoningDefault();
         }
 
         // Restore multi-pass preference (Phase 7.5H1/2)
@@ -1884,6 +1918,20 @@
     }
 
     /**
+     * M-10g: set reasoningEnabled from the per-model default, unless the person
+     * has chosen. Keeps the checkbox (when present) showing what will be sent.
+     *
+     */
+    _applyReasoningDefault() {
+      if (this.reasoningChosen) return;
+      this.reasoningEnabled = REASONING_DEFAULT_ON_MODELS.includes(
+        this.selectedModel,
+      );
+      const box = document.getElementById("ai-reasoning-checkbox");
+      if (box) box.checked = this.reasoningEnabled;
+    }
+
+    /**
      * Save current model and engine preferences to localStorage
      */
     saveEnhancerPreferences() {
@@ -1891,9 +1939,14 @@
         const prefs = {
           model: this.selectedModel,
           engine: this.selectedEngine,
-          reasoning: this.reasoningEnabled,
+          // M-10g: before any choice the saved value is `false`, whatever the
+          // per-model default has switched on, so a default is never read back
+          // later as a tick (it would stay on for a model not on the list).
+          reasoning: this.reasoningChosen ? this.reasoningEnabled : false,
           multiPass: this.multiPassEnabled,
         };
+        // M-10g: the marker is written only once the person has chosen.
+        if (this.reasoningChosen) prefs.reasoningChosen = true;
         localStorage.setItem(this.enhancerPrefsKey, JSON.stringify(prefs));
         logDebug("Saved enhancer preferences:", prefs);
       } catch (error) {
@@ -3356,7 +3409,7 @@
         },
         {
           value: "mistral-ocr",
-          label: "Mistral OCR \u2014 best quality (\u00A32/1000 pages)",
+          label: "Mistral OCR \u2014 best quality ($2/1000 pages)",
         },
       ];
 
@@ -3716,6 +3769,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         advancedSelect.selectedIndex = 0;
       }
 
+      this._applyReasoningDefault(); // M-10g: default follows the model
       this.updateCostDisplay();
       this.updateReasoningHelpText();
       this.updateEngineWarning();
@@ -3744,6 +3798,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         radio.checked = false;
       });
 
+      this._applyReasoningDefault(); // M-10g: default follows the model
       this.updateCostDisplay();
       this.updateReasoningHelpText();
       this.updateEngineWarning();
@@ -3801,6 +3856,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     handleReasoningChange(enabled) {
       logDebug("Reasoning changed:", enabled);
       this.reasoningEnabled = enabled;
+      this.reasoningChosen = true; // M-10g: from here the person's choice rules
       this.updateCostDisplay();
       this.saveEnhancerPreferences();
 
@@ -3963,7 +4019,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
      *
      * @param {string} modelId - Model ID
      * @param {number} inputTokens - Estimated input tokens
-     * @returns {number|null} Estimated cost in GBP, or null if no cost data
+     * @returns {number|null} Estimated cost in USD, or null if no cost data
      */
     calculateCost(modelId, inputTokens) {
       // Try prompts.json models first
@@ -4021,7 +4077,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     /**
      * Calculate actual cost based on token usage (Phase 7.2)
      *
-     * @returns {number} Actual cost in GBP
+     * @returns {number} Actual cost in USD
      */
     calculateActualCost() {
       if (!this.stats || !this.models) {
@@ -4560,10 +4616,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         })
         .join("");
 
-      const countText =
-        annotations.length === 1
-          ? "1 uncertain region"
-          : `${annotations.length} uncertain regions`;
+      const countText = this.formatUncertainRegionCount(annotations.length);
 
       return `
         <details class="ai-uncertainty-panel">
@@ -4660,14 +4713,33 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     }
 
     /**
+     * Count text for the uncertain-region notes, e.g. "17 uncertain regions".
+     * Shared by the panel's visible label and the spoken completion line so
+     * the two cannot drift apart.
+     *
+     * @param {number} count - Number of uncertain-region notes
+     * @returns {string} "1 uncertain region" / "N uncertain regions"
+     */
+    formatUncertainRegionCount(count) {
+      return count === 1 ? "1 uncertain region" : `${count} uncertain regions`;
+    }
+
+    /**
      * Build the spoken completion line. With no findings it is exactly the
-     * original line; with findings the count rides in the same utterance.
+     * original line; with findings the counts ride in the same utterance, in
+     * on-screen order (uncertain regions above things to check).
      *
      * @returns {string} Completion message
      */
     buildCompletionMessage() {
       const count = (this.mmdCheckFindings || []).length;
       const countPart = count > 0 ? ` ${this.formatMMDCheckCount(count)}.` : "";
+      // M-8a: the uncertain-region count, same phrase as the panel's label.
+      const uncertainCount = (this.uncertaintyMetadata || []).length;
+      const uncertainPart =
+        uncertainCount > 0
+          ? ` ${this.formatUncertainRegionCount(uncertainCount)}.`
+          : "";
       // M-5q: one clause in the same utterance when descriptions were put back.
       const restoredCount = this.descriptionKeysRestored
         ? this.descriptionKeysRestored.size
@@ -4676,7 +4748,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         restoredCount > 0
           ? ` ${composeDescriptionsRestoredLine(restoredCount)}`
           : "";
-      return `Enhancement complete.${restoredPart}${countPart} Review the results and choose Apply Changes or Discard.`;
+      return `Enhancement complete.${restoredPart}${uncertainPart}${countPart} Review the results and choose Apply Changes or Discard.`;
     }
 
     /**
@@ -4874,14 +4946,17 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
     /**
      * Format cost for display
      *
-     * @param {number|null} cost - Cost in GBP, or null if unavailable
+     * B2-D1: every cost a person sees is in US dollars, because every
+     * measured figure is USD. No conversion, no second currency.
+     *
+     * @param {number|null} cost - Cost in USD, or null if unavailable
      * @returns {string} Formatted cost
      */
     formatCost(cost) {
       if (cost === null || cost === undefined) return "Cost data unavailable";
-      if (cost < 0.01) return "< \u00A30.01";
-      if (cost < 0.1) return `~\u00A3${cost.toFixed(3)}`;
-      return `~\u00A3${cost.toFixed(2)}`;
+      if (cost < 0.01) return "< $0.01";
+      if (cost < 0.1) return `~$${cost.toFixed(3)}`;
+      return `~$${cost.toFixed(2)}`;
     }
 
     // ==========================================================================
@@ -6419,6 +6494,223 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         });
       }
 
+      // Check 4 (M-10b): the correction changed a maths relation (for example
+      // the author's `0 \leq r<4` turned into `\leq 4`). One warning per run.
+      // M-10c: each changed expression is paired with its original and the
+      // detail lists only the pairs whose relations differ, as "was → now".
+      const mathsWarning = (() => {
+        const MAX_CHECK_PAIRS = 3;
+        const MAX_EXPRESSION_LENGTH = 60;
+        // M-10f: how many characters of shared text a window shows before
+        // the first change.
+        const WINDOW_LEAD_IN = 20;
+        // Two expressions are the same one, before and after, when their
+        // bigram similarity is at least this (M-10c).
+        const PAIR_MIN_SIMILARITY = 0.5;
+        const RELATION_ORDER = ["<", ">", "≤", "≥", "=", "≠", "≈", "∼", "≡", "∝", "≪", "≫"];
+        // Command names that mean a relation. A command name runs to the next
+        // non-letter, so \leftarrow, \Leftrightarrow, \lesssim and \geometry
+        // are read whole and are not in this table.
+        const COMMAND_RELATIONS = {
+          lt: "<", gt: ">",
+          leq: "≤", le: "≤", leqslant: "≤",
+          geq: "≥", ge: "≥", geqslant: "≥",
+          neq: "≠", ne: "≠", approx: "≈",
+          sim: "∼", simeq: "∼", equiv: "≡", propto: "∝", ll: "≪", gg: "≫",
+        };
+        // \left< and \bigr> are delimiters, not relations.
+        const DELIMITER_COMMANDS = /^(left|right|middle|[bB]ig{1,2}[lrm]?)$/;
+        // Order matters: ASCII arrows are read before their parts. `<=` and
+        // `>=` count as ≤ and ≥; `->`, `=>`, `<->` and `<=>` are arrows.
+        const TOKEN =
+          /<=>|<->|=>|->|<=|>=|\\([a-zA-Z]+)|\\[^a-zA-Z]|[<>=≤≥≠≈∼≡∝≪≫]/g;
+        const ASCII_RELATIONS = { "<=": "≤", ">=": "≥" };
+        const MATHS_ENVIRONMENTS =
+          "equation|align|alignat|flalign|gather|multline|eqnarray|split|aligned|gathered|array|matrix|pmatrix|bmatrix|Bmatrix|vmatrix|Vmatrix|smallmatrix|cases|math|displaymath";
+        const MATHS_SEGMENT = new RegExp(
+          [
+            "\\$\\$([\\s\\S]*?)\\$\\$",
+            "\\\\\\[([\\s\\S]*?)\\\\\\]",
+            "\\\\\\(([\\s\\S]*?)\\\\\\)",
+            `\\\\begin\\{((?:${MATHS_ENVIRONMENTS})\\*?)\\}[\\s\\S]*?\\\\end\\{\\4\\}`,
+            "(?<!\\\\)\\$(?!\\s)([^$\\n]*?[^\\s$])\\$(?!\\d)",
+          ].join("|"),
+          "g",
+        );
+
+        const tidy = (s) => s.replace(/\s+/g, " ").trim();
+
+        // Every maths expression in the text, delimiters removed.
+        const mathsSegments = (text) =>
+          Array.from(text.matchAll(MATHS_SEGMENT), (m) =>
+            tidy(m[1] ?? m[2] ?? m[3] ?? m[5] ?? m[0]),
+          );
+
+        const countRelations = (expression) => {
+          const counts = {};
+          const scan = new RegExp(TOKEN.source, "g");
+          let m;
+          while ((m = scan.exec(expression)) !== null) {
+            const [token, command] = m;
+            let relation;
+            if (command) {
+              if (DELIMITER_COMMANDS.test(command)) {
+                // Skip the delimiter that follows, so \left< is not a "<".
+                if (/^[<>]/.test(expression.slice(scan.lastIndex))) scan.lastIndex += 1;
+                continue;
+              }
+              relation = COMMAND_RELATIONS[command];
+            } else {
+              relation = ASCII_RELATIONS[token] || (RELATION_ORDER.includes(token) ? token : undefined);
+            }
+            if (relation) counts[relation] = (counts[relation] || 0) + 1;
+          }
+          return counts;
+        };
+
+        const tally = (segments) => {
+          const total = {};
+          segments.forEach((segment) => {
+            Object.entries(countRelations(segment)).forEach(([relation, n]) => {
+              total[relation] = (total[relation] || 0) + n;
+            });
+          });
+          return total;
+        };
+
+        // Dice coefficient on character bigrams, whitespace removed: 0 when
+        // nothing is shared, 1 when the two read the same.
+        const similarity = (a, b) => {
+          const x = a.replace(/\s+/g, "");
+          const y = b.replace(/\s+/g, "");
+          if (x.length < 2 || y.length < 2) return x === y ? 1 : 0;
+          const available = new Map();
+          for (let i = 0; i < x.length - 1; i += 1) {
+            const gram = x.slice(i, i + 2);
+            available.set(gram, (available.get(gram) || 0) + 1);
+          }
+          let shared = 0;
+          for (let i = 0; i < y.length - 1; i += 1) {
+            const gram = y.slice(i, i + 2);
+            const n = available.get(gram) || 0;
+            if (n > 0) {
+              shared += 1;
+              available.set(gram, n - 1);
+            }
+          }
+          return (2 * shared) / (x.length - 1 + (y.length - 1));
+        };
+
+        // The expressions of `from` with no verbatim twin in `other`, one for
+        // one, each with its place in `from`.
+        const leftOver = (from, other) => {
+          const pool = new Map();
+          other.forEach((s) => pool.set(s, (pool.get(s) || 0) + 1));
+          const left = [];
+          from.forEach((text, index) => {
+            const n = pool.get(text) || 0;
+            if (n > 0) {
+              pool.set(text, n - 1);
+              return;
+            }
+            left.push({ text, index });
+          });
+          return left;
+        };
+
+        const originalSegments = mathsSegments(originalMMD);
+        const enhancedSegments = mathsSegments(enhancedMMD);
+        const originalLeft = leftOver(originalSegments, enhancedSegments);
+        const enhancedLeft = leftOver(enhancedSegments, originalSegments);
+
+        // Greedy pairing, best score first, each expression used once.
+        const candidates = [];
+        enhancedLeft.forEach((e, ei) => {
+          originalLeft.forEach((o, oi) => {
+            const score = similarity(o.text, e.text);
+            if (score >= PAIR_MIN_SIMILARITY) candidates.push({ ei, oi, score });
+          });
+        });
+        candidates.sort((a, b) => b.score - a.score || a.ei - b.ei || a.oi - b.oi);
+        const usedEnhanced = new Set();
+        const usedOriginal = new Set();
+        const pairs = [];
+        candidates.forEach(({ ei, oi }) => {
+          if (usedEnhanced.has(ei) || usedOriginal.has(oi)) return;
+          usedEnhanced.add(ei);
+          usedOriginal.add(oi);
+          pairs.push({
+            was: originalLeft[oi].text,
+            now: enhancedLeft[ei].text,
+            order: enhancedLeft[ei].index,
+          });
+        });
+        pairs.sort((a, b) => a.order - b.order);
+
+        const differs = (was, now) =>
+          RELATION_ORDER.some((r) => (was[r] || 0) !== (now[r] || 0));
+        const changedPairs = pairs.filter((pair) =>
+          differs(countRelations(pair.was), countRelations(pair.now)),
+        );
+
+        // Expressions with no partner (added or removed): their relations
+        // are compared as totals.
+        const before = tally(
+          originalLeft.filter((_, oi) => !usedOriginal.has(oi)).map((o) => o.text),
+        );
+        const after = tally(
+          enhancedLeft.filter((_, ei) => !usedEnhanced.has(ei)).map((e) => e.text),
+        );
+        const changed = RELATION_ORDER.filter(
+          (r) => (before[r] || 0) !== (after[r] || 0),
+        );
+        if (changedPairs.length === 0 && changed.length === 0) return null;
+
+        // M-10f: a pair too long to show whole is cut around the first
+        // character where the two sides differ, so "was" and "now" never read
+        // the same. Both sides use the same window start, which lies
+        // WINDOW_LEAD_IN characters before the change (or at 0).
+        const cutPair = (was, now) => {
+          if (was.length <= MAX_EXPRESSION_LENGTH && now.length <= MAX_EXPRESSION_LENGTH) {
+            return [was, now];
+          }
+          const shared = Math.min(was.length, now.length);
+          let firstDifference = 0;
+          while (firstDifference < shared && was[firstDifference] === now[firstDifference]) {
+            firstDifference += 1;
+          }
+          const start = Math.max(0, firstDifference - WINDOW_LEAD_IN);
+          const end = start + MAX_EXPRESSION_LENGTH;
+          const windowOf = (s) =>
+            `${start > 0 ? "…" : ""}${s.slice(start, end)}${end < s.length ? "…" : ""}`;
+          return [windowOf(was), windowOf(now)];
+        };
+
+        let detail;
+        if (changedPairs.length > 0) {
+          const shown = changedPairs.slice(0, MAX_CHECK_PAIRS);
+          const more = changedPairs.length - shown.length;
+          detail =
+            `Check: ${shown
+              .map((p) => cutPair(p.was, p.now).join(" → "))
+              .join("; ")}` +
+            (more > 0 ? ` (and ${more} more)` : "");
+        } else {
+          detail = changed
+            .map((r) => `${r} ${before[r] || 0} → ${after[r] || 0}`)
+            .join(", ");
+        }
+
+        return {
+          severity: "warning",
+          message: "Maths relations changed",
+          detail,
+        };
+      })();
+      if (mathsWarning) {
+        warnings.push(mathsWarning);
+      }
+
       logInfo("Validation complete:", {
         imageCheck: `${originalImages} → ${enhancedImages}`,
         envCheck: `${originalBegins}/${originalEnds} → ${enhancedBegins}/${enhancedEnds}`,
@@ -6562,7 +6854,9 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
           </div>
         </div>
 
-<!-- Phase 7.2: Enhancement Statistics -->
+<!-- M-8c: the three review panels share one row (DOM order kept) -->
+        <div class="ai-review-panels">
+        <!-- Phase 7.2: Enhancement Statistics -->
         ${statsHTML}
 
         <!-- Phase 7.5L: Uncertainty Annotations -->
@@ -6570,6 +6864,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
         <!-- M-2b: read-only checks on the enhanced text -->
         ${this.buildMMDChecksHTML()}
+        </div>
       </div>
     `;
 
@@ -7504,7 +7799,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
         // Notify success — message varies by provider mode
         const appliedBase =
           provider.mode === "resume"
-            ? "AI enhancement applied! Use Ctrl+Z to undo."
+            ? "AI enhancement applied."
             : "AI enhancement applied! Use the toggle to compare versions.";
         // EN-2: one line, one raise; the clause rides inside it.
         const appliedLine = this._shorterReplyWarn
@@ -8159,6 +8454,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
   /** The literal a person is shown and hears when a reply was cut. */
   MathPixAIEnhancer.INCOMPLETE_REPLY_LINE = INCOMPLETE_REPLY_LINE;
 
+  /** M-10g: the correction's request limit and the reasoning-default list, so rows can pin them. */
+  MathPixAIEnhancer.API_TIMEOUT_MS = AI_ENHANCER_CONFIG.API_TIMEOUT_MS;
+  MathPixAIEnhancer.REASONING_DEFAULT_ON_MODELS = REASONING_DEFAULT_ON_MODELS;
+
   /** The two ratio values and the warn clause, so guard rows can pin them. */
   MathPixAIEnhancer.RATIO_REFUSE_FLOOR = RATIO_REFUSE_FLOOR;
   MathPixAIEnhancer.RATIO_WARN_BELOW = RATIO_WARN_BELOW;
@@ -8706,6 +9005,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
     // 1.2 buildReasoningConfig — disabled
     const savedState = e.reasoningEnabled;
+    const savedChosen = e.reasoningChosen; // M-10g: restored with savedState
     const savedModel = e.selectedModel;
 
     e.reasoningEnabled = false;
@@ -8781,8 +9081,10 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
       "1.7c getModelKeyById returns null for unknown model",
     );
 
-    // 1.8 Preferences round-trip
+    // 1.8 Preferences round-trip. M-10g amended: a tick the person made is a
+    // choice, so the round-trip is run as one (an unchosen true saves as false).
     e.reasoningEnabled = true;
+    e.reasoningChosen = true;
     e.saveEnhancerPreferences();
     const savedPrefs = JSON.parse(
       localStorage.getItem(e.enhancerPrefsKey) || "{}",
@@ -8836,6 +9138,7 @@ Native is recommended for mathematics documents. Mistral OCR suits scanned docum
 
     // Restore original state
     e.reasoningEnabled = savedState;
+    e.reasoningChosen = savedChosen;
     e.selectedModel = savedModel;
     e.saveEnhancerPreferences();
 

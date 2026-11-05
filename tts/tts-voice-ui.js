@@ -51,6 +51,9 @@ window.TTSVoiceUI = (function () {
     els.neuralVoiceSelect = document.getElementById('tts-neural-voice-select');
     els.rateSlider        = document.getElementById('tts-rate-slider');
     els.rateValue         = document.getElementById('tts-rate-value');
+    els.pitchSlider       = document.getElementById('tts-pitch-slider');
+    els.pitchValue        = document.getElementById('tts-pitch-value');
+    els.mathsSpeechRadios = document.querySelectorAll('input[name="tts-maths-speech"]');
     els.previewBtn        = document.getElementById('tts-preview-btn');
     els.verbosityToggle   = document.getElementById('tts-verbosity-toggle');
     els.codeMode          = document.getElementById('tts-code-mode');
@@ -89,6 +92,13 @@ window.TTSVoiceUI = (function () {
         formatted + RATE_VALUETEXT_SUFFIX
       );
     }
+  }
+
+  /** Write the pitch to both the visible value and aria-valuetext (no unit). */
+  function setPitchDisplay(val) {
+    var formatted = formatRate(val);
+    if (els.pitchValue) els.pitchValue.textContent = formatted;
+    if (els.pitchSlider) els.pitchSlider.setAttribute('aria-valuetext', formatted);
   }
 
   // ── Supertonic availability ────────────────────────────────────
@@ -156,6 +166,9 @@ window.TTSVoiceUI = (function () {
 
     var localVoices  = [];
     var cloudVoices  = [];
+
+    // English voices only (RA-89); every voice when the browser has none.
+    voices = window.TTSController.filterToEnglish(voices);
 
     voices.forEach(function (v) {
       if (window.TTSController.isLocalVoice(v)) {
@@ -251,6 +264,23 @@ window.TTSVoiceUI = (function () {
     window.TTSController.setRate(val);
   }
 
+  function onPitchInput() {
+    if (!els.pitchSlider || !els.pitchValue) return;
+    var val = parseFloat(els.pitchSlider.value);
+    setPitchDisplay(val);
+    window.TTSController.setPitch(val);
+  }
+
+  // Saves the maths speech style. No announcement: the native radio speaks its
+  // own state, and the change reaches Read Aloud on its next run.
+  function onMathsSpeechChange(e) {
+    if (!e.target.checked) return;
+    if (window.TTSSreLoader && typeof window.TTSSreLoader.setDomain === 'function') {
+      window.TTSSreLoader.setDomain(e.target.value);
+    }
+    logInfo('[TTSVoiceUI] Maths speech style set to:', e.target.value);
+  }
+
   function onPreviewClick() {
     logDebug('[TTSVoiceUI] Preview clicked');
     // Stop any current speech first
@@ -329,6 +359,10 @@ window.TTSVoiceUI = (function () {
     if (els.voiceSelect)       els.voiceSelect.addEventListener('change', onVoiceChange);
     if (els.neuralVoiceSelect) els.neuralVoiceSelect.addEventListener('change', onNeuralVoiceChange);
     if (els.rateSlider)        els.rateSlider.addEventListener('input', onRateInput);
+    if (els.pitchSlider)       els.pitchSlider.addEventListener('input', onPitchInput);
+    for (var r = 0; r < els.mathsSpeechRadios.length; r++) {
+      els.mathsSpeechRadios[r].addEventListener('change', onMathsSpeechChange);
+    }
     if (els.previewBtn)        els.previewBtn.addEventListener('click', onPreviewClick);
     if (els.verbosityToggle)   els.verbosityToggle.addEventListener('change', onVerbosityChange);
     if (els.codeMode)          els.codeMode.addEventListener('change', onCodeModeChange);
@@ -371,6 +405,19 @@ window.TTSVoiceUI = (function () {
     var rate = window.TTSController.getRate();
     if (els.rateSlider) els.rateSlider.value = rate;
     setRateDisplay(rate);
+
+    // Pitch slider
+    var pitch = window.TTSController.getPitch();
+    if (els.pitchSlider) els.pitchSlider.value = pitch;
+    setPitchDisplay(pitch);
+
+    // Maths speech style radios
+    if (window.TTSSreLoader && typeof window.TTSSreLoader.getDomain === 'function') {
+      var domain = window.TTSSreLoader.getDomain();
+      for (var i = 0; i < els.mathsSpeechRadios.length; i++) {
+        els.mathsSpeechRadios[i].checked = (els.mathsSpeechRadios[i].value === domain);
+      }
+    }
 
     // Supertonic availability
     updateSupertonicAvailability();

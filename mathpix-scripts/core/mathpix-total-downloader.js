@@ -2846,6 +2846,16 @@ For accessibility remediation:
 - Multiple formats ensure compatibility with various tools
 
 ================================================================================
+Picture descriptions in the .mmd files
+================================================================================
+
+A closing square bracket inside a picture description (the alt text) is stored
+as the code &#93; so that the image line stays valid markdown. This tool reads
+the code back as ]. Pandoc also shows ]. A plain text editor shows the code. Do
+not replace the code with a bare bracket in the edits folder: the picture would
+no longer render when the archive is restored.
+
+================================================================================
 SUPPORT
 ================================================================================
 

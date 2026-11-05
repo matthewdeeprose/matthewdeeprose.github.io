@@ -181,6 +181,22 @@ function warningProxyMissing(fallbackTo) {
  *                                         `disabled: true` still wins. Set it only where the catalogue
  *                                         status is Deprecating: a GenerallyAvailable model's date can
  *                                         still move out, and discover.mjs's drift row checks it (parcel 51).
+ * @param {boolean}  [p.toolCalls]         true when a live probe proved this deployment can call tools
+ *                                         (TC-7a). Stored at metadata.toolCalls only when exactly true;
+ *                                         absent otherwise. Under metadata for the same reason as the
+ *                                         request options above. The tool runner's checkToolSupport
+ *                                         reads it; the capabilities array is not trusted for this.
+ * @param {string}   [p.toolCallsReasoningEffort] The `reasoning_effort` a tool session must send to
+ *                                         this deployment on every round (TC-7d; "none" for the three
+ *                                         gpt-6 deployments TC-7c proved). Stored at
+ *                                         metadata.toolCallsReasoningEffort only when a non-empty
+ *                                         string. Separate from `reasoningEffort`, which must never be
+ *                                         sent with tools (TC-7c: it turned gpt-5.6-sol into a refusal).
+ * @param {string}   [p.toolCallsForcedChoice] "required" when this deployment refuses a NAMED forced
+ *                                         tool_choice and takes only "required" (TC-7e; Llama-3.3-70B-Instruct).
+ *                                         Stored at metadata.toolCallsForcedChoice only when exactly
+ *                                         "required"; any other value stores nothing. The tool runner's
+ *                                         structured() then sends "required", and ask() refuses a named choice.
  * @returns {{ id: string, config: Object }}
  */
 function createFoundryModel({
@@ -219,6 +235,9 @@ function createFoundryModel({
   reasoningEffort,
   maxOutputTokens,
   retiresOn,
+  toolCalls,
+  toolCallsReasoningEffort,
+  toolCallsForcedChoice,
 }) {
   if (!deploymentName || !displayName) {
     logError(
@@ -328,6 +347,22 @@ function createFoundryModel({
   // Only a date actually supplied is stored, so every other registration
   // stores exactly what it stored before parcel 51.
   if (retiresOn !== undefined) config.metadata.retiresOn = retiresOn;
+
+  // Stored only when exactly true, so every unmarked registration stores
+  // exactly what it stored before TC-7b.
+  if (toolCalls === true) config.metadata.toolCalls = true;
+
+  // Stored only as a non-empty string, so every other registration stores
+  // exactly what it stored before TC-7d.
+  if (typeof toolCallsReasoningEffort === "string" && toolCallsReasoningEffort !== "") {
+    config.metadata.toolCallsReasoningEffort = toolCallsReasoningEffort;
+  }
+
+  // Stored only when exactly "required", so every other registration stores
+  // exactly what it stored before TC-7e.
+  if (toolCallsForcedChoice === "required") {
+    config.metadata.toolCallsForcedChoice = toolCallsForcedChoice;
+  }
 
   return { id, config };
 }
@@ -444,6 +479,7 @@ const buildFoundryModels = () => [
   // ── gpt-5.4-mini (migrated unchanged from model-definitions.js; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4-mini",
+    toolCalls: true,
     displayName: "GPT-5.4 Mini",
     description:
       "Same upstream model as openai/gpt-5.4-mini, routed via Microsoft Foundry instead of OpenRouter. Available because the test deployment (accesstools-foundry-uk, UK South) is funded by a Visual Studio Enterprise £150/month credit. Supports text and image inputs with strong reasoning, coding, and tool use. Use this entry when explicit Foundry routing is required (data-residency, credit-funded budget, or testing the adapter); use openai/gpt-5.4-mini otherwise.",
@@ -506,6 +542,7 @@ const buildFoundryModels = () => [
   // ── gpt-4o-mini (vision-capable, low-cost multimodal; PDF deliberately omitted — transmits but reads blind on this deployment, an Azure per-deployment quirk; sibling gpt-4o behaves the same, verified 14 July 2026) ──
   createFoundryModel({
     deploymentName: "gpt-4o-mini",
+    toolCalls: true,
     displayName: "GPT-4o Mini",
     description:
       "OpenAI's cost-effective multimodal model, routed via Microsoft Foundry instead of OpenRouter. Vision-capable, with solid general-purpose text, coding, and tool use at a low price point. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use this entry when explicit Foundry routing is required and image inputs are needed; use openai/gpt-4o-mini otherwise.",
@@ -567,6 +604,7 @@ const buildFoundryModels = () => [
   // ── gpt-5.4-nano (new — vision verified 31 May 2026; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4-nano",
+    toolCalls: true,
     displayName: "GPT-5.4 Nano",
     description:
       "The most lightweight, cost-efficient GPT-5.4 variant, routed via Microsoft Foundry. Optimised for speed-critical, high-volume tasks (classification, extraction, ranking). Empirically verified to support vision and text generation (31 May 2026). Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -629,6 +667,7 @@ const buildFoundryModels = () => [
   // ── gpt-5.4 (new — full-size flagship, vision-capable; PDF verified 23 June 2026) ──
   createFoundryModel({
     deploymentName: "gpt-5.4",
+    toolCalls: true,
     displayName: "GPT-5.4",
     description:
       "OpenAI's frontier GPT-5.4 model, routed via Microsoft Foundry instead of OpenRouter. Large context with strong reasoning, coding, document understanding, and multimodal (image) analysis. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. Use this entry when explicit Foundry routing is required; use openai/gpt-5.4 otherwise.",
@@ -752,6 +791,7 @@ const buildFoundryModels = () => [
   // Template: gpt-5.4-mini (reasoning) but TEXT-ONLY (no vision capability/feature).
   createFoundryModel({
     deploymentName: "gpt-5",
+    toolCalls: true,
     displayName: "GPT-5",
     description:
       "OpenAI's GPT-5 flagship reasoning model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Rejects temperature/top_p — treated as a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry.",
@@ -817,6 +857,7 @@ const buildFoundryModels = () => [
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
   createFoundryModel({
     deploymentName: "gpt-5.1",
+    toolCalls: true,
     displayName: "GPT-5.1",
     description:
       "OpenAI's GPT-5.1 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -882,6 +923,7 @@ const buildFoundryModels = () => [
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
   createFoundryModel({
     deploymentName: "gpt-5.2",
+    toolCalls: true,
     displayName: "GPT-5.2",
     description:
       "OpenAI's GPT-5.2 frontier model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -947,6 +989,7 @@ const buildFoundryModels = () => [
   // (non-reasoning) but TEXT-ONLY (no vision capability, no vision-inputs feature).
   createFoundryModel({
     deploymentName: "gpt-4.1",
+    toolCalls: true,
     displayName: "GPT-4.1",
     description:
       "OpenAI's GPT-4.1 flagship model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Optimised for instruction following, software engineering, and long-context reasoning. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -1011,6 +1054,7 @@ const buildFoundryModels = () => [
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   createFoundryModel({
     deploymentName: "gpt-4.1-mini",
+    toolCalls: true,
     displayName: "GPT-4.1 Mini",
     description:
       "OpenAI's GPT-4.1 Mini model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Mid-sized, delivering strong performance at lower latency and cost. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -1075,6 +1119,7 @@ const buildFoundryModels = () => [
   // NOT a reasoning model. Template: gpt-5.4 (non-reasoning) but TEXT-ONLY.
   createFoundryModel({
     deploymentName: "gpt-4.1-nano",
+    toolCalls: true,
     displayName: "GPT-4.1 Nano",
     description:
       "OpenAI's GPT-4.1 Nano model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. The fastest, most cost-efficient GPT-4.1 variant, ideal for low-latency classification and extraction. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -1141,6 +1186,7 @@ const buildFoundryModels = () => [
   // null, provisional costs (no in-repo sibling to source from).
   createFoundryModel({
     deploymentName: "gpt-4o",
+    toolCalls: true,
     displayName: "GPT-4o",
     description:
       "OpenAI's GPT-4o model, routed via Microsoft Foundry. Serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A batch-2 deploy-and-classify). Accepts temperature/top_p — standard sampling, not a reasoning model. Registered text-only pending an image smoke test. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry. PDF is transmitted to this deployment but read blind (an Azure per-deployment quirk, verified 14 July 2026), so the pdf capability token is omitted.",
@@ -1292,6 +1338,7 @@ const buildFoundryModels = () => [
   // ── grok-4-1-fast-reasoning (xAI format — reasoning, text-only) ──────────
   createFoundryModel({
     deploymentName: "grok-4-1-fast-reasoning",
+    toolCalls: true,
     displayName: "Grok 4.1 Fast (Reasoning)",
     upstreamProvider: "xAI",
     description:
@@ -1351,6 +1398,7 @@ const buildFoundryModels = () => [
   // ── grok-4-1-fast-non-reasoning (xAI format — non-reasoning, text-only) ──
   createFoundryModel({
     deploymentName: "grok-4-1-fast-non-reasoning",
+    toolCalls: true,
     displayName: "Grok 4.1 Fast (Non-Reasoning)",
     upstreamProvider: "xAI",
     description:
@@ -1426,6 +1474,7 @@ const buildFoundryModels = () => [
   // the same body without them answered HTTP 200 "ready".
   createFoundryModel({
     deploymentName: "grok-4.7",
+    toolCalls: true,
     displayName: "Grok 4.7",
     upstreamProvider: "xAI",
     description:
@@ -1623,6 +1672,7 @@ const buildFoundryModels = () => [
   // ── cohere-command-a (Cohere format — non-reasoning, text-only) ──────────
   createFoundryModel({
     deploymentName: "cohere-command-a",
+    toolCalls: true,
     displayName: "Cohere Command A",
     upstreamProvider: "cohere",
     description:
@@ -1680,6 +1730,9 @@ const buildFoundryModels = () => [
     deploymentName: "Llama-3.3-70B-Instruct",
     displayName: "Llama 3.3 70B Instruct",
     upstreamProvider: "meta-llama",
+    // TC-7e: proven for tools with tool_choice "required" only (TC-7c arm B); a named choice is refused (TC-7a).
+    toolCalls: true,
+    toolCallsForcedChoice: "required",
     description:
       "Meta's Llama 3.3 70B Instruct model, routed via Microsoft Foundry. Format 'Meta' — empirically serves on the OpenAI-v1 surface through the existing Foundry adapter (Phase A format survey). Accepts temperature/top_p. Text-only general-purpose model. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
     // Source: in-repo meta-llama/llama-3.3-70b-instruct sibling costs
@@ -2030,6 +2083,7 @@ const buildFoundryModels = () => [
   // ── Llama-4-Maverick-17B-128E-Instruct-FP8 (Meta format — vision HYPOTHESIS) ──
   createFoundryModel({
     deploymentName: "Llama-4-Maverick-17B-128E-Instruct-FP8",
+    toolCalls: true,
     displayName: "Llama 4 Maverick 17B 128E Instruct FP8",
     upstreamProvider: "meta-llama",
     description:
@@ -2086,6 +2140,7 @@ const buildFoundryModels = () => [
   // ── DeepSeek-V3.2 (DeepSeek format — non-reasoning, text-only; supersedes V3.1) ──
   createFoundryModel({
     deploymentName: "DeepSeek-V3.2",
+    toolCalls: true,
     displayName: "DeepSeek V3.2",
     upstreamProvider: "deepseek",
     description:
@@ -2140,6 +2195,7 @@ const buildFoundryModels = () => [
   // ── Kimi-K2.5 (MoonshotAI format — non-reasoning, text-only; NEW publisher) ──
   createFoundryModel({
     deploymentName: "Kimi-K2.5",
+    toolCalls: true,
     displayName: "Kimi K2.5",
     upstreamProvider: "moonshotai",
     description:
@@ -2254,6 +2310,7 @@ const buildFoundryModels = () => [
   // "reasoning" capability: reasoning tokens observed directly (64)
   createFoundryModel({
     deploymentName: "gpt-5-mini",
+    toolCalls: true,
     displayName: "GPT-5 Mini",
     description:
       "Compact GPT-5 family model balancing capability and cost. Reads images and PDF attachments. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2317,6 +2374,7 @@ const buildFoundryModels = () => [
   // "reasoning" capability: reasoning tokens observed directly (64, 100, 100)
   createFoundryModel({
     deploymentName: "gpt-5-nano",
+    toolCalls: true,
     displayName: "GPT-5 Nano",
     description:
       "Smallest GPT-5 family model; fast and inexpensive. Strong image and PDF reading for its size. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2382,6 +2440,7 @@ const buildFoundryModels = () => [
   // adapter's own reasoning-model signature.
   createFoundryModel({
     deploymentName: "o3",
+    toolCalls: true,
     displayName: "o3",
     description:
       "Reasoning specialist. Handles PDFs well; image understanding present but text inside images reads unreliably. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: engages with images but transcribes small text in them unreliably; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment. No OpenRouter sibling registered — Foundry-only entry. Microsoft retires this model on 19 November 2026, after which it is no longer offered here.",
@@ -2446,6 +2505,7 @@ const buildFoundryModels = () => [
   // "reasoning" capability: reasoning tokens observed directly (7, 7)
   createFoundryModel({
     deploymentName: "gpt-5.5",
+    toolCalls: true,
     displayName: "GPT-5.5",
     description:
       "Previous-generation flagship; strong all-round capability including image and PDF reading. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2512,6 +2572,7 @@ const buildFoundryModels = () => [
   // adapter's own reasoning-model signature.
   createFoundryModel({
     deploymentName: "gpt-5.6-terra",
+    toolCalls: true,
     displayName: "GPT-5.6 Terra",
     description:
       "Current flagship family. Full image reading; PDF handling present but weaker than its siblings in testing. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2579,6 +2640,7 @@ const buildFoundryModels = () => [
   // adapter's own reasoning-model signature.
   createFoundryModel({
     deploymentName: "gpt-5.6-luna",
+    toolCalls: true,
     displayName: "GPT-5.6 Luna",
     description:
       "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2645,6 +2707,7 @@ const buildFoundryModels = () => [
   // adapter's own reasoning-model signature.
   createFoundryModel({
     deploymentName: "gpt-5.6-sol",
+    toolCalls: true,
     displayName: "GPT-5.6 Sol",
     description:
       "Current flagship family; strong across text, images and PDFs. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27-28 August 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2830,6 +2893,8 @@ const buildFoundryModels = () => [
   // on the explicit-high row.
   createFoundryModel({
     deploymentName: "gpt-6-luna",
+    toolCalls: true,
+    toolCallsReasoningEffort: "none",
     displayName: "GPT-6 Luna",
     description:
       "OpenAI's most efficient GPT-6 model, for focused, high-volume tasks. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 September 2026: reads images; reads PDF attachments less reliably than its siblings. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -2933,6 +2998,8 @@ const buildFoundryModels = () => [
   // every effort row).
   createFoundryModel({
     deploymentName: "gpt-6-sol",
+    toolCalls: true,
+    toolCallsReasoningEffort: "none",
     displayName: "GPT-6 Sol",
     description:
       "GPT-6 model built for complex coding and agentic workflows, at a fraction of Astra's price. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 September 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",
@@ -3108,6 +3175,8 @@ const buildFoundryModels = () => [
   // Nothing is copied from gpt-6.1-sol that was not measured here.
   createFoundryModel({
     deploymentName: "gpt-6.1-terra",
+    toolCalls: true,
+    toolCallsReasoningEffort: "none",
     displayName: "GPT-6.1 Terra",
     description:
       "GPT-6.1 low-cost tier, the cheapest of the GPT-6.1 family. Routed via Microsoft Foundry, serving on the OpenAI-v1 surface through the existing Foundry adapter. Rejects temperature/top_p (reasoning model) and requires max_completion_tokens. Measured 27 October 2026: reads images; reads PDF attachments. Available on the credit-funded accesstools-foundry-uk (UK South) deployment.",

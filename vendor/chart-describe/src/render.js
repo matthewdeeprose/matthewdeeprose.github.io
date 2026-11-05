@@ -1,8 +1,9 @@
 /**
  * Chart description renderer
  * Writes a DescriptionModel (model.js) as HTML under a profile. A profile is
- * data: the layout kind, the short-tier escape mode and, for the `sections`
- * layout, the class map and spacing. The model carries none of that.
+ * data: the layout kind and, for the `sections` layout, the class map and
+ * spacing. The model carries none of that. The short tier takes no profile:
+ * it is always the escaped plain short.
  * renderText and renderMarkdown write the same model without a profile.
  *
  * Author runs are escaped here and nowhere else, through
@@ -10,9 +11,12 @@
  * the renderer cannot write makes it throw; it never returns partial output.
  *
  * Only the `lines` profile ships. A profile with class names belongs to the
- * describer that owns those names and is passed in by it.
+ * adapter that owns those names, and that adapter passes it in.
  *
- * Nothing calls this file yet. It ships ahead of the describers that will.
+ * This file exports renderHtml, renderText, renderMarkdown and PROFILES. It
+ * needs text.js (for escapeHtml). It does not need model.js at load time: it
+ * only reads the plain objects that model.js builds. It exports itself as
+ * window.ChartDescribeRender. In Node it also sets module.exports.
  */
 (function (root) {
   // Logging configuration (inside module scope)
@@ -65,22 +69,10 @@
     SECTIONS: "sections",
   });
 
-  // Short tier: escape the whole sentence, or only the author runs.
-  const SHORT_ESCAPE = Object.freeze({
-    ALL: "all",
-    AUTHOR: "author",
-  });
-
-  const TIERS = Object.freeze({
-    SHORT: "short",
-    DETAILED: "detailed",
-  });
-
   const PROFILES = Object.freeze({
     lines: Object.freeze({
       name: "lines",
       layout: LAYOUTS.LINES,
-      shortEscape: SHORT_ESCAPE.ALL,
     }),
   });
 
@@ -108,22 +100,21 @@
     return layoutWhitespace(NEWLINE);
   }
 
-  function inline(runs, profile, tier) {
+  // The detailed tier's runs. The short tier never comes through here: renderHtml writes it as the escaped plain short.
+  function inline(runs, profile) {
     return runs
       .map((run) => {
         switch (run.type) {
           case "text":
-            return tier === TIERS.SHORT && profile.shortEscape === SHORT_ESCAPE.ALL
-              ? escapeAuthor(run.value)
-              : run.value;
+            return run.value;
           case "author":
             return escapeAuthor(run.value);
           case "strong":
-            return `<strong>${inline(run.runs, profile, tier)}</strong>`;
+            return `<strong>${inline(run.runs, profile)}</strong>`;
           case "term": {
-            const inner = inline(run.runs, profile, tier);
+            const inner = inline(run.runs, profile);
             if (!profile.termClass) return inner;
-            return `<span${classAttribute(profile.termClass(run.role, run.variant))}>${inner}</span>`;
+            return `<span${classAttribute(profile.termClass(run.role))}>${inner}</span>`;
           }
           default:
             throw new Error(`unknown inline type ${run.type}`);
@@ -134,12 +125,12 @@
 
   function cell(tag, scope, content, profile) {
     const scopeAttr = scope ? ` scope="${scope}"` : "";
-    return `<${tag}${scopeAttr}>${inline(content.runs, profile, TIERS.DETAILED)}</${tag}>`;
+    return `<${tag}${scopeAttr}>${inline(content.runs, profile)}</${tag}>`;
   }
 
   function tableLines(block, profile) {
     const caption = block.caption
-      ? `<caption>${inline(block.caption, profile, TIERS.DETAILED)}</caption>`
+      ? `<caption>${inline(block.caption, profile)}</caption>`
       : null;
     const head = `<thead><tr>${block.columns.map((c) => cell("th", "col", c, profile)).join("")}</tr></thead>`;
     const rows = block.rows.map((row) => {
@@ -153,7 +144,7 @@
   function blockLines(block, profile) {
     switch (block.type) {
       case "paragraph":
-        return `<p>${inline(block.runs, profile, TIERS.DETAILED)}</p>`;
+        return `<p>${inline(block.runs, profile)}</p>`;
       case "list": {
         const tag = block.ordered ? "ol" : "ul";
         // An empty list keeps the bytes the base wrote: no blank line between the tags.
@@ -162,7 +153,7 @@
           const children = entry.children.length
             ? lineBreak() + entry.children.map((c) => blockLines(c, profile)).join(lineBreak()) + lineBreak()
             : "";
-          return `<li>${inline(entry.runs, profile, TIERS.DETAILED)}${children}</li>`;
+          return `<li>${inline(entry.runs, profile)}${children}</li>`;
         });
         return `<${tag}>${lineBreak()}${items.join(lineBreak())}${lineBreak()}</${tag}>`;
       }
@@ -176,7 +167,7 @@
   function blockSections(block, profile) {
     switch (block.type) {
       case "paragraph":
-        return `<p>${inline(block.runs, profile, TIERS.DETAILED)}</p>`;
+        return `<p>${inline(block.runs, profile)}</p>`;
       case "list": {
         const tag = block.ordered ? "ol" : "ul";
         const items = block.items.map((entry) => {
@@ -184,7 +175,7 @@
             throw new Error("nested blocks in a list item: the sections layout cannot write them");
           }
           const itemClass = entry.role && profile.itemClass[entry.role];
-          return `<li${classAttribute(itemClass)}>${inline(entry.runs, profile, TIERS.DETAILED)}</li>`;
+          return `<li${classAttribute(itemClass)}>${inline(entry.runs, profile)}</li>`;
         });
         const listClass = block.role && profile.listClass[block.role];
         return `<${tag}${classAttribute(listClass)}>${items.join("")}</${tag}>`;
@@ -200,7 +191,7 @@
     return model.sections
       .map((sec) => {
         const heading = sec.heading
-          ? [`<h4>${inline(sec.heading, profile, TIERS.DETAILED)}</h4>`]
+          ? [`<h4>${inline(sec.heading, profile)}</h4>`]
           : [];
         return [...heading, ...sec.blocks.map((b) => blockLines(b, profile))].join(lineBreak());
       })
@@ -217,7 +208,7 @@
         const spacing = sectionSpacing(profile, sec.role);
         const gap = layoutWhitespace(`\n${" ".repeat(spacing.indent)}`);
         const heading = sec.heading
-          ? `${gap}<h4${classAttribute(profile.headingClass)}>${inline(sec.heading, profile, TIERS.DETAILED)}</h4>${spacing.afterHeading ? gap : ""}`
+          ? `${gap}<h4${classAttribute(profile.headingClass)}>${inline(sec.heading, profile)}</h4>${spacing.afterHeading ? gap : ""}`
           : "";
         const body = sec.blocks.map((b) => blockSections(b, profile)).join("");
         return `<section${classAttribute(profile.sectionClass(sec.role))}>${heading}${body}</section>`;
@@ -227,8 +218,8 @@
 
   // ---------- Plain text and Markdown ----------
   // Both write the same model as renderHtml and take no profile. Plain text escapes nothing. Markdown escapes author
-  // runs only: describer furniture is written as it is (owner ruling Q3 = (b)), so a title typed `Sales *2025* <draft>`
-  // reads back exactly as typed.
+  // runs only. The describer's own words are written as they are: they hold no markup, so they need no escape. The
+  // result is that a title typed `Sales *2025* <draft>` reads back exactly as typed.
 
   const TEXT_BULLET = "• ";
   const TEXT_NESTING = "   ";
@@ -437,18 +428,16 @@
   }
 
   /**
-   * Write a model as HTML under a profile.
+   * Write a model as HTML under a profile. `shortHTML` is always the escaped plain short (no spans, no
+   * `<strong>`), whatever the profile; the profile shapes the detailed tier only.
    * @param {Object} model - A DescriptionModel (see model.js)
    * @param {Object} profile - PROFILES.lines, or a profile with layout "sections"
    * @returns {{shortHTML: string, detailed: string}}
-   * @throws {Error} On a node type, layout or short-escape mode it cannot write
+   * @throws {Error} On a node type or layout it cannot write
    */
   function renderHtml(model, profile) {
     if (!profile || typeof profile !== "object") {
       throw new Error("renderHtml needs a profile");
-    }
-    if (profile.shortEscape !== SHORT_ESCAPE.ALL && profile.shortEscape !== SHORT_ESCAPE.AUTHOR) {
-      throw new Error(`unknown short-escape mode ${profile.shortEscape}`);
     }
     let detailed;
     if (profile.layout === LAYOUTS.LINES) {
@@ -459,7 +448,7 @@
       throw new Error(`unknown layout ${profile.layout}`);
     }
     return {
-      shortHTML: inline(model.short, profile, TIERS.SHORT),
+      shortHTML: escapeAuthor(plainRuns(model.short)),
       detailed,
     };
   }

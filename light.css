@@ -3818,6 +3818,12 @@ pre[class*="language-"] {
   outline-offset: 2px;
 }
 
+/* Word forms' upload box: the same ring, its own rule (Captions Fixer's is its own too). */
+.word-forms-upload-area:focus-within {
+  outline: 3px solid #005c84;
+  outline-offset: 2px;
+}
+
 /* Chat attachment preview card (parcel P4). The card borrows the look of the MathPix
    upload preview (.mathpix-image-preview-container above): a thin border and a pale
    fill. The text-page is a paper-coloured "page" whose text is hidden from a screen
@@ -5553,12 +5559,13 @@ h3.mermaid-details-heading {
   border-top-width: 2px;
 }
 
-/* The Mermaid bar buttons and theme select share one grey fill at rest.
-   The two-class selectors beat the global button and select rules. Hover and
-   keyboard focus keep their own rules below. */
+/* The Mermaid bar buttons, theme select and orientation select share one grey
+   fill at rest. The two-class selectors beat the global button and select
+   rules. Hover and keyboard focus keep their own rules below. */
 .mermaid-controls button.mermaid-control-button,
 .mermaid-view-controls button.mermaid-view-button,
-.mermaid-controls .mermaid-theme-select {
+.mermaid-controls .mermaid-theme-select,
+.mermaid-controls .mermaid-orientation-select {
   background: #495961;
   color: #fffff9;
   border-color: transparent;
@@ -6068,8 +6075,9 @@ select:hover:not(:focus),
   border: 0.2rem solid #00131d;
 }
 
-/* The Mermaid theme select keeps its grey fill on hover, beating select:hover:not(:focus). */
-.mermaid-controls .mermaid-theme-select:hover:not(:focus) {
+/* The Mermaid theme and orientation selects keep their grey fill on hover, beating select:hover:not(:focus). */
+.mermaid-controls .mermaid-theme-select:hover:not(:focus),
+.mermaid-controls .mermaid-orientation-select:hover:not(:focus) {
   background: #495961;
   color: #fffff9;
 }

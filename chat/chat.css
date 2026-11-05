@@ -1207,11 +1207,10 @@
 /* Parcel P7: the pictures box is the third item of the body. From 600px the card is as tall as
  * the details column at rest and as wide as its picture's own shape makes it (chat-attach.js
  * fitCard() sets --chat-card-w and --chat-card-h on the body; until it has, the P4b column and
- * a natural height apply). With the pictures box showing, 1200px and wider gives three columns
- * (card, details, pictures); from 600px to 1199px the pictures box takes the full width below
- * the card and details; under 600px everything stacks. The switch points come from the measured
- * body width: 1200px is a body of about 1000px, where a card of about 210px, the 18.5rem pictures
- * column and the gaps still leave the details column about 460px. */
+ * a natural height apply). With the pictures box showing, it takes the full width below the card
+ * and details at every width from 600px, with its divider above it; under 600px everything stacks.
+ * There is no third column at wide widths (P17c-1, owner ruling 3 November 2026): a pictures
+ * column left a blank block under the details and moved Remove between files. */
 @media (min-width: 600px) {
   .chat-attach-body:has(> .chat-attachment-card-host:not([hidden])) {
     display: grid;
@@ -1243,20 +1242,6 @@
   /* Below the card and details, the whole width. */
   .chat-attach-body > #chat-attach-pictures-wrap:not([hidden]) {
     grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 1200px) {
-  .chat-attach-body:has(> .chat-attachment-card-host:not([hidden])):has(> #chat-attach-pictures-wrap:not([hidden])) {
-    grid-template-columns: var(--chat-card-w, clamp(8rem, 30%, 14rem)) minmax(0, 1fr) 18.5rem;
-  }
-
-  /* Its own column: no divider above it. */
-  .chat-attach-body > #chat-attach-pictures-wrap:not([hidden]) {
-    grid-column: auto;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: 0;
   }
 }
 
@@ -1651,6 +1636,44 @@
   min-width: 0; /* a fieldset's default min-content width would push the box wider than the column */
 }
 
+/* Parcel P17c-2: the "Showing a to b of N" line above the pictures, and the limit note and the two
+ * page buttons below them. All span the strip's grid, so the box's layout is the strip's own. The
+ * "Showing" line is a focus target (tabindex -1) and shows a ring when it takes focus. */
+.chat-attach-pictures-showing:not([hidden]),
+.chat-attach-pictures-nav:not([hidden]) {
+  grid-column: 1 / -1;
+}
+
+.chat-attach-pictures-showing {
+  margin: 0;
+}
+
+.chat-attach-pictures-showing:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
+.chat-attach-pictures-nav:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chat-attach-pictures-limit {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.chat-attach-pictures-page-button {
+  min-height: 2.75rem;
+}
+
+.chat-attach-pictures-page-button[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* Parcel P14: each picture is a label (thumbnail over a tick and its "Image n" / "Page n" caption), so a
  * click anywhere on it toggles the tick. The id selector beats the box's own label rule above, which
  * would otherwise set the item to a 44px-minimum block with vertical padding. */
@@ -1701,21 +1724,24 @@
 }
 
 /* The note on a sent turn that carried a document's pictures. The separator is generated, with an
- * empty spoken alternative where that is supported. A sent bubble keeps its spaces (pre-wrap), so the
- * gap before the dot is a margin and the one real space after it is in the note's own text. */
+ * empty spoken alternative where that is supported. The gap before the dot is the chip's own flex gap and
+ * the one real space after it is in the note's own text (a sent bubble keeps its spaces, pre-wrap), so
+ * the two sides read about alike (P16j: the dot used to carry a margin on top of the flex gap). */
 .chat-bubble-attachment-sent::before {
   content: "·";
   content: "·" / "";
-  margin-inline-start: 0.35em;
 }
 
 /* The attachment in a sent turn sits on its own line with room above and below, so the question's
  * last word cannot run into the file name. A block (not inline) also separates the two for a reader
  * that joins inline elements. The sent bubble is pre-wrap; the chip sets normal so its own parts
- * collapse. Colours are in light.css and dark.css. */
+ * collapse. Colours are in light.css and dark.css.
+ * P16j: the gap above reads 8px from the question's text box. The question is an inline span, so its box
+ * is the 19px text area inside a 24px line (line-height 1.5): the line adds about 3px below the text, and
+ * the margin is 8px less that. The gap below, to the Edit button, is the margin alone. */
 .chat-bubble-attachment {
   display: block;
-  margin-block: 0.5rem;
+  margin-block: 0.3125rem 0.5rem;
   white-space: normal;
 }
 

@@ -111,12 +111,12 @@ const MermaidAccessibilityPieChart = (function () {
    * whitespace the old template literals left after <section ...> and after
    * the heading. Moved here from charts.js at CD-5b 5-pie (the Mermaid seat's
    * agreement of 31 October 2026, point 2). Every value, whitespace included,
-   * equals the core's LEGACY_PIE_PROFILE, which parcel 6 deletes.
+   * is copied in chartjs.js;
+   * prove-pie-profile-parity.mjs keeps the two equal.
    */
   const PIE_PROFILE = Object.freeze({
     name: "sections",
     layout: "sections",
-    shortEscape: "author",
     sectionClass: (role) => `mermaid-section chart-${role}`,
     headingClass: "mermaid-details-heading",
     sectionLayout: Object.freeze({
@@ -136,10 +136,7 @@ const MermaidAccessibilityPieChart = (function () {
       [PIE_ROLES.SMALLEST]: "diagram-insight diagram-insight-smallest",
       [PIE_ROLES.DATA]: "diagram-data-item",
     }),
-    termClass: (role, variant) =>
-      role === "pattern"
-        ? `diagram-pattern diagram-pattern-${variant}`
-        : PIE_TERM_CLASS[role],
+    termClass: (role) => PIE_TERM_CLASS[role],
   });
 
   const NO_TITLE = "";

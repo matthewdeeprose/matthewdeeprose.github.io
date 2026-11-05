@@ -3886,6 +3886,12 @@ pre[class*="language-"] {
   outline-offset: 2px;
 }
 
+/* Word forms' upload box: the same ring, its own rule (Captions Fixer's is its own too). */
+.word-forms-upload-area:focus-within {
+  outline: 3px solid #c1d100;
+  outline-offset: 2px;
+}
+
 /* Chat attachment preview card (parcel P4). Same look as the MathPix preview card in
    this theme (.mathpix-image-preview-container below). The text-page is a dark surface
    with light text, never a white block; the ::after fade runs to the page colour. */
@@ -6151,16 +6157,18 @@ h3.mermaid-details-heading {
   border: 1px solid currentColor;
 }
 
-/* The Mermaid bar buttons and theme select share one grey fill at rest. */
+/* The Mermaid bar buttons, theme select and orientation select share one grey fill at rest. */
 .mermaid-controls button.mermaid-control-button,
 .mermaid-view-controls button.mermaid-view-button,
-.mermaid-controls .mermaid-theme-select {
+.mermaid-controls .mermaid-theme-select,
+.mermaid-controls .mermaid-orientation-select {
   background: #495961;
   color: #fffff9;
   border-color: transparent;
 }
 
-.mermaid-controls .mermaid-theme-select:hover:not(:focus) {
+.mermaid-controls .mermaid-theme-select:hover:not(:focus),
+.mermaid-controls .mermaid-orientation-select:hover:not(:focus) {
   background: #495961;
   color: #fffff9;
 }
@@ -7578,15 +7586,17 @@ pre.language-json {
   color: #e1e8ec;
 }
 
-/* The attached file in a sent Chat question (P15). Border and icon use the focus-glow colour. */
+/* The attached file in a sent Chat question (P15). Border and icon are a quiet grey-blue (P16j): they used
+   the focus-glow lime (#c1d100), so a chip that cannot take focus looked focused. #9fb1bd is 6.61:1 on the
+   bubble (#1a2a3a) and 7.49:1 on the chip (#10202e), calculated from the hex values. */
 .chat-bubble-attachment-reference {
   background-color: #10202e;
-  border-color: #c1d100;
+  border-color: #9fb1bd;
   color: #e1e8ec;
 }
 
 .chat-bubble-attachment-reference > [data-icon] {
-  color: #c1d100;
+  color: #9fb1bd;
 }
 
 .local-chat-bubble-assistant {

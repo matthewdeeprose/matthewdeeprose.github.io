@@ -25,8 +25,11 @@
  *     can gate a "Preparing…" spinner on this without awaiting.
  *
  * Public API:
- *   window.TTSSreLoader.loadSRE()  → Promise<SRE>
- *   window.TTSSreLoader.isLoaded() → boolean
+ *   window.TTSSreLoader.loadSRE([domain]) → Promise<SRE>  (set up for the saved
+ *       maths speech style, or `domain`; re-runs setupEngine when it changes)
+ *   window.TTSSreLoader.isLoaded() → boolean  (true for the current domain)
+ *   window.TTSSreLoader.getDomain() / setDomain(domain) → saved "tts-maths-speech"
+ *       ("clearspeak" default, or "mathspeak")
  *
  * Locale note: SRE locale stays `"en"` — there is no `en-GB` locale at the
  * time of writing; the Clearspeak rules are language-agnostic enough that
@@ -82,17 +85,146 @@ const TTSSreLoader = (function () {
   // differently (RA-67, RA-69).
   const SRE_CDN_URL =
     "https://cdn.jsdelivr.net/npm/speech-rule-engine@4.0.6/lib/sre.js";
+
+  // Maths speech style (RA-89, register 56): which SRE domain Read Aloud speaks
+  // equations in. Saved under the tts- key convention; ClearSpeak is the default.
+  const MATHS_SPEECH_DOMAIN = Object.freeze({
+    CLEARSPEAK: "clearspeak",
+    MATHSPEAK: "mathspeak",
+  });
+  const MATHS_SPEECH_STORAGE_KEY = "tts-maths-speech";
+
+  // SRE's setupEngine HANGS rather than rejecting when its locale data is
+  // unreachable (the export's Read Aloud measured this), so every call is raced
+  // against this bound. A timeout rejects and callers fall back to aria-labels.
+  const SETUP_ENGINE_TIMEOUT_MS = 20000;
+
+  // The script is fetched once and kept; the engine is (re)configured whenever
+  // the wanted domain differs from the configured one. _setupChain serialises
+  // those configurations so two domains can never interleave.
+  let _scriptPromise = null;
+  let _setupChain = Promise.resolve();
   let _srePromise = null;
+  let _readyDomain = null;
   let _isLoaded = false;
+
+  // ==========================================================================
+  // MATHS SPEECH STYLE
+  // ==========================================================================
+
+  function isValidDomain(value) {
+    return (
+      value === MATHS_SPEECH_DOMAIN.CLEARSPEAK ||
+      value === MATHS_SPEECH_DOMAIN.MATHSPEAK
+    );
+  }
+
+  /** The saved maths speech style; ClearSpeak when nothing valid is saved. */
+  function getDomain() {
+    try {
+      const saved = window.localStorage.getItem(MATHS_SPEECH_STORAGE_KEY);
+      if (isValidDomain(saved)) return saved;
+    } catch (err) {
+      logDebug("localStorage unavailable — using ClearSpeak", err);
+    }
+    return MATHS_SPEECH_DOMAIN.CLEARSPEAK;
+  }
+
+  /** Save the maths speech style. Returns false for an unknown value. */
+  function setDomain(domain) {
+    if (!isValidDomain(domain)) {
+      logWarn("Unknown maths speech style ignored:", domain);
+      return false;
+    }
+    try {
+      window.localStorage.setItem(MATHS_SPEECH_STORAGE_KEY, domain);
+    } catch (err) {
+      logWarn("Could not save the maths speech style", err);
+    }
+    return true;
+  }
+
+  function withTimeout(promise, label) {
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error(label + " timed out")),
+        SETUP_ENGINE_TIMEOUT_MS,
+      );
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      );
+    });
+  }
 
   // ==========================================================================
   // PUBLIC API
   // ==========================================================================
 
-  function loadSRE() {
-    if (_srePromise) return _srePromise;
+  /**
+   * Resolve the SRE engine configured for `domain` (default: the saved style).
+   * Re-runs setupEngine when the wanted domain differs from the configured one.
+   */
+  function loadSRE(wantedDomain) {
+    const domain = isValidDomain(wantedDomain) ? wantedDomain : getDomain();
+    if (_srePromise && _readyDomain === domain) return _srePromise;
+    if (_readyDomain !== domain) _isLoaded = false;
+    logDebug("Configuring SRE for", domain);
+    const mine = _scriptLoad().then((sre) => {
+      const run = _setupChain.then(() =>
+        withTimeout(
+          Promise.resolve(
+            sre.setupEngine({
+              domain: domain,
+              style: "default",
+              modality: "speech",
+              locale: "en",
+            }),
+          ),
+          "SRE setupEngine",
+        ),
+      );
+      _setupChain = run.catch(() => {});
+      return run.then(() => sre);
+    });
+    _srePromise = mine;
+    _readyDomain = domain;
+    // Mark loaded only after full resolution (setupEngine complete).
+    mine.then(
+      () => {
+        if (_srePromise === mine) {
+          _isLoaded = true;
+          logInfo("SRE ready (" + domain + ", en)");
+        }
+      },
+      () => {
+        // Rejection is handled below; this branch exists only to keep this
+        // .then chain from producing an unhandled-rejection warning.
+      },
+    );
+    // Allow retry on failure: clear the cached promise so the next call re-tries.
+    mine.catch((err) => {
+      logWarn("SRE load failed — cache cleared, next call will retry", err);
+      if (_srePromise === mine) {
+        _srePromise = null;
+        _readyDomain = null;
+        _isLoaded = false;
+      }
+    });
+    return mine;
+  }
+
+  /** Fetch the SRE script once (no engine set-up). Resolves window.SRE. */
+  function _scriptLoad() {
+    if (_scriptPromise) return _scriptPromise;
     logDebug("First call — initiating SRE load from CDN");
-    _srePromise = (async () => {
+    _scriptPromise = (async () => {
       if (typeof window.SRE === "undefined") {
         await new Promise((resolve, reject) => {
           const existing = document.querySelector(
@@ -123,32 +255,13 @@ const TTSSreLoader = (function () {
       if (typeof window.SRE === "undefined" || !window.SRE.setupEngine) {
         throw new Error("SRE library loaded but window.SRE.setupEngine missing");
       }
-      await window.SRE.setupEngine({
-        domain: "clearspeak",
-        style: "default",
-        modality: "speech",
-        locale: "en",
-      });
       return window.SRE;
     })();
-    // Mark loaded only after full resolution (setupEngine complete).
-    _srePromise.then(
-      () => {
-        _isLoaded = true;
-        logInfo("SRE ready (Clearspeak, en)");
-      },
-      () => {
-        // Rejection is handled below; this branch exists only to keep this
-        // .then chain from producing an unhandled-rejection warning.
-      },
-    );
-    // Allow retry on failure: clear the cached promise so the next call re-tries.
-    _srePromise.catch((err) => {
-      logWarn("SRE load failed — cache cleared, next call will retry", err);
-      _srePromise = null;
-      _isLoaded = false;
+    // A failed script fetch must be retried by the next call.
+    _scriptPromise.catch(() => {
+      _scriptPromise = null;
     });
-    return _srePromise;
+    return _scriptPromise;
   }
 
   function isLoaded() {
@@ -158,6 +271,9 @@ const TTSSreLoader = (function () {
   return {
     loadSRE: loadSRE,
     isLoaded: isLoaded,
+    getDomain: getDomain,
+    setDomain: setDomain,
+    DOMAIN: MATHS_SPEECH_DOMAIN,
   };
 })();
 

@@ -769,6 +769,35 @@
   overflow: auto;
 }
 
+/* M-8c: the three review panels (statistics, uncertain regions, things to
+   check) sit on one row. DOM order is the visual order (no `order`). An open
+   panel takes the full width in place and the others wrap around it. */
+.ai-review-panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-shrink: 0;
+  margin-top: 1rem;
+}
+
+/* No panel built: take no height, margin included */
+.ai-review-panels:not(:has(details)) {
+  display: none;
+}
+
+.ai-review-panels > .ai-enhancement-stats,
+.ai-review-panels > .ai-uncertainty-panel {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.ai-review-panels > details[open] {
+  flex-basis: 100%;
+}
+
 /* Individual Column */
 .ai-comparison-column {
   display: flex;
@@ -1090,6 +1119,12 @@
   /* 4-Column Grid Mobile */
   .ai-comparison-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* M-8c: one review panel per row at narrow widths */
+  .ai-review-panels > .ai-enhancement-stats,
+  .ai-review-panels > .ai-uncertainty-panel {
+    flex-basis: 100%;
   }
 
   .ai-column-toggles {

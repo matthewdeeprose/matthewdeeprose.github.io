@@ -113,6 +113,8 @@ Write all output in British English.
 
 Before you write, look at the whole image: note its overall layout, every labelled part and how the parts relate, and any text. Describe what is drawn, not what a similar diagram usually contains. Where you are inferring rather than seeing, say so, and where an element is unclear, say it is unclear rather than guessing.
 
+If the picture shows only a word or a short phrase, with nothing else worth describing, give those words exactly in the alt text, and keep the long description to one sentence that gives the words and how they are written.
+
 ## 1. Title
 A brief descriptive title under 10 words that says what the image is for. Do not use a generic title such as "Diagram" or "Figure".
 

@@ -195,6 +195,11 @@
    * @private
    */
   proto._refreshConvertSizeIndicator = async function ({ silent = false } = {}) {
+    // B2-1 (ledger entry 88): a ticket taken before any await. The size work
+    // below is async, so an older refresh can finish after a newer one; the
+    // write is dropped unless this refresh is still the newest.
+    this._convertSizeRefreshSeq = (this._convertSizeRefreshSeq || 0) + 1;
+    const ticket = this._convertSizeRefreshSeq;
     try {
       const readoutEl = this.elements?.convertSizeReadout;
       if (!readoutEl) return; // enhancement absent — nothing to update
@@ -256,6 +261,14 @@
         selectedFormats,
       );
       const limit = this._getConvertSizeLimit();
+
+      if (ticket !== this._convertSizeRefreshSeq) {
+        logDebug("Convert-size refresh dropped: a newer refresh started", {
+          ticket,
+          newest: this._convertSizeRefreshSeq,
+        });
+        return;
+      }
 
       let band = null;
       let readout;

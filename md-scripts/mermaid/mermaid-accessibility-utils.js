@@ -691,6 +691,13 @@ window.MermaidAccessibilityUtils = (function () {
     }
   }
 
+  // Prefix the detection module gives a type it can detect but cannot
+  // describe; such a key has no primer by design (item 145, PR9).
+  const UNSUPPORTED_KEY_PREFIX = "unsupported:";
+
+  // Once-only WARN state for the type primers (item 145, PR10).
+  const primerWarnings = { fileMissing: false, keys: new Set() };
+
   // DOM utility functions
   const DOMUtils = {
     /**
@@ -834,7 +841,80 @@ window.MermaidAccessibilityUtils = (function () {
     },
 
     /**
-     * Create the description container for a diagram
+     * Build the "About <type> diagrams" primer for a diagram type (item 145).
+     *
+     * One owner for the primer's markup. Reads window.MermaidTypePrimers at
+     * CALL TIME, never at module scope: this file loads before the primer
+     * file may. Built with createElement and textContent only, so no string
+     * reaches an HTML sink. The result is a plain section (PA1, 4 November
+     * 2026, replacing the disclosure of build 1): an `h4` holding the file's
+     * summary text unchanged (PA7), then one `p` per paragraph.
+     *
+     * Returns null, and adds nothing, when the primer object is absent
+     * (WARN once per page load) or has no entry for the key (WARN once per
+     * key, PR10). An `unsupported:<type>` key has no entry by construction,
+     * so the honest-unsupported path gets no primer without a flag; it is
+     * not warned about, because that absence is intended. The
+     * generation-failed path keeps its primer (PA3): the type is known.
+     *
+     * @param {string} diagramType - The generator key createDescriptionContainer derived
+     * @returns {HTMLElement|null} The `section.mermaid-section.mermaid-primer-section`, or null
+     */
+    createPrimerSection: function (diagramType) {
+      const primers = window.MermaidTypePrimers;
+      if (!primers) {
+        if (!primerWarnings.fileMissing) {
+          primerWarnings.fileMissing = true;
+          logWarn(
+            "[Mermaid Accessibility] window.MermaidTypePrimers is absent; no type primers added"
+          );
+        }
+        return null;
+      }
+
+      const entry = Object.prototype.hasOwnProperty.call(primers, diagramType)
+        ? primers[diagramType]
+        : null;
+      if (!entry) {
+        const intentionallyAbsent =
+          typeof diagramType === "string" &&
+          diagramType.indexOf(UNSUPPORTED_KEY_PREFIX) === 0;
+        if (!intentionallyAbsent && !primerWarnings.keys.has(diagramType)) {
+          primerWarnings.keys.add(diagramType);
+          logWarn(
+            `[Mermaid Accessibility] No type primer for "${diagramType}"; none added`
+          );
+        }
+        return null;
+      }
+
+      // A plain section, styled by the existing .mermaid-section and
+      // h4.mermaid-details-heading rules (PA1, PA4). The decorate pass has
+      // already run by the time this is appended, so it carries both classes.
+      const section = document.createElement("section");
+      section.className = "mermaid-section mermaid-primer-section";
+
+      const heading = document.createElement("h4");
+      heading.className = "mermaid-details-heading";
+      heading.textContent = entry.summary;
+      section.appendChild(heading);
+
+      entry.paragraphs.forEach(function (text) {
+        const paragraph = document.createElement("p");
+        paragraph.textContent = text;
+        section.appendChild(paragraph);
+      });
+
+      return section;
+    },
+
+    /**
+     * Create the description container for a diagram.
+     *
+     * Children, in order: short description section, detailed description
+     * section (whose description div ends with the "About <type> diagrams"
+     * primer section, item 145, when createPrimerSection returns one, then
+     * the disclaimer), then the export controls.
      * @param {HTMLElement} svgElement - The SVG element
      * @param {string} diagramCode - The original mermaid code
      * @param {string|number} diagramId - Unique identifier for the diagram
@@ -891,10 +971,14 @@ window.MermaidAccessibilityUtils = (function () {
       const shortDescElem = document.createElement("p");
       shortDescElem.className = "mermaid-short-description";
 
+      // Diagram type, declared outside the try so the primer section below
+      // reuses the one value this function derives (item 145, PR9) instead of
+      // deriving it a second time.
+      let diagramType = "flowchart"; // Default
+
       // Safety check to avoid the undefined error
       try {
         // Get diagram type
-        let diagramType = "flowchart"; // Default
         if (
           window.MermaidDiagramDetection &&
           typeof window.MermaidDiagramDetection.detectDiagramType === "function"
@@ -1043,6 +1127,17 @@ window.MermaidAccessibilityUtils = (function () {
       // sheets need, without any generator emitting them. It runs on the
       // detached fragment, before it is attached, and touches no text.
       self.decorateDetailedFragment(detailContentElem);
+
+      // "About <type> diagrams" primer (item 145, PA1): the last section INSIDE
+      // the detailed description div, so the existing card rules, which are
+      // scoped to `.mermaid-detailed-description .mermaid-section`, style it
+      // like its neighbours with no new CSS (PA4). Appended after the decorate
+      // pass above, which has already run, so it carries its own classes. The
+      // disclaimer below stays the panel's final words.
+      const primerSection = self.createPrimerSection(diagramType);
+      if (primerSection) {
+        detailContentElem.appendChild(primerSection);
+      }
 
       detailedDescSection.appendChild(detailContentElem);
 

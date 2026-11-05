@@ -727,9 +727,33 @@ const MermaidViewControls = (function () {
 
     if (isFullscreen) {
       exitFullscreen(container);
-    } else {
-      enterFullscreen(container, button);
+      return;
     }
+
+    // After a site light/dark flip a diagram may still be waiting for its
+    // repaint. Full screen shows the live SVG, so wait for the gate first. A
+    // current diagram goes straight in, synchronously, so the click's user
+    // gesture (which native full screen needs) is not spent on a wait.
+    const themes = window.MermaidThemes;
+    const needsGate =
+      themes &&
+      typeof themes.isThemeCurrent === "function" &&
+      typeof themes.ensureThemeCurrent === "function" &&
+      !themes.isThemeCurrent(container);
+
+    if (!needsGate) {
+      enterFullscreen(container, button);
+      return;
+    }
+
+    themes.ensureThemeCurrent(container).then(() => {
+      const alreadyIn =
+        document.fullscreenElement === container ||
+        container.classList.contains(config.fullscreenClass);
+      if (container.isConnected && !alreadyIn) {
+        enterFullscreen(container, button);
+      }
+    });
   }
 
   /**

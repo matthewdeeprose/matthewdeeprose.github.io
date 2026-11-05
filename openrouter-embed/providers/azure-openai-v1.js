@@ -506,6 +506,50 @@
     window.dispatchEvent(new CustomEvent("entra:token-rejected"));
   }
 
+  /** M-9a: the status an in-stream error carries when it names none. */
+  const IN_STREAM_ERROR_DEFAULT_STATUS = 502;
+
+  /**
+   * M-9a: turn a parsed stream payload whose top level carries an `error`
+   * object into the SAME error the `!response.ok` branch of streamRequest
+   * throws, or return null for any other payload.
+   *
+   * Why: the Foundry proxy now answers `200` early to keep a long request
+   * alive, so an upstream failure that arrives after that can only travel
+   * inside the stream, as `data: {"error":{"status":<n>,"message":…}}`.
+   * Without this the payload carries no `choices`, adds no text, and the
+   * stream ends as an empty success. Same message shape, `status`, `body`
+   * and `notifyTokenRejected` call, so a late 429 reads as an early 429.
+   *
+   * @param {Object} parsed - one parsed SSE `data:` payload
+   * @param {Object} headers - the request headers that were sent
+   * @returns {(Error|null)}
+   * @private
+   */
+  function inStreamError(parsed, headers) {
+    const error = parsed && parsed.error;
+    if (!error || typeof error !== "object" || Array.isArray(error)) return null;
+
+    const status =
+      typeof error.status === "number" ? error.status : IN_STREAM_ERROR_DEFAULT_STATUS;
+    // M-9a2: the body is Azure's own reply text where the proxy forwarded one
+    // (a JSON-object `message`), else the error wrapped as Azure would send it.
+    const errorBody = (() => {
+      try {
+        const inner = JSON.parse(error.message);
+        if (inner && typeof inner === "object" && !Array.isArray(inner)) return error.message;
+      } catch (_) {
+        /* not JSON: a native in-stream error */
+      }
+      return JSON.stringify({ error });
+    })();
+    const err = new Error(`Foundry request failed: HTTP ${status} — ${errorBody}`);
+    err.status = status;
+    err.body = errorBody;
+    notifyTokenRejected(status, headers);
+    return err;
+  }
+
   /**
    * Resolve the proxy URL + optional user token for the next request.
    *
@@ -1183,6 +1227,10 @@
         let warnedNoModalityCore = false;
 
         const processParsed = (parsed) => {
+          // M-9a: an error sent inside the stream fails it, as !response.ok does.
+          const lateError = inStreamError(parsed, headers);
+          if (lateError) throw lateError;
+
           finalChunkData = parsed;
           const choice = parsed && parsed.choices && parsed.choices[0];
 

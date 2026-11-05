@@ -139,6 +139,9 @@
          not the point: it carries its own `#captions-fixer-app [hidden]` rule
          so the reveal does not depend on that sheet's global. -->
     <link rel="stylesheet" href="captions-fixer/captions-fixer.css" />
+    <!-- Word forms (alpha). Layout only, using the theme variables already in
+         use; it carries its own `#word-forms-app [hidden]` rule. -->
+    <link rel="stylesheet" href="word-forms/word-forms.css" />
     <!-- TikZ Studio (hidden Alpha). Layout only: the paper surface's colours
          are in light.css and dark.css, like every other tool's. -->
     <link rel="stylesheet" href="tikz-studio/tikz-studio.css" />
@@ -1013,6 +1016,26 @@
               ></span>
               <span class="radio">Captions Fixer</span>
             </label>
+            <!-- Word forms (alpha). Placed after Captions Fixer to match
+                 js/tool-registry.js. The value is load-bearing once shipped
+                 (TOOL_CONFIG, radioToTool, the remembered tool and the
+                 registry's value check all key on it), so never rename it. -->
+            <label class="tool-option-wrapper" for="WordForms">
+              <input
+                type="radio"
+                id="WordForms"
+                name="presentation"
+                autocomplete="off"
+                value="Word Forms"
+                onclick="showWordFormsTool()"
+              />
+              <span
+                class="tool-icon"
+                aria-hidden="true"
+                data-icon="documentList"
+              ></span>
+              <span class="radio">Word forms</span>
+            </label>
             <!-- TikZ Studio (alpha). js/tool-registry.js carries
                  hidden: false, so this option is in the picker, and it is
                  also reachable through showTikzStudio(). It is written out
@@ -1073,6 +1096,7 @@
               "showChat",
               "showTranscribeTool",
               "showCaptionsFixerTool",
+              "showWordFormsTool",
               "showTikzStudio",
             ];
             names.forEach(function (name) {
@@ -1464,6 +1488,14 @@
                   and download a corrected file with the original timings
                   intact. Alpha — expect rough edges. Requires an OpenRouter API
                   key, or a Microsoft Foundry connection.
+                </dd>
+
+                <dt>Word forms</dt>
+                <dd>
+                  Rebuild a Word form so it works with a screen reader. Choose a
+                  .docx file, read what the checks found and the plan for the new
+                  form, then agree to build it or stop. Alpha — expect rough
+                  edges. Requires a Microsoft Foundry connection.
                 </dd>
 
                 <!-- Hidden by the registry (hidden: true), which removes this
@@ -3544,6 +3576,28 @@
                           This voice sends text to an external server for
                           processing.
                         </p>
+
+                        <!-- Pitch (browser voices only): the local voice does not
+                             read it, so it lives in this block. Same shape as the
+                             Speed slider below: the value sits in a sibling
+                             <output>, never in the <label>. -->
+                        <div class="tts-field">
+                          <div class="tts-field-header">
+                            <label for="tts-pitch-slider">Pitch:</label>
+                            <output for="tts-pitch-slider"
+                              ><span id="tts-pitch-value">1.0</span></output
+                            >
+                          </div>
+                          <input
+                            type="range"
+                            id="tts-pitch-slider"
+                            min="0.5"
+                            max="2.0"
+                            step="0.1"
+                            value="1.0"
+                            aria-valuetext="1.0"
+                          />
+                        </div>
                       </div>
 
                       <!-- Neural voice selector (shown when engine=supertonic) -->
@@ -3605,6 +3659,34 @@
                           content.
                         </p>
                       </div>
+
+                      <!-- Maths speech style (RA-89): the words Read Aloud uses
+                           for equations. Both engines use it, so it sits outside
+                           the engine-specific blocks. Page MathJax is untouched. -->
+                      <fieldset class="tts-fieldset" id="tts-maths-speech-fieldset">
+                        <legend>Maths speech style</legend>
+                        <div class="tts-radio-group">
+                          <label class="tts-radio-label">
+                            <input
+                              type="radio"
+                              name="tts-maths-speech"
+                              value="clearspeak"
+                              id="tts-maths-speech-clearspeak"
+                              checked
+                            />
+                            ClearSpeak &mdash; detailed
+                          </label>
+                          <label class="tts-radio-label">
+                            <input
+                              type="radio"
+                              name="tts-maths-speech"
+                              value="mathspeak"
+                              id="tts-maths-speech-mathspeak"
+                            />
+                            MathSpeak &mdash; concise
+                          </label>
+                        </div>
+                      </fieldset>
 
                       <!-- Code block reading mode (Stage Y.2b) -->
                       <div class="tts-field">
@@ -19578,6 +19660,42 @@ Science,91</pre
                   hidden
                 >
                   <legend class="visually-hidden">Pictures to send</legend>
+                  <!-- Parcel P17c-2: shown only above 10 pictures on offer. "Showing" is the focus
+                     target after a page press (tabindex -1, not a live region). The pictures are
+                     inserted between this line and the nav by chat/chat-attach.js. -->
+                  <p
+                    id="chat-attach-pictures-showing"
+                    class="chat-attach-pictures-showing"
+                    tabindex="-1"
+                    hidden
+                  ></p>
+                  <div
+                    id="chat-attach-pictures-nav"
+                    class="chat-attach-pictures-nav"
+                    hidden
+                  >
+                    <p
+                      id="chat-attach-pictures-limit"
+                      class="chat-attach-pictures-limit"
+                      hidden
+                    >
+                      You can send up to 20 pictures. Untick one first.
+                    </p>
+                    <button
+                      type="button"
+                      id="chat-attach-pictures-prev"
+                      class="chat-attach-pictures-page-button"
+                    >
+                      Previous 10
+                    </button>
+                    <button
+                      type="button"
+                      id="chat-attach-pictures-next"
+                      class="chat-attach-pictures-page-button"
+                    >
+                      Next 10
+                    </button>
+                  </div>
                 </fieldset>
               </div>
             </div>
@@ -20998,6 +21116,129 @@ Science,91</pre
           <div id="captions-fixer-embed-sink" hidden aria-live="off"></div>
         </article>
 
+        <!-- Word forms (alpha). Built to openrouter-embed/docs/tool-calling/
+             word-forms/wf-3-wireframe.md.
+
+             Each step is a <section> that ships `hidden` and is revealed by
+             word-forms/word-forms-ui.js only when it is reached.
+
+             WHAT SPEAKS: one status line per step change, through the shared
+             announcer (window.accessibilityHelpers) and nowhere else. NOTHING
+             IN THIS MARKUP IS A LIVE REGION: #word-forms-status is the visible
+             copy of the same line and carries no role and no aria-live, so the
+             line is spoken once. The error paragraph is the same: it stays on
+             screen until the state changes, and notifyError speaks it once.
+
+             The plan is a <pre> that wraps (white-space: pre-wrap in
+             word-forms.css), so it never scrolls and needs no tab stop. -->
+        <article
+          id="word-forms-app"
+          class="tool-container"
+          aria-hidden="true"
+          style="display: none"
+        >
+          <h1>Word forms</h1>
+          <p class="tool-description">
+            Rebuild a Word form so it works with a screen reader. Choose a Word
+            file, read what the checks found and the plan for the new form, then
+            agree to build it or stop.
+          </p>
+
+          <section class="word-forms-step" aria-labelledby="word-forms-step1">
+            <h2 id="word-forms-step1">1. Choose your form</h2>
+            <div class="word-forms-upload-area" id="word-forms-drop-area">
+              <label
+                for="word-forms-file-input"
+                class="imgdesc-upload-label"
+                id="word-forms-drop-zone"
+              >
+                <span
+                  class="imgdesc-upload-icon"
+                  aria-hidden="true"
+                  data-icon="documentList"
+                ></span>
+                <span class="imgdesc-upload-text" id="word-forms-drop-zone-text"
+                  >Choose a Word file or drag and drop</span
+                >
+                <span
+                  class="imgdesc-upload-formats"
+                  id="word-forms-drop-zone-formats"
+                  >Word documents (.docx)</span
+                >
+              </label>
+              <!-- Name and description split, as Captions Fixer does it (see
+                   the STAGE 8b, DECISION 6 comment on its file input): the
+                   name is the first span alone, the formats line is the
+                   description, and the chosen file name stays outside both. -->
+              <input
+                type="file"
+                id="word-forms-file-input"
+                class="visually-hidden"
+                accept=".docx"
+                autocomplete="off"
+                aria-labelledby="word-forms-drop-zone-text"
+                aria-describedby="word-forms-drop-zone-formats"
+              />
+              <p id="word-forms-file-name">No file chosen</p>
+            </div>
+            <div class="word-forms-actions">
+              <button type="button" id="word-forms-check">Check this form</button>
+              <button type="button" id="word-forms-cancel" hidden>Cancel</button>
+            </div>
+            <p id="word-forms-status" class="word-forms-status"></p>
+            <p id="word-forms-error" class="word-forms-error" hidden></p>
+          </section>
+
+          <section
+            id="word-forms-found"
+            class="word-forms-step"
+            aria-labelledby="word-forms-step2"
+            hidden
+          >
+            <h2 id="word-forms-step2" tabindex="-1">2. What we found</h2>
+            <ul id="word-forms-found-list"></ul>
+          </section>
+
+          <section
+            id="word-forms-plan-section"
+            class="word-forms-step"
+            aria-labelledby="word-forms-step3"
+            hidden
+          >
+            <h2 id="word-forms-step3">3. The plan</h2>
+            <pre id="word-forms-plan" class="word-forms-plan"></pre>
+            <div class="word-forms-actions">
+              <button type="button" id="word-forms-agree">Agree and build</button>
+              <button type="button" id="word-forms-stop">
+                Stop, I will convert it myself
+              </button>
+            </div>
+            <div id="word-forms-stopped" hidden>
+              <p id="word-forms-stopped-text" tabindex="-1">
+                You stopped here, so your form was not changed.
+              </p>
+              <button type="button" id="word-forms-different">
+                Choose a different form
+              </button>
+            </div>
+          </section>
+
+          <section
+            id="word-forms-built"
+            class="word-forms-step"
+            aria-labelledby="word-forms-step4"
+            hidden
+          >
+            <h2 id="word-forms-step4" tabindex="-1">4. Your new form</h2>
+            <p id="word-forms-checks"></p>
+            <p>
+              <a id="word-forms-download" href="#" download>Download</a>
+            </p>
+            <h3 id="word-forms-before-heading">Before you send it</h3>
+            <ol id="word-forms-delivery" aria-labelledby="word-forms-before-heading"></ol>
+          </section>
+        </article>
+
         <!-- TikZ Studio (P3 of the TikZ programme; HIDDEN ALPHA — see the TOOLS
              row in js/tool-registry.js). Everything a person meets is written
              here: every control, label, region, the skip link and its target.
@@ -22181,6 +22422,8 @@ Science,91</pre
       type="module"
       src="mathpix-scripts/ui/components/mathpix-mmd-preview.js"
     ></script>
+    <!-- BR-2: shared read-only document tree for the braille and PreTeXt exports -->
+    <script src="mathpix-scripts/core/mathpix-document-tree.js"></script>
     <!-- MMD Editor Module (Phase 5.1) -->
     <script
       type="module"
@@ -22576,6 +22819,20 @@ Science,91</pre
       type="application/dev-test"
       data-src="word-forms/testing/word-forms-build-tests.js"
     ></script>
+    <!-- Word forms toolkit and plan run (WF-2), and its tests: dev-only until a real adopter ships -->
+    <script
+      type="application/dev-test"
+      data-src="word-forms/word-forms-tools.js"
+    ></script>
+    <script
+      type="application/dev-test"
+      data-src="word-forms/testing/word-forms-tools-tests.js"
+    ></script>
+    <!-- Word forms page tests (WF-3): dev-only -->
+    <script
+      type="application/dev-test"
+      data-src="word-forms/testing/word-forms-ui-tests.js"
+    ></script>
     <script
       type="module"
       src="openrouter-embed/openrouter-embed-progress.js"
@@ -22810,6 +23067,13 @@ Science,91</pre
          element or a missing pipeline module, so a wiring fault refuses to
          open the tool rather than opening one whose controls are dead. -->
     <script src="captions-fixer/captions-fixer-ui.js"></script>
+
+    <!-- Word forms (alpha). Only the page controller is eager. Its init loads
+         the tool registry, the runner and the six word-forms-*.js files on the
+         first switch to the tool (unless the dev loader already has them), so
+         no other tool's load changes. Nothing here runs until
+         TOOL_CONFIG["Word Forms"].init() calls it. -->
+    <script src="word-forms/word-forms-ui.js"></script>
 
     <!-- TikZ Studio. These two are small and eager; the kit they drive
          (tikz-kit/, about 480 KB of engine) is appended by the controller on
@@ -24978,11 +25242,16 @@ Science,91</pre
     <script src="md-scripts/mermaid/mermaid-diagram-detection.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-common.js"></script>
     <script src="md-scripts/mermaid/mermaid-parse-adapter.js"></script>
+    <script src="md-scripts/mermaid/mermaid-type-primers.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-core.js"></script>
     <script src="md-scripts/mermaid/mermaid-export-utils.js"></script>
     <script src="vendor/chart-describe/src/text.js"></script>
     <script src="vendor/chart-describe/src/model.js"></script>
     <script src="vendor/chart-describe/src/render.js"></script>
+    <script src="vendor/chart-describe/src/charts-shared.js"></script>
+    <script src="vendor/chart-describe/src/charts-xychart.js"></script>
+    <script src="vendor/chart-describe/src/charts-pie.js"></script>
+    <script src="vendor/chart-describe/src/charts-radar.js"></script>
     <script src="vendor/chart-describe/src/charts.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-pie.js"></script>
     <script src="md-scripts/mermaid/mermaid-accessibility-flowchart.js"></script>
@@ -25561,6 +25830,38 @@ Science,91</pre
           },
         },
 
+        "Word Forms": {
+          articleId: "word-forms-app",
+          displayName: "Word forms",
+          announceText: "Switched to Word forms tool",
+          // Copied from the Captions Fixer entry above, for its stated reason:
+          // init RETURNS FALSE ON A GENUINE FAILURE. It is async (it loads the
+          // Word forms code on the first call) and resolves false if a file
+          // would not load, so a broken tool refuses to open rather than
+          // opening with dead controls. Not being signed in to Foundry is NOT
+          // a failure: Check this form explains it.
+          init: function () {
+            if (
+              !window.WordFormsUI ||
+              typeof window.WordFormsUI.init !== "function"
+            ) {
+              console.error(
+                "[WordForms] word-forms/word-forms-ui.js did not load",
+              );
+              return false;
+            }
+            return window.WordFormsUI.init();
+          },
+          cleanup: function () {
+            if (
+              window.WordFormsUI &&
+              typeof window.WordFormsUI.cleanup === "function"
+            ) {
+              window.WordFormsUI.cleanup();
+            }
+          },
+        },
+
         "TikZ Studio": {
           articleId: "tikz-studio-app",
           displayName: "TikZ Studio",
@@ -25915,6 +26216,9 @@ Science,91</pre
       function showCaptionsFixerTool(isUserInitiated = true) {
         switchToTool("Captions Fixer", isUserInitiated);
       }
+      function showWordFormsTool(isUserInitiated = true) {
+        switchToTool("Word Forms", isUserInitiated);
+      }
       function showTikzStudio(isUserInitiated = true) {
         switchToTool("TikZ Studio", isUserInitiated);
       }
@@ -25949,6 +26253,7 @@ Science,91</pre
       // replacement is relying on a mechanism whose comment calls itself a
       // safety net.
       window.showCaptionsFixerTool = showCaptionsFixerTool;
+      window.showWordFormsTool = showWordFormsTool;
       window.showTikzStudio = showTikzStudio;
 
       // Replay a tool selection made while the page was still loading. The stubs
@@ -26052,6 +26357,7 @@ Science,91</pre
           Chat: "Chat",
           Transcribe: "Transcribe",
           "Captions Fixer": "Captions Fixer",
+          "Word Forms": "Word Forms",
           "TikZ Studio": "TikZ Studio",
         };
 
@@ -26063,7 +26369,29 @@ Science,91</pre
         // deliberately withdrawn from the picker. ensureVisibleSelection did
         // not catch it. Any tool added to the picker needs a row above.
         let toolName = radioToTool[toolValue] || "OpenRouter";
-        const remembered = readRememberedTool(radioToTool);
+
+        // Deep link: tools.html?tool=mathpix. It wins over the remembered tool
+        // and is removed from the address bar once read, so a later reload
+        // follows the tool the person last used rather than the old link.
+        // Names and short forms are resolved in js/tool-registry.js; hidden
+        // tools do not resolve.
+        const linkUrl = new URL(window.location.href);
+        const requestedTool = linkUrl.searchParams.get("tool");
+        const linkedTool =
+          requestedTool && window.ToolRegistry
+            ? window.ToolRegistry.resolveTool(requestedTool)
+            : null;
+        if (requestedTool !== null) {
+          if (requestedTool && !linkedTool) {
+            console.warn(
+              `[tool-link] "${requestedTool}" does not match a visible tool; ignoring ?tool=.`,
+            );
+          }
+          linkUrl.searchParams.delete("tool");
+          window.history.replaceState(window.history.state, "", linkUrl);
+        }
+
+        const remembered = linkedTool || readRememberedTool(radioToTool);
         if (remembered && remembered !== toolName) {
           const rememberedRadio = document.querySelector(
             `#toolSelection input[name="presentation"][value="${remembered}"]`,

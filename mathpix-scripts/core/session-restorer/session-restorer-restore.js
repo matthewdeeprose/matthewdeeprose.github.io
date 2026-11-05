@@ -380,6 +380,41 @@
   };
 
   /**
+   * FL-1 (FL-D1): create the image registry for an archive that refers to
+   * figures but carries no image files, and register each detected figure as an
+   * entry with no bytes. Uses the same detection as _figuresNotRestoredOutcome
+   * (buildFromMMD, self-contained links left out). Raises nothing; the restore's
+   * one warning line is unchanged. Does nothing when a registry already exists
+   * or no figure was detected.
+   *
+   * @param {?{count: number}} figuresOutcome - _figuresNotRestoredOutcome's result
+   * @returns {number} how many figures were registered
+   */
+  proto._registerDetectedFigures = function (figuresOutcome) {
+    if (this.imageRegistry || !figuresOutcome || !(figuresOutcome.count > 0)) return 0;
+    if (typeof window.MathPixImageRegistry !== "function") return 0;
+
+    const registry = new window.MathPixImageRegistry();
+    registry.buildFromMMD(this.restoredSession?.currentMMD || "");
+
+    // A self-contained link (data or blob) is not a missing figure; take it out
+    // so the registry holds exactly what the warning line counted.
+    for (const entry of registry.getAllImages()) {
+      if (SELF_CONTAINED_REFERENCE.test(String(entry.originalUrl || ""))) {
+        registry.removeImage(entry.id);
+      }
+    }
+
+    const registered = registry.getCount();
+    if (registered === 0) return 0;
+
+    this.imageRegistry = registry;
+    this.restoredSession.imageRegistry = registry;
+    logInfo(`Registered ${registered} detected figure(s) with no image file (FL-1)`);
+    return registered;
+  };
+
+  /**
    * VS-3d-2: compose the auto-restored version's line (applyRecoveredSession's
    * recoveredVersionLine, deferred to here) into the restore's outcome line, so
    * the upload path speaks ONE line that carries both (rule C10). The plain
@@ -585,6 +620,12 @@
         // RD-3: decided here, SPOKEN once at the end in place of the success line.
         figuresOutcome = this._figuresNotRestoredOutcome(imageResult);
         this.missingFigureCount = figuresOutcome.count || 0;
+
+        // FL-1 (FL-D1): the detected figures become entries with no bytes, the
+        // same shape _reconcileOnOpen Phase B makes, in a registry made with the
+        // constructor Add image uses (UT-D6). The manager then lists them as
+        // "Picture file missing" cards, and Phase B finds them on open (same URL).
+        this._registerDetectedFigures(figuresOutcome);
       } catch (imageError) {
         // Non-fatal: images failing should not block session restore
         logWarn("Image restore failed (non-fatal):", imageError);

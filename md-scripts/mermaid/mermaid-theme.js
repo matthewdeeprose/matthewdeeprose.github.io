@@ -14786,9 +14786,19 @@ window.MermaidThemes = (function () {
    * Apply a theme to a Mermaid diagram
    * @param {HTMLElement} container - The container with the Mermaid diagram
    * @param {string} themeId - The ID of the theme to apply
+   * @param {Object} [options] - Options
+   * @param {boolean} [options.keepCurrentUntilPainted] - The lazy flip's
+   *   paint: leave the existing SVG (and its place in the accessibility tree)
+   *   in the page until the new one is ready, rather than replacing it with
+   *   the raw source while Mermaid renders.
+   * @returns {Promise<boolean>} Resolves true when the new SVG has landed and
+   *   the paint record is written; false when nothing landed (no diagram, a
+   *   later flip superseded this render, or the render failed). Existing
+   *   callers ignore it.
    */
-  function applyTheme(container, themeId) {
-    if (!container) return;
+  function applyTheme(container, themeId, options) {
+    const settings = options || {};
+    if (!container) return Promise.resolve(false);
 
     logDebug(`Applying theme "${themeId}" to container`);
 
@@ -14796,8 +14806,12 @@ window.MermaidThemes = (function () {
     const mermaidDiv = container.querySelector(".mermaid");
     if (!mermaidDiv) {
       logWarn("No mermaid diagram found in container");
-      return;
+      return Promise.resolve(false);
     }
+
+    // The flip this render was armed under. A render that lands after a later
+    // flip must write nothing (the AN-1 / B2-1 sequence-number pattern).
+    const armedSequence = flipSequence;
 
     // Get the original Mermaid code
     const originalCode =
@@ -14814,12 +14828,36 @@ window.MermaidThemes = (function () {
 
     // Re-render the diagram
     const mermaidId = mermaidDiv.id;
-    mermaidDiv.textContent = newCode;
+    if (!settings.keepCurrentUntilPainted) {
+      mermaidDiv.textContent = newCode;
+    }
 
-    window.mermaid
+    return window.mermaid
       .render(mermaidId + "-svg", newCode)
-      .then((result) => {
+      .then(async (result) => {
+        if (armedSequence !== flipSequence) {
+          logDebug("Render superseded by a later flip; discarded");
+          // A render that replaced the SVG with source text and was then
+          // discarded must not look current: a mode no flip will match.
+          if (!settings.keepCurrentUntilPainted) {
+            container.setAttribute(PAINT_RECORD_ATTRIBUTE, DISCARDED_RECORD);
+          }
+          return false;
+        }
+
         mermaidDiv.innerHTML = result.svg;
+
+        // The lazy paint lands the SVG and yields before the after-render
+        // passes, so one slice is half a diagram's work, not all of it. The
+        // veil is still up and the record unwritten, so nobody reads the
+        // unfinished SVG; a flip in the gap leaves a record no flip matches.
+        if (settings.keepCurrentUntilPainted) {
+          await yieldToBrowser();
+          if (armedSequence !== flipSequence) {
+            container.setAttribute(PAINT_RECORD_ATTRIBUTE, DISCARDED_RECORD);
+            return false;
+          }
+        }
         logInfo(`Successfully re-rendered diagram with theme "${themeId}"`);
 
         const index = mermaidId.split("-").pop();
@@ -14867,10 +14905,16 @@ window.MermaidThemes = (function () {
           window.MermaidControls.addControlsToContainer(container, index);
           logDebug("Re-initialised diagram controls");
         }
+
+        markPainted(container, themeId);
+        return true;
       })
       .catch((error) => {
         logError("Error re-rendering Mermaid diagram:", error);
+        if (armedSequence !== flipSequence) return false;
         mermaidDiv.textContent = `Error rendering diagram with theme: ${error.message}`;
+        markPainted(container, themeId);
+        return false;
       });
   }
   /**
@@ -15202,18 +15246,373 @@ window.MermaidThemes = (function () {
 
     // Wait for the swapped site stylesheet first, so every after-render pass
     // reads the ground the page is actually changing to (see the helper).
-    return waitForSiteThemeStylesheets()
+    //
+    // The promise resolves after the cheap STATE step, not after the paints:
+    // the paints run lazily (see "THE LAZY RE-RENDER" below). It is also kept
+    // as pendingFlip, so ensureThemeCurrent cannot be answered in the gap
+    // between the flip and the state step.
+    flipsInFlight += 1;
+    pendingFlip = waitForSiteThemeStylesheets()
       .then(rerenderDiagramsForThemeChange)
       .catch((error) =>
         logError("Updating diagrams after the theme change failed:", error)
-      );
+      )
+      .finally(() => {
+        flipsInFlight -= 1;
+      });
+    return pendingFlip;
+  }
+
+  // ===========================================================================
+  // THE LAZY RE-RENDER (4 November 2026; dispatch docs/mermaid-theme-flip-dispatch.md)
+  //
+  // Measured: the site light/dark flip froze the page for 7 to 13 s on the
+  // 29-diagram styling example, all of it Mermaid's render and our after-render
+  // passes run for every diagram in one synchronous loop. This separates STATE
+  // from PAINT. The flip updates cheap state for every diagram at once and
+  // marks the ones whose painted record no longer matches as stale; a single
+  // runner then paints them one at a time, nearest the viewport first, yielding
+  // to the browser between diagrams.
+  //
+  // A stale diagram is covered by a static veil (aria-hidden, no live region,
+  // no announcement) so nobody sees one in the wrong mode. Its old SVG stays
+  // in the accessibility tree and the container carries aria-busy until the
+  // new one lands. Every reader of a live SVG awaits ensureThemeCurrent first.
+  // ===========================================================================
+
+  /** Per-container record of what was last painted: "<theme id>|<site mode>". */
+  const PAINT_RECORD_ATTRIBUTE = "data-painted-theme";
+
+  /** Present while a container's paint record does not match what the page wants. */
+  const STALE_ATTRIBUTE = "data-theme-stale";
+
+  /** A record no flip will match, left when a render was discarded mid-way. */
+  const DISCARDED_RECORD = "discarded|none";
+
+  const SITE_MODE = Object.freeze({ LIGHT: "light", DARK: "dark" });
+
+  const VEIL_CLASS = "mermaid-theme-veil";
+
+  /** Plain static text. Never read to screen-reader users: the veil is aria-hidden. */
+  const VEIL_TEXT = Object.freeze({
+    [SITE_MODE.LIGHT]: "Updating for light theme",
+    [SITE_MODE.DARK]: "Updating for dark theme",
+  });
+
+  /** Diagrams within this many screens of the viewport are painted before the rest. */
+  const NEAR_VIEWPORT_SCREENS = 1.5;
+
+  /** Longest the background tier waits for browser idle time before painting anyway. */
+  const IDLE_PAINT_TIMEOUT_MS = 500;
+
+  /** Background wait where requestIdleCallback is missing. */
+  const IDLE_FALLBACK_DELAY_MS = 50;
+
+  const PAINT_TIER = Object.freeze({
+    REQUESTED: 0, // a reader is waiting on it
+    VISIBLE: 1,
+    NEAR: 2,
+    BACKGROUND: 3,
+    FOCUSED: 4, // holds focus: painted last
+  });
+
+  /** Bumped by every flip. A paint armed under an older number writes nothing. */
+  let flipSequence = 0;
+
+  /** The latest flip's wait-then-state step, so the gate cannot answer before it. */
+  let pendingFlip = Promise.resolve();
+
+  /** Flips still waiting for their stylesheets, before their state step has run. */
+  let flipsInFlight = 0;
+
+  let paintRunning = false;
+  const requestedContainers = new Set();
+  const gateWaiters = [];
+  const attemptedAtSequence = new Map();
+  let scrollWakeInstalled = false;
+  let wakePainter = null;
+
+  function currentSiteMode() {
+    return isDarkThemeActive() ? SITE_MODE.DARK : SITE_MODE.LIGHT;
+  }
+
+  function paintedMode(container) {
+    const record = container.getAttribute(PAINT_RECORD_ATTRIBUTE);
+    return record ? record.split("|")[1] : null;
+  }
+
+  /** Containers the lazy flip manages: those that have a theme select. */
+  function trackedContainers(root) {
+    const scope = root || document;
+    return Array.from(scope.querySelectorAll(".mermaid-container")).filter(
+      (container) => container.querySelector(".mermaid-theme-select")
+    );
+  }
+
+  function isThemeStale(container) {
+    if (container.hasAttribute(STALE_ATTRIBUTE)) return true;
+    const mode = paintedMode(container);
+    return mode !== null && mode !== currentSiteMode();
+  }
+
+  function showVeil(container, mode) {
+    container.setAttribute(STALE_ATTRIBUTE, "");
+    container.setAttribute("aria-busy", "true");
+
+    let veil = container.querySelector(`:scope > .${VEIL_CLASS}`);
+    if (!veil) {
+      veil = document.createElement("div");
+      veil.className = VEIL_CLASS;
+      veil.setAttribute("aria-hidden", "true");
+      container.appendChild(veil);
+    }
+    veil.textContent = VEIL_TEXT[mode];
+  }
+
+  function clearVeil(container) {
+    container.removeAttribute(STALE_ATTRIBUTE);
+    container.removeAttribute("aria-busy");
+    const veil = container.querySelector(`:scope > .${VEIL_CLASS}`);
+    if (veil) veil.remove();
+  }
+
+  /** Record what was painted and take the veil down. */
+  function markPainted(container, themeId) {
+    container.setAttribute(
+      PAINT_RECORD_ATTRIBUTE,
+      `${themeId}|${currentSiteMode()}`
+    );
+    clearVeil(container);
+  }
+
+  function yieldToBrowser() {
+    if (window.scheduler && typeof window.scheduler.yield === "function") {
+      return window.scheduler.yield();
+    }
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  /** Background tier: wait for idle time, or until a container scrolls near. */
+  function waitForIdle() {
+    const idle = new Promise((resolve) => {
+      if (typeof window.requestIdleCallback === "function") {
+        window.requestIdleCallback(resolve, { timeout: IDLE_PAINT_TIMEOUT_MS });
+      } else {
+        setTimeout(resolve, IDLE_FALLBACK_DELAY_MS);
+      }
+    });
+    const woken = new Promise((resolve) => {
+      wakePainter = resolve;
+    });
+    return Promise.race([idle, woken]).then(() => {
+      wakePainter = null;
+    });
+  }
+
+  /** Rank the stale containers and return the best next one, or null. */
+  function pickNextStale() {
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const nearLimit = viewportHeight * NEAR_VIEWPORT_SCREENS;
+    const focused = document.activeElement;
+
+    const candidates = trackedContainers()
+      .filter((container) => container.isConnected && isThemeStale(container))
+      .filter(
+        (container) =>
+          attemptedAtSequence.get(container) !== flipSequence
+      )
+      .map((container, order) => {
+        const rect = container.getBoundingClientRect();
+        const distance =
+          rect.bottom < 0
+            ? -rect.bottom
+            : rect.top > viewportHeight
+            ? rect.top - viewportHeight
+            : 0;
+
+        let tier = PAINT_TIER.BACKGROUND;
+        if (distance === 0) tier = PAINT_TIER.VISIBLE;
+        else if (distance <= nearLimit) tier = PAINT_TIER.NEAR;
+
+        if (container.contains(focused)) tier = PAINT_TIER.FOCUSED;
+        if (requestedContainers.has(container)) tier = PAINT_TIER.REQUESTED;
+
+        return { container, tier, distance, order };
+      });
+
+    if (!candidates.length) return null;
+
+    candidates.sort(
+      (a, b) =>
+        a.tier - b.tier || a.distance - b.distance || a.order - b.order
+    );
+    return candidates[0];
+  }
+
+  function settleGateWaiters(forceAll) {
+    for (let i = gateWaiters.length - 1; i >= 0; i--) {
+      const waiter = gateWaiters[i];
+      const done =
+        forceAll ||
+        waiter.containers.every(
+          (container) => !container.isConnected || !isThemeStale(container)
+        );
+      if (!done) continue;
+      gateWaiters.splice(i, 1);
+      waiter.resolve();
+    }
+  }
+
+  /** Paint one stale container, restoring focus if the paint dropped it. */
+  async function paintStaleContainer(container) {
+    const select = container.querySelector(".mermaid-theme-select");
+    if (!select) return;
+
+    const focusedId = container.contains(document.activeElement)
+      ? document.activeElement.id
+      : "";
+
+    await applyTheme(container, select.value, {
+      keepCurrentUntilPainted: true,
+    });
+
+    const lostFocus =
+      focusedId &&
+      (!document.activeElement || document.activeElement === document.body);
+    if (lostFocus) {
+      const again = document.getElementById(focusedId);
+      if (again) again.focus({ preventScroll: true });
+    }
+  }
+
+  /** The one painter. Re-ranks after every diagram, so a new flip just re-orders it. */
+  async function runPaintQueue() {
+    for (;;) {
+      const next = pickNextStale();
+      if (!next) {
+        paintRunning = false;
+        requestedContainers.clear();
+        settleGateWaiters(true);
+        return;
+      }
+
+      attemptedAtSequence.set(next.container, flipSequence);
+      requestedContainers.delete(next.container);
+
+      try {
+        await paintStaleContainer(next.container);
+      } catch (error) {
+        logError("Lazy paint failed:", error);
+      }
+
+      settleGateWaiters(false);
+
+      if (next.tier === PAINT_TIER.BACKGROUND) {
+        await waitForIdle();
+      } else {
+        await yieldToBrowser();
+      }
+    }
+  }
+
+  function startPaintRunner() {
+    if (wakePainter) wakePainter();
+    if (paintRunning) return;
+    paintRunning = true;
+    runPaintQueue();
   }
 
   /**
-   * The re-render itself, unchanged from before the wait was added: run once
-   * the site theme stylesheets have loaded.
+   * Wake the painter when the page scrolls while a diagram is stale, so a
+   * diagram scrolled near re-ranks ahead of the background tier. A passive,
+   * frame-throttled scroll listener rather than an IntersectionObserver: the
+   * UI guard's OB4 row holds that no IntersectionObserver is constructed
+   * across a site flip, and the painter already ranks by geometry at every
+   * pick, so the observer would only have been the wake-up.
+   */
+  function wakeOnScroll() {
+    if (scrollWakeInstalled) return;
+    scrollWakeInstalled = true;
+    let framePending = false;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (framePending) return;
+        framePending = true;
+        window.requestAnimationFrame(() => {
+          framePending = false;
+          if (trackedContainers().some(isThemeStale)) startPaintRunner();
+        });
+      },
+      { passive: true, capture: true }
+    );
+  }
+
+  /**
+   * Synchronous: is this diagram painted for the page's current mode right
+   * now? False while a flip is still waiting for its stylesheets. A reader
+   * that must stay synchronous when nothing is pending (full screen keeps the
+   * click's user gesture) asks this first and awaits the gate only if false.
+   *
+   * @param {HTMLElement} container - A .mermaid-container
+   * @returns {boolean}
+   */
+  function isThemeCurrent(container) {
+    return flipsInFlight === 0 && !isThemeStale(container);
+  }
+
+  /**
+   * The gate every reader of a live SVG awaits before reading it.
+   *
+   * @param {HTMLElement} [target] - A .mermaid-container, an element holding
+   *   some, or nothing for every diagram on the page.
+   * @returns {Promise<void>} Resolves when those diagrams are painted for the
+   *   current site mode. Stale ones jump the queue. Never rejects.
+   */
+  function ensureThemeCurrent(target) {
+    return pendingFlip.then(() => {
+      let containers;
+      if (!target) {
+        containers = trackedContainers();
+      } else if (target.closest && target.closest(".mermaid-container")) {
+        containers = [target.closest(".mermaid-container")];
+      } else {
+        containers = trackedContainers(target);
+      }
+
+      const stale = containers.filter(
+        (container) => container.isConnected && isThemeStale(container)
+      );
+      if (!stale.length) return undefined;
+
+      stale.forEach((container) => requestedContainers.add(container));
+      const settled = new Promise((resolve) => {
+        gateWaiters.push({ containers: stale, resolve });
+      });
+      startPaintRunner();
+      return settled;
+    });
+  }
+
+  // Printing cannot wait for a promise, so this starts the work at once and
+  // puts every stale diagram at the front. Reported as only partly protected.
+  window.addEventListener("beforeprint", () => {
+    trackedContainers()
+      .filter(isThemeStale)
+      .forEach((container) => requestedContainers.add(container));
+    startPaintRunner();
+  });
+
+  /**
+   * The flip's STATE step: cheap, synchronous, for every diagram at once.
+   * Rebuilds each theme select and diagram source, marks the containers whose
+   * paint record no longer matches as stale, then starts the painter. The
+   * ground colour is read at paint time, never here.
    */
   function rerenderDiagramsForThemeChange() {
+    flipSequence += 1;
+    const mode = currentSiteMode();
+
     // Get all mermaid containers
     const mermaidContainers = document.querySelectorAll(".mermaid-container");
     logDebug("Found", mermaidContainers.length, "mermaid containers");
@@ -15237,6 +15636,7 @@ window.MermaidThemes = (function () {
 
     // Get visible themes for current mode
     const visibleThemes = getAllThemes();
+    const staleContainers = [];
 
     mermaidContainers.forEach((container, idx) => {
       const themeSelect = container.querySelector(".mermaid-theme-select");
@@ -15258,13 +15658,44 @@ window.MermaidThemes = (function () {
         themeSelect.appendChild(option);
       });
 
-      // Show and apply the resolved theme, so the control reflects what the
-      // diagram is actually rendering in.
+      // Show the resolved theme, so the control reflects what the diagram
+      // will render in once painted.
       themeSelect.value = themeToApply;
-      applyTheme(container, themeToApply);
+
+      // Keep the stored source in step, for any reader that takes it.
+      const storedCode = container.getAttribute("data-diagram-code");
+      if (storedCode) {
+        const themedCode = buildThemedSource(
+          decodeURIComponent(storedCode),
+          themeToApply
+        );
+        if (themedCode !== null) {
+          container.setAttribute(
+            "data-diagram-code",
+            encodeURIComponent(themedCode)
+          );
+        }
+      }
+
+      // Stale means the record does not match what the page now wants. A
+      // double flip back to what is still painted needs no paint at all.
+      if (
+        container.getAttribute(PAINT_RECORD_ATTRIBUTE) ===
+        `${themeToApply}|${mode}`
+      ) {
+        clearVeil(container);
+      } else {
+        showVeil(container, mode);
+        staleContainers.push(container);
+      }
     });
 
-    logInfo(`Updated ${mermaidContainers.length} diagrams for theme change`);
+    wakeOnScroll();
+    if (staleContainers.length) startPaintRunner();
+
+    logInfo(
+      `Flip state updated for ${mermaidContainers.length} diagrams; ${staleContainers.length} stale, painting lazily`
+    );
   }
   /**
    * Create a custom theme based on user preferences
@@ -15642,6 +16073,10 @@ window.MermaidThemes = (function () {
     validateWCAGCompliance: validateWCAGCompliance, // Add this new function
     calculateContrastRatio: calculateContrastRatio,
     updateDiagramsForThemeChange: updateDiagramsForThemeChange,
+    // The gate: resolves when the given diagrams (or all) are painted for the
+    // current site mode. Every reader of a live SVG awaits it first.
+    ensureThemeCurrent: ensureThemeCurrent,
+    isThemeCurrent: isThemeCurrent,
     themeConfig: themeConfig, // Expose configuration for external modification
     // Expose logging controls
     setLogLevel: setLogLevel,

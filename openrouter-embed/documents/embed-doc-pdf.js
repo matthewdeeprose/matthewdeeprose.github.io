@@ -208,6 +208,35 @@
     return ctx.pictureStep(items, { profile: PAGE_PROFILE });
   }
 
+  // ---- the offer (parcel P17b, only with read(file, { offerAll: true })) ----------------------
+  // A thumbnail is the page drawn small; an encode is the page drawn at the sent size and put
+  // through the same converter and profile as renderPagePictures. The scale is written out again
+  // here rather than shared, so that the line renderPagePictures uses stays exactly as it was.
+  const THUMBNAIL_HEIGHT_PX = 160;
+  const pagePictureScale = (natural) => PAGE_PICTURE_SIDE_PX / Math.max(natural.width, natural.height);
+
+  /** Page n as a PNG at most THUMBNAIL_HEIGHT_PX tall, with the size it was drawn at, or null. */
+  async function drawThumbnail(pdf, number) {
+    let size = null;
+    const blob = await renderPageBlob(pdf, number, (natural) => {
+      const scale = THUMBNAIL_HEIGHT_PX / natural.height;
+      size = {
+        width: Math.max(1, Math.floor(natural.width * scale)),
+        height: Math.max(1, Math.floor(natural.height * scale)),
+      };
+      return scale;
+    });
+    return blob && size ? { blob, width: size.width, height: size.height } : null;
+  }
+
+  /** Page n as a doc.images entry (kind "page"), or null. */
+  async function encodePage(pdf, number, ctx) {
+    const blob = await renderPageBlob(pdf, number, pagePictureScale);
+    const encoded = blob ? await ctx.convertPicture(blob, PAGE_PROFILE) : null;
+    if (!encoded) return null;
+    return { number, dataUrl: encoded.dataUrl, width: encoded.width, height: encoded.height, kind: PAGE_PROFILE };
+  }
+
   async function ensurePdfjs(ctx) {
     if (!window.pdfjsLib) {
       try {
@@ -241,6 +270,19 @@
       ctx.log("PDF could not be opened", { bytes: file.size });
       throw fail(ERROR_UNREADABLE);
     }
+
+    // With offerAll the document stays open while the offer has pages to draw; offer.release() ends it.
+    let keepPdf = false;
+    let pdfDestroyed = false;
+    const destroyPdf = async () => {
+      if (pdfDestroyed) return;
+      pdfDestroyed = true;
+      try {
+        await pdf.destroy();
+      } catch (error) {
+        /* releasing memory is best-effort */
+      }
+    };
 
     try {
       const pagesTotal = pdf.numPages;
@@ -305,11 +347,14 @@
       let images = [];
       let pictureSummary = null;
       let pictureNote = "";
+      let pagesPictured = false;
       if (scanLikely || detected) {
         const step = await renderPagePictures(pdf, pagesRead, ctx);
         images = step.images;
         pictureSummary = step.summary;
-        if (pagesTotal > ctx.caps.MAX_IMAGES) {
+        pagesPictured = true;
+        // With offerAll toParts labels every page it sends, so no note about a limit is needed.
+        if (pagesTotal > ctx.caps.MAX_IMAGES && !ctx.offerAll) {
           pictureNote = `\n[Page pictures: the first ${ctx.caps.MAX_IMAGES} of ${pagesTotal} pages can be sent.]`;
         }
       }
@@ -343,17 +388,25 @@
       };
       if (preview) result.meta.preview = preview;
       if (pictureSummary) result.pictureSummary = pictureSummary;
+      if (ctx.offerAll) {
+        // Every page can be chosen when the file gets page pictures at all; a prose PDF offers none.
+        const numbers = pagesPictured ? Array.from({ length: pagesRead }, (_, index) => index + 1) : [];
+        result.offer = ctx.createOffer({
+          numbers,
+          makeThumbnail: (number) => drawThumbnail(pdf, number),
+          makeEncode: (number) => encodePage(pdf, number, ctx),
+          onRelease: destroyPdf,
+        });
+        // Nothing to draw later means nothing to hold open.
+        keepPdf = numbers.length > 0;
+      }
       return result;
     } catch (error) {
       if (error && error.code) throw error;
       ctx.log("PDF page read failed", { bytes: file.size });
       throw fail(ERROR_UNREADABLE);
     } finally {
-      try {
-        await pdf.destroy();
-      } catch (error) {
-        /* releasing memory is best-effort */
-      }
+      if (!keepPdf) await destroyPdf();
     }
   }
 

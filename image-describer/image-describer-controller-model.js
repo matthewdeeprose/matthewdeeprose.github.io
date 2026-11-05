@@ -82,7 +82,10 @@
   /**
    * Models shown first, in their own group, as "Tested for describing pictures".
    * Rule (idq-phase-h-plan.md, "Decisions of 8 October 2026 (evening)"): a model is
-   * listed only if every shipped-thirds row it was measured on passed the bar.
+   * listed only if every shipped-thirds row it was measured on passed the bar. That
+   * rule covers the Claude ids and Foundry's Maverick. Foundry's GPT-6.1 Terra is
+   * listed by Matthew's ruling of 3 November 2026 on H-170 and H-171, not under that
+   * rule, and goes first so it is the pre-selection under Foundry.
    * Full ids only, in display order. Foundry's Maverick is listed by its Foundry id;
    * OpenRouter's meta-llama/llama-4-maverick was NOT tested and must not be added.
    */
@@ -90,6 +93,7 @@
     "anthropic/claude-haiku-5.5",
     "anthropic/claude-sonnet-5",
     "anthropic/claude-sonnet-5.5",
+    "azure-openai/gpt-6.1-terra",
     "azure-openai/Llama-4-Maverick-17B-128E-Instruct-FP8",
   ]);
   const TESTED_GROUP_LABEL = "Tested for describing pictures";

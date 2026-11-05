@@ -102,6 +102,8 @@
     ALL_DESCRIBED: "Every picture already has a description.",
     ALL_DESCRIBED_WITH_FILE: "Every picture with a file already has a description.",
     NO_PICTURES: "There are no pictures in this document.",
+    NO_FILES_ONE: "The one picture in this document has no file, so it cannot be described.",
+    NO_FILES_MANY_TAIL: " in this document have no files, so none can be described.",
     NO_KEY: "No AI provider key is set.",
   });
 
@@ -275,6 +277,10 @@
    * (rule C10). Tune it only from a listen.
    */
   const LINE_GAP_MS = 1000;
+  /** U-2b: the beat between emptying the region and writing a line it already holds. */
+  const ANNOUNCE_REPEAT_CLEAR_MS = 100;
+  /** U-2b: the sequence a line carries; a later write moves it and the older one does nothing. */
+  let announceSequence = 0;
   /** The visual ticker beside "Started" updates once a second. */
   const TICK_MS = 1000;
   const MS_PER_SECOND = 1000;
@@ -286,6 +292,21 @@
   const UNDER_A_SECOND_TEXT = "under a second";
   /** RP-3c: registry entry fields that may hold a picture's file name, first one set wins. */
   const PICTURE_NAME_FIELDS = Object.freeze(["fileName", "filename", "originalFilename"]);
+
+  /**
+   * 159-D3: the read-only "Things to check" row after an applied correction. Its words, and the words a
+   * table finding uses (the enhancer gives a table finding no message of its own; these are the dialog's).
+   */
+  const CHECKS_ROW_KEY = "checks";
+  const CHECKS_LABEL = "Things to check";
+  const CHECKS_NONE_TEXT = "Nothing to check";
+  const CHECKS_UNAVAILABLE_TEXT = "Checks not available";
+  const CHECKS_NONE_CLAUSE = "nothing to check";
+  const CHECKS_TABLE_CHECK = "table";
+  const CHECKS_TABLE_CONVERTIBLE_TEXT = "This LaTeX table can become a markdown table.";
+  const CHECKS_TABLE_REFUSED_TEXT = "This LaTeX table can't become a markdown table.";
+  const CHECKS_NO_MESSAGE_TEXT = "Check this line.";
+  const CHECKS_ICONS = Object.freeze({ found: "warning", none: "checkCircle", unavailable: "warning" });
 
   /** Longest wait for every dialog to close before a line is written anyway. */
   const MODAL_CLEAR_MAX_MS = 5000;
@@ -666,13 +687,35 @@
   }
 
   /**
+   * FL-D2: when the document holds pictures and none of them has a file, the
+   * reason says so, with the count through the one composer (words below ten,
+   * digits from 10). Null when any picture has a file, so the older lines stand.
+   */
+  function noFilesReasonFor(entries) {
+    const runner = window.MathPixAltTextBatchRunner;
+    if (!runner || typeof runner.hasImageFile !== "function") return null;
+    const restorer =
+      typeof window.getMathPixSessionRestorer === "function"
+        ? window.getMathPixSessionRestorer()
+        : null;
+    const blobUrlMap = restorer && restorer.imageBlobUrlMap;
+    if (entries.some((entry) => runner.hasImageFile(entry, blobUrlMap))) return null;
+    if (entries.length === 1) return REASONS.NO_FILES_ONE;
+    const pictures = countWords(entries.length, "picture", "pictures", { words: true });
+    return `The ${pictures}${REASONS.NO_FILES_MANY_TAIL}`;
+  }
+
+  /**
    * Why a step cannot run, or null when it can. The key is asked first: with
    * no key nothing can run, whatever else is true.
    */
   function reasonFor(step) {
     if (!hasProviderKey()) return REASONS.NO_KEY;
     if (step.key === "pictures") {
-      if (imageEntries().length === 0) return REASONS.NO_PICTURES;
+      const entries = imageEntries();
+      if (entries.length === 0) return REASONS.NO_PICTURES;
+      const noFilesReason = noFilesReasonFor(entries);
+      if (noFilesReason) return noFilesReason;
       const { targets, skippedMissing } = partitionPictures();
       if (targets.length > 0) return null;
       return skippedMissing > 0
@@ -1013,7 +1056,17 @@
       const wait = state.lastLineAt + LINE_GAP_MS - performance.now();
       if (wait > 0) await sleep(wait);
     }
-    setText(byId(ELEMENT_IDS.announce), text);
+    const host = byId(ELEMENT_IDS.announce);
+    announceSequence += 1;
+    const mine = announceSequence;
+    // U-2b: the same line twice in a row (a second run on one page) is no mutation, so nothing is spoken.
+    // Empty the region first and write after a beat; a later write that has moved the sequence wins.
+    if (host && host.textContent === text) {
+      host.textContent = "";
+      await sleep(ANNOUNCE_REPEAT_CLEAR_MS);
+      if (mine !== announceSequence) return;
+    }
+    setText(host, text);
     state.lastLineAt = performance.now();
   }
 
@@ -1273,6 +1326,111 @@
     );
   }
 
+  /** 159-D3: "five things to check", "one thing to check"; words below ten, digits from 10 (UT-D7a). */
+  function checksCountText(count) {
+    return `${countWords(count, "thing", "things", { words: true })} to check`;
+  }
+
+  /** 159-D3: one finding's message; a table finding has none of its own, so it takes the dialog's words. */
+  function findingMessage(finding) {
+    if (typeof finding.message === "string" && finding.message.trim() !== "") return finding.message.trim();
+    if (finding.check === CHECKS_TABLE_CHECK) {
+      // U-2b: read the dialog's own frozen words (mathpix-ai-table-action.js TEXT); the literals are the fallback when that module is absent
+      const dialogWords = window.MathPixAITableAction && window.MathPixAITableAction.TEXT;
+      const wanted = finding.rule === "convertible" ? "CAN_CONVERT" : "CANNOT_CONVERT";
+      const fallback = finding.rule === "convertible" ? CHECKS_TABLE_CONVERTIBLE_TEXT : CHECKS_TABLE_REFUSED_TEXT;
+      return dialogWords && typeof dialogWords[wanted] === "string" && dialogWords[wanted].trim() !== ""
+        ? dialogWords[wanted]
+        : fallback;
+    }
+    return CHECKS_NO_MESSAGE_TEXT;
+  }
+
+  /**
+   * 159-D3: the checks of the document as it now stands, as { available, items: [{ line, message }] }.
+   * A real run reads enhancer.mmdCheckFindings (a property read; the enhancer is not changed). A rehearsal
+   * computes them from the current text, since the checks are local and free. A missing or non-array
+   * property is "not available", never an empty list.
+   */
+  function readChecks({ rehearsal }) {
+    try {
+      const enhancer = window.getMathPixAIEnhancer?.();
+      if (!enhancer) return { available: false, items: [] };
+      const canCompute =
+        typeof enhancer.computeMMDCheckFindings === "function" && typeof enhancer.getCurrentMMD === "function";
+      const list =
+        rehearsal && canCompute
+          ? enhancer.computeMMDCheckFindings(enhancer.getCurrentMMD())
+          : enhancer.mmdCheckFindings;
+      if (!Array.isArray(list)) return { available: false, items: [] };
+      const items = list
+        .filter((finding) => finding && typeof finding === "object")
+        .map((finding) => ({ line: Number(finding.line), message: findingMessage(finding) }));
+      return { available: true, items };
+    } catch (error) {
+      logWarn("readChecks failed; the checks are not available", error);
+      return { available: false, items: [] };
+    }
+  }
+
+  /** 159-D3: the clause the correction's spoken line gains; empty when the checks are not available. */
+  function checksClause(checks) {
+    if (!checks || !checks.available) return "";
+    return checks.items.length === 0 ? CHECKS_NONE_CLAUSE : checksCountText(checks.items.length);
+  }
+
+  /** 159-D3: one nested-list row in the queue's own markup; text goes in through textContent only. */
+  function makeNestedItem({ status, icon, label, statusText }) {
+    const item = document.createElement("li");
+    item.className = "resume-progress-item";
+    item.dataset.status = status;
+    item.innerHTML =
+      '<div class="mathpix-progress-item">' +
+      `<span class="mathpix-progress-icon" aria-hidden="true" data-icon="${icon}"></span>` +
+      '<span class="mathpix-progress-label"></span>' +
+      '<span class="sr-only ai-queue-sep">, </span>' +
+      '<span class="mathpix-progress-status"></span>' +
+      "</div>";
+    setText(item.querySelector(".mathpix-progress-label"), label);
+    setText(item.querySelector(QUEUE_SELECTORS.status), statusText);
+    return item;
+  }
+
+  /** 159-D3: the row, built from { available, items }: label, status, and a nested list of "Line N", message. */
+  function buildChecksRow(checks) {
+    const count = checks.items.length;
+    const kind = !checks.available ? "unavailable" : count === 0 ? "none" : "found";
+    const statusText =
+      kind === "unavailable" ? CHECKS_UNAVAILABLE_TEXT : kind === "none" ? CHECKS_NONE_TEXT : checksCountText(count);
+    const row = makeNestedItem({ status: kind, icon: CHECKS_ICONS[kind], label: CHECKS_LABEL, statusText });
+    row.dataset.step = CHECKS_ROW_KEY;
+    if (count === 0) return row;
+    const sublist = document.createElement("ol");
+    sublist.className = "ai-queue-sublist";
+    checks.items.forEach((entry) => {
+      const lineLabel = Number.isFinite(entry.line) ? `Line ${entry.line}` : "Line not known";
+      sublist.append(makeNestedItem({ status: "found", icon: CHECKS_ICONS.found, label: lineLabel, statusText: entry.message }));
+    });
+    row.append(sublist);
+    return row;
+  }
+
+  /** 159-D3: the row goes straight after the correction row (so before Context); any earlier one goes first. */
+  function placeChecksRow(checks) {
+    removeChecksRow();
+    const after = queueRow(STEPS[0]);
+    if (!after) return;
+    const row = buildChecksRow(checks);
+    after.after(row);
+    window.IconLibrary?.populateIcons?.(row);
+  }
+
+  function removeChecksRow() {
+    queueRegion()
+      ?.querySelectorAll(`li[data-step="${CHECKS_ROW_KEY}"]`)
+      .forEach((row) => row.remove());
+  }
+
   /**
    * At a run's start: the queue is shown, every ticked step has a row reading
    * Waiting, every other row is hidden, the total reads 00:00 and the one
@@ -1280,6 +1438,7 @@
    */
   function resetQueue(steps) {
     stopTicker();
+    removeChecksRow();
     const region = queueRegion();
     if (region) region.hidden = false;
     STEPS.forEach((step) => {
@@ -1333,6 +1492,8 @@
     const { status, text } = endRowStatus(outcome, elapsedMs);
     setQueueRow(step, status, text);
     setRowClock(step, "");
+    // 159-D3: only an applied correction carries checks, so a refused, failed or cancelled one gets no row
+    if (step.key === "correction" && outcome.checks) placeChecksRow(outcome.checks);
     if (step.key === "pictures" && state.pictureItems.length > 0) {
       // RP-3d: a cancelled run keeps the "N images to do, K done" form, and the pictures never reached read Not run
       setText(queuePart(queueRow(step), QUEUE_SELECTORS.detail), picturesCountText(state.pictureTotal, state.picturesDone, { finished: !outcome.cancelled }));
@@ -1368,7 +1529,10 @@
     if (outcome.skipped) return `${step.label}: ${outcome.line}`;
     // M-5y: a step whose request got no reply has no duration worth saying (a cut says "four minutes" for a failure)
     if (outcome.noReply) return `${step.label} did not finish. ${upperFirst(outcome.line)}`;
-    return `${step.label} finished in ${durationWords(elapsedMs)}. ${upperFirst(outcome.line)}`;
+    const base = `${step.label} finished in ${durationWords(elapsedMs)}. ${upperFirst(outcome.line)}`;
+    // 159-D3 (C1, C10): the checks ride in the same line, as a clause in place of its last full stop
+    const clause = checksClause(outcome.checks);
+    return clause ? `${base.replace(/[.!]+$/, "")}, ${clause}.` : base;
   }
 
   /** AT-1: after a Cancel, focus is on the Run button, which is enabled. */
@@ -1787,7 +1951,9 @@
       // M-5y: the outcome carries no marker for "the request got no reply", so it is read off the line: the enhancer
       // publishes the two sentences it gives a bare fetch failure, and a refusal that did get a reply never equals them
       const noReply = !outcome.ok && isNoReplyLine(result && result.line);
-      return noReply ? { ...outcome, noReply: true } : outcome;
+      if (noReply) return { ...outcome, noReply: true };
+      // 159-D3: an applied correction carries the checks of the text it left
+      return outcome.ok ? { ...outcome, checks: readChecks({ rehearsal: false }) } : outcome;
     },
     context: async () => {
       const result = await window.MathPixContextAI?.handleAnalyseClick({
@@ -1835,7 +2001,11 @@
   };
 
   const REHEARSAL_RUNNERS = Object.freeze({
-    correction: rehearsalStep("correction"),
+    // 159-D3: the checks are local and free, so a rehearsal shows them for the current text
+    correction: async () => {
+      const outcome = await rehearsalStep("correction")();
+      return outcome.ok ? { ...outcome, checks: readChecks({ rehearsal: true }) } : outcome;
+    },
     context: rehearsalStep("context"),
     pictures: async () => {
       const runner = window.MathPixAltTextBatchRunner;
@@ -2434,6 +2604,15 @@
     // RP-3d: Cancel, its composer, and the words a stopped run uses.
     cancelRun,
     cancelLine,
+    // 159-D3: the Things to check row, its count words and the line composer, for rows and rigs.
+    checksCountText,
+    readChecks,
+    buildChecksRow,
+    stepEndLine,
+    CHECKS_ROW_KEY,
+    CHECKS_LABEL,
+    CHECKS_NONE_TEXT,
+    CHECKS_UNAVAILABLE_TEXT,
     // RP-5: the rehearsal's stand-ins, words and clause, for rows and rigs.
     REHEARSAL_RUNNERS,
     REHEARSAL_CONFIRM_TEXT,

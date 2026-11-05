@@ -1,13 +1,15 @@
 /**
- * Chart description text helpers
- * Four small functions that the chart describers share: list joining,
- * capitalisation, number-as-words and HTML escaping.
+ * Text helpers for the chart describers.
  *
- * Each one behaves exactly like the function of the same name in
- * md-scripts/mermaid/mermaid-accessibility-common.js, including its edge
- * cases. A standing check (.claude/chart-describe/prove-text-parity.mjs)
- * compares the two. If they ever differ, make one call the other; do not edit
- * both.
+ * This file exports four small functions: formatList, capitalize,
+ * narrationNumber and escapeHtml. Every other chart describer file uses them.
+ * This file needs no other file, so it loads first. It exports itself as
+ * window.ChartDescribeText. In Node it also sets module.exports.
+ *
+ * The golden tests in test/ reach these four functions through every
+ * description they check, so a change to a common case shows up there. No
+ * test calls a function on its own, so an edge case can change unseen. Add a
+ * test when you change one.
  */
 (function (root) {
   // Logging configuration (inside module scope)
@@ -93,7 +95,7 @@
     return str.charAt(0).toUpperCase() + str.slice(1);
   }
 
-  // Counts and references are words for zero to nine, digits from 10.
+  // The describers speak counts as words for zero to nine and as digits from 10.
   const NARRATION_NUMBER_WORDS = Object.freeze([
     "zero",
     "one",
@@ -109,8 +111,9 @@
 
   /**
    * A number as narration: a word for zero to nine, digits from 10.
-   * A non-integer between 0 and 9 (2.5) returns undefined, because it indexes
-   * the word list with a fractional key. This matches the original on purpose.
+   * A number between 0 and 9 that is not a whole number (2.5) returns
+   * undefined, because the word list has no entry at a fractional index. Pass
+   * whole numbers.
    * @param {number} value - The number to express
    * @returns {string} The narration form
    */

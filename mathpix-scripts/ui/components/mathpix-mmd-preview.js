@@ -1125,10 +1125,9 @@ class MathPixMMDPreview {
     // Remove alt={...} from \includegraphics options entirely.
     // The CDN library treats the first {...} in options as the image source,
     // so alt={CONTENT} breaks image rendering. Handles trailing comma/space.
-    const figureResult = processed.replace(
-      /\\includegraphics\[alt=\{[^}]*\},?\s*/g,
-      "\\includegraphics[",
-    );
+    // B2-1: read the alt to its MATCHING brace, not the first one, so an alt
+    // holding braces or an escaped brace leaves nothing behind.
+    const figureResult = this._stripFigureAltOptions(processed);
     const figureCount = content.length - figureResult.length !== 0 ? 1 : 0;
     processed = figureResult;
 
@@ -1145,6 +1144,53 @@ class MathPixMMDPreview {
     }
 
     return processed;
+  }
+
+  /**
+   * B2-1 (ledger entries 45 and 82): remove `alt={...}` from every
+   * `\includegraphics[` by counting braces to the matching close, skipping a
+   * backslash-escaped character (the serialiser writes a literal brace as `\{`
+   * or `\}`). The earlier regex stopped at the first `}` and left the rest of
+   * the alt in the preview input. Same read as `_extractFigureAlts`. An
+   * unterminated alt is left untouched. Also eats the trailing comma and
+   * whitespace, as the regex did.
+   *
+   * @param {string} content - Raw MMD content
+   * @returns {string} Content with each figure alt option removed
+   * @private
+   */
+  _stripFigureAltOptions(content) {
+    if (!content) return content;
+
+    const opener = /\\includegraphics\[alt=\{/g;
+    let out = "";
+    let last = 0;
+    let match;
+    while ((match = opener.exec(content)) !== null) {
+      let i = opener.lastIndex;
+      let depth = 1;
+
+      for (; i < content.length && depth > 0; i++) {
+        const ch = content[i];
+        if (ch === "\\") {
+          i++; // an escaped character never opens or closes anything
+          continue;
+        }
+        if (ch === "{") depth++;
+        else if (ch === "}") depth--;
+      }
+
+      if (depth !== 0) {
+        logDebug("[MathPixMMDPreview] Unterminated figure alt left in place");
+        break;
+      }
+
+      const tail = /^,?\s*/.exec(content.slice(i))[0];
+      out += content.slice(last, match.index) + "\\includegraphics[";
+      last = i + tail.length;
+      opener.lastIndex = last;
+    }
+    return out + content.slice(last);
   }
 
   /**

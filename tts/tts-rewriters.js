@@ -577,11 +577,11 @@ const TTSRewriters = (function () {
    * @param {Object} sre - the resolved SRE engine from TTSSreLoader.loadSRE().
    * @returns {string|null}
    */
-  function sreSpeechFor(el, sre) {
+  function sreSpeechFor(el, sre, domain) {
     if (!sre || !el) return null;
     const mathEl = el.querySelector("math");
     if (!mathEl) return null;
-    const shared = sharedRulesSpeech(mathEl, sre);
+    const shared = sharedRulesSpeech(mathEl, sre, domain);
     if (shared) return shared;
     try {
       const speech = sre.toSpeech(mathEl.outerHTML);
@@ -596,6 +596,9 @@ const TTSRewriters = (function () {
   // enrichment wrote (U+2062); the export's MathML has none, and one after a
   // logical-not sign makes ClearSpeak say "not times open paren" (RA-69).
   const INVISIBLE_TIMES = "⁢";
+
+  // The maths speech style used when the loader gives none (RA-89).
+  const DEFAULT_SPEECH_DOMAIN = "clearspeak";
 
   // The contour-integral signs U+222E to U+2233 (∮ ∯ ∰ ∱ ∲ ∳). The Convert and
   // MathPix result preview is typeset by mathpix-markdown-it's own MathJax, whose
@@ -623,9 +626,11 @@ const TTSRewriters = (function () {
    *
    * @param {Element} mathEl - the <math> element.
    * @param {Object} sre - the resolved SRE engine from TTSSreLoader.loadSRE().
+   * @param {string} [domain] - the speech style the engine was set up for
+   *   ("clearspeak" or "mathspeak"); ClearSpeak when omitted.
    * @returns {string|null}
    */
-  function sharedRulesSpeech(mathEl, sre) {
+  function sharedRulesSpeech(mathEl, sre, domain) {
     const rules = window.MathsSpeechRules;
     if (!rules || typeof rules.forSpeech !== "function") return null;
     try {
@@ -655,7 +660,7 @@ const TTSRewriters = (function () {
         sign.textContent = text.textContent;
         operator.replaceWith(sign);
       });
-      const prepared = rules.forSpeech(copy, "clearspeak");
+      const prepared = rules.forSpeech(copy, domain || DEFAULT_SPEECH_DOMAIN);
       const speech = rules.restoreLabels(
         sre.toSpeech(prepared.mathml),
         prepared.labels,
@@ -697,6 +702,13 @@ const TTSRewriters = (function () {
     if (!rootEl) return Promise.resolve(null);
     const clone = rootEl.cloneNode(true);
 
+    // The maths speech style is read once, so the engine set-up and the shared
+    // rules below always agree even if the person changes it mid-prepare.
+    const domain =
+      window.TTSSreLoader && typeof window.TTSSreLoader.getDomain === "function"
+        ? window.TTSSreLoader.getDomain()
+        : DEFAULT_SPEECH_DOMAIN;
+
     return Promise.resolve()
       .then(function () {
         if (
@@ -705,7 +717,7 @@ const TTSRewriters = (function () {
         ) {
           return null;
         }
-        return window.TTSSreLoader.loadSRE().catch(function (err) {
+        return window.TTSSreLoader.loadSRE(domain).catch(function (err) {
           logWarn(
             "SRE unavailable — falling back to existing aria-labels for TTS",
             err,
@@ -721,7 +733,8 @@ const TTSRewriters = (function () {
         const cdnWrappers = clone.querySelectorAll('[role="math"][aria-label]');
         cdnWrappers.forEach(function (wrapper) {
           const speech =
-            sreSpeechFor(wrapper, sre) || wrapper.getAttribute("aria-label");
+            sreSpeechFor(wrapper, sre, domain) ||
+            wrapper.getAttribute("aria-label");
           if (!speech || !speech.trim()) return;
           const placeholder = document.createElement("mjx-container");
           placeholder.setAttribute("aria-label", speech);
@@ -734,7 +747,7 @@ const TTSRewriters = (function () {
         const mjxContainers = clone.querySelectorAll("mjx-container");
         mjxContainers.forEach(function (mjx) {
           if (mjx.getAttribute("data-mathpix-enhanced") === "duplicate") return;
-          const speech = sreSpeechFor(mjx, sre);
+          const speech = sreSpeechFor(mjx, sre, domain);
           if (!speech || !speech.trim()) return;
           mjx.setAttribute("aria-label", speech);
         });
