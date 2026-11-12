@@ -7,7 +7,7 @@ University of Southampton
 Dr Ben Whitburn
 Joshie Christian
 Matthew Deeprose
-3 June 2026
+23 November 2026
 
 ### Speaker notes
 
