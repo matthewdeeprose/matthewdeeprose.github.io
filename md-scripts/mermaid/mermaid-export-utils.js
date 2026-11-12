@@ -543,6 +543,10 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
    * @param {HTMLElement} root - The live, rendered document (e.g. `#output`)
    * @returns {string} The cleaned copy's inner HTML
    */
+  // Item 168, fix 2: each warning is logged once per page load.
+  let focusableSelectorWarned = false;
+  let pointerWarned = false;
+
   /**
    * Make an exported diagram box a named, focusable stop when its diagram's
    * floor width (the live SVG's inline min-width) is wider than the narrowest
@@ -568,7 +572,27 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
       isStop && container
         ? container.getAttribute("data-svg-accessible-name") || ""
         : "";
-    const named = cachedName.trim() !== "";
+    // Item 168, fix 2 (12 November 2026): the page's DI4 test, applied to the
+    // copies in the box. A diagram whose SVG holds anything focusable keeps its
+    // structure, so its box is the group and no copy is hidden. The selector is
+    // read from window.MermaidControls at call time, never copied; when it is
+    // not there the safe branch is the group form with nothing hidden.
+    const controls = window.MermaidControls;
+    const focusableSelector =
+      controls && typeof controls.svgFocusableSelector === "string"
+        ? controls.svgFocusableSelector
+        : "";
+    if (isStop && focusableSelector === "" && !focusableSelectorWarned) {
+      focusableSelectorWarned = true;
+      logWarn(
+        "[Mermaid Export] MermaidControls.svgFocusableSelector is not available; scroll boxes in this export take the group form"
+      );
+    }
+    const boxSvgs = Array.from(cloneBox.querySelectorAll(":scope > svg"));
+    const hasFocusable =
+      focusableSelector === "" ||
+      boxSvgs.some((svg) => svg.querySelector(focusableSelector));
+    const named = cachedName.trim() !== "" && !hasFocusable;
 
     if (isStop) {
       cloneBox.setAttribute("tabindex", "0");
@@ -584,6 +608,35 @@ html:not([data-theme="dark"]) .mermaid > svg[${EXPORT_MODE_ATTRIBUTE}="${SITE_MO
       cloneBox.removeAttribute("tabindex");
       cloneBox.removeAttribute("role");
       cloneBox.removeAttribute("aria-label");
+    }
+
+    // (A0) Item 168, fix 2: the named image is described by the export's own
+    // pointer element, the one the exported SVG's aria-describedby names, so
+    // the reference resolves inside the saved file. Nothing else gets one.
+    cloneBox.removeAttribute("aria-describedby");
+    if (named) {
+      const pointerId = container
+        ? container.getAttribute("data-pointer-id") || ""
+        : "";
+      const svgDescribedBy = boxSvgs.length
+        ? (boxSvgs[0].getAttribute("aria-describedby") || "").split(/\s+/)
+        : [];
+      const scope = cloneBox.getRootNode();
+      const pointer =
+        pointerId !== "" &&
+        svgDescribedBy.includes(pointerId) &&
+        scope &&
+        typeof scope.querySelector === "function"
+          ? scope.querySelector(`[id="${CSS.escape(pointerId)}"]`)
+          : null;
+      if (pointer) {
+        cloneBox.setAttribute("aria-describedby", pointerId);
+      } else if (!pointerWarned) {
+        pointerWarned = true;
+        logWarn(
+          "[Mermaid Export] No pointer element in the export for a named scroll box; it carries no description"
+        );
+      }
     }
 
     // (A) The named stop is the diagram's one reading; its SVG leaves the tree.
